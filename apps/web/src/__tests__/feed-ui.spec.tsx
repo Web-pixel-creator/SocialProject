@@ -169,6 +169,108 @@ describe('feed UI', () => {
     );
   });
 
+  test('renders release items and fallback glowup scores', async () => {
+    const payload = [
+      { id: 'rel-1234567', type: 'release', glow_up_score: 8.2 },
+      { id: 'draft-99', type: 'draft' }
+    ];
+    (apiClient.get as jest.Mock).mockResolvedValueOnce({ data: payload });
+
+    await act(async () => {
+      render(<FeedTabs />);
+    });
+
+    await waitFor(() => expect(screen.getByText(/^Release /i)).toBeInTheDocument());
+    expect(screen.getByText(/GlowUp score: 8.2/i)).toBeInTheDocument();
+    expect(screen.getByText(/GlowUp score: 0.0/i)).toBeInTheDocument();
+  });
+
+  test('renders archive items with fallback fields', async () => {
+    const publishedAt = new Date('2024-01-01T00:00:00Z').toISOString();
+    const updatedAt = new Date('2024-02-01T00:00:00Z').toISOString();
+    const updatedAtSnake = new Date('2024-03-01T00:00:00Z').toISOString();
+    const archivePayload = [
+      { id: 'auto-pub', type: 'autopsy', published_at: publishedAt },
+      { id: 'auto-updated', type: 'autopsy', summary: 'Updated summary', updatedAt },
+      { id: 'auto-snake', summary: 'Snake summary', updated_at: updatedAtSnake },
+      { id: 'draft-arch', type: 'draft', glow_up_score: 4.2, updated_at: updatedAtSnake }
+    ];
+
+    (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: archivePayload });
+
+    await act(async () => {
+      render(<FeedTabs />);
+    });
+
+    const archiveTab = screen.getByRole('button', { name: /Archive/i });
+    await act(async () => {
+      fireEvent.click(archiveTab);
+    });
+
+    await waitFor(() => expect(screen.getByText(/Autopsy report/i)).toBeInTheDocument());
+    expect(screen.getByText(new Date(publishedAt).toLocaleString())).toBeInTheDocument();
+    expect(screen.getByText(/Updated summary/i)).toBeInTheDocument();
+    expect(screen.getByText(new Date(updatedAt).toLocaleString())).toBeInTheDocument();
+    expect(screen.getByText(/Snake summary/i)).toBeInTheDocument();
+    expect(screen.getByText(new Date(updatedAtSnake).toLocaleString())).toBeInTheDocument();
+    expect(screen.getByText(/Draft draft-ar/i)).toBeInTheDocument();
+    expect(screen.getByText(/GlowUp score: 4.2/i)).toBeInTheDocument();
+  });
+
+  test('uses studio fallbacks when values are missing', async () => {
+    const studiosPayload = [
+      { id: 'studio-1', studio_name: 'Studio Snake', impact: 5 },
+      { id: 'studio-2' }
+    ];
+    (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: studiosPayload });
+
+    await act(async () => {
+      render(<FeedTabs />);
+    });
+
+    const studiosTab = screen.getByRole('button', { name: /Studios/i });
+    await act(async () => {
+      fireEvent.click(studiosTab);
+    });
+
+    await waitFor(() => expect(screen.getByText(/Studio Snake/i)).toBeInTheDocument());
+    expect(screen.getByText(/^Studio$/i)).toBeInTheDocument();
+    expect(screen.getByText(/Impact 5.0/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Signal 0.0/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Impact 0.0/i).length).toBeGreaterThan(0);
+  });
+
+  test('appends fallback glowups when for-you pagination fails', async () => {
+    const firstPage = Array.from({ length: 6 }, (_, index) => ({
+      id: `draft-${index}`,
+      type: 'draft',
+      glowUpScore: 1
+    }));
+    const fallbackPage = [{ id: 'fallback-1', type: 'draft', glowUpScore: 2 }];
+
+    (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: firstPage })
+      .mockRejectedValueOnce(new Error('for-you page failed'))
+      .mockResolvedValueOnce({ data: fallbackPage });
+
+    await act(async () => {
+      render(<FeedTabs />);
+    });
+
+    const loadMore = await screen.findByRole('button', { name: /Load more/i });
+    await act(async () => {
+      fireEvent.click(loadMore);
+    });
+
+    await waitFor(() => expect(screen.getByText(/Draft fallback/i)).toBeInTheDocument());
+    expect(screen.getByText(/Draft draft-0/i)).toBeInTheDocument();
+    expect(screen.getByText(/Fallback data/i)).toBeInTheDocument();
+  });
+
   test('loads next page on scroll near bottom', async () => {
     const firstPage = Array.from({ length: 6 }, (_, index) => ({
       id: `draft-${index}`,
