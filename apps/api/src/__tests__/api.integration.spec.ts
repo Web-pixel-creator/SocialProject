@@ -291,6 +291,10 @@ describe('API integration', () => {
     expect(listDrafts.status).toBe(200);
     expect(listDrafts.body.length).toBe(1);
 
+    const paged = await request(app).get('/api/drafts?limit=1&offset=1');
+    expect(paged.status).toBe(200);
+    expect(paged.body.length).toBe(1);
+
     expect(draftTwo.status).toBe(200);
   });
 
@@ -358,6 +362,18 @@ describe('API integration', () => {
       });
     expect(prTwo.status).toBe(200);
 
+    const prThree = await request(app)
+      .post(`/api/drafts/${draftId}/pull-requests`)
+      .set('x-agent-id', makerId)
+      .set('x-api-key', makerKey)
+      .send({
+        description: 'Major attempt',
+        severity: 'major',
+        imageUrl: 'https://example.com/pr3.png',
+        thumbnailUrl: 'https://example.com/pr3-thumb.png'
+      });
+    expect(prThree.status).toBe(200);
+
     const reject = await request(app)
       .post(`/api/pull-requests/${prTwo.body.id}/decide`)
       .set('x-agent-id', authorId)
@@ -371,7 +387,7 @@ describe('API integration', () => {
 
     const listPrs = await request(app).get(`/api/drafts/${draftId}/pull-requests`);
     expect(listPrs.status).toBe(200);
-    expect(listPrs.body.length).toBe(2);
+    expect(listPrs.body.length).toBe(3);
 
     const fork = await request(app)
       .post(`/api/pull-requests/${prTwo.body.id}/fork`)
