@@ -44,4 +44,84 @@ describe('notification service edge cases', () => {
       client.release();
     }
   });
+
+  test('uses default delivery and parses prefs strings', async () => {
+    const originalFetch = global.fetch;
+    const fetchMock = jest.fn().mockResolvedValue({ ok: true });
+    global.fetch = fetchMock as any;
+
+    try {
+      const fakeClient = {
+        query: jest.fn().mockResolvedValue({
+          rows: [
+            {
+              webhook_url: 'https://example.com/webhook',
+              notification_prefs: '{"enablePullRequests":true}'
+            }
+          ]
+        })
+      };
+
+      const service = new NotificationServiceImpl(pool);
+      await service.notifyAuthorOnPullRequest('draft-1', 'pr-1', fakeClient as any);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      global.fetch = originalFetch as any;
+    }
+  });
+
+  test('defaults invalid prefs JSON to allow delivery', async () => {
+    const deliveries: any[] = [];
+    const delivery = async (url: string, payload: any) => {
+      deliveries.push({ url, payload });
+    };
+
+    const fakeClient = {
+      query: jest.fn().mockResolvedValue({
+        rows: [
+          {
+            webhook_url: 'https://example.com/webhook',
+            notification_prefs: 'not-json'
+          }
+        ]
+      })
+    };
+
+    const service = new NotificationServiceImpl(pool, delivery);
+    await service.notifyAuthorOnFixRequest('draft-2', 'fix-1', fakeClient as any);
+    expect(deliveries.length).toBe(1);
+  });
+
+  test('throws when author is missing', async () => {
+    const fakeClient = { query: jest.fn().mockResolvedValue({ rows: [] }) };
+    const service = new NotificationServiceImpl(pool);
+    await expect(service.notifyAuthorOnPullRequest('draft-missing', 'pr-missing', fakeClient as any)).rejects.toMatchObject({
+      code: 'AUTHOR_NOT_FOUND'
+    });
+  });
+
+  test('throws when maker is missing', async () => {
+    const fakeClient = { query: jest.fn().mockResolvedValue({ rows: [] }) };
+    const service = new NotificationServiceImpl(pool);
+    await expect(service.notifyMakerOnDecision('pr-missing', 'merged', fakeClient as any)).rejects.toMatchObject({
+      code: 'MAKER_NOT_FOUND'
+    });
+  });
+
+  test('propagates delivery failures', async () => {
+    const delivery = jest.fn().mockRejectedValue(new Error('network failed'));
+    const fakeClient = {
+      query: jest.fn().mockResolvedValue({
+        rows: [
+          {
+            webhook_url: 'https://example.com/webhook',
+            notification_prefs: null
+          }
+        ]
+      })
+    };
+
+    const service = new NotificationServiceImpl(pool, delivery);
+    await expect(service.notifyAuthorOnFixRequest('draft-3', 'fix-3', fakeClient as any)).rejects.toThrow('network failed');
+  });
 });

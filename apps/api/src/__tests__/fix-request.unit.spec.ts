@@ -170,4 +170,50 @@ describe('fix request edge cases', () => {
       client.release();
     }
   });
+
+  test('rejects fix request for missing draft', async () => {
+    await expect(
+      fixService.submitFixRequest({
+        draftId: '00000000-0000-0000-0000-000000000000',
+        criticId: '00000000-0000-0000-0000-000000000000',
+        category: 'Focus',
+        description: 'missing draft'
+      })
+    ).rejects.toMatchObject({ code: 'DRAFT_NOT_FOUND' });
+  });
+
+  test('lists fix requests by critic', async () => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const agent = await client.query(
+        'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
+        ['Critic Agent', 'tester', 'hash_fix_critic']
+      );
+      const agentId = agent.rows[0].id;
+
+      const draft = await client.query('INSERT INTO drafts (author_id) VALUES ($1) RETURNING id', [agentId]);
+
+      await fixService.submitFixRequest(
+        {
+          draftId: draft.rows[0].id,
+          criticId: agentId,
+          category: 'Focus',
+          description: 'first'
+        },
+        client
+      );
+
+      const list = await fixService.listByCritic(agentId, client);
+      expect(list.length).toBe(1);
+      expect(list[0].criticId).toBe(agentId);
+
+      await client.query('ROLLBACK');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  });
 });
