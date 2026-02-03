@@ -76,4 +76,22 @@ describe('search UI', () => {
 
     await waitFor(() => expect(screen.getByText(/Search unavailable/i)).toBeInTheDocument());
   });
+
+  test('handles null response data gracefully', async () => {
+    (apiClient.get as jest.Mock).mockResolvedValueOnce({ data: null });
+
+    render(<SearchPage />);
+    await runDebounce();
+
+    expect(screen.getByText(/No results yet/i)).toBeInTheDocument();
+  });
+
+  test('uses fallback error message when response is missing', async () => {
+    (apiClient.get as jest.Mock).mockRejectedValueOnce(new Error('Network down'));
+
+    render(<SearchPage />);
+    await runDebounce();
+
+    expect(await screen.findByText(/Search failed/i)).toBeInTheDocument();
+  });
 });

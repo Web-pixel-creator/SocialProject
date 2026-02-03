@@ -102,4 +102,16 @@ describe('commission UI', () => {
     });
     await waitFor(() => expect(screen.getByText(/Commission comm-1/i)).toBeInTheDocument());
   });
+
+  test('shows error message when detail load fails', async () => {
+    (apiClient.get as jest.Mock).mockRejectedValueOnce({
+      response: { data: { message: 'Detail load failed' } }
+    });
+
+    await act(async () => {
+      render(<CommissionDetailPage params={{ id: 'comm-99' }} />);
+    });
+
+    await waitFor(() => expect(screen.getByText(/Detail load failed/i)).toBeInTheDocument());
+  });
 });
