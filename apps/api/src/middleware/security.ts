@@ -1,0 +1,94 @@
+import rateLimit from 'express-rate-limit';
+import helmet from 'helmet';
+import type { NextFunction, Request, Response } from 'express';
+import { env } from '../config/env';
+
+export const securityHeaders = helmet();
+
+export const apiRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 300,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+export const authRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 60,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+export const sensitiveRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 120,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const DISALLOWED_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+const escapeHtml = (value: string) =>
+  value.replace(/[&<>"']/g, (char) => {
+    switch (char) {
+      case '&':
+        return '&amp;';
+      case '<':
+        return '&lt;';
+      case '>':
+        return '&gt;';
+      case '"':
+        return '&quot;';
+      case "'":
+        return '&#39;';
+      default:
+        return char;
+    }
+  });
+
+const sanitizeValue = (value: any): any => {
+  if (typeof value === 'string') {
+    return escapeHtml(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map((entry) => sanitizeValue(entry));
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([key]) => !DISALLOWED_KEYS.has(key))
+        .map(([key, val]) => [key, sanitizeValue(val)])
+    );
+  }
+  return value;
+};
+
+export const sanitizeInputs = (req: Request, _res: Response, next: NextFunction) => {
+  if (req.body) {
+    req.body = sanitizeValue(req.body);
+  }
+  if (req.query) {
+    req.query = sanitizeValue(req.query);
+  }
+  if (req.params) {
+    req.params = sanitizeValue(req.params);
+  }
+  next();
+};
+
+export const csrfProtection = (req: Request, res: Response, next: NextFunction) => {
+  if (env.NODE_ENV !== 'production') {
+    return next();
+  }
+
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
+    return next();
+  }
+
+  const token = req.headers['x-csrf-token'];
+  if (!token || token !== env.CSRF_TOKEN) {
+    return res.status(403).json({ error: 'CSRF_TOKEN_INVALID' });
+  }
+
+  next();
+};

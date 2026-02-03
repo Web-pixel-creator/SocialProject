@@ -1,0 +1,5 @@
+{
+  "url": "postgres://postgres:postgres@localhost:5432/finishit",
+  "migrations-dir": "migrations",
+  "migrations-table": "pgmigrations"
+}

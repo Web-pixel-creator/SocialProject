@@ -1,0 +1,239 @@
+import { Pool } from 'pg';
+import { ServiceError } from '../common/errors';
+import type { DbClient } from '../auth/types';
+import type {
+  ForkResult,
+  PullRequest,
+  PullRequestDecisionInput,
+  PullRequestInput,
+  PullRequestService
+} from './types';
+
+const getDb = (pool: Pool, client?: DbClient): DbClient => client ?? pool;
+
+const normalizeFixRequests = (value: any): string[] => {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
+
+const mapPullRequest = (row: any): PullRequest => ({
+  id: row.id,
+  draftId: row.draft_id,
+  makerId: row.maker_id,
+  proposedVersion: Number(row.proposed_version),
+  description: row.description,
+  severity: row.severity,
+  status: row.status,
+  addressedFixRequests: normalizeFixRequests(row.addressed_fix_requests),
+  authorFeedback: row.author_feedback,
+  judgeVerdict: row.judge_verdict,
+  createdAt: row.created_at,
+  decidedAt: row.decided_at
+});
+
+export class PullRequestServiceImpl implements PullRequestService {
+  constructor(private readonly pool: Pool) {}
+
+  async submitPullRequest(input: PullRequestInput, client?: DbClient): Promise<PullRequest> {
+    return this.withTransaction(client, async (db) => {
+      if (!input.draftId || !input.makerId || !input.description || !input.severity) {
+        throw new ServiceError('PR_REQUIRED_FIELDS', 'Draft, maker, description, and severity are required.');
+      }
+
+      if (!['major', 'minor'].includes(input.severity)) {
+        throw new ServiceError('PR_INVALID_SEVERITY', 'Severity must be major or minor.');
+      }
+
+      const draftResult = await db.query('SELECT id, status, current_version FROM drafts WHERE id = $1', [
+        input.draftId
+      ]);
+      if (draftResult.rows.length === 0) {
+        throw new ServiceError('DRAFT_NOT_FOUND', 'Draft not found.', 404);
+      }
+
+      const draft = draftResult.rows[0];
+      if (draft.status === 'release') {
+        throw new ServiceError('DRAFT_RELEASED', 'Draft is released.');
+      }
+
+      const maxVersionResult = await db.query(
+        'SELECT MAX(version_number) AS max_version FROM versions WHERE draft_id = $1',
+        [input.draftId]
+      );
+      const maxVersion = Number(maxVersionResult.rows[0].max_version ?? 0);
+      const proposedVersion = Math.max(Number(draft.current_version), maxVersion) + 1;
+
+      const prResult = await db.query(
+        'INSERT INTO pull_requests (draft_id, maker_id, proposed_version, description, severity, status, addressed_fix_requests) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+        [
+          input.draftId,
+          input.makerId,
+          proposedVersion,
+          input.description,
+          input.severity,
+          'pending',
+          input.addressedFixRequests ?? []
+        ]
+      );
+
+      const pr = prResult.rows[0];
+
+      await db.query(
+        'INSERT INTO versions (draft_id, version_number, image_url, thumbnail_url, created_by, pull_request_id) VALUES ($1, $2, $3, $4, $5, $6)',
+        [input.draftId, proposedVersion, input.imageUrl, input.thumbnailUrl, input.makerId, pr.id]
+      );
+
+      return mapPullRequest(pr);
+    });
+  }
+
+  async listByDraft(draftId: string, client?: DbClient): Promise<PullRequest[]> {
+    const db = getDb(this.pool, client);
+    const result = await db.query(
+      'SELECT * FROM pull_requests WHERE draft_id = $1 ORDER BY created_at DESC',
+      [draftId]
+    );
+    return result.rows.map(mapPullRequest);
+  }
+
+  async decidePullRequest(input: PullRequestDecisionInput, client?: DbClient): Promise<PullRequest> {
+    return this.withTransaction(client, async (db) => {
+      const prResult = await db.query(
+        `SELECT pr.*, d.author_id FROM pull_requests pr
+         JOIN drafts d ON pr.draft_id = d.id
+         WHERE pr.id = $1`,
+        [input.pullRequestId]
+      );
+
+      if (prResult.rows.length === 0) {
+        throw new ServiceError('PR_NOT_FOUND', 'Pull request not found.', 404);
+      }
+
+      const pr = prResult.rows[0];
+      if (pr.author_id !== input.authorId) {
+        throw new ServiceError('NOT_AUTHOR', 'Only the author can decide on a pull request.', 403);
+      }
+
+      if (input.decision === 'reject' && !input.rejectionReason) {
+        throw new ServiceError('REJECTION_REASON_REQUIRED', 'Rejection reason is required.');
+      }
+
+      let status: string;
+      if (input.decision === 'merge') {
+        status = 'merged';
+        await db.query('UPDATE drafts SET current_version = $1, updated_at = NOW() WHERE id = $2', [
+          pr.proposed_version,
+          pr.draft_id
+        ]);
+      } else if (input.decision === 'request_changes') {
+        status = 'changes_requested';
+      } else {
+        status = 'rejected';
+      }
+
+      const feedback = input.rejectionReason ?? input.feedback ?? null;
+
+      const updated = await db.query(
+        'UPDATE pull_requests SET status = $1, author_feedback = $2, decided_at = NOW() WHERE id = $3 RETURNING *',
+        [status, feedback, input.pullRequestId]
+      );
+
+      return mapPullRequest(updated.rows[0]);
+    });
+  }
+
+  async createForkFromRejected(
+    pullRequestId: string,
+    makerId: string,
+    client?: DbClient
+  ): Promise<ForkResult> {
+    return this.withTransaction(client, async (db) => {
+      const prResult = await db.query('SELECT * FROM pull_requests WHERE id = $1', [pullRequestId]);
+
+      if (prResult.rows.length === 0) {
+        throw new ServiceError('PR_NOT_FOUND', 'Pull request not found.', 404);
+      }
+
+      const pr = prResult.rows[0];
+      if (pr.status !== 'rejected') {
+        throw new ServiceError('PR_NOT_REJECTED', 'Pull request is not rejected.');
+      }
+
+      if (pr.maker_id !== makerId) {
+        throw new ServiceError('NOT_MAKER', 'Only the maker can fork this pull request.', 403);
+      }
+
+      const versionResult = await db.query(
+        'SELECT image_url, thumbnail_url FROM versions WHERE pull_request_id = $1',
+        [pullRequestId]
+      );
+
+      if (versionResult.rows.length === 0) {
+        throw new ServiceError('PR_VERSION_NOT_FOUND', 'Proposed version not found.', 404);
+      }
+
+      const version = versionResult.rows[0];
+
+      const forkDraft = await db.query(
+        'INSERT INTO drafts (author_id, metadata) VALUES ($1, $2) RETURNING id',
+        [makerId, {}]
+      );
+      const forkedDraftId = forkDraft.rows[0].id;
+
+      const forkVersion = await db.query(
+        'INSERT INTO versions (draft_id, version_number, image_url, thumbnail_url, created_by) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+        [forkedDraftId, 1, version.image_url, version.thumbnail_url, makerId]
+      );
+
+      await db.query(
+        'INSERT INTO forks (original_draft_id, forked_draft_id, rejected_pr_id) VALUES ($1, $2, $3)',
+        [pr.draft_id, forkedDraftId, pullRequestId]
+      );
+
+      return {
+        forkedDraftId,
+        forkedVersionId: forkVersion.rows[0].id
+      };
+    });
+  }
+
+  async getDraftStatus(draftId: string, client?: DbClient): Promise<'draft' | 'release'> {
+    const db = getDb(this.pool, client);
+    const result = await db.query('SELECT status FROM drafts WHERE id = $1', [draftId]);
+
+    if (result.rows.length === 0) {
+      throw new ServiceError('DRAFT_NOT_FOUND', 'Draft not found.', 404);
+    }
+
+    return result.rows[0].status;
+  }
+
+  private async withTransaction<T>(client: DbClient | undefined, fn: (db: DbClient) => Promise<T>): Promise<T> {
+    if (client) {
+      return fn(client);
+    }
+
+    const poolClient: any = await this.pool.connect();
+    try {
+      await poolClient.query('BEGIN');
+      const result = await fn(poolClient);
+      await poolClient.query('COMMIT');
+      return result;
+    } catch (error) {
+      await poolClient.query('ROLLBACK');
+      throw error;
+    } finally {
+      poolClient.release();
+    }
+  }
+}

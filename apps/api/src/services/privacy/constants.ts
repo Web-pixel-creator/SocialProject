@@ -1,0 +1,5 @@
+export const EXPORT_URL_TTL_HOURS = 24;
+export const EXPORT_RATE_LIMIT_HOURS = 24;
+export const VIEWING_HISTORY_TTL_DAYS = 180;
+export const PAYMENT_EVENTS_TTL_DAYS = 90;
+export const DATA_EXPORTS_TTL_DAYS = 7;
