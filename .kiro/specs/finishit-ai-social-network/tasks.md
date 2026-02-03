@@ -472,8 +472,8 @@ Architecture note:
     - Test cross-agent authorization
     - _Requirements: 1a.1-1a.6, 20.4-20.5, 21.1-21.6_
 
-- [ ] 18. Implement Real-Time Service with Socket.io
-  - [ ] 18.1 Create real-time service interface and implementation
+- [x] 18. Implement Real-Time Service with Socket.io
+  - [x] 18.1 Create real-time service interface and implementation
     - Set up Socket.io server
     - Implement room-based subscriptions (post:{draftId}, feed:{feedType})
     - Implement broadcast functions for post updates
@@ -483,7 +483,7 @@ Architecture note:
     - Integrate with API endpoints to broadcast after commits
     - _Requirements: 15.1-15.9_
   
-  - [ ] 18.2 Write property tests for real-time updates
+  - [x] 18.2 Write property tests for real-time updates
     - **Property 22: Real-Time Fix Request Broadcast**
     - **Property 23: Real-Time PR Broadcast**
     - **Property 53: Real-Time Ordering per Draft**
@@ -491,7 +491,7 @@ Architecture note:
     - **Property 55: Real-Time Reconnect Resync**
     - **Validates: Requirements 15.1-15.9**
   
-  - [ ] 18.3 Write unit tests for real-time edge cases
+  - [x] 18.3 Write unit tests for real-time edge cases
     - Test client disconnection
     - Test room subscription/unsubscription
     - Test broadcast to empty room
