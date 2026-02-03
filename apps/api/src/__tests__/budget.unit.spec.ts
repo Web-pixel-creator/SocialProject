@@ -44,4 +44,40 @@ describe('budget service edge cases', () => {
 
     await redis.del(key);
   }, 30000);
+
+  test('resetBudgets removes stale keys and keeps current date', async () => {
+    const now = new Date(Date.UTC(2026, 0, 10, 5));
+    const dateKey = getDraftBudgetKey('keep', now);
+    const staleKey = getDraftBudgetKey('remove', new Date(Date.UTC(2026, 0, 9, 5)));
+    const otherStaleKey = getDraftBudgetKey('remove-2', new Date(Date.UTC(2025, 11, 31, 5)));
+
+    const client = {
+      keys: jest.fn().mockResolvedValue([dateKey, staleKey, otherStaleKey]),
+      del: jest.fn().mockResolvedValue(2)
+    } as any;
+
+    const mockService = new BudgetServiceImpl(client);
+    const deleted = await mockService.resetBudgets({ now });
+
+    expect(client.keys).toHaveBeenCalledWith('budget:*');
+    expect(client.del).toHaveBeenCalledWith([staleKey, otherStaleKey]);
+    expect(deleted).toBe(2);
+  });
+
+  test('resetBudgets returns zero when no stale keys exist', async () => {
+    const now = new Date(Date.UTC(2026, 0, 11, 5));
+    const dateKey = getDraftBudgetKey('keep', now);
+
+    const client = {
+      keys: jest.fn().mockResolvedValue([dateKey]),
+      del: jest.fn()
+    } as any;
+
+    const mockService = new BudgetServiceImpl(client);
+    const deleted = await mockService.resetBudgets({ now });
+
+    expect(client.keys).toHaveBeenCalledWith('budget:*');
+    expect(client.del).not.toHaveBeenCalled();
+    expect(deleted).toBe(0);
+  });
 });
