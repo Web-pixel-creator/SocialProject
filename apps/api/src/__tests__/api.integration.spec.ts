@@ -1,6 +1,10 @@
 import request from 'supertest';
 import { db } from '../db/pool';
 import { redis } from '../redis/client';
+import { AuthServiceImpl } from '../services/auth/authService';
+import { CommissionServiceImpl } from '../services/commission/commissionService';
+import { PaymentServiceImpl } from '../services/payment/paymentService';
+import { MetricsServiceImpl } from '../services/metrics/metricsService';
 import { createApp, initInfra } from '../server';
 
 const app = createApp();
@@ -672,5 +676,100 @@ describe('API integration', () => {
 
     expect(missingDescription.status).toBe(400);
     expect(missingDescription.body.error).toBe('COMMISSION_REQUIRED_FIELDS');
+  });
+
+  test('commission routes propagate handler errors', async () => {
+    const human = await registerHuman('commission-route-errors@example.com');
+    const token = human.tokens.accessToken;
+    const { agentId, apiKey } = await registerAgent('Commission Error Agent');
+
+    const listSpy = jest
+      .spyOn(CommissionServiceImpl.prototype, 'listCommissions')
+      .mockRejectedValueOnce(new Error('list fail'));
+    const listRes = await request(app).get('/api/commissions');
+    expect(listRes.status).toBe(500);
+    listSpy.mockRestore();
+
+    const responseSpy = jest
+      .spyOn(CommissionServiceImpl.prototype, 'submitResponse')
+      .mockRejectedValueOnce(new Error('response fail'));
+    const responseRes = await request(app)
+      .post('/api/commissions/00000000-0000-0000-0000-000000000001/responses')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({ draftId: '00000000-0000-0000-0000-000000000002' });
+    expect(responseRes.status).toBe(500);
+    responseSpy.mockRestore();
+
+    const winnerSpy = jest
+      .spyOn(CommissionServiceImpl.prototype, 'selectWinner')
+      .mockRejectedValueOnce(new Error('winner fail'));
+    const winnerRes = await request(app)
+      .post('/api/commissions/00000000-0000-0000-0000-000000000003/select-winner')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ winnerDraftId: '00000000-0000-0000-0000-000000000004' });
+    expect(winnerRes.status).toBe(500);
+    winnerSpy.mockRestore();
+
+    const paySpy = jest
+      .spyOn(PaymentServiceImpl.prototype, 'createPaymentIntent')
+      .mockRejectedValueOnce(new Error('pay fail'));
+    const payRes = await request(app)
+      .post('/api/commissions/00000000-0000-0000-0000-000000000005/pay-intent')
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(payRes.status).toBe(500);
+    paySpy.mockRestore();
+
+    const cancelSpy = jest
+      .spyOn(CommissionServiceImpl.prototype, 'cancelCommission')
+      .mockRejectedValueOnce(new Error('cancel fail'));
+    const cancelRes = await request(app)
+      .post('/api/commissions/00000000-0000-0000-0000-000000000006/cancel')
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(cancelRes.status).toBe(500);
+    cancelSpy.mockRestore();
+
+    const webhookSpy = jest
+      .spyOn(PaymentServiceImpl.prototype, 'recordWebhookEvent')
+      .mockRejectedValueOnce(new Error('webhook fail'));
+    const webhookRes = await request(app).post('/api/payments/webhook').send({
+      provider: 'stripe',
+      providerEventId: 'evt_fail_1',
+      commissionId: '00000000-0000-0000-0000-000000000007',
+      eventType: 'payment'
+    });
+    expect(webhookRes.status).toBe(500);
+    webhookSpy.mockRestore();
+  });
+
+  test('studios routes propagate handler errors', async () => {
+    const { agentId, apiKey } = await registerAgent('Studios Error Agent');
+
+    const studioGetSpy = jest.spyOn(db, 'query').mockRejectedValueOnce(new Error('studio get fail'));
+    const getRes = await request(app).get('/api/studios/00000000-0000-0000-0000-000000000008');
+    expect(getRes.status).toBe(500);
+    studioGetSpy.mockRestore();
+
+    const authSpy = jest
+      .spyOn(AuthServiceImpl.prototype, 'validateAgentApiKey')
+      .mockResolvedValueOnce(true);
+    const studioPutSpy = jest.spyOn(db, 'query').mockRejectedValueOnce(new Error('studio put fail'));
+    const putRes = await request(app)
+      .put(`/api/studios/${agentId}`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({ studioName: 'Fail Update' });
+    expect(putRes.status).toBe(500);
+    authSpy.mockRestore();
+    studioPutSpy.mockRestore();
+
+    const metricsSpy = jest
+      .spyOn(MetricsServiceImpl.prototype, 'getAgentMetrics')
+      .mockRejectedValueOnce(new Error('metrics fail'));
+    const metricsRes = await request(app).get(`/api/studios/${agentId}/metrics`);
+    expect(metricsRes.status).toBe(500);
+    metricsSpy.mockRestore();
   });
 });
