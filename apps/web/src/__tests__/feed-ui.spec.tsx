@@ -91,6 +91,114 @@ describe('feed UI', () => {
     expect(screen.getByText(/Signal 5.0/i)).toBeInTheDocument();
   });
 
+  test('requests battles feed endpoint', async () => {
+    (apiClient.get as jest.Mock).mockResolvedValue({ data: [] });
+
+    await act(async () => {
+      render(<FeedTabs />);
+    });
+
+    const battlesTab = screen.getByRole('button', { name: /Battles/i });
+    await act(async () => {
+      fireEvent.click(battlesTab);
+    });
+
+    await waitFor(() =>
+      expect(apiClient.get).toHaveBeenCalledWith('/feeds/battles', expect.anything())
+    );
+  });
+
+  test('renders archive drafts when entries are not autopsies', async () => {
+    const archivePayload = [
+      { id: 'rel-123', type: 'release', glowUpScore: 2, updatedAt: new Date().toISOString() }
+    ];
+    (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: archivePayload });
+
+    await act(async () => {
+      render(<FeedTabs />);
+    });
+
+    const archiveTab = screen.getByRole('button', { name: /Archive/i });
+    await act(async () => {
+      fireEvent.click(archiveTab);
+    });
+
+    await waitFor(() => expect(screen.getByText(/Release rel-123/i)).toBeInTheDocument());
+  });
+
+  test('falls back to demo studios when studios feed fails', async () => {
+    (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: [] })
+      .mockRejectedValueOnce(new Error('studios failed'));
+
+    await act(async () => {
+      render(<FeedTabs />);
+    });
+
+    const studiosTab = screen.getByRole('button', { name: /Studios/i });
+    await act(async () => {
+      fireEvent.click(studiosTab);
+    });
+
+    await waitFor(() => expect(screen.getByText(/Studio Nova/i)).toBeInTheDocument());
+    expect(screen.getByText(/Fallback data/i)).toBeInTheDocument();
+  });
+
+  test('falls back to demo autopsies when archive feed fails', async () => {
+    (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: [] })
+      .mockRejectedValueOnce(new Error('archive failed'));
+
+    await act(async () => {
+      render(<FeedTabs />);
+    });
+
+    const archiveTab = screen.getByRole('button', { name: /Archive/i });
+    await act(async () => {
+      fireEvent.click(archiveTab);
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText(/Common issues: low fix-request activity/i)).toBeInTheDocument()
+    );
+  });
+
+  test('loads next page on scroll near bottom', async () => {
+    const firstPage = Array.from({ length: 6 }, (_, index) => ({
+      id: `draft-${index}`,
+      type: 'draft',
+      glowUpScore: 1
+    }));
+    const secondPage = Array.from({ length: 6 }, (_, index) => ({
+      id: `draft-${index + 6}`,
+      type: 'draft',
+      glowUpScore: 1
+    }));
+    (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: firstPage })
+      .mockResolvedValueOnce({ data: secondPage });
+
+    Object.defineProperty(window, 'innerHeight', { value: 800, writable: true });
+    Object.defineProperty(window, 'scrollY', { value: 300, writable: true });
+    Object.defineProperty(document.body, 'offsetHeight', { value: 1000, writable: true });
+
+    await act(async () => {
+      render(<FeedTabs />);
+    });
+
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      fireEvent.scroll(window);
+    });
+
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalledTimes(2));
+    const lastCall = (apiClient.get as jest.Mock).mock.calls[1];
+    expect(lastCall[1].params.offset).toBe(6);
+  });
+
   test('falls back to demo drafts when live drafts fail', async () => {
     (apiClient.get as jest.Mock)
       .mockResolvedValueOnce({ data: [] })
