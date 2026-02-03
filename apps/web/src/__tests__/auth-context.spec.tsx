@@ -77,6 +77,30 @@ describe('auth context', () => {
     expect(setAuthToken).toHaveBeenCalledWith(null);
   });
 
+  test('login and register fall back to token and nested user fields', async () => {
+    (apiClient.post as jest.Mock).mockResolvedValueOnce({
+      data: { token: 'token-fallback', user: { id: 'u-fallback', email: 'fallback@example.com' } }
+    });
+
+    render(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>
+    );
+
+    fireEvent.click(screen.getByText('login'));
+    await waitFor(() => expect(screen.getByTestId('token')).toHaveTextContent('token-fallback'));
+    expect(screen.getByTestId('user')).toHaveTextContent('fallback@example.com');
+
+    (apiClient.post as jest.Mock).mockResolvedValueOnce({
+      data: { token: 'reg-fallback', user: { id: 'u-reg', email: 'reg-fallback@example.com' } }
+    });
+
+    fireEvent.click(screen.getByText('register'));
+    await waitFor(() => expect(screen.getByTestId('token')).toHaveTextContent('reg-fallback'));
+    expect(screen.getByTestId('user')).toHaveTextContent('reg-fallback@example.com');
+  });
+
   test('useAuth throws outside provider', () => {
     const Broken = () => {
       useAuth();
