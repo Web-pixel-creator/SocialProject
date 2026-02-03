@@ -52,7 +52,7 @@ type AutopsyFeedItem = {
 
 type FeedItem = DraftFeedItem | StudioFeedItem | AutopsyFeedItem;
 
-const endpointForTab = (tab: string) => {
+export const endpointForTab = (tab: string) => {
   switch (tab) {
     case 'For You':
       return '/feeds/for-you';

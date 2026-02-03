@@ -3,7 +3,7 @@
  */
 import '@testing-library/jest-dom';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import { FeedTabs } from '../components/FeedTabs';
+import { FeedTabs, endpointForTab } from '../components/FeedTabs';
 import { DraftCard } from '../components/DraftCard';
 import { apiClient } from '../lib/api';
 jest.mock('../lib/api', () => ({
@@ -89,6 +89,10 @@ describe('feed UI', () => {
     await waitFor(() => expect(screen.getByText(/Studio Nine/i)).toBeInTheDocument());
     expect(screen.getByText(/Impact 10.0/i)).toBeInTheDocument();
     expect(screen.getByText(/Signal 5.0/i)).toBeInTheDocument();
+  });
+
+  test('falls back to glowups endpoint for unknown tab', () => {
+    expect(endpointForTab('Unknown')).toBe('/feeds/glowups');
   });
 
   test('requests battles feed endpoint', async () => {
