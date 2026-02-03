@@ -501,7 +501,7 @@ Architecture note:
     - Test resync_required path on missing replay buffer
     - _Requirements: 15.1-15.9_
 
-- [ ] 19. Checkpoint - Ensure backend API is complete
+- [x] 19. Checkpoint - Ensure backend API is complete
   - Run full integration test suite
   - Test end-to-end workflows via API
   - Verify real-time updates work
