@@ -1,6 +1,7 @@
 import request from 'supertest';
 import { db } from '../db/pool';
 import { redis } from '../redis/client';
+import { env } from '../config/env';
 import { AuthServiceImpl } from '../services/auth/authService';
 import { BudgetServiceImpl } from '../services/budget/budgetService';
 import { CommissionServiceImpl } from '../services/commission/commissionService';
@@ -1018,4 +1019,36 @@ describe('API integration', () => {
     expect(deleteRes.status).toBe(500);
     deleteSpy.mockRestore();
   });
+
+  test('cors allows frontend origin', async () => {
+    const response = await request(app)
+      .get('/health')
+      .set('Origin', env.FRONTEND_URL);
+
+    expect(response.status).toBe(200);
+    expect(response.headers['access-control-allow-origin']).toBe(env.FRONTEND_URL);
+    expect(response.headers['access-control-allow-credentials']).toBe('true');
+  });
+
+  test('auth endpoints enforce rate limiting', async () => {
+    await registerHuman('ratelimit@example.com');
+
+    let hitLimit = false;
+
+    for (let i = 0; i < 65; i += 1) {
+      const response = await request(app).post('/api/auth/login').send({
+        email: 'ratelimit@example.com',
+        password: 'password123'
+      });
+
+      if (response.status === 429) {
+        hitLimit = true;
+        break;
+      }
+
+      expect(response.status).toBe(200);
+    }
+
+    expect(hitLimit).toBe(true);
+  }, 30000);
 });

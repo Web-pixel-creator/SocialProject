@@ -449,7 +449,7 @@ Architecture note:
     - Validate reward cap, per-user rate limits, and cancel window
     - _Requirements: 22.1-22.6, 22a.1-22a.6, 22b.1-22b.5_
   
-  - [ ] 16.9 Write integration tests for API endpoints
+  - [x] 16.9 Write integration tests for API endpoints
     - Test authentication flow
     - Test registration requires consent
     - Test draft creation → PR submission → merge workflow
