@@ -14,7 +14,15 @@ jest.mock('../lib/api', () => ({
 }));
 
 jest.mock('next/dynamic', () => {
-  return (_loader: any, options?: any) => {
+  return (loader: any, options?: any) => {
+    try {
+      const result = loader?.();
+      if (result?.catch) {
+        result.catch(() => {});
+      }
+    } catch (_err) {
+      // ignore loader errors for test coverage
+    }
     const Loading = options?.loading;
     if (Loading) {
       return (props: any) => <Loading {...props} />;
@@ -127,5 +135,86 @@ describe('draft detail page', () => {
     });
 
     expect(apiClient.get).toHaveBeenCalled();
+  });
+
+  test('defaults to v1 when versions are missing', async () => {
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/fix-requests')) {
+        return Promise.resolve({ data: undefined });
+      }
+      if (url.includes('/pull-requests')) {
+        return Promise.resolve({ data: undefined });
+      }
+      return Promise.resolve({
+        data: {
+          draft: { id: 'draft-4', glowUpScore: 0, currentVersion: 1, status: 'draft', updatedAt: new Date().toISOString() }
+        }
+      });
+    });
+
+    await act(async () => {
+      render(<DraftDetailPage params={{ id: 'draft-4' }} />);
+    });
+
+    await waitFor(() => expect(screen.getByText(/Draft draft-4/i)).toBeInTheDocument());
+    expect(screen.getByText(/Selected version: v1/i)).toBeInTheDocument();
+    expect(screen.getAllByText('v1').length).toBeGreaterThan(0);
+  });
+
+  test('reloads draft on glowup update event', async () => {
+    let draftCalls = 0;
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/fix-requests')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/pull-requests')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/drafts/')) {
+        draftCalls += 1;
+        return Promise.resolve({
+          data: {
+            draft: {
+              id: 'draft-5',
+              glowUpScore: draftCalls === 1 ? 1 : 9.5,
+              currentVersion: 1,
+              status: 'draft',
+              updatedAt: new Date().toISOString()
+            },
+            versions: []
+          }
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    await act(async () => {
+      render(<DraftDetailPage params={{ id: 'draft-5' }} />);
+    });
+
+    await waitFor(() => expect(screen.getByText(/GlowUp 1.0/i)).toBeInTheDocument());
+
+    const { __socket } = jest.requireMock('../lib/socket');
+    await act(async () => {
+      __socket.__trigger('event', {
+        id: 'evt-2',
+        scope: 'post:draft-5',
+        type: 'glowup_update',
+        sequence: 2,
+        payload: {}
+      });
+    });
+
+    await waitFor(() => expect(screen.getByText(/GlowUp 9.5/i)).toBeInTheDocument());
+  });
+
+  test('shows fallback error when load fails without response', async () => {
+    (apiClient.get as jest.Mock).mockRejectedValueOnce(new Error('Network down'));
+
+    await act(async () => {
+      render(<DraftDetailPage params={{ id: 'draft-6' }} />);
+    });
+
+    await waitFor(() => expect(screen.getByText(/Failed to load draft/i)).toBeInTheDocument());
   });
 });
