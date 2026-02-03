@@ -2,9 +2,16 @@ import request from 'supertest';
 import { db } from '../db/pool';
 import { redis } from '../redis/client';
 import { AuthServiceImpl } from '../services/auth/authService';
+import { BudgetServiceImpl } from '../services/budget/budgetService';
 import { CommissionServiceImpl } from '../services/commission/commissionService';
+import { FeedServiceImpl } from '../services/feed/feedService';
+import { FixRequestServiceImpl } from '../services/fixRequest/fixRequestService';
 import { PaymentServiceImpl } from '../services/payment/paymentService';
 import { MetricsServiceImpl } from '../services/metrics/metricsService';
+import { PostServiceImpl } from '../services/post/postService';
+import { PrivacyServiceImpl } from '../services/privacy/privacyService';
+import { PullRequestServiceImpl } from '../services/pullRequest/pullRequestService';
+import { SearchServiceImpl } from '../services/search/searchService';
 import { createApp, initInfra } from '../server';
 
 const app = createApp();
@@ -771,5 +778,244 @@ describe('API integration', () => {
     const metricsRes = await request(app).get(`/api/studios/${agentId}/metrics`);
     expect(metricsRes.status).toBe(500);
     metricsSpy.mockRestore();
+  });
+
+  test('auth routes propagate handler errors', async () => {
+    const { agentId, apiKey } = await registerAgent('Auth Error Agent');
+
+    const registerSpy = jest
+      .spyOn(AuthServiceImpl.prototype, 'registerHuman')
+      .mockRejectedValueOnce(new Error('register fail'));
+    const registerRes = await request(app).post('/api/auth/register').send({
+      email: 'auth-fail@example.com',
+      password: 'password123',
+      consent: { termsAccepted: true, privacyAccepted: true }
+    });
+    expect(registerRes.status).toBe(500);
+    registerSpy.mockRestore();
+
+    const loginSpy = jest
+      .spyOn(AuthServiceImpl.prototype, 'loginHuman')
+      .mockRejectedValueOnce(new Error('login fail'));
+    const loginRes = await request(app).post('/api/auth/login').send({
+      email: 'auth-fail@example.com',
+      password: 'password123'
+    });
+    expect(loginRes.status).toBe(500);
+    loginSpy.mockRestore();
+
+    const agentSpy = jest
+      .spyOn(AuthServiceImpl.prototype, 'registerAgent')
+      .mockRejectedValueOnce(new Error('agent register fail'));
+    const agentRes = await request(app).post('/api/agents/register').send({
+      studioName: 'Agent Fail Studio',
+      personality: 'Tester'
+    });
+    expect(agentRes.status).toBe(500);
+    agentSpy.mockRestore();
+
+    const rotateSpy = jest
+      .spyOn(AuthServiceImpl.prototype, 'rotateAgentApiKey')
+      .mockRejectedValueOnce(new Error('rotate fail'));
+    const rotateRes = await request(app)
+      .post('/api/agents/rotate-key')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send();
+    expect(rotateRes.status).toBe(500);
+    rotateSpy.mockRestore();
+  });
+
+  test('draft routes propagate handler errors', async () => {
+    const { agentId, apiKey } = await registerAgent('Drafts Error Agent');
+    const draftId = '00000000-0000-0000-0000-000000000011';
+    const prId = '00000000-0000-0000-0000-000000000012';
+
+    const createSpy = jest
+      .spyOn(PostServiceImpl.prototype, 'createDraft')
+      .mockRejectedValueOnce(new Error('create draft fail'));
+    const createRes = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/error.png',
+        thumbnailUrl: 'https://example.com/error-thumb.png'
+      });
+    expect(createRes.status).toBe(500);
+    createSpy.mockRestore();
+
+    const listSpy = jest
+      .spyOn(PostServiceImpl.prototype, 'listDrafts')
+      .mockRejectedValueOnce(new Error('list drafts fail'));
+    const listRes = await request(app).get('/api/drafts?limit=1');
+    expect(listRes.status).toBe(500);
+    listSpy.mockRestore();
+
+    const getSpy = jest
+      .spyOn(PostServiceImpl.prototype, 'getDraftWithVersions')
+      .mockRejectedValueOnce(new Error('get draft fail'));
+    const getRes = await request(app).get(`/api/drafts/${draftId}`);
+    expect(getRes.status).toBe(500);
+    getSpy.mockRestore();
+
+    const releaseSpy = jest
+      .spyOn(PostServiceImpl.prototype, 'getDraft')
+      .mockRejectedValueOnce(new Error('release fail'));
+    const releaseRes = await request(app)
+      .post(`/api/drafts/${draftId}/release`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send();
+    expect(releaseRes.status).toBe(500);
+    releaseSpy.mockRestore();
+
+    const fixBudgetSpy = jest
+      .spyOn(BudgetServiceImpl.prototype, 'checkEditBudget')
+      .mockRejectedValueOnce(new Error('fix budget fail'));
+    const fixRes = await request(app)
+      .post(`/api/drafts/${draftId}/fix-requests`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({ category: 'Focus', description: 'fail' });
+    expect(fixRes.status).toBe(500);
+    fixBudgetSpy.mockRestore();
+
+    const fixListSpy = jest
+      .spyOn(FixRequestServiceImpl.prototype, 'listByDraft')
+      .mockRejectedValueOnce(new Error('fix list fail'));
+    const fixListRes = await request(app).get(`/api/drafts/${draftId}/fix-requests`);
+    expect(fixListRes.status).toBe(500);
+    fixListSpy.mockRestore();
+
+    const prBudgetSpy = jest
+      .spyOn(BudgetServiceImpl.prototype, 'checkEditBudget')
+      .mockRejectedValueOnce(new Error('pr budget fail'));
+    const prRes = await request(app)
+      .post(`/api/drafts/${draftId}/pull-requests`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        description: 'fail',
+        severity: 'minor',
+        imageUrl: 'https://example.com/pr.png',
+        thumbnailUrl: 'https://example.com/pr-thumb.png'
+      });
+    expect(prRes.status).toBe(500);
+    prBudgetSpy.mockRestore();
+
+    const prListSpy = jest
+      .spyOn(PullRequestServiceImpl.prototype, 'listByDraft')
+      .mockRejectedValueOnce(new Error('pr list fail'));
+    const prListRes = await request(app).get(`/api/drafts/${draftId}/pull-requests`);
+    expect(prListRes.status).toBe(500);
+    prListSpy.mockRestore();
+
+    const decideSpy = jest
+      .spyOn(PullRequestServiceImpl.prototype, 'decidePullRequest')
+      .mockRejectedValueOnce(new Error('decide fail'));
+    const decideRes = await request(app)
+      .post(`/api/pull-requests/${prId}/decide`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({ decision: 'merge' });
+    expect(decideRes.status).toBe(500);
+    decideSpy.mockRestore();
+
+    const forkSpy = jest
+      .spyOn(PullRequestServiceImpl.prototype, 'createForkFromRejected')
+      .mockRejectedValueOnce(new Error('fork fail'));
+    const forkRes = await request(app)
+      .post(`/api/pull-requests/${prId}/fork`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send();
+    expect(forkRes.status).toBe(500);
+    forkSpy.mockRestore();
+  });
+
+  test('feed, search, and privacy routes propagate handler errors', async () => {
+    const human = await registerHuman('feed-error@example.com');
+    const token = human.tokens.accessToken;
+
+    const forYouSpy = jest
+      .spyOn(FeedServiceImpl.prototype, 'getForYou')
+      .mockRejectedValueOnce(new Error('for you fail'));
+    const forYouRes = await request(app)
+      .get('/api/feeds/for-you?limit=1&fail=1')
+      .set('Authorization', `Bearer ${token}`);
+    expect(forYouRes.status).toBe(500);
+    forYouSpy.mockRestore();
+
+    const liveSpy = jest
+      .spyOn(FeedServiceImpl.prototype, 'getLiveDrafts')
+      .mockRejectedValueOnce(new Error('live fail'));
+    const liveRes = await request(app).get('/api/feeds/live-drafts?limit=1&fail=1');
+    expect(liveRes.status).toBe(500);
+    liveSpy.mockRestore();
+
+    const glowSpy = jest
+      .spyOn(FeedServiceImpl.prototype, 'getGlowUps')
+      .mockRejectedValueOnce(new Error('glow fail'));
+    const glowRes = await request(app).get('/api/feeds/glowups?limit=1&fail=1');
+    expect(glowRes.status).toBe(500);
+    glowSpy.mockRestore();
+
+    const studiosSpy = jest
+      .spyOn(FeedServiceImpl.prototype, 'getStudios')
+      .mockRejectedValueOnce(new Error('studios feed fail'));
+    const studiosRes = await request(app).get('/api/feeds/studios?limit=1&fail=1');
+    expect(studiosRes.status).toBe(500);
+    studiosSpy.mockRestore();
+
+    const battlesSpy = jest
+      .spyOn(FeedServiceImpl.prototype, 'getBattles')
+      .mockRejectedValueOnce(new Error('battles fail'));
+    const battlesRes = await request(app).get('/api/feeds/battles?limit=1&fail=1');
+    expect(battlesRes.status).toBe(500);
+    battlesSpy.mockRestore();
+
+    const archiveSpy = jest
+      .spyOn(FeedServiceImpl.prototype, 'getArchive')
+      .mockRejectedValueOnce(new Error('archive fail'));
+    const archiveRes = await request(app).get('/api/feeds/archive?limit=1&fail=1');
+    expect(archiveRes.status).toBe(500);
+    archiveSpy.mockRestore();
+
+    const searchSpy = jest
+      .spyOn(SearchServiceImpl.prototype, 'search')
+      .mockRejectedValueOnce(new Error('search fail'));
+    const searchRes = await request(app).get('/api/search?q=fail&fail=1');
+    expect(searchRes.status).toBe(500);
+    searchSpy.mockRestore();
+
+    const exportSpy = jest
+      .spyOn(PrivacyServiceImpl.prototype, 'requestExport')
+      .mockRejectedValueOnce(new Error('export fail'));
+    const exportRes = await request(app)
+      .post('/api/account/export')
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(exportRes.status).toBe(500);
+    exportSpy.mockRestore();
+
+    const exportStatusSpy = jest
+      .spyOn(PrivacyServiceImpl.prototype, 'getExportStatus')
+      .mockRejectedValueOnce(new Error('export status fail'));
+    const exportStatusRes = await request(app)
+      .get('/api/account/exports/00000000-0000-0000-0000-000000000013')
+      .set('Authorization', `Bearer ${token}`);
+    expect(exportStatusRes.status).toBe(500);
+    exportStatusSpy.mockRestore();
+
+    const deleteSpy = jest
+      .spyOn(PrivacyServiceImpl.prototype, 'requestDeletion')
+      .mockRejectedValueOnce(new Error('delete fail'));
+    const deleteRes = await request(app)
+      .post('/api/account/delete')
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(deleteRes.status).toBe(500);
+    deleteSpy.mockRestore();
   });
 });
