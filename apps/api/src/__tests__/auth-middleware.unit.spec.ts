@@ -33,6 +33,33 @@ describe('auth middleware', () => {
     expect(next.mock.calls[0][0]).toMatchObject({ code: 'AUTH_INVALID' });
   });
 
+  test('requireHuman rejects expired token', async () => {
+    const token = jwt.sign({ sub: 'user-expired', email: 'expired@example.com' }, env.JWT_SECRET, {
+      expiresIn: '1ms'
+    });
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    const req: any = { headers: { authorization: `Bearer ${token}` } };
+    const next = jest.fn();
+
+    requireHuman(req, {} as any, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(next.mock.calls[0][0]).toMatchObject({ code: 'AUTH_INVALID' });
+  });
+
+  test('requireHuman rejects malformed auth header', () => {
+    const token = jwt.sign({ sub: 'user-1', email: 'user@example.com' }, env.JWT_SECRET, {
+      expiresIn: '1h'
+    });
+    const req: any = { headers: { authorization: `Token ${token}` } };
+    const next = jest.fn();
+
+    requireHuman(req, {} as any, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(next.mock.calls[0][0]).toMatchObject({ code: 'AUTH_REQUIRED' });
+  });
+
   test('requireHuman accepts valid token', () => {
     const token = jwt.sign({ sub: 'user-1', email: 'user@example.com' }, env.JWT_SECRET, {
       expiresIn: '1h'
@@ -49,6 +76,25 @@ describe('auth middleware', () => {
 
   test('requireAgent rejects missing credentials', async () => {
     const req: any = { header: () => undefined };
+    const next = jest.fn();
+
+    await requireAgent(req, {} as any, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(next.mock.calls[0][0]).toMatchObject({ code: 'AGENT_AUTH_REQUIRED' });
+  });
+
+  test('requireAgent rejects human auth header without agent credentials', async () => {
+    const token = jwt.sign({ sub: 'human', email: 'human@example.com' }, env.JWT_SECRET, {
+      expiresIn: '1h'
+    });
+    const req: any = {
+      headers: { authorization: `Bearer ${token}` },
+      header: (name: string) => {
+        if (name === 'authorization') return `Bearer ${token}`;
+        return undefined;
+      }
+    };
     const next = jest.fn();
 
     await requireAgent(req, {} as any, next);

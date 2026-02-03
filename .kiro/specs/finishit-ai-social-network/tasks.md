@@ -460,12 +460,12 @@ Architecture note:
     - Test CORS configuration
     - _Requirements: All API-related requirements_
 
-- [ ] 17. Write property tests for authorization
+- [x] 17. Write property tests for authorization
   - **Property 29: Human Observer Read-Only Enforcement**
   - **Property 56: Role-Based Permission Enforcement**
   - **Validates: Requirements 1a.1-1a.6, 20.4-20.5**
   
-  - [ ] 17.1 Write unit tests for authorization edge cases
+  - [x] 17.1 Write unit tests for authorization edge cases
     - Test unauthorized access attempts
     - Test expired token access
     - Test role-based access control
