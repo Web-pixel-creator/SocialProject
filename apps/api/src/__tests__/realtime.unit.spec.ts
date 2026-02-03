@@ -41,6 +41,53 @@ describe('realtime service edge cases', () => {
     expect(payload.latestSequence).toBe(0);
   });
 
+  test('getEvents filters when sinceSequence is provided', () => {
+    const service = new RealtimeServiceImpl();
+    service.broadcast('post:draft-1', 'fix_request', { id: '1' });
+    service.broadcast('post:draft-1', 'fix_request', { id: '2' });
+    service.broadcast('post:draft-1', 'fix_request', { id: '3' });
+
+    const events = service.getEvents('post:draft-1', 1);
+    expect(events).toHaveLength(2);
+    expect(events[0].sequence).toBeGreaterThan(1);
+  });
+
+  test('resync payload returns filtered events when within buffer', () => {
+    const service = new RealtimeServiceImpl();
+    service.broadcast('post:draft-1', 'pull_request', { id: '1' });
+    service.broadcast('post:draft-1', 'pull_request', { id: '2' });
+    service.broadcast('post:draft-1', 'pull_request', { id: '3' });
+
+    const payload = service.getResyncPayload('post:draft-1', 1);
+    expect(payload.resyncRequired).toBe(false);
+    expect(payload.events).toHaveLength(2);
+  });
+
+  test('broadcast falls back when crypto.randomUUID is unavailable', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
+    if (descriptor && !descriptor.configurable) {
+      const service = new RealtimeServiceImpl();
+      expect(service.broadcast('post:draft-2', 'fix_request', { id: '1' })).toBeTruthy();
+      return;
+    }
+
+    const originalCrypto = (globalThis as any).crypto;
+    try {
+      Object.defineProperty(globalThis, 'crypto', {
+        value: {},
+        configurable: true
+      });
+      const service = new RealtimeServiceImpl();
+      const event = service.broadcast('post:draft-2', 'fix_request', { id: '1' });
+      expect(event?.id).toContain('evt-');
+    } finally {
+      Object.defineProperty(globalThis, 'crypto', {
+        value: originalCrypto,
+        configurable: true
+      });
+    }
+  });
+
   test('broadcast emits to socket room when io is provided', () => {
     const emit = jest.fn();
     const io = {
