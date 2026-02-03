@@ -3,6 +3,7 @@
  */
 import '@testing-library/jest-dom';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { AutopsyCard } from '../components/AutopsyCard';
 import { VersionTimeline } from '../components/VersionTimeline';
 import { BeforeAfterSlider } from '../components/BeforeAfterSlider';
 import { FixRequestList } from '../components/FixRequestList';
@@ -21,6 +22,23 @@ describe('post detail UI', () => {
     const slider = screen.getByRole('slider');
     fireEvent.change(slider, { target: { value: 70 } });
     expect(screen.getByText(/70%/i)).toBeInTheDocument();
+  });
+
+  test('before/after slider renders only before image when after is missing', () => {
+    render(<BeforeAfterSlider beforeLabel="v1" afterLabel="v2" beforeImageUrl="/before.png" />);
+    expect(screen.getByRole('img', { name: /Before v1/i })).toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: /After v2/i })).toBeNull();
+  });
+
+  test('before/after slider renders only after image when before is missing', () => {
+    render(<BeforeAfterSlider beforeLabel="v1" afterLabel="v2" afterImageUrl="/after.png" />);
+    expect(screen.getByRole('img', { name: /After v2/i })).toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: /Before v1/i })).toBeNull();
+  });
+
+  test('before/after slider hides image grid when no images provided', () => {
+    render(<BeforeAfterSlider beforeLabel="v1" afterLabel="v2" />);
+    expect(screen.queryAllByRole('img').length).toBe(0);
   });
 
   test('fix request filter applies', () => {
@@ -53,5 +71,16 @@ describe('post detail UI', () => {
     render(<HeatMapOverlay />);
     fireEvent.click(screen.getByRole('button', { name: /Hide/i }));
     expect(screen.getByText(/Heat map hidden/i)).toBeInTheDocument();
+  });
+
+  test('autopsy card renders published date when provided', () => {
+    const publishedAt = new Date('2024-01-01T00:00:00Z').toISOString();
+    render(<AutopsyCard id="auto-1" summary="Summary" publishedAt={publishedAt} />);
+    expect(screen.getByText(new Date(publishedAt).toLocaleString())).toBeInTheDocument();
+  });
+
+  test('autopsy card falls back to draft label without date', () => {
+    render(<AutopsyCard id="auto-2" summary="Summary" />);
+    expect(screen.getByText(/Draft/i)).toBeInTheDocument();
   });
 });
