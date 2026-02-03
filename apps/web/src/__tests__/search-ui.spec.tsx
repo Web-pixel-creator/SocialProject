@@ -94,4 +94,32 @@ describe('search UI', () => {
 
     expect(await screen.findByText(/Search failed/i)).toBeInTheDocument();
   });
+
+  test('renders loading state while awaiting results', async () => {
+    (apiClient.get as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          setTimeout(() => resolve({ data: [] }), 500);
+        })
+    );
+
+    render(<SearchPage />);
+    await act(async () => {
+      jest.advanceTimersByTime(300);
+    });
+
+    expect(screen.getByText(/Searching/i)).toBeInTheDocument();
+  });
+
+  test('renders result rows with formatted score', async () => {
+    (apiClient.get as jest.Mock).mockResolvedValueOnce({
+      data: [{ id: 'res-1', type: 'draft', title: 'Neon Draft', score: null }]
+    });
+
+    render(<SearchPage />);
+    await runDebounce();
+
+    expect(screen.getByText(/Neon Draft/i)).toBeInTheDocument();
+    expect(screen.getByText(/Score 0.0/i)).toBeInTheDocument();
+  });
 });
