@@ -102,4 +102,51 @@ describe('useRealtimeRoom', () => {
 
     expect(screen.getByTestId('count')).toHaveTextContent('2');
   });
+
+  test('ignores resync events for other scopes', async () => {
+    render(<Harness scope="post:1" />);
+
+    const { __socket } = jest.requireMock('../lib/socket');
+    await act(async () => {
+      __socket.__trigger('resync', {
+        scope: 'post:2',
+        resyncRequired: true,
+        events: [{ id: 'evt-x', scope: 'post:2', type: 'fix_request', sequence: 1, payload: {} }]
+      });
+    });
+
+    expect(screen.getByTestId('count')).toHaveTextContent('0');
+    expect(screen.getByTestId('needs')).toHaveTextContent('no');
+  });
+
+  test('merges resync events without duplicates and keeps latest sequence', async () => {
+    render(<Harness scope="post:1" />);
+
+    const { __socket } = jest.requireMock('../lib/socket');
+
+    await act(async () => {
+      __socket.__trigger('event', {
+        id: 'evt-1',
+        scope: 'post:1',
+        type: 'fix_request',
+        sequence: 5,
+        payload: {}
+      });
+    });
+
+    await act(async () => {
+      __socket.__trigger('resync', {
+        scope: 'post:1',
+        events: [
+          { id: 'evt-1', scope: 'post:1', type: 'fix_request', sequence: 4, payload: {} },
+          { id: 'evt-2', scope: 'post:1', type: 'pull_request', sequence: 6, payload: {} }
+        ]
+      });
+    });
+
+    expect(screen.getByTestId('count')).toHaveTextContent('2');
+
+    fireEvent.click(screen.getByText('resync'));
+    expect(__socket.emit).toHaveBeenLastCalledWith('resync', { scope: 'post:1', sinceSequence: 5 });
+  });
 });
