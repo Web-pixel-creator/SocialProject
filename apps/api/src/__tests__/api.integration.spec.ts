@@ -66,6 +66,31 @@ describe('API integration', () => {
     expect(response.status).toBe(400);
   });
 
+  test('auth login, oauth, and rotate key endpoints', async () => {
+    await registerHuman('login@example.com');
+
+    const login = await request(app).post('/api/auth/login').send({
+      email: 'login@example.com',
+      password: 'password123'
+    });
+    expect(login.status).toBe(200);
+    expect(login.body.tokens.accessToken).toBeTruthy();
+
+    const oauth = await request(app).post('/api/auth/oauth').send({});
+    expect(oauth.status).toBe(501);
+    expect(oauth.body.error).toBe('NOT_IMPLEMENTED');
+
+    const { agentId, apiKey } = await registerAgent('Rotate Key Studio');
+    const rotated = await request(app)
+      .post('/api/agents/rotate-key')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send();
+
+    expect(rotated.status).toBe(200);
+    expect(rotated.body.apiKey).toBeTruthy();
+  });
+
   test('draft workflow: create -> fix -> PR -> merge', async () => {
     const { agentId, apiKey } = await registerAgent();
 
@@ -181,6 +206,180 @@ describe('API integration', () => {
 
     expect(deleteRes.status).toBe(200);
     expect(deleteRes.body.status).toBe('completed');
+  });
+
+  test('privacy errors return service codes', async () => {
+    const human = await registerHuman('privacy-errors@example.com');
+    const token = human.tokens.accessToken;
+
+    const exportOne = await request(app)
+      .post('/api/account/export')
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(exportOne.status).toBe(200);
+
+    const exportRateLimit = await request(app)
+      .post('/api/account/export')
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(exportRateLimit.status).toBe(400);
+    expect(exportRateLimit.body.error).toBe('EXPORT_RATE_LIMIT');
+
+    const missingExport = await request(app)
+      .get('/api/account/exports/00000000-0000-0000-0000-000000000000')
+      .set('Authorization', `Bearer ${token}`);
+    expect(missingExport.status).toBe(404);
+    expect(missingExport.body.error).toBe('EXPORT_NOT_FOUND');
+
+    await db.query("INSERT INTO deletion_requests (user_id, status) VALUES ($1, 'pending')", [
+      human.userId
+    ]);
+
+    const pendingDelete = await request(app)
+      .post('/api/account/delete')
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(pendingDelete.status).toBe(400);
+    expect(pendingDelete.body.error).toBe('DELETION_PENDING');
+  });
+
+  test('draft listing and release authorization', async () => {
+    const { agentId, apiKey } = await registerAgent('Release Owner');
+    const { agentId: otherAgentId, apiKey: otherApiKey } = await registerAgent('Release Intruder');
+
+    const draftOne = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/v1.png',
+        thumbnailUrl: 'https://example.com/v1-thumb.png'
+      });
+
+    const draftTwo = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/v2.png',
+        thumbnailUrl: 'https://example.com/v2-thumb.png'
+      });
+
+    const forbidden = await request(app)
+      .post(`/api/drafts/${draftOne.body.draft.id}/release`)
+      .set('x-agent-id', otherAgentId)
+      .set('x-api-key', otherApiKey)
+      .send();
+    expect(forbidden.status).toBe(403);
+
+    const released = await request(app)
+      .post(`/api/drafts/${draftOne.body.draft.id}/release`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send();
+    expect(released.status).toBe(200);
+
+    const listAll = await request(app).get(`/api/drafts?authorId=${agentId}`);
+    expect(listAll.status).toBe(200);
+    expect(listAll.body.length).toBe(2);
+
+    const listReleased = await request(app).get('/api/drafts?status=release');
+    expect(listReleased.status).toBe(200);
+    expect(listReleased.body.length).toBe(1);
+
+    const listDrafts = await request(app).get('/api/drafts?status=draft');
+    expect(listDrafts.status).toBe(200);
+    expect(listDrafts.body.length).toBe(1);
+
+    expect(draftTwo.status).toBe(200);
+  });
+
+  test('pull request decisions, listings, and fork flow', async () => {
+    const { agentId: authorId, apiKey: authorKey } = await registerAgent('Author Studio');
+    const { agentId: makerId, apiKey: makerKey } = await registerAgent('Maker Studio');
+
+    const draftRes = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', authorId)
+      .set('x-api-key', authorKey)
+      .send({
+        imageUrl: 'https://example.com/v1.png',
+        thumbnailUrl: 'https://example.com/v1-thumb.png'
+      });
+
+    const draftId = draftRes.body.draft.id;
+
+    const fixRes = await request(app)
+      .post(`/api/drafts/${draftId}/fix-requests`)
+      .set('x-agent-id', authorId)
+      .set('x-api-key', authorKey)
+      .send({
+        category: 'Focus',
+        description: 'Fix details'
+      });
+    expect(fixRes.status).toBe(200);
+
+    const fixList = await request(app).get(`/api/drafts/${draftId}/fix-requests`);
+    expect(fixList.status).toBe(200);
+    expect(fixList.body.length).toBe(1);
+
+    const prOne = await request(app)
+      .post(`/api/drafts/${draftId}/pull-requests`)
+      .set('x-agent-id', makerId)
+      .set('x-api-key', makerKey)
+      .send({
+        description: 'Initial changes',
+        severity: 'minor',
+        imageUrl: 'https://example.com/pr1.png',
+        thumbnailUrl: 'https://example.com/pr1-thumb.png'
+      });
+    expect(prOne.status).toBe(200);
+
+    const requestChanges = await request(app)
+      .post(`/api/pull-requests/${prOne.body.id}/decide`)
+      .set('x-agent-id', authorId)
+      .set('x-api-key', authorKey)
+      .send({
+        decision: 'request_changes',
+        feedback: 'Need more work'
+      });
+    expect(requestChanges.status).toBe(200);
+    expect(requestChanges.body.status).toBe('changes_requested');
+
+    const prTwo = await request(app)
+      .post(`/api/drafts/${draftId}/pull-requests`)
+      .set('x-agent-id', makerId)
+      .set('x-api-key', makerKey)
+      .send({
+        description: 'Second attempt',
+        severity: 'minor',
+        imageUrl: 'https://example.com/pr2.png',
+        thumbnailUrl: 'https://example.com/pr2-thumb.png'
+      });
+    expect(prTwo.status).toBe(200);
+
+    const reject = await request(app)
+      .post(`/api/pull-requests/${prTwo.body.id}/decide`)
+      .set('x-agent-id', authorId)
+      .set('x-api-key', authorKey)
+      .send({
+        decision: 'reject',
+        rejectionReason: 'Not aligned'
+      });
+    expect(reject.status).toBe(200);
+    expect(reject.body.status).toBe('rejected');
+
+    const listPrs = await request(app).get(`/api/drafts/${draftId}/pull-requests`);
+    expect(listPrs.status).toBe(200);
+    expect(listPrs.body.length).toBe(2);
+
+    const fork = await request(app)
+      .post(`/api/pull-requests/${prTwo.body.id}/fork`)
+      .set('x-agent-id', makerId)
+      .set('x-api-key', makerKey)
+      .send();
+    expect(fork.status).toBe(200);
+    expect(fork.body.forkedDraftId).toBeTruthy();
   });
 
   test('feeds endpoints return data', async () => {
@@ -329,5 +528,100 @@ describe('API integration', () => {
     expect(metrics.status).toBe(200);
     expect(metrics.body).toHaveProperty('impact');
     expect(metrics.body).toHaveProperty('signal');
+  });
+
+  test('commission endpoints cover lifecycle', async () => {
+    const human = await registerHuman('commissioner@example.com');
+    const token = human.tokens.accessToken;
+    const { agentId, apiKey } = await registerAgent('Commission Agent');
+
+    const commissionPending = await request(app)
+      .post('/api/commissions')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        description: 'Need a logo',
+        rewardAmount: 50,
+        currency: 'USD',
+        referenceImages: []
+      });
+    expect(commissionPending.status).toBe(200);
+    expect(commissionPending.body.commission.paymentStatus).toBe('pending');
+    expect(commissionPending.body.paymentIntentId).toBeTruthy();
+
+    const commissionOpen = await request(app)
+      .post('/api/commissions')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        description: 'No reward commission'
+      });
+    expect(commissionOpen.status).toBe(200);
+
+    const listAll = await request(app).get('/api/commissions');
+    expect(listAll.status).toBe(200);
+    expect(listAll.body.length).toBeGreaterThan(0);
+
+    const listForAgents = await request(app).get('/api/commissions?forAgents=true');
+    expect(listForAgents.status).toBe(200);
+    expect(listForAgents.body.length).toBeGreaterThan(0);
+
+    const draftRes = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/v1.png',
+        thumbnailUrl: 'https://example.com/v1-thumb.png'
+      });
+
+    const submitResponse = await request(app)
+      .post(`/api/commissions/${commissionOpen.body.commission.id}/responses`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({ draftId: draftRes.body.draft.id });
+    expect(submitResponse.status).toBe(200);
+    expect(submitResponse.body.ok).toBe(true);
+
+    const selectWinner = await request(app)
+      .post(`/api/commissions/${commissionOpen.body.commission.id}/select-winner`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ winnerDraftId: draftRes.body.draft.id });
+    expect(selectWinner.status).toBe(200);
+    expect(selectWinner.body.status).toBe('completed');
+
+    const payIntent = await request(app)
+      .post(`/api/commissions/${commissionPending.body.commission.id}/pay-intent`)
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(payIntent.status).toBe(200);
+    expect(payIntent.body.paymentIntentId).toBeTruthy();
+
+    const cancel = await request(app)
+      .post(`/api/commissions/${commissionPending.body.commission.id}/cancel`)
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(cancel.status).toBe(200);
+    expect(cancel.body.status).toBe('cancelled');
+
+    const webhook = await request(app).post('/api/payments/webhook').send({
+      provider: 'stripe',
+      providerEventId: 'evt_coverage_1',
+      commissionId: commissionPending.body.commission.id,
+      eventType: 'payment'
+    });
+    expect(webhook.status).toBe(200);
+    expect(webhook.body.applied).toBe(true);
+  });
+
+  test('commission validation errors surface as service errors', async () => {
+    const human = await registerHuman('commission-errors@example.com');
+    const token = human.tokens.accessToken;
+
+    const missingDescription = await request(app)
+      .post('/api/commissions')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ rewardAmount: 25, currency: 'USD' });
+
+    expect(missingDescription.status).toBe(400);
+    expect(missingDescription.body.error).toBe('COMMISSION_REQUIRED_FIELDS');
   });
 });
