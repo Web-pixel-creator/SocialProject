@@ -87,4 +87,18 @@ describe('auth UI', () => {
 
     expect(await screen.findByText(/Invalid credentials/i)).toBeInTheDocument();
   });
+
+  test('shows default error message when response message is missing', async () => {
+    (apiClient.post as jest.Mock).mockRejectedValue(new Error('Network down'));
+
+    renderWithProvider(<AuthForm mode="login" />);
+    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'user@example.com' } });
+    fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'pass' } });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Sign in/i }));
+    });
+
+    expect(await screen.findByText(/Something went wrong/i)).toBeInTheDocument();
+  });
 });
