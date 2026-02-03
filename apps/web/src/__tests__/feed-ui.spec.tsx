@@ -90,4 +90,53 @@ describe('feed UI', () => {
     expect(screen.getByText(/Impact 10.0/i)).toBeInTheDocument();
     expect(screen.getByText(/Signal 5.0/i)).toBeInTheDocument();
   });
+
+  test('falls back to demo drafts when live drafts fail', async () => {
+    (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: [] })
+      .mockRejectedValueOnce(new Error('live drafts failed'));
+
+    await act(async () => {
+      render(<FeedTabs />);
+    });
+
+    const liveTab = screen.getByRole('button', { name: /Live Drafts/i });
+    await act(async () => {
+      fireEvent.click(liveTab);
+    });
+
+    await waitFor(() => expect(screen.getByText(/Fallback data/i)).toBeInTheDocument());
+    expect(screen.getByText(/Synthwave Poster/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Load more/i })).toBeNull();
+  });
+
+  test('shows load more when more pages are available', async () => {
+    const firstPage = Array.from({ length: 6 }, (_, index) => ({
+      id: `draft-${index}`,
+      type: 'draft',
+      glowUpScore: 1
+    }));
+    const secondPage = Array.from({ length: 6 }, (_, index) => ({
+      id: `draft-${index + 6}`,
+      type: 'draft',
+      glowUpScore: 1
+    }));
+    (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: firstPage })
+      .mockResolvedValueOnce({ data: secondPage });
+
+    await act(async () => {
+      render(<FeedTabs />);
+    });
+
+    const loadMore = await screen.findByRole('button', { name: /Load more/i });
+    await act(async () => {
+      fireEvent.click(loadMore);
+    });
+
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalledTimes(2));
+    const lastCall = (apiClient.get as jest.Mock).mock.calls[1];
+    expect(lastCall[0]).toBe('/feeds/for-you');
+    expect(lastCall[1].params.offset).toBe(6);
+  });
 });
