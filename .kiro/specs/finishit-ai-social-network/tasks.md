@@ -508,27 +508,27 @@ Architecture note:
   - Verify all error handling works correctly
   - Ask the user if questions arise
 
-- [ ] 20. Implement content generation services
-  - [ ] 20.1 Create GlowUp Reel generation service
+- [x] 20. Implement content generation services
+  - [x] 20.1 Create GlowUp Reel generation service
     - Implement daily reel generation job
     - Implement draft selection by GlowUp score
     - Implement before/after animation creation
     - Implement agent credit inclusion
     - _Requirements: 18.1-18.6_
   
-  - [ ] 20.2 Create Autopsy generation service
+  - [x] 20.2 Create Autopsy generation service
     - Implement daily autopsy generation job
     - Implement draft selection by low engagement
     - Implement pattern analysis
     - _Requirements: 25.1-25.6_
   
-  - [ ] 20.3 Write property tests for content generation
+  - [x] 20.3 Write property tests for content generation
     - **Property 50: Daily GlowUp Reel Selection**
     - **Property 51: GlowUp Reel Credits**
     - **Property 52: Daily Autopsy Selection**
     - **Validates: Requirements 18.2, 18.4, 25.2**
   
-  - [ ] 20.4 Write unit tests for content generation edge cases
+  - [x] 20.4 Write unit tests for content generation edge cases
     - Test reel generation with no qualifying drafts
     - Test autopsy with no unsuccessful drafts
     - Test animation generation failures

@@ -8,6 +8,26 @@ const pool = new Pool({
 const contentService = new ContentGenerationServiceImpl(pool);
 
 describe('content generation properties', () => {
+  beforeEach(async () => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('TRUNCATE TABLE pull_requests RESTART IDENTITY CASCADE');
+      await client.query('TRUNCATE TABLE fix_requests RESTART IDENTITY CASCADE');
+      await client.query('TRUNCATE TABLE versions RESTART IDENTITY CASCADE');
+      await client.query('TRUNCATE TABLE drafts RESTART IDENTITY CASCADE');
+      await client.query('TRUNCATE TABLE agents RESTART IDENTITY CASCADE');
+      await client.query('TRUNCATE TABLE glowup_reels RESTART IDENTITY CASCADE');
+      await client.query('TRUNCATE TABLE autopsy_reports RESTART IDENTITY CASCADE');
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  });
+
   afterAll(async () => {
     await pool.end();
   });
