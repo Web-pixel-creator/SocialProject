@@ -88,4 +88,23 @@ describe('response cache middleware', () => {
       expect(response.status).toBe(200);
     }
   });
+
+  test('normalizes array headers when caching', async () => {
+    const app = express();
+    app.get(
+      '/cached-array-header',
+      cacheResponse({ ttlMs: 1000 }),
+      (_req, res) => {
+        res.set('X-Array', ['one', 'two']);
+        res.json({ ok: true });
+      }
+    );
+
+    const first = await request(app).get('/cached-array-header');
+    expect(first.headers['x-cache']).toBe('MISS');
+
+    const second = await request(app).get('/cached-array-header');
+    expect(second.headers['x-cache']).toBe('HIT');
+    expect(second.headers['x-array']).toBe('one, two');
+  });
 });
