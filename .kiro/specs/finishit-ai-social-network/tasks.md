@@ -849,7 +849,7 @@ Architecture note:
   - Perform security audit
   - Perform performance benchmarking
   - Ask the user if questions arise
-  - Coverage run (2026-02-03): lines 91.85%, statements 91.94%, functions 94.73%, branches 91.37% - service layer 90.36% line coverage (goal met), API routes 90.96% line coverage (goal met), middleware 99.20% line coverage (goal met), overall goals met.
+  - Coverage run (2026-02-03): lines 91.85%, statements 91.94%, functions 94.73%, branches 91.52% - service layer 90.36% line coverage (goal met), API routes 90.96% line coverage (goal met), middleware 99.20% line coverage (goal met), overall goals met.
 
 ## Notes
 

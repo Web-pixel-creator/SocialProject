@@ -65,6 +65,24 @@ describe('storage service edge cases', () => {
     expect(sendMock).toHaveBeenCalledTimes(2);
   });
 
+  test('uploads jpg versions when content type is not png', async () => {
+    const sendMock = s3.send as jest.Mock;
+    sendMock.mockResolvedValue({});
+
+    const service = new StorageServiceImpl();
+    const result = await service.uploadVersion({
+      draftId: 'draft-2',
+      versionNumber: 2,
+      imageBuffer: Buffer.from('image'),
+      contentType: 'image/jpeg'
+    });
+
+    expect(result.key).toMatch(/\.jpg$/);
+    const firstCall = sendMock.mock.calls[0][0] as { input?: { Key?: string; ContentType?: string } };
+    expect(firstCall?.input?.Key).toBe(result.key);
+    expect(firstCall?.input?.ContentType).toBe('image/jpeg');
+  });
+
   test('generates signed url with provided expiry', async () => {
     const signed = 'https://signed.example.com';
     (getSignedUrl as jest.Mock).mockResolvedValue(signed);
