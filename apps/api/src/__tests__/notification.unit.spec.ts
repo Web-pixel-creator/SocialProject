@@ -92,10 +92,37 @@ describe('notification service edge cases', () => {
     expect(deliveries.length).toBe(1);
   });
 
+  test('skips delivery when webhook is missing', async () => {
+    const delivery = jest.fn();
+    const fakeClient = {
+      query: jest.fn().mockResolvedValue({
+        rows: [
+          {
+            webhook_url: null,
+            notification_prefs: { enableFixRequests: true }
+          }
+        ]
+      })
+    };
+
+    const service = new NotificationServiceImpl(pool, delivery);
+    await service.notifyAuthorOnFixRequest('draft-4', 'fix-4', fakeClient as any);
+
+    expect(delivery).not.toHaveBeenCalled();
+  });
+
   test('throws when author is missing', async () => {
     const fakeClient = { query: jest.fn().mockResolvedValue({ rows: [] }) };
     const service = new NotificationServiceImpl(pool);
     await expect(service.notifyAuthorOnPullRequest('draft-missing', 'pr-missing', fakeClient as any)).rejects.toMatchObject({
+      code: 'AUTHOR_NOT_FOUND'
+    });
+  });
+
+  test('throws when author is missing for fix requests', async () => {
+    const fakeClient = { query: jest.fn().mockResolvedValue({ rows: [] }) };
+    const service = new NotificationServiceImpl(pool);
+    await expect(service.notifyAuthorOnFixRequest('draft-missing', 'fix-missing', fakeClient as any)).rejects.toMatchObject({
       code: 'AUTHOR_NOT_FOUND'
     });
   });
@@ -106,6 +133,26 @@ describe('notification service edge cases', () => {
     await expect(service.notifyMakerOnDecision('pr-missing', 'merged', fakeClient as any)).rejects.toMatchObject({
       code: 'MAKER_NOT_FOUND'
     });
+  });
+
+  test('skips decision delivery when disabled by prefs', async () => {
+    const delivery = jest.fn();
+    const fakeClient = {
+      query: jest.fn().mockResolvedValue({
+        rows: [
+          {
+            webhook_url: 'https://example.com/webhook',
+            notification_prefs: { enableDecisions: false },
+            draft_id: 'draft-1'
+          }
+        ]
+      })
+    };
+
+    const service = new NotificationServiceImpl(pool, delivery);
+    await service.notifyMakerOnDecision('pr-1', 'merged', fakeClient as any);
+
+    expect(delivery).not.toHaveBeenCalled();
   });
 
   test('propagates delivery failures', async () => {
@@ -123,5 +170,36 @@ describe('notification service edge cases', () => {
 
     const service = new NotificationServiceImpl(pool, delivery);
     await expect(service.notifyAuthorOnFixRequest('draft-3', 'fix-3', fakeClient as any)).rejects.toThrow('network failed');
+  });
+
+  test('propagates delivery failures for pull request and decision', async () => {
+    const delivery = jest.fn().mockRejectedValue(new Error('webhook down'));
+    const pullRequestClient = {
+      query: jest.fn().mockResolvedValue({
+        rows: [
+          {
+            webhook_url: 'https://example.com/webhook',
+            notification_prefs: { enablePullRequests: true }
+          }
+        ]
+      })
+    };
+    const decisionClient = {
+      query: jest.fn().mockResolvedValue({
+        rows: [
+          {
+            webhook_url: 'https://example.com/webhook',
+            notification_prefs: { enableDecisions: true },
+            draft_id: 'draft-9'
+          }
+        ]
+      })
+    };
+
+    const service = new NotificationServiceImpl(pool, delivery);
+    await expect(service.notifyAuthorOnPullRequest('draft-9', 'pr-9', pullRequestClient as any)).rejects.toThrow(
+      'webhook down'
+    );
+    await expect(service.notifyMakerOnDecision('pr-9', 'merged', decisionClient as any)).rejects.toThrow('webhook down');
   });
 });
