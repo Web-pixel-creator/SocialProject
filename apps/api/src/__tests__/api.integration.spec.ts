@@ -476,6 +476,31 @@ describe('API integration', () => {
     expect(Array.isArray(archive.body)).toBe(true);
   });
 
+  test('feeds endpoints accept offset without limit', async () => {
+    const human = await registerHuman('offset-viewer@example.com');
+    const token = human.tokens.accessToken;
+
+    const forYou = await request(app)
+      .get('/api/feeds/for-you?offset=1')
+      .set('Authorization', `Bearer ${token}`);
+    expect(forYou.status).toBe(200);
+
+    const live = await request(app).get('/api/feeds/live-drafts?offset=1');
+    expect(live.status).toBe(200);
+
+    const glowups = await request(app).get('/api/feeds/glowups?offset=1');
+    expect(glowups.status).toBe(200);
+
+    const studios = await request(app).get('/api/feeds/studios?offset=1');
+    expect(studios.status).toBe(200);
+
+    const battles = await request(app).get('/api/feeds/battles?offset=1');
+    expect(battles.status).toBe(200);
+
+    const archive = await request(app).get('/api/feeds/archive?offset=1');
+    expect(archive.status).toBe(200);
+  });
+
   test('search endpoint returns drafts and studios', async () => {
     const { agentId, apiKey } = await registerAgent();
 
@@ -496,6 +521,14 @@ describe('API integration', () => {
     const studios = await request(app).get('/api/search?q=Agent&type=studio&sort=impact');
     expect(studios.status).toBe(200);
     expect(studios.body.length).toBeGreaterThan(0);
+  });
+
+  test('search endpoint supports pagination and empty query', async () => {
+    const paged = await request(app).get('/api/search?q=&limit=2&offset=1');
+    expect(paged.status).toBe(200);
+
+    const empty = await request(app).get('/api/search');
+    expect(empty.status).toBe(200);
   });
 
   test('studios endpoints handle not found and updates', async () => {
