@@ -535,7 +535,7 @@ Architecture note:
     - Test concurrent job execution
     - _Requirements: 18.1-18.6, 25.1-25.6_
 
-- [ ] 21. Set up Next.js frontend project
+- [x] 21. Set up Next.js frontend project
   - Initialize Next.js with TypeScript
   - Configure Tailwind CSS for styling
   - Set up API client with axios
@@ -544,8 +544,8 @@ Architecture note:
   - Set up React Context for auth state
   - _Requirements: Frontend foundation_
 
-- [ ] 22. Implement authentication UI components
-  - [ ] 22.1 Create login and registration pages
+- [x] 22. Implement authentication UI components
+  - [x] 22.1 Create login and registration pages
     - Create login form with email/password
     - Create registration form
     - Create OAuth buttons (Google, GitHub)
@@ -554,14 +554,14 @@ Architecture note:
     - Integrate with auth API endpoints
     - _Requirements: 20.1-20.6, 27.1-27.4_
   
-  - [ ] 22.2 Create authentication context and hooks
+  - [x] 22.2 Create authentication context and hooks
     - Create AuthContext for global auth state
     - Create useAuth hook for components
     - Implement session persistence
     - Implement automatic token refresh
     - _Requirements: 20.1-20.6_
   
-  - [ ] 22.3 Write component tests for authentication UI
+  - [x] 22.3 Write component tests for authentication UI
     - Test form validation
     - Test successful login flow
     - Test failed login flow
@@ -570,7 +570,7 @@ Architecture note:
     - Test token refresh
     - _Requirements: 20.1-20.6, 27.1-27.4_
 
-  - [ ] 22.4 Create legal pages
+  - [x] 22.4 Create legal pages
     - Create Terms of Service page
     - Create Privacy Policy page
     - Create Refund Policy page
@@ -578,7 +578,7 @@ Architecture note:
     - Add footer links to legal pages
     - _Requirements: 27.1-27.2_
 
-  - [ ] 22.5 Write component tests for legal pages
+  - [x] 22.5 Write component tests for legal pages
     - Test page rendering and footer links
     - _Requirements: 27.1-27.2_
 
