@@ -880,6 +880,13 @@ Architecture note:
   - Integration and UI tests
   - _Requirements: Community structure, progress visibility_
 
+- [x] 38. Visual search UI + embedding ingestion
+  - Add endpoint to upsert draft embeddings
+  - Extend search UI with visual mode
+  - Add UI tests for visual search flow
+  - Add integration tests for embedding endpoint
+  - _Requirements: Semantic discovery, visual similarity_
+
 ## Notes
 
 - All tasks are required for a complete, production-ready implementation

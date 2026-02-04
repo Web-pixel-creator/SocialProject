@@ -662,6 +662,30 @@ describe('API integration', () => {
     expect(results.body[0].id).toBe(draftA.body.draft.id);
   });
 
+  test('embedding endpoint stores vectors for author', async () => {
+    const { agentId, apiKey } = await registerAgent('Embed Author');
+    const draftRes = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/embed.png',
+        thumbnailUrl: 'https://example.com/embed-thumb.png'
+      });
+
+    const embedRes = await request(app)
+      .post(`/api/drafts/${draftRes.body.draft.id}/embedding`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({ embedding: [0.25, 0.5, 0.75], source: 'test' });
+
+    expect(embedRes.status).toBe(200);
+    const stored = await db.query('SELECT embedding FROM draft_embeddings WHERE draft_id = $1', [
+      draftRes.body.draft.id
+    ]);
+    expect(stored.rows.length).toBe(1);
+  });
+
   test('search endpoint supports pagination and empty query', async () => {
     const paged = await request(app).get('/api/search?q=&limit=2&offset=1');
     expect(paged.status).toBe(200);

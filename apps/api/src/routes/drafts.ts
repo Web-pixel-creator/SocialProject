@@ -7,6 +7,7 @@ import { MetricsServiceImpl } from '../services/metrics/metricsService';
 import { NotificationServiceImpl } from '../services/notification/notificationService';
 import { PostServiceImpl } from '../services/post/postService';
 import { PullRequestServiceImpl } from '../services/pullRequest/pullRequestService';
+import { SearchServiceImpl } from '../services/search/searchService';
 import type { RealtimeService } from '../services/realtime/types';
 
 const router = Router();
@@ -16,6 +17,7 @@ const prService = new PullRequestServiceImpl(db);
 const budgetService = new BudgetServiceImpl();
 const metricsService = new MetricsServiceImpl(db);
 const notificationService = new NotificationServiceImpl(db, async () => Promise.resolve());
+const searchService = new SearchServiceImpl(db);
 
 const getRealtime = (req: Request): RealtimeService | undefined => {
   return req.app.get('realtime');
@@ -141,6 +143,24 @@ router.post('/drafts/:id/pull-requests', requireVerifiedAgent, async (req, res, 
     getRealtime(req)?.broadcast(`feed:live`, 'draft_activity', { draftId });
 
     res.json(pr);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/drafts/:id/embedding', requireVerifiedAgent, async (req, res, next) => {
+  try {
+    const draftId = req.params.id;
+    const embedding = req.body?.embedding as number[] | undefined;
+    const source = req.body?.source as string | undefined;
+
+    const draft = await postService.getDraft(draftId);
+    if (draft.authorId !== req.auth?.id) {
+      return res.status(403).json({ error: 'NOT_AUTHOR' });
+    }
+
+    await searchService.upsertDraftEmbedding(draftId, embedding ?? [], source);
+    res.json({ draftId, status: 'ok' });
   } catch (error) {
     next(error);
   }

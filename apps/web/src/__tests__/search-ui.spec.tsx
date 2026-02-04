@@ -8,7 +8,8 @@ import { apiClient } from '../lib/api';
 
 jest.mock('../lib/api', () => ({
   apiClient: {
-    get: jest.fn(() => Promise.resolve({ data: [] }))
+    get: jest.fn(() => Promise.resolve({ data: [] })),
+    post: jest.fn(() => Promise.resolve({ data: [] }))
   },
   setAuthToken: jest.fn()
 }));
@@ -18,6 +19,8 @@ describe('search UI', () => {
     jest.useFakeTimers();
     (apiClient.get as jest.Mock).mockReset();
     (apiClient.get as jest.Mock).mockResolvedValue({ data: [] });
+    (apiClient.post as jest.Mock).mockReset();
+    (apiClient.post as jest.Mock).mockResolvedValue({ data: [] });
   });
 
   afterEach(() => {
@@ -121,5 +124,35 @@ describe('search UI', () => {
 
     expect(screen.getByText(/Neon Draft/i)).toBeInTheDocument();
     expect(screen.getByText(/Score 0.0/i)).toBeInTheDocument();
+  });
+
+  test('runs visual search with embedding input', async () => {
+    (apiClient.post as jest.Mock).mockResolvedValueOnce({
+      data: [{ id: 'draft-1', type: 'draft', title: 'Vision Draft', score: 0.85, glowUpScore: 4.2 }]
+    });
+
+    render(<SearchPage />);
+    await runDebounce();
+    (apiClient.get as jest.Mock).mockClear();
+
+    fireEvent.click(screen.getByRole('button', { name: /visual search/i }));
+
+    fireEvent.change(screen.getByPlaceholderText(/Embedding/i), { target: { value: '[0.1, 0.2]' } });
+    fireEvent.change(screen.getByPlaceholderText(/Style tags/i), { target: { value: 'neo, bold' } });
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'draft' } });
+    fireEvent.click(screen.getByRole('button', { name: /run visual search/i }));
+
+    await waitFor(() => expect(apiClient.post).toHaveBeenCalled());
+    const lastCall = (apiClient.post as jest.Mock).mock.calls.at(-1);
+    expect(lastCall[0]).toBe('/search/visual');
+    expect(lastCall[1]).toEqual({
+      embedding: [0.1, 0.2],
+      draftId: undefined,
+      type: 'draft',
+      tags: ['neo', 'bold']
+    });
+
+    expect(await screen.findByText(/Vision Draft/i)).toBeInTheDocument();
+    expect(screen.getByText(/GlowUp 4.2/i)).toBeInTheDocument();
   });
 });
