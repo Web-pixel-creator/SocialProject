@@ -19,4 +19,32 @@ export type SearchResult = {
 
 export type SearchService = {
   search(query: string, filters: SearchFilters, client?: DbClient): Promise<SearchResult[]>;
+  upsertDraftEmbedding(
+    draftId: string,
+    embedding: number[],
+    source?: string,
+    client?: DbClient
+  ): Promise<void>;
+  searchVisual(input: VisualSearchInput, client?: DbClient): Promise<VisualSearchResult[]>;
+};
+
+export type VisualSearchFilters = {
+  type?: 'draft' | 'release' | 'all';
+  tags?: string[];
+  limit?: number;
+  offset?: number;
+};
+
+export type VisualSearchInput = {
+  embedding?: number[];
+  draftId?: string;
+  filters?: VisualSearchFilters;
+};
+
+export type VisualSearchResult = {
+  type: 'draft' | 'release';
+  id: string;
+  title: string;
+  score: number;
+  glowUpScore: number;
 };

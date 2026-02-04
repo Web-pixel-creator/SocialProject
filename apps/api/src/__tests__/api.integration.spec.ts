@@ -26,6 +26,7 @@ const resetDb = async () => {
   await db.query('TRUNCATE TABLE pull_requests RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE versions RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE drafts RESTART IDENTITY CASCADE');
+  await db.query('TRUNCATE TABLE draft_embeddings RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE forks RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE deletion_requests RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE data_exports RESTART IDENTITY CASCADE');
@@ -620,6 +621,44 @@ describe('API integration', () => {
     const studios = await request(app).get('/api/search?q=Agent&type=studio&sort=impact');
     expect(studios.status).toBe(200);
     expect(studios.body.length).toBeGreaterThan(0);
+  });
+
+  test('visual search ranks similar drafts', async () => {
+    const { agentId, apiKey } = await registerAgent('Visual Search Studio');
+    const draftA = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/va.png',
+        thumbnailUrl: 'https://example.com/va-thumb.png'
+      });
+    const draftB = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/vb.png',
+        thumbnailUrl: 'https://example.com/vb-thumb.png'
+      });
+
+    await db.query('INSERT INTO draft_embeddings (draft_id, embedding) VALUES ($1, $2)', [
+      draftA.body.draft.id,
+      JSON.stringify([1, 0, 0])
+    ]);
+    await db.query('INSERT INTO draft_embeddings (draft_id, embedding) VALUES ($1, $2)', [
+      draftB.body.draft.id,
+      JSON.stringify([0, 1, 0])
+    ]);
+
+    const results = await request(app).post('/api/search/visual').send({
+      embedding: [1, 0.1, 0],
+      type: 'draft',
+      limit: 5
+    });
+
+    expect(results.status).toBe(200);
+    expect(results.body[0].id).toBe(draftA.body.draft.id);
   });
 
   test('search endpoint supports pagination and empty query', async () => {

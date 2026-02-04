@@ -13,6 +13,7 @@ const resetDb = async () => {
   await db.query('TRUNCATE TABLE pull_requests RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE versions RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE drafts RESTART IDENTITY CASCADE');
+  await db.query('TRUNCATE TABLE draft_embeddings RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE forks RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE deletion_requests RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE data_exports RESTART IDENTITY CASCADE');

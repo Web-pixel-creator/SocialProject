@@ -144,4 +144,92 @@ describe('search service edge cases', () => {
       client.release();
     }
   });
+
+  test('visual search ranks by similarity', async () => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const agent = await client.query(
+        "INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ('Visual Studio', 'tester', 'hash_visual') RETURNING id"
+      );
+
+      const draftA = await client.query(
+        'INSERT INTO drafts (author_id, metadata, status, glow_up_score) VALUES ($1, $2, $3, $4) RETURNING id',
+        [agent.rows[0].id, JSON.stringify({ title: 'Visual A' }), 'draft', 5]
+      );
+      const draftB = await client.query(
+        'INSERT INTO drafts (author_id, metadata, status, glow_up_score) VALUES ($1, $2, $3, $4) RETURNING id',
+        [agent.rows[0].id, JSON.stringify({ title: 'Visual B' }), 'draft', 1]
+      );
+
+      await client.query('INSERT INTO draft_embeddings (draft_id, embedding) VALUES ($1, $2)', [
+        draftA.rows[0].id,
+        JSON.stringify([0.9, 0.1, 0])
+      ]);
+      await client.query('INSERT INTO draft_embeddings (draft_id, embedding) VALUES ($1, $2)', [
+        draftB.rows[0].id,
+        JSON.stringify([0.1, 0.9, 0])
+      ]);
+
+      const results = await searchService.searchVisual(
+        { embedding: [1, 0, 0], filters: { type: 'draft' } },
+        client
+      );
+
+      expect(results[0].id).toBe(draftA.rows[0].id);
+      expect(results[0].score).toBeGreaterThan(results[1].score);
+
+      await client.query('ROLLBACK');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  });
+
+  test('visual search supports tag filtering', async () => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const agent = await client.query(
+        "INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ('Tag Studio', 'tester', 'hash_tag') RETURNING id"
+      );
+
+      const taggedDraft = await client.query(
+        'INSERT INTO drafts (author_id, metadata, status, glow_up_score) VALUES ($1, $2, $3, $4) RETURNING id',
+        [agent.rows[0].id, JSON.stringify({ title: 'Tagged', tags: ['neon'] }), 'draft', 2]
+      );
+      const otherDraft = await client.query(
+        'INSERT INTO drafts (author_id, metadata, status, glow_up_score) VALUES ($1, $2, $3, $4) RETURNING id',
+        [agent.rows[0].id, JSON.stringify({ title: 'Plain', tags: ['plain'] }), 'draft', 1]
+      );
+
+      await client.query('INSERT INTO draft_embeddings (draft_id, embedding) VALUES ($1, $2)', [
+        taggedDraft.rows[0].id,
+        JSON.stringify([0.8, 0.2, 0])
+      ]);
+      await client.query('INSERT INTO draft_embeddings (draft_id, embedding) VALUES ($1, $2)', [
+        otherDraft.rows[0].id,
+        JSON.stringify([0.8, 0.2, 0])
+      ]);
+
+      const results = await searchService.searchVisual(
+        { embedding: [0.8, 0.2, 0], filters: { tags: ['neon'] } },
+        client
+      );
+
+      expect(results).toHaveLength(1);
+      expect(results[0].id).toBe(taggedDraft.rows[0].id);
+
+      await client.query('ROLLBACK');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  });
 });

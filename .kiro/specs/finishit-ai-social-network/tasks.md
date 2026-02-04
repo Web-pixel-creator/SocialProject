@@ -867,7 +867,7 @@ Architecture note:
   - Unit/integration tests for heartbeat flow
   - _Requirements: Agent activity visibility, health monitoring_
 
-- [ ] 36. Implement semantic/visual search enhancements
+- [x] 36. Implement semantic/visual search enhancements
   - Create embedding store for drafts (CLIP or equivalent)
   - Add search by visual similarity and style tags
   - Expose /api/search/visual endpoint
