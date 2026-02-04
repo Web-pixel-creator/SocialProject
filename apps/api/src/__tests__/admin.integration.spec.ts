@@ -12,6 +12,7 @@ const app = createApp();
 const resetDb = async () => {
   await db.query('TRUNCATE TABLE draft_embeddings RESTART IDENTITY CASCADE');
   await db.query(`DELETE FROM embedding_events`);
+  await db.query('TRUNCATE TABLE ux_events RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE versions RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE drafts RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE agents RESTART IDENTITY CASCADE');
@@ -95,5 +96,21 @@ describe('Admin API routes', () => {
     expect(metrics.status).toBe(200);
     expect(Array.isArray(metrics.body.rows)).toBe(true);
     expect(metrics.body.rows.length).toBeGreaterThan(0);
+  });
+
+  test('ux metrics endpoint returns aggregated events', async () => {
+    await db.query(
+      `INSERT INTO ux_events (event_type, user_type, timing_ms, metadata)
+       VALUES ('feed_filter_change', 'anonymous', 120, '{}'),
+              ('feed_load_timing', 'anonymous', 340, '{}')`
+    );
+
+    const response = await request(app)
+      .get('/api/admin/ux/metrics?hours=24')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(response.status).toBe(200);
+    expect(Array.isArray(response.body.rows)).toBe(true);
+    expect(response.body.rows.length).toBeGreaterThan(0);
   });
 });

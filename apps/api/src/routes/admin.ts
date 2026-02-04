@@ -93,4 +93,34 @@ router.get('/admin/system/metrics', requireAdmin, async (_req, res, next) => {
   }
 });
 
+router.get('/admin/ux/metrics', requireAdmin, async (req, res, next) => {
+  try {
+    const hours = clamp(Number(req.query.hours ?? 24), 1, 720);
+    const eventType = req.query.eventType ? String(req.query.eventType) : null;
+    const filters: string[] = ["created_at >= NOW() - ($1 || ' hours')::interval"];
+    const params: any[] = [hours];
+
+    if (eventType) {
+      params.push(eventType);
+      filters.push(`event_type = $${params.length}`);
+    }
+
+    const summary = await db.query(
+      `SELECT event_type,
+              COUNT(*)::int AS count,
+              AVG(timing_ms)::float AS avg_timing_ms,
+              MAX(created_at) AS last_event_at
+       FROM ux_events
+       WHERE ${filters.join(' AND ')}
+       GROUP BY event_type
+       ORDER BY count DESC`,
+      params
+    );
+
+    res.json({ windowHours: hours, rows: summary.rows });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

@@ -39,6 +39,14 @@ const RANGE_OPTIONS: Array<{ value: FeedRange; label: string; days?: number }> =
   { value: 'all', label: 'All time' }
 ];
 
+const sendTelemetry = async (payload: Record<string, any>) => {
+  try {
+    await apiClient.post('/telemetry/ux', payload);
+  } catch (_error) {
+    // ignore telemetry failures
+  }
+};
+
 const demoDrafts = [
   { id: 'draft-1', title: 'Synthwave Poster', glowUpScore: 18.2, live: true },
   { id: 'draft-2', title: 'Minimalist Landing', glowUpScore: 11.4 },
@@ -320,6 +328,7 @@ export const FeedTabs = () => {
     const load = async () => {
       if (fallbackUsed) return;
       setLoading(true);
+      const startedAt = performance.now();
       const endpoint = endpointForTab(active);
       const params: Record<string, any> = { limit: PAGE_SIZE, offset };
       if (active === 'All') {
@@ -347,6 +356,16 @@ export const FeedTabs = () => {
         if (!cancelled) {
           setItems((prev) => (offset === 0 ? nextItems : [...prev, ...nextItems]));
           setHasMore(nextItems.length >= PAGE_SIZE);
+          if (active === 'All' && offset === 0) {
+            const timingMs = Math.round(performance.now() - startedAt);
+            sendTelemetry({
+              eventType: 'feed_load_timing',
+              sort,
+              status: status === 'all' ? undefined : status,
+              range,
+              timingMs
+            });
+          }
         }
       } catch (_error) {
         if (active === 'For You') {
@@ -410,6 +429,7 @@ export const FeedTabs = () => {
                 const next = event.target.value as FeedSort;
                 setSort(next);
                 updateQuery({ sort: next });
+                sendTelemetry({ eventType: 'feed_filter_change', sort: next, status, range });
               }}
             >
               {SORT_OPTIONS.map((option) => (
@@ -428,6 +448,7 @@ export const FeedTabs = () => {
                 const next = event.target.value as FeedStatus;
                 setStatus(next);
                 updateQuery({ status: next });
+                sendTelemetry({ eventType: 'feed_filter_change', sort, status: next, range });
               }}
             >
               {STATUS_OPTIONS.map((option) => (
@@ -446,6 +467,7 @@ export const FeedTabs = () => {
                 const next = event.target.value as FeedRange;
                 setRange(next);
                 updateQuery({ range: next });
+                sendTelemetry({ eventType: 'feed_filter_change', sort, status, range: next });
               }}
             >
               {RANGE_OPTIONS.map((option) => (
@@ -478,7 +500,15 @@ export const FeedTabs = () => {
               item.afterImageUrl ??
               item.lastActivity ??
               `progress-${index}`;
-            return <BeforeAfterCard key={String(key)} {...item} />;
+            return (
+              <BeforeAfterCard
+                key={String(key)}
+                {...item}
+                onOpen={() =>
+                  sendTelemetry({ eventType: 'feed_card_open', draftId: item.draftId, source: 'feed' })
+                }
+              />
+            );
           }
           if (item.kind === 'autopsy') {
             return <AutopsyCard key={item.id ?? `autopsy-${index}`} {...item} />;

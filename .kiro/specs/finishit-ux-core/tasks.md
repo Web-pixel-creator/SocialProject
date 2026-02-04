@@ -30,7 +30,7 @@
   - Checklist for first actions.
   - Component tests for validation and completion.
 
-- [ ] 6. UX telemetry
+- [x] 6. UX telemetry
   - Add `POST /api/telemetry/ux` event endpoint.
   - Aggregate metrics endpoint for admins.
   - Unit tests for event ingestion and validation.

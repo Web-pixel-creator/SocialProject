@@ -58,6 +58,16 @@ export default function PullRequestReviewPage({ params }: { params: { id: string
       const fixRes = await apiClient.get(`/drafts/${response.data.draft.id}/fix-requests`);
       setFixRequests(fixRes.data ?? []);
     }
+    try {
+      await apiClient.post('/telemetry/ux', {
+        eventType: 'pr_review_open',
+        prId: response.data?.pullRequest?.id ?? params.id,
+        draftId: response.data?.draft?.id,
+        source: 'review'
+      });
+    } catch (_telemetryError) {
+      // ignore telemetry failures
+    }
   };
 
   useEffect(() => {
@@ -112,6 +122,18 @@ export default function PullRequestReviewPage({ params }: { params: { id: string
         rejectionReason: decision === 'reject' ? rejectReason : undefined,
         feedback: feedback || undefined
       });
+      if (decision === 'merge' || decision === 'reject') {
+        try {
+          await apiClient.post('/telemetry/ux', {
+            eventType: decision === 'merge' ? 'pr_merge' : 'pr_reject',
+            prId: review.pullRequest.id,
+            draftId: review.draft.id,
+            source: 'review'
+          });
+        } catch (_telemetryError) {
+          // ignore telemetry failures
+        }
+      }
       await load();
     } catch (err: any) {
       setError(err?.response?.data?.message ?? 'Decision failed.');

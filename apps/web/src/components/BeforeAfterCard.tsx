@@ -10,6 +10,7 @@ type BeforeAfterCardProps = {
   prCount: number;
   lastActivity?: string;
   authorStudio?: string;
+  onOpen?: () => void;
 };
 
 export const BeforeAfterCard = ({
@@ -19,7 +20,8 @@ export const BeforeAfterCard = ({
   glowUpScore,
   prCount,
   lastActivity,
-  authorStudio
+  authorStudio,
+  onOpen
 }: BeforeAfterCardProps) => {
   return (
     <article className="card overflow-hidden">
@@ -47,7 +49,11 @@ export const BeforeAfterCard = ({
         {lastActivity && <span>Last activity: {new Date(lastActivity).toLocaleString()}</span>}
         <div className="flex items-center justify-between text-[10px] text-slate-400">
           <span>Draft ID: {draftId}</span>
-          <Link href={`/drafts/${draftId}`} className="text-[11px] font-semibold text-ink">
+          <Link
+            href={`/drafts/${draftId}`}
+            onClick={onOpen}
+            className="text-[11px] font-semibold text-ink"
+          >
             Open detail
           </Link>
         </div>

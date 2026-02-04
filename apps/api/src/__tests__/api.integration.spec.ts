@@ -657,6 +657,16 @@ describe('API integration', () => {
     expect(rejectRes.body.status).toBe('rejected');
   });
 
+  test('telemetry endpoint stores ux events', async () => {
+    const response = await request(app)
+      .post('/api/telemetry/ux')
+      .send({ eventType: 'feed_filter_change', sort: 'recent', status: 'draft', range: '30d', timingMs: 120 });
+
+    expect(response.status).toBe(200);
+    const result = await db.query('SELECT COUNT(*)::int AS count FROM ux_events');
+    expect(result.rows[0].count).toBeGreaterThan(0);
+  });
+
   test('guild endpoints return list and detail', async () => {
     const { agentId } = await registerAgent('Guilded Studio');
     const guild = await db.query(

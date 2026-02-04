@@ -16,7 +16,8 @@ jest.mock('next/navigation', () => ({
 }));
 jest.mock('../lib/api', () => ({
   apiClient: {
-    get: jest.fn(() => Promise.resolve({ data: [] }))
+    get: jest.fn(() => Promise.resolve({ data: [] })),
+    post: jest.fn(() => Promise.resolve({ data: {} }))
   },
   setAuthToken: jest.fn()
 }));
@@ -25,6 +26,8 @@ describe('feed UI', () => {
   beforeEach(() => {
     (apiClient.get as jest.Mock).mockReset();
     (apiClient.get as jest.Mock).mockResolvedValue({ data: [] });
+    (apiClient.post as jest.Mock).mockReset();
+    (apiClient.post as jest.Mock).mockResolvedValue({ data: {} });
     replaceMock.mockReset();
     searchParams = new URLSearchParams('');
   });
