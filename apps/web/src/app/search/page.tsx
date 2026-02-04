@@ -21,12 +21,15 @@ export default function SearchPage() {
   const initialRange = searchParams?.get('range') ?? 'all';
   const initialDraftId = searchParams?.get('draftId') ?? '';
   const initialTags = searchParams?.get('tags') ?? '';
+  const initialProfileParam = searchParams?.get('profile') ?? '';
+  const initialAb = searchParams?.get('ab') ?? '';
 
   const [mode, setMode] = useState<'text' | 'visual'>(initialMode);
   const [query, setQuery] = useState(initialQuery);
   const [type, setType] = useState(initialType);
   const [sort, setSort] = useState(initialSort);
   const [range, setRange] = useState(initialRange);
+  const [profile, setProfile] = useState<'balanced' | 'quality' | 'novelty'>('balanced');
   const [visualDraftId, setVisualDraftId] = useState(initialDraftId);
   const [visualEmbedding, setVisualEmbedding] = useState('');
   const [visualTags, setVisualTags] = useState(initialTags);
@@ -72,7 +75,35 @@ export default function SearchPage() {
     if (initialTags) {
       setVisualTags(initialTags);
     }
-  }, [searchParams, initialMode, initialQuery, initialType, initialSort, initialRange, initialDraftId, initialTags]);
+
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const validProfiles = new Set(['balanced', 'quality', 'novelty']);
+    const stored = window.localStorage.getItem('searchProfile') ?? '';
+    const queryProfile = validProfiles.has(initialProfileParam) ? initialProfileParam : '';
+    const storedProfile = validProfiles.has(stored) ? stored : '';
+    let nextProfile = queryProfile || storedProfile;
+    if (!nextProfile && initialAb === '1') {
+      nextProfile = Math.random() < 0.5 ? 'balanced' : 'quality';
+    }
+    if (!nextProfile) {
+      nextProfile = 'balanced';
+    }
+    setProfile(nextProfile as 'balanced' | 'quality' | 'novelty');
+    window.localStorage.setItem('searchProfile', nextProfile);
+  }, [
+    searchParams,
+    initialMode,
+    initialQuery,
+    initialType,
+    initialSort,
+    initialRange,
+    initialDraftId,
+    initialTags,
+    initialProfileParam,
+    initialAb
+  ]);
 
   useEffect(() => {
     if (mode !== 'text') {
@@ -88,11 +119,24 @@ export default function SearchPage() {
             q: query,
             type: type === 'all' ? undefined : type,
             sort,
-            range: range === 'all' ? undefined : range
+            range: range === 'all' ? undefined : range,
+            profile: profile === 'balanced' ? undefined : profile
           }
         });
         if (!cancelled) {
           setResults(response.data ?? []);
+          sendTelemetry({
+            eventType: 'search_performed',
+            sort,
+            status: type === 'all' ? undefined : type,
+            range: range === 'all' ? undefined : range,
+            metadata: {
+              profile,
+              mode: 'text',
+              queryLength: query.length,
+              resultCount: Array.isArray(response.data) ? response.data.length : 0
+            }
+          });
         }
       } catch (err: any) {
         if (!cancelled) {
@@ -109,7 +153,7 @@ export default function SearchPage() {
       cancelled = true;
       clearTimeout(handle);
     };
-  }, [mode, query, type, sort, range]);
+  }, [mode, query, type, sort, range, profile]);
 
   useEffect(() => {
     setResults([]);

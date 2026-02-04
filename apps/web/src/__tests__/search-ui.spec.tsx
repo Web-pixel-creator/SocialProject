@@ -24,6 +24,7 @@ describe('search UI', () => {
   beforeEach(() => {
     jest.useFakeTimers();
     searchParams = new URLSearchParams('');
+    localStorage.clear();
     (apiClient.get as jest.Mock).mockReset();
     (apiClient.get as jest.Mock).mockResolvedValue({ data: [] });
     (apiClient.post as jest.Mock).mockReset();
@@ -135,8 +136,13 @@ describe('search UI', () => {
   });
 
   test('runs visual search with embedding input', async () => {
-    (apiClient.post as jest.Mock).mockResolvedValueOnce({
-      data: [{ id: 'draft-1', type: 'draft', title: 'Vision Draft', score: 0.85, glowUpScore: 4.2 }]
+    (apiClient.post as jest.Mock).mockImplementation((url: string) => {
+      if (url === '/search/visual') {
+        return Promise.resolve({
+          data: [{ id: 'draft-1', type: 'draft', title: 'Vision Draft', score: 0.85, glowUpScore: 4.2 }]
+        });
+      }
+      return Promise.resolve({ data: { status: 'ok' } });
     });
 
     render(<SearchPage />);

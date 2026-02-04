@@ -4,6 +4,7 @@ import type { DbClient } from '../auth/types';
 import { ServiceError } from '../common/errors';
 import type {
   SearchFilters,
+  SearchProfile,
   SearchResult,
   SearchService,
   VisualSearchFilters,
@@ -18,7 +19,7 @@ export class SearchServiceImpl implements SearchService {
 
   async search(query: string, filters: SearchFilters, client?: DbClient): Promise<SearchResult[]> {
     const db = getDb(this.pool, client);
-    const { type = 'all', sort = 'recency', range = 'all', limit = 20, offset = 0 } = filters;
+    const { type = 'all', sort = 'recency', range = 'all', profile, limit = 20, offset = 0 } = filters;
     const q = `%${query}%`;
     const terms = normalizeTerms(query);
     const rangeClause =
@@ -56,7 +57,13 @@ export class SearchServiceImpl implements SearchService {
         const updatedAt = row.updated_at ? new Date(row.updated_at) : null;
         const relevanceScore =
           sort === 'relevance'
-            ? scoreRelevance(JSON.stringify(row.metadata ?? {}), score, updatedAt, terms, getSearchWeights())
+            ? scoreRelevance(
+                JSON.stringify(row.metadata ?? {}),
+                score,
+                updatedAt,
+                terms,
+                getSearchWeights(profile)
+              )
             : undefined;
         return {
           type: row.status === 'release' ? 'release' : 'draft',
@@ -91,7 +98,7 @@ export class SearchServiceImpl implements SearchService {
         const score = Number(row.impact ?? 0);
         const relevanceScore =
           sort === 'relevance'
-            ? scoreStudioRelevance(row.studio_name ?? '', score, terms, getStudioWeights())
+            ? scoreStudioRelevance(row.studio_name ?? '', score, terms, getStudioWeights(profile))
             : undefined;
         return {
           type: 'studio',
@@ -318,24 +325,46 @@ const normalizeWeights = (
   return Object.fromEntries(Object.entries(sanitized).map(([key, value]) => [key, value / sum]));
 };
 
-const getSearchWeights = () =>
-  normalizeWeights(
+const BALANCED_WEIGHTS = { keyword: 0.6, glowup: 0.3, recency: 0.1 };
+const QUALITY_WEIGHTS = { keyword: 0.45, glowup: 0.45, recency: 0.1 };
+const NOVELTY_WEIGHTS = { keyword: 0.5, glowup: 0.2, recency: 0.3 };
+
+const BALANCED_STUDIO_WEIGHTS = { keyword: 0.7, impact: 0.3 };
+const QUALITY_STUDIO_WEIGHTS = { keyword: 0.6, impact: 0.4 };
+const NOVELTY_STUDIO_WEIGHTS = { keyword: 0.65, impact: 0.35 };
+
+const getSearchWeights = (profile?: SearchProfile) => {
+  if (profile === 'quality') {
+    return QUALITY_WEIGHTS;
+  }
+  if (profile === 'novelty') {
+    return NOVELTY_WEIGHTS;
+  }
+  return normalizeWeights(
     {
       keyword: env.SEARCH_RELEVANCE_WEIGHT_KEYWORD,
       glowup: env.SEARCH_RELEVANCE_WEIGHT_GLOWUP,
       recency: env.SEARCH_RELEVANCE_WEIGHT_RECENCY
     },
-    { keyword: 0.6, glowup: 0.3, recency: 0.1 }
+    BALANCED_WEIGHTS
   ) as { keyword: number; glowup: number; recency: number };
+};
 
-const getStudioWeights = () =>
-  normalizeWeights(
+const getStudioWeights = (profile?: SearchProfile) => {
+  if (profile === 'quality') {
+    return QUALITY_STUDIO_WEIGHTS;
+  }
+  if (profile === 'novelty') {
+    return NOVELTY_STUDIO_WEIGHTS;
+  }
+  return normalizeWeights(
     {
       keyword: env.SEARCH_RELEVANCE_WEIGHT_STUDIO_KEYWORD,
       impact: env.SEARCH_RELEVANCE_WEIGHT_STUDIO_IMPACT
     },
-    { keyword: 0.7, impact: 0.3 }
+    BALANCED_STUDIO_WEIGHTS
   ) as { keyword: number; impact: number };
+};
 
 const parseEmbedding = (value: unknown): number[] | null => {
   if (Array.isArray(value)) {

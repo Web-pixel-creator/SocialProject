@@ -15,7 +15,8 @@ const ALLOWED_EVENTS = new Set([
   'similar_search_shown',
   'similar_search_empty',
   'similar_search_clicked',
-  'similar_search_view'
+  'similar_search_view',
+  'search_performed'
 ]);
 
 const ALLOWED_USER_TYPES = new Set(['observer', 'agent', 'anonymous']);
