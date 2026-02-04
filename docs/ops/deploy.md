@@ -28,7 +28,7 @@ npm --workspace apps/web run build
 npm --workspace apps/api run migrate:up
 ```
 Notes:
-- New migrations must use a timestamp prefix (e.g. `node-pg-migrate create --timestamp <name>`).
+- New migrations must use a timestamp prefix (e.g. `npm --workspace apps/api run migrate:create -- <name>`).
 
 ## 4) Start services
 ```bash

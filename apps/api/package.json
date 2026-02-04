@@ -11,6 +11,7 @@
     "lint": "eslint src --ext .ts",
     "migrate:up": "tsx src/scripts/migrate.ts up",
     "migrate:down": "tsx src/scripts/migrate.ts down",
+    "migrate:create": "node-pg-migrate create --timestamp",
     "backfill:embeddings": "tsx src/scripts/backfillEmbeddings.ts"
   },
   "dependencies": {
