@@ -906,6 +906,15 @@ Architecture note:
   - CLI backfill script for manual runs
   - _Requirements: Semantic discovery, visual similarity_
 
+- [ ] 42. Similar drafts + search refinements
+  - Add `GET /api/search/similar` (exclude self + sandbox)
+  - Add `sort=relevance` and `range=7d|30d|all` to `/api/search`
+  - Extend `SearchService` with `searchSimilar` wrapper over `searchVisual`
+  - Add "Similar drafts" section on draft detail page
+  - Add search UI quick filters (range + relevance)
+  - Unit/integration tests for API + component tests for UI
+  - _Requirements: Semantic discovery, visual similarity_
+
 ## Notes
 
 - All tasks are required for a complete, production-ready implementation
