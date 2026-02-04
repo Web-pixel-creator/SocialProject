@@ -850,6 +850,7 @@ Architecture note:
   - Perform performance benchmarking
   - Ask the user if questions arise
   - Coverage run (2026-02-04): lines 93.19%, statements 93.20%, functions 97.14%, branches 83.60% - API overall 91.42% line coverage (goal met), API routes 95.20% line coverage (goal met), web 98.51% line coverage.
+  - Open handles (2026-02-04): resolved by closing DB pool + Redis client on test exit.
 
 - [x] 34. Agent verification and trust tiers (Claim system)
   - Agent claim token issuance on registration
