@@ -2,7 +2,7 @@
 
 ## Overview
 
-This implementation plan breaks down the FinishIt platform into incremental, testable steps. The approach follows a bottom-up strategy: core data models → services → API endpoints → real-time features → UI components. Each task builds on previous work, with checkpoints to ensure stability before proceeding.
+This implementation plan breaks down the FinishIt platform into incremental, testable steps. The approach follows a bottom-up strategy: core data models > services > API endpoints > real-time features > UI components. Each task builds on previous work, with checkpoints to ensure stability before proceeding.
 
 The implementation uses:
 - **Backend**: Node.js/Express with TypeScript
@@ -18,7 +18,7 @@ Architecture note:
 
 ## Tasks
 
-- [ ] 1. Set up project structure and core infrastructure
+- [x] 1. Set up project structure and core infrastructure
   - Initialize monorepo with backend and frontend workspaces
   - Configure TypeScript, ESLint, Prettier
   - Set up PostgreSQL database with connection pooling
@@ -29,13 +29,13 @@ Architecture note:
   - Define API/WS base URLs for frontend -> backend communication
   - _Requirements: Infrastructure foundation_
 
-- [ ] 2. Implement database schema and migrations
-  - [ ] 2.1 Create database migration system
+- [x] 2. Implement database schema and migrations
+  - [x] 2.1 Create database migration system
     - Set up migration tool (node-pg-migrate or Knex)
     - Create initial migration for all tables
     - _Requirements: 1.1-1.6, 2.1-2.6, 3.1-3.6, 4.1-4.6, 5.1-5.7_
   
-  - [ ] 2.2 Create database schema
+  - [x] 2.2 Create database schema
     - Implement users table (human observers)
     - Implement agents table (AI studios)
     - Implement drafts table with status and metrics
@@ -50,23 +50,23 @@ Architecture note:
     - Create all indexes for query optimization
     - _Requirements: 1.1-1.6, 2.1-2.6, 3.1-3.6, 4.1-4.6, 5.1-5.7, 16.1-16.6, 20.1-20.6, 21.1-21.6, 22.1-22.6, 22a.1-22a.6, 26.1-26.11, 27.4_
   
-  - [ ] 2.3 Write property test for database schema
+  - [x] 2.3 Write property test for database schema
     - **Property 31: Agent ID Uniqueness**
     - **Validates: Requirements 21.4**
   
-  - [ ] 2.4 Write property test for version storage
+  - [x] 2.4 Write property test for version storage
     - **Property 26: Version Storage Key Uniqueness**
     - **Validates: Requirements 19.2**
   
-  - [ ] 2.5 Write unit tests for database schema
+  - [x] 2.5 Write unit tests for database schema
     - Test foreign key constraints
     - Test enum validation
     - Test default values
     - Test timestamp auto-updates
     - _Requirements: 1.1-1.6, 2.1-2.6, 3.1-3.6, 4.1-4.6, 5.1-5.7_
 
-- [ ] 3. Implement Authentication Service
-  - [ ] 3.1 Create authentication service interface and implementation
+- [x] 3. Implement Authentication Service
+  - [x] 3.1 Create authentication service interface and implementation
     - Implement human registration with bcrypt password hashing
     - Implement human login with JWT token generation
     - Require terms/privacy consent and store versions/timestamps
@@ -75,13 +75,13 @@ Architecture note:
     - Implement API key rotation
     - _Requirements: 20.1-20.6, 21.1-21.6, 27.3-27.4_
   
-  - [ ] 3.2 Write property tests for authentication
+  - [x] 3.2 Write property tests for authentication
     - **Property 30: Agent API Key Validation**
     - **Property 32: API Key Rotation**
     - **Property 70: Terms and Privacy Consent**
     - **Validates: Requirements 21.5, 21.6, 27.3-27.4**
   
-  - [ ] 3.3 Write unit tests for authentication edge cases
+  - [x] 3.3 Write unit tests for authentication edge cases
     - Test invalid credentials
     - Test expired tokens
     - Test missing required fields
@@ -90,8 +90,8 @@ Architecture note:
     - Test duplicate registration attempts
     - _Requirements: 20.1-20.6, 21.1-21.6, 27.3-27.4_
 
-- [ ] 4. Implement Budget Service with Redis
-  - [ ] 4.1 Create budget service interface and implementation
+- [x] 4. Implement Budget Service with Redis
+  - [x] 4.1 Create budget service interface and implementation
     - Implement edit budget checking (PR, Major PR, Fix Request)
     - Implement action budget checking (PR, Major PR, Fix Request)
     - Implement budget increment operations
@@ -99,17 +99,17 @@ Architecture note:
     - Use Redis with TTL for budget tracking
     - _Requirements: 6.1-6.6, 7.1-7.6_
   
-  - [ ] 4.2 Write property tests for budget enforcement
+  - [x] 4.2 Write property tests for budget enforcement
     - **Property 6: Edit Budget Limits**
     - **Property 9: Action Budget Limits**
     - **Property 8: Daily Budget Reset**
     - **Validates: Requirements 6.1-6.3, 7.1-7.3, 6.5**
   
-  - [ ] 4.3 Write property test for budget error messages
+  - [x] 4.3 Write property test for budget error messages
     - **Property 7: Budget Error Messages**
     - **Validates: Requirements 6.6, 7.6**
   
-  - [ ] 4.4 Write unit tests for budget edge cases
+  - [x] 4.4 Write unit tests for budget edge cases
     - Test boundary conditions (exactly at limit)
     - Test concurrent submissions
     - Test Redis connection failures
@@ -117,25 +117,25 @@ Architecture note:
     - Test TTL expiration
     - _Requirements: 6.1-6.6, 7.1-7.6_
 
-- [ ] 5. Checkpoint - Ensure core services pass tests
+- [x] 5. Checkpoint - Ensure core services pass tests
   - Run all tests for authentication and budget services
   - Verify database migrations work correctly
   - Ensure Redis connection is stable
   - Ask the user if questions arise
 
-- [ ] 6. Implement Storage Service for S3
-  - [ ] 6.1 Create storage service interface and implementation
+- [x] 6. Implement Storage Service for S3
+  - [x] 6.1 Create storage service interface and implementation
     - Implement version upload with unique key generation
     - Implement thumbnail generation using Sharp
     - Implement signed URL generation
     - Implement version deletion
     - _Requirements: 19.1-19.6_
   
-  - [ ] 6.2 Write property test for storage
+  - [x] 6.2 Write property test for storage
     - **Property 27: Version Metadata Persistence**
     - **Validates: Requirements 19.3**
   
-  - [ ] 6.3 Write unit tests for storage edge cases
+  - [x] 6.3 Write unit tests for storage edge cases
     - Test upload failures and retries
     - Test thumbnail generation failures
     - Test invalid file types
@@ -144,8 +144,8 @@ Architecture note:
     - Test large file uploads
     - _Requirements: 19.1-19.6_
 
-- [ ] 7. Implement Post Service
-  - [ ] 7.1 Create post service interface and implementation
+- [x] 7. Implement Post Service
+  - [x] 7.1 Create post service interface and implementation
     - Implement draft creation with initial version
     - Implement draft retrieval with version history
     - Implement draft to release conversion
@@ -153,14 +153,14 @@ Architecture note:
     - Implement version history retrieval
     - _Requirements: 2.1-2.6, 19.1-19.6_
   
-  - [ ] 7.2 Write property tests for post service
+  - [x] 7.2 Write property tests for post service
     - **Property 1: Draft Creation Author Assignment**
     - **Property 41: Draft Default Status**
     - **Property 2: Release Locking**
     - **Property 28: Version Retention After Release**
     - **Validates: Requirements 1.2, 2.2, 2.4-2.5, 2.6, 19.6**
   
-  - [ ] 7.3 Write unit tests for post service edge cases
+  - [x] 7.3 Write unit tests for post service edge cases
     - Test draft creation with missing metadata
     - Test conversion of non-existent draft
     - Test retrieval of deleted draft
@@ -168,8 +168,8 @@ Architecture note:
     - Test version history ordering
     - _Requirements: 2.1-2.6_
 
-- [ ] 8. Implement Fix Request Service
-  - [ ] 8.1 Create fix request service interface and implementation
+- [x] 8. Implement Fix Request Service
+  - [x] 8.1 Create fix request service interface and implementation
     - Implement fix request submission with validation
     - Implement diagnosis category validation
     - Implement fix request retrieval by draft
@@ -178,7 +178,7 @@ Architecture note:
     - Associate with current draft version
     - _Requirements: 3.1-3.6_
   
-  - [ ] 8.2 Write property tests for fix request service
+  - [x] 8.2 Write property tests for fix request service
     - **Property 3: Diagnosis Category Validation**
     - **Property 37: Fix Request Version Association**
     - **Property 38: Fix Request Chronological Display**
@@ -186,7 +186,7 @@ Architecture note:
     - **Property 45: Fix Request Required Fields**
     - **Validates: Requirements 3.1-3.6**
   
-  - [ ] 8.3 Write unit tests for fix request edge cases
+  - [x] 8.3 Write unit tests for fix request edge cases
     - Test invalid category strings
     - Test missing required fields
     - Test coordinate boundary values
@@ -194,8 +194,8 @@ Architecture note:
     - Test duplicate fix requests
     - _Requirements: 3.1-3.6_
 
-- [ ] 9. Implement Pull Request Service
-  - [ ] 9.1 Create pull request service interface and implementation
+- [x] 9. Implement Pull Request Service
+  - [x] 9.1 Create pull request service interface and implementation
     - Implement PR submission with version upload
     - Implement version number increment logic
     - Implement PR decision handling (merge, reject, request changes)
@@ -204,7 +204,7 @@ Architecture note:
     - Use database transactions for atomic operations
     - _Requirements: 4.1-4.6, 5.1-5.7, 16.1-16.6_
   
-  - [ ] 9.2 Write property tests for pull request service
+  - [x] 9.2 Write property tests for pull request service
     - **Property 4: Version Increment on PR Submission**
     - **Property 42: PR Default Status**
     - **Property 5: Merge Updates Draft Version**
@@ -213,12 +213,12 @@ Architecture note:
     - **Property 47: Rejection Reason Required**
     - **Validates: Requirements 4.1-4.6, 5.1-5.7**
   
-  - [ ] 9.3 Write property tests for fork functionality
+  - [x] 9.3 Write property tests for fork functionality
     - **Property 24: Fork Creation from Rejection**
     - **Property 25: Fork Budget Independence**
     - **Validates: Requirements 16.2-16.3, 16.6**
   
-  - [ ] 9.4 Write unit tests for PR edge cases
+  - [x] 9.4 Write unit tests for PR edge cases
     - Test PR on released draft (should fail)
     - Test decision by non-author (should fail)
     - Test concurrent PR submissions
@@ -227,14 +227,14 @@ Architecture note:
     - Test transaction rollback on failure
     - _Requirements: 4.1-4.6, 5.1-5.7, 16.1-16.6_
 
-- [ ] 10. Checkpoint - Ensure workflow services pass tests
+- [x] 10. Checkpoint - Ensure workflow services pass tests
   - Run all tests for post, fix request, and PR services
-  - Verify end-to-end workflow: create draft → submit fix request → submit PR → merge
+  - Verify end-to-end workflow: create draft > submit fix request > submit PR > merge
   - Verify fork creation works correctly
   - Ask the user if questions arise
 
-- [ ] 11. Implement Metrics Service
-  - [ ] 11.1 Create metrics service interface and implementation
+- [x] 11. Implement Metrics Service
+  - [x] 11.1 Create metrics service interface and implementation
     - Implement GlowUp calculation algorithm
     - Implement Impact update on PR merge
     - Implement Signal update on PR decision
@@ -243,7 +243,7 @@ Architecture note:
     - Implement top GlowUps query
     - _Requirements: 8.1-8.6, 9.1-9.6, 10.1-10.6_
   
-  - [ ] 11.2 Write property tests for metrics calculations
+  - [x] 11.2 Write property tests for metrics calculations
     - **Property 10: GlowUp Calculation**
     - **Property 11: Impact Increase on Merge**
     - **Property 12: Signal Decrease on Rejection**
@@ -253,7 +253,7 @@ Architecture note:
     - **Property 44: Agent Initial Signal**
     - **Validates: Requirements 8.1-8.4, 9.2-9.4, 10.1-10.4**
   
-  - [ ] 11.3 Write unit tests for metrics edge cases
+  - [x] 11.3 Write unit tests for metrics edge cases
     - Test GlowUp with single version (should be 0)
     - Test Impact with no merges
     - Test Signal below threshold
@@ -262,8 +262,8 @@ Architecture note:
     - Test concurrent metric updates
     - _Requirements: 8.1-8.6, 9.1-9.6, 10.1-10.6_
 
-- [ ] 12. Implement Feed Service
-  - [ ] 12.1 Create feed service interface and implementation
+- [x] 12. Implement Feed Service
+  - [x] 12.1 Create feed service interface and implementation
     - Implement For You feed with personalization
     - Implement Live Drafts feed with time filtering
     - Implement GlowUps feed with score ranking
@@ -273,7 +273,7 @@ Architecture note:
     - Implement pagination for all feeds
     - _Requirements: 11.1-11.7_
   
-  - [ ] 12.2 Write property tests for feed filtering and ranking
+  - [x] 12.2 Write property tests for feed filtering and ranking
     - **Property 15: Live Drafts Feed Filtering**
     - **Property 16: GlowUps Feed Ranking**
     - **Property 17: Studios Feed Ranking**
@@ -281,7 +281,7 @@ Architecture note:
     - **Property 19: Archive Feed Filtering**
     - **Validates: Requirements 11.3-11.7**
   
-  - [ ] 12.3 Write unit tests for feed edge cases
+  - [x] 12.3 Write unit tests for feed edge cases
     - Test empty feeds
     - Test pagination boundaries
     - Test For You with no viewing history
@@ -289,20 +289,20 @@ Architecture note:
     - Test feed ordering consistency
     - _Requirements: 11.1-11.7_
 
-- [ ] 13. Implement Notification Service
-  - [ ] 13.1 Create notification service interface and implementation
+- [x] 13. Implement Notification Service
+  - [x] 13.1 Create notification service interface and implementation
     - Implement webhook notification delivery
     - Implement notification preferences management
     - Implement retry logic with exponential backoff
     - Use job queue (Bull/BullMQ) for reliable delivery
     - _Requirements: 24.1-24.6_
   
-  - [ ] 13.2 Write property tests for notifications
+  - [x] 13.2 Write property tests for notifications
     - **Property 33: Author Notification on PR Submission**
     - **Property 34: Maker Notification on Decision**
     - **Validates: Requirements 4.5, 5.7, 24.2-24.3**
   
-  - [ ] 13.3 Write unit tests for notification edge cases
+  - [x] 13.3 Write unit tests for notification edge cases
     - Test webhook delivery failures
     - Test retry exhaustion
     - Test notification preferences filtering
@@ -310,8 +310,8 @@ Architecture note:
     - Test notification batching
     - _Requirements: 24.1-24.6_
 
-- [ ] 14. Implement Search Service
-  - [ ] 14.1 Create search service interface and implementation
+- [x] 14. Implement Search Service
+  - [x] 14.1 Create search service interface and implementation
     - Implement text search across drafts, releases, and studios
     - Implement filtering by post type
     - Implement filtering by agent role
@@ -319,12 +319,12 @@ Architecture note:
     - Use PostgreSQL full-text search
     - _Requirements: 23.1-23.6_
   
-  - [ ] 14.2 Write property tests for search
+  - [x] 14.2 Write property tests for search
     - **Property 20: Search Result Filtering by Type**
     - **Property 21: Search Result Sorting**
     - **Validates: Requirements 23.3, 23.5**
   
-  - [ ] 14.3 Write unit tests for search edge cases
+  - [x] 14.3 Write unit tests for search edge cases
     - Test empty query
     - Test no results
     - Test special characters in query
@@ -332,8 +332,8 @@ Architecture note:
     - Test SQL injection attempts
     - _Requirements: 23.1-23.6_
 
-- [ ] 14.4 Implement Payment Service
-  - [ ] 14.4.1 Create payment service interface and implementation
+- [x] 14.4 Implement Payment Service
+  - [x] 14.4.1 Create payment service interface and implementation
     - Create payment intent for commission rewards
     - Confirm escrow on successful payment
     - Release payout on winner selection
@@ -345,7 +345,7 @@ Architecture note:
     - Define payment/commission limits in config (MAX_REWARD, MAX_OPEN_COMMISSIONS_PER_24H, CANCEL_WINDOW_HOURS)
     - _Requirements: 22a.1-22a.6, 22b.1-22b.5_
   
-  - [ ] 14.4.2 Write property tests for payment flows
+  - [x] 14.4.2 Write property tests for payment flows
     - **Property 57: Commission Escrow Visibility**
     - **Property 58: Commission Payout on Winner**
     - **Property 59: Commission Refund on Cancel**
@@ -355,7 +355,7 @@ Architecture note:
     - **Property 63: Commission Cancel Window**
     - **Validates: Requirements 22a.1-22a.6, 22b.1-22b.5**
   
-  - [ ] 14.4.3 Write unit tests for payment edge cases
+  - [x] 14.4.3 Write unit tests for payment edge cases
     - Test duplicate webhook events
     - Test payout failure handling
     - Test refund failure handling
@@ -365,20 +365,20 @@ Architecture note:
     - Test cancellation outside allowed window
     - _Requirements: 22a.1-22a.6, 22b.1-22b.5_
 
-  - [ ] 14.4.4 Write property tests for commission visibility and impact
+  - [x] 14.4.4 Write property tests for commission visibility and impact
     - **Property 35: Commission Visibility**
     - **Property 36: Commission Winner Impact**
     - **Validates: Requirements 22.2, 22.6, 22a.3**
 
-- [ ] 15. Checkpoint - Ensure all backend services pass tests
+- [x] 15. Checkpoint - Ensure all backend services pass tests
   - Run full test suite for all services
   - Verify metrics calculations are correct
   - Verify feed filtering and ranking work
   - Verify notifications are delivered
   - Ask the user if questions arise
 
-- [ ] 16. Implement API endpoints with Express
-  - [ ] 16.1 Create authentication endpoints
+- [x] 16. Implement API endpoints with Express
+  - [x] 16.1 Create authentication endpoints
     - POST /api/auth/register (human)
     - POST /api/auth/login (human)
     - POST /api/auth/oauth (human)
@@ -388,7 +388,7 @@ Architecture note:
     - Implement authorization middleware
     - _Requirements: 20.1-20.6, 21.1-21.6, 27.3-27.4_
   
-  - [ ] 16.2 Create draft endpoints
+  - [x] 16.2 Create draft endpoints
     - POST /api/drafts (create draft)
     - GET /api/drafts/:id (get draft with versions)
     - POST /api/drafts/:id/release (convert to release)
@@ -397,13 +397,13 @@ Architecture note:
     - Integrate with storage service
     - _Requirements: 2.1-2.6, 19.1-19.6_
   
-  - [ ] 16.3 Create fix request endpoints
+  - [x] 16.3 Create fix request endpoints
     - POST /api/drafts/:id/fix-requests (submit fix request)
     - GET /api/drafts/:id/fix-requests (list fix requests)
     - Integrate with budget service
     - _Requirements: 3.1-3.6, 6.1-6.6, 7.1-7.6_
   
-  - [ ] 16.4 Create pull request endpoints
+  - [x] 16.4 Create pull request endpoints
     - POST /api/drafts/:id/pull-requests (submit PR)
     - GET /api/drafts/:id/pull-requests (list PRs)
     - POST /api/pull-requests/:id/decide (merge/reject/request changes)
@@ -413,7 +413,7 @@ Architecture note:
     - Integrate with notification service
     - _Requirements: 4.1-4.6, 5.1-5.7, 6.1-6.6, 7.1-7.6, 16.1-16.6_
   
-  - [ ] 16.5 Create feed endpoints
+  - [x] 16.5 Create feed endpoints
     - GET /api/feeds/for-you
     - GET /api/feeds/live-drafts
     - GET /api/feeds/glowups
@@ -422,23 +422,23 @@ Architecture note:
     - GET /api/feeds/archive
     - _Requirements: 11.1-11.7_
   
-  - [ ] 16.6 Create studio endpoints
+  - [x] 16.6 Create studio endpoints
     - GET /api/studios/:id (get studio profile)
     - PUT /api/studios/:id (update studio)
     - GET /api/studios/:id/metrics (get agent metrics)
     - _Requirements: 13.1-13.6, 21.1-21.6_
   
-  - [ ] 16.7 Create search endpoints
+  - [x] 16.7 Create search endpoints
     - GET /api/search (search with filters and sorting)
     - _Requirements: 23.1-23.6_
 
-  - [ ] 16.10 Create data privacy endpoints
+  - [x] 16.10 Create data privacy endpoints
     - POST /api/account/export (request data export)
     - GET /api/account/exports/:id (check export status / download URL)
     - POST /api/account/delete (request account deletion)
     - _Requirements: 26.1-26.11_
   
-  - [ ] 16.8 Create commission endpoints
+  - [x] 16.8 Create commission endpoints
     - POST /api/commissions (create commission)
     - GET /api/commissions (list commissions)
     - POST /api/commissions/:id/responses (submit response)
@@ -452,7 +452,7 @@ Architecture note:
   - [x] 16.9 Write integration tests for API endpoints
     - Test authentication flow
     - Test registration requires consent
-    - Test draft creation → PR submission → merge workflow
+    - Test draft creation > PR submission > merge workflow
     - Test budget enforcement across endpoints
     - Test data export and deletion flows
     - Test error responses
@@ -820,7 +820,7 @@ Architecture note:
 
 - [x] 32. Final integration and polish
 - [x] 32.1 End-to-end testing
-    - Test complete workflow: register → create draft → submit fix request → submit PR → merge
+    - Test complete workflow: register > create draft > submit fix request > submit PR > merge
     - Test fork workflow
     - Test commission workflow
     - Test all feeds display correctly
@@ -860,7 +860,7 @@ Architecture note:
 - Unit tests validate specific examples and edge cases
 - Component tests validate UI behavior and user interactions
 - Integration tests validate end-to-end workflows
-- The implementation follows a bottom-up approach: data → services → API → UI
+- The implementation follows a bottom-up approach: data > services > API > UI
 - Real-time features are added after core functionality is stable
 - Content generation (reels, autopsies) is implemented last as it depends on all other features
 - Test coverage goals: 80%+ service layer, 90%+ API layer, 70%+ UI components
