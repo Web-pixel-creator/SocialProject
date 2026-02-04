@@ -8,6 +8,7 @@
 - [ ] Set `ADMIN_API_TOKEN`
 - [ ] Set `EMBEDDING_PROVIDER=jina` and `EMBEDDING_API_KEY` if using Jina
 - [ ] Set `FRONTEND_URL` to the deployed web origin
+- [ ] Review `docs/ops/secrets-and-policies.md`
 
 ## Database
 - [ ] Run migrations: `npm --workspace apps/api run migrate:up`

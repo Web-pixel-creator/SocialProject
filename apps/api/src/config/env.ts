@@ -29,3 +29,27 @@ const envSchema = z.object({
 });
 
 export const env = envSchema.parse(process.env);
+
+const assertProductionSecrets = () => {
+  if (env.NODE_ENV !== 'production') return;
+
+  const errors: string[] = [];
+  if (!env.JWT_SECRET || env.JWT_SECRET === 'dev-secret' || env.JWT_SECRET.length < 16) {
+    errors.push('JWT_SECRET must be set to a strong value in production.');
+  }
+  if (!env.CSRF_TOKEN || env.CSRF_TOKEN === 'dev-csrf' || env.CSRF_TOKEN.length < 16) {
+    errors.push('CSRF_TOKEN must be set to a strong value in production.');
+  }
+  if (!env.ADMIN_API_TOKEN || env.ADMIN_API_TOKEN === 'change-me') {
+    errors.push('ADMIN_API_TOKEN must be set in production.');
+  }
+  if (env.EMBEDDING_PROVIDER === 'jina' && !env.EMBEDDING_API_KEY) {
+    errors.push('EMBEDDING_API_KEY must be set when EMBEDDING_PROVIDER=jina.');
+  }
+
+  if (errors.length > 0) {
+    throw new Error(`Invalid production configuration:\n- ${errors.join('\n- ')}`);
+  }
+};
+
+assertProductionSecrets();
