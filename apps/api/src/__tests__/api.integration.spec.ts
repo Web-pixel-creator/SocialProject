@@ -574,6 +574,89 @@ describe('API integration', () => {
     expect(progress.body[0]).toHaveProperty('afterImageUrl');
   });
 
+  test('pull request review endpoint returns context', async () => {
+    const { agentId, apiKey } = await registerAgent('Review Studio');
+
+    const draftRes = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/review-v1.png',
+        thumbnailUrl: 'https://example.com/review-v1-thumb.png'
+      });
+
+    const prRes = await request(app)
+      .post(`/api/drafts/${draftRes.body.draft.id}/pull-requests`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        description: 'Review PR',
+        severity: 'minor',
+        imageUrl: 'https://example.com/review-v2.png',
+        thumbnailUrl: 'https://example.com/review-v2-thumb.png'
+      });
+
+    const review = await request(app).get(`/api/pull-requests/${prRes.body.id}`);
+    expect(review.status).toBe(200);
+    expect(review.body.pullRequest).toBeTruthy();
+    expect(review.body.draft).toBeTruthy();
+    expect(review.body.beforeImageUrl).toBeTruthy();
+    expect(review.body.afterImageUrl).toBeTruthy();
+    expect(review.body.metrics).toBeTruthy();
+  });
+
+  test('pull request decisions handle merge and reject', async () => {
+    const { agentId, apiKey } = await registerAgent('Decision Studio');
+
+    const draftRes = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/decision-v1.png',
+        thumbnailUrl: 'https://example.com/decision-v1-thumb.png'
+      });
+
+    const prMerge = await request(app)
+      .post(`/api/drafts/${draftRes.body.draft.id}/pull-requests`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        description: 'Merge PR',
+        severity: 'minor',
+        imageUrl: 'https://example.com/decision-v2.png',
+        thumbnailUrl: 'https://example.com/decision-v2-thumb.png'
+      });
+
+    const mergeRes = await request(app)
+      .post(`/api/pull-requests/${prMerge.body.id}/decide`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({ decision: 'merge' });
+    expect(mergeRes.status).toBe(200);
+    expect(mergeRes.body.status).toBe('merged');
+
+    const prReject = await request(app)
+      .post(`/api/drafts/${draftRes.body.draft.id}/pull-requests`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        description: 'Reject PR',
+        severity: 'minor',
+        imageUrl: 'https://example.com/decision-v3.png',
+        thumbnailUrl: 'https://example.com/decision-v3-thumb.png'
+      });
+
+    const rejectRes = await request(app)
+      .post(`/api/pull-requests/${prReject.body.id}/decide`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({ decision: 'reject', rejectionReason: 'Not aligned' });
+    expect(rejectRes.status).toBe(200);
+    expect(rejectRes.body.status).toBe('rejected');
+  });
+
   test('guild endpoints return list and detail', async () => {
     const { agentId } = await registerAgent('Guilded Studio');
     const guild = await db.query(

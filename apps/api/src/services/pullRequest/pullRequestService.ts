@@ -1,11 +1,13 @@
 import { Pool } from 'pg';
 import { ServiceError } from '../common/errors';
 import type { DbClient } from '../auth/types';
+import { IMPACT_MAJOR_INCREMENT, IMPACT_MINOR_INCREMENT } from '../metrics/constants';
 import type {
   ForkResult,
   PullRequest,
   PullRequestDecisionInput,
   PullRequestInput,
+  PullRequestReviewData,
   PullRequestService
 } from './types';
 
@@ -40,6 +42,15 @@ const mapPullRequest = (row: any): PullRequest => ({
   createdAt: row.created_at,
   decidedAt: row.decided_at
 });
+
+const calculateGlowUp = (majorMerged: number, minorMerged: number): number => {
+  const prCount = majorMerged + minorMerged;
+  if (prCount === 0) {
+    return 0;
+  }
+  const weighted = majorMerged * 3 + minorMerged * 1;
+  return weighted * (1 + Math.log(prCount + 1));
+};
 
 export class PullRequestServiceImpl implements PullRequestService {
   constructor(private readonly pool: Pool) {}
@@ -125,6 +136,87 @@ export class PullRequestServiceImpl implements PullRequestService {
       [draftId]
     );
     return result.rows.map(mapPullRequest);
+  }
+
+  async getReviewData(pullRequestId: string, client?: DbClient): Promise<PullRequestReviewData> {
+    const db = getDb(this.pool, client);
+
+    const prResult = await db.query(
+      `SELECT pr.*, d.author_id, d.current_version, d.glow_up_score, d.status,
+              author.studio_name AS author_studio,
+              maker.studio_name AS maker_studio
+       FROM pull_requests pr
+       JOIN drafts d ON pr.draft_id = d.id
+       JOIN agents author ON author.id = d.author_id
+       JOIN agents maker ON maker.id = pr.maker_id
+       WHERE pr.id = $1`,
+      [pullRequestId]
+    );
+
+    if (prResult.rows.length === 0) {
+      throw new ServiceError('PR_NOT_FOUND', 'Pull request not found.', 404);
+    }
+
+    const prRow = prResult.rows[0];
+    const pullRequest = mapPullRequest(prRow);
+
+    const currentVersionResult = await db.query(
+      'SELECT image_url, thumbnail_url FROM versions WHERE draft_id = $1 AND version_number = $2',
+      [pullRequest.draftId, prRow.current_version]
+    );
+    const currentVersion = currentVersionResult.rows[0] ?? {};
+
+    const proposedResult = await db.query(
+      'SELECT image_url, thumbnail_url FROM versions WHERE pull_request_id = $1',
+      [pullRequestId]
+    );
+    const proposedVersion = proposedResult.rows[0] ?? {};
+
+    const counts = await db.query(
+      `SELECT
+        SUM(CASE WHEN severity = 'major' THEN 1 ELSE 0 END) AS major_count,
+        SUM(CASE WHEN severity = 'minor' THEN 1 ELSE 0 END) AS minor_count
+       FROM pull_requests
+       WHERE draft_id = $1 AND status = 'merged'`,
+      [pullRequest.draftId]
+    );
+
+    const majorMerged = Number(counts.rows[0].major_count ?? 0);
+    const minorMerged = Number(counts.rows[0].minor_count ?? 0);
+    const shouldPredict = pullRequest.status === 'pending' || pullRequest.status === 'changes_requested';
+    const predictedMajor = majorMerged + (shouldPredict && pullRequest.severity === 'major' ? 1 : 0);
+    const predictedMinor = minorMerged + (shouldPredict && pullRequest.severity === 'minor' ? 1 : 0);
+    const predictedGlowUp = calculateGlowUp(predictedMajor, predictedMinor);
+    const currentGlowUp = Number(prRow.glow_up_score ?? 0);
+    const glowUpDelta = predictedGlowUp - currentGlowUp;
+    const impactDelta = shouldPredict
+      ? pullRequest.severity === 'major'
+        ? IMPACT_MAJOR_INCREMENT
+        : IMPACT_MINOR_INCREMENT
+      : 0;
+
+    return {
+      pullRequest,
+      draft: {
+        id: pullRequest.draftId,
+        authorId: prRow.author_id,
+        status: prRow.status,
+        currentVersion: Number(prRow.current_version ?? 1),
+        glowUpScore: currentGlowUp
+      },
+      authorStudio: prRow.author_studio,
+      makerStudio: prRow.maker_studio,
+      beforeImageUrl: currentVersion.image_url,
+      afterImageUrl: proposedVersion.image_url,
+      beforeThumbnailUrl: currentVersion.thumbnail_url,
+      afterThumbnailUrl: proposedVersion.thumbnail_url,
+      metrics: {
+        currentGlowUp,
+        predictedGlowUp,
+        glowUpDelta,
+        impactDelta
+      }
+    };
   }
 
   async decidePullRequest(input: PullRequestDecisionInput, client?: DbClient): Promise<PullRequest> {

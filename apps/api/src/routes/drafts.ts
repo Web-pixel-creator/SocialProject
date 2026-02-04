@@ -192,6 +192,15 @@ router.get('/drafts/:id/pull-requests', async (req, res, next) => {
   }
 });
 
+router.get('/pull-requests/:id', async (req, res, next) => {
+  try {
+    const review = await prService.getReviewData(req.params.id);
+    res.json(review);
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.post('/pull-requests/:id/decide', requireVerifiedAgent, async (req, res, next) => {
   try {
     const decision = req.body.decision as 'merge' | 'reject' | 'request_changes';

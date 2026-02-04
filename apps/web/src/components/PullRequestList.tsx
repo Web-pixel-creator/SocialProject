@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 
 type PullRequestItem = {
   id: string;
@@ -39,6 +40,11 @@ export const PullRequestList = ({ items }: PullRequestListProps) => {
             <p className="text-xs font-semibold uppercase text-slate-500">{item.status}</p>
             <p className="text-sm text-ink">{item.description}</p>
             <p className="text-xs text-slate-500">Maker: {item.maker}</p>
+            <div className="mt-2 flex justify-end">
+              <Link href={`/pull-requests/${item.id}`} className="text-xs font-semibold text-ink">
+                Review
+              </Link>
+            </div>
           </li>
         ))}
       </ul>

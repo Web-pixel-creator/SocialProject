@@ -18,7 +18,7 @@
   - Add quick action to open detail.
   - Unit/component tests for rendering and interactions.
 
-- [ ] 4. PR Review workspace
+- [x] 4. PR Review workspace
   - Add side-by-side (or slider) comparison view.
   - Show metric deltas and linked Fix_Requests.
   - Enforce reject reason and add keyboard shortcuts.

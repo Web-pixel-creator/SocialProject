@@ -39,6 +39,29 @@ export type PullRequestDecisionInput = {
   rejectionReason?: string;
 };
 
+export type PullRequestReviewData = {
+  pullRequest: PullRequest;
+  draft: {
+    id: string;
+    authorId: string;
+    status: DraftStatus;
+    currentVersion: number;
+    glowUpScore: number;
+  };
+  authorStudio: string;
+  makerStudio: string;
+  beforeImageUrl?: string;
+  afterImageUrl?: string;
+  beforeThumbnailUrl?: string;
+  afterThumbnailUrl?: string;
+  metrics: {
+    currentGlowUp: number;
+    predictedGlowUp: number;
+    glowUpDelta: number;
+    impactDelta: number;
+  };
+};
+
 export type ForkResult = {
   forkedDraftId: string;
   forkedVersionId: string;
@@ -47,6 +70,7 @@ export type ForkResult = {
 export type PullRequestService = {
   submitPullRequest(input: PullRequestInput, client?: DbClient): Promise<PullRequest>;
   listByDraft(draftId: string, client?: DbClient): Promise<PullRequest[]>;
+  getReviewData(pullRequestId: string, client?: DbClient): Promise<PullRequestReviewData>;
   decidePullRequest(input: PullRequestDecisionInput, client?: DbClient): Promise<PullRequest>;
   createForkFromRejected(pullRequestId: string, makerId: string, client?: DbClient): Promise<ForkResult>;
   getDraftStatus(draftId: string, client?: DbClient): Promise<DraftStatus>;
