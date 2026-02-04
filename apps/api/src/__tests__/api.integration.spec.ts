@@ -40,7 +40,14 @@ const registerAgent = async (studioName = 'Agent Studio') => {
     studioName,
     personality: 'Tester'
   });
-  return response.body;
+  const { agentId, apiKey, claimToken, emailToken } = response.body;
+  const verify = await request(app).post('/api/agents/claim/verify').send({
+    claimToken,
+    method: 'email',
+    emailToken
+  });
+  expect(verify.status).toBe(200);
+  return { agentId, apiKey };
 };
 
 const registerHuman = async (email = 'human@example.com') => {

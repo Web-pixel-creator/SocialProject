@@ -42,6 +42,8 @@ const createToken = (userId: string, email: string) => {
   return { accessToken, expiresIn: env.JWT_EXPIRES_IN };
 };
 
+const CLAIM_EXPIRES_HOURS = 24;
+
 export class AuthServiceImpl implements AuthService {
   constructor(private readonly pool: Pool) {}
 
@@ -138,9 +140,21 @@ export class AuthServiceImpl implements AuthService {
       [input.studioName, input.personality, apiKeyHash]
     );
 
+    const claimToken = crypto.randomBytes(24).toString('hex');
+    const emailToken = crypto.randomBytes(24).toString('hex');
+    const expiresAt = new Date(Date.now() + CLAIM_EXPIRES_HOURS * 60 * 60 * 1000);
+
+    await db.query(
+      `INSERT INTO agent_claims (agent_id, method, status, claim_token, verification_payload, expires_at)
+       VALUES ($1, $2, 'pending', $3, $4, $5)`,
+      [result.rows[0].id, 'email', claimToken, emailToken, expiresAt]
+    );
+
     return {
       agentId: result.rows[0].id,
-      apiKey
+      apiKey,
+      claimToken,
+      emailToken
     };
   }
 
@@ -170,5 +184,99 @@ export class AuthServiceImpl implements AuthService {
     }
 
     return { apiKey };
+  }
+
+  async verifyAgentClaim(
+    input: { claimToken: string; method: 'x' | 'email'; tweetUrl?: string; emailToken?: string },
+    client?: DbClient
+  ): Promise<{ agentId: string; trustTier: number }> {
+    const db = getDb(this.pool, client);
+
+    const claimResult = await db.query(
+      'SELECT * FROM agent_claims WHERE claim_token = $1 ORDER BY created_at DESC LIMIT 1',
+      [input.claimToken]
+    );
+
+    if (claimResult.rows.length === 0) {
+      throw new AuthError('CLAIM_NOT_FOUND', 'Claim not found.', 404);
+    }
+
+    const claim = claimResult.rows[0];
+    if (claim.status === 'verified') {
+      const agent = await db.query('SELECT trust_tier FROM agents WHERE id = $1', [claim.agent_id]);
+      return { agentId: claim.agent_id, trustTier: Number(agent.rows[0]?.trust_tier ?? 1) };
+    }
+
+    const expiresAt = new Date(claim.expires_at);
+    if (expiresAt < new Date()) {
+      await db.query('UPDATE agent_claims SET status = $1 WHERE id = $2', ['expired', claim.id]);
+      throw new AuthError('CLAIM_EXPIRED', 'Claim token expired.', 400);
+    }
+
+    if (input.method === 'email') {
+      if (!input.emailToken || input.emailToken !== claim.verification_payload) {
+        throw new AuthError('CLAIM_INVALID', 'Invalid email token.', 400);
+      }
+    } else {
+      if (!input.tweetUrl || !input.tweetUrl.includes(input.claimToken)) {
+        throw new AuthError('CLAIM_INVALID', 'Tweet URL does not include claim token.', 400);
+      }
+    }
+
+    await db.query(
+      `UPDATE agent_claims
+       SET status = 'verified',
+           method = $1,
+           verification_payload = $2,
+           verified_at = NOW()
+       WHERE id = $3`,
+      [input.method, input.method === 'email' ? input.emailToken : input.tweetUrl, claim.id]
+    );
+
+    const updated = await db.query(
+      `UPDATE agents
+       SET trust_tier = GREATEST(trust_tier, 1),
+           trust_reason = $1,
+           verified_at = NOW()
+       WHERE id = $2
+       RETURNING trust_tier`,
+      ['claim_verified', claim.agent_id]
+    );
+
+    return { agentId: claim.agent_id, trustTier: Number(updated.rows[0].trust_tier) };
+  }
+
+  async resendAgentClaim(
+    input: { claimToken: string },
+    client?: DbClient
+  ): Promise<{ agentId: string; emailToken: string; expiresAt: string }> {
+    const db = getDb(this.pool, client);
+    const claimResult = await db.query(
+      'SELECT * FROM agent_claims WHERE claim_token = $1 ORDER BY created_at DESC LIMIT 1',
+      [input.claimToken]
+    );
+
+    if (claimResult.rows.length === 0) {
+      throw new AuthError('CLAIM_NOT_FOUND', 'Claim not found.', 404);
+    }
+
+    const claim = claimResult.rows[0];
+    if (claim.status === 'verified') {
+      throw new AuthError('CLAIM_ALREADY_VERIFIED', 'Claim already verified.', 200);
+    }
+
+    const emailToken = crypto.randomBytes(24).toString('hex');
+    const expiresAt = new Date(Date.now() + CLAIM_EXPIRES_HOURS * 60 * 60 * 1000);
+
+    await db.query(
+      `UPDATE agent_claims
+       SET verification_payload = $1,
+           expires_at = $2,
+           status = 'pending'
+       WHERE id = $3`,
+      [emailToken, expiresAt, claim.id]
+    );
+
+    return { agentId: claim.agent_id, emailToken, expiresAt: expiresAt.toISOString() };
   }
 }

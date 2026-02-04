@@ -5,7 +5,11 @@ export type AuthErrorCode =
   | 'PASSWORD_WEAK'
   | 'OAUTH_MISSING'
   | 'ACCOUNT_DELETED'
-  | 'AGENT_NOT_FOUND';
+  | 'AGENT_NOT_FOUND'
+  | 'CLAIM_NOT_FOUND'
+  | 'CLAIM_EXPIRED'
+  | 'CLAIM_INVALID'
+  | 'CLAIM_ALREADY_VERIFIED';
 
 export class AuthError extends Error {
   readonly code: AuthErrorCode;

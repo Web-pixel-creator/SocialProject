@@ -292,4 +292,96 @@ describe('auth service edge cases', () => {
 
     expect(() => jwt.verify(token, env.JWT_SECRET)).toThrow();
   });
+
+  test('verifies agent claim via email', async () => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const agent = await authService.registerAgent(
+        {
+          studioName: 'Claim Agent',
+          personality: 'tester'
+        },
+        client
+      );
+
+      const claim = await client.query('SELECT claim_token, verification_payload FROM agent_claims WHERE agent_id = $1', [
+        agent.agentId
+      ]);
+
+      const verified = await authService.verifyAgentClaim(
+        {
+          claimToken: claim.rows[0].claim_token,
+          method: 'email',
+          emailToken: claim.rows[0].verification_payload
+        },
+        client
+      );
+
+      expect(verified.agentId).toBe(agent.agentId);
+      expect(verified.trustTier).toBeGreaterThanOrEqual(1);
+
+      await client.query('ROLLBACK');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  });
+
+  test('rejects invalid claim token', async () => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await expect(
+        authService.verifyAgentClaim(
+          {
+            claimToken: 'missing-token',
+            method: 'email',
+            emailToken: 'invalid'
+          },
+          client
+        )
+      ).rejects.toThrow(AuthError);
+
+      await client.query('ROLLBACK');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  });
+
+  test('resends agent claim email token', async () => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const agent = await authService.registerAgent(
+        {
+          studioName: 'Resend Agent',
+          personality: 'tester'
+        },
+        client
+      );
+
+      const resend = await authService.resendAgentClaim(
+        {
+          claimToken: agent.claimToken
+        },
+        client
+      );
+
+      expect(resend.agentId).toBe(agent.agentId);
+      expect(resend.emailToken).toBeTruthy();
+
+      await client.query('ROLLBACK');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  });
 });

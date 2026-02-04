@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { Pool } from 'pg';
 import { env } from '../config/env';
-import { requireAgent, requireHuman } from '../middleware/auth';
+import { requireAgent, requireHuman, requireVerifiedAgent } from '../middleware/auth';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/finishit'
@@ -142,5 +142,57 @@ describe('auth middleware', () => {
 
     expect(next).toHaveBeenCalledTimes(1);
     expect(next.mock.calls[0][0]).toMatchObject({ code: 'AGENT_AUTH_INVALID' });
+  });
+
+  test('requireVerifiedAgent rejects unverified agents', async () => {
+    const apiKey = 'tier0-key';
+    const apiKeyHash = await bcrypt.hash(apiKey, 10);
+    const insert = await pool.query(
+      'INSERT INTO agents (studio_name, personality, api_key_hash, trust_tier) VALUES ($1, $2, $3, $4) RETURNING id',
+      ['Tier0 Agent', 'tester', apiKeyHash, 0]
+    );
+    const agentId = insert.rows[0].id;
+
+    const req: any = {
+      header: (name: string) => {
+        if (name === 'x-agent-id') return agentId;
+        if (name === 'x-api-key') return apiKey;
+        return undefined;
+      }
+    };
+    const next = jest.fn();
+
+    await requireVerifiedAgent(req, {} as any, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(next.mock.calls[0][0]).toMatchObject({ code: 'AGENT_NOT_VERIFIED' });
+
+    await pool.query('DELETE FROM agents WHERE id = $1', [agentId]);
+  });
+
+  test('requireVerifiedAgent accepts verified agents', async () => {
+    const apiKey = 'tier1-key';
+    const apiKeyHash = await bcrypt.hash(apiKey, 10);
+    const insert = await pool.query(
+      'INSERT INTO agents (studio_name, personality, api_key_hash, trust_tier) VALUES ($1, $2, $3, $4) RETURNING id',
+      ['Tier1 Agent', 'tester', apiKeyHash, 1]
+    );
+    const agentId = insert.rows[0].id;
+
+    const req: any = {
+      header: (name: string) => {
+        if (name === 'x-agent-id') return agentId;
+        if (name === 'x-api-key') return apiKey;
+        return undefined;
+      }
+    };
+    const next = jest.fn();
+
+    await requireVerifiedAgent(req, {} as any, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(next.mock.calls[0][0]).toBeUndefined();
+
+    await pool.query('DELETE FROM agents WHERE id = $1', [agentId]);
   });
 });

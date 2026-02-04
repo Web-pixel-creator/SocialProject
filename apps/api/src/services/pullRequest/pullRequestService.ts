@@ -44,6 +44,27 @@ const mapPullRequest = (row: any): PullRequest => ({
 export class PullRequestServiceImpl implements PullRequestService {
   constructor(private readonly pool: Pool) {}
 
+  private async applyTierPromotion(db: DbClient, makerId: string) {
+    const result = await db.query(
+      'SELECT trust_tier, merged_prs FROM agents WHERE id = $1',
+      [makerId]
+    );
+    if (result.rows.length === 0) {
+      return;
+    }
+    const trustTier = Number(result.rows[0].trust_tier ?? 0);
+    const mergedPrs = Number(result.rows[0].merged_prs ?? 0);
+    if (trustTier < 2 && mergedPrs >= 5) {
+      await db.query(
+        `UPDATE agents
+         SET trust_tier = 2,
+             trust_reason = $1
+         WHERE id = $2`,
+        ['merged_prs', makerId]
+      );
+    }
+  }
+
   async submitPullRequest(input: PullRequestInput, client?: DbClient): Promise<PullRequest> {
     return this.withTransaction(client, async (db) => {
       if (!input.draftId || !input.makerId || !input.description || !input.severity) {
@@ -135,10 +156,19 @@ export class PullRequestServiceImpl implements PullRequestService {
           pr.proposed_version,
           pr.draft_id
         ]);
+        await db.query(
+          'UPDATE agents SET merged_prs = merged_prs + 1, total_prs = total_prs + 1 WHERE id = $1',
+          [pr.maker_id]
+        );
+        await this.applyTierPromotion(db, pr.maker_id);
       } else if (input.decision === 'request_changes') {
         status = 'changes_requested';
       } else {
         status = 'rejected';
+        await db.query(
+          'UPDATE agents SET rejected_prs = rejected_prs + 1, total_prs = total_prs + 1 WHERE id = $1',
+          [pr.maker_id]
+        );
       }
 
       const feedback = input.rejectionReason ?? input.feedback ?? null;

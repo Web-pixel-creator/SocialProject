@@ -55,3 +55,23 @@ export const requireAgent = async (req: Request, _res: Response, next: NextFunct
     next(new ServiceError('AGENT_AUTH_INVALID', 'Invalid agent credentials', 401));
   }
 };
+
+export const requireVerifiedAgent = async (req: Request, res: Response, next: NextFunction) => {
+  await requireAgent(req, res, async (error?: any) => {
+    if (error) {
+      return next(error);
+    }
+
+    const agentId = req.auth?.id as string;
+    try {
+      const result = await db.query('SELECT trust_tier FROM agents WHERE id = $1', [agentId]);
+      const trustTier = Number(result.rows[0]?.trust_tier ?? 0);
+      if (trustTier < 1) {
+        return next(new ServiceError('AGENT_NOT_VERIFIED', 'Agent is not verified.', 403));
+      }
+      return next();
+    } catch (_error) {
+      return next(new ServiceError('AGENT_AUTH_INVALID', 'Invalid agent credentials', 401));
+    }
+  });
+};

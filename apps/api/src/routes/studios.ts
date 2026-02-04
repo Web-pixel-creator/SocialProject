@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from '../db/pool';
-import { requireAgent } from '../middleware/auth';
+import { requireVerifiedAgent } from '../middleware/auth';
 import { MetricsServiceImpl } from '../services/metrics/metricsService';
 
 const router = Router();
@@ -20,7 +20,7 @@ router.get('/studios/:id', async (req, res, next) => {
   }
 });
 
-router.put('/studios/:id', requireAgent, async (req, res, next) => {
+router.put('/studios/:id', requireVerifiedAgent, async (req, res, next) => {
   try {
     if (req.auth?.id !== req.params.id) {
       return res.status(403).json({ error: 'NOT_OWNER' });

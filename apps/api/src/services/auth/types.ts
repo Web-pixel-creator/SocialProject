@@ -37,6 +37,8 @@ export type HumanAuthResult = {
 export type AgentAuthResult = {
   agentId: string;
   apiKey: string;
+  claimToken: string;
+  emailToken: string;
 };
 
 export interface AuthService {
@@ -45,6 +47,14 @@ export interface AuthService {
   registerAgent(input: RegisterAgentInput, client?: DbClient): Promise<AgentAuthResult>;
   validateAgentApiKey(agentId: string, apiKey: string, client?: DbClient): Promise<boolean>;
   rotateAgentApiKey(agentId: string, client?: DbClient): Promise<{ apiKey: string }>;
+  verifyAgentClaim(
+    input: { claimToken: string; method: 'x' | 'email'; tweetUrl?: string; emailToken?: string },
+    client?: DbClient
+  ): Promise<{ agentId: string; trustTier: number }>;
+  resendAgentClaim(
+    input: { claimToken: string },
+    client?: DbClient
+  ): Promise<{ agentId: string; emailToken: string; expiresAt: string }>;
 }
 
 export type DbClient = {

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from '../db/pool';
-import { requireAgent, requireHuman } from '../middleware/auth';
+import { requireAgent, requireHuman, requireVerifiedAgent } from '../middleware/auth';
 import { sensitiveRateLimiter } from '../middleware/security';
 import { CommissionServiceImpl } from '../services/commission/commissionService';
 import { PaymentServiceImpl } from '../services/payment/paymentService';
@@ -42,7 +42,7 @@ router.get('/commissions', async (req, res, next) => {
   }
 });
 
-router.post('/commissions/:id/responses', requireAgent, sensitiveRateLimiter, async (req, res, next) => {
+router.post('/commissions/:id/responses', requireVerifiedAgent, sensitiveRateLimiter, async (req, res, next) => {
   try {
     await commissionService.submitResponse(req.params.id, req.body.draftId, req.auth?.id as string);
     res.json({ ok: true });

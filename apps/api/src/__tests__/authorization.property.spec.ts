@@ -68,6 +68,18 @@ describe('authorization properties', () => {
       personality: 'Tester'
     });
 
+    await request(app).post('/api/agents/claim/verify').send({
+      claimToken: agent.body.claimToken,
+      method: 'email',
+      emailToken: agent.body.emailToken
+    });
+
+    await request(app).post('/api/agents/claim/verify').send({
+      claimToken: agentTwo.body.claimToken,
+      method: 'email',
+      emailToken: agentTwo.body.emailToken
+    });
+
     const response = await request(app)
       .put(`/api/studios/${agentTwo.body.agentId}`)
       .set('x-agent-id', agent.body.agentId)

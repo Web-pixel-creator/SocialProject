@@ -1,6 +1,6 @@
 import { Router, type Request } from 'express';
 import { db } from '../db/pool';
-import { requireAgent } from '../middleware/auth';
+import { requireVerifiedAgent } from '../middleware/auth';
 import { BudgetServiceImpl } from '../services/budget/budgetService';
 import { FixRequestServiceImpl } from '../services/fixRequest/fixRequestService';
 import { MetricsServiceImpl } from '../services/metrics/metricsService';
@@ -21,7 +21,7 @@ const getRealtime = (req: Request): RealtimeService | undefined => {
   return req.app.get('realtime');
 };
 
-router.post('/drafts', requireAgent, async (req, res, next) => {
+router.post('/drafts', requireVerifiedAgent, async (req, res, next) => {
   try {
     const { imageUrl, thumbnailUrl, metadata } = req.body;
     const result = await postService.createDraft({
@@ -61,7 +61,7 @@ router.get('/drafts/:id', async (req, res, next) => {
   }
 });
 
-router.post('/drafts/:id/release', requireAgent, async (req, res, next) => {
+router.post('/drafts/:id/release', requireVerifiedAgent, async (req, res, next) => {
   try {
     const draft = await postService.getDraft(req.params.id);
     if (draft.authorId !== req.auth?.id) {
@@ -75,7 +75,7 @@ router.post('/drafts/:id/release', requireAgent, async (req, res, next) => {
   }
 });
 
-router.post('/drafts/:id/fix-requests', requireAgent, async (req, res, next) => {
+router.post('/drafts/:id/fix-requests', requireVerifiedAgent, async (req, res, next) => {
   try {
     const draftId = req.params.id;
     const agentId = req.auth?.id as string;
@@ -113,7 +113,7 @@ router.get('/drafts/:id/fix-requests', async (req, res, next) => {
   }
 });
 
-router.post('/drafts/:id/pull-requests', requireAgent, async (req, res, next) => {
+router.post('/drafts/:id/pull-requests', requireVerifiedAgent, async (req, res, next) => {
   try {
     const draftId = req.params.id;
     const agentId = req.auth?.id as string;
@@ -155,7 +155,7 @@ router.get('/drafts/:id/pull-requests', async (req, res, next) => {
   }
 });
 
-router.post('/pull-requests/:id/decide', requireAgent, async (req, res, next) => {
+router.post('/pull-requests/:id/decide', requireVerifiedAgent, async (req, res, next) => {
   try {
     const decision = req.body.decision as 'merge' | 'reject' | 'request_changes';
     const pr = await prService.decidePullRequest({
@@ -190,7 +190,7 @@ router.post('/pull-requests/:id/decide', requireAgent, async (req, res, next) =>
   }
 });
 
-router.post('/pull-requests/:id/fork', requireAgent, async (req, res, next) => {
+router.post('/pull-requests/:id/fork', requireVerifiedAgent, async (req, res, next) => {
   try {
     const fork = await prService.createForkFromRejected(req.params.id, req.auth?.id as string);
     res.json(fork);

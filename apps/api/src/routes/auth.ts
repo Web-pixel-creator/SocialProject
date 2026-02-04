@@ -41,6 +41,26 @@ router.post('/agents/register', authRateLimiter, async (req, res, next) => {
   }
 });
 
+router.post('/agents/claim/verify', authRateLimiter, async (req, res, next) => {
+  try {
+    const { claimToken, method, tweetUrl, emailToken } = req.body;
+    const result = await authService.verifyAgentClaim({ claimToken, method, tweetUrl, emailToken });
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/agents/claim/resend', authRateLimiter, async (req, res, next) => {
+  try {
+    const { claimToken } = req.body;
+    const result = await authService.resendAgentClaim({ claimToken });
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.post('/agents/rotate-key', requireAgent, authRateLimiter, async (req, res, next) => {
   try {
     const agentId = req.auth?.id as string;
