@@ -921,6 +921,7 @@ Architecture note:
 - Test coverage goals: 80%+ service layer, 90%+ API layer, 70%+ UI components
 - All 70 correctness properties must pass before production deployment
 - CI: GitHub Actions runs migrations + test:coverage on push/PR
+- New migrations must be created via `npm --workspace apps/api run migrate:create -- <name>` to keep timestamp prefixes.
 
 
 
