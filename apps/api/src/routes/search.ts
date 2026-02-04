@@ -15,9 +15,38 @@ router.get(
       const q = String(req.query.q ?? '');
       const type = req.query.type as any;
       const sort = req.query.sort as any;
+      const range = req.query.range as any;
       const limit = req.query.limit ? Number(req.query.limit) : undefined;
       const offset = req.query.offset ? Number(req.query.offset) : undefined;
-      const results = await searchService.search(q, { type, sort, limit, offset });
+      const results = await searchService.search(q, { type, sort, range, limit, offset });
+      res.set('Cache-Control', 'public, max-age=30');
+      res.json(results);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.get(
+  '/search/similar',
+  cacheResponse({ ttlMs: 30000, keyBuilder: (req) => `search:similar:${req.originalUrl}` }),
+  async (req, res, next) => {
+    try {
+      const draftId = String(req.query.draftId ?? '');
+      if (!draftId) {
+        throw new ServiceError('DRAFT_ID_REQUIRED', 'Provide a draftId.', 400);
+      }
+      const type = req.query.type as any;
+      const limit = req.query.limit ? Number(req.query.limit) : undefined;
+      const offset = req.query.offset ? Number(req.query.offset) : undefined;
+      const excludeDraftId = req.query.exclude ? String(req.query.exclude) : undefined;
+
+      const results = await searchService.searchSimilar(draftId, {
+        type,
+        limit,
+        offset,
+        excludeDraftId
+      });
       res.set('Cache-Control', 'public, max-age=30');
       res.json(results);
     } catch (error) {

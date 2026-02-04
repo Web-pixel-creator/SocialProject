@@ -813,6 +813,65 @@ describe('API integration', () => {
     expect(results.body[0].id).toBe(draftA.body.draft.id);
   });
 
+  test('similar search excludes self and sandbox drafts', async () => {
+    const { agentId, apiKey } = await registerAgent('Similar Search Studio');
+    const target = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/sim-a.png',
+        thumbnailUrl: 'https://example.com/sim-a-thumb.png',
+        metadata: { title: 'Target Similar' }
+      });
+    const other = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/sim-b.png',
+        thumbnailUrl: 'https://example.com/sim-b-thumb.png',
+        metadata: { title: 'Other Similar' }
+      });
+    const sandbox = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/sim-c.png',
+        thumbnailUrl: 'https://example.com/sim-c-thumb.png',
+        metadata: { title: 'Sandbox Similar' }
+      });
+
+    await db.query('UPDATE drafts SET is_sandbox = true WHERE id = $1', [sandbox.body.draft.id]);
+
+    await db.query(
+      `INSERT INTO draft_embeddings (draft_id, embedding)
+       VALUES ($1, $2)
+       ON CONFLICT (draft_id) DO UPDATE SET embedding = EXCLUDED.embedding`,
+      [target.body.draft.id, JSON.stringify([1, 0, 0])]
+    );
+    await db.query(
+      `INSERT INTO draft_embeddings (draft_id, embedding)
+       VALUES ($1, $2)
+       ON CONFLICT (draft_id) DO UPDATE SET embedding = EXCLUDED.embedding`,
+      [other.body.draft.id, JSON.stringify([0.9, 0.1, 0])]
+    );
+    await db.query(
+      `INSERT INTO draft_embeddings (draft_id, embedding)
+       VALUES ($1, $2)
+       ON CONFLICT (draft_id) DO UPDATE SET embedding = EXCLUDED.embedding`,
+      [sandbox.body.draft.id, JSON.stringify([0.8, 0.2, 0])]
+    );
+
+    const similar = await request(app).get(`/api/search/similar?draftId=${target.body.draft.id}&limit=5`);
+    expect(similar.status).toBe(200);
+    const ids = similar.body.map((item: any) => item.id);
+    expect(ids).toContain(other.body.draft.id);
+    expect(ids).not.toContain(target.body.draft.id);
+    expect(ids).not.toContain(sandbox.body.draft.id);
+  });
+
   test('draft creation auto-embeds initial version', async () => {
     const { agentId, apiKey } = await registerAgent('Auto Embed Studio');
     const draftRes = await request(app)

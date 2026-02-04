@@ -48,11 +48,22 @@ type PullRequest = {
   makerId: string;
 };
 
+type SimilarDraft = {
+  id: string;
+  title: string;
+  score: number;
+  glowUpScore: number;
+  type: 'draft' | 'release';
+};
+
 export default function DraftDetailPage({ params }: { params: { id: string } }) {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [versions, setVersions] = useState<Version[]>([]);
   const [fixRequests, setFixRequests] = useState<FixRequest[]>([]);
   const [pullRequests, setPullRequests] = useState<PullRequest[]>([]);
+  const [similarDrafts, setSimilarDrafts] = useState<SimilarDraft[]>([]);
+  const [similarStatus, setSimilarStatus] = useState<string | null>(null);
+  const [similarLoading, setSimilarLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,6 +83,33 @@ export default function DraftDetailPage({ params }: { params: { id: string } }) 
   const loadPullRequests = async () => {
     const response = await apiClient.get(`/drafts/${params.id}/pull-requests`);
     setPullRequests(response.data ?? []);
+  };
+
+  const loadSimilarDrafts = async () => {
+    setSimilarLoading(true);
+    setSimilarStatus(null);
+    try {
+      const response = await apiClient.get('/search/similar', {
+        params: { draftId: params.id, limit: 6 }
+      });
+      const items = response.data ?? [];
+      setSimilarDrafts(items);
+      if (items.length === 0) {
+        setSimilarStatus('No similar drafts yet.');
+      }
+    } catch (err: any) {
+      const code = err?.response?.data?.error;
+      if (code === 'EMBEDDING_NOT_FOUND') {
+        setSimilarStatus('Similar works available after analysis.');
+      } else if (code === 'DRAFT_NOT_FOUND') {
+        setSimilarStatus('Draft not found.');
+      } else {
+        setSimilarStatus(err?.response?.data?.message ?? 'Failed to load similar drafts.');
+      }
+      setSimilarDrafts([]);
+    } finally {
+      setSimilarLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -95,6 +133,10 @@ export default function DraftDetailPage({ params }: { params: { id: string } }) 
     return () => {
       cancelled = true;
     };
+  }, [params.id]);
+
+  useEffect(() => {
+    loadSimilarDrafts();
   }, [params.id]);
 
   useEffect(() => {
@@ -155,6 +197,30 @@ export default function DraftDetailPage({ params }: { params: { id: string } }) 
             />
             <FixRequestList items={fixList} />
             <PullRequestList items={prList} />
+            <div className="card p-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-ink">Similar drafts</h3>
+                <span className="text-xs text-slate-500">Visual match</span>
+              </div>
+              {similarLoading ? (
+                <p className="mt-3 text-xs text-slate-500">Loading similar drafts...</p>
+              ) : similarStatus ? (
+                <p className="mt-3 text-xs text-slate-500">{similarStatus}</p>
+              ) : (
+                <ul className="mt-3 grid gap-2">
+                  {similarDrafts.map((item) => (
+                    <li key={item.id} className="rounded-lg border border-slate-200 bg-white/70 p-3 text-xs">
+                      <p className="text-[10px] uppercase text-slate-500">{item.type}</p>
+                      <p className="text-sm text-ink">{item.title}</p>
+                      <p className="text-[11px] text-slate-500">
+                        Similarity {Number(item.score ?? 0).toFixed(2)} · GlowUp{' '}
+                        {Number(item.glowUpScore ?? 0).toFixed(1)}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
           <div className="grid gap-6">
             <HeatMapOverlay />

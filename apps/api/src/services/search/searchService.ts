@@ -17,37 +17,62 @@ export class SearchServiceImpl implements SearchService {
 
   async search(query: string, filters: SearchFilters, client?: DbClient): Promise<SearchResult[]> {
     const db = getDb(this.pool, client);
-    const { type = 'all', sort = 'recency', limit = 20, offset = 0 } = filters;
+    const { type = 'all', sort = 'recency', range = 'all', limit = 20, offset = 0 } = filters;
     const q = `%${query}%`;
+    const terms = normalizeTerms(query);
+    const rangeClause =
+      range === '7d'
+        ? "AND d.updated_at >= NOW() - INTERVAL '7 days'"
+        : range === '30d'
+        ? "AND d.updated_at >= NOW() - INTERVAL '30 days'"
+        : '';
 
     const results: SearchResult[] = [];
 
     if (type === 'all' || type === 'draft' || type === 'release') {
-      const statusFilter = type === 'draft' ? "status = 'draft'" : type === 'release' ? "status = 'release'" : '1=1';
+      const statusFilter =
+        type === 'draft' ? "d.status = 'draft'" : type === 'release' ? "d.status = 'release'" : '1=1';
       const orderBy =
         sort === 'glowup'
-          ? 'glow_up_score DESC'
+          ? 'd.glow_up_score DESC'
           : sort === 'recency'
-          ? 'updated_at DESC'
-          : 'glow_up_score DESC';
+          ? 'd.updated_at DESC'
+          : 'd.glow_up_score DESC';
 
       const drafts = await db.query(
-        `SELECT id, status, glow_up_score, metadata
-         FROM drafts
-         WHERE ${statusFilter} AND (metadata::text ILIKE $1)
+        `SELECT d.id, d.status, d.glow_up_score, d.metadata, d.updated_at
+         FROM drafts d
+         WHERE ${statusFilter} AND (d.metadata::text ILIKE $1)
+         ${rangeClause}
          ORDER BY ${orderBy}
          LIMIT $2 OFFSET $3`,
         [q, limit, offset]
       );
 
-      for (const row of drafts.rows) {
-        results.push({
+      const draftResults = drafts.rows.map((row) => {
+        const title = row.metadata?.title ?? 'Untitled';
+        const score = Number(row.glow_up_score ?? 0);
+        const updatedAt = row.updated_at ? new Date(row.updated_at) : null;
+        const relevanceScore =
+          sort === 'relevance'
+            ? scoreRelevance(JSON.stringify(row.metadata ?? {}), score, updatedAt, terms)
+            : undefined;
+        return {
           type: row.status === 'release' ? 'release' : 'draft',
           id: row.id,
-          title: row.metadata?.title ?? 'Untitled',
-          score: Number(row.glow_up_score ?? 0)
-        });
+          title,
+          score,
+          relevanceScore
+        };
+      });
+
+      if (sort === 'relevance') {
+        draftResults.sort((a, b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0));
       }
+
+      results.push(
+        ...draftResults.map(({ relevanceScore: _relevanceScore, ...rest }) => rest)
+      );
     }
 
     if (type === 'all' || type === 'studio') {
@@ -61,17 +86,59 @@ export class SearchServiceImpl implements SearchService {
         [q, limit, offset]
       );
 
-      for (const row of studios.rows) {
-        results.push({
+      const studioResults = studios.rows.map((row) => {
+        const score = Number(row.impact ?? 0);
+        const relevanceScore =
+          sort === 'relevance' ? scoreStudioRelevance(row.studio_name ?? '', score, terms) : undefined;
+        return {
           type: 'studio',
           id: row.id,
           title: row.studio_name,
-          score: Number(row.impact ?? 0)
-        });
+          score,
+          relevanceScore
+        };
+      });
+
+      if (sort === 'relevance') {
+        studioResults.sort((a, b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0));
       }
+
+      results.push(
+        ...studioResults.map(({ relevanceScore: _relevanceScore, ...rest }) => rest)
+      );
     }
 
     return results;
+  }
+
+  async searchSimilar(
+    draftId: string,
+    filters?: VisualSearchFilters,
+    client?: DbClient
+  ): Promise<VisualSearchResult[]> {
+    const db = getDb(this.pool, client);
+    const draft = await db.query('SELECT id FROM drafts WHERE id = $1', [draftId]);
+    if (draft.rows.length === 0) {
+      throw new ServiceError('DRAFT_NOT_FOUND', 'Draft not found.', 404);
+    }
+
+    const embedding = await this.getEmbeddingByDraftId(draftId, db);
+    if (!embedding || embedding.length === 0) {
+      throw new ServiceError('EMBEDDING_NOT_FOUND', 'Draft embedding not found.', 404);
+    }
+
+    const effectiveFilters: VisualSearchFilters = {
+      ...filters,
+      excludeDraftId: filters?.excludeDraftId ?? draftId
+    };
+
+    return this.searchVisual(
+      {
+        embedding,
+        filters: effectiveFilters
+      },
+      db
+    );
   }
 
   async upsertDraftEmbedding(
@@ -104,26 +171,33 @@ export class SearchServiceImpl implements SearchService {
       throw new ServiceError('EMBEDDING_REQUIRED', 'Provide a draftId or embedding array.', 400);
     }
 
-    const { type = 'all', tags = [], limit = 20, offset = 0 } = filters ?? {};
+    const { type = 'all', tags = [], limit = 20, offset = 0, excludeDraftId } = filters ?? {};
     const candidateLimit = Math.max(100, (offset + limit) * 5);
 
     const statusFilter =
       type === 'draft' ? "d.status = 'draft'" : type === 'release' ? "d.status = 'release'" : '1=1';
     const params: any[] = [candidateLimit];
-    const tagClause =
-      tags.length > 0
-        ? (() => {
-            params.push(tags);
-            return 'AND COALESCE(d.metadata->\'tags\', \'[]\'::jsonb) ?| $2';
-          })()
-        : '';
+    const clauses = [`${statusFilter}`, 'd.is_sandbox = false'];
+    let paramIndex = 2;
+
+    if (tags.length > 0) {
+      clauses.push(`COALESCE(d.metadata->'tags', '[]'::jsonb) ?| $${paramIndex}`);
+      params.push(tags);
+      paramIndex += 1;
+    }
+
+    const effectiveExclude = excludeDraftId ?? draftId;
+    if (effectiveExclude) {
+      clauses.push(`d.id <> $${paramIndex}`);
+      params.push(effectiveExclude);
+      paramIndex += 1;
+    }
 
     const results = await db.query(
       `SELECT d.id, d.status, d.glow_up_score, d.metadata, e.embedding
        FROM drafts d
        JOIN draft_embeddings e ON e.draft_id = d.id
-       WHERE ${statusFilter}
-       ${tagClause}
+       WHERE ${clauses.join(' AND ')}
        LIMIT $1`,
       params
     );
@@ -168,6 +242,56 @@ const sanitizeEmbedding = (embedding: number[]): number[] => {
   return embedding
     .map((value) => Number(value))
     .filter((value) => Number.isFinite(value));
+};
+
+const normalizeTerms = (query: string): string[] =>
+  query
+    .toLowerCase()
+    .split(/\s+/)
+    .map((term) => term.trim())
+    .filter((term) => term.length > 0);
+
+const scoreKeywordMatch = (text: string, terms: string[]): number => {
+  if (terms.length === 0) {
+    return 0;
+  }
+  const lowered = text.toLowerCase();
+  let hits = 0;
+  for (const term of terms) {
+    if (lowered.includes(term)) {
+      hits += 1;
+    }
+  }
+  return hits / terms.length;
+};
+
+const scoreRecency = (updatedAt: Date | null): number => {
+  if (!updatedAt) {
+    return 0;
+  }
+  const diffMs = Date.now() - updatedAt.getTime();
+  const days = diffMs / (1000 * 60 * 60 * 24);
+  return Math.max(0, 1 - days / 30);
+};
+
+const normalizeMetric = (value: number): number => Math.max(0, Math.min(value / 100, 1));
+
+const scoreRelevance = (
+  text: string,
+  glowUpScore: number,
+  updatedAt: Date | null,
+  terms: string[]
+): number => {
+  const keywordScore = scoreKeywordMatch(text, terms);
+  const glowScore = normalizeMetric(glowUpScore);
+  const recencyScore = scoreRecency(updatedAt);
+  return keywordScore * 0.6 + glowScore * 0.3 + recencyScore * 0.1;
+};
+
+const scoreStudioRelevance = (text: string, impact: number, terms: string[]): number => {
+  const keywordScore = scoreKeywordMatch(text, terms);
+  const impactScore = normalizeMetric(impact);
+  return keywordScore * 0.7 + impactScore * 0.3;
 };
 
 const parseEmbedding = (value: unknown): number[] | null => {

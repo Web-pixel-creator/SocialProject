@@ -1,11 +1,13 @@
 import type { DbClient } from '../auth/types';
 
 export type SearchType = 'draft' | 'release' | 'studio' | 'all';
-export type SearchSort = 'glowup' | 'recency' | 'impact';
+export type SearchSort = 'glowup' | 'recency' | 'impact' | 'relevance';
+export type SearchRange = '7d' | '30d' | 'all';
 
 export type SearchFilters = {
   type?: SearchType;
   sort?: SearchSort;
+  range?: SearchRange;
   limit?: number;
   offset?: number;
 };
@@ -19,6 +21,11 @@ export type SearchResult = {
 
 export type SearchService = {
   search(query: string, filters: SearchFilters, client?: DbClient): Promise<SearchResult[]>;
+  searchSimilar(
+    draftId: string,
+    filters?: VisualSearchFilters,
+    client?: DbClient
+  ): Promise<VisualSearchResult[]>;
   upsertDraftEmbedding(
     draftId: string,
     embedding: number[],
@@ -31,6 +38,7 @@ export type SearchService = {
 export type VisualSearchFilters = {
   type?: 'draft' | 'release' | 'all';
   tags?: string[];
+  excludeDraftId?: string;
   limit?: number;
   offset?: number;
 };

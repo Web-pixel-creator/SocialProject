@@ -115,6 +115,42 @@ describe('search service edge cases', () => {
     }
   });
 
+  test('applies range filter for recent drafts', async () => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const agent = await client.query(
+        "INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ('Range Studio', 'tester', 'hash_range') RETURNING id"
+      );
+
+      const recent = await client.query(
+        'INSERT INTO drafts (author_id, metadata, status, glow_up_score) VALUES ($1, $2, $3, $4) RETURNING id',
+        [agent.rows[0].id, JSON.stringify({ title: 'Range Draft' }), 'draft', 1]
+      );
+      const old = await client.query(
+        'INSERT INTO drafts (author_id, metadata, status, glow_up_score) VALUES ($1, $2, $3, $4) RETURNING id',
+        [agent.rows[0].id, JSON.stringify({ title: 'Range Draft' }), 'draft', 1]
+      );
+
+      await client.query(`UPDATE drafts SET updated_at = NOW() - INTERVAL '40 days' WHERE id = $1`, [
+        old.rows[0].id
+      ]);
+
+      const results = await searchService.search('Range Draft', { type: 'draft', range: '7d' }, client);
+      const ids = results.map((item) => item.id);
+      expect(ids).toContain(recent.rows[0].id);
+      expect(ids).not.toContain(old.rows[0].id);
+
+      await client.query('ROLLBACK');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  });
+
   test('falls back to glowup sorting when sort is unrecognized', async () => {
     const client = await pool.connect();
     try {
@@ -223,6 +259,56 @@ describe('search service edge cases', () => {
 
       expect(results).toHaveLength(1);
       expect(results[0].id).toBe(taggedDraft.rows[0].id);
+
+      await client.query('ROLLBACK');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  });
+
+  test('searchSimilar excludes self and sandbox drafts', async () => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const agent = await client.query(
+        "INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ('Similar Studio', 'tester', 'hash_similar') RETURNING id"
+      );
+
+      const target = await client.query(
+        'INSERT INTO drafts (author_id, metadata, status, glow_up_score) VALUES ($1, $2, $3, $4) RETURNING id',
+        [agent.rows[0].id, JSON.stringify({ title: 'Target Draft' }), 'draft', 2]
+      );
+      const other = await client.query(
+        'INSERT INTO drafts (author_id, metadata, status, glow_up_score) VALUES ($1, $2, $3, $4) RETURNING id',
+        [agent.rows[0].id, JSON.stringify({ title: 'Other Draft' }), 'draft', 5]
+      );
+      const sandbox = await client.query(
+        'INSERT INTO drafts (author_id, metadata, status, glow_up_score, is_sandbox) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+        [agent.rows[0].id, JSON.stringify({ title: 'Sandbox Draft' }), 'draft', 1, true]
+      );
+
+      await client.query('INSERT INTO draft_embeddings (draft_id, embedding) VALUES ($1, $2)', [
+        target.rows[0].id,
+        JSON.stringify([0.9, 0.1, 0])
+      ]);
+      await client.query('INSERT INTO draft_embeddings (draft_id, embedding) VALUES ($1, $2)', [
+        other.rows[0].id,
+        JSON.stringify([0.85, 0.15, 0])
+      ]);
+      await client.query('INSERT INTO draft_embeddings (draft_id, embedding) VALUES ($1, $2)', [
+        sandbox.rows[0].id,
+        JSON.stringify([0.8, 0.2, 0])
+      ]);
+
+      const results = await searchService.searchSimilar(target.rows[0].id, { type: 'draft' }, client);
+      const ids = results.map((item) => item.id);
+      expect(ids).toContain(other.rows[0].id);
+      expect(ids).not.toContain(target.rows[0].id);
+      expect(ids).not.toContain(sandbox.rows[0].id);
 
       await client.query('ROLLBACK');
     } catch (error) {

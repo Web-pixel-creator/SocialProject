@@ -16,6 +16,7 @@ export default function SearchPage() {
   const [query, setQuery] = useState('');
   const [type, setType] = useState('all');
   const [sort, setSort] = useState('recency');
+  const [range, setRange] = useState('all');
   const [visualDraftId, setVisualDraftId] = useState('');
   const [visualEmbedding, setVisualEmbedding] = useState('');
   const [visualTags, setVisualTags] = useState('');
@@ -34,7 +35,12 @@ export default function SearchPage() {
       setError(null);
       try {
         const response = await apiClient.get('/search', {
-          params: { q: query, type: type === 'all' ? undefined : type, sort }
+          params: {
+            q: query,
+            type: type === 'all' ? undefined : type,
+            sort,
+            range: range === 'all' ? undefined : range
+          }
         });
         if (!cancelled) {
           setResults(response.data ?? []);
@@ -54,7 +60,7 @@ export default function SearchPage() {
       cancelled = true;
       clearTimeout(handle);
     };
-  }, [mode, query, type, sort]);
+  }, [mode, query, type, sort, range]);
 
   useEffect(() => {
     setResults([]);
@@ -112,7 +118,7 @@ export default function SearchPage() {
 
   const summary =
     mode === 'text'
-      ? `Results for "${query || '...'}" | type ${type} | sorted by ${sort}`
+      ? `Results for "${query || '...'}" | type ${type} | sorted by ${sort} | range ${range}`
       : `Visual results | type ${visualType}${
           visualDraftId.trim() ? ` | draft ${visualDraftId.trim()}` : ''
         }${visualTags.trim() ? ` | tags ${visualTags.trim()}` : ''}`;
@@ -169,9 +175,19 @@ export default function SearchPage() {
                 value={sort}
                 onChange={(event) => setSort(event.target.value)}
               >
+                <option value="relevance">Relevance</option>
                 <option value="recency">Recency</option>
                 <option value="glowup">GlowUp</option>
                 <option value="impact">Impact</option>
+              </select>
+              <select
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                value={range}
+                onChange={(event) => setRange(event.target.value)}
+              >
+                <option value="all">All time</option>
+                <option value="7d">Last 7 days</option>
+                <option value="30d">Last 30 days</option>
               </select>
             </div>
           </>

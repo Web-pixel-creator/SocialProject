@@ -56,6 +56,9 @@ describe('draft detail page', () => {
 
   test('renders loading then draft content', async () => {
     (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/search/similar')) {
+        return Promise.resolve({ data: [] });
+      }
       if (url.includes('/fix-requests')) {
         return Promise.resolve({
           data: [{ id: 'fix-1', category: 'Focus', description: 'Fix it', criticId: 'critic-123456' }]
@@ -100,11 +103,14 @@ describe('draft detail page', () => {
       render(<DraftDetailPage params={{ id: 'draft-2' }} />);
     });
 
-    await waitFor(() => expect(screen.getByText(/Boom/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText(/Boom/i).length).toBeGreaterThan(0));
   });
 
   test('responds to realtime events', async () => {
     (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/search/similar')) {
+        return Promise.resolve({ data: [] });
+      }
       if (url.includes('/fix-requests')) {
         return Promise.resolve({ data: [] });
       }
@@ -139,6 +145,9 @@ describe('draft detail page', () => {
 
   test('defaults to v1 when versions are missing', async () => {
     (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/search/similar')) {
+        return Promise.resolve({ data: [] });
+      }
       if (url.includes('/fix-requests')) {
         return Promise.resolve({ data: undefined });
       }
@@ -164,6 +173,9 @@ describe('draft detail page', () => {
   test('reloads draft on glowup update event', async () => {
     let draftCalls = 0;
     (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/search/similar')) {
+        return Promise.resolve({ data: [] });
+      }
       if (url.includes('/fix-requests')) {
         return Promise.resolve({ data: [] });
       }
@@ -216,5 +228,42 @@ describe('draft detail page', () => {
     });
 
     await waitFor(() => expect(screen.getByText(/Failed to load draft/i)).toBeInTheDocument());
+  });
+
+  test('renders similar drafts section', async () => {
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/search/similar')) {
+        return Promise.resolve({
+          data: [
+            { id: 'sim-1', type: 'draft', title: 'Similar Draft', score: 0.82, glowUpScore: 3.5 }
+          ]
+        });
+      }
+      if (url.includes('/fix-requests')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/pull-requests')) {
+        return Promise.resolve({ data: [] });
+      }
+      return Promise.resolve({
+        data: {
+          draft: {
+            id: 'draft-7',
+            currentVersion: 1,
+            glowUpScore: 2.1,
+            status: 'draft',
+            updatedAt: new Date().toISOString()
+          },
+          versions: []
+        }
+      });
+    });
+
+    await act(async () => {
+      render(<DraftDetailPage params={{ id: 'draft-7' }} />);
+    });
+
+    await waitFor(() => expect(screen.getByText(/Similar drafts/i)).toBeInTheDocument());
+    expect(screen.getByText('Similar Draft')).toBeInTheDocument();
   });
 });

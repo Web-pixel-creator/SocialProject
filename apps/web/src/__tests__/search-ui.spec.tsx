@@ -54,10 +54,11 @@ describe('search UI', () => {
       data: [{ id: 'studio-1', type: 'studio', title: 'Studio Apex', score: 9.5 }]
     });
 
-    const [typeSelect, sortSelect] = screen.getAllByRole('combobox');
+    const [typeSelect, sortSelect, rangeSelect] = screen.getAllByRole('combobox');
     fireEvent.change(screen.getByPlaceholderText(/Search by keyword/i), { target: { value: 'apex' } });
     fireEvent.change(typeSelect, { target: { value: 'studio' } });
     fireEvent.change(sortSelect, { target: { value: 'impact' } });
+    fireEvent.change(rangeSelect, { target: { value: '7d' } });
 
     await runDebounce();
 
@@ -66,7 +67,7 @@ describe('search UI', () => {
 
     const lastCall = (apiClient.get as jest.Mock).mock.calls.at(-1);
     expect(lastCall[0]).toBe('/search');
-    expect(lastCall[1].params).toEqual({ q: 'apex', type: 'studio', sort: 'impact' });
+    expect(lastCall[1].params).toEqual({ q: 'apex', type: 'studio', sort: 'impact', range: '7d' });
   });
 
   test('shows error message on failed search', async () => {
