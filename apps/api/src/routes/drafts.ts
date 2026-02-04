@@ -1,5 +1,7 @@
+import { createHash } from 'crypto';
 import { Router, type Request } from 'express';
 import { db } from '../db/pool';
+import { logger } from '../logging/logger';
 import { requireVerifiedAgent } from '../middleware/auth';
 import { BudgetServiceImpl } from '../services/budget/budgetService';
 import { FixRequestServiceImpl } from '../services/fixRequest/fixRequestService';
@@ -19,6 +21,35 @@ const metricsService = new MetricsServiceImpl(db);
 const notificationService = new NotificationServiceImpl(db, async () => Promise.resolve());
 const searchService = new SearchServiceImpl(db);
 
+const buildEmbeddingSignal = (imageUrl?: string, metadata?: Record<string, any>): string => {
+  const parts: string[] = [];
+  if (typeof imageUrl === 'string' && imageUrl.trim()) {
+    parts.push(imageUrl.trim());
+  }
+  if (metadata && typeof metadata.title === 'string' && metadata.title.trim()) {
+    parts.push(metadata.title.trim());
+  }
+  if (Array.isArray(metadata?.tags)) {
+    const tags = metadata.tags.map((tag: string) => String(tag).trim()).filter(Boolean);
+    if (tags.length > 0) {
+      parts.push(tags.join(','));
+    }
+  }
+  return parts.join('|');
+};
+
+const generateEmbedding = (signal: string, dimensions = 12): number[] => {
+  if (!signal) {
+    return [];
+  }
+  const hash = createHash('sha256').update(signal).digest();
+  const vector: number[] = [];
+  for (let i = 0; i < dimensions; i += 1) {
+    vector.push(Number((hash[i] / 255).toFixed(4)));
+  }
+  return vector;
+};
+
 const getRealtime = (req: Request): RealtimeService | undefined => {
   return req.app.get('realtime');
 };
@@ -32,6 +63,16 @@ router.post('/drafts', requireVerifiedAgent, async (req, res, next) => {
       thumbnailUrl,
       metadata
     });
+    try {
+      const signal = buildEmbeddingSignal(imageUrl, metadata);
+      const embedding = generateEmbedding(signal);
+      if (embedding.length > 0) {
+        await searchService.upsertDraftEmbedding(result.draft.id, embedding, 'auto');
+      }
+    } catch (error) {
+      logger.warn({ err: error, draftId: result.draft.id }, 'Draft embedding upsert failed');
+    }
+
     getRealtime(req)?.broadcast(`feed:live`, 'draft_created', { draftId: result.draft.id });
     res.json(result);
   } catch (error) {
@@ -191,6 +232,24 @@ router.post('/pull-requests/:id/decide', requireVerifiedAgent, async (req, res, 
       await metricsService.updateSignalOnDecision(pr.makerId, 'merged');
       const glowUp = await metricsService.recalculateDraftGlowUp(pr.draftId);
       getRealtime(req)?.broadcast(`post:${pr.draftId}`, 'glowup_update', { draftId: pr.draftId, glowUp });
+
+      try {
+        const embeddingResult = await db.query(
+          `SELECT v.image_url, d.metadata
+           FROM versions v
+           JOIN drafts d ON v.draft_id = d.id
+           WHERE v.pull_request_id = $1`,
+          [pr.id]
+        );
+        const row = embeddingResult.rows[0];
+        const signal = buildEmbeddingSignal(row?.image_url, row?.metadata);
+        const embedding = generateEmbedding(signal);
+        if (embedding.length > 0) {
+          await searchService.upsertDraftEmbedding(pr.draftId, embedding, 'auto');
+        }
+      } catch (error) {
+        logger.warn({ err: error, draftId: pr.draftId, pullRequestId: pr.id }, 'Merge embedding upsert failed');
+      }
     }
 
     if (decision === 'reject') {

@@ -643,14 +643,18 @@ describe('API integration', () => {
         thumbnailUrl: 'https://example.com/vb-thumb.png'
       });
 
-    await db.query('INSERT INTO draft_embeddings (draft_id, embedding) VALUES ($1, $2)', [
-      draftA.body.draft.id,
-      JSON.stringify([1, 0, 0])
-    ]);
-    await db.query('INSERT INTO draft_embeddings (draft_id, embedding) VALUES ($1, $2)', [
-      draftB.body.draft.id,
-      JSON.stringify([0, 1, 0])
-    ]);
+    await db.query(
+      `INSERT INTO draft_embeddings (draft_id, embedding)
+       VALUES ($1, $2)
+       ON CONFLICT (draft_id) DO UPDATE SET embedding = EXCLUDED.embedding`,
+      [draftA.body.draft.id, JSON.stringify([1, 0, 0])]
+    );
+    await db.query(
+      `INSERT INTO draft_embeddings (draft_id, embedding)
+       VALUES ($1, $2)
+       ON CONFLICT (draft_id) DO UPDATE SET embedding = EXCLUDED.embedding`,
+      [draftB.body.draft.id, JSON.stringify([0, 1, 0])]
+    );
 
     const results = await request(app).post('/api/search/visual').send({
       embedding: [1, 0.1, 0],
@@ -660,6 +664,26 @@ describe('API integration', () => {
 
     expect(results.status).toBe(200);
     expect(results.body[0].id).toBe(draftA.body.draft.id);
+  });
+
+  test('draft creation auto-embeds initial version', async () => {
+    const { agentId, apiKey } = await registerAgent('Auto Embed Studio');
+    const draftRes = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/auto.png',
+        thumbnailUrl: 'https://example.com/auto-thumb.png',
+        metadata: { title: 'Auto Embed', tags: ['bold', 'neon'] }
+      });
+
+    expect(draftRes.status).toBe(200);
+    const stored = await db.query('SELECT embedding, source FROM draft_embeddings WHERE draft_id = $1', [
+      draftRes.body.draft.id
+    ]);
+    expect(stored.rows.length).toBe(1);
+    expect(stored.rows[0].source).toBe('auto');
   });
 
   test('embedding endpoint stores vectors for author', async () => {
@@ -1174,10 +1198,13 @@ describe('API integration', () => {
     let hitLimit = false;
 
     for (let i = 0; i < 65; i += 1) {
-      const response = await request(app).post('/api/auth/login').send({
+      const response = await request(app)
+        .post('/api/auth/login')
+        .set('x-enforce-rate-limit', 'true')
+        .send({
         email: 'ratelimit@example.com',
         password: 'password123'
-      });
+        });
 
       if (response.status === 429) {
         hitLimit = true;

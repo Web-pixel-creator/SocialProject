@@ -16,7 +16,8 @@ export const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 60,
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  skip: (req) => env.NODE_ENV === 'test' && req.headers['x-enforce-rate-limit'] !== 'true'
 });
 
 export const sensitiveRateLimiter = rateLimit({
