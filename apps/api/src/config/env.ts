@@ -27,7 +27,12 @@ const envSchema = z.object({
   EMBEDDING_TIMEOUT_MS: z.coerce.number().default(8000),
   ADMIN_API_TOKEN: z.string().default(''),
   HEAVY_RATE_LIMIT_WINDOW_MS: z.coerce.number().default(15 * 60 * 1000),
-  HEAVY_RATE_LIMIT_MAX: z.coerce.number().default(30)
+  HEAVY_RATE_LIMIT_MAX: z.coerce.number().default(30),
+  SEARCH_RELEVANCE_WEIGHT_KEYWORD: z.coerce.number().default(0.6),
+  SEARCH_RELEVANCE_WEIGHT_GLOWUP: z.coerce.number().default(0.3),
+  SEARCH_RELEVANCE_WEIGHT_RECENCY: z.coerce.number().default(0.1),
+  SEARCH_RELEVANCE_WEIGHT_STUDIO_KEYWORD: z.coerce.number().default(0.7),
+  SEARCH_RELEVANCE_WEIGHT_STUDIO_IMPACT: z.coerce.number().default(0.3)
 });
 
 export const env = envSchema.parse(process.env);

@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+import { env } from '../../config/env';
 import type { DbClient } from '../auth/types';
 import { ServiceError } from '../common/errors';
 import type {
@@ -55,7 +56,7 @@ export class SearchServiceImpl implements SearchService {
         const updatedAt = row.updated_at ? new Date(row.updated_at) : null;
         const relevanceScore =
           sort === 'relevance'
-            ? scoreRelevance(JSON.stringify(row.metadata ?? {}), score, updatedAt, terms)
+            ? scoreRelevance(JSON.stringify(row.metadata ?? {}), score, updatedAt, terms, getSearchWeights())
             : undefined;
         return {
           type: row.status === 'release' ? 'release' : 'draft',
@@ -89,7 +90,9 @@ export class SearchServiceImpl implements SearchService {
       const studioResults = studios.rows.map((row) => {
         const score = Number(row.impact ?? 0);
         const relevanceScore =
-          sort === 'relevance' ? scoreStudioRelevance(row.studio_name ?? '', score, terms) : undefined;
+          sort === 'relevance'
+            ? scoreStudioRelevance(row.studio_name ?? '', score, terms, getStudioWeights())
+            : undefined;
         return {
           type: 'studio',
           id: row.id,
@@ -280,19 +283,59 @@ const scoreRelevance = (
   text: string,
   glowUpScore: number,
   updatedAt: Date | null,
-  terms: string[]
+  terms: string[],
+  weights: { keyword: number; glowup: number; recency: number }
 ): number => {
   const keywordScore = scoreKeywordMatch(text, terms);
   const glowScore = normalizeMetric(glowUpScore);
   const recencyScore = scoreRecency(updatedAt);
-  return keywordScore * 0.6 + glowScore * 0.3 + recencyScore * 0.1;
+  return keywordScore * weights.keyword + glowScore * weights.glowup + recencyScore * weights.recency;
 };
 
-const scoreStudioRelevance = (text: string, impact: number, terms: string[]): number => {
+const scoreStudioRelevance = (
+  text: string,
+  impact: number,
+  terms: string[],
+  weights: { keyword: number; impact: number }
+): number => {
   const keywordScore = scoreKeywordMatch(text, terms);
   const impactScore = normalizeMetric(impact);
-  return keywordScore * 0.7 + impactScore * 0.3;
+  return keywordScore * weights.keyword + impactScore * weights.impact;
 };
+
+const normalizeWeights = (
+  weights: Record<string, number>,
+  defaults: Record<string, number>
+): Record<string, number> => {
+  const entries = Object.entries(weights).map(([key, value]) => [key, Number(value)]);
+  const sanitized = Object.fromEntries(
+    entries.map(([key, value]) => [key, Number.isFinite(value) && value > 0 ? value : 0])
+  );
+  const sum = Object.values(sanitized).reduce((acc, value) => acc + value, 0);
+  if (sum <= 0) {
+    return defaults;
+  }
+  return Object.fromEntries(Object.entries(sanitized).map(([key, value]) => [key, value / sum]));
+};
+
+const getSearchWeights = () =>
+  normalizeWeights(
+    {
+      keyword: env.SEARCH_RELEVANCE_WEIGHT_KEYWORD,
+      glowup: env.SEARCH_RELEVANCE_WEIGHT_GLOWUP,
+      recency: env.SEARCH_RELEVANCE_WEIGHT_RECENCY
+    },
+    { keyword: 0.6, glowup: 0.3, recency: 0.1 }
+  ) as { keyword: number; glowup: number; recency: number };
+
+const getStudioWeights = () =>
+  normalizeWeights(
+    {
+      keyword: env.SEARCH_RELEVANCE_WEIGHT_STUDIO_KEYWORD,
+      impact: env.SEARCH_RELEVANCE_WEIGHT_STUDIO_IMPACT
+    },
+    { keyword: 0.7, impact: 0.3 }
+  ) as { keyword: number; impact: number };
 
 const parseEmbedding = (value: unknown): number[] | null => {
   if (Array.isArray(value)) {
