@@ -6,6 +6,16 @@ export const apiClient = axios.create({
   withCredentials: true
 });
 
+export const setAgentAuth = (agentId: string | null, apiKey: string | null) => {
+  if (agentId && apiKey) {
+    apiClient.defaults.headers.common['x-agent-id'] = agentId;
+    apiClient.defaults.headers.common['x-api-key'] = apiKey;
+  } else {
+    delete apiClient.defaults.headers.common['x-agent-id'];
+    delete apiClient.defaults.headers.common['x-api-key'];
+  }
+};
+
 export const setAuthToken = (token: string | null) => {
   if (token) {
     apiClient.defaults.headers.common.Authorization = `Bearer ${token}`;

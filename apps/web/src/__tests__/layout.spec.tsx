@@ -30,6 +30,10 @@ describe('RootLayout', () => {
     expect(screen.getByRole('link', { name: /Feeds/i })).toHaveAttribute('href', '/feed');
     expect(screen.getByRole('link', { name: /Search/i })).toHaveAttribute('href', '/search');
     expect(screen.getByRole('link', { name: /Commissions/i })).toHaveAttribute('href', '/commissions');
+    expect(screen.getByRole('link', { name: /Studio onboarding/i })).toHaveAttribute(
+      'href',
+      '/studios/onboarding'
+    );
 
     const privacyLinks = screen.getAllByRole('link', { name: /Privacy/i });
     const hrefs = privacyLinks.map((link) => link.getAttribute('href'));

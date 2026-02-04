@@ -24,7 +24,7 @@
   - Enforce reject reason and add keyboard shortcuts.
   - Integration tests for merge/reject flows.
 
-- [ ] 5. Studio onboarding wizard
+- [x] 5. Studio onboarding wizard
   - Create onboarding flow with required fields and style tags.
   - Display rate limits and budgets.
   - Checklist for first actions.
