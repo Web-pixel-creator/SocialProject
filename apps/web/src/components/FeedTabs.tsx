@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { apiClient } from '../lib/api';
 import { AutopsyCard } from './AutopsyCard';
 import { DraftCard } from './DraftCard';
@@ -8,8 +9,35 @@ import { GuildCard } from './GuildCard';
 import { ProgressCard } from './ProgressCard';
 import { StudioCard } from './StudioCard';
 
-const TABS = ['Progress', 'For You', 'Live Drafts', 'GlowUps', 'Guilds', 'Studios', 'Battles', 'Archive'];
+const TABS = ['All', 'Progress', 'For You', 'Live Drafts', 'GlowUps', 'Guilds', 'Studios', 'Battles', 'Archive'];
 const PAGE_SIZE = 6;
+const DEFAULT_SORT = 'recent';
+const DEFAULT_STATUS = 'all';
+const DEFAULT_RANGE = '30d';
+
+type FeedSort = 'recent' | 'impact' | 'glowup';
+type FeedStatus = 'all' | 'draft' | 'release' | 'pr';
+type FeedRange = '7d' | '30d' | '90d' | 'all';
+
+const SORT_OPTIONS: Array<{ value: FeedSort; label: string }> = [
+  { value: 'recent', label: 'Recent' },
+  { value: 'impact', label: 'Impact' },
+  { value: 'glowup', label: 'GlowUp' }
+];
+
+const STATUS_OPTIONS: Array<{ value: FeedStatus; label: string }> = [
+  { value: 'all', label: 'All' },
+  { value: 'draft', label: 'Drafts' },
+  { value: 'release', label: 'Releases' },
+  { value: 'pr', label: 'Pending PRs' }
+];
+
+const RANGE_OPTIONS: Array<{ value: FeedRange; label: string; days?: number }> = [
+  { value: '7d', label: 'Last 7 days', days: 7 },
+  { value: '30d', label: 'Last 30 days', days: 30 },
+  { value: '90d', label: 'Last 90 days', days: 90 },
+  { value: 'all', label: 'All time' }
+];
 
 const demoDrafts = [
   { id: 'draft-1', title: 'Synthwave Poster', glowUpScore: 18.2, live: true },
@@ -91,6 +119,8 @@ type FeedItem = DraftFeedItem | ProgressFeedItem | GuildFeedItem | StudioFeedIte
 
 export const endpointForTab = (tab: string) => {
   switch (tab) {
+    case 'All':
+      return '/feed';
     case 'Progress':
       return '/feeds/progress';
     case 'For You':
@@ -190,7 +220,20 @@ const fallbackItemsFor = (tab: string): FeedItem[] => {
 };
 
 export const FeedTabs = () => {
-  const [active, setActive] = useState(TABS[0]);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const readParam = (key: string, fallback: string) => searchParams.get(key) ?? fallback;
+  const initialTab = TABS.includes(readParam('tab', TABS[0])) ? readParam('tab', TABS[0]) : TABS[0];
+  const initialSort = readParam('sort', DEFAULT_SORT) as FeedSort;
+  const initialStatus = readParam('status', DEFAULT_STATUS) as FeedStatus;
+  const initialRange = readParam('range', DEFAULT_RANGE) as FeedRange;
+
+  const [active, setActive] = useState(initialTab);
+  const [sort, setSort] = useState<FeedSort>(initialSort);
+  const [status, setStatus] = useState<FeedStatus>(initialStatus);
+  const [range, setRange] = useState<FeedRange>(initialRange);
   const [items, setItems] = useState<FeedItem[]>([]);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
@@ -198,11 +241,68 @@ export const FeedTabs = () => {
   const [fallbackUsed, setFallbackUsed] = useState(false);
 
   useEffect(() => {
+    const nextTab = TABS.includes(readParam('tab', TABS[0])) ? readParam('tab', TABS[0]) : TABS[0];
+    const nextSort = readParam('sort', DEFAULT_SORT) as FeedSort;
+    const nextStatus = readParam('status', DEFAULT_STATUS) as FeedStatus;
+    const nextRange = readParam('range', DEFAULT_RANGE) as FeedRange;
+    setActive(nextTab);
+    setSort(nextSort);
+    setStatus(nextStatus);
+    setRange(nextRange);
+  }, [searchParams]);
+
+  const updateQuery = (updates: Partial<{ tab: string; sort: FeedSort; status: FeedStatus; range: FeedRange }>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    const next = {
+      tab: updates.tab ?? active,
+      sort: updates.sort ?? sort,
+      status: updates.status ?? status,
+      range: updates.range ?? range
+    };
+
+    if (next.tab !== TABS[0]) {
+      params.set('tab', next.tab);
+    } else {
+      params.delete('tab');
+    }
+
+    if (next.sort !== DEFAULT_SORT) {
+      params.set('sort', next.sort);
+    } else {
+      params.delete('sort');
+    }
+
+    if (next.status !== DEFAULT_STATUS) {
+      params.set('status', next.status);
+    } else {
+      params.delete('status');
+    }
+
+    if (next.range !== DEFAULT_RANGE) {
+      params.set('range', next.range);
+    } else {
+      params.delete('range');
+    }
+
+    const queryString = params.toString();
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname);
+  };
+
+  useEffect(() => {
     setItems([]);
     setOffset(0);
     setHasMore(true);
     setFallbackUsed(false);
-  }, [active]);
+  }, [active, sort, status, range]);
+
+  const rangeFrom = useMemo(() => {
+    const match = RANGE_OPTIONS.find((option) => option.value === range);
+    if (!match?.days) {
+      return undefined;
+    }
+    const fromDate = new Date(Date.now() - match.days * 24 * 60 * 60 * 1000);
+    return fromDate.toISOString();
+  }, [range]);
 
   useEffect(() => {
     const onScroll = () => {
@@ -221,7 +321,16 @@ export const FeedTabs = () => {
       if (fallbackUsed) return;
       setLoading(true);
       const endpoint = endpointForTab(active);
-      const params = { limit: PAGE_SIZE, offset };
+      const params: Record<string, any> = { limit: PAGE_SIZE, offset };
+      if (active === 'All') {
+        params.sort = sort;
+        if (status !== 'all') {
+          params.status = status;
+        }
+        if (rangeFrom) {
+          params.from = rangeFrom;
+        }
+      }
 
       try {
         const response = await apiClient.get(endpoint, { params });
@@ -270,7 +379,7 @@ export const FeedTabs = () => {
     return () => {
       cancelled = true;
     };
-  }, [active, offset, fallbackUsed]);
+  }, [active, offset, fallbackUsed, sort, status, rangeFrom, range]);
 
   return (
     <section className="grid gap-6">
@@ -278,7 +387,10 @@ export const FeedTabs = () => {
         {TABS.map((tab) => (
           <button
             key={tab}
-            onClick={() => setActive(tab)}
+            onClick={() => {
+              setActive(tab);
+              updateQuery({ tab });
+            }}
             className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wide ${
               active === tab ? 'bg-ink text-white' : 'border border-slate-200 bg-white/80 text-slate-700'
             }`}
@@ -287,6 +399,66 @@ export const FeedTabs = () => {
           </button>
         ))}
       </div>
+      {active === 'All' ? (
+        <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white/70 p-4 text-xs text-slate-600 md:grid-cols-3">
+          <label className="grid gap-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Sort</span>
+            <select
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800"
+              value={sort}
+              onChange={(event) => {
+                const next = event.target.value as FeedSort;
+                setSort(next);
+                updateQuery({ sort: next });
+              }}
+            >
+              {SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Status</span>
+            <select
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800"
+              value={status}
+              onChange={(event) => {
+                const next = event.target.value as FeedStatus;
+                setStatus(next);
+                updateQuery({ status: next });
+              }}
+            >
+              {STATUS_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Time range</span>
+            <select
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800"
+              value={range}
+              onChange={(event) => {
+                const next = event.target.value as FeedRange;
+                setRange(next);
+                updateQuery({ range: next });
+              }}
+            >
+              {RANGE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      ) : (
+        <p className="text-xs text-slate-500">Filters available in the All feed.</p>
+      )}
       <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
         {fallbackUsed && <span className="pill">Fallback data</span>}
         {loading && <span>Loading...</span>}

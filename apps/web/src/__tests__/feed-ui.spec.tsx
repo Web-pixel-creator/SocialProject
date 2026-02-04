@@ -6,6 +6,14 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { FeedTabs, endpointForTab } from '../components/FeedTabs';
 import { DraftCard } from '../components/DraftCard';
 import { apiClient } from '../lib/api';
+let searchParams = new URLSearchParams('');
+const replaceMock = jest.fn();
+
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ replace: replaceMock }),
+  usePathname: () => '/feed',
+  useSearchParams: () => searchParams
+}));
 jest.mock('../lib/api', () => ({
   apiClient: {
     get: jest.fn(() => Promise.resolve({ data: [] }))
@@ -17,6 +25,8 @@ describe('feed UI', () => {
   beforeEach(() => {
     (apiClient.get as jest.Mock).mockReset();
     (apiClient.get as jest.Mock).mockResolvedValue({ data: [] });
+    replaceMock.mockReset();
+    searchParams = new URLSearchParams('');
   });
 
   test('renders draft card', () => {
@@ -41,11 +51,17 @@ describe('feed UI', () => {
 
   test('falls back when for-you feed fails', async () => {
     (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: [] })
       .mockRejectedValueOnce(new Error('for-you failed'))
       .mockResolvedValueOnce({ data: [] });
 
     await act(async () => {
       render(<FeedTabs />);
+    });
+
+    const forYouTab = screen.getByRole('button', { name: /For You/i });
+    await act(async () => {
+      fireEvent.click(forYouTab);
     });
 
     await waitFor(() => expect(screen.getByText(/Fallback data/i)).toBeInTheDocument());
@@ -99,6 +115,10 @@ describe('feed UI', () => {
     expect(endpointForTab('Progress')).toBe('/feeds/progress');
   });
 
+  test('uses unified feed endpoint for all tab', () => {
+    expect(endpointForTab('All')).toBe('/feed');
+  });
+
   test('uses guilds endpoint for guilds tab', () => {
     expect(endpointForTab('Guilds')).toBe('/guilds');
   });
@@ -132,10 +152,17 @@ describe('feed UI', () => {
         authorStudio: 'Progress Studio'
       }
     ];
-    (apiClient.get as jest.Mock).mockResolvedValueOnce({ data: progressPayload });
+    (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: progressPayload });
 
     await act(async () => {
       render(<FeedTabs />);
+    });
+
+    const progressTab = screen.getByRole('button', { name: /Progress/i });
+    await act(async () => {
+      fireEvent.click(progressTab);
     });
 
     await waitFor(() => expect(screen.getByText(/Progress Chain/i)).toBeInTheDocument());
@@ -422,5 +449,39 @@ describe('feed UI', () => {
     const lastCall = (apiClient.get as jest.Mock).mock.calls.at(-1) as any;
     expect(lastCall[0]).toBe('/feeds/for-you');
     expect(lastCall[1].params.offset).toBe(6);
+  });
+
+  test('syncs filters to URL query', async () => {
+    searchParams = new URLSearchParams('tab=All');
+    await act(async () => {
+      render(<FeedTabs />);
+    });
+
+    const sortSelect = screen.getByLabelText(/Sort/i);
+    await act(async () => {
+      fireEvent.change(sortSelect, { target: { value: 'impact' } });
+    });
+    expect(replaceMock).toHaveBeenCalled();
+    const lastCall = replaceMock.mock.calls.at(-1)?.[0] as string;
+    expect(lastCall).toContain('/feed');
+    expect(lastCall).toContain('sort=impact');
+
+    const statusSelect = screen.getByLabelText(/Status/i);
+    await act(async () => {
+      fireEvent.change(statusSelect, { target: { value: 'release' } });
+    });
+    const statusCall = replaceMock.mock.calls.at(-1)?.[0] as string;
+    expect(statusCall).toContain('status=release');
+  });
+
+  test('reads filters from URL query', async () => {
+    searchParams = new URLSearchParams('tab=All&sort=impact&status=release&range=7d');
+    await act(async () => {
+      render(<FeedTabs />);
+    });
+
+    expect((screen.getByLabelText(/Sort/i) as HTMLSelectElement).value).toBe('impact');
+    expect((screen.getByLabelText(/Status/i) as HTMLSelectElement).value).toBe('release');
+    expect((screen.getByLabelText(/Time range/i) as HTMLSelectElement).value).toBe('7d');
   });
 });

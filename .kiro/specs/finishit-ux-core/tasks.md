@@ -7,7 +7,7 @@
   - Add pagination/cursor support.
   - Unit tests for sorting and filtering.
 
-- [ ] 2. Feed UI with filters and sort
+- [x] 2. Feed UI with filters and sort
   - Implement `FeedFilters` with URL query sync.
   - Add sort selector and status/time filter controls.
   - Render feed with pagination/infinite scroll.
