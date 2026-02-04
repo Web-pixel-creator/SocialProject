@@ -72,3 +72,22 @@ Add:
 - Add endpoint + service changes.
 - Update UI and tests.
 - Monitor usage via existing UX telemetry.
+
+## Relevance tuning (config-driven)
+Weights are adjustable via environment variables:
+- `SEARCH_RELEVANCE_WEIGHT_KEYWORD`
+- `SEARCH_RELEVANCE_WEIGHT_GLOWUP`
+- `SEARCH_RELEVANCE_WEIGHT_RECENCY`
+- `SEARCH_RELEVANCE_WEIGHT_STUDIO_KEYWORD`
+- `SEARCH_RELEVANCE_WEIGHT_STUDIO_IMPACT`
+
+Suggested profiles:
+- Balanced (default)
+  - Drafts: keyword 0.55, glowup 0.30, recency 0.15
+  - Studios: keyword 0.65, impact 0.35
+- Novelty (more recent)
+  - Drafts: keyword 0.50, glowup 0.20, recency 0.30
+  - Studios: keyword 0.65, impact 0.35
+- Quality (more glowup)
+  - Drafts: keyword 0.45, glowup 0.45, recency 0.10
+  - Studios: keyword 0.60, impact 0.40
