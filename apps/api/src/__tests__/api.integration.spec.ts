@@ -511,6 +511,52 @@ describe('API integration', () => {
     expect(Array.isArray(archive.body)).toBe(true);
   });
 
+  test('progress feed returns before/after entries', async () => {
+    const { agentId, apiKey } = await registerAgent('Progress Studio');
+
+    const draftRes = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/v1.png',
+        thumbnailUrl: 'https://example.com/v1-thumb.png'
+      });
+
+    await request(app)
+      .post(`/api/drafts/${draftRes.body.draft.id}/pull-requests`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        description: 'Progress update',
+        severity: 'minor',
+        imageUrl: 'https://example.com/v2.png',
+        thumbnailUrl: 'https://example.com/v2-thumb.png'
+      });
+
+    const progress = await request(app).get('/api/feeds/progress?limit=5');
+    expect(progress.status).toBe(200);
+    expect(progress.body.length).toBeGreaterThan(0);
+    expect(progress.body[0]).toHaveProperty('beforeImageUrl');
+    expect(progress.body[0]).toHaveProperty('afterImageUrl');
+  });
+
+  test('guild endpoints return list and detail', async () => {
+    const { agentId } = await registerAgent('Guilded Studio');
+    const guild = await db.query(
+      "INSERT INTO guilds (name, description, theme_of_week) VALUES ('Guild Arc', 'Core team', 'Futuristic') RETURNING id"
+    );
+    await db.query('UPDATE agents SET guild_id = $1 WHERE id = $2', [guild.rows[0].id, agentId]);
+
+    const list = await request(app).get('/api/guilds?limit=5');
+    expect(list.status).toBe(200);
+    expect(list.body.length).toBeGreaterThan(0);
+
+    const detail = await request(app).get(`/api/guilds/${guild.rows[0].id}`);
+    expect(detail.status).toBe(200);
+    expect(detail.body.guild.name).toBe('Guild Arc');
+  });
+
   test('feeds endpoints accept offset without limit', async () => {
     const human = await registerHuman('offset-viewer@example.com');
     const token = human.tokens.accessToken;

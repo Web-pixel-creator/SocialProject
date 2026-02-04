@@ -95,6 +95,14 @@ describe('feed UI', () => {
     expect(endpointForTab('Unknown')).toBe('/feeds/glowups');
   });
 
+  test('uses progress endpoint for progress tab', () => {
+    expect(endpointForTab('Progress')).toBe('/feeds/progress');
+  });
+
+  test('uses guilds endpoint for guilds tab', () => {
+    expect(endpointForTab('Guilds')).toBe('/guilds');
+  });
+
   test('requests battles feed endpoint', async () => {
     (apiClient.get as jest.Mock).mockResolvedValue({ data: [] });
 
@@ -110,6 +118,49 @@ describe('feed UI', () => {
     await waitFor(() =>
       expect(apiClient.get).toHaveBeenCalledWith('/feeds/battles', expect.anything())
     );
+  });
+
+  test('renders progress cards', async () => {
+    const progressPayload = [
+      {
+        draftId: 'draft-progress',
+        beforeImageUrl: 'before.png',
+        afterImageUrl: 'after.png',
+        glowUpScore: 9.4,
+        prCount: 2,
+        lastActivity: new Date().toISOString(),
+        authorStudio: 'Progress Studio'
+      }
+    ];
+    (apiClient.get as jest.Mock).mockResolvedValueOnce({ data: progressPayload });
+
+    await act(async () => {
+      render(<FeedTabs />);
+    });
+
+    await waitFor(() => expect(screen.getByText(/Progress Chain/i)).toBeInTheDocument());
+    expect(screen.getByText(/GlowUp 9.4/i)).toBeInTheDocument();
+    expect(screen.getByText(/PRs: 2/i)).toBeInTheDocument();
+  });
+
+  test('renders guild cards', async () => {
+    (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({
+        data: [{ id: 'guild-1', name: 'Guild Arc', themeOfWeek: 'Futuristic', agentCount: 8 }]
+      });
+
+    await act(async () => {
+      render(<FeedTabs />);
+    });
+
+    const guildTab = screen.getByRole('button', { name: /Guilds/i });
+    await act(async () => {
+      fireEvent.click(guildTab);
+    });
+
+    await waitFor(() => expect(screen.getByText(/Guild Arc/i)).toBeInTheDocument());
+    expect(screen.getByText(/Agents: 8/i)).toBeInTheDocument();
   });
 
   test('renders archive drafts when entries are not autopsies', async () => {
@@ -174,10 +225,17 @@ describe('feed UI', () => {
       { id: 'rel-1234567', type: 'release', glow_up_score: 8.2 },
       { id: 'draft-99', type: 'draft' }
     ];
-    (apiClient.get as jest.Mock).mockResolvedValueOnce({ data: payload });
+    (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: payload });
 
     await act(async () => {
       render(<FeedTabs />);
+    });
+
+    const forYouTab = screen.getByRole('button', { name: /For You/i });
+    await act(async () => {
+      fireEvent.click(forYouTab);
     });
 
     await waitFor(() => expect(screen.getByText(/^Release /i)).toBeInTheDocument());
@@ -253,12 +311,18 @@ describe('feed UI', () => {
     const fallbackPage = [{ id: 'fallback-1', type: 'draft', glowUpScore: 2 }];
 
     (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: [] })
       .mockResolvedValueOnce({ data: firstPage })
       .mockRejectedValueOnce(new Error('for-you page failed'))
       .mockResolvedValueOnce({ data: fallbackPage });
 
     await act(async () => {
       render(<FeedTabs />);
+    });
+
+    const forYouTab = screen.getByRole('button', { name: /For You/i });
+    await act(async () => {
+      fireEvent.click(forYouTab);
     });
 
     const loadMore = await screen.findByRole('button', { name: /Load more/i });
@@ -336,6 +400,7 @@ describe('feed UI', () => {
       glowUpScore: 1
     }));
     (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: [] })
       .mockResolvedValueOnce({ data: firstPage })
       .mockResolvedValueOnce({ data: secondPage });
 
@@ -343,13 +408,18 @@ describe('feed UI', () => {
       render(<FeedTabs />);
     });
 
+    const forYouTab = screen.getByRole('button', { name: /For You/i });
+    await act(async () => {
+      fireEvent.click(forYouTab);
+    });
+
     const loadMore = await screen.findByRole('button', { name: /Load more/i });
     await act(async () => {
       fireEvent.click(loadMore);
     });
 
-    await waitFor(() => expect(apiClient.get).toHaveBeenCalledTimes(2));
-    const lastCall = (apiClient.get as jest.Mock).mock.calls[1];
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalled());
+    const lastCall = (apiClient.get as jest.Mock).mock.calls.at(-1) as any;
     expect(lastCall[0]).toBe('/feeds/for-you');
     expect(lastCall[1].params.offset).toBe(6);
   });

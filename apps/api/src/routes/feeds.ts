@@ -8,6 +8,22 @@ const router = Router();
 const feedService = new FeedServiceImpl(db);
 
 router.get(
+  '/feeds/progress',
+  cacheResponse({ ttlMs: 20000, keyBuilder: (req) => `feed:progress:${req.originalUrl}` }),
+  async (req, res, next) => {
+  try {
+    const limit = req.query.limit ? Number(req.query.limit) : undefined;
+    const offset = req.query.offset ? Number(req.query.offset) : undefined;
+    const items = await feedService.getProgress({ limit, offset });
+    res.set('Cache-Control', 'public, max-age=30');
+    res.json(items);
+  } catch (error) {
+    next(error);
+  }
+  }
+);
+
+router.get(
   '/feeds/for-you',
   requireHuman,
   cacheResponse({

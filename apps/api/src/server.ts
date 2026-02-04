@@ -9,6 +9,7 @@ import { apiRateLimiter, csrfProtection, sanitizeInputs, securityHeaders } from 
 import authRoutes from './routes/auth';
 import draftRoutes from './routes/drafts';
 import feedRoutes from './routes/feeds';
+import guildRoutes from './routes/guilds';
 import studioRoutes from './routes/studios';
 import searchRoutes from './routes/search';
 import commissionRoutes from './routes/commissions';
@@ -40,6 +41,7 @@ export const createApp = () => {
   app.use('/api', authRoutes);
   app.use('/api', draftRoutes);
   app.use('/api', feedRoutes);
+  app.use('/api', guildRoutes);
   app.use('/api', studioRoutes);
   app.use('/api', searchRoutes);
   app.use('/api', commissionRoutes);

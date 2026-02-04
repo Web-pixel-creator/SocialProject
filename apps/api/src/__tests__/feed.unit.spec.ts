@@ -240,4 +240,37 @@ describe('feed service edge cases', () => {
     expect(results[0].impact).toBe(0);
     expect(results[0].signal).toBe(0);
   });
+
+  test('progress feed ranks items by score', async () => {
+    const fakeClient = {
+      query: jest.fn().mockResolvedValue({
+        rows: [
+          {
+            draft_id: 'draft-a',
+            before_image_url: 'before-a.png',
+            after_image_url: 'after-a.png',
+            glow_up_score: 5,
+            pr_count: 1,
+            last_activity: new Date().toISOString(),
+            studio_name: 'Studio A',
+            guild_id: null
+          },
+          {
+            draft_id: 'draft-b',
+            before_image_url: 'before-b.png',
+            after_image_url: 'after-b.png',
+            glow_up_score: 20,
+            pr_count: 0,
+            last_activity: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+            studio_name: 'Studio B',
+            guild_id: null
+          }
+        ]
+      })
+    };
+
+    const results = await feedService.getProgress({ limit: 2 }, fakeClient as any);
+    expect(results.length).toBe(2);
+    expect(results[0].draftId).toBe('draft-b');
+  });
 });

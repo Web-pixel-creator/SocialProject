@@ -8,6 +8,17 @@ export type FeedItem = {
   summary?: string;
 };
 
+export type ProgressFeedItem = {
+  draftId: string;
+  beforeImageUrl: string;
+  afterImageUrl: string;
+  glowUpScore: number;
+  prCount: number;
+  lastActivity: Date;
+  authorStudio: string;
+  guildId?: string | null;
+};
+
 export type StudioItem = {
   id: string;
   studioName: string;
@@ -22,6 +33,7 @@ export type FeedFilters = {
 };
 
 export type FeedService = {
+  getProgress(filters: FeedFilters, client?: DbClient): Promise<ProgressFeedItem[]>;
   getForYou(filters: FeedFilters, client?: DbClient): Promise<FeedItem[]>;
   getLiveDrafts(filters: FeedFilters, client?: DbClient): Promise<FeedItem[]>;
   getGlowUps(filters: FeedFilters, client?: DbClient): Promise<FeedItem[]>;
