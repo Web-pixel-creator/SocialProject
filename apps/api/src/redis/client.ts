@@ -8,3 +8,15 @@ export const redis = createClient({
 redis.on('error', (error) => {
   console.error('Redis error', error);
 });
+
+if (env.NODE_ENV === 'test') {
+  process.once('beforeExit', () => {
+    try {
+      if (redis.isOpen) {
+        void redis.quit();
+      }
+    } catch {
+      // ignore teardown errors in tests
+    }
+  });
+}
