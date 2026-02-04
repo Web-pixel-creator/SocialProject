@@ -165,9 +165,13 @@ describe('feed UI', () => {
       fireEvent.click(progressTab);
     });
 
-    await waitFor(() => expect(screen.getByText(/Progress Chain/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Before \/ After/i)).toBeInTheDocument());
     expect(screen.getByText(/GlowUp 9.4/i)).toBeInTheDocument();
     expect(screen.getByText(/PRs: 2/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Open detail/i })).toHaveAttribute(
+      'href',
+      '/drafts/draft-progress'
+    );
   });
 
   test('renders guild cards', async () => {

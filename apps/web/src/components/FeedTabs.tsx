@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { apiClient } from '../lib/api';
 import { AutopsyCard } from './AutopsyCard';
+import { BeforeAfterCard } from './BeforeAfterCard';
 import { DraftCard } from './DraftCard';
 import { GuildCard } from './GuildCard';
-import { ProgressCard } from './ProgressCard';
 import { StudioCard } from './StudioCard';
 
 const TABS = ['All', 'Progress', 'For You', 'Live Drafts', 'GlowUps', 'Guilds', 'Studios', 'Battles', 'Archive'];
@@ -478,7 +478,7 @@ export const FeedTabs = () => {
               item.afterImageUrl ??
               item.lastActivity ??
               `progress-${index}`;
-            return <ProgressCard key={String(key)} {...item} />;
+            return <BeforeAfterCard key={String(key)} {...item} />;
           }
           if (item.kind === 'autopsy') {
             return <AutopsyCard key={item.id ?? `autopsy-${index}`} {...item} />;

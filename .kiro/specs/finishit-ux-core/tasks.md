@@ -13,7 +13,7 @@
   - Render feed with pagination/infinite scroll.
   - Component tests for filter behavior and URL persistence.
 
-- [ ] 3. Before/After card component
+- [x] 3. Before/After card component
   - Create `BeforeAfterCard` with v1/vN thumbnails and metrics.
   - Add quick action to open detail.
   - Unit/component tests for rendering and interactions.
