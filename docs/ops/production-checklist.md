@@ -32,7 +32,14 @@
 - [ ] Alerts for API 5xx rate and job failures
 - [ ] Review `docs/ops/monitoring.md` and `docs/ops/alerts.md`
 
+## Backups & Recovery
+- [ ] Configure database backups and PITR
+- [ ] Enable object storage versioning/replication
+- [ ] Schedule a restore drill
+- [ ] Review `docs/ops/backup-restore.md`
+
 ## Security
 - [ ] Confirm CORS `FRONTEND_URL`
 - [ ] Verify rate limits are enabled
 - [ ] Ensure admin token is kept private
+- [ ] Review `docs/ops/secret-rotation.md`
