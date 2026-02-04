@@ -1,7 +1,7 @@
 import { Pool } from 'pg';
 import type { DbClient } from '../auth/types';
 import { logger } from '../../logging/logger';
-import { buildEmbeddingSignal, generateEmbedding } from './embeddingUtils';
+import { EmbeddingServiceImpl } from './embeddingService';
 import { SearchServiceImpl } from './searchService';
 
 type BackfillResult = {
@@ -14,9 +14,11 @@ const getDb = (pool: Pool, client?: DbClient): DbClient => client ?? pool;
 
 export class EmbeddingBackfillServiceImpl {
   private readonly searchService: SearchServiceImpl;
+  private readonly embeddingService: EmbeddingServiceImpl;
 
   constructor(private readonly pool: Pool) {
     this.searchService = new SearchServiceImpl(pool);
+    this.embeddingService = new EmbeddingServiceImpl();
   }
 
   async backfillDraftEmbeddings(batchSize = 200, client?: DbClient): Promise<BackfillResult> {
@@ -41,9 +43,11 @@ export class EmbeddingBackfillServiceImpl {
     let skipped = 0;
 
     for (const row of drafts.rows) {
-      const signal = buildEmbeddingSignal(row.image_url, row.metadata ?? {});
-      const embedding = generateEmbedding(signal);
-      if (embedding.length === 0) {
+      const embedding = await this.embeddingService.generateEmbedding({
+        imageUrl: row.image_url,
+        metadata: row.metadata ?? {}
+      });
+      if (!embedding || embedding.length === 0) {
         skipped += 1;
         continue;
       }

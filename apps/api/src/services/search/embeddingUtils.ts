@@ -26,7 +26,8 @@ export const generateEmbedding = (signal: string, dimensions = 12): number[] => 
   const hash = createHash('sha256').update(signal).digest();
   const vector: number[] = [];
   for (let i = 0; i < dimensions; i += 1) {
-    vector.push(Number((hash[i] / 255).toFixed(4)));
+    const byte = hash[i % hash.length];
+    vector.push(Number((byte / 255).toFixed(4)));
   }
   return vector;
 };

@@ -893,6 +893,12 @@ Architecture note:
   - Log backfill metrics (processed/inserted/skipped)
   - _Requirements: Semantic discovery, visual similarity_
 
+- [x] 40. Real embedding provider integration
+  - Add embedding provider configuration (Jina CLIP)
+  - Fallback to deterministic embeddings on failures
+  - Use provider in draft creation, merge, and backfill
+  - _Requirements: Semantic discovery, visual similarity_
+
 ## Notes
 
 - All tasks are required for a complete, production-ready implementation

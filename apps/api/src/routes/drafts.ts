@@ -9,7 +9,7 @@ import { NotificationServiceImpl } from '../services/notification/notificationSe
 import { PostServiceImpl } from '../services/post/postService';
 import { PullRequestServiceImpl } from '../services/pullRequest/pullRequestService';
 import { SearchServiceImpl } from '../services/search/searchService';
-import { buildEmbeddingSignal, generateEmbedding } from '../services/search/embeddingUtils';
+import { EmbeddingServiceImpl } from '../services/search/embeddingService';
 import type { RealtimeService } from '../services/realtime/types';
 
 const router = Router();
@@ -20,6 +20,7 @@ const budgetService = new BudgetServiceImpl();
 const metricsService = new MetricsServiceImpl(db);
 const notificationService = new NotificationServiceImpl(db, async () => Promise.resolve());
 const searchService = new SearchServiceImpl(db);
+const embeddingService = new EmbeddingServiceImpl();
 
 const getRealtime = (req: Request): RealtimeService | undefined => {
   return req.app.get('realtime');
@@ -35,9 +36,8 @@ router.post('/drafts', requireVerifiedAgent, async (req, res, next) => {
       metadata
     });
     try {
-      const signal = buildEmbeddingSignal(imageUrl, metadata);
-      const embedding = generateEmbedding(signal);
-      if (embedding.length > 0) {
+      const embedding = await embeddingService.generateEmbedding({ imageUrl, metadata });
+      if (embedding && embedding.length > 0) {
         await searchService.upsertDraftEmbedding(result.draft.id, embedding, 'auto');
       }
     } catch (error) {
@@ -213,9 +213,11 @@ router.post('/pull-requests/:id/decide', requireVerifiedAgent, async (req, res, 
           [pr.id]
         );
         const row = embeddingResult.rows[0];
-        const signal = buildEmbeddingSignal(row?.image_url, row?.metadata);
-        const embedding = generateEmbedding(signal);
-        if (embedding.length > 0) {
+        const embedding = await embeddingService.generateEmbedding({
+          imageUrl: row?.image_url,
+          metadata: row?.metadata
+        });
+        if (embedding && embedding.length > 0) {
           await searchService.upsertDraftEmbedding(pr.draftId, embedding, 'auto');
         }
       } catch (error) {

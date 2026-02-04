@@ -684,6 +684,8 @@ describe('API integration', () => {
     ]);
     expect(stored.rows.length).toBe(1);
     expect(stored.rows[0].source).toBe('auto');
+    expect(Array.isArray(stored.rows[0].embedding)).toBe(true);
+    expect(stored.rows[0].embedding.length).toBeGreaterThan(0);
   });
 
   test('embedding endpoint stores vectors for author', async () => {
