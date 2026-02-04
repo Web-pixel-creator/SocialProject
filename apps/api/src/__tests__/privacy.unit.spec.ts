@@ -112,14 +112,40 @@ describe('privacy service edge cases', () => {
 
   test('purgeExpiredData removes old records', async () => {
     const client = {
-      query: jest.fn(async () => ({ rows: [] }))
+      query: jest.fn()
+        .mockResolvedValueOnce({ rowCount: 2 })
+        .mockResolvedValueOnce({ rowCount: 3 })
+        .mockResolvedValueOnce({ rowCount: 1 })
     } as any;
 
-    await service.purgeExpiredData(client);
+    const result = await service.purgeExpiredData(client);
 
     expect(client.query).toHaveBeenCalledTimes(3);
     expect(client.query.mock.calls[0][0]).toContain('viewing_history');
     expect(client.query.mock.calls[1][0]).toContain('payment_events');
     expect(client.query.mock.calls[2][0]).toContain('data_exports');
+    expect(result).toEqual({
+      viewingHistory: 2,
+      paymentEvents: 3,
+      dataExports: 1
+    });
+  });
+
+  test('previewExpiredData returns counts', async () => {
+    const client = {
+      query: jest.fn()
+        .mockResolvedValueOnce({ rows: [{ count: 2 }] })
+        .mockResolvedValueOnce({ rows: [{ count: 4 }] })
+        .mockResolvedValueOnce({ rows: [{ count: 1 }] })
+    } as any;
+
+    const result = await service.previewExpiredData(client);
+
+    expect(client.query).toHaveBeenCalledTimes(3);
+    expect(result).toEqual({
+      viewingHistory: 2,
+      paymentEvents: 4,
+      dataExports: 1
+    });
   });
 });

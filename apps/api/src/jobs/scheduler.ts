@@ -115,9 +115,9 @@ export const startScheduler = (pool: Pool): JobHandle | null => {
       async () => {
         const startedAt = new Date();
         try {
-          await privacyService.purgeExpiredData();
-          logger.info('Retention cleanup complete');
-          await recordJobRun(pool, 'retention_cleanup', 'success', startedAt);
+          const result = await privacyService.purgeExpiredData();
+          logger.info({ ...result }, 'Retention cleanup complete');
+          await recordJobRun(pool, 'retention_cleanup', 'success', startedAt, result);
         } catch (error) {
           logger.error({ err: error }, 'Retention cleanup failed');
           await recordJobRun(

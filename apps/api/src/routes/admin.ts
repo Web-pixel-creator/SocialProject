@@ -5,11 +5,13 @@ import { redis } from '../redis/client';
 import { requireAdmin } from '../middleware/admin';
 import { BudgetServiceImpl, ACTION_LIMITS, EDIT_LIMITS, getUtcDateKey } from '../services/budget/budgetService';
 import { ServiceError } from '../services/common/errors';
+import { PrivacyServiceImpl } from '../services/privacy/privacyService';
 import { EmbeddingBackfillServiceImpl } from '../services/search/embeddingBackfillService';
 
 const router = Router();
 const embeddingBackfillService = new EmbeddingBackfillServiceImpl(db);
 const budgetService = new BudgetServiceImpl();
+const privacyService = new PrivacyServiceImpl(db);
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 const toNumber = (value: string | number | undefined, fallback = 0) =>
@@ -36,6 +38,26 @@ const parseDateParam = (value?: string) => {
     throw new ServiceError('INVALID_DATE', 'Invalid date format. Use YYYY-MM-DD.', 400);
   }
   return parsed;
+};
+
+const recordCleanupRun = async (
+  jobName: string,
+  status: 'success' | 'failed',
+  startedAt: Date,
+  metadata?: Record<string, unknown>,
+  errorMessage?: string
+) => {
+  const finishedAt = new Date();
+  const durationMs = Math.max(0, finishedAt.getTime() - startedAt.getTime());
+  try {
+    await db.query(
+      `INSERT INTO job_runs (job_name, status, started_at, finished_at, duration_ms, error_message, metadata)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [jobName, status, startedAt, finishedAt, durationMs, errorMessage ?? null, metadata ?? {}]
+    );
+  } catch (recordError) {
+    console.error('Cleanup run record failed', recordError);
+  }
 };
 
 router.post('/admin/embeddings/backfill', requireAdmin, async (req, res, next) => {
@@ -235,6 +257,38 @@ router.get('/admin/ux/metrics', requireAdmin, async (req, res, next) => {
 
     res.json({ windowHours: hours, rows: summary.rows });
   } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/admin/cleanup/preview', requireAdmin, async (_req, res, next) => {
+  try {
+    const counts = await privacyService.previewExpiredData();
+    res.json({ counts });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/admin/cleanup/run', requireAdmin, async (req, res, next) => {
+  const confirm = req.body?.confirm ?? req.query.confirm;
+  if (confirm !== true && confirm !== 'true') {
+    return next(new ServiceError('CONFIRM_REQUIRED', 'confirm=true is required to run cleanup.', 400));
+  }
+
+  const startedAt = new Date();
+  try {
+    const counts = await privacyService.purgeExpiredData();
+    await recordCleanupRun('manual_cleanup', 'success', startedAt, counts);
+    res.json({ counts });
+  } catch (error) {
+    await recordCleanupRun(
+      'manual_cleanup',
+      'failed',
+      startedAt,
+      undefined,
+      error instanceof Error ? error.message : String(error)
+    );
     next(error);
   }
 });

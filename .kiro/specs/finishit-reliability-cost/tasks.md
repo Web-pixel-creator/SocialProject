@@ -22,10 +22,10 @@
   - [x] Record error events from middleware.
   - [x] Admin endpoint for error metrics.
 
-- [ ] 5. Storage cleanup safety
-  - Add validation/preview before cleanup.
-  - Track cleanup results/failures.
-  - Tests for cleanup logic.
+- [x] 5. Storage cleanup safety
+  - [x] Add validation/preview before cleanup.
+  - [x] Track cleanup results/failures.
+  - [x] Tests for cleanup logic.
 
 ## Notes
 

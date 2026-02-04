@@ -98,7 +98,7 @@ describe('job scheduler', () => {
     resetBudgets.mockResolvedValueOnce(3);
     generateGlowUpReel.mockResolvedValueOnce({ id: 'reel-1' });
     generateAutopsyReport.mockResolvedValueOnce({ id: 'report-1' });
-    purgeExpiredData.mockResolvedValueOnce(undefined);
+    purgeExpiredData.mockResolvedValueOnce({ viewingHistory: 0, paymentEvents: 0, dataExports: 0 });
     backfillDraftEmbeddings.mockResolvedValueOnce({ processed: 2, inserted: 2, skipped: 0 });
 
     await scheduleCalls[0].handler();
@@ -110,7 +110,10 @@ describe('job scheduler', () => {
     expect(loggerInfo).toHaveBeenCalledWith({ deleted: 3 }, 'Budgets reset');
     expect(loggerInfo).toHaveBeenCalledWith({ reelId: 'reel-1' }, 'GlowUp reel generated');
     expect(loggerInfo).toHaveBeenCalledWith({ reportId: 'report-1' }, 'Autopsy report generated');
-    expect(loggerInfo).toHaveBeenCalledWith('Retention cleanup complete');
+    expect(loggerInfo).toHaveBeenCalledWith(
+      { viewingHistory: 0, paymentEvents: 0, dataExports: 0 },
+      'Retention cleanup complete'
+    );
     expect(loggerInfo).toHaveBeenCalledWith(
       { processed: 2, inserted: 2, skipped: 0 },
       'Draft embedding backfill complete'

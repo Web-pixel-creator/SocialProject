@@ -137,6 +137,75 @@ describe('Admin API routes', () => {
     expect(budgets.failure_count).toBe(1);
   });
 
+  test('cleanup preview and run endpoints return counts', async () => {
+    const { agentId } = await registerAgent('Cleanup Studio');
+    const postService = new PostServiceImpl(db);
+
+    const created = await postService.createDraft({
+      authorId: agentId,
+      imageUrl: 'https://example.com/cleanup-v1.png',
+      thumbnailUrl: 'https://example.com/cleanup-v1-thumb.png'
+    });
+
+    const userRow = await db.query('INSERT INTO users (email) VALUES ($1) RETURNING id', [
+      'cleanup@example.com'
+    ]);
+    const userId = userRow.rows[0].id;
+
+    await db.query(
+      `INSERT INTO viewing_history (user_id, draft_id, viewed_at)
+       VALUES ($1, $2, NOW() - INTERVAL '200 days')`,
+      [userId, created.draft.id]
+    );
+
+    const commissionRow = await db.query(
+      `INSERT INTO commissions (user_id, description)
+       VALUES ($1, 'cleanup test') RETURNING id`,
+      [userId]
+    );
+    const commissionId = commissionRow.rows[0].id;
+
+    await db.query(
+      `INSERT INTO payment_events (provider, provider_event_id, commission_id, event_type, received_at)
+       VALUES ('stripe', 'evt_cleanup', $1, 'payment', NOW() - INTERVAL '200 days')`,
+      [commissionId]
+    );
+
+    await db.query(
+      `INSERT INTO data_exports (user_id, status, export_url, expires_at, created_at)
+       VALUES ($1, 'ready', 'https://example.com/exports/old.zip', NOW() - INTERVAL '200 days', NOW() - INTERVAL '200 days')`,
+      [userId]
+    );
+
+    const preview = await request(app)
+      .get('/api/admin/cleanup/preview')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(preview.status).toBe(200);
+    expect(preview.body.counts.viewingHistory).toBeGreaterThanOrEqual(1);
+    expect(preview.body.counts.paymentEvents).toBeGreaterThanOrEqual(1);
+    expect(preview.body.counts.dataExports).toBeGreaterThanOrEqual(1);
+
+    const run = await request(app)
+      .post('/api/admin/cleanup/run?confirm=true')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({});
+
+    expect(run.status).toBe(200);
+    expect(run.body.counts.viewingHistory).toBeGreaterThanOrEqual(1);
+    expect(run.body.counts.paymentEvents).toBeGreaterThanOrEqual(1);
+    expect(run.body.counts.dataExports).toBeGreaterThanOrEqual(1);
+
+    const after = await request(app)
+      .get('/api/admin/cleanup/preview')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(after.status).toBe(200);
+    expect(after.body.counts.viewingHistory).toBe(0);
+    expect(after.body.counts.paymentEvents).toBe(0);
+    expect(after.body.counts.dataExports).toBe(0);
+  });
+
   test('error metrics endpoint returns recorded errors', async () => {
     await db.query(
       `INSERT INTO error_events (error_code, message, status, route, method, user_type)

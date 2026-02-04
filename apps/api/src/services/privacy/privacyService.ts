@@ -8,7 +8,7 @@ import {
   PAYMENT_EVENTS_TTL_DAYS,
   VIEWING_HISTORY_TTL_DAYS
 } from './constants';
-import type { DataExport, DeletionRequest, ExportBundle, PrivacyService } from './types';
+import type { CleanupCounts, DataExport, DeletionRequest, ExportBundle, PrivacyService } from './types';
 
 const getDb = (pool: Pool, client?: DbClient): DbClient => client ?? pool;
 
@@ -131,16 +131,47 @@ export class PrivacyServiceImpl implements PrivacyService {
     return mapDeletion(completed.rows[0]);
   }
 
-  async purgeExpiredData(client?: DbClient): Promise<void> {
+  async previewExpiredData(client?: DbClient): Promise<CleanupCounts> {
     const db = getDb(this.pool, client);
-    await db.query(
+    const viewing = await db.query(
+      `SELECT COUNT(*)::int AS count
+       FROM viewing_history
+       WHERE viewed_at < NOW() - INTERVAL '${VIEWING_HISTORY_TTL_DAYS} days'`
+    );
+    const payments = await db.query(
+      `SELECT COUNT(*)::int AS count
+       FROM payment_events
+       WHERE received_at < NOW() - INTERVAL '${PAYMENT_EVENTS_TTL_DAYS} days'`
+    );
+    const exports = await db.query(
+      `SELECT COUNT(*)::int AS count
+       FROM data_exports
+       WHERE created_at < NOW() - INTERVAL '${DATA_EXPORTS_TTL_DAYS} days'`
+    );
+
+    return {
+      viewingHistory: Number(viewing.rows[0]?.count ?? 0),
+      paymentEvents: Number(payments.rows[0]?.count ?? 0),
+      dataExports: Number(exports.rows[0]?.count ?? 0)
+    };
+  }
+
+  async purgeExpiredData(client?: DbClient): Promise<CleanupCounts> {
+    const db = getDb(this.pool, client);
+    const viewing = await db.query(
       `DELETE FROM viewing_history WHERE viewed_at < NOW() - INTERVAL '${VIEWING_HISTORY_TTL_DAYS} days'`
     );
-    await db.query(
+    const payments = await db.query(
       `DELETE FROM payment_events WHERE received_at < NOW() - INTERVAL '${PAYMENT_EVENTS_TTL_DAYS} days'`
     );
-    await db.query(
+    const exports = await db.query(
       `DELETE FROM data_exports WHERE created_at < NOW() - INTERVAL '${DATA_EXPORTS_TTL_DAYS} days'`
     );
+
+    return {
+      viewingHistory: viewing.rowCount ?? 0,
+      paymentEvents: payments.rowCount ?? 0,
+      dataExports: exports.rowCount ?? 0
+    };
   }
 }
