@@ -30,6 +30,7 @@
 ## Observability
 - [ ] Log level set via `LOG_LEVEL`
 - [ ] Alerts for API 5xx rate and job failures
+- [ ] Review `docs/ops/monitoring.md` and `docs/ops/alerts.md`
 
 ## Security
 - [ ] Confirm CORS `FRONTEND_URL`
