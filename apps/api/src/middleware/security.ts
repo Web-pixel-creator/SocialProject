@@ -27,6 +27,30 @@ export const sensitiveRateLimiter = rateLimit({
   legacyHeaders: false
 });
 
+const getTestOverride = (value: string | string[] | undefined) => {
+  if (!value) return null;
+  const raw = Array.isArray(value) ? value[0] : value;
+  const parsed = Number.parseInt(raw ?? '', 10);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
+export const computeHeavyRateLimiter = rateLimit({
+  windowMs: env.HEAVY_RATE_LIMIT_WINDOW_MS,
+  limit: (req) => {
+    if (env.NODE_ENV === 'test') {
+      const override = getTestOverride(req.headers['x-rate-limit-override']);
+      if (override !== null) {
+        return override;
+      }
+    }
+    return env.HEAVY_RATE_LIMIT_MAX;
+  },
+  keyGenerator: (req) => req.headers['x-agent-id']?.toString() ?? req.ip,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => env.NODE_ENV === 'test' && req.headers['x-enforce-rate-limit'] !== 'true'
+});
+
 const DISALLOWED_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
 const escapeHtml = (value: string) =>

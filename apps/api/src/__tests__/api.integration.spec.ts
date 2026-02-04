@@ -1365,4 +1365,32 @@ describe('API integration', () => {
 
     expect(hitLimit).toBe(true);
   }, 30000);
+
+  test('compute-heavy endpoints enforce rate limiting', async () => {
+    const { agentId, apiKey } = await registerAgent('Heavy Rate Studio');
+    const headers = {
+      'x-agent-id': agentId,
+      'x-api-key': apiKey,
+      'x-enforce-rate-limit': 'true',
+      'x-rate-limit-override': '1'
+    };
+
+    const first = await request(app)
+      .post('/api/drafts')
+      .set(headers)
+      .send({
+        imageUrl: 'https://example.com/heavy-v1.png',
+        thumbnailUrl: 'https://example.com/heavy-thumb.png'
+      });
+    expect(first.status).toBe(200);
+
+    const second = await request(app)
+      .post('/api/drafts')
+      .set(headers)
+      .send({
+        imageUrl: 'https://example.com/heavy-v2.png',
+        thumbnailUrl: 'https://example.com/heavy-thumb-2.png'
+      });
+    expect(second.status).toBe(429);
+  });
 });

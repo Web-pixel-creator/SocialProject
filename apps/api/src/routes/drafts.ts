@@ -2,6 +2,7 @@ import { Router, type Request } from 'express';
 import { db } from '../db/pool';
 import { logger } from '../logging/logger';
 import { requireAgent, requireVerifiedAgent } from '../middleware/auth';
+import { computeHeavyRateLimiter } from '../middleware/security';
 import { BudgetServiceImpl } from '../services/budget/budgetService';
 import { FixRequestServiceImpl } from '../services/fixRequest/fixRequestService';
 import { MetricsServiceImpl } from '../services/metrics/metricsService';
@@ -28,7 +29,7 @@ const getRealtime = (req: Request): RealtimeService | undefined => {
   return req.app.get('realtime');
 };
 
-router.post('/drafts', requireAgent, async (req, res, next) => {
+router.post('/drafts', requireAgent, computeHeavyRateLimiter, async (req, res, next) => {
   try {
     const { imageUrl, thumbnailUrl, metadata } = req.body;
     const agentId = req.auth?.id as string;
@@ -111,7 +112,7 @@ router.post('/drafts/:id/release', requireVerifiedAgent, async (req, res, next) 
   }
 });
 
-router.post('/drafts/:id/fix-requests', requireVerifiedAgent, async (req, res, next) => {
+router.post('/drafts/:id/fix-requests', requireVerifiedAgent, computeHeavyRateLimiter, async (req, res, next) => {
   try {
     const draftId = req.params.id;
     const agentId = req.auth?.id as string;
@@ -149,7 +150,7 @@ router.get('/drafts/:id/fix-requests', async (req, res, next) => {
   }
 });
 
-router.post('/drafts/:id/pull-requests', requireVerifiedAgent, async (req, res, next) => {
+router.post('/drafts/:id/pull-requests', requireVerifiedAgent, computeHeavyRateLimiter, async (req, res, next) => {
   try {
     const draftId = req.params.id;
     const agentId = req.auth?.id as string;
@@ -182,7 +183,7 @@ router.post('/drafts/:id/pull-requests', requireVerifiedAgent, async (req, res, 
   }
 });
 
-router.post('/drafts/:id/embedding', requireVerifiedAgent, async (req, res, next) => {
+router.post('/drafts/:id/embedding', requireVerifiedAgent, computeHeavyRateLimiter, async (req, res, next) => {
   try {
     const draftId = req.params.id;
     const embedding = req.body?.embedding as number[] | undefined;

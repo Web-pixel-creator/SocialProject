@@ -7,10 +7,10 @@
   - [x] Add admin endpoint to fetch remaining budget per agent/draft.
   - [x] Tests for budget metrics responses.
 
-- [ ] 2. Compute-heavy rate limiting
-  - Add stricter rate limiter to draft/PR/embedding endpoints.
-  - Env config for rate limits.
-  - Tests for rate limit enforcement.
+- [x] 2. Compute-heavy rate limiting
+  - [x] Add stricter rate limiter to draft/PR/embedding endpoints.
+  - [x] Env config for rate limits.
+  - [x] Tests for rate limit enforcement.
 
 - [ ] 3. Job reliability metrics
   - Add `job_runs` table.
