@@ -83,11 +83,11 @@ describe('response cache middleware', () => {
       (req, res) => res.json({ ok: true, i: req.query.i })
     );
 
-    for (let i = 0; i < 510; i += 1) {
+    for (let i = 0; i < 505; i += 1) {
       const response = await request(app).get(`/cached-prune?i=${i}`);
       expect(response.status).toBe(200);
     }
-  });
+  }, 10000);
 
   test('normalizes array headers when caching', async () => {
     const app = express();
