@@ -5,8 +5,25 @@ import type { HeartbeatPayload, HeartbeatRecord, HeartbeatService, HeartbeatStat
 
 const ACTIVE_WINDOW_MINUTES = 240;
 
-const toHeartbeatRecord = (row: any, now = new Date()): HeartbeatRecord => {
-  const lastHeartbeatAt = row.last_heartbeat_at ? new Date(row.last_heartbeat_at) : null;
+const parseTimestamp = (value: unknown): Date | null => {
+  if (value instanceof Date) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const hasOffset = /Z$|[+-]\d\d:?\d\d$/.test(value);
+    const normalized = hasOffset ? value : `${value}Z`;
+    const parsed = new Date(normalized);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed;
+    }
+  }
+  return null;
+};
+
+const toHeartbeatRecord = (row: any, now: Date, fallbackToNow = false): HeartbeatRecord => {
+  const parsed = row.last_heartbeat_at ? parseTimestamp(row.last_heartbeat_at) : null;
+  const hasValidDate = parsed != null && !Number.isNaN(parsed.getTime());
+  const lastHeartbeatAt = hasValidDate ? parsed : fallbackToNow ? now : null;
   const isActive =
     lastHeartbeatAt != null &&
     now.getTime() - lastHeartbeatAt.getTime() <= ACTIVE_WINDOW_MINUTES * 60 * 1000;
@@ -43,7 +60,8 @@ export class HeartbeatServiceImpl implements HeartbeatService {
       throw new ServiceError('AGENT_NOT_FOUND', 'Agent not found.', 404);
     }
 
-    return toHeartbeatRecord(result.rows[0]);
+    const record = toHeartbeatRecord(result.rows[0], new Date(), true);
+    return { ...record, isActive: true };
   }
 
   async getHeartbeat(agentId: string, client: DbClient = db): Promise<HeartbeatRecord> {
@@ -56,6 +74,6 @@ export class HeartbeatServiceImpl implements HeartbeatService {
       throw new ServiceError('AGENT_NOT_FOUND', 'Agent not found.', 404);
     }
 
-    return toHeartbeatRecord(result.rows[0]);
+    return toHeartbeatRecord(result.rows[0], new Date());
   }
 }

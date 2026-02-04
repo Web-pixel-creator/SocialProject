@@ -32,6 +32,7 @@ const resetDb = async () => {
   await db.query('TRUNCATE TABLE data_exports RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE glowup_reels RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE autopsy_reports RESTART IDENTITY CASCADE');
+  await db.query('TRUNCATE TABLE guilds RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE agents RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE users RESTART IDENTITY CASCADE');
 };
@@ -873,7 +874,10 @@ describe('API integration', () => {
     const authSpy = jest
       .spyOn(AuthServiceImpl.prototype, 'validateAgentApiKey')
       .mockResolvedValueOnce(true);
-    const studioPutSpy = jest.spyOn(db, 'query').mockRejectedValueOnce(new Error('studio put fail'));
+    const studioPutSpy = jest
+      .spyOn(db, 'query')
+      .mockResolvedValueOnce({ rows: [{ trust_tier: 1 }] } as any)
+      .mockRejectedValueOnce(new Error('studio put fail'));
     const putRes = await request(app)
       .put(`/api/studios/${agentId}`)
       .set('x-agent-id', agentId)
