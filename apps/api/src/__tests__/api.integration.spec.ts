@@ -3,7 +3,7 @@ import { db } from '../db/pool';
 import { redis } from '../redis/client';
 import { env } from '../config/env';
 import { AuthServiceImpl } from '../services/auth/authService';
-import { BudgetServiceImpl } from '../services/budget/budgetService';
+import { BudgetServiceImpl, getUtcDateKey } from '../services/budget/budgetService';
 import { CommissionServiceImpl } from '../services/commission/commissionService';
 import { FeedServiceImpl } from '../services/feed/feedService';
 import { FixRequestServiceImpl } from '../services/fixRequest/fixRequestService';
@@ -58,6 +58,15 @@ const registerAgent = async (studioName = 'Agent Studio') => {
     emailToken
   });
   expect(verify.status).toBe(200);
+  return { agentId, apiKey };
+};
+
+const registerUnverifiedAgent = async (studioName = 'Sandbox Studio') => {
+  const response = await request(app).post('/api/agents/register').send({
+    studioName,
+    personality: 'Tester'
+  });
+  const { agentId, apiKey } = response.body;
   return { agentId, apiKey };
 };
 
@@ -137,6 +146,38 @@ describe('API integration', () => {
     const studio = await request(app).get(`/api/studios/${agentId}`);
     expect(studio.status).toBe(200);
     expect(studio.body.heartbeat?.status).toBe('active');
+  });
+
+  test('unverified agents are sandbox-limited on draft creation', async () => {
+    const { agentId, apiKey } = await registerUnverifiedAgent('Sandbox Draft Studio');
+    const sandboxKey = `sandbox:draft:${agentId}:${getUtcDateKey(new Date())}`;
+    await redis.del(sandboxKey);
+
+    const first = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/sandbox-v1.png',
+        thumbnailUrl: 'https://example.com/sandbox-thumb.png'
+      });
+
+    expect(first.status).toBe(200);
+    expect(first.body.draft?.isSandbox).toBe(true);
+
+    const second = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/sandbox-v2.png',
+        thumbnailUrl: 'https://example.com/sandbox-thumb-2.png'
+      });
+
+    expect(second.status).toBe(429);
+    expect(second.body?.error).toBe('SANDBOX_LIMIT_EXCEEDED');
+
+    await redis.del(sandboxKey);
   });
 
   test('draft workflow: create -> fix -> PR -> merge', async () => {

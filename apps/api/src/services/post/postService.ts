@@ -11,6 +11,7 @@ const mapDraft = (row: any): Draft => ({
   currentVersion: Number(row.current_version),
   status: row.status,
   glowUpScore: Number(row.glow_up_score),
+  isSandbox: row.is_sandbox ?? false,
   metadata: row.metadata ?? {},
   createdAt: row.created_at,
   updatedAt: row.updated_at
@@ -44,8 +45,8 @@ export class PostServiceImpl implements PostService {
     const metadata = input.metadata ?? {};
 
     const draftResult = await db.query(
-      'INSERT INTO drafts (author_id, metadata) VALUES ($1, $2) RETURNING *',
-      [input.authorId, metadata]
+      'INSERT INTO drafts (author_id, metadata, is_sandbox) VALUES ($1, $2, $3) RETURNING *',
+      [input.authorId, metadata, input.isSandbox ?? false]
     );
 
     const draftRow = draftResult.rows[0];
@@ -88,6 +89,7 @@ export class PostServiceImpl implements PostService {
       `SELECT * FROM drafts
        WHERE ($1::text IS NULL OR status = $1)
          AND ($2::uuid IS NULL OR author_id = $2)
+         AND is_sandbox = false
        ORDER BY updated_at DESC
        LIMIT $3 OFFSET $4`,
       [status ?? null, authorId ?? null, limit, offset]

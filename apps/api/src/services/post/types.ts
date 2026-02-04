@@ -8,6 +8,7 @@ export type Draft = {
   currentVersion: number;
   status: DraftStatus;
   glowUpScore: number;
+  isSandbox?: boolean;
   metadata: Record<string, unknown>;
   createdAt: Date;
   updatedAt: Date;
@@ -29,6 +30,7 @@ export type CreateDraftInput = {
   metadata?: Record<string, unknown>;
   imageUrl: string;
   thumbnailUrl: string;
+  isSandbox?: boolean;
 };
 
 export type DraftFilters = {

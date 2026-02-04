@@ -1,7 +1,7 @@
 import { Router, type Request } from 'express';
 import { db } from '../db/pool';
 import { logger } from '../logging/logger';
-import { requireVerifiedAgent } from '../middleware/auth';
+import { requireAgent, requireVerifiedAgent } from '../middleware/auth';
 import { BudgetServiceImpl } from '../services/budget/budgetService';
 import { FixRequestServiceImpl } from '../services/fixRequest/fixRequestService';
 import { MetricsServiceImpl } from '../services/metrics/metricsService';
@@ -10,6 +10,7 @@ import { PostServiceImpl } from '../services/post/postService';
 import { PullRequestServiceImpl } from '../services/pullRequest/pullRequestService';
 import { SearchServiceImpl } from '../services/search/searchService';
 import { EmbeddingServiceImpl } from '../services/search/embeddingService';
+import { SandboxServiceImpl } from '../services/sandbox/sandboxService';
 import type { RealtimeService } from '../services/realtime/types';
 
 const router = Router();
@@ -17,6 +18,7 @@ const postService = new PostServiceImpl(db);
 const fixService = new FixRequestServiceImpl(db);
 const prService = new PullRequestServiceImpl(db);
 const budgetService = new BudgetServiceImpl();
+const sandboxService = new SandboxServiceImpl();
 const metricsService = new MetricsServiceImpl(db);
 const notificationService = new NotificationServiceImpl(db, async () => Promise.resolve());
 const searchService = new SearchServiceImpl(db);
@@ -26,30 +28,45 @@ const getRealtime = (req: Request): RealtimeService | undefined => {
   return req.app.get('realtime');
 };
 
-router.post('/drafts', requireVerifiedAgent, async (req, res, next) => {
+router.post('/drafts', requireAgent, async (req, res, next) => {
   try {
     const { imageUrl, thumbnailUrl, metadata } = req.body;
-    const result = await postService.createDraft({
-      authorId: req.auth?.id as string,
-      imageUrl,
-      thumbnailUrl,
-      metadata
-    });
-    try {
-      const embedding = await embeddingService.generateEmbedding({
-        draftId: result.draft.id,
-        source: 'auto',
-        imageUrl,
-        metadata
-      });
-      if (embedding && embedding.length > 0) {
-        await searchService.upsertDraftEmbedding(result.draft.id, embedding, 'auto');
-      }
-    } catch (error) {
-      logger.warn({ err: error, draftId: result.draft.id }, 'Draft embedding upsert failed');
+    const agentId = req.auth?.id as string;
+    const trustResult = await db.query('SELECT trust_tier FROM agents WHERE id = $1', [agentId]);
+    const trustTier = Number(trustResult.rows[0]?.trust_tier ?? 0);
+    const isSandbox = trustTier < 1;
+
+    if (isSandbox) {
+      await sandboxService.checkDraftLimit(agentId);
     }
 
-    getRealtime(req)?.broadcast(`feed:live`, 'draft_created', { draftId: result.draft.id });
+    const result = await postService.createDraft({
+      authorId: agentId,
+      imageUrl,
+      thumbnailUrl,
+      metadata,
+      isSandbox
+    });
+
+    if (isSandbox) {
+      await sandboxService.incrementDraftLimit(agentId);
+    } else {
+      try {
+        const embedding = await embeddingService.generateEmbedding({
+          draftId: result.draft.id,
+          source: 'auto',
+          imageUrl,
+          metadata
+        });
+        if (embedding && embedding.length > 0) {
+          await searchService.upsertDraftEmbedding(result.draft.id, embedding, 'auto');
+        }
+      } catch (error) {
+        logger.warn({ err: error, draftId: result.draft.id }, 'Draft embedding upsert failed');
+      }
+
+      getRealtime(req)?.broadcast(`feed:live`, 'draft_created', { draftId: result.draft.id });
+    }
     res.json(result);
   } catch (error) {
     next(error);

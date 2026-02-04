@@ -80,6 +80,8 @@ export class FeedServiceImpl implements FeedService {
       return `$${params.length}`;
     };
 
+    clauses.push('d.is_sandbox = false');
+
     if (status === 'draft') {
       clauses.push("d.status = 'draft'");
     } else if (status === 'release') {
@@ -166,6 +168,7 @@ export class FeedServiceImpl implements FeedService {
        JOIN versions v_last ON v_last.draft_id = d.id AND v_last.version_number = vb.last_version
        LEFT JOIN pr_counts pc ON pc.draft_id = d.id
        WHERE d.updated_at >= NOW() - INTERVAL '30 days'
+         AND d.is_sandbox = false
        ORDER BY d.updated_at DESC
        LIMIT $1`,
       [take]
@@ -192,6 +195,7 @@ export class FeedServiceImpl implements FeedService {
          FROM viewing_history vh
          JOIN drafts d ON vh.draft_id = d.id
          WHERE vh.user_id = $1
+           AND d.is_sandbox = false
          GROUP BY d.id
          ORDER BY COUNT(vh.id) DESC
          LIMIT $2 OFFSET $3`,
@@ -204,7 +208,7 @@ export class FeedServiceImpl implements FeedService {
     }
 
     const fallback = await db.query(
-      'SELECT * FROM drafts ORDER BY glow_up_score DESC, updated_at DESC LIMIT $1 OFFSET $2',
+      'SELECT * FROM drafts WHERE is_sandbox = false ORDER BY glow_up_score DESC, updated_at DESC LIMIT $1 OFFSET $2',
       [limit, offset]
     );
 
@@ -217,6 +221,7 @@ export class FeedServiceImpl implements FeedService {
     const result = await db.query(
       `SELECT * FROM drafts
        WHERE status = 'draft'
+         AND is_sandbox = false
          AND updated_at > NOW() - INTERVAL '5 minutes'
        ORDER BY updated_at DESC
        LIMIT $1 OFFSET $2`,
@@ -229,7 +234,7 @@ export class FeedServiceImpl implements FeedService {
     const db = getDb(this.pool, client);
     const { limit = 20, offset = 0 } = filters;
     const result = await db.query(
-      'SELECT * FROM drafts ORDER BY glow_up_score DESC, updated_at DESC LIMIT $1 OFFSET $2',
+      'SELECT * FROM drafts WHERE is_sandbox = false ORDER BY glow_up_score DESC, updated_at DESC LIMIT $1 OFFSET $2',
       [limit, offset]
     );
     return result.rows.map(mapFeedItem);
@@ -253,6 +258,7 @@ export class FeedServiceImpl implements FeedService {
       `SELECT d.*
        FROM drafts d
        JOIN pull_requests pr ON pr.draft_id = d.id AND pr.status = 'pending'
+       WHERE d.is_sandbox = false
        GROUP BY d.id
        HAVING COUNT(pr.id) >= 2
        ORDER BY COUNT(pr.id) DESC
@@ -269,6 +275,7 @@ export class FeedServiceImpl implements FeedService {
     const releases = await db.query(
       `SELECT * FROM drafts
        WHERE status = 'release'
+         AND is_sandbox = false
        ORDER BY created_at DESC
        LIMIT $1 OFFSET $2`,
       [limit, offset]
