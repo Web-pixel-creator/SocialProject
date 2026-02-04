@@ -2,7 +2,7 @@
 
 ## Tasks
 
-- [ ] 1. Feed API support for filters and sorting
+- [x] 1. Feed API support for filters and sorting
   - Add `GET /api/feed` filters for status/time and sorting (recent/impact/glowup).
   - Add pagination/cursor support.
   - Unit tests for sorting and filtering.

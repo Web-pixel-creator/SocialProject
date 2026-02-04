@@ -1,6 +1,15 @@
 import { Pool } from 'pg';
 import type { DbClient } from '../auth/types';
-import type { FeedFilters, FeedItem, FeedService, ProgressFeedItem, StudioItem } from './types';
+import type {
+  FeedFilters,
+  FeedItem,
+  FeedService,
+  FeedSort,
+  FeedStatus,
+  ProgressFeedItem,
+  StudioItem,
+  UnifiedFeedFilters
+} from './types';
 
 const getDb = (pool: Pool, client?: DbClient): DbClient => client ?? pool;
 
@@ -47,6 +56,76 @@ const computeRecencyBonus = (lastActivity: Date): number => {
 
 export class FeedServiceImpl implements FeedService {
   constructor(private readonly pool: Pool) {}
+
+  async getFeed(filters: UnifiedFeedFilters, client?: DbClient): Promise<FeedItem[]> {
+    const db = getDb(this.pool, client);
+    const {
+      limit = 20,
+      offset = 0,
+      sort = 'recent',
+      status,
+      from,
+      to,
+      cursor
+    } = filters;
+
+    const safeLimit = Math.min(Math.max(limit, 1), 100);
+    const safeOffset = Math.max(offset, 0);
+
+    const clauses: string[] = [];
+    const params: Array<string | number | Date> = [];
+
+    const addParam = (value: string | number | Date) => {
+      params.push(value);
+      return `$${params.length}`;
+    };
+
+    if (status === 'draft') {
+      clauses.push("d.status = 'draft'");
+    } else if (status === 'release') {
+      clauses.push("d.status = 'release'");
+    } else if (status === 'pr') {
+      clauses.push(
+        "EXISTS (SELECT 1 FROM pull_requests pr WHERE pr.draft_id = d.id AND pr.status = 'pending')"
+      );
+    }
+
+    if (from) {
+      clauses.push(`d.updated_at >= ${addParam(from)}`);
+    }
+
+    if (to) {
+      clauses.push(`d.updated_at <= ${addParam(to)}`);
+    }
+
+    if (cursor && sort === 'recent') {
+      clauses.push(`d.updated_at < ${addParam(cursor)}`);
+    }
+
+    const orderBy = (() => {
+      const orderMap: Record<FeedSort, string> = {
+        recent: 'd.updated_at DESC',
+        glowup: 'd.glow_up_score DESC, d.updated_at DESC',
+        impact: 'a.impact DESC, d.updated_at DESC'
+      };
+      return orderMap[sort as FeedSort] ?? orderMap.recent;
+    })();
+
+    const whereSql = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+    params.push(safeLimit, safeOffset);
+
+    const result = await db.query(
+      `SELECT d.*
+       FROM drafts d
+       JOIN agents a ON a.id = d.author_id
+       ${whereSql}
+       ORDER BY ${orderBy}
+       LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params
+    );
+
+    return result.rows.map(mapFeedItem);
+  }
 
   async getProgress(filters: FeedFilters, client?: DbClient): Promise<ProgressFeedItem[]> {
     const db = getDb(this.pool, client);

@@ -538,6 +538,10 @@ describe('API integration', () => {
     const archive = await request(app).get('/api/feeds/archive?limit=5');
     expect(archive.status).toBe(200);
     expect(Array.isArray(archive.body)).toBe(true);
+
+    const unified = await request(app).get('/api/feed?limit=5&sort=recent');
+    expect(unified.status).toBe(200);
+    expect(Array.isArray(unified.body)).toBe(true);
   });
 
   test('progress feed returns before/after entries', async () => {

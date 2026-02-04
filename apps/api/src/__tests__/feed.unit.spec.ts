@@ -88,6 +88,82 @@ describe('feed service edge cases', () => {
     }
   });
 
+  test('unified feed filters by status and pending PRs', async () => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const agent = await client.query(
+        'INSERT INTO agents (studio_name, personality, api_key_hash, impact) VALUES ($1, $2, $3, $4) RETURNING id',
+        ['Filter Agent', 'tester', 'hash_feed_filter', 3]
+      );
+      const agentId = agent.rows[0].id;
+
+      const draft = await client.query(
+        "INSERT INTO drafts (author_id, status, glow_up_score) VALUES ($1, 'draft', 1) RETURNING id",
+        [agentId]
+      );
+      const release = await client.query(
+        "INSERT INTO drafts (author_id, status, glow_up_score) VALUES ($1, 'release', 2) RETURNING id",
+        [agentId]
+      );
+      const prDraft = await client.query(
+        "INSERT INTO drafts (author_id, status, glow_up_score) VALUES ($1, 'draft', 3) RETURNING id",
+        [agentId]
+      );
+      await client.query(
+        `INSERT INTO pull_requests (draft_id, maker_id, proposed_version, description, severity, status)
+         VALUES ($1, $2, 2, 'Pending PR', 'minor', 'pending')`,
+        [prDraft.rows[0].id, agentId]
+      );
+
+      const releaseItems = await feedService.getFeed({ status: 'release' }, client);
+      expect(releaseItems.every((item) => item.type === 'release')).toBe(true);
+
+      const prItems = await feedService.getFeed({ status: 'pr' }, client);
+      expect(prItems.find((item) => item.id === prDraft.rows[0].id)).toBeTruthy();
+      expect(prItems.find((item) => item.id === release.rows[0].id)).toBeFalsy();
+      expect(prItems.find((item) => item.id === draft.rows[0].id)).toBeFalsy();
+
+      await client.query('ROLLBACK');
+    } finally {
+      client.release();
+    }
+  });
+
+  test('unified feed sorts by glowup and impact', async () => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const lowImpactAgent = await client.query(
+        'INSERT INTO agents (studio_name, personality, api_key_hash, impact) VALUES ($1, $2, $3, $4) RETURNING id',
+        ['Low Impact', 'tester', 'hash_feed_low', 1]
+      );
+      const highImpactAgent = await client.query(
+        'INSERT INTO agents (studio_name, personality, api_key_hash, impact) VALUES ($1, $2, $3, $4) RETURNING id',
+        ['High Impact', 'tester', 'hash_feed_high', 50]
+      );
+
+      const lowDraft = await client.query(
+        'INSERT INTO drafts (author_id, glow_up_score, updated_at) VALUES ($1, $2, NOW() - INTERVAL \'1 day\') RETURNING id',
+        [lowImpactAgent.rows[0].id, 2]
+      );
+      const highDraft = await client.query(
+        'INSERT INTO drafts (author_id, glow_up_score, updated_at) VALUES ($1, $2, NOW()) RETURNING id',
+        [highImpactAgent.rows[0].id, 5]
+      );
+
+      const glowupItems = await feedService.getFeed({ sort: 'glowup' }, client);
+      expect(glowupItems[0].glowUpScore).toBeGreaterThanOrEqual(glowupItems[1].glowUpScore);
+
+      const impactItems = await feedService.getFeed({ sort: 'impact' }, client);
+      expect(impactItems[0].id).toBe(highDraft.rows[0].id);
+
+      await client.query('ROLLBACK');
+    } finally {
+      client.release();
+    }
+  });
+
   test('for you feed uses viewing history when present', async () => {
     const client = await pool.connect();
     try {

@@ -32,6 +32,17 @@ export type FeedFilters = {
   userId?: string;
 };
 
+export type FeedSort = 'recent' | 'impact' | 'glowup';
+export type FeedStatus = 'draft' | 'release' | 'pr';
+
+export type UnifiedFeedFilters = FeedFilters & {
+  sort?: FeedSort;
+  status?: FeedStatus;
+  from?: Date;
+  to?: Date;
+  cursor?: Date;
+};
+
 export type FeedService = {
   getProgress(filters: FeedFilters, client?: DbClient): Promise<ProgressFeedItem[]>;
   getForYou(filters: FeedFilters, client?: DbClient): Promise<FeedItem[]>;
@@ -40,4 +51,5 @@ export type FeedService = {
   getStudios(filters: FeedFilters, client?: DbClient): Promise<StudioItem[]>;
   getBattles(filters: FeedFilters, client?: DbClient): Promise<FeedItem[]>;
   getArchive(filters: FeedFilters, client?: DbClient): Promise<FeedItem[]>;
+  getFeed(filters: UnifiedFeedFilters, client?: DbClient): Promise<FeedItem[]>;
 };
