@@ -264,4 +264,47 @@ router.get('/admin/jobs/metrics', requireAdmin, async (req, res, next) => {
   }
 });
 
+router.get('/admin/errors/metrics', requireAdmin, async (req, res, next) => {
+  try {
+    const hours = clamp(Number(req.query.hours ?? 24), 1, 720);
+    const limit = clamp(Number(req.query.limit ?? 50), 1, 200);
+    const errorCode = req.query.code ? String(req.query.code) : null;
+    const route = req.query.route ? String(req.query.route) : null;
+
+    const filters: string[] = ["created_at >= NOW() - ($1 || ' hours')::interval"];
+    const params: any[] = [hours];
+
+    if (errorCode) {
+      params.push(errorCode);
+      filters.push(`error_code = $${params.length}`);
+    }
+
+    if (route) {
+      params.push(route);
+      filters.push(`route = $${params.length}`);
+    }
+
+    params.push(limit);
+
+    const summary = await db.query(
+      `SELECT error_code,
+              status,
+              route,
+              method,
+              COUNT(*)::int AS count,
+              MAX(created_at) AS last_event_at
+       FROM error_events
+       WHERE ${filters.join(' AND ')}
+       GROUP BY error_code, status, route, method
+       ORDER BY count DESC, last_event_at DESC
+       LIMIT $${params.length}`,
+      params
+    );
+
+    res.json({ windowHours: hours, rows: summary.rows });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

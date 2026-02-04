@@ -17,10 +17,10 @@
   - [x] Track success/failure of cron jobs with timestamps.
   - [x] Admin endpoint for job metrics.
 
-- [ ] 4. Error event tracking
-  - Add `error_events` table.
-  - Record error events from middleware.
-  - Admin endpoint for error metrics.
+- [x] 4. Error event tracking
+  - [x] Add `error_events` table.
+  - [x] Record error events from middleware.
+  - [x] Admin endpoint for error metrics.
 
 - [ ] 5. Storage cleanup safety
   - Add validation/preview before cleanup.

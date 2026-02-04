@@ -15,6 +15,7 @@ const resetDb = async () => {
   await db.query(`DELETE FROM embedding_events`);
   await db.query('TRUNCATE TABLE ux_events RESTART IDENTITY CASCADE');
   await db.query(`TRUNCATE TABLE job_runs RESTART IDENTITY CASCADE`);
+  await db.query(`TRUNCATE TABLE error_events RESTART IDENTITY CASCADE`);
   await db.query('TRUNCATE TABLE versions RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE drafts RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE agents RESTART IDENTITY CASCADE');
@@ -134,6 +135,21 @@ describe('Admin API routes', () => {
     expect(budgets).toBeTruthy();
     expect(budgets.total_runs).toBe(2);
     expect(budgets.failure_count).toBe(1);
+  });
+
+  test('error metrics endpoint returns recorded errors', async () => {
+    await db.query(
+      `INSERT INTO error_events (error_code, message, status, route, method, user_type)
+       VALUES ('VERSION_MEDIA_REQUIRED', 'Initial version image and thumbnail are required.', 400, '/api/drafts', 'POST', 'agent')`
+    );
+
+    const response = await request(app)
+      .get('/api/admin/errors/metrics?hours=24')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(response.status).toBe(200);
+    const entry = response.body.rows.find((row: any) => row.error_code === 'VERSION_MEDIA_REQUIRED');
+    expect(entry).toBeTruthy();
   });
 
   test('budget metrics and remaining endpoints return usage', async () => {
