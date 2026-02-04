@@ -19,6 +19,7 @@ const resetBudgets = jest.fn();
 const generateGlowUpReel = jest.fn();
 const generateAutopsyReport = jest.fn();
 const purgeExpiredData = jest.fn();
+const backfillDraftEmbeddings = jest.fn();
 
 const loggerInfo = jest.fn();
 const loggerWarn = jest.fn();
@@ -32,6 +33,7 @@ const setupScheduler = (jobsEnabled: string) => {
   generateGlowUpReel.mockReset();
   generateAutopsyReport.mockReset();
   purgeExpiredData.mockReset();
+  backfillDraftEmbeddings.mockReset();
   loggerInfo.mockClear();
   loggerWarn.mockClear();
   loggerError.mockClear();
@@ -60,6 +62,11 @@ const setupScheduler = (jobsEnabled: string) => {
       purgeExpiredData
     }))
   }));
+  jest.doMock('../services/search/embeddingBackfillService', () => ({
+    EmbeddingBackfillServiceImpl: jest.fn().mockImplementation(() => ({
+      backfillDraftEmbeddings
+    }))
+  }));
 
   return require('../jobs/scheduler') as typeof import('../jobs/scheduler');
 };
@@ -79,10 +86,10 @@ describe('job scheduler', () => {
 
     expect(handle).not.toBeNull();
     expect(loggerInfo).toHaveBeenCalledWith('Job scheduler started');
-    expect(scheduleMock).toHaveBeenCalledTimes(4);
+    expect(scheduleMock).toHaveBeenCalledTimes(5);
 
     const expressions = scheduleCalls.map((call) => call.expression);
-    expect(expressions).toEqual(['0 0 * * *', '5 0 * * *', '10 0 * * *', '15 0 * * *']);
+    expect(expressions).toEqual(['0 0 * * *', '5 0 * * *', '10 0 * * *', '15 0 * * *', '20 0 * * *']);
     scheduleCalls.forEach((call) => {
       expect(call.options.timezone).toBe('UTC');
     });
@@ -91,31 +98,40 @@ describe('job scheduler', () => {
     generateGlowUpReel.mockResolvedValueOnce({ id: 'reel-1' });
     generateAutopsyReport.mockResolvedValueOnce({ id: 'report-1' });
     purgeExpiredData.mockResolvedValueOnce(undefined);
+    backfillDraftEmbeddings.mockResolvedValueOnce({ processed: 2, inserted: 2, skipped: 0 });
 
     await scheduleCalls[0].handler();
     await scheduleCalls[1].handler();
     await scheduleCalls[2].handler();
     await scheduleCalls[3].handler();
+    await scheduleCalls[4].handler();
 
     expect(loggerInfo).toHaveBeenCalledWith({ deleted: 3 }, 'Budgets reset');
     expect(loggerInfo).toHaveBeenCalledWith({ reelId: 'reel-1' }, 'GlowUp reel generated');
     expect(loggerInfo).toHaveBeenCalledWith({ reportId: 'report-1' }, 'Autopsy report generated');
     expect(loggerInfo).toHaveBeenCalledWith('Retention cleanup complete');
+    expect(loggerInfo).toHaveBeenCalledWith(
+      { processed: 2, inserted: 2, skipped: 0 },
+      'Draft embedding backfill complete'
+    );
 
     resetBudgets.mockRejectedValueOnce(new Error('budget fail'));
     generateGlowUpReel.mockRejectedValueOnce(new Error('reel fail'));
     generateAutopsyReport.mockRejectedValueOnce(new Error('autopsy fail'));
     purgeExpiredData.mockRejectedValueOnce(new Error('retention fail'));
+    backfillDraftEmbeddings.mockRejectedValueOnce(new Error('backfill fail'));
 
     await scheduleCalls[0].handler();
     await scheduleCalls[1].handler();
     await scheduleCalls[2].handler();
     await scheduleCalls[3].handler();
+    await scheduleCalls[4].handler();
 
     expect(loggerError).toHaveBeenCalledWith({ err: expect.any(Error) }, 'Budget reset failed');
     expect(loggerWarn).toHaveBeenCalledWith({ err: expect.any(Error) }, 'GlowUp reel generation skipped');
     expect(loggerWarn).toHaveBeenCalledWith({ err: expect.any(Error) }, 'Autopsy generation skipped');
     expect(loggerError).toHaveBeenCalledWith({ err: expect.any(Error) }, 'Retention cleanup failed');
+    expect(loggerError).toHaveBeenCalledWith({ err: expect.any(Error) }, 'Draft embedding backfill failed');
 
     handle?.stop();
     scheduleCalls.forEach((call) => {

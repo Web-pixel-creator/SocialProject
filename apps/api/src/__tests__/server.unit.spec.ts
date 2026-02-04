@@ -53,13 +53,17 @@ describe('server setup', () => {
     jest.doMock('../logging/requestLogger', () => ({ requestLogger: jest.fn() }));
     jest.doMock('../middleware/error', () => ({ errorHandler: jest.fn() }));
     jest.doMock('../routes/auth', () => ({}));
+    jest.doMock('../routes/admin', () => ({}));
     jest.doMock('../routes/drafts', () => ({}));
     jest.doMock('../routes/feeds', () => ({}));
+    jest.doMock('../routes/guilds', () => ({}));
     jest.doMock('../routes/studios', () => ({}));
     jest.doMock('../routes/search', () => ({}));
     jest.doMock('../routes/commissions', () => ({}));
     jest.doMock('../routes/privacy', () => ({}));
-    jest.doMock('../config/env', () => ({ env: { FRONTEND_URL: 'http://localhost:3000' } }));
+    jest.doMock('../config/env', () => ({
+      env: { FRONTEND_URL: 'http://localhost:3000', LOG_LEVEL: 'info' }
+    }));
 
     const { createServer } = require('../server') as typeof import('../server');
     const result = createServer();
@@ -107,13 +111,17 @@ describe('server setup', () => {
     jest.doMock('../logging/requestLogger', () => ({ requestLogger: jest.fn() }));
     jest.doMock('../middleware/error', () => ({ errorHandler: jest.fn() }));
     jest.doMock('../routes/auth', () => ({}));
+    jest.doMock('../routes/admin', () => ({}));
     jest.doMock('../routes/drafts', () => ({}));
     jest.doMock('../routes/feeds', () => ({}));
+    jest.doMock('../routes/guilds', () => ({}));
     jest.doMock('../routes/studios', () => ({}));
     jest.doMock('../routes/search', () => ({}));
     jest.doMock('../routes/commissions', () => ({}));
     jest.doMock('../routes/privacy', () => ({}));
-    jest.doMock('../config/env', () => ({ env: { FRONTEND_URL: 'http://localhost:3000' } }));
+    jest.doMock('../config/env', () => ({
+      env: { FRONTEND_URL: 'http://localhost:3000', LOG_LEVEL: 'info' }
+    }));
     const { createApp } = require('../server') as typeof import('../server');
 
     const app = createApp() as typeof appMock;

@@ -7,6 +7,8 @@ import { requireAgent, requireHuman, requireVerifiedAgent } from '../middleware/
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/finishit'
 });
+const uniqueStudioName = (base: string) =>
+  `${base}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
 describe('auth middleware', () => {
   afterAll(async () => {
@@ -107,7 +109,7 @@ describe('auth middleware', () => {
     const apiKeyHash = await bcrypt.hash('real-key', 10);
     const insert = await pool.query(
       'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-      ['Auth Agent', 'tester', apiKeyHash]
+      [uniqueStudioName('Auth Agent'), 'tester', apiKeyHash]
     );
     const agentId = insert.rows[0].id;
 
@@ -149,7 +151,7 @@ describe('auth middleware', () => {
     const apiKeyHash = await bcrypt.hash(apiKey, 10);
     const insert = await pool.query(
       'INSERT INTO agents (studio_name, personality, api_key_hash, trust_tier) VALUES ($1, $2, $3, $4) RETURNING id',
-      ['Tier0 Agent', 'tester', apiKeyHash, 0]
+      [uniqueStudioName('Tier0 Agent'), 'tester', apiKeyHash, 0]
     );
     const agentId = insert.rows[0].id;
 
@@ -161,8 +163,12 @@ describe('auth middleware', () => {
       }
     };
     const next = jest.fn();
+    const done = new Promise<void>((resolve) => {
+      next.mockImplementation(() => resolve());
+    });
 
     await requireVerifiedAgent(req, {} as any, next);
+    await done;
 
     expect(next).toHaveBeenCalledTimes(1);
     expect(next.mock.calls[0][0]).toMatchObject({ code: 'AGENT_NOT_VERIFIED' });
@@ -175,7 +181,7 @@ describe('auth middleware', () => {
     const apiKeyHash = await bcrypt.hash(apiKey, 10);
     const insert = await pool.query(
       'INSERT INTO agents (studio_name, personality, api_key_hash, trust_tier) VALUES ($1, $2, $3, $4) RETURNING id',
-      ['Tier1 Agent', 'tester', apiKeyHash, 1]
+      [uniqueStudioName('Tier1 Agent'), 'tester', apiKeyHash, 1]
     );
     const agentId = insert.rows[0].id;
 
@@ -187,8 +193,12 @@ describe('auth middleware', () => {
       }
     };
     const next = jest.fn();
+    const done = new Promise<void>((resolve) => {
+      next.mockImplementation(() => resolve());
+    });
 
     await requireVerifiedAgent(req, {} as any, next);
+    await done;
 
     expect(next).toHaveBeenCalledTimes(1);
     expect(next.mock.calls[0][0]).toBeUndefined();
