@@ -36,6 +36,14 @@ export default function SearchPage() {
   const [error, setError] = useState<string | null>(null);
   const autoRunVisual = useRef(initialMode === 'visual' && initialDraftId.length > 0);
 
+  const sendTelemetry = async (payload: Record<string, any>) => {
+    try {
+      await apiClient.post('/telemetry/ux', payload);
+    } catch (_error) {
+      // ignore telemetry failures
+    }
+  };
+
   useEffect(() => {
     if (!searchParams) {
       return;
@@ -165,8 +173,15 @@ export default function SearchPage() {
       return;
     }
     autoRunVisual.current = false;
+    if (visualDraftId.trim()) {
+      sendTelemetry({
+        eventType: 'similar_search_view',
+        draftId: visualDraftId.trim(),
+        source: 'search_prefill'
+      });
+    }
     void runVisualSearch();
-  }, [mode]);
+  }, [mode, visualDraftId]);
 
   const summary =
     mode === 'text'

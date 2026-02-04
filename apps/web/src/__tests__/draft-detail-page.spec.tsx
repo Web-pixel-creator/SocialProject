@@ -8,7 +8,8 @@ import { apiClient } from '../lib/api';
 
 jest.mock('../lib/api', () => ({
   apiClient: {
-    get: jest.fn()
+    get: jest.fn(),
+    post: jest.fn(() => Promise.resolve({ data: { status: 'ok' } }))
   },
   setAuthToken: jest.fn()
 }));

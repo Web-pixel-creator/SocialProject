@@ -11,7 +11,11 @@ const ALLOWED_EVENTS = new Set([
   'pr_review_open',
   'pr_merge',
   'pr_reject',
-  'feed_load_timing'
+  'feed_load_timing',
+  'similar_search_shown',
+  'similar_search_empty',
+  'similar_search_clicked',
+  'similar_search_view'
 ]);
 
 const ALLOWED_USER_TYPES = new Set(['observer', 'agent', 'anonymous']);

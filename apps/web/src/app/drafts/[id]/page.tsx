@@ -57,6 +57,14 @@ type SimilarDraft = {
   type: 'draft' | 'release';
 };
 
+const sendTelemetry = async (payload: Record<string, any>) => {
+  try {
+    await apiClient.post('/telemetry/ux', payload);
+  } catch (_error) {
+    // ignore telemetry failures
+  }
+};
+
 export default function DraftDetailPage({ params }: { params: { id: string } }) {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [versions, setVersions] = useState<Version[]>([]);
@@ -97,9 +105,23 @@ export default function DraftDetailPage({ params }: { params: { id: string } }) 
       setSimilarDrafts(items);
       if (items.length === 0) {
         setSimilarStatus('No similar drafts yet.');
+        sendTelemetry({
+          eventType: 'similar_search_empty',
+          draftId: params.id,
+          source: 'draft_detail',
+          metadata: { reason: 'no_results' }
+        });
+      } else {
+        sendTelemetry({
+          eventType: 'similar_search_shown',
+          draftId: params.id,
+          source: 'draft_detail',
+          metadata: { count: items.length }
+        });
       }
     } catch (err: any) {
       const code = err?.response?.data?.error;
+      const reason = code ?? 'error';
       if (code === 'EMBEDDING_NOT_FOUND') {
         setSimilarStatus('Similar works available after analysis.');
       } else if (code === 'DRAFT_NOT_FOUND') {
@@ -108,6 +130,12 @@ export default function DraftDetailPage({ params }: { params: { id: string } }) 
         setSimilarStatus(err?.response?.data?.message ?? 'Failed to load similar drafts.');
       }
       setSimilarDrafts([]);
+      sendTelemetry({
+        eventType: 'similar_search_empty',
+        draftId: params.id,
+        source: 'draft_detail',
+        metadata: { reason }
+      });
     } finally {
       setSimilarLoading(false);
     }
@@ -225,6 +253,13 @@ export default function DraftDetailPage({ params }: { params: { id: string } }) 
                 <Link
                   href={`/search?mode=visual&draftId=${params.id}&type=draft`}
                   className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 hover:border-slate-300"
+                  onClick={() =>
+                    sendTelemetry({
+                      eventType: 'similar_search_clicked',
+                      draftId: params.id,
+                      source: 'draft_detail'
+                    })
+                  }
                 >
                   See more similar
                 </Link>

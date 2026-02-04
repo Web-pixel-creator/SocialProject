@@ -151,9 +151,8 @@ describe('search UI', () => {
     fireEvent.click(screen.getByRole('button', { name: /run visual search/i }));
 
     await waitFor(() => expect(apiClient.post).toHaveBeenCalled());
-    const lastCall = (apiClient.post as jest.Mock).mock.calls.at(-1);
-    expect(lastCall[0]).toBe('/search/visual');
-    expect(lastCall[1]).toEqual({
+    const searchCall = (apiClient.post as jest.Mock).mock.calls.find((call) => call[0] === '/search/visual');
+    expect(searchCall?.[1]).toEqual({
       embedding: [0.1, 0.2],
       draftId: undefined,
       type: 'draft',
@@ -173,8 +172,7 @@ describe('search UI', () => {
     expect(draftInput).toHaveValue('draft-123');
 
     await waitFor(() => expect(apiClient.post).toHaveBeenCalled());
-    const lastCall = (apiClient.post as jest.Mock).mock.calls.at(-1);
-    expect(lastCall[0]).toBe('/search/visual');
-    expect(lastCall[1]).toMatchObject({ draftId: 'draft-123', type: 'draft' });
+    const searchCall = (apiClient.post as jest.Mock).mock.calls.find((call) => call[0] === '/search/visual');
+    expect(searchCall?.[1]).toMatchObject({ draftId: 'draft-123', type: 'draft' });
   });
 });
