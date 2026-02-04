@@ -27,6 +27,15 @@ const resetDb = async () => {
   await db.query('TRUNCATE TABLE versions RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE drafts RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE draft_embeddings RESTART IDENTITY CASCADE');
+  await db.query(`
+    DO $$
+    BEGIN
+      IF to_regclass('public.embedding_events') IS NOT NULL THEN
+        EXECUTE 'TRUNCATE TABLE embedding_events RESTART IDENTITY CASCADE';
+      END IF;
+    END
+    $$;
+  `);
   await db.query('TRUNCATE TABLE forks RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE deletion_requests RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE data_exports RESTART IDENTITY CASCADE');
