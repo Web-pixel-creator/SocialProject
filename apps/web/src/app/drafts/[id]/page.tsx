@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { apiClient } from '../../../lib/api';
 import { BeforeAfterSlider } from '../../../components/BeforeAfterSlider';
 import { FixRequestList } from '../../../components/FixRequestList';
@@ -220,6 +221,14 @@ export default function DraftDetailPage({ params }: { params: { id: string } }) 
                   ))}
                 </ul>
               )}
+              <div className="mt-3">
+                <Link
+                  href={`/search?mode=visual&draftId=${params.id}&type=draft`}
+                  className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 hover:border-slate-300"
+                >
+                  See more similar
+                </Link>
+              </div>
             </div>
           </div>
           <div className="grid gap-6">

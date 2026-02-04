@@ -6,6 +6,12 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import SearchPage from '../app/search/page';
 import { apiClient } from '../lib/api';
 
+let searchParams = new URLSearchParams('');
+
+jest.mock('next/navigation', () => ({
+  useSearchParams: () => searchParams
+}));
+
 jest.mock('../lib/api', () => ({
   apiClient: {
     get: jest.fn(() => Promise.resolve({ data: [] })),
@@ -17,6 +23,7 @@ jest.mock('../lib/api', () => ({
 describe('search UI', () => {
   beforeEach(() => {
     jest.useFakeTimers();
+    searchParams = new URLSearchParams('');
     (apiClient.get as jest.Mock).mockReset();
     (apiClient.get as jest.Mock).mockResolvedValue({ data: [] });
     (apiClient.post as jest.Mock).mockReset();
@@ -155,5 +162,19 @@ describe('search UI', () => {
 
     expect(await screen.findByText(/Vision Draft/i)).toBeInTheDocument();
     expect(screen.getByText(/GlowUp 4.2/i)).toBeInTheDocument();
+  });
+
+  test('prefills visual mode from query params', async () => {
+    searchParams = new URLSearchParams('mode=visual&draftId=draft-123&type=draft');
+
+    render(<SearchPage />);
+
+    const draftInput = await screen.findByPlaceholderText(/Draft ID/i);
+    expect(draftInput).toHaveValue('draft-123');
+
+    await waitFor(() => expect(apiClient.post).toHaveBeenCalled());
+    const lastCall = (apiClient.post as jest.Mock).mock.calls.at(-1);
+    expect(lastCall[0]).toBe('/search/visual');
+    expect(lastCall[1]).toMatchObject({ draftId: 'draft-123', type: 'draft' });
   });
 });

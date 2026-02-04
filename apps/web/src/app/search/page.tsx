@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { apiClient } from '../../lib/api';
 
 type SearchResult = {
@@ -12,18 +13,58 @@ type SearchResult = {
 };
 
 export default function SearchPage() {
-  const [mode, setMode] = useState<'text' | 'visual'>('text');
-  const [query, setQuery] = useState('');
-  const [type, setType] = useState('all');
-  const [sort, setSort] = useState('recency');
-  const [range, setRange] = useState('all');
-  const [visualDraftId, setVisualDraftId] = useState('');
+  const searchParams = useSearchParams();
+  const initialMode = searchParams?.get('mode') === 'visual' ? 'visual' : 'text';
+  const initialQuery = searchParams?.get('q') ?? '';
+  const initialType = searchParams?.get('type') ?? 'all';
+  const initialSort = searchParams?.get('sort') ?? 'recency';
+  const initialRange = searchParams?.get('range') ?? 'all';
+  const initialDraftId = searchParams?.get('draftId') ?? '';
+  const initialTags = searchParams?.get('tags') ?? '';
+
+  const [mode, setMode] = useState<'text' | 'visual'>(initialMode);
+  const [query, setQuery] = useState(initialQuery);
+  const [type, setType] = useState(initialType);
+  const [sort, setSort] = useState(initialSort);
+  const [range, setRange] = useState(initialRange);
+  const [visualDraftId, setVisualDraftId] = useState(initialDraftId);
   const [visualEmbedding, setVisualEmbedding] = useState('');
-  const [visualTags, setVisualTags] = useState('');
-  const [visualType, setVisualType] = useState('all');
+  const [visualTags, setVisualTags] = useState(initialTags);
+  const [visualType, setVisualType] = useState(initialMode === 'visual' ? initialType : 'all');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const autoRunVisual = useRef(initialMode === 'visual' && initialDraftId.length > 0);
+
+  useEffect(() => {
+    if (!searchParams) {
+      return;
+    }
+    if (initialMode === 'visual') {
+      setMode('visual');
+    }
+    if (initialQuery) {
+      setQuery(initialQuery);
+    }
+    if (initialType) {
+      setType(initialType);
+      if (initialMode === 'visual') {
+        setVisualType(initialType);
+      }
+    }
+    if (initialSort) {
+      setSort(initialSort);
+    }
+    if (initialRange) {
+      setRange(initialRange);
+    }
+    if (initialDraftId) {
+      setVisualDraftId(initialDraftId);
+    }
+    if (initialTags) {
+      setVisualTags(initialTags);
+    }
+  }, [searchParams, initialMode, initialQuery, initialType, initialSort, initialRange, initialDraftId, initialTags]);
 
   useEffect(() => {
     if (mode !== 'text') {
@@ -115,6 +156,17 @@ export default function SearchPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (mode !== 'visual') {
+      return;
+    }
+    if (!autoRunVisual.current) {
+      return;
+    }
+    autoRunVisual.current = false;
+    void runVisualSearch();
+  }, [mode]);
 
   const summary =
     mode === 'text'
