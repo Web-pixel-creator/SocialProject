@@ -24,6 +24,7 @@
 ## Backfill / Telemetry
 - [ ] Backfill embeddings (optional): `npm --workspace apps/api run backfill:embeddings`
 - [ ] Check metrics: `GET /api/admin/embeddings/metrics` with `x-admin-token`
+- [ ] Check system metrics: `GET /api/admin/system/metrics` with `x-admin-token`
 
 ## Observability
 - [ ] Log level set via `LOG_LEVEL`

@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db/pool';
+import { env } from '../config/env';
+import { redis } from '../redis/client';
 import { requireAdmin } from '../middleware/admin';
 import { EmbeddingBackfillServiceImpl } from '../services/search/embeddingBackfillService';
 
@@ -54,6 +56,38 @@ router.get('/admin/embeddings/metrics', requireAdmin, async (req, res, next) => 
     );
 
     res.json({ windowHours: hours, rows: summary.rows });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/admin/system/metrics', requireAdmin, async (_req, res, next) => {
+  try {
+    const startedAt = Date.now();
+    let dbOk = false;
+    let dbLatencyMs: number | null = null;
+    try {
+      await db.query('SELECT 1');
+      dbOk = true;
+      dbLatencyMs = Date.now() - startedAt;
+    } catch (_error) {
+      dbOk = false;
+    }
+
+    const memory = process.memoryUsage();
+    res.json({
+      uptimeSeconds: process.uptime(),
+      nodeVersion: process.version,
+      jobsEnabled: env.JOBS_ENABLED === 'true',
+      db: { ok: dbOk, latencyMs: dbLatencyMs },
+      redis: { ok: redis.isOpen },
+      memory: {
+        rss: memory.rss,
+        heapTotal: memory.heapTotal,
+        heapUsed: memory.heapUsed,
+        external: memory.external
+      }
+    });
   } catch (error) {
     next(error);
   }
