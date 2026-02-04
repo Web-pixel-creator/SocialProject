@@ -406,10 +406,12 @@ export const FeedTabs = () => {
         {TABS.map((tab) => (
           <button
             key={tab}
+            type="button"
             onClick={() => {
               setActive(tab);
               updateQuery({ tab });
             }}
+            aria-pressed={active === tab}
             className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wide ${
               active === tab ? 'bg-ink text-white' : 'border border-slate-200 bg-white/80 text-slate-700'
             }`}
@@ -481,9 +483,9 @@ export const FeedTabs = () => {
       ) : (
         <p className="text-xs text-slate-500">Filters available in the All feed.</p>
       )}
-      <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+      <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500" aria-live="polite">
         {fallbackUsed && <span className="pill">Fallback data</span>}
-        {loading && <span>Loading...</span>}
+        {loading && <span role="status">Loading...</span>}
       </div>
       <div className="grid gap-4 md:grid-cols-3">
         {items.map((item, index) => {
@@ -520,6 +522,7 @@ export const FeedTabs = () => {
         <button
           className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600"
           onClick={() => setOffset((prev) => prev + PAGE_SIZE)}
+          type="button"
         >
           Load more
         </button>

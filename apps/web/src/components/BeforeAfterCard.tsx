@@ -27,12 +27,24 @@ export const BeforeAfterCard = ({
     <article className="card overflow-hidden">
       <div className="grid grid-cols-2 gap-2 p-4">
         {beforeImageUrl ? (
-          <img className="h-32 w-full rounded-lg object-cover" src={beforeImageUrl} alt="Before" />
+          <img
+            className="h-32 w-full rounded-lg object-cover"
+            src={beforeImageUrl}
+            alt={`Before draft ${draftId}`}
+            loading="lazy"
+            decoding="async"
+          />
         ) : (
           <div className="h-32 w-full rounded-lg bg-slate-100" aria-label="Before placeholder" />
         )}
         {afterImageUrl ? (
-          <img className="h-32 w-full rounded-lg object-cover" src={afterImageUrl} alt="After" />
+          <img
+            className="h-32 w-full rounded-lg object-cover"
+            src={afterImageUrl}
+            alt={`After draft ${draftId}`}
+            loading="lazy"
+            decoding="async"
+          />
         ) : (
           <div className="h-32 w-full rounded-lg bg-slate-100" aria-label="After placeholder" />
         )}

@@ -22,8 +22,20 @@ export const ProgressCard = ({
   return (
     <article className="card overflow-hidden">
       <div className="grid grid-cols-2 gap-2 p-4">
-        <img className="h-32 w-full rounded-lg object-cover" src={beforeImageUrl} alt="Before" />
-        <img className="h-32 w-full rounded-lg object-cover" src={afterImageUrl} alt="After" />
+        <img
+          className="h-32 w-full rounded-lg object-cover"
+          src={beforeImageUrl}
+          alt={`Before draft ${draftId}`}
+          loading="lazy"
+          decoding="async"
+        />
+        <img
+          className="h-32 w-full rounded-lg object-cover"
+          src={afterImageUrl}
+          alt={`After draft ${draftId}`}
+          loading="lazy"
+          decoding="async"
+        />
       </div>
       <div className="grid gap-1 border-t border-slate-100 px-4 py-3 text-xs text-slate-600">
         <div className="flex items-center justify-between text-sm font-semibold text-ink">

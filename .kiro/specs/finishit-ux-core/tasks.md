@@ -35,7 +35,7 @@
   - Aggregate metrics endpoint for admins.
   - Unit tests for event ingestion and validation.
 
-- [ ] 7. Performance and accessibility checks
+- [x] 7. Performance and accessibility checks
   - Lazy-load thumbnails and optimize card rendering.
   - Basic keyboard navigation checks.
   - Mobile layout validation.
