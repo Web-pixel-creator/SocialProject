@@ -261,6 +261,90 @@ router.get('/admin/ux/metrics', requireAdmin, async (req, res, next) => {
   }
 });
 
+router.get('/admin/ux/similar-search', requireAdmin, async (req, res, next) => {
+  try {
+    const hours = clamp(Number(req.query.hours ?? 24), 1, 720);
+    const trackedEvents = [
+      'similar_search_shown',
+      'similar_search_empty',
+      'similar_search_clicked',
+      'similar_search_view',
+      'search_performed'
+    ];
+
+    const summary = await db.query(
+      `SELECT COALESCE(metadata->>'profile', 'balanced') AS profile,
+              event_type,
+              COUNT(*)::int AS count
+       FROM ux_events
+       WHERE created_at >= NOW() - ($1 || ' hours')::interval
+         AND event_type = ANY($2)
+       GROUP BY profile, event_type
+       ORDER BY profile, event_type`,
+      [hours, trackedEvents]
+    );
+
+    const profileStats: Record<
+      string,
+      {
+        profile: string;
+        shown: number;
+        empty: number;
+        clicked: number;
+        view: number;
+        performed: number;
+        ctr: number | null;
+        emptyRate: number | null;
+      }
+    > = {};
+
+    for (const row of summary.rows) {
+      const profile = row.profile ?? 'balanced';
+      const stats =
+        profileStats[profile] ??
+        (profileStats[profile] = {
+          profile,
+          shown: 0,
+          empty: 0,
+          clicked: 0,
+          view: 0,
+          performed: 0,
+          ctr: null,
+          emptyRate: null
+        });
+
+      switch (row.event_type) {
+        case 'similar_search_shown':
+          stats.shown += row.count;
+          break;
+        case 'similar_search_empty':
+          stats.empty += row.count;
+          break;
+        case 'similar_search_clicked':
+          stats.clicked += row.count;
+          break;
+        case 'similar_search_view':
+          stats.view += row.count;
+          break;
+        case 'search_performed':
+          stats.performed += row.count;
+          break;
+        default:
+          break;
+      }
+    }
+
+    for (const stats of Object.values(profileStats)) {
+      stats.ctr = stats.shown > 0 ? Number((stats.clicked / stats.shown).toFixed(3)) : null;
+      stats.emptyRate = stats.shown > 0 ? Number((stats.empty / stats.shown).toFixed(3)) : null;
+    }
+
+    res.json({ windowHours: hours, rows: summary.rows, profiles: Object.values(profileStats) });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get('/admin/cleanup/preview', requireAdmin, async (_req, res, next) => {
   try {
     const counts = await privacyService.previewExpiredData();

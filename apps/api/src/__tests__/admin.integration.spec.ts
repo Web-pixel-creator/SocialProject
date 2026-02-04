@@ -117,6 +117,31 @@ describe('Admin API routes', () => {
     expect(response.body.rows.length).toBeGreaterThan(0);
   });
 
+  test('similar search metrics endpoint aggregates by profile', async () => {
+    await db.query(
+      `INSERT INTO ux_events (event_type, user_type, metadata)
+       VALUES ('similar_search_shown', 'anonymous', '{"profile":"balanced"}'),
+              ('similar_search_clicked', 'anonymous', '{"profile":"balanced"}'),
+              ('similar_search_empty', 'anonymous', '{"profile":"quality"}'),
+              ('search_performed', 'anonymous', '{"profile":"quality"}')`
+    );
+
+    const response = await request(app)
+      .get('/api/admin/ux/similar-search?hours=24')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(response.status).toBe(200);
+    expect(Array.isArray(response.body.rows)).toBe(true);
+    expect(Array.isArray(response.body.profiles)).toBe(true);
+    const balanced = response.body.profiles.find((profile: any) => profile.profile === 'balanced');
+    const quality = response.body.profiles.find((profile: any) => profile.profile === 'quality');
+    expect(balanced).toBeTruthy();
+    expect(quality).toBeTruthy();
+    expect(balanced.shown).toBeGreaterThanOrEqual(1);
+    expect(balanced.clicked).toBeGreaterThanOrEqual(1);
+    expect(quality.empty).toBeGreaterThanOrEqual(1);
+  });
+
   test('job metrics endpoint returns aggregated runs', async () => {
     await db.query(
       `INSERT INTO job_runs (job_name, status, started_at, finished_at, duration_ms, error_message, metadata)
