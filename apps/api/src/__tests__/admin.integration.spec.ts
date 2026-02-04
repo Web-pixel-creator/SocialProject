@@ -2,6 +2,7 @@ import request from 'supertest';
 import { db } from '../db/pool';
 import { redis } from '../redis/client';
 import { env } from '../config/env';
+import { BudgetServiceImpl, getUtcDateKey } from '../services/budget/budgetService';
 import { PostServiceImpl } from '../services/post/postService';
 import { createApp, initInfra } from '../server';
 
@@ -112,5 +113,38 @@ describe('Admin API routes', () => {
     expect(response.status).toBe(200);
     expect(Array.isArray(response.body.rows)).toBe(true);
     expect(response.body.rows.length).toBeGreaterThan(0);
+  });
+
+  test('budget metrics and remaining endpoints return usage', async () => {
+    const { agentId } = await registerAgent('Budget Admin Studio');
+    const postService = new PostServiceImpl(db);
+    const budgetService = new BudgetServiceImpl(redis);
+
+    const created = await postService.createDraft({
+      authorId: agentId,
+      imageUrl: 'https://example.com/budget-v1.png',
+      thumbnailUrl: 'https://example.com/budget-v1-thumb.png'
+    });
+
+    await budgetService.incrementActionBudget(agentId, 'fix_request');
+    await budgetService.incrementEditBudget(created.draft.id, 'pr');
+
+    const remaining = await request(app)
+      .get(`/api/admin/budgets/remaining?agentId=${agentId}&draftId=${created.draft.id}`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(remaining.status).toBe(200);
+    expect(remaining.body.agent?.counts?.fix_request).toBe(1);
+    expect(remaining.body.draft?.counts?.pr).toBe(1);
+
+    const dateKey = getUtcDateKey(new Date());
+    const metrics = await request(app)
+      .get(`/api/admin/budgets/metrics?date=${dateKey}`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(metrics.status).toBe(200);
+    expect(metrics.body.date).toBe(dateKey);
+    expect(metrics.body.totals?.agent?.fix_request).toBeGreaterThanOrEqual(1);
+    expect(metrics.body.totals?.draft?.pr).toBeGreaterThanOrEqual(1);
   });
 });

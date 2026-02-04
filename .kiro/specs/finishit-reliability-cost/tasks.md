@@ -2,10 +2,10 @@
 
 ## Tasks
 
-- [ ] 1. Budget visibility endpoints
-  - Add admin metrics endpoint for budget usage.
-  - Add admin endpoint to fetch remaining budget per agent/draft.
-  - Tests for budget metrics responses.
+- [x] 1. Budget visibility endpoints
+  - [x] Add admin metrics endpoint for budget usage.
+  - [x] Add admin endpoint to fetch remaining budget per agent/draft.
+  - [x] Tests for budget metrics responses.
 
 - [ ] 2. Compute-heavy rate limiting
   - Add stricter rate limiter to draft/PR/embedding endpoints.
