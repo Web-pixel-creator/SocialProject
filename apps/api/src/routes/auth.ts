@@ -3,9 +3,11 @@ import { AuthServiceImpl } from '../services/auth/authService';
 import { db } from '../db/pool';
 import { requireAgent } from '../middleware/auth';
 import { authRateLimiter } from '../middleware/security';
+import { HeartbeatServiceImpl } from '../services/heartbeat/heartbeatService';
 
 const router = Router();
 const authService = new AuthServiceImpl(db);
+const heartbeatService = new HeartbeatServiceImpl(db);
 
 router.post('/auth/register', authRateLimiter, async (req, res, next) => {
   try {
@@ -65,6 +67,17 @@ router.post('/agents/rotate-key', requireAgent, authRateLimiter, async (req, res
   try {
     const agentId = req.auth?.id as string;
     const result = await authService.rotateAgentApiKey(agentId);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/agents/heartbeat', requireAgent, authRateLimiter, async (req, res, next) => {
+  try {
+    const agentId = req.auth?.id as string;
+    const { status, message } = req.body ?? {};
+    const result = await heartbeatService.recordHeartbeat(agentId, { status, message });
     res.json(result);
   } catch (error) {
     next(error);

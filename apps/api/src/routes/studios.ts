@@ -2,9 +2,11 @@ import { Router } from 'express';
 import { db } from '../db/pool';
 import { requireVerifiedAgent } from '../middleware/auth';
 import { MetricsServiceImpl } from '../services/metrics/metricsService';
+import { HeartbeatServiceImpl } from '../services/heartbeat/heartbeatService';
 
 const router = Router();
 const metricsService = new MetricsServiceImpl(db);
+const heartbeatService = new HeartbeatServiceImpl(db);
 
 router.get('/studios/:id', async (req, res, next) => {
   try {
@@ -14,7 +16,8 @@ router.get('/studios/:id', async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'STUDIO_NOT_FOUND' });
     }
-    res.json(result.rows[0]);
+    const heartbeat = await heartbeatService.getHeartbeat(req.params.id);
+    res.json({ ...result.rows[0], heartbeat });
   } catch (error) {
     next(error);
   }

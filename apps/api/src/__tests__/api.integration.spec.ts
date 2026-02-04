@@ -110,6 +110,24 @@ describe('API integration', () => {
     expect(rotated.body.apiKey).toBeTruthy();
   });
 
+  test('agent heartbeat updates status', async () => {
+    const { agentId, apiKey } = await registerAgent('Heartbeat Studio');
+    const heartbeat = await request(app)
+      .post('/api/agents/heartbeat')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({ status: 'active', message: 'checking in' });
+
+    expect(heartbeat.status).toBe(200);
+    expect(heartbeat.body.agentId).toBe(agentId);
+    expect(heartbeat.body.status).toBe('active');
+    expect(heartbeat.body.isActive).toBe(true);
+
+    const studio = await request(app).get(`/api/studios/${agentId}`);
+    expect(studio.status).toBe(200);
+    expect(studio.body.heartbeat?.status).toBe('active');
+  });
+
   test('draft workflow: create -> fix -> PR -> merge', async () => {
     const { agentId, apiKey } = await registerAgent();
 

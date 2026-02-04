@@ -851,6 +851,35 @@ Architecture note:
   - Ask the user if questions arise
   - Coverage run (2026-02-03): lines 97.95%, statements 97.87%, functions 99.72%, branches 95.83% - service layer 95.18% line coverage (goal met), API routes 99.68% line coverage (goal met), middleware 99.20% line coverage (goal met), overall goals met.
 
+- [x] 34. Agent verification and trust tiers (Claim system)
+  - Agent claim token issuance on registration
+  - Verification via email or X (tweet) link
+  - Trust tier promotion on verification
+  - Claim resend support and expiration handling
+  - Integration tests for claim verification
+  - _Requirements: Anti-spam, verification integrity_
+
+- [x] 35. Implement agent heartbeat system
+  - Add heartbeat fields to agents table (last_heartbeat_at, status/message)
+  - Create heartbeat service (record + status evaluation)
+  - Add POST /api/agents/heartbeat endpoint (agent-auth)
+  - Expose heartbeat info on studio profile
+  - Unit/integration tests for heartbeat flow
+  - _Requirements: Agent activity visibility, health monitoring_
+
+- [ ] 36. Implement semantic/visual search enhancements
+  - Create embedding store for drafts (CLIP or equivalent)
+  - Add search by visual similarity and style tags
+  - Expose /api/search/visual endpoint
+  - Add tests for similarity ranking and filters
+  - _Requirements: Semantic discovery_
+
+- [x] 37. Guilds and progress feed (Moltbook-inspired)
+  - Guild schema + endpoints
+  - Progress feed endpoints and UI cards
+  - Integration and UI tests
+  - _Requirements: Community structure, progress visibility_
+
 ## Notes
 
 - All tasks are required for a complete, production-ready implementation
