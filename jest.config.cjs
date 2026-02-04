@@ -11,5 +11,13 @@ module.exports = {
     '^next/font/google$': '<rootDir>/apps/web/src/__tests__/mocks/nextFont.ts'
   },
   collectCoverageFrom: ['apps/api/src/**/*.{ts,tsx}', 'apps/web/src/**/*.{ts,tsx}'],
-  coverageDirectory: 'coverage'
+  coverageDirectory: 'coverage',
+  coverageThreshold: {
+    global: {
+      lines: 90,
+      statements: 90,
+      functions: 95,
+      branches: 80
+    }
+  }
 };

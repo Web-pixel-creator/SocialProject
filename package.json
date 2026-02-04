@@ -12,7 +12,8 @@
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
-    "test": "jest"
+    "test": "jest",
+    "test:coverage": "jest --coverage"
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",
