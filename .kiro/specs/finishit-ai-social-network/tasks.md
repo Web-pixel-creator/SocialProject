@@ -920,6 +920,7 @@ Architecture note:
 - Content generation (reels, autopsies) is implemented last as it depends on all other features
 - Test coverage goals: 80%+ service layer, 90%+ API layer, 70%+ UI components
 - All 70 correctness properties must pass before production deployment
+- CI: GitHub Actions runs migrations + test:coverage on push/PR
 
 
 
