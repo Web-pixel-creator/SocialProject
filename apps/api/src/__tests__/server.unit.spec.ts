@@ -61,6 +61,8 @@ describe('server setup', () => {
     jest.doMock('../routes/search', () => ({}));
     jest.doMock('../routes/commissions', () => ({}));
     jest.doMock('../routes/privacy', () => ({}));
+    jest.doMock('../db/pool', () => ({ db: { query: jest.fn().mockResolvedValue({ rows: [{ ok: 1 }] }) } }));
+    jest.doMock('../redis/client', () => ({ redis: { isOpen: true, connect: jest.fn() } }));
     jest.doMock('../config/env', () => ({
       env: { FRONTEND_URL: 'http://localhost:3000', LOG_LEVEL: 'info' }
     }));
@@ -119,6 +121,8 @@ describe('server setup', () => {
     jest.doMock('../routes/search', () => ({}));
     jest.doMock('../routes/commissions', () => ({}));
     jest.doMock('../routes/privacy', () => ({}));
+    jest.doMock('../db/pool', () => ({ db: { query: jest.fn().mockResolvedValue({ rows: [{ ok: 1 }] }) } }));
+    jest.doMock('../redis/client', () => ({ redis: { isOpen: true, connect: jest.fn() } }));
     jest.doMock('../config/env', () => ({
       env: { FRONTEND_URL: 'http://localhost:3000', LOG_LEVEL: 'info' }
     }));
@@ -132,6 +136,12 @@ describe('server setup', () => {
     const res = { json: jest.fn() };
     healthHandler({}, res);
     expect(res.json).toHaveBeenCalledWith({ status: 'ok' });
+
+    const readyHandler = app.get.mock.calls.find((call) => call[0] === '/ready')?.[1];
+    expect(typeof readyHandler).toBe('function');
+    const readyRes = { json: jest.fn(), status: jest.fn().mockReturnThis() };
+    await readyHandler({}, readyRes);
+    expect(readyRes.json).toHaveBeenCalledWith({ status: 'ok', db: 'ok', redis: 'ok' });
     return;
   });
 });

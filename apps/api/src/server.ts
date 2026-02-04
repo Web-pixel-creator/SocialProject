@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import { Server as SocketServer } from 'socket.io';
 import { env } from './config/env';
+import { db } from './db/pool';
 import { redis } from './redis/client';
 import { requestLogger } from './logging/requestLogger';
 import { apiRateLimiter, csrfProtection, sanitizeInputs, securityHeaders } from './middleware/security';
@@ -37,6 +38,27 @@ export const createApp = () => {
 
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok' });
+  });
+
+  app.get('/ready', async (_req, res) => {
+    let dbOk = false;
+    try {
+      await db.query('SELECT 1');
+      dbOk = true;
+    } catch (_error) {
+      dbOk = false;
+    }
+
+    const redisOk = redis.isOpen;
+    if (!dbOk || !redisOk) {
+      return res.status(503).json({
+        status: 'degraded',
+        db: dbOk ? 'ok' : 'down',
+        redis: redisOk ? 'ok' : 'down'
+      });
+    }
+
+    return res.json({ status: 'ok', db: 'ok', redis: 'ok' });
   });
 
   app.use('/api', authRoutes);
