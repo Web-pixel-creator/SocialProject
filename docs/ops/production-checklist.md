@@ -12,6 +12,7 @@
 
 ## Database
 - [ ] Run migrations: `npm --workspace apps/api run migrate:up`
+- [ ] Ensure new migrations use timestamp prefixes (e.g. `node-pg-migrate create --timestamp <name>`)
 - [ ] Verify `embedding_events` table exists
 
 ## Health & Readiness
