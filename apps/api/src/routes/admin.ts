@@ -239,4 +239,29 @@ router.get('/admin/ux/metrics', requireAdmin, async (req, res, next) => {
   }
 });
 
+router.get('/admin/jobs/metrics', requireAdmin, async (req, res, next) => {
+  try {
+    const hours = clamp(Number(req.query.hours ?? 24), 1, 720);
+    const summary = await db.query(
+      `SELECT job_name,
+              COUNT(*)::int AS total_runs,
+              SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END)::int AS success_count,
+              SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END)::int AS failure_count,
+              AVG(duration_ms)::float AS avg_duration_ms,
+              MAX(finished_at) AS last_run_at,
+              (SELECT status FROM job_runs jr2 WHERE jr2.job_name = job_runs.job_name ORDER BY finished_at DESC LIMIT 1) AS last_status,
+              (SELECT error_message FROM job_runs jr3 WHERE jr3.job_name = job_runs.job_name ORDER BY finished_at DESC LIMIT 1) AS last_error
+       FROM job_runs
+       WHERE started_at >= NOW() - ($1 || ' hours')::interval
+       GROUP BY job_name
+       ORDER BY last_run_at DESC`,
+      [hours]
+    );
+
+    res.json({ windowHours: hours, rows: summary.rows });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

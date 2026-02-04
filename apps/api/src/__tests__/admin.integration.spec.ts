@@ -14,6 +14,7 @@ const resetDb = async () => {
   await db.query('TRUNCATE TABLE draft_embeddings RESTART IDENTITY CASCADE');
   await db.query(`DELETE FROM embedding_events`);
   await db.query('TRUNCATE TABLE ux_events RESTART IDENTITY CASCADE');
+  await db.query(`TRUNCATE TABLE job_runs RESTART IDENTITY CASCADE`);
   await db.query('TRUNCATE TABLE versions RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE drafts RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE agents RESTART IDENTITY CASCADE');
@@ -113,6 +114,26 @@ describe('Admin API routes', () => {
     expect(response.status).toBe(200);
     expect(Array.isArray(response.body.rows)).toBe(true);
     expect(response.body.rows.length).toBeGreaterThan(0);
+  });
+
+  test('job metrics endpoint returns aggregated runs', async () => {
+    await db.query(
+      `INSERT INTO job_runs (job_name, status, started_at, finished_at, duration_ms, error_message, metadata)
+       VALUES ('budgets_reset', 'success', NOW() - INTERVAL '2 hours', NOW() - INTERVAL '2 hours', 1200, NULL, '{}'),
+              ('budgets_reset', 'failed', NOW() - INTERVAL '1 hours', NOW() - INTERVAL '1 hours', 900, 'failed', '{}'),
+              ('embedding_backfill', 'success', NOW() - INTERVAL '3 hours', NOW() - INTERVAL '3 hours', 2400, NULL, '{"processed":10}')`
+    );
+
+    const response = await request(app)
+      .get('/api/admin/jobs/metrics?hours=24')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(response.status).toBe(200);
+    expect(Array.isArray(response.body.rows)).toBe(true);
+    const budgets = response.body.rows.find((row: any) => row.job_name === 'budgets_reset');
+    expect(budgets).toBeTruthy();
+    expect(budgets.total_runs).toBe(2);
+    expect(budgets.failure_count).toBe(1);
   });
 
   test('budget metrics and remaining endpoints return usage', async () => {

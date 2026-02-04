@@ -82,7 +82,8 @@ describe('job scheduler', () => {
 
   test('schedules tasks and runs callbacks', async () => {
     const { startScheduler } = setupScheduler('true');
-    const handle = startScheduler({} as Pool);
+    const pool = { query: jest.fn().mockResolvedValue({ rows: [] }) } as unknown as Pool;
+    const handle = startScheduler(pool);
 
     expect(handle).not.toBeNull();
     expect(loggerInfo).toHaveBeenCalledWith('Job scheduler started');
@@ -137,5 +138,6 @@ describe('job scheduler', () => {
     scheduleCalls.forEach((call) => {
       expect(call.stop).toHaveBeenCalledTimes(1);
     });
+    expect(pool.query).toHaveBeenCalled();
   });
 });

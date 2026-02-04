@@ -12,10 +12,10 @@
   - [x] Env config for rate limits.
   - [x] Tests for rate limit enforcement.
 
-- [ ] 3. Job reliability metrics
-  - Add `job_runs` table.
-  - Track success/failure of cron jobs with timestamps.
-  - Admin endpoint for job metrics.
+- [x] 3. Job reliability metrics
+  - [x] Add `job_runs` table.
+  - [x] Track success/failure of cron jobs with timestamps.
+  - [x] Admin endpoint for job metrics.
 
 - [ ] 4. Error event tracking
   - Add `error_events` table.
