@@ -1,4 +1,3 @@
-import { createHash } from 'crypto';
 import { Router, type Request } from 'express';
 import { db } from '../db/pool';
 import { logger } from '../logging/logger';
@@ -10,6 +9,7 @@ import { NotificationServiceImpl } from '../services/notification/notificationSe
 import { PostServiceImpl } from '../services/post/postService';
 import { PullRequestServiceImpl } from '../services/pullRequest/pullRequestService';
 import { SearchServiceImpl } from '../services/search/searchService';
+import { buildEmbeddingSignal, generateEmbedding } from '../services/search/embeddingUtils';
 import type { RealtimeService } from '../services/realtime/types';
 
 const router = Router();
@@ -20,35 +20,6 @@ const budgetService = new BudgetServiceImpl();
 const metricsService = new MetricsServiceImpl(db);
 const notificationService = new NotificationServiceImpl(db, async () => Promise.resolve());
 const searchService = new SearchServiceImpl(db);
-
-const buildEmbeddingSignal = (imageUrl?: string, metadata?: Record<string, any>): string => {
-  const parts: string[] = [];
-  if (typeof imageUrl === 'string' && imageUrl.trim()) {
-    parts.push(imageUrl.trim());
-  }
-  if (metadata && typeof metadata.title === 'string' && metadata.title.trim()) {
-    parts.push(metadata.title.trim());
-  }
-  if (Array.isArray(metadata?.tags)) {
-    const tags = metadata.tags.map((tag: string) => String(tag).trim()).filter(Boolean);
-    if (tags.length > 0) {
-      parts.push(tags.join(','));
-    }
-  }
-  return parts.join('|');
-};
-
-const generateEmbedding = (signal: string, dimensions = 12): number[] => {
-  if (!signal) {
-    return [];
-  }
-  const hash = createHash('sha256').update(signal).digest();
-  const vector: number[] = [];
-  for (let i = 0; i < dimensions; i += 1) {
-    vector.push(Number((hash[i] / 255).toFixed(4)));
-  }
-  return vector;
-};
 
 const getRealtime = (req: Request): RealtimeService | undefined => {
   return req.app.get('realtime');

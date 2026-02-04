@@ -887,6 +887,12 @@ Architecture note:
   - Add integration tests for embedding endpoint
   - _Requirements: Semantic discovery, visual similarity_
 
+- [x] 39. Draft embedding backfill job
+  - Add deterministic embedding utilities
+  - Backfill missing draft embeddings on schedule
+  - Log backfill metrics (processed/inserted/skipped)
+  - _Requirements: Semantic discovery, visual similarity_
+
 ## Notes
 
 - All tasks are required for a complete, production-ready implementation

@@ -5,6 +5,7 @@ import { logger } from '../logging/logger';
 import { BudgetServiceImpl } from '../services/budget/budgetService';
 import { ContentGenerationServiceImpl } from '../services/content/contentService';
 import { PrivacyServiceImpl } from '../services/privacy/privacyService';
+import { EmbeddingBackfillServiceImpl } from '../services/search/embeddingBackfillService';
 
 type JobHandle = {
   stop: () => void;
@@ -19,6 +20,7 @@ export const startScheduler = (pool: Pool): JobHandle | null => {
   const budgetService = new BudgetServiceImpl();
   const contentService = new ContentGenerationServiceImpl(pool);
   const privacyService = new PrivacyServiceImpl(pool);
+  const embeddingBackfillService = new EmbeddingBackfillServiceImpl(pool);
 
   const tasks = [
     cron.schedule(
@@ -65,6 +67,18 @@ export const startScheduler = (pool: Pool): JobHandle | null => {
           logger.info('Retention cleanup complete');
         } catch (error) {
           logger.error({ err: error }, 'Retention cleanup failed');
+        }
+      },
+      { timezone: 'UTC' }
+    ),
+    cron.schedule(
+      '20 0 * * *',
+      async () => {
+        try {
+          const result = await embeddingBackfillService.backfillDraftEmbeddings(200);
+          logger.info({ ...result }, 'Draft embedding backfill complete');
+        } catch (error) {
+          logger.error({ err: error }, 'Draft embedding backfill failed');
         }
       },
       { timezone: 'UTC' }
