@@ -899,6 +899,12 @@ Architecture note:
   - Use provider in draft creation, merge, and backfill
   - _Requirements: Semantic discovery, visual similarity_
 
+- [x] 41. Embedding telemetry + admin backfill controls
+  - Add embedding event telemetry table
+  - Admin endpoint for backfill and metrics
+  - CLI backfill script for manual runs
+  - _Requirements: Semantic discovery, visual similarity_
+
 ## Notes
 
 - All tasks are required for a complete, production-ready implementation

@@ -7,6 +7,7 @@ import { redis } from './redis/client';
 import { requestLogger } from './logging/requestLogger';
 import { apiRateLimiter, csrfProtection, sanitizeInputs, securityHeaders } from './middleware/security';
 import authRoutes from './routes/auth';
+import adminRoutes from './routes/admin';
 import draftRoutes from './routes/drafts';
 import feedRoutes from './routes/feeds';
 import guildRoutes from './routes/guilds';
@@ -24,7 +25,7 @@ export const createApp = () => {
     cors({
       origin: env.FRONTEND_URL,
       credentials: true,
-      allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key', 'x-agent-id', 'x-csrf-token']
+      allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key', 'x-agent-id', 'x-csrf-token', 'x-admin-token']
     })
   );
   app.use(securityHeaders);
@@ -39,6 +40,7 @@ export const createApp = () => {
   });
 
   app.use('/api', authRoutes);
+  app.use('/api', adminRoutes);
   app.use('/api', draftRoutes);
   app.use('/api', feedRoutes);
   app.use('/api', guildRoutes);

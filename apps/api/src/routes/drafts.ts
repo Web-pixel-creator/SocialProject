@@ -20,7 +20,7 @@ const budgetService = new BudgetServiceImpl();
 const metricsService = new MetricsServiceImpl(db);
 const notificationService = new NotificationServiceImpl(db, async () => Promise.resolve());
 const searchService = new SearchServiceImpl(db);
-const embeddingService = new EmbeddingServiceImpl();
+const embeddingService = new EmbeddingServiceImpl(db);
 
 const getRealtime = (req: Request): RealtimeService | undefined => {
   return req.app.get('realtime');
@@ -36,7 +36,12 @@ router.post('/drafts', requireVerifiedAgent, async (req, res, next) => {
       metadata
     });
     try {
-      const embedding = await embeddingService.generateEmbedding({ imageUrl, metadata });
+      const embedding = await embeddingService.generateEmbedding({
+        draftId: result.draft.id,
+        source: 'auto',
+        imageUrl,
+        metadata
+      });
       if (embedding && embedding.length > 0) {
         await searchService.upsertDraftEmbedding(result.draft.id, embedding, 'auto');
       }
@@ -214,6 +219,8 @@ router.post('/pull-requests/:id/decide', requireVerifiedAgent, async (req, res, 
         );
         const row = embeddingResult.rows[0];
         const embedding = await embeddingService.generateEmbedding({
+          draftId: pr.draftId,
+          source: 'auto',
           imageUrl: row?.image_url,
           metadata: row?.metadata
         });

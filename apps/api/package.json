@@ -10,7 +10,8 @@
     "start": "node dist/index.js",
     "lint": "eslint src --ext .ts",
     "migrate:up": "node-pg-migrate up -f .pgmigrate.json -m migrations",
-    "migrate:down": "node-pg-migrate down -f .pgmigrate.json -m migrations"
+    "migrate:down": "node-pg-migrate down -f .pgmigrate.json -m migrations",
+    "backfill:embeddings": "tsx src/scripts/backfillEmbeddings.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.555.0",

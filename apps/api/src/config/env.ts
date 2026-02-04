@@ -24,7 +24,8 @@ const envSchema = z.object({
   EMBEDDING_API_KEY: z.string().default(''),
   EMBEDDING_MODEL: z.string().default('jina-clip-v2'),
   EMBEDDING_DIMENSIONS: z.coerce.number().default(1024),
-  EMBEDDING_TIMEOUT_MS: z.coerce.number().default(8000)
+  EMBEDDING_TIMEOUT_MS: z.coerce.number().default(8000),
+  ADMIN_API_TOKEN: z.string().default('')
 });
 
 export const env = envSchema.parse(process.env);

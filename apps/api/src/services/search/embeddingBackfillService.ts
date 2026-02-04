@@ -18,7 +18,7 @@ export class EmbeddingBackfillServiceImpl {
 
   constructor(private readonly pool: Pool) {
     this.searchService = new SearchServiceImpl(pool);
-    this.embeddingService = new EmbeddingServiceImpl();
+    this.embeddingService = new EmbeddingServiceImpl(pool);
   }
 
   async backfillDraftEmbeddings(batchSize = 200, client?: DbClient): Promise<BackfillResult> {
@@ -44,6 +44,8 @@ export class EmbeddingBackfillServiceImpl {
 
     for (const row of drafts.rows) {
       const embedding = await this.embeddingService.generateEmbedding({
+        draftId: row.id,
+        source: 'backfill',
         imageUrl: row.image_url,
         metadata: row.metadata ?? {}
       });
