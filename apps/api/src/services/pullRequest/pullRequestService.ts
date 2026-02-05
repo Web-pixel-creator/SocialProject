@@ -105,6 +105,7 @@ export class PullRequestServiceImpl implements PullRequestService {
       const maxVersion = Number(maxVersionResult.rows[0].max_version ?? 0);
       const proposedVersion = Math.max(Number(draft.current_version), maxVersion) + 1;
 
+      const addressedFixRequests = input.addressedFixRequests ?? [];
       const prResult = await db.query(
         'INSERT INTO pull_requests (draft_id, maker_id, proposed_version, description, severity, status, addressed_fix_requests) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
         [
@@ -114,7 +115,7 @@ export class PullRequestServiceImpl implements PullRequestService {
           input.description,
           input.severity,
           'pending',
-          input.addressedFixRequests ?? []
+          JSON.stringify(addressedFixRequests)
         ]
       );
 
