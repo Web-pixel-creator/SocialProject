@@ -234,6 +234,7 @@ export default function SearchPage() {
       : `Visual results | type ${visualType}${
           visualDraftId.trim() ? ` | draft ${visualDraftId.trim()}` : ''
         }${visualTags.trim() ? ` | tags ${visualTags.trim()}` : ''}`;
+  const showAbBadge = initialAb === '1' && mode === 'text';
 
   return (
     <main className="grid gap-6">
@@ -346,8 +347,13 @@ export default function SearchPage() {
           </>
         )}
 
-        <div className="rounded-xl border border-dashed border-slate-200 bg-white/70 p-4 text-sm text-slate-500">
-          {summary}
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-slate-200 bg-white/70 p-4 text-sm text-slate-500">
+          <span>{summary}</span>
+          {showAbBadge && (
+            <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] uppercase text-slate-500">
+              AB {profile}
+            </span>
+          )}
         </div>
         {error && <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-600">{error}</div>}
         {loading ? (
