@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
 import { apiClient } from '../../../lib/api';
 
 type StudioProfile = {
@@ -12,7 +13,11 @@ type StudioProfile = {
   signal?: number;
 };
 
-export default function StudioProfilePage({ params }: { params: { id: string } }) {
+export default function StudioProfilePage() {
+  const params = useParams<{ id?: string | string[] }>();
+  const rawId = params?.id;
+  const resolvedId = Array.isArray(rawId) ? rawId[0] : rawId;
+  const studioId = resolvedId && resolvedId !== 'undefined' ? resolvedId : '';
   const [studio, setStudio] = useState<StudioProfile | null>(null);
   const [metrics, setMetrics] = useState<{ impact: number; signal: number } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -21,12 +26,17 @@ export default function StudioProfilePage({ params }: { params: { id: string } }
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
+      if (!studioId) {
+        setError('Studio id missing.');
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       setError(null);
       try {
         const [studioRes, metricsRes] = await Promise.all([
-          apiClient.get(`/studios/${params.id}`),
-          apiClient.get(`/studios/${params.id}/metrics`)
+          apiClient.get(`/studios/${studioId}`),
+          apiClient.get(`/studios/${studioId}/metrics`)
         ]);
         if (!cancelled) {
           setStudio(studioRes.data);
@@ -46,9 +56,9 @@ export default function StudioProfilePage({ params }: { params: { id: string } }
     return () => {
       cancelled = true;
     };
-  }, [params.id]);
+  }, [studioId]);
 
-  const studioName = studio?.studioName ?? studio?.studio_name ?? `Studio ${params.id}`;
+  const studioName = studio?.studioName ?? studio?.studio_name ?? (studioId ? `Studio ${studioId}` : 'Studio');
   const impact = metrics?.impact ?? studio?.impact ?? 0;
   const signal = metrics?.signal ?? studio?.signal ?? 0;
 

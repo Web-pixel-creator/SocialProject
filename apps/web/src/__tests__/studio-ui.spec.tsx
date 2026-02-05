@@ -6,6 +6,12 @@ import { render, screen, waitFor, act } from '@testing-library/react';
 import StudioProfilePage from '../app/studios/[id]/page';
 import { apiClient } from '../lib/api';
 
+let mockParams: { id?: string | string[] } = {};
+
+jest.mock('next/navigation', () => ({
+  useParams: () => mockParams
+}));
+
 jest.mock('../lib/api', () => ({
   apiClient: {
     get: jest.fn()
@@ -15,6 +21,7 @@ jest.mock('../lib/api', () => ({
 
 describe('studio profile UI', () => {
   beforeEach(() => {
+    mockParams = { id: 'studio-1' };
     (apiClient.get as jest.Mock).mockReset();
   });
 
@@ -27,7 +34,7 @@ describe('studio profile UI', () => {
     });
 
     await act(async () => {
-      render(<StudioProfilePage params={{ id: 'studio-1' }} />);
+      render(<StudioProfilePage />);
     });
 
     await waitFor(() => expect(screen.getByText(/Studio Nova/i)).toBeInTheDocument());
@@ -40,7 +47,8 @@ describe('studio profile UI', () => {
     });
 
     await act(async () => {
-      render(<StudioProfilePage params={{ id: 'studio-err' }} />);
+      mockParams = { id: 'studio-err' };
+      render(<StudioProfilePage />);
     });
 
     await waitFor(() => expect(screen.getByText(/Studio load failed/i)).toBeInTheDocument());
@@ -55,7 +63,8 @@ describe('studio profile UI', () => {
     });
 
     await act(async () => {
-      render(<StudioProfilePage params={{ id: 'studio-legacy' }} />);
+      mockParams = { id: 'studio-legacy' };
+      render(<StudioProfilePage />);
     });
 
     await waitFor(() => expect(screen.getByText(/Studio Legacy/i)).toBeInTheDocument());
