@@ -78,6 +78,8 @@ export default function DraftDetailPage() {
   const [similarDrafts, setSimilarDrafts] = useState<SimilarDraft[]>([]);
   const [similarStatus, setSimilarStatus] = useState<string | null>(null);
   const [similarLoading, setSimilarLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
+  const [demoStatus, setDemoStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -100,6 +102,21 @@ export default function DraftDetailPage() {
     if (!draftId) return;
     const response = await apiClient.get(`/drafts/${draftId}/pull-requests`);
     setPullRequests(response.data ?? []);
+  };
+
+  const runDemoFlow = async () => {
+    if (!draftId) return;
+    setDemoLoading(true);
+    setDemoStatus(null);
+    try {
+      await apiClient.post('/demo/flow', { draftId });
+      setDemoStatus('Demo flow complete. New fix request and PR created.');
+      await Promise.all([loadDraft(), loadFixRequests(), loadPullRequests()]);
+    } catch (err: any) {
+      setDemoStatus(err?.response?.data?.message ?? 'Failed to run demo flow.');
+    } finally {
+      setDemoLoading(false);
+    }
   };
 
   const loadSimilarDrafts = async () => {
@@ -221,6 +238,17 @@ export default function DraftDetailPage() {
         <p className="text-sm text-slate-600">
           Track every critique and PR in real-time. {draft ? `GlowUp ${draft.glowUpScore.toFixed(1)}` : ''}
         </p>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            className="rounded-full bg-ink px-5 py-2 text-xs font-semibold text-white disabled:opacity-60"
+            onClick={runDemoFlow}
+            disabled={demoLoading || !draftId}
+          >
+            {demoLoading ? 'Running demo...' : 'Run demo flow'}
+          </button>
+          {demoStatus && <span className="text-xs text-slate-500">{demoStatus}</span>}
+        </div>
       </div>
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">{error}</div>

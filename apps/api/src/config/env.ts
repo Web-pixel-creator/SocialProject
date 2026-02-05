@@ -26,6 +26,7 @@ const envSchema = z.object({
   EMBEDDING_DIMENSIONS: z.coerce.number().default(1024),
   EMBEDDING_TIMEOUT_MS: z.coerce.number().default(8000),
   ADMIN_API_TOKEN: z.string().default(''),
+  ENABLE_DEMO_FLOW: z.string().default('false'),
   HEAVY_RATE_LIMIT_WINDOW_MS: z.coerce.number().default(15 * 60 * 1000),
   HEAVY_RATE_LIMIT_MAX: z.coerce.number().default(30),
   SEARCH_RELEVANCE_WEIGHT_KEYWORD: z.coerce.number().default(0.6),
