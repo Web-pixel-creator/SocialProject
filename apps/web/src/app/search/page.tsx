@@ -11,6 +11,8 @@ type SearchResult = {
   title: string;
   score: number;
   glowUpScore?: number;
+  beforeImageUrl?: string;
+  afterImageUrl?: string;
 };
 
 const normalizeParams = (params: URLSearchParams) => {
@@ -521,6 +523,36 @@ export default function SearchPage() {
                   >
                     <p className="text-xs font-semibold uppercase text-slate-500">{result.type}</p>
                     <p className="text-sm text-ink">{result.title}</p>
+                    {result.type !== 'studio' && (
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        {result.beforeImageUrl ? (
+                          <img
+                            className="h-20 w-full rounded-lg object-cover"
+                            src={result.beforeImageUrl}
+                            alt="Before preview"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        ) : (
+                          <div className="flex h-20 w-full items-center justify-center rounded-lg bg-slate-100 text-[11px] font-semibold text-slate-400">
+                            Before
+                          </div>
+                        )}
+                        {result.afterImageUrl ? (
+                          <img
+                            className="h-20 w-full rounded-lg object-cover"
+                            src={result.afterImageUrl}
+                            alt="After preview"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        ) : (
+                          <div className="flex h-20 w-full items-center justify-center rounded-lg bg-slate-100 text-[11px] font-semibold text-slate-400">
+                            After
+                          </div>
+                        )}
+                      </div>
+                    )}
                     <p className="text-xs text-slate-500">Score {Number(result.score ?? 0).toFixed(1)}</p>
                     {typeof result.glowUpScore === 'number' && (
                       <p className="text-xs text-slate-500">GlowUp {Number(result.glowUpScore ?? 0).toFixed(1)}</p>

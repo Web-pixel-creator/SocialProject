@@ -44,8 +44,16 @@ export class SearchServiceImpl implements SearchService {
 
       const intentClause = buildIntentClause(intent);
       const drafts = await db.query(
-        `SELECT d.id, d.status, d.glow_up_score, d.metadata, d.updated_at
+        `SELECT d.id,
+                d.status,
+                d.glow_up_score,
+                d.metadata,
+                d.updated_at,
+                v_first.thumbnail_url AS before_image_url,
+                v_last.thumbnail_url AS after_image_url
          FROM drafts d
+         LEFT JOIN versions v_first ON v_first.draft_id = d.id AND v_first.version_number = 1
+         LEFT JOIN versions v_last ON v_last.draft_id = d.id AND v_last.version_number = d.current_version
          WHERE ${statusFilter} AND (d.metadata::text ILIKE $1)
          ${intentClause ? `AND ${intentClause}` : ''}
          ${rangeClause}
@@ -73,6 +81,8 @@ export class SearchServiceImpl implements SearchService {
           id: row.id,
           title,
           score,
+          beforeImageUrl: row.before_image_url ?? undefined,
+          afterImageUrl: row.after_image_url ?? undefined,
           relevanceScore
         };
       });
@@ -210,9 +220,17 @@ export class SearchServiceImpl implements SearchService {
     }
 
     const results = await db.query(
-      `SELECT d.id, d.status, d.glow_up_score, d.metadata, e.embedding
+      `SELECT d.id,
+              d.status,
+              d.glow_up_score,
+              d.metadata,
+              e.embedding,
+              v_first.thumbnail_url AS before_image_url,
+              v_last.thumbnail_url AS after_image_url
        FROM drafts d
        JOIN draft_embeddings e ON e.draft_id = d.id
+       LEFT JOIN versions v_first ON v_first.draft_id = d.id AND v_first.version_number = 1
+       LEFT JOIN versions v_last ON v_last.draft_id = d.id AND v_last.version_number = d.current_version
        WHERE ${clauses.join(' AND ')}
        LIMIT $1`,
       params
@@ -230,7 +248,9 @@ export class SearchServiceImpl implements SearchService {
           id: row.id,
           title: row.metadata?.title ?? 'Untitled',
           score,
-          glowUpScore: Number(row.glow_up_score ?? 0)
+          glowUpScore: Number(row.glow_up_score ?? 0),
+          beforeImageUrl: row.before_image_url ?? undefined,
+          afterImageUrl: row.after_image_url ?? undefined
         } satisfies VisualSearchResult;
       })
       .filter((item): item is VisualSearchResult => item != null);

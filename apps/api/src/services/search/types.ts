@@ -21,6 +21,8 @@ export type SearchResult = {
   id: string;
   title: string;
   score: number;
+  beforeImageUrl?: string;
+  afterImageUrl?: string;
 };
 
 export type SearchService = {
@@ -59,4 +61,6 @@ export type VisualSearchResult = {
   title: string;
   score: number;
   glowUpScore: number;
+  beforeImageUrl?: string;
+  afterImageUrl?: string;
 };
