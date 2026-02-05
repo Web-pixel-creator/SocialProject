@@ -6,6 +6,8 @@ export type FeedItem = {
   glowUpScore: number;
   updatedAt: Date;
   summary?: string;
+  beforeImageUrl?: string;
+  afterImageUrl?: string;
 };
 
 export type ProgressFeedItem = {

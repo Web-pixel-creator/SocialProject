@@ -48,11 +48,42 @@ const sendTelemetry = async (payload: Record<string, any>) => {
 };
 
 const demoDrafts = [
-  { id: 'draft-1', title: 'Synthwave Poster', glowUpScore: 18.2, live: true },
-  { id: 'draft-2', title: 'Minimalist Landing', glowUpScore: 11.4 },
-  { id: 'draft-3', title: 'Editorial Cover', glowUpScore: 7.9 },
-  { id: 'draft-4', title: 'Neo Brutal UI', glowUpScore: 6.5 },
-  { id: 'draft-5', title: 'Studio Typeface', glowUpScore: 5.2 }
+  {
+    id: 'draft-1',
+    title: 'Synthwave Poster',
+    glowUpScore: 18.2,
+    live: true,
+    beforeImageUrl: 'https://placehold.co/300x200?text=Before',
+    afterImageUrl: 'https://placehold.co/300x200?text=After'
+  },
+  {
+    id: 'draft-2',
+    title: 'Minimalist Landing',
+    glowUpScore: 11.4,
+    beforeImageUrl: 'https://placehold.co/300x200?text=Before',
+    afterImageUrl: 'https://placehold.co/300x200?text=After'
+  },
+  {
+    id: 'draft-3',
+    title: 'Editorial Cover',
+    glowUpScore: 7.9,
+    beforeImageUrl: 'https://placehold.co/300x200?text=Before',
+    afterImageUrl: 'https://placehold.co/300x200?text=After'
+  },
+  {
+    id: 'draft-4',
+    title: 'Neo Brutal UI',
+    glowUpScore: 6.5,
+    beforeImageUrl: 'https://placehold.co/300x200?text=Before',
+    afterImageUrl: 'https://placehold.co/300x200?text=After'
+  },
+  {
+    id: 'draft-5',
+    title: 'Studio Typeface',
+    glowUpScore: 5.2,
+    beforeImageUrl: 'https://placehold.co/300x200?text=Before',
+    afterImageUrl: 'https://placehold.co/300x200?text=After'
+  }
 ];
 
 const demoProgress = [
@@ -87,6 +118,8 @@ type DraftFeedItem = {
   glowUpScore: number;
   live?: boolean;
   updatedAt?: string;
+  beforeImageUrl?: string;
+  afterImageUrl?: string;
 };
 
 type ProgressFeedItem = {
@@ -159,7 +192,9 @@ const mapDraftItems = (data: any[], live: boolean): DraftFeedItem[] =>
       title: `${item.type === 'release' ? 'Release' : 'Draft'} ${String(item.id).slice(0, 8)}`,
       glowUpScore: Number(item.glowUpScore ?? item.glow_up_score ?? 0),
       live,
-      updatedAt: item.updatedAt ?? item.updated_at
+      updatedAt: item.updatedAt ?? item.updated_at,
+      beforeImageUrl: item.beforeImageUrl ?? item.before_image_url,
+      afterImageUrl: item.afterImageUrl ?? item.after_image_url
     }));
 
 const mapArchiveItems = (data: any[]): FeedItem[] =>

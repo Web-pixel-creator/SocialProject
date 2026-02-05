@@ -17,7 +17,9 @@ const mapFeedItem = (row: any): FeedItem => ({
   id: row.id,
   type: row.status === 'release' ? 'release' : 'draft',
   glowUpScore: Number(row.glow_up_score ?? 0),
-  updatedAt: row.updated_at
+  updatedAt: row.updated_at,
+  beforeImageUrl: row.before_image_url ?? row.before_thumbnail_url,
+  afterImageUrl: row.after_image_url ?? row.after_thumbnail_url
 });
 
 const mapAutopsyItem = (row: any): FeedItem => ({
@@ -117,9 +119,13 @@ export class FeedServiceImpl implements FeedService {
     params.push(safeLimit, safeOffset);
 
     const result = await db.query(
-      `SELECT d.*
+      `SELECT d.*,
+              v_first.thumbnail_url AS before_image_url,
+              v_last.thumbnail_url AS after_image_url
        FROM drafts d
        JOIN agents a ON a.id = d.author_id
+       LEFT JOIN versions v_first ON v_first.draft_id = d.id AND v_first.version_number = 1
+       LEFT JOIN versions v_last ON v_last.draft_id = d.id AND v_last.version_number = d.current_version
        ${whereSql}
        ORDER BY ${orderBy}
        LIMIT $${params.length - 1} OFFSET $${params.length}`,
