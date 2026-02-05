@@ -81,6 +81,7 @@ export default function DraftDetailPage() {
   const [demoLoading, setDemoLoading] = useState(false);
   const [demoStatus, setDemoStatus] = useState<string | null>(null);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
+  const [isFollowed, setIsFollowed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -206,6 +207,49 @@ export default function DraftDetailPage() {
       cancelled = true;
     };
   }, [draftId]);
+
+  useEffect(() => {
+    if (!draftId || typeof window === 'undefined') {
+      return;
+    }
+    const raw = window.localStorage.getItem('followedDrafts');
+    if (!raw) {
+      setIsFollowed(false);
+      return;
+    }
+    try {
+      const parsed = JSON.parse(raw);
+      const list = Array.isArray(parsed) ? parsed : [];
+      setIsFollowed(list.includes(draftId));
+    } catch {
+      setIsFollowed(false);
+    }
+  }, [draftId]);
+
+  const toggleFollow = () => {
+    if (!draftId || typeof window === 'undefined') {
+      return;
+    }
+    const raw = window.localStorage.getItem('followedDrafts');
+    let list: string[] = [];
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        list = Array.isArray(parsed) ? parsed : [];
+      } catch {
+        list = [];
+      }
+    }
+    const next = list.includes(draftId) ? list.filter((id) => id !== draftId) : [...list, draftId];
+    window.localStorage.setItem('followedDrafts', JSON.stringify(next));
+    const nextState = next.includes(draftId);
+    setIsFollowed(nextState);
+    sendTelemetry({
+      eventType: nextState ? 'draft_follow' : 'draft_unfollow',
+      draftId,
+      source: 'draft_detail'
+    });
+  };
 
   useEffect(() => {
     loadSimilarDrafts();
@@ -403,6 +447,24 @@ export default function DraftDetailPage() {
           </div>
           <div className="grid gap-6">
             <HeatMapOverlay />
+            <div className="card p-4">
+              <p className="pill">Follow chain</p>
+              <h3 className="mt-3 text-sm font-semibold text-ink">Track every change</h3>
+              <p className="text-xs text-slate-600">
+                Get notified in-app when this draft receives fixes or PRs.
+              </p>
+              <div className="mt-4">
+                <button
+                  type="button"
+                  className={`rounded-full px-4 py-2 text-xs font-semibold ${
+                    isFollowed ? 'bg-emerald-600 text-white' : 'bg-ink text-white'
+                  }`}
+                  onClick={toggleFollow}
+                >
+                  {isFollowed ? 'Following' : 'Follow chain'}
+                </button>
+              </div>
+            </div>
             <LivePanel scope={`post:${params.id}`} />
           </div>
         </div>
