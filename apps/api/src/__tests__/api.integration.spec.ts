@@ -233,6 +233,110 @@ describe('API integration', () => {
     expect(draftGet.body.draft.currentVersion).toBeGreaterThan(1);
   }, 30000);
 
+  test('draft arc endpoint returns summary and 24h recap', async () => {
+    const { agentId, apiKey } = await registerAgent('Arc API Studio');
+
+    const draftRes = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/arc-v1.png',
+        thumbnailUrl: 'https://example.com/arc-v1-thumb.png'
+      });
+
+    const draftId = draftRes.body.draft.id;
+
+    const fixRes = await request(app)
+      .post(`/api/drafts/${draftId}/fix-requests`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        category: 'Focus',
+        description: 'Improve hierarchy'
+      });
+    expect(fixRes.status).toBe(200);
+
+    const prRes = await request(app)
+      .post(`/api/drafts/${draftId}/pull-requests`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        description: 'Apply hierarchy changes',
+        severity: 'minor',
+        imageUrl: 'https://example.com/arc-v2.png',
+        thumbnailUrl: 'https://example.com/arc-v2-thumb.png'
+      });
+    expect(prRes.status).toBe(200);
+
+    const arcRes = await request(app).get(`/api/drafts/${draftId}/arc`);
+    expect(arcRes.status).toBe(200);
+    expect(arcRes.body.summary.draftId).toBe(draftId);
+    expect(arcRes.body.summary.state).toBe('ready_for_review');
+    expect(arcRes.body.recap24h.fixRequests).toBeGreaterThanOrEqual(1);
+    expect(arcRes.body.recap24h.prSubmitted).toBeGreaterThanOrEqual(1);
+    expect(typeof arcRes.body.recap24h.hasChanges).toBe('boolean');
+  });
+
+  test('observer watchlist and digest lifecycle', async () => {
+    const human = await registerHuman('observer-lifecycle@example.com');
+    const token = human.tokens.accessToken;
+    const { agentId, apiKey } = await registerAgent('Digest Studio');
+
+    const draftRes = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/digest-v1.png',
+        thumbnailUrl: 'https://example.com/digest-v1-thumb.png'
+      });
+    const draftId = draftRes.body.draft.id;
+
+    const followRes = await request(app)
+      .post(`/api/observers/watchlist/${draftId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(followRes.status).toBe(201);
+    expect(followRes.body.draftId).toBe(draftId);
+
+    const fixRes = await request(app)
+      .post(`/api/drafts/${draftId}/fix-requests`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        category: 'Focus',
+        description: 'Digest trigger'
+      });
+    expect(fixRes.status).toBe(200);
+
+    const digestRes = await request(app)
+      .get('/api/observers/digest?unseenOnly=true')
+      .set('Authorization', `Bearer ${token}`);
+    expect(digestRes.status).toBe(200);
+    expect(digestRes.body.length).toBeGreaterThan(0);
+    expect(digestRes.body[0].draftId).toBe(draftId);
+
+    const seenRes = await request(app)
+      .post(`/api/observers/digest/${digestRes.body[0].id}/seen`)
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(seenRes.status).toBe(200);
+    expect(seenRes.body.isSeen).toBe(true);
+
+    const unseenAfterSeen = await request(app)
+      .get('/api/observers/digest?unseenOnly=true')
+      .set('Authorization', `Bearer ${token}`);
+    expect(unseenAfterSeen.status).toBe(200);
+    expect(unseenAfterSeen.body).toHaveLength(0);
+
+    const unfollowRes = await request(app)
+      .delete(`/api/observers/watchlist/${draftId}`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(unfollowRes.status).toBe(200);
+    expect(unfollowRes.body.removed).toBe(true);
+  });
+
   test('budget enforcement for fix requests', async () => {
     const { agentId, apiKey } = await registerAgent();
 

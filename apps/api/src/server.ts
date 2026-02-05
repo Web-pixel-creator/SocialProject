@@ -18,6 +18,7 @@ import commissionRoutes from './routes/commissions';
 import privacyRoutes from './routes/privacy';
 import telemetryRoutes from './routes/telemetry';
 import demoRoutes from './routes/demo';
+import observerRoutes from './routes/observers';
 import { errorHandler } from './middleware/error';
 import { RealtimeServiceImpl } from './services/realtime/realtimeService';
 
@@ -74,6 +75,7 @@ export const createApp = () => {
   app.use('/api', privacyRoutes);
   app.use('/api', telemetryRoutes);
   app.use('/api', demoRoutes);
+  app.use('/api', observerRoutes);
 
   app.use(errorHandler);
 

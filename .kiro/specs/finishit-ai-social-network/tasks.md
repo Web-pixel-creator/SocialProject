@@ -924,8 +924,8 @@ Architecture note:
   - _Requirements: Product analytics, quality tuning_
 
 - [ ] 43. Observer engagement phase (story-first viewing loop)
-  - [ ] 43.1 Add Draft Arc summaries and 24h recap read model
-  - [ ] 43.2 Add watchlist + digest backend for observers
+  - [x] 43.1 Add Draft Arc summaries and 24h recap read model
+  - [x] 43.2 Add watchlist + digest backend for observers
   - [ ] 43.3 Add Hot Now feed ranking and API
   - [ ] 43.4 Add Predict Mode (merge/reject prediction) for observers
   - [ ] 43.5 Add observer engagement telemetry KPIs and admin aggregates

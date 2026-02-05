@@ -1,0 +1,470 @@
+import { Pool } from 'pg';
+import type { DbClient } from '../auth/types';
+import { ServiceError } from '../common/errors';
+import { GLOWUP_MAJOR_WEIGHT, GLOWUP_MINOR_WEIGHT } from '../metrics/constants';
+import type {
+  DigestListOptions,
+  DraftArcService,
+  DraftArcState,
+  DraftArcSummary,
+  DraftArcView,
+  DraftEventType,
+  DraftRecap24h,
+  ObserverDigestEntry,
+  ObserverWatchlistItem
+} from './types';
+
+const getDb = (pool: Pool, client?: DbClient): DbClient => client ?? pool;
+const DIGEST_DEDUP_WINDOW_MINUTES = 10;
+
+const mapArcSummary = (row: any): DraftArcSummary => ({
+  draftId: row.draft_id,
+  state: row.state,
+  latestMilestone: row.latest_milestone,
+  fixOpenCount: Number(row.fix_open_count ?? 0),
+  prPendingCount: Number(row.pr_pending_count ?? 0),
+  lastMergeAt: row.last_merge_at ?? null,
+  updatedAt: row.updated_at
+});
+
+const mapDigestEntry = (row: any): ObserverDigestEntry => ({
+  id: row.id,
+  observerId: row.observer_id,
+  draftId: row.draft_id,
+  title: row.title,
+  summary: row.summary,
+  latestMilestone: row.latest_milestone,
+  isSeen: Boolean(row.is_seen),
+  createdAt: row.created_at,
+  updatedAt: row.updated_at
+});
+
+const mapWatchlistItem = (row: any): ObserverWatchlistItem => ({
+  observerId: row.observer_id,
+  draftId: row.draft_id,
+  createdAt: row.created_at
+});
+
+const asNumber = (value: unknown): number => Number(value ?? 0);
+const round2 = (value: number): number => Math.round(value * 100) / 100;
+
+const calcGlowUp = (majorMerged: number, minorMerged: number): number => {
+  const prCount = majorMerged + minorMerged;
+  if (prCount === 0) {
+    return 0;
+  }
+  const weighted = majorMerged * GLOWUP_MAJOR_WEIGHT + minorMerged * GLOWUP_MINOR_WEIGHT;
+  return weighted * (1 + Math.log(prCount + 1));
+};
+
+const inferState = (status: string, fixOpenCount: number, prPendingCount: number): DraftArcState => {
+  if (status === 'release') {
+    return 'released';
+  }
+  if (prPendingCount > 0) {
+    return 'ready_for_review';
+  }
+  if (fixOpenCount > 0) {
+    return 'in_progress';
+  }
+  return 'needs_help';
+};
+
+const inferMilestone = (
+  latestEventKind: string | null,
+  state: DraftArcState,
+  fixOpenCount: number,
+  prPendingCount: number
+): string => {
+  if (latestEventKind === 'draft_release') {
+    return 'Draft released';
+  }
+  if (latestEventKind === 'pr_merged') {
+    return 'Recent PR merged';
+  }
+  if (latestEventKind === 'pr_rejected') {
+    return 'Recent PR rejected';
+  }
+  if (latestEventKind === 'pr_submitted') {
+    return prPendingCount > 1 ? `${prPendingCount} PRs pending review` : 'PR pending review';
+  }
+  if (latestEventKind === 'fix_request') {
+    return fixOpenCount > 1 ? `${fixOpenCount} open fix requests` : '1 open fix request';
+  }
+  if (state === 'released') {
+    return 'Draft released';
+  }
+  if (state === 'ready_for_review') {
+    return prPendingCount > 1 ? `${prPendingCount} PRs pending review` : 'PR pending review';
+  }
+  if (state === 'in_progress') {
+    return fixOpenCount > 1 ? `${fixOpenCount} open fix requests` : '1 open fix request';
+  }
+  return 'No activity yet';
+};
+
+const digestTitleByEvent = (eventType: DraftEventType): string => {
+  if (eventType === 'draft_released') {
+    return 'Draft released';
+  }
+  if (eventType === 'pull_request') {
+    return 'New PR on watched draft';
+  }
+  if (eventType === 'pull_request_decision') {
+    return 'PR decision on watched draft';
+  }
+  if (eventType === 'fix_request') {
+    return 'New critique on watched draft';
+  }
+  return 'Draft activity update';
+};
+
+export class DraftArcServiceImpl implements DraftArcService {
+  constructor(private readonly pool: Pool) {}
+
+  async getDraftArc(draftId: string, client?: DbClient): Promise<DraftArcView> {
+    const db = getDb(this.pool, client);
+    const summary = await this.recomputeDraftArcSummary(draftId, db);
+    const recap24h = await this.getRecap24h(draftId, db);
+    return { summary, recap24h };
+  }
+
+  async recomputeDraftArcSummary(draftId: string, client?: DbClient): Promise<DraftArcSummary> {
+    const db = getDb(this.pool, client);
+    await this.ensureDraftExists(draftId, db);
+
+    const result = await db.query(
+      `WITH addressed_fixes AS (
+         SELECT DISTINCT jsonb_array_elements_text(pr.addressed_fix_requests) AS fix_id
+         FROM pull_requests pr
+         WHERE pr.draft_id = $1
+           AND pr.status = 'merged'
+           AND jsonb_typeof(pr.addressed_fix_requests) = 'array'
+       ),
+       open_fixes AS (
+         SELECT COUNT(*)::int AS fix_open_count
+         FROM fix_requests fr
+         LEFT JOIN addressed_fixes af ON af.fix_id = fr.id::text
+         WHERE fr.draft_id = $1
+           AND af.fix_id IS NULL
+       ),
+       pending_prs AS (
+         SELECT COUNT(*)::int AS pr_pending_count
+         FROM pull_requests pr
+         WHERE pr.draft_id = $1
+           AND pr.status = 'pending'
+       ),
+       merge_data AS (
+         SELECT MAX(pr.decided_at) AS last_merge_at
+         FROM pull_requests pr
+         WHERE pr.draft_id = $1
+           AND pr.status = 'merged'
+       ),
+       latest_event AS (
+         SELECT kind, occurred_at
+         FROM (
+           SELECT 'draft_release'::text AS kind, d.updated_at AS occurred_at
+           FROM drafts d
+           WHERE d.id = $1
+             AND d.status = 'release'
+           UNION ALL
+           SELECT 'pr_merged'::text, pr.decided_at
+           FROM pull_requests pr
+           WHERE pr.draft_id = $1
+             AND pr.status = 'merged'
+             AND pr.decided_at IS NOT NULL
+           UNION ALL
+           SELECT 'pr_rejected'::text, pr.decided_at
+           FROM pull_requests pr
+           WHERE pr.draft_id = $1
+             AND pr.status = 'rejected'
+             AND pr.decided_at IS NOT NULL
+           UNION ALL
+           SELECT 'pr_submitted'::text, pr.created_at
+           FROM pull_requests pr
+           WHERE pr.draft_id = $1
+           UNION ALL
+           SELECT 'fix_request'::text, fr.created_at
+           FROM fix_requests fr
+           WHERE fr.draft_id = $1
+         ) events
+         ORDER BY occurred_at DESC
+         LIMIT 1
+       )
+       SELECT
+         d.status,
+         of.fix_open_count,
+         pp.pr_pending_count,
+         md.last_merge_at,
+         le.kind AS latest_event_kind
+       FROM drafts d
+       CROSS JOIN open_fixes of
+       CROSS JOIN pending_prs pp
+       CROSS JOIN merge_data md
+       LEFT JOIN latest_event le ON true
+       WHERE d.id = $1`,
+      [draftId]
+    );
+
+    if (result.rows.length === 0) {
+      throw new ServiceError('DRAFT_NOT_FOUND', 'Draft not found.', 404);
+    }
+
+    const row = result.rows[0];
+    const fixOpenCount = asNumber(row.fix_open_count);
+    const prPendingCount = asNumber(row.pr_pending_count);
+    const state = inferState(row.status, fixOpenCount, prPendingCount);
+    const latestMilestone = inferMilestone(row.latest_event_kind, state, fixOpenCount, prPendingCount);
+
+    const upsert = await db.query(
+      `INSERT INTO draft_arc_summaries (
+         draft_id,
+         state,
+         latest_milestone,
+         fix_open_count,
+         pr_pending_count,
+         last_merge_at,
+         updated_at
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, NOW())
+       ON CONFLICT (draft_id)
+       DO UPDATE SET
+         state = EXCLUDED.state,
+         latest_milestone = EXCLUDED.latest_milestone,
+         fix_open_count = EXCLUDED.fix_open_count,
+         pr_pending_count = EXCLUDED.pr_pending_count,
+         last_merge_at = EXCLUDED.last_merge_at,
+         updated_at = NOW()
+       RETURNING *`,
+      [draftId, state, latestMilestone, fixOpenCount, prPendingCount, row.last_merge_at]
+    );
+
+    return mapArcSummary(upsert.rows[0]);
+  }
+
+  async recordDraftEvent(draftId: string, eventType: DraftEventType, client?: DbClient): Promise<void> {
+    const db = getDb(this.pool, client);
+    const summary = await this.recomputeDraftArcSummary(draftId, db);
+    await this.upsertDigestEntriesForFollowers(draftId, eventType, summary, db);
+  }
+
+  async followDraft(observerId: string, draftId: string, client?: DbClient): Promise<ObserverWatchlistItem> {
+    const db = getDb(this.pool, client);
+    await this.ensureObserverExists(observerId, db);
+    await this.ensureDraftExists(draftId, db);
+
+    const result = await db.query(
+      `INSERT INTO observer_draft_follows (observer_id, draft_id)
+       VALUES ($1, $2)
+       ON CONFLICT (observer_id, draft_id)
+       DO UPDATE SET observer_id = EXCLUDED.observer_id
+       RETURNING observer_id, draft_id, created_at`,
+      [observerId, draftId]
+    );
+
+    return mapWatchlistItem(result.rows[0]);
+  }
+
+  async unfollowDraft(observerId: string, draftId: string, client?: DbClient): Promise<{ removed: boolean }> {
+    const db = getDb(this.pool, client);
+    const result = await db.query(
+      'DELETE FROM observer_draft_follows WHERE observer_id = $1 AND draft_id = $2 RETURNING id',
+      [observerId, draftId]
+    );
+    return { removed: result.rows.length > 0 };
+  }
+
+  async listWatchlist(observerId: string, client?: DbClient): Promise<ObserverWatchlistItem[]> {
+    const db = getDb(this.pool, client);
+    const result = await db.query(
+      `SELECT observer_id, draft_id, created_at
+       FROM observer_draft_follows
+       WHERE observer_id = $1
+       ORDER BY created_at DESC`,
+      [observerId]
+    );
+    return result.rows.map(mapWatchlistItem);
+  }
+
+  async listDigest(
+    observerId: string,
+    options?: DigestListOptions,
+    client?: DbClient
+  ): Promise<ObserverDigestEntry[]> {
+    const db = getDb(this.pool, client);
+    const unseenOnly = Boolean(options?.unseenOnly);
+    const limit = Math.min(Math.max(options?.limit ?? 20, 1), 100);
+    const offset = Math.max(options?.offset ?? 0, 0);
+
+    const result = await db.query(
+      `SELECT id, observer_id, draft_id, title, summary, latest_milestone, is_seen, created_at, updated_at
+       FROM observer_digest_entries
+       WHERE observer_id = $1
+         AND ($2::boolean = false OR is_seen = false)
+       ORDER BY is_seen ASC, created_at DESC
+       LIMIT $3 OFFSET $4`,
+      [observerId, unseenOnly, limit, offset]
+    );
+
+    return result.rows.map(mapDigestEntry);
+  }
+
+  async markDigestSeen(observerId: string, entryId: string, client?: DbClient): Promise<ObserverDigestEntry> {
+    const db = getDb(this.pool, client);
+    const updated = await db.query(
+      `UPDATE observer_digest_entries
+       SET is_seen = true,
+           updated_at = NOW()
+       WHERE id = $1
+         AND observer_id = $2
+       RETURNING id, observer_id, draft_id, title, summary, latest_milestone, is_seen, created_at, updated_at`,
+      [entryId, observerId]
+    );
+
+    if (updated.rows.length === 0) {
+      throw new ServiceError('DIGEST_ENTRY_NOT_FOUND', 'Digest entry not found.', 404);
+    }
+
+    return mapDigestEntry(updated.rows[0]);
+  }
+
+  private async getRecap24h(draftId: string, db: DbClient): Promise<DraftRecap24h> {
+    const result = await db.query(
+      `WITH pr_window AS (
+         SELECT
+           COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '24 hours')::int AS pr_submitted,
+           COUNT(*) FILTER (WHERE status = 'merged' AND decided_at >= NOW() - INTERVAL '24 hours')::int AS pr_merged,
+           COUNT(*) FILTER (WHERE status = 'rejected' AND decided_at >= NOW() - INTERVAL '24 hours')::int AS pr_rejected,
+           COUNT(*) FILTER (WHERE status = 'merged' AND severity = 'major')::int AS major_total,
+           COUNT(*) FILTER (WHERE status = 'merged' AND severity = 'minor')::int AS minor_total,
+           COUNT(*) FILTER (WHERE status = 'merged' AND severity = 'major' AND decided_at >= NOW() - INTERVAL '24 hours')::int AS major_24h,
+           COUNT(*) FILTER (WHERE status = 'merged' AND severity = 'minor' AND decided_at >= NOW() - INTERVAL '24 hours')::int AS minor_24h
+         FROM pull_requests
+         WHERE draft_id = $1
+       ),
+       fix_window AS (
+         SELECT COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '24 hours')::int AS fix_requests
+         FROM fix_requests
+         WHERE draft_id = $1
+       )
+       SELECT
+         fw.fix_requests,
+         pw.pr_submitted,
+         pw.pr_merged,
+         pw.pr_rejected,
+         pw.major_total,
+         pw.minor_total,
+         pw.major_24h,
+         pw.minor_24h
+       FROM fix_window fw
+       CROSS JOIN pr_window pw`,
+      [draftId]
+    );
+
+    const row = result.rows[0];
+    const fixRequests = asNumber(row.fix_requests);
+    const prSubmitted = asNumber(row.pr_submitted);
+    const prMerged = asNumber(row.pr_merged);
+    const prRejected = asNumber(row.pr_rejected);
+
+    const majorTotal = asNumber(row.major_total);
+    const minorTotal = asNumber(row.minor_total);
+    const major24h = asNumber(row.major_24h);
+    const minor24h = asNumber(row.minor_24h);
+
+    const glowUpDelta =
+      major24h + minor24h > 0
+        ? round2(
+            calcGlowUp(majorTotal, minorTotal) -
+              calcGlowUp(Math.max(majorTotal - major24h, 0), Math.max(minorTotal - minor24h, 0))
+          )
+        : null;
+
+    const hasChanges = fixRequests + prSubmitted + prMerged + prRejected > 0;
+
+    return {
+      fixRequests,
+      prSubmitted,
+      prMerged,
+      prRejected,
+      glowUpDelta,
+      hasChanges
+    };
+  }
+
+  private async upsertDigestEntriesForFollowers(
+    draftId: string,
+    eventType: DraftEventType,
+    summary: DraftArcSummary,
+    db: DbClient
+  ): Promise<void> {
+    const followers = await db.query(
+      `SELECT observer_id
+       FROM observer_draft_follows
+       WHERE draft_id = $1`,
+      [draftId]
+    );
+
+    if (followers.rows.length === 0) {
+      return;
+    }
+
+    const title = digestTitleByEvent(eventType);
+    const digestSummary = `${summary.latestMilestone}. Open fixes: ${summary.fixOpenCount}, pending PRs: ${summary.prPendingCount}.`;
+
+    for (const row of followers.rows) {
+      const observerId = row.observer_id as string;
+      const recentEntry = await db.query(
+        `SELECT id
+         FROM observer_digest_entries
+         WHERE observer_id = $1
+           AND draft_id = $2
+           AND created_at >= NOW() - ($3::text || ' minutes')::interval
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        [observerId, draftId, DIGEST_DEDUP_WINDOW_MINUTES]
+      );
+
+      if (recentEntry.rows.length > 0) {
+        await db.query(
+          `UPDATE observer_digest_entries
+           SET title = $1,
+               summary = $2,
+               latest_milestone = $3,
+               is_seen = false,
+               updated_at = NOW()
+           WHERE id = $4`,
+          [title, digestSummary, summary.latestMilestone, recentEntry.rows[0].id]
+        );
+      } else {
+        await db.query(
+          `INSERT INTO observer_digest_entries (
+             observer_id,
+             draft_id,
+             title,
+             summary,
+             latest_milestone,
+             is_seen
+           )
+           VALUES ($1, $2, $3, $4, $5, false)`,
+          [observerId, draftId, title, digestSummary, summary.latestMilestone]
+        );
+      }
+    }
+  }
+
+  private async ensureDraftExists(draftId: string, db: DbClient): Promise<void> {
+    const result = await db.query('SELECT id FROM drafts WHERE id = $1', [draftId]);
+    if (result.rows.length === 0) {
+      throw new ServiceError('DRAFT_NOT_FOUND', 'Draft not found.', 404);
+    }
+  }
+
+  private async ensureObserverExists(observerId: string, db: DbClient): Promise<void> {
+    const result = await db.query('SELECT id FROM users WHERE id = $1', [observerId]);
+    if (result.rows.length === 0) {
+      throw new ServiceError('OBSERVER_NOT_FOUND', 'Observer not found.', 404);
+    }
+  }
+}
+

@@ -13,6 +13,7 @@ import { PullRequestServiceImpl } from '../services/pullRequest/pullRequestServi
 import { SearchServiceImpl } from '../services/search/searchService';
 import { EmbeddingServiceImpl } from '../services/search/embeddingService';
 import { SandboxServiceImpl } from '../services/sandbox/sandboxService';
+import { DraftArcServiceImpl } from '../services/observer';
 import type { RealtimeService } from '../services/realtime/types';
 
 const router = Router();
@@ -25,6 +26,7 @@ const metricsService = new MetricsServiceImpl(db);
 const notificationService = new NotificationServiceImpl(db, async () => Promise.resolve());
 const searchService = new SearchServiceImpl(db);
 const embeddingService = new EmbeddingServiceImpl(db);
+const draftArcService = new DraftArcServiceImpl(db);
 
 const getRealtime = (req: Request): RealtimeService | undefined => {
   return req.app.get('realtime');
@@ -107,6 +109,18 @@ router.get('/drafts/:id', async (req, res, next) => {
   }
 });
 
+router.get('/drafts/:id/arc', async (req, res, next) => {
+  try {
+    if (!isUuid(req.params.id)) {
+      throw new ServiceError('DRAFT_ID_INVALID', 'Invalid draft id.', 400);
+    }
+    const arc = await draftArcService.getDraftArc(req.params.id);
+    res.json(arc);
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.post('/drafts/:id/release', requireVerifiedAgent, async (req, res, next) => {
   try {
     const draft = await postService.getDraft(req.params.id);
@@ -114,6 +128,11 @@ router.post('/drafts/:id/release', requireVerifiedAgent, async (req, res, next) 
       return res.status(403).json({ error: 'NOT_AUTHOR' });
     }
     const result = await postService.releaseDraft(req.params.id);
+    try {
+      await draftArcService.recordDraftEvent(req.params.id, 'draft_released');
+    } catch (error) {
+      logger.warn({ err: error, draftId: req.params.id }, 'Observer arc update failed after release');
+    }
     getRealtime(req)?.broadcast(`post:${req.params.id}`, 'draft_released', { draftId: req.params.id });
     res.json(result);
   } catch (error) {
@@ -141,6 +160,11 @@ router.post('/drafts/:id/fix-requests', requireVerifiedAgent, computeHeavyRateLi
     await budgetService.incrementActionBudget(agentId, 'fix_request');
 
     await notificationService.notifyAuthorOnFixRequest(draftId, fix.id);
+    try {
+      await draftArcService.recordDraftEvent(draftId, 'fix_request');
+    } catch (error) {
+      logger.warn({ err: error, draftId }, 'Observer arc update failed after fix request');
+    }
     getRealtime(req)?.broadcast(`post:${draftId}`, 'fix_request', { id: fix.id, draftId });
     getRealtime(req)?.broadcast(`feed:live`, 'draft_activity', { draftId });
 
@@ -186,6 +210,11 @@ router.post('/drafts/:id/pull-requests', requireVerifiedAgent, computeHeavyRateL
     await budgetService.incrementActionBudget(agentId, budgetType);
 
     await notificationService.notifyAuthorOnPullRequest(draftId, pr.id);
+    try {
+      await draftArcService.recordDraftEvent(draftId, 'pull_request');
+    } catch (error) {
+      logger.warn({ err: error, draftId }, 'Observer arc update failed after pull request');
+    }
     getRealtime(req)?.broadcast(`post:${draftId}`, 'pull_request', { id: pr.id, draftId });
     getRealtime(req)?.broadcast(`feed:live`, 'draft_activity', { draftId });
 
@@ -279,6 +308,11 @@ router.post('/pull-requests/:id/decide', requireVerifiedAgent, async (req, res, 
     }
 
     await notificationService.notifyMakerOnDecision(pr.id, decision);
+    try {
+      await draftArcService.recordDraftEvent(pr.draftId, 'pull_request_decision');
+    } catch (error) {
+      logger.warn({ err: error, draftId: pr.draftId, pullRequestId: pr.id }, 'Observer arc update failed after PR decision');
+    }
     getRealtime(req)?.broadcast(`post:${pr.draftId}`, 'pull_request_decision', {
       id: pr.id,
       draftId: pr.draftId,

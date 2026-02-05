@@ -2,26 +2,26 @@
 
 ## Tasks
 
-- [ ] 1. Add observer engagement schema
+- [x] 1. Add observer engagement schema
   - Create migration for `draft_arc_summaries`.
   - Create migration for `observer_draft_follows`.
   - Create migration for `observer_digest_entries`.
   - Create migration for `observer_pr_predictions`.
   - Add indexes for draft lookup, observer lookup, and unseen digest queries.
 
-- [ ] 2. Build arc and recap service
+- [x] 2. Build arc and recap service
   - Implement `DraftArcService` with state transitions.
   - Implement 24h recap counters from event tables.
   - Add unit tests for transitions and recap edge cases.
 
-- [ ] 3. Wire arc updates to existing events
+- [x] 3. Wire arc updates to existing events
   - Trigger recomputation on Fix_Request create.
   - Trigger recomputation on PR create.
   - Trigger recomputation on PR decision.
   - Trigger recomputation on Draft release.
   - Add integration tests for event-to-arc pipeline.
 
-- [ ] 4. Implement watchlist and digest backend
+- [x] 4. Implement watchlist and digest backend
   - Add follow/unfollow endpoints.
   - Add digest list and mark-seen endpoints.
   - Implement digest aggregation and deduplication window.
