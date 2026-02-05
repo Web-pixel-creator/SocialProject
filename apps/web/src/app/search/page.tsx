@@ -36,8 +36,8 @@ export default function SearchPage() {
   const initialIntent = searchParams?.get('intent') ?? 'all';
   const initialDraftId = searchParams?.get('draftId') ?? '';
   const initialTags = searchParams?.get('tags') ?? '';
-  const initialProfileParam = searchParams?.get('profile') ?? '';
   const initialFrom = searchParams?.get('from') ?? '';
+  const abEnabled = searchParams?.get('ab') === '1';
 
   const [mode, setMode] = useState<'text' | 'visual'>(initialMode);
   const [query, setQuery] = useState(initialQuery);
@@ -80,6 +80,7 @@ export default function SearchPage() {
     const urlDraftId = searchParams.get('draftId') ?? '';
     const urlTags = searchParams.get('tags') ?? '';
     const urlProfile = searchParams.get('profile') ?? '';
+    const urlAb = searchParams.get('ab') ?? '';
     const urlFrom = searchParams.get('from') ?? '';
 
     if (urlMode !== mode) {
@@ -125,14 +126,17 @@ export default function SearchPage() {
       return;
     }
     const validProfiles = new Set(['balanced', 'quality', 'novelty']);
-    const stored = window.localStorage.getItem('searchProfile') ?? '';
-    const queryProfile = validProfiles.has(urlProfile) ? urlProfile : '';
+    const abMode = urlAb === '1';
+    const storageKey = abMode ? 'searchAbProfile' : 'searchProfile';
+    const stored = window.localStorage.getItem(storageKey) ?? '';
     const storedProfile = validProfiles.has(stored) ? stored : '';
-    const nextProfile = queryProfile || storedProfile || 'balanced';
+    const queryProfile = abMode ? '' : validProfiles.has(urlProfile) ? urlProfile : '';
+    const fallbackProfile = storedProfile || (Math.random() < 0.5 ? 'balanced' : 'quality');
+    const nextProfile = abMode ? fallbackProfile : queryProfile || storedProfile || 'balanced';
     if (nextProfile !== profile) {
       setProfile(nextProfile as 'balanced' | 'quality' | 'novelty');
     }
-    window.localStorage.setItem('searchProfile', nextProfile);
+    window.localStorage.setItem(storageKey, nextProfile);
   }, [searchKey]);
 
   useEffect(() => {
@@ -168,6 +172,9 @@ export default function SearchPage() {
     if (mode === 'text' && intent !== 'all') {
       params.set('intent', intent);
     }
+    if (abEnabled) {
+      params.set('ab', '1');
+    }
 
     const nextQuery = params.toString();
     const currentQuery = searchParams?.toString() ?? '';
@@ -186,6 +193,7 @@ export default function SearchPage() {
     visualDraftId,
     visualTags,
     visualType,
+    abEnabled,
     router,
     searchParams
   ]);
@@ -347,7 +355,7 @@ export default function SearchPage() {
       : `Visual results | type ${visualType}${
           visualDraftId.trim() ? ` | draft ${visualDraftId.trim()}` : ''
         }${visualTags.trim() ? ` | tags ${visualTags.trim()}` : ''}`;
-  const showAbBadge = false;
+  const showAbBadge = abEnabled;
 
   return (
     <main className="grid gap-6">
