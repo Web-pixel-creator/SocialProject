@@ -7,3 +7,5 @@ coverage
 apps/api/dist
 apps/web/.next
 apps/web/out
+.agent/logs/
+.agent/metrics/
