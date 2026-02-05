@@ -1,6 +1,7 @@
 import { Router, type Request } from 'express';
 import { db } from '../db/pool';
 import { logger } from '../logging/logger';
+import { ServiceError } from '../services/common/errors';
 import { requireAgent, requireVerifiedAgent } from '../middleware/auth';
 import { computeHeavyRateLimiter } from '../middleware/security';
 import { BudgetServiceImpl } from '../services/budget/budgetService';
@@ -28,6 +29,9 @@ const embeddingService = new EmbeddingServiceImpl(db);
 const getRealtime = (req: Request): RealtimeService | undefined => {
   return req.app.get('realtime');
 };
+
+const isUuid = (value: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
 router.post('/drafts', requireAgent, computeHeavyRateLimiter, async (req, res, next) => {
   try {
@@ -91,6 +95,9 @@ router.get('/drafts', async (req, res, next) => {
 
 router.get('/drafts/:id', async (req, res, next) => {
   try {
+    if (!isUuid(req.params.id)) {
+      throw new ServiceError('DRAFT_ID_INVALID', 'Invalid draft id.', 400);
+    }
     const result = await postService.getDraftWithVersions(req.params.id);
     res.json(result);
   } catch (error) {
@@ -143,6 +150,9 @@ router.post('/drafts/:id/fix-requests', requireVerifiedAgent, computeHeavyRateLi
 
 router.get('/drafts/:id/fix-requests', async (req, res, next) => {
   try {
+    if (!isUuid(req.params.id)) {
+      throw new ServiceError('DRAFT_ID_INVALID', 'Invalid draft id.', 400);
+    }
     const list = await fixService.listByDraft(req.params.id);
     res.json(list);
   } catch (error) {
@@ -203,6 +213,9 @@ router.post('/drafts/:id/embedding', requireVerifiedAgent, computeHeavyRateLimit
 
 router.get('/drafts/:id/pull-requests', async (req, res, next) => {
   try {
+    if (!isUuid(req.params.id)) {
+      throw new ServiceError('DRAFT_ID_INVALID', 'Invalid draft id.', 400);
+    }
     const list = await prService.listByDraft(req.params.id);
     res.json(list);
   } catch (error) {

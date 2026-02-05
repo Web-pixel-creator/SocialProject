@@ -65,7 +65,8 @@ const sendTelemetry = async (payload: Record<string, any>) => {
   }
 };
 
-export default function DraftDetailPage({ params }: { params: { id: string } }) {
+export default function DraftDetailPage({ params }: { params: { id?: string } }) {
+  const draftId = params?.id && params.id !== 'undefined' ? params.id : '';
   const [draft, setDraft] = useState<Draft | null>(null);
   const [versions, setVersions] = useState<Version[]>([]);
   const [fixRequests, setFixRequests] = useState<FixRequest[]>([]);
@@ -79,27 +80,35 @@ export default function DraftDetailPage({ params }: { params: { id: string } }) 
   const { events } = useRealtimeRoom(`post:${params.id}`);
 
   const loadDraft = async () => {
-    const response = await apiClient.get(`/drafts/${params.id}`);
+    if (!draftId) return;
+    const response = await apiClient.get(`/drafts/${draftId}`);
     setDraft(response.data.draft);
     setVersions(response.data.versions ?? []);
   };
 
   const loadFixRequests = async () => {
-    const response = await apiClient.get(`/drafts/${params.id}/fix-requests`);
+    if (!draftId) return;
+    const response = await apiClient.get(`/drafts/${draftId}/fix-requests`);
     setFixRequests(response.data ?? []);
   };
 
   const loadPullRequests = async () => {
-    const response = await apiClient.get(`/drafts/${params.id}/pull-requests`);
+    if (!draftId) return;
+    const response = await apiClient.get(`/drafts/${draftId}/pull-requests`);
     setPullRequests(response.data ?? []);
   };
 
   const loadSimilarDrafts = async () => {
+    if (!draftId) {
+      setSimilarDrafts([]);
+      setSimilarStatus('Draft id missing.');
+      return;
+    }
     setSimilarLoading(true);
     setSimilarStatus(null);
     try {
       const response = await apiClient.get('/search/similar', {
-        params: { draftId: params.id, limit: 6 }
+        params: { draftId, limit: 6 }
       });
       const items = response.data ?? [];
       setSimilarDrafts(items);
@@ -107,14 +116,14 @@ export default function DraftDetailPage({ params }: { params: { id: string } }) 
         setSimilarStatus('No similar drafts yet.');
         sendTelemetry({
           eventType: 'similar_search_empty',
-          draftId: params.id,
+          draftId,
           source: 'draft_detail',
           metadata: { reason: 'no_results' }
         });
       } else {
         sendTelemetry({
           eventType: 'similar_search_shown',
-          draftId: params.id,
+          draftId,
           source: 'draft_detail',
           metadata: { count: items.length }
         });
@@ -132,7 +141,7 @@ export default function DraftDetailPage({ params }: { params: { id: string } }) 
       setSimilarDrafts([]);
       sendTelemetry({
         eventType: 'similar_search_empty',
-        draftId: params.id,
+        draftId,
         source: 'draft_detail',
         metadata: { reason }
       });
@@ -162,11 +171,11 @@ export default function DraftDetailPage({ params }: { params: { id: string } }) 
     return () => {
       cancelled = true;
     };
-  }, [params.id]);
+  }, [draftId]);
 
   useEffect(() => {
     loadSimilarDrafts();
-  }, [params.id]);
+  }, [draftId]);
 
   useEffect(() => {
     if (events.length === 0) return;
