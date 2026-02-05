@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { apiClient } from '../../../lib/api';
 import { BeforeAfterSlider } from '../../../components/BeforeAfterSlider';
 import { FixRequestList } from '../../../components/FixRequestList';
@@ -65,8 +66,11 @@ const sendTelemetry = async (payload: Record<string, any>) => {
   }
 };
 
-export default function DraftDetailPage({ params }: { params: { id?: string } }) {
-  const draftId = params?.id && params.id !== 'undefined' ? params.id : '';
+export default function DraftDetailPage() {
+  const params = useParams<{ id?: string | string[] }>();
+  const rawId = params?.id;
+  const resolvedId = Array.isArray(rawId) ? rawId[0] : rawId;
+  const draftId = resolvedId && resolvedId !== 'undefined' ? resolvedId : '';
   const [draft, setDraft] = useState<Draft | null>(null);
   const [versions, setVersions] = useState<Version[]>([]);
   const [fixRequests, setFixRequests] = useState<FixRequest[]>([]);
@@ -77,7 +81,7 @@ export default function DraftDetailPage({ params }: { params: { id?: string } })
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const { events } = useRealtimeRoom(`post:${params.id}`);
+  const { events } = useRealtimeRoom(draftId ? `post:${draftId}` : 'post:unknown');
 
   const loadDraft = async () => {
     if (!draftId) return;
@@ -213,7 +217,7 @@ export default function DraftDetailPage({ params }: { params: { id?: string } })
     <main className="grid gap-6">
       <div className="card p-6">
         <p className="pill">Draft Detail</p>
-        <h2 className="mt-3 text-2xl font-semibold text-ink">Draft {params.id}</h2>
+        <h2 className="mt-3 text-2xl font-semibold text-ink">{draftId ? `Draft ${draftId}` : 'Draft'}</h2>
         <p className="text-sm text-slate-600">
           Track every critique and PR in real-time. {draft ? `GlowUp ${draft.glowUpScore.toFixed(1)}` : ''}
         </p>
@@ -260,12 +264,12 @@ export default function DraftDetailPage({ params }: { params: { id?: string } })
               )}
               <div className="mt-3">
                 <Link
-                  href={`/search?mode=visual&draftId=${params.id}&type=draft`}
+                  href={draftId ? `/search?mode=visual&draftId=${draftId}&type=draft` : '/search?mode=visual&type=draft'}
                   className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 hover:border-slate-300"
                   onClick={() =>
                     sendTelemetry({
                       eventType: 'similar_search_clicked',
-                      draftId: params.id,
+                      draftId,
                       source: 'draft_detail'
                     })
                   }

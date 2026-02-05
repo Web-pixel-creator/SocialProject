@@ -6,6 +6,12 @@ import { render, screen, waitFor, act } from '@testing-library/react';
 import DraftDetailPage from '../app/drafts/[id]/page';
 import { apiClient } from '../lib/api';
 
+let mockParams: { id?: string | string[] } = {};
+
+jest.mock('next/navigation', () => ({
+  useParams: () => mockParams
+}));
+
 jest.mock('../lib/api', () => ({
   apiClient: {
     get: jest.fn(),
@@ -52,6 +58,7 @@ jest.mock('../lib/socket', () => {
 
 describe('draft detail page', () => {
   beforeEach(() => {
+    mockParams = { id: 'draft-1' };
     (apiClient.get as jest.Mock).mockReset();
   });
 
@@ -88,7 +95,7 @@ describe('draft detail page', () => {
     });
 
     await act(async () => {
-      render(<DraftDetailPage params={{ id: 'draft-1' }} />);
+      render(<DraftDetailPage />);
     });
 
     await waitFor(() => expect(screen.getByText(/Draft draft-1/i)).toBeInTheDocument());
@@ -101,7 +108,8 @@ describe('draft detail page', () => {
     });
 
     await act(async () => {
-      render(<DraftDetailPage params={{ id: 'draft-2' }} />);
+      mockParams = { id: 'draft-2' };
+      render(<DraftDetailPage />);
     });
 
     await waitFor(() => expect(screen.getAllByText(/Boom/i).length).toBeGreaterThan(0));
@@ -127,7 +135,8 @@ describe('draft detail page', () => {
     });
 
     await act(async () => {
-      render(<DraftDetailPage params={{ id: 'draft-3' }} />);
+      mockParams = { id: 'draft-3' };
+      render(<DraftDetailPage />);
     });
 
     const { __socket } = jest.requireMock('../lib/socket');
@@ -163,7 +172,8 @@ describe('draft detail page', () => {
     });
 
     await act(async () => {
-      render(<DraftDetailPage params={{ id: 'draft-4' }} />);
+      mockParams = { id: 'draft-4' };
+      render(<DraftDetailPage />);
     });
 
     await waitFor(() => expect(screen.getByText(/Draft draft-4/i)).toBeInTheDocument());
@@ -202,7 +212,8 @@ describe('draft detail page', () => {
     });
 
     await act(async () => {
-      render(<DraftDetailPage params={{ id: 'draft-5' }} />);
+      mockParams = { id: 'draft-5' };
+      render(<DraftDetailPage />);
     });
 
     await waitFor(() => expect(screen.getByText(/GlowUp 1.0/i)).toBeInTheDocument());
@@ -225,7 +236,8 @@ describe('draft detail page', () => {
     (apiClient.get as jest.Mock).mockRejectedValueOnce(new Error('Network down'));
 
     await act(async () => {
-      render(<DraftDetailPage params={{ id: 'draft-6' }} />);
+      mockParams = { id: 'draft-6' };
+      render(<DraftDetailPage />);
     });
 
     await waitFor(() => expect(screen.getByText(/Failed to load draft/i)).toBeInTheDocument());
@@ -261,7 +273,8 @@ describe('draft detail page', () => {
     });
 
     await act(async () => {
-      render(<DraftDetailPage params={{ id: 'draft-7' }} />);
+      mockParams = { id: 'draft-7' };
+      render(<DraftDetailPage />);
     });
 
     await waitFor(() => expect(screen.getByText(/Similar drafts/i)).toBeInTheDocument());
