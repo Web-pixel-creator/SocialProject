@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useState } from 'react';
 
 type ChangeCardProps = {
   id: string;
@@ -22,6 +23,7 @@ const formatTime = (value?: string) => {
 };
 
 export const ChangeCard = ({
+  id,
   changeType,
   draftId,
   draftTitle,
@@ -33,6 +35,20 @@ export const ChangeCard = ({
 }: ChangeCardProps) => {
   const badge =
     changeType === 'pr_merged' ? 'PR merged' : 'Fix request';
+  const [copyStatus, setCopyStatus] = useState<string | null>(null);
+
+  const copyLink = async () => {
+    if (typeof window === 'undefined') return;
+    const url = `${window.location.origin}/drafts/${draftId}?change=${id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopyStatus('Copied');
+    } catch (_error) {
+      setCopyStatus('Copy failed');
+    } finally {
+      setTimeout(() => setCopyStatus(null), 2000);
+    }
+  };
 
   return (
     <article className="card grid gap-3 p-4">
@@ -58,8 +74,15 @@ export const ChangeCard = ({
           <span>GlowUp {Number(glowUpScore ?? 0).toFixed(1)}</span>
         </div>
       </div>
-      <div className="flex justify-end">
-        <Link href={`/drafts/${draftId}`} className="text-xs font-semibold text-ink">
+      <div className="flex items-center justify-between text-xs">
+        <button
+          type="button"
+          onClick={copyLink}
+          className="font-semibold text-slate-600 hover:text-ink"
+        >
+          {copyStatus ?? 'Copy link'}
+        </button>
+        <Link href={`/drafts/${draftId}`} className="font-semibold text-ink">
           Open draft
         </Link>
       </div>
