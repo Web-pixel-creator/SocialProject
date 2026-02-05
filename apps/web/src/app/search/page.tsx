@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { apiClient } from '../../lib/api';
 
 type SearchResult = {
@@ -15,6 +15,7 @@ type SearchResult = {
 
 export default function SearchPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const initialMode = searchParams?.get('mode') === 'visual' ? 'visual' : 'text';
   const initialQuery = searchParams?.get('q') ?? '';
   const initialType = searchParams?.get('type') ?? 'all';
@@ -39,6 +40,8 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const autoRunVisual = useRef(initialMode === 'visual' && initialDraftId.length > 0);
+  const abEnabledRef = useRef(initialAb === '1');
+  const searchKey = searchParams?.toString() ?? '';
 
   const sendTelemetry = async (payload: Record<string, any>) => {
     try {
@@ -52,29 +55,43 @@ export default function SearchPage() {
     if (!searchParams) {
       return;
     }
-    if (initialMode === 'visual') {
-      setMode('visual');
+    const urlMode = searchParams.get('mode') === 'visual' ? 'visual' : 'text';
+    const urlQuery = searchParams.get('q') ?? '';
+    const urlType = searchParams.get('type') ?? 'all';
+    const urlSort = searchParams.get('sort') ?? 'recency';
+    const urlRange = searchParams.get('range') ?? 'all';
+    const urlDraftId = searchParams.get('draftId') ?? '';
+    const urlTags = searchParams.get('tags') ?? '';
+    const urlProfile = searchParams.get('profile') ?? '';
+    const urlAb = searchParams.get('ab') ?? '';
+
+    if (urlMode !== mode) {
+      setMode(urlMode);
     }
-    if (initialQuery) {
-      setQuery(initialQuery);
+    if (urlQuery !== query) {
+      setQuery(urlQuery);
     }
-    if (initialType) {
-      setType(initialType);
-      if (initialMode === 'visual') {
-        setVisualType(initialType);
-      }
+    if (urlType !== type) {
+      setType(urlType);
     }
-    if (initialSort) {
-      setSort(initialSort);
+    if (urlMode === 'visual' && urlType !== visualType) {
+      setVisualType(urlType);
     }
-    if (initialRange) {
-      setRange(initialRange);
+    if (urlSort !== sort) {
+      setSort(urlSort);
     }
-    if (initialDraftId) {
-      setVisualDraftId(initialDraftId);
+    if (urlRange !== range) {
+      setRange(urlRange);
     }
-    if (initialTags) {
-      setVisualTags(initialTags);
+    if (urlDraftId !== visualDraftId) {
+      setVisualDraftId(urlDraftId);
+    }
+    if (urlTags !== visualTags) {
+      setVisualTags(urlTags);
+    }
+
+    if (urlAb === '1') {
+      abEnabledRef.current = true;
     }
 
     if (typeof window === 'undefined') {
@@ -82,28 +99,70 @@ export default function SearchPage() {
     }
     const validProfiles = new Set(['balanced', 'quality', 'novelty']);
     const stored = window.localStorage.getItem('searchProfile') ?? '';
-    const queryProfile = validProfiles.has(initialProfileParam) ? initialProfileParam : '';
+    const queryProfile = validProfiles.has(urlProfile) ? urlProfile : '';
     const storedProfile = validProfiles.has(stored) ? stored : '';
     let nextProfile = queryProfile || storedProfile;
-    if (!nextProfile && initialAb === '1') {
+    if (!nextProfile && abEnabledRef.current) {
       nextProfile = Math.random() < 0.5 ? 'balanced' : 'quality';
     }
     if (!nextProfile) {
       nextProfile = 'balanced';
     }
-    setProfile(nextProfile as 'balanced' | 'quality' | 'novelty');
+    if (nextProfile !== profile) {
+      setProfile(nextProfile as 'balanced' | 'quality' | 'novelty');
+    }
     window.localStorage.setItem('searchProfile', nextProfile);
+  }, [searchKey]);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (mode === 'visual') {
+      params.set('mode', 'visual');
+    }
+    if (mode === 'text' && query.trim()) {
+      params.set('q', query.trim());
+    }
+    const effectiveType = mode === 'visual' ? visualType : type;
+    if (effectiveType !== 'all') {
+      params.set('type', effectiveType);
+    }
+    if (mode === 'text' && sort !== 'recency') {
+      params.set('sort', sort);
+    }
+    if (mode === 'text' && range !== 'all') {
+      params.set('range', range);
+    }
+    if (mode === 'visual' && visualDraftId.trim()) {
+      params.set('draftId', visualDraftId.trim());
+    }
+    if (mode === 'visual' && visualTags.trim()) {
+      params.set('tags', visualTags.trim());
+    }
+    if (abEnabledRef.current) {
+      params.set('ab', '1');
+      params.set('profile', profile);
+    } else if (profile !== 'balanced') {
+      params.set('profile', profile);
+    }
+
+    const nextQuery = params.toString();
+    const currentQuery = searchParams?.toString() ?? '';
+    if (nextQuery === currentQuery) {
+      return;
+    }
+    router.replace(nextQuery ? `/search?${nextQuery}` : '/search', { scroll: false });
   }, [
-    searchParams,
-    initialMode,
-    initialQuery,
-    initialType,
-    initialSort,
-    initialRange,
-    initialDraftId,
-    initialTags,
-    initialProfileParam,
-    initialAb
+    mode,
+    query,
+    type,
+    sort,
+    range,
+    profile,
+    visualDraftId,
+    visualTags,
+    visualType,
+    router,
+    searchParams
   ]);
 
   useEffect(() => {
@@ -234,7 +293,7 @@ export default function SearchPage() {
       : `Visual results | type ${visualType}${
           visualDraftId.trim() ? ` | draft ${visualDraftId.trim()}` : ''
         }${visualTags.trim() ? ` | tags ${visualTags.trim()}` : ''}`;
-  const showAbBadge = initialAb === '1' && mode === 'text';
+  const showAbBadge = abEnabledRef.current && mode === 'text';
 
   return (
     <main className="grid gap-6">
