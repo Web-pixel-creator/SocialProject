@@ -24,7 +24,6 @@ export default function SearchPage() {
   const initialDraftId = searchParams?.get('draftId') ?? '';
   const initialTags = searchParams?.get('tags') ?? '';
   const initialProfileParam = searchParams?.get('profile') ?? '';
-  const initialAb = searchParams?.get('ab') ?? '';
 
   const [mode, setMode] = useState<'text' | 'visual'>(initialMode);
   const [query, setQuery] = useState(initialQuery);
@@ -41,7 +40,6 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const autoRunVisual = useRef(initialMode === 'visual' && initialDraftId.length > 0);
-  const abEnabledRef = useRef(initialAb === '1');
   const searchKey = searchParams?.toString() ?? '';
 
   const sendTelemetry = async (payload: Record<string, any>) => {
@@ -64,7 +62,6 @@ export default function SearchPage() {
     const urlDraftId = searchParams.get('draftId') ?? '';
     const urlTags = searchParams.get('tags') ?? '';
     const urlProfile = searchParams.get('profile') ?? '';
-    const urlAb = searchParams.get('ab') ?? '';
 
     if (urlMode !== mode) {
       setMode(urlMode);
@@ -91,10 +88,6 @@ export default function SearchPage() {
       setVisualTags(urlTags);
     }
 
-    if (urlAb === '1') {
-      abEnabledRef.current = true;
-    }
-
     if (urlMode === 'visual' && urlDraftId.trim().length > 0) {
       autoRunVisual.current = true;
     }
@@ -106,13 +99,7 @@ export default function SearchPage() {
     const stored = window.localStorage.getItem('searchProfile') ?? '';
     const queryProfile = validProfiles.has(urlProfile) ? urlProfile : '';
     const storedProfile = validProfiles.has(stored) ? stored : '';
-    let nextProfile = queryProfile || storedProfile;
-    if (!nextProfile && abEnabledRef.current) {
-      nextProfile = Math.random() < 0.5 ? 'balanced' : 'quality';
-    }
-    if (!nextProfile) {
-      nextProfile = 'balanced';
-    }
+    const nextProfile = queryProfile || storedProfile || 'balanced';
     if (nextProfile !== profile) {
       setProfile(nextProfile as 'balanced' | 'quality' | 'novelty');
     }
@@ -143,10 +130,7 @@ export default function SearchPage() {
     if (mode === 'visual' && visualTags.trim()) {
       params.set('tags', visualTags.trim());
     }
-    if (abEnabledRef.current) {
-      params.set('ab', '1');
-      params.set('profile', profile);
-    } else if (profile !== 'balanced') {
+    if (profile !== 'balanced') {
       params.set('profile', profile);
     }
 
@@ -307,7 +291,7 @@ export default function SearchPage() {
       : `Visual results | type ${visualType}${
           visualDraftId.trim() ? ` | draft ${visualDraftId.trim()}` : ''
         }${visualTags.trim() ? ` | tags ${visualTags.trim()}` : ''}`;
-  const showAbBadge = abEnabledRef.current && mode === 'text';
+  const showAbBadge = false;
 
   return (
     <main className="grid gap-6">
