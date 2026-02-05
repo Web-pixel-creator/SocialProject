@@ -80,6 +80,7 @@ export default function DraftDetailPage() {
   const [similarLoading, setSimilarLoading] = useState(false);
   const [demoLoading, setDemoLoading] = useState(false);
   const [demoStatus, setDemoStatus] = useState<string | null>(null);
+  const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -116,6 +117,18 @@ export default function DraftDetailPage() {
       setDemoStatus(err?.response?.data?.message ?? 'Failed to run demo flow.');
     } finally {
       setDemoLoading(false);
+    }
+  };
+
+  const copyDraftId = async () => {
+    if (!draftId || typeof navigator === 'undefined') return;
+    try {
+      await navigator.clipboard.writeText(draftId);
+      setCopyStatus('Copied');
+      setTimeout(() => setCopyStatus(null), 2000);
+    } catch (_error) {
+      setCopyStatus('Copy failed');
+      setTimeout(() => setCopyStatus(null), 2000);
     }
   };
 
@@ -230,6 +243,35 @@ export default function DraftDetailPage() {
     maker: `Studio ${item.makerId.slice(0, 6)}`
   }));
 
+  const pendingPull = pullRequests.find((item) => item.status === 'pending');
+  const hasFixRequests = fixRequests.length > 0;
+
+  const nextAction = (() => {
+    if (!draftId) return null;
+    if (pendingPull) {
+      return {
+        title: 'Review pending PR',
+        description: 'A pull request is waiting for review.',
+        ctaLabel: 'Open PR',
+        href: `/pull-requests/${pendingPull.id}`
+      };
+    }
+    if (hasFixRequests) {
+      return {
+        title: 'Share draft for PR',
+        description: 'Fix requests are ready. Share the draft ID to get a PR.',
+        ctaLabel: copyStatus ?? 'Copy draft ID',
+        onClick: copyDraftId
+      };
+    }
+    return {
+      title: 'Start critique',
+      description: 'No fix requests yet. Run a demo flow to seed the workflow.',
+      ctaLabel: demoLoading ? 'Running demo...' : 'Run demo flow',
+      onClick: runDemoFlow
+    };
+  })();
+
   return (
     <main className="grid gap-6">
       <div className="card p-6">
@@ -258,6 +300,33 @@ export default function DraftDetailPage() {
       ) : (
         <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
           <div className="grid gap-6">
+            {nextAction && (
+              <div className="card p-4">
+                <p className="pill">Next best action</p>
+                <h3 className="mt-3 text-lg font-semibold text-ink">{nextAction.title}</h3>
+                <p className="text-sm text-slate-600">{nextAction.description}</p>
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  {'href' in nextAction ? (
+                    <Link
+                      href={nextAction.href}
+                      className="rounded-full bg-ink px-5 py-2 text-xs font-semibold text-white"
+                    >
+                      {nextAction.ctaLabel}
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      className="rounded-full bg-ink px-5 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                      onClick={nextAction.onClick}
+                      disabled={demoLoading && !hasFixRequests}
+                    >
+                      {nextAction.ctaLabel}
+                    </button>
+                  )}
+                  {copyStatus && <span className="text-xs text-slate-500">{copyStatus}</span>}
+                </div>
+              </div>
+            )}
             <VersionTimeline versions={versionNumbers.length > 0 ? versionNumbers : [1]} />
             <BeforeAfterSlider
               beforeLabel={beforeLabel}
@@ -265,8 +334,12 @@ export default function DraftDetailPage() {
               beforeImageUrl={beforeImageUrl}
               afterImageUrl={afterImageUrl}
             />
-            <FixRequestList items={fixList} />
-            <PullRequestList items={prList} />
+            <div id="fix-requests">
+              <FixRequestList items={fixList} />
+            </div>
+            <div id="pull-requests">
+              <PullRequestList items={prList} />
+            </div>
             <div className="card p-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-ink">Similar drafts</h3>
