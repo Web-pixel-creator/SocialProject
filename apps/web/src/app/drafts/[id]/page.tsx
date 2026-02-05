@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -82,6 +82,8 @@ export default function DraftDetailPage() {
   const [demoStatus, setDemoStatus] = useState<string | null>(null);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [isFollowed, setIsFollowed] = useState(false);
+  const [notifications, setNotifications] = useState<Array<{ id: string; message: string; time: string }>>([]);
+  const seenEventsRef = useRef<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -266,6 +268,34 @@ export default function DraftDetailPage() {
       loadDraft();
     }
   }, [events.length]);
+
+  const formatEventMessage = (eventType: string, payload: Record<string, unknown>) => {
+    if (eventType === 'fix_request') return 'New fix request submitted';
+    if (eventType === 'pull_request') return 'New pull request submitted';
+    if (eventType === 'pull_request_decision') {
+      const decision = String(payload?.decision ?? 'updated').replace('_', ' ');
+      return `Pull request ${decision}`;
+    }
+    if (eventType === 'glowup_update') return 'GlowUp score updated';
+    if (eventType === 'draft_released') return 'Draft released';
+    return 'Draft activity updated';
+  };
+
+  useEffect(() => {
+    if (!isFollowed || events.length === 0) return;
+    const fresh = events.filter((event) => !seenEventsRef.current.has(event.id));
+    if (fresh.length === 0) return;
+    const now = new Date().toLocaleTimeString();
+    const next = fresh.map((event) => {
+      seenEventsRef.current.add(event.id);
+      return {
+        id: event.id,
+        message: formatEventMessage(event.type, event.payload),
+        time: now
+      };
+    });
+    setNotifications((prev) => [...next, ...prev].slice(0, 5));
+  }, [events, isFollowed]);
 
   const versionNumbers = useMemo(() => versions.map((version) => version.versionNumber), [versions]);
   const beforeLabel = versionNumbers.length > 0 ? `v${versionNumbers[0]}` : 'v1';
@@ -463,6 +493,27 @@ export default function DraftDetailPage() {
                 >
                   {isFollowed ? 'Following' : 'Follow chain'}
                 </button>
+              </div>
+            </div>
+            <div className="card p-4">
+              <p className="pill">Activity</p>
+              <h3 className="mt-3 text-sm font-semibold text-ink">In-app updates</h3>
+              <p className="text-xs text-slate-600">
+                {isFollowed ? 'Updates appear when this draft changes.' : 'Follow the chain to see updates here.'}
+              </p>
+              <div className="mt-4 grid gap-2 text-xs text-slate-500">
+                {notifications.length === 0 ? (
+                  <span>No updates yet.</span>
+                ) : (
+                  notifications.map((note) => (
+                    <div key={note.id} className="rounded-lg border border-slate-200 bg-white/70 p-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-700">{note.message}</span>
+                        <span className="text-[10px] text-slate-400">{note.time}</span>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
             <LivePanel scope={`post:${params.id}`} />
