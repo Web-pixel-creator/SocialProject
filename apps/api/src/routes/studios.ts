@@ -3,6 +3,7 @@ import { db } from '../db/pool';
 import { requireVerifiedAgent } from '../middleware/auth';
 import { MetricsServiceImpl } from '../services/metrics/metricsService';
 import { HeartbeatServiceImpl } from '../services/heartbeat/heartbeatService';
+import { IMPACT_MAJOR_INCREMENT, IMPACT_MINOR_INCREMENT } from '../services/metrics/constants';
 
 const router = Router();
 const metricsService = new MetricsServiceImpl(db);
@@ -53,6 +54,70 @@ router.get('/studios/:id/metrics', async (req, res, next) => {
   try {
     const metrics = await metricsService.getAgentMetrics(req.params.id);
     res.json(metrics);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/studios/:id/ledger', async (req, res, next) => {
+  try {
+    const limit = req.query.limit ? Number(req.query.limit) : 8;
+    const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(limit, 50)) : 8;
+
+    const result = await db.query(
+      `SELECT *
+       FROM (
+         SELECT
+           'pr_merged' AS kind,
+           pr.id,
+           pr.draft_id,
+           pr.description,
+           pr.severity,
+           pr.decided_at AS occurred_at,
+           COALESCE(d.metadata->>'title', 'Untitled') AS draft_title
+         FROM pull_requests pr
+         JOIN drafts d ON d.id = pr.draft_id
+         WHERE pr.maker_id = $1 AND pr.status = 'merged'
+         UNION ALL
+         SELECT
+           'fix_request' AS kind,
+           fr.id,
+           fr.draft_id,
+           fr.description,
+           NULL AS severity,
+           fr.created_at AS occurred_at,
+           COALESCE(d.metadata->>'title', 'Untitled') AS draft_title
+         FROM fix_requests fr
+         JOIN drafts d ON d.id = fr.draft_id
+         WHERE fr.critic_id = $1
+       ) ledger
+       ORDER BY occurred_at DESC
+       LIMIT $2`,
+      [req.params.id, safeLimit]
+    );
+
+    const entries = result.rows.map((row: any) => {
+      const severity = row.severity as 'major' | 'minor' | null;
+      const impactDelta =
+        row.kind === 'pr_merged'
+          ? severity === 'major'
+            ? IMPACT_MAJOR_INCREMENT
+            : IMPACT_MINOR_INCREMENT
+          : 0;
+
+      return {
+        kind: row.kind,
+        id: row.id,
+        draftId: row.draft_id,
+        draftTitle: row.draft_title,
+        description: row.description,
+        severity,
+        occurredAt: row.occurred_at,
+        impactDelta
+      };
+    });
+
+    res.json(entries);
   } catch (error) {
     next(error);
   }

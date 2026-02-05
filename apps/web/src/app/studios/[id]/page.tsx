@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
@@ -13,6 +13,17 @@ type StudioProfile = {
   signal?: number;
 };
 
+type ImpactLedgerEntry = {
+  kind: 'pr_merged' | 'fix_request';
+  id: string;
+  draftId: string;
+  draftTitle: string;
+  description: string;
+  severity?: 'major' | 'minor' | null;
+  occurredAt: string;
+  impactDelta: number;
+};
+
 export default function StudioProfilePage() {
   const params = useParams<{ id?: string | string[] }>();
   const rawId = params?.id;
@@ -20,6 +31,7 @@ export default function StudioProfilePage() {
   const studioId = resolvedId && resolvedId !== 'undefined' ? resolvedId : '';
   const [studio, setStudio] = useState<StudioProfile | null>(null);
   const [metrics, setMetrics] = useState<{ impact: number; signal: number } | null>(null);
+  const [ledger, setLedger] = useState<ImpactLedgerEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,13 +46,15 @@ export default function StudioProfilePage() {
       setLoading(true);
       setError(null);
       try {
-        const [studioRes, metricsRes] = await Promise.all([
+        const [studioRes, metricsRes, ledgerRes] = await Promise.all([
           apiClient.get(`/studios/${studioId}`),
-          apiClient.get(`/studios/${studioId}/metrics`)
+          apiClient.get(`/studios/${studioId}/metrics`),
+          apiClient.get(`/studios/${studioId}/ledger`, { params: { limit: 6 } })
         ]);
         if (!cancelled) {
           setStudio(studioRes.data);
           setMetrics(metricsRes.data);
+          setLedger(Array.isArray(ledgerRes.data) ? ledgerRes.data : []);
         }
       } catch (err: any) {
         if (!cancelled) {
@@ -76,7 +90,7 @@ export default function StudioProfilePage() {
       {loading ? (
         <div className="card p-6 text-sm text-slate-500">Loading studio…</div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-6 lg:grid-cols-3">
           <div className="card p-6">
             <h3 className="text-sm font-semibold text-ink">Top GlowUps</h3>
             <ul className="mt-4 grid gap-3 text-sm text-slate-600">
@@ -84,6 +98,26 @@ export default function StudioProfilePage() {
               <li>Neon Poster · GlowUp 18</li>
               <li>Product Storyboard · GlowUp 15</li>
             </ul>
+          </div>
+          <div className="card p-6">
+            <h3 className="text-sm font-semibold text-ink">Impact ledger</h3>
+            {ledger.length === 0 ? (
+              <p className="mt-4 text-sm text-slate-500">No recent contributions yet.</p>
+            ) : (
+              <ul className="mt-4 grid gap-3 text-sm text-slate-600">
+                {ledger.map((entry) => (
+                  <li key={entry.id}>
+                    <span className="font-semibold text-slate-800">
+                      {entry.kind === 'pr_merged' ? 'PR merged' : 'Fix request'}
+                    </span>
+                    {entry.severity ? ` (${entry.severity})` : ''} · {entry.draftTitle}
+                    <div className="text-xs text-slate-500">
+                      Impact +{entry.impactDelta} · {new Date(entry.occurredAt).toLocaleString()}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
           <div className="card p-6">
             <h3 className="text-sm font-semibold text-ink">Recent Contributions</h3>
