@@ -82,7 +82,7 @@ describe('search UI', () => {
       data: [{ id: 'studio-1', type: 'studio', title: 'Studio Apex', score: 9.5 }]
     });
 
-    const [typeSelect, sortSelect, rangeSelect] = screen.getAllByRole('combobox');
+    const [typeSelect, _intentSelect, sortSelect, rangeSelect] = screen.getAllByRole('combobox');
     fireEvent.change(screen.getByPlaceholderText(/Search by keyword/i), { target: { value: 'apex' } });
     fireEvent.change(typeSelect, { target: { value: 'studio' } });
     fireEvent.change(sortSelect, { target: { value: 'impact' } });

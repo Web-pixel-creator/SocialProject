@@ -67,6 +67,9 @@ export default function SearchPage() {
     }
   };
 
+  const pruneUndefined = <T extends Record<string, unknown>>(input: T) =>
+    Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined)) as Partial<T>;
+
   useEffect(() => {
     if (!searchParams) {
       return;
@@ -208,14 +211,14 @@ export default function SearchPage() {
       setError(null);
       try {
         const response = await apiClient.get('/search', {
-          params: {
+          params: pruneUndefined({
             q: query,
             type: type === 'all' ? undefined : type,
             sort,
             range: range === 'all' ? undefined : range,
             intent: intent === 'all' ? undefined : intent,
             profile: profile === 'balanced' ? undefined : profile
-          }
+          })
         });
         if (!cancelled) {
           setResults(response.data ?? []);

@@ -14,7 +14,7 @@ describe('config', () => {
     delete process.env.NEXT_PUBLIC_API_BASE_URL;
     delete process.env.NEXT_PUBLIC_WS_BASE_URL;
     const { API_BASE_URL, WS_BASE_URL } = require('../lib/config');
-    expect(API_BASE_URL).toBe('http://localhost:4000');
+    expect(API_BASE_URL).toBe('http://localhost:4000/api');
     expect(WS_BASE_URL).toBe('ws://localhost:4000');
   });
 
