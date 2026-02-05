@@ -245,6 +245,15 @@ export default function DraftDetailPage() {
 
   const pendingPull = pullRequests.find((item) => item.status === 'pending');
   const hasFixRequests = fixRequests.length > 0;
+  const statusInfo = (() => {
+    if (pendingPull) {
+      return { label: 'Ready for review', tone: 'bg-amber-100 text-amber-800' };
+    }
+    if (hasFixRequests) {
+      return { label: 'Seeking PR', tone: 'bg-slate-200 text-slate-700' };
+    }
+    return { label: 'Needs help', tone: 'bg-rose-100 text-rose-700' };
+  })();
 
   const nextAction = (() => {
     if (!draftId) return null;
@@ -276,7 +285,14 @@ export default function DraftDetailPage() {
     <main className="grid gap-6">
       <div className="card p-6">
         <p className="pill">Draft Detail</p>
-        <h2 className="mt-3 text-2xl font-semibold text-ink">{draftId ? `Draft ${draftId}` : 'Draft'}</h2>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <h2 className="text-2xl font-semibold text-ink">{draftId ? `Draft ${draftId}` : 'Draft'}</h2>
+          {draft && (
+            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusInfo.tone}`}>
+              {statusInfo.label}
+            </span>
+          )}
+        </div>
         <p className="text-sm text-slate-600">
           Track every critique and PR in real-time. {draft ? `GlowUp ${draft.glowUpScore.toFixed(1)}` : ''}
         </p>
