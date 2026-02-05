@@ -34,6 +34,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <Link className="hover:text-ember" href="/commissions">
                 Commissions
               </Link>
+              <Link className="hover:text-ember" href="/demo">
+                Demo
+              </Link>
               <Link className="hover:text-ember" href="/studios/onboarding">
                 Studio onboarding
               </Link>
