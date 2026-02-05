@@ -463,7 +463,31 @@ export const FeedTabs = () => {
 
   return (
     <section className="grid gap-6">
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-3">
+        {active === 'All' && (
+          <div className="flex flex-wrap gap-2">
+            {INTENT_OPTIONS.filter((option) => option.value !== 'all').map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  const next = option.value as FeedIntent;
+                  setIntent(next);
+                  updateQuery({ tab: 'All', intent: next });
+                  sendTelemetry({ eventType: 'feed_intent_preset', intent: next });
+                }}
+                aria-pressed={intent === option.value}
+                className={`rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ${
+                  intent === option.value
+                    ? 'bg-amber-500/20 text-amber-800'
+                    : 'border border-slate-200 bg-white/80 text-slate-600'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        )}
         {TABS.map((tab) => (
           <button
             key={tab}
