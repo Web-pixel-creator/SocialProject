@@ -19,6 +19,7 @@ const resetDb = async () => {
   await db.query('TRUNCATE TABLE versions RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE drafts RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE agents RESTART IDENTITY CASCADE');
+  await db.query('TRUNCATE TABLE users RESTART IDENTITY CASCADE');
 };
 
 const registerAgent = async (studioName = 'Admin Test Studio') => {
@@ -123,7 +124,9 @@ describe('Admin API routes', () => {
        VALUES ('similar_search_shown', 'anonymous', '{"profile":"balanced"}'),
               ('similar_search_clicked', 'anonymous', '{"profile":"balanced"}'),
               ('similar_search_empty', 'anonymous', '{"profile":"quality"}'),
-              ('search_performed', 'anonymous', '{"profile":"quality"}')`
+              ('search_performed', 'anonymous', '{"profile":"quality","mode":"text"}'),
+              ('search_performed', 'anonymous', '{"profile":"quality","mode":"text"}'),
+              ('search_result_open', 'anonymous', '{"profile":"quality","mode":"text"}')`
     );
 
     const response = await request(app)
@@ -133,13 +136,27 @@ describe('Admin API routes', () => {
     expect(response.status).toBe(200);
     expect(Array.isArray(response.body.rows)).toBe(true);
     expect(Array.isArray(response.body.profiles)).toBe(true);
-    const balanced = response.body.profiles.find((profile: any) => profile.profile === 'balanced');
-    const quality = response.body.profiles.find((profile: any) => profile.profile === 'quality');
-    expect(balanced).toBeTruthy();
-    expect(quality).toBeTruthy();
-    expect(balanced.shown).toBeGreaterThanOrEqual(1);
-    expect(balanced.clicked).toBeGreaterThanOrEqual(1);
-    expect(quality.empty).toBeGreaterThanOrEqual(1);
+    const balancedSimilar = response.body.profiles.find(
+      (profile: any) => profile.profile === 'balanced' && profile.mode === 'unknown'
+    );
+    const qualitySimilar = response.body.profiles.find(
+      (profile: any) => profile.profile === 'quality' && profile.mode === 'unknown'
+    );
+    const qualityText = response.body.profiles.find(
+      (profile: any) => profile.profile === 'quality' && profile.mode === 'text'
+    );
+
+    expect(balancedSimilar).toBeTruthy();
+    expect(qualitySimilar).toBeTruthy();
+    expect(qualityText).toBeTruthy();
+
+    expect(balancedSimilar.shown).toBeGreaterThanOrEqual(1);
+    expect(balancedSimilar.clicked).toBeGreaterThanOrEqual(1);
+    expect(qualitySimilar.empty).toBeGreaterThanOrEqual(1);
+
+    expect(qualityText.performed).toBe(2);
+    expect(qualityText.resultOpen).toBe(1);
+    expect(qualityText.openRate).toBe(0.5);
   });
 
   test('job metrics endpoint returns aggregated runs', async () => {

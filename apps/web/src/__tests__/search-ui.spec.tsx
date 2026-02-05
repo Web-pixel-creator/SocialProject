@@ -9,7 +9,27 @@ import { apiClient } from '../lib/api';
 let searchParams = new URLSearchParams('');
 
 jest.mock('next/navigation', () => ({
-  useSearchParams: () => searchParams
+  useSearchParams: () => searchParams,
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), prefetch: jest.fn() })
+}));
+
+jest.mock('next/link', () => ({
+  __esModule: true,
+  default: ({ href, onClick, children, ...props }: any) => {
+    const resolvedHref = typeof href === 'string' ? href : href?.pathname ?? '';
+    return (
+      <a
+        href={resolvedHref}
+        onClick={(event) => {
+          event.preventDefault();
+          onClick?.(event);
+        }}
+        {...props}
+      >
+        {children}
+      </a>
+    );
+  }
 }));
 
 jest.mock('../lib/api', () => ({
@@ -70,12 +90,35 @@ describe('search UI', () => {
 
     await runDebounce();
 
-    await waitFor(() => expect(screen.getByText(/Studio Apex/i)).toBeInTheDocument());
+    const title = await screen.findByText(/Studio Apex/i);
     expect(screen.getByText(/Score 9.5/i)).toBeInTheDocument();
 
     const lastCall = (apiClient.get as jest.Mock).mock.calls.at(-1);
     expect(lastCall[0]).toBe('/search');
     expect(lastCall[1].params).toEqual({ q: 'apex', type: 'studio', sort: 'impact', range: '7d' });
+
+    const link = title.closest('a');
+    expect(link).toBeTruthy();
+    expect(link).toHaveAttribute('href', '/studios/studio-1');
+
+    fireEvent.click(link as HTMLAnchorElement);
+    const openCall = (apiClient.post as jest.Mock).mock.calls.find(
+      (call) => call[0] === '/telemetry/ux' && call[1]?.eventType === 'search_result_open'
+    );
+    expect(openCall?.[1]).toMatchObject({
+      eventType: 'search_result_open',
+      sort: 'impact',
+      status: 'studio',
+      range: '7d',
+      metadata: {
+        mode: 'text',
+        profile: 'balanced',
+        resultType: 'studio',
+        resultId: 'studio-1',
+        queryLength: 4,
+        rank: 1
+      }
+    });
   });
 
   test('shows error message on failed search', async () => {

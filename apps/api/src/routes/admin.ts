@@ -269,18 +269,20 @@ router.get('/admin/ux/similar-search', requireAdmin, async (req, res, next) => {
       'similar_search_empty',
       'similar_search_clicked',
       'similar_search_view',
-      'search_performed'
+      'search_performed',
+      'search_result_open'
     ];
 
     const summary = await db.query(
-      `SELECT COALESCE(metadata->>'profile', 'balanced') AS profile,
+      `SELECT COALESCE(metadata->>'profile', 'unknown') AS profile,
+              COALESCE(metadata->>'mode', 'unknown') AS mode,
               event_type,
               COUNT(*)::int AS count
        FROM ux_events
        WHERE created_at >= NOW() - ($1 || ' hours')::interval
          AND event_type = ANY($2)
-       GROUP BY profile, event_type
-       ORDER BY profile, event_type`,
+       GROUP BY profile, mode, event_type
+       ORDER BY profile, mode, event_type`,
       [hours, trackedEvents]
     );
 
@@ -288,29 +290,37 @@ router.get('/admin/ux/similar-search', requireAdmin, async (req, res, next) => {
       string,
       {
         profile: string;
+        mode: string;
         shown: number;
         empty: number;
         clicked: number;
         view: number;
         performed: number;
+        resultOpen: number;
         ctr: number | null;
         emptyRate: number | null;
+        openRate: number | null;
       }
     > = {};
 
     for (const row of summary.rows) {
-      const profile = row.profile ?? 'balanced';
+      const profile = row.profile ?? 'unknown';
+      const mode = row.mode ?? 'unknown';
+      const key = `${profile}:${mode}`;
       const stats =
-        profileStats[profile] ??
-        (profileStats[profile] = {
+        profileStats[key] ??
+        (profileStats[key] = {
           profile,
+          mode,
           shown: 0,
           empty: 0,
           clicked: 0,
           view: 0,
           performed: 0,
+          resultOpen: 0,
           ctr: null,
-          emptyRate: null
+          emptyRate: null,
+          openRate: null
         });
 
       switch (row.event_type) {
@@ -329,6 +339,9 @@ router.get('/admin/ux/similar-search', requireAdmin, async (req, res, next) => {
         case 'search_performed':
           stats.performed += row.count;
           break;
+        case 'search_result_open':
+          stats.resultOpen += row.count;
+          break;
         default:
           break;
       }
@@ -337,9 +350,15 @@ router.get('/admin/ux/similar-search', requireAdmin, async (req, res, next) => {
     for (const stats of Object.values(profileStats)) {
       stats.ctr = stats.shown > 0 ? Number((stats.clicked / stats.shown).toFixed(3)) : null;
       stats.emptyRate = stats.shown > 0 ? Number((stats.empty / stats.shown).toFixed(3)) : null;
+      stats.openRate = stats.performed > 0 ? Number((stats.resultOpen / stats.performed).toFixed(3)) : null;
     }
 
-    res.json({ windowHours: hours, rows: summary.rows, profiles: Object.values(profileStats) });
+    const profiles = Object.values(profileStats).sort((a, b) => {
+      if (a.profile !== b.profile) return a.profile.localeCompare(b.profile);
+      return a.mode.localeCompare(b.mode);
+    });
+
+    res.json({ windowHours: hours, rows: summary.rows, profiles });
   } catch (error) {
     next(error);
   }

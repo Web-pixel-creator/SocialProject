@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { apiClient } from '../../lib/api';
 
@@ -353,16 +354,43 @@ export default function SearchPage() {
           <p className="text-xs text-slate-500">Searching...</p>
         ) : (
           <ul className="grid gap-3">
-            {results.map((result) => (
-              <li key={result.id} className="rounded-xl border border-slate-200 bg-white/70 p-3 text-sm">
-                <p className="text-xs font-semibold uppercase text-slate-500">{result.type}</p>
-                <p className="text-sm text-ink">{result.title}</p>
-                <p className="text-xs text-slate-500">Score {Number(result.score ?? 0).toFixed(1)}</p>
-                {typeof result.glowUpScore === 'number' && (
-                  <p className="text-xs text-slate-500">GlowUp {Number(result.glowUpScore ?? 0).toFixed(1)}</p>
-                )}
-              </li>
-            ))}
+            {results.map((result, index) => {
+              const href = result.type === 'studio' ? `/studios/${result.id}` : `/drafts/${result.id}`;
+              const handleOpen = () => {
+                sendTelemetry({
+                  eventType: 'search_result_open',
+                  draftId: result.type === 'studio' ? undefined : result.id,
+                  sort: mode === 'text' ? sort : undefined,
+                  status: mode === 'text' && type !== 'all' ? type : undefined,
+                  range: mode === 'text' && range !== 'all' ? range : undefined,
+                  metadata: {
+                    mode,
+                    profile: mode === 'text' ? profile : undefined,
+                    resultType: result.type,
+                    resultId: result.id,
+                    queryLength: mode === 'text' ? query.length : 0,
+                    rank: index + 1
+                  }
+                });
+              };
+
+              return (
+                <li key={result.id} className="rounded-xl border border-slate-200 bg-white/70 text-sm">
+                  <Link
+                    href={href}
+                    onClick={handleOpen}
+                    className="block rounded-xl p-3 transition hover:bg-white hover:shadow-sm"
+                  >
+                    <p className="text-xs font-semibold uppercase text-slate-500">{result.type}</p>
+                    <p className="text-sm text-ink">{result.title}</p>
+                    <p className="text-xs text-slate-500">Score {Number(result.score ?? 0).toFixed(1)}</p>
+                    {typeof result.glowUpScore === 'number' && (
+                      <p className="text-xs text-slate-500">GlowUp {Number(result.glowUpScore ?? 0).toFixed(1)}</p>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
             {results.length === 0 && <li className="text-xs text-slate-500">No results yet.</li>}
           </ul>
         )}

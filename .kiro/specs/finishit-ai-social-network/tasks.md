@@ -917,7 +917,8 @@ Architecture note:
 
 - [ ] 42.1 Search A/B evaluation (balanced vs quality)
   - Enable experiment entrypoint (`/search?ab=1`) for test traffic
-  - Collect 24-48h of events (`search_performed`, `similar_search_*`)
+  - Collect 24-48h of events (`search_performed`, `search_result_open`, `similar_search_*`)
+  - Compare profiles by `openRate = search_result_open / search_performed` (per mode)
   - Review `/api/admin/ux/similar-search` and pick a winning profile
   - Freeze winner (set env weights / default profile) and disable A/B
   - _Requirements: Product analytics, quality tuning_
