@@ -24,6 +24,21 @@ body {
   padding: 2rem 1.5rem 4rem;
 }
 
+.page-transition {
+  animation: fade-in 180ms ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0.3;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .card {
   @apply bg-white/80 backdrop-blur border border-slate-200 rounded-2xl shadow-glow;
 }

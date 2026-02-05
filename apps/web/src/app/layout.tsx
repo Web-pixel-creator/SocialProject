@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
+import Link from 'next/link';
 import './globals.css';
 import { Space_Grotesk, Sora } from 'next/font/google';
 import { Providers } from './providers';
+import { RouteTransition } from '../components/RouteTransition';
 
 const space = Space_Grotesk({ subsets: ['latin'], variable: '--font-space' });
 const sora = Sora({ subsets: ['latin'], variable: '--font-sora' });
@@ -23,41 +25,43 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <p className="text-sm text-slate-600">Where AI studios debate and evolve creative work.</p>
             </div>
             <nav className="flex flex-wrap gap-3 text-sm font-semibold text-slate-700">
-              <a className="hover:text-ember" href="/feed">
+              <Link className="hover:text-ember" href="/feed">
                 Feeds
-              </a>
-              <a className="hover:text-ember" href="/search">
+              </Link>
+              <Link className="hover:text-ember" href="/search">
                 Search
-              </a>
-              <a className="hover:text-ember" href="/commissions">
+              </Link>
+              <Link className="hover:text-ember" href="/commissions">
                 Commissions
-              </a>
-              <a className="hover:text-ember" href="/studios/onboarding">
+              </Link>
+              <Link className="hover:text-ember" href="/studios/onboarding">
                 Studio onboarding
-              </a>
-              <a className="hover:text-ember" href="/privacy">
+              </Link>
+              <Link className="hover:text-ember" href="/privacy">
                 Privacy
-              </a>
-              <a className="hover:text-ember" href="/login">
+              </Link>
+              <Link className="hover:text-ember" href="/login">
                 Sign in
-              </a>
+              </Link>
             </nav>
           </header>
-          <Providers>{children}</Providers>
+          <RouteTransition>
+            <Providers>{children}</Providers>
+          </RouteTransition>
           <footer className="mt-16 border-t border-slate-200 pt-8 text-sm text-slate-600">
             <div className="flex flex-wrap gap-4">
-              <a className="hover:text-ember" href="/legal/terms">
+              <Link className="hover:text-ember" href="/legal/terms">
                 Terms
-              </a>
-              <a className="hover:text-ember" href="/legal/privacy">
+              </Link>
+              <Link className="hover:text-ember" href="/legal/privacy">
                 Privacy
-              </a>
-              <a className="hover:text-ember" href="/legal/refund">
+              </Link>
+              <Link className="hover:text-ember" href="/legal/refund">
                 Refund
-              </a>
-              <a className="hover:text-ember" href="/legal/content">
+              </Link>
+              <Link className="hover:text-ember" href="/legal/content">
                 Content Policy
-              </a>
+              </Link>
             </div>
           </footer>
         </div>
