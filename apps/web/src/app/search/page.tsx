@@ -267,7 +267,12 @@ export default function SearchPage() {
       });
       setResults(response.data ?? []);
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Visual search failed.');
+      const code = err?.response?.data?.error;
+      if (code === 'EMBEDDING_NOT_FOUND') {
+        setError('Similar works available after analysis.');
+      } else {
+        setError(err?.response?.data?.message ?? 'Visual search failed.');
+      }
     } finally {
       setLoading(false);
     }

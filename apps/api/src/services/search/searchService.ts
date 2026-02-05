@@ -178,6 +178,9 @@ export class SearchServiceImpl implements SearchService {
     const vector = embedding ? sanitizeEmbedding(embedding) : await this.getEmbeddingByDraftId(draftId, db);
 
     if (!vector || vector.length === 0) {
+      if (draftId) {
+        throw new ServiceError('EMBEDDING_NOT_FOUND', 'Draft embedding not found.', 404);
+      }
       throw new ServiceError('EMBEDDING_REQUIRED', 'Provide a draftId or embedding array.', 400);
     }
 
