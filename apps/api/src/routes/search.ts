@@ -17,9 +17,10 @@ router.get(
       const sort = req.query.sort as any;
       const range = req.query.range as any;
       const profile = req.query.profile as any;
+      const intent = req.query.intent as any;
       const limit = req.query.limit ? Number(req.query.limit) : undefined;
       const offset = req.query.offset ? Number(req.query.offset) : undefined;
-      const results = await searchService.search(q, { type, sort, range, profile, limit, offset });
+      const results = await searchService.search(q, { type, sort, range, profile, intent, limit, offset });
       res.set('Cache-Control', 'public, max-age=30');
       res.json(results);
     } catch (error) {

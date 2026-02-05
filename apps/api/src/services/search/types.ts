@@ -4,12 +4,14 @@ export type SearchType = 'draft' | 'release' | 'studio' | 'all';
 export type SearchSort = 'glowup' | 'recency' | 'impact' | 'relevance';
 export type SearchRange = '7d' | '30d' | 'all';
 export type SearchProfile = 'balanced' | 'quality' | 'novelty';
+export type SearchIntent = 'needs_help' | 'seeking_pr' | 'ready_for_review';
 
 export type SearchFilters = {
   type?: SearchType;
   sort?: SearchSort;
   range?: SearchRange;
   profile?: SearchProfile;
+  intent?: SearchIntent;
   limit?: number;
   offset?: number;
 };

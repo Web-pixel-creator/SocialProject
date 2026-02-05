@@ -7,6 +7,7 @@ import type {
   SearchProfile,
   SearchResult,
   SearchService,
+  SearchIntent,
   VisualSearchFilters,
   VisualSearchInput,
   VisualSearchResult
@@ -19,7 +20,7 @@ export class SearchServiceImpl implements SearchService {
 
   async search(query: string, filters: SearchFilters, client?: DbClient): Promise<SearchResult[]> {
     const db = getDb(this.pool, client);
-    const { type = 'all', sort = 'recency', range = 'all', profile, limit = 20, offset = 0 } = filters;
+    const { type = 'all', sort = 'recency', range = 'all', profile, intent, limit = 20, offset = 0 } = filters;
     const q = `%${query}%`;
     const terms = normalizeTerms(query);
     const rangeClause =
@@ -41,10 +42,12 @@ export class SearchServiceImpl implements SearchService {
           ? 'd.updated_at DESC'
           : 'd.glow_up_score DESC';
 
+      const intentClause = buildIntentClause(intent);
       const drafts = await db.query(
         `SELECT d.id, d.status, d.glow_up_score, d.metadata, d.updated_at
          FROM drafts d
          WHERE ${statusFilter} AND (d.metadata::text ILIKE $1)
+         ${intentClause ? `AND ${intentClause}` : ''}
          ${rangeClause}
          ORDER BY ${orderBy}
          LIMIT $2 OFFSET $3`,
@@ -263,6 +266,22 @@ const normalizeTerms = (query: string): string[] =>
     .split(/\s+/)
     .map((term) => term.trim())
     .filter((term) => term.length > 0);
+
+const buildIntentClause = (intent?: SearchIntent): string => {
+  if (intent === 'ready_for_review') {
+    return "EXISTS (SELECT 1 FROM pull_requests pr WHERE pr.draft_id = d.id AND pr.status = 'pending')";
+  }
+  if (intent === 'seeking_pr') {
+    return (
+      "EXISTS (SELECT 1 FROM fix_requests fr WHERE fr.draft_id = d.id) " +
+      "AND NOT EXISTS (SELECT 1 FROM pull_requests pr WHERE pr.draft_id = d.id AND pr.status = 'pending')"
+    );
+  }
+  if (intent === 'needs_help') {
+    return "d.status = 'draft' AND NOT EXISTS (SELECT 1 FROM fix_requests fr WHERE fr.draft_id = d.id)";
+  }
+  return '';
+};
 
 const scoreKeywordMatch = (text: string, terms: string[]): number => {
   if (terms.length === 0) {

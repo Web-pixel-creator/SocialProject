@@ -14,10 +14,12 @@ const PAGE_SIZE = 6;
 const DEFAULT_SORT = 'recent';
 const DEFAULT_STATUS = 'all';
 const DEFAULT_RANGE = '30d';
+const DEFAULT_INTENT = 'all';
 
 type FeedSort = 'recent' | 'impact' | 'glowup';
 type FeedStatus = 'all' | 'draft' | 'release' | 'pr';
 type FeedRange = '7d' | '30d' | '90d' | 'all';
+type FeedIntent = 'all' | 'needs_help' | 'seeking_pr' | 'ready_for_review';
 
 const SORT_OPTIONS: Array<{ value: FeedSort; label: string }> = [
   { value: 'recent', label: 'Recent' },
@@ -37,6 +39,13 @@ const RANGE_OPTIONS: Array<{ value: FeedRange; label: string; days?: number }> =
   { value: '30d', label: 'Last 30 days', days: 30 },
   { value: '90d', label: 'Last 90 days', days: 90 },
   { value: 'all', label: 'All time' }
+];
+
+const INTENT_OPTIONS: Array<{ value: FeedIntent; label: string }> = [
+  { value: 'all', label: 'All intents' },
+  { value: 'needs_help', label: 'Needs help' },
+  { value: 'seeking_pr', label: 'Seeking PR' },
+  { value: 'ready_for_review', label: 'Ready for review' }
 ];
 
 const sendTelemetry = async (payload: Record<string, any>) => {
@@ -272,11 +281,13 @@ export const FeedTabs = () => {
   const initialSort = readParam('sort', DEFAULT_SORT) as FeedSort;
   const initialStatus = readParam('status', DEFAULT_STATUS) as FeedStatus;
   const initialRange = readParam('range', DEFAULT_RANGE) as FeedRange;
+  const initialIntent = readParam('intent', DEFAULT_INTENT) as FeedIntent;
 
   const [active, setActive] = useState(initialTab);
   const [sort, setSort] = useState<FeedSort>(initialSort);
   const [status, setStatus] = useState<FeedStatus>(initialStatus);
   const [range, setRange] = useState<FeedRange>(initialRange);
+  const [intent, setIntent] = useState<FeedIntent>(initialIntent);
   const [items, setItems] = useState<FeedItem[]>([]);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
@@ -288,19 +299,24 @@ export const FeedTabs = () => {
     const nextSort = readParam('sort', DEFAULT_SORT) as FeedSort;
     const nextStatus = readParam('status', DEFAULT_STATUS) as FeedStatus;
     const nextRange = readParam('range', DEFAULT_RANGE) as FeedRange;
+    const nextIntent = readParam('intent', DEFAULT_INTENT) as FeedIntent;
     setActive(nextTab);
     setSort(nextSort);
     setStatus(nextStatus);
     setRange(nextRange);
+    setIntent(nextIntent);
   }, [searchParams]);
 
-  const updateQuery = (updates: Partial<{ tab: string; sort: FeedSort; status: FeedStatus; range: FeedRange }>) => {
+  const updateQuery = (
+    updates: Partial<{ tab: string; sort: FeedSort; status: FeedStatus; range: FeedRange; intent: FeedIntent }>
+  ) => {
     const params = new URLSearchParams(searchParams.toString());
     const next = {
       tab: updates.tab ?? active,
       sort: updates.sort ?? sort,
       status: updates.status ?? status,
-      range: updates.range ?? range
+      range: updates.range ?? range,
+      intent: updates.intent ?? intent
     };
 
     if (next.tab !== TABS[0]) {
@@ -327,6 +343,12 @@ export const FeedTabs = () => {
       params.delete('range');
     }
 
+    if (next.intent !== DEFAULT_INTENT) {
+      params.set('intent', next.intent);
+    } else {
+      params.delete('intent');
+    }
+
     const queryString = params.toString();
     router.replace(queryString ? `${pathname}?${queryString}` : pathname);
   };
@@ -336,7 +358,7 @@ export const FeedTabs = () => {
     setOffset(0);
     setHasMore(true);
     setFallbackUsed(false);
-  }, [active, sort, status, range]);
+  }, [active, sort, status, range, intent]);
 
   const rangeFrom = useMemo(() => {
     const match = RANGE_OPTIONS.find((option) => option.value === range);
@@ -371,6 +393,9 @@ export const FeedTabs = () => {
         if (status !== 'all') {
           params.status = status;
         }
+        if (intent !== 'all') {
+          params.intent = intent;
+        }
         if (rangeFrom) {
           params.from = rangeFrom;
         }
@@ -397,6 +422,7 @@ export const FeedTabs = () => {
               eventType: 'feed_load_timing',
               sort,
               status: status === 'all' ? undefined : status,
+              intent: intent === 'all' ? undefined : intent,
               range,
               timingMs
             });
@@ -433,7 +459,7 @@ export const FeedTabs = () => {
     return () => {
       cancelled = true;
     };
-  }, [active, offset, fallbackUsed, sort, status, rangeFrom, range]);
+  }, [active, offset, fallbackUsed, sort, status, intent, rangeFrom, range]);
 
   return (
     <section className="grid gap-6">
@@ -456,7 +482,7 @@ export const FeedTabs = () => {
         ))}
       </div>
       {active === 'All' ? (
-        <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white/70 p-4 text-xs text-slate-600 md:grid-cols-3">
+        <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white/70 p-4 text-xs text-slate-600 md:grid-cols-4">
           <label className="grid gap-1">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Sort</span>
             <select
@@ -466,7 +492,7 @@ export const FeedTabs = () => {
                 const next = event.target.value as FeedSort;
                 setSort(next);
                 updateQuery({ sort: next });
-                sendTelemetry({ eventType: 'feed_filter_change', sort: next, status, range });
+                sendTelemetry({ eventType: 'feed_filter_change', sort: next, status, intent, range });
               }}
             >
               {SORT_OPTIONS.map((option) => (
@@ -485,7 +511,7 @@ export const FeedTabs = () => {
                 const next = event.target.value as FeedStatus;
                 setStatus(next);
                 updateQuery({ status: next });
-                sendTelemetry({ eventType: 'feed_filter_change', sort, status: next, range });
+                sendTelemetry({ eventType: 'feed_filter_change', sort, status: next, intent, range });
               }}
             >
               {STATUS_OPTIONS.map((option) => (
@@ -504,10 +530,29 @@ export const FeedTabs = () => {
                 const next = event.target.value as FeedRange;
                 setRange(next);
                 updateQuery({ range: next });
-                sendTelemetry({ eventType: 'feed_filter_change', sort, status, range: next });
+                sendTelemetry({ eventType: 'feed_filter_change', sort, status, intent, range: next });
               }}
             >
               {RANGE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Intent</span>
+            <select
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800"
+              value={intent}
+              onChange={(event) => {
+                const next = event.target.value as FeedIntent;
+                setIntent(next);
+                updateQuery({ intent: next });
+                sendTelemetry({ eventType: 'feed_filter_change', sort, status, intent: next, range });
+              }}
+            >
+              {INTENT_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>

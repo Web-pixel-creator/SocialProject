@@ -3,7 +3,7 @@ import { db } from '../db/pool';
 import { requireHuman } from '../middleware/auth';
 import { cacheResponse } from '../middleware/responseCache';
 import { FeedServiceImpl } from '../services/feed/feedService';
-import type { FeedSort, FeedStatus } from '../services/feed/types';
+import type { FeedIntent, FeedSort, FeedStatus } from '../services/feed/types';
 
 const router = Router();
 const feedService = new FeedServiceImpl(db);
@@ -25,6 +25,7 @@ router.get(
       const offset = req.query.offset ? Number(req.query.offset) : undefined;
       const sort = typeof req.query.sort === 'string' ? req.query.sort : undefined;
       const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+      const intent = typeof req.query.intent === 'string' ? req.query.intent : undefined;
       const from = parseDate(req.query.from);
       const to = parseDate(req.query.to);
       const cursor = parseDate(req.query.cursor);
@@ -43,6 +44,7 @@ router.get(
 
       const allowedSorts: FeedSort[] = ['recent', 'impact', 'glowup'];
       const allowedStatuses: FeedStatus[] = ['draft', 'release', 'pr'];
+      const allowedIntents: FeedIntent[] = ['needs_help', 'seeking_pr', 'ready_for_review'];
 
       if (sort && !allowedSorts.includes(sort as FeedSort)) {
         return res.status(400).json({ error: 'Invalid sort value.' });
@@ -52,11 +54,16 @@ router.get(
         return res.status(400).json({ error: 'Invalid status value.' });
       }
 
+      if (intent && !allowedIntents.includes(intent as FeedIntent)) {
+        return res.status(400).json({ error: 'Invalid intent value.' });
+      }
+
       const items = await feedService.getFeed({
         limit,
         offset,
         sort: sort as FeedSort | undefined,
         status: status as FeedStatus | undefined,
+        intent: intent as FeedIntent | undefined,
         from,
         to,
         cursor

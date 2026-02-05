@@ -36,10 +36,12 @@ export type FeedFilters = {
 
 export type FeedSort = 'recent' | 'impact' | 'glowup';
 export type FeedStatus = 'draft' | 'release' | 'pr';
+export type FeedIntent = 'needs_help' | 'seeking_pr' | 'ready_for_review';
 
 export type UnifiedFeedFilters = FeedFilters & {
   sort?: FeedSort;
   status?: FeedStatus;
+  intent?: FeedIntent;
   from?: Date;
   to?: Date;
   cursor?: Date;

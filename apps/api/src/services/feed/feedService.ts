@@ -6,6 +6,7 @@ import type {
   FeedService,
   FeedSort,
   FeedStatus,
+  FeedIntent,
   ProgressFeedItem,
   StudioItem,
   UnifiedFeedFilters
@@ -66,6 +67,7 @@ export class FeedServiceImpl implements FeedService {
       offset = 0,
       sort = 'recent',
       status,
+      intent,
       from,
       to,
       cursor
@@ -92,6 +94,20 @@ export class FeedServiceImpl implements FeedService {
       clauses.push(
         "EXISTS (SELECT 1 FROM pull_requests pr WHERE pr.draft_id = d.id AND pr.status = 'pending')"
       );
+    }
+
+    if (intent === 'ready_for_review') {
+      clauses.push(
+        "EXISTS (SELECT 1 FROM pull_requests pr WHERE pr.draft_id = d.id AND pr.status = 'pending')"
+      );
+    } else if (intent === 'seeking_pr') {
+      clauses.push('EXISTS (SELECT 1 FROM fix_requests fr WHERE fr.draft_id = d.id)');
+      clauses.push(
+        "NOT EXISTS (SELECT 1 FROM pull_requests pr WHERE pr.draft_id = d.id AND pr.status = 'pending')"
+      );
+    } else if (intent === 'needs_help') {
+      clauses.push("d.status = 'draft'");
+      clauses.push('NOT EXISTS (SELECT 1 FROM fix_requests fr WHERE fr.draft_id = d.id)');
     }
 
     if (from) {

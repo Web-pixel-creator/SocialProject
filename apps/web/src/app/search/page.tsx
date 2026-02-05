@@ -31,6 +31,7 @@ export default function SearchPage() {
   const initialType = searchParams?.get('type') ?? 'all';
   const initialSort = searchParams?.get('sort') ?? 'recency';
   const initialRange = searchParams?.get('range') ?? 'all';
+  const initialIntent = searchParams?.get('intent') ?? 'all';
   const initialDraftId = searchParams?.get('draftId') ?? '';
   const initialTags = searchParams?.get('tags') ?? '';
   const initialProfileParam = searchParams?.get('profile') ?? '';
@@ -41,6 +42,7 @@ export default function SearchPage() {
   const [type, setType] = useState(initialType);
   const [sort, setSort] = useState(initialSort);
   const [range, setRange] = useState(initialRange);
+  const [intent, setIntent] = useState(initialIntent);
   const [profile, setProfile] = useState<'balanced' | 'quality' | 'novelty'>('balanced');
   const [visualDraftId, setVisualDraftId] = useState(initialDraftId);
   const [visualEmbedding, setVisualEmbedding] = useState('');
@@ -72,6 +74,7 @@ export default function SearchPage() {
     const urlType = searchParams.get('type') ?? 'all';
     const urlSort = searchParams.get('sort') ?? 'recency';
     const urlRange = searchParams.get('range') ?? 'all';
+    const urlIntent = searchParams.get('intent') ?? 'all';
     const urlDraftId = searchParams.get('draftId') ?? '';
     const urlTags = searchParams.get('tags') ?? '';
     const urlProfile = searchParams.get('profile') ?? '';
@@ -94,6 +97,9 @@ export default function SearchPage() {
     }
     if (urlRange !== range) {
       setRange(urlRange);
+    }
+    if (urlIntent !== intent) {
+      setIntent(urlIntent);
     }
     if (urlDraftId !== visualDraftId) {
       setVisualDraftId(urlDraftId);
@@ -157,6 +163,9 @@ export default function SearchPage() {
     if (profile !== 'balanced') {
       params.set('profile', profile);
     }
+    if (mode === 'text' && intent !== 'all') {
+      params.set('intent', intent);
+    }
 
     const nextQuery = params.toString();
     const currentQuery = searchParams?.toString() ?? '';
@@ -170,6 +179,7 @@ export default function SearchPage() {
     type,
     sort,
     range,
+    intent,
     profile,
     visualDraftId,
     visualTags,
@@ -193,6 +203,7 @@ export default function SearchPage() {
             type: type === 'all' ? undefined : type,
             sort,
             range: range === 'all' ? undefined : range,
+            intent: intent === 'all' ? undefined : intent,
             profile: profile === 'balanced' ? undefined : profile
           }
         });
@@ -203,6 +214,7 @@ export default function SearchPage() {
             sort,
             status: type === 'all' ? undefined : type,
             range: range === 'all' ? undefined : range,
+            intent: intent === 'all' ? undefined : intent,
             metadata: {
               profile,
               mode: 'text',
@@ -226,7 +238,7 @@ export default function SearchPage() {
       cancelled = true;
       clearTimeout(handle);
     };
-  }, [mode, query, type, sort, range, profile]);
+  }, [mode, query, type, sort, range, intent, profile]);
 
   useEffect(() => {
     setResults([]);
@@ -234,6 +246,15 @@ export default function SearchPage() {
     setVisualNotice(null);
     setVisualHasSearched(false);
   }, [mode]);
+
+  useEffect(() => {
+    if (mode !== 'text') {
+      return;
+    }
+    if (type === 'studio' && intent !== 'all') {
+      setIntent('all');
+    }
+  }, [mode, type, intent]);
 
   useEffect(() => {
     if (mode !== 'visual') {
@@ -320,7 +341,7 @@ export default function SearchPage() {
 
   const summary =
     mode === 'text'
-      ? `Results for "${query || '...'}" | type ${type} | sorted by ${sort} | range ${range}`
+      ? `Results for "${query || '...'}" | type ${type} | intent ${intent} | sorted by ${sort} | range ${range}`
       : `Visual results | type ${visualType}${
           visualDraftId.trim() ? ` | draft ${visualDraftId.trim()}` : ''
         }${visualTags.trim() ? ` | tags ${visualTags.trim()}` : ''}`;
@@ -372,6 +393,17 @@ export default function SearchPage() {
                 <option value="draft">Drafts</option>
                 <option value="release">Releases</option>
                 <option value="studio">Studios</option>
+              </select>
+              <select
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                value={intent}
+                onChange={(event) => setIntent(event.target.value)}
+                disabled={type === 'studio'}
+              >
+                <option value="all">All intents</option>
+                <option value="needs_help">Needs help</option>
+                <option value="seeking_pr">Seeking PR</option>
+                <option value="ready_for_review">Ready for review</option>
               </select>
               <select
                 className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
