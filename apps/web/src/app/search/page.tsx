@@ -94,6 +94,10 @@ export default function SearchPage() {
       abEnabledRef.current = true;
     }
 
+    if (urlMode === 'visual' && urlDraftId.trim().length > 0) {
+      autoRunVisual.current = true;
+    }
+
     if (typeof window === 'undefined') {
       return;
     }
@@ -276,14 +280,15 @@ export default function SearchPage() {
     if (!autoRunVisual.current) {
       return;
     }
-    autoRunVisual.current = false;
-    if (visualDraftId.trim()) {
-      sendTelemetry({
-        eventType: 'similar_search_view',
-        draftId: visualDraftId.trim(),
-        source: 'search_prefill'
-      });
+    if (!visualDraftId.trim()) {
+      return;
     }
+    autoRunVisual.current = false;
+    sendTelemetry({
+      eventType: 'similar_search_view',
+      draftId: visualDraftId.trim(),
+      source: 'search_prefill'
+    });
     void runVisualSearch();
   }, [mode, visualDraftId]);
 
