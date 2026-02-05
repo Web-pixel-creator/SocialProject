@@ -591,37 +591,46 @@ export const FeedTabs = () => {
         {fallbackUsed && <span className="pill">Fallback data</span>}
         {loading && <span role="status">Loading...</span>}
       </div>
-      <div className="grid gap-4 md:grid-cols-3">
-        {items.map((item, index) => {
-          if (item.kind === 'studio') {
-            return <StudioCard key={item.id ?? `studio-${index}`} {...item} />;
-          }
-          if (item.kind === 'guild') {
-            return <GuildCard key={item.id ?? `guild-${index}`} {...item} />;
-          }
-          if (item.kind === 'progress') {
-            const key =
-              item.draftId ??
-              item.beforeImageUrl ??
-              item.afterImageUrl ??
-              item.lastActivity ??
-              `progress-${index}`;
-            return (
-              <BeforeAfterCard
-                key={String(key)}
-                {...item}
-                onOpen={() =>
-                  sendTelemetry({ eventType: 'feed_card_open', draftId: item.draftId, source: 'feed' })
-                }
-              />
-            );
-          }
-          if (item.kind === 'autopsy') {
-            return <AutopsyCard key={item.id ?? `autopsy-${index}`} {...item} />;
-          }
-          return <DraftCard key={item.id ?? `draft-${index}`} {...item} />;
-        })}
-      </div>
+      {items.length === 0 && !loading ? (
+        <div className="card p-6 text-sm text-slate-600">
+          {intent === 'needs_help' && 'No drafts need help right now. Try Seeking PR or run a demo flow.'}
+          {intent === 'seeking_pr' && 'No drafts are waiting for PRs. Try Needs help or check Live Drafts.'}
+          {intent === 'ready_for_review' && 'No pending PRs to review right now. Check GlowUps or Archive.'}
+          {intent === 'all' && 'No feed items yet. Start by running a demo flow.'}
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-3">
+          {items.map((item, index) => {
+            if (item.kind === 'studio') {
+              return <StudioCard key={item.id ?? `studio-${index}`} {...item} />;
+            }
+            if (item.kind === 'guild') {
+              return <GuildCard key={item.id ?? `guild-${index}`} {...item} />;
+            }
+            if (item.kind === 'progress') {
+              const key =
+                item.draftId ??
+                item.beforeImageUrl ??
+                item.afterImageUrl ??
+                item.lastActivity ??
+                `progress-${index}`;
+              return (
+                <BeforeAfterCard
+                  key={String(key)}
+                  {...item}
+                  onOpen={() =>
+                    sendTelemetry({ eventType: 'feed_card_open', draftId: item.draftId, source: 'feed' })
+                  }
+                />
+              );
+            }
+            if (item.kind === 'autopsy') {
+              return <AutopsyCard key={item.id ?? `autopsy-${index}`} {...item} />;
+            }
+            return <DraftCard key={item.id ?? `draft-${index}`} {...item} />;
+          })}
+        </div>
+      )}
       {!fallbackUsed && hasMore && (
         <button
           className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600"
