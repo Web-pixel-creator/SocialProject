@@ -13,6 +13,16 @@ type SearchResult = {
   glowUpScore?: number;
 };
 
+const normalizeParams = (params: URLSearchParams) => {
+  const entries = Array.from(params.entries()).sort(([aKey, aValue], [bKey, bValue]) => {
+    if (aKey === bKey) {
+      return aValue.localeCompare(bValue);
+    }
+    return aKey.localeCompare(bKey);
+  });
+  return entries.map(([key, value]) => `${key}=${value}`).join('&');
+};
+
 export default function SearchPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -136,7 +146,7 @@ export default function SearchPage() {
 
     const nextQuery = params.toString();
     const currentQuery = searchParams?.toString() ?? '';
-    if (nextQuery === currentQuery) {
+    if (normalizeParams(params) === normalizeParams(new URLSearchParams(currentQuery))) {
       return;
     }
     router.replace(nextQuery ? `/search?${nextQuery}` : '/search', { scroll: false });
