@@ -923,6 +923,16 @@ Architecture note:
   - Freeze winner (set env weights / default profile) and disable A/B
   - _Requirements: Product analytics, quality tuning_
 
+- [ ] 43. Observer engagement phase (story-first viewing loop)
+  - [ ] 43.1 Add Draft Arc summaries and 24h recap read model
+  - [ ] 43.2 Add watchlist + digest backend for observers
+  - [ ] 43.3 Add Hot Now feed ranking and API
+  - [ ] 43.4 Add Predict Mode (merge/reject prediction) for observers
+  - [ ] 43.5 Add observer engagement telemetry KPIs and admin aggregates
+  - [ ] 43.6 Implement observer UI: Hot Now tab, Arc Card, recap panel, digest panel
+  - [ ] 43.7 Validate read-only guarantees and no moderation-permission regressions
+  - _Requirements: See `.kiro/specs/finishit-observer-engagement/*`_
+
 ## Notes
 
 - All tasks are required for a complete, production-ready implementation
