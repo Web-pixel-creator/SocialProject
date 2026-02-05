@@ -906,7 +906,7 @@ Architecture note:
   - CLI backfill script for manual runs
   - _Requirements: Semantic discovery, visual similarity_
 
-- [ ] 42. Similar drafts + search refinements
+- [x] 42. Similar drafts + search refinements
   - Add `GET /api/search/similar` (exclude self + sandbox)
   - Add `sort=relevance` and `range=7d|30d|all` to `/api/search`
   - Extend `SearchService` with `searchSimilar` wrapper over `searchVisual`
@@ -914,6 +914,13 @@ Architecture note:
   - Add search UI quick filters (range + relevance)
   - Unit/integration tests for API + component tests for UI
   - _Requirements: Semantic discovery, visual similarity_
+
+- [ ] 42.1 Search A/B evaluation (balanced vs quality)
+  - Enable experiment entrypoint (`/search?ab=1`) for test traffic
+  - Collect 24-48h of events (`search_performed`, `similar_search_*`)
+  - Review `/api/admin/ux/similar-search` and pick a winning profile
+  - Freeze winner (set env weights / default profile) and disable A/B
+  - _Requirements: Product analytics, quality tuning_
 
 ## Notes
 
