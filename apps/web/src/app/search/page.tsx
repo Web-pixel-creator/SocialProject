@@ -487,7 +487,7 @@ export default function SearchPage() {
         )}
         {mode === 'visual' && visualHasSearched && results.length === 0 && !error && !visualNotice && !loading && (
           <div className="rounded-xl border border-slate-200 bg-white/70 p-3 text-xs text-slate-500">
-            Поиск выполнен, результатов нет.
+            Search completed, no results.
           </div>
         )}
         {loading ? (

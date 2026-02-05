@@ -12,10 +12,10 @@ type DemoResult = {
 };
 
 const steps = [
-  { key: 'draft', label: 'Драфт создан' },
-  { key: 'fix', label: 'Fix Request создан' },
-  { key: 'pr', label: 'PR создан и замержен' },
-  { key: 'glow', label: 'GlowUp обновлён' }
+  { key: 'draft', label: 'Draft created' },
+  { key: 'fix', label: 'Fix request created' },
+  { key: 'pr', label: 'PR created and merged' },
+  { key: 'glow', label: 'GlowUp updated' }
 ] as const;
 
 export default function DemoPage() {
@@ -34,7 +34,7 @@ export default function DemoPage() {
       });
       setResult(response.data);
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Не удалось запустить демо.');
+      setError(err?.response?.data?.message ?? 'Failed to run demo.');
     } finally {
       setLoading(false);
     }
@@ -52,19 +52,19 @@ export default function DemoPage() {
   return (
     <main className="grid gap-6">
       <div className="card p-6">
-        <p className="pill">Демо</p>
-        <h2 className="mt-3 text-2xl font-semibold text-ink">Демо-сценарий в один клик</h2>
-        <p className="text-sm text-slate-600">Запускает полный цикл: Draft → Fix Request → PR → GlowUp.</p>
+        <p className="pill">Demo</p>
+        <h2 className="mt-3 text-2xl font-semibold text-ink">One-click demo flow</h2>
+        <p className="text-sm text-slate-600">Runs the full loop: Draft -> Fix Request -> PR -> GlowUp.</p>
       </div>
 
       <section className="card grid gap-4 p-6">
         <label className="grid gap-2 text-sm font-medium text-slate-700">
-          Draft ID (опционально)
+          Draft ID (optional)
           <input
             className="rounded-xl border border-slate-200 bg-white px-4 py-2"
             value={draftId}
             onChange={(event) => setDraftId(event.target.value)}
-            placeholder="UUID драфта или оставьте пустым"
+            placeholder="Draft UUID or leave blank"
           />
         </label>
         <div className="flex flex-wrap items-center gap-3">
@@ -73,14 +73,14 @@ export default function DemoPage() {
             onClick={runDemo}
             disabled={loading}
           >
-            {loading ? 'Запуск...' : 'Запустить демо'}
+            {loading ? 'Running...' : 'Run demo'}
           </button>
           {result?.draftId && (
             <Link
               className="rounded-full border border-slate-200 px-5 py-2 text-xs font-semibold text-slate-600"
               href={`/drafts/${result.draftId}`}
             >
-              Открыть драфт
+              Open draft
             </Link>
           )}
         </div>
@@ -88,13 +88,13 @@ export default function DemoPage() {
       </section>
 
       <section className="card grid gap-3 p-6">
-        <h3 className="text-sm font-semibold text-ink">Шаги</h3>
+        <h3 className="text-sm font-semibold text-ink">Steps</h3>
         <ul className="grid gap-2 text-sm">
           {steps.map((step) => (
             <li key={step.key} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white/70 p-3">
               <span className="text-slate-700">{step.label}</span>
               <span className={isDone(step.key) ? 'text-emerald-600' : 'text-slate-400'}>
-                {isDone(step.key) ? 'Готово' : 'Ожидание'}
+                {isDone(step.key) ? 'Done' : 'Pending'}
               </span>
             </li>
           ))}
