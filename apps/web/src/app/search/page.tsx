@@ -34,6 +34,7 @@ export default function SearchPage() {
   const initialDraftId = searchParams?.get('draftId') ?? '';
   const initialTags = searchParams?.get('tags') ?? '';
   const initialProfileParam = searchParams?.get('profile') ?? '';
+  const initialFrom = searchParams?.get('from') ?? '';
 
   const [mode, setMode] = useState<'text' | 'visual'>(initialMode);
   const [query, setQuery] = useState(initialQuery);
@@ -51,6 +52,7 @@ export default function SearchPage() {
   const [error, setError] = useState<string | null>(null);
   const autoRunVisual = useRef(initialMode === 'visual' && initialDraftId.length > 0);
   const searchKey = searchParams?.toString() ?? '';
+  const didSmoothScroll = useRef(false);
 
   const sendTelemetry = async (payload: Record<string, any>) => {
     try {
@@ -72,6 +74,7 @@ export default function SearchPage() {
     const urlDraftId = searchParams.get('draftId') ?? '';
     const urlTags = searchParams.get('tags') ?? '';
     const urlProfile = searchParams.get('profile') ?? '';
+    const urlFrom = searchParams.get('from') ?? '';
 
     if (urlMode !== mode) {
       setMode(urlMode);
@@ -96,6 +99,13 @@ export default function SearchPage() {
     }
     if (urlTags !== visualTags) {
       setVisualTags(urlTags);
+    }
+
+    if (urlFrom === 'similar' && !didSmoothScroll.current) {
+      didSmoothScroll.current = true;
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     }
 
     if (urlMode === 'visual' && urlDraftId.trim().length > 0) {
@@ -139,6 +149,9 @@ export default function SearchPage() {
     }
     if (mode === 'visual' && visualTags.trim()) {
       params.set('tags', visualTags.trim());
+    }
+    if (searchParams?.get('from') === 'similar') {
+      params.set('from', 'similar');
     }
     if (profile !== 'balanced') {
       params.set('profile', profile);

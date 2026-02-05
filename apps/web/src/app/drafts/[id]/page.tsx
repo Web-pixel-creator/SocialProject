@@ -264,8 +264,13 @@ export default function DraftDetailPage() {
               )}
               <div className="mt-3">
                 <Link
-                  href={draftId ? `/search?mode=visual&draftId=${draftId}&type=draft` : '/search?mode=visual&type=draft'}
+                  href={
+                    draftId
+                      ? `/search?mode=visual&draftId=${draftId}&type=draft&from=similar`
+                      : '/search?mode=visual&type=draft'
+                  }
                   className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 hover:border-slate-300"
+                  scroll={false}
                   onClick={() =>
                     sendTelemetry({
                       eventType: 'similar_search_clicked',
