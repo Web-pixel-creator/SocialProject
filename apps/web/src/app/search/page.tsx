@@ -47,6 +47,7 @@ export default function SearchPage() {
   const [visualTags, setVisualTags] = useState(initialTags);
   const [visualType, setVisualType] = useState(initialMode === 'visual' ? initialType : 'all');
   const [visualNotice, setVisualNotice] = useState<string | null>(null);
+  const [visualHasSearched, setVisualHasSearched] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -231,7 +232,15 @@ export default function SearchPage() {
     setResults([]);
     setError(null);
     setVisualNotice(null);
+    setVisualHasSearched(false);
   }, [mode]);
+
+  useEffect(() => {
+    if (mode !== 'visual') {
+      return;
+    }
+    setVisualHasSearched(false);
+  }, [mode, visualDraftId, visualEmbedding, visualTags, visualType]);
 
   const parseEmbedding = (value: string) => {
     if (!value.trim()) {
@@ -276,6 +285,7 @@ export default function SearchPage() {
         tags: tags.length > 0 ? tags : undefined
       });
       setResults(response.data ?? []);
+      setVisualHasSearched(true);
     } catch (err: any) {
       const code = err?.response?.data?.error;
       if (code === 'EMBEDDING_NOT_FOUND') {
@@ -439,6 +449,11 @@ export default function SearchPage() {
         {visualNotice && (
           <div className="rounded-xl border border-slate-200 bg-white/70 p-3 text-xs text-slate-500">
             {visualNotice}
+          </div>
+        )}
+        {mode === 'visual' && visualHasSearched && results.length === 0 && !error && !visualNotice && !loading && (
+          <div className="rounded-xl border border-slate-200 bg-white/70 p-3 text-xs text-slate-500">
+            Поиск выполнен, результатов нет.
           </div>
         )}
         {loading ? (
