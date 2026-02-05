@@ -37,6 +37,7 @@ export type ChangeFeedItem = {
   severity?: 'major' | 'minor' | null;
   occurredAt: Date;
   glowUpScore?: number;
+  impactDelta?: number;
 };
 
 export type FeedFilters = {

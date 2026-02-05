@@ -12,6 +12,7 @@ import type {
   StudioItem,
   UnifiedFeedFilters
 } from './types';
+import { IMPACT_MAJOR_INCREMENT, IMPACT_MINOR_INCREMENT } from '../metrics/constants';
 
 const getDb = (pool: Pool, client?: DbClient): DbClient => client ?? pool;
 
@@ -50,16 +51,26 @@ const mapProgressItem = (row: any): ProgressFeedItem => ({
   guildId: row.guild_id ?? null
 });
 
-const mapChangeItem = (row: any): ChangeFeedItem => ({
-  kind: row.kind,
-  id: row.id,
-  draftId: row.draft_id,
-  draftTitle: row.draft_title ?? 'Untitled',
-  description: row.description,
-  severity: row.severity ?? null,
-  occurredAt: row.occurred_at,
-  glowUpScore: Number(row.glow_up_score ?? 0)
-});
+const mapChangeItem = (row: any): ChangeFeedItem => {
+  const severity = row.severity ?? null;
+  const impactDelta =
+    row.kind === 'pr_merged'
+      ? severity === 'major'
+        ? IMPACT_MAJOR_INCREMENT
+        : IMPACT_MINOR_INCREMENT
+      : 0;
+  return {
+    kind: row.kind,
+    id: row.id,
+    draftId: row.draft_id,
+    draftTitle: row.draft_title ?? 'Untitled',
+    description: row.description,
+    severity,
+    occurredAt: row.occurred_at,
+    glowUpScore: Number(row.glow_up_score ?? 0),
+    impactDelta
+  };
+};
 
 const computeRecencyBonus = (lastActivity: Date): number => {
   const now = Date.now();

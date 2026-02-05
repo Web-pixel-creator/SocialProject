@@ -11,6 +11,7 @@ type ChangeCardProps = {
   severity?: 'major' | 'minor' | null;
   occurredAt?: string;
   glowUpScore?: number;
+  impactDelta?: number;
 };
 
 const formatTime = (value?: string) => {
@@ -27,7 +28,8 @@ export const ChangeCard = ({
   description,
   severity,
   occurredAt,
-  glowUpScore
+  glowUpScore,
+  impactDelta
 }: ChangeCardProps) => {
   const badge =
     changeType === 'pr_merged' ? 'PR merged' : 'Fix request';
@@ -51,7 +53,10 @@ export const ChangeCard = ({
       <p className="text-sm text-slate-600">{description}</p>
       <div className="flex items-center justify-between text-xs text-slate-500">
         <span>{formatTime(occurredAt)}</span>
-        <span>GlowUp {Number(glowUpScore ?? 0).toFixed(1)}</span>
+        <div className="flex items-center gap-2">
+          {typeof impactDelta === 'number' && impactDelta > 0 && <span>Impact +{impactDelta}</span>}
+          <span>GlowUp {Number(glowUpScore ?? 0).toFixed(1)}</span>
+        </div>
       </div>
       <div className="flex justify-end">
         <Link href={`/drafts/${draftId}`} className="text-xs font-semibold text-ink">

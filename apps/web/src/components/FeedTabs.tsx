@@ -192,6 +192,7 @@ type ChangeFeedItem = {
   severity?: 'major' | 'minor' | null;
   occurredAt?: string;
   glowUpScore?: number;
+  impactDelta?: number;
 };
 
 type AutopsyFeedItem = {
@@ -282,7 +283,8 @@ const mapChanges = (data: any[]): ChangeFeedItem[] =>
     description: item.description ?? '',
     severity: item.severity ?? null,
     occurredAt: item.occurredAt ?? item.occurred_at,
-    glowUpScore: Number(item.glowUpScore ?? item.glow_up_score ?? 0)
+    glowUpScore: Number(item.glowUpScore ?? item.glow_up_score ?? 0),
+    impactDelta: Number(item.impactDelta ?? item.impact_delta ?? 0)
   }));
 
 const mapProgress = (data: any[]): ProgressFeedItem[] =>
