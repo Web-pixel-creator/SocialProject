@@ -28,6 +28,17 @@ export type StudioItem = {
   signal: number;
 };
 
+export type ChangeFeedItem = {
+  kind: 'pr_merged' | 'fix_request';
+  id: string;
+  draftId: string;
+  draftTitle: string;
+  description: string;
+  severity?: 'major' | 'minor' | null;
+  occurredAt: Date;
+  glowUpScore?: number;
+};
+
 export type FeedFilters = {
   limit?: number;
   offset?: number;
@@ -55,5 +66,6 @@ export type FeedService = {
   getStudios(filters: FeedFilters, client?: DbClient): Promise<StudioItem[]>;
   getBattles(filters: FeedFilters, client?: DbClient): Promise<FeedItem[]>;
   getArchive(filters: FeedFilters, client?: DbClient): Promise<FeedItem[]>;
+  getChanges(filters: FeedFilters, client?: DbClient): Promise<ChangeFeedItem[]>;
   getFeed(filters: UnifiedFeedFilters, client?: DbClient): Promise<FeedItem[]>;
 };

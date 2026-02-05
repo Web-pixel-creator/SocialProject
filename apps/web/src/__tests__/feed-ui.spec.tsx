@@ -118,6 +118,10 @@ describe('feed UI', () => {
     expect(endpointForTab('Progress')).toBe('/feeds/progress');
   });
 
+  test('uses changes endpoint for changes tab', () => {
+    expect(endpointForTab('Changes')).toBe('/feeds/changes');
+  });
+
   test('uses unified feed endpoint for all tab', () => {
     expect(endpointForTab('All')).toBe('/feed');
   });

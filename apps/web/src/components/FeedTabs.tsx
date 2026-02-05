@@ -8,8 +8,9 @@ import { BeforeAfterCard } from './BeforeAfterCard';
 import { DraftCard } from './DraftCard';
 import { GuildCard } from './GuildCard';
 import { StudioCard } from './StudioCard';
+import { ChangeCard } from './ChangeCard';
 
-const TABS = ['All', 'Progress', 'For You', 'Live Drafts', 'GlowUps', 'Guilds', 'Studios', 'Battles', 'Archive'];
+const TABS = ['All', 'Progress', 'Changes', 'For You', 'Live Drafts', 'GlowUps', 'Guilds', 'Studios', 'Battles', 'Archive'];
 const PAGE_SIZE = 6;
 const DEFAULT_SORT = 'recent';
 const DEFAULT_STATUS = 'all';
@@ -116,6 +117,29 @@ const demoStudios = [
   { id: 'studio-2', studioName: 'Studio Flux', impact: 18, signal: 68 }
 ];
 
+const demoChanges = [
+  {
+    id: 'change-1',
+    kind: 'pr_merged',
+    draftId: 'draft-1',
+    draftTitle: 'Synthwave Poster',
+    description: 'Hero composition refresh',
+    severity: 'major',
+    occurredAt: new Date().toISOString(),
+    glowUpScore: 18.2
+  },
+  {
+    id: 'change-2',
+    kind: 'fix_request',
+    draftId: 'draft-2',
+    draftTitle: 'Minimalist Landing',
+    description: 'Improve visual hierarchy in CTA block',
+    severity: null,
+    occurredAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    glowUpScore: 11.4
+  }
+];
+
 const demoAutopsies = [
   { id: 'autopsy-1', summary: 'Common issues: low fix-request activity.', publishedAt: new Date().toISOString() }
 ];
@@ -158,6 +182,18 @@ type StudioFeedItem = {
   signal: number;
 };
 
+type ChangeFeedItem = {
+  kind: 'change';
+  id: string;
+  changeType: 'pr_merged' | 'fix_request';
+  draftId: string;
+  draftTitle: string;
+  description: string;
+  severity?: 'major' | 'minor' | null;
+  occurredAt?: string;
+  glowUpScore?: number;
+};
+
 type AutopsyFeedItem = {
   kind: 'autopsy';
   id: string;
@@ -165,7 +201,7 @@ type AutopsyFeedItem = {
   publishedAt?: string;
 };
 
-type FeedItem = DraftFeedItem | ProgressFeedItem | GuildFeedItem | StudioFeedItem | AutopsyFeedItem;
+type FeedItem = DraftFeedItem | ProgressFeedItem | GuildFeedItem | StudioFeedItem | ChangeFeedItem | AutopsyFeedItem;
 
 export const endpointForTab = (tab: string) => {
   switch (tab) {
@@ -173,6 +209,8 @@ export const endpointForTab = (tab: string) => {
       return '/feed';
     case 'Progress':
       return '/feeds/progress';
+    case 'Changes':
+      return '/feeds/changes';
     case 'For You':
       return '/feeds/for-you';
     case 'Live Drafts':
@@ -234,6 +272,19 @@ const mapStudios = (data: any[]): StudioFeedItem[] =>
     signal: Number(item.signal ?? 0)
   }));
 
+const mapChanges = (data: any[]): ChangeFeedItem[] =>
+  data.map((item) => ({
+    kind: 'change',
+    id: item.id,
+    changeType: item.kind ?? item.changeType ?? 'pr_merged',
+    draftId: item.draftId ?? item.draft_id,
+    draftTitle: item.draftTitle ?? item.draft_title ?? 'Untitled',
+    description: item.description ?? '',
+    severity: item.severity ?? null,
+    occurredAt: item.occurredAt ?? item.occurred_at,
+    glowUpScore: Number(item.glowUpScore ?? item.glow_up_score ?? 0)
+  }));
+
 const mapProgress = (data: any[]): ProgressFeedItem[] =>
   data.map((item) => ({
     kind: 'progress',
@@ -264,6 +315,9 @@ const fallbackItemsFor = (tab: string): FeedItem[] => {
   }
   if (tab === 'Studios') {
     return demoStudios.map((studio) => ({ ...studio, kind: 'studio' as const }));
+  }
+  if (tab === 'Changes') {
+    return demoChanges.map((item) => ({ ...item, kind: 'change' as const }));
   }
   if (tab === 'Archive') {
     return demoAutopsies.map((item) => ({ ...item, kind: 'autopsy' as const }));
@@ -406,6 +460,8 @@ export const FeedTabs = () => {
         const nextItems =
           active === 'Progress'
             ? mapProgress(response.data)
+            : active === 'Changes'
+              ? mapChanges(response.data)
             : active === 'Guilds'
               ? mapGuilds(response.data)
               : active === 'Studios'
@@ -607,26 +663,29 @@ export const FeedTabs = () => {
             if (item.kind === 'guild') {
               return <GuildCard key={item.id ?? `guild-${index}`} {...item} />;
             }
-            if (item.kind === 'progress') {
-              const key =
-                item.draftId ??
-                item.beforeImageUrl ??
-                item.afterImageUrl ??
-                item.lastActivity ??
-                `progress-${index}`;
-              return (
-                <BeforeAfterCard
-                  key={String(key)}
-                  {...item}
-                  onOpen={() =>
-                    sendTelemetry({ eventType: 'feed_card_open', draftId: item.draftId, source: 'feed' })
-                  }
-                />
-              );
-            }
-            if (item.kind === 'autopsy') {
-              return <AutopsyCard key={item.id ?? `autopsy-${index}`} {...item} />;
-            }
+          if (item.kind === 'progress') {
+            const key =
+              item.draftId ??
+              item.beforeImageUrl ??
+              item.afterImageUrl ??
+              item.lastActivity ??
+              `progress-${index}`;
+            return (
+              <BeforeAfterCard
+                key={String(key)}
+                {...item}
+                onOpen={() =>
+                  sendTelemetry({ eventType: 'feed_card_open', draftId: item.draftId, source: 'feed' })
+                }
+              />
+            );
+          }
+          if (item.kind === 'change') {
+            return <ChangeCard key={item.id ?? `change-${index}`} {...item} />;
+          }
+          if (item.kind === 'autopsy') {
+            return <AutopsyCard key={item.id ?? `autopsy-${index}`} {...item} />;
+          }
             return <DraftCard key={item.id ?? `draft-${index}`} {...item} />;
           })}
         </div>

@@ -7,6 +7,7 @@ import type {
   FeedSort,
   FeedStatus,
   FeedIntent,
+  ChangeFeedItem,
   ProgressFeedItem,
   StudioItem,
   UnifiedFeedFilters
@@ -47,6 +48,17 @@ const mapProgressItem = (row: any): ProgressFeedItem => ({
   lastActivity: row.last_activity,
   authorStudio: row.studio_name,
   guildId: row.guild_id ?? null
+});
+
+const mapChangeItem = (row: any): ChangeFeedItem => ({
+  kind: row.kind,
+  id: row.id,
+  draftId: row.draft_id,
+  draftTitle: row.draft_title ?? 'Untitled',
+  description: row.description,
+  severity: row.severity ?? null,
+  occurredAt: row.occurred_at,
+  glowUpScore: Number(row.glow_up_score ?? 0)
 });
 
 const computeRecencyBonus = (lastActivity: Date): number => {
@@ -313,5 +325,49 @@ export class FeedServiceImpl implements FeedService {
     const combined = [...releases.rows.map(mapFeedItem), ...autopsies.rows.map(mapAutopsyItem)];
     combined.sort((a, b) => Number(new Date(b.updatedAt)) - Number(new Date(a.updatedAt)));
     return combined.slice(0, limit);
+  }
+
+  async getChanges(filters: FeedFilters, client?: DbClient): Promise<ChangeFeedItem[]> {
+    const db = getDb(this.pool, client);
+    const { limit = 20, offset = 0 } = filters;
+    const safeLimit = Math.min(Math.max(limit, 1), 100);
+    const safeOffset = Math.max(offset, 0);
+
+    const result = await db.query(
+      `SELECT *
+       FROM (
+         SELECT
+           'pr_merged' AS kind,
+           pr.id,
+           pr.draft_id,
+           pr.description,
+           pr.severity,
+           pr.decided_at AS occurred_at,
+           COALESCE(d.metadata->>'title', 'Untitled') AS draft_title,
+           d.glow_up_score
+         FROM pull_requests pr
+         JOIN drafts d ON d.id = pr.draft_id
+         WHERE pr.status = 'merged'
+           AND d.is_sandbox = false
+         UNION ALL
+         SELECT
+           'fix_request' AS kind,
+           fr.id,
+           fr.draft_id,
+           fr.description,
+           NULL AS severity,
+           fr.created_at AS occurred_at,
+           COALESCE(d.metadata->>'title', 'Untitled') AS draft_title,
+           d.glow_up_score
+         FROM fix_requests fr
+         JOIN drafts d ON d.id = fr.draft_id
+         WHERE d.is_sandbox = false
+       ) changes
+       ORDER BY occurred_at DESC
+       LIMIT $1 OFFSET $2`,
+      [safeLimit, safeOffset]
+    );
+
+    return result.rows.map(mapChangeItem);
   }
 }

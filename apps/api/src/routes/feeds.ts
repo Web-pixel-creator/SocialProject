@@ -145,6 +145,22 @@ router.get(
 );
 
 router.get(
+  '/feeds/changes',
+  cacheResponse({ ttlMs: 20000, keyBuilder: (req) => `feed:changes:${req.originalUrl}` }),
+  async (req, res, next) => {
+  try {
+    const limit = req.query.limit ? Number(req.query.limit) : undefined;
+    const offset = req.query.offset ? Number(req.query.offset) : undefined;
+    const items = await feedService.getChanges({ limit, offset });
+    res.set('Cache-Control', 'public, max-age=30');
+    res.json(items);
+  } catch (error) {
+    next(error);
+  }
+  }
+);
+
+router.get(
   '/feeds/studios',
   cacheResponse({ ttlMs: 60000, keyBuilder: (req) => `feed:studios:${req.originalUrl}` }),
   async (req, res, next) => {
