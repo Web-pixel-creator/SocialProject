@@ -36,6 +36,7 @@ export default function SearchPage() {
   const [visualEmbedding, setVisualEmbedding] = useState('');
   const [visualTags, setVisualTags] = useState(initialTags);
   const [visualType, setVisualType] = useState(initialMode === 'visual' ? initialType : 'all');
+  const [visualNotice, setVisualNotice] = useState<string | null>(null);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -222,6 +223,7 @@ export default function SearchPage() {
   useEffect(() => {
     setResults([]);
     setError(null);
+    setVisualNotice(null);
   }, [mode]);
 
   const parseEmbedding = (value: string) => {
@@ -257,6 +259,7 @@ export default function SearchPage() {
     }
     setLoading(true);
     setError(null);
+    setVisualNotice(null);
     try {
       const tags = parseTags(visualTags);
       const response = await apiClient.post('/search/visual', {
@@ -269,7 +272,8 @@ export default function SearchPage() {
     } catch (err: any) {
       const code = err?.response?.data?.error;
       if (code === 'EMBEDDING_NOT_FOUND') {
-        setError('Similar works available after analysis.');
+        setResults([]);
+        setVisualNotice('Similar works available after analysis.');
       } else {
         setError(err?.response?.data?.message ?? 'Visual search failed.');
       }
@@ -425,6 +429,11 @@ export default function SearchPage() {
           )}
         </div>
         {error && <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-600">{error}</div>}
+        {visualNotice && (
+          <div className="rounded-xl border border-slate-200 bg-white/70 p-3 text-xs text-slate-500">
+            {visualNotice}
+          </div>
+        )}
         {loading ? (
           <p className="text-xs text-slate-500">Searching...</p>
         ) : (
