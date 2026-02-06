@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import type { DbClient } from '../auth/types';
+import { env } from '../../config/env';
 import type {
   FeedFilters,
   FeedItem,
@@ -10,6 +11,7 @@ import type {
   ChangeFeedItem,
   ProgressFeedItem,
   StudioItem,
+  HotNowItem,
   UnifiedFeedFilters
 } from './types';
 import { IMPACT_MAJOR_INCREMENT, IMPACT_MINOR_INCREMENT } from '../metrics/constants';
@@ -78,6 +80,57 @@ const computeRecencyBonus = (lastActivity: Date): number => {
   const days = (now - activity) / (1000 * 60 * 60 * 24);
   const remaining = Math.max(0, 7 - days);
   return remaining / 7;
+};
+
+const computeRecencyDecay = (lastActivity: Date): number => {
+  const now = Date.now();
+  const activity = new Date(lastActivity).getTime();
+  const hours = Math.max(0, (now - activity) / (1000 * 60 * 60));
+  const tau = Math.max(env.HOT_NOW_DECAY_TAU_HOURS, 1);
+  return Math.exp(-hours / tau);
+};
+
+const normalizeWeights = (
+  weights: Record<string, number>,
+  defaults: Record<string, number>
+): Record<string, number> => {
+  const sanitized = Object.fromEntries(
+    Object.entries(weights).map(([key, value]) => [key, Number.isFinite(value) && value > 0 ? value : 0])
+  );
+  const sum = Object.values(sanitized).reduce((acc, value) => acc + value, 0);
+  if (sum <= 0) {
+    return defaults;
+  }
+  return Object.fromEntries(Object.entries(sanitized).map(([key, value]) => [key, value / sum]));
+};
+
+const HOT_NOW_DEFAULT_WEIGHTS = {
+  recent: 0.4,
+  fix: 0.2,
+  pending: 0.2,
+  decisions: 0.1,
+  glowup: 0.1
+};
+
+const buildHotReasonLabel = (item: {
+  prPendingCount: number;
+  fixOpenCount: number;
+  merges24h: number;
+  decisions24h: number;
+}): string => {
+  const parts: string[] = [];
+  if (item.prPendingCount > 0) {
+    parts.push(`${item.prPendingCount} PR pending`);
+  }
+  if (item.fixOpenCount > 0) {
+    parts.push(`${item.fixOpenCount} open fix`);
+  }
+  if (item.merges24h > 0) {
+    parts.push(`${item.merges24h} merge in 24h`);
+  } else if (item.decisions24h > 0) {
+    parts.push(`${item.decisions24h} decisions in 24h`);
+  }
+  return parts.length > 0 ? parts.join(', ') : 'Low activity';
 };
 
 export class FeedServiceImpl implements FeedService {
@@ -380,5 +433,159 @@ export class FeedServiceImpl implements FeedService {
     );
 
     return result.rows.map(mapChangeItem);
+  }
+
+  async getHotNow(filters: FeedFilters, client?: DbClient): Promise<HotNowItem[]> {
+    const db = getDb(this.pool, client);
+    const { limit = 20, offset = 0 } = filters;
+    const safeLimit = Math.min(Math.max(limit, 1), 100);
+    const safeOffset = Math.max(offset, 0);
+    const candidateLimit = Math.max(100, safeLimit + safeOffset + 40);
+
+    const rows = await db.query(
+      `WITH addressed_fixes AS (
+         SELECT
+           pr.draft_id,
+           jsonb_array_elements_text(pr.addressed_fix_requests) AS fix_id
+         FROM pull_requests pr
+         WHERE pr.status = 'merged'
+           AND jsonb_typeof(pr.addressed_fix_requests) = 'array'
+       ),
+       fix_counts AS (
+         SELECT
+           fr.draft_id,
+           COUNT(*) FILTER (WHERE af.fix_id IS NULL)::int AS fix_open_count
+         FROM fix_requests fr
+         LEFT JOIN addressed_fixes af
+           ON af.draft_id = fr.draft_id
+          AND af.fix_id = fr.id::text
+         GROUP BY fr.draft_id
+       ),
+       pr_stats AS (
+         SELECT
+           pr.draft_id,
+           COUNT(*) FILTER (WHERE pr.status = 'pending')::int AS pr_pending_count,
+           COUNT(*) FILTER (
+             WHERE pr.status IN ('merged', 'rejected')
+               AND pr.decided_at >= NOW() - INTERVAL '24 hours'
+           )::int AS decisions_24h,
+           COUNT(*) FILTER (
+             WHERE pr.status = 'merged'
+               AND pr.decided_at >= NOW() - INTERVAL '24 hours'
+           )::int AS merges_24h,
+           COUNT(*) FILTER (
+             WHERE pr.status = 'merged'
+               AND pr.severity = 'major'
+           )::int AS merged_major_total,
+           COUNT(*) FILTER (
+             WHERE pr.status = 'merged'
+               AND pr.severity = 'minor'
+           )::int AS merged_minor_total,
+           COUNT(*) FILTER (
+             WHERE pr.status = 'merged'
+               AND pr.severity = 'major'
+               AND pr.decided_at >= NOW() - INTERVAL '24 hours'
+           )::int AS merged_major_24h,
+           COUNT(*) FILTER (
+             WHERE pr.status = 'merged'
+               AND pr.severity = 'minor'
+               AND pr.decided_at >= NOW() - INTERVAL '24 hours'
+           )::int AS merged_minor_24h,
+           MAX(GREATEST(pr.created_at, COALESCE(pr.decided_at, pr.created_at))) AS pr_last_activity
+         FROM pull_requests pr
+         GROUP BY pr.draft_id
+       ),
+       fix_last AS (
+         SELECT draft_id, MAX(created_at) AS fix_last_activity
+         FROM fix_requests
+         GROUP BY draft_id
+       )
+       SELECT
+         d.id AS draft_id,
+         COALESCE(d.metadata->>'title', 'Untitled') AS draft_title,
+         d.glow_up_score,
+         d.updated_at,
+         v_first.thumbnail_url AS before_image_url,
+         v_last.thumbnail_url AS after_image_url,
+         COALESCE(fc.fix_open_count, 0) AS fix_open_count,
+         COALESCE(ps.pr_pending_count, 0) AS pr_pending_count,
+         COALESCE(ps.decisions_24h, 0) AS decisions_24h,
+         COALESCE(ps.merges_24h, 0) AS merges_24h,
+         COALESCE(ps.merged_major_total, 0) AS merged_major_total,
+         COALESCE(ps.merged_minor_total, 0) AS merged_minor_total,
+         COALESCE(ps.merged_major_24h, 0) AS merged_major_24h,
+         COALESCE(ps.merged_minor_24h, 0) AS merged_minor_24h,
+         GREATEST(
+           d.updated_at,
+           COALESCE(ps.pr_last_activity, d.updated_at),
+           COALESCE(fl.fix_last_activity, d.updated_at)
+         ) AS last_activity
+       FROM drafts d
+       LEFT JOIN versions v_first ON v_first.draft_id = d.id AND v_first.version_number = 1
+       LEFT JOIN versions v_last ON v_last.draft_id = d.id AND v_last.version_number = d.current_version
+       LEFT JOIN fix_counts fc ON fc.draft_id = d.id
+       LEFT JOIN pr_stats ps ON ps.draft_id = d.id
+       LEFT JOIN fix_last fl ON fl.draft_id = d.id
+       WHERE d.is_sandbox = false
+         AND d.status = 'draft'
+       ORDER BY last_activity DESC
+       LIMIT $1`,
+      [candidateLimit]
+    );
+
+    const weights = normalizeWeights(
+      {
+        recent: env.HOT_NOW_W_RECENT,
+        fix: env.HOT_NOW_W_FIX,
+        pending: env.HOT_NOW_W_PENDING,
+        decisions: env.HOT_NOW_W_DECISIONS,
+        glowup: env.HOT_NOW_W_GLOWUP
+      },
+      HOT_NOW_DEFAULT_WEIGHTS
+    ) as typeof HOT_NOW_DEFAULT_WEIGHTS;
+
+    const toHotItem = (row: any): HotNowItem => {
+      const fixOpenCount = Number(row.fix_open_count ?? 0);
+      const prPendingCount = Number(row.pr_pending_count ?? 0);
+      const decisions24h = Number(row.decisions_24h ?? 0);
+      const merges24h = Number(row.merges_24h ?? 0);
+      const glowUpScore = Number(row.glow_up_score ?? 0);
+      const lastActivity = row.last_activity ? new Date(row.last_activity) : new Date(row.updated_at);
+
+      const mergedMajorTotal = Number(row.merged_major_total ?? 0);
+      const mergedMinorTotal = Number(row.merged_minor_total ?? 0);
+      const mergedMajor24h = Number(row.merged_major_24h ?? 0);
+      const mergedMinor24h = Number(row.merged_minor_24h ?? 0);
+
+      const glowNow = mergedMajorTotal * 3 + mergedMinorTotal;
+      const glowBefore24h = Math.max(0, mergedMajorTotal - mergedMajor24h) * 3 + Math.max(0, mergedMinorTotal - mergedMinor24h);
+      const glowUpDelta24h = Math.max(0, glowNow - glowBefore24h);
+
+      const hotScore =
+        weights.recent * computeRecencyDecay(lastActivity) +
+        weights.fix * fixOpenCount +
+        weights.pending * prPendingCount +
+        weights.decisions * decisions24h +
+        weights.glowup * glowUpDelta24h;
+
+      return {
+        draftId: row.draft_id,
+        title: row.draft_title ?? 'Untitled',
+        hotScore: Number(hotScore.toFixed(6)),
+        glowUpScore,
+        fixOpenCount,
+        prPendingCount,
+        decisions24h,
+        merges24h,
+        glowUpDelta24h,
+        lastActivity,
+        reasonLabel: buildHotReasonLabel({ prPendingCount, fixOpenCount, merges24h, decisions24h }),
+        beforeImageUrl: row.before_image_url ?? undefined,
+        afterImageUrl: row.after_image_url ?? undefined
+      };
+    };
+
+    const ranked = rows.rows.map(toHotItem).sort((a, b) => b.hotScore - a.hotScore);
+    return ranked.slice(safeOffset, safeOffset + safeLimit);
   }
 }

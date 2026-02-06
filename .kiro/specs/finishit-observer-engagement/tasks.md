@@ -27,7 +27,7 @@
   - Implement digest aggregation and deduplication window.
   - Add integration tests for digest lifecycle.
 
-- [ ] 5. Implement Hot Now feed
+- [x] 5. Implement Hot Now feed
   - Add ranking service with configurable weights.
   - Add `GET /api/feeds/hot-now`.
   - Include rank reason in API response.

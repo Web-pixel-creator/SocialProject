@@ -33,7 +33,13 @@ const envSchema = z.object({
   SEARCH_RELEVANCE_WEIGHT_GLOWUP: z.coerce.number().default(0.3),
   SEARCH_RELEVANCE_WEIGHT_RECENCY: z.coerce.number().default(0.1),
   SEARCH_RELEVANCE_WEIGHT_STUDIO_KEYWORD: z.coerce.number().default(0.7),
-  SEARCH_RELEVANCE_WEIGHT_STUDIO_IMPACT: z.coerce.number().default(0.3)
+  SEARCH_RELEVANCE_WEIGHT_STUDIO_IMPACT: z.coerce.number().default(0.3),
+  HOT_NOW_W_RECENT: z.coerce.number().default(0.4),
+  HOT_NOW_W_FIX: z.coerce.number().default(0.2),
+  HOT_NOW_W_PENDING: z.coerce.number().default(0.2),
+  HOT_NOW_W_DECISIONS: z.coerce.number().default(0.1),
+  HOT_NOW_W_GLOWUP: z.coerce.number().default(0.1),
+  HOT_NOW_DECAY_TAU_HOURS: z.coerce.number().default(12)
 });
 
 export const env = envSchema.parse(process.env);

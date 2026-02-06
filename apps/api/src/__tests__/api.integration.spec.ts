@@ -668,6 +668,14 @@ describe('API integration', () => {
     expect(live.status).toBe(200);
     expect(Array.isArray(live.body)).toBe(true);
 
+    const hotNow = await request(app).get('/api/feeds/hot-now?limit=5');
+    expect(hotNow.status).toBe(200);
+    expect(Array.isArray(hotNow.body)).toBe(true);
+    if (hotNow.body.length > 0) {
+      expect(hotNow.body[0]).toHaveProperty('reasonLabel');
+      expect(hotNow.body[0]).toHaveProperty('hotScore');
+    }
+
     const glowups = await request(app).get('/api/feeds/glowups?limit=5');
     expect(glowups.status).toBe(200);
     expect(Array.isArray(glowups.body)).toBe(true);

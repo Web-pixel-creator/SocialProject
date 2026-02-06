@@ -77,6 +77,31 @@ router.get(
 );
 
 router.get(
+  '/feeds/hot-now',
+  cacheResponse({ ttlMs: 10000, keyBuilder: (req) => `feed:hot-now:${req.originalUrl}` }),
+  async (req, res, next) => {
+    try {
+      const limit = req.query.limit ? Number(req.query.limit) : undefined;
+      const offset = req.query.offset ? Number(req.query.offset) : undefined;
+
+      if (req.query.limit && Number.isNaN(limit)) {
+        return res.status(400).json({ error: 'Invalid limit value.' });
+      }
+
+      if (req.query.offset && Number.isNaN(offset)) {
+        return res.status(400).json({ error: 'Invalid offset value.' });
+      }
+
+      const items = await feedService.getHotNow({ limit, offset });
+      res.set('Cache-Control', 'public, max-age=15');
+      res.json(items);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.get(
   '/feeds/progress',
   cacheResponse({ ttlMs: 20000, keyBuilder: (req) => `feed:progress:${req.originalUrl}` }),
   async (req, res, next) => {

@@ -349,4 +349,78 @@ describe('feed service edge cases', () => {
     expect(results.length).toBe(2);
     expect(results[0].draftId).toBe('draft-b');
   });
+
+  test('hot now feed ranks drafts and includes reason labels', async () => {
+    const now = new Date().toISOString();
+    const fakeClient = {
+      query: jest.fn().mockResolvedValue({
+        rows: [
+          {
+            draft_id: 'hot-a',
+            draft_title: 'Hot A',
+            glow_up_score: 2,
+            fix_open_count: 1,
+            pr_pending_count: 0,
+            decisions_24h: 0,
+            merges_24h: 0,
+            merged_major_total: 0,
+            merged_minor_total: 0,
+            merged_major_24h: 0,
+            merged_minor_24h: 0,
+            last_activity: now,
+            updated_at: now
+          },
+          {
+            draft_id: 'hot-b',
+            draft_title: 'Hot B',
+            glow_up_score: 3,
+            fix_open_count: 0,
+            pr_pending_count: 2,
+            decisions_24h: 1,
+            merges_24h: 1,
+            merged_major_total: 1,
+            merged_minor_total: 0,
+            merged_major_24h: 1,
+            merged_minor_24h: 0,
+            last_activity: now,
+            updated_at: now
+          }
+        ]
+      })
+    };
+
+    const results = await feedService.getHotNow({ limit: 2 }, fakeClient as any);
+    expect(results).toHaveLength(2);
+    expect(results[0].draftId).toBe('hot-b');
+    expect(results[0].reasonLabel).toContain('2 PR pending');
+    expect(results[0].reasonLabel).toContain('1 merge in 24h');
+  });
+
+  test('hot now feed falls back to low activity reason', async () => {
+    const now = new Date().toISOString();
+    const fakeClient = {
+      query: jest.fn().mockResolvedValue({
+        rows: [
+          {
+            draft_id: 'hot-c',
+            draft_title: 'Hot C',
+            glow_up_score: 0,
+            fix_open_count: 0,
+            pr_pending_count: 0,
+            decisions_24h: 0,
+            merges_24h: 0,
+            merged_major_total: 0,
+            merged_minor_total: 0,
+            merged_major_24h: 0,
+            merged_minor_24h: 0,
+            last_activity: now,
+            updated_at: now
+          }
+        ]
+      })
+    };
+
+    const results = await feedService.getHotNow({ limit: 1 }, fakeClient as any);
+    expect(results[0].reasonLabel).toBe('Low activity');
+  });
 });

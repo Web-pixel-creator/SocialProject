@@ -40,6 +40,22 @@ export type ChangeFeedItem = {
   impactDelta?: number;
 };
 
+export type HotNowItem = {
+  draftId: string;
+  title: string;
+  hotScore: number;
+  glowUpScore: number;
+  fixOpenCount: number;
+  prPendingCount: number;
+  decisions24h: number;
+  merges24h: number;
+  glowUpDelta24h: number;
+  lastActivity: Date;
+  reasonLabel: string;
+  beforeImageUrl?: string;
+  afterImageUrl?: string;
+};
+
 export type FeedFilters = {
   limit?: number;
   offset?: number;
@@ -69,4 +85,5 @@ export type FeedService = {
   getArchive(filters: FeedFilters, client?: DbClient): Promise<FeedItem[]>;
   getChanges(filters: FeedFilters, client?: DbClient): Promise<ChangeFeedItem[]>;
   getFeed(filters: UnifiedFeedFilters, client?: DbClient): Promise<FeedItem[]>;
+  getHotNow(filters: FeedFilters, client?: DbClient): Promise<HotNowItem[]>;
 };
