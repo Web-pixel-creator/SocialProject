@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
@@ -6,7 +6,17 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { apiClient } from '../../../lib/api';
 import { BeforeAfterSlider } from '../../../components/BeforeAfterSlider';
+import { DraftArcCard, type DraftArcSummaryView } from '../../../components/DraftArcCard';
+import { DraftRecapPanel, type DraftRecap24hView } from '../../../components/DraftRecapPanel';
 import { FixRequestList } from '../../../components/FixRequestList';
+import {
+  ObserverDigestPanel,
+  type ObserverDigestEntryView
+} from '../../../components/ObserverDigestPanel';
+import {
+  PredictionWidget,
+  type PullRequestPredictionSummaryView
+} from '../../../components/PredictionWidget';
 import { PullRequestList } from '../../../components/PullRequestList';
 import { VersionTimeline } from '../../../components/VersionTimeline';
 import { useRealtimeRoom } from '../../../hooks/useRealtimeRoom';
@@ -50,6 +60,11 @@ type PullRequest = {
   makerId: string;
 };
 
+type DraftArcView = {
+  summary: DraftArcSummaryView;
+  recap24h: DraftRecap24hView;
+};
+
 type SimilarDraft = {
   id: string;
   title: string;
@@ -66,6 +81,11 @@ const sendTelemetry = async (payload: Record<string, any>) => {
   }
 };
 
+const isAuthRequiredError = (error: any) => {
+  const status = error?.response?.status;
+  return status === 401 || status === 403;
+};
+
 export default function DraftDetailPage() {
   const params = useParams<{ id?: string | string[] }>();
   const rawId = params?.id;
@@ -78,6 +98,17 @@ export default function DraftDetailPage() {
   const [similarDrafts, setSimilarDrafts] = useState<SimilarDraft[]>([]);
   const [similarStatus, setSimilarStatus] = useState<string | null>(null);
   const [similarLoading, setSimilarLoading] = useState(false);
+  const [arcView, setArcView] = useState<DraftArcView | null>(null);
+  const [arcLoading, setArcLoading] = useState(false);
+  const [arcError, setArcError] = useState<string | null>(null);
+  const [digestEntries, setDigestEntries] = useState<ObserverDigestEntryView[]>([]);
+  const [digestLoading, setDigestLoading] = useState(false);
+  const [digestError, setDigestError] = useState<string | null>(null);
+  const [observerAuthRequired, setObserverAuthRequired] = useState(false);
+  const [predictionSummary, setPredictionSummary] = useState<PullRequestPredictionSummaryView | null>(null);
+  const [predictionLoading, setPredictionLoading] = useState(false);
+  const [predictionSubmitLoading, setPredictionSubmitLoading] = useState(false);
+  const [predictionError, setPredictionError] = useState<string | null>(null);
   const [demoLoading, setDemoLoading] = useState(false);
   const [demoStatus, setDemoStatus] = useState<string | null>(null);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
@@ -106,6 +137,97 @@ export default function DraftDetailPage() {
     if (!draftId) return;
     const response = await apiClient.get(`/drafts/${draftId}/pull-requests`);
     setPullRequests(response.data ?? []);
+  };
+
+  const loadArc = async () => {
+    if (!draftId) return;
+    setArcLoading(true);
+    setArcError(null);
+    try {
+      const response = await apiClient.get(`/drafts/${draftId}/arc`);
+      const payload = response.data;
+      if (
+        payload &&
+        typeof payload === 'object' &&
+        payload.summary &&
+        typeof payload.summary === 'object' &&
+        payload.recap24h &&
+        typeof payload.recap24h === 'object'
+      ) {
+        setArcView(payload);
+      } else {
+        setArcView(null);
+      }
+    } catch (err: any) {
+      setArcView(null);
+      setArcError(err?.response?.data?.message ?? 'Failed to load arc.');
+    } finally {
+      setArcLoading(false);
+    }
+  };
+
+  const loadWatchlist = async () => {
+    if (!draftId) return;
+    try {
+      const response = await apiClient.get('/observers/watchlist');
+      const list = Array.isArray(response.data) ? response.data : [];
+      setObserverAuthRequired(false);
+      setIsFollowed(list.some((item: any) => item?.draftId === draftId || item?.draft_id === draftId));
+    } catch (err: any) {
+      if (isAuthRequiredError(err)) {
+        setObserverAuthRequired(true);
+        setIsFollowed(false);
+        return;
+      }
+      setIsFollowed(false);
+    }
+  };
+
+  const loadDigest = async () => {
+    setDigestLoading(true);
+    setDigestError(null);
+    try {
+      const response = await apiClient.get('/observers/digest', {
+        params: { unseenOnly: false, limit: 8 }
+      });
+      setObserverAuthRequired(false);
+      setDigestEntries(Array.isArray(response.data) ? response.data : []);
+    } catch (err: any) {
+      if (isAuthRequiredError(err)) {
+        setObserverAuthRequired(true);
+        setDigestEntries([]);
+      } else {
+        setDigestError(err?.response?.data?.message ?? 'Failed to load digest.');
+        setDigestEntries([]);
+      }
+    } finally {
+      setDigestLoading(false);
+    }
+  };
+
+  const loadPredictionSummary = async (pullRequestId: string) => {
+    setPredictionLoading(true);
+    setPredictionError(null);
+    try {
+      const response = await apiClient.get(`/pull-requests/${pullRequestId}/predictions`);
+      setObserverAuthRequired(false);
+      const payload = response.data;
+      if (payload && typeof payload === 'object' && typeof payload.pullRequestId === 'string') {
+        setPredictionSummary(payload);
+      } else {
+        setPredictionSummary(null);
+      }
+    } catch (err: any) {
+      if (isAuthRequiredError(err)) {
+        setObserverAuthRequired(true);
+        setPredictionSummary(null);
+      } else {
+        setPredictionError(err?.response?.data?.message ?? 'Failed to load prediction summary.');
+        setPredictionSummary(null);
+      }
+    } finally {
+      setPredictionLoading(false);
+    }
   };
 
   const runDemoFlow = async () => {
@@ -193,7 +315,7 @@ export default function DraftDetailPage() {
       setLoading(true);
       setError(null);
       try {
-        await Promise.all([loadDraft(), loadFixRequests(), loadPullRequests()]);
+        await Promise.all([loadDraft(), loadFixRequests(), loadPullRequests(), loadArc(), loadWatchlist(), loadDigest()]);
       } catch (err: any) {
         if (!cancelled) {
           setError(err?.response?.data?.message ?? 'Failed to load draft.');
@@ -210,47 +332,73 @@ export default function DraftDetailPage() {
     };
   }, [draftId]);
 
-  useEffect(() => {
-    if (!draftId || typeof window === 'undefined') {
-      return;
+  const markDigestSeen = async (entryId: string) => {
+    try {
+      await apiClient.post(`/observers/digest/${entryId}/seen`);
+      setDigestEntries((prev) => prev.map((entry) => (entry.id === entryId ? { ...entry, isSeen: true } : entry)));
+      sendTelemetry({
+        eventType: 'digest_open',
+        draftId,
+        source: 'draft_detail'
+      });
+    } catch {
+      // noop: keep item visible if server mark-seen fails
     }
-    const raw = window.localStorage.getItem('followedDrafts');
-    if (!raw) {
-      setIsFollowed(false);
+  };
+
+  const toggleFollow = async () => {
+    if (!draftId) {
       return;
     }
     try {
-      const parsed = JSON.parse(raw);
-      const list = Array.isArray(parsed) ? parsed : [];
-      setIsFollowed(list.includes(draftId));
-    } catch {
-      setIsFollowed(false);
-    }
-  }, [draftId]);
-
-  const toggleFollow = () => {
-    if (!draftId || typeof window === 'undefined') {
-      return;
-    }
-    const raw = window.localStorage.getItem('followedDrafts');
-    let list: string[] = [];
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw);
-        list = Array.isArray(parsed) ? parsed : [];
-      } catch {
-        list = [];
+      if (isFollowed) {
+        await apiClient.delete(`/observers/watchlist/${draftId}`);
+      } else {
+        await apiClient.post(`/observers/watchlist/${draftId}`);
+      }
+      const nextState = !isFollowed;
+      setObserverAuthRequired(false);
+      setIsFollowed(nextState);
+      sendTelemetry({
+        eventType: nextState ? 'watchlist_follow' : 'watchlist_unfollow',
+        draftId,
+        source: 'draft_detail'
+      });
+      if (nextState) {
+        void loadDigest();
+      }
+    } catch (err: any) {
+      if (isAuthRequiredError(err)) {
+        setObserverAuthRequired(true);
       }
     }
-    const next = list.includes(draftId) ? list.filter((id) => id !== draftId) : [...list, draftId];
-    window.localStorage.setItem('followedDrafts', JSON.stringify(next));
-    const nextState = next.includes(draftId);
-    setIsFollowed(nextState);
-    sendTelemetry({
-      eventType: nextState ? 'draft_follow' : 'draft_unfollow',
-      draftId,
-      source: 'draft_detail'
-    });
+  };
+
+  const submitPrediction = async (outcome: 'merge' | 'reject') => {
+    const pendingPull = pullRequests.find((item) => item.status === 'pending');
+    if (!pendingPull) {
+      return;
+    }
+    setPredictionSubmitLoading(true);
+    setPredictionError(null);
+    try {
+      await apiClient.post(`/pull-requests/${pendingPull.id}/predict`, { predictedOutcome: outcome });
+      sendTelemetry({
+        eventType: 'pr_prediction_submit',
+        draftId,
+        source: 'draft_detail',
+        metadata: { outcome }
+      });
+      await loadPredictionSummary(pendingPull.id);
+    } catch (err: any) {
+      if (isAuthRequiredError(err)) {
+        setObserverAuthRequired(true);
+      } else {
+        setPredictionError(err?.response?.data?.message ?? 'Failed to submit prediction.');
+      }
+    } finally {
+      setPredictionSubmitLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -258,16 +406,49 @@ export default function DraftDetailPage() {
   }, [draftId]);
 
   useEffect(() => {
+    if (!arcView?.summary || !arcView?.recap24h) {
+      return;
+    }
+    sendTelemetry({
+      eventType: 'draft_arc_view',
+      draftId,
+      source: 'draft_detail',
+      metadata: { state: arcView.summary.state }
+    });
+    sendTelemetry({
+      eventType: 'draft_recap_view',
+      draftId,
+      source: 'draft_detail',
+      metadata: { hasChanges: arcView.recap24h.hasChanges }
+    });
+  }, [arcView, draftId]);
+
+  useEffect(() => {
     if (events.length === 0) return;
     const last = events[events.length - 1];
     if (['fix_request', 'pull_request', 'pull_request_decision'].includes(last.type)) {
       loadFixRequests();
       loadPullRequests();
+      loadArc();
+      if (isFollowed) {
+        loadDigest();
+      }
     }
     if (last.type === 'glowup_update') {
       loadDraft();
+      loadArc();
     }
-  }, [events.length]);
+  }, [events.length, isFollowed]);
+
+  useEffect(() => {
+    const pendingPull = pullRequests.find((item) => item.status === 'pending');
+    if (!pendingPull) {
+      setPredictionSummary(null);
+      setPredictionError(null);
+      return;
+    }
+    void loadPredictionSummary(pendingPull.id);
+  }, [pullRequests]);
 
   const formatEventMessage = (eventType: string, payload: Record<string, unknown>) => {
     if (eventType === 'fix_request') return 'New fix request submitted';
@@ -386,7 +567,7 @@ export default function DraftDetailPage() {
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">{error}</div>
       )}
       {loading ? (
-        <div className="card p-6 text-sm text-slate-500">Loading draft…</div>
+        <div className="card p-6 text-sm text-slate-500">Loading draft...</div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
           <div className="grid gap-6">
@@ -417,6 +598,8 @@ export default function DraftDetailPage() {
                 </div>
               </div>
             )}
+            <DraftArcCard summary={arcView?.summary ?? null} loading={arcLoading} error={arcError} />
+            <DraftRecapPanel recap={arcView?.recap24h ?? null} loading={arcLoading} error={arcError} />
             <VersionTimeline versions={versionNumbers.length > 0 ? versionNumbers : [1]} />
             <BeforeAfterSlider
               beforeLabel={beforeLabel}
@@ -446,7 +629,7 @@ export default function DraftDetailPage() {
                       <p className="text-[10px] uppercase text-slate-500">{item.type}</p>
                       <p className="text-sm text-ink">{item.title}</p>
                       <p className="text-[11px] text-slate-500">
-                        Similarity {Number(item.score ?? 0).toFixed(2)} · GlowUp{' '}
+                        Similarity {Number(item.score ?? 0).toFixed(2)} | GlowUp{' '}
                         {Number(item.glowUpScore ?? 0).toFixed(1)}
                       </p>
                     </li>
@@ -477,24 +660,42 @@ export default function DraftDetailPage() {
           </div>
           <div className="grid gap-6">
             <HeatMapOverlay />
+            <PredictionWidget
+              summary={predictionSummary}
+              loading={predictionLoading}
+              error={predictionError}
+              authRequired={observerAuthRequired}
+              onPredict={submitPrediction}
+              submitLoading={predictionSubmitLoading}
+            />
             <div className="card p-4">
               <p className="pill">Follow chain</p>
               <h3 className="mt-3 text-sm font-semibold text-ink">Track every change</h3>
               <p className="text-xs text-slate-600">
                 Get notified in-app when this draft receives fixes or PRs.
               </p>
+              {observerAuthRequired && (
+                <p className="mt-2 text-xs text-slate-500">Sign in as observer to follow drafts.</p>
+              )}
               <div className="mt-4">
                 <button
                   type="button"
                   className={`rounded-full px-4 py-2 text-xs font-semibold ${
                     isFollowed ? 'bg-emerald-600 text-white' : 'bg-ink text-white'
                   }`}
-                  onClick={toggleFollow}
+                  onClick={() => void toggleFollow()}
                 >
                   {isFollowed ? 'Following' : 'Follow chain'}
                 </button>
               </div>
             </div>
+            <ObserverDigestPanel
+              entries={digestEntries}
+              loading={digestLoading}
+              error={digestError}
+              authRequired={observerAuthRequired}
+              onMarkSeen={markDigestSeen}
+            />
             <div className="card p-4">
               <p className="pill">Activity</p>
               <h3 className="mt-3 text-sm font-semibold text-ink">In-app updates</h3>
@@ -516,10 +717,14 @@ export default function DraftDetailPage() {
                 )}
               </div>
             </div>
-            <LivePanel scope={`post:${params.id}`} />
+            <LivePanel scope={`post:${draftId || 'unknown'}`} />
           </div>
         </div>
       )}
     </main>
   );
 }
+
+
+
+

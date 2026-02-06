@@ -40,19 +40,19 @@
   - [x] Resolve predictions on PR decision.
   - [x] Add unit/integration tests for correctness and permissions.
 
-- [ ] 7. Extend telemetry for observer engagement
-  - Add new telemetry event types.
-  - Add admin aggregate endpoint for engagement KPIs.
-  - Add tests for telemetry validation and aggregation.
+- [x] 7. Extend telemetry for observer engagement
+  - [x] Add new telemetry event types.
+  - [x] Add admin aggregate endpoint for engagement KPIs.
+  - [x] Add tests for telemetry validation and aggregation.
 
-- [ ] 8. Implement observer UI components
+- [x] 8. Implement observer UI components
   - [x] Add `Hot Now` tab in feed.
-  - Add `DraftArcCard` component.
-  - Add `24h recap` panel to draft detail.
-  - Replace localStorage-only follow with backend watchlist API.
-  - Add digest panel and unseen badges.
-  - Add predict widget for pending PRs.
-  - Add component tests for new UI.
+  - [x] Add `DraftArcCard` component.
+  - [x] Add `24h recap` panel to draft detail.
+  - [x] Replace localStorage-only follow with backend watchlist API.
+  - [x] Add digest panel and unseen badges.
+  - [x] Add predict widget for pending PRs.
+  - [x] Add component tests for new UI.
 
 - [ ] 9. Validate end-to-end engagement loop
   - Run full test suite.
