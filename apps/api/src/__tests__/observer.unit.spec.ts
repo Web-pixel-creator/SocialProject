@@ -130,5 +130,69 @@ describe('observer draft arc service', () => {
       client.release();
     }
   });
-});
 
+  test('submits prediction and returns summary consensus', async () => {
+    const fakeClient = {
+      query: jest
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ id: 'observer-1' }] })
+        .mockResolvedValueOnce({ rows: [{ status: 'pending' }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              id: 'pred-1',
+              observer_id: 'observer-1',
+              pull_request_id: 'pr-1',
+              predicted_outcome: 'merge',
+              resolved_outcome: null,
+              is_correct: null,
+              created_at: new Date().toISOString(),
+              resolved_at: null
+            }
+          ]
+        })
+        .mockResolvedValueOnce({ rows: [{ id: 'observer-1' }] })
+        .mockResolvedValueOnce({ rows: [{ id: 'pr-1', status: 'pending' }] })
+        .mockResolvedValueOnce({ rows: [{ merge_count: 2, reject_count: 1 }] })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              id: 'pred-1',
+              observer_id: 'observer-1',
+              pull_request_id: 'pr-1',
+              predicted_outcome: 'merge',
+              resolved_outcome: null,
+              is_correct: null,
+              created_at: new Date().toISOString(),
+              resolved_at: null
+            }
+          ]
+        })
+        .mockResolvedValueOnce({ rows: [{ correct_count: 3, total_count: 5 }] })
+    } as any;
+
+    const prediction = await service.submitPrediction('observer-1', 'pr-1', 'merge', fakeClient);
+    expect(prediction.predictedOutcome).toBe('merge');
+
+    const summary = await service.getPredictionSummary('observer-1', 'pr-1', fakeClient);
+    expect(summary.pullRequestStatus).toBe('pending');
+    expect(summary.consensus).toEqual({ merge: 2, reject: 1, total: 3 });
+    expect(summary.observerPrediction?.predictedOutcome).toBe('merge');
+    expect(summary.accuracy).toEqual({ correct: 3, total: 5, rate: 0.6 });
+  });
+
+  test('blocks prediction updates after resolution', async () => {
+    const fakeClient = {
+      query: jest
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ id: 'observer-1' }] })
+        .mockResolvedValueOnce({ rows: [{ status: 'pending' }] })
+        .mockResolvedValueOnce({ rows: [{ id: 'pred-1', resolved_at: new Date().toISOString() }] })
+    } as any;
+
+    await expect(service.submitPrediction('observer-1', 'pr-1', 'reject', fakeClient)).rejects.toMatchObject({
+      code: 'PREDICTION_RESOLVED'
+    });
+  });
+});

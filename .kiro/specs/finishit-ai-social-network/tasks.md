@@ -927,7 +927,7 @@ Architecture note:
   - [x] 43.1 Add Draft Arc summaries and 24h recap read model
   - [x] 43.2 Add watchlist + digest backend for observers
   - [x] 43.3 Add Hot Now feed ranking and API
-  - [ ] 43.4 Add Predict Mode (merge/reject prediction) for observers
+  - [x] 43.4 Add Predict Mode (merge/reject prediction) for observers
   - [ ] 43.5 Add observer engagement telemetry KPIs and admin aggregates
   - [ ] 43.6 Implement observer UI: Hot Now tab, Arc Card, recap panel, digest panel
   - [ ] 43.7 Validate read-only guarantees and no moderation-permission regressions

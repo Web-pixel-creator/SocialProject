@@ -337,6 +337,72 @@ describe('API integration', () => {
     expect(unfollowRes.body.removed).toBe(true);
   });
 
+  test('observer predict mode lifecycle', async () => {
+    const human = await registerHuman('observer-predict@example.com');
+    const observerToken = human.tokens.accessToken;
+    const { agentId: authorId, apiKey: authorKey } = await registerAgent('Predict Author');
+    const { agentId: makerId, apiKey: makerKey } = await registerAgent('Predict Maker');
+
+    const draftRes = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', authorId)
+      .set('x-api-key', authorKey)
+      .send({
+        imageUrl: 'https://example.com/predict-v1.png',
+        thumbnailUrl: 'https://example.com/predict-v1-thumb.png'
+      });
+    expect(draftRes.status).toBe(200);
+
+    const draftId = draftRes.body.draft.id;
+    const prRes = await request(app)
+      .post(`/api/drafts/${draftId}/pull-requests`)
+      .set('x-agent-id', makerId)
+      .set('x-api-key', makerKey)
+      .send({
+        description: 'Predictable PR',
+        severity: 'minor',
+        imageUrl: 'https://example.com/predict-v2.png',
+        thumbnailUrl: 'https://example.com/predict-v2-thumb.png'
+      });
+    expect(prRes.status).toBe(200);
+    const pullRequestId = prRes.body.id;
+
+    const predictRes = await request(app)
+      .post(`/api/pull-requests/${pullRequestId}/predict`)
+      .set('Authorization', `Bearer ${observerToken}`)
+      .send({ predictedOutcome: 'merge' });
+    expect(predictRes.status).toBe(200);
+    expect(predictRes.body.pullRequestId).toBe(pullRequestId);
+    expect(predictRes.body.predictedOutcome).toBe('merge');
+
+    const preDecision = await request(app)
+      .get(`/api/pull-requests/${pullRequestId}/predictions`)
+      .set('Authorization', `Bearer ${observerToken}`);
+    expect(preDecision.status).toBe(200);
+    expect(preDecision.body.pullRequestStatus).toBe('pending');
+    expect(preDecision.body.consensus.total).toBeGreaterThanOrEqual(1);
+    expect(preDecision.body.observerPrediction.predictedOutcome).toBe('merge');
+    expect(preDecision.body.observerPrediction.resolvedOutcome).toBeNull();
+
+    const decideRes = await request(app)
+      .post(`/api/pull-requests/${pullRequestId}/decide`)
+      .set('x-agent-id', authorId)
+      .set('x-api-key', authorKey)
+      .send({ decision: 'reject', rejectionReason: 'Not aligned with brief' });
+    expect(decideRes.status).toBe(200);
+    expect(decideRes.body.status).toBe('rejected');
+
+    const postDecision = await request(app)
+      .get(`/api/pull-requests/${pullRequestId}/predictions`)
+      .set('Authorization', `Bearer ${observerToken}`);
+    expect(postDecision.status).toBe(200);
+    expect(postDecision.body.pullRequestStatus).toBe('rejected');
+    expect(postDecision.body.observerPrediction.predictedOutcome).toBe('merge');
+    expect(postDecision.body.observerPrediction.resolvedOutcome).toBe('reject');
+    expect(postDecision.body.observerPrediction.isCorrect).toBe(false);
+    expect(postDecision.body.accuracy.total).toBeGreaterThanOrEqual(1);
+  });
+
   test('budget enforcement for fix requests', async () => {
     const { agentId, apiKey } = await registerAgent();
 

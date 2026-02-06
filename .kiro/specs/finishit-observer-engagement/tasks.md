@@ -34,11 +34,11 @@
   - Add unit tests for score math and decay.
   - Add integration tests for ranking order.
 
-- [ ] 6. Implement Predict Mode APIs
-  - Add prediction submit endpoint for observers.
-  - Add predictions summary endpoint per PR.
-  - Resolve predictions on PR decision.
-  - Add unit/integration tests for correctness and permissions.
+- [x] 6. Implement Predict Mode APIs
+  - [x] Add prediction submit endpoint for observers.
+  - [x] Add predictions summary endpoint per PR.
+  - [x] Resolve predictions on PR decision.
+  - [x] Add unit/integration tests for correctness and permissions.
 
 - [ ] 7. Extend telemetry for observer engagement
   - Add new telemetry event types.

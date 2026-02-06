@@ -11,7 +11,10 @@ import type {
   DraftEventType,
   DraftRecap24h,
   ObserverDigestEntry,
-  ObserverWatchlistItem
+  ObserverPrediction,
+  ObserverWatchlistItem,
+  PredictionOutcome,
+  PullRequestPredictionSummary
 } from './types';
 
 const getDb = (pool: Pool, client?: DbClient): DbClient => client ?? pool;
@@ -43,6 +46,17 @@ const mapWatchlistItem = (row: any): ObserverWatchlistItem => ({
   observerId: row.observer_id,
   draftId: row.draft_id,
   createdAt: row.created_at
+});
+
+const mapPrediction = (row: any): ObserverPrediction => ({
+  id: row.id,
+  observerId: row.observer_id,
+  pullRequestId: row.pull_request_id,
+  predictedOutcome: row.predicted_outcome,
+  resolvedOutcome: row.resolved_outcome ?? null,
+  isCorrect: row.is_correct ?? null,
+  createdAt: row.created_at,
+  resolvedAt: row.resolved_at ?? null
 });
 
 const asNumber = (value: unknown): number => Number(value ?? 0);
@@ -246,6 +260,112 @@ export class DraftArcServiceImpl implements DraftArcService {
     const db = getDb(this.pool, client);
     const summary = await this.recomputeDraftArcSummary(draftId, db);
     await this.upsertDigestEntriesForFollowers(draftId, eventType, summary, db);
+  }
+
+  async submitPrediction(
+    observerId: string,
+    pullRequestId: string,
+    predictedOutcome: PredictionOutcome,
+    client?: DbClient
+  ): Promise<ObserverPrediction> {
+    const db = getDb(this.pool, client);
+    await this.ensureObserverExists(observerId, db);
+    await this.ensurePendingPullRequest(pullRequestId, db);
+
+    const existing = await db.query(
+      `SELECT id, resolved_at
+       FROM observer_pr_predictions
+       WHERE observer_id = $1
+         AND pull_request_id = $2`,
+      [observerId, pullRequestId]
+    );
+
+    if (existing.rows.length > 0 && existing.rows[0].resolved_at) {
+      throw new ServiceError('PREDICTION_RESOLVED', 'Prediction already resolved for this pull request.', 409);
+    }
+
+    const upsert = await db.query(
+      `INSERT INTO observer_pr_predictions (
+         observer_id,
+         pull_request_id,
+         predicted_outcome
+       )
+       VALUES ($1, $2, $3)
+       ON CONFLICT (observer_id, pull_request_id)
+       DO UPDATE SET
+         predicted_outcome = EXCLUDED.predicted_outcome
+       RETURNING id, observer_id, pull_request_id, predicted_outcome, resolved_outcome, is_correct, created_at, resolved_at`,
+      [observerId, pullRequestId, predictedOutcome]
+    );
+
+    return mapPrediction(upsert.rows[0]);
+  }
+
+  async getPredictionSummary(
+    observerId: string,
+    pullRequestId: string,
+    client?: DbClient
+  ): Promise<PullRequestPredictionSummary> {
+    const db = getDb(this.pool, client);
+    await this.ensureObserverExists(observerId, db);
+
+    const pullRequest = await db.query(
+      `SELECT id, status
+       FROM pull_requests
+       WHERE id = $1`,
+      [pullRequestId]
+    );
+
+    if (pullRequest.rows.length === 0) {
+      throw new ServiceError('PR_NOT_FOUND', 'Pull request not found.', 404);
+    }
+
+    const consensusResult = await db.query(
+      `SELECT
+         COUNT(*) FILTER (WHERE predicted_outcome = 'merge')::int AS merge_count,
+         COUNT(*) FILTER (WHERE predicted_outcome = 'reject')::int AS reject_count
+       FROM observer_pr_predictions
+       WHERE pull_request_id = $1`,
+      [pullRequestId]
+    );
+    const mergeCount = asNumber(consensusResult.rows[0]?.merge_count);
+    const rejectCount = asNumber(consensusResult.rows[0]?.reject_count);
+
+    const observerPredictionResult = await db.query(
+      `SELECT id, observer_id, pull_request_id, predicted_outcome, resolved_outcome, is_correct, created_at, resolved_at
+       FROM observer_pr_predictions
+       WHERE observer_id = $1
+         AND pull_request_id = $2`,
+      [observerId, pullRequestId]
+    );
+
+    const accuracyResult = await db.query(
+      `SELECT
+         COUNT(*) FILTER (WHERE is_correct = true)::int AS correct_count,
+         COUNT(*) FILTER (WHERE resolved_outcome IS NOT NULL)::int AS total_count
+       FROM observer_pr_predictions
+       WHERE observer_id = $1`,
+      [observerId]
+    );
+    const accuracyCorrect = asNumber(accuracyResult.rows[0]?.correct_count);
+    const accuracyTotal = asNumber(accuracyResult.rows[0]?.total_count);
+
+    return {
+      pullRequestId,
+      pullRequestStatus: pullRequest.rows[0].status,
+      consensus: {
+        merge: mergeCount,
+        reject: rejectCount,
+        total: mergeCount + rejectCount
+      },
+      observerPrediction:
+        observerPredictionResult.rows.length > 0 ? mapPrediction(observerPredictionResult.rows[0]) : null,
+      accuracy: {
+        correct: accuracyCorrect,
+        total: accuracyTotal,
+        rate: accuracyTotal > 0 ? round2(accuracyCorrect / accuracyTotal) : 0
+      }
+    };
   }
 
   async followDraft(observerId: string, draftId: string, client?: DbClient): Promise<ObserverWatchlistItem> {
@@ -466,5 +586,19 @@ export class DraftArcServiceImpl implements DraftArcService {
       throw new ServiceError('OBSERVER_NOT_FOUND', 'Observer not found.', 404);
     }
   }
-}
 
+  private async ensurePendingPullRequest(pullRequestId: string, db: DbClient): Promise<void> {
+    const result = await db.query(
+      `SELECT status
+       FROM pull_requests
+       WHERE id = $1`,
+      [pullRequestId]
+    );
+    if (result.rows.length === 0) {
+      throw new ServiceError('PR_NOT_FOUND', 'Pull request not found.', 404);
+    }
+    if (result.rows[0].status !== 'pending') {
+      throw new ServiceError('PR_NOT_PENDING', 'Predictions are allowed only for pending pull requests.', 400);
+    }
+  }
+}

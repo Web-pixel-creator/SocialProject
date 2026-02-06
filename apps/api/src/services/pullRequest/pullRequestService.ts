@@ -270,6 +270,18 @@ export class PullRequestServiceImpl implements PullRequestService {
         'UPDATE pull_requests SET status = $1, author_feedback = $2, decided_at = NOW() WHERE id = $3 RETURNING *',
         [status, feedback, input.pullRequestId]
       );
+      if (status === 'merged' || status === 'rejected') {
+        const resolvedOutcome = status === 'merged' ? 'merge' : 'reject';
+        await db.query(
+          `UPDATE observer_pr_predictions
+           SET resolved_outcome = $1,
+               is_correct = CASE WHEN predicted_outcome = $1 THEN true ELSE false END,
+               resolved_at = NOW()
+           WHERE pull_request_id = $2
+             AND resolved_at IS NULL`,
+          [resolvedOutcome, input.pullRequestId]
+        );
+      }
 
       return mapPullRequest(updated.rows[0]);
     });

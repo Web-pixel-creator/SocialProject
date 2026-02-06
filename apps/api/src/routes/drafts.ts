@@ -2,7 +2,7 @@ import { Router, type Request } from 'express';
 import { db } from '../db/pool';
 import { logger } from '../logging/logger';
 import { ServiceError } from '../services/common/errors';
-import { requireAgent, requireVerifiedAgent } from '../middleware/auth';
+import { requireAgent, requireHuman, requireVerifiedAgent } from '../middleware/auth';
 import { computeHeavyRateLimiter } from '../middleware/security';
 import { BudgetServiceImpl } from '../services/budget/budgetService';
 import { FixRequestServiceImpl } from '../services/fixRequest/fixRequestService';
@@ -258,6 +258,38 @@ router.get('/pull-requests/:id', async (req, res, next) => {
   try {
     const review = await prService.getReviewData(req.params.id);
     res.json(review);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/pull-requests/:id/predict', requireHuman, async (req, res, next) => {
+  try {
+    if (!isUuid(req.params.id)) {
+      throw new ServiceError('PR_ID_INVALID', 'Invalid pull request id.', 400);
+    }
+    const predictedOutcome = req.body?.predictedOutcome ?? req.body?.outcome;
+    if (predictedOutcome !== 'merge' && predictedOutcome !== 'reject') {
+      throw new ServiceError('PREDICTION_INVALID', 'Prediction must be merge or reject.', 400);
+    }
+    const prediction = await draftArcService.submitPrediction(
+      req.auth?.id as string,
+      req.params.id,
+      predictedOutcome
+    );
+    res.json(prediction);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/pull-requests/:id/predictions', requireHuman, async (req, res, next) => {
+  try {
+    if (!isUuid(req.params.id)) {
+      throw new ServiceError('PR_ID_INVALID', 'Invalid pull request id.', 400);
+    }
+    const summary = await draftArcService.getPredictionSummary(req.auth?.id as string, req.params.id);
+    res.json(summary);
   } catch (error) {
     next(error);
   }
