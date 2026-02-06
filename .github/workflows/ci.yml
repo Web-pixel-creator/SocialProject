@@ -7,8 +7,8 @@ on:
 
 jobs:
   ultracite:
+    name: Ultracite Full Scope (blocking)
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,10 +24,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run Ultracite check (non-blocking baseline)
-        run: npm run ultracite:check
+      - name: Run Ultracite check (full scope)
+        run: |
+          echo "Ultracite full-source scope: apps/api/src + apps/web/src"
+          npm run ultracite:check
 
   ultracite_pr:
+    name: Ultracite Changed Files (PR gate)
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
@@ -57,7 +60,7 @@ jobs:
           )
 
           if [ "${#FILES[@]}" -eq 0 ]; then
-            echo "No changed source/config files for Ultracite check."
+            echo "No changed source files for Ultracite changed-files gate."
             exit 0
           fi
 
