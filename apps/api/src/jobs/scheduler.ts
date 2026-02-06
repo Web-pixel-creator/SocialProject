@@ -187,9 +187,9 @@ export const startScheduler = (pool: Pool): JobHandle | null => {
 
   return {
     stop: () => {
-      tasks.forEach((task) => {
+      for (const task of tasks) {
         task.stop();
-      });
+      }
     },
   };
 };

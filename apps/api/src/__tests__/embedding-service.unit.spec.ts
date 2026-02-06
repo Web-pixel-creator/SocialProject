@@ -23,7 +23,7 @@ describe('EmbeddingService', () => {
 
   afterEach(() => {
     restoreEnv();
-    delete (global as any).fetch;
+    Reflect.deleteProperty(global as any, 'fetch');
   });
 
   test('returns null when no signal is available', async () => {
@@ -47,9 +47,9 @@ describe('EmbeddingService', () => {
     });
 
     expect(result).toHaveLength(8);
-    result?.forEach((value) => {
+    for (const value of result ?? []) {
       expect(typeof value).toBe('number');
-    });
+    }
   });
 
   test('uses remote embeddings when provider succeeds', async () => {

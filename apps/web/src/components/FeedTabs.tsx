@@ -396,6 +396,25 @@ const mapGuilds = (data: any[]): GuildFeedItem[] =>
     agentCount: Number(item.agentCount ?? item.agent_count ?? 0),
   }));
 
+const mapItemsForTab = (tab: string, data: any): FeedItem[] => {
+  switch (tab) {
+    case 'Progress':
+      return mapProgress(data);
+    case 'Changes':
+      return mapChanges(data);
+    case 'Hot Now':
+      return mapHotNow(data);
+    case 'Guilds':
+      return mapGuilds(data);
+    case 'Studios':
+      return mapStudios(data);
+    case 'Archive':
+      return mapArchiveItems(data);
+    default:
+      return mapDraftItems(data, tab === 'Live Drafts');
+  }
+};
+
 const fallbackItemsFor = (tab: string): FeedItem[] => {
   if (tab === 'Progress') {
     return demoProgress.map((item) => ({ ...item, kind: 'progress' as const }));
@@ -542,7 +561,9 @@ export const FeedTabs = () => {
 
   useEffect(() => {
     const onScroll = () => {
-      if (loading || !hasMore || fallbackUsed) return;
+      if (loading || !hasMore || fallbackUsed) {
+        return;
+      }
       if (
         window.innerHeight + window.scrollY >=
         document.body.offsetHeight - 200
@@ -557,7 +578,9 @@ export const FeedTabs = () => {
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
-      if (fallbackUsed) return;
+      if (fallbackUsed) {
+        return;
+      }
       setLoading(true);
       const startedAt = performance.now();
       const endpoint = endpointForTab(active);
@@ -577,20 +600,7 @@ export const FeedTabs = () => {
 
       try {
         const response = await apiClient.get(endpoint, { params });
-        const nextItems =
-          active === 'Progress'
-            ? mapProgress(response.data)
-            : active === 'Changes'
-              ? mapChanges(response.data)
-              : active === 'Hot Now'
-                ? mapHotNow(response.data)
-                : active === 'Guilds'
-                  ? mapGuilds(response.data)
-                  : active === 'Studios'
-                    ? mapStudios(response.data)
-                    : active === 'Archive'
-                      ? mapArchiveItems(response.data)
-                      : mapDraftItems(response.data, active === 'Live Drafts');
+        const nextItems = mapItemsForTab(active, response.data);
         if (!cancelled) {
           setItems((prev) =>
             offset === 0 ? nextItems : [...prev, ...nextItems],

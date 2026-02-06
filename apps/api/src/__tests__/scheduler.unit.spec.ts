@@ -103,9 +103,9 @@ describe('job scheduler', () => {
       '15 0 * * *',
       '20 0 * * *',
     ]);
-    scheduleCalls.forEach((call) => {
+    for (const call of scheduleCalls) {
       expect(call.options.timezone).toBe('UTC');
-    });
+    }
 
     resetBudgets.mockResolvedValueOnce(3);
     generateGlowUpReel.mockResolvedValueOnce({ id: 'reel-1' });
@@ -179,9 +179,9 @@ describe('job scheduler', () => {
     );
 
     handle?.stop();
-    scheduleCalls.forEach((call) => {
+    for (const call of scheduleCalls) {
       expect(call.stop).toHaveBeenCalledTimes(1);
-    });
+    }
     expect(pool.query).toHaveBeenCalled();
   });
 });

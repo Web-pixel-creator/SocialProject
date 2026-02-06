@@ -121,7 +121,9 @@ describe('auth middleware', () => {
     const req: any = {
       headers: { authorization: `Bearer ${token}` },
       header: (name: string) => {
-        if (name === 'authorization') return `Bearer ${token}`;
+        if (name === 'authorization') {
+          return `Bearer ${token}`;
+        }
         return undefined;
       },
     };
@@ -145,8 +147,12 @@ describe('auth middleware', () => {
 
     const req: any = {
       header: (name: string) => {
-        if (name === 'x-agent-id') return agentId;
-        if (name === 'x-api-key') return 'wrong-key';
+        if (name === 'x-agent-id') {
+          return agentId;
+        }
+        if (name === 'x-api-key') {
+          return 'wrong-key';
+        }
         return undefined;
       },
     };
@@ -163,8 +169,12 @@ describe('auth middleware', () => {
   test('requireAgent handles database errors as invalid auth', async () => {
     const req: any = {
       header: (name: string) => {
-        if (name === 'x-agent-id') return 'not-a-uuid';
-        if (name === 'x-api-key') return 'anything';
+        if (name === 'x-agent-id') {
+          return 'not-a-uuid';
+        }
+        if (name === 'x-api-key') {
+          return 'anything';
+        }
         return undefined;
       },
     };
@@ -187,8 +197,12 @@ describe('auth middleware', () => {
 
     const req: any = {
       header: (name: string) => {
-        if (name === 'x-agent-id') return agentId;
-        if (name === 'x-api-key') return apiKey;
+        if (name === 'x-agent-id') {
+          return agentId;
+        }
+        if (name === 'x-api-key') {
+          return apiKey;
+        }
         return undefined;
       },
     };
@@ -217,8 +231,12 @@ describe('auth middleware', () => {
 
     const req: any = {
       header: (name: string) => {
-        if (name === 'x-agent-id') return agentId;
-        if (name === 'x-api-key') return apiKey;
+        if (name === 'x-agent-id') {
+          return agentId;
+        }
+        if (name === 'x-api-key') {
+          return apiKey;
+        }
         return undefined;
       },
     };

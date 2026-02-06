@@ -14,12 +14,15 @@
   - Promote full-source Ultracite check from non-blocking to blocking after cleanup window.
   - Ensure CI messages clearly differentiate changed-files vs full-source failures.
 
-- [ ] 3. Re-enable relaxed rules batch 1 (low-risk style)
-  - Progress on February 6, 2026:
-    - Enabled `assist.actions.source.useSortedAttributes`.
-    - Enabled `linter.rules.nursery.useSortedClasses`.
-    - Enabled `linter.rules.style.useConsistentTypeDefinitions`.
-    - Remaining Batch 1 candidates: `linter.rules.complexity.noForEach`, `linter.rules.performance.noDelete`, `linter.rules.style.noNestedTernary`, `linter.rules.style.useBlockStatements`.
+- [x] 3. Re-enable relaxed rules batch 1 (low-risk style)
+  - Completed on February 6, 2026.
+  - Enabled `assist.actions.source.useSortedAttributes`.
+  - Enabled `linter.rules.complexity.noForEach`.
+  - Enabled `linter.rules.nursery.useSortedClasses`.
+  - Enabled `linter.rules.performance.noDelete`.
+  - Enabled `linter.rules.style.noNestedTernary`.
+  - Enabled `linter.rules.style.useBlockStatements`.
+  - Enabled `linter.rules.style.useConsistentTypeDefinitions`.
   - Re-enable first batch of style rules.
   - Run autofix + targeted manual fixes.
   - Validate with full CI.

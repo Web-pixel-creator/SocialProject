@@ -37,15 +37,16 @@
 
 - Enabled in `biome.jsonc`:
   - `assist.actions.source.useSortedAttributes`
-  - `linter.rules.nursery.useSortedClasses`
-  - `linter.rules.style.useConsistentTypeDefinitions`
-- Remaining Batch 1 candidates:
   - `linter.rules.complexity.noForEach`
+  - `linter.rules.nursery.useSortedClasses`
   - `linter.rules.performance.noDelete`
   - `linter.rules.style.noNestedTernary`
   - `linter.rules.style.useBlockStatements`
+  - `linter.rules.style.useConsistentTypeDefinitions`
+- Batch 1 status: complete (no remaining candidates).
 - Migration note:
   - `useConsistentTypeDefinitions` required one manual compatibility fix in `apps/api/src/services/privacy/types.ts` (`CleanupCounts` now extends `Record<string, number>`).
+  - `noDelete` migration preserved deletion semantics by replacing `delete` with `Reflect.deleteProperty(...)` in tests and API client header cleanup.
 
 ## Working Agreement
 

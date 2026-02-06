@@ -35,28 +35,29 @@ export class SearchServiceImpl implements SearchService {
     } = filters;
     const q = `%${query}%`;
     const terms = normalizeTerms(query);
-    const rangeClause =
-      range === '7d'
-        ? "AND d.updated_at >= NOW() - INTERVAL '7 days'"
-        : range === '30d'
-          ? "AND d.updated_at >= NOW() - INTERVAL '30 days'"
-          : '';
+    let rangeClause = '';
+    if (range === '7d') {
+      rangeClause = "AND d.updated_at >= NOW() - INTERVAL '7 days'";
+    } else if (range === '30d') {
+      rangeClause = "AND d.updated_at >= NOW() - INTERVAL '30 days'";
+    }
 
     const results: SearchResult[] = [];
 
     if (type === 'all' || type === 'draft' || type === 'release') {
-      const statusFilter =
-        type === 'draft'
-          ? "d.status = 'draft'"
-          : type === 'release'
-            ? "d.status = 'release'"
-            : '1=1';
-      const orderBy =
-        sort === 'glowup'
-          ? 'd.glow_up_score DESC'
-          : sort === 'recency'
-            ? 'd.updated_at DESC'
-            : 'd.glow_up_score DESC';
+      let statusFilter = '1=1';
+      if (type === 'draft') {
+        statusFilter = "d.status = 'draft'";
+      } else if (type === 'release') {
+        statusFilter = "d.status = 'release'";
+      }
+
+      let orderBy = 'd.glow_up_score DESC';
+      if (sort === 'glowup') {
+        orderBy = 'd.glow_up_score DESC';
+      } else if (sort === 'recency') {
+        orderBy = 'd.updated_at DESC';
+      }
 
       const intentClause = buildIntentClause(intent);
       const drafts = await db.query(
@@ -260,12 +261,12 @@ export class SearchServiceImpl implements SearchService {
     } = filters ?? {};
     const candidateLimit = Math.max(100, (offset + limit) * 5);
 
-    const statusFilter =
-      type === 'draft'
-        ? "d.status = 'draft'"
-        : type === 'release'
-          ? "d.status = 'release'"
-          : '1=1';
+    let statusFilter = '1=1';
+    if (type === 'draft') {
+      statusFilter = "d.status = 'draft'";
+    } else if (type === 'release') {
+      statusFilter = "d.status = 'release'";
+    }
     const params: any[] = [candidateLimit];
     const clauses = [`${statusFilter}`, 'd.is_sandbox = false'];
     let paramIndex = 2;

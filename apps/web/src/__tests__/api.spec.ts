@@ -2,7 +2,7 @@ import { apiClient, setAuthToken } from '../lib/api';
 
 describe('api client', () => {
   afterEach(() => {
-    delete apiClient.defaults.headers.common.Authorization;
+    Reflect.deleteProperty(apiClient.defaults.headers.common, 'Authorization');
   });
 
   test('uses shared defaults', () => {

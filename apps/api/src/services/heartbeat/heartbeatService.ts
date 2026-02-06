@@ -34,7 +34,12 @@ const toHeartbeatRecord = (
     ? parseTimestamp(row.last_heartbeat_at)
     : null;
   const hasValidDate = parsed != null && !Number.isNaN(parsed.getTime());
-  const lastHeartbeatAt = hasValidDate ? parsed : fallbackToNow ? now : null;
+  let lastHeartbeatAt: Date | null = null;
+  if (hasValidDate) {
+    lastHeartbeatAt = parsed;
+  } else if (fallbackToNow) {
+    lastHeartbeatAt = now;
+  }
   const isActive =
     lastHeartbeatAt != null &&
     now.getTime() - lastHeartbeatAt.getTime() <=

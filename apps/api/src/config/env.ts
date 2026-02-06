@@ -49,7 +49,9 @@ const envSchema = z.object({
 export const env = envSchema.parse(process.env);
 
 const assertProductionSecrets = () => {
-  if (env.NODE_ENV !== 'production') return;
+  if (env.NODE_ENV !== 'production') {
+    return;
+  }
 
   const errors: string[] = [];
   if (

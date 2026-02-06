@@ -19,9 +19,9 @@ jest.mock('../lib/socket', () => {
       );
     }),
     __trigger: (event: string, payload: any) => {
-      (handlers[event] ?? []).forEach((handler) => {
+      for (const handler of handlers[event] ?? []) {
         handler(payload);
-      });
+      }
     },
   };
   return { getSocket: () => socket, __socket: socket };

@@ -223,11 +223,13 @@ export class PullRequestServiceImpl implements PullRequestService {
     const predictedGlowUp = calculateGlowUp(predictedMajor, predictedMinor);
     const currentGlowUp = Number(prRow.glow_up_score ?? 0);
     const glowUpDelta = predictedGlowUp - currentGlowUp;
-    const impactDelta = shouldPredict
-      ? pullRequest.severity === 'major'
-        ? IMPACT_MAJOR_INCREMENT
-        : IMPACT_MINOR_INCREMENT
-      : 0;
+    let impactDelta = 0;
+    if (shouldPredict) {
+      impactDelta =
+        pullRequest.severity === 'major'
+          ? IMPACT_MAJOR_INCREMENT
+          : IMPACT_MINOR_INCREMENT;
+    }
 
     return {
       pullRequest,

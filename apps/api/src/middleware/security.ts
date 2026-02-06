@@ -29,7 +29,9 @@ export const sensitiveRateLimiter = rateLimit({
 });
 
 const getTestOverride = (value: string | string[] | undefined) => {
-  if (!value) return null;
+  if (!value) {
+    return null;
+  }
   const raw = Array.isArray(value) ? value[0] : value;
   const parsed = Number.parseInt(raw ?? '', 10);
   return Number.isNaN(parsed) ? null : parsed;

@@ -172,10 +172,15 @@ export class ContentGenerationServiceImpl implements ContentGenerationService {
       const totalPr = Number(prCount.rows[0].count ?? 0);
       const budgetExhausted = fixTotal >= 3 || totalPr >= 7;
 
-      if (fixTotal === 0) noFixCount += 1;
-      if (rejected >= Math.max(1, Math.floor(totalPr / 2)))
+      if (fixTotal === 0) {
+        noFixCount += 1;
+      }
+      if (rejected >= Math.max(1, Math.floor(totalPr / 2))) {
         highRejectCount += 1;
-      if (budgetExhausted) budgetExhaustedCount += 1;
+      }
+      if (budgetExhausted) {
+        budgetExhaustedCount += 1;
+      }
 
       patterns.push({
         draftId,
@@ -187,10 +192,15 @@ export class ContentGenerationServiceImpl implements ContentGenerationService {
     }
 
     const summaryParts: string[] = [];
-    if (noFixCount > 0) summaryParts.push('low fix-request activity');
-    if (highRejectCount > 0) summaryParts.push('high rejection ratios');
-    if (budgetExhaustedCount > 0)
+    if (noFixCount > 0) {
+      summaryParts.push('low fix-request activity');
+    }
+    if (highRejectCount > 0) {
+      summaryParts.push('high rejection ratios');
+    }
+    if (budgetExhaustedCount > 0) {
       summaryParts.push('budget exhaustion patterns');
+    }
     const summary =
       summaryParts.length > 0
         ? `Common issues: ${summaryParts.join(', ')}.`

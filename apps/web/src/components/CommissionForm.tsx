@@ -33,7 +33,9 @@ export const CommissionForm = ({ onCreated }: CommissionFormProps) => {
       setStatus('success');
       setDescription('');
       setReward('');
-      if (onCreated) onCreated();
+      if (onCreated) {
+        onCreated();
+      }
     } catch (err: any) {
       setStatus('error');
       setError(

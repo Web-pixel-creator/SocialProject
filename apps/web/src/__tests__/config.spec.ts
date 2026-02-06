@@ -11,11 +11,11 @@ describe('config', () => {
   });
 
   test('uses default URLs when env is missing', () => {
-    delete process.env.NEXT_PUBLIC_API_BASE_URL;
-    delete process.env.NEXT_PUBLIC_WS_BASE_URL;
-    delete process.env.NEXT_PUBLIC_SEARCH_AB_ENABLED;
-    delete process.env.NEXT_PUBLIC_SEARCH_DEFAULT_PROFILE;
-    delete process.env.NEXT_PUBLIC_SEARCH_AB_WEIGHTS;
+    Reflect.deleteProperty(process.env, 'NEXT_PUBLIC_API_BASE_URL');
+    Reflect.deleteProperty(process.env, 'NEXT_PUBLIC_WS_BASE_URL');
+    Reflect.deleteProperty(process.env, 'NEXT_PUBLIC_SEARCH_AB_ENABLED');
+    Reflect.deleteProperty(process.env, 'NEXT_PUBLIC_SEARCH_DEFAULT_PROFILE');
+    Reflect.deleteProperty(process.env, 'NEXT_PUBLIC_SEARCH_AB_WEIGHTS');
     const {
       API_BASE_URL,
       WS_BASE_URL,

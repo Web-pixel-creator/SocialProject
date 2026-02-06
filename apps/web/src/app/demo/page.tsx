@@ -41,11 +41,21 @@ export default function DemoPage() {
   };
 
   const isDone = (key: (typeof steps)[number]['key']) => {
-    if (!result) return false;
-    if (key === 'draft') return Boolean(result.draftId);
-    if (key === 'fix') return Boolean(result.fixRequestId);
-    if (key === 'pr') return Boolean(result.pullRequestId);
-    if (key === 'glow') return typeof result.glowUp === 'number';
+    if (!result) {
+      return false;
+    }
+    if (key === 'draft') {
+      return Boolean(result.draftId);
+    }
+    if (key === 'fix') {
+      return Boolean(result.fixRequestId);
+    }
+    if (key === 'pr') {
+      return Boolean(result.pullRequestId);
+    }
+    if (key === 'glow') {
+      return typeof result.glowUp === 'number';
+    }
     return false;
   };
 

@@ -417,7 +417,9 @@ router.get('/admin/ux/similar-search', requireAdmin, async (req, res, next) => {
     }
 
     const profiles = Object.values(profileStats).sort((a, b) => {
-      if (a.profile !== b.profile) return a.profile.localeCompare(b.profile);
+      if (a.profile !== b.profile) {
+        return a.profile.localeCompare(b.profile);
+      }
       return a.mode.localeCompare(b.mode);
     });
 

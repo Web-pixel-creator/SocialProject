@@ -29,7 +29,7 @@
     "rules": {
       "complexity": {
         "noExcessiveCognitiveComplexity": "off",
-        "noForEach": "off"
+        "noForEach": "error"
       },
       "correctness": {
         "useExhaustiveDependencies": "off"
@@ -39,7 +39,7 @@
       },
       "performance": {
         "noBarrelFile": "off",
-        "noDelete": "off",
+        "noDelete": "error",
         "useTopLevelRegex": "off"
       },
       "suspicious": {
@@ -48,9 +48,9 @@
         "useAwait": "off"
       },
       "style": {
-        "noNestedTernary": "off",
+        "noNestedTernary": "error",
         "noParameterProperties": "off",
-        "useBlockStatements": "off",
+        "useBlockStatements": "error",
         "useConsistentTypeDefinitions": "error",
         "useFilenamingConvention": "off"
       }

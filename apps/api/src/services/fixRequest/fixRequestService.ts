@@ -67,12 +67,12 @@ export class FixRequestServiceImpl implements FixRequestService {
       throw new ServiceError('DRAFT_RELEASED', 'Draft is released.');
     }
 
-    const coordinatesValue =
-      input.coordinates && typeof input.coordinates === 'string'
-        ? input.coordinates
-        : input.coordinates
-          ? JSON.stringify(input.coordinates)
-          : null;
+    let coordinatesValue: string | null = null;
+    if (input.coordinates && typeof input.coordinates === 'string') {
+      coordinatesValue = input.coordinates;
+    } else if (input.coordinates) {
+      coordinatesValue = JSON.stringify(input.coordinates);
+    }
 
     const result = await db.query(
       'INSERT INTO fix_requests (draft_id, critic_id, category, description, coordinates, target_version) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',

@@ -16,9 +16,13 @@ interface ChangeCardProps {
 }
 
 const formatTime = (value?: string) => {
-  if (!value) return 'Just now';
+  if (!value) {
+    return 'Just now';
+  }
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Just now';
+  if (Number.isNaN(date.getTime())) {
+    return 'Just now';
+  }
   return date.toLocaleString();
 };
 
@@ -37,7 +41,9 @@ export const ChangeCard = ({
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
 
   const copyLink = async () => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined') {
+      return;
+    }
     const url = `${window.location.origin}/drafts/${draftId}?change=${id}`;
     try {
       await navigator.clipboard.writeText(url);

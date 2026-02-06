@@ -31,7 +31,9 @@ export const useRealtimeRoom = (scope: string) => {
     requestResync();
 
     const onEvent = (event: RealtimeEvent) => {
-      if (event.scope !== scope) return;
+      if (event.scope !== scope) {
+        return;
+      }
       latestSequenceRef.current = Math.max(
         latestSequenceRef.current,
         event.sequence,
@@ -55,7 +57,9 @@ export const useRealtimeRoom = (scope: string) => {
       resyncRequired?: boolean;
       latestSequence?: number;
     }) => {
-      if (resyncScope !== scope) return;
+      if (resyncScope !== scope) {
+        return;
+      }
       if (resyncRequired) {
         setNeedsResync(true);
         return;
@@ -69,11 +73,11 @@ export const useRealtimeRoom = (scope: string) => {
       setEvents((prev) => {
         const existingIds = new Set(prev.map((evt) => evt.id));
         const merged = [...prev];
-        resyncEvents.forEach((evt) => {
+        for (const evt of resyncEvents) {
           if (!existingIds.has(evt.id)) {
             merged.push(evt);
           }
-        });
+        }
         return merged;
       });
     };

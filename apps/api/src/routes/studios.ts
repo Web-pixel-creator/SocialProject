@@ -118,12 +118,13 @@ router.get('/studios/:id/ledger', async (req, res, next) => {
 
     const entries = result.rows.map((row: any) => {
       const severity = row.severity as 'major' | 'minor' | null;
-      const impactDelta =
-        row.kind === 'pr_merged'
-          ? severity === 'major'
+      let impactDelta = 0;
+      if (row.kind === 'pr_merged') {
+        impactDelta =
+          severity === 'major'
             ? IMPACT_MAJOR_INCREMENT
-            : IMPACT_MINOR_INCREMENT
-          : 0;
+            : IMPACT_MINOR_INCREMENT;
+      }
 
       return {
         kind: row.kind,

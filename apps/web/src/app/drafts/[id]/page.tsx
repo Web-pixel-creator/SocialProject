@@ -147,26 +147,34 @@ export default function DraftDetailPage() {
   );
 
   const loadDraft = async () => {
-    if (!draftId) return;
+    if (!draftId) {
+      return;
+    }
     const response = await apiClient.get(`/drafts/${draftId}`);
     setDraft(response.data.draft);
     setVersions(response.data.versions ?? []);
   };
 
   const loadFixRequests = async () => {
-    if (!draftId) return;
+    if (!draftId) {
+      return;
+    }
     const response = await apiClient.get(`/drafts/${draftId}/fix-requests`);
     setFixRequests(response.data ?? []);
   };
 
   const loadPullRequests = async () => {
-    if (!draftId) return;
+    if (!draftId) {
+      return;
+    }
     const response = await apiClient.get(`/drafts/${draftId}/pull-requests`);
     setPullRequests(response.data ?? []);
   };
 
   const loadArc = async () => {
-    if (!draftId) return;
+    if (!draftId) {
+      return;
+    }
     setArcLoading(true);
     setArcError(null);
     try {
@@ -193,7 +201,9 @@ export default function DraftDetailPage() {
   };
 
   const loadWatchlist = async () => {
-    if (!draftId) return;
+    if (!draftId) {
+      return;
+    }
     try {
       const response = await apiClient.get('/observers/watchlist');
       const list = Array.isArray(response.data) ? response.data : [];
@@ -272,7 +282,9 @@ export default function DraftDetailPage() {
   };
 
   const runDemoFlow = async () => {
-    if (!draftId) return;
+    if (!draftId) {
+      return;
+    }
     setDemoLoading(true);
     setDemoStatus(null);
     try {
@@ -287,7 +299,9 @@ export default function DraftDetailPage() {
   };
 
   const copyDraftId = async () => {
-    if (!draftId || typeof navigator === 'undefined') return;
+    if (!draftId || typeof navigator === 'undefined') {
+      return;
+    }
     try {
       await navigator.clipboard.writeText(draftId);
       setCopyStatus('Copied');
@@ -483,9 +497,13 @@ export default function DraftDetailPage() {
   }, [arcView, draftId]);
 
   useEffect(() => {
-    if (events.length === 0) return;
+    if (events.length === 0) {
+      return;
+    }
     const last = events.at(-1);
-    if (!last) return;
+    if (!last) {
+      return;
+    }
     if (
       ['fix_request', 'pull_request', 'pull_request_decision'].includes(
         last.type,
@@ -518,23 +536,35 @@ export default function DraftDetailPage() {
     eventType: string,
     payload: Record<string, unknown>,
   ) => {
-    if (eventType === 'fix_request') return 'New fix request submitted';
-    if (eventType === 'pull_request') return 'New pull request submitted';
+    if (eventType === 'fix_request') {
+      return 'New fix request submitted';
+    }
+    if (eventType === 'pull_request') {
+      return 'New pull request submitted';
+    }
     if (eventType === 'pull_request_decision') {
       const decision = String(payload?.decision ?? 'updated').replace('_', ' ');
       return `Pull request ${decision}`;
     }
-    if (eventType === 'glowup_update') return 'GlowUp score updated';
-    if (eventType === 'draft_released') return 'Draft released';
+    if (eventType === 'glowup_update') {
+      return 'GlowUp score updated';
+    }
+    if (eventType === 'draft_released') {
+      return 'Draft released';
+    }
     return 'Draft activity updated';
   };
 
   useEffect(() => {
-    if (!isFollowed || events.length === 0) return;
+    if (!isFollowed || events.length === 0) {
+      return;
+    }
     const fresh = events.filter(
       (event) => !seenEventsRef.current.has(event.id),
     );
-    if (fresh.length === 0) return;
+    if (fresh.length === 0) {
+      return;
+    }
     const now = new Date().toLocaleTimeString();
     const next = fresh.map((event) => {
       seenEventsRef.current.add(event.id);
@@ -585,7 +615,9 @@ export default function DraftDetailPage() {
   })();
 
   const nextAction = (() => {
-    if (!draftId) return null;
+    if (!draftId) {
+      return null;
+    }
     if (pendingPull) {
       return {
         title: 'Review pending PR',
@@ -719,13 +751,15 @@ export default function DraftDetailPage() {
                 </h3>
                 <span className="text-slate-500 text-xs">Visual match</span>
               </div>
-              {similarLoading ? (
+              {similarLoading && (
                 <p className="mt-3 text-slate-500 text-xs">
                   Loading similar drafts...
                 </p>
-              ) : similarStatus ? (
+              )}
+              {!similarLoading && similarStatus && (
                 <p className="mt-3 text-slate-500 text-xs">{similarStatus}</p>
-              ) : (
+              )}
+              {!(similarLoading || similarStatus) && (
                 <ul className="mt-3 grid gap-2">
                   {similarDrafts.map((item) => (
                     <li

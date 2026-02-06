@@ -16,6 +16,12 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
   const [privacy, setPrivacy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  let submitButtonLabel = 'Create account';
+  if (loading) {
+    submitButtonLabel = 'Processing...';
+  } else if (mode === 'login') {
+    submitButtonLabel = 'Sign in';
+  }
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -96,11 +102,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
         disabled={loading}
         type="submit"
       >
-        {loading
-          ? 'Processing...'
-          : mode === 'login'
-            ? 'Sign in'
-            : 'Create account'}
+        {submitButtonLabel}
       </button>
       <div className="grid gap-2 text-slate-500 text-xs">
         <button

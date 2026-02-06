@@ -83,11 +83,12 @@ router.post('/search/visual', async (req, res, next) => {
         400,
       );
     }
-    const tagList = Array.isArray(tags)
-      ? tags
-      : typeof tags === 'string'
-        ? [tags]
-        : undefined;
+    let tagList: string[] | undefined;
+    if (Array.isArray(tags)) {
+      tagList = tags;
+    } else if (typeof tags === 'string') {
+      tagList = [tags];
+    }
     const results = await searchService.searchVisual({
       embedding,
       draftId,

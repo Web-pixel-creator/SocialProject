@@ -119,7 +119,9 @@ export default function PullRequestReviewPage({
   const handleDecision = async (
     decision: 'merge' | 'reject' | 'request_changes',
   ) => {
-    if (!review) return;
+    if (!review) {
+      return;
+    }
     if (decision === 'reject' && !rejectReason.trim()) {
       setError('Rejection reason is required.');
       return;

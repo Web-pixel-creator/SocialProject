@@ -11,12 +11,16 @@ const cacheStore = new Map<string, CacheEntry>();
 const MAX_CACHE_ITEMS = 500;
 
 const pruneCache = () => {
-  if (cacheStore.size <= MAX_CACHE_ITEMS) return;
+  if (cacheStore.size <= MAX_CACHE_ITEMS) {
+    return;
+  }
   const overflow = cacheStore.size - MAX_CACHE_ITEMS;
   const keys = cacheStore.keys();
   for (let i = 0; i < overflow; i += 1) {
     const key = keys.next().value;
-    if (!key) break;
+    if (!key) {
+      break;
+    }
     cacheStore.delete(key);
   }
 };
@@ -24,7 +28,9 @@ const pruneCache = () => {
 const normalizeHeaders = (headers: Record<string, unknown>) => {
   const normalized: Record<string, string> = {};
   for (const [key, value] of Object.entries(headers)) {
-    if (value == null) continue;
+    if (value == null) {
+      continue;
+    }
     if (Array.isArray(value)) {
       normalized[key] = value.join(', ');
       continue;

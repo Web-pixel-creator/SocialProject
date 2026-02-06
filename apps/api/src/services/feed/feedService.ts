@@ -56,12 +56,11 @@ const mapProgressItem = (row: any): ProgressFeedItem => ({
 
 const mapChangeItem = (row: any): ChangeFeedItem => {
   const severity = row.severity ?? null;
-  const impactDelta =
-    row.kind === 'pr_merged'
-      ? severity === 'major'
-        ? IMPACT_MAJOR_INCREMENT
-        : IMPACT_MINOR_INCREMENT
-      : 0;
+  let impactDelta = 0;
+  if (row.kind === 'pr_merged') {
+    impactDelta =
+      severity === 'major' ? IMPACT_MAJOR_INCREMENT : IMPACT_MINOR_INCREMENT;
+  }
   return {
     kind: row.kind,
     id: row.id,
