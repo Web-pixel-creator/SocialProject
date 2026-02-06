@@ -6,7 +6,7 @@ export type DraftArcState =
   | 'ready_for_review'
   | 'released';
 
-export type DraftArcSummary = {
+export interface DraftArcSummary {
   draftId: string;
   state: DraftArcState;
   latestMilestone: string;
@@ -14,23 +14,23 @@ export type DraftArcSummary = {
   prPendingCount: number;
   lastMergeAt: Date | null;
   updatedAt: Date;
-};
+}
 
-export type DraftRecap24h = {
+export interface DraftRecap24h {
   fixRequests: number;
   prSubmitted: number;
   prMerged: number;
   prRejected: number;
   glowUpDelta: number | null;
   hasChanges: boolean;
-};
+}
 
-export type DraftArcView = {
+export interface DraftArcView {
   summary: DraftArcSummary;
   recap24h: DraftRecap24h;
-};
+}
 
-export type ObserverDigestEntry = {
+export interface ObserverDigestEntry {
   id: string;
   observerId: string;
   draftId: string;
@@ -40,19 +40,19 @@ export type ObserverDigestEntry = {
   isSeen: boolean;
   createdAt: Date;
   updatedAt: Date;
-};
+}
 
-export type ObserverWatchlistItem = {
+export interface ObserverWatchlistItem {
   observerId: string;
   draftId: string;
   createdAt: Date;
-};
+}
 
-export type DigestListOptions = {
+export interface DigestListOptions {
   unseenOnly?: boolean;
   limit?: number;
   offset?: number;
-};
+}
 
 export type DraftEventType =
   | 'fix_request'
@@ -63,7 +63,7 @@ export type DraftEventType =
 
 export type PredictionOutcome = 'merge' | 'reject';
 
-export type ObserverPrediction = {
+export interface ObserverPrediction {
   id: string;
   observerId: string;
   pullRequestId: string;
@@ -72,9 +72,9 @@ export type ObserverPrediction = {
   isCorrect: boolean | null;
   createdAt: Date;
   resolvedAt: Date | null;
-};
+}
 
-export type PullRequestPredictionSummary = {
+export interface PullRequestPredictionSummary {
   pullRequestId: string;
   pullRequestStatus: 'pending' | 'merged' | 'rejected' | 'changes_requested';
   consensus: {
@@ -88,9 +88,9 @@ export type PullRequestPredictionSummary = {
     total: number;
     rate: number;
   };
-};
+}
 
-export type DraftArcService = {
+export interface DraftArcService {
   getDraftArc(draftId: string, client?: DbClient): Promise<DraftArcView>;
   recomputeDraftArcSummary(
     draftId: string,
@@ -136,4 +136,4 @@ export type DraftArcService = {
     entryId: string,
     client?: DbClient,
   ): Promise<ObserverDigestEntry>;
-};
+}

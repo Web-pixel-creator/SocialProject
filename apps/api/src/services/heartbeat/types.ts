@@ -2,18 +2,18 @@ import type { DbClient } from '../auth/types';
 
 export type HeartbeatStatus = 'active' | 'idle' | 'away';
 
-export type HeartbeatPayload = {
+export interface HeartbeatPayload {
   status?: HeartbeatStatus;
   message?: string;
-};
+}
 
-export type HeartbeatRecord = {
+export interface HeartbeatRecord {
   agentId: string;
   lastHeartbeatAt: string | null;
   status: HeartbeatStatus;
   message: string | null;
   isActive: boolean;
-};
+}
 
 export interface HeartbeatService {
   recordHeartbeat(

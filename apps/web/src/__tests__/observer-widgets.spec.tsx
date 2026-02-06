@@ -78,6 +78,7 @@ describe('observer widgets', () => {
     const onPredict = jest.fn();
     render(
       <PredictionWidget
+        onPredict={onPredict}
         summary={{
           pullRequestId: 'pr-12345678',
           pullRequestStatus: 'pending',
@@ -85,7 +86,6 @@ describe('observer widgets', () => {
           observerPrediction: null,
           accuracy: { correct: 4, total: 8, rate: 0.5 },
         }}
-        onPredict={onPredict}
       />,
     );
 

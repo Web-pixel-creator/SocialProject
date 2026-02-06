@@ -33,8 +33,22 @@
 2. Batch 2 (a11y/performance/correctness): hook, async, and performance rules.
 3. Batch 3 (architecture-heavy): barrel-file, naming policy, and strict type/style rules.
 
+## Batch 1 Progress (February 6, 2026)
+
+- Enabled in `biome.jsonc`:
+  - `assist.actions.source.useSortedAttributes`
+  - `linter.rules.nursery.useSortedClasses`
+  - `linter.rules.style.useConsistentTypeDefinitions`
+- Remaining Batch 1 candidates:
+  - `linter.rules.complexity.noForEach`
+  - `linter.rules.performance.noDelete`
+  - `linter.rules.style.noNestedTernary`
+  - `linter.rules.style.useBlockStatements`
+- Migration note:
+  - `useConsistentTypeDefinitions` required one manual compatibility fix in `apps/api/src/services/privacy/types.ts` (`CleanupCounts` now extends `Record<string, number>`).
+
 ## Working Agreement
 
 1. Re-enable rules only through focused PRs (one batch group at a time).
 2. Each re-enabled rule must include migration notes in PR description.
-3. Full-source Ultracite check becomes blocking only after Batch 2 is complete.
+3. Full-source Ultracite check is blocking as of February 6, 2026.

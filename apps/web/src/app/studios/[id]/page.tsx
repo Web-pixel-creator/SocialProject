@@ -4,16 +4,16 @@ import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { apiClient } from '../../../lib/api';
 
-type StudioProfile = {
+interface StudioProfile {
   id: string;
   studio_name?: string;
   studioName?: string;
   personality?: string;
   impact?: number;
   signal?: number;
-};
+}
 
-type ImpactLedgerEntry = {
+interface ImpactLedgerEntry {
   kind: 'pr_merged' | 'fix_request';
   id: string;
   draftId: string;
@@ -22,7 +22,7 @@ type ImpactLedgerEntry = {
   severity?: 'major' | 'minor' | null;
   occurredAt: string;
   impactDelta: number;
-};
+}
 
 export default function StudioProfilePage() {
   const params = useParams<{ id?: string | string[] }>();
@@ -88,39 +88,39 @@ export default function StudioProfilePage() {
     <main className="grid gap-6">
       <div className="card p-6">
         <p className="pill">Studio Profile</p>
-        <h2 className="mt-3 text-2xl font-semibold text-ink">{studioName}</h2>
-        <p className="text-sm text-slate-600">
+        <h2 className="mt-3 font-semibold text-2xl text-ink">{studioName}</h2>
+        <p className="text-slate-600 text-sm">
           Impact {impact.toFixed(1)} · Signal {signal.toFixed(1)}
         </p>
         {studio?.personality && (
-          <p className="mt-2 text-sm text-slate-500">{studio.personality}</p>
+          <p className="mt-2 text-slate-500 text-sm">{studio.personality}</p>
         )}
       </div>
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-600 text-sm">
           {error}
         </div>
       )}
       {loading ? (
-        <div className="card p-6 text-sm text-slate-500">Loading studio…</div>
+        <div className="card p-6 text-slate-500 text-sm">Loading studio…</div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="card p-6">
-            <h3 className="text-sm font-semibold text-ink">Top GlowUps</h3>
-            <ul className="mt-4 grid gap-3 text-sm text-slate-600">
+            <h3 className="font-semibold text-ink text-sm">Top GlowUps</h3>
+            <ul className="mt-4 grid gap-3 text-slate-600 text-sm">
               <li>Editorial Landing · GlowUp 22</li>
               <li>Neon Poster · GlowUp 18</li>
               <li>Product Storyboard · GlowUp 15</li>
             </ul>
           </div>
           <div className="card p-6">
-            <h3 className="text-sm font-semibold text-ink">Impact ledger</h3>
+            <h3 className="font-semibold text-ink text-sm">Impact ledger</h3>
             {ledger.length === 0 ? (
-              <p className="mt-4 text-sm text-slate-500">
+              <p className="mt-4 text-slate-500 text-sm">
                 No recent contributions yet.
               </p>
             ) : (
-              <ul className="mt-4 grid gap-3 text-sm text-slate-600">
+              <ul className="mt-4 grid gap-3 text-slate-600 text-sm">
                 {ledger.map((entry) => (
                   <li key={entry.id}>
                     <span className="font-semibold text-slate-800">
@@ -128,7 +128,7 @@ export default function StudioProfilePage() {
                     </span>
                     {entry.severity ? ` (${entry.severity})` : ''} ·{' '}
                     {entry.draftTitle}
-                    <div className="text-xs text-slate-500">
+                    <div className="text-slate-500 text-xs">
                       Impact +{entry.impactDelta} ·{' '}
                       {new Date(entry.occurredAt).toLocaleString()}
                     </div>
@@ -138,10 +138,10 @@ export default function StudioProfilePage() {
             )}
           </div>
           <div className="card p-6">
-            <h3 className="text-sm font-semibold text-ink">
+            <h3 className="font-semibold text-ink text-sm">
               Recent Contributions
             </h3>
-            <ul className="mt-4 grid gap-3 text-sm text-slate-600">
+            <ul className="mt-4 grid gap-3 text-slate-600 text-sm">
               <li>PR #124 · Hero refresh</li>
               <li>PR #120 · Typography system</li>
               <li>PR #115 · Color grading</li>

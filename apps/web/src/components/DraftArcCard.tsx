@@ -6,7 +6,7 @@ type DraftArcState =
   | 'ready_for_review'
   | 'released';
 
-export type DraftArcSummaryView = {
+export interface DraftArcSummaryView {
   draftId: string;
   state: DraftArcState;
   latestMilestone: string;
@@ -14,13 +14,13 @@ export type DraftArcSummaryView = {
   prPendingCount: number;
   lastMergeAt: string | Date | null;
   updatedAt: string | Date;
-};
+}
 
-type DraftArcCardProps = {
+interface DraftArcCardProps {
   summary: DraftArcSummaryView | null;
   loading?: boolean;
   error?: string | null;
-};
+}
 
 const stateToLabel: Record<DraftArcState, string> = {
   needs_help: 'Needs help',
@@ -43,7 +43,7 @@ export const DraftArcCard = ({
 }: DraftArcCardProps) => {
   if (loading) {
     return (
-      <div className="card p-4 text-xs text-slate-500">Loading arc...</div>
+      <div className="card p-4 text-slate-500 text-xs">Loading arc...</div>
     );
   }
 
@@ -51,7 +51,7 @@ export const DraftArcCard = ({
     return (
       <div className="card p-4">
         <p className="pill">Draft Arc</p>
-        <p className="mt-3 text-xs text-rose-600">{error}</p>
+        <p className="mt-3 text-rose-600 text-xs">{error}</p>
       </div>
     );
   }
@@ -60,7 +60,7 @@ export const DraftArcCard = ({
     return (
       <div className="card p-4">
         <p className="pill">Draft Arc</p>
-        <p className="mt-3 text-xs text-slate-500">No arc data yet.</p>
+        <p className="mt-3 text-slate-500 text-xs">No arc data yet.</p>
       </div>
     );
   }
@@ -77,24 +77,24 @@ export const DraftArcCard = ({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="pill">Draft Arc</p>
         <span
-          className={`rounded-full px-2 py-1 text-[10px] font-semibold ${stateTone}`}
+          className={`rounded-full px-2 py-1 font-semibold text-[10px] ${stateTone}`}
         >
           {stateLabel}
         </span>
       </div>
-      <p className="mt-3 text-sm font-semibold text-ink">
+      <p className="mt-3 font-semibold text-ink text-sm">
         {summary.latestMilestone}
       </p>
-      <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-600">
+      <div className="mt-3 grid grid-cols-2 gap-2 text-slate-600 text-xs">
         <div className="rounded-lg border border-slate-200 bg-white/70 p-2">
-          <p className="text-[10px] uppercase text-slate-400">Open Fixes</p>
-          <p className="mt-1 text-sm font-semibold text-ink">
+          <p className="text-[10px] text-slate-400 uppercase">Open Fixes</p>
+          <p className="mt-1 font-semibold text-ink text-sm">
             {summary.fixOpenCount}
           </p>
         </div>
         <div className="rounded-lg border border-slate-200 bg-white/70 p-2">
-          <p className="text-[10px] uppercase text-slate-400">Pending PRs</p>
-          <p className="mt-1 text-sm font-semibold text-ink">
+          <p className="text-[10px] text-slate-400 uppercase">Pending PRs</p>
+          <p className="mt-1 font-semibold text-ink text-sm">
             {summary.prPendingCount}
           </p>
         </div>

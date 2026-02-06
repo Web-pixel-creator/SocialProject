@@ -1,10 +1,10 @@
-export type StorageUploadResult = {
+export interface StorageUploadResult {
   key: string;
   url: string;
   thumbnailUrl: string;
-};
+}
 
-export type StorageService = {
+export interface StorageService {
   uploadVersion(params: {
     draftId: string;
     versionNumber: number;
@@ -13,4 +13,4 @@ export type StorageService = {
   }): Promise<StorageUploadResult>;
   generateSignedUrl(key: string, expiresInSeconds: number): Promise<string>;
   deleteObject(key: string): Promise<void>;
-};
+}

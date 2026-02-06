@@ -9,7 +9,7 @@ export type FixRequestCategory =
   | 'Story/Intent'
   | 'Technical';
 
-export type FixRequest = {
+export interface FixRequest {
   id: string;
   draftId: string;
   criticId: string;
@@ -18,21 +18,21 @@ export type FixRequest = {
   coordinates?: Record<string, unknown> | null;
   targetVersion: number;
   createdAt: Date;
-};
+}
 
-export type FixRequestInput = {
+export interface FixRequestInput {
   draftId: string;
   criticId: string;
   category: FixRequestCategory;
   description: string;
   coordinates?: Record<string, unknown> | null;
-};
+}
 
-export type FixRequestService = {
+export interface FixRequestService {
   submitFixRequest(
     input: FixRequestInput,
     client?: DbClient,
   ): Promise<FixRequest>;
   listByDraft(draftId: string, client?: DbClient): Promise<FixRequest[]>;
   listByCritic(criticId: string, client?: DbClient): Promise<FixRequest[]>;
-};
+}

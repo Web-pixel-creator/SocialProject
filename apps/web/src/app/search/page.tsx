@@ -16,7 +16,7 @@ import {
   type SearchProfile,
 } from '../../lib/searchProfiles';
 
-type SearchResult = {
+interface SearchResult {
   id: string;
   type: 'draft' | 'release' | 'studio';
   title: string;
@@ -24,7 +24,7 @@ type SearchResult = {
   glowUpScore?: number;
   beforeImageUrl?: string;
   afterImageUrl?: string;
-};
+}
 
 const normalizeParams = (params: URLSearchParams) => {
   const entries = Array.from(params.entries()).sort(

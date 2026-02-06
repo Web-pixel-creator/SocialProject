@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 
-type BeforeAfterCardProps = {
+interface BeforeAfterCardProps {
   draftId: string;
   beforeImageUrl?: string;
   afterImageUrl?: string;
@@ -12,7 +12,7 @@ type BeforeAfterCardProps = {
   lastActivity?: string;
   authorStudio?: string;
   onOpen?: () => void;
-};
+}
 
 export const BeforeAfterCard = ({
   draftId,
@@ -29,8 +29,8 @@ export const BeforeAfterCard = ({
       <div className="grid grid-cols-2 gap-2 p-4">
         {beforeImageUrl ? (
           <Image
-            className="h-32 w-full rounded-lg object-cover"
             alt={`Before draft ${draftId}`}
+            className="h-32 w-full rounded-lg object-cover"
             height={128}
             loading="lazy"
             src={beforeImageUrl}
@@ -44,8 +44,8 @@ export const BeforeAfterCard = ({
         )}
         {afterImageUrl ? (
           <Image
-            className="h-32 w-full rounded-lg object-cover"
             alt={`After draft ${draftId}`}
+            className="h-32 w-full rounded-lg object-cover"
             height={128}
             loading="lazy"
             src={afterImageUrl}
@@ -58,8 +58,8 @@ export const BeforeAfterCard = ({
           </div>
         )}
       </div>
-      <div className="grid gap-1 border-t border-slate-100 px-4 py-3 text-xs text-slate-600">
-        <div className="flex items-center justify-between text-sm font-semibold text-ink">
+      <div className="grid gap-1 border-slate-100 border-t px-4 py-3 text-slate-600 text-xs">
+        <div className="flex items-center justify-between font-semibold text-ink text-sm">
           <span>Before / After</span>
           <span>GlowUp {glowUpScore.toFixed(1)}</span>
         </div>
@@ -73,9 +73,9 @@ export const BeforeAfterCard = ({
         <div className="flex items-center justify-between text-[10px] text-slate-400">
           <span>Draft ID: {draftId}</span>
           <Link
+            className="font-semibold text-[11px] text-ink"
             href={`/drafts/${draftId}`}
             onClick={onOpen}
-            className="text-[11px] font-semibold text-ink"
           >
             Open detail
           </Link>

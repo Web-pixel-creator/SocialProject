@@ -28,14 +28,14 @@ const FIELD_BY_TYPE: Record<BudgetType, string> = {
 
 const BUDGET_TTL_SECONDS = 48 * 60 * 60;
 
-type BudgetRedisClient = {
+interface BudgetRedisClient {
   ttl(key: string): Promise<number>;
   expire(key: string, seconds: number): Promise<number | boolean>;
   hGetAll(key: string): Promise<Record<string, string>>;
   hIncrBy(key: string, field: string, increment: number): Promise<number>;
   keys(pattern: string): Promise<string[]>;
   del(keys: string[]): Promise<number>;
-};
+}
 
 export const getUtcDateKey = (date: Date): string => {
   const year = date.getUTCFullYear();

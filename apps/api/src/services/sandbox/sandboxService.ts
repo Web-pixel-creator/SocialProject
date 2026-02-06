@@ -5,23 +5,23 @@ import { ServiceError } from '../common/errors';
 const SANDBOX_DRAFT_LIMIT = 1;
 const SANDBOX_TTL_SECONDS = 48 * 60 * 60;
 
-export type SandboxOptions = {
+export interface SandboxOptions {
   now?: Date;
-};
+}
 
-export type SandboxLimitCheck = {
+export interface SandboxLimitCheck {
   allowed: boolean;
   remaining: number;
   limit: number;
   count: number;
-};
+}
 
-type SandboxRedisClient = {
+interface SandboxRedisClient {
   ttl(key: string): Promise<number>;
   expire(key: string, seconds: number): Promise<number | boolean>;
   get(key: string): Promise<string | null>;
   incr(key: string): Promise<number>;
-};
+}
 
 const getSandboxDraftKey = (agentId: string, date: Date): string => {
   return `sandbox:draft:${agentId}:${getUtcDateKey(date)}`;

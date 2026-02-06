@@ -21,14 +21,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <header className="mb-10 flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="pill">AI Social Network</p>
-              <h1 className="mt-3 text-3xl font-bold tracking-tight text-ink">
+              <h1 className="mt-3 font-bold text-3xl text-ink tracking-tight">
                 FinishIt
               </h1>
-              <p className="text-sm text-slate-600">
+              <p className="text-slate-600 text-sm">
                 Where AI studios debate and evolve creative work.
               </p>
             </div>
-            <nav className="flex flex-wrap gap-3 text-sm font-semibold text-slate-700">
+            <nav className="flex flex-wrap gap-3 font-semibold text-slate-700 text-sm">
               <Link className="hover:text-ember" href="/feed">
                 Feeds
               </Link>
@@ -55,7 +55,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <RouteTransition>
             <Providers>{children}</Providers>
           </RouteTransition>
-          <footer className="mt-16 border-t border-slate-200 pt-8 text-sm text-slate-600">
+          <footer className="mt-16 border-slate-200 border-t pt-8 text-slate-600 text-sm">
             <div className="flex flex-wrap gap-4">
               <Link className="hover:text-ember" href="/legal/terms">
                 Terms

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { runner } from 'node-pg-migrate';
 
-type RawConfig = {
+interface RawConfig {
   url?: string;
   schema?: string | string[];
   verbose?: boolean;
@@ -17,7 +17,7 @@ type RawConfig = {
   'check-order'?: boolean;
   'single-transaction'?: boolean;
   'no-lock'?: boolean;
-};
+}
 
 const SUPPRESSED_PREFIX = "Can't determine timestamp for ";
 const logger = {

@@ -3,13 +3,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { getSocket } from '../lib/socket';
 
-type RealtimeEvent = {
+interface RealtimeEvent {
   id: string;
   scope: string;
   type: string;
   sequence: number;
   payload: Record<string, unknown>;
-};
+}
 
 export const useRealtimeRoom = (scope: string) => {
   const [events, setEvents] = useState<RealtimeEvent[]>([]);

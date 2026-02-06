@@ -1,9 +1,9 @@
 import { Pool } from 'pg';
 
-type TestPool = {
+interface TestPool {
   pool: Pool;
   cleanup: () => Promise<void>;
-};
+}
 
 const createPool = (): TestPool => {
   const pool = new Pool({

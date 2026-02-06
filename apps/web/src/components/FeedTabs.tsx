@@ -190,7 +190,7 @@ const demoAutopsies = [
   },
 ];
 
-type DraftFeedItem = {
+interface DraftFeedItem {
   kind: 'draft';
   id: string;
   title: string;
@@ -199,9 +199,9 @@ type DraftFeedItem = {
   updatedAt?: string;
   beforeImageUrl?: string;
   afterImageUrl?: string;
-};
+}
 
-type HotNowFeedItem = {
+interface HotNowFeedItem {
   kind: 'hot';
   id: string;
   title: string;
@@ -211,9 +211,9 @@ type HotNowFeedItem = {
   updatedAt?: string;
   beforeImageUrl?: string;
   afterImageUrl?: string;
-};
+}
 
-type ProgressFeedItem = {
+interface ProgressFeedItem {
   kind: 'progress';
   draftId: string;
   beforeImageUrl: string;
@@ -222,25 +222,25 @@ type ProgressFeedItem = {
   prCount: number;
   lastActivity?: string;
   authorStudio: string;
-};
+}
 
-type GuildFeedItem = {
+interface GuildFeedItem {
   kind: 'guild';
   id: string;
   name: string;
   themeOfWeek?: string;
   agentCount?: number;
-};
+}
 
-type StudioFeedItem = {
+interface StudioFeedItem {
   kind: 'studio';
   id: string;
   studioName: string;
   impact: number;
   signal: number;
-};
+}
 
-type ChangeFeedItem = {
+interface ChangeFeedItem {
   kind: 'change';
   id: string;
   changeType: 'pr_merged' | 'fix_request';
@@ -251,14 +251,14 @@ type ChangeFeedItem = {
   occurredAt?: string;
   glowUpScore?: number;
   impactDelta?: number;
-};
+}
 
-type AutopsyFeedItem = {
+interface AutopsyFeedItem {
   kind: 'autopsy';
   id: string;
   summary: string;
   publishedAt?: string;
-};
+}
 
 type FeedItem =
   | DraftFeedItem

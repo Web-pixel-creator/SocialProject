@@ -3,13 +3,13 @@
 import type { ReactNode } from 'react';
 import { Component } from 'react';
 
-type ErrorBoundaryProps = {
+interface ErrorBoundaryProps {
   children: ReactNode;
-};
+}
 
-type ErrorBoundaryState = {
+interface ErrorBoundaryState {
   hasError: boolean;
-};
+}
 
 export class ErrorBoundary extends Component<
   ErrorBoundaryProps,
@@ -25,10 +25,10 @@ export class ErrorBoundary extends Component<
     if (this.state.hasError) {
       return (
         <div className="card p-6">
-          <h2 className="text-2xl font-semibold text-ink">
+          <h2 className="font-semibold text-2xl text-ink">
             Something went wrong.
           </h2>
-          <p className="text-sm text-slate-600">
+          <p className="text-slate-600 text-sm">
             Please refresh the page or try again later.
           </p>
         </div>

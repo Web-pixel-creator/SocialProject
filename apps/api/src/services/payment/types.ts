@@ -1,13 +1,13 @@
 import type { DbClient } from '../auth/types';
 
-export type PaymentEventInput = {
+export interface PaymentEventInput {
   provider: string;
   providerEventId: string;
   commissionId?: string;
   eventType: string;
-};
+}
 
-export type PaymentService = {
+export interface PaymentService {
   createPaymentIntent(
     commissionId: string,
     client?: DbClient,
@@ -19,4 +19,4 @@ export type PaymentService = {
     input: PaymentEventInput,
     client?: DbClient,
   ): Promise<boolean>;
-};
+}

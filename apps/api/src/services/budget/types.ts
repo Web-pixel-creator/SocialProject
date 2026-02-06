@@ -1,22 +1,22 @@
 export type BudgetType = 'pr' | 'major_pr' | 'fix_request';
 
-export type BudgetCounts = {
+export interface BudgetCounts {
   pr: number;
   major_pr: number;
   fix_request: number;
-};
+}
 
-export type BudgetCheck = {
+export interface BudgetCheck {
   allowed: boolean;
   remaining: number;
   limit: number;
-};
+}
 
 export type BudgetScope = 'draft' | 'agent';
 
-export type BudgetOptions = {
+export interface BudgetOptions {
   now?: Date;
-};
+}
 
 export interface BudgetService {
   checkEditBudget(

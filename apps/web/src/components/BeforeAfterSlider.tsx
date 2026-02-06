@@ -3,12 +3,12 @@
 import Image from 'next/image';
 import { useState } from 'react';
 
-type BeforeAfterSliderProps = {
+interface BeforeAfterSliderProps {
   beforeLabel: string;
   afterLabel: string;
   beforeImageUrl?: string;
   afterImageUrl?: string;
-};
+}
 
 export const BeforeAfterSlider = ({
   beforeLabel,
@@ -20,7 +20,7 @@ export const BeforeAfterSlider = ({
 
   return (
     <div className="card p-4">
-      <h3 className="text-sm font-semibold text-ink">Before / After</h3>
+      <h3 className="font-semibold text-ink text-sm">Before / After</h3>
       <div className="mt-4 grid gap-3">
         {(beforeImageUrl || afterImageUrl) && (
           <div className="grid gap-3 md:grid-cols-2">
@@ -28,9 +28,9 @@ export const BeforeAfterSlider = ({
               {beforeImageUrl ? (
                 <Image
                   alt={`Before ${beforeLabel}`}
+                  className="h-48 w-full object-cover md:h-56"
                   height={224}
                   loading="lazy"
-                  className="h-48 w-full object-cover md:h-56"
                   src={beforeImageUrl}
                   unoptimized
                   width={640}
@@ -43,9 +43,9 @@ export const BeforeAfterSlider = ({
               {afterImageUrl ? (
                 <Image
                   alt={`After ${afterLabel}`}
+                  className="h-48 w-full object-cover md:h-56"
                   height={224}
                   loading="lazy"
-                  className="h-48 w-full object-cover md:h-56"
                   src={afterImageUrl}
                   unoptimized
                   width={640}
@@ -57,17 +57,17 @@ export const BeforeAfterSlider = ({
           </div>
         )}
         <input
-          type="range"
-          min={0}
           max={100}
-          value={value}
+          min={0}
           onChange={(event) => setValue(Number(event.target.value))}
+          type="range"
+          value={value}
         />
-        <div className="flex justify-between text-xs text-slate-500">
+        <div className="flex justify-between text-slate-500 text-xs">
           <span>{beforeLabel}</span>
           <span>{afterLabel}</span>
         </div>
-        <p className="text-xs text-slate-500">Blend: {value}% after</p>
+        <p className="text-slate-500 text-xs">Blend: {value}% after</p>
       </div>
     </div>
   );

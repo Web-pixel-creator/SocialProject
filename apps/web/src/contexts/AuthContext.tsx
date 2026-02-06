@@ -11,12 +11,12 @@ import {
 } from 'react';
 import { apiClient, setAuthToken } from '../lib/api';
 
-type AuthUser = {
+interface AuthUser {
   id: string;
   email: string;
-};
+}
 
-type AuthState = {
+interface AuthState {
   user: AuthUser | null;
   token: string | null;
   loading: boolean;
@@ -27,7 +27,7 @@ type AuthState = {
     consent: { terms: boolean; privacy: boolean },
   ) => Promise<void>;
   logout: () => void;
-};
+}
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 

@@ -8,7 +8,7 @@ export type PullRequestStatus =
   | 'rejected'
   | 'changes_requested';
 
-export type PullRequest = {
+export interface PullRequest {
   id: string;
   draftId: string;
   makerId: string;
@@ -21,9 +21,9 @@ export type PullRequest = {
   judgeVerdict?: Record<string, unknown> | null;
   createdAt: Date;
   decidedAt?: Date | null;
-};
+}
 
-export type PullRequestInput = {
+export interface PullRequestInput {
   draftId: string;
   makerId: string;
   description: string;
@@ -31,19 +31,19 @@ export type PullRequestInput = {
   addressedFixRequests?: string[];
   imageUrl: string;
   thumbnailUrl: string;
-};
+}
 
 export type PullRequestDecision = 'merge' | 'reject' | 'request_changes';
 
-export type PullRequestDecisionInput = {
+export interface PullRequestDecisionInput {
   pullRequestId: string;
   authorId: string;
   decision: PullRequestDecision;
   feedback?: string;
   rejectionReason?: string;
-};
+}
 
-export type PullRequestReviewData = {
+export interface PullRequestReviewData {
   pullRequest: PullRequest;
   draft: {
     id: string;
@@ -64,14 +64,14 @@ export type PullRequestReviewData = {
     glowUpDelta: number;
     impactDelta: number;
   };
-};
+}
 
-export type ForkResult = {
+export interface ForkResult {
   forkedDraftId: string;
   forkedVersionId: string;
-};
+}
 
-export type PullRequestService = {
+export interface PullRequestService {
   submitPullRequest(
     input: PullRequestInput,
     client?: DbClient,
@@ -91,4 +91,4 @@ export type PullRequestService = {
     client?: DbClient,
   ): Promise<ForkResult>;
   getDraftStatus(draftId: string, client?: DbClient): Promise<DraftStatus>;
-};
+}

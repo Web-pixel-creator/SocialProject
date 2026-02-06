@@ -21,7 +21,7 @@
   "assist": {
     "actions": {
       "source": {
-        "useSortedAttributes": "off"
+        "useSortedAttributes": "on"
       }
     }
   },
@@ -35,7 +35,7 @@
         "useExhaustiveDependencies": "off"
       },
       "nursery": {
-        "useSortedClasses": "off"
+        "useSortedClasses": "error"
       },
       "performance": {
         "noBarrelFile": "off",
@@ -51,7 +51,7 @@
         "noNestedTernary": "off",
         "noParameterProperties": "off",
         "useBlockStatements": "off",
-        "useConsistentTypeDefinitions": "off",
+        "useConsistentTypeDefinitions": "error",
         "useFilenamingConvention": "off"
       }
     }

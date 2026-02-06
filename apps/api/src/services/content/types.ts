@@ -1,11 +1,11 @@
 import type { DbClient } from '../auth/types';
 
-export type GlowUpCredit = {
+export interface GlowUpCredit {
   id: string;
   studioName: string;
-};
+}
 
-export type GlowUpReelItem = {
+export interface GlowUpReelItem {
   draftId: string;
   glowUpScore: number;
   beforeImageUrl: string;
@@ -15,33 +15,33 @@ export type GlowUpReelItem = {
     author: GlowUpCredit;
     makers: GlowUpCredit[];
   };
-};
+}
 
-export type GlowUpReel = {
+export interface GlowUpReel {
   id: string;
   shareSlug: string;
   reelUrl: string;
   createdAt: string;
   publishedAt: string | null;
   items: GlowUpReelItem[];
-};
+}
 
-export type AutopsyPattern = {
+export interface AutopsyPattern {
   draftId: string;
   glowUpScore: number;
   fixRequestCount: number;
   rejectedPrCount: number;
   budgetExhausted: boolean;
-};
+}
 
-export type AutopsyReport = {
+export interface AutopsyReport {
   id: string;
   shareSlug: string;
   summary: string;
   createdAt: string;
   publishedAt: string | null;
   patterns: AutopsyPattern[];
-};
+}
 
 export interface ContentGenerationService {
   generateGlowUpReel(limit?: number, client?: DbClient): Promise<GlowUpReel>;

@@ -4,9 +4,9 @@ import Link from 'next/link';
 import { type FormEvent, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
-type AuthFormProps = {
+interface AuthFormProps {
   mode: 'login' | 'register';
-};
+}
 
 export const AuthForm = ({ mode }: AuthFormProps) => {
   const { login, register } = useAuth();
@@ -39,62 +39,62 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="card grid gap-4 p-8">
+    <form className="card grid gap-4 p-8" onSubmit={handleSubmit}>
       <div>
-        <h2 className="text-2xl font-semibold text-ink">
+        <h2 className="font-semibold text-2xl text-ink">
           {mode === 'login' ? 'Welcome back' : 'Create account'}
         </h2>
-        <p className="text-sm text-slate-600">
+        <p className="text-slate-600 text-sm">
           {mode === 'login'
             ? 'Sign in to follow your favorite AI studios.'
             : 'Join as a human observer to track every GlowUp.'}
         </p>
       </div>
-      <label className="grid gap-2 text-sm font-medium text-slate-700">
+      <label className="grid gap-2 font-medium text-slate-700 text-sm">
         Email
         <input
           className="rounded-xl border border-slate-200 bg-white px-4 py-2"
-          type="email"
-          required
-          value={email}
           onChange={(event) => setEmail(event.target.value)}
+          required
+          type="email"
+          value={email}
         />
       </label>
-      <label className="grid gap-2 text-sm font-medium text-slate-700">
+      <label className="grid gap-2 font-medium text-slate-700 text-sm">
         Password
         <input
           className="rounded-xl border border-slate-200 bg-white px-4 py-2"
-          type="password"
-          required
-          value={password}
           onChange={(event) => setPassword(event.target.value)}
+          required
+          type="password"
+          value={password}
         />
       </label>
       {mode === 'register' && (
-        <div className="grid gap-2 text-sm text-slate-600">
+        <div className="grid gap-2 text-slate-600 text-sm">
           <label className="flex items-center gap-2">
             <input
-              type="checkbox"
               checked={terms}
               onChange={() => setTerms((prev) => !prev)}
+              type="checkbox"
             />
             I accept the <Link href="/legal/terms">Terms of Service</Link>
           </label>
           <label className="flex items-center gap-2">
             <input
-              type="checkbox"
               checked={privacy}
               onChange={() => setPrivacy((prev) => !prev)}
+              type="checkbox"
             />
             I accept the <Link href="/legal/privacy">Privacy Policy</Link>
           </label>
         </div>
       )}
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && <p className="text-red-500 text-sm">{error}</p>}
       <button
-        type="submit"
-        className="rounded-full bg-ember px-5 py-2 text-sm font-semibold text-white shadow-glow"
+        className="rounded-full bg-ember px-5 py-2 font-semibold text-sm text-white shadow-glow"
         disabled={loading}
+        type="submit"
       >
         {loading
           ? 'Processing...'
@@ -102,16 +102,16 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
             ? 'Sign in'
             : 'Create account'}
       </button>
-      <div className="grid gap-2 text-xs text-slate-500">
+      <div className="grid gap-2 text-slate-500 text-xs">
         <button
+          className="rounded-full border border-slate-200 px-4 py-2 font-semibold text-xs"
           type="button"
-          className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold"
         >
           Continue with Google
         </button>
         <button
+          className="rounded-full border border-slate-200 px-4 py-2 font-semibold text-xs"
           type="button"
-          className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold"
         >
           Continue with GitHub
         </button>

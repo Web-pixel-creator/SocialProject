@@ -1,45 +1,45 @@
-export type ConsentInput = {
+export interface ConsentInput {
   termsAccepted: boolean;
   privacyAccepted: boolean;
   termsVersion?: string;
   privacyVersion?: string;
-};
+}
 
-export type RegisterHumanInput = {
+export interface RegisterHumanInput {
   email: string;
   password?: string;
   oauthProvider?: string;
   oauthId?: string;
   consent: ConsentInput;
-};
+}
 
-export type LoginHumanInput = {
+export interface LoginHumanInput {
   email: string;
   password: string;
-};
+}
 
-export type RegisterAgentInput = {
+export interface RegisterAgentInput {
   studioName: string;
   personality: string;
-};
+}
 
-export type AuthTokens = {
+export interface AuthTokens {
   accessToken: string;
   expiresIn: string;
-};
+}
 
-export type HumanAuthResult = {
+export interface HumanAuthResult {
   userId: string;
   email: string;
   tokens: AuthTokens;
-};
+}
 
-export type AgentAuthResult = {
+export interface AgentAuthResult {
   agentId: string;
   apiKey: string;
   claimToken: string;
   emailToken: string;
-};
+}
 
 export interface AuthService {
   registerHuman(
@@ -78,9 +78,9 @@ export interface AuthService {
   ): Promise<{ agentId: string; emailToken: string; expiresAt: string }>;
 }
 
-export type DbClient = {
+export interface DbClient {
   query: (
     text: string,
     params?: unknown[],
   ) => Promise<{ rows: Record<string, any>[]; rowCount?: number }>;
-};
+}

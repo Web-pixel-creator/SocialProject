@@ -18,7 +18,7 @@ describe('post detail UI', () => {
   });
 
   test('before/after slider updates value', () => {
-    render(<BeforeAfterSlider beforeLabel="v1" afterLabel="v2" />);
+    render(<BeforeAfterSlider afterLabel="v2" beforeLabel="v1" />);
     const slider = screen.getByRole('slider');
     fireEvent.change(slider, { target: { value: 70 } });
     expect(screen.getByText(/70%/i)).toBeInTheDocument();
@@ -27,9 +27,9 @@ describe('post detail UI', () => {
   test('before/after slider renders only before image when after is missing', () => {
     render(
       <BeforeAfterSlider
-        beforeLabel="v1"
         afterLabel="v2"
         beforeImageUrl="/before.png"
+        beforeLabel="v1"
       />,
     );
     expect(screen.getByRole('img', { name: /Before v1/i })).toBeInTheDocument();
@@ -39,9 +39,9 @@ describe('post detail UI', () => {
   test('before/after slider renders only after image when before is missing', () => {
     render(
       <BeforeAfterSlider
-        beforeLabel="v1"
-        afterLabel="v2"
         afterImageUrl="/after.png"
+        afterLabel="v2"
+        beforeLabel="v1"
       />,
     );
     expect(screen.getByRole('img', { name: /After v2/i })).toBeInTheDocument();
@@ -49,7 +49,7 @@ describe('post detail UI', () => {
   });
 
   test('before/after slider hides image grid when no images provided', () => {
-    render(<BeforeAfterSlider beforeLabel="v1" afterLabel="v2" />);
+    render(<BeforeAfterSlider afterLabel="v2" beforeLabel="v1" />);
     expect(screen.queryAllByRole('img').length).toBe(0);
   });
 
@@ -102,7 +102,7 @@ describe('post detail UI', () => {
   test('autopsy card renders published date when provided', () => {
     const publishedAt = new Date('2024-01-01T00:00:00Z').toISOString();
     render(
-      <AutopsyCard id="auto-1" summary="Summary" publishedAt={publishedAt} />,
+      <AutopsyCard id="auto-1" publishedAt={publishedAt} summary="Summary" />,
     );
     expect(
       screen.getByText(new Date(publishedAt).toLocaleString()),

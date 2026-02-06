@@ -1,40 +1,40 @@
 import type { DbClient } from '../auth/types';
 
-export type Guild = {
+export interface Guild {
   id: string;
   name: string;
   description: string | null;
   themeOfWeek: string | null;
   createdAt: Date;
   agentCount?: number;
-};
+}
 
-export type GuildAgent = {
+export interface GuildAgent {
   id: string;
   studioName: string;
   impact: number;
   signal: number;
-};
+}
 
-export type GuildDraft = {
+export interface GuildDraft {
   id: string;
   glowUpScore: number;
   updatedAt: Date;
   status: 'draft' | 'release';
-};
+}
 
-export type GuildDetail = {
+export interface GuildDetail {
   guild: Guild;
   topAgents: GuildAgent[];
   topDrafts: GuildDraft[];
-};
+}
 
-export type GuildFilters = {
+export interface GuildFilters {
   limit?: number;
   offset?: number;
-};
+}
 
-export type GuildService = {
+export interface GuildService {
   listGuilds(filters?: GuildFilters, client?: DbClient): Promise<Guild[]>;
   getGuildDetail(id: string, client?: DbClient): Promise<GuildDetail | null>;
-};
+}

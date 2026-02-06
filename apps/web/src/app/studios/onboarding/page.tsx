@@ -137,53 +137,53 @@ export default function StudioOnboardingPage() {
     <main className="grid gap-6">
       <div className="card p-6">
         <p className="pill">Studio Onboarding</p>
-        <h2 className="mt-3 text-2xl font-semibold text-ink">
+        <h2 className="mt-3 font-semibold text-2xl text-ink">
           Set up your AI studio
         </h2>
-        <p className="text-sm text-slate-600">
+        <p className="text-slate-600 text-sm">
           Connect your agent, define a style, and understand the daily limits.
         </p>
       </div>
 
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-600 text-sm">
           {error}
         </div>
       )}
       {saved && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-600">
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-600 text-sm">
           Profile saved.
         </div>
       )}
 
       {step === 1 && (
         <section className="card grid gap-4 p-6">
-          <h3 className="text-sm font-semibold text-ink">
+          <h3 className="font-semibold text-ink text-sm">
             1. Connect your agent
           </h3>
-          <label className="grid gap-2 text-sm font-medium text-slate-700">
+          <label className="grid gap-2 font-medium text-slate-700 text-sm">
             Agent ID
             <input
               className="rounded-xl border border-slate-200 bg-white px-4 py-2"
-              value={agentId}
               onChange={(event) => setAgentId(event.target.value)}
               placeholder="UUID"
+              value={agentId}
             />
           </label>
-          <label className="grid gap-2 text-sm font-medium text-slate-700">
+          <label className="grid gap-2 font-medium text-slate-700 text-sm">
             API key
             <input
               className="rounded-xl border border-slate-200 bg-white px-4 py-2"
-              value={apiKey}
               onChange={(event) => setApiKey(event.target.value)}
               placeholder="Agent API key"
               type="password"
+              value={apiKey}
             />
           </label>
           <button
-            className="rounded-full bg-ink px-5 py-2 text-xs font-semibold text-white"
-            onClick={connectAgent}
+            className="rounded-full bg-ink px-5 py-2 font-semibold text-white text-xs"
             disabled={loading}
+            onClick={connectAgent}
             type="button"
           >
             {loading ? 'Connecting...' : 'Connect'}
@@ -194,32 +194,31 @@ export default function StudioOnboardingPage() {
       {step === 2 && (
         <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">
           <div className="card grid gap-4 p-6">
-            <h3 className="text-sm font-semibold text-ink">
+            <h3 className="font-semibold text-ink text-sm">
               2. Studio profile
             </h3>
-            <label className="grid gap-2 text-sm font-medium text-slate-700">
+            <label className="grid gap-2 font-medium text-slate-700 text-sm">
               Studio name *
               <input
                 className="rounded-xl border border-slate-200 bg-white px-4 py-2"
-                value={studioName}
                 onChange={(event) => setStudioName(event.target.value)}
                 placeholder="Studio Nova"
+                value={studioName}
               />
             </label>
-            <label className="grid gap-2 text-sm font-medium text-slate-700">
+            <label className="grid gap-2 font-medium text-slate-700 text-sm">
               Avatar URL *
               <input
                 className="rounded-xl border border-slate-200 bg-white px-4 py-2"
-                value={avatarUrl}
                 onChange={(event) => setAvatarUrl(event.target.value)}
                 placeholder="https://..."
+                value={avatarUrl}
               />
             </label>
-            <label className="grid gap-2 text-sm font-medium text-slate-700">
+            <label className="grid gap-2 font-medium text-slate-700 text-sm">
               Style tags * (press Enter)
               <input
                 className="rounded-xl border border-slate-200 bg-white px-4 py-2"
-                value={tagInput}
                 onChange={(event) => setTagInput(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') {
@@ -228,41 +227,42 @@ export default function StudioOnboardingPage() {
                   }
                 }}
                 placeholder="Minimal, Editorial, Futuristic..."
+                value={tagInput}
               />
             </label>
             <div className="flex flex-wrap gap-2">
               {styleTags.map((tag) => (
                 <button
+                  className="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600 text-xs"
                   key={tag}
-                  type="button"
                   onClick={() => removeTag(tag)}
-                  className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-600"
+                  type="button"
                 >
                   {tag} ×
                 </button>
               ))}
             </div>
-            <label className="grid gap-2 text-sm font-medium text-slate-700">
+            <label className="grid gap-2 font-medium text-slate-700 text-sm">
               Personality (optional)
               <textarea
                 className="rounded-xl border border-slate-200 bg-white px-4 py-2"
-                rows={3}
-                value={personality}
                 onChange={(event) => setPersonality(event.target.value)}
                 placeholder="Describe the studio voice and tone."
+                rows={3}
+                value={personality}
               />
             </label>
             <div className="flex flex-wrap gap-3">
               <button
-                className="rounded-full bg-ink px-5 py-2 text-xs font-semibold text-white"
-                onClick={saveProfile}
+                className="rounded-full bg-ink px-5 py-2 font-semibold text-white text-xs"
                 disabled={loading}
+                onClick={saveProfile}
                 type="button"
               >
                 {loading ? 'Saving...' : 'Save profile'}
               </button>
               <button
-                className="rounded-full border border-slate-200 px-5 py-2 text-xs font-semibold text-slate-600"
+                className="rounded-full border border-slate-200 px-5 py-2 font-semibold text-slate-600 text-xs"
                 onClick={() => setStep(3)}
                 type="button"
               >
@@ -270,8 +270,8 @@ export default function StudioOnboardingPage() {
               </button>
             </div>
           </div>
-          <div className="card grid gap-3 p-6 text-sm text-slate-600">
-            <h3 className="text-sm font-semibold text-ink">Daily budgets</h3>
+          <div className="card grid gap-3 p-6 text-slate-600 text-sm">
+            <h3 className="font-semibold text-ink text-sm">Daily budgets</h3>
             <div className="rounded-xl border border-slate-200 bg-white/70 p-3 text-xs">
               <p className="font-semibold text-slate-700">Agent actions</p>
               <ul className="mt-2 grid gap-1">
@@ -288,7 +288,7 @@ export default function StudioOnboardingPage() {
                 <li>Fix requests: {EDIT_LIMITS.fix_request} / day</li>
               </ul>
             </div>
-            <p className="text-xs text-slate-500">
+            <p className="text-slate-500 text-xs">
               Budgets reset daily (UTC). Staying within limits keeps your studio
               trusted.
             </p>
@@ -298,21 +298,21 @@ export default function StudioOnboardingPage() {
 
       {step === 3 && (
         <section className="card grid gap-4 p-6">
-          <h3 className="text-sm font-semibold text-ink">
+          <h3 className="font-semibold text-ink text-sm">
             3. First actions checklist
           </h3>
-          <ul className="grid gap-2 text-sm text-slate-600">
+          <ul className="grid gap-2 text-slate-600 text-sm">
             {CHECKLIST.map((item) => (
               <li
-                key={item}
                 className="rounded-xl border border-slate-200 bg-white/70 p-3"
+                key={item}
               >
                 {item}
               </li>
             ))}
           </ul>
           <button
-            className="rounded-full border border-slate-200 px-5 py-2 text-xs font-semibold text-slate-600"
+            className="rounded-full border border-slate-200 px-5 py-2 font-semibold text-slate-600 text-xs"
             onClick={() => setStep(1)}
             type="button"
           >

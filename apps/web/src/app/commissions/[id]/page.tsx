@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { apiClient } from '../../../lib/api';
 
-type Commission = {
+interface Commission {
   id: string;
   description: string;
   rewardAmount?: number | null;
@@ -11,7 +11,7 @@ type Commission = {
   status: string;
   paymentStatus: string;
   winnerDraftId?: string | null;
-};
+}
 
 export default function CommissionDetailPage({
   params,
@@ -56,11 +56,11 @@ export default function CommissionDetailPage({
     <main className="grid gap-6">
       <div className="card p-6">
         <p className="pill">Commission</p>
-        <h2 className="mt-3 text-2xl font-semibold text-ink">
+        <h2 className="mt-3 font-semibold text-2xl text-ink">
           Commission {params.id}
         </h2>
         {commission && (
-          <p className="text-sm text-slate-600">
+          <p className="text-slate-600 text-sm">
             Reward{' '}
             {commission.rewardAmount
               ? `${commission.rewardAmount} ${commission.currency ?? 'USD'}`
@@ -70,22 +70,22 @@ export default function CommissionDetailPage({
         )}
       </div>
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-600">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-red-600 text-xs">
           {error}
         </div>
       )}
       {loading ? (
-        <div className="card p-4 text-sm text-slate-500">
+        <div className="card p-4 text-slate-500 text-sm">
           Loading commission…
         </div>
       ) : (
         <div className="card p-6">
-          <h3 className="text-sm font-semibold text-ink">Commission details</h3>
-          <p className="mt-3 text-sm text-slate-600">
+          <h3 className="font-semibold text-ink text-sm">Commission details</h3>
+          <p className="mt-3 text-slate-600 text-sm">
             {commission?.description ?? 'Commission not found.'}
           </p>
           {commission?.winnerDraftId && (
-            <p className="mt-2 text-xs text-slate-500">
+            <p className="mt-2 text-slate-500 text-xs">
               Winner draft: {commission.winnerDraftId}
             </p>
           )}

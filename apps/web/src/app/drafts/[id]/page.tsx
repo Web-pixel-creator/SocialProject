@@ -36,7 +36,7 @@ const HeatMapOverlay = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="card p-4 text-sm text-slate-500">Loading heat map...</div>
+      <div className="card p-4 text-slate-500 text-sm">Loading heat map...</div>
     ),
   },
 );
@@ -45,52 +45,52 @@ const LivePanel = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="card p-4 text-sm text-slate-500">
+      <div className="card p-4 text-slate-500 text-sm">
         Loading live panel...
       </div>
     ),
   },
 );
 
-type Draft = {
+interface Draft {
   id: string;
   currentVersion: number;
   glowUpScore: number;
   status: string;
   updatedAt: string;
-};
+}
 
-type Version = {
+interface Version {
   versionNumber: number;
   imageUrl: string;
-};
+}
 
-type FixRequest = {
+interface FixRequest {
   id: string;
   category: string;
   description: string;
   criticId: string;
-};
+}
 
-type PullRequest = {
+interface PullRequest {
   id: string;
   status: 'pending' | 'merged' | 'rejected' | 'changes_requested';
   description: string;
   makerId: string;
-};
+}
 
-type DraftArcView = {
+interface DraftArcView {
   summary: DraftArcSummaryView;
   recap24h: DraftRecap24hView;
-};
+}
 
-type SimilarDraft = {
+interface SimilarDraft {
   id: string;
   title: string;
   score: number;
   glowUpScore: number;
   type: 'draft' | 'release';
-};
+}
 
 const sendTelemetry = async (payload: Record<string, any>) => {
   try {
@@ -615,96 +615,96 @@ export default function DraftDetailPage() {
       <div className="card p-6">
         <p className="pill">Draft Detail</p>
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <h2 className="text-2xl font-semibold text-ink">
+          <h2 className="font-semibold text-2xl text-ink">
             {draftId ? `Draft ${draftId}` : 'Draft'}
           </h2>
           {draft && (
             <span
-              className={`rounded-full px-3 py-1 text-xs font-semibold ${statusInfo.tone}`}
+              className={`rounded-full px-3 py-1 font-semibold text-xs ${statusInfo.tone}`}
             >
               {statusInfo.label}
             </span>
           )}
         </div>
-        <p className="text-sm text-slate-600">
+        <p className="text-slate-600 text-sm">
           Track every critique and PR in real-time.{' '}
           {draft ? `GlowUp ${draft.glowUpScore.toFixed(1)}` : ''}
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
-            type="button"
-            className="rounded-full bg-ink px-5 py-2 text-xs font-semibold text-white disabled:opacity-60"
-            onClick={runDemoFlow}
+            className="rounded-full bg-ink px-5 py-2 font-semibold text-white text-xs disabled:opacity-60"
             disabled={demoLoading || !draftId}
+            onClick={runDemoFlow}
+            type="button"
           >
             {demoLoading ? 'Running demo...' : 'Run demo flow'}
           </button>
           {demoStatus && (
-            <span className="text-xs text-slate-500">{demoStatus}</span>
+            <span className="text-slate-500 text-xs">{demoStatus}</span>
           )}
         </div>
       </div>
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-600 text-sm">
           {error}
         </div>
       )}
       {loading ? (
-        <div className="card p-6 text-sm text-slate-500">Loading draft...</div>
+        <div className="card p-6 text-slate-500 text-sm">Loading draft...</div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
           <div className="grid gap-6">
             {nextAction && (
               <div className="card p-4">
                 <p className="pill">Next best action</p>
-                <h3 className="mt-3 text-lg font-semibold text-ink">
+                <h3 className="mt-3 font-semibold text-ink text-lg">
                   {nextAction.title}
                 </h3>
-                <p className="text-sm text-slate-600">
+                <p className="text-slate-600 text-sm">
                   {nextAction.description}
                 </p>
                 <div className="mt-4 flex flex-wrap items-center gap-3">
                   {'href' in nextAction ? (
                     <Link
+                      className="rounded-full bg-ink px-5 py-2 font-semibold text-white text-xs"
                       href={nextAction.href as string}
-                      className="rounded-full bg-ink px-5 py-2 text-xs font-semibold text-white"
                     >
                       {nextAction.ctaLabel}
                     </Link>
                   ) : (
                     <button
-                      type="button"
-                      className="rounded-full bg-ink px-5 py-2 text-xs font-semibold text-white disabled:opacity-60"
-                      onClick={nextAction.onClick}
+                      className="rounded-full bg-ink px-5 py-2 font-semibold text-white text-xs disabled:opacity-60"
                       disabled={demoLoading && !hasFixRequests}
+                      onClick={nextAction.onClick}
+                      type="button"
                     >
                       {nextAction.ctaLabel}
                     </button>
                   )}
                   {copyStatus && (
-                    <span className="text-xs text-slate-500">{copyStatus}</span>
+                    <span className="text-slate-500 text-xs">{copyStatus}</span>
                   )}
                 </div>
               </div>
             )}
             <DraftArcCard
-              summary={arcView?.summary ?? null}
-              loading={arcLoading}
               error={arcError}
+              loading={arcLoading}
+              summary={arcView?.summary ?? null}
             />
             <DraftRecapPanel
-              recap={arcView?.recap24h ?? null}
-              loading={arcLoading}
               error={arcError}
+              loading={arcLoading}
+              recap={arcView?.recap24h ?? null}
             />
             <VersionTimeline
               versions={versionNumbers.length > 0 ? versionNumbers : [1]}
             />
             <BeforeAfterSlider
-              beforeLabel={beforeLabel}
+              afterImageUrl={afterImageUrl}
               afterLabel={afterLabel}
               beforeImageUrl={beforeImageUrl}
-              afterImageUrl={afterImageUrl}
+              beforeLabel={beforeLabel}
             />
             <div id="fix-requests">
               <FixRequestList items={fixList} />
@@ -714,28 +714,28 @@ export default function DraftDetailPage() {
             </div>
             <div className="card p-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-ink">
+                <h3 className="font-semibold text-ink text-sm">
                   Similar drafts
                 </h3>
-                <span className="text-xs text-slate-500">Visual match</span>
+                <span className="text-slate-500 text-xs">Visual match</span>
               </div>
               {similarLoading ? (
-                <p className="mt-3 text-xs text-slate-500">
+                <p className="mt-3 text-slate-500 text-xs">
                   Loading similar drafts...
                 </p>
               ) : similarStatus ? (
-                <p className="mt-3 text-xs text-slate-500">{similarStatus}</p>
+                <p className="mt-3 text-slate-500 text-xs">{similarStatus}</p>
               ) : (
                 <ul className="mt-3 grid gap-2">
                   {similarDrafts.map((item) => (
                     <li
-                      key={item.id}
                       className="rounded-lg border border-slate-200 bg-white/70 p-3 text-xs"
+                      key={item.id}
                     >
-                      <p className="text-[10px] uppercase text-slate-500">
+                      <p className="text-[10px] text-slate-500 uppercase">
                         {item.type}
                       </p>
-                      <p className="text-sm text-ink">{item.title}</p>
+                      <p className="text-ink text-sm">{item.title}</p>
                       <p className="text-[11px] text-slate-500">
                         Similarity {Number(item.score ?? 0).toFixed(2)} | GlowUp{' '}
                         {Number(item.glowUpScore ?? 0).toFixed(1)}
@@ -746,13 +746,12 @@ export default function DraftDetailPage() {
               )}
               <div className="mt-3">
                 <Link
+                  className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-700 text-xs hover:border-slate-300"
                   href={
                     draftId
                       ? `/search?mode=visual&draftId=${draftId}&type=draft&from=similar`
                       : '/search?mode=visual&type=draft'
                   }
-                  className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 hover:border-slate-300"
-                  scroll={false}
                   onClick={() =>
                     sendTelemetry({
                       eventType: 'similar_search_clicked',
@@ -764,6 +763,7 @@ export default function DraftDetailPage() {
                       },
                     })
                   }
+                  scroll={false}
                 >
                   See more similar
                 </Link>
@@ -773,65 +773,65 @@ export default function DraftDetailPage() {
           <div className="grid gap-6">
             <HeatMapOverlay />
             <PredictionWidget
-              summary={predictionSummary}
-              loading={predictionLoading}
-              error={predictionError}
               authRequired={observerAuthRequired}
+              error={predictionError}
+              loading={predictionLoading}
               onPredict={submitPrediction}
               submitLoading={predictionSubmitLoading}
+              summary={predictionSummary}
             />
             <div className="card p-4">
               <p className="pill">Follow chain</p>
-              <h3 className="mt-3 text-sm font-semibold text-ink">
+              <h3 className="mt-3 font-semibold text-ink text-sm">
                 Track every change
               </h3>
-              <p className="text-xs text-slate-600">
+              <p className="text-slate-600 text-xs">
                 Get notified in-app when this draft receives fixes or PRs.
               </p>
               {observerAuthRequired && (
-                <p className="mt-2 text-xs text-slate-500">
+                <p className="mt-2 text-slate-500 text-xs">
                   Sign in as observer to follow drafts.
                 </p>
               )}
               <div className="mt-4">
                 <button
-                  type="button"
-                  className={`rounded-full px-4 py-2 text-xs font-semibold ${
+                  className={`rounded-full px-4 py-2 font-semibold text-xs ${
                     isFollowed
                       ? 'bg-emerald-600 text-white'
                       : 'bg-ink text-white'
                   }`}
                   onClick={toggleFollow}
+                  type="button"
                 >
                   {isFollowed ? 'Following' : 'Follow chain'}
                 </button>
               </div>
             </div>
             <ObserverDigestPanel
-              entries={digestEntries}
-              loading={digestLoading}
-              error={digestError}
               authRequired={observerAuthRequired}
+              entries={digestEntries}
+              error={digestError}
+              loading={digestLoading}
               onMarkSeen={markDigestSeen}
             />
             <div className="card p-4">
               <p className="pill">Activity</p>
-              <h3 className="mt-3 text-sm font-semibold text-ink">
+              <h3 className="mt-3 font-semibold text-ink text-sm">
                 In-app updates
               </h3>
-              <p className="text-xs text-slate-600">
+              <p className="text-slate-600 text-xs">
                 {isFollowed
                   ? 'Updates appear when this draft changes.'
                   : 'Follow the chain to see updates here.'}
               </p>
-              <div className="mt-4 grid gap-2 text-xs text-slate-500">
+              <div className="mt-4 grid gap-2 text-slate-500 text-xs">
                 {notifications.length === 0 ? (
                   <span>No updates yet.</span>
                 ) : (
                   notifications.map((note) => (
                     <div
-                      key={note.id}
                       className="rounded-lg border border-slate-200 bg-white/70 p-2"
+                      key={note.id}
                     >
                       <div className="flex items-center justify-between">
                         <span className="text-slate-700">{note.message}</span>

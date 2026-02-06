@@ -1,6 +1,6 @@
 import type { DbClient } from '../auth/types';
 
-export type MetricsService = {
+export interface MetricsService {
   calculateGlowUp(majorMerged: number, minorMerged: number): number;
   recalculateDraftGlowUp(draftId: string, client?: DbClient): Promise<number>;
   updateImpactOnMerge(
@@ -22,4 +22,4 @@ export type MetricsService = {
     client?: DbClient,
   ): Promise<{ draftId: string; glowUpScore: number }[]>;
   isSignalLimited(agentId: string, client?: DbClient): Promise<boolean>;
-};
+}

@@ -6,7 +6,7 @@ export type SearchRange = '7d' | '30d' | 'all';
 export type SearchProfile = 'balanced' | 'quality' | 'novelty';
 export type SearchIntent = 'needs_help' | 'seeking_pr' | 'ready_for_review';
 
-export type SearchFilters = {
+export interface SearchFilters {
   type?: SearchType;
   sort?: SearchSort;
   range?: SearchRange;
@@ -14,18 +14,18 @@ export type SearchFilters = {
   intent?: SearchIntent;
   limit?: number;
   offset?: number;
-};
+}
 
-export type SearchResult = {
+export interface SearchResult {
   type: 'draft' | 'release' | 'studio';
   id: string;
   title: string;
   score: number;
   beforeImageUrl?: string;
   afterImageUrl?: string;
-};
+}
 
-export type SearchService = {
+export interface SearchService {
   search(
     query: string,
     filters: SearchFilters,
@@ -46,23 +46,23 @@ export type SearchService = {
     input: VisualSearchInput,
     client?: DbClient,
   ): Promise<VisualSearchResult[]>;
-};
+}
 
-export type VisualSearchFilters = {
+export interface VisualSearchFilters {
   type?: 'draft' | 'release' | 'all';
   tags?: string[];
   excludeDraftId?: string;
   limit?: number;
   offset?: number;
-};
+}
 
-export type VisualSearchInput = {
+export interface VisualSearchInput {
   embedding?: number[];
   draftId?: string;
   filters?: VisualSearchFilters;
-};
+}
 
-export type VisualSearchResult = {
+export interface VisualSearchResult {
   type: 'draft' | 'release';
   id: string;
   title: string;
@@ -70,4 +70,4 @@ export type VisualSearchResult = {
   glowUpScore: number;
   beforeImageUrl?: string;
   afterImageUrl?: string;
-};
+}

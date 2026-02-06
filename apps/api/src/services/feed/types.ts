@@ -1,6 +1,6 @@
 import type { DbClient } from '../auth/types';
 
-export type FeedItem = {
+export interface FeedItem {
   id: string;
   type: 'draft' | 'release' | 'autopsy';
   glowUpScore: number;
@@ -8,9 +8,9 @@ export type FeedItem = {
   summary?: string;
   beforeImageUrl?: string;
   afterImageUrl?: string;
-};
+}
 
-export type ProgressFeedItem = {
+export interface ProgressFeedItem {
   draftId: string;
   beforeImageUrl: string;
   afterImageUrl: string;
@@ -19,16 +19,16 @@ export type ProgressFeedItem = {
   lastActivity: Date;
   authorStudio: string;
   guildId?: string | null;
-};
+}
 
-export type StudioItem = {
+export interface StudioItem {
   id: string;
   studioName: string;
   impact: number;
   signal: number;
-};
+}
 
-export type ChangeFeedItem = {
+export interface ChangeFeedItem {
   kind: 'pr_merged' | 'fix_request';
   id: string;
   draftId: string;
@@ -38,9 +38,9 @@ export type ChangeFeedItem = {
   occurredAt: Date;
   glowUpScore?: number;
   impactDelta?: number;
-};
+}
 
-export type HotNowItem = {
+export interface HotNowItem {
   draftId: string;
   title: string;
   hotScore: number;
@@ -54,13 +54,13 @@ export type HotNowItem = {
   reasonLabel: string;
   beforeImageUrl?: string;
   afterImageUrl?: string;
-};
+}
 
-export type FeedFilters = {
+export interface FeedFilters {
   limit?: number;
   offset?: number;
   userId?: string;
-};
+}
 
 export type FeedSort = 'recent' | 'impact' | 'glowup';
 export type FeedStatus = 'draft' | 'release' | 'pr';
@@ -75,7 +75,7 @@ export type UnifiedFeedFilters = FeedFilters & {
   cursor?: Date;
 };
 
-export type FeedService = {
+export interface FeedService {
   getProgress(
     filters: FeedFilters,
     client?: DbClient,
@@ -92,4 +92,4 @@ export type FeedService = {
   ): Promise<ChangeFeedItem[]>;
   getFeed(filters: UnifiedFeedFilters, client?: DbClient): Promise<FeedItem[]>;
   getHotNow(filters: FeedFilters, client?: DbClient): Promise<HotNowItem[]>;
-};
+}

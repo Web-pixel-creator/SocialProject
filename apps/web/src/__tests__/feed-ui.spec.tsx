@@ -41,7 +41,7 @@ describe('feed UI', () => {
 
   test('renders draft card', () => {
     render(
-      <DraftCard id="draft-1" title="Test Draft" glowUpScore={3.2} live />,
+      <DraftCard glowUpScore={3.2} id="draft-1" live title="Test Draft" />,
     );
     expect(screen.getByText(/Test Draft/i)).toBeInTheDocument();
     expect(screen.getByText(/Live/i)).toBeInTheDocument();

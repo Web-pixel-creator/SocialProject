@@ -5,7 +5,7 @@ import { BeforeAfterSlider } from '../../../components/BeforeAfterSlider';
 import { FixRequestList } from '../../../components/FixRequestList';
 import { apiClient } from '../../../lib/api';
 
-type ReviewPayload = {
+interface ReviewPayload {
   pullRequest: {
     id: string;
     draftId: string;
@@ -33,14 +33,14 @@ type ReviewPayload = {
     glowUpDelta: number;
     impactDelta: number;
   };
-};
+}
 
-type FixRequest = {
+interface FixRequest {
   id: string;
   category: string;
   description: string;
   criticId: string;
-};
+}
 
 export default function PullRequestReviewPage({
   params,
@@ -171,7 +171,7 @@ export default function PullRequestReviewPage({
 
   if (loading) {
     return (
-      <div className="card p-6 text-sm text-slate-500">
+      <div className="card p-6 text-slate-500 text-sm">
         Loading pull request...
       </div>
     );
@@ -179,7 +179,7 @@ export default function PullRequestReviewPage({
 
   if (!review) {
     return (
-      <div className="card p-6 text-sm text-slate-500">
+      <div className="card p-6 text-slate-500 text-sm">
         {error ?? 'Pull request not found.'}
       </div>
     );
@@ -191,16 +191,16 @@ export default function PullRequestReviewPage({
     <main className="grid gap-6">
       <div className="card p-6">
         <p className="pill">PR Review</p>
-        <h2 className="mt-3 text-2xl font-semibold text-ink">
+        <h2 className="mt-3 font-semibold text-2xl text-ink">
           PR {pullRequest.id}
         </h2>
-        <p className="text-sm text-slate-600">
+        <p className="text-slate-600 text-sm">
           {makerStudio} → {authorStudio} · {pullRequest.severity.toUpperCase()}{' '}
           · {pullRequest.status}
         </p>
       </div>
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-600 text-sm">
           {error}
         </div>
       )}
@@ -208,15 +208,15 @@ export default function PullRequestReviewPage({
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         <div className="grid gap-6">
           <BeforeAfterSlider
-            beforeLabel={`v${draft.currentVersion}`}
+            afterImageUrl={review.afterImageUrl}
             afterLabel={`v${pullRequest.proposedVersion ?? 'PR'}`}
             beforeImageUrl={review.beforeImageUrl}
-            afterImageUrl={review.afterImageUrl}
+            beforeLabel={`v${draft.currentVersion}`}
           />
 
           <div className="card p-4">
-            <h3 className="text-sm font-semibold text-ink">PR Summary</h3>
-            <p className="mt-2 text-sm text-slate-600">
+            <h3 className="font-semibold text-ink text-sm">PR Summary</h3>
+            <p className="mt-2 text-slate-600 text-sm">
               {pullRequest.description}
             </p>
           </div>
@@ -225,8 +225,8 @@ export default function PullRequestReviewPage({
         </div>
 
         <div className="grid gap-6">
-          <div className="card p-4 text-sm text-slate-600">
-            <h3 className="text-sm font-semibold text-ink">Metrics delta</h3>
+          <div className="card p-4 text-slate-600 text-sm">
+            <h3 className="font-semibold text-ink text-sm">Metrics delta</h3>
             <div className="mt-3 grid gap-2">
               <div className="flex items-center justify-between">
                 <span>Current GlowUp</span>
@@ -248,42 +248,42 @@ export default function PullRequestReviewPage({
           </div>
 
           <div className="card p-4">
-            <h3 className="text-sm font-semibold text-ink">Decision</h3>
+            <h3 className="font-semibold text-ink text-sm">Decision</h3>
             <textarea
               className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
-              rows={3}
-              placeholder="Add feedback (optional)."
-              value={feedback}
               onChange={(event) => setFeedback(event.target.value)}
+              placeholder="Add feedback (optional)."
+              rows={3}
+              value={feedback}
             />
             <textarea
               className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
-              rows={3}
-              placeholder="Rejection reason (required for reject)."
-              value={rejectReason}
               onChange={(event) => setRejectReason(event.target.value)}
+              placeholder="Rejection reason (required for reject)."
+              rows={3}
+              value={rejectReason}
             />
             <div className="mt-4 grid gap-2">
               <button
-                className="rounded-full bg-emerald-500 px-4 py-2 text-xs font-semibold text-white"
-                onClick={() => handleDecision('merge')}
+                className="rounded-full bg-emerald-500 px-4 py-2 font-semibold text-white text-xs"
                 disabled={decisionLoading}
+                onClick={() => handleDecision('merge')}
                 type="button"
               >
                 Merge (M)
               </button>
               <button
-                className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600"
-                onClick={() => handleDecision('request_changes')}
+                className="rounded-full border border-slate-200 px-4 py-2 font-semibold text-slate-600 text-xs"
                 disabled={decisionLoading}
+                onClick={() => handleDecision('request_changes')}
                 type="button"
               >
                 Request changes
               </button>
               <button
-                className="rounded-full bg-rose-500 px-4 py-2 text-xs font-semibold text-white"
-                onClick={() => handleDecision('reject')}
+                className="rounded-full bg-rose-500 px-4 py-2 font-semibold text-white text-xs"
                 disabled={decisionLoading}
+                onClick={() => handleDecision('reject')}
                 type="button"
               >
                 Reject (R)

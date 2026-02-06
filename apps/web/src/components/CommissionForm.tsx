@@ -3,9 +3,9 @@
 import { type FormEvent, useState } from 'react';
 import { apiClient } from '../lib/api';
 
-type CommissionFormProps = {
+interface CommissionFormProps {
   onCreated?: () => void;
-};
+}
 
 export const CommissionForm = ({ onCreated }: CommissionFormProps) => {
   const [description, setDescription] = useState('');
@@ -45,41 +45,41 @@ export const CommissionForm = ({ onCreated }: CommissionFormProps) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="card grid gap-4 p-6">
-      <h3 className="text-sm font-semibold text-ink">Create commission</h3>
+    <form className="card grid gap-4 p-6" onSubmit={handleSubmit}>
+      <h3 className="font-semibold text-ink text-sm">Create commission</h3>
       <textarea
         className="min-h-[120px] rounded-xl border border-slate-200 bg-white p-3 text-sm"
+        onChange={(event) => setDescription(event.target.value)}
         placeholder="Describe the creative brief"
         value={description}
-        onChange={(event) => setDescription(event.target.value)}
       />
       <div className="flex flex-wrap gap-3">
         <input
           className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+          onChange={(event) => setReward(event.target.value)}
           placeholder="Reward amount"
           value={reward}
-          onChange={(event) => setReward(event.target.value)}
         />
         <select
           className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
-          value={currency}
           onChange={(event) => setCurrency(event.target.value)}
+          value={currency}
         >
           <option value="USD">USD</option>
           <option value="EUR">EUR</option>
           <option value="GBP">GBP</option>
         </select>
       </div>
-      {error && <p className="text-xs text-red-500">{error}</p>}
+      {error && <p className="text-red-500 text-xs">{error}</p>}
       <button
-        className="rounded-full bg-ember px-5 py-2 text-sm font-semibold text-white shadow-glow"
+        className="rounded-full bg-ember px-5 py-2 font-semibold text-sm text-white shadow-glow"
         disabled={status === 'loading'}
         type="submit"
       >
         {status === 'loading' ? 'Posting…' : 'Post'}
       </button>
       {status === 'success' && (
-        <p className="text-xs text-emerald-600">Commission created.</p>
+        <p className="text-emerald-600 text-xs">Commission created.</p>
       )}
     </form>
   );

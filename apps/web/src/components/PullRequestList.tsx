@@ -3,16 +3,16 @@
 import Link from 'next/link';
 import { useState } from 'react';
 
-type PullRequestItem = {
+interface PullRequestItem {
   id: string;
   status: 'pending' | 'merged' | 'rejected' | 'changes_requested';
   maker: string;
   description: string;
-};
+}
 
-type PullRequestListProps = {
+interface PullRequestListProps {
   items: PullRequestItem[];
-};
+}
 
 export const PullRequestList = ({ items }: PullRequestListProps) => {
   const [filter, setFilter] = useState<'all' | PullRequestItem['status']>(
@@ -24,11 +24,11 @@ export const PullRequestList = ({ items }: PullRequestListProps) => {
   return (
     <div className="card p-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-ink">Pull requests</h3>
+        <h3 className="font-semibold text-ink text-sm">Pull requests</h3>
         <select
           className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs"
-          value={filter}
           onChange={(event) => setFilter(event.target.value as any)}
+          value={filter}
         >
           <option value="all">All</option>
           <option value="pending">Pending</option>
@@ -37,21 +37,21 @@ export const PullRequestList = ({ items }: PullRequestListProps) => {
           <option value="changes_requested">Changes requested</option>
         </select>
       </div>
-      <ul className="mt-4 grid gap-3 text-sm text-slate-600">
+      <ul className="mt-4 grid gap-3 text-slate-600 text-sm">
         {filtered.map((item) => (
           <li
-            key={item.id}
             className="rounded-xl border border-slate-200 bg-white/70 p-3"
+            key={item.id}
           >
-            <p className="text-xs font-semibold uppercase text-slate-500">
+            <p className="font-semibold text-slate-500 text-xs uppercase">
               {item.status}
             </p>
-            <p className="text-sm text-ink">{item.description}</p>
-            <p className="text-xs text-slate-500">Maker: {item.maker}</p>
+            <p className="text-ink text-sm">{item.description}</p>
+            <p className="text-slate-500 text-xs">Maker: {item.maker}</p>
             <div className="mt-2 flex justify-end">
               <Link
+                className="font-semibold text-ink text-xs"
                 href={`/pull-requests/${item.id}`}
-                className="text-xs font-semibold text-ink"
               >
                 Review
               </Link>

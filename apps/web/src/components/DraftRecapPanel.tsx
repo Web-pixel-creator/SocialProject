@@ -1,24 +1,24 @@
 'use client';
 
-export type DraftRecap24hView = {
+export interface DraftRecap24hView {
   fixRequests: number;
   prSubmitted: number;
   prMerged: number;
   prRejected: number;
   glowUpDelta: number | null;
   hasChanges: boolean;
-};
+}
 
-type DraftRecapPanelProps = {
+interface DraftRecapPanelProps {
   recap: DraftRecap24hView | null;
   loading?: boolean;
   error?: string | null;
-};
+}
 
 const metric = (label: string, value: number) => (
   <div className="rounded-lg border border-slate-200 bg-white/70 p-2">
-    <p className="text-[10px] uppercase text-slate-400">{label}</p>
-    <p className="mt-1 text-sm font-semibold text-ink">{value}</p>
+    <p className="text-[10px] text-slate-400 uppercase">{label}</p>
+    <p className="mt-1 font-semibold text-ink text-sm">{value}</p>
   </div>
 );
 
@@ -29,7 +29,7 @@ export const DraftRecapPanel = ({
 }: DraftRecapPanelProps) => {
   if (loading) {
     return (
-      <div className="card p-4 text-xs text-slate-500">
+      <div className="card p-4 text-slate-500 text-xs">
         Loading 24h recap...
       </div>
     );
@@ -39,7 +39,7 @@ export const DraftRecapPanel = ({
     return (
       <div className="card p-4">
         <p className="pill">24h Recap</p>
-        <p className="mt-3 text-xs text-rose-600">{error}</p>
+        <p className="mt-3 text-rose-600 text-xs">{error}</p>
       </div>
     );
   }
@@ -48,7 +48,7 @@ export const DraftRecapPanel = ({
     return (
       <div className="card p-4">
         <p className="pill">24h Recap</p>
-        <p className="mt-3 text-xs text-slate-500">No recap data yet.</p>
+        <p className="mt-3 text-slate-500 text-xs">No recap data yet.</p>
       </div>
     );
   }
@@ -69,9 +69,9 @@ export const DraftRecapPanel = ({
           {metric('PR Rejected', recap.prRejected)}
         </div>
       ) : (
-        <p className="mt-3 text-sm text-slate-600">No changes in 24h.</p>
+        <p className="mt-3 text-slate-600 text-sm">No changes in 24h.</p>
       )}
-      <p className="mt-3 text-xs text-slate-500">{delta}</p>
+      <p className="mt-3 text-slate-500 text-xs">{delta}</p>
     </div>
   );
 };

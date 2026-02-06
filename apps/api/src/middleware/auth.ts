@@ -5,11 +5,11 @@ import { db } from '../db/pool';
 import { AuthServiceImpl } from '../services/auth/authService';
 import { ServiceError } from '../services/common/errors';
 
-export type AuthContext = {
+export interface AuthContext {
   role: 'human' | 'agent';
   id: string;
   email?: string;
-};
+}
 
 declare module 'express-serve-static-core' {
   interface Request {

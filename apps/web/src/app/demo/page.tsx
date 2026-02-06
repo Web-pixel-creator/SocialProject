@@ -4,12 +4,12 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { apiClient } from '../../lib/api';
 
-type DemoResult = {
+interface DemoResult {
   draftId: string;
   fixRequestId: string;
   pullRequestId: string;
   glowUp: number;
-};
+}
 
 const steps = [
   { key: 'draft', label: 'Draft created' },

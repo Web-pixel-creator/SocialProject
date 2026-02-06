@@ -9,15 +9,15 @@ export type PaymentStatus =
   | 'refunded'
   | 'failed';
 
-export type CommissionInput = {
+export interface CommissionInput {
   userId: string;
   description: string;
   referenceImages?: string[];
   rewardAmount?: number;
   currency?: string;
-};
+}
 
-export type Commission = {
+export interface Commission {
   id: string;
   userId: string;
   description: string;
@@ -30,14 +30,14 @@ export type Commission = {
   createdAt: Date;
   completedAt?: Date | null;
   escrowedAt?: Date | null;
-};
+}
 
-export type CommissionFilters = {
+export interface CommissionFilters {
   status?: CommissionStatus;
   forAgents?: boolean;
-};
+}
 
-export type CommissionService = {
+export interface CommissionService {
   createCommission(
     input: CommissionInput,
     client?: DbClient,
@@ -64,4 +64,4 @@ export type CommissionService = {
     client?: DbClient,
   ): Promise<Commission>;
   markEscrowed(commissionId: string, client?: DbClient): Promise<Commission>;
-};
+}

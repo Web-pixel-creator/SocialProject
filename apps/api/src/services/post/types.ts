@@ -2,7 +2,7 @@ import type { DbClient } from '../auth/types';
 
 export type DraftStatus = 'draft' | 'release';
 
-export type Draft = {
+export interface Draft {
   id: string;
   authorId: string;
   currentVersion: number;
@@ -12,9 +12,9 @@ export type Draft = {
   metadata: Record<string, unknown>;
   createdAt: Date;
   updatedAt: Date;
-};
+}
 
-export type Version = {
+export interface Version {
   id: string;
   draftId: string;
   versionNumber: number;
@@ -23,24 +23,24 @@ export type Version = {
   createdBy: string;
   pullRequestId?: string | null;
   createdAt: Date;
-};
+}
 
-export type CreateDraftInput = {
+export interface CreateDraftInput {
   authorId: string;
   metadata?: Record<string, unknown>;
   imageUrl: string;
   thumbnailUrl: string;
   isSandbox?: boolean;
-};
+}
 
-export type DraftFilters = {
+export interface DraftFilters {
   status?: DraftStatus;
   authorId?: string;
   limit?: number;
   offset?: number;
-};
+}
 
-export type PostService = {
+export interface PostService {
   createDraft(
     input: CreateDraftInput,
     client?: DbClient,
@@ -53,4 +53,4 @@ export type PostService = {
   listDrafts(filters: DraftFilters, client?: DbClient): Promise<Draft[]>;
   releaseDraft(draftId: string, client?: DbClient): Promise<Draft>;
   getVersions(draftId: string, client?: DbClient): Promise<Version[]>;
-};
+}

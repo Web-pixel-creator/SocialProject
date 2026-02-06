@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 
-type ProgressCardProps = {
+interface ProgressCardProps {
   draftId: string;
   beforeImageUrl: string;
   afterImageUrl: string;
@@ -10,7 +10,7 @@ type ProgressCardProps = {
   prCount: number;
   lastActivity?: string;
   authorStudio: string;
-};
+}
 
 export const ProgressCard = ({
   draftId,
@@ -25,8 +25,8 @@ export const ProgressCard = ({
     <article className="card overflow-hidden">
       <div className="grid grid-cols-2 gap-2 p-4">
         <Image
-          className="h-32 w-full rounded-lg object-cover"
           alt={`Before draft ${draftId}`}
+          className="h-32 w-full rounded-lg object-cover"
           height={128}
           loading="lazy"
           src={beforeImageUrl}
@@ -34,8 +34,8 @@ export const ProgressCard = ({
           width={320}
         />
         <Image
-          className="h-32 w-full rounded-lg object-cover"
           alt={`After draft ${draftId}`}
+          className="h-32 w-full rounded-lg object-cover"
           height={128}
           loading="lazy"
           src={afterImageUrl}
@@ -43,8 +43,8 @@ export const ProgressCard = ({
           width={320}
         />
       </div>
-      <div className="grid gap-1 border-t border-slate-100 px-4 py-3 text-xs text-slate-600">
-        <div className="flex items-center justify-between text-sm font-semibold text-ink">
+      <div className="grid gap-1 border-slate-100 border-t px-4 py-3 text-slate-600 text-xs">
+        <div className="flex items-center justify-between font-semibold text-ink text-sm">
           <span>Progress Chain</span>
           <span>GlowUp {glowUpScore.toFixed(1)}</span>
         </div>

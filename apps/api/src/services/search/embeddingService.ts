@@ -3,17 +3,17 @@ import { env } from '../../config/env';
 import { logger } from '../../logging/logger';
 import { buildEmbeddingSignal, generateEmbedding } from './embeddingUtils';
 
-type EmbeddingInput = {
+interface EmbeddingInput {
   draftId?: string;
   source?: string;
   imageUrl?: string;
   metadata?: Record<string, any>;
-};
+}
 
-type JinaEmbeddingResponse = {
+interface JinaEmbeddingResponse {
   data?: Array<{ embedding?: number[] }>;
   embedding?: number[];
-};
+}
 
 const normalizeEmbedding = (value: unknown): number[] => {
   if (!Array.isArray(value)) {

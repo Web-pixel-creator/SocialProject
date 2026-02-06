@@ -4,11 +4,11 @@ import type { DbClient } from '../auth/types';
 import { EmbeddingServiceImpl } from './embeddingService';
 import { SearchServiceImpl } from './searchService';
 
-type BackfillResult = {
+interface BackfillResult {
   processed: number;
   inserted: number;
   skipped: number;
-};
+}
 
 const getDb = (pool: Pool, client?: DbClient): DbClient => client ?? pool;
 

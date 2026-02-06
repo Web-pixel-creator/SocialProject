@@ -7,9 +7,9 @@ import { ContentGenerationServiceImpl } from '../services/content/contentService
 import { PrivacyServiceImpl } from '../services/privacy/privacyService';
 import { EmbeddingBackfillServiceImpl } from '../services/search/embeddingBackfillService';
 
-type JobHandle = {
+interface JobHandle {
   stop: () => void;
-};
+}
 
 const recordJobRun = async (
   pool: Pool,

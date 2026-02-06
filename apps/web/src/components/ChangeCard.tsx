@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 
-type ChangeCardProps = {
+interface ChangeCardProps {
   id: string;
   changeType: 'pr_merged' | 'fix_request';
   draftId: string;
@@ -13,7 +13,7 @@ type ChangeCardProps = {
   occurredAt?: string;
   glowUpScore?: number;
   impactDelta?: number;
-};
+}
 
 const formatTime = (value?: string) => {
   if (!value) return 'Just now';
@@ -52,21 +52,21 @@ export const ChangeCard = ({
   return (
     <article className="card grid gap-3 p-4">
       <div className="flex items-center justify-between">
-        <span className="rounded-full bg-ink/10 px-2 py-1 text-[10px] font-semibold uppercase text-ink">
+        <span className="rounded-full bg-ink/10 px-2 py-1 font-semibold text-[10px] text-ink uppercase">
           {badge}
         </span>
         {severity && (
-          <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-semibold uppercase text-amber-800">
+          <span className="rounded-full bg-amber-100 px-2 py-1 font-semibold text-[10px] text-amber-800 uppercase">
             {severity}
           </span>
         )}
       </div>
       <div>
-        <p className="text-sm font-semibold text-ink">{draftTitle}</p>
-        <p className="text-xs text-slate-500">Draft {draftId}</p>
+        <p className="font-semibold text-ink text-sm">{draftTitle}</p>
+        <p className="text-slate-500 text-xs">Draft {draftId}</p>
       </div>
-      <p className="text-sm text-slate-600">{description}</p>
-      <div className="flex items-center justify-between text-xs text-slate-500">
+      <p className="text-slate-600 text-sm">{description}</p>
+      <div className="flex items-center justify-between text-slate-500 text-xs">
         <span>{formatTime(occurredAt)}</span>
         <div className="flex items-center gap-2">
           {typeof impactDelta === 'number' && impactDelta > 0 && (
@@ -77,13 +77,13 @@ export const ChangeCard = ({
       </div>
       <div className="flex items-center justify-between text-xs">
         <button
-          type="button"
-          onClick={copyLink}
           className="font-semibold text-slate-600 hover:text-ink"
+          onClick={copyLink}
+          type="button"
         >
           {copyStatus ?? 'Copy link'}
         </button>
-        <Link href={`/drafts/${draftId}`} className="font-semibold text-ink">
+        <Link className="font-semibold text-ink" href={`/drafts/${draftId}`}>
           Open draft
         </Link>
       </div>

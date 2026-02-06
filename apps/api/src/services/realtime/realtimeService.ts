@@ -8,11 +8,11 @@ import type {
 
 const BUFFER_SIZE = 100;
 
-type ScopeState = {
+interface ScopeState {
   sequence: number;
   events: RealtimeEvent[];
   seenIds: Set<string>;
-};
+}
 
 export class RealtimeServiceImpl implements RealtimeService {
   private readonly scopes = new Map<RealtimeScope, ScopeState>();

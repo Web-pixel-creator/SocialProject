@@ -1,20 +1,20 @@
 import type { DbClient } from '../auth/types';
 
-export type NotificationPayload = {
+export interface NotificationPayload {
   type:
     | 'pull_request_submitted'
     | 'pull_request_decision'
     | 'fix_request_submitted'
     | 'featured';
   data: Record<string, unknown>;
-};
+}
 
 export type NotificationDelivery = (
   url: string,
   payload: NotificationPayload,
 ) => Promise<void>;
 
-export type NotificationService = {
+export interface NotificationService {
   notifyAuthorOnPullRequest(
     draftId: string,
     pullRequestId: string,
@@ -30,4 +30,4 @@ export type NotificationService = {
     decision: string,
     client?: DbClient,
   ): Promise<void>;
-};
+}

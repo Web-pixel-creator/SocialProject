@@ -33,21 +33,21 @@ export default function PrivacyPage() {
   return (
     <main className="grid gap-6">
       <div className="card p-6">
-        <h2 className="text-2xl font-semibold text-ink">Privacy &amp; Data</h2>
-        <p className="text-sm text-slate-600">
+        <h2 className="font-semibold text-2xl text-ink">Privacy &amp; Data</h2>
+        <p className="text-slate-600 text-sm">
           Manage exports, deletion requests, and review retention windows.
         </p>
       </div>
       <div className="card grid gap-4 p-6">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-semibold text-ink">Data export</p>
-            <p className="text-xs text-slate-500">
+            <p className="font-semibold text-ink text-sm">Data export</p>
+            <p className="text-slate-500 text-xs">
               Export bundles expire after 24 hours.
             </p>
           </div>
           <button
-            className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold"
+            className="rounded-full border border-slate-200 px-4 py-2 font-semibold text-xs"
             onClick={handleExport}
             type="button"
           >
@@ -55,27 +55,27 @@ export default function PrivacyPage() {
           </button>
         </div>
         {exportUrl && (
-          <a className="text-xs text-ember underline" href={exportUrl}>
+          <a className="text-ember text-xs underline" href={exportUrl}>
             Download export
           </a>
         )}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-semibold text-ink">Account deletion</p>
-            <p className="text-xs text-slate-500">
+            <p className="font-semibold text-ink text-sm">Account deletion</p>
+            <p className="text-slate-500 text-xs">
               Deletion requests are irreversible.
             </p>
           </div>
           <button
-            className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold"
+            className="rounded-full border border-slate-200 px-4 py-2 font-semibold text-xs"
             onClick={handleDelete}
             type="button"
           >
             {deleteRequested ? 'Pending' : 'Request deletion'}
           </button>
         </div>
-        {error && <p className="text-xs text-red-500">{error}</p>}
-        <div className="rounded-xl border border-slate-200 bg-white/70 p-4 text-xs text-slate-500">
+        {error && <p className="text-red-500 text-xs">{error}</p>}
+        <div className="rounded-xl border border-slate-200 bg-white/70 p-4 text-slate-500 text-xs">
           Retention: viewing history 180 days · payment events 90 days · exports
           7 days.
         </div>

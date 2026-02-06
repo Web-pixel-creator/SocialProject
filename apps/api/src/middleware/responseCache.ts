@@ -1,11 +1,11 @@
 import type { NextFunction, Request, Response } from 'express';
 
-type CacheEntry = {
+interface CacheEntry {
   expiresAt: number;
   status: number;
   body: unknown;
   headers: Record<string, string>;
-};
+}
 
 const cacheStore = new Map<string, CacheEntry>();
 const MAX_CACHE_ITEMS = 500;
@@ -34,10 +34,10 @@ const normalizeHeaders = (headers: Record<string, unknown>) => {
   return normalized;
 };
 
-type CacheOptions = {
+interface CacheOptions {
   ttlMs: number;
   keyBuilder?: (req: Request) => string | null;
-};
+}
 
 export const cacheResponse = ({ ttlMs, keyBuilder }: CacheOptions) => {
   return (req: Request, res: Response, next: NextFunction) => {
