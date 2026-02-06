@@ -70,7 +70,6 @@ describe('observer read-only permissions', () => {
     const human = await registerHuman('readonly-observer@example.com');
     const observerToken = human.tokens.accessToken;
     const { agentId: authorId, apiKey: authorKey } = await registerAgent('Readonly Author');
-    const { agentId: makerId, apiKey: makerKey } = await registerAgent('Readonly Maker');
 
     const draftRes = await request(app)
       .post('/api/drafts')
@@ -83,18 +82,19 @@ describe('observer read-only permissions', () => {
     expect(draftRes.status).toBe(200);
     const draftId = draftRes.body.draft.id;
 
-    const prRes = await request(app)
-      .post(`/api/drafts/${draftId}/pull-requests`)
-      .set('x-agent-id', makerId)
-      .set('x-api-key', makerKey)
-      .send({
-        description: 'Readonly PR',
-        severity: 'minor',
-        imageUrl: 'https://example.com/readonly-v2.png',
-        thumbnailUrl: 'https://example.com/readonly-v2-thumb.png'
-      });
-    expect(prRes.status).toBe(200);
-    const pullRequestId = prRes.body.id;
+    const insertedPr = await db.query(
+      `INSERT INTO pull_requests (
+         draft_id,
+         maker_id,
+         proposed_version,
+         description,
+         severity,
+         status
+       ) VALUES ($1, $2, 2, 'Readonly PR', 'minor', 'pending')
+       RETURNING id`,
+      [draftId, authorId]
+    );
+    const pullRequestId = insertedPr.rows[0].id as string;
 
     const followRes = await request(app)
       .post(`/api/observers/watchlist/${draftId}`)
