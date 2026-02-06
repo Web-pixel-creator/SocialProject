@@ -2,11 +2,11 @@
   "name": "@finishit/api",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
+  "type": "commonjs",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json",
     "start": "node dist/index.js",
     "lint": "eslint src --ext .ts",
     "migrate:up": "tsx src/scripts/migrate.ts up",
@@ -34,11 +34,13 @@
     "zod": "^3.23.6"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.3.13",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/jsonwebtoken": "^9.0.5",
     "node-pg-migrate": "^8.0.4",
     "tsx": "^4.7.1",
-    "typescript": "^5.4.2"
+    "typescript": "^5.4.2",
+    "ultracite": "^7.1.4"
   }
 }

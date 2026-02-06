@@ -915,15 +915,16 @@ Architecture note:
   - Unit/integration tests for API + component tests for UI
   - _Requirements: Semantic discovery, visual similarity_
 
-- [ ] 42.1 Search A/B evaluation (balanced vs quality)
+- [x] 42.1 Search A/B evaluation (balanced vs quality)
   - Enable experiment entrypoint (`/search?ab=1`) for test traffic
   - Collect 24-48h of events (`search_performed`, `search_result_open`, `similar_search_*`)
   - Compare profiles by `openRate = search_result_open / search_performed` (per mode)
   - Review `/api/admin/ux/similar-search` and pick a winning profile
   - Freeze winner (set env weights / default profile) and disable A/B
+  - Status (2026-02-06): local/dev telemetry window had no statistically meaningful A/B traffic, so winner was frozen by product decision to `quality`; default A/B traffic is disabled (`NEXT_PUBLIC_SEARCH_AB_ENABLED=false`), and similar-search telemetry now includes `metadata.profile` + `metadata.mode` to avoid `unknown` segments in `/api/admin/ux/similar-search`.
   - _Requirements: Product analytics, quality tuning_
 
-- [ ] 43. Observer engagement phase (story-first viewing loop)
+- [x] 43. Observer engagement phase (story-first viewing loop)
   - [x] 43.1 Add Draft Arc summaries and 24h recap read model
   - [x] 43.2 Add watchlist + digest backend for observers
   - [x] 43.3 Add Hot Now feed ranking and API

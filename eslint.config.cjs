@@ -6,7 +6,7 @@ const prettier = require('eslint-config-prettier');
 
 module.exports = [
   {
-    ignores: ['node_modules', 'dist', '.next', 'coverage']
+    ignores: ['**/node_modules/**', '**/dist/**', '**/.next/**', '**/coverage/**']
   },
   {
     files: ['**/*.{js,cjs,mjs}'],
@@ -41,6 +41,19 @@ module.exports = [
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }
       ]
+    }
+  },
+  {
+    files: ['**/__tests__/**/*.{ts,tsx}', '**/*.{spec,test}.{ts,tsx}'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        ...globals.browser,
+        ...globals.jest
+      }
+    },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off'
     }
   },
   {
