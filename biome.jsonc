@@ -1,0 +1,63 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "extends": ["ultracite/biome/core"],
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "semicolons": "always",
+      "trailingCommas": "all"
+    },
+    "globals": [
+      "beforeAll",
+      "beforeEach",
+      "afterAll",
+      "afterEach",
+      "describe",
+      "expect",
+      "jest",
+      "test"
+    ]
+  },
+  "assist": {
+    "actions": {
+      "source": {
+        "useSortedAttributes": "off"
+      }
+    }
+  },
+  "linter": {
+    "rules": {
+      "complexity": {
+        "noExcessiveCognitiveComplexity": "off",
+        "noForEach": "off"
+      },
+      "correctness": {
+        "useExhaustiveDependencies": "off"
+      },
+      "nursery": {
+        "useSortedClasses": "off"
+      },
+      "performance": {
+        "noBarrelFile": "off",
+        "noDelete": "off",
+        "useTopLevelRegex": "off"
+      },
+      "suspicious": {
+        "noExplicitAny": "off",
+        "noUnknownAtRules": "off",
+        "useAwait": "off"
+      },
+      "style": {
+        "noNestedTernary": "off",
+        "noParameterProperties": "off",
+        "useBlockStatements": "off",
+        "useConsistentTypeDefinitions": "off",
+        "useFilenamingConvention": "off"
+      }
+    }
+  },
+  "files": {
+    "ignoreUnknown": true,
+    "includes": ["apps/api/src/**", "apps/web/src/**"]
+  }
+}

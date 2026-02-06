@@ -13,7 +13,9 @@
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
     "test": "jest",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "ultracite:check": "npx ultracite check apps/api/src apps/web/src",
+    "ultracite:fix": "npx ultracite fix apps/api/src apps/web/src"
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",

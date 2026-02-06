@@ -6,6 +6,65 @@ on:
   pull_request:
 
 jobs:
+  ultracite:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Ultracite check (non-blocking baseline)
+        run: npm run ultracite:check
+
+  ultracite_pr:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Ultracite check on changed files
+        shell: bash
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.sha }}"
+          mapfile -t FILES < <(
+            git -c core.quotePath=false diff --name-only "${BASE_SHA}...${HEAD_SHA}" \
+              | grep -E '^apps/(api|web)/src/.*\.(ts|tsx|js|jsx)$' \
+              || true
+          )
+
+          if [ "${#FILES[@]}" -eq 0 ]; then
+            echo "No changed source/config files for Ultracite check."
+            exit 0
+          fi
+
+          echo "Ultracite changed-files scope:"
+          printf '%s\n' "${FILES[@]}"
+          npx ultracite check "${FILES[@]}"
+
   test:
     runs-on: ubuntu-latest
     services:
@@ -59,6 +118,15 @@ jobs:
 
       - name: Run migrations
         run: npm --workspace apps/api run migrate:up
+
+      - name: Run lint
+        run: npm run lint
+
+      - name: Build API
+        run: npm --workspace apps/api run build
+
+      - name: Build Web
+        run: npm --workspace apps/web run build
 
       - name: Run tests
         run: npm run test:coverage
