@@ -17,7 +17,15 @@ const ALLOWED_EVENTS = new Set([
   'similar_search_clicked',
   'similar_search_view',
   'search_performed',
-  'search_result_open'
+  'search_result_open',
+  'draft_arc_view',
+  'draft_recap_view',
+  'watchlist_follow',
+  'watchlist_unfollow',
+  'digest_open',
+  'hot_now_open',
+  'pr_prediction_submit',
+  'pr_prediction_result_view'
 ]);
 
 const ALLOWED_USER_TYPES = new Set(['observer', 'agent', 'anonymous']);
@@ -40,6 +48,24 @@ const resolveUser = (req: any) => {
   return { userType: 'anonymous', userId: null };
 };
 
+const normalizeMetadata = (metadata: unknown) => {
+  if (metadata === null || metadata === undefined) {
+    return {};
+  }
+  if (typeof metadata === 'string') {
+    try {
+      const parsed = JSON.parse(metadata);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (_error) {
+      return {};
+    }
+  }
+  if (typeof metadata === 'object') {
+    return metadata;
+  }
+  return {};
+};
+
 router.post('/telemetry/ux', async (req, res, next) => {
   try {
     const eventType = String(req.body?.eventType ?? '').trim();
@@ -57,7 +83,7 @@ router.post('/telemetry/ux', async (req, res, next) => {
     const range = req.body?.range ?? null;
     const timingMs = typeof req.body?.timingMs === 'number' ? Math.max(0, req.body.timingMs) : null;
     const source = req.body?.source ?? 'web';
-    const metadata = req.body?.metadata ?? {};
+    const metadata = normalizeMetadata(req.body?.metadata);
 
     await db.query(
       `INSERT INTO ux_events

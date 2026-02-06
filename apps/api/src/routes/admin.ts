@@ -16,6 +16,8 @@ const privacyService = new PrivacyServiceImpl(db);
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 const toNumber = (value: string | number | undefined, fallback = 0) =>
   typeof value === 'number' ? value : Number.parseInt(value ?? `${fallback}`, 10);
+const toRate = (numerator: number, denominator: number) =>
+  denominator > 0 ? Number((numerator / denominator).toFixed(3)) : null;
 
 const toCounts = (data: Record<string, string>) => ({
   pr: toNumber(data.prCount),
@@ -359,6 +361,233 @@ router.get('/admin/ux/similar-search', requireAdmin, async (req, res, next) => {
     });
 
     res.json({ windowHours: hours, rows: summary.rows, profiles });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/admin/ux/observer-engagement', requireAdmin, async (req, res, next) => {
+  try {
+    const hours = clamp(Number(req.query.hours ?? 24), 1, 720);
+    const trackedEvents = [
+      'draft_arc_view',
+      'draft_recap_view',
+      'watchlist_follow',
+      'watchlist_unfollow',
+      'digest_open',
+      'hot_now_open',
+      'pr_prediction_submit',
+      'pr_prediction_result_view'
+    ];
+
+    const totalsResult = await db.query(
+      `SELECT event_type, COUNT(*)::int AS count
+       FROM ux_events
+       WHERE created_at >= NOW() - ($1 || ' hours')::interval
+         AND user_type = 'observer'
+         AND event_type = ANY($2)
+       GROUP BY event_type`,
+      [hours, trackedEvents]
+    );
+
+    const totals = {
+      observerEvents: 0,
+      observerUsers: 0,
+      draftArcViews: 0,
+      recapViews: 0,
+      watchlistFollows: 0,
+      watchlistUnfollows: 0,
+      digestOpens: 0,
+      hotNowOpens: 0,
+      predictionSubmits: 0,
+      predictionResultViews: 0
+    };
+
+    for (const row of totalsResult.rows) {
+      const count = Number(row.count ?? 0);
+      totals.observerEvents += count;
+      switch (row.event_type) {
+        case 'draft_arc_view':
+          totals.draftArcViews += count;
+          break;
+        case 'draft_recap_view':
+          totals.recapViews += count;
+          break;
+        case 'watchlist_follow':
+          totals.watchlistFollows += count;
+          break;
+        case 'watchlist_unfollow':
+          totals.watchlistUnfollows += count;
+          break;
+        case 'digest_open':
+          totals.digestOpens += count;
+          break;
+        case 'hot_now_open':
+          totals.hotNowOpens += count;
+          break;
+        case 'pr_prediction_submit':
+          totals.predictionSubmits += count;
+          break;
+        case 'pr_prediction_result_view':
+          totals.predictionResultViews += count;
+          break;
+        default:
+          break;
+      }
+    }
+
+    const observerUsersResult = await db.query(
+      `SELECT COUNT(DISTINCT user_id)::int AS observer_users
+       FROM ux_events
+       WHERE created_at >= NOW() - ($1 || ' hours')::interval
+         AND user_type = 'observer'
+         AND user_id IS NOT NULL`,
+      [hours]
+    );
+    totals.observerUsers = Number(observerUsersResult.rows[0]?.observer_users ?? 0);
+
+    const sessionsResult = await db.query(
+      `WITH observer_events AS (
+         SELECT user_id, created_at
+         FROM ux_events
+         WHERE created_at >= NOW() - ($1 || ' hours')::interval
+           AND user_type = 'observer'
+           AND user_id IS NOT NULL
+       ),
+       sequenced AS (
+         SELECT user_id,
+                created_at,
+                LAG(created_at) OVER (PARTITION BY user_id ORDER BY created_at) AS previous_at
+         FROM observer_events
+       ),
+       session_flags AS (
+         SELECT user_id,
+                created_at,
+                CASE
+                  WHEN previous_at IS NULL OR created_at - previous_at > INTERVAL '30 minutes' THEN 1
+                  ELSE 0
+                END AS is_new_session
+         FROM sequenced
+       ),
+       sessionized AS (
+         SELECT user_id,
+                created_at,
+                SUM(is_new_session) OVER (
+                  PARTITION BY user_id
+                  ORDER BY created_at
+                  ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+                ) AS session_id
+         FROM session_flags
+       ),
+       session_durations AS (
+         SELECT user_id,
+                session_id,
+                GREATEST(EXTRACT(EPOCH FROM MAX(created_at) - MIN(created_at)), 0)::float AS duration_sec
+         FROM sessionized
+         GROUP BY user_id, session_id
+       )
+       SELECT COUNT(*)::int AS session_count,
+              AVG(duration_sec)::float AS avg_session_sec
+       FROM session_durations`,
+      [hours]
+    );
+    const sessionCount = Number(sessionsResult.rows[0]?.session_count ?? 0);
+    const avgSessionSecRaw = Number(sessionsResult.rows[0]?.avg_session_sec ?? 0);
+
+    const retentionResult = await db.query(
+      `WITH current_users AS (
+         SELECT DISTINCT user_id
+         FROM ux_events
+         WHERE created_at >= NOW() - ($1 || ' hours')::interval
+           AND user_type = 'observer'
+           AND user_id IS NOT NULL
+       ),
+       retention AS (
+         SELECT cu.user_id,
+                EXISTS(
+                  SELECT 1
+                  FROM ux_events ue
+                  WHERE ue.user_type = 'observer'
+                    AND ue.user_id = cu.user_id
+                    AND ue.created_at >= NOW() - ($1 || ' hours')::interval - INTERVAL '24 hours'
+                    AND ue.created_at < NOW() - ($1 || ' hours')::interval
+                ) AS active_prev_24h,
+                EXISTS(
+                  SELECT 1
+                  FROM ux_events ue
+                  WHERE ue.user_type = 'observer'
+                    AND ue.user_id = cu.user_id
+                    AND ue.created_at >= NOW() - ($1 || ' hours')::interval - INTERVAL '7 days'
+                    AND ue.created_at < NOW() - ($1 || ' hours')::interval
+                ) AS active_prev_7d
+         FROM current_users cu
+       )
+       SELECT COUNT(*)::int AS total_users,
+              COALESCE(SUM(CASE WHEN active_prev_24h THEN 1 ELSE 0 END), 0)::int AS return_24h_users,
+              COALESCE(SUM(CASE WHEN active_prev_7d THEN 1 ELSE 0 END), 0)::int AS return_7d_users
+       FROM retention`,
+      [hours]
+    );
+    const retentionTotalUsers = Number(retentionResult.rows[0]?.total_users ?? 0);
+    const return24hUsers = Number(retentionResult.rows[0]?.return_24h_users ?? 0);
+    const return7dUsers = Number(retentionResult.rows[0]?.return_7d_users ?? 0);
+
+    const segmentRows = await db.query(
+      `SELECT COALESCE(metadata->>'mode', 'unknown') AS mode,
+              COALESCE(status, metadata->>'draftStatus', metadata->>'status', 'unknown') AS draft_status,
+              event_type,
+              COUNT(*)::int AS count
+       FROM ux_events
+       WHERE created_at >= NOW() - ($1 || ' hours')::interval
+         AND user_type = 'observer'
+         AND event_type = ANY($2)
+       GROUP BY mode, draft_status, event_type
+       ORDER BY mode, draft_status, event_type`,
+      [hours, trackedEvents]
+    );
+
+    const variantRows = await db.query(
+      `SELECT COALESCE(
+                metadata->>'abVariant',
+                metadata->>'rankingVariant',
+                metadata->>'digestVariant',
+                'unknown'
+              ) AS variant,
+              event_type,
+              COUNT(*)::int AS count
+       FROM ux_events
+       WHERE created_at >= NOW() - ($1 || ' hours')::interval
+         AND user_type = 'observer'
+         AND event_type = ANY($2)
+       GROUP BY variant, event_type
+       ORDER BY variant, event_type`,
+      [hours, trackedEvents]
+    );
+
+    res.json({
+      windowHours: hours,
+      trackedEvents,
+      totals,
+      kpis: {
+        observerSessionTimeSec: Number(avgSessionSecRaw.toFixed(2)),
+        sessionCount,
+        followRate: toRate(totals.watchlistFollows, totals.draftArcViews),
+        digestOpenRate: toRate(totals.digestOpens, totals.watchlistFollows),
+        return24h: toRate(return24hUsers, retentionTotalUsers),
+        return7d: toRate(return7dUsers, retentionTotalUsers)
+      },
+      segments: segmentRows.rows.map((row) => ({
+        mode: row.mode,
+        draftStatus: row.draft_status,
+        eventType: row.event_type,
+        count: Number(row.count ?? 0)
+      })),
+      variants: variantRows.rows.map((row) => ({
+        variant: row.variant,
+        eventType: row.event_type,
+        count: Number(row.count ?? 0)
+      }))
+    });
   } catch (error) {
     next(error);
   }

@@ -63,6 +63,7 @@ describe('server setup', () => {
     jest.doMock('../routes/privacy', () => ({}));
     jest.doMock('../routes/telemetry', () => ({}));
     jest.doMock('../routes/demo', () => ({}));
+    jest.doMock('../routes/observers', () => ({}));
     jest.doMock('../db/pool', () => ({ db: { query: jest.fn().mockResolvedValue({ rows: [{ ok: 1 }] }) } }));
     jest.doMock('../redis/client', () => ({ redis: { isOpen: true, connect: jest.fn() } }));
     jest.doMock('../config/env', () => ({
@@ -94,6 +95,7 @@ describe('server setup', () => {
   test('initInfra connects when redis is closed', async () => {
     const connect = jest.fn().mockResolvedValue(undefined);
     jest.doMock('../redis/client', () => ({ redis: { isOpen: false, connect } }));
+    jest.doMock('../routes/observers', () => ({}));
 
     const { initInfra } = require('../server') as typeof import('../server');
     await initInfra();
@@ -125,6 +127,7 @@ describe('server setup', () => {
     jest.doMock('../routes/privacy', () => ({}));
     jest.doMock('../routes/telemetry', () => ({}));
     jest.doMock('../routes/demo', () => ({}));
+    jest.doMock('../routes/observers', () => ({}));
     jest.doMock('../db/pool', () => ({ db: { query: jest.fn().mockResolvedValue({ rows: [{ ok: 1 }] }) } }));
     jest.doMock('../redis/client', () => ({ redis: { isOpen: true, connect: jest.fn() } }));
     jest.doMock('../config/env', () => ({

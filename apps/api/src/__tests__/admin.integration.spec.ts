@@ -159,6 +159,68 @@ describe('Admin API routes', () => {
     expect(qualityText.openRate).toBe(0.5);
   });
 
+  test('observer engagement metrics endpoint returns KPI aggregates and segments', async () => {
+    const users = await db.query(
+      `INSERT INTO users (
+         email, password_hash, terms_version, terms_accepted_at, privacy_version, privacy_accepted_at
+       )
+       VALUES
+         ('observer-kpi-a@example.com', 'hash', 'v1', NOW(), 'v1', NOW()),
+         ('observer-kpi-b@example.com', 'hash', 'v1', NOW(), 'v1', NOW())
+       RETURNING id`
+    );
+    const observerA = users.rows[0].id;
+    const observerB = users.rows[1].id;
+
+    await db.query(
+      `INSERT INTO ux_events (event_type, user_type, user_id, status, metadata, created_at)
+       VALUES
+         ('draft_arc_view', 'observer', $1, 'draft', '{"mode":"hot_now","abVariant":"A"}', NOW() - INTERVAL '1 hour'),
+         ('watchlist_follow', 'observer', $1, 'draft', '{"mode":"hot_now","abVariant":"A"}', NOW() - INTERVAL '50 minutes'),
+         ('digest_open', 'observer', $1, 'draft', '{"mode":"digest","digestVariant":"daily"}', NOW() - INTERVAL '40 minutes'),
+         ('hot_now_open', 'observer', $1, 'draft', '{"mode":"hot_now","rankingVariant":"rank_v1"}', NOW() - INTERVAL '35 minutes'),
+         ('pr_prediction_submit', 'observer', $1, 'draft', '{"mode":"hot_now","abVariant":"A"}', NOW() - INTERVAL '20 minutes'),
+         ('draft_arc_view', 'observer', $2, 'draft', '{"mode":"hot_now","abVariant":"B"}', NOW() - INTERVAL '10 minutes'),
+         ('draft_arc_view', 'observer', $1, 'draft', '{"mode":"hot_now","abVariant":"A"}', NOW() - INTERVAL '30 hours'),
+         ('hot_now_open', 'observer', $1, 'draft', '{"mode":"hot_now","rankingVariant":"rank_v1"}', NOW() - INTERVAL '3 days')`,
+      [observerA, observerB]
+    );
+
+    const response = await request(app)
+      .get('/api/admin/ux/observer-engagement?hours=24')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(response.status).toBe(200);
+    expect(response.body.windowHours).toBe(24);
+    expect(response.body.totals.observerUsers).toBe(2);
+    expect(response.body.totals.draftArcViews).toBe(2);
+    expect(response.body.totals.watchlistFollows).toBe(1);
+    expect(response.body.totals.digestOpens).toBe(1);
+    expect(response.body.kpis.followRate).toBe(0.5);
+    expect(response.body.kpis.digestOpenRate).toBe(1);
+    expect(response.body.kpis.return24h).toBe(0.5);
+    expect(response.body.kpis.return7d).toBe(0.5);
+    expect(typeof response.body.kpis.observerSessionTimeSec).toBe('number');
+    expect(Array.isArray(response.body.segments)).toBe(true);
+    expect(Array.isArray(response.body.variants)).toBe(true);
+
+    const hotNowSegment = response.body.segments.find(
+      (segment: any) =>
+        segment.mode === 'hot_now' && segment.draftStatus === 'draft' && segment.eventType === 'draft_arc_view'
+    );
+    expect(hotNowSegment).toBeTruthy();
+    expect(hotNowSegment.count).toBe(2);
+
+    const variantA = response.body.variants.find(
+      (entry: any) => entry.variant === 'A' && entry.eventType === 'draft_arc_view'
+    );
+    const variantB = response.body.variants.find(
+      (entry: any) => entry.variant === 'B' && entry.eventType === 'draft_arc_view'
+    );
+    expect(variantA).toBeTruthy();
+    expect(variantB).toBeTruthy();
+  });
+
   test('job metrics endpoint returns aggregated runs', async () => {
     await db.query(
       `INSERT INTO job_runs (job_name, status, started_at, finished_at, duration_ms, error_message, metadata)

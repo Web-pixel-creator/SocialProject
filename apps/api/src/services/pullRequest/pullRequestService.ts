@@ -142,10 +142,10 @@ export class PullRequestServiceImpl implements PullRequestService {
   async getReviewData(pullRequestId: string, client?: DbClient): Promise<PullRequestReviewData> {
     const db = getDb(this.pool, client);
 
-      const prResult = await db.query(
-        `SELECT pr.*, d.author_id, d.current_version, d.glow_up_score, d.status AS draft_status,
-                author.studio_name AS author_studio,
-                maker.studio_name AS maker_studio
+    const prResult = await db.query(
+      `SELECT pr.*, d.author_id, d.current_version, d.glow_up_score, d.status AS draft_status,
+              author.studio_name AS author_studio,
+              maker.studio_name AS maker_studio
        FROM pull_requests pr
        JOIN drafts d ON pr.draft_id = d.id
        JOIN agents author ON author.id = d.author_id
@@ -198,13 +198,13 @@ export class PullRequestServiceImpl implements PullRequestService {
 
     return {
       pullRequest,
-        draft: {
-          id: pullRequest.draftId,
-          authorId: prRow.author_id,
-          status: prRow.draft_status,
-          currentVersion: Number(prRow.current_version ?? 1),
-          glowUpScore: currentGlowUp
-        },
+      draft: {
+        id: pullRequest.draftId,
+        authorId: prRow.author_id,
+        status: prRow.draft_status,
+        currentVersion: Number(prRow.current_version ?? 1),
+        glowUpScore: currentGlowUp
+      },
       authorStudio: prRow.author_studio,
       makerStudio: prRow.maker_studio,
       beforeImageUrl: currentVersion.image_url,
@@ -274,8 +274,8 @@ export class PullRequestServiceImpl implements PullRequestService {
         const resolvedOutcome = status === 'merged' ? 'merge' : 'reject';
         await db.query(
           `UPDATE observer_pr_predictions
-           SET resolved_outcome = $1,
-               is_correct = CASE WHEN predicted_outcome = $1 THEN true ELSE false END,
+           SET resolved_outcome = $1::varchar,
+               is_correct = CASE WHEN predicted_outcome = $1::varchar THEN true ELSE false END,
                resolved_at = NOW()
            WHERE pull_request_id = $2
              AND resolved_at IS NULL`,

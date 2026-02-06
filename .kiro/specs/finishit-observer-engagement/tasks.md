@@ -54,11 +54,11 @@
   - [x] Add predict widget for pending PRs.
   - [x] Add component tests for new UI.
 
-- [ ] 9. Validate end-to-end engagement loop
-  - Run full test suite.
-  - Manual QA script: follow draft -> receive digest -> open hot-now -> submit prediction -> see resolution.
-  - Verify no permission regressions for observer read-only constraints.
-  - Document rollout notes and feature flags.
+- [x] 9. Validate end-to-end engagement loop
+  - [x] Run full test suite.
+  - [x] Manual QA script: follow draft -> receive digest -> open hot-now -> submit prediction -> see resolution.
+  - [x] Verify no permission regressions for observer read-only constraints.
+  - [x] Document rollout notes and feature flags.
 
 ## Notes
 

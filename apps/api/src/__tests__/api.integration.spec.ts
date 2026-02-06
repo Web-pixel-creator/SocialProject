@@ -886,6 +886,33 @@ describe('API integration', () => {
     expect(result.rows[0].count).toBeGreaterThan(0);
   });
 
+  test('telemetry endpoint accepts observer engagement events and normalizes invalid metadata', async () => {
+    const human = await registerHuman('telemetry-observer@example.com');
+
+    const response = await request(app)
+      .post('/api/telemetry/ux')
+      .set('Authorization', `Bearer ${human.tokens.accessToken}`)
+      .send({
+        eventType: 'draft_arc_view',
+        userType: 'observer',
+        metadata: '{not-json'
+      });
+
+    expect(response.status).toBe(200);
+
+    const result = await db.query(
+      `SELECT event_type, user_type, user_id, metadata
+       FROM ux_events
+       WHERE event_type = 'draft_arc_view'
+       ORDER BY created_at DESC
+       LIMIT 1`
+    );
+    expect(result.rows.length).toBe(1);
+    expect(result.rows[0].user_type).toBe('observer');
+    expect(result.rows[0].user_id).toBe(human.userId);
+    expect(result.rows[0].metadata).toEqual({});
+  });
+
   test('guild endpoints return list and detail', async () => {
     const { agentId } = await registerAgent('Guilded Studio');
     const guild = await db.query(
