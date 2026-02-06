@@ -1,14 +1,24 @@
-import { Pool } from 'pg';
 import fc from 'fast-check';
+import { Pool } from 'pg';
 import { FixRequestServiceImpl } from '../services/fixRequest/fixRequestService';
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/finishit'
+  connectionString:
+    process.env.DATABASE_URL ||
+    'postgres://postgres:postgres@localhost:5432/finishit',
 });
 
 const fixService = new FixRequestServiceImpl(pool);
 
-const categories = ['Focus', 'Cohesion', 'Readability', 'Composition', 'Color/Light', 'Story/Intent', 'Technical'] as const;
+const categories = [
+  'Focus',
+  'Cohesion',
+  'Readability',
+  'Composition',
+  'Color/Light',
+  'Story/Intent',
+  'Technical',
+] as const;
 
 describe('fix request properties', () => {
   afterAll(async () => {
@@ -21,13 +31,13 @@ describe('fix request properties', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['Fix Agent', 'tester', 'hash_fix']
+        ['Fix Agent', 'tester', 'hash_fix'],
       );
       const agentId = agent.rows[0].id;
 
       const draft = await client.query(
         'INSERT INTO drafts (author_id) VALUES ($1) RETURNING id',
-        [agentId]
+        [agentId],
       );
 
       await expect(
@@ -36,10 +46,10 @@ describe('fix request properties', () => {
             draftId: draft.rows[0].id,
             criticId: agentId,
             category: 'Invalid' as any,
-            description: 'bad category'
+            description: 'bad category',
           },
-          client
-        )
+          client,
+        ),
       ).rejects.toThrow();
 
       await client.query('ROLLBACK');
@@ -59,13 +69,13 @@ describe('fix request properties', () => {
           await client.query('BEGIN');
           const agent = await client.query(
             'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-            ['Fix Agent', 'tester', 'hash_fix_2']
+            ['Fix Agent', 'tester', 'hash_fix_2'],
           );
           const agentId = agent.rows[0].id;
 
           const draft = await client.query(
             'INSERT INTO drafts (author_id, current_version) VALUES ($1, $2) RETURNING id, current_version',
-            [agentId, 2]
+            [agentId, 2],
           );
 
           const fix = await fixService.submitFixRequest(
@@ -73,9 +83,9 @@ describe('fix request properties', () => {
               draftId: draft.rows[0].id,
               criticId: agentId,
               category,
-              description: 'check version association'
+              description: 'check version association',
             },
-            client
+            client,
           );
 
           expect(fix.targetVersion).toBe(2);
@@ -88,9 +98,9 @@ describe('fix request properties', () => {
           client.release();
         }
       }),
-      { numRuns: 10 }
+      { numRuns: 10 },
     );
-  }, 30000);
+  }, 30_000);
 
   test('Property 38: Fix Request Chronological Display', async () => {
     const client = await pool.connect();
@@ -98,13 +108,13 @@ describe('fix request properties', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['Chrono Agent', 'tester', 'hash_fix_3']
+        ['Chrono Agent', 'tester', 'hash_fix_3'],
       );
       const agentId = agent.rows[0].id;
 
       const draft = await client.query(
         'INSERT INTO drafts (author_id) VALUES ($1) RETURNING id',
-        [agentId]
+        [agentId],
       );
 
       await fixService.submitFixRequest(
@@ -112,9 +122,9 @@ describe('fix request properties', () => {
           draftId: draft.rows[0].id,
           criticId: agentId,
           category: 'Focus',
-          description: 'first'
+          description: 'first',
         },
-        client
+        client,
       );
 
       await fixService.submitFixRequest(
@@ -122,9 +132,9 @@ describe('fix request properties', () => {
           draftId: draft.rows[0].id,
           criticId: agentId,
           category: 'Cohesion',
-          description: 'second'
+          description: 'second',
         },
-        client
+        client,
       );
 
       const list = await fixService.listByDraft(draft.rows[0].id, client);
@@ -145,12 +155,12 @@ describe('fix request properties', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['Heat Agent', 'tester', 'hash_fix_4']
+        ['Heat Agent', 'tester', 'hash_fix_4'],
       );
       const agentId = agent.rows[0].id;
       const draft = await client.query(
         'INSERT INTO drafts (author_id) VALUES ($1) RETURNING id',
-        [agentId]
+        [agentId],
       );
 
       const coordinates = { x: 0.5, y: 0.25, width: 0.1, height: 0.2 };
@@ -160,9 +170,9 @@ describe('fix request properties', () => {
           criticId: agentId,
           category: 'Composition',
           description: 'heat map',
-          coordinates
+          coordinates,
         },
-        client
+        client,
       );
 
       expect(fix.coordinates).toEqual(coordinates);
@@ -182,7 +192,7 @@ describe('fix request properties', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['Req Agent', 'tester', 'hash_fix_5']
+        ['Req Agent', 'tester', 'hash_fix_5'],
       );
 
       await expect(
@@ -191,10 +201,10 @@ describe('fix request properties', () => {
             draftId: '',
             criticId: agent.rows[0].id,
             category: 'Focus',
-            description: ''
+            description: '',
           },
-          client
-        )
+          client,
+        ),
       ).rejects.toThrow();
 
       await client.query('ROLLBACK');

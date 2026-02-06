@@ -1,10 +1,15 @@
-import { Pool } from 'pg';
 import fc from 'fast-check';
+import { Pool } from 'pg';
+import {
+  GLOWUP_MAJOR_WEIGHT,
+  GLOWUP_MINOR_WEIGHT,
+} from '../services/metrics/constants';
 import { MetricsServiceImpl } from '../services/metrics/metricsService';
-import { GLOWUP_MAJOR_WEIGHT, GLOWUP_MINOR_WEIGHT } from '../services/metrics/constants';
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/finishit'
+  connectionString:
+    process.env.DATABASE_URL ||
+    'postgres://postgres:postgres@localhost:5432/finishit',
 });
 
 const metricsService = new MetricsServiceImpl(pool);
@@ -24,13 +29,14 @@ describe('metrics service properties', () => {
           const expected =
             prCount === 0
               ? 0
-              : (major * GLOWUP_MAJOR_WEIGHT + minor * GLOWUP_MINOR_WEIGHT) * (1 + Math.log(prCount + 1));
+              : (major * GLOWUP_MAJOR_WEIGHT + minor * GLOWUP_MINOR_WEIGHT) *
+                (1 + Math.log(prCount + 1));
 
           const result = metricsService.calculateGlowUp(major, minor);
           expect(result).toBeCloseTo(expected, 6);
-        }
+        },
       ),
-      { numRuns: 50 }
+      { numRuns: 50 },
     );
   });
 
@@ -40,12 +46,16 @@ describe('metrics service properties', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id, impact',
-        ['Impact Agent', 'tester', 'hash_metrics_1']
+        ['Impact Agent', 'tester', 'hash_metrics_1'],
       );
       const agentId = agent.rows[0].id;
       const initial = Number(agent.rows[0].impact);
 
-      const updated = await metricsService.updateImpactOnMerge(agentId, 'major', client);
+      const updated = await metricsService.updateImpactOnMerge(
+        agentId,
+        'major',
+        client,
+      );
       expect(updated).toBeGreaterThan(initial);
 
       await client.query('ROLLBACK');
@@ -63,12 +73,16 @@ describe('metrics service properties', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id, signal',
-        ['Signal Agent', 'tester', 'hash_metrics_2']
+        ['Signal Agent', 'tester', 'hash_metrics_2'],
       );
       const agentId = agent.rows[0].id;
       const initial = Number(agent.rows[0].signal);
 
-      const updated = await metricsService.updateSignalOnDecision(agentId, 'rejected', client);
+      const updated = await metricsService.updateSignalOnDecision(
+        agentId,
+        'rejected',
+        client,
+      );
       expect(updated).toBeLessThanOrEqual(initial);
 
       await client.query('ROLLBACK');
@@ -86,12 +100,16 @@ describe('metrics service properties', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id, signal',
-        ['Signal Merge', 'tester', 'hash_metrics_3']
+        ['Signal Merge', 'tester', 'hash_metrics_3'],
       );
       const agentId = agent.rows[0].id;
       const initial = Number(agent.rows[0].signal);
 
-      const updated = await metricsService.updateSignalOnDecision(agentId, 'merged', client);
+      const updated = await metricsService.updateSignalOnDecision(
+        agentId,
+        'merged',
+        client,
+      );
       expect(updated).toBeGreaterThanOrEqual(initial);
 
       await client.query('ROLLBACK');
@@ -108,10 +126,13 @@ describe('metrics service properties', () => {
     try {
       await client.query('BEGIN');
       const agent = await client.query(
-        "INSERT INTO agents (studio_name, personality, api_key_hash, signal) VALUES ($1, $2, $3, 5) RETURNING id",
-        ['Limited Agent', 'tester', 'hash_metrics_4']
+        'INSERT INTO agents (studio_name, personality, api_key_hash, signal) VALUES ($1, $2, $3, 5) RETURNING id',
+        ['Limited Agent', 'tester', 'hash_metrics_4'],
       );
-      const limited = await metricsService.isSignalLimited(agent.rows[0].id, client);
+      const limited = await metricsService.isSignalLimited(
+        agent.rows[0].id,
+        client,
+      );
       expect(limited).toBe(true);
 
       await client.query('ROLLBACK');
@@ -129,7 +150,7 @@ describe('metrics service properties', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING impact',
-        ['Initial Impact', 'tester', 'hash_metrics_5']
+        ['Initial Impact', 'tester', 'hash_metrics_5'],
       );
       expect(Number(agent.rows[0].impact)).toBe(0);
 
@@ -148,7 +169,7 @@ describe('metrics service properties', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING signal',
-        ['Initial Signal', 'tester', 'hash_metrics_6']
+        ['Initial Signal', 'tester', 'hash_metrics_6'],
       );
       expect(Number(agent.rows[0].signal)).toBe(50);
 

@@ -30,8 +30,10 @@ describe('sandbox service', () => {
 
     const first = await service.incrementDraftLimit(agentId);
     expect(first.count).toBe(1);
-    await expect(service.incrementDraftLimit(agentId)).rejects.toThrow(ServiceError);
+    await expect(service.incrementDraftLimit(agentId)).rejects.toThrow(
+      ServiceError,
+    );
 
     await redis.del(key);
-  }, 30000);
+  }, 30_000);
 });

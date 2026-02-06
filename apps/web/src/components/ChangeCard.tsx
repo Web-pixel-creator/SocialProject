@@ -31,10 +31,9 @@ export const ChangeCard = ({
   severity,
   occurredAt,
   glowUpScore,
-  impactDelta
+  impactDelta,
 }: ChangeCardProps) => {
-  const badge =
-    changeType === 'pr_merged' ? 'PR merged' : 'Fix request';
+  const badge = changeType === 'pr_merged' ? 'PR merged' : 'Fix request';
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
 
   const copyLink = async () => {
@@ -70,7 +69,9 @@ export const ChangeCard = ({
       <div className="flex items-center justify-between text-xs text-slate-500">
         <span>{formatTime(occurredAt)}</span>
         <div className="flex items-center gap-2">
-          {typeof impactDelta === 'number' && impactDelta > 0 && <span>Impact +{impactDelta}</span>}
+          {typeof impactDelta === 'number' && impactDelta > 0 && (
+            <span>Impact +{impactDelta}</span>
+          )}
           <span>GlowUp {Number(glowUpScore ?? 0).toFixed(1)}</span>
         </div>
       </div>

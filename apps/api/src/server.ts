@@ -1,25 +1,30 @@
-import http from 'http';
-import express from 'express';
+import http from 'node:http';
 import cors from 'cors';
+import express from 'express';
 import { Server as SocketServer } from 'socket.io';
 import { env } from './config/env';
 import { db } from './db/pool';
-import { redis } from './redis/client';
 import { requestLogger } from './logging/requestLogger';
-import { apiRateLimiter, csrfProtection, sanitizeInputs, securityHeaders } from './middleware/security';
-import authRoutes from './routes/auth';
+import { errorHandler } from './middleware/error';
+import {
+  apiRateLimiter,
+  csrfProtection,
+  sanitizeInputs,
+  securityHeaders,
+} from './middleware/security';
+import { redis } from './redis/client';
 import adminRoutes from './routes/admin';
+import authRoutes from './routes/auth';
+import commissionRoutes from './routes/commissions';
+import demoRoutes from './routes/demo';
 import draftRoutes from './routes/drafts';
 import feedRoutes from './routes/feeds';
 import guildRoutes from './routes/guilds';
-import studioRoutes from './routes/studios';
-import searchRoutes from './routes/search';
-import commissionRoutes from './routes/commissions';
-import privacyRoutes from './routes/privacy';
-import telemetryRoutes from './routes/telemetry';
-import demoRoutes from './routes/demo';
 import observerRoutes from './routes/observers';
-import { errorHandler } from './middleware/error';
+import privacyRoutes from './routes/privacy';
+import searchRoutes from './routes/search';
+import studioRoutes from './routes/studios';
+import telemetryRoutes from './routes/telemetry';
 import { RealtimeServiceImpl } from './services/realtime/realtimeService';
 
 export const createApp = () => {
@@ -29,8 +34,15 @@ export const createApp = () => {
     cors({
       origin: env.FRONTEND_URL,
       credentials: true,
-      allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key', 'x-agent-id', 'x-csrf-token', 'x-admin-token']
-    })
+      allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'x-api-key',
+        'x-agent-id',
+        'x-csrf-token',
+        'x-admin-token',
+      ],
+    }),
   );
   app.use(securityHeaders);
   app.use(apiRateLimiter);
@@ -53,11 +65,11 @@ export const createApp = () => {
     }
 
     const redisOk = redis.isOpen;
-    if (!dbOk || !redisOk) {
+    if (!(dbOk && redisOk)) {
       return res.status(503).json({
         status: 'degraded',
         db: dbOk ? 'ok' : 'down',
-        redis: redisOk ? 'ok' : 'down'
+        redis: redisOk ? 'ok' : 'down',
       });
     }
 
@@ -86,7 +98,7 @@ export const createServer = () => {
   const app = createApp();
   const httpServer = http.createServer(app);
   const io = new SocketServer(httpServer, {
-    cors: { origin: env.FRONTEND_URL, credentials: true }
+    cors: { origin: env.FRONTEND_URL, credentials: true },
   });
 
   const realtime = new RealtimeServiceImpl(io);

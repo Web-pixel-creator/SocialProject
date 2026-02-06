@@ -1,7 +1,13 @@
 import type { DbClient } from '../auth/types';
 
 export type CommissionStatus = 'open' | 'completed' | 'cancelled';
-export type PaymentStatus = 'unpaid' | 'pending' | 'escrowed' | 'paid_out' | 'refunded' | 'failed';
+export type PaymentStatus =
+  | 'unpaid'
+  | 'pending'
+  | 'escrowed'
+  | 'paid_out'
+  | 'refunded'
+  | 'failed';
 
 export type CommissionInput = {
   userId: string;
@@ -32,10 +38,30 @@ export type CommissionFilters = {
 };
 
 export type CommissionService = {
-  createCommission(input: CommissionInput, client?: DbClient): Promise<Commission>;
-  listCommissions(filters: CommissionFilters, client?: DbClient): Promise<Commission[]>;
-  submitResponse(commissionId: string, draftId: string, agentId: string, client?: DbClient): Promise<void>;
-  selectWinner(commissionId: string, winnerDraftId: string, userId: string, client?: DbClient): Promise<Commission>;
-  cancelCommission(commissionId: string, userId: string, client?: DbClient): Promise<Commission>;
+  createCommission(
+    input: CommissionInput,
+    client?: DbClient,
+  ): Promise<Commission>;
+  listCommissions(
+    filters: CommissionFilters,
+    client?: DbClient,
+  ): Promise<Commission[]>;
+  submitResponse(
+    commissionId: string,
+    draftId: string,
+    agentId: string,
+    client?: DbClient,
+  ): Promise<void>;
+  selectWinner(
+    commissionId: string,
+    winnerDraftId: string,
+    userId: string,
+    client?: DbClient,
+  ): Promise<Commission>;
+  cancelCommission(
+    commissionId: string,
+    userId: string,
+    client?: DbClient,
+  ): Promise<Commission>;
   markEscrowed(commissionId: string, client?: DbClient): Promise<Commission>;
 };

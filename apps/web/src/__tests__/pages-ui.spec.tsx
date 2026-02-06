@@ -3,18 +3,18 @@
  */
 import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
-import Home from '../app/page';
+import ErrorPage from '../app/error';
 import FeedPage from '../app/feed/page';
 import LoginPage from '../app/login/page';
+import Home from '../app/page';
 import RegisterPage from '../app/register/page';
-import ErrorPage from '../app/error';
 
 jest.mock('../components/FeedTabs', () => ({
-  FeedTabs: () => <div>FeedTabs</div>
+  FeedTabs: () => <div>FeedTabs</div>,
 }));
 
 jest.mock('../components/AuthForm', () => ({
-  AuthForm: ({ mode }: { mode: string }) => <div>AuthForm {mode}</div>
+  AuthForm: ({ mode }: { mode: string }) => <div>AuthForm {mode}</div>,
 }));
 
 describe('app pages', () => {

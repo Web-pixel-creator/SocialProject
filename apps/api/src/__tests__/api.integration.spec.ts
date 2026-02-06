@@ -1,24 +1,29 @@
 import request from 'supertest';
+import { env } from '../config/env';
 import { db } from '../db/pool';
 import { redis } from '../redis/client';
-import { env } from '../config/env';
+import { createApp, initInfra } from '../server';
 import { AuthServiceImpl } from '../services/auth/authService';
-import { BudgetServiceImpl, getUtcDateKey } from '../services/budget/budgetService';
+import {
+  BudgetServiceImpl,
+  getUtcDateKey,
+} from '../services/budget/budgetService';
 import { CommissionServiceImpl } from '../services/commission/commissionService';
 import { FeedServiceImpl } from '../services/feed/feedService';
 import { FixRequestServiceImpl } from '../services/fixRequest/fixRequestService';
-import { PaymentServiceImpl } from '../services/payment/paymentService';
 import { MetricsServiceImpl } from '../services/metrics/metricsService';
+import { PaymentServiceImpl } from '../services/payment/paymentService';
 import { PostServiceImpl } from '../services/post/postService';
 import { PrivacyServiceImpl } from '../services/privacy/privacyService';
 import { PullRequestServiceImpl } from '../services/pullRequest/pullRequestService';
 import { SearchServiceImpl } from '../services/search/searchService';
-import { createApp, initInfra } from '../server';
 
 const app = createApp();
 
 const resetDb = async () => {
-  await db.query('TRUNCATE TABLE commission_responses RESTART IDENTITY CASCADE');
+  await db.query(
+    'TRUNCATE TABLE commission_responses RESTART IDENTITY CASCADE',
+  );
   await db.query('TRUNCATE TABLE commissions RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE payment_events RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE viewing_history RESTART IDENTITY CASCADE');
@@ -49,33 +54,39 @@ const resetDb = async () => {
 const registerAgent = async (studioName = 'Agent Studio') => {
   const response = await request(app).post('/api/agents/register').send({
     studioName,
-    personality: 'Tester'
+    personality: 'Tester',
   });
   const { agentId, apiKey, claimToken, emailToken } = response.body;
   const verify = await request(app).post('/api/agents/claim/verify').send({
     claimToken,
     method: 'email',
-    emailToken
+    emailToken,
   });
-  expect(verify.status).toBe(200);
+  if (verify.status !== 200) {
+    throw new Error(
+      `Agent claim verification failed with status ${verify.status}`,
+    );
+  }
   return { agentId, apiKey };
 };
 
 const registerUnverifiedAgent = async (studioName = 'Sandbox Studio') => {
   const response = await request(app).post('/api/agents/register').send({
     studioName,
-    personality: 'Tester'
+    personality: 'Tester',
   });
   const { agentId, apiKey } = response.body;
   return { agentId, apiKey };
 };
 
 const registerHuman = async (email = 'human@example.com') => {
-  const response = await request(app).post('/api/auth/register').send({
-    email,
-    password: 'password123',
-    consent: { termsAccepted: true, privacyAccepted: true }
-  });
+  const response = await request(app)
+    .post('/api/auth/register')
+    .send({
+      email,
+      password: 'password123',
+      consent: { termsAccepted: true, privacyAccepted: true },
+    });
   return response.body;
 };
 
@@ -96,11 +107,13 @@ describe('API integration', () => {
   });
 
   test('registration requires consent', async () => {
-    const response = await request(app).post('/api/auth/register').send({
-      email: 'human@example.com',
-      password: 'password123',
-      consent: { termsAccepted: false, privacyAccepted: false }
-    });
+    const response = await request(app)
+      .post('/api/auth/register')
+      .send({
+        email: 'human@example.com',
+        password: 'password123',
+        consent: { termsAccepted: false, privacyAccepted: false },
+      });
 
     expect(response.status).toBe(400);
   });
@@ -110,7 +123,7 @@ describe('API integration', () => {
 
     const login = await request(app).post('/api/auth/login').send({
       email: 'login@example.com',
-      password: 'password123'
+      password: 'password123',
     });
     expect(login.status).toBe(200);
     expect(login.body.tokens.accessToken).toBeTruthy();
@@ -149,7 +162,9 @@ describe('API integration', () => {
   });
 
   test('unverified agents are sandbox-limited on draft creation', async () => {
-    const { agentId, apiKey } = await registerUnverifiedAgent('Sandbox Draft Studio');
+    const { agentId, apiKey } = await registerUnverifiedAgent(
+      'Sandbox Draft Studio',
+    );
     const sandboxKey = `sandbox:draft:${agentId}:${getUtcDateKey(new Date())}`;
     await redis.del(sandboxKey);
 
@@ -159,7 +174,7 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({
         imageUrl: 'https://example.com/sandbox-v1.png',
-        thumbnailUrl: 'https://example.com/sandbox-thumb.png'
+        thumbnailUrl: 'https://example.com/sandbox-thumb.png',
       });
 
     expect(first.status).toBe(200);
@@ -171,7 +186,7 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({
         imageUrl: 'https://example.com/sandbox-v2.png',
-        thumbnailUrl: 'https://example.com/sandbox-thumb-2.png'
+        thumbnailUrl: 'https://example.com/sandbox-thumb-2.png',
       });
 
     expect(second.status).toBe(429);
@@ -189,7 +204,7 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({
         imageUrl: 'https://example.com/v1.png',
-        thumbnailUrl: 'https://example.com/v1-thumb.png'
+        thumbnailUrl: 'https://example.com/v1-thumb.png',
       });
 
     expect(draftRes.status).toBe(200);
@@ -201,7 +216,7 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({
         category: 'Focus',
-        description: 'Fix this'
+        description: 'Fix this',
       });
 
     expect(fixRes.status).toBe(200);
@@ -214,7 +229,7 @@ describe('API integration', () => {
         description: 'Improvement',
         severity: 'minor',
         imageUrl: 'https://example.com/v2.png',
-        thumbnailUrl: 'https://example.com/v2-thumb.png'
+        thumbnailUrl: 'https://example.com/v2-thumb.png',
       });
 
     expect(prRes.status).toBe(200);
@@ -224,14 +239,14 @@ describe('API integration', () => {
       .set('x-agent-id', agentId)
       .set('x-api-key', apiKey)
       .send({
-        decision: 'merge'
+        decision: 'merge',
       });
 
     expect(decisionRes.status).toBe(200);
 
     const draftGet = await request(app).get(`/api/drafts/${draftId}`);
     expect(draftGet.body.draft.currentVersion).toBeGreaterThan(1);
-  }, 30000);
+  }, 30_000);
 
   test('draft arc endpoint returns summary and 24h recap', async () => {
     const { agentId, apiKey } = await registerAgent('Arc API Studio');
@@ -242,7 +257,7 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({
         imageUrl: 'https://example.com/arc-v1.png',
-        thumbnailUrl: 'https://example.com/arc-v1-thumb.png'
+        thumbnailUrl: 'https://example.com/arc-v1-thumb.png',
       });
 
     const draftId = draftRes.body.draft.id;
@@ -253,7 +268,7 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({
         category: 'Focus',
-        description: 'Improve hierarchy'
+        description: 'Improve hierarchy',
       });
     expect(fixRes.status).toBe(200);
 
@@ -265,7 +280,7 @@ describe('API integration', () => {
         description: 'Apply hierarchy changes',
         severity: 'minor',
         imageUrl: 'https://example.com/arc-v2.png',
-        thumbnailUrl: 'https://example.com/arc-v2-thumb.png'
+        thumbnailUrl: 'https://example.com/arc-v2-thumb.png',
       });
     expect(prRes.status).toBe(200);
 
@@ -289,7 +304,7 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({
         imageUrl: 'https://example.com/digest-v1.png',
-        thumbnailUrl: 'https://example.com/digest-v1-thumb.png'
+        thumbnailUrl: 'https://example.com/digest-v1-thumb.png',
       });
     const draftId = draftRes.body.draft.id;
 
@@ -306,7 +321,7 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({
         category: 'Focus',
-        description: 'Digest trigger'
+        description: 'Digest trigger',
       });
     expect(fixRes.status).toBe(200);
 
@@ -340,8 +355,10 @@ describe('API integration', () => {
   test('observer predict mode lifecycle', async () => {
     const human = await registerHuman('observer-predict@example.com');
     const observerToken = human.tokens.accessToken;
-    const { agentId: authorId, apiKey: authorKey } = await registerAgent('Predict Author');
-    const { agentId: makerId, apiKey: makerKey } = await registerAgent('Predict Maker');
+    const { agentId: authorId, apiKey: authorKey } =
+      await registerAgent('Predict Author');
+    const { agentId: makerId, apiKey: makerKey } =
+      await registerAgent('Predict Maker');
 
     const draftRes = await request(app)
       .post('/api/drafts')
@@ -349,7 +366,7 @@ describe('API integration', () => {
       .set('x-api-key', authorKey)
       .send({
         imageUrl: 'https://example.com/predict-v1.png',
-        thumbnailUrl: 'https://example.com/predict-v1-thumb.png'
+        thumbnailUrl: 'https://example.com/predict-v1-thumb.png',
       });
     expect(draftRes.status).toBe(200);
 
@@ -362,7 +379,7 @@ describe('API integration', () => {
         description: 'Predictable PR',
         severity: 'minor',
         imageUrl: 'https://example.com/predict-v2.png',
-        thumbnailUrl: 'https://example.com/predict-v2-thumb.png'
+        thumbnailUrl: 'https://example.com/predict-v2-thumb.png',
       });
     expect(prRes.status).toBe(200);
     const pullRequestId = prRes.body.id;
@@ -412,7 +429,7 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({
         imageUrl: 'https://example.com/v1.png',
-        thumbnailUrl: 'https://example.com/v1-thumb.png'
+        thumbnailUrl: 'https://example.com/v1-thumb.png',
       });
 
     const draftId = draftRes.body.draft.id;
@@ -424,7 +441,7 @@ describe('API integration', () => {
         .set('x-api-key', apiKey)
         .send({
           category: 'Focus',
-          description: `Fix ${i}`
+          description: `Fix ${i}`,
         });
       expect(res.status).toBe(200);
     }
@@ -435,18 +452,20 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({
         category: 'Focus',
-        description: 'Too many'
+        description: 'Too many',
       });
 
     expect(blocked.status).toBe(429);
   });
 
   test('data export and deletion flows', async () => {
-    const register = await request(app).post('/api/auth/register').send({
-      email: 'export@example.com',
-      password: 'password123',
-      consent: { termsAccepted: true, privacyAccepted: true }
-    });
+    const register = await request(app)
+      .post('/api/auth/register')
+      .send({
+        email: 'export@example.com',
+        password: 'password123',
+        consent: { termsAccepted: true, privacyAccepted: true },
+      });
 
     const token = register.body.tokens.accessToken;
 
@@ -490,9 +509,10 @@ describe('API integration', () => {
     expect(missingExport.status).toBe(404);
     expect(missingExport.body.error).toBe('EXPORT_NOT_FOUND');
 
-    await db.query("INSERT INTO deletion_requests (user_id, status) VALUES ($1, 'pending')", [
-      human.userId
-    ]);
+    await db.query(
+      "INSERT INTO deletion_requests (user_id, status) VALUES ($1, 'pending')",
+      [human.userId],
+    );
 
     const pendingDelete = await request(app)
       .post('/api/account/delete')
@@ -504,7 +524,8 @@ describe('API integration', () => {
 
   test('draft listing and release authorization', async () => {
     const { agentId, apiKey } = await registerAgent('Release Owner');
-    const { agentId: otherAgentId, apiKey: otherApiKey } = await registerAgent('Release Intruder');
+    const { agentId: otherAgentId, apiKey: otherApiKey } =
+      await registerAgent('Release Intruder');
 
     const draftOne = await request(app)
       .post('/api/drafts')
@@ -512,7 +533,7 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({
         imageUrl: 'https://example.com/v1.png',
-        thumbnailUrl: 'https://example.com/v1-thumb.png'
+        thumbnailUrl: 'https://example.com/v1-thumb.png',
       });
 
     const draftTwo = await request(app)
@@ -521,7 +542,7 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({
         imageUrl: 'https://example.com/v2.png',
-        thumbnailUrl: 'https://example.com/v2-thumb.png'
+        thumbnailUrl: 'https://example.com/v2-thumb.png',
       });
 
     const forbidden = await request(app)
@@ -558,8 +579,10 @@ describe('API integration', () => {
   });
 
   test('pull request decisions, listings, and fork flow', async () => {
-    const { agentId: authorId, apiKey: authorKey } = await registerAgent('Author Studio');
-    const { agentId: makerId, apiKey: makerKey } = await registerAgent('Maker Studio');
+    const { agentId: authorId, apiKey: authorKey } =
+      await registerAgent('Author Studio');
+    const { agentId: makerId, apiKey: makerKey } =
+      await registerAgent('Maker Studio');
 
     const draftRes = await request(app)
       .post('/api/drafts')
@@ -567,7 +590,7 @@ describe('API integration', () => {
       .set('x-api-key', authorKey)
       .send({
         imageUrl: 'https://example.com/v1.png',
-        thumbnailUrl: 'https://example.com/v1-thumb.png'
+        thumbnailUrl: 'https://example.com/v1-thumb.png',
       });
 
     const draftId = draftRes.body.draft.id;
@@ -578,11 +601,13 @@ describe('API integration', () => {
       .set('x-api-key', authorKey)
       .send({
         category: 'Focus',
-        description: 'Fix details'
+        description: 'Fix details',
       });
     expect(fixRes.status).toBe(200);
 
-    const fixList = await request(app).get(`/api/drafts/${draftId}/fix-requests`);
+    const fixList = await request(app).get(
+      `/api/drafts/${draftId}/fix-requests`,
+    );
     expect(fixList.status).toBe(200);
     expect(fixList.body.length).toBe(1);
 
@@ -594,7 +619,7 @@ describe('API integration', () => {
         description: 'Initial changes',
         severity: 'minor',
         imageUrl: 'https://example.com/pr1.png',
-        thumbnailUrl: 'https://example.com/pr1-thumb.png'
+        thumbnailUrl: 'https://example.com/pr1-thumb.png',
       });
     expect(prOne.status).toBe(200);
 
@@ -604,7 +629,7 @@ describe('API integration', () => {
       .set('x-api-key', authorKey)
       .send({
         decision: 'request_changes',
-        feedback: 'Need more work'
+        feedback: 'Need more work',
       });
     expect(requestChanges.status).toBe(200);
     expect(requestChanges.body.status).toBe('changes_requested');
@@ -617,7 +642,7 @@ describe('API integration', () => {
         description: 'Second attempt',
         severity: 'minor',
         imageUrl: 'https://example.com/pr2.png',
-        thumbnailUrl: 'https://example.com/pr2-thumb.png'
+        thumbnailUrl: 'https://example.com/pr2-thumb.png',
       });
     expect(prTwo.status).toBe(200);
 
@@ -629,7 +654,7 @@ describe('API integration', () => {
         description: 'Major attempt',
         severity: 'major',
         imageUrl: 'https://example.com/pr3.png',
-        thumbnailUrl: 'https://example.com/pr3-thumb.png'
+        thumbnailUrl: 'https://example.com/pr3-thumb.png',
       });
     expect(prThree.status).toBe(200);
 
@@ -639,12 +664,14 @@ describe('API integration', () => {
       .set('x-api-key', authorKey)
       .send({
         decision: 'reject',
-        rejectionReason: 'Not aligned'
+        rejectionReason: 'Not aligned',
       });
     expect(reject.status).toBe(200);
     expect(reject.body.status).toBe('rejected');
 
-    const listPrs = await request(app).get(`/api/drafts/${draftId}/pull-requests`);
+    const listPrs = await request(app).get(
+      `/api/drafts/${draftId}/pull-requests`,
+    );
     expect(listPrs.status).toBe(200);
     expect(listPrs.body.length).toBe(3);
 
@@ -669,7 +696,7 @@ describe('API integration', () => {
       .send({
         imageUrl: 'https://example.com/v1.png',
         thumbnailUrl: 'https://example.com/v1-thumb.png',
-        metadata: { title: 'Coffee App' }
+        metadata: { title: 'Coffee App' },
       });
 
     const draftTwo = await request(app)
@@ -679,16 +706,16 @@ describe('API integration', () => {
       .send({
         imageUrl: 'https://example.com/v2.png',
         thumbnailUrl: 'https://example.com/v2-thumb.png',
-        metadata: { title: 'Battle App' }
+        metadata: { title: 'Battle App' },
       });
 
     const draftOneId = draftOne.body.draft.id;
     const draftTwoId = draftTwo.body.draft.id;
 
-    await db.query('INSERT INTO viewing_history (user_id, draft_id) VALUES ($1, $2)', [
-      human.userId,
-      draftTwoId
-    ]);
+    await db.query(
+      'INSERT INTO viewing_history (user_id, draft_id) VALUES ($1, $2)',
+      [human.userId, draftTwoId],
+    );
 
     await request(app)
       .post(`/api/drafts/${draftOneId}/release`)
@@ -699,7 +726,7 @@ describe('API integration', () => {
     await db.query(
       `INSERT INTO autopsy_reports (share_slug, summary, data, published_at)
        VALUES ($1, $2, $3, NOW())`,
-      ['auto-1', 'Autopsy summary', {}]
+      ['auto-1', 'Autopsy summary', {}],
     );
 
     await request(app)
@@ -710,7 +737,7 @@ describe('API integration', () => {
         description: 'First PR',
         severity: 'minor',
         imageUrl: 'https://example.com/v2-pr1.png',
-        thumbnailUrl: 'https://example.com/v2-pr1-thumb.png'
+        thumbnailUrl: 'https://example.com/v2-pr1-thumb.png',
       });
 
     await request(app)
@@ -721,7 +748,7 @@ describe('API integration', () => {
         description: 'Second PR',
         severity: 'minor',
         imageUrl: 'https://example.com/v2-pr2.png',
-        thumbnailUrl: 'https://example.com/v2-pr2-thumb.png'
+        thumbnailUrl: 'https://example.com/v2-pr2-thumb.png',
       });
 
     const forYou = await request(app)
@@ -772,7 +799,7 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({
         imageUrl: 'https://example.com/v1.png',
-        thumbnailUrl: 'https://example.com/v1-thumb.png'
+        thumbnailUrl: 'https://example.com/v1-thumb.png',
       });
 
     await request(app)
@@ -783,7 +810,7 @@ describe('API integration', () => {
         description: 'Progress update',
         severity: 'minor',
         imageUrl: 'https://example.com/v2.png',
-        thumbnailUrl: 'https://example.com/v2-thumb.png'
+        thumbnailUrl: 'https://example.com/v2-thumb.png',
       });
 
     const progress = await request(app).get('/api/feeds/progress?limit=5');
@@ -802,7 +829,7 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({
         imageUrl: 'https://example.com/review-v1.png',
-        thumbnailUrl: 'https://example.com/review-v1-thumb.png'
+        thumbnailUrl: 'https://example.com/review-v1-thumb.png',
       });
 
     const prRes = await request(app)
@@ -813,10 +840,12 @@ describe('API integration', () => {
         description: 'Review PR',
         severity: 'minor',
         imageUrl: 'https://example.com/review-v2.png',
-        thumbnailUrl: 'https://example.com/review-v2-thumb.png'
+        thumbnailUrl: 'https://example.com/review-v2-thumb.png',
       });
 
-    const review = await request(app).get(`/api/pull-requests/${prRes.body.id}`);
+    const review = await request(app).get(
+      `/api/pull-requests/${prRes.body.id}`,
+    );
     expect(review.status).toBe(200);
     expect(review.body.pullRequest).toBeTruthy();
     expect(review.body.draft).toBeTruthy();
@@ -834,7 +863,7 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({
         imageUrl: 'https://example.com/decision-v1.png',
-        thumbnailUrl: 'https://example.com/decision-v1-thumb.png'
+        thumbnailUrl: 'https://example.com/decision-v1-thumb.png',
       });
 
     const prMerge = await request(app)
@@ -845,7 +874,7 @@ describe('API integration', () => {
         description: 'Merge PR',
         severity: 'minor',
         imageUrl: 'https://example.com/decision-v2.png',
-        thumbnailUrl: 'https://example.com/decision-v2-thumb.png'
+        thumbnailUrl: 'https://example.com/decision-v2-thumb.png',
       });
 
     const mergeRes = await request(app)
@@ -864,7 +893,7 @@ describe('API integration', () => {
         description: 'Reject PR',
         severity: 'minor',
         imageUrl: 'https://example.com/decision-v3.png',
-        thumbnailUrl: 'https://example.com/decision-v3-thumb.png'
+        thumbnailUrl: 'https://example.com/decision-v3-thumb.png',
       });
 
     const rejectRes = await request(app)
@@ -877,12 +906,18 @@ describe('API integration', () => {
   });
 
   test('telemetry endpoint stores ux events', async () => {
-    const response = await request(app)
-      .post('/api/telemetry/ux')
-      .send({ eventType: 'feed_filter_change', sort: 'recent', status: 'draft', range: '30d', timingMs: 120 });
+    const response = await request(app).post('/api/telemetry/ux').send({
+      eventType: 'feed_filter_change',
+      sort: 'recent',
+      status: 'draft',
+      range: '30d',
+      timingMs: 120,
+    });
 
     expect(response.status).toBe(200);
-    const result = await db.query('SELECT COUNT(*)::int AS count FROM ux_events');
+    const result = await db.query(
+      'SELECT COUNT(*)::int AS count FROM ux_events',
+    );
     expect(result.rows[0].count).toBeGreaterThan(0);
   });
 
@@ -895,7 +930,7 @@ describe('API integration', () => {
       .send({
         eventType: 'draft_arc_view',
         userType: 'observer',
-        metadata: '{not-json'
+        metadata: '{not-json',
       });
 
     expect(response.status).toBe(200);
@@ -905,7 +940,7 @@ describe('API integration', () => {
        FROM ux_events
        WHERE event_type = 'draft_arc_view'
        ORDER BY created_at DESC
-       LIMIT 1`
+       LIMIT 1`,
     );
     expect(result.rows.length).toBe(1);
     expect(result.rows[0].user_type).toBe('observer');
@@ -916,9 +951,12 @@ describe('API integration', () => {
   test('guild endpoints return list and detail', async () => {
     const { agentId } = await registerAgent('Guilded Studio');
     const guild = await db.query(
-      "INSERT INTO guilds (name, description, theme_of_week) VALUES ('Guild Arc', 'Core team', 'Futuristic') RETURNING id"
+      "INSERT INTO guilds (name, description, theme_of_week) VALUES ('Guild Arc', 'Core team', 'Futuristic') RETURNING id",
     );
-    await db.query('UPDATE agents SET guild_id = $1 WHERE id = $2', [guild.rows[0].id, agentId]);
+    await db.query('UPDATE agents SET guild_id = $1 WHERE id = $2', [
+      guild.rows[0].id,
+      agentId,
+    ]);
 
     const list = await request(app).get('/api/guilds?limit=5');
     expect(list.status).toBe(200);
@@ -964,14 +1002,18 @@ describe('API integration', () => {
       .send({
         imageUrl: 'https://example.com/v1.png',
         thumbnailUrl: 'https://example.com/v1-thumb.png',
-        metadata: { title: 'Coffee Builder' }
+        metadata: { title: 'Coffee Builder' },
       });
 
-    const all = await request(app).get('/api/search?q=Coffee&type=all&sort=recency');
+    const all = await request(app).get(
+      '/api/search?q=Coffee&type=all&sort=recency',
+    );
     expect(all.status).toBe(200);
     expect(all.body.length).toBeGreaterThan(0);
 
-    const studios = await request(app).get('/api/search?q=Agent&type=studio&sort=impact');
+    const studios = await request(app).get(
+      '/api/search?q=Agent&type=studio&sort=impact',
+    );
     expect(studios.status).toBe(200);
     expect(studios.body.length).toBeGreaterThan(0);
   });
@@ -984,7 +1026,7 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({
         imageUrl: 'https://example.com/va.png',
-        thumbnailUrl: 'https://example.com/va-thumb.png'
+        thumbnailUrl: 'https://example.com/va-thumb.png',
       });
     const draftB = await request(app)
       .post('/api/drafts')
@@ -992,27 +1034,29 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({
         imageUrl: 'https://example.com/vb.png',
-        thumbnailUrl: 'https://example.com/vb-thumb.png'
+        thumbnailUrl: 'https://example.com/vb-thumb.png',
       });
 
     await db.query(
       `INSERT INTO draft_embeddings (draft_id, embedding)
        VALUES ($1, $2)
        ON CONFLICT (draft_id) DO UPDATE SET embedding = EXCLUDED.embedding`,
-      [draftA.body.draft.id, JSON.stringify([1, 0, 0])]
+      [draftA.body.draft.id, JSON.stringify([1, 0, 0])],
     );
     await db.query(
       `INSERT INTO draft_embeddings (draft_id, embedding)
        VALUES ($1, $2)
        ON CONFLICT (draft_id) DO UPDATE SET embedding = EXCLUDED.embedding`,
-      [draftB.body.draft.id, JSON.stringify([0, 1, 0])]
+      [draftB.body.draft.id, JSON.stringify([0, 1, 0])],
     );
 
-    const results = await request(app).post('/api/search/visual').send({
-      embedding: [1, 0.1, 0],
-      type: 'draft',
-      limit: 5
-    });
+    const results = await request(app)
+      .post('/api/search/visual')
+      .send({
+        embedding: [1, 0.1, 0],
+        type: 'draft',
+        limit: 5,
+      });
 
     expect(results.status).toBe(200);
     expect(results.body[0].id).toBe(draftA.body.draft.id);
@@ -1027,7 +1071,7 @@ describe('API integration', () => {
       .send({
         imageUrl: 'https://example.com/sim-a.png',
         thumbnailUrl: 'https://example.com/sim-a-thumb.png',
-        metadata: { title: 'Target Similar' }
+        metadata: { title: 'Target Similar' },
       });
     const other = await request(app)
       .post('/api/drafts')
@@ -1036,7 +1080,7 @@ describe('API integration', () => {
       .send({
         imageUrl: 'https://example.com/sim-b.png',
         thumbnailUrl: 'https://example.com/sim-b-thumb.png',
-        metadata: { title: 'Other Similar' }
+        metadata: { title: 'Other Similar' },
       });
     const sandbox = await request(app)
       .post('/api/drafts')
@@ -1045,31 +1089,35 @@ describe('API integration', () => {
       .send({
         imageUrl: 'https://example.com/sim-c.png',
         thumbnailUrl: 'https://example.com/sim-c-thumb.png',
-        metadata: { title: 'Sandbox Similar' }
+        metadata: { title: 'Sandbox Similar' },
       });
 
-    await db.query('UPDATE drafts SET is_sandbox = true WHERE id = $1', [sandbox.body.draft.id]);
+    await db.query('UPDATE drafts SET is_sandbox = true WHERE id = $1', [
+      sandbox.body.draft.id,
+    ]);
 
     await db.query(
       `INSERT INTO draft_embeddings (draft_id, embedding)
        VALUES ($1, $2)
        ON CONFLICT (draft_id) DO UPDATE SET embedding = EXCLUDED.embedding`,
-      [target.body.draft.id, JSON.stringify([1, 0, 0])]
+      [target.body.draft.id, JSON.stringify([1, 0, 0])],
     );
     await db.query(
       `INSERT INTO draft_embeddings (draft_id, embedding)
        VALUES ($1, $2)
        ON CONFLICT (draft_id) DO UPDATE SET embedding = EXCLUDED.embedding`,
-      [other.body.draft.id, JSON.stringify([0.9, 0.1, 0])]
+      [other.body.draft.id, JSON.stringify([0.9, 0.1, 0])],
     );
     await db.query(
       `INSERT INTO draft_embeddings (draft_id, embedding)
        VALUES ($1, $2)
        ON CONFLICT (draft_id) DO UPDATE SET embedding = EXCLUDED.embedding`,
-      [sandbox.body.draft.id, JSON.stringify([0.8, 0.2, 0])]
+      [sandbox.body.draft.id, JSON.stringify([0.8, 0.2, 0])],
     );
 
-    const similar = await request(app).get(`/api/search/similar?draftId=${target.body.draft.id}&limit=5`);
+    const similar = await request(app).get(
+      `/api/search/similar?draftId=${target.body.draft.id}&limit=5`,
+    );
     expect(similar.status).toBe(200);
     const ids = similar.body.map((item: any) => item.id);
     expect(ids).toContain(other.body.draft.id);
@@ -1086,13 +1134,14 @@ describe('API integration', () => {
       .send({
         imageUrl: 'https://example.com/auto.png',
         thumbnailUrl: 'https://example.com/auto-thumb.png',
-        metadata: { title: 'Auto Embed', tags: ['bold', 'neon'] }
+        metadata: { title: 'Auto Embed', tags: ['bold', 'neon'] },
       });
 
     expect(draftRes.status).toBe(200);
-    const stored = await db.query('SELECT embedding, source FROM draft_embeddings WHERE draft_id = $1', [
-      draftRes.body.draft.id
-    ]);
+    const stored = await db.query(
+      'SELECT embedding, source FROM draft_embeddings WHERE draft_id = $1',
+      [draftRes.body.draft.id],
+    );
     expect(stored.rows.length).toBe(1);
     expect(stored.rows[0].source).toBe('auto');
     expect(Array.isArray(stored.rows[0].embedding)).toBe(true);
@@ -1107,7 +1156,7 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({
         imageUrl: 'https://example.com/embed.png',
-        thumbnailUrl: 'https://example.com/embed-thumb.png'
+        thumbnailUrl: 'https://example.com/embed-thumb.png',
       });
 
     const embedRes = await request(app)
@@ -1117,9 +1166,10 @@ describe('API integration', () => {
       .send({ embedding: [0.25, 0.5, 0.75], source: 'test' });
 
     expect(embedRes.status).toBe(200);
-    const stored = await db.query('SELECT embedding FROM draft_embeddings WHERE draft_id = $1', [
-      draftRes.body.draft.id
-    ]);
+    const stored = await db.query(
+      'SELECT embedding FROM draft_embeddings WHERE draft_id = $1',
+      [draftRes.body.draft.id],
+    );
     expect(stored.rows.length).toBe(1);
   });
 
@@ -1133,9 +1183,13 @@ describe('API integration', () => {
 
   test('studios endpoints handle not found and updates', async () => {
     const { agentId, apiKey } = await registerAgent('Agent Studio Primary');
-    const { agentId: otherAgentId, apiKey: otherApiKey } = await registerAgent('Agent Studio Secondary');
+    const { agentId: otherAgentId, apiKey: otherApiKey } = await registerAgent(
+      'Agent Studio Secondary',
+    );
 
-    const notFound = await request(app).get('/api/studios/00000000-0000-0000-0000-000000000000');
+    const notFound = await request(app).get(
+      '/api/studios/00000000-0000-0000-0000-000000000000',
+    );
     expect(notFound.status).toBe(404);
 
     const studio = await request(app).get(`/api/studios/${agentId}`);
@@ -1175,7 +1229,7 @@ describe('API integration', () => {
         description: 'Need a logo',
         rewardAmount: 50,
         currency: 'USD',
-        referenceImages: []
+        referenceImages: [],
       });
     expect(commissionPending.status).toBe(200);
     expect(commissionPending.body.commission.paymentStatus).toBe('pending');
@@ -1185,7 +1239,7 @@ describe('API integration', () => {
       .post('/api/commissions')
       .set('Authorization', `Bearer ${token}`)
       .send({
-        description: 'No reward commission'
+        description: 'No reward commission',
       });
     expect(commissionOpen.status).toBe(200);
 
@@ -1193,7 +1247,9 @@ describe('API integration', () => {
     expect(listAll.status).toBe(200);
     expect(listAll.body.length).toBeGreaterThan(0);
 
-    const listForAgents = await request(app).get('/api/commissions?forAgents=true');
+    const listForAgents = await request(app).get(
+      '/api/commissions?forAgents=true',
+    );
     expect(listForAgents.status).toBe(200);
     expect(listForAgents.body.length).toBeGreaterThan(0);
 
@@ -1203,7 +1259,7 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({
         imageUrl: 'https://example.com/v1.png',
-        thumbnailUrl: 'https://example.com/v1-thumb.png'
+        thumbnailUrl: 'https://example.com/v1-thumb.png',
       });
 
     const submitResponse = await request(app)
@@ -1215,14 +1271,18 @@ describe('API integration', () => {
     expect(submitResponse.body.ok).toBe(true);
 
     const selectWinner = await request(app)
-      .post(`/api/commissions/${commissionOpen.body.commission.id}/select-winner`)
+      .post(
+        `/api/commissions/${commissionOpen.body.commission.id}/select-winner`,
+      )
       .set('Authorization', `Bearer ${token}`)
       .send({ winnerDraftId: draftRes.body.draft.id });
     expect(selectWinner.status).toBe(200);
     expect(selectWinner.body.status).toBe('completed');
 
     const payIntent = await request(app)
-      .post(`/api/commissions/${commissionPending.body.commission.id}/pay-intent`)
+      .post(
+        `/api/commissions/${commissionPending.body.commission.id}/pay-intent`,
+      )
       .set('Authorization', `Bearer ${token}`)
       .send();
     expect(payIntent.status).toBe(200);
@@ -1239,7 +1299,7 @@ describe('API integration', () => {
       provider: 'stripe',
       providerEventId: 'evt_coverage_1',
       commissionId: commissionPending.body.commission.id,
-      eventType: 'payment'
+      eventType: 'payment',
     });
     expect(webhook.status).toBe(200);
     expect(webhook.body.applied).toBe(true);
@@ -1285,7 +1345,9 @@ describe('API integration', () => {
       .spyOn(CommissionServiceImpl.prototype, 'selectWinner')
       .mockRejectedValueOnce(new Error('winner fail'));
     const winnerRes = await request(app)
-      .post('/api/commissions/00000000-0000-0000-0000-000000000003/select-winner')
+      .post(
+        '/api/commissions/00000000-0000-0000-0000-000000000003/select-winner',
+      )
       .set('Authorization', `Bearer ${token}`)
       .send({ winnerDraftId: '00000000-0000-0000-0000-000000000004' });
     expect(winnerRes.status).toBe(500);
@@ -1318,7 +1380,7 @@ describe('API integration', () => {
       provider: 'stripe',
       providerEventId: 'evt_fail_1',
       commissionId: '00000000-0000-0000-0000-000000000007',
-      eventType: 'payment'
+      eventType: 'payment',
     });
     expect(webhookRes.status).toBe(500);
     webhookSpy.mockRestore();
@@ -1327,8 +1389,12 @@ describe('API integration', () => {
   test('studios routes propagate handler errors', async () => {
     const { agentId, apiKey } = await registerAgent('Studios Error Agent');
 
-    const studioGetSpy = jest.spyOn(db, 'query').mockRejectedValueOnce(new Error('studio get fail'));
-    const getRes = await request(app).get('/api/studios/00000000-0000-0000-0000-000000000008');
+    const studioGetSpy = jest
+      .spyOn(db, 'query')
+      .mockRejectedValueOnce(new Error('studio get fail'));
+    const getRes = await request(app).get(
+      '/api/studios/00000000-0000-0000-0000-000000000008',
+    );
     expect(getRes.status).toBe(500);
     studioGetSpy.mockRestore();
 
@@ -1351,7 +1417,9 @@ describe('API integration', () => {
     const metricsSpy = jest
       .spyOn(MetricsServiceImpl.prototype, 'getAgentMetrics')
       .mockRejectedValueOnce(new Error('metrics fail'));
-    const metricsRes = await request(app).get(`/api/studios/${agentId}/metrics`);
+    const metricsRes = await request(app).get(
+      `/api/studios/${agentId}/metrics`,
+    );
     expect(metricsRes.status).toBe(500);
     metricsSpy.mockRestore();
   });
@@ -1362,11 +1430,13 @@ describe('API integration', () => {
     const registerSpy = jest
       .spyOn(AuthServiceImpl.prototype, 'registerHuman')
       .mockRejectedValueOnce(new Error('register fail'));
-    const registerRes = await request(app).post('/api/auth/register').send({
-      email: 'auth-fail@example.com',
-      password: 'password123',
-      consent: { termsAccepted: true, privacyAccepted: true }
-    });
+    const registerRes = await request(app)
+      .post('/api/auth/register')
+      .send({
+        email: 'auth-fail@example.com',
+        password: 'password123',
+        consent: { termsAccepted: true, privacyAccepted: true },
+      });
     expect(registerRes.status).toBe(500);
     registerSpy.mockRestore();
 
@@ -1375,7 +1445,7 @@ describe('API integration', () => {
       .mockRejectedValueOnce(new Error('login fail'));
     const loginRes = await request(app).post('/api/auth/login').send({
       email: 'auth-fail@example.com',
-      password: 'password123'
+      password: 'password123',
     });
     expect(loginRes.status).toBe(500);
     loginSpy.mockRestore();
@@ -1385,7 +1455,7 @@ describe('API integration', () => {
       .mockRejectedValueOnce(new Error('agent register fail'));
     const agentRes = await request(app).post('/api/agents/register').send({
       studioName: 'Agent Fail Studio',
-      personality: 'Tester'
+      personality: 'Tester',
     });
     expect(agentRes.status).toBe(500);
     agentSpy.mockRestore();
@@ -1416,7 +1486,7 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({
         imageUrl: 'https://example.com/error.png',
-        thumbnailUrl: 'https://example.com/error-thumb.png'
+        thumbnailUrl: 'https://example.com/error-thumb.png',
       });
     expect(createRes.status).toBe(500);
     createSpy.mockRestore();
@@ -1460,7 +1530,9 @@ describe('API integration', () => {
     const fixListSpy = jest
       .spyOn(FixRequestServiceImpl.prototype, 'listByDraft')
       .mockRejectedValueOnce(new Error('fix list fail'));
-    const fixListRes = await request(app).get(`/api/drafts/${draftId}/fix-requests`);
+    const fixListRes = await request(app).get(
+      `/api/drafts/${draftId}/fix-requests`,
+    );
     expect(fixListRes.status).toBe(500);
     fixListSpy.mockRestore();
 
@@ -1475,7 +1547,7 @@ describe('API integration', () => {
         description: 'fail',
         severity: 'minor',
         imageUrl: 'https://example.com/pr.png',
-        thumbnailUrl: 'https://example.com/pr-thumb.png'
+        thumbnailUrl: 'https://example.com/pr-thumb.png',
       });
     expect(prRes.status).toBe(500);
     prBudgetSpy.mockRestore();
@@ -1483,7 +1555,9 @@ describe('API integration', () => {
     const prListSpy = jest
       .spyOn(PullRequestServiceImpl.prototype, 'listByDraft')
       .mockRejectedValueOnce(new Error('pr list fail'));
-    const prListRes = await request(app).get(`/api/drafts/${draftId}/pull-requests`);
+    const prListRes = await request(app).get(
+      `/api/drafts/${draftId}/pull-requests`,
+    );
     expect(prListRes.status).toBe(500);
     prListSpy.mockRestore();
 
@@ -1526,7 +1600,9 @@ describe('API integration', () => {
     const liveSpy = jest
       .spyOn(FeedServiceImpl.prototype, 'getLiveDrafts')
       .mockRejectedValueOnce(new Error('live fail'));
-    const liveRes = await request(app).get('/api/feeds/live-drafts?limit=1&fail=1');
+    const liveRes = await request(app).get(
+      '/api/feeds/live-drafts?limit=1&fail=1',
+    );
     expect(liveRes.status).toBe(500);
     liveSpy.mockRestore();
 
@@ -1540,21 +1616,27 @@ describe('API integration', () => {
     const studiosSpy = jest
       .spyOn(FeedServiceImpl.prototype, 'getStudios')
       .mockRejectedValueOnce(new Error('studios feed fail'));
-    const studiosRes = await request(app).get('/api/feeds/studios?limit=1&fail=1');
+    const studiosRes = await request(app).get(
+      '/api/feeds/studios?limit=1&fail=1',
+    );
     expect(studiosRes.status).toBe(500);
     studiosSpy.mockRestore();
 
     const battlesSpy = jest
       .spyOn(FeedServiceImpl.prototype, 'getBattles')
       .mockRejectedValueOnce(new Error('battles fail'));
-    const battlesRes = await request(app).get('/api/feeds/battles?limit=1&fail=1');
+    const battlesRes = await request(app).get(
+      '/api/feeds/battles?limit=1&fail=1',
+    );
     expect(battlesRes.status).toBe(500);
     battlesSpy.mockRestore();
 
     const archiveSpy = jest
       .spyOn(FeedServiceImpl.prototype, 'getArchive')
       .mockRejectedValueOnce(new Error('archive fail'));
-    const archiveRes = await request(app).get('/api/feeds/archive?limit=1&fail=1');
+    const archiveRes = await request(app).get(
+      '/api/feeds/archive?limit=1&fail=1',
+    );
     expect(archiveRes.status).toBe(500);
     archiveSpy.mockRestore();
 
@@ -1601,7 +1683,9 @@ describe('API integration', () => {
       .set('Origin', env.FRONTEND_URL);
 
     expect(response.status).toBe(200);
-    expect(response.headers['access-control-allow-origin']).toBe(env.FRONTEND_URL);
+    expect(response.headers['access-control-allow-origin']).toBe(
+      env.FRONTEND_URL,
+    );
     expect(response.headers['access-control-allow-credentials']).toBe('true');
   });
 
@@ -1615,8 +1699,8 @@ describe('API integration', () => {
         .post('/api/auth/login')
         .set('x-enforce-rate-limit', 'true')
         .send({
-        email: 'ratelimit@example.com',
-        password: 'password123'
+          email: 'ratelimit@example.com',
+          password: 'password123',
         });
 
       if (response.status === 429) {
@@ -1628,7 +1712,7 @@ describe('API integration', () => {
     }
 
     expect(hitLimit).toBe(true);
-  }, 30000);
+  }, 30_000);
 
   test('compute-heavy endpoints enforce rate limiting', async () => {
     const { agentId, apiKey } = await registerAgent('Heavy Rate Studio');
@@ -1636,25 +1720,19 @@ describe('API integration', () => {
       'x-agent-id': agentId,
       'x-api-key': apiKey,
       'x-enforce-rate-limit': 'true',
-      'x-rate-limit-override': '1'
+      'x-rate-limit-override': '1',
     };
 
-    const first = await request(app)
-      .post('/api/drafts')
-      .set(headers)
-      .send({
-        imageUrl: 'https://example.com/heavy-v1.png',
-        thumbnailUrl: 'https://example.com/heavy-thumb.png'
-      });
+    const first = await request(app).post('/api/drafts').set(headers).send({
+      imageUrl: 'https://example.com/heavy-v1.png',
+      thumbnailUrl: 'https://example.com/heavy-thumb.png',
+    });
     expect(first.status).toBe(200);
 
-    const second = await request(app)
-      .post('/api/drafts')
-      .set(headers)
-      .send({
-        imageUrl: 'https://example.com/heavy-v2.png',
-        thumbnailUrl: 'https://example.com/heavy-thumb-2.png'
-      });
+    const second = await request(app).post('/api/drafts').set(headers).send({
+      imageUrl: 'https://example.com/heavy-v2.png',
+      thumbnailUrl: 'https://example.com/heavy-thumb-2.png',
+    });
     expect(second.status).toBe(429);
   });
 });

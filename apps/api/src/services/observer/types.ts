@@ -1,6 +1,10 @@
 import type { DbClient } from '../auth/types';
 
-export type DraftArcState = 'needs_help' | 'in_progress' | 'ready_for_review' | 'released';
+export type DraftArcState =
+  | 'needs_help'
+  | 'in_progress'
+  | 'ready_for_review'
+  | 'released';
 
 export type DraftArcSummary = {
   draftId: string;
@@ -88,26 +92,48 @@ export type PullRequestPredictionSummary = {
 
 export type DraftArcService = {
   getDraftArc(draftId: string, client?: DbClient): Promise<DraftArcView>;
-  recomputeDraftArcSummary(draftId: string, client?: DbClient): Promise<DraftArcSummary>;
-  recordDraftEvent(draftId: string, eventType: DraftEventType, client?: DbClient): Promise<void>;
+  recomputeDraftArcSummary(
+    draftId: string,
+    client?: DbClient,
+  ): Promise<DraftArcSummary>;
+  recordDraftEvent(
+    draftId: string,
+    eventType: DraftEventType,
+    client?: DbClient,
+  ): Promise<void>;
   submitPrediction(
     observerId: string,
     pullRequestId: string,
     predictedOutcome: PredictionOutcome,
-    client?: DbClient
+    client?: DbClient,
   ): Promise<ObserverPrediction>;
   getPredictionSummary(
     observerId: string,
     pullRequestId: string,
-    client?: DbClient
+    client?: DbClient,
   ): Promise<PullRequestPredictionSummary>;
-  followDraft(observerId: string, draftId: string, client?: DbClient): Promise<ObserverWatchlistItem>;
-  unfollowDraft(observerId: string, draftId: string, client?: DbClient): Promise<{ removed: boolean }>;
-  listWatchlist(observerId: string, client?: DbClient): Promise<ObserverWatchlistItem[]>;
+  followDraft(
+    observerId: string,
+    draftId: string,
+    client?: DbClient,
+  ): Promise<ObserverWatchlistItem>;
+  unfollowDraft(
+    observerId: string,
+    draftId: string,
+    client?: DbClient,
+  ): Promise<{ removed: boolean }>;
+  listWatchlist(
+    observerId: string,
+    client?: DbClient,
+  ): Promise<ObserverWatchlistItem[]>;
   listDigest(
     observerId: string,
     options?: DigestListOptions,
-    client?: DbClient
+    client?: DbClient,
   ): Promise<ObserverDigestEntry[]>;
-  markDigestSeen(observerId: string, entryId: string, client?: DbClient): Promise<ObserverDigestEntry>;
+  markDigestSeen(
+    observerId: string,
+    entryId: string,
+    client?: DbClient,
+  ): Promise<ObserverDigestEntry>;
 };

@@ -15,7 +15,7 @@ describe('api index bootstrap', () => {
     jest.doMock('../server', () => ({ createServer, initInfra }));
     jest.doMock('../jobs/scheduler', () => ({ startScheduler }));
     jest.doMock('../logging/logger', () => ({
-      logger: { info: loggerInfo, error: loggerError }
+      logger: { info: loggerInfo, error: loggerError },
     }));
     jest.doMock('../config/env', () => ({ env: { PORT: 4567 } }));
     const db = { id: 'db' };
@@ -42,12 +42,14 @@ describe('api index bootstrap', () => {
     const startScheduler = jest.fn();
     const loggerInfo = jest.fn();
     const loggerError = jest.fn();
-    const exitSpy = jest.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
+    const exitSpy = jest
+      .spyOn(process, 'exit')
+      .mockImplementation((() => undefined) as never);
 
     jest.doMock('../server', () => ({ createServer, initInfra }));
     jest.doMock('../jobs/scheduler', () => ({ startScheduler }));
     jest.doMock('../logging/logger', () => ({
-      logger: { info: loggerInfo, error: loggerError }
+      logger: { info: loggerInfo, error: loggerError },
     }));
     jest.doMock('../config/env', () => ({ env: { PORT: 4567 } }));
     jest.doMock('../db/pool', () => ({ db: {} }));
@@ -60,7 +62,10 @@ describe('api index bootstrap', () => {
     await Promise.resolve();
 
     expect(initInfra).toHaveBeenCalledTimes(1);
-    expect(loggerError).toHaveBeenCalledWith({ err: error }, 'Failed to start services');
+    expect(loggerError).toHaveBeenCalledWith(
+      { err: error },
+      'Failed to start services',
+    );
     expect(exitSpy).toHaveBeenCalledWith(1);
 
     exitSpy.mockRestore();

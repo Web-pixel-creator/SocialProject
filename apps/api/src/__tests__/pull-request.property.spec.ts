@@ -1,9 +1,11 @@
-import { Pool } from 'pg';
 import fc from 'fast-check';
+import { Pool } from 'pg';
 import { PullRequestServiceImpl } from '../services/pullRequest/pullRequestService';
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/finishit'
+  connectionString:
+    process.env.DATABASE_URL ||
+    'postgres://postgres:postgres@localhost:5432/finishit',
 });
 
 const prService = new PullRequestServiceImpl(pool);
@@ -21,13 +23,13 @@ describe('pull request properties', () => {
           await client.query('BEGIN');
           const agent = await client.query(
             'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-            ['PR Agent', 'tester', 'hash_pr_1']
+            ['PR Agent', 'tester', 'hash_pr_1'],
           );
           const agentId = agent.rows[0].id;
 
           const draft = await client.query(
             'INSERT INTO drafts (author_id, current_version) VALUES ($1, $2) RETURNING id, current_version',
-            [agentId, 1]
+            [agentId, 1],
           );
 
           const pr = await prService.submitPullRequest(
@@ -37,12 +39,14 @@ describe('pull request properties', () => {
               description: 'New version',
               severity,
               imageUrl: 'https://example.com/v2.png',
-              thumbnailUrl: 'https://example.com/v2-thumb.png'
+              thumbnailUrl: 'https://example.com/v2-thumb.png',
             },
-            client
+            client,
           );
 
-          expect(pr.proposedVersion).toBeGreaterThan(draft.rows[0].current_version);
+          expect(pr.proposedVersion).toBeGreaterThan(
+            draft.rows[0].current_version,
+          );
 
           await client.query('ROLLBACK');
         } catch (error) {
@@ -52,9 +56,9 @@ describe('pull request properties', () => {
           client.release();
         }
       }),
-      { numRuns: 10 }
+      { numRuns: 10 },
     );
-  }, 30000);
+  }, 30_000);
 
   test('Property 42: PR Default Status', async () => {
     const client = await pool.connect();
@@ -62,10 +66,13 @@ describe('pull request properties', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['PR Status', 'tester', 'hash_pr_2']
+        ['PR Status', 'tester', 'hash_pr_2'],
       );
 
-      const draft = await client.query('INSERT INTO drafts (author_id) VALUES ($1) RETURNING id', [agent.rows[0].id]);
+      const draft = await client.query(
+        'INSERT INTO drafts (author_id) VALUES ($1) RETURNING id',
+        [agent.rows[0].id],
+      );
 
       const pr = await prService.submitPullRequest(
         {
@@ -74,9 +81,9 @@ describe('pull request properties', () => {
           description: 'Pending',
           severity: 'minor',
           imageUrl: 'https://example.com/v2.png',
-          thumbnailUrl: 'https://example.com/v2-thumb.png'
+          thumbnailUrl: 'https://example.com/v2-thumb.png',
         },
-        client
+        client,
       );
 
       expect(pr.status).toBe('pending');
@@ -96,13 +103,13 @@ describe('pull request properties', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['PR Merge', 'tester', 'hash_pr_3']
+        ['PR Merge', 'tester', 'hash_pr_3'],
       );
       const agentId = agent.rows[0].id;
 
       const draft = await client.query(
         'INSERT INTO drafts (author_id, current_version) VALUES ($1, $2) RETURNING id, current_version',
-        [agentId, 1]
+        [agentId, 1],
       );
 
       const pr = await prService.submitPullRequest(
@@ -112,22 +119,27 @@ describe('pull request properties', () => {
           description: 'Merge me',
           severity: 'minor',
           imageUrl: 'https://example.com/v2.png',
-          thumbnailUrl: 'https://example.com/v2-thumb.png'
+          thumbnailUrl: 'https://example.com/v2-thumb.png',
         },
-        client
+        client,
       );
 
       await prService.decidePullRequest(
         {
           pullRequestId: pr.id,
           authorId: agentId,
-          decision: 'merge'
+          decision: 'merge',
         },
-        client
+        client,
       );
 
-      const updatedDraft = await client.query('SELECT current_version FROM drafts WHERE id = $1', [draft.rows[0].id]);
-      expect(Number(updatedDraft.rows[0].current_version)).toBe(pr.proposedVersion);
+      const updatedDraft = await client.query(
+        'SELECT current_version FROM drafts WHERE id = $1',
+        [draft.rows[0].id],
+      );
+      expect(Number(updatedDraft.rows[0].current_version)).toBe(
+        pr.proposedVersion,
+      );
 
       await client.query('ROLLBACK');
     } catch (error) {
@@ -144,11 +156,14 @@ describe('pull request properties', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['PR Storage', 'tester', 'hash_pr_4']
+        ['PR Storage', 'tester', 'hash_pr_4'],
       );
       const agentId = agent.rows[0].id;
 
-      const draft = await client.query('INSERT INTO drafts (author_id) VALUES ($1) RETURNING id', [agentId]);
+      const draft = await client.query(
+        'INSERT INTO drafts (author_id) VALUES ($1) RETURNING id',
+        [agentId],
+      );
       const pr = await prService.submitPullRequest(
         {
           draftId: draft.rows[0].id,
@@ -156,14 +171,14 @@ describe('pull request properties', () => {
           description: 'Store version',
           severity: 'minor',
           imageUrl: 'https://example.com/v2.png',
-          thumbnailUrl: 'https://example.com/v2-thumb.png'
+          thumbnailUrl: 'https://example.com/v2-thumb.png',
         },
-        client
+        client,
       );
 
       const version = await client.query(
         'SELECT version_number, image_url FROM versions WHERE pull_request_id = $1',
-        [pr.id]
+        [pr.id],
       );
 
       expect(Number(version.rows[0].version_number)).toBe(pr.proposedVersion);
@@ -186,8 +201,8 @@ describe('pull request properties', () => {
         description: '',
         severity: 'minor',
         imageUrl: '',
-        thumbnailUrl: ''
-      })
+        thumbnailUrl: '',
+      }),
     ).rejects.toThrow();
   });
 
@@ -197,11 +212,14 @@ describe('pull request properties', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['PR Reject', 'tester', 'hash_pr_5']
+        ['PR Reject', 'tester', 'hash_pr_5'],
       );
       const agentId = agent.rows[0].id;
 
-      const draft = await client.query('INSERT INTO drafts (author_id) VALUES ($1) RETURNING id', [agentId]);
+      const draft = await client.query(
+        'INSERT INTO drafts (author_id) VALUES ($1) RETURNING id',
+        [agentId],
+      );
       const pr = await prService.submitPullRequest(
         {
           draftId: draft.rows[0].id,
@@ -209,9 +227,9 @@ describe('pull request properties', () => {
           description: 'Reject me',
           severity: 'minor',
           imageUrl: 'https://example.com/v2.png',
-          thumbnailUrl: 'https://example.com/v2-thumb.png'
+          thumbnailUrl: 'https://example.com/v2-thumb.png',
         },
-        client
+        client,
       );
 
       await expect(
@@ -219,10 +237,10 @@ describe('pull request properties', () => {
           {
             pullRequestId: pr.id,
             authorId: agentId,
-            decision: 'reject'
+            decision: 'reject',
           },
-          client
-        )
+          client,
+        ),
       ).rejects.toThrow();
 
       await client.query('ROLLBACK');
@@ -240,11 +258,14 @@ describe('pull request properties', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['Fork Agent', 'tester', 'hash_pr_6']
+        ['Fork Agent', 'tester', 'hash_pr_6'],
       );
       const agentId = agent.rows[0].id;
 
-      const draft = await client.query('INSERT INTO drafts (author_id) VALUES ($1) RETURNING id', [agentId]);
+      const draft = await client.query(
+        'INSERT INTO drafts (author_id) VALUES ($1) RETURNING id',
+        [agentId],
+      );
       const pr = await prService.submitPullRequest(
         {
           draftId: draft.rows[0].id,
@@ -252,9 +273,9 @@ describe('pull request properties', () => {
           description: 'Fork me',
           severity: 'minor',
           imageUrl: 'https://example.com/v2.png',
-          thumbnailUrl: 'https://example.com/v2-thumb.png'
+          thumbnailUrl: 'https://example.com/v2-thumb.png',
         },
-        client
+        client,
       );
 
       await prService.decidePullRequest(
@@ -262,15 +283,22 @@ describe('pull request properties', () => {
           pullRequestId: pr.id,
           authorId: agentId,
           decision: 'reject',
-          rejectionReason: 'nope'
+          rejectionReason: 'nope',
         },
-        client
+        client,
       );
 
-      const fork = await prService.createForkFromRejected(pr.id, agentId, client);
+      const fork = await prService.createForkFromRejected(
+        pr.id,
+        agentId,
+        client,
+      );
       expect(fork.forkedDraftId).toBeTruthy();
 
-      const forkDraft = await client.query('SELECT author_id FROM drafts WHERE id = $1', [fork.forkedDraftId]);
+      const forkDraft = await client.query(
+        'SELECT author_id FROM drafts WHERE id = $1',
+        [fork.forkedDraftId],
+      );
       expect(forkDraft.rows[0].author_id).toBe(agentId);
 
       await client.query('ROLLBACK');

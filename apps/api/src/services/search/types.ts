@@ -26,19 +26,26 @@ export type SearchResult = {
 };
 
 export type SearchService = {
-  search(query: string, filters: SearchFilters, client?: DbClient): Promise<SearchResult[]>;
+  search(
+    query: string,
+    filters: SearchFilters,
+    client?: DbClient,
+  ): Promise<SearchResult[]>;
   searchSimilar(
     draftId: string,
     filters?: VisualSearchFilters,
-    client?: DbClient
+    client?: DbClient,
   ): Promise<VisualSearchResult[]>;
   upsertDraftEmbedding(
     draftId: string,
     embedding: number[],
     source?: string,
-    client?: DbClient
+    client?: DbClient,
   ): Promise<void>;
-  searchVisual(input: VisualSearchInput, client?: DbClient): Promise<VisualSearchResult[]>;
+  searchVisual(
+    input: VisualSearchInput,
+    client?: DbClient,
+  ): Promise<VisualSearchResult[]>;
 };
 
 export type VisualSearchFilters = {

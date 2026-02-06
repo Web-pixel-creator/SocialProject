@@ -2,16 +2,16 @@
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { AuthForm } from '../components/AuthForm';
 import { AuthProvider } from '../contexts/AuthContext';
 import { apiClient } from '../lib/api';
 
 jest.mock('../lib/api', () => ({
   apiClient: {
-    post: jest.fn()
+    post: jest.fn(),
   },
-  setAuthToken: jest.fn()
+  setAuthToken: jest.fn(),
 }));
 
 const renderWithProvider = (ui: React.ReactElement) => {
@@ -26,8 +26,12 @@ describe('auth UI', () => {
   test('registration requires consent', async () => {
     renderWithProvider(<AuthForm mode="register" />);
 
-    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'test@example.com' } });
-    fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'secret' } });
+    fireEvent.change(screen.getByLabelText(/Email/i), {
+      target: { value: 'test@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText(/Password/i), {
+      target: { value: 'secret' },
+    });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /Create account/i }));
     });
@@ -37,12 +41,20 @@ describe('auth UI', () => {
 
   test('registration submits when consent is provided', async () => {
     (apiClient.post as jest.Mock).mockResolvedValue({
-      data: { tokens: { accessToken: 'token' }, userId: 'u1', email: 'user@example.com' }
+      data: {
+        tokens: { accessToken: 'token' },
+        userId: 'u1',
+        email: 'user@example.com',
+      },
     });
 
     renderWithProvider(<AuthForm mode="register" />);
-    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'user@example.com' } });
-    fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'pass' } });
+    fireEvent.change(screen.getByLabelText(/Email/i), {
+      target: { value: 'user@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText(/Password/i), {
+      target: { value: 'pass' },
+    });
     fireEvent.click(screen.getByLabelText(/Terms of Service/i));
     fireEvent.click(screen.getByLabelText(/Privacy Policy/i));
 
@@ -53,18 +65,26 @@ describe('auth UI', () => {
     expect(apiClient.post).toHaveBeenCalledWith('/auth/register', {
       email: 'user@example.com',
       password: 'pass',
-      consent: { termsAccepted: true, privacyAccepted: true }
+      consent: { termsAccepted: true, privacyAccepted: true },
     });
   });
 
   test('login submits credentials', async () => {
     (apiClient.post as jest.Mock).mockResolvedValue({
-      data: { tokens: { accessToken: 'token' }, userId: 'u1', email: 'user@example.com' }
+      data: {
+        tokens: { accessToken: 'token' },
+        userId: 'u1',
+        email: 'user@example.com',
+      },
     });
 
     renderWithProvider(<AuthForm mode="login" />);
-    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'user@example.com' } });
-    fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'pass' } });
+    fireEvent.change(screen.getByLabelText(/Email/i), {
+      target: { value: 'user@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText(/Password/i), {
+      target: { value: 'pass' },
+    });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /Sign in/i }));
     });
@@ -74,12 +94,16 @@ describe('auth UI', () => {
 
   test('shows error message on failed login', async () => {
     (apiClient.post as jest.Mock).mockRejectedValue({
-      response: { data: { message: 'Invalid credentials' } }
+      response: { data: { message: 'Invalid credentials' } },
     });
 
     renderWithProvider(<AuthForm mode="login" />);
-    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'user@example.com' } });
-    fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'pass' } });
+    fireEvent.change(screen.getByLabelText(/Email/i), {
+      target: { value: 'user@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText(/Password/i), {
+      target: { value: 'pass' },
+    });
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /Sign in/i }));
@@ -92,13 +116,19 @@ describe('auth UI', () => {
     (apiClient.post as jest.Mock).mockRejectedValue(new Error('Network down'));
 
     renderWithProvider(<AuthForm mode="login" />);
-    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'user@example.com' } });
-    fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'pass' } });
+    fireEvent.change(screen.getByLabelText(/Email/i), {
+      target: { value: 'user@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText(/Password/i), {
+      target: { value: 'pass' },
+    });
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /Sign in/i }));
     });
 
-    expect(await screen.findByText(/Something went wrong/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Something went wrong/i),
+    ).toBeInTheDocument();
   });
 });

@@ -6,7 +6,13 @@ export class BudgetError extends Error {
   readonly limit: number;
   readonly limitType: string;
 
-  constructor(code: BudgetErrorCode, message: string, limit: number, limitType: string, status = 429) {
+  constructor(
+    code: BudgetErrorCode,
+    message: string,
+    limit: number,
+    limitType: string,
+    status = 429,
+  ) {
     super(message);
     this.code = code;
     this.status = status;

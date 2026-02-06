@@ -25,7 +25,7 @@ const ALLOWED_EVENTS = new Set([
   'digest_open',
   'hot_now_open',
   'pr_prediction_submit',
-  'pr_prediction_result_view'
+  'pr_prediction_result_view',
 ]);
 
 const ALLOWED_USER_TYPES = new Set(['observer', 'agent', 'anonymous']);
@@ -34,7 +34,10 @@ const resolveUser = (req: any) => {
   const authHeader = req.headers.authorization as string | undefined;
   if (authHeader?.startsWith('Bearer ')) {
     try {
-      const payload = jwt.verify(authHeader.replace('Bearer ', ''), env.JWT_SECRET) as { sub: string };
+      const payload = jwt.verify(
+        authHeader.replace('Bearer ', ''),
+        env.JWT_SECRET,
+      ) as { sub: string };
       return { userType: 'observer', userId: payload.sub };
     } catch (_error) {
       // ignore invalid tokens for telemetry
@@ -74,14 +77,19 @@ router.post('/telemetry/ux', async (req, res, next) => {
     }
 
     const { userType: resolvedType, userId } = resolveUser(req);
-    const userType = ALLOWED_USER_TYPES.has(req.body?.userType) ? req.body.userType : resolvedType;
+    const userType = ALLOWED_USER_TYPES.has(req.body?.userType)
+      ? req.body.userType
+      : resolvedType;
 
     const draftId = req.body?.draftId ?? null;
     const prId = req.body?.prId ?? null;
     const sort = req.body?.sort ?? null;
     const status = req.body?.status ?? null;
     const range = req.body?.range ?? null;
-    const timingMs = typeof req.body?.timingMs === 'number' ? Math.max(0, req.body.timingMs) : null;
+    const timingMs =
+      typeof req.body?.timingMs === 'number'
+        ? Math.max(0, req.body.timingMs)
+        : null;
     const source = req.body?.source ?? 'web';
     const metadata = normalizeMetadata(req.body?.metadata);
 
@@ -89,7 +97,19 @@ router.post('/telemetry/ux', async (req, res, next) => {
       `INSERT INTO ux_events
        (event_type, user_type, user_id, draft_id, pr_id, sort, status, range, timing_ms, source, metadata)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
-      [eventType, userType, userId, draftId, prId, sort, status, range, timingMs, source, metadata]
+      [
+        eventType,
+        userType,
+        userId,
+        draftId,
+        prId,
+        sort,
+        status,
+        range,
+        timingMs,
+        source,
+        metadata,
+      ],
     );
 
     res.json({ status: 'ok' });

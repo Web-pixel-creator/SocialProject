@@ -1,16 +1,16 @@
-import { Pool } from 'pg';
+import type { Pool } from 'pg';
 import { env } from '../../config/env';
 import type { DbClient } from '../auth/types';
 import { ServiceError } from '../common/errors';
 import type {
   SearchFilters,
+  SearchIntent,
   SearchProfile,
   SearchResult,
   SearchService,
-  SearchIntent,
   VisualSearchFilters,
   VisualSearchInput,
-  VisualSearchResult
+  VisualSearchResult,
 } from './types';
 
 const getDb = (pool: Pool, client?: DbClient): DbClient => client ?? pool;
@@ -18,29 +18,45 @@ const getDb = (pool: Pool, client?: DbClient): DbClient => client ?? pool;
 export class SearchServiceImpl implements SearchService {
   constructor(private readonly pool: Pool) {}
 
-  async search(query: string, filters: SearchFilters, client?: DbClient): Promise<SearchResult[]> {
+  async search(
+    query: string,
+    filters: SearchFilters,
+    client?: DbClient,
+  ): Promise<SearchResult[]> {
     const db = getDb(this.pool, client);
-    const { type = 'all', sort = 'recency', range = 'all', profile, intent, limit = 20, offset = 0 } = filters;
+    const {
+      type = 'all',
+      sort = 'recency',
+      range = 'all',
+      profile,
+      intent,
+      limit = 20,
+      offset = 0,
+    } = filters;
     const q = `%${query}%`;
     const terms = normalizeTerms(query);
     const rangeClause =
       range === '7d'
         ? "AND d.updated_at >= NOW() - INTERVAL '7 days'"
         : range === '30d'
-        ? "AND d.updated_at >= NOW() - INTERVAL '30 days'"
-        : '';
+          ? "AND d.updated_at >= NOW() - INTERVAL '30 days'"
+          : '';
 
     const results: SearchResult[] = [];
 
     if (type === 'all' || type === 'draft' || type === 'release') {
       const statusFilter =
-        type === 'draft' ? "d.status = 'draft'" : type === 'release' ? "d.status = 'release'" : '1=1';
+        type === 'draft'
+          ? "d.status = 'draft'"
+          : type === 'release'
+            ? "d.status = 'release'"
+            : '1=1';
       const orderBy =
         sort === 'glowup'
           ? 'd.glow_up_score DESC'
           : sort === 'recency'
-          ? 'd.updated_at DESC'
-          : 'd.glow_up_score DESC';
+            ? 'd.updated_at DESC'
+            : 'd.glow_up_score DESC';
 
       const intentClause = buildIntentClause(intent);
       const drafts = await db.query(
@@ -59,40 +75,45 @@ export class SearchServiceImpl implements SearchService {
          ${rangeClause}
          ORDER BY ${orderBy}
          LIMIT $2 OFFSET $3`,
-        [q, limit, offset]
+        [q, limit, offset],
       );
 
-      const draftResults = drafts.rows.map((row) => {
-        const title = row.metadata?.title ?? 'Untitled';
-        const score = Number(row.glow_up_score ?? 0);
-        const updatedAt = row.updated_at ? new Date(row.updated_at) : null;
-        const relevanceScore =
-          sort === 'relevance'
-            ? scoreRelevance(
-                JSON.stringify(row.metadata ?? {}),
-                score,
-                updatedAt,
-                terms,
-                getSearchWeights(profile)
-              )
-            : undefined;
-        return {
-          type: row.status === 'release' ? 'release' : 'draft',
-          id: row.id,
-          title,
-          score,
-          beforeImageUrl: row.before_image_url ?? undefined,
-          afterImageUrl: row.after_image_url ?? undefined,
-          relevanceScore
-        };
-      });
+      const draftResults: Array<SearchResult & { relevanceScore?: number }> =
+        drafts.rows.map((row: any) => {
+          const title = row.metadata?.title ?? 'Untitled';
+          const score = Number(row.glow_up_score ?? 0);
+          const updatedAt = row.updated_at ? new Date(row.updated_at) : null;
+          const relevanceScore =
+            sort === 'relevance'
+              ? scoreRelevance(
+                  JSON.stringify(row.metadata ?? {}),
+                  score,
+                  updatedAt,
+                  terms,
+                  getSearchWeights(profile),
+                )
+              : undefined;
+          return {
+            type: row.status === 'release' ? 'release' : 'draft',
+            id: row.id,
+            title,
+            score,
+            beforeImageUrl: row.before_image_url ?? undefined,
+            afterImageUrl: row.after_image_url ?? undefined,
+            relevanceScore,
+          };
+        });
 
       if (sort === 'relevance') {
-        draftResults.sort((a, b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0));
+        draftResults.sort(
+          (a, b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0),
+        );
       }
 
       results.push(
-        ...draftResults.map(({ relevanceScore: _relevanceScore, ...rest }) => rest)
+        ...draftResults.map(
+          ({ relevanceScore: _relevanceScore, ...rest }) => rest,
+        ),
       );
     }
 
@@ -104,30 +125,40 @@ export class SearchServiceImpl implements SearchService {
          WHERE studio_name ILIKE $1
          ORDER BY ${orderBy}
          LIMIT $2 OFFSET $3`,
-        [q, limit, offset]
+        [q, limit, offset],
       );
 
-      const studioResults = studios.rows.map((row) => {
-        const score = Number(row.impact ?? 0);
-        const relevanceScore =
-          sort === 'relevance'
-            ? scoreStudioRelevance(row.studio_name ?? '', score, terms, getStudioWeights(profile))
-            : undefined;
-        return {
-          type: 'studio',
-          id: row.id,
-          title: row.studio_name,
-          score,
-          relevanceScore
-        };
-      });
+      const studioResults: Array<SearchResult & { relevanceScore?: number }> =
+        studios.rows.map((row: any) => {
+          const score = Number(row.impact ?? 0);
+          const relevanceScore =
+            sort === 'relevance'
+              ? scoreStudioRelevance(
+                  row.studio_name ?? '',
+                  score,
+                  terms,
+                  getStudioWeights(profile),
+                )
+              : undefined;
+          return {
+            type: 'studio',
+            id: row.id,
+            title: row.studio_name,
+            score,
+            relevanceScore,
+          };
+        });
 
       if (sort === 'relevance') {
-        studioResults.sort((a, b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0));
+        studioResults.sort(
+          (a, b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0),
+        );
       }
 
       results.push(
-        ...studioResults.map(({ relevanceScore: _relevanceScore, ...rest }) => rest)
+        ...studioResults.map(
+          ({ relevanceScore: _relevanceScore, ...rest }) => rest,
+        ),
       );
     }
 
@@ -137,30 +168,36 @@ export class SearchServiceImpl implements SearchService {
   async searchSimilar(
     draftId: string,
     filters?: VisualSearchFilters,
-    client?: DbClient
+    client?: DbClient,
   ): Promise<VisualSearchResult[]> {
     const db = getDb(this.pool, client);
-    const draft = await db.query('SELECT id FROM drafts WHERE id = $1', [draftId]);
+    const draft = await db.query('SELECT id FROM drafts WHERE id = $1', [
+      draftId,
+    ]);
     if (draft.rows.length === 0) {
       throw new ServiceError('DRAFT_NOT_FOUND', 'Draft not found.', 404);
     }
 
     const embedding = await this.getEmbeddingByDraftId(draftId, db);
     if (!embedding || embedding.length === 0) {
-      throw new ServiceError('EMBEDDING_NOT_FOUND', 'Draft embedding not found.', 404);
+      throw new ServiceError(
+        'EMBEDDING_NOT_FOUND',
+        'Draft embedding not found.',
+        404,
+      );
     }
 
     const effectiveFilters: VisualSearchFilters = {
       ...filters,
-      excludeDraftId: filters?.excludeDraftId ?? draftId
+      excludeDraftId: filters?.excludeDraftId ?? draftId,
     };
 
     return this.searchVisual(
       {
         embedding,
-        filters: effectiveFilters
+        filters: effectiveFilters,
       },
-      db
+      db,
     );
   }
 
@@ -168,12 +205,16 @@ export class SearchServiceImpl implements SearchService {
     draftId: string,
     embedding: number[],
     source = 'manual',
-    client?: DbClient
+    client?: DbClient,
   ): Promise<void> {
     const db = getDb(this.pool, client);
     const normalized = sanitizeEmbedding(embedding);
     if (normalized.length === 0) {
-      throw new ServiceError('EMBEDDING_INVALID', 'Embedding must be a non-empty numeric array.', 400);
+      throw new ServiceError(
+        'EMBEDDING_INVALID',
+        'Embedding must be a non-empty numeric array.',
+        400,
+      );
     }
 
     await db.query(
@@ -181,33 +222,58 @@ export class SearchServiceImpl implements SearchService {
        VALUES ($1, $2, $3, NOW())
        ON CONFLICT (draft_id)
        DO UPDATE SET embedding = EXCLUDED.embedding, source = EXCLUDED.source, updated_at = NOW()`,
-      [draftId, JSON.stringify(normalized), source]
+      [draftId, JSON.stringify(normalized), source],
     );
   }
 
-  async searchVisual(input: VisualSearchInput, client?: DbClient): Promise<VisualSearchResult[]> {
+  async searchVisual(
+    input: VisualSearchInput,
+    client?: DbClient,
+  ): Promise<VisualSearchResult[]> {
     const db = getDb(this.pool, client);
     const { embedding, draftId, filters } = input;
-    const vector = embedding ? sanitizeEmbedding(embedding) : await this.getEmbeddingByDraftId(draftId, db);
+    const vector = embedding
+      ? sanitizeEmbedding(embedding)
+      : await this.getEmbeddingByDraftId(draftId, db);
 
     if (!vector || vector.length === 0) {
       if (draftId) {
-        throw new ServiceError('EMBEDDING_NOT_FOUND', 'Draft embedding not found.', 404);
+        throw new ServiceError(
+          'EMBEDDING_NOT_FOUND',
+          'Draft embedding not found.',
+          404,
+        );
       }
-      throw new ServiceError('EMBEDDING_REQUIRED', 'Provide a draftId or embedding array.', 400);
+      throw new ServiceError(
+        'EMBEDDING_REQUIRED',
+        'Provide a draftId or embedding array.',
+        400,
+      );
     }
 
-    const { type = 'all', tags = [], limit = 20, offset = 0, excludeDraftId } = filters ?? {};
+    const {
+      type = 'all',
+      tags = [],
+      limit = 20,
+      offset = 0,
+      excludeDraftId,
+    } = filters ?? {};
     const candidateLimit = Math.max(100, (offset + limit) * 5);
 
     const statusFilter =
-      type === 'draft' ? "d.status = 'draft'" : type === 'release' ? "d.status = 'release'" : '1=1';
+      type === 'draft'
+        ? "d.status = 'draft'"
+        : type === 'release'
+          ? "d.status = 'release'"
+          : '1=1';
     const params: any[] = [candidateLimit];
     const clauses = [`${statusFilter}`, 'd.is_sandbox = false'];
     let paramIndex = 2;
 
     if (tags.length > 0) {
-      clauses.push(`COALESCE(d.metadata->'tags', '[]'::jsonb) ?| $${paramIndex}`);
+      clauses.push(
+        `COALESCE(d.metadata->'tags', '[]'::jsonb) ?| $${paramIndex}`,
+      );
       params.push(tags);
       paramIndex += 1;
     }
@@ -233,37 +299,42 @@ export class SearchServiceImpl implements SearchService {
        LEFT JOIN versions v_last ON v_last.draft_id = d.id AND v_last.version_number = d.current_version
        WHERE ${clauses.join(' AND ')}
        LIMIT $1`,
-      params
+      params,
     );
 
-    const scored = results.rows
-      .map((row) => {
-        const rowEmbedding = parseEmbedding(row.embedding);
-        if (!rowEmbedding) {
-          return null;
-        }
-        const score = cosineSimilarity(vector, rowEmbedding);
-        return {
-          type: row.status === 'release' ? 'release' : 'draft',
-          id: row.id,
-          title: row.metadata?.title ?? 'Untitled',
-          score,
-          glowUpScore: Number(row.glow_up_score ?? 0),
-          beforeImageUrl: row.before_image_url ?? undefined,
-          afterImageUrl: row.after_image_url ?? undefined
-        } satisfies VisualSearchResult;
-      })
-      .filter((item): item is VisualSearchResult => item != null);
+    const scored: VisualSearchResult[] = [];
+    for (const row of results.rows as any[]) {
+      const rowEmbedding = parseEmbedding(row.embedding);
+      if (!rowEmbedding) {
+        continue;
+      }
+      const score = cosineSimilarity(vector, rowEmbedding);
+      scored.push({
+        type: row.status === 'release' ? 'release' : 'draft',
+        id: row.id,
+        title: row.metadata?.title ?? 'Untitled',
+        score,
+        glowUpScore: Number(row.glow_up_score ?? 0),
+        beforeImageUrl: row.before_image_url ?? undefined,
+        afterImageUrl: row.after_image_url ?? undefined,
+      });
+    }
 
     scored.sort((a, b) => b.score - a.score);
     return scored.slice(offset, offset + limit);
   }
 
-  private async getEmbeddingByDraftId(draftId: string | undefined, db: DbClient): Promise<number[] | null> {
+  private async getEmbeddingByDraftId(
+    draftId: string | undefined,
+    db: DbClient,
+  ): Promise<number[] | null> {
     if (!draftId) {
       return null;
     }
-    const result = await db.query('SELECT embedding FROM draft_embeddings WHERE draft_id = $1', [draftId]);
+    const result = await db.query(
+      'SELECT embedding FROM draft_embeddings WHERE draft_id = $1',
+      [draftId],
+    );
     if (result.rows.length === 0) {
       return null;
     }
@@ -293,7 +364,7 @@ const buildIntentClause = (intent?: SearchIntent): string => {
   }
   if (intent === 'seeking_pr') {
     return (
-      "EXISTS (SELECT 1 FROM fix_requests fr WHERE fr.draft_id = d.id) " +
+      'EXISTS (SELECT 1 FROM fix_requests fr WHERE fr.draft_id = d.id) ' +
       "AND NOT EXISTS (SELECT 1 FROM pull_requests pr WHERE pr.draft_id = d.id AND pr.status = 'pending')"
     );
   }
@@ -326,45 +397,62 @@ const scoreRecency = (updatedAt: Date | null): number => {
   return Math.max(0, 1 - days / 30);
 };
 
-const normalizeMetric = (value: number): number => Math.max(0, Math.min(value / 100, 1));
+const normalizeMetric = (value: number): number =>
+  Math.max(0, Math.min(value / 100, 1));
 
 const scoreRelevance = (
   text: string,
   glowUpScore: number,
   updatedAt: Date | null,
   terms: string[],
-  weights: { keyword: number; glowup: number; recency: number }
+  weights: { keyword: number; glowup: number; recency: number },
 ): number => {
   const keywordScore = scoreKeywordMatch(text, terms);
   const glowScore = normalizeMetric(glowUpScore);
   const recencyScore = scoreRecency(updatedAt);
-  return keywordScore * weights.keyword + glowScore * weights.glowup + recencyScore * weights.recency;
+  return (
+    keywordScore * weights.keyword +
+    glowScore * weights.glowup +
+    recencyScore * weights.recency
+  );
 };
 
 const scoreStudioRelevance = (
   text: string,
   impact: number,
   terms: string[],
-  weights: { keyword: number; impact: number }
+  weights: { keyword: number; impact: number },
 ): number => {
   const keywordScore = scoreKeywordMatch(text, terms);
   const impactScore = normalizeMetric(impact);
   return keywordScore * weights.keyword + impactScore * weights.impact;
 };
 
-const normalizeWeights = (
-  weights: Record<string, number>,
-  defaults: Record<string, number>
-): Record<string, number> => {
-  const entries = Object.entries(weights).map(([key, value]) => [key, Number(value)]);
-  const sanitized = Object.fromEntries(
-    entries.map(([key, value]) => [key, Number.isFinite(value) && value > 0 ? value : 0])
-  );
-  const sum = Object.values(sanitized).reduce((acc, value) => acc + value, 0);
+const normalizeWeights = <K extends string>(
+  weights: Record<K, number>,
+  defaults: Record<K, number>,
+): Record<K, number> => {
+  const keys = Object.keys(weights) as K[];
+  const sanitized = {} as Record<K, number>;
+  let sum = 0;
+
+  for (const key of keys) {
+    const value = Number(weights[key]);
+    const safeValue = Number.isFinite(value) && value > 0 ? value : 0;
+    sanitized[key] = safeValue;
+    sum += safeValue;
+  }
+
   if (sum <= 0) {
     return defaults;
   }
-  return Object.fromEntries(Object.entries(sanitized).map(([key, value]) => [key, value / sum]));
+
+  const normalized = {} as Record<K, number>;
+  for (const key of keys) {
+    normalized[key] = sanitized[key] / sum;
+  }
+
+  return normalized;
 };
 
 const BALANCED_WEIGHTS = { keyword: 0.6, glowup: 0.3, recency: 0.1 };
@@ -386,9 +474,9 @@ const getSearchWeights = (profile?: SearchProfile) => {
     {
       keyword: env.SEARCH_RELEVANCE_WEIGHT_KEYWORD,
       glowup: env.SEARCH_RELEVANCE_WEIGHT_GLOWUP,
-      recency: env.SEARCH_RELEVANCE_WEIGHT_RECENCY
+      recency: env.SEARCH_RELEVANCE_WEIGHT_RECENCY,
     },
-    BALANCED_WEIGHTS
+    BALANCED_WEIGHTS,
   ) as { keyword: number; glowup: number; recency: number };
 };
 
@@ -402,9 +490,9 @@ const getStudioWeights = (profile?: SearchProfile) => {
   return normalizeWeights(
     {
       keyword: env.SEARCH_RELEVANCE_WEIGHT_STUDIO_KEYWORD,
-      impact: env.SEARCH_RELEVANCE_WEIGHT_STUDIO_IMPACT
+      impact: env.SEARCH_RELEVANCE_WEIGHT_STUDIO_IMPACT,
     },
-    BALANCED_STUDIO_WEIGHTS
+    BALANCED_STUDIO_WEIGHTS,
   ) as { keyword: number; impact: number };
 };
 

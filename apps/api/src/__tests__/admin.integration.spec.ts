@@ -1,10 +1,13 @@
 import request from 'supertest';
+import { env } from '../config/env';
 import { db } from '../db/pool';
 import { redis } from '../redis/client';
-import { env } from '../config/env';
-import { BudgetServiceImpl, getUtcDateKey } from '../services/budget/budgetService';
-import { PostServiceImpl } from '../services/post/postService';
 import { createApp, initInfra } from '../server';
+import {
+  BudgetServiceImpl,
+  getUtcDateKey,
+} from '../services/budget/budgetService';
+import { PostServiceImpl } from '../services/post/postService';
 
 env.ADMIN_API_TOKEN = env.ADMIN_API_TOKEN || 'test-admin-token';
 
@@ -12,10 +15,10 @@ const app = createApp();
 
 const resetDb = async () => {
   await db.query('TRUNCATE TABLE draft_embeddings RESTART IDENTITY CASCADE');
-  await db.query(`DELETE FROM embedding_events`);
+  await db.query('DELETE FROM embedding_events');
   await db.query('TRUNCATE TABLE ux_events RESTART IDENTITY CASCADE');
-  await db.query(`TRUNCATE TABLE job_runs RESTART IDENTITY CASCADE`);
-  await db.query(`TRUNCATE TABLE error_events RESTART IDENTITY CASCADE`);
+  await db.query('TRUNCATE TABLE job_runs RESTART IDENTITY CASCADE');
+  await db.query('TRUNCATE TABLE error_events RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE versions RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE drafts RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE agents RESTART IDENTITY CASCADE');
@@ -25,7 +28,7 @@ const resetDb = async () => {
 const registerAgent = async (studioName = 'Admin Test Studio') => {
   const response = await request(app).post('/api/agents/register').send({
     studioName,
-    personality: 'Tester'
+    personality: 'Tester',
   });
   const { agentId } = response.body;
   return { agentId };
@@ -78,7 +81,7 @@ describe('Admin API routes', () => {
       authorId: agentId,
       imageUrl: 'https://example.com/admin-v1.png',
       thumbnailUrl: 'https://example.com/admin-v1-thumb.png',
-      metadata: { title: 'Admin Backfill' }
+      metadata: { title: 'Admin Backfill' },
     });
 
     const backfill = await request(app)
@@ -90,7 +93,9 @@ describe('Admin API routes', () => {
     expect(backfill.body).toHaveProperty('processed');
     expect(backfill.body.processed).toBeGreaterThan(0);
 
-    const embeddingRows = await db.query('SELECT COUNT(*)::int AS count FROM draft_embeddings');
+    const embeddingRows = await db.query(
+      'SELECT COUNT(*)::int AS count FROM draft_embeddings',
+    );
     expect(embeddingRows.rows[0].count).toBeGreaterThan(0);
 
     const metrics = await request(app)
@@ -106,7 +111,7 @@ describe('Admin API routes', () => {
     await db.query(
       `INSERT INTO ux_events (event_type, user_type, timing_ms, metadata)
        VALUES ('feed_filter_change', 'anonymous', 120, '{}'),
-              ('feed_load_timing', 'anonymous', 340, '{}')`
+              ('feed_load_timing', 'anonymous', 340, '{}')`,
     );
 
     const response = await request(app)
@@ -126,7 +131,7 @@ describe('Admin API routes', () => {
               ('similar_search_empty', 'anonymous', '{"profile":"quality"}'),
               ('search_performed', 'anonymous', '{"profile":"quality","mode":"text"}'),
               ('search_performed', 'anonymous', '{"profile":"quality","mode":"text"}'),
-              ('search_result_open', 'anonymous', '{"profile":"quality","mode":"text"}')`
+              ('search_result_open', 'anonymous', '{"profile":"quality","mode":"text"}')`,
     );
 
     const response = await request(app)
@@ -137,13 +142,16 @@ describe('Admin API routes', () => {
     expect(Array.isArray(response.body.rows)).toBe(true);
     expect(Array.isArray(response.body.profiles)).toBe(true);
     const balancedSimilar = response.body.profiles.find(
-      (profile: any) => profile.profile === 'balanced' && profile.mode === 'unknown'
+      (profile: any) =>
+        profile.profile === 'balanced' && profile.mode === 'unknown',
     );
     const qualitySimilar = response.body.profiles.find(
-      (profile: any) => profile.profile === 'quality' && profile.mode === 'unknown'
+      (profile: any) =>
+        profile.profile === 'quality' && profile.mode === 'unknown',
     );
     const qualityText = response.body.profiles.find(
-      (profile: any) => profile.profile === 'quality' && profile.mode === 'text'
+      (profile: any) =>
+        profile.profile === 'quality' && profile.mode === 'text',
     );
 
     expect(balancedSimilar).toBeTruthy();
@@ -167,7 +175,7 @@ describe('Admin API routes', () => {
        VALUES
          ('observer-kpi-a@example.com', 'hash', 'v1', NOW(), 'v1', NOW()),
          ('observer-kpi-b@example.com', 'hash', 'v1', NOW(), 'v1', NOW())
-       RETURNING id`
+       RETURNING id`,
     );
     const observerA = users.rows[0].id;
     const observerB = users.rows[1].id;
@@ -183,7 +191,7 @@ describe('Admin API routes', () => {
          ('draft_arc_view', 'observer', $2, 'draft', '{"mode":"hot_now","abVariant":"B"}', NOW() - INTERVAL '10 minutes'),
          ('draft_arc_view', 'observer', $1, 'draft', '{"mode":"hot_now","abVariant":"A"}', NOW() - INTERVAL '30 hours'),
          ('hot_now_open', 'observer', $1, 'draft', '{"mode":"hot_now","rankingVariant":"rank_v1"}', NOW() - INTERVAL '3 days')`,
-      [observerA, observerB]
+      [observerA, observerB],
     );
 
     const response = await request(app)
@@ -206,16 +214,20 @@ describe('Admin API routes', () => {
 
     const hotNowSegment = response.body.segments.find(
       (segment: any) =>
-        segment.mode === 'hot_now' && segment.draftStatus === 'draft' && segment.eventType === 'draft_arc_view'
+        segment.mode === 'hot_now' &&
+        segment.draftStatus === 'draft' &&
+        segment.eventType === 'draft_arc_view',
     );
     expect(hotNowSegment).toBeTruthy();
     expect(hotNowSegment.count).toBe(2);
 
     const variantA = response.body.variants.find(
-      (entry: any) => entry.variant === 'A' && entry.eventType === 'draft_arc_view'
+      (entry: any) =>
+        entry.variant === 'A' && entry.eventType === 'draft_arc_view',
     );
     const variantB = response.body.variants.find(
-      (entry: any) => entry.variant === 'B' && entry.eventType === 'draft_arc_view'
+      (entry: any) =>
+        entry.variant === 'B' && entry.eventType === 'draft_arc_view',
     );
     expect(variantA).toBeTruthy();
     expect(variantB).toBeTruthy();
@@ -226,7 +238,7 @@ describe('Admin API routes', () => {
       `INSERT INTO job_runs (job_name, status, started_at, finished_at, duration_ms, error_message, metadata)
        VALUES ('budgets_reset', 'success', NOW() - INTERVAL '2 hours', NOW() - INTERVAL '2 hours', 1200, NULL, '{}'),
               ('budgets_reset', 'failed', NOW() - INTERVAL '1 hours', NOW() - INTERVAL '1 hours', 900, 'failed', '{}'),
-              ('embedding_backfill', 'success', NOW() - INTERVAL '3 hours', NOW() - INTERVAL '3 hours', 2400, NULL, '{"processed":10}')`
+              ('embedding_backfill', 'success', NOW() - INTERVAL '3 hours', NOW() - INTERVAL '3 hours', 2400, NULL, '{"processed":10}')`,
     );
 
     const response = await request(app)
@@ -235,7 +247,9 @@ describe('Admin API routes', () => {
 
     expect(response.status).toBe(200);
     expect(Array.isArray(response.body.rows)).toBe(true);
-    const budgets = response.body.rows.find((row: any) => row.job_name === 'budgets_reset');
+    const budgets = response.body.rows.find(
+      (row: any) => row.job_name === 'budgets_reset',
+    );
     expect(budgets).toBeTruthy();
     expect(budgets.total_runs).toBe(2);
     expect(budgets.failure_count).toBe(1);
@@ -248,37 +262,38 @@ describe('Admin API routes', () => {
     const created = await postService.createDraft({
       authorId: agentId,
       imageUrl: 'https://example.com/cleanup-v1.png',
-      thumbnailUrl: 'https://example.com/cleanup-v1-thumb.png'
+      thumbnailUrl: 'https://example.com/cleanup-v1-thumb.png',
     });
 
-    const userRow = await db.query('INSERT INTO users (email) VALUES ($1) RETURNING id', [
-      'cleanup@example.com'
-    ]);
+    const userRow = await db.query(
+      'INSERT INTO users (email) VALUES ($1) RETURNING id',
+      ['cleanup@example.com'],
+    );
     const userId = userRow.rows[0].id;
 
     await db.query(
       `INSERT INTO viewing_history (user_id, draft_id, viewed_at)
        VALUES ($1, $2, NOW() - INTERVAL '200 days')`,
-      [userId, created.draft.id]
+      [userId, created.draft.id],
     );
 
     const commissionRow = await db.query(
       `INSERT INTO commissions (user_id, description)
        VALUES ($1, 'cleanup test') RETURNING id`,
-      [userId]
+      [userId],
     );
     const commissionId = commissionRow.rows[0].id;
 
     await db.query(
       `INSERT INTO payment_events (provider, provider_event_id, commission_id, event_type, received_at)
        VALUES ('stripe', 'evt_cleanup', $1, 'payment', NOW() - INTERVAL '200 days')`,
-      [commissionId]
+      [commissionId],
     );
 
     await db.query(
       `INSERT INTO data_exports (user_id, status, export_url, expires_at, created_at)
        VALUES ($1, 'ready', 'https://example.com/exports/old.zip', NOW() - INTERVAL '200 days', NOW() - INTERVAL '200 days')`,
-      [userId]
+      [userId],
     );
 
     const preview = await request(app)
@@ -313,7 +328,7 @@ describe('Admin API routes', () => {
   test('error metrics endpoint returns recorded errors', async () => {
     await db.query(
       `INSERT INTO error_events (error_code, message, status, route, method, user_type)
-       VALUES ('VERSION_MEDIA_REQUIRED', 'Initial version image and thumbnail are required.', 400, '/api/drafts', 'POST', 'agent')`
+       VALUES ('VERSION_MEDIA_REQUIRED', 'Initial version image and thumbnail are required.', 400, '/api/drafts', 'POST', 'agent')`,
     );
 
     const response = await request(app)
@@ -321,7 +336,9 @@ describe('Admin API routes', () => {
       .set('x-admin-token', env.ADMIN_API_TOKEN);
 
     expect(response.status).toBe(200);
-    const entry = response.body.rows.find((row: any) => row.error_code === 'VERSION_MEDIA_REQUIRED');
+    const entry = response.body.rows.find(
+      (row: any) => row.error_code === 'VERSION_MEDIA_REQUIRED',
+    );
     expect(entry).toBeTruthy();
   });
 
@@ -333,14 +350,16 @@ describe('Admin API routes', () => {
     const created = await postService.createDraft({
       authorId: agentId,
       imageUrl: 'https://example.com/budget-v1.png',
-      thumbnailUrl: 'https://example.com/budget-v1-thumb.png'
+      thumbnailUrl: 'https://example.com/budget-v1-thumb.png',
     });
 
     await budgetService.incrementActionBudget(agentId, 'fix_request');
     await budgetService.incrementEditBudget(created.draft.id, 'pr');
 
     const remaining = await request(app)
-      .get(`/api/admin/budgets/remaining?agentId=${agentId}&draftId=${created.draft.id}`)
+      .get(
+        `/api/admin/budgets/remaining?agentId=${agentId}&draftId=${created.draft.id}`,
+      )
       .set('x-admin-token', env.ADMIN_API_TOKEN);
 
     expect(remaining.status).toBe(200);

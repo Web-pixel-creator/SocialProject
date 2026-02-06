@@ -76,14 +76,20 @@ export type UnifiedFeedFilters = FeedFilters & {
 };
 
 export type FeedService = {
-  getProgress(filters: FeedFilters, client?: DbClient): Promise<ProgressFeedItem[]>;
+  getProgress(
+    filters: FeedFilters,
+    client?: DbClient,
+  ): Promise<ProgressFeedItem[]>;
   getForYou(filters: FeedFilters, client?: DbClient): Promise<FeedItem[]>;
   getLiveDrafts(filters: FeedFilters, client?: DbClient): Promise<FeedItem[]>;
   getGlowUps(filters: FeedFilters, client?: DbClient): Promise<FeedItem[]>;
   getStudios(filters: FeedFilters, client?: DbClient): Promise<StudioItem[]>;
   getBattles(filters: FeedFilters, client?: DbClient): Promise<FeedItem[]>;
   getArchive(filters: FeedFilters, client?: DbClient): Promise<FeedItem[]>;
-  getChanges(filters: FeedFilters, client?: DbClient): Promise<ChangeFeedItem[]>;
+  getChanges(
+    filters: FeedFilters,
+    client?: DbClient,
+  ): Promise<ChangeFeedItem[]>;
   getFeed(filters: UnifiedFeedFilters, client?: DbClient): Promise<FeedItem[]>;
   getHotNow(filters: FeedFilters, client?: DbClient): Promise<HotNowItem[]>;
 };

@@ -6,7 +6,9 @@ import { createApp, initInfra } from '../server';
 const app = createApp();
 
 const resetDb = async () => {
-  await db.query('TRUNCATE TABLE commission_responses RESTART IDENTITY CASCADE');
+  await db.query(
+    'TRUNCATE TABLE commission_responses RESTART IDENTITY CASCADE',
+  );
   await db.query('TRUNCATE TABLE commissions RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE payment_events RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE viewing_history RESTART IDENTITY CASCADE');
@@ -38,11 +40,13 @@ describe('authorization properties', () => {
   });
 
   test('Property 29: Human Observer Read-Only Enforcement', async () => {
-    const register = await request(app).post('/api/auth/register').send({
-      email: 'readonly@example.com',
-      password: 'password123',
-      consent: { termsAccepted: true, privacyAccepted: true }
-    });
+    const register = await request(app)
+      .post('/api/auth/register')
+      .send({
+        email: 'readonly@example.com',
+        password: 'password123',
+        consent: { termsAccepted: true, privacyAccepted: true },
+      });
 
     const token = register.body.tokens.accessToken;
 
@@ -51,7 +55,7 @@ describe('authorization properties', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({
         imageUrl: 'https://example.com/v1.png',
-        thumbnailUrl: 'https://example.com/v1-thumb.png'
+        thumbnailUrl: 'https://example.com/v1-thumb.png',
       });
 
     expect(response.status).toBe(401);
@@ -60,24 +64,24 @@ describe('authorization properties', () => {
   test('Property 56: Role-Based Permission Enforcement', async () => {
     const agent = await request(app).post('/api/agents/register').send({
       studioName: 'Agent One',
-      personality: 'Tester'
+      personality: 'Tester',
     });
 
     const agentTwo = await request(app).post('/api/agents/register').send({
       studioName: 'Agent Two',
-      personality: 'Tester'
+      personality: 'Tester',
     });
 
     await request(app).post('/api/agents/claim/verify').send({
       claimToken: agent.body.claimToken,
       method: 'email',
-      emailToken: agent.body.emailToken
+      emailToken: agent.body.emailToken,
     });
 
     await request(app).post('/api/agents/claim/verify').send({
       claimToken: agentTwo.body.claimToken,
       method: 'email',
-      emailToken: agentTwo.body.emailToken
+      emailToken: agentTwo.body.emailToken,
     });
 
     const response = await request(app)
@@ -85,7 +89,7 @@ describe('authorization properties', () => {
       .set('x-agent-id', agent.body.agentId)
       .set('x-api-key', agent.body.apiKey)
       .send({
-        studioName: 'Hack'
+        studioName: 'Hack',
       });
 
     expect(response.status).toBe(403);

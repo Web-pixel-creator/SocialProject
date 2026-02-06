@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { apiClient } from '../../../lib/api';
 import { BeforeAfterSlider } from '../../../components/BeforeAfterSlider';
 import { FixRequestList } from '../../../components/FixRequestList';
+import { apiClient } from '../../../lib/api';
 
 type ReviewPayload = {
   pullRequest: {
@@ -42,7 +42,11 @@ type FixRequest = {
   criticId: string;
 };
 
-export default function PullRequestReviewPage({ params }: { params: { id: string } }) {
+export default function PullRequestReviewPage({
+  params,
+}: {
+  params: { id: string };
+}) {
   const [review, setReview] = useState<ReviewPayload | null>(null);
   const [fixRequests, setFixRequests] = useState<FixRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,7 +59,9 @@ export default function PullRequestReviewPage({ params }: { params: { id: string
     const response = await apiClient.get(`/pull-requests/${params.id}`);
     setReview(response.data);
     if (response.data?.draft?.id) {
-      const fixRes = await apiClient.get(`/drafts/${response.data.draft.id}/fix-requests`);
+      const fixRes = await apiClient.get(
+        `/drafts/${response.data.draft.id}/fix-requests`,
+      );
       setFixRequests(fixRes.data ?? []);
     }
     try {
@@ -63,7 +69,7 @@ export default function PullRequestReviewPage({ params }: { params: { id: string
         eventType: 'pr_review_open',
         prId: response.data?.pullRequest?.id ?? params.id,
         draftId: response.data?.draft?.id,
-        source: 'review'
+        source: 'review',
       });
     } catch (_telemetryError) {
       // ignore telemetry failures
@@ -79,7 +85,9 @@ export default function PullRequestReviewPage({ params }: { params: { id: string
         await load();
       } catch (err: any) {
         if (!cancelled) {
-          setError(err?.response?.data?.message ?? 'Failed to load pull request.');
+          setError(
+            err?.response?.data?.message ?? 'Failed to load pull request.',
+          );
         }
       } finally {
         if (!cancelled) {
@@ -105,10 +113,12 @@ export default function PullRequestReviewPage({ params }: { params: { id: string
     id: item.id,
     category: item.category,
     description: item.description,
-    critic: `Studio ${item.criticId.slice(0, 6)}`
+    critic: `Studio ${item.criticId.slice(0, 6)}`,
   }));
 
-  const handleDecision = async (decision: 'merge' | 'reject' | 'request_changes') => {
+  const handleDecision = async (
+    decision: 'merge' | 'reject' | 'request_changes',
+  ) => {
     if (!review) return;
     if (decision === 'reject' && !rejectReason.trim()) {
       setError('Rejection reason is required.');
@@ -120,7 +130,7 @@ export default function PullRequestReviewPage({ params }: { params: { id: string
       await apiClient.post(`/pull-requests/${review.pullRequest.id}/decide`, {
         decision,
         rejectionReason: decision === 'reject' ? rejectReason : undefined,
-        feedback: feedback || undefined
+        feedback: feedback || undefined,
       });
       if (decision === 'merge' || decision === 'reject') {
         try {
@@ -128,7 +138,7 @@ export default function PullRequestReviewPage({ params }: { params: { id: string
             eventType: decision === 'merge' ? 'pr_merge' : 'pr_reject',
             prId: review.pullRequest.id,
             draftId: review.draft.id,
-            source: 'review'
+            source: 'review',
           });
         } catch (_telemetryError) {
           // ignore telemetry failures
@@ -160,7 +170,11 @@ export default function PullRequestReviewPage({ params }: { params: { id: string
   });
 
   if (loading) {
-    return <div className="card p-6 text-sm text-slate-500">Loading pull request...</div>;
+    return (
+      <div className="card p-6 text-sm text-slate-500">
+        Loading pull request...
+      </div>
+    );
   }
 
   if (!review) {
@@ -177,13 +191,18 @@ export default function PullRequestReviewPage({ params }: { params: { id: string
     <main className="grid gap-6">
       <div className="card p-6">
         <p className="pill">PR Review</p>
-        <h2 className="mt-3 text-2xl font-semibold text-ink">PR {pullRequest.id}</h2>
+        <h2 className="mt-3 text-2xl font-semibold text-ink">
+          PR {pullRequest.id}
+        </h2>
         <p className="text-sm text-slate-600">
-          {makerStudio} → {authorStudio} · {pullRequest.severity.toUpperCase()} · {pullRequest.status}
+          {makerStudio} → {authorStudio} · {pullRequest.severity.toUpperCase()}{' '}
+          · {pullRequest.status}
         </p>
       </div>
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">{error}</div>
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+          {error}
+        </div>
       )}
 
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
@@ -197,7 +216,9 @@ export default function PullRequestReviewPage({ params }: { params: { id: string
 
           <div className="card p-4">
             <h3 className="text-sm font-semibold text-ink">PR Summary</h3>
-            <p className="mt-2 text-sm text-slate-600">{pullRequest.description}</p>
+            <p className="mt-2 text-sm text-slate-600">
+              {pullRequest.description}
+            </p>
           </div>
 
           <FixRequestList items={fixList} />
@@ -247,6 +268,7 @@ export default function PullRequestReviewPage({ params }: { params: { id: string
                 className="rounded-full bg-emerald-500 px-4 py-2 text-xs font-semibold text-white"
                 onClick={() => handleDecision('merge')}
                 disabled={decisionLoading}
+                type="button"
               >
                 Merge (M)
               </button>
@@ -254,6 +276,7 @@ export default function PullRequestReviewPage({ params }: { params: { id: string
                 className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600"
                 onClick={() => handleDecision('request_changes')}
                 disabled={decisionLoading}
+                type="button"
               >
                 Request changes
               </button>
@@ -261,6 +284,7 @@ export default function PullRequestReviewPage({ params }: { params: { id: string
                 className="rounded-full bg-rose-500 px-4 py-2 text-xs font-semibold text-white"
                 onClick={() => handleDecision('reject')}
                 disabled={decisionLoading}
+                type="button"
               >
                 Reject (R)
               </button>

@@ -17,7 +17,7 @@ const recordJobRun = async (
   status: 'success' | 'failed',
   startedAt: Date,
   metadata?: Record<string, unknown>,
-  errorMessage?: string
+  errorMessage?: string,
 ) => {
   const finishedAt = new Date();
   const durationMs = Math.max(0, finishedAt.getTime() - startedAt.getTime());
@@ -25,7 +25,15 @@ const recordJobRun = async (
     await pool.query(
       `INSERT INTO job_runs (job_name, status, started_at, finished_at, duration_ms, error_message, metadata)
        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [jobName, status, startedAt, finishedAt, durationMs, errorMessage ?? null, metadata ?? {}]
+      [
+        jobName,
+        status,
+        startedAt,
+        finishedAt,
+        durationMs,
+        errorMessage ?? null,
+        metadata ?? {},
+      ],
     );
   } catch (error) {
     logger.error({ err: error, jobName }, 'Job run record failed');
@@ -51,7 +59,9 @@ export const startScheduler = (pool: Pool): JobHandle | null => {
         try {
           const deleted = await budgetService.resetBudgets();
           logger.info({ deleted }, 'Budgets reset');
-          await recordJobRun(pool, 'budgets_reset', 'success', startedAt, { deleted });
+          await recordJobRun(pool, 'budgets_reset', 'success', startedAt, {
+            deleted,
+          });
         } catch (error) {
           logger.error({ err: error }, 'Budget reset failed');
           await recordJobRun(
@@ -60,11 +70,11 @@ export const startScheduler = (pool: Pool): JobHandle | null => {
             'failed',
             startedAt,
             undefined,
-            error instanceof Error ? error.message : String(error)
+            error instanceof Error ? error.message : String(error),
           );
         }
       },
-      { timezone: 'UTC' }
+      { timezone: 'UTC' },
     ),
     cron.schedule(
       '5 0 * * *',
@@ -73,7 +83,9 @@ export const startScheduler = (pool: Pool): JobHandle | null => {
         try {
           const reel = await contentService.generateGlowUpReel();
           logger.info({ reelId: reel.id }, 'GlowUp reel generated');
-          await recordJobRun(pool, 'glowup_reel', 'success', startedAt, { reelId: reel.id });
+          await recordJobRun(pool, 'glowup_reel', 'success', startedAt, {
+            reelId: reel.id,
+          });
         } catch (error) {
           logger.warn({ err: error }, 'GlowUp reel generation skipped');
           await recordJobRun(
@@ -82,11 +94,11 @@ export const startScheduler = (pool: Pool): JobHandle | null => {
             'failed',
             startedAt,
             undefined,
-            error instanceof Error ? error.message : String(error)
+            error instanceof Error ? error.message : String(error),
           );
         }
       },
-      { timezone: 'UTC' }
+      { timezone: 'UTC' },
     ),
     cron.schedule(
       '10 0 * * *',
@@ -95,7 +107,9 @@ export const startScheduler = (pool: Pool): JobHandle | null => {
         try {
           const report = await contentService.generateAutopsyReport();
           logger.info({ reportId: report.id }, 'Autopsy report generated');
-          await recordJobRun(pool, 'autopsy_report', 'success', startedAt, { reportId: report.id });
+          await recordJobRun(pool, 'autopsy_report', 'success', startedAt, {
+            reportId: report.id,
+          });
         } catch (error) {
           logger.warn({ err: error }, 'Autopsy generation skipped');
           await recordJobRun(
@@ -104,11 +118,11 @@ export const startScheduler = (pool: Pool): JobHandle | null => {
             'failed',
             startedAt,
             undefined,
-            error instanceof Error ? error.message : String(error)
+            error instanceof Error ? error.message : String(error),
           );
         }
       },
-      { timezone: 'UTC' }
+      { timezone: 'UTC' },
     ),
     cron.schedule(
       '15 0 * * *',
@@ -117,7 +131,13 @@ export const startScheduler = (pool: Pool): JobHandle | null => {
         try {
           const result = await privacyService.purgeExpiredData();
           logger.info({ ...result }, 'Retention cleanup complete');
-          await recordJobRun(pool, 'retention_cleanup', 'success', startedAt, result);
+          await recordJobRun(
+            pool,
+            'retention_cleanup',
+            'success',
+            startedAt,
+            result,
+          );
         } catch (error) {
           logger.error({ err: error }, 'Retention cleanup failed');
           await recordJobRun(
@@ -126,20 +146,27 @@ export const startScheduler = (pool: Pool): JobHandle | null => {
             'failed',
             startedAt,
             undefined,
-            error instanceof Error ? error.message : String(error)
+            error instanceof Error ? error.message : String(error),
           );
         }
       },
-      { timezone: 'UTC' }
+      { timezone: 'UTC' },
     ),
     cron.schedule(
       '20 0 * * *',
       async () => {
         const startedAt = new Date();
         try {
-          const result = await embeddingBackfillService.backfillDraftEmbeddings(200);
+          const result =
+            await embeddingBackfillService.backfillDraftEmbeddings(200);
           logger.info({ ...result }, 'Draft embedding backfill complete');
-          await recordJobRun(pool, 'embedding_backfill', 'success', startedAt, result as any);
+          await recordJobRun(
+            pool,
+            'embedding_backfill',
+            'success',
+            startedAt,
+            result as any,
+          );
         } catch (error) {
           logger.error({ err: error }, 'Draft embedding backfill failed');
           await recordJobRun(
@@ -148,19 +175,21 @@ export const startScheduler = (pool: Pool): JobHandle | null => {
             'failed',
             startedAt,
             undefined,
-            error instanceof Error ? error.message : String(error)
+            error instanceof Error ? error.message : String(error),
           );
         }
       },
-      { timezone: 'UTC' }
-    )
+      { timezone: 'UTC' },
+    ),
   ];
 
   logger.info('Job scheduler started');
 
   return {
     stop: () => {
-      tasks.forEach((task) => task.stop());
-    }
+      tasks.forEach((task) => {
+        task.stop();
+      });
+    },
   };
 };

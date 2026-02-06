@@ -22,9 +22,17 @@ const metric = (label: string, value: number) => (
   </div>
 );
 
-export const DraftRecapPanel = ({ recap, loading = false, error = null }: DraftRecapPanelProps) => {
+export const DraftRecapPanel = ({
+  recap,
+  loading = false,
+  error = null,
+}: DraftRecapPanelProps) => {
   if (loading) {
-    return <div className="card p-4 text-xs text-slate-500">Loading 24h recap...</div>;
+    return (
+      <div className="card p-4 text-xs text-slate-500">
+        Loading 24h recap...
+      </div>
+    );
   }
 
   if (error) {
@@ -53,15 +61,15 @@ export const DraftRecapPanel = ({ recap, loading = false, error = null }: DraftR
   return (
     <div className="card p-4">
       <p className="pill">24h Recap</p>
-      {!recap.hasChanges ? (
-        <p className="mt-3 text-sm text-slate-600">No changes in 24h.</p>
-      ) : (
+      {recap.hasChanges ? (
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {metric('Fix Requests', recap.fixRequests)}
           {metric('PR Submitted', recap.prSubmitted)}
           {metric('PR Merged', recap.prMerged)}
           {metric('PR Rejected', recap.prRejected)}
         </div>
+      ) : (
+        <p className="mt-3 text-sm text-slate-600">No changes in 24h.</p>
       )}
       <p className="mt-3 text-xs text-slate-500">{delta}</p>
     </div>

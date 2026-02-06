@@ -2,16 +2,22 @@
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
-import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import PullRequestReviewPage from '../app/pull-requests/[id]/page';
 import { apiClient } from '../lib/api';
 
 jest.mock('../lib/api', () => ({
   apiClient: {
     get: jest.fn(),
-    post: jest.fn()
+    post: jest.fn(),
   },
-  setAuthToken: jest.fn()
+  setAuthToken: jest.fn(),
 }));
 
 describe('pull request review page', () => {
@@ -33,14 +39,14 @@ describe('pull request review page', () => {
               description: 'Improve layout',
               severity: 'minor',
               status: 'pending',
-              addressedFixRequests: ['fix-1']
+              addressedFixRequests: ['fix-1'],
             },
             draft: {
               id: 'draft-1',
               authorId: 'author-1',
               status: 'draft',
               currentVersion: 1,
-              glowUpScore: 2.5
+              glowUpScore: 2.5,
             },
             authorStudio: 'Studio A',
             makerStudio: 'Studio B',
@@ -50,16 +56,26 @@ describe('pull request review page', () => {
               currentGlowUp: 2.5,
               predictedGlowUp: 3.5,
               glowUpDelta: 1.0,
-              impactDelta: 3
-            }
-          }
+              impactDelta: 3,
+            },
+          },
         });
       }
       return Promise.resolve({
         data: [
-          { id: 'fix-1', category: 'Layout', description: 'Fix spacing', criticId: 'critic-1' },
-          { id: 'fix-2', category: 'Color', description: 'Adjust palette', criticId: 'critic-2' }
-        ]
+          {
+            id: 'fix-1',
+            category: 'Layout',
+            description: 'Fix spacing',
+            criticId: 'critic-1',
+          },
+          {
+            id: 'fix-2',
+            category: 'Color',
+            description: 'Adjust palette',
+            criticId: 'critic-2',
+          },
+        ],
       });
     });
 
@@ -67,7 +83,9 @@ describe('pull request review page', () => {
       render(<PullRequestReviewPage params={{ id: 'pr-1' }} />);
     });
 
-    await waitFor(() => expect(screen.getByText(/PR Review/i)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/PR Review/i)).toBeInTheDocument(),
+    );
     expect(screen.getByText(/Studio B → Studio A/i)).toBeInTheDocument();
     expect(screen.getByText(/Improve layout/i)).toBeInTheDocument();
     expect(screen.getByText(/Current GlowUp/i)).toBeInTheDocument();
@@ -90,14 +108,14 @@ describe('pull request review page', () => {
               description: 'Improve color',
               severity: 'minor',
               status: 'pending',
-              addressedFixRequests: []
+              addressedFixRequests: [],
             },
             draft: {
               id: 'draft-2',
               authorId: 'author-2',
               status: 'draft',
               currentVersion: 1,
-              glowUpScore: 1.2
+              glowUpScore: 1.2,
             },
             authorStudio: 'Studio A',
             makerStudio: 'Studio B',
@@ -107,9 +125,9 @@ describe('pull request review page', () => {
               currentGlowUp: 1.2,
               predictedGlowUp: 2.2,
               glowUpDelta: 1.0,
-              impactDelta: 3
-            }
-          }
+              impactDelta: 3,
+            },
+          },
         });
       }
       return Promise.resolve({ data: [] });
@@ -124,6 +142,10 @@ describe('pull request review page', () => {
       fireEvent.click(rejectButton);
     });
 
-    await waitFor(() => expect(screen.getByText(/Rejection reason is required/i)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Rejection reason is required/i),
+      ).toBeInTheDocument(),
+    );
   });
 });

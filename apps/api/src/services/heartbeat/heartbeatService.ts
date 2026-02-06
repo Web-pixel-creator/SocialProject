@@ -1,7 +1,12 @@
-import type { DbClient } from '../../db/pool';
 import { db } from '../../db/pool';
+import type { DbClient } from '../auth/types';
 import { ServiceError } from '../common/errors';
-import type { HeartbeatPayload, HeartbeatRecord, HeartbeatService, HeartbeatStatus } from './types';
+import type {
+  HeartbeatPayload,
+  HeartbeatRecord,
+  HeartbeatService,
+  HeartbeatStatus,
+} from './types';
 
 const ACTIVE_WINDOW_MINUTES = 240;
 
@@ -20,28 +25,37 @@ const parseTimestamp = (value: unknown): Date | null => {
   return null;
 };
 
-const toHeartbeatRecord = (row: any, now: Date, fallbackToNow = false): HeartbeatRecord => {
-  const parsed = row.last_heartbeat_at ? parseTimestamp(row.last_heartbeat_at) : null;
+const toHeartbeatRecord = (
+  row: any,
+  now: Date,
+  fallbackToNow = false,
+): HeartbeatRecord => {
+  const parsed = row.last_heartbeat_at
+    ? parseTimestamp(row.last_heartbeat_at)
+    : null;
   const hasValidDate = parsed != null && !Number.isNaN(parsed.getTime());
   const lastHeartbeatAt = hasValidDate ? parsed : fallbackToNow ? now : null;
   const isActive =
     lastHeartbeatAt != null &&
-    now.getTime() - lastHeartbeatAt.getTime() <= ACTIVE_WINDOW_MINUTES * 60 * 1000;
+    now.getTime() - lastHeartbeatAt.getTime() <=
+      ACTIVE_WINDOW_MINUTES * 60 * 1000;
 
   return {
     agentId: row.id,
     lastHeartbeatAt: lastHeartbeatAt?.toISOString() ?? null,
     status: (row.heartbeat_status ?? 'idle') as HeartbeatStatus,
     message: row.heartbeat_message ?? null,
-    isActive
+    isActive,
   };
 };
 
 export class HeartbeatServiceImpl implements HeartbeatService {
+  constructor(private readonly defaultClient: DbClient = db) {}
+
   async recordHeartbeat(
     agentId: string,
     payload: HeartbeatPayload = {},
-    client: DbClient = db
+    client: DbClient = this.defaultClient,
   ): Promise<HeartbeatRecord> {
     const status = payload.status ?? 'active';
     const message = payload.message ? payload.message.slice(0, 280) : null;
@@ -53,7 +67,7 @@ export class HeartbeatServiceImpl implements HeartbeatService {
            heartbeat_message = $3
        WHERE id = $1
        RETURNING id, last_heartbeat_at, heartbeat_status, heartbeat_message`,
-      [agentId, status, message]
+      [agentId, status, message],
     );
 
     if (result.rows.length === 0) {
@@ -64,10 +78,13 @@ export class HeartbeatServiceImpl implements HeartbeatService {
     return { ...record, isActive: true };
   }
 
-  async getHeartbeat(agentId: string, client: DbClient = db): Promise<HeartbeatRecord> {
+  async getHeartbeat(
+    agentId: string,
+    client: DbClient = this.defaultClient,
+  ): Promise<HeartbeatRecord> {
     const result = await client.query(
       'SELECT id, last_heartbeat_at, heartbeat_status, heartbeat_message FROM agents WHERE id = $1',
-      [agentId]
+      [agentId],
     );
 
     if (result.rows.length === 0) {

@@ -1,37 +1,56 @@
 ﻿'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { apiClient } from '../../../lib/api';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { BeforeAfterSlider } from '../../../components/BeforeAfterSlider';
-import { DraftArcCard, type DraftArcSummaryView } from '../../../components/DraftArcCard';
-import { DraftRecapPanel, type DraftRecap24hView } from '../../../components/DraftRecapPanel';
+import {
+  DraftArcCard,
+  type DraftArcSummaryView,
+} from '../../../components/DraftArcCard';
+import {
+  type DraftRecap24hView,
+  DraftRecapPanel,
+} from '../../../components/DraftRecapPanel';
 import { FixRequestList } from '../../../components/FixRequestList';
 import {
+  type ObserverDigestEntryView,
   ObserverDigestPanel,
-  type ObserverDigestEntryView
 } from '../../../components/ObserverDigestPanel';
 import {
   PredictionWidget,
-  type PullRequestPredictionSummaryView
+  type PullRequestPredictionSummaryView,
 } from '../../../components/PredictionWidget';
 import { PullRequestList } from '../../../components/PullRequestList';
 import { VersionTimeline } from '../../../components/VersionTimeline';
 import { useRealtimeRoom } from '../../../hooks/useRealtimeRoom';
+import { apiClient } from '../../../lib/api';
+import { SEARCH_DEFAULT_PROFILE } from '../../../lib/config';
 
 const HeatMapOverlay = dynamic(
-  () => import('../../../components/HeatMapOverlay').then((mod) => mod.HeatMapOverlay),
+  () =>
+    import('../../../components/HeatMapOverlay').then(
+      (mod) => mod.HeatMapOverlay,
+    ),
   {
     ssr: false,
-    loading: () => <div className="card p-4 text-sm text-slate-500">Loading heat map...</div>
-  }
+    loading: () => (
+      <div className="card p-4 text-sm text-slate-500">Loading heat map...</div>
+    ),
+  },
 );
-const LivePanel = dynamic(() => import('../../../components/LivePanel').then((mod) => mod.LivePanel), {
-  ssr: false,
-  loading: () => <div className="card p-4 text-sm text-slate-500">Loading live panel...</div>
-});
+const LivePanel = dynamic(
+  () => import('../../../components/LivePanel').then((mod) => mod.LivePanel),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="card p-4 text-sm text-slate-500">
+        Loading live panel...
+      </div>
+    ),
+  },
+);
 
 type Draft = {
   id: string;
@@ -101,11 +120,14 @@ export default function DraftDetailPage() {
   const [arcView, setArcView] = useState<DraftArcView | null>(null);
   const [arcLoading, setArcLoading] = useState(false);
   const [arcError, setArcError] = useState<string | null>(null);
-  const [digestEntries, setDigestEntries] = useState<ObserverDigestEntryView[]>([]);
+  const [digestEntries, setDigestEntries] = useState<ObserverDigestEntryView[]>(
+    [],
+  );
   const [digestLoading, setDigestLoading] = useState(false);
   const [digestError, setDigestError] = useState<string | null>(null);
   const [observerAuthRequired, setObserverAuthRequired] = useState(false);
-  const [predictionSummary, setPredictionSummary] = useState<PullRequestPredictionSummaryView | null>(null);
+  const [predictionSummary, setPredictionSummary] =
+    useState<PullRequestPredictionSummaryView | null>(null);
   const [predictionLoading, setPredictionLoading] = useState(false);
   const [predictionSubmitLoading, setPredictionSubmitLoading] = useState(false);
   const [predictionError, setPredictionError] = useState<string | null>(null);
@@ -113,12 +135,16 @@ export default function DraftDetailPage() {
   const [demoStatus, setDemoStatus] = useState<string | null>(null);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [isFollowed, setIsFollowed] = useState(false);
-  const [notifications, setNotifications] = useState<Array<{ id: string; message: string; time: string }>>([]);
+  const [notifications, setNotifications] = useState<
+    Array<{ id: string; message: string; time: string }>
+  >([]);
   const seenEventsRef = useRef<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const { events } = useRealtimeRoom(draftId ? `post:${draftId}` : 'post:unknown');
+  const { events } = useRealtimeRoom(
+    draftId ? `post:${draftId}` : 'post:unknown',
+  );
 
   const loadDraft = async () => {
     if (!draftId) return;
@@ -172,7 +198,12 @@ export default function DraftDetailPage() {
       const response = await apiClient.get('/observers/watchlist');
       const list = Array.isArray(response.data) ? response.data : [];
       setObserverAuthRequired(false);
-      setIsFollowed(list.some((item: any) => item?.draftId === draftId || item?.draft_id === draftId));
+      setIsFollowed(
+        list.some(
+          (item: any) =>
+            item?.draftId === draftId || item?.draft_id === draftId,
+        ),
+      );
     } catch (err: any) {
       if (isAuthRequiredError(err)) {
         setObserverAuthRequired(true);
@@ -188,7 +219,7 @@ export default function DraftDetailPage() {
     setDigestError(null);
     try {
       const response = await apiClient.get('/observers/digest', {
-        params: { unseenOnly: false, limit: 8 }
+        params: { unseenOnly: false, limit: 8 },
       });
       setObserverAuthRequired(false);
       setDigestEntries(Array.isArray(response.data) ? response.data : []);
@@ -197,7 +228,9 @@ export default function DraftDetailPage() {
         setObserverAuthRequired(true);
         setDigestEntries([]);
       } else {
-        setDigestError(err?.response?.data?.message ?? 'Failed to load digest.');
+        setDigestError(
+          err?.response?.data?.message ?? 'Failed to load digest.',
+        );
         setDigestEntries([]);
       }
     } finally {
@@ -209,10 +242,16 @@ export default function DraftDetailPage() {
     setPredictionLoading(true);
     setPredictionError(null);
     try {
-      const response = await apiClient.get(`/pull-requests/${pullRequestId}/predictions`);
+      const response = await apiClient.get(
+        `/pull-requests/${pullRequestId}/predictions`,
+      );
       setObserverAuthRequired(false);
       const payload = response.data;
-      if (payload && typeof payload === 'object' && typeof payload.pullRequestId === 'string') {
+      if (
+        payload &&
+        typeof payload === 'object' &&
+        typeof payload.pullRequestId === 'string'
+      ) {
         setPredictionSummary(payload);
       } else {
         setPredictionSummary(null);
@@ -222,7 +261,9 @@ export default function DraftDetailPage() {
         setObserverAuthRequired(true);
         setPredictionSummary(null);
       } else {
-        setPredictionError(err?.response?.data?.message ?? 'Failed to load prediction summary.');
+        setPredictionError(
+          err?.response?.data?.message ?? 'Failed to load prediction summary.',
+        );
         setPredictionSummary(null);
       }
     } finally {
@@ -265,9 +306,10 @@ export default function DraftDetailPage() {
     }
     setSimilarLoading(true);
     setSimilarStatus(null);
+    const telemetryBase = { mode: 'visual', profile: SEARCH_DEFAULT_PROFILE };
     try {
       const response = await apiClient.get('/search/similar', {
-        params: { draftId, limit: 6 }
+        params: { draftId, limit: 6 },
       });
       const items = response.data ?? [];
       setSimilarDrafts(items);
@@ -277,14 +319,14 @@ export default function DraftDetailPage() {
           eventType: 'similar_search_empty',
           draftId,
           source: 'draft_detail',
-          metadata: { reason: 'no_results' }
+          metadata: { ...telemetryBase, reason: 'no_results' },
         });
       } else {
         sendTelemetry({
           eventType: 'similar_search_shown',
           draftId,
           source: 'draft_detail',
-          metadata: { count: items.length }
+          metadata: { ...telemetryBase, count: items.length },
         });
       }
     } catch (err: any) {
@@ -295,14 +337,16 @@ export default function DraftDetailPage() {
       } else if (code === 'DRAFT_NOT_FOUND') {
         setSimilarStatus('Draft not found.');
       } else {
-        setSimilarStatus(err?.response?.data?.message ?? 'Failed to load similar drafts.');
+        setSimilarStatus(
+          err?.response?.data?.message ?? 'Failed to load similar drafts.',
+        );
       }
       setSimilarDrafts([]);
       sendTelemetry({
         eventType: 'similar_search_empty',
         draftId,
         source: 'draft_detail',
-        metadata: { reason }
+        metadata: { ...telemetryBase, reason },
       });
     } finally {
       setSimilarLoading(false);
@@ -315,7 +359,14 @@ export default function DraftDetailPage() {
       setLoading(true);
       setError(null);
       try {
-        await Promise.all([loadDraft(), loadFixRequests(), loadPullRequests(), loadArc(), loadWatchlist(), loadDigest()]);
+        await Promise.all([
+          loadDraft(),
+          loadFixRequests(),
+          loadPullRequests(),
+          loadArc(),
+          loadWatchlist(),
+          loadDigest(),
+        ]);
       } catch (err: any) {
         if (!cancelled) {
           setError(err?.response?.data?.message ?? 'Failed to load draft.');
@@ -335,11 +386,15 @@ export default function DraftDetailPage() {
   const markDigestSeen = async (entryId: string) => {
     try {
       await apiClient.post(`/observers/digest/${entryId}/seen`);
-      setDigestEntries((prev) => prev.map((entry) => (entry.id === entryId ? { ...entry, isSeen: true } : entry)));
+      setDigestEntries((prev) =>
+        prev.map((entry) =>
+          entry.id === entryId ? { ...entry, isSeen: true } : entry,
+        ),
+      );
       sendTelemetry({
         eventType: 'digest_open',
         draftId,
-        source: 'draft_detail'
+        source: 'draft_detail',
       });
     } catch {
       // noop: keep item visible if server mark-seen fails
@@ -362,10 +417,10 @@ export default function DraftDetailPage() {
       sendTelemetry({
         eventType: nextState ? 'watchlist_follow' : 'watchlist_unfollow',
         draftId,
-        source: 'draft_detail'
+        source: 'draft_detail',
       });
       if (nextState) {
-        void loadDigest();
+        loadDigest();
       }
     } catch (err: any) {
       if (isAuthRequiredError(err)) {
@@ -382,19 +437,23 @@ export default function DraftDetailPage() {
     setPredictionSubmitLoading(true);
     setPredictionError(null);
     try {
-      await apiClient.post(`/pull-requests/${pendingPull.id}/predict`, { predictedOutcome: outcome });
+      await apiClient.post(`/pull-requests/${pendingPull.id}/predict`, {
+        predictedOutcome: outcome,
+      });
       sendTelemetry({
         eventType: 'pr_prediction_submit',
         draftId,
         source: 'draft_detail',
-        metadata: { outcome }
+        metadata: { outcome },
       });
       await loadPredictionSummary(pendingPull.id);
     } catch (err: any) {
       if (isAuthRequiredError(err)) {
         setObserverAuthRequired(true);
       } else {
-        setPredictionError(err?.response?.data?.message ?? 'Failed to submit prediction.');
+        setPredictionError(
+          err?.response?.data?.message ?? 'Failed to submit prediction.',
+        );
       }
     } finally {
       setPredictionSubmitLoading(false);
@@ -406,27 +465,32 @@ export default function DraftDetailPage() {
   }, [draftId]);
 
   useEffect(() => {
-    if (!arcView?.summary || !arcView?.recap24h) {
+    if (!(arcView?.summary && arcView?.recap24h)) {
       return;
     }
     sendTelemetry({
       eventType: 'draft_arc_view',
       draftId,
       source: 'draft_detail',
-      metadata: { state: arcView.summary.state }
+      metadata: { state: arcView.summary.state },
     });
     sendTelemetry({
       eventType: 'draft_recap_view',
       draftId,
       source: 'draft_detail',
-      metadata: { hasChanges: arcView.recap24h.hasChanges }
+      metadata: { hasChanges: arcView.recap24h.hasChanges },
     });
   }, [arcView, draftId]);
 
   useEffect(() => {
     if (events.length === 0) return;
-    const last = events[events.length - 1];
-    if (['fix_request', 'pull_request', 'pull_request_decision'].includes(last.type)) {
+    const last = events.at(-1);
+    if (!last) return;
+    if (
+      ['fix_request', 'pull_request', 'pull_request_decision'].includes(
+        last.type,
+      )
+    ) {
       loadFixRequests();
       loadPullRequests();
       loadArc();
@@ -447,10 +511,13 @@ export default function DraftDetailPage() {
       setPredictionError(null);
       return;
     }
-    void loadPredictionSummary(pendingPull.id);
+    loadPredictionSummary(pendingPull.id);
   }, [pullRequests]);
 
-  const formatEventMessage = (eventType: string, payload: Record<string, unknown>) => {
+  const formatEventMessage = (
+    eventType: string,
+    payload: Record<string, unknown>,
+  ) => {
     if (eventType === 'fix_request') return 'New fix request submitted';
     if (eventType === 'pull_request') return 'New pull request submitted';
     if (eventType === 'pull_request_decision') {
@@ -464,7 +531,9 @@ export default function DraftDetailPage() {
 
   useEffect(() => {
     if (!isFollowed || events.length === 0) return;
-    const fresh = events.filter((event) => !seenEventsRef.current.has(event.id));
+    const fresh = events.filter(
+      (event) => !seenEventsRef.current.has(event.id),
+    );
     if (fresh.length === 0) return;
     const now = new Date().toLocaleTimeString();
     const next = fresh.map((event) => {
@@ -472,30 +541,35 @@ export default function DraftDetailPage() {
       return {
         id: event.id,
         message: formatEventMessage(event.type, event.payload),
-        time: now
+        time: now,
       };
     });
     setNotifications((prev) => [...next, ...prev].slice(0, 5));
   }, [events, isFollowed]);
 
-  const versionNumbers = useMemo(() => versions.map((version) => version.versionNumber), [versions]);
-  const beforeLabel = versionNumbers.length > 0 ? `v${versionNumbers[0]}` : 'v1';
-  const afterLabel = versionNumbers.length > 0 ? `v${versionNumbers[versionNumbers.length - 1]}` : 'v1';
+  const versionNumbers = useMemo(
+    () => versions.map((version) => version.versionNumber),
+    [versions],
+  );
+  const beforeLabel =
+    versionNumbers.length > 0 ? `v${versionNumbers[0]}` : 'v1';
+  const afterLabel =
+    versionNumbers.length > 0 ? `v${versionNumbers.at(-1)}` : 'v1';
   const beforeImageUrl = versions.length > 0 ? versions[0].imageUrl : undefined;
-  const afterImageUrl = versions.length > 0 ? versions[versions.length - 1].imageUrl : undefined;
+  const afterImageUrl = versions.at(-1)?.imageUrl;
 
   const fixList = fixRequests.map((item) => ({
     id: item.id,
     category: item.category,
     description: item.description,
-    critic: `Studio ${item.criticId.slice(0, 6)}`
+    critic: `Studio ${item.criticId.slice(0, 6)}`,
   }));
 
   const prList = pullRequests.map((item) => ({
     id: item.id,
     status: item.status,
     description: item.description,
-    maker: `Studio ${item.makerId.slice(0, 6)}`
+    maker: `Studio ${item.makerId.slice(0, 6)}`,
   }));
 
   const pendingPull = pullRequests.find((item) => item.status === 'pending');
@@ -517,7 +591,7 @@ export default function DraftDetailPage() {
         title: 'Review pending PR',
         description: 'A pull request is waiting for review.',
         ctaLabel: 'Open PR',
-        href: `/pull-requests/${pendingPull.id}`
+        href: `/pull-requests/${pendingPull.id}`,
       };
     }
     if (hasFixRequests) {
@@ -525,14 +599,14 @@ export default function DraftDetailPage() {
         title: 'Share draft for PR',
         description: 'Fix requests are ready. Share the draft ID to get a PR.',
         ctaLabel: copyStatus ?? 'Copy draft ID',
-        onClick: copyDraftId
+        onClick: copyDraftId,
       };
     }
     return {
       title: 'Start critique',
       description: 'No fix requests yet. Run a demo flow to seed the workflow.',
       ctaLabel: demoLoading ? 'Running demo...' : 'Run demo flow',
-      onClick: runDemoFlow
+      onClick: runDemoFlow,
     };
   })();
 
@@ -541,15 +615,20 @@ export default function DraftDetailPage() {
       <div className="card p-6">
         <p className="pill">Draft Detail</p>
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <h2 className="text-2xl font-semibold text-ink">{draftId ? `Draft ${draftId}` : 'Draft'}</h2>
+          <h2 className="text-2xl font-semibold text-ink">
+            {draftId ? `Draft ${draftId}` : 'Draft'}
+          </h2>
           {draft && (
-            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusInfo.tone}`}>
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${statusInfo.tone}`}
+            >
               {statusInfo.label}
             </span>
           )}
         </div>
         <p className="text-sm text-slate-600">
-          Track every critique and PR in real-time. {draft ? `GlowUp ${draft.glowUpScore.toFixed(1)}` : ''}
+          Track every critique and PR in real-time.{' '}
+          {draft ? `GlowUp ${draft.glowUpScore.toFixed(1)}` : ''}
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
@@ -560,11 +639,15 @@ export default function DraftDetailPage() {
           >
             {demoLoading ? 'Running demo...' : 'Run demo flow'}
           </button>
-          {demoStatus && <span className="text-xs text-slate-500">{demoStatus}</span>}
+          {demoStatus && (
+            <span className="text-xs text-slate-500">{demoStatus}</span>
+          )}
         </div>
       </div>
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">{error}</div>
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+          {error}
+        </div>
       )}
       {loading ? (
         <div className="card p-6 text-sm text-slate-500">Loading draft...</div>
@@ -574,12 +657,16 @@ export default function DraftDetailPage() {
             {nextAction && (
               <div className="card p-4">
                 <p className="pill">Next best action</p>
-                <h3 className="mt-3 text-lg font-semibold text-ink">{nextAction.title}</h3>
-                <p className="text-sm text-slate-600">{nextAction.description}</p>
+                <h3 className="mt-3 text-lg font-semibold text-ink">
+                  {nextAction.title}
+                </h3>
+                <p className="text-sm text-slate-600">
+                  {nextAction.description}
+                </p>
                 <div className="mt-4 flex flex-wrap items-center gap-3">
                   {'href' in nextAction ? (
                     <Link
-                      href={nextAction.href}
+                      href={nextAction.href as string}
                       className="rounded-full bg-ink px-5 py-2 text-xs font-semibold text-white"
                     >
                       {nextAction.ctaLabel}
@@ -594,13 +681,25 @@ export default function DraftDetailPage() {
                       {nextAction.ctaLabel}
                     </button>
                   )}
-                  {copyStatus && <span className="text-xs text-slate-500">{copyStatus}</span>}
+                  {copyStatus && (
+                    <span className="text-xs text-slate-500">{copyStatus}</span>
+                  )}
                 </div>
               </div>
             )}
-            <DraftArcCard summary={arcView?.summary ?? null} loading={arcLoading} error={arcError} />
-            <DraftRecapPanel recap={arcView?.recap24h ?? null} loading={arcLoading} error={arcError} />
-            <VersionTimeline versions={versionNumbers.length > 0 ? versionNumbers : [1]} />
+            <DraftArcCard
+              summary={arcView?.summary ?? null}
+              loading={arcLoading}
+              error={arcError}
+            />
+            <DraftRecapPanel
+              recap={arcView?.recap24h ?? null}
+              loading={arcLoading}
+              error={arcError}
+            />
+            <VersionTimeline
+              versions={versionNumbers.length > 0 ? versionNumbers : [1]}
+            />
             <BeforeAfterSlider
               beforeLabel={beforeLabel}
               afterLabel={afterLabel}
@@ -615,18 +714,27 @@ export default function DraftDetailPage() {
             </div>
             <div className="card p-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-ink">Similar drafts</h3>
+                <h3 className="text-sm font-semibold text-ink">
+                  Similar drafts
+                </h3>
                 <span className="text-xs text-slate-500">Visual match</span>
               </div>
               {similarLoading ? (
-                <p className="mt-3 text-xs text-slate-500">Loading similar drafts...</p>
+                <p className="mt-3 text-xs text-slate-500">
+                  Loading similar drafts...
+                </p>
               ) : similarStatus ? (
                 <p className="mt-3 text-xs text-slate-500">{similarStatus}</p>
               ) : (
                 <ul className="mt-3 grid gap-2">
                   {similarDrafts.map((item) => (
-                    <li key={item.id} className="rounded-lg border border-slate-200 bg-white/70 p-3 text-xs">
-                      <p className="text-[10px] uppercase text-slate-500">{item.type}</p>
+                    <li
+                      key={item.id}
+                      className="rounded-lg border border-slate-200 bg-white/70 p-3 text-xs"
+                    >
+                      <p className="text-[10px] uppercase text-slate-500">
+                        {item.type}
+                      </p>
                       <p className="text-sm text-ink">{item.title}</p>
                       <p className="text-[11px] text-slate-500">
                         Similarity {Number(item.score ?? 0).toFixed(2)} | GlowUp{' '}
@@ -649,7 +757,11 @@ export default function DraftDetailPage() {
                     sendTelemetry({
                       eventType: 'similar_search_clicked',
                       draftId,
-                      source: 'draft_detail'
+                      source: 'draft_detail',
+                      metadata: {
+                        mode: 'visual',
+                        profile: SEARCH_DEFAULT_PROFILE,
+                      },
                     })
                   }
                 >
@@ -670,20 +782,26 @@ export default function DraftDetailPage() {
             />
             <div className="card p-4">
               <p className="pill">Follow chain</p>
-              <h3 className="mt-3 text-sm font-semibold text-ink">Track every change</h3>
+              <h3 className="mt-3 text-sm font-semibold text-ink">
+                Track every change
+              </h3>
               <p className="text-xs text-slate-600">
                 Get notified in-app when this draft receives fixes or PRs.
               </p>
               {observerAuthRequired && (
-                <p className="mt-2 text-xs text-slate-500">Sign in as observer to follow drafts.</p>
+                <p className="mt-2 text-xs text-slate-500">
+                  Sign in as observer to follow drafts.
+                </p>
               )}
               <div className="mt-4">
                 <button
                   type="button"
                   className={`rounded-full px-4 py-2 text-xs font-semibold ${
-                    isFollowed ? 'bg-emerald-600 text-white' : 'bg-ink text-white'
+                    isFollowed
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-ink text-white'
                   }`}
-                  onClick={() => void toggleFollow()}
+                  onClick={toggleFollow}
                 >
                   {isFollowed ? 'Following' : 'Follow chain'}
                 </button>
@@ -698,19 +816,28 @@ export default function DraftDetailPage() {
             />
             <div className="card p-4">
               <p className="pill">Activity</p>
-              <h3 className="mt-3 text-sm font-semibold text-ink">In-app updates</h3>
+              <h3 className="mt-3 text-sm font-semibold text-ink">
+                In-app updates
+              </h3>
               <p className="text-xs text-slate-600">
-                {isFollowed ? 'Updates appear when this draft changes.' : 'Follow the chain to see updates here.'}
+                {isFollowed
+                  ? 'Updates appear when this draft changes.'
+                  : 'Follow the chain to see updates here.'}
               </p>
               <div className="mt-4 grid gap-2 text-xs text-slate-500">
                 {notifications.length === 0 ? (
                   <span>No updates yet.</span>
                 ) : (
                   notifications.map((note) => (
-                    <div key={note.id} className="rounded-lg border border-slate-200 bg-white/70 p-2">
+                    <div
+                      key={note.id}
+                      className="rounded-lg border border-slate-200 bg-white/70 p-2"
+                    >
                       <div className="flex items-center justify-between">
                         <span className="text-slate-700">{note.message}</span>
-                        <span className="text-[10px] text-slate-400">{note.time}</span>
+                        <span className="text-[10px] text-slate-400">
+                          {note.time}
+                        </span>
                       </div>
                     </div>
                   ))
@@ -724,7 +851,3 @@ export default function DraftDetailPage() {
     </main>
   );
 }
-
-
-
-

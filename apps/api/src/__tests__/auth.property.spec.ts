@@ -1,10 +1,12 @@
-import { Pool } from 'pg';
 import fc from 'fast-check';
-import { AuthServiceImpl } from '../services/auth/authService';
+import { Pool } from 'pg';
 import { env } from '../config/env';
+import { AuthServiceImpl } from '../services/auth/authService';
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/finishit'
+  connectionString:
+    process.env.DATABASE_URL ||
+    'postgres://postgres:postgres@localhost:5432/finishit',
 });
 
 const authService = new AuthServiceImpl(pool);
@@ -19,7 +21,7 @@ describe('auth service properties', () => {
       fc.asyncProperty(
         fc.record({
           studioName: fc.string({ minLength: 3, maxLength: 30 }),
-          personality: fc.string({ minLength: 3, maxLength: 60 })
+          personality: fc.string({ minLength: 3, maxLength: 60 }),
         }),
         async (input) => {
           const client = await pool.connect();
@@ -27,8 +29,16 @@ describe('auth service properties', () => {
             await client.query('BEGIN');
 
             const agent = await authService.registerAgent(input, client);
-            const valid = await authService.validateAgentApiKey(agent.agentId, agent.apiKey, client);
-            const invalid = await authService.validateAgentApiKey(agent.agentId, 'invalid-key', client);
+            const valid = await authService.validateAgentApiKey(
+              agent.agentId,
+              agent.apiKey,
+              client,
+            );
+            const invalid = await authService.validateAgentApiKey(
+              agent.agentId,
+              'invalid-key',
+              client,
+            );
 
             expect(valid).toBe(true);
             expect(invalid).toBe(false);
@@ -40,18 +50,18 @@ describe('auth service properties', () => {
           } finally {
             client.release();
           }
-        }
+        },
       ),
-      { numRuns: 50 }
+      { numRuns: 50 },
     );
-  }, 30000);
+  }, 30_000);
 
   test('Property 32: API Key Rotation', async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.record({
           studioName: fc.string({ minLength: 3, maxLength: 30 }),
-          personality: fc.string({ minLength: 3, maxLength: 60 })
+          personality: fc.string({ minLength: 3, maxLength: 60 }),
         }),
         async (input) => {
           const client = await pool.connect();
@@ -59,10 +69,21 @@ describe('auth service properties', () => {
             await client.query('BEGIN');
 
             const agent = await authService.registerAgent(input, client);
-            const rotated = await authService.rotateAgentApiKey(agent.agentId, client);
+            const rotated = await authService.rotateAgentApiKey(
+              agent.agentId,
+              client,
+            );
 
-            const oldValid = await authService.validateAgentApiKey(agent.agentId, agent.apiKey, client);
-            const newValid = await authService.validateAgentApiKey(agent.agentId, rotated.apiKey, client);
+            const oldValid = await authService.validateAgentApiKey(
+              agent.agentId,
+              agent.apiKey,
+              client,
+            );
+            const newValid = await authService.validateAgentApiKey(
+              agent.agentId,
+              rotated.apiKey,
+              client,
+            );
 
             expect(oldValid).toBe(false);
             expect(newValid).toBe(true);
@@ -74,18 +95,18 @@ describe('auth service properties', () => {
           } finally {
             client.release();
           }
-        }
+        },
       ),
-      { numRuns: 30 }
+      { numRuns: 30 },
     );
-  }, 30000);
+  }, 30_000);
 
   test('Property 70: Terms and Privacy Consent', async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.record({
           email: fc.emailAddress(),
-          password: fc.string({ minLength: 8, maxLength: 24 })
+          password: fc.string({ minLength: 8, maxLength: 24 }),
         }),
         async (input) => {
           const client = await pool.connect();
@@ -97,10 +118,10 @@ describe('auth service properties', () => {
                 {
                   email: input.email,
                   password: input.password,
-                  consent: { termsAccepted: false, privacyAccepted: false }
+                  consent: { termsAccepted: false, privacyAccepted: false },
                 },
-                client
-              )
+                client,
+              ),
             ).rejects.toThrow();
 
             const registered = await authService.registerHuman(
@@ -111,15 +132,15 @@ describe('auth service properties', () => {
                   termsAccepted: true,
                   privacyAccepted: true,
                   termsVersion: env.TERMS_VERSION,
-                  privacyVersion: env.PRIVACY_VERSION
-                }
+                  privacyVersion: env.PRIVACY_VERSION,
+                },
               },
-              client
+              client,
             );
 
             const stored = await client.query(
               'SELECT terms_version, terms_accepted_at, privacy_version, privacy_accepted_at FROM users WHERE id = $1',
-              [registered.userId]
+              [registered.userId],
             );
 
             expect(stored.rows[0].terms_version).toBe(env.TERMS_VERSION);
@@ -134,9 +155,9 @@ describe('auth service properties', () => {
           } finally {
             client.release();
           }
-        }
+        },
       ),
-      { numRuns: 30 }
+      { numRuns: 30 },
     );
-  }, 30000);
+  }, 30_000);
 });

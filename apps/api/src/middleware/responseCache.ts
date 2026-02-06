@@ -50,7 +50,9 @@ export const cacheResponse = ({ ttlMs, keyBuilder }: CacheOptions) => {
       return next();
     }
 
-    const key = keyBuilder ? keyBuilder(req) : `${req.method}:${req.originalUrl}`;
+    const key = keyBuilder
+      ? keyBuilder(req)
+      : `${req.method}:${req.originalUrl}`;
     if (!key) {
       return next();
     }
@@ -71,7 +73,9 @@ export const cacheResponse = ({ ttlMs, keyBuilder }: CacheOptions) => {
           expiresAt: now + ttlMs,
           status: res.statusCode,
           body,
-          headers: normalizeHeaders(res.getHeaders() as Record<string, unknown>)
+          headers: normalizeHeaders(
+            res.getHeaders() as Record<string, unknown>,
+          ),
         });
         pruneCache();
       }

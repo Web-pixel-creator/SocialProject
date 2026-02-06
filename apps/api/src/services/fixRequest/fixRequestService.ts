@@ -1,7 +1,12 @@
-import { Pool } from 'pg';
-import { ServiceError } from '../common/errors';
+import type { Pool } from 'pg';
 import type { DbClient } from '../auth/types';
-import type { FixRequest, FixRequestCategory, FixRequestInput, FixRequestService } from './types';
+import { ServiceError } from '../common/errors';
+import type {
+  FixRequest,
+  FixRequestCategory,
+  FixRequestInput,
+  FixRequestService,
+} from './types';
 
 const VALID_CATEGORIES: FixRequestCategory[] = [
   'Focus',
@@ -10,7 +15,7 @@ const VALID_CATEGORIES: FixRequestCategory[] = [
   'Composition',
   'Color/Light',
   'Story/Intent',
-  'Technical'
+  'Technical',
 ];
 
 const getDb = (pool: Pool, client?: DbClient): DbClient => client ?? pool;
@@ -23,24 +28,36 @@ const mapFixRequest = (row: any): FixRequest => ({
   description: row.description,
   coordinates: row.coordinates,
   targetVersion: Number(row.target_version),
-  createdAt: row.created_at
+  createdAt: row.created_at,
 });
 
 export class FixRequestServiceImpl implements FixRequestService {
   constructor(private readonly pool: Pool) {}
 
-  async submitFixRequest(input: FixRequestInput, client?: DbClient): Promise<FixRequest> {
+  async submitFixRequest(
+    input: FixRequestInput,
+    client?: DbClient,
+  ): Promise<FixRequest> {
     const db = getDb(this.pool, client);
 
-    if (!input.draftId || !input.criticId || !input.description) {
-      throw new ServiceError('FIX_REQUEST_REQUIRED_FIELDS', 'Draft, critic, and description are required.');
+    if (!(input.draftId && input.criticId && input.description)) {
+      throw new ServiceError(
+        'FIX_REQUEST_REQUIRED_FIELDS',
+        'Draft, critic, and description are required.',
+      );
     }
 
     if (!VALID_CATEGORIES.includes(input.category)) {
-      throw new ServiceError('FIX_REQUEST_INVALID_CATEGORY', 'Invalid diagnosis category.');
+      throw new ServiceError(
+        'FIX_REQUEST_INVALID_CATEGORY',
+        'Invalid diagnosis category.',
+      );
     }
 
-    const draftResult = await db.query('SELECT status, current_version FROM drafts WHERE id = $1', [input.draftId]);
+    const draftResult = await db.query(
+      'SELECT status, current_version FROM drafts WHERE id = $1',
+      [input.draftId],
+    );
     if (draftResult.rows.length === 0) {
       throw new ServiceError('DRAFT_NOT_FOUND', 'Draft not found.', 404);
     }
@@ -54,8 +71,8 @@ export class FixRequestServiceImpl implements FixRequestService {
       input.coordinates && typeof input.coordinates === 'string'
         ? input.coordinates
         : input.coordinates
-        ? JSON.stringify(input.coordinates)
-        : null;
+          ? JSON.stringify(input.coordinates)
+          : null;
 
     const result = await db.query(
       'INSERT INTO fix_requests (draft_id, critic_id, category, description, coordinates, target_version) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
@@ -65,8 +82,8 @@ export class FixRequestServiceImpl implements FixRequestService {
         input.category,
         input.description,
         coordinatesValue,
-        draft.current_version
-      ]
+        draft.current_version,
+      ],
     );
 
     return mapFixRequest(result.rows[0]);
@@ -76,16 +93,19 @@ export class FixRequestServiceImpl implements FixRequestService {
     const db = getDb(this.pool, client);
     const result = await db.query(
       'SELECT * FROM fix_requests WHERE draft_id = $1 ORDER BY created_at ASC',
-      [draftId]
+      [draftId],
     );
     return result.rows.map(mapFixRequest);
   }
 
-  async listByCritic(criticId: string, client?: DbClient): Promise<FixRequest[]> {
+  async listByCritic(
+    criticId: string,
+    client?: DbClient,
+  ): Promise<FixRequest[]> {
     const db = getDb(this.pool, client);
     const result = await db.query(
       'SELECT * FROM fix_requests WHERE critic_id = $1 ORDER BY created_at DESC',
-      [criticId]
+      [criticId],
     );
     return result.rows.map(mapFixRequest);
   }

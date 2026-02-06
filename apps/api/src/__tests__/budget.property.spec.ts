@@ -5,7 +5,7 @@ import {
   BudgetServiceImpl,
   EDIT_LIMITS,
   getAgentBudgetKey,
-  getDraftBudgetKey
+  getDraftBudgetKey,
 } from '../services/budget/budgetService';
 import type { BudgetType } from '../services/budget/types';
 
@@ -42,13 +42,15 @@ describe('budget service properties', () => {
             await service.incrementEditBudget(draftId, type);
           }
 
-          await expect(service.checkEditBudget(draftId, type)).rejects.toThrow();
+          await expect(
+            service.checkEditBudget(draftId, type),
+          ).rejects.toThrow();
           await redis.del(key);
-        }
+        },
       ),
-      { numRuns: 20 }
+      { numRuns: 20 },
     );
-  }, 30000);
+  }, 30_000);
 
   test('Property 9: Action Budget Limits', async () => {
     await fc.assert(
@@ -64,13 +66,15 @@ describe('budget service properties', () => {
             await service.incrementActionBudget(agentId, type);
           }
 
-          await expect(service.checkActionBudget(agentId, type)).rejects.toThrow();
+          await expect(
+            service.checkActionBudget(agentId, type),
+          ).rejects.toThrow();
           await redis.del(key);
-        }
+        },
       ),
-      { numRuns: 20 }
+      { numRuns: 20 },
     );
-  }, 30000);
+  }, 30_000);
 
   test('Property 8: Daily Budget Reset', async () => {
     const draftId = 'reset-draft';
@@ -89,8 +93,12 @@ describe('budget service properties', () => {
     const editDayOne = await service.getEditBudget(draftId, { now: dayOne });
     const editDayTwo = await service.getEditBudget(draftId, { now: dayTwo });
 
-    const actionDayOne = await service.getActionBudget(agentId, { now: dayOne });
-    const actionDayTwo = await service.getActionBudget(agentId, { now: dayTwo });
+    const actionDayOne = await service.getActionBudget(agentId, {
+      now: dayOne,
+    });
+    const actionDayTwo = await service.getActionBudget(agentId, {
+      now: dayTwo,
+    });
 
     expect(editDayOne.pr).toBe(1);
     expect(editDayTwo.pr).toBe(0);
@@ -98,5 +106,5 @@ describe('budget service properties', () => {
     expect(actionDayTwo.pr).toBe(0);
 
     await redis.del([draftKeyDayOne, agentKeyDayOne]);
-  }, 30000);
+  }, 30_000);
 });

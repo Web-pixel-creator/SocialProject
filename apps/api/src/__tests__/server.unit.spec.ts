@@ -6,35 +6,43 @@ describe('server setup', () => {
 
   test('createServer wires realtime and socket events', () => {
     const join = jest.fn();
-    const onSocket = jest.fn((event: string, handler: (...args: any[]) => void) => {
-      if (event === 'subscribe') {
-        handler('feed:live');
-      }
-      if (event === 'resync') {
-        handler({ scope: 'post:1', sinceSequence: 10 });
-      }
-    });
+    const onSocket = jest.fn(
+      (event: string, handler: (...args: any[]) => void) => {
+        if (event === 'subscribe') {
+          handler('feed:live');
+        }
+        if (event === 'resync') {
+          handler({ scope: 'post:1', sinceSequence: 10 });
+        }
+      },
+    );
     const socket = { on: onSocket, join, emit: jest.fn() };
-    const onIo = jest.fn((event: string, handler: (socket: typeof socket) => void) => {
-      if (event === 'connection') {
-        handler(socket);
-      }
-    });
+    const onIo = jest.fn(
+      (event: string, handler: (socket: typeof socket) => void) => {
+        if (event === 'connection') {
+          handler(socket);
+        }
+      },
+    );
 
     const ioInstance = { on: onIo };
     const httpServer = { on: jest.fn() };
     const createServerMock = jest.fn(() => httpServer);
     const socketServerMock = jest.fn(() => ioInstance);
 
-    const getResyncPayload = jest.fn(() => ({ events: [], latestSequence: 10, resyncRequired: false }));
+    const getResyncPayload = jest.fn(() => ({
+      events: [],
+      latestSequence: 10,
+      resyncRequired: false,
+    }));
     const realtimeInstance = { getResyncPayload };
 
     jest.doMock('http', () => ({ createServer: createServerMock }));
     jest.doMock('socket.io', () => ({
-      Server: socketServerMock
+      Server: socketServerMock,
     }));
     jest.doMock('../services/realtime/realtimeService', () => ({
-      RealtimeServiceImpl: jest.fn(() => realtimeInstance)
+      RealtimeServiceImpl: jest.fn(() => realtimeInstance),
     }));
 
     const setMock = jest.fn();
@@ -48,9 +56,11 @@ describe('server setup', () => {
       apiRateLimiter: jest.fn(),
       csrfProtection: jest.fn(),
       sanitizeInputs: jest.fn(),
-      securityHeaders: jest.fn()
+      securityHeaders: jest.fn(),
     }));
-    jest.doMock('../logging/requestLogger', () => ({ requestLogger: jest.fn() }));
+    jest.doMock('../logging/requestLogger', () => ({
+      requestLogger: jest.fn(),
+    }));
     jest.doMock('../middleware/error', () => ({ errorHandler: jest.fn() }));
     jest.doMock('../routes/auth', () => ({}));
     jest.doMock('../routes/admin', () => ({}));
@@ -64,10 +74,14 @@ describe('server setup', () => {
     jest.doMock('../routes/telemetry', () => ({}));
     jest.doMock('../routes/demo', () => ({}));
     jest.doMock('../routes/observers', () => ({}));
-    jest.doMock('../db/pool', () => ({ db: { query: jest.fn().mockResolvedValue({ rows: [{ ok: 1 }] }) } }));
-    jest.doMock('../redis/client', () => ({ redis: { isOpen: true, connect: jest.fn() } }));
+    jest.doMock('../db/pool', () => ({
+      db: { query: jest.fn().mockResolvedValue({ rows: [{ ok: 1 }] }) },
+    }));
+    jest.doMock('../redis/client', () => ({
+      redis: { isOpen: true, connect: jest.fn() },
+    }));
     jest.doMock('../config/env', () => ({
-      env: { FRONTEND_URL: 'http://localhost:3000', LOG_LEVEL: 'info' }
+      env: { FRONTEND_URL: 'http://localhost:3000', LOG_LEVEL: 'info' },
     }));
 
     const { createServer } = require('../server') as typeof import('../server');
@@ -75,7 +89,7 @@ describe('server setup', () => {
 
     expect(createServerMock).toHaveBeenCalled();
     expect(socketServerMock).toHaveBeenCalledWith(httpServer, {
-      cors: { origin: 'http://localhost:3000', credentials: true }
+      cors: { origin: 'http://localhost:3000', credentials: true },
     });
     expect(setMock).toHaveBeenCalledWith('realtime', realtimeInstance);
     expect(onIo).toHaveBeenCalledWith('connection', expect.any(Function));
@@ -87,14 +101,16 @@ describe('server setup', () => {
       scope: 'post:1',
       events: [],
       latestSequence: 10,
-      resyncRequired: false
+      resyncRequired: false,
     });
     expect(result.realtime).toBe(realtimeInstance);
   });
 
   test('initInfra connects when redis is closed', async () => {
     const connect = jest.fn().mockResolvedValue(undefined);
-    jest.doMock('../redis/client', () => ({ redis: { isOpen: false, connect } }));
+    jest.doMock('../redis/client', () => ({
+      redis: { isOpen: false, connect },
+    }));
     jest.doMock('../routes/observers', () => ({}));
 
     const { initInfra } = require('../server') as typeof import('../server');
@@ -103,7 +119,12 @@ describe('server setup', () => {
   });
 
   test('createApp responds to health check', async () => {
-    const appMock = { use: jest.fn(), get: jest.fn(), set: jest.fn(), address: () => ({}) };
+    const appMock = {
+      use: jest.fn(),
+      get: jest.fn(),
+      set: jest.fn(),
+      address: () => ({}),
+    };
     const expressFn = () => appMock;
     expressFn.json = jest.fn(() => ({}));
     jest.doMock('express', () => expressFn);
@@ -112,9 +133,11 @@ describe('server setup', () => {
       apiRateLimiter: jest.fn(),
       csrfProtection: jest.fn(),
       sanitizeInputs: jest.fn(),
-      securityHeaders: jest.fn()
+      securityHeaders: jest.fn(),
     }));
-    jest.doMock('../logging/requestLogger', () => ({ requestLogger: jest.fn() }));
+    jest.doMock('../logging/requestLogger', () => ({
+      requestLogger: jest.fn(),
+    }));
     jest.doMock('../middleware/error', () => ({ errorHandler: jest.fn() }));
     jest.doMock('../routes/auth', () => ({}));
     jest.doMock('../routes/admin', () => ({}));
@@ -128,27 +151,39 @@ describe('server setup', () => {
     jest.doMock('../routes/telemetry', () => ({}));
     jest.doMock('../routes/demo', () => ({}));
     jest.doMock('../routes/observers', () => ({}));
-    jest.doMock('../db/pool', () => ({ db: { query: jest.fn().mockResolvedValue({ rows: [{ ok: 1 }] }) } }));
-    jest.doMock('../redis/client', () => ({ redis: { isOpen: true, connect: jest.fn() } }));
+    jest.doMock('../db/pool', () => ({
+      db: { query: jest.fn().mockResolvedValue({ rows: [{ ok: 1 }] }) },
+    }));
+    jest.doMock('../redis/client', () => ({
+      redis: { isOpen: true, connect: jest.fn() },
+    }));
     jest.doMock('../config/env', () => ({
-      env: { FRONTEND_URL: 'http://localhost:3000', LOG_LEVEL: 'info' }
+      env: { FRONTEND_URL: 'http://localhost:3000', LOG_LEVEL: 'info' },
     }));
     const { createApp } = require('../server') as typeof import('../server');
 
     const app = createApp() as typeof appMock;
     expect(app).toBe(appMock);
-    const healthHandler = app.get.mock.calls.find((call) => call[0] === '/health')?.[1];
+    const healthHandler = app.get.mock.calls.find(
+      (call) => call[0] === '/health',
+    )?.[1];
     expect(typeof healthHandler).toBe('function');
 
     const res = { json: jest.fn() };
     healthHandler({}, res);
     expect(res.json).toHaveBeenCalledWith({ status: 'ok' });
 
-    const readyHandler = app.get.mock.calls.find((call) => call[0] === '/ready')?.[1];
+    const readyHandler = app.get.mock.calls.find(
+      (call) => call[0] === '/ready',
+    )?.[1];
     expect(typeof readyHandler).toBe('function');
     const readyRes = { json: jest.fn(), status: jest.fn().mockReturnThis() };
     await readyHandler({}, readyRes);
-    expect(readyRes.json).toHaveBeenCalledWith({ status: 'ok', db: 'ok', redis: 'ok' });
+    expect(readyRes.json).toHaveBeenCalledWith({
+      status: 'ok',
+      db: 'ok',
+      redis: 'ok',
+    });
     return;
   });
 });

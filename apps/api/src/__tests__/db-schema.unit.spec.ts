@@ -7,14 +7,16 @@ type TestPool = {
 
 const createPool = (): TestPool => {
   const pool = new Pool({
-    connectionString: process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/finishit'
+    connectionString:
+      process.env.DATABASE_URL ||
+      'postgres://postgres:postgres@localhost:5432/finishit',
   });
 
   return {
     pool,
     cleanup: async () => {
       await pool.end();
-    }
+    },
   };
 };
 
@@ -31,22 +33,21 @@ describe('database schema constraints', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['FK Agent', 'testing', 'hash_fk_123456']
+        ['FK Agent', 'testing', 'hash_fk_123456'],
       );
       const agentId = agent.rows[0].id;
 
       await client.query('SAVEPOINT fk_invalid_author');
       await expect(
-        client.query(
-          'INSERT INTO drafts (author_id) VALUES ($1)',
-          ['00000000-0000-0000-0000-000000000000']
-        )
+        client.query('INSERT INTO drafts (author_id) VALUES ($1)', [
+          '00000000-0000-0000-0000-000000000000',
+        ]),
       ).rejects.toThrow();
       await client.query('ROLLBACK TO SAVEPOINT fk_invalid_author');
 
       const draft = await client.query(
         'INSERT INTO drafts (author_id) VALUES ($1) RETURNING id',
-        [agentId]
+        [agentId],
       );
       const draftId = draft.rows[0].id;
 
@@ -59,15 +60,21 @@ describe('database schema constraints', () => {
             1,
             'https://example.com/1.png',
             'https://example.com/1-thumb.png',
-            agentId
-          ]
-        )
+            agentId,
+          ],
+        ),
       ).rejects.toThrow();
       await client.query('ROLLBACK TO SAVEPOINT fk_invalid_draft');
 
       await client.query(
         'INSERT INTO versions (draft_id, version_number, image_url, thumbnail_url, created_by) VALUES ($1, $2, $3, $4, $5)',
-        [draftId, 1, 'https://example.com/1.png', 'https://example.com/1-thumb.png', agentId]
+        [
+          draftId,
+          1,
+          'https://example.com/1.png',
+          'https://example.com/1-thumb.png',
+          agentId,
+        ],
       );
 
       await client.query('ROLLBACK');
@@ -85,28 +92,28 @@ describe('database schema constraints', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['Enum Agent', 'testing', 'hash_enum_123456']
+        ['Enum Agent', 'testing', 'hash_enum_123456'],
       );
       const agentId = agent.rows[0].id;
 
       const draft = await client.query(
         'INSERT INTO drafts (author_id) VALUES ($1) RETURNING id',
-        [agentId]
+        [agentId],
       );
       const draftId = draft.rows[0].id;
 
       await expect(
         client.query(
           'INSERT INTO pull_requests (draft_id, maker_id, proposed_version, description, severity, status) VALUES ($1, $2, $3, $4, $5, $6)',
-          [draftId, agentId, 2, 'Invalid status', 'minor', 'invalid_status']
-        )
+          [draftId, agentId, 2, 'Invalid status', 'minor', 'invalid_status'],
+        ),
       ).rejects.toThrow();
 
       await expect(
         client.query(
           'INSERT INTO pull_requests (draft_id, maker_id, proposed_version, description, severity, status) VALUES ($1, $2, $3, $4, $5, $6)',
-          [draftId, agentId, 2, 'Invalid severity', 'extreme', 'pending']
-        )
+          [draftId, agentId, 2, 'Invalid severity', 'extreme', 'pending'],
+        ),
       ).rejects.toThrow();
 
       await client.query('ROLLBACK');
@@ -124,13 +131,13 @@ describe('database schema constraints', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['Default Agent', 'testing', 'hash_default_123456']
+        ['Default Agent', 'testing', 'hash_default_123456'],
       );
       const agentId = agent.rows[0].id;
 
       const draft = await client.query(
         'INSERT INTO drafts (author_id) VALUES ($1) RETURNING status, current_version, glow_up_score',
-        [agentId]
+        [agentId],
       );
 
       expect(draft.rows[0].status).toBe('draft');
@@ -152,13 +159,13 @@ describe('database schema constraints', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id, created_at',
-        ['Timestamp Agent', 'testing', 'hash_time_123456']
+        ['Timestamp Agent', 'testing', 'hash_time_123456'],
       );
       expect(agent.rows[0].created_at).toBeTruthy();
 
       const draft = await client.query(
         'INSERT INTO drafts (author_id) VALUES ($1) RETURNING created_at, updated_at',
-        [agent.rows[0].id]
+        [agent.rows[0].id],
       );
 
       expect(draft.rows[0].created_at).toBeTruthy();

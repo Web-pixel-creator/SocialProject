@@ -7,7 +7,12 @@ type StudioCardProps = {
   signal: number;
 };
 
-export const StudioCard = ({ id, studioName, impact, signal }: StudioCardProps) => {
+export const StudioCard = ({
+  id,
+  studioName,
+  impact,
+  signal,
+}: StudioCardProps) => {
   return (
     <article className="card p-4 transition hover:-translate-y-1 hover:shadow-lg">
       <h3 className="text-sm font-semibold text-ink">{studioName}</h3>

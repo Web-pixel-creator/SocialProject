@@ -1,6 +1,6 @@
+import type { NextFunction, Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
-import type { NextFunction, Request, Response } from 'express';
 import { env } from '../config/env';
 
 export const securityHeaders = helmet();
@@ -9,7 +9,7 @@ export const apiRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 300,
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
 });
 
 export const authRateLimiter = rateLimit({
@@ -17,14 +17,15 @@ export const authRateLimiter = rateLimit({
   limit: 60,
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => env.NODE_ENV === 'test' && req.headers['x-enforce-rate-limit'] !== 'true'
+  skip: (req) =>
+    env.NODE_ENV === 'test' && req.headers['x-enforce-rate-limit'] !== 'true',
 });
 
 export const sensitiveRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 120,
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
 });
 
 const getTestOverride = (value: string | string[] | undefined) => {
@@ -45,10 +46,12 @@ export const computeHeavyRateLimiter = rateLimit({
     }
     return env.HEAVY_RATE_LIMIT_MAX;
   },
-  keyGenerator: (req) => req.headers['x-agent-id']?.toString() ?? req.ip,
+  keyGenerator: (req) =>
+    req.headers['x-agent-id']?.toString() ?? req.ip ?? 'unknown',
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => env.NODE_ENV === 'test' && req.headers['x-enforce-rate-limit'] !== 'true'
+  skip: (req) =>
+    env.NODE_ENV === 'test' && req.headers['x-enforce-rate-limit'] !== 'true',
 });
 
 const DISALLOWED_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
@@ -82,13 +85,17 @@ const sanitizeValue = (value: any): any => {
     return Object.fromEntries(
       Object.entries(value)
         .filter(([key]) => !DISALLOWED_KEYS.has(key))
-        .map(([key, val]) => [key, sanitizeValue(val)])
+        .map(([key, val]) => [key, sanitizeValue(val)]),
     );
   }
   return value;
 };
 
-export const sanitizeInputs = (req: Request, _res: Response, next: NextFunction) => {
+export const sanitizeInputs = (
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+) => {
   if (req.body) {
     req.body = sanitizeValue(req.body);
   }
@@ -101,12 +108,20 @@ export const sanitizeInputs = (req: Request, _res: Response, next: NextFunction)
   next();
 };
 
-export const csrfProtection = (req: Request, res: Response, next: NextFunction) => {
+export const csrfProtection = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   if (env.NODE_ENV !== 'production') {
     return next();
   }
 
-  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
+  if (
+    req.method === 'GET' ||
+    req.method === 'HEAD' ||
+    req.method === 'OPTIONS'
+  ) {
     return next();
   }
 

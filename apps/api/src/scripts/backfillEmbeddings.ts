@@ -15,7 +15,8 @@ const parseArgs = () => {
   return config;
 };
 
-const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(Math.max(value, min), max);
 
 const run = async () => {
   const args = parseArgs();
@@ -39,7 +40,10 @@ const run = async () => {
     }
   }
 
-  logger.info({ batches, batchSize, processed, inserted, skipped }, 'Embedding backfill run complete');
+  logger.info(
+    { batches, batchSize, processed, inserted, skipped },
+    'Embedding backfill run complete',
+  );
   await db.end();
 };
 

@@ -2,7 +2,7 @@ import { io } from 'socket.io-client';
 import { getSocket } from '../lib/socket';
 
 jest.mock('socket.io-client', () => ({
-  io: jest.fn(() => ({ id: 'socket-1' }))
+  io: jest.fn(() => ({ id: 'socket-1' })),
 }));
 
 describe('socket client', () => {
@@ -13,7 +13,7 @@ describe('socket client', () => {
     expect(first).toBe(second);
     expect(io).toHaveBeenCalledTimes(1);
     expect(io).toHaveBeenCalledWith('ws://localhost:4000', {
-      transports: ['websocket']
+      transports: ['websocket'],
     });
   });
 });

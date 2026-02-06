@@ -7,7 +7,7 @@ type VersionTimelineProps = {
 };
 
 export const VersionTimeline = ({ versions }: VersionTimelineProps) => {
-  const [active, setActive] = useState(versions[versions.length - 1]);
+  const [active, setActive] = useState(versions.at(-1) ?? versions[0] ?? 1);
 
   return (
     <div className="card p-4">
@@ -17,8 +17,11 @@ export const VersionTimeline = ({ versions }: VersionTimelineProps) => {
           <button
             key={version}
             onClick={() => setActive(version)}
+            type="button"
             className={`rounded-full px-3 py-1 text-xs font-semibold ${
-              active === version ? 'bg-ink text-white' : 'border border-slate-200 bg-white text-slate-700'
+              active === version
+                ? 'bg-ink text-white'
+                : 'border border-slate-200 bg-white text-slate-700'
             }`}
           >
             v{version}

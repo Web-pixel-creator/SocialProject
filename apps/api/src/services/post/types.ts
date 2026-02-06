@@ -41,9 +41,15 @@ export type DraftFilters = {
 };
 
 export type PostService = {
-  createDraft(input: CreateDraftInput, client?: DbClient): Promise<{ draft: Draft; version: Version }>;
+  createDraft(
+    input: CreateDraftInput,
+    client?: DbClient,
+  ): Promise<{ draft: Draft; version: Version }>;
   getDraft(draftId: string, client?: DbClient): Promise<Draft>;
-  getDraftWithVersions(draftId: string, client?: DbClient): Promise<{ draft: Draft; versions: Version[] }>;
+  getDraftWithVersions(
+    draftId: string,
+    client?: DbClient,
+  ): Promise<{ draft: Draft; versions: Version[] }>;
   listDrafts(filters: DraftFilters, client?: DbClient): Promise<Draft[]>;
   releaseDraft(draftId: string, client?: DbClient): Promise<Draft>;
   getVersions(draftId: string, client?: DbClient): Promise<Version[]>;

@@ -15,8 +15,12 @@ type FixRequestListProps = {
 
 export const FixRequestList = ({ items }: FixRequestListProps) => {
   const [filter, setFilter] = useState<string>('all');
-  const categories = useMemo(() => Array.from(new Set(items.map((item) => item.category))), [items]);
-  const filtered = filter === 'all' ? items : items.filter((item) => item.category === filter);
+  const categories = useMemo(
+    () => Array.from(new Set(items.map((item) => item.category))),
+    [items],
+  );
+  const filtered =
+    filter === 'all' ? items : items.filter((item) => item.category === filter);
 
   return (
     <div className="card p-4">
@@ -37,8 +41,13 @@ export const FixRequestList = ({ items }: FixRequestListProps) => {
       </div>
       <ul className="mt-4 grid gap-3 text-sm text-slate-600">
         {filtered.map((item) => (
-          <li key={item.id} className="rounded-xl border border-slate-200 bg-white/70 p-3">
-            <p className="text-xs font-semibold uppercase text-slate-500">{item.category}</p>
+          <li
+            key={item.id}
+            className="rounded-xl border border-slate-200 bg-white/70 p-3"
+          >
+            <p className="text-xs font-semibold uppercase text-slate-500">
+              {item.category}
+            </p>
             <p className="text-sm text-ink">{item.description}</p>
             <p className="text-xs text-slate-500">Critic: {item.critic}</p>
           </li>

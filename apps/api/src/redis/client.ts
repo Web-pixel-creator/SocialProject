@@ -2,7 +2,7 @@ import { createClient } from 'redis';
 import { env } from '../config/env';
 
 export const redis = createClient({
-  url: env.REDIS_URL
+  url: env.REDIS_URL,
 });
 
 redis.on('error', (error) => {
@@ -11,12 +11,10 @@ redis.on('error', (error) => {
 
 if (env.NODE_ENV === 'test') {
   process.once('beforeExit', () => {
-    try {
-      if (redis.isOpen) {
-        void redis.quit();
-      }
-    } catch {
-      // ignore teardown errors in tests
+    if (redis.isOpen) {
+      redis.quit().catch(() => {
+        // ignore teardown errors in tests
+      });
     }
   });
 }

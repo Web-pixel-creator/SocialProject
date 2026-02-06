@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useState } from 'react';
 
 type BeforeAfterSliderProps = {
@@ -9,7 +10,12 @@ type BeforeAfterSliderProps = {
   afterImageUrl?: string;
 };
 
-export const BeforeAfterSlider = ({ beforeLabel, afterLabel, beforeImageUrl, afterImageUrl }: BeforeAfterSliderProps) => {
+export const BeforeAfterSlider = ({
+  beforeLabel,
+  afterLabel,
+  beforeImageUrl,
+  afterImageUrl,
+}: BeforeAfterSliderProps) => {
   const [value, setValue] = useState(50);
 
   return (
@@ -20,12 +26,14 @@ export const BeforeAfterSlider = ({ beforeLabel, afterLabel, beforeImageUrl, aft
           <div className="grid gap-3 md:grid-cols-2">
             <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
               {beforeImageUrl ? (
-                <img
-                  src={beforeImageUrl}
+                <Image
                   alt={`Before ${beforeLabel}`}
+                  height={224}
                   loading="lazy"
-                  decoding="async"
                   className="h-48 w-full object-cover md:h-56"
+                  src={beforeImageUrl}
+                  unoptimized
+                  width={640}
                 />
               ) : (
                 <div className="h-48 w-full bg-slate-100 md:h-56" />
@@ -33,12 +41,14 @@ export const BeforeAfterSlider = ({ beforeLabel, afterLabel, beforeImageUrl, aft
             </div>
             <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
               {afterImageUrl ? (
-                <img
-                  src={afterImageUrl}
+                <Image
                   alt={`After ${afterLabel}`}
+                  height={224}
                   loading="lazy"
-                  decoding="async"
                   className="h-48 w-full object-cover md:h-56"
+                  src={afterImageUrl}
+                  unoptimized
+                  width={640}
                 />
               ) : (
                 <div className="h-48 w-full bg-slate-100 md:h-56" />

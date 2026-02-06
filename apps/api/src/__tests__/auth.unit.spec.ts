@@ -1,11 +1,13 @@
-import { Pool } from 'pg';
 import jwt from 'jsonwebtoken';
+import { Pool } from 'pg';
+import { env } from '../config/env';
 import { AuthServiceImpl } from '../services/auth/authService';
 import { AuthError } from '../services/auth/errors';
-import { env } from '../config/env';
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/finishit'
+  connectionString:
+    process.env.DATABASE_URL ||
+    'postgres://postgres:postgres@localhost:5432/finishit',
 });
 
 const authService = new AuthServiceImpl(pool);
@@ -23,13 +25,16 @@ describe('auth service edge cases', () => {
         {
           email: 'user@example.com',
           password: 'password123',
-          consent: { termsAccepted: true, privacyAccepted: true }
+          consent: { termsAccepted: true, privacyAccepted: true },
         },
-        client
+        client,
       );
 
       await expect(
-        authService.loginHuman({ email: 'user@example.com', password: 'wrongpass' }, client)
+        authService.loginHuman(
+          { email: 'user@example.com', password: 'wrongpass' },
+          client,
+        ),
       ).rejects.toThrow(AuthError);
 
       await client.query('ROLLBACK');
@@ -51,10 +56,10 @@ describe('auth service edge cases', () => {
           {
             email: '',
             password: 'password123',
-            consent: { termsAccepted: true, privacyAccepted: true }
+            consent: { termsAccepted: true, privacyAccepted: true },
           },
-          client
-        )
+          client,
+        ),
       ).rejects.toThrow(AuthError);
 
       await client.query('ROLLBACK');
@@ -75,10 +80,10 @@ describe('auth service edge cases', () => {
         authService.registerHuman(
           {
             email: 'nopass@example.com',
-            consent: { termsAccepted: true, privacyAccepted: true }
+            consent: { termsAccepted: true, privacyAccepted: true },
           },
-          client
-        )
+          client,
+        ),
       ).rejects.toThrow(AuthError);
 
       await client.query('ROLLBACK');
@@ -100,10 +105,10 @@ describe('auth service edge cases', () => {
           {
             email: 'oauth@example.com',
             oauthProvider: 'github',
-            consent: { termsAccepted: true, privacyAccepted: true }
+            consent: { termsAccepted: true, privacyAccepted: true },
           },
-          client
-        )
+          client,
+        ),
       ).rejects.toThrow(AuthError);
 
       await client.query('ROLLBACK');
@@ -125,10 +130,10 @@ describe('auth service edge cases', () => {
           {
             email: 'consent@example.com',
             password: 'password123',
-            consent: { termsAccepted: false, privacyAccepted: true }
+            consent: { termsAccepted: false, privacyAccepted: true },
           },
-          client
-        )
+          client,
+        ),
       ).rejects.toThrow(AuthError);
 
       await client.query('ROLLBACK');
@@ -150,10 +155,10 @@ describe('auth service edge cases', () => {
           {
             email: 'weak@example.com',
             password: 'short',
-            consent: { termsAccepted: true, privacyAccepted: true }
+            consent: { termsAccepted: true, privacyAccepted: true },
           },
-          client
-        )
+          client,
+        ),
       ).rejects.toThrow(AuthError);
 
       await client.query('ROLLBACK');
@@ -174,9 +179,9 @@ describe('auth service edge cases', () => {
         {
           email: 'duplicate@example.com',
           password: 'password123',
-          consent: { termsAccepted: true, privacyAccepted: true }
+          consent: { termsAccepted: true, privacyAccepted: true },
         },
-        client
+        client,
       );
 
       await expect(
@@ -184,10 +189,10 @@ describe('auth service edge cases', () => {
           {
             email: 'duplicate@example.com',
             password: 'password123',
-            consent: { termsAccepted: true, privacyAccepted: true }
+            consent: { termsAccepted: true, privacyAccepted: true },
           },
-          client
-        )
+          client,
+        ),
       ).rejects.toThrow(AuthError);
 
       await client.query('ROLLBACK');
@@ -205,7 +210,10 @@ describe('auth service edge cases', () => {
       await client.query('BEGIN');
 
       await expect(
-        authService.loginHuman({ email: 'missing@example.com', password: 'password123' }, client)
+        authService.loginHuman(
+          { email: 'missing@example.com', password: 'password123' },
+          client,
+        ),
       ).rejects.toThrow(AuthError);
 
       await client.query('ROLLBACK');
@@ -224,11 +232,19 @@ describe('auth service edge cases', () => {
       await client.query(
         `INSERT INTO users (email, password_hash, deleted_at, terms_version, terms_accepted_at, privacy_version, privacy_accepted_at)
          VALUES ($1, $2, NOW(), $3, NOW(), $4, NOW())`,
-        ['deleted@example.com', 'hashed', env.TERMS_VERSION, env.PRIVACY_VERSION]
+        [
+          'deleted@example.com',
+          'hashed',
+          env.TERMS_VERSION,
+          env.PRIVACY_VERSION,
+        ],
       );
 
       await expect(
-        authService.loginHuman({ email: 'deleted@example.com', password: 'password123' }, client)
+        authService.loginHuman(
+          { email: 'deleted@example.com', password: 'password123' },
+          client,
+        ),
       ).rejects.toThrow(AuthError);
 
       await client.query('ROLLBACK');
@@ -247,11 +263,20 @@ describe('auth service edge cases', () => {
       await client.query(
         `INSERT INTO users (email, oauth_provider, oauth_id, terms_version, terms_accepted_at, privacy_version, privacy_accepted_at)
          VALUES ($1, $2, $3, $4, NOW(), $5, NOW())`,
-        ['oauthonly@example.com', 'github', 'oauth-id', env.TERMS_VERSION, env.PRIVACY_VERSION]
+        [
+          'oauthonly@example.com',
+          'github',
+          'oauth-id',
+          env.TERMS_VERSION,
+          env.PRIVACY_VERSION,
+        ],
       );
 
       await expect(
-        authService.loginHuman({ email: 'oauthonly@example.com', password: 'password123' }, client)
+        authService.loginHuman(
+          { email: 'oauthonly@example.com', password: 'password123' },
+          client,
+        ),
       ).rejects.toThrow(AuthError);
 
       await client.query('ROLLBACK');
@@ -267,12 +292,19 @@ describe('auth service edge cases', () => {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      const missingId = (await client.query('SELECT gen_random_uuid() as id')).rows[0].id;
+      const missingId = (await client.query('SELECT gen_random_uuid() as id'))
+        .rows[0].id;
 
-      const valid = await authService.validateAgentApiKey(missingId, 'nope', client);
+      const valid = await authService.validateAgentApiKey(
+        missingId,
+        'nope',
+        client,
+      );
       expect(valid).toBe(false);
 
-      await expect(authService.rotateAgentApiKey(missingId, client)).rejects.toThrow(AuthError);
+      await expect(
+        authService.rotateAgentApiKey(missingId, client),
+      ).rejects.toThrow(AuthError);
 
       await client.query('ROLLBACK');
     } catch (error) {
@@ -284,9 +316,13 @@ describe('auth service edge cases', () => {
   });
 
   test('expired tokens fail verification', async () => {
-    const token = jwt.sign({ sub: 'user-id', email: 'expired@example.com' }, env.JWT_SECRET, {
-      expiresIn: '1ms'
-    });
+    const token = jwt.sign(
+      { sub: 'user-id', email: 'expired@example.com' },
+      env.JWT_SECRET,
+      {
+        expiresIn: '1ms',
+      },
+    );
 
     await new Promise((resolve) => setTimeout(resolve, 5));
 
@@ -300,22 +336,23 @@ describe('auth service edge cases', () => {
       const agent = await authService.registerAgent(
         {
           studioName: 'Claim Agent',
-          personality: 'tester'
+          personality: 'tester',
         },
-        client
+        client,
       );
 
-      const claim = await client.query('SELECT claim_token, verification_payload FROM agent_claims WHERE agent_id = $1', [
-        agent.agentId
-      ]);
+      const claim = await client.query(
+        'SELECT claim_token, verification_payload FROM agent_claims WHERE agent_id = $1',
+        [agent.agentId],
+      );
 
       const verified = await authService.verifyAgentClaim(
         {
           claimToken: claim.rows[0].claim_token,
           method: 'email',
-          emailToken: claim.rows[0].verification_payload
+          emailToken: claim.rows[0].verification_payload,
         },
-        client
+        client,
       );
 
       expect(verified.agentId).toBe(agent.agentId);
@@ -339,10 +376,10 @@ describe('auth service edge cases', () => {
           {
             claimToken: 'missing-token',
             method: 'email',
-            emailToken: 'invalid'
+            emailToken: 'invalid',
           },
-          client
-        )
+          client,
+        ),
       ).rejects.toThrow(AuthError);
 
       await client.query('ROLLBACK');
@@ -361,16 +398,16 @@ describe('auth service edge cases', () => {
       const agent = await authService.registerAgent(
         {
           studioName: 'Resend Agent',
-          personality: 'tester'
+          personality: 'tester',
         },
-        client
+        client,
       );
 
       const resend = await authService.resendAgentClaim(
         {
-          claimToken: agent.claimToken
+          claimToken: agent.claimToken,
         },
-        client
+        client,
       );
 
       expect(resend.agentId).toBe(agent.agentId);

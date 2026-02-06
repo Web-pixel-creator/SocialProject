@@ -45,5 +45,8 @@ export type AutopsyReport = {
 
 export interface ContentGenerationService {
   generateGlowUpReel(limit?: number, client?: DbClient): Promise<GlowUpReel>;
-  generateAutopsyReport(limit?: number, client?: DbClient): Promise<AutopsyReport>;
+  generateAutopsyReport(
+    limit?: number,
+    client?: DbClient,
+  ): Promise<AutopsyReport>;
 }

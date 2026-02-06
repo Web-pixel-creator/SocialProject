@@ -2,22 +2,22 @@
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import DraftDetailPage from '../app/drafts/[id]/page';
 import { apiClient } from '../lib/api';
 
 let mockParams: { id?: string | string[] } = {};
 
 jest.mock('next/navigation', () => ({
-  useParams: () => mockParams
+  useParams: () => mockParams,
 }));
 
 jest.mock('../lib/api', () => ({
   apiClient: {
     get: jest.fn(),
-    post: jest.fn(() => Promise.resolve({ data: { status: 'ok' } }))
+    post: jest.fn(() => Promise.resolve({ data: { status: 'ok' } })),
   },
-  setAuthToken: jest.fn()
+  setAuthToken: jest.fn(),
 }));
 
 jest.mock('next/dynamic', () => {
@@ -25,7 +25,7 @@ jest.mock('next/dynamic', () => {
     try {
       const result = loader?.();
       if (result?.catch) {
-        result.catch(() => {});
+        result.catch(() => undefined);
       }
     } catch (_err) {
       // ignore loader errors for test coverage
@@ -47,11 +47,15 @@ jest.mock('../lib/socket', () => {
       handlers[event].push(cb);
     }),
     off: jest.fn((event: string, cb: (payload: any) => void) => {
-      handlers[event] = (handlers[event] ?? []).filter((handler) => handler !== cb);
+      handlers[event] = (handlers[event] ?? []).filter(
+        (handler) => handler !== cb,
+      );
     }),
     __trigger: (event: string, payload: any) => {
-      (handlers[event] ?? []).forEach((handler) => handler(payload));
-    }
+      (handlers[event] ?? []).forEach((handler) => {
+        handler(payload);
+      });
+    },
   };
   return { getSocket: () => socket, __socket: socket };
 });
@@ -69,12 +73,26 @@ describe('draft detail page', () => {
       }
       if (url.includes('/fix-requests')) {
         return Promise.resolve({
-          data: [{ id: 'fix-1', category: 'Focus', description: 'Fix it', criticId: 'critic-123456' }]
+          data: [
+            {
+              id: 'fix-1',
+              category: 'Focus',
+              description: 'Fix it',
+              criticId: 'critic-123456',
+            },
+          ],
         });
       }
       if (url.includes('/pull-requests')) {
         return Promise.resolve({
-          data: [{ id: 'pr-1', status: 'pending', description: 'PR desc', makerId: 'maker-abcdef' }]
+          data: [
+            {
+              id: 'pr-1',
+              status: 'pending',
+              description: 'PR desc',
+              makerId: 'maker-abcdef',
+            },
+          ],
         });
       }
       return Promise.resolve({
@@ -84,13 +102,13 @@ describe('draft detail page', () => {
             currentVersion: 2,
             glowUpScore: 4.2,
             status: 'draft',
-            updatedAt: new Date().toISOString()
+            updatedAt: new Date().toISOString(),
           },
           versions: [
             { versionNumber: 1, imageUrl: 'https://example.com/v1.png' },
-            { versionNumber: 2, imageUrl: 'https://example.com/v2.png' }
-          ]
-        }
+            { versionNumber: 2, imageUrl: 'https://example.com/v2.png' },
+          ],
+        },
       });
     });
 
@@ -98,13 +116,15 @@ describe('draft detail page', () => {
       render(<DraftDetailPage />);
     });
 
-    await waitFor(() => expect(screen.getByText(/Draft draft-1/i)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/Draft draft-1/i)).toBeInTheDocument(),
+    );
     expect(screen.getByText(/GlowUp 4.2/i)).toBeInTheDocument();
   });
 
   test('shows error when load fails', async () => {
     (apiClient.get as jest.Mock).mockRejectedValue({
-      response: { data: { message: 'Boom' } }
+      response: { data: { message: 'Boom' } },
     });
 
     await act(async () => {
@@ -112,7 +132,9 @@ describe('draft detail page', () => {
       render(<DraftDetailPage />);
     });
 
-    await waitFor(() => expect(screen.getAllByText(/Boom/i).length).toBeGreaterThan(0));
+    await waitFor(() =>
+      expect(screen.getAllByText(/Boom/i).length).toBeGreaterThan(0),
+    );
   });
 
   test('responds to realtime events', async () => {
@@ -128,9 +150,15 @@ describe('draft detail page', () => {
       }
       return Promise.resolve({
         data: {
-          draft: { id: 'draft-3', glowUpScore: 1, currentVersion: 1, status: 'draft', updatedAt: new Date().toISOString() },
-          versions: []
-        }
+          draft: {
+            id: 'draft-3',
+            glowUpScore: 1,
+            currentVersion: 1,
+            status: 'draft',
+            updatedAt: new Date().toISOString(),
+          },
+          versions: [],
+        },
       });
     });
 
@@ -146,7 +174,7 @@ describe('draft detail page', () => {
         scope: 'post:draft-3',
         type: 'fix_request',
         sequence: 1,
-        payload: {}
+        payload: {},
       });
     });
 
@@ -166,8 +194,14 @@ describe('draft detail page', () => {
       }
       return Promise.resolve({
         data: {
-          draft: { id: 'draft-4', glowUpScore: 0, currentVersion: 1, status: 'draft', updatedAt: new Date().toISOString() }
-        }
+          draft: {
+            id: 'draft-4',
+            glowUpScore: 0,
+            currentVersion: 1,
+            status: 'draft',
+            updatedAt: new Date().toISOString(),
+          },
+        },
       });
     });
 
@@ -176,7 +210,9 @@ describe('draft detail page', () => {
       render(<DraftDetailPage />);
     });
 
-    await waitFor(() => expect(screen.getByText(/Draft draft-4/i)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/Draft draft-4/i)).toBeInTheDocument(),
+    );
     expect(screen.getByText(/Selected version: v1/i)).toBeInTheDocument();
     expect(screen.getAllByText('v1').length).toBeGreaterThan(0);
   });
@@ -202,10 +238,10 @@ describe('draft detail page', () => {
               glowUpScore: draftCalls === 1 ? 1 : 9.5,
               currentVersion: 1,
               status: 'draft',
-              updatedAt: new Date().toISOString()
+              updatedAt: new Date().toISOString(),
             },
-            versions: []
-          }
+            versions: [],
+          },
         });
       }
       return Promise.resolve({ data: [] });
@@ -216,7 +252,9 @@ describe('draft detail page', () => {
       render(<DraftDetailPage />);
     });
 
-    await waitFor(() => expect(screen.getByText(/GlowUp 1.0/i)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/GlowUp 1.0/i)).toBeInTheDocument(),
+    );
 
     const { __socket } = jest.requireMock('../lib/socket');
     await act(async () => {
@@ -225,22 +263,28 @@ describe('draft detail page', () => {
         scope: 'post:draft-5',
         type: 'glowup_update',
         sequence: 2,
-        payload: {}
+        payload: {},
       });
     });
 
-    await waitFor(() => expect(screen.getByText(/GlowUp 9.5/i)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/GlowUp 9.5/i)).toBeInTheDocument(),
+    );
   });
 
   test('shows fallback error when load fails without response', async () => {
-    (apiClient.get as jest.Mock).mockRejectedValueOnce(new Error('Network down'));
+    (apiClient.get as jest.Mock).mockRejectedValueOnce(
+      new Error('Network down'),
+    );
 
     await act(async () => {
       mockParams = { id: 'draft-6' };
       render(<DraftDetailPage />);
     });
 
-    await waitFor(() => expect(screen.getByText(/Failed to load draft/i)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/Failed to load draft/i)).toBeInTheDocument(),
+    );
   });
 
   test('renders similar drafts section', async () => {
@@ -248,8 +292,14 @@ describe('draft detail page', () => {
       if (url.includes('/search/similar')) {
         return Promise.resolve({
           data: [
-            { id: 'sim-1', type: 'draft', title: 'Similar Draft', score: 0.82, glowUpScore: 3.5 }
-          ]
+            {
+              id: 'sim-1',
+              type: 'draft',
+              title: 'Similar Draft',
+              score: 0.82,
+              glowUpScore: 3.5,
+            },
+          ],
         });
       }
       if (url.includes('/fix-requests')) {
@@ -265,10 +315,10 @@ describe('draft detail page', () => {
             currentVersion: 1,
             glowUpScore: 2.1,
             status: 'draft',
-            updatedAt: new Date().toISOString()
+            updatedAt: new Date().toISOString(),
           },
-          versions: []
-        }
+          versions: [],
+        },
       });
     });
 
@@ -277,7 +327,9 @@ describe('draft detail page', () => {
       render(<DraftDetailPage />);
     });
 
-    await waitFor(() => expect(screen.getByText(/Similar drafts/i)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/Similar drafts/i)).toBeInTheDocument(),
+    );
     expect(screen.getByText('Similar Draft')).toBeInTheDocument();
   });
 });

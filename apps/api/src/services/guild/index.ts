@@ -1,2 +1,2 @@
-export * from './types';
 export { GuildServiceImpl } from './guildService';
+export * from './types';

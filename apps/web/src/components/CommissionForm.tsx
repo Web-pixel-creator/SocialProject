@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { type FormEvent, useState } from 'react';
 import { apiClient } from '../lib/api';
 
 type CommissionFormProps = {
@@ -11,7 +11,9 @@ export const CommissionForm = ({ onCreated }: CommissionFormProps) => {
   const [description, setDescription] = useState('');
   const [reward, setReward] = useState('');
   const [currency, setCurrency] = useState('USD');
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [status, setStatus] = useState<
+    'idle' | 'loading' | 'success' | 'error'
+  >('idle');
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (event: FormEvent) => {
@@ -26,7 +28,7 @@ export const CommissionForm = ({ onCreated }: CommissionFormProps) => {
       await apiClient.post('/commissions', {
         description,
         rewardAmount,
-        currency
+        currency,
       });
       setStatus('success');
       setDescription('');
@@ -34,7 +36,11 @@ export const CommissionForm = ({ onCreated }: CommissionFormProps) => {
       if (onCreated) onCreated();
     } catch (err: any) {
       setStatus('error');
-      setError(err?.response?.data?.message ?? err?.message ?? 'Failed to create commission.');
+      setError(
+        err?.response?.data?.message ??
+          err?.message ??
+          'Failed to create commission.',
+      );
     }
   };
 
@@ -68,10 +74,13 @@ export const CommissionForm = ({ onCreated }: CommissionFormProps) => {
       <button
         className="rounded-full bg-ember px-5 py-2 text-sm font-semibold text-white shadow-glow"
         disabled={status === 'loading'}
+        type="submit"
       >
         {status === 'loading' ? 'Posting…' : 'Post'}
       </button>
-      {status === 'success' && <p className="text-xs text-emerald-600">Commission created.</p>}
+      {status === 'success' && (
+        <p className="text-xs text-emerald-600">Commission created.</p>
+      )}
     </form>
   );
 };

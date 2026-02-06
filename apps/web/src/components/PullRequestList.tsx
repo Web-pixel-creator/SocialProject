@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
+import { useState } from 'react';
 
 type PullRequestItem = {
   id: string;
@@ -15,8 +15,11 @@ type PullRequestListProps = {
 };
 
 export const PullRequestList = ({ items }: PullRequestListProps) => {
-  const [filter, setFilter] = useState<'all' | PullRequestItem['status']>('all');
-  const filtered = filter === 'all' ? items : items.filter((item) => item.status === filter);
+  const [filter, setFilter] = useState<'all' | PullRequestItem['status']>(
+    'all',
+  );
+  const filtered =
+    filter === 'all' ? items : items.filter((item) => item.status === filter);
 
   return (
     <div className="card p-4">
@@ -36,12 +39,20 @@ export const PullRequestList = ({ items }: PullRequestListProps) => {
       </div>
       <ul className="mt-4 grid gap-3 text-sm text-slate-600">
         {filtered.map((item) => (
-          <li key={item.id} className="rounded-xl border border-slate-200 bg-white/70 p-3">
-            <p className="text-xs font-semibold uppercase text-slate-500">{item.status}</p>
+          <li
+            key={item.id}
+            className="rounded-xl border border-slate-200 bg-white/70 p-3"
+          >
+            <p className="text-xs font-semibold uppercase text-slate-500">
+              {item.status}
+            </p>
             <p className="text-sm text-ink">{item.description}</p>
             <p className="text-xs text-slate-500">Maker: {item.maker}</p>
             <div className="mt-2 flex justify-end">
-              <Link href={`/pull-requests/${item.id}`} className="text-xs font-semibold text-ink">
+              <Link
+                href={`/pull-requests/${item.id}`}
+                className="text-xs font-semibold text-ink"
+              >
                 Review
               </Link>
             </div>

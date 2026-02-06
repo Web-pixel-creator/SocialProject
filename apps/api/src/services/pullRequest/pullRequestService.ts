@@ -1,14 +1,17 @@
-import { Pool } from 'pg';
-import { ServiceError } from '../common/errors';
+import type { Pool } from 'pg';
 import type { DbClient } from '../auth/types';
-import { IMPACT_MAJOR_INCREMENT, IMPACT_MINOR_INCREMENT } from '../metrics/constants';
+import { ServiceError } from '../common/errors';
+import {
+  IMPACT_MAJOR_INCREMENT,
+  IMPACT_MINOR_INCREMENT,
+} from '../metrics/constants';
 import type {
   ForkResult,
   PullRequest,
   PullRequestDecisionInput,
   PullRequestInput,
   PullRequestReviewData,
-  PullRequestService
+  PullRequestService,
 } from './types';
 
 const getDb = (pool: Pool, client?: DbClient): DbClient => client ?? pool;
@@ -40,7 +43,7 @@ const mapPullRequest = (row: any): PullRequest => ({
   authorFeedback: row.author_feedback,
   judgeVerdict: row.judge_verdict,
   createdAt: row.created_at,
-  decidedAt: row.decided_at
+  decidedAt: row.decided_at,
 });
 
 const calculateGlowUp = (majorMerged: number, minorMerged: number): number => {
@@ -58,7 +61,7 @@ export class PullRequestServiceImpl implements PullRequestService {
   private async applyTierPromotion(db: DbClient, makerId: string) {
     const result = await db.query(
       'SELECT trust_tier, merged_prs FROM agents WHERE id = $1',
-      [makerId]
+      [makerId],
     );
     if (result.rows.length === 0) {
       return;
@@ -71,24 +74,36 @@ export class PullRequestServiceImpl implements PullRequestService {
          SET trust_tier = 2,
              trust_reason = $1
          WHERE id = $2`,
-        ['merged_prs', makerId]
+        ['merged_prs', makerId],
       );
     }
   }
 
-  async submitPullRequest(input: PullRequestInput, client?: DbClient): Promise<PullRequest> {
+  async submitPullRequest(
+    input: PullRequestInput,
+    client?: DbClient,
+  ): Promise<PullRequest> {
     return this.withTransaction(client, async (db) => {
-      if (!input.draftId || !input.makerId || !input.description || !input.severity) {
-        throw new ServiceError('PR_REQUIRED_FIELDS', 'Draft, maker, description, and severity are required.');
+      if (
+        !(input.draftId && input.makerId && input.description && input.severity)
+      ) {
+        throw new ServiceError(
+          'PR_REQUIRED_FIELDS',
+          'Draft, maker, description, and severity are required.',
+        );
       }
 
       if (!['major', 'minor'].includes(input.severity)) {
-        throw new ServiceError('PR_INVALID_SEVERITY', 'Severity must be major or minor.');
+        throw new ServiceError(
+          'PR_INVALID_SEVERITY',
+          'Severity must be major or minor.',
+        );
       }
 
-      const draftResult = await db.query('SELECT id, status, current_version FROM drafts WHERE id = $1', [
-        input.draftId
-      ]);
+      const draftResult = await db.query(
+        'SELECT id, status, current_version FROM drafts WHERE id = $1',
+        [input.draftId],
+      );
       if (draftResult.rows.length === 0) {
         throw new ServiceError('DRAFT_NOT_FOUND', 'Draft not found.', 404);
       }
@@ -100,10 +115,11 @@ export class PullRequestServiceImpl implements PullRequestService {
 
       const maxVersionResult = await db.query(
         'SELECT MAX(version_number) AS max_version FROM versions WHERE draft_id = $1',
-        [input.draftId]
+        [input.draftId],
       );
       const maxVersion = Number(maxVersionResult.rows[0].max_version ?? 0);
-      const proposedVersion = Math.max(Number(draft.current_version), maxVersion) + 1;
+      const proposedVersion =
+        Math.max(Number(draft.current_version), maxVersion) + 1;
 
       const addressedFixRequests = input.addressedFixRequests ?? [];
       const prResult = await db.query(
@@ -115,31 +131,44 @@ export class PullRequestServiceImpl implements PullRequestService {
           input.description,
           input.severity,
           'pending',
-          JSON.stringify(addressedFixRequests)
-        ]
+          JSON.stringify(addressedFixRequests),
+        ],
       );
 
       const pr = prResult.rows[0];
 
       await db.query(
         'INSERT INTO versions (draft_id, version_number, image_url, thumbnail_url, created_by, pull_request_id) VALUES ($1, $2, $3, $4, $5, $6)',
-        [input.draftId, proposedVersion, input.imageUrl, input.thumbnailUrl, input.makerId, pr.id]
+        [
+          input.draftId,
+          proposedVersion,
+          input.imageUrl,
+          input.thumbnailUrl,
+          input.makerId,
+          pr.id,
+        ],
       );
 
       return mapPullRequest(pr);
     });
   }
 
-  async listByDraft(draftId: string, client?: DbClient): Promise<PullRequest[]> {
+  async listByDraft(
+    draftId: string,
+    client?: DbClient,
+  ): Promise<PullRequest[]> {
     const db = getDb(this.pool, client);
     const result = await db.query(
       'SELECT * FROM pull_requests WHERE draft_id = $1 ORDER BY created_at DESC',
-      [draftId]
+      [draftId],
     );
     return result.rows.map(mapPullRequest);
   }
 
-  async getReviewData(pullRequestId: string, client?: DbClient): Promise<PullRequestReviewData> {
+  async getReviewData(
+    pullRequestId: string,
+    client?: DbClient,
+  ): Promise<PullRequestReviewData> {
     const db = getDb(this.pool, client);
 
     const prResult = await db.query(
@@ -151,7 +180,7 @@ export class PullRequestServiceImpl implements PullRequestService {
        JOIN agents author ON author.id = d.author_id
        JOIN agents maker ON maker.id = pr.maker_id
        WHERE pr.id = $1`,
-      [pullRequestId]
+      [pullRequestId],
     );
 
     if (prResult.rows.length === 0) {
@@ -163,13 +192,13 @@ export class PullRequestServiceImpl implements PullRequestService {
 
     const currentVersionResult = await db.query(
       'SELECT image_url, thumbnail_url FROM versions WHERE draft_id = $1 AND version_number = $2',
-      [pullRequest.draftId, prRow.current_version]
+      [pullRequest.draftId, prRow.current_version],
     );
     const currentVersion = currentVersionResult.rows[0] ?? {};
 
     const proposedResult = await db.query(
       'SELECT image_url, thumbnail_url FROM versions WHERE pull_request_id = $1',
-      [pullRequestId]
+      [pullRequestId],
     );
     const proposedVersion = proposedResult.rows[0] ?? {};
 
@@ -179,14 +208,18 @@ export class PullRequestServiceImpl implements PullRequestService {
         SUM(CASE WHEN severity = 'minor' THEN 1 ELSE 0 END) AS minor_count
        FROM pull_requests
        WHERE draft_id = $1 AND status = 'merged'`,
-      [pullRequest.draftId]
+      [pullRequest.draftId],
     );
 
     const majorMerged = Number(counts.rows[0].major_count ?? 0);
     const minorMerged = Number(counts.rows[0].minor_count ?? 0);
-    const shouldPredict = pullRequest.status === 'pending' || pullRequest.status === 'changes_requested';
-    const predictedMajor = majorMerged + (shouldPredict && pullRequest.severity === 'major' ? 1 : 0);
-    const predictedMinor = minorMerged + (shouldPredict && pullRequest.severity === 'minor' ? 1 : 0);
+    const shouldPredict =
+      pullRequest.status === 'pending' ||
+      pullRequest.status === 'changes_requested';
+    const predictedMajor =
+      majorMerged + (shouldPredict && pullRequest.severity === 'major' ? 1 : 0);
+    const predictedMinor =
+      minorMerged + (shouldPredict && pullRequest.severity === 'minor' ? 1 : 0);
     const predictedGlowUp = calculateGlowUp(predictedMajor, predictedMinor);
     const currentGlowUp = Number(prRow.glow_up_score ?? 0);
     const glowUpDelta = predictedGlowUp - currentGlowUp;
@@ -203,7 +236,7 @@ export class PullRequestServiceImpl implements PullRequestService {
         authorId: prRow.author_id,
         status: prRow.draft_status,
         currentVersion: Number(prRow.current_version ?? 1),
-        glowUpScore: currentGlowUp
+        glowUpScore: currentGlowUp,
       },
       authorStudio: prRow.author_studio,
       makerStudio: prRow.maker_studio,
@@ -215,18 +248,21 @@ export class PullRequestServiceImpl implements PullRequestService {
         currentGlowUp,
         predictedGlowUp,
         glowUpDelta,
-        impactDelta
-      }
+        impactDelta,
+      },
     };
   }
 
-  async decidePullRequest(input: PullRequestDecisionInput, client?: DbClient): Promise<PullRequest> {
+  async decidePullRequest(
+    input: PullRequestDecisionInput,
+    client?: DbClient,
+  ): Promise<PullRequest> {
     return this.withTransaction(client, async (db) => {
       const prResult = await db.query(
         `SELECT pr.*, d.author_id FROM pull_requests pr
          JOIN drafts d ON pr.draft_id = d.id
          WHERE pr.id = $1`,
-        [input.pullRequestId]
+        [input.pullRequestId],
       );
 
       if (prResult.rows.length === 0) {
@@ -235,23 +271,30 @@ export class PullRequestServiceImpl implements PullRequestService {
 
       const pr = prResult.rows[0];
       if (pr.author_id !== input.authorId) {
-        throw new ServiceError('NOT_AUTHOR', 'Only the author can decide on a pull request.', 403);
+        throw new ServiceError(
+          'NOT_AUTHOR',
+          'Only the author can decide on a pull request.',
+          403,
+        );
       }
 
       if (input.decision === 'reject' && !input.rejectionReason) {
-        throw new ServiceError('REJECTION_REASON_REQUIRED', 'Rejection reason is required.');
+        throw new ServiceError(
+          'REJECTION_REASON_REQUIRED',
+          'Rejection reason is required.',
+        );
       }
 
       let status: string;
       if (input.decision === 'merge') {
         status = 'merged';
-        await db.query('UPDATE drafts SET current_version = $1, updated_at = NOW() WHERE id = $2', [
-          pr.proposed_version,
-          pr.draft_id
-        ]);
+        await db.query(
+          'UPDATE drafts SET current_version = $1, updated_at = NOW() WHERE id = $2',
+          [pr.proposed_version, pr.draft_id],
+        );
         await db.query(
           'UPDATE agents SET merged_prs = merged_prs + 1, total_prs = total_prs + 1 WHERE id = $1',
-          [pr.maker_id]
+          [pr.maker_id],
         );
         await this.applyTierPromotion(db, pr.maker_id);
       } else if (input.decision === 'request_changes') {
@@ -260,7 +303,7 @@ export class PullRequestServiceImpl implements PullRequestService {
         status = 'rejected';
         await db.query(
           'UPDATE agents SET rejected_prs = rejected_prs + 1, total_prs = total_prs + 1 WHERE id = $1',
-          [pr.maker_id]
+          [pr.maker_id],
         );
       }
 
@@ -268,7 +311,7 @@ export class PullRequestServiceImpl implements PullRequestService {
 
       const updated = await db.query(
         'UPDATE pull_requests SET status = $1, author_feedback = $2, decided_at = NOW() WHERE id = $3 RETURNING *',
-        [status, feedback, input.pullRequestId]
+        [status, feedback, input.pullRequestId],
       );
       if (status === 'merged' || status === 'rejected') {
         const resolvedOutcome = status === 'merged' ? 'merge' : 'reject';
@@ -279,7 +322,7 @@ export class PullRequestServiceImpl implements PullRequestService {
                resolved_at = NOW()
            WHERE pull_request_id = $2
              AND resolved_at IS NULL`,
-          [resolvedOutcome, input.pullRequestId]
+          [resolvedOutcome, input.pullRequestId],
         );
       }
 
@@ -290,10 +333,13 @@ export class PullRequestServiceImpl implements PullRequestService {
   async createForkFromRejected(
     pullRequestId: string,
     makerId: string,
-    client?: DbClient
+    client?: DbClient,
   ): Promise<ForkResult> {
     return this.withTransaction(client, async (db) => {
-      const prResult = await db.query('SELECT * FROM pull_requests WHERE id = $1', [pullRequestId]);
+      const prResult = await db.query(
+        'SELECT * FROM pull_requests WHERE id = $1',
+        [pullRequestId],
+      );
 
       if (prResult.rows.length === 0) {
         throw new ServiceError('PR_NOT_FOUND', 'Pull request not found.', 404);
@@ -301,50 +347,66 @@ export class PullRequestServiceImpl implements PullRequestService {
 
       const pr = prResult.rows[0];
       if (pr.status !== 'rejected') {
-        throw new ServiceError('PR_NOT_REJECTED', 'Pull request is not rejected.');
+        throw new ServiceError(
+          'PR_NOT_REJECTED',
+          'Pull request is not rejected.',
+        );
       }
 
       if (pr.maker_id !== makerId) {
-        throw new ServiceError('NOT_MAKER', 'Only the maker can fork this pull request.', 403);
+        throw new ServiceError(
+          'NOT_MAKER',
+          'Only the maker can fork this pull request.',
+          403,
+        );
       }
 
       const versionResult = await db.query(
         'SELECT image_url, thumbnail_url FROM versions WHERE pull_request_id = $1',
-        [pullRequestId]
+        [pullRequestId],
       );
 
       if (versionResult.rows.length === 0) {
-        throw new ServiceError('PR_VERSION_NOT_FOUND', 'Proposed version not found.', 404);
+        throw new ServiceError(
+          'PR_VERSION_NOT_FOUND',
+          'Proposed version not found.',
+          404,
+        );
       }
 
       const version = versionResult.rows[0];
 
       const forkDraft = await db.query(
         'INSERT INTO drafts (author_id, metadata) VALUES ($1, $2) RETURNING id',
-        [makerId, {}]
+        [makerId, {}],
       );
       const forkedDraftId = forkDraft.rows[0].id;
 
       const forkVersion = await db.query(
         'INSERT INTO versions (draft_id, version_number, image_url, thumbnail_url, created_by) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-        [forkedDraftId, 1, version.image_url, version.thumbnail_url, makerId]
+        [forkedDraftId, 1, version.image_url, version.thumbnail_url, makerId],
       );
 
       await db.query(
         'INSERT INTO forks (original_draft_id, forked_draft_id, rejected_pr_id) VALUES ($1, $2, $3)',
-        [pr.draft_id, forkedDraftId, pullRequestId]
+        [pr.draft_id, forkedDraftId, pullRequestId],
       );
 
       return {
         forkedDraftId,
-        forkedVersionId: forkVersion.rows[0].id
+        forkedVersionId: forkVersion.rows[0].id,
       };
     });
   }
 
-  async getDraftStatus(draftId: string, client?: DbClient): Promise<'draft' | 'release'> {
+  async getDraftStatus(
+    draftId: string,
+    client?: DbClient,
+  ): Promise<'draft' | 'release'> {
     const db = getDb(this.pool, client);
-    const result = await db.query('SELECT status FROM drafts WHERE id = $1', [draftId]);
+    const result = await db.query('SELECT status FROM drafts WHERE id = $1', [
+      draftId,
+    ]);
 
     if (result.rows.length === 0) {
       throw new ServiceError('DRAFT_NOT_FOUND', 'Draft not found.', 404);
@@ -353,7 +415,10 @@ export class PullRequestServiceImpl implements PullRequestService {
     return result.rows[0].status;
   }
 
-  private async withTransaction<T>(client: DbClient | undefined, fn: (db: DbClient) => Promise<T>): Promise<T> {
+  private async withTransaction<T>(
+    client: DbClient | undefined,
+    fn: (db: DbClient) => Promise<T>,
+  ): Promise<T> {
     if (client) {
       return fn(client);
     }

@@ -1,8 +1,8 @@
 jest.mock('../config/env', () => ({
   env: {
     NODE_ENV: 'test',
-    CSRF_TOKEN: 'test-csrf'
-  }
+    CSRF_TOKEN: 'test-csrf',
+  },
 }));
 
 import express from 'express';

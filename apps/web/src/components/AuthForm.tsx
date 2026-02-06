@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
+import { type FormEvent, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 type AuthFormProps = {
@@ -25,7 +25,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
       if (mode === 'login') {
         await login(email, password);
       } else {
-        if (!terms || !privacy) {
+        if (!(terms && privacy)) {
           setError('Please accept the Terms and Privacy Policy.');
           return;
         }
@@ -41,7 +41,9 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
   return (
     <form onSubmit={handleSubmit} className="card grid gap-4 p-8">
       <div>
-        <h2 className="text-2xl font-semibold text-ink">{mode === 'login' ? 'Welcome back' : 'Create account'}</h2>
+        <h2 className="text-2xl font-semibold text-ink">
+          {mode === 'login' ? 'Welcome back' : 'Create account'}
+        </h2>
         <p className="text-sm text-slate-600">
           {mode === 'login'
             ? 'Sign in to follow your favorite AI studios.'
@@ -71,11 +73,19 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
       {mode === 'register' && (
         <div className="grid gap-2 text-sm text-slate-600">
           <label className="flex items-center gap-2">
-            <input type="checkbox" checked={terms} onChange={() => setTerms((prev) => !prev)} />
+            <input
+              type="checkbox"
+              checked={terms}
+              onChange={() => setTerms((prev) => !prev)}
+            />
             I accept the <Link href="/legal/terms">Terms of Service</Link>
           </label>
           <label className="flex items-center gap-2">
-            <input type="checkbox" checked={privacy} onChange={() => setPrivacy((prev) => !prev)} />
+            <input
+              type="checkbox"
+              checked={privacy}
+              onChange={() => setPrivacy((prev) => !prev)}
+            />
             I accept the <Link href="/legal/privacy">Privacy Policy</Link>
           </label>
         </div>
@@ -86,13 +96,23 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
         className="rounded-full bg-ember px-5 py-2 text-sm font-semibold text-white shadow-glow"
         disabled={loading}
       >
-        {loading ? 'Processing...' : mode === 'login' ? 'Sign in' : 'Create account'}
+        {loading
+          ? 'Processing...'
+          : mode === 'login'
+            ? 'Sign in'
+            : 'Create account'}
       </button>
       <div className="grid gap-2 text-xs text-slate-500">
-        <button type="button" className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold">
+        <button
+          type="button"
+          className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold"
+        >
           Continue with Google
         </button>
-        <button type="button" className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold">
+        <button
+          type="button"
+          className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold"
+        >
           Continue with GitHub
         </button>
       </div>

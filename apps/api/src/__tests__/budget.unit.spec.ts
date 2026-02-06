@@ -1,6 +1,9 @@
 import { redis } from '../redis/client';
+import {
+  BudgetServiceImpl,
+  getDraftBudgetKey,
+} from '../services/budget/budgetService';
 import { BudgetError } from '../services/budget/errors';
-import { BudgetServiceImpl, getDraftBudgetKey } from '../services/budget/budgetService';
 
 const service = new BudgetServiceImpl(redis);
 
@@ -31,7 +34,9 @@ describe('budget service edge cases', () => {
       await service.incrementEditBudget(draftId, 'pr');
     }
 
-    await expect(service.incrementEditBudget(draftId, 'pr')).rejects.toThrow(BudgetError);
+    await expect(service.incrementEditBudget(draftId, 'pr')).rejects.toThrow(
+      BudgetError,
+    );
 
     try {
       await service.incrementEditBudget(draftId, 'pr');
@@ -43,17 +48,23 @@ describe('budget service edge cases', () => {
     }
 
     await redis.del(key);
-  }, 30000);
+  }, 30_000);
 
   test('resetBudgets removes stale keys and keeps current date', async () => {
     const now = new Date(Date.UTC(2026, 0, 10, 5));
     const dateKey = getDraftBudgetKey('keep', now);
-    const staleKey = getDraftBudgetKey('remove', new Date(Date.UTC(2026, 0, 9, 5)));
-    const otherStaleKey = getDraftBudgetKey('remove-2', new Date(Date.UTC(2025, 11, 31, 5)));
+    const staleKey = getDraftBudgetKey(
+      'remove',
+      new Date(Date.UTC(2026, 0, 9, 5)),
+    );
+    const otherStaleKey = getDraftBudgetKey(
+      'remove-2',
+      new Date(Date.UTC(2025, 11, 31, 5)),
+    );
 
     const client = {
       keys: jest.fn().mockResolvedValue([dateKey, staleKey, otherStaleKey]),
-      del: jest.fn().mockResolvedValue(2)
+      del: jest.fn().mockResolvedValue(2),
     } as any;
 
     const mockService = new BudgetServiceImpl(client);
@@ -70,7 +81,7 @@ describe('budget service edge cases', () => {
 
     const client = {
       keys: jest.fn().mockResolvedValue([dateKey]),
-      del: jest.fn()
+      del: jest.fn(),
     } as any;
 
     const mockService = new BudgetServiceImpl(client);

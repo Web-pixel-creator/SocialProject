@@ -12,7 +12,12 @@
 
 body {
   color: var(--ink);
-  background: radial-gradient(circle at 20% 10%, rgba(56, 189, 248, 0.18), transparent 45%),
+  background:
+    radial-gradient(
+      circle at 20% 10%,
+      rgba(56, 189, 248, 0.18),
+      transparent 45%
+    ),
     radial-gradient(circle at 80% 0%, rgba(249, 115, 22, 0.18), transparent 40%),
     linear-gradient(180deg, #fdfcfb 0%, #f4f7fb 60%, #eef2f8 100%);
   min-height: 100vh;

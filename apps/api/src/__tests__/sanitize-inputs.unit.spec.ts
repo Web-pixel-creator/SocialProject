@@ -16,16 +16,18 @@ describe('sanitizeInputs middleware', () => {
         name: '<img>',
         quote: `Tom & "Jerry" 'Friends'`,
         nested: { safe: '<b>ok</b>', __proto__: { polluted: true } },
-        items: ['<tag>']
+        items: ['<tag>'],
       });
 
     expect(response.status).toBe(200);
     expect(response.body.params.id).toBe('&lt;id&gt;');
     expect(response.body.query.q).toBe('&lt;script&gt;');
     expect(response.body.body.name).toBe('&lt;img&gt;');
-    expect(response.body.body.quote).toBe('Tom &amp; &quot;Jerry&quot; &#39;Friends&#39;');
+    expect(response.body.body.quote).toBe(
+      'Tom &amp; &quot;Jerry&quot; &#39;Friends&#39;',
+    );
     expect(response.body.body.nested.safe).toBe('&lt;b&gt;ok&lt;/b&gt;');
-    expect(Object.prototype.hasOwnProperty.call(response.body.body.nested, '__proto__')).toBe(false);
+    expect(Object.hasOwn(response.body.body.nested, '__proto__')).toBe(false);
     expect(response.body.body.items[0]).toBe('&lt;tag&gt;');
   });
 });

@@ -1,7 +1,7 @@
 ﻿'use client';
 
-import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { apiClient } from '../../../lib/api';
 
 type StudioProfile = {
@@ -30,7 +30,10 @@ export default function StudioProfilePage() {
   const resolvedId = Array.isArray(rawId) ? rawId[0] : rawId;
   const studioId = resolvedId && resolvedId !== 'undefined' ? resolvedId : '';
   const [studio, setStudio] = useState<StudioProfile | null>(null);
-  const [metrics, setMetrics] = useState<{ impact: number; signal: number } | null>(null);
+  const [metrics, setMetrics] = useState<{
+    impact: number;
+    signal: number;
+  } | null>(null);
   const [ledger, setLedger] = useState<ImpactLedgerEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +52,9 @@ export default function StudioProfilePage() {
         const [studioRes, metricsRes, ledgerRes] = await Promise.all([
           apiClient.get(`/studios/${studioId}`),
           apiClient.get(`/studios/${studioId}/metrics`),
-          apiClient.get(`/studios/${studioId}/ledger`, { params: { limit: 6 } })
+          apiClient.get(`/studios/${studioId}/ledger`, {
+            params: { limit: 6 },
+          }),
         ]);
         if (!cancelled) {
           setStudio(studioRes.data);
@@ -72,7 +77,10 @@ export default function StudioProfilePage() {
     };
   }, [studioId]);
 
-  const studioName = studio?.studioName ?? studio?.studio_name ?? (studioId ? `Studio ${studioId}` : 'Studio');
+  const studioName =
+    studio?.studioName ??
+    studio?.studio_name ??
+    (studioId ? `Studio ${studioId}` : 'Studio');
   const impact = metrics?.impact ?? studio?.impact ?? 0;
   const signal = metrics?.signal ?? studio?.signal ?? 0;
 
@@ -84,9 +92,15 @@ export default function StudioProfilePage() {
         <p className="text-sm text-slate-600">
           Impact {impact.toFixed(1)} · Signal {signal.toFixed(1)}
         </p>
-        {studio?.personality && <p className="mt-2 text-sm text-slate-500">{studio.personality}</p>}
+        {studio?.personality && (
+          <p className="mt-2 text-sm text-slate-500">{studio.personality}</p>
+        )}
       </div>
-      {error && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">{error}</div>}
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+          {error}
+        </div>
+      )}
       {loading ? (
         <div className="card p-6 text-sm text-slate-500">Loading studio…</div>
       ) : (
@@ -102,7 +116,9 @@ export default function StudioProfilePage() {
           <div className="card p-6">
             <h3 className="text-sm font-semibold text-ink">Impact ledger</h3>
             {ledger.length === 0 ? (
-              <p className="mt-4 text-sm text-slate-500">No recent contributions yet.</p>
+              <p className="mt-4 text-sm text-slate-500">
+                No recent contributions yet.
+              </p>
             ) : (
               <ul className="mt-4 grid gap-3 text-sm text-slate-600">
                 {ledger.map((entry) => (
@@ -110,9 +126,11 @@ export default function StudioProfilePage() {
                     <span className="font-semibold text-slate-800">
                       {entry.kind === 'pr_merged' ? 'PR merged' : 'Fix request'}
                     </span>
-                    {entry.severity ? ` (${entry.severity})` : ''} · {entry.draftTitle}
+                    {entry.severity ? ` (${entry.severity})` : ''} ·{' '}
+                    {entry.draftTitle}
                     <div className="text-xs text-slate-500">
-                      Impact +{entry.impactDelta} · {new Date(entry.occurredAt).toLocaleString()}
+                      Impact +{entry.impactDelta} ·{' '}
+                      {new Date(entry.occurredAt).toLocaleString()}
                     </div>
                   </li>
                 ))}
@@ -120,7 +138,9 @@ export default function StudioProfilePage() {
             )}
           </div>
           <div className="card p-6">
-            <h3 className="text-sm font-semibold text-ink">Recent Contributions</h3>
+            <h3 className="text-sm font-semibold text-ink">
+              Recent Contributions
+            </h3>
             <ul className="mt-4 grid gap-3 text-sm text-slate-600">
               <li>PR #124 · Hero refresh</li>
               <li>PR #120 · Typography system</li>

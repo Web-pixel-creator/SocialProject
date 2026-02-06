@@ -1,16 +1,28 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
 import { apiClient } from '../lib/api';
 import { AutopsyCard } from './AutopsyCard';
 import { BeforeAfterCard } from './BeforeAfterCard';
+import { ChangeCard } from './ChangeCard';
 import { DraftCard } from './DraftCard';
 import { GuildCard } from './GuildCard';
 import { StudioCard } from './StudioCard';
-import { ChangeCard } from './ChangeCard';
 
-const TABS = ['All', 'Progress', 'Changes', 'For You', 'Hot Now', 'Live Drafts', 'GlowUps', 'Guilds', 'Studios', 'Battles', 'Archive'];
+const TABS = [
+  'All',
+  'Progress',
+  'Changes',
+  'For You',
+  'Hot Now',
+  'Live Drafts',
+  'GlowUps',
+  'Guilds',
+  'Studios',
+  'Battles',
+  'Archive',
+];
 const PAGE_SIZE = 6;
 const DEFAULT_SORT = 'recent';
 const DEFAULT_STATUS = 'all';
@@ -25,28 +37,29 @@ type FeedIntent = 'all' | 'needs_help' | 'seeking_pr' | 'ready_for_review';
 const SORT_OPTIONS: Array<{ value: FeedSort; label: string }> = [
   { value: 'recent', label: 'Recent' },
   { value: 'impact', label: 'Impact' },
-  { value: 'glowup', label: 'GlowUp' }
+  { value: 'glowup', label: 'GlowUp' },
 ];
 
 const STATUS_OPTIONS: Array<{ value: FeedStatus; label: string }> = [
   { value: 'all', label: 'All' },
   { value: 'draft', label: 'Drafts' },
   { value: 'release', label: 'Releases' },
-  { value: 'pr', label: 'Pending PRs' }
+  { value: 'pr', label: 'Pending PRs' },
 ];
 
-const RANGE_OPTIONS: Array<{ value: FeedRange; label: string; days?: number }> = [
-  { value: '7d', label: 'Last 7 days', days: 7 },
-  { value: '30d', label: 'Last 30 days', days: 30 },
-  { value: '90d', label: 'Last 90 days', days: 90 },
-  { value: 'all', label: 'All time' }
-];
+const RANGE_OPTIONS: Array<{ value: FeedRange; label: string; days?: number }> =
+  [
+    { value: '7d', label: 'Last 7 days', days: 7 },
+    { value: '30d', label: 'Last 30 days', days: 30 },
+    { value: '90d', label: 'Last 90 days', days: 90 },
+    { value: 'all', label: 'All time' },
+  ];
 
 const INTENT_OPTIONS: Array<{ value: FeedIntent; label: string }> = [
   { value: 'all', label: 'All intents' },
   { value: 'needs_help', label: 'Needs help' },
   { value: 'seeking_pr', label: 'Seeking PR' },
-  { value: 'ready_for_review', label: 'Ready for review' }
+  { value: 'ready_for_review', label: 'Ready for review' },
 ];
 
 const sendTelemetry = async (payload: Record<string, any>) => {
@@ -64,36 +77,36 @@ const demoDrafts = [
     glowUpScore: 18.2,
     live: true,
     beforeImageUrl: 'https://placehold.co/300x200?text=Before',
-    afterImageUrl: 'https://placehold.co/300x200?text=After'
+    afterImageUrl: 'https://placehold.co/300x200?text=After',
   },
   {
     id: 'draft-2',
     title: 'Minimalist Landing',
     glowUpScore: 11.4,
     beforeImageUrl: 'https://placehold.co/300x200?text=Before',
-    afterImageUrl: 'https://placehold.co/300x200?text=After'
+    afterImageUrl: 'https://placehold.co/300x200?text=After',
   },
   {
     id: 'draft-3',
     title: 'Editorial Cover',
     glowUpScore: 7.9,
     beforeImageUrl: 'https://placehold.co/300x200?text=Before',
-    afterImageUrl: 'https://placehold.co/300x200?text=After'
+    afterImageUrl: 'https://placehold.co/300x200?text=After',
   },
   {
     id: 'draft-4',
     title: 'Neo Brutal UI',
     glowUpScore: 6.5,
     beforeImageUrl: 'https://placehold.co/300x200?text=Before',
-    afterImageUrl: 'https://placehold.co/300x200?text=After'
+    afterImageUrl: 'https://placehold.co/300x200?text=After',
   },
   {
     id: 'draft-5',
     title: 'Studio Typeface',
     glowUpScore: 5.2,
     beforeImageUrl: 'https://placehold.co/300x200?text=Before',
-    afterImageUrl: 'https://placehold.co/300x200?text=After'
-  }
+    afterImageUrl: 'https://placehold.co/300x200?text=After',
+  },
 ];
 
 const demoHotNow = [
@@ -102,22 +115,22 @@ const demoHotNow = [
     title: 'Synthwave Poster',
     glowUpScore: 18.2,
     hotScore: 2.6,
-    reasonLabel: '3 PR pending, 2 open fix'
+    reasonLabel: '3 PR pending, 2 open fix',
   },
   {
     id: 'draft-2',
     title: 'Minimalist Landing',
     glowUpScore: 11.4,
     hotScore: 2.1,
-    reasonLabel: '1 merge in 24h, 2 decisions in 24h'
+    reasonLabel: '1 merge in 24h, 2 decisions in 24h',
   },
   {
     id: 'draft-3',
     title: 'Editorial Cover',
     glowUpScore: 7.9,
     hotScore: 1.5,
-    reasonLabel: '1 PR pending'
-  }
+    reasonLabel: '1 PR pending',
+  },
 ];
 
 const demoProgress = [
@@ -128,17 +141,22 @@ const demoProgress = [
     glowUpScore: 18.2,
     prCount: 3,
     lastActivity: new Date().toISOString(),
-    authorStudio: 'Studio Nova'
-  }
+    authorStudio: 'Studio Nova',
+  },
 ];
 
 const demoGuilds = [
-  { id: 'guild-1', name: 'Guild Arc', themeOfWeek: 'Futuristic UI', agentCount: 12 }
+  {
+    id: 'guild-1',
+    name: 'Guild Arc',
+    themeOfWeek: 'Futuristic UI',
+    agentCount: 12,
+  },
 ];
 
 const demoStudios = [
   { id: 'studio-1', studioName: 'Studio Nova', impact: 22, signal: 74 },
-  { id: 'studio-2', studioName: 'Studio Flux', impact: 18, signal: 68 }
+  { id: 'studio-2', studioName: 'Studio Flux', impact: 18, signal: 68 },
 ];
 
 const demoChanges = [
@@ -150,7 +168,7 @@ const demoChanges = [
     description: 'Hero composition refresh',
     severity: 'major',
     occurredAt: new Date().toISOString(),
-    glowUpScore: 18.2
+    glowUpScore: 18.2,
   },
   {
     id: 'change-2',
@@ -160,12 +178,16 @@ const demoChanges = [
     description: 'Improve visual hierarchy in CTA block',
     severity: null,
     occurredAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    glowUpScore: 11.4
-  }
+    glowUpScore: 11.4,
+  },
 ];
 
 const demoAutopsies = [
-  { id: 'autopsy-1', summary: 'Common issues: low fix-request activity.', publishedAt: new Date().toISOString() }
+  {
+    id: 'autopsy-1',
+    summary: 'Common issues: low fix-request activity.',
+    publishedAt: new Date().toISOString(),
+  },
 ];
 
 type DraftFeedItem = {
@@ -287,7 +309,7 @@ const mapDraftItems = (data: any[], live: boolean): DraftFeedItem[] =>
       live,
       updatedAt: item.updatedAt ?? item.updated_at,
       beforeImageUrl: item.beforeImageUrl ?? item.before_image_url,
-      afterImageUrl: item.afterImageUrl ?? item.after_image_url
+      afterImageUrl: item.afterImageUrl ?? item.after_image_url,
     }));
 
 const mapArchiveItems = (data: any[]): FeedItem[] =>
@@ -297,7 +319,11 @@ const mapArchiveItems = (data: any[]): FeedItem[] =>
         kind: 'autopsy',
         id: item.id,
         summary: item.summary ?? 'Autopsy report',
-        publishedAt: item.publishedAt ?? item.published_at ?? item.updatedAt ?? item.updated_at
+        publishedAt:
+          item.publishedAt ??
+          item.published_at ??
+          item.updatedAt ??
+          item.updated_at,
       };
     }
     return {
@@ -305,7 +331,7 @@ const mapArchiveItems = (data: any[]): FeedItem[] =>
       id: item.id,
       title: `${item.type === 'release' ? 'Release' : 'Draft'} ${String(item.id).slice(0, 8)}`,
       glowUpScore: Number(item.glowUpScore ?? item.glow_up_score ?? 0),
-      updatedAt: item.updatedAt ?? item.updated_at
+      updatedAt: item.updatedAt ?? item.updated_at,
     };
   });
 
@@ -315,7 +341,7 @@ const mapStudios = (data: any[]): StudioFeedItem[] =>
     id: item.id,
     studioName: item.studioName ?? item.studio_name ?? 'Studio',
     impact: Number(item.impact ?? 0),
-    signal: Number(item.signal ?? 0)
+    signal: Number(item.signal ?? 0),
   }));
 
 const mapChanges = (data: any[]): ChangeFeedItem[] =>
@@ -329,7 +355,7 @@ const mapChanges = (data: any[]): ChangeFeedItem[] =>
     severity: item.severity ?? null,
     occurredAt: item.occurredAt ?? item.occurred_at,
     glowUpScore: Number(item.glowUpScore ?? item.glow_up_score ?? 0),
-    impactDelta: Number(item.impactDelta ?? item.impact_delta ?? 0)
+    impactDelta: Number(item.impactDelta ?? item.impact_delta ?? 0),
   }));
 
 const mapProgress = (data: any[]): ProgressFeedItem[] =>
@@ -341,7 +367,7 @@ const mapProgress = (data: any[]): ProgressFeedItem[] =>
     glowUpScore: Number(item.glowUpScore ?? item.glow_up_score ?? 0),
     prCount: Number(item.prCount ?? item.pr_count ?? 0),
     lastActivity: item.lastActivity ?? item.last_activity,
-    authorStudio: item.authorStudio ?? item.studio_name ?? 'Studio'
+    authorStudio: item.authorStudio ?? item.studio_name ?? 'Studio',
   }));
 
 const mapHotNow = (data: any[]): HotNowFeedItem[] =>
@@ -352,9 +378,13 @@ const mapHotNow = (data: any[]): HotNowFeedItem[] =>
     glowUpScore: Number(item.glowUpScore ?? item.glow_up_score ?? 0),
     hotScore: Number(item.hotScore ?? item.hot_score ?? 0),
     reasonLabel: item.reasonLabel ?? item.reason_label ?? 'Low activity',
-    updatedAt: item.lastActivity ?? item.last_activity ?? item.updatedAt ?? item.updated_at,
+    updatedAt:
+      item.lastActivity ??
+      item.last_activity ??
+      item.updatedAt ??
+      item.updated_at,
     beforeImageUrl: item.beforeImageUrl ?? item.before_image_url,
-    afterImageUrl: item.afterImageUrl ?? item.after_image_url
+    afterImageUrl: item.afterImageUrl ?? item.after_image_url,
   }));
 
 const mapGuilds = (data: any[]): GuildFeedItem[] =>
@@ -363,7 +393,7 @@ const mapGuilds = (data: any[]): GuildFeedItem[] =>
     id: item.id,
     name: item.name ?? 'Guild',
     themeOfWeek: item.themeOfWeek ?? item.theme_of_week ?? 'Theme of the week',
-    agentCount: Number(item.agentCount ?? item.agent_count ?? 0)
+    agentCount: Number(item.agentCount ?? item.agent_count ?? 0),
   }));
 
 const fallbackItemsFor = (tab: string): FeedItem[] => {
@@ -377,10 +407,23 @@ const fallbackItemsFor = (tab: string): FeedItem[] => {
     return demoGuilds.map((item) => ({ ...item, kind: 'guild' as const }));
   }
   if (tab === 'Studios') {
-    return demoStudios.map((studio) => ({ ...studio, kind: 'studio' as const }));
+    return demoStudios.map((studio) => ({
+      ...studio,
+      kind: 'studio' as const,
+    }));
   }
   if (tab === 'Changes') {
-    return demoChanges.map((item) => ({ ...item, kind: 'change' as const }));
+    return demoChanges.map((item) => ({
+      kind: 'change' as const,
+      id: item.id,
+      changeType: item.kind as 'pr_merged' | 'fix_request',
+      draftId: item.draftId,
+      draftTitle: item.draftTitle,
+      description: item.description,
+      severity: item.severity as 'major' | 'minor' | null,
+      occurredAt: item.occurredAt,
+      glowUpScore: item.glowUpScore,
+    }));
   }
   if (tab === 'Archive') {
     return demoAutopsies.map((item) => ({ ...item, kind: 'autopsy' as const }));
@@ -393,8 +436,11 @@ export const FeedTabs = () => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const readParam = (key: string, fallback: string) => searchParams.get(key) ?? fallback;
-  const initialTab = TABS.includes(readParam('tab', TABS[0])) ? readParam('tab', TABS[0]) : TABS[0];
+  const readParam = (key: string, fallback: string) =>
+    searchParams.get(key) ?? fallback;
+  const initialTab = TABS.includes(readParam('tab', TABS[0]))
+    ? readParam('tab', TABS[0])
+    : TABS[0];
   const initialSort = readParam('sort', DEFAULT_SORT) as FeedSort;
   const initialStatus = readParam('status', DEFAULT_STATUS) as FeedStatus;
   const initialRange = readParam('range', DEFAULT_RANGE) as FeedRange;
@@ -412,7 +458,9 @@ export const FeedTabs = () => {
   const [fallbackUsed, setFallbackUsed] = useState(false);
 
   useEffect(() => {
-    const nextTab = TABS.includes(readParam('tab', TABS[0])) ? readParam('tab', TABS[0]) : TABS[0];
+    const nextTab = TABS.includes(readParam('tab', TABS[0]))
+      ? readParam('tab', TABS[0])
+      : TABS[0];
     const nextSort = readParam('sort', DEFAULT_SORT) as FeedSort;
     const nextStatus = readParam('status', DEFAULT_STATUS) as FeedStatus;
     const nextRange = readParam('range', DEFAULT_RANGE) as FeedRange;
@@ -425,7 +473,13 @@ export const FeedTabs = () => {
   }, [searchParams]);
 
   const updateQuery = (
-    updates: Partial<{ tab: string; sort: FeedSort; status: FeedStatus; range: FeedRange; intent: FeedIntent }>
+    updates: Partial<{
+      tab: string;
+      sort: FeedSort;
+      status: FeedStatus;
+      range: FeedRange;
+      intent: FeedIntent;
+    }>,
   ) => {
     const params = new URLSearchParams(searchParams.toString());
     const next = {
@@ -433,7 +487,7 @@ export const FeedTabs = () => {
       sort: updates.sort ?? sort,
       status: updates.status ?? status,
       range: updates.range ?? range,
-      intent: updates.intent ?? intent
+      intent: updates.intent ?? intent,
     };
 
     if (next.tab !== TABS[0]) {
@@ -489,7 +543,10 @@ export const FeedTabs = () => {
   useEffect(() => {
     const onScroll = () => {
       if (loading || !hasMore || fallbackUsed) return;
-      if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 200) {
+      if (
+        window.innerHeight + window.scrollY >=
+        document.body.offsetHeight - 200
+      ) {
         setOffset((prev) => prev + PAGE_SIZE);
       }
     };
@@ -527,15 +584,17 @@ export const FeedTabs = () => {
               ? mapChanges(response.data)
               : active === 'Hot Now'
                 ? mapHotNow(response.data)
-              : active === 'Guilds'
-                ? mapGuilds(response.data)
-              : active === 'Studios'
-                ? mapStudios(response.data)
-                : active === 'Archive'
-                  ? mapArchiveItems(response.data)
-                  : mapDraftItems(response.data, active === 'Live Drafts');
+                : active === 'Guilds'
+                  ? mapGuilds(response.data)
+                  : active === 'Studios'
+                    ? mapStudios(response.data)
+                    : active === 'Archive'
+                      ? mapArchiveItems(response.data)
+                      : mapDraftItems(response.data, active === 'Live Drafts');
         if (!cancelled) {
-          setItems((prev) => (offset === 0 ? nextItems : [...prev, ...nextItems]));
+          setItems((prev) =>
+            offset === 0 ? nextItems : [...prev, ...nextItems],
+          );
           setHasMore(nextItems.length >= PAGE_SIZE);
           if (active === 'All' && offset === 0) {
             const timingMs = Math.round(performance.now() - startedAt);
@@ -545,7 +604,7 @@ export const FeedTabs = () => {
               status: status === 'all' ? undefined : status,
               intent: intent === 'all' ? undefined : intent,
               range,
-              timingMs
+              timingMs,
             });
           }
         }
@@ -555,7 +614,9 @@ export const FeedTabs = () => {
             const response = await apiClient.get('/feeds/glowups', { params });
             const nextItems = mapDraftItems(response.data, false);
             if (!cancelled) {
-              setItems((prev) => (offset === 0 ? nextItems : [...prev, ...nextItems]));
+              setItems((prev) =>
+                offset === 0 ? nextItems : [...prev, ...nextItems],
+              );
               setHasMore(nextItems.length >= PAGE_SIZE);
               setFallbackUsed(true);
             }
@@ -587,58 +648,73 @@ export const FeedTabs = () => {
       <div className="flex flex-wrap items-center gap-3">
         {active === 'All' && (
           <div className="flex flex-wrap gap-2">
-            {INTENT_OPTIONS.filter((option) => option.value !== 'all').map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => {
-                  const next = option.value as FeedIntent;
-                  setIntent(next);
-                  updateQuery({ tab: 'All', intent: next });
-                  sendTelemetry({ eventType: 'feed_intent_preset', intent: next });
-                }}
-                aria-pressed={intent === option.value}
-                className={`rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ${
-                  intent === option.value
-                    ? 'bg-amber-500/20 text-amber-800'
-                    : 'border border-slate-200 bg-white/80 text-slate-600'
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
+            {INTENT_OPTIONS.filter((option) => option.value !== 'all').map(
+              (option) => (
+                <button
+                  aria-pressed={intent === option.value}
+                  className={`rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide ${
+                    intent === option.value
+                      ? 'bg-amber-500/20 text-amber-800'
+                      : 'border border-slate-200 bg-white/80 text-slate-600'
+                  }`}
+                  key={option.value}
+                  onClick={() => {
+                    const next = option.value as FeedIntent;
+                    setIntent(next);
+                    updateQuery({ tab: 'All', intent: next });
+                    sendTelemetry({
+                      eventType: 'feed_intent_preset',
+                      intent: next,
+                    });
+                  }}
+                  type="button"
+                >
+                  {option.label}
+                </button>
+              ),
+            )}
           </div>
         )}
         {TABS.map((tab) => (
           <button
+            aria-pressed={active === tab}
+            className={`rounded-full px-4 py-2 font-semibold text-xs uppercase tracking-wide ${
+              active === tab
+                ? 'bg-ink text-white'
+                : 'border border-slate-200 bg-white/80 text-slate-700'
+            }`}
             key={tab}
-            type="button"
             onClick={() => {
               setActive(tab);
               updateQuery({ tab });
             }}
-            aria-pressed={active === tab}
-            className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wide ${
-              active === tab ? 'bg-ink text-white' : 'border border-slate-200 bg-white/80 text-slate-700'
-            }`}
+            type="button"
           >
             {tab}
           </button>
         ))}
       </div>
       {active === 'All' ? (
-        <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white/70 p-4 text-xs text-slate-600 md:grid-cols-4">
+        <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white/70 p-4 text-slate-600 text-xs md:grid-cols-4">
           <label className="grid gap-1">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Sort</span>
+            <span className="font-semibold text-[11px] text-slate-500 uppercase tracking-wide">
+              Sort
+            </span>
             <select
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800"
-              value={sort}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-800 text-sm"
               onChange={(event) => {
                 const next = event.target.value as FeedSort;
                 setSort(next);
                 updateQuery({ sort: next });
-                sendTelemetry({ eventType: 'feed_filter_change', sort: next, status, intent, range });
+                sendTelemetry({
+                  eventType: 'feed_filter_change',
+                  sort: next,
+                  status,
+                  intent,
+                  range,
+                });
               }}
+              value={sort}
             >
               {SORT_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -648,16 +724,24 @@ export const FeedTabs = () => {
             </select>
           </label>
           <label className="grid gap-1">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Status</span>
+            <span className="font-semibold text-[11px] text-slate-500 uppercase tracking-wide">
+              Status
+            </span>
             <select
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800"
-              value={status}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-800 text-sm"
               onChange={(event) => {
                 const next = event.target.value as FeedStatus;
                 setStatus(next);
                 updateQuery({ status: next });
-                sendTelemetry({ eventType: 'feed_filter_change', sort, status: next, intent, range });
+                sendTelemetry({
+                  eventType: 'feed_filter_change',
+                  sort,
+                  status: next,
+                  intent,
+                  range,
+                });
               }}
+              value={status}
             >
               {STATUS_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -667,16 +751,24 @@ export const FeedTabs = () => {
             </select>
           </label>
           <label className="grid gap-1">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Time range</span>
+            <span className="font-semibold text-[11px] text-slate-500 uppercase tracking-wide">
+              Time range
+            </span>
             <select
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800"
-              value={range}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-800 text-sm"
               onChange={(event) => {
                 const next = event.target.value as FeedRange;
                 setRange(next);
                 updateQuery({ range: next });
-                sendTelemetry({ eventType: 'feed_filter_change', sort, status, intent, range: next });
+                sendTelemetry({
+                  eventType: 'feed_filter_change',
+                  sort,
+                  status,
+                  intent,
+                  range: next,
+                });
               }}
+              value={range}
             >
               {RANGE_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -686,16 +778,24 @@ export const FeedTabs = () => {
             </select>
           </label>
           <label className="grid gap-1">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Intent</span>
+            <span className="font-semibold text-[11px] text-slate-500 uppercase tracking-wide">
+              Intent
+            </span>
             <select
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800"
-              value={intent}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-800 text-sm"
               onChange={(event) => {
                 const next = event.target.value as FeedIntent;
                 setIntent(next);
                 updateQuery({ intent: next });
-                sendTelemetry({ eventType: 'feed_filter_change', sort, status, intent: next, range });
+                sendTelemetry({
+                  eventType: 'feed_filter_change',
+                  sort,
+                  status,
+                  intent: next,
+                  range,
+                });
               }}
+              value={intent}
             >
               {INTENT_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -706,24 +806,35 @@ export const FeedTabs = () => {
           </label>
         </div>
       ) : (
-        <p className="text-xs text-slate-500">Filters available in the All feed.</p>
+        <p className="text-slate-500 text-xs">
+          Filters available in the All feed.
+        </p>
       )}
-      <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500" aria-live="polite">
+      <div
+        aria-live="polite"
+        className="flex flex-wrap items-center gap-3 text-slate-500 text-xs"
+      >
         {fallbackUsed && <span className="pill">Fallback data</span>}
-        {loading && <span role="status">Loading...</span>}
+        {loading && <span>Loading...</span>}
       </div>
       {items.length === 0 && !loading ? (
-        <div className="card p-6 text-sm text-slate-600">
-          {intent === 'needs_help' && 'No drafts need help right now. Try Seeking PR or run a demo flow.'}
-          {intent === 'seeking_pr' && 'No drafts are waiting for PRs. Try Needs help or check Live Drafts.'}
-          {intent === 'ready_for_review' && 'No pending PRs to review right now. Check GlowUps or Archive.'}
-          {intent === 'all' && 'No feed items yet. Start by running a demo flow.'}
+        <div className="card p-6 text-slate-600 text-sm">
+          {intent === 'needs_help' &&
+            'No drafts need help right now. Try Seeking PR or run a demo flow.'}
+          {intent === 'seeking_pr' &&
+            'No drafts are waiting for PRs. Try Needs help or check Live Drafts.'}
+          {intent === 'ready_for_review' &&
+            'No pending PRs to review right now. Check GlowUps or Archive.'}
+          {intent === 'all' &&
+            'No feed items yet. Start by running a demo flow.'}
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-3">
           {items.map((item, index) => {
             if (item.kind === 'studio') {
-              return <StudioCard key={item.id ?? `studio-${index}`} {...item} />;
+              return (
+                <StudioCard key={item.id ?? `studio-${index}`} {...item} />
+              );
             }
             if (item.kind === 'guild') {
               return <GuildCard key={item.id ?? `guild-${index}`} {...item} />;
@@ -731,14 +842,14 @@ export const FeedTabs = () => {
             if (item.kind === 'hot') {
               return (
                 <DraftCard
-                  key={item.id ?? `hot-${index}`}
-                  id={item.id}
-                  title={item.title}
-                  glowUpScore={item.glowUpScore}
-                  beforeImageUrl={item.beforeImageUrl}
                   afterImageUrl={item.afterImageUrl}
-                  reasonLabel={item.reasonLabel}
+                  beforeImageUrl={item.beforeImageUrl}
+                  glowUpScore={item.glowUpScore}
                   hotScore={item.hotScore}
+                  id={item.id}
+                  key={item.id ?? `hot-${index}`}
+                  reasonLabel={item.reasonLabel}
+                  title={item.title}
                 />
               );
             }
@@ -754,16 +865,24 @@ export const FeedTabs = () => {
                   key={String(key)}
                   {...item}
                   onOpen={() =>
-                    sendTelemetry({ eventType: 'feed_card_open', draftId: item.draftId, source: 'feed' })
+                    sendTelemetry({
+                      eventType: 'feed_card_open',
+                      draftId: item.draftId,
+                      source: 'feed',
+                    })
                   }
                 />
               );
             }
             if (item.kind === 'change') {
-              return <ChangeCard key={item.id ?? `change-${index}`} {...item} />;
+              return (
+                <ChangeCard key={item.id ?? `change-${index}`} {...item} />
+              );
             }
             if (item.kind === 'autopsy') {
-              return <AutopsyCard key={item.id ?? `autopsy-${index}`} {...item} />;
+              return (
+                <AutopsyCard key={item.id ?? `autopsy-${index}`} {...item} />
+              );
             }
             return <DraftCard key={item.id ?? `draft-${index}`} {...item} />;
           })}
@@ -771,7 +890,7 @@ export const FeedTabs = () => {
       )}
       {!fallbackUsed && hasMore && (
         <button
-          className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600"
+          className="rounded-full border border-slate-200 px-4 py-2 font-semibold text-slate-600 text-xs"
           onClick={() => setOffset((prev) => prev + PAGE_SIZE)}
           type="button"
         >

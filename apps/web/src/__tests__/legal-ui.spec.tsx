@@ -3,10 +3,10 @@
  */
 import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
-import TermsPage from '../app/legal/terms/page';
+import ContentPolicyPage from '../app/legal/content/page';
 import PrivacyPage from '../app/legal/privacy/page';
 import RefundPage from '../app/legal/refund/page';
-import ContentPolicyPage from '../app/legal/content/page';
+import TermsPage from '../app/legal/terms/page';
 
 describe('legal pages', () => {
   test('renders Terms page', () => {

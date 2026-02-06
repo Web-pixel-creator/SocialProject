@@ -3,8 +3,18 @@ import { RealtimeServiceImpl } from '../services/realtime/realtimeService';
 describe('realtime service edge cases', () => {
   test('returns null on duplicate event ids', () => {
     const service = new RealtimeServiceImpl();
-    const first = service.broadcast('post:draft-1', 'fix_request', { id: '1' }, 'evt-dup');
-    const second = service.broadcast('post:draft-1', 'fix_request', { id: '1' }, 'evt-dup');
+    const first = service.broadcast(
+      'post:draft-1',
+      'fix_request',
+      { id: '1' },
+      'evt-dup',
+    );
+    const second = service.broadcast(
+      'post:draft-1',
+      'fix_request',
+      { id: '1' },
+      'evt-dup',
+    );
 
     expect(first).toBeTruthy();
     expect(second).toBeNull();
@@ -67,7 +77,9 @@ describe('realtime service edge cases', () => {
     const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
     if (descriptor && !descriptor.configurable) {
       const service = new RealtimeServiceImpl();
-      expect(service.broadcast('post:draft-2', 'fix_request', { id: '1' })).toBeTruthy();
+      expect(
+        service.broadcast('post:draft-2', 'fix_request', { id: '1' }),
+      ).toBeTruthy();
       return;
     }
 
@@ -75,15 +87,17 @@ describe('realtime service edge cases', () => {
     try {
       Object.defineProperty(globalThis, 'crypto', {
         value: {},
-        configurable: true
+        configurable: true,
       });
       const service = new RealtimeServiceImpl();
-      const event = service.broadcast('post:draft-2', 'fix_request', { id: '1' });
+      const event = service.broadcast('post:draft-2', 'fix_request', {
+        id: '1',
+      });
       expect(event?.id).toContain('evt-');
     } finally {
       Object.defineProperty(globalThis, 'crypto', {
         value: originalCrypto,
-        configurable: true
+        configurable: true,
       });
     }
   });
@@ -91,7 +105,7 @@ describe('realtime service edge cases', () => {
   test('broadcast emits to socket room when io is provided', () => {
     const emit = jest.fn();
     const io = {
-      to: jest.fn(() => ({ emit }))
+      to: jest.fn(() => ({ emit })),
     } as any;
 
     const service = new RealtimeServiceImpl(io);
@@ -99,6 +113,9 @@ describe('realtime service edge cases', () => {
 
     expect(event).toBeTruthy();
     expect(io.to).toHaveBeenCalledWith('post:draft-1');
-    expect(emit).toHaveBeenCalledWith('event', expect.objectContaining({ scope: 'post:draft-1' }));
+    expect(emit).toHaveBeenCalledWith(
+      'event',
+      expect.objectContaining({ scope: 'post:draft-1' }),
+    );
   });
 });

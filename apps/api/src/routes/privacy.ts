@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { requireHuman } from '../middleware/auth';
 import { db } from '../db/pool';
+import { requireHuman } from '../middleware/auth';
 import { PrivacyServiceImpl } from '../services/privacy/privacyService';
 
 const router = Router();

@@ -2,21 +2,44 @@
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import SearchPage from '../app/search/page';
 import { apiClient } from '../lib/api';
+import {
+  assignAbProfile,
+  getDefaultSearchAbWeights,
+} from '../lib/searchProfiles';
 
 let searchParams = new URLSearchParams('');
 
 jest.mock('next/navigation', () => ({
   useSearchParams: () => searchParams,
-  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), prefetch: jest.fn() })
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    prefetch: jest.fn(),
+  }),
+}));
+
+jest.mock('../lib/config', () => ({
+  API_BASE_URL: 'http://localhost:4000/api',
+  WS_BASE_URL: 'ws://localhost:4000',
+  SEARCH_AB_ENABLED: true,
+  SEARCH_DEFAULT_PROFILE: 'balanced',
+  SEARCH_AB_WEIGHTS: { balanced: 0.5, quality: 0.5, novelty: 0 },
 }));
 
 jest.mock('next/link', () => ({
   __esModule: true,
   default: ({ href, onClick, children, ...props }: any) => {
-    const resolvedHref = typeof href === 'string' ? href : href?.pathname ?? '';
+    const resolvedHref =
+      typeof href === 'string' ? href : (href?.pathname ?? '');
     return (
       <a
         href={resolvedHref}
@@ -29,15 +52,15 @@ jest.mock('next/link', () => ({
         {children}
       </a>
     );
-  }
+  },
 }));
 
 jest.mock('../lib/api', () => ({
   apiClient: {
     get: jest.fn(() => Promise.resolve({ data: [] })),
-    post: jest.fn(() => Promise.resolve({ data: [] }))
+    post: jest.fn(() => Promise.resolve({ data: [] })),
   },
-  setAuthToken: jest.fn()
+  setAuthToken: jest.fn(),
 }));
 
 describe('search UI', () => {
@@ -79,11 +102,16 @@ describe('search UI', () => {
     await runDebounce();
     (apiClient.get as jest.Mock).mockClear();
     (apiClient.get as jest.Mock).mockResolvedValueOnce({
-      data: [{ id: 'studio-1', type: 'studio', title: 'Studio Apex', score: 9.5 }]
+      data: [
+        { id: 'studio-1', type: 'studio', title: 'Studio Apex', score: 9.5 },
+      ],
     });
 
-    const [typeSelect, _intentSelect, sortSelect, rangeSelect] = screen.getAllByRole('combobox');
-    fireEvent.change(screen.getByPlaceholderText(/Search by keyword/i), { target: { value: 'apex' } });
+    const [typeSelect, _intentSelect, sortSelect, rangeSelect] =
+      screen.getAllByRole('combobox');
+    fireEvent.change(screen.getByPlaceholderText(/Search by keyword/i), {
+      target: { value: 'apex' },
+    });
     fireEvent.change(typeSelect, { target: { value: 'studio' } });
     fireEvent.change(sortSelect, { target: { value: 'impact' } });
     fireEvent.change(rangeSelect, { target: { value: '7d' } });
@@ -95,7 +123,12 @@ describe('search UI', () => {
 
     const lastCall = (apiClient.get as jest.Mock).mock.calls.at(-1);
     expect(lastCall[0]).toBe('/search');
-    expect(lastCall[1].params).toEqual({ q: 'apex', type: 'studio', sort: 'impact', range: '7d' });
+    expect(lastCall[1].params).toEqual({
+      q: 'apex',
+      type: 'studio',
+      sort: 'impact',
+      range: '7d',
+    });
 
     const link = title.closest('a');
     expect(link).toBeTruthy();
@@ -103,7 +136,9 @@ describe('search UI', () => {
 
     fireEvent.click(link as HTMLAnchorElement);
     const openCall = (apiClient.post as jest.Mock).mock.calls.find(
-      (call) => call[0] === '/telemetry/ux' && call[1]?.eventType === 'search_result_open'
+      (call) =>
+        call[0] === '/telemetry/ux' &&
+        call[1]?.eventType === 'search_result_open',
     );
     expect(openCall?.[1]).toMatchObject({
       eventType: 'search_result_open',
@@ -116,20 +151,22 @@ describe('search UI', () => {
         resultType: 'studio',
         resultId: 'studio-1',
         queryLength: 4,
-        rank: 1
-      }
+        rank: 1,
+      },
     });
   });
 
   test('shows error message on failed search', async () => {
     (apiClient.get as jest.Mock).mockRejectedValueOnce({
-      response: { data: { message: 'Search unavailable' } }
+      response: { data: { message: 'Search unavailable' } },
     });
 
     render(<SearchPage />);
     await runDebounce();
 
-    await waitFor(() => expect(screen.getByText(/Search unavailable/i)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/Search unavailable/i)).toBeInTheDocument(),
+    );
   });
 
   test('handles null response data gracefully', async () => {
@@ -142,7 +179,9 @@ describe('search UI', () => {
   });
 
   test('uses fallback error message when response is missing', async () => {
-    (apiClient.get as jest.Mock).mockRejectedValueOnce(new Error('Network down'));
+    (apiClient.get as jest.Mock).mockRejectedValueOnce(
+      new Error('Network down'),
+    );
 
     render(<SearchPage />);
     await runDebounce();
@@ -155,7 +194,7 @@ describe('search UI', () => {
       () =>
         new Promise((resolve) => {
           setTimeout(() => resolve({ data: [] }), 500);
-        })
+        }),
     );
 
     render(<SearchPage />);
@@ -168,7 +207,7 @@ describe('search UI', () => {
 
   test('renders result rows with formatted score', async () => {
     (apiClient.get as jest.Mock).mockResolvedValueOnce({
-      data: [{ id: 'res-1', type: 'draft', title: 'Neon Draft', score: null }]
+      data: [{ id: 'res-1', type: 'draft', title: 'Neon Draft', score: null }],
     });
 
     render(<SearchPage />);
@@ -182,7 +221,15 @@ describe('search UI', () => {
     (apiClient.post as jest.Mock).mockImplementation((url: string) => {
       if (url === '/search/visual') {
         return Promise.resolve({
-          data: [{ id: 'draft-1', type: 'draft', title: 'Vision Draft', score: 0.85, glowUpScore: 4.2 }]
+          data: [
+            {
+              id: 'draft-1',
+              type: 'draft',
+              title: 'Vision Draft',
+              score: 0.85,
+              glowUpScore: 4.2,
+            },
+          ],
         });
       }
       return Promise.resolve({ data: { status: 'ok' } });
@@ -194,18 +241,26 @@ describe('search UI', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /visual search/i }));
 
-    fireEvent.change(screen.getByPlaceholderText(/Embedding/i), { target: { value: '[0.1, 0.2]' } });
-    fireEvent.change(screen.getByPlaceholderText(/Style tags/i), { target: { value: 'neo, bold' } });
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'draft' } });
+    fireEvent.change(screen.getByPlaceholderText(/Embedding/i), {
+      target: { value: '[0.1, 0.2]' },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/Style tags/i), {
+      target: { value: 'neo, bold' },
+    });
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'draft' },
+    });
     fireEvent.click(screen.getByRole('button', { name: /run visual search/i }));
 
     await waitFor(() => expect(apiClient.post).toHaveBeenCalled());
-    const searchCall = (apiClient.post as jest.Mock).mock.calls.find((call) => call[0] === '/search/visual');
+    const searchCall = (apiClient.post as jest.Mock).mock.calls.find(
+      (call) => call[0] === '/search/visual',
+    );
     expect(searchCall?.[1]).toEqual({
       embedding: [0.1, 0.2],
       draftId: undefined,
       type: 'draft',
-      tags: ['neo', 'bold']
+      tags: ['neo', 'bold'],
     });
 
     expect(await screen.findByText(/Vision Draft/i)).toBeInTheDocument();
@@ -213,7 +268,9 @@ describe('search UI', () => {
   });
 
   test('prefills visual mode from query params', async () => {
-    searchParams = new URLSearchParams('mode=visual&draftId=draft-123&type=draft');
+    searchParams = new URLSearchParams(
+      'mode=visual&draftId=draft-123&type=draft',
+    );
 
     render(<SearchPage />);
 
@@ -221,7 +278,41 @@ describe('search UI', () => {
     expect(draftInput).toHaveValue('draft-123');
 
     await waitFor(() => expect(apiClient.post).toHaveBeenCalled());
-    const searchCall = (apiClient.post as jest.Mock).mock.calls.find((call) => call[0] === '/search/visual');
-    expect(searchCall?.[1]).toMatchObject({ draftId: 'draft-123', type: 'draft' });
+    const searchCall = (apiClient.post as jest.Mock).mock.calls.find(
+      (call) => call[0] === '/search/visual',
+    );
+    expect(searchCall?.[1]).toMatchObject({
+      draftId: 'draft-123',
+      type: 'draft',
+    });
+  });
+
+  test('supports ab entrypoint and emits chosen profile', async () => {
+    searchParams = new URLSearchParams('ab=1');
+    localStorage.setItem('searchVisitorId', 'visitor-ab-test');
+    const expectedProfile = assignAbProfile(
+      'visitor-ab-test',
+      getDefaultSearchAbWeights(),
+    );
+
+    render(<SearchPage />);
+    await runDebounce();
+
+    expect(
+      screen.getByText(new RegExp(`AB ${expectedProfile}`, 'i')),
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText(/Search by keyword/i), {
+      target: { value: 'studio' },
+    });
+    await runDebounce();
+
+    const performedCall = (apiClient.post as jest.Mock).mock.calls.find(
+      (call) =>
+        call[0] === '/telemetry/ux' &&
+        call[1]?.eventType === 'search_performed',
+    );
+
+    expect(performedCall?.[1]?.metadata?.profile).toBe(expectedProfile);
   });
 });

@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { apiClient } from '../../lib/api';
+import { useEffect, useState } from 'react';
 import { CommissionForm } from '../../components/CommissionForm';
+import { apiClient } from '../../lib/api';
 
 type Commission = {
   id: string;
@@ -40,26 +40,47 @@ export default function CommissionsPage() {
     <main className="grid gap-6">
       <div className="card p-6">
         <h2 className="text-2xl font-semibold text-ink">Commissions</h2>
-        <p className="text-sm text-slate-600">Request AI studios to fulfill creative briefs.</p>
+        <p className="text-sm text-slate-600">
+          Request AI studios to fulfill creative briefs.
+        </p>
       </div>
       <CommissionForm onCreated={loadCommissions} />
-      {error && <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-600">{error}</div>}
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-600">
+          {error}
+        </div>
+      )}
       {loading ? (
-        <div className="card p-4 text-sm text-slate-500">Loading commissions…</div>
+        <div className="card p-4 text-sm text-slate-500">
+          Loading commissions…
+        </div>
       ) : (
         <section className="grid gap-4 md:grid-cols-2">
           {commissions.map((commission) => (
-            <Link key={commission.id} href={`/commissions/${commission.id}`} className="card p-4">
-              <p className="text-xs font-semibold uppercase text-slate-500">{commission.status}</p>
+            <Link
+              key={commission.id}
+              href={`/commissions/${commission.id}`}
+              className="card p-4"
+            >
+              <p className="text-xs font-semibold uppercase text-slate-500">
+                {commission.status}
+              </p>
               <p className="text-sm text-ink">{commission.description}</p>
               <p className="text-xs text-slate-500">
-                Reward: {commission.rewardAmount ? `${commission.rewardAmount} ${commission.currency ?? 'USD'}` : 'N/A'}
+                Reward:{' '}
+                {commission.rewardAmount
+                  ? `${commission.rewardAmount} ${commission.currency ?? 'USD'}`
+                  : 'N/A'}
               </p>
-              <p className="text-xs text-slate-400">Payment: {commission.paymentStatus}</p>
+              <p className="text-xs text-slate-400">
+                Payment: {commission.paymentStatus}
+              </p>
             </Link>
           ))}
           {commissions.length === 0 && (
-            <div className="card p-4 text-sm text-slate-500">No commissions yet.</div>
+            <div className="card p-4 text-sm text-slate-500">
+              No commissions yet.
+            </div>
           )}
         </section>
       )}

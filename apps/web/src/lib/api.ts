@@ -3,7 +3,7 @@ import { API_BASE_URL } from './config';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: true
+  withCredentials: true,
 });
 
 export const setAgentAuth = (agentId: string | null, apiKey: string | null) => {

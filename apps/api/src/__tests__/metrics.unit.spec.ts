@@ -2,7 +2,9 @@ import { Pool } from 'pg';
 import { MetricsServiceImpl } from '../services/metrics/metricsService';
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/finishit'
+  connectionString:
+    process.env.DATABASE_URL ||
+    'postgres://postgres:postgres@localhost:5432/finishit',
 });
 
 const metricsService = new MetricsServiceImpl(pool);
@@ -22,11 +24,15 @@ describe('metrics service edge cases', () => {
     try {
       await client.query('BEGIN');
       const agent = await client.query(
-        "INSERT INTO agents (studio_name, personality, api_key_hash, signal) VALUES ($1, $2, $3, 99) RETURNING id",
-        ['Clamp Agent', 'tester', 'hash_metrics_7']
+        'INSERT INTO agents (studio_name, personality, api_key_hash, signal) VALUES ($1, $2, $3, 99) RETURNING id',
+        ['Clamp Agent', 'tester', 'hash_metrics_7'],
       );
 
-      const updated = await metricsService.updateSignalOnDecision(agent.rows[0].id, 'merged', client);
+      const updated = await metricsService.updateSignalOnDecision(
+        agent.rows[0].id,
+        'merged',
+        client,
+      );
       expect(updated).toBeLessThanOrEqual(100);
 
       await client.query('ROLLBACK');
@@ -43,11 +49,15 @@ describe('metrics service edge cases', () => {
     try {
       await client.query('BEGIN');
       const agent = await client.query(
-        "INSERT INTO agents (studio_name, personality, api_key_hash, impact) VALUES ($1, $2, $3, 0) RETURNING id",
-        ['Impact Agent', 'tester', 'hash_metrics_8']
+        'INSERT INTO agents (studio_name, personality, api_key_hash, impact) VALUES ($1, $2, $3, 0) RETURNING id',
+        ['Impact Agent', 'tester', 'hash_metrics_8'],
       );
 
-      const updated = await metricsService.updateImpactOnMerge(agent.rows[0].id, 'minor', client);
+      const updated = await metricsService.updateImpactOnMerge(
+        agent.rows[0].id,
+        'minor',
+        client,
+      );
       expect(updated).toBeGreaterThanOrEqual(0);
 
       await client.query('ROLLBACK');
@@ -60,26 +70,40 @@ describe('metrics service edge cases', () => {
   });
 
   test('recalculate glowup throws for missing draft', async () => {
-    await expect(metricsService.recalculateDraftGlowUp('00000000-0000-0000-0000-000000000000')).rejects.toMatchObject({
-      code: 'DRAFT_NOT_FOUND'
+    await expect(
+      metricsService.recalculateDraftGlowUp(
+        '00000000-0000-0000-0000-000000000000',
+      ),
+    ).rejects.toMatchObject({
+      code: 'DRAFT_NOT_FOUND',
     });
   });
 
   test('update impact throws for missing agent', async () => {
-    await expect(metricsService.updateImpactOnMerge('00000000-0000-0000-0000-000000000000', 'minor')).rejects.toMatchObject({
-      code: 'AGENT_NOT_FOUND'
+    await expect(
+      metricsService.updateImpactOnMerge(
+        '00000000-0000-0000-0000-000000000000',
+        'minor',
+      ),
+    ).rejects.toMatchObject({
+      code: 'AGENT_NOT_FOUND',
     });
   });
 
   test('update signal throws for missing agent', async () => {
     await expect(
-      metricsService.updateSignalOnDecision('00000000-0000-0000-0000-000000000000', 'merged')
+      metricsService.updateSignalOnDecision(
+        '00000000-0000-0000-0000-000000000000',
+        'merged',
+      ),
     ).rejects.toMatchObject({ code: 'AGENT_NOT_FOUND' });
   });
 
   test('get agent metrics throws for missing agent', async () => {
-    await expect(metricsService.getAgentMetrics('00000000-0000-0000-0000-000000000000')).rejects.toMatchObject({
-      code: 'AGENT_NOT_FOUND'
+    await expect(
+      metricsService.getAgentMetrics('00000000-0000-0000-0000-000000000000'),
+    ).rejects.toMatchObject({
+      code: 'AGENT_NOT_FOUND',
     });
   });
 
@@ -89,17 +113,17 @@ describe('metrics service edge cases', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['Glow Agent', 'tester', 'hash_metrics_top']
+        ['Glow Agent', 'tester', 'hash_metrics_top'],
       );
       const agentId = agent.rows[0].id;
 
       const draftOne = await client.query(
         'INSERT INTO drafts (author_id, glow_up_score) VALUES ($1, $2) RETURNING id',
-        [agentId, 10]
+        [agentId, 10],
       );
       const draftTwo = await client.query(
         'INSERT INTO drafts (author_id, glow_up_score) VALUES ($1, $2) RETURNING id',
-        [agentId, 25]
+        [agentId, 25],
       );
 
       const top = await metricsService.getTopGlowUps(2, client);
@@ -121,11 +145,14 @@ describe('metrics service edge cases', () => {
     try {
       await client.query('BEGIN');
       const agent = await client.query(
-        "INSERT INTO agents (studio_name, personality, api_key_hash, signal) VALUES ($1, $2, $3, 5) RETURNING id",
-        ['Signal Agent', 'tester', 'hash_metrics_signal']
+        'INSERT INTO agents (studio_name, personality, api_key_hash, signal) VALUES ($1, $2, $3, 5) RETURNING id',
+        ['Signal Agent', 'tester', 'hash_metrics_signal'],
       );
 
-      const limited = await metricsService.isSignalLimited(agent.rows[0].id, client);
+      const limited = await metricsService.isSignalLimited(
+        agent.rows[0].id,
+        client,
+      );
       expect(limited).toBe(true);
 
       await client.query('ROLLBACK');

@@ -1,11 +1,13 @@
-import request from 'supertest';
 import { io as clientIo, type Socket } from 'socket.io-client';
+import request from 'supertest';
 import { db } from '../db/pool';
 import { redis } from '../redis/client';
 import { createServer, initInfra } from '../server';
 
 const resetDb = async () => {
-  await db.query('TRUNCATE TABLE commission_responses RESTART IDENTITY CASCADE');
+  await db.query(
+    'TRUNCATE TABLE commission_responses RESTART IDENTITY CASCADE',
+  );
   await db.query('TRUNCATE TABLE commissions RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE payment_events RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE viewing_history RESTART IDENTITY CASCADE');
@@ -27,7 +29,7 @@ const resetDb = async () => {
 const registerAgent = async (app: any, name = 'Agent Studio') => {
   const response = await request(app).post('/api/agents/register').send({
     studioName: name,
-    personality: 'Tester'
+    personality: 'Tester',
   });
   const { agentId, apiKey, claimToken, emailToken } = response.body as {
     agentId: string;
@@ -38,18 +40,24 @@ const registerAgent = async (app: any, name = 'Agent Studio') => {
   const verify = await request(app).post('/api/agents/claim/verify').send({
     claimToken,
     method: 'email',
-    emailToken
+    emailToken,
   });
-  expect(verify.status).toBe(200);
+  if (verify.status !== 200) {
+    throw new Error(
+      `Agent claim verification failed with status ${verify.status}`,
+    );
+  }
   return { agentId, apiKey };
 };
 
 const registerHuman = async (app: any, email = 'human@example.com') => {
-  const response = await request(app).post('/api/auth/register').send({
-    email,
-    password: 'password123',
-    consent: { termsAccepted: true, privacyAccepted: true }
-  });
+  const response = await request(app)
+    .post('/api/auth/register')
+    .send({
+      email,
+      password: 'password123',
+      consent: { termsAccepted: true, privacyAccepted: true },
+    });
   return response.body.tokens.accessToken as string;
 };
 
@@ -99,7 +107,7 @@ describe('E2E workflows', () => {
       .set('x-api-key', apiKey)
       .send({
         imageUrl: 'https://example.com/v1.png',
-        thumbnailUrl: 'https://example.com/v1-thumb.png'
+        thumbnailUrl: 'https://example.com/v1-thumb.png',
       });
 
     const draftId = draftRes.body.draft.id;
@@ -118,7 +126,7 @@ describe('E2E workflows', () => {
         description: 'Improvement',
         severity: 'minor',
         imageUrl: 'https://example.com/v2.png',
-        thumbnailUrl: 'https://example.com/v2-thumb.png'
+        thumbnailUrl: 'https://example.com/v2-thumb.png',
       });
 
     await request(app)
@@ -140,7 +148,7 @@ describe('E2E workflows', () => {
       .set('x-api-key', apiKey)
       .send({
         imageUrl: 'https://example.com/v1.png',
-        thumbnailUrl: 'https://example.com/v1-thumb.png'
+        thumbnailUrl: 'https://example.com/v1-thumb.png',
       });
 
     const prRes = await request(app)
@@ -151,7 +159,7 @@ describe('E2E workflows', () => {
         description: 'Try alternate direction',
         severity: 'minor',
         imageUrl: 'https://example.com/v2.png',
-        thumbnailUrl: 'https://example.com/v2-thumb.png'
+        thumbnailUrl: 'https://example.com/v2-thumb.png',
       });
 
     await request(app)
@@ -179,7 +187,7 @@ describe('E2E workflows', () => {
       .send({
         description: 'Design a cover',
         rewardAmount: 200,
-        currency: 'USD'
+        currency: 'USD',
       });
 
     expect(commissionRes.body.commission.id).toBeTruthy();
@@ -190,7 +198,7 @@ describe('E2E workflows', () => {
       .set('x-api-key', apiKey)
       .send({
         imageUrl: 'https://example.com/v1.png',
-        thumbnailUrl: 'https://example.com/v1-thumb.png'
+        thumbnailUrl: 'https://example.com/v1-thumb.png',
       });
 
     await request(app)
@@ -200,7 +208,9 @@ describe('E2E workflows', () => {
       .send({ draftId: draftRes.body.draft.id });
 
     const winnerRes = await request(app)
-      .post(`/api/commissions/${commissionRes.body.commission.id}/select-winner`)
+      .post(
+        `/api/commissions/${commissionRes.body.commission.id}/select-winner`,
+      )
       .set('Authorization', `Bearer ${token}`)
       .send({ winnerDraftId: draftRes.body.draft.id });
 
@@ -216,13 +226,16 @@ describe('E2E workflows', () => {
       .set('x-api-key', apiKey)
       .send({
         imageUrl: 'https://example.com/v1.png',
-        thumbnailUrl: 'https://example.com/v1-thumb.png'
+        thumbnailUrl: 'https://example.com/v1-thumb.png',
       });
 
     const draftId = draftRes.body.draft.id;
     const scope = `post:${draftId}`;
 
-    const socket: Socket = clientIo(baseUrl, { transports: ['websocket'], forceNew: true });
+    const socket: Socket = clientIo(baseUrl, {
+      transports: ['websocket'],
+      forceNew: true,
+    });
     await new Promise<void>((resolve) => socket.on('connect', () => resolve()));
     socket.emit('subscribe', scope);
 
@@ -251,7 +264,7 @@ describe('E2E workflows', () => {
       .set('x-api-key', apiKey)
       .send({
         imageUrl: 'https://example.com/v1.png',
-        thumbnailUrl: 'https://example.com/v1-thumb.png'
+        thumbnailUrl: 'https://example.com/v1-thumb.png',
       });
 
     await request(app)
@@ -263,7 +276,11 @@ describe('E2E workflows', () => {
     await db.query(
       `INSERT INTO autopsy_reports (share_slug, summary, data, published_at)
        VALUES ($1, $2, $3, NOW())`,
-      ['autopsy-demo', 'Common issues: low fix-request activity.', JSON.stringify({})]
+      [
+        'autopsy-demo',
+        'Common issues: low fix-request activity.',
+        JSON.stringify({}),
+      ],
     );
 
     const archiveRes = await request(app).get('/api/feeds/archive');

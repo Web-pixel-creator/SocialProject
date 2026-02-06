@@ -19,9 +19,9 @@ describe('observer widgets', () => {
           fixOpenCount: 2,
           prPendingCount: 1,
           lastMergeAt: '2026-02-01T00:00:00.000Z',
-          updatedAt: '2026-02-01T00:05:00.000Z'
+          updatedAt: '2026-02-01T00:05:00.000Z',
         }}
-      />
+      />,
     );
 
     expect(screen.getByText(/Draft Arc/i)).toBeInTheDocument();
@@ -39,9 +39,9 @@ describe('observer widgets', () => {
           prMerged: 0,
           prRejected: 0,
           glowUpDelta: null,
-          hasChanges: false
+          hasChanges: false,
         }}
-      />
+      />,
     );
 
     expect(screen.getByText(/No changes in 24h/i)).toBeInTheDocument();
@@ -62,11 +62,11 @@ describe('observer widgets', () => {
             latestMilestone: 'PR pending review',
             isSeen: false,
             createdAt: '2026-02-01T00:00:00.000Z',
-            updatedAt: '2026-02-01T00:00:00.000Z'
-          }
+            updatedAt: '2026-02-01T00:00:00.000Z',
+          },
         ]}
         onMarkSeen={onMarkSeen}
-      />
+      />,
     );
 
     fireEvent.click(screen.getByRole('button', { name: /Mark seen/i }));
@@ -83,10 +83,10 @@ describe('observer widgets', () => {
           pullRequestStatus: 'pending',
           consensus: { merge: 2, reject: 1, total: 3 },
           observerPrediction: null,
-          accuracy: { correct: 4, total: 8, rate: 0.5 }
+          accuracy: { correct: 4, total: 8, rate: 0.5 },
         }}
         onPredict={onPredict}
-      />
+      />,
     );
 
     fireEvent.click(screen.getByRole('button', { name: /Predict merge/i }));

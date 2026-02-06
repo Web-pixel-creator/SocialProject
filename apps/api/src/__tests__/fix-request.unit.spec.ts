@@ -2,7 +2,9 @@ import { Pool } from 'pg';
 import { FixRequestServiceImpl } from '../services/fixRequest/fixRequestService';
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/finishit'
+  connectionString:
+    process.env.DATABASE_URL ||
+    'postgres://postgres:postgres@localhost:5432/finishit',
 });
 
 const fixService = new FixRequestServiceImpl(pool);
@@ -18,11 +20,14 @@ describe('fix request edge cases', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['Invalid Agent', 'tester', 'hash_fix_invalid']
+        ['Invalid Agent', 'tester', 'hash_fix_invalid'],
       );
       const agentId = agent.rows[0].id;
 
-      const draft = await client.query('INSERT INTO drafts (author_id) VALUES ($1) RETURNING id', [agentId]);
+      const draft = await client.query(
+        'INSERT INTO drafts (author_id) VALUES ($1) RETURNING id',
+        [agentId],
+      );
 
       await expect(
         fixService.submitFixRequest(
@@ -30,10 +35,10 @@ describe('fix request edge cases', () => {
             draftId: draft.rows[0].id,
             criticId: agentId,
             category: 'Bad' as any,
-            description: 'invalid category'
+            description: 'invalid category',
           },
-          client
-        )
+          client,
+        ),
       ).rejects.toThrow();
 
       await client.query('ROLLBACK');
@@ -51,8 +56,8 @@ describe('fix request edge cases', () => {
         draftId: '',
         criticId: '',
         category: 'Focus',
-        description: ''
-      })
+        description: '',
+      }),
     ).rejects.toThrow();
   });
 
@@ -62,11 +67,14 @@ describe('fix request edge cases', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['Boundary Agent', 'tester', 'hash_fix_boundary']
+        ['Boundary Agent', 'tester', 'hash_fix_boundary'],
       );
       const agentId = agent.rows[0].id;
 
-      const draft = await client.query('INSERT INTO drafts (author_id) VALUES ($1) RETURNING id', [agentId]);
+      const draft = await client.query(
+        'INSERT INTO drafts (author_id) VALUES ($1) RETURNING id',
+        [agentId],
+      );
 
       const coordinates = { x: 0, y: 0, width: 1, height: 1 };
       const fix = await fixService.submitFixRequest(
@@ -75,9 +83,9 @@ describe('fix request edge cases', () => {
           criticId: agentId,
           category: 'Focus',
           description: 'boundary test',
-          coordinates
+          coordinates,
         },
-        client
+        client,
       );
 
       expect(fix.coordinates).toEqual(coordinates);
@@ -97,13 +105,13 @@ describe('fix request edge cases', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['Release Fix Agent', 'tester', 'hash_fix_release']
+        ['Release Fix Agent', 'tester', 'hash_fix_release'],
       );
       const agentId = agent.rows[0].id;
 
       const draft = await client.query(
         "INSERT INTO drafts (author_id, status) VALUES ($1, 'release') RETURNING id",
-        [agentId]
+        [agentId],
       );
 
       await expect(
@@ -112,10 +120,10 @@ describe('fix request edge cases', () => {
             draftId: draft.rows[0].id,
             criticId: agentId,
             category: 'Focus',
-            description: 'should fail'
+            description: 'should fail',
           },
-          client
-        )
+          client,
+        ),
       ).rejects.toThrow();
 
       await client.query('ROLLBACK');
@@ -133,20 +141,13 @@ describe('fix request edge cases', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['Dup Fix Agent', 'tester', 'hash_fix_dup']
+        ['Dup Fix Agent', 'tester', 'hash_fix_dup'],
       );
       const agentId = agent.rows[0].id;
 
-      const draft = await client.query('INSERT INTO drafts (author_id) VALUES ($1) RETURNING id', [agentId]);
-
-      await fixService.submitFixRequest(
-        {
-          draftId: draft.rows[0].id,
-          criticId: agentId,
-          category: 'Focus',
-          description: 'duplicate'
-        },
-        client
+      const draft = await client.query(
+        'INSERT INTO drafts (author_id) VALUES ($1) RETURNING id',
+        [agentId],
       );
 
       await fixService.submitFixRequest(
@@ -154,9 +155,19 @@ describe('fix request edge cases', () => {
           draftId: draft.rows[0].id,
           criticId: agentId,
           category: 'Focus',
-          description: 'duplicate'
+          description: 'duplicate',
         },
-        client
+        client,
+      );
+
+      await fixService.submitFixRequest(
+        {
+          draftId: draft.rows[0].id,
+          criticId: agentId,
+          category: 'Focus',
+          description: 'duplicate',
+        },
+        client,
       );
 
       const list = await fixService.listByDraft(draft.rows[0].id, client);
@@ -177,8 +188,8 @@ describe('fix request edge cases', () => {
         draftId: '00000000-0000-0000-0000-000000000000',
         criticId: '00000000-0000-0000-0000-000000000000',
         category: 'Focus',
-        description: 'missing draft'
-      })
+        description: 'missing draft',
+      }),
     ).rejects.toMatchObject({ code: 'DRAFT_NOT_FOUND' });
   });
 
@@ -188,20 +199,23 @@ describe('fix request edge cases', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['Critic Agent', 'tester', 'hash_fix_critic']
+        ['Critic Agent', 'tester', 'hash_fix_critic'],
       );
       const agentId = agent.rows[0].id;
 
-      const draft = await client.query('INSERT INTO drafts (author_id) VALUES ($1) RETURNING id', [agentId]);
+      const draft = await client.query(
+        'INSERT INTO drafts (author_id) VALUES ($1) RETURNING id',
+        [agentId],
+      );
 
       await fixService.submitFixRequest(
         {
           draftId: draft.rows[0].id,
           criticId: agentId,
           category: 'Focus',
-          description: 'first'
+          description: 'first',
         },
-        client
+        client,
       );
 
       const list = await fixService.listByCritic(agentId, client);

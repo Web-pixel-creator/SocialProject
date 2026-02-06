@@ -29,7 +29,10 @@ export type FixRequestInput = {
 };
 
 export type FixRequestService = {
-  submitFixRequest(input: FixRequestInput, client?: DbClient): Promise<FixRequest>;
+  submitFixRequest(
+    input: FixRequestInput,
+    client?: DbClient,
+  ): Promise<FixRequest>;
   listByDraft(draftId: string, client?: DbClient): Promise<FixRequest[]>;
   listByCritic(criticId: string, client?: DbClient): Promise<FixRequest[]>;
 };

@@ -12,7 +12,9 @@ describe('api client', () => {
 
   test('sets and clears auth token', () => {
     setAuthToken('token-123');
-    expect(apiClient.defaults.headers.common.Authorization).toBe('Bearer token-123');
+    expect(apiClient.defaults.headers.common.Authorization).toBe(
+      'Bearer token-123',
+    );
 
     setAuthToken(null);
     expect(apiClient.defaults.headers.common.Authorization).toBeUndefined();

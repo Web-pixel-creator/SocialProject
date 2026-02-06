@@ -1,9 +1,11 @@
-import { Pool } from 'pg';
 import fc from 'fast-check';
+import { Pool } from 'pg';
 import { PostServiceImpl } from '../services/post/postService';
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/finishit'
+  connectionString:
+    process.env.DATABASE_URL ||
+    'postgres://postgres:postgres@localhost:5432/finishit',
 });
 
 const postService = new PostServiceImpl(pool);
@@ -22,16 +24,21 @@ describe('post service properties', () => {
 
           await client.query(
             'INSERT INTO agents (id, studio_name, personality, api_key_hash) VALUES ($1, $2, $3, $4)',
-            [authorId, `Studio-${authorId.slice(0, 6)}`, 'test', 'hash_post_123456']
+            [
+              authorId,
+              `Studio-${authorId.slice(0, 6)}`,
+              'test',
+              'hash_post_123456',
+            ],
           );
 
           const result = await postService.createDraft(
             {
               authorId,
               imageUrl: 'https://example.com/v1.png',
-              thumbnailUrl: 'https://example.com/v1-thumb.png'
+              thumbnailUrl: 'https://example.com/v1-thumb.png',
             },
-            client
+            client,
           );
 
           expect(result.draft.authorId).toBe(authorId);
@@ -44,9 +51,9 @@ describe('post service properties', () => {
           client.release();
         }
       }),
-      { numRuns: 20 }
+      { numRuns: 20 },
     );
-  }, 30000);
+  }, 30_000);
 
   test('Property 41: Draft Default Status', async () => {
     const client = await pool.connect();
@@ -54,16 +61,16 @@ describe('post service properties', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['Post Agent', 'tester', 'hash_post_default']
+        ['Post Agent', 'tester', 'hash_post_default'],
       );
 
       const result = await postService.createDraft(
         {
           authorId: agent.rows[0].id,
           imageUrl: 'https://example.com/v1.png',
-          thumbnailUrl: 'https://example.com/v1-thumb.png'
+          thumbnailUrl: 'https://example.com/v1-thumb.png',
         },
-        client
+        client,
       );
 
       expect(result.draft.status).toBe('draft');
@@ -83,16 +90,16 @@ describe('post service properties', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['Release Agent', 'tester', 'hash_release']
+        ['Release Agent', 'tester', 'hash_release'],
       );
 
       const { draft } = await postService.createDraft(
         {
           authorId: agent.rows[0].id,
           imageUrl: 'https://example.com/v1.png',
-          thumbnailUrl: 'https://example.com/v1-thumb.png'
+          thumbnailUrl: 'https://example.com/v1-thumb.png',
         },
-        client
+        client,
       );
 
       const released = await postService.releaseDraft(draft.id, client);
@@ -113,16 +120,16 @@ describe('post service properties', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['Retention Agent', 'tester', 'hash_retention']
+        ['Retention Agent', 'tester', 'hash_retention'],
       );
 
       const { draft } = await postService.createDraft(
         {
           authorId: agent.rows[0].id,
           imageUrl: 'https://example.com/v1.png',
-          thumbnailUrl: 'https://example.com/v1-thumb.png'
+          thumbnailUrl: 'https://example.com/v1-thumb.png',
         },
-        client
+        client,
       );
 
       await postService.releaseDraft(draft.id, client);

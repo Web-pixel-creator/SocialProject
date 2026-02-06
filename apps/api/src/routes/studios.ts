@@ -1,9 +1,12 @@
 import { Router } from 'express';
 import { db } from '../db/pool';
 import { requireVerifiedAgent } from '../middleware/auth';
-import { MetricsServiceImpl } from '../services/metrics/metricsService';
 import { HeartbeatServiceImpl } from '../services/heartbeat/heartbeatService';
-import { IMPACT_MAJOR_INCREMENT, IMPACT_MINOR_INCREMENT } from '../services/metrics/constants';
+import {
+  IMPACT_MAJOR_INCREMENT,
+  IMPACT_MINOR_INCREMENT,
+} from '../services/metrics/constants';
+import { MetricsServiceImpl } from '../services/metrics/metricsService';
 
 const router = Router();
 const metricsService = new MetricsServiceImpl(db);
@@ -13,7 +16,7 @@ router.get('/studios/:id', async (req, res, next) => {
   try {
     const result = await db.query(
       'SELECT id, studio_name, personality, impact, signal, avatar_url, style_tags FROM agents WHERE id = $1',
-      [req.params.id]
+      [req.params.id],
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'STUDIO_NOT_FOUND' });
@@ -30,7 +33,14 @@ router.put('/studios/:id', requireVerifiedAgent, async (req, res, next) => {
     if (req.auth?.id !== req.params.id) {
       return res.status(403).json({ error: 'NOT_OWNER' });
     }
-    const { studioName, personality, webhookUrl, notificationPrefs, avatarUrl, styleTags } = req.body;
+    const {
+      studioName,
+      personality,
+      webhookUrl,
+      notificationPrefs,
+      avatarUrl,
+      styleTags,
+    } = req.body;
     const result = await db.query(
       `UPDATE agents
        SET studio_name = COALESCE($1, studio_name),
@@ -41,7 +51,15 @@ router.put('/studios/:id', requireVerifiedAgent, async (req, res, next) => {
            style_tags = COALESCE($6, style_tags)
        WHERE id = $7
        RETURNING id, studio_name, personality, webhook_url, notification_prefs, avatar_url, style_tags`,
-      [studioName, personality, webhookUrl, notificationPrefs ?? null, avatarUrl ?? null, styleTags ?? null, req.params.id]
+      [
+        studioName,
+        personality,
+        webhookUrl,
+        notificationPrefs ?? null,
+        avatarUrl ?? null,
+        styleTags ?? null,
+        req.params.id,
+      ],
     );
 
     res.json(result.rows[0]);
@@ -62,7 +80,9 @@ router.get('/studios/:id/metrics', async (req, res, next) => {
 router.get('/studios/:id/ledger', async (req, res, next) => {
   try {
     const limit = req.query.limit ? Number(req.query.limit) : 8;
-    const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(limit, 50)) : 8;
+    const safeLimit = Number.isFinite(limit)
+      ? Math.max(1, Math.min(limit, 50))
+      : 8;
 
     const result = await db.query(
       `SELECT *
@@ -93,7 +113,7 @@ router.get('/studios/:id/ledger', async (req, res, next) => {
        ) ledger
        ORDER BY occurred_at DESC
        LIMIT $2`,
-      [req.params.id, safeLimit]
+      [req.params.id, safeLimit],
     );
 
     const entries = result.rows.map((row: any) => {
@@ -113,7 +133,7 @@ router.get('/studios/:id/ledger', async (req, res, next) => {
         description: row.description,
         severity,
         occurredAt: row.occurred_at,
-        impactDelta
+        impactDelta,
       };
     });
 

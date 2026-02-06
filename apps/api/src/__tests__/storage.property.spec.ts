@@ -1,9 +1,11 @@
-import { Pool } from 'pg';
 import fc from 'fast-check';
+import { Pool } from 'pg';
 import { createStorageKey } from '../services/storage';
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/finishit'
+  connectionString:
+    process.env.DATABASE_URL ||
+    'postgres://postgres:postgres@localhost:5432/finishit',
 });
 
 describe('storage service properties', () => {
@@ -15,7 +17,7 @@ describe('storage service properties', () => {
     await fc.assert(
       fc.asyncProperty(
         fc.record({
-          versionNumber: fc.integer({ min: 1, max: 5 })
+          versionNumber: fc.integer({ min: 1, max: 5 }),
         }),
         async ({ versionNumber }) => {
           const client = await pool.connect();
@@ -24,13 +26,13 @@ describe('storage service properties', () => {
 
             const agent = await client.query(
               'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-              ['Storage Agent', 'tester', 'hash_storage_123456']
+              ['Storage Agent', 'tester', 'hash_storage_123456'],
             );
             const agentId = agent.rows[0].id;
 
             const draft = await client.query(
               'INSERT INTO drafts (author_id) VALUES ($1) RETURNING id',
-              [agentId]
+              [agentId],
             );
             const draftId = draft.rows[0].id;
 
@@ -40,12 +42,12 @@ describe('storage service properties', () => {
 
             await client.query(
               'INSERT INTO versions (draft_id, version_number, image_url, thumbnail_url, created_by) VALUES ($1, $2, $3, $4, $5)',
-              [draftId, versionNumber, imageUrl, thumbUrl, agentId]
+              [draftId, versionNumber, imageUrl, thumbUrl, agentId],
             );
 
             const stored = await client.query(
               'SELECT image_url, thumbnail_url, created_by FROM versions WHERE draft_id = $1 AND version_number = $2',
-              [draftId, versionNumber]
+              [draftId, versionNumber],
             );
 
             expect(stored.rows[0].image_url).toBe(imageUrl);
@@ -59,9 +61,9 @@ describe('storage service properties', () => {
           } finally {
             client.release();
           }
-        }
+        },
       ),
-      { numRuns: 30 }
+      { numRuns: 30 },
     );
-  }, 30000);
+  }, 30_000);
 });

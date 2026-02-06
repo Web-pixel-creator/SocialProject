@@ -8,11 +8,15 @@ const scheduleCalls: Array<{
 }> = [];
 
 const scheduleMock = jest.fn(
-  (expression: string, handler: () => Promise<void>, options: { timezone?: string }) => {
+  (
+    expression: string,
+    handler: () => Promise<void>,
+    options: { timezone?: string },
+  ) => {
     const stop = jest.fn();
     scheduleCalls.push({ expression, handler, options, stop });
     return { stop };
-  }
+  },
 );
 
 const resetBudgets = jest.fn();
@@ -40,32 +44,32 @@ const setupScheduler = (jobsEnabled: string) => {
 
   jest.doMock('node-cron', () => ({
     __esModule: true,
-    default: { schedule: scheduleMock }
+    default: { schedule: scheduleMock },
   }));
   jest.doMock('../config/env', () => ({ env: { JOBS_ENABLED: jobsEnabled } }));
   jest.doMock('../logging/logger', () => ({
-    logger: { info: loggerInfo, warn: loggerWarn, error: loggerError }
+    logger: { info: loggerInfo, warn: loggerWarn, error: loggerError },
   }));
   jest.doMock('../services/budget/budgetService', () => ({
     BudgetServiceImpl: jest.fn().mockImplementation(() => ({
-      resetBudgets
-    }))
+      resetBudgets,
+    })),
   }));
   jest.doMock('../services/content/contentService', () => ({
     ContentGenerationServiceImpl: jest.fn().mockImplementation(() => ({
       generateGlowUpReel,
-      generateAutopsyReport
-    }))
+      generateAutopsyReport,
+    })),
   }));
   jest.doMock('../services/privacy/privacyService', () => ({
     PrivacyServiceImpl: jest.fn().mockImplementation(() => ({
-      purgeExpiredData
-    }))
+      purgeExpiredData,
+    })),
   }));
   jest.doMock('../services/search/embeddingBackfillService', () => ({
     EmbeddingBackfillServiceImpl: jest.fn().mockImplementation(() => ({
-      backfillDraftEmbeddings
-    }))
+      backfillDraftEmbeddings,
+    })),
   }));
 
   return require('../jobs/scheduler') as typeof import('../jobs/scheduler');
@@ -82,7 +86,9 @@ describe('job scheduler', () => {
 
   test('schedules tasks and runs callbacks', async () => {
     const { startScheduler } = setupScheduler('true');
-    const pool = { query: jest.fn().mockResolvedValue({ rows: [] }) } as unknown as Pool;
+    const pool = {
+      query: jest.fn().mockResolvedValue({ rows: [] }),
+    } as unknown as Pool;
     const handle = startScheduler(pool);
 
     expect(handle).not.toBeNull();
@@ -90,7 +96,13 @@ describe('job scheduler', () => {
     expect(scheduleMock).toHaveBeenCalledTimes(5);
 
     const expressions = scheduleCalls.map((call) => call.expression);
-    expect(expressions).toEqual(['0 0 * * *', '5 0 * * *', '10 0 * * *', '15 0 * * *', '20 0 * * *']);
+    expect(expressions).toEqual([
+      '0 0 * * *',
+      '5 0 * * *',
+      '10 0 * * *',
+      '15 0 * * *',
+      '20 0 * * *',
+    ]);
     scheduleCalls.forEach((call) => {
       expect(call.options.timezone).toBe('UTC');
     });
@@ -98,8 +110,16 @@ describe('job scheduler', () => {
     resetBudgets.mockResolvedValueOnce(3);
     generateGlowUpReel.mockResolvedValueOnce({ id: 'reel-1' });
     generateAutopsyReport.mockResolvedValueOnce({ id: 'report-1' });
-    purgeExpiredData.mockResolvedValueOnce({ viewingHistory: 0, paymentEvents: 0, dataExports: 0 });
-    backfillDraftEmbeddings.mockResolvedValueOnce({ processed: 2, inserted: 2, skipped: 0 });
+    purgeExpiredData.mockResolvedValueOnce({
+      viewingHistory: 0,
+      paymentEvents: 0,
+      dataExports: 0,
+    });
+    backfillDraftEmbeddings.mockResolvedValueOnce({
+      processed: 2,
+      inserted: 2,
+      skipped: 0,
+    });
 
     await scheduleCalls[0].handler();
     await scheduleCalls[1].handler();
@@ -108,15 +128,21 @@ describe('job scheduler', () => {
     await scheduleCalls[4].handler();
 
     expect(loggerInfo).toHaveBeenCalledWith({ deleted: 3 }, 'Budgets reset');
-    expect(loggerInfo).toHaveBeenCalledWith({ reelId: 'reel-1' }, 'GlowUp reel generated');
-    expect(loggerInfo).toHaveBeenCalledWith({ reportId: 'report-1' }, 'Autopsy report generated');
+    expect(loggerInfo).toHaveBeenCalledWith(
+      { reelId: 'reel-1' },
+      'GlowUp reel generated',
+    );
+    expect(loggerInfo).toHaveBeenCalledWith(
+      { reportId: 'report-1' },
+      'Autopsy report generated',
+    );
     expect(loggerInfo).toHaveBeenCalledWith(
       { viewingHistory: 0, paymentEvents: 0, dataExports: 0 },
-      'Retention cleanup complete'
+      'Retention cleanup complete',
     );
     expect(loggerInfo).toHaveBeenCalledWith(
       { processed: 2, inserted: 2, skipped: 0 },
-      'Draft embedding backfill complete'
+      'Draft embedding backfill complete',
     );
 
     resetBudgets.mockRejectedValueOnce(new Error('budget fail'));
@@ -131,11 +157,26 @@ describe('job scheduler', () => {
     await scheduleCalls[3].handler();
     await scheduleCalls[4].handler();
 
-    expect(loggerError).toHaveBeenCalledWith({ err: expect.any(Error) }, 'Budget reset failed');
-    expect(loggerWarn).toHaveBeenCalledWith({ err: expect.any(Error) }, 'GlowUp reel generation skipped');
-    expect(loggerWarn).toHaveBeenCalledWith({ err: expect.any(Error) }, 'Autopsy generation skipped');
-    expect(loggerError).toHaveBeenCalledWith({ err: expect.any(Error) }, 'Retention cleanup failed');
-    expect(loggerError).toHaveBeenCalledWith({ err: expect.any(Error) }, 'Draft embedding backfill failed');
+    expect(loggerError).toHaveBeenCalledWith(
+      { err: expect.any(Error) },
+      'Budget reset failed',
+    );
+    expect(loggerWarn).toHaveBeenCalledWith(
+      { err: expect.any(Error) },
+      'GlowUp reel generation skipped',
+    );
+    expect(loggerWarn).toHaveBeenCalledWith(
+      { err: expect.any(Error) },
+      'Autopsy generation skipped',
+    );
+    expect(loggerError).toHaveBeenCalledWith(
+      { err: expect.any(Error) },
+      'Retention cleanup failed',
+    );
+    expect(loggerError).toHaveBeenCalledWith(
+      { err: expect.any(Error) },
+      'Draft embedding backfill failed',
+    );
 
     handle?.stop();
     scheduleCalls.forEach((call) => {

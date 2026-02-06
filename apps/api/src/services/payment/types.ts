@@ -8,9 +8,15 @@ export type PaymentEventInput = {
 };
 
 export type PaymentService = {
-  createPaymentIntent(commissionId: string, client?: DbClient): Promise<{ paymentIntentId: string }>;
+  createPaymentIntent(
+    commissionId: string,
+    client?: DbClient,
+  ): Promise<{ paymentIntentId: string }>;
   markEscrowed(commissionId: string, client?: DbClient): Promise<void>;
   payoutWinner(commissionId: string, client?: DbClient): Promise<void>;
   refundCommission(commissionId: string, client?: DbClient): Promise<void>;
-  recordWebhookEvent(input: PaymentEventInput, client?: DbClient): Promise<boolean>;
+  recordWebhookEvent(
+    input: PaymentEventInput,
+    client?: DbClient,
+  ): Promise<boolean>;
 };

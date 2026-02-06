@@ -2,17 +2,17 @@
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
-import { render, screen, waitFor, act } from '@testing-library/react';
-import CommissionsPage from '../app/commissions/page';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import CommissionDetailPage from '../app/commissions/[id]/page';
+import CommissionsPage from '../app/commissions/page';
 import { apiClient } from '../lib/api';
 
 jest.mock('../lib/api', () => ({
   apiClient: {
     get: jest.fn(() => Promise.resolve({ data: [] })),
-    post: jest.fn(() => Promise.resolve({ data: {} }))
+    post: jest.fn(() => Promise.resolve({ data: {} })),
   },
-  setAuthToken: jest.fn()
+  setAuthToken: jest.fn(),
 }));
 
 describe('commission UI', () => {
@@ -38,19 +38,23 @@ describe('commission UI', () => {
       render(<CommissionsPage />);
     });
 
-    await waitFor(() => expect(screen.getByText(/No commissions yet/i)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/No commissions yet/i)).toBeInTheDocument(),
+    );
   });
 
   test('shows error when commission load fails', async () => {
     (apiClient.get as jest.Mock).mockRejectedValueOnce({
-      response: { data: { message: 'Load failed' } }
+      response: { data: { message: 'Load failed' } },
     });
 
     await act(async () => {
       render(<CommissionsPage />);
     });
 
-    await waitFor(() => expect(screen.getByText(/Load failed/i)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/Load failed/i)).toBeInTheDocument(),
+    );
   });
 
   test('renders commission rewards and defaults', async () => {
@@ -62,23 +66,25 @@ describe('commission UI', () => {
           rewardAmount: null,
           currency: null,
           status: 'open',
-          paymentStatus: 'pending'
+          paymentStatus: 'pending',
         },
         {
           id: 'comm-2',
           description: 'Reward default currency',
           rewardAmount: 150,
           status: 'open',
-          paymentStatus: 'escrowed'
-        }
-      ]
+          paymentStatus: 'escrowed',
+        },
+      ],
     });
 
     await act(async () => {
       render(<CommissionsPage />);
     });
 
-    await waitFor(() => expect(screen.getByText(/No reward yet/i)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/No reward yet/i)).toBeInTheDocument(),
+    );
     expect(screen.getByText('Reward: N/A')).toBeInTheDocument();
     expect(screen.getByText('Reward: 150 USD')).toBeInTheDocument();
   });
@@ -92,26 +98,30 @@ describe('commission UI', () => {
           rewardAmount: 200,
           currency: 'USD',
           status: 'open',
-          paymentStatus: 'escrowed'
-        }
-      ]
+          paymentStatus: 'escrowed',
+        },
+      ],
     });
 
     await act(async () => {
       render(<CommissionDetailPage params={{ id: 'comm-1' }} />);
     });
-    await waitFor(() => expect(screen.getByText(/Commission comm-1/i)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/Commission comm-1/i)).toBeInTheDocument(),
+    );
   });
 
   test('shows error message when detail load fails', async () => {
     (apiClient.get as jest.Mock).mockRejectedValueOnce({
-      response: { data: { message: 'Detail load failed' } }
+      response: { data: { message: 'Detail load failed' } },
     });
 
     await act(async () => {
       render(<CommissionDetailPage params={{ id: 'comm-99' }} />);
     });
 
-    await waitFor(() => expect(screen.getByText(/Detail load failed/i)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/Detail load failed/i)).toBeInTheDocument(),
+    );
   });
 });

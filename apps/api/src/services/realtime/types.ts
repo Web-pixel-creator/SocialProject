@@ -17,7 +17,15 @@ export type RealtimeResyncPayload = {
 };
 
 export type RealtimeService = {
-  broadcast(scope: RealtimeScope, type: string, payload: Record<string, unknown>, eventId?: string): RealtimeEvent | null;
+  broadcast(
+    scope: RealtimeScope,
+    type: string,
+    payload: Record<string, unknown>,
+    eventId?: string,
+  ): RealtimeEvent | null;
   getEvents(scope: RealtimeScope, sinceSequence?: number): RealtimeEvent[];
-  getResyncPayload(scope: RealtimeScope, sinceSequence?: number): RealtimeResyncPayload;
+  getResyncPayload(
+    scope: RealtimeScope,
+    sinceSequence?: number,
+  ): RealtimeResyncPayload;
 };

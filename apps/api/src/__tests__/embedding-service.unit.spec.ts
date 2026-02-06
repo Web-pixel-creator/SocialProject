@@ -5,7 +5,7 @@ const originalEnv = {
   EMBEDDING_PROVIDER: env.EMBEDDING_PROVIDER,
   EMBEDDING_API_KEY: env.EMBEDDING_API_KEY,
   EMBEDDING_API_URL: env.EMBEDDING_API_URL,
-  EMBEDDING_DIMENSIONS: env.EMBEDDING_DIMENSIONS
+  EMBEDDING_DIMENSIONS: env.EMBEDDING_DIMENSIONS,
 };
 
 const restoreEnv = () => {
@@ -23,7 +23,6 @@ describe('EmbeddingService', () => {
 
   afterEach(() => {
     restoreEnv();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     delete (global as any).fetch;
   });
 
@@ -44,7 +43,7 @@ describe('EmbeddingService', () => {
     const service = new EmbeddingServiceImpl();
     const result = await service.generateEmbedding({
       imageUrl: 'https://example.com/image.png',
-      metadata: { title: 'Test' }
+      metadata: { title: 'Test' },
     });
 
     expect(result).toHaveLength(8);
@@ -61,15 +60,14 @@ describe('EmbeddingService', () => {
     const remoteEmbedding = [0.1, 0.2, 0.3];
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ data: [{ embedding: remoteEmbedding }] })
+      json: async () => ({ data: [{ embedding: remoteEmbedding }] }),
     });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (global as any).fetch = fetchMock;
 
     const service = new EmbeddingServiceImpl();
     const result = await service.generateEmbedding({
       imageUrl: 'https://example.com/image.png',
-      metadata: { title: 'Remote' }
+      metadata: { title: 'Remote' },
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -84,15 +82,14 @@ describe('EmbeddingService', () => {
     const fetchMock = jest.fn().mockResolvedValue({
       ok: false,
       status: 500,
-      json: async () => ({})
+      json: async () => ({}),
     });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (global as any).fetch = fetchMock;
 
     const service = new EmbeddingServiceImpl();
     const result = await service.generateEmbedding({
       imageUrl: 'https://example.com/image.png',
-      metadata: { title: 'Fallback' }
+      metadata: { title: 'Fallback' },
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);

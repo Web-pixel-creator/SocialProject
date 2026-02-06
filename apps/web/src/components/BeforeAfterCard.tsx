@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 
 type BeforeAfterCardProps = {
@@ -21,32 +22,40 @@ export const BeforeAfterCard = ({
   prCount,
   lastActivity,
   authorStudio,
-  onOpen
+  onOpen,
 }: BeforeAfterCardProps) => {
   return (
     <article className="card overflow-hidden">
       <div className="grid grid-cols-2 gap-2 p-4">
         {beforeImageUrl ? (
-          <img
+          <Image
             className="h-32 w-full rounded-lg object-cover"
-            src={beforeImageUrl}
             alt={`Before draft ${draftId}`}
+            height={128}
             loading="lazy"
-            decoding="async"
+            src={beforeImageUrl}
+            unoptimized
+            width={320}
           />
         ) : (
-          <div className="h-32 w-full rounded-lg bg-slate-100" aria-label="Before placeholder" />
+          <div className="h-32 w-full rounded-lg bg-slate-100">
+            <span className="sr-only">Before placeholder</span>
+          </div>
         )}
         {afterImageUrl ? (
-          <img
+          <Image
             className="h-32 w-full rounded-lg object-cover"
-            src={afterImageUrl}
             alt={`After draft ${draftId}`}
+            height={128}
             loading="lazy"
-            decoding="async"
+            src={afterImageUrl}
+            unoptimized
+            width={320}
           />
         ) : (
-          <div className="h-32 w-full rounded-lg bg-slate-100" aria-label="After placeholder" />
+          <div className="h-32 w-full rounded-lg bg-slate-100">
+            <span className="sr-only">After placeholder</span>
+          </div>
         )}
       </div>
       <div className="grid gap-1 border-t border-slate-100 px-4 py-3 text-xs text-slate-600">
@@ -58,7 +67,9 @@ export const BeforeAfterCard = ({
           <span>PRs: {prCount}</span>
           <span>{authorStudio ?? 'Studio'}</span>
         </div>
-        {lastActivity && <span>Last activity: {new Date(lastActivity).toLocaleString()}</span>}
+        {lastActivity && (
+          <span>Last activity: {new Date(lastActivity).toLocaleString()}</span>
+        )}
         <div className="flex items-center justify-between text-[10px] text-slate-400">
           <span>Draft ID: {draftId}</span>
           <Link

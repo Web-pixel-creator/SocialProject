@@ -38,7 +38,10 @@ export type CleanupCounts = {
 };
 
 export type PrivacyService = {
-  requestExport(userId: string, client?: DbClient): Promise<{ export: DataExport; bundle: ExportBundle }>;
+  requestExport(
+    userId: string,
+    client?: DbClient,
+  ): Promise<{ export: DataExport; bundle: ExportBundle }>;
   getExportStatus(exportId: string, client?: DbClient): Promise<DataExport>;
   requestDeletion(userId: string, client?: DbClient): Promise<DeletionRequest>;
   previewExpiredData(client?: DbClient): Promise<CleanupCounts>;

@@ -2,15 +2,21 @@
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
-import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { CommissionForm } from '../components/CommissionForm';
 import { apiClient } from '../lib/api';
 
 jest.mock('../lib/api', () => ({
   apiClient: {
-    post: jest.fn()
+    post: jest.fn(),
   },
-  setAuthToken: jest.fn()
+  setAuthToken: jest.fn(),
 }));
 
 describe('CommissionForm', () => {
@@ -20,13 +26,23 @@ describe('CommissionForm', () => {
 
   test('shows error for invalid reward amount', async () => {
     render(<CommissionForm />);
-    fireEvent.change(screen.getByPlaceholderText(/Describe the creative brief/i), {
-      target: { value: 'Need a logo' }
+    fireEvent.change(
+      screen.getByPlaceholderText(/Describe the creative brief/i),
+      {
+        target: { value: 'Need a logo' },
+      },
+    );
+    fireEvent.change(screen.getByPlaceholderText(/Reward amount/i), {
+      target: { value: 'abc' },
     });
-    fireEvent.change(screen.getByPlaceholderText(/Reward amount/i), { target: { value: 'abc' } });
+
+    const form = screen.getByRole('button', { name: /Post/i }).closest('form');
+    if (!form) {
+      throw new Error('Post button is not inside a form.');
+    }
 
     await act(async () => {
-      fireEvent.submit(screen.getByRole('button', { name: /Post/i }).closest('form')!);
+      fireEvent.submit(form);
     });
 
     expect(screen.getByText(/Invalid reward amount/i)).toBeInTheDocument();
@@ -37,31 +53,45 @@ describe('CommissionForm', () => {
     const onCreated = jest.fn();
     render(<CommissionForm onCreated={onCreated} />);
 
-    fireEvent.change(screen.getByPlaceholderText(/Describe the creative brief/i), {
-      target: { value: 'Landing page concept' }
+    fireEvent.change(
+      screen.getByPlaceholderText(/Describe the creative brief/i),
+      {
+        target: { value: 'Landing page concept' },
+      },
+    );
+    fireEvent.change(screen.getByPlaceholderText(/Reward amount/i), {
+      target: { value: '200' },
     });
-    fireEvent.change(screen.getByPlaceholderText(/Reward amount/i), { target: { value: '200' } });
-    fireEvent.change(screen.getByDisplayValue('USD'), { target: { value: 'EUR' } });
+    fireEvent.change(screen.getByDisplayValue('USD'), {
+      target: { value: 'EUR' },
+    });
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /Post/i }));
     });
 
-    await waitFor(() => expect(screen.getByText(/Commission created/i)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/Commission created/i)).toBeInTheDocument(),
+    );
     expect(onCreated).toHaveBeenCalled();
-    expect(screen.getByPlaceholderText(/Describe the creative brief/i)).toHaveValue('');
+    expect(
+      screen.getByPlaceholderText(/Describe the creative brief/i),
+    ).toHaveValue('');
     expect(screen.getByPlaceholderText(/Reward amount/i)).toHaveValue('');
   });
 
   test('shows API error messages', async () => {
     (apiClient.post as jest.Mock).mockRejectedValue({
-      response: { data: { message: 'Reward exceeds cap.' } }
+      response: { data: { message: 'Reward exceeds cap.' } },
     });
     render(<CommissionForm />);
 
-    fireEvent.change(screen.getByPlaceholderText(/Describe the creative brief/i), {
-      target: { value: 'Need a brand guide' }
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText(/Describe the creative brief/i),
+      {
+        target: { value: 'Need a brand guide' },
+      },
+    );
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /Post/i }));

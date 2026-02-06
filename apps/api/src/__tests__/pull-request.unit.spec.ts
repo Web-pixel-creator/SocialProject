@@ -1,10 +1,15 @@
 import { Pool } from 'pg';
-import { BudgetServiceImpl, getDraftBudgetKey } from '../services/budget/budgetService';
 import { redis } from '../redis/client';
+import {
+  BudgetServiceImpl,
+  getDraftBudgetKey,
+} from '../services/budget/budgetService';
 import { PullRequestServiceImpl } from '../services/pullRequest/pullRequestService';
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/finishit'
+  connectionString:
+    process.env.DATABASE_URL ||
+    'postgres://postgres:postgres@localhost:5432/finishit',
 });
 
 const prService = new PullRequestServiceImpl(pool);
@@ -29,13 +34,13 @@ describe('pull request edge cases', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['PR Release', 'tester', 'hash_pr_release']
+        ['PR Release', 'tester', 'hash_pr_release'],
       );
       const agentId = agent.rows[0].id;
 
       const draft = await client.query(
         "INSERT INTO drafts (author_id, status) VALUES ($1, 'release') RETURNING id",
-        [agentId]
+        [agentId],
       );
 
       await expect(
@@ -46,10 +51,10 @@ describe('pull request edge cases', () => {
             description: 'Should fail',
             severity: 'minor',
             imageUrl: 'https://example.com/v2.png',
-            thumbnailUrl: 'https://example.com/v2-thumb.png'
+            thumbnailUrl: 'https://example.com/v2-thumb.png',
           },
-          client
-        )
+          client,
+        ),
       ).rejects.toThrow();
 
       await client.query('ROLLBACK');
@@ -67,14 +72,17 @@ describe('pull request edge cases', () => {
       await client.query('BEGIN');
       const author = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['Author Agent', 'tester', 'hash_pr_author']
+        ['Author Agent', 'tester', 'hash_pr_author'],
       );
       const maker = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['Maker Agent', 'tester', 'hash_pr_maker']
+        ['Maker Agent', 'tester', 'hash_pr_maker'],
       );
 
-      const draft = await client.query('INSERT INTO drafts (author_id) VALUES ($1) RETURNING id', [author.rows[0].id]);
+      const draft = await client.query(
+        'INSERT INTO drafts (author_id) VALUES ($1) RETURNING id',
+        [author.rows[0].id],
+      );
       const pr = await prService.submitPullRequest(
         {
           draftId: draft.rows[0].id,
@@ -82,16 +90,20 @@ describe('pull request edge cases', () => {
           description: 'Decision test',
           severity: 'minor',
           imageUrl: 'https://example.com/v2.png',
-          thumbnailUrl: 'https://example.com/v2-thumb.png'
+          thumbnailUrl: 'https://example.com/v2-thumb.png',
         },
-        client
+        client,
       );
 
       await expect(
         prService.decidePullRequest(
-          { pullRequestId: pr.id, authorId: maker.rows[0].id, decision: 'merge' },
-          client
-        )
+          {
+            pullRequestId: pr.id,
+            authorId: maker.rows[0].id,
+            decision: 'merge',
+          },
+          client,
+        ),
       ).rejects.toThrow();
 
       await client.query('ROLLBACK');
@@ -109,10 +121,13 @@ describe('pull request edge cases', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['No Fix Agent', 'tester', 'hash_pr_nofix']
+        ['No Fix Agent', 'tester', 'hash_pr_nofix'],
       );
 
-      const draft = await client.query('INSERT INTO drafts (author_id) VALUES ($1) RETURNING id', [agent.rows[0].id]);
+      const draft = await client.query(
+        'INSERT INTO drafts (author_id) VALUES ($1) RETURNING id',
+        [agent.rows[0].id],
+      );
       const pr = await prService.submitPullRequest(
         {
           draftId: draft.rows[0].id,
@@ -120,9 +135,9 @@ describe('pull request edge cases', () => {
           description: 'No fix',
           severity: 'minor',
           imageUrl: 'https://example.com/v2.png',
-          thumbnailUrl: 'https://example.com/v2-thumb.png'
+          thumbnailUrl: 'https://example.com/v2-thumb.png',
         },
-        client
+        client,
       );
 
       expect(pr.addressedFixRequests.length).toBe(0);
@@ -142,11 +157,14 @@ describe('pull request edge cases', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['Invalid Severity Agent', 'tester', 'hash_pr_invalid']
+        ['Invalid Severity Agent', 'tester', 'hash_pr_invalid'],
       );
       const agentId = agent.rows[0].id;
 
-      const draft = await client.query('INSERT INTO drafts (author_id) VALUES ($1) RETURNING id', [agentId]);
+      const draft = await client.query(
+        'INSERT INTO drafts (author_id) VALUES ($1) RETURNING id',
+        [agentId],
+      );
 
       await expect(
         prService.submitPullRequest(
@@ -156,10 +174,10 @@ describe('pull request edge cases', () => {
             description: 'Bad severity',
             severity: 'invalid' as any,
             imageUrl: 'https://example.com/v2.png',
-            thumbnailUrl: 'https://example.com/v2-thumb.png'
+            thumbnailUrl: 'https://example.com/v2-thumb.png',
           },
-          client
-        )
+          client,
+        ),
       ).rejects.toMatchObject({ code: 'PR_INVALID_SEVERITY' });
 
       await client.query('ROLLBACK');
@@ -179,8 +197,8 @@ describe('pull request edge cases', () => {
         description: 'Missing draft',
         severity: 'minor',
         imageUrl: 'https://example.com/v2.png',
-        thumbnailUrl: 'https://example.com/v2-thumb.png'
-      })
+        thumbnailUrl: 'https://example.com/v2-thumb.png',
+      }),
     ).rejects.toMatchObject({ code: 'DRAFT_NOT_FOUND' });
   });
 
@@ -189,8 +207,8 @@ describe('pull request edge cases', () => {
       prService.decidePullRequest({
         pullRequestId: '00000000-0000-0000-0000-000000000000',
         authorId: '00000000-0000-0000-0000-000000000000',
-        decision: 'merge'
-      })
+        decision: 'merge',
+      }),
     ).rejects.toMatchObject({ code: 'PR_NOT_FOUND' });
   });
 
@@ -200,11 +218,14 @@ describe('pull request edge cases', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['Fork Fail Agent', 'tester', 'hash_pr_fork_fail']
+        ['Fork Fail Agent', 'tester', 'hash_pr_fork_fail'],
       );
       const agentId = agent.rows[0].id;
 
-      const draft = await client.query('INSERT INTO drafts (author_id) VALUES ($1) RETURNING id', [agentId]);
+      const draft = await client.query(
+        'INSERT INTO drafts (author_id) VALUES ($1) RETURNING id',
+        [agentId],
+      );
       const pr = await prService.submitPullRequest(
         {
           draftId: draft.rows[0].id,
@@ -212,12 +233,14 @@ describe('pull request edge cases', () => {
           description: 'Not rejected yet',
           severity: 'minor',
           imageUrl: 'https://example.com/v2.png',
-          thumbnailUrl: 'https://example.com/v2-thumb.png'
+          thumbnailUrl: 'https://example.com/v2-thumb.png',
         },
-        client
+        client,
       );
 
-      await expect(prService.createForkFromRejected(pr.id, agentId, client)).rejects.toThrow();
+      await expect(
+        prService.createForkFromRejected(pr.id, agentId, client),
+      ).rejects.toThrow();
 
       await client.query('ROLLBACK');
     } catch (error) {
@@ -230,7 +253,10 @@ describe('pull request edge cases', () => {
 
   test('rejects fork creation when PR is missing', async () => {
     await expect(
-      prService.createForkFromRejected('00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000000')
+      prService.createForkFromRejected(
+        '00000000-0000-0000-0000-000000000000',
+        '00000000-0000-0000-0000-000000000000',
+      ),
     ).rejects.toMatchObject({ code: 'PR_NOT_FOUND' });
   });
 
@@ -240,14 +266,17 @@ describe('pull request edge cases', () => {
       await client.query('BEGIN');
       const maker = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['Maker One', 'tester', 'hash_pr_maker_one']
+        ['Maker One', 'tester', 'hash_pr_maker_one'],
       );
       const intruder = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['Maker Two', 'tester', 'hash_pr_maker_two']
+        ['Maker Two', 'tester', 'hash_pr_maker_two'],
       );
 
-      const draft = await client.query('INSERT INTO drafts (author_id) VALUES ($1) RETURNING id', [maker.rows[0].id]);
+      const draft = await client.query(
+        'INSERT INTO drafts (author_id) VALUES ($1) RETURNING id',
+        [maker.rows[0].id],
+      );
       const pr = await prService.submitPullRequest(
         {
           draftId: draft.rows[0].id,
@@ -255,9 +284,9 @@ describe('pull request edge cases', () => {
           description: 'Reject me',
           severity: 'minor',
           imageUrl: 'https://example.com/v2.png',
-          thumbnailUrl: 'https://example.com/v2-thumb.png'
+          thumbnailUrl: 'https://example.com/v2-thumb.png',
         },
-        client
+        client,
       );
 
       await prService.decidePullRequest(
@@ -265,13 +294,15 @@ describe('pull request edge cases', () => {
           pullRequestId: pr.id,
           authorId: maker.rows[0].id,
           decision: 'reject',
-          rejectionReason: 'not now'
+          rejectionReason: 'not now',
         },
-        client
+        client,
       );
 
-      await expect(prService.createForkFromRejected(pr.id, intruder.rows[0].id, client)).rejects.toMatchObject({
-        code: 'NOT_MAKER'
+      await expect(
+        prService.createForkFromRejected(pr.id, intruder.rows[0].id, client),
+      ).rejects.toMatchObject({
+        code: 'NOT_MAKER',
       });
 
       await client.query('ROLLBACK');
@@ -289,18 +320,23 @@ describe('pull request edge cases', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['Missing Version Agent', 'tester', 'hash_pr_missing_version']
+        ['Missing Version Agent', 'tester', 'hash_pr_missing_version'],
       );
       const agentId = agent.rows[0].id;
 
-      const draft = await client.query('INSERT INTO drafts (author_id) VALUES ($1) RETURNING id', [agentId]);
+      const draft = await client.query(
+        'INSERT INTO drafts (author_id) VALUES ($1) RETURNING id',
+        [agentId],
+      );
       const pr = await client.query(
         "INSERT INTO pull_requests (draft_id, maker_id, proposed_version, description, severity, status) VALUES ($1, $2, $3, $4, $5, 'rejected') RETURNING id",
-        [draft.rows[0].id, agentId, 2, 'Manual PR', 'minor']
+        [draft.rows[0].id, agentId, 2, 'Manual PR', 'minor'],
       );
 
-      await expect(prService.createForkFromRejected(pr.rows[0].id, agentId, client)).rejects.toMatchObject({
-        code: 'PR_VERSION_NOT_FOUND'
+      await expect(
+        prService.createForkFromRejected(pr.rows[0].id, agentId, client),
+      ).rejects.toMatchObject({
+        code: 'PR_VERSION_NOT_FOUND',
       });
 
       await client.query('ROLLBACK');
@@ -328,7 +364,7 @@ describe('pull request edge cases', () => {
             author_feedback: null,
             judge_verdict: null,
             created_at: new Date(),
-            decided_at: null
+            decided_at: null,
           },
           {
             id: 'pr-2',
@@ -342,10 +378,10 @@ describe('pull request edge cases', () => {
             author_feedback: null,
             judge_verdict: null,
             created_at: new Date(),
-            decided_at: null
-          }
-        ]
-      })
+            decided_at: null,
+          },
+        ],
+      }),
     };
 
     const list = await prService.listByDraft('draft-1', fakeClient as any);
@@ -359,15 +395,23 @@ describe('pull request edge cases', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['Status Agent', 'tester', 'hash_pr_status']
+        ['Status Agent', 'tester', 'hash_pr_status'],
       );
-      const draft = await client.query('INSERT INTO drafts (author_id) VALUES ($1) RETURNING id', [agent.rows[0].id]);
+      const draft = await client.query(
+        'INSERT INTO drafts (author_id) VALUES ($1) RETURNING id',
+        [agent.rows[0].id],
+      );
 
       const status = await prService.getDraftStatus(draft.rows[0].id, client);
       expect(status).toBe('draft');
 
-      await expect(prService.getDraftStatus('00000000-0000-0000-0000-000000000000', client)).rejects.toMatchObject({
-        code: 'DRAFT_NOT_FOUND'
+      await expect(
+        prService.getDraftStatus(
+          '00000000-0000-0000-0000-000000000000',
+          client,
+        ),
+      ).rejects.toMatchObject({
+        code: 'DRAFT_NOT_FOUND',
       });
 
       await client.query('ROLLBACK');
@@ -386,11 +430,14 @@ describe('pull request edge cases', () => {
       await client.query('BEGIN');
       const agent = await client.query(
         'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-        ['Budget Agent', 'tester', 'hash_pr_budget']
+        ['Budget Agent', 'tester', 'hash_pr_budget'],
       );
       const agentId = agent.rows[0].id;
 
-      const draft = await client.query('INSERT INTO drafts (author_id) VALUES ($1) RETURNING id', [agentId]);
+      const draft = await client.query(
+        'INSERT INTO drafts (author_id) VALUES ($1) RETURNING id',
+        [agentId],
+      );
       const budgetKey = getDraftBudgetKey(draft.rows[0].id, new Date());
       await redis.del(budgetKey);
 
@@ -403,9 +450,9 @@ describe('pull request edge cases', () => {
           description: 'Budget fork',
           severity: 'minor',
           imageUrl: 'https://example.com/v2.png',
-          thumbnailUrl: 'https://example.com/v2-thumb.png'
+          thumbnailUrl: 'https://example.com/v2-thumb.png',
         },
-        client
+        client,
       );
 
       await prService.decidePullRequest(
@@ -413,9 +460,9 @@ describe('pull request edge cases', () => {
           pullRequestId: pr.id,
           authorId: agentId,
           decision: 'reject',
-          rejectionReason: 'budget test'
+          rejectionReason: 'budget test',
         },
-        client
+        client,
       );
 
       await prService.createForkFromRejected(pr.id, agentId, client);
@@ -432,5 +479,5 @@ describe('pull request edge cases', () => {
     } finally {
       client.release();
     }
-  }, 30000);
+  }, 30_000);
 });

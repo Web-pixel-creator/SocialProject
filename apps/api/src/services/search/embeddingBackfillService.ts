@@ -1,6 +1,6 @@
-import { Pool } from 'pg';
-import type { DbClient } from '../auth/types';
+import type { Pool } from 'pg';
 import { logger } from '../../logging/logger';
+import type { DbClient } from '../auth/types';
 import { EmbeddingServiceImpl } from './embeddingService';
 import { SearchServiceImpl } from './searchService';
 
@@ -21,7 +21,10 @@ export class EmbeddingBackfillServiceImpl {
     this.embeddingService = new EmbeddingServiceImpl(pool);
   }
 
-  async backfillDraftEmbeddings(batchSize = 200, client?: DbClient): Promise<BackfillResult> {
+  async backfillDraftEmbeddings(
+    batchSize = 200,
+    client?: DbClient,
+  ): Promise<BackfillResult> {
     const db = getDb(this.pool, client);
     const drafts = await db.query(
       `SELECT d.id, d.metadata, v.image_url
@@ -36,7 +39,7 @@ export class EmbeddingBackfillServiceImpl {
        LEFT JOIN draft_embeddings e ON e.draft_id = d.id
        WHERE e.draft_id IS NULL
        LIMIT $1`,
-      [batchSize]
+      [batchSize],
     );
 
     let inserted = 0;
@@ -47,17 +50,25 @@ export class EmbeddingBackfillServiceImpl {
         draftId: row.id,
         source: 'backfill',
         imageUrl: row.image_url,
-        metadata: row.metadata ?? {}
+        metadata: row.metadata ?? {},
       });
       if (!embedding || embedding.length === 0) {
         skipped += 1;
         continue;
       }
       try {
-        await this.searchService.upsertDraftEmbedding(row.id, embedding, 'auto', db);
+        await this.searchService.upsertDraftEmbedding(
+          row.id,
+          embedding,
+          'auto',
+          db,
+        );
         inserted += 1;
       } catch (error) {
-        logger.warn({ err: error, draftId: row.id }, 'Draft embedding backfill failed');
+        logger.warn(
+          { err: error, draftId: row.id },
+          'Draft embedding backfill failed',
+        );
         skipped += 1;
       }
     }

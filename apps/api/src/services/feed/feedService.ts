@@ -1,20 +1,21 @@
-import { Pool } from 'pg';
-import type { DbClient } from '../auth/types';
+import type { Pool } from 'pg';
 import { env } from '../../config/env';
+import type { DbClient } from '../auth/types';
+import {
+  IMPACT_MAJOR_INCREMENT,
+  IMPACT_MINOR_INCREMENT,
+} from '../metrics/constants';
 import type {
+  ChangeFeedItem,
   FeedFilters,
   FeedItem,
   FeedService,
   FeedSort,
-  FeedStatus,
-  FeedIntent,
-  ChangeFeedItem,
+  HotNowItem,
   ProgressFeedItem,
   StudioItem,
-  HotNowItem,
-  UnifiedFeedFilters
+  UnifiedFeedFilters,
 } from './types';
-import { IMPACT_MAJOR_INCREMENT, IMPACT_MINOR_INCREMENT } from '../metrics/constants';
 
 const getDb = (pool: Pool, client?: DbClient): DbClient => client ?? pool;
 
@@ -24,7 +25,7 @@ const mapFeedItem = (row: any): FeedItem => ({
   glowUpScore: Number(row.glow_up_score ?? 0),
   updatedAt: row.updated_at,
   beforeImageUrl: row.before_image_url ?? row.before_thumbnail_url,
-  afterImageUrl: row.after_image_url ?? row.after_thumbnail_url
+  afterImageUrl: row.after_image_url ?? row.after_thumbnail_url,
 });
 
 const mapAutopsyItem = (row: any): FeedItem => ({
@@ -32,14 +33,14 @@ const mapAutopsyItem = (row: any): FeedItem => ({
   type: 'autopsy',
   glowUpScore: 0,
   updatedAt: row.published_at ?? row.created_at,
-  summary: row.summary
+  summary: row.summary,
 });
 
 const mapStudioItem = (row: any): StudioItem => ({
   id: row.id,
   studioName: row.studio_name,
   impact: Number(row.impact ?? 0),
-  signal: Number(row.signal ?? 0)
+  signal: Number(row.signal ?? 0),
 });
 
 const mapProgressItem = (row: any): ProgressFeedItem => ({
@@ -50,7 +51,7 @@ const mapProgressItem = (row: any): ProgressFeedItem => ({
   prCount: Number(row.pr_count ?? 0),
   lastActivity: row.last_activity,
   authorStudio: row.studio_name,
-  guildId: row.guild_id ?? null
+  guildId: row.guild_id ?? null,
 });
 
 const mapChangeItem = (row: any): ChangeFeedItem => {
@@ -70,7 +71,7 @@ const mapChangeItem = (row: any): ChangeFeedItem => {
     severity,
     occurredAt: row.occurred_at,
     glowUpScore: Number(row.glow_up_score ?? 0),
-    impactDelta
+    impactDelta,
   };
 };
 
@@ -90,18 +91,31 @@ const computeRecencyDecay = (lastActivity: Date): number => {
   return Math.exp(-hours / tau);
 };
 
-const normalizeWeights = (
-  weights: Record<string, number>,
-  defaults: Record<string, number>
-): Record<string, number> => {
-  const sanitized = Object.fromEntries(
-    Object.entries(weights).map(([key, value]) => [key, Number.isFinite(value) && value > 0 ? value : 0])
-  );
-  const sum = Object.values(sanitized).reduce((acc, value) => acc + value, 0);
+const normalizeWeights = <K extends string>(
+  weights: Record<K, number>,
+  defaults: Record<K, number>,
+): Record<K, number> => {
+  const keys = Object.keys(weights) as K[];
+  const sanitized = {} as Record<K, number>;
+  let sum = 0;
+
+  for (const key of keys) {
+    const value = Number(weights[key]);
+    const safeValue = Number.isFinite(value) && value > 0 ? value : 0;
+    sanitized[key] = safeValue;
+    sum += safeValue;
+  }
+
   if (sum <= 0) {
     return defaults;
   }
-  return Object.fromEntries(Object.entries(sanitized).map(([key, value]) => [key, value / sum]));
+
+  const normalized = {} as Record<K, number>;
+  for (const key of keys) {
+    normalized[key] = sanitized[key] / sum;
+  }
+
+  return normalized;
 };
 
 const HOT_NOW_DEFAULT_WEIGHTS = {
@@ -109,7 +123,7 @@ const HOT_NOW_DEFAULT_WEIGHTS = {
   fix: 0.2,
   pending: 0.2,
   decisions: 0.1,
-  glowup: 0.1
+  glowup: 0.1,
 };
 
 const buildHotReasonLabel = (item: {
@@ -136,7 +150,10 @@ const buildHotReasonLabel = (item: {
 export class FeedServiceImpl implements FeedService {
   constructor(private readonly pool: Pool) {}
 
-  async getFeed(filters: UnifiedFeedFilters, client?: DbClient): Promise<FeedItem[]> {
+  async getFeed(
+    filters: UnifiedFeedFilters,
+    client?: DbClient,
+  ): Promise<FeedItem[]> {
     const db = getDb(this.pool, client);
     const {
       limit = 20,
@@ -146,7 +163,7 @@ export class FeedServiceImpl implements FeedService {
       intent,
       from,
       to,
-      cursor
+      cursor,
     } = filters;
 
     const safeLimit = Math.min(Math.max(limit, 1), 100);
@@ -168,22 +185,26 @@ export class FeedServiceImpl implements FeedService {
       clauses.push("d.status = 'release'");
     } else if (status === 'pr') {
       clauses.push(
-        "EXISTS (SELECT 1 FROM pull_requests pr WHERE pr.draft_id = d.id AND pr.status = 'pending')"
+        "EXISTS (SELECT 1 FROM pull_requests pr WHERE pr.draft_id = d.id AND pr.status = 'pending')",
       );
     }
 
     if (intent === 'ready_for_review') {
       clauses.push(
-        "EXISTS (SELECT 1 FROM pull_requests pr WHERE pr.draft_id = d.id AND pr.status = 'pending')"
+        "EXISTS (SELECT 1 FROM pull_requests pr WHERE pr.draft_id = d.id AND pr.status = 'pending')",
       );
     } else if (intent === 'seeking_pr') {
-      clauses.push('EXISTS (SELECT 1 FROM fix_requests fr WHERE fr.draft_id = d.id)');
       clauses.push(
-        "NOT EXISTS (SELECT 1 FROM pull_requests pr WHERE pr.draft_id = d.id AND pr.status = 'pending')"
+        'EXISTS (SELECT 1 FROM fix_requests fr WHERE fr.draft_id = d.id)',
+      );
+      clauses.push(
+        "NOT EXISTS (SELECT 1 FROM pull_requests pr WHERE pr.draft_id = d.id AND pr.status = 'pending')",
       );
     } else if (intent === 'needs_help') {
       clauses.push("d.status = 'draft'");
-      clauses.push('NOT EXISTS (SELECT 1 FROM fix_requests fr WHERE fr.draft_id = d.id)');
+      clauses.push(
+        'NOT EXISTS (SELECT 1 FROM fix_requests fr WHERE fr.draft_id = d.id)',
+      );
     }
 
     if (from) {
@@ -202,7 +223,7 @@ export class FeedServiceImpl implements FeedService {
       const orderMap: Record<FeedSort, string> = {
         recent: 'd.updated_at DESC',
         glowup: 'd.glow_up_score DESC, d.updated_at DESC',
-        impact: 'a.impact DESC, d.updated_at DESC'
+        impact: 'a.impact DESC, d.updated_at DESC',
       };
       return orderMap[sort as FeedSort] ?? orderMap.recent;
     })();
@@ -221,13 +242,16 @@ export class FeedServiceImpl implements FeedService {
        ${whereSql}
        ORDER BY ${orderBy}
        LIMIT $${params.length - 1} OFFSET $${params.length}`,
-      params
+      params,
     );
 
     return result.rows.map(mapFeedItem);
   }
 
-  async getProgress(filters: FeedFilters, client?: DbClient): Promise<ProgressFeedItem[]> {
+  async getProgress(
+    filters: FeedFilters,
+    client?: DbClient,
+  ): Promise<ProgressFeedItem[]> {
     const db = getDb(this.pool, client);
     const { limit = 20, offset = 0 } = filters;
     const take = Math.max(limit + offset, 50);
@@ -269,7 +293,7 @@ export class FeedServiceImpl implements FeedService {
          AND d.is_sandbox = false
        ORDER BY d.updated_at DESC
        LIMIT $1`,
-      [take]
+      [take],
     );
 
     const scored = result.rows.map((row: any) => {
@@ -283,7 +307,10 @@ export class FeedServiceImpl implements FeedService {
     return scored.slice(offset, offset + limit).map((entry) => entry.item);
   }
 
-  async getForYou(filters: FeedFilters, client?: DbClient): Promise<FeedItem[]> {
+  async getForYou(
+    filters: FeedFilters,
+    client?: DbClient,
+  ): Promise<FeedItem[]> {
     const db = getDb(this.pool, client);
     const { userId, limit = 20, offset = 0 } = filters;
 
@@ -297,7 +324,7 @@ export class FeedServiceImpl implements FeedService {
          GROUP BY d.id
          ORDER BY COUNT(vh.id) DESC
          LIMIT $2 OFFSET $3`,
-        [userId, limit, offset]
+        [userId, limit, offset],
       );
 
       if (history.rows.length > 0) {
@@ -307,13 +334,16 @@ export class FeedServiceImpl implements FeedService {
 
     const fallback = await db.query(
       'SELECT * FROM drafts WHERE is_sandbox = false ORDER BY glow_up_score DESC, updated_at DESC LIMIT $1 OFFSET $2',
-      [limit, offset]
+      [limit, offset],
     );
 
     return fallback.rows.map(mapFeedItem);
   }
 
-  async getLiveDrafts(filters: FeedFilters, client?: DbClient): Promise<FeedItem[]> {
+  async getLiveDrafts(
+    filters: FeedFilters,
+    client?: DbClient,
+  ): Promise<FeedItem[]> {
     const db = getDb(this.pool, client);
     const { limit = 20, offset = 0 } = filters;
     const result = await db.query(
@@ -323,32 +353,41 @@ export class FeedServiceImpl implements FeedService {
          AND updated_at > NOW() - INTERVAL '5 minutes'
        ORDER BY updated_at DESC
        LIMIT $1 OFFSET $2`,
-      [limit, offset]
+      [limit, offset],
     );
     return result.rows.map(mapFeedItem);
   }
 
-  async getGlowUps(filters: FeedFilters, client?: DbClient): Promise<FeedItem[]> {
+  async getGlowUps(
+    filters: FeedFilters,
+    client?: DbClient,
+  ): Promise<FeedItem[]> {
     const db = getDb(this.pool, client);
     const { limit = 20, offset = 0 } = filters;
     const result = await db.query(
       'SELECT * FROM drafts WHERE is_sandbox = false ORDER BY glow_up_score DESC, updated_at DESC LIMIT $1 OFFSET $2',
-      [limit, offset]
+      [limit, offset],
     );
     return result.rows.map(mapFeedItem);
   }
 
-  async getStudios(filters: FeedFilters, client?: DbClient): Promise<StudioItem[]> {
+  async getStudios(
+    filters: FeedFilters,
+    client?: DbClient,
+  ): Promise<StudioItem[]> {
     const db = getDb(this.pool, client);
     const { limit = 20, offset = 0 } = filters;
     const result = await db.query(
       'SELECT * FROM agents ORDER BY impact DESC, signal DESC LIMIT $1 OFFSET $2',
-      [limit, offset]
+      [limit, offset],
     );
     return result.rows.map(mapStudioItem);
   }
 
-  async getBattles(filters: FeedFilters, client?: DbClient): Promise<FeedItem[]> {
+  async getBattles(
+    filters: FeedFilters,
+    client?: DbClient,
+  ): Promise<FeedItem[]> {
     const db = getDb(this.pool, client);
     const { limit = 20, offset = 0 } = filters;
 
@@ -361,13 +400,16 @@ export class FeedServiceImpl implements FeedService {
        HAVING COUNT(pr.id) >= 2
        ORDER BY COUNT(pr.id) DESC
        LIMIT $1 OFFSET $2`,
-      [limit, offset]
+      [limit, offset],
     );
 
     return result.rows.map(mapFeedItem);
   }
 
-  async getArchive(filters: FeedFilters, client?: DbClient): Promise<FeedItem[]> {
+  async getArchive(
+    filters: FeedFilters,
+    client?: DbClient,
+  ): Promise<FeedItem[]> {
     const db = getDb(this.pool, client);
     const { limit = 20, offset = 0 } = filters;
     const releases = await db.query(
@@ -376,22 +418,30 @@ export class FeedServiceImpl implements FeedService {
          AND is_sandbox = false
        ORDER BY created_at DESC
        LIMIT $1 OFFSET $2`,
-      [limit, offset]
+      [limit, offset],
     );
     const autopsies = await db.query(
       `SELECT id, summary, created_at, published_at
        FROM autopsy_reports
        ORDER BY published_at DESC
        LIMIT $1 OFFSET $2`,
-      [limit, offset]
+      [limit, offset],
     );
 
-    const combined = [...releases.rows.map(mapFeedItem), ...autopsies.rows.map(mapAutopsyItem)];
-    combined.sort((a, b) => Number(new Date(b.updatedAt)) - Number(new Date(a.updatedAt)));
+    const combined = [
+      ...releases.rows.map(mapFeedItem),
+      ...autopsies.rows.map(mapAutopsyItem),
+    ];
+    combined.sort(
+      (a, b) => Number(new Date(b.updatedAt)) - Number(new Date(a.updatedAt)),
+    );
     return combined.slice(0, limit);
   }
 
-  async getChanges(filters: FeedFilters, client?: DbClient): Promise<ChangeFeedItem[]> {
+  async getChanges(
+    filters: FeedFilters,
+    client?: DbClient,
+  ): Promise<ChangeFeedItem[]> {
     const db = getDb(this.pool, client);
     const { limit = 20, offset = 0 } = filters;
     const safeLimit = Math.min(Math.max(limit, 1), 100);
@@ -429,13 +479,16 @@ export class FeedServiceImpl implements FeedService {
        ) changes
        ORDER BY occurred_at DESC
        LIMIT $1 OFFSET $2`,
-      [safeLimit, safeOffset]
+      [safeLimit, safeOffset],
     );
 
     return result.rows.map(mapChangeItem);
   }
 
-  async getHotNow(filters: FeedFilters, client?: DbClient): Promise<HotNowItem[]> {
+  async getHotNow(
+    filters: FeedFilters,
+    client?: DbClient,
+  ): Promise<HotNowItem[]> {
     const db = getDb(this.pool, client);
     const { limit = 20, offset = 0 } = filters;
     const safeLimit = Math.min(Math.max(limit, 1), 100);
@@ -530,7 +583,7 @@ export class FeedServiceImpl implements FeedService {
          AND d.status = 'draft'
        ORDER BY last_activity DESC
        LIMIT $1`,
-      [candidateLimit]
+      [candidateLimit],
     );
 
     const weights = normalizeWeights(
@@ -539,9 +592,9 @@ export class FeedServiceImpl implements FeedService {
         fix: env.HOT_NOW_W_FIX,
         pending: env.HOT_NOW_W_PENDING,
         decisions: env.HOT_NOW_W_DECISIONS,
-        glowup: env.HOT_NOW_W_GLOWUP
+        glowup: env.HOT_NOW_W_GLOWUP,
       },
-      HOT_NOW_DEFAULT_WEIGHTS
+      HOT_NOW_DEFAULT_WEIGHTS,
     ) as typeof HOT_NOW_DEFAULT_WEIGHTS;
 
     const toHotItem = (row: any): HotNowItem => {
@@ -550,7 +603,9 @@ export class FeedServiceImpl implements FeedService {
       const decisions24h = Number(row.decisions_24h ?? 0);
       const merges24h = Number(row.merges_24h ?? 0);
       const glowUpScore = Number(row.glow_up_score ?? 0);
-      const lastActivity = row.last_activity ? new Date(row.last_activity) : new Date(row.updated_at);
+      const lastActivity = row.last_activity
+        ? new Date(row.last_activity)
+        : new Date(row.updated_at);
 
       const mergedMajorTotal = Number(row.merged_major_total ?? 0);
       const mergedMinorTotal = Number(row.merged_minor_total ?? 0);
@@ -558,7 +613,9 @@ export class FeedServiceImpl implements FeedService {
       const mergedMinor24h = Number(row.merged_minor_24h ?? 0);
 
       const glowNow = mergedMajorTotal * 3 + mergedMinorTotal;
-      const glowBefore24h = Math.max(0, mergedMajorTotal - mergedMajor24h) * 3 + Math.max(0, mergedMinorTotal - mergedMinor24h);
+      const glowBefore24h =
+        Math.max(0, mergedMajorTotal - mergedMajor24h) * 3 +
+        Math.max(0, mergedMinorTotal - mergedMinor24h);
       const glowUpDelta24h = Math.max(0, glowNow - glowBefore24h);
 
       const hotScore =
@@ -579,13 +636,20 @@ export class FeedServiceImpl implements FeedService {
         merges24h,
         glowUpDelta24h,
         lastActivity,
-        reasonLabel: buildHotReasonLabel({ prPendingCount, fixOpenCount, merges24h, decisions24h }),
+        reasonLabel: buildHotReasonLabel({
+          prPendingCount,
+          fixOpenCount,
+          merges24h,
+          decisions24h,
+        }),
         beforeImageUrl: row.before_image_url ?? undefined,
-        afterImageUrl: row.after_image_url ?? undefined
+        afterImageUrl: row.after_image_url ?? undefined,
       };
     };
 
-    const ranked = rows.rows.map(toHotItem).sort((a, b) => b.hotScore - a.hotScore);
+    const ranked = rows.rows
+      .map(toHotItem)
+      .sort((a, b) => b.hotScore - a.hotScore);
     return ranked.slice(safeOffset, safeOffset + safeLimit);
   }
 }

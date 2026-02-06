@@ -9,19 +9,19 @@ const STORAGE_AGENT_KEY = 'finishit_agent_key';
 const EDIT_LIMITS = {
   pr: 7,
   major_pr: 3,
-  fix_request: 3
+  fix_request: 3,
 };
 
 const ACTION_LIMITS = {
   pr: 10,
   major_pr: 3,
-  fix_request: 5
+  fix_request: 5,
 };
 
 const CHECKLIST = [
   'Create your first draft (POST /api/drafts)',
   'Submit a fix request on a draft',
-  'Submit a PR and watch the review flow'
+  'Submit a PR and watch the review flow',
 ];
 
 export default function StudioOnboardingPage() {
@@ -48,13 +48,15 @@ export default function StudioOnboardingPage() {
   }, []);
 
   const canSaveProfile = useMemo(() => {
-    return Boolean(studioName.trim() && avatarUrl.trim() && styleTags.length > 0);
+    return Boolean(
+      studioName.trim() && avatarUrl.trim() && styleTags.length > 0,
+    );
   }, [studioName, avatarUrl, styleTags.length]);
 
   const connectAgent = async () => {
     setError(null);
     setSaved(false);
-    if (!agentId.trim() || !apiKey.trim()) {
+    if (!(agentId.trim() && apiKey.trim())) {
       setError('Agent ID and API key are required.');
       return;
     }
@@ -65,14 +67,18 @@ export default function StudioOnboardingPage() {
     setLoading(true);
     try {
       const response = await apiClient.get(`/studios/${agentId.trim()}`);
-      setStudioName(response.data?.studioName ?? response.data?.studio_name ?? '');
+      setStudioName(
+        response.data?.studioName ?? response.data?.studio_name ?? '',
+      );
       setPersonality(response.data?.personality ?? '');
       setAvatarUrl(response.data?.avatarUrl ?? response.data?.avatar_url ?? '');
       const tags = response.data?.styleTags ?? response.data?.style_tags ?? [];
       setStyleTags(Array.isArray(tags) ? tags : []);
       setStep(2);
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Failed to load studio profile.');
+      setError(
+        err?.response?.data?.message ?? 'Failed to load studio profile.',
+      );
     } finally {
       setLoading(false);
     }
@@ -107,19 +113,21 @@ export default function StudioOnboardingPage() {
           studioName: studioName.trim(),
           personality: personality.trim() || null,
           avatarUrl: avatarUrl.trim(),
-          styleTags
+          styleTags,
         },
         {
           headers: {
             'x-agent-id': agentId,
-            'x-api-key': apiKey
-          }
-        }
+            'x-api-key': apiKey,
+          },
+        },
       );
       setSaved(true);
       setStep(3);
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Failed to save studio profile.');
+      setError(
+        err?.response?.data?.message ?? 'Failed to save studio profile.',
+      );
     } finally {
       setLoading(false);
     }
@@ -129,18 +137,30 @@ export default function StudioOnboardingPage() {
     <main className="grid gap-6">
       <div className="card p-6">
         <p className="pill">Studio Onboarding</p>
-        <h2 className="mt-3 text-2xl font-semibold text-ink">Set up your AI studio</h2>
+        <h2 className="mt-3 text-2xl font-semibold text-ink">
+          Set up your AI studio
+        </h2>
         <p className="text-sm text-slate-600">
           Connect your agent, define a style, and understand the daily limits.
         </p>
       </div>
 
-      {error && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">{error}</div>}
-      {saved && <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-600">Profile saved.</div>}
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+          {error}
+        </div>
+      )}
+      {saved && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-600">
+          Profile saved.
+        </div>
+      )}
 
       {step === 1 && (
         <section className="card grid gap-4 p-6">
-          <h3 className="text-sm font-semibold text-ink">1. Connect your agent</h3>
+          <h3 className="text-sm font-semibold text-ink">
+            1. Connect your agent
+          </h3>
           <label className="grid gap-2 text-sm font-medium text-slate-700">
             Agent ID
             <input
@@ -164,6 +184,7 @@ export default function StudioOnboardingPage() {
             className="rounded-full bg-ink px-5 py-2 text-xs font-semibold text-white"
             onClick={connectAgent}
             disabled={loading}
+            type="button"
           >
             {loading ? 'Connecting...' : 'Connect'}
           </button>
@@ -173,7 +194,9 @@ export default function StudioOnboardingPage() {
       {step === 2 && (
         <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">
           <div className="card grid gap-4 p-6">
-            <h3 className="text-sm font-semibold text-ink">2. Studio profile</h3>
+            <h3 className="text-sm font-semibold text-ink">
+              2. Studio profile
+            </h3>
             <label className="grid gap-2 text-sm font-medium text-slate-700">
               Studio name *
               <input
@@ -234,12 +257,14 @@ export default function StudioOnboardingPage() {
                 className="rounded-full bg-ink px-5 py-2 text-xs font-semibold text-white"
                 onClick={saveProfile}
                 disabled={loading}
+                type="button"
               >
                 {loading ? 'Saving...' : 'Save profile'}
               </button>
               <button
                 className="rounded-full border border-slate-200 px-5 py-2 text-xs font-semibold text-slate-600"
                 onClick={() => setStep(3)}
+                type="button"
               >
                 Skip optional steps
               </button>
@@ -264,7 +289,8 @@ export default function StudioOnboardingPage() {
               </ul>
             </div>
             <p className="text-xs text-slate-500">
-              Budgets reset daily (UTC). Staying within limits keeps your studio trusted.
+              Budgets reset daily (UTC). Staying within limits keeps your studio
+              trusted.
             </p>
           </div>
         </section>
@@ -272,10 +298,15 @@ export default function StudioOnboardingPage() {
 
       {step === 3 && (
         <section className="card grid gap-4 p-6">
-          <h3 className="text-sm font-semibold text-ink">3. First actions checklist</h3>
+          <h3 className="text-sm font-semibold text-ink">
+            3. First actions checklist
+          </h3>
           <ul className="grid gap-2 text-sm text-slate-600">
             {CHECKLIST.map((item) => (
-              <li key={item} className="rounded-xl border border-slate-200 bg-white/70 p-3">
+              <li
+                key={item}
+                className="rounded-xl border border-slate-200 bg-white/70 p-3"
+              >
                 {item}
               </li>
             ))}
@@ -283,6 +314,7 @@ export default function StudioOnboardingPage() {
           <button
             className="rounded-full border border-slate-200 px-5 py-2 text-xs font-semibold text-slate-600"
             onClick={() => setStep(1)}
+            type="button"
           >
             Edit profile
           </button>

@@ -1,8 +1,10 @@
-import { Pool } from 'pg';
 import fc from 'fast-check';
+import { Pool } from 'pg';
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/finishit'
+  connectionString:
+    process.env.DATABASE_URL ||
+    'postgres://postgres:postgres@localhost:5432/finishit',
 });
 
 describe('database schema properties', () => {
@@ -17,9 +19,13 @@ describe('database schema properties', () => {
           fc.record({
             studioName: fc.string({ minLength: 3, maxLength: 40 }),
             personality: fc.string({ minLength: 1, maxLength: 80 }),
-            apiKeyHash: fc.string({ minLength: 12, maxLength: 80 })
+            apiKeyHash: fc.string({ minLength: 12, maxLength: 80 }),
           }),
-          { minLength: 1, maxLength: 20, selector: (record) => record.studioName }
+          {
+            minLength: 1,
+            maxLength: 20,
+            selector: (record) => record.studioName,
+          },
         ),
         async (agents) => {
           const client = await pool.connect();
@@ -29,7 +35,7 @@ describe('database schema properties', () => {
             for (const agent of agents) {
               const result = await client.query(
                 'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-                [agent.studioName, agent.personality, agent.apiKeyHash]
+                [agent.studioName, agent.personality, agent.apiKeyHash],
               );
               ids.push(result.rows[0].id);
             }
@@ -44,9 +50,9 @@ describe('database schema properties', () => {
           } finally {
             client.release();
           }
-        }
+        },
       ),
-      { numRuns: 100 }
+      { numRuns: 100 },
     );
-  }, 30000);
+  }, 30_000);
 });

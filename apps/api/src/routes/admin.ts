@@ -1,9 +1,14 @@
 import { Router } from 'express';
-import { db } from '../db/pool';
 import { env } from '../config/env';
-import { redis } from '../redis/client';
+import { db } from '../db/pool';
 import { requireAdmin } from '../middleware/admin';
-import { BudgetServiceImpl, ACTION_LIMITS, EDIT_LIMITS, getUtcDateKey } from '../services/budget/budgetService';
+import { redis } from '../redis/client';
+import {
+  ACTION_LIMITS,
+  BudgetServiceImpl,
+  EDIT_LIMITS,
+  getUtcDateKey,
+} from '../services/budget/budgetService';
 import { ServiceError } from '../services/common/errors';
 import { PrivacyServiceImpl } from '../services/privacy/privacyService';
 import { EmbeddingBackfillServiceImpl } from '../services/search/embeddingBackfillService';
@@ -13,22 +18,28 @@ const embeddingBackfillService = new EmbeddingBackfillServiceImpl(db);
 const budgetService = new BudgetServiceImpl();
 const privacyService = new PrivacyServiceImpl(db);
 
-const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(Math.max(value, min), max);
 const toNumber = (value: string | number | undefined, fallback = 0) =>
-  typeof value === 'number' ? value : Number.parseInt(value ?? `${fallback}`, 10);
+  typeof value === 'number'
+    ? value
+    : Number.parseInt(value ?? `${fallback}`, 10);
 const toRate = (numerator: number, denominator: number) =>
   denominator > 0 ? Number((numerator / denominator).toFixed(3)) : null;
 
 const toCounts = (data: Record<string, string>) => ({
   pr: toNumber(data.prCount),
   major_pr: toNumber(data.majorPrCount),
-  fix_request: toNumber(data.fixRequestCount)
+  fix_request: toNumber(data.fixRequestCount),
 });
 
-const buildRemaining = (counts: { pr: number; major_pr: number; fix_request: number }, limits: Record<string, number>) => ({
+const buildRemaining = (
+  counts: { pr: number; major_pr: number; fix_request: number },
+  limits: Record<string, number>,
+) => ({
   pr: Math.max(0, limits.pr - counts.pr),
   major_pr: Math.max(0, limits.major_pr - counts.major_pr),
-  fix_request: Math.max(0, limits.fix_request - counts.fix_request)
+  fix_request: Math.max(0, limits.fix_request - counts.fix_request),
 });
 
 const parseDateParam = (value?: string) => {
@@ -37,7 +48,11 @@ const parseDateParam = (value?: string) => {
   }
   const parsed = new Date(`${value}T00:00:00.000Z`);
   if (Number.isNaN(parsed.valueOf())) {
-    throw new ServiceError('INVALID_DATE', 'Invalid date format. Use YYYY-MM-DD.', 400);
+    throw new ServiceError(
+      'INVALID_DATE',
+      'Invalid date format. Use YYYY-MM-DD.',
+      400,
+    );
   }
   return parsed;
 };
@@ -47,7 +62,7 @@ const recordCleanupRun = async (
   status: 'success' | 'failed',
   startedAt: Date,
   metadata?: Record<string, unknown>,
-  errorMessage?: string
+  errorMessage?: string,
 ) => {
   const finishedAt = new Date();
   const durationMs = Math.max(0, finishedAt.getTime() - startedAt.getTime());
@@ -55,46 +70,70 @@ const recordCleanupRun = async (
     await db.query(
       `INSERT INTO job_runs (job_name, status, started_at, finished_at, duration_ms, error_message, metadata)
        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [jobName, status, startedAt, finishedAt, durationMs, errorMessage ?? null, metadata ?? {}]
+      [
+        jobName,
+        status,
+        startedAt,
+        finishedAt,
+        durationMs,
+        errorMessage ?? null,
+        metadata ?? {},
+      ],
     );
   } catch (recordError) {
     console.error('Cleanup run record failed', recordError);
   }
 };
 
-router.post('/admin/embeddings/backfill', requireAdmin, async (req, res, next) => {
-  try {
-    const batchSize = clamp(Number(req.body?.batchSize ?? req.query.batchSize ?? 200), 1, 1000);
-    const maxBatches = clamp(Number(req.body?.maxBatches ?? req.query.maxBatches ?? 1), 1, 20);
+router.post(
+  '/admin/embeddings/backfill',
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      const batchSize = clamp(
+        Number(req.body?.batchSize ?? req.query.batchSize ?? 200),
+        1,
+        1000,
+      );
+      const maxBatches = clamp(
+        Number(req.body?.maxBatches ?? req.query.maxBatches ?? 1),
+        1,
+        20,
+      );
 
-    let processed = 0;
-    let inserted = 0;
-    let skipped = 0;
-    let batches = 0;
+      let processed = 0;
+      let inserted = 0;
+      let skipped = 0;
+      let batches = 0;
 
-    for (let i = 0; i < maxBatches; i += 1) {
-      const result = await embeddingBackfillService.backfillDraftEmbeddings(batchSize);
-      processed += result.processed;
-      inserted += result.inserted;
-      skipped += result.skipped;
-      batches += 1;
+      for (let i = 0; i < maxBatches; i += 1) {
+        const result =
+          await embeddingBackfillService.backfillDraftEmbeddings(batchSize);
+        processed += result.processed;
+        inserted += result.inserted;
+        skipped += result.skipped;
+        batches += 1;
 
-      if (result.processed < batchSize) {
-        break;
+        if (result.processed < batchSize) {
+          break;
+        }
       }
+
+      res.json({ batches, batchSize, processed, inserted, skipped });
+    } catch (error) {
+      next(error);
     }
+  },
+);
 
-    res.json({ batches, batchSize, processed, inserted, skipped });
-  } catch (error) {
-    next(error);
-  }
-});
-
-router.get('/admin/embeddings/metrics', requireAdmin, async (req, res, next) => {
-  try {
-    const hours = clamp(Number(req.query.hours ?? 24), 1, 720);
-    const summary = await db.query(
-      `SELECT provider,
+router.get(
+  '/admin/embeddings/metrics',
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      const hours = clamp(Number(req.query.hours ?? 24), 1, 720);
+      const summary = await db.query(
+        `SELECT provider,
               success,
               fallback_used,
               COUNT(*)::int AS count,
@@ -104,35 +143,44 @@ router.get('/admin/embeddings/metrics', requireAdmin, async (req, res, next) => 
        WHERE created_at >= NOW() - ($1 || ' hours')::interval
        GROUP BY provider, success, fallback_used
        ORDER BY count DESC`,
-      [hours]
-    );
+        [hours],
+      );
 
-    res.json({ windowHours: hours, rows: summary.rows });
-  } catch (error) {
-    next(error);
-  }
-});
+      res.json({ windowHours: hours, rows: summary.rows });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 router.get('/admin/budgets/remaining', requireAdmin, async (req, res, next) => {
   try {
     const agentId = req.query.agentId ? String(req.query.agentId) : null;
     const draftId = req.query.draftId ? String(req.query.draftId) : null;
-    const date = parseDateParam(req.query.date ? String(req.query.date) : undefined);
+    const date = parseDateParam(
+      req.query.date ? String(req.query.date) : undefined,
+    );
     const dateKey = getUtcDateKey(date);
 
-    if (!agentId && !draftId) {
-      throw new ServiceError('MISSING_TARGET', 'agentId or draftId is required.', 400);
+    if (!(agentId || draftId)) {
+      throw new ServiceError(
+        'MISSING_TARGET',
+        'agentId or draftId is required.',
+        400,
+      );
     }
 
     const response: any = { date: dateKey };
 
     if (agentId) {
-      const counts = await budgetService.getActionBudget(agentId, { now: date });
+      const counts = await budgetService.getActionBudget(agentId, {
+        now: date,
+      });
       response.agent = {
         id: agentId,
         counts,
         limits: ACTION_LIMITS,
-        remaining: buildRemaining(counts, ACTION_LIMITS)
+        remaining: buildRemaining(counts, ACTION_LIMITS),
       };
     }
 
@@ -142,7 +190,7 @@ router.get('/admin/budgets/remaining', requireAdmin, async (req, res, next) => {
         id: draftId,
         counts,
         limits: EDIT_LIMITS,
-        remaining: buildRemaining(counts, EDIT_LIMITS)
+        remaining: buildRemaining(counts, EDIT_LIMITS),
       };
     }
 
@@ -154,7 +202,9 @@ router.get('/admin/budgets/remaining', requireAdmin, async (req, res, next) => {
 
 router.get('/admin/budgets/metrics', requireAdmin, async (req, res, next) => {
   try {
-    const date = parseDateParam(req.query.date ? String(req.query.date) : undefined);
+    const date = parseDateParam(
+      req.query.date ? String(req.query.date) : undefined,
+    );
     const dateKey = getUtcDateKey(date);
     const keys = await redis.keys(`budget:*:${dateKey}`);
 
@@ -184,7 +234,7 @@ router.get('/admin/budgets/metrics', requireAdmin, async (req, res, next) => {
       keyCount: {
         draft: draftKeys,
         agent: agentKeys,
-        total: keys.length
+        total: keys.length,
       },
       totals: {
         draft: draftTotals,
@@ -192,9 +242,9 @@ router.get('/admin/budgets/metrics', requireAdmin, async (req, res, next) => {
         combined: {
           pr: draftTotals.pr + agentTotals.pr,
           major_pr: draftTotals.major_pr + agentTotals.major_pr,
-          fix_request: draftTotals.fix_request + agentTotals.fix_request
-        }
-      }
+          fix_request: draftTotals.fix_request + agentTotals.fix_request,
+        },
+      },
     });
   } catch (error) {
     next(error);
@@ -225,8 +275,8 @@ router.get('/admin/system/metrics', requireAdmin, async (_req, res, next) => {
         rss: memory.rss,
         heapTotal: memory.heapTotal,
         heapUsed: memory.heapUsed,
-        external: memory.external
-      }
+        external: memory.external,
+      },
     });
   } catch (error) {
     next(error);
@@ -237,7 +287,9 @@ router.get('/admin/ux/metrics', requireAdmin, async (req, res, next) => {
   try {
     const hours = clamp(Number(req.query.hours ?? 24), 1, 720);
     const eventType = req.query.eventType ? String(req.query.eventType) : null;
-    const filters: string[] = ["created_at >= NOW() - ($1 || ' hours')::interval"];
+    const filters: string[] = [
+      "created_at >= NOW() - ($1 || ' hours')::interval",
+    ];
     const params: any[] = [hours];
 
     if (eventType) {
@@ -254,7 +306,7 @@ router.get('/admin/ux/metrics', requireAdmin, async (req, res, next) => {
        WHERE ${filters.join(' AND ')}
        GROUP BY event_type
        ORDER BY count DESC`,
-      params
+      params,
     );
 
     res.json({ windowHours: hours, rows: summary.rows });
@@ -272,7 +324,7 @@ router.get('/admin/ux/similar-search', requireAdmin, async (req, res, next) => {
       'similar_search_clicked',
       'similar_search_view',
       'search_performed',
-      'search_result_open'
+      'search_result_open',
     ];
 
     const summary = await db.query(
@@ -285,7 +337,7 @@ router.get('/admin/ux/similar-search', requireAdmin, async (req, res, next) => {
          AND event_type = ANY($2)
        GROUP BY profile, mode, event_type
        ORDER BY profile, mode, event_type`,
-      [hours, trackedEvents]
+      [hours, trackedEvents],
     );
 
     const profileStats: Record<
@@ -309,9 +361,9 @@ router.get('/admin/ux/similar-search', requireAdmin, async (req, res, next) => {
       const profile = row.profile ?? 'unknown';
       const mode = row.mode ?? 'unknown';
       const key = `${profile}:${mode}`;
-      const stats =
-        profileStats[key] ??
-        (profileStats[key] = {
+      let stats = profileStats[key];
+      if (!stats) {
+        stats = {
           profile,
           mode,
           shown: 0,
@@ -322,8 +374,10 @@ router.get('/admin/ux/similar-search', requireAdmin, async (req, res, next) => {
           resultOpen: 0,
           ctr: null,
           emptyRate: null,
-          openRate: null
-        });
+          openRate: null,
+        };
+        profileStats[key] = stats;
+      }
 
       switch (row.event_type) {
         case 'similar_search_shown':
@@ -350,9 +404,16 @@ router.get('/admin/ux/similar-search', requireAdmin, async (req, res, next) => {
     }
 
     for (const stats of Object.values(profileStats)) {
-      stats.ctr = stats.shown > 0 ? Number((stats.clicked / stats.shown).toFixed(3)) : null;
-      stats.emptyRate = stats.shown > 0 ? Number((stats.empty / stats.shown).toFixed(3)) : null;
-      stats.openRate = stats.performed > 0 ? Number((stats.resultOpen / stats.performed).toFixed(3)) : null;
+      stats.ctr =
+        stats.shown > 0
+          ? Number((stats.clicked / stats.shown).toFixed(3))
+          : null;
+      stats.emptyRate =
+        stats.shown > 0 ? Number((stats.empty / stats.shown).toFixed(3)) : null;
+      stats.openRate =
+        stats.performed > 0
+          ? Number((stats.resultOpen / stats.performed).toFixed(3))
+          : null;
     }
 
     const profiles = Object.values(profileStats).sort((a, b) => {
@@ -366,88 +427,93 @@ router.get('/admin/ux/similar-search', requireAdmin, async (req, res, next) => {
   }
 });
 
-router.get('/admin/ux/observer-engagement', requireAdmin, async (req, res, next) => {
-  try {
-    const hours = clamp(Number(req.query.hours ?? 24), 1, 720);
-    const trackedEvents = [
-      'draft_arc_view',
-      'draft_recap_view',
-      'watchlist_follow',
-      'watchlist_unfollow',
-      'digest_open',
-      'hot_now_open',
-      'pr_prediction_submit',
-      'pr_prediction_result_view'
-    ];
+router.get(
+  '/admin/ux/observer-engagement',
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      const hours = clamp(Number(req.query.hours ?? 24), 1, 720);
+      const trackedEvents = [
+        'draft_arc_view',
+        'draft_recap_view',
+        'watchlist_follow',
+        'watchlist_unfollow',
+        'digest_open',
+        'hot_now_open',
+        'pr_prediction_submit',
+        'pr_prediction_result_view',
+      ];
 
-    const totalsResult = await db.query(
-      `SELECT event_type, COUNT(*)::int AS count
+      const totalsResult = await db.query(
+        `SELECT event_type, COUNT(*)::int AS count
        FROM ux_events
        WHERE created_at >= NOW() - ($1 || ' hours')::interval
          AND user_type = 'observer'
          AND event_type = ANY($2)
        GROUP BY event_type`,
-      [hours, trackedEvents]
-    );
+        [hours, trackedEvents],
+      );
 
-    const totals = {
-      observerEvents: 0,
-      observerUsers: 0,
-      draftArcViews: 0,
-      recapViews: 0,
-      watchlistFollows: 0,
-      watchlistUnfollows: 0,
-      digestOpens: 0,
-      hotNowOpens: 0,
-      predictionSubmits: 0,
-      predictionResultViews: 0
-    };
+      const totals = {
+        observerEvents: 0,
+        observerUsers: 0,
+        draftArcViews: 0,
+        recapViews: 0,
+        watchlistFollows: 0,
+        watchlistUnfollows: 0,
+        digestOpens: 0,
+        hotNowOpens: 0,
+        predictionSubmits: 0,
+        predictionResultViews: 0,
+      };
 
-    for (const row of totalsResult.rows) {
-      const count = Number(row.count ?? 0);
-      totals.observerEvents += count;
-      switch (row.event_type) {
-        case 'draft_arc_view':
-          totals.draftArcViews += count;
-          break;
-        case 'draft_recap_view':
-          totals.recapViews += count;
-          break;
-        case 'watchlist_follow':
-          totals.watchlistFollows += count;
-          break;
-        case 'watchlist_unfollow':
-          totals.watchlistUnfollows += count;
-          break;
-        case 'digest_open':
-          totals.digestOpens += count;
-          break;
-        case 'hot_now_open':
-          totals.hotNowOpens += count;
-          break;
-        case 'pr_prediction_submit':
-          totals.predictionSubmits += count;
-          break;
-        case 'pr_prediction_result_view':
-          totals.predictionResultViews += count;
-          break;
-        default:
-          break;
+      for (const row of totalsResult.rows) {
+        const count = Number(row.count ?? 0);
+        totals.observerEvents += count;
+        switch (row.event_type) {
+          case 'draft_arc_view':
+            totals.draftArcViews += count;
+            break;
+          case 'draft_recap_view':
+            totals.recapViews += count;
+            break;
+          case 'watchlist_follow':
+            totals.watchlistFollows += count;
+            break;
+          case 'watchlist_unfollow':
+            totals.watchlistUnfollows += count;
+            break;
+          case 'digest_open':
+            totals.digestOpens += count;
+            break;
+          case 'hot_now_open':
+            totals.hotNowOpens += count;
+            break;
+          case 'pr_prediction_submit':
+            totals.predictionSubmits += count;
+            break;
+          case 'pr_prediction_result_view':
+            totals.predictionResultViews += count;
+            break;
+          default:
+            break;
+        }
       }
-    }
 
-    const observerUsersResult = await db.query(
-      `SELECT COUNT(DISTINCT user_id)::int AS observer_users
+      const observerUsersResult = await db.query(
+        `SELECT COUNT(DISTINCT user_id)::int AS observer_users
        FROM ux_events
        WHERE created_at >= NOW() - ($1 || ' hours')::interval
          AND user_type = 'observer'
          AND user_id IS NOT NULL`,
-      [hours]
-    );
-    totals.observerUsers = Number(observerUsersResult.rows[0]?.observer_users ?? 0);
+        [hours],
+      );
+      totals.observerUsers = Number(
+        observerUsersResult.rows[0]?.observer_users ?? 0,
+      );
 
-    const sessionsResult = await db.query(
-      `WITH observer_events AS (
+      const sessionsResult = await db.query(
+        `WITH observer_events AS (
          SELECT user_id, created_at
          FROM ux_events
          WHERE created_at >= NOW() - ($1 || ' hours')::interval
@@ -489,13 +555,15 @@ router.get('/admin/ux/observer-engagement', requireAdmin, async (req, res, next)
        SELECT COUNT(*)::int AS session_count,
               AVG(duration_sec)::float AS avg_session_sec
        FROM session_durations`,
-      [hours]
-    );
-    const sessionCount = Number(sessionsResult.rows[0]?.session_count ?? 0);
-    const avgSessionSecRaw = Number(sessionsResult.rows[0]?.avg_session_sec ?? 0);
+        [hours],
+      );
+      const sessionCount = Number(sessionsResult.rows[0]?.session_count ?? 0);
+      const avgSessionSecRaw = Number(
+        sessionsResult.rows[0]?.avg_session_sec ?? 0,
+      );
 
-    const retentionResult = await db.query(
-      `WITH current_users AS (
+      const retentionResult = await db.query(
+        `WITH current_users AS (
          SELECT DISTINCT user_id
          FROM ux_events
          WHERE created_at >= NOW() - ($1 || ' hours')::interval
@@ -526,14 +594,20 @@ router.get('/admin/ux/observer-engagement', requireAdmin, async (req, res, next)
               COALESCE(SUM(CASE WHEN active_prev_24h THEN 1 ELSE 0 END), 0)::int AS return_24h_users,
               COALESCE(SUM(CASE WHEN active_prev_7d THEN 1 ELSE 0 END), 0)::int AS return_7d_users
        FROM retention`,
-      [hours]
-    );
-    const retentionTotalUsers = Number(retentionResult.rows[0]?.total_users ?? 0);
-    const return24hUsers = Number(retentionResult.rows[0]?.return_24h_users ?? 0);
-    const return7dUsers = Number(retentionResult.rows[0]?.return_7d_users ?? 0);
+        [hours],
+      );
+      const retentionTotalUsers = Number(
+        retentionResult.rows[0]?.total_users ?? 0,
+      );
+      const return24hUsers = Number(
+        retentionResult.rows[0]?.return_24h_users ?? 0,
+      );
+      const return7dUsers = Number(
+        retentionResult.rows[0]?.return_7d_users ?? 0,
+      );
 
-    const segmentRows = await db.query(
-      `SELECT COALESCE(metadata->>'mode', 'unknown') AS mode,
+      const segmentRows = await db.query(
+        `SELECT COALESCE(metadata->>'mode', 'unknown') AS mode,
               COALESCE(status, metadata->>'draftStatus', metadata->>'status', 'unknown') AS draft_status,
               event_type,
               COUNT(*)::int AS count
@@ -543,11 +617,11 @@ router.get('/admin/ux/observer-engagement', requireAdmin, async (req, res, next)
          AND event_type = ANY($2)
        GROUP BY mode, draft_status, event_type
        ORDER BY mode, draft_status, event_type`,
-      [hours, trackedEvents]
-    );
+        [hours, trackedEvents],
+      );
 
-    const variantRows = await db.query(
-      `SELECT COALESCE(
+      const variantRows = await db.query(
+        `SELECT COALESCE(
                 metadata->>'abVariant',
                 metadata->>'rankingVariant',
                 metadata->>'digestVariant',
@@ -561,37 +635,38 @@ router.get('/admin/ux/observer-engagement', requireAdmin, async (req, res, next)
          AND event_type = ANY($2)
        GROUP BY variant, event_type
        ORDER BY variant, event_type`,
-      [hours, trackedEvents]
-    );
+        [hours, trackedEvents],
+      );
 
-    res.json({
-      windowHours: hours,
-      trackedEvents,
-      totals,
-      kpis: {
-        observerSessionTimeSec: Number(avgSessionSecRaw.toFixed(2)),
-        sessionCount,
-        followRate: toRate(totals.watchlistFollows, totals.draftArcViews),
-        digestOpenRate: toRate(totals.digestOpens, totals.watchlistFollows),
-        return24h: toRate(return24hUsers, retentionTotalUsers),
-        return7d: toRate(return7dUsers, retentionTotalUsers)
-      },
-      segments: segmentRows.rows.map((row) => ({
-        mode: row.mode,
-        draftStatus: row.draft_status,
-        eventType: row.event_type,
-        count: Number(row.count ?? 0)
-      })),
-      variants: variantRows.rows.map((row) => ({
-        variant: row.variant,
-        eventType: row.event_type,
-        count: Number(row.count ?? 0)
-      }))
-    });
-  } catch (error) {
-    next(error);
-  }
-});
+      res.json({
+        windowHours: hours,
+        trackedEvents,
+        totals,
+        kpis: {
+          observerSessionTimeSec: Number(avgSessionSecRaw.toFixed(2)),
+          sessionCount,
+          followRate: toRate(totals.watchlistFollows, totals.draftArcViews),
+          digestOpenRate: toRate(totals.digestOpens, totals.watchlistFollows),
+          return24h: toRate(return24hUsers, retentionTotalUsers),
+          return7d: toRate(return7dUsers, retentionTotalUsers),
+        },
+        segments: segmentRows.rows.map((row) => ({
+          mode: row.mode,
+          draftStatus: row.draft_status,
+          eventType: row.event_type,
+          count: Number(row.count ?? 0),
+        })),
+        variants: variantRows.rows.map((row) => ({
+          variant: row.variant,
+          eventType: row.event_type,
+          count: Number(row.count ?? 0),
+        })),
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 router.get('/admin/cleanup/preview', requireAdmin, async (_req, res, next) => {
   try {
@@ -605,7 +680,13 @@ router.get('/admin/cleanup/preview', requireAdmin, async (_req, res, next) => {
 router.post('/admin/cleanup/run', requireAdmin, async (req, res, next) => {
   const confirm = req.body?.confirm ?? req.query.confirm;
   if (confirm !== true && confirm !== 'true') {
-    return next(new ServiceError('CONFIRM_REQUIRED', 'confirm=true is required to run cleanup.', 400));
+    return next(
+      new ServiceError(
+        'CONFIRM_REQUIRED',
+        'confirm=true is required to run cleanup.',
+        400,
+      ),
+    );
   }
 
   const startedAt = new Date();
@@ -619,7 +700,7 @@ router.post('/admin/cleanup/run', requireAdmin, async (req, res, next) => {
       'failed',
       startedAt,
       undefined,
-      error instanceof Error ? error.message : String(error)
+      error instanceof Error ? error.message : String(error),
     );
     next(error);
   }
@@ -641,7 +722,7 @@ router.get('/admin/jobs/metrics', requireAdmin, async (req, res, next) => {
        WHERE started_at >= NOW() - ($1 || ' hours')::interval
        GROUP BY job_name
        ORDER BY last_run_at DESC`,
-      [hours]
+      [hours],
     );
 
     res.json({ windowHours: hours, rows: summary.rows });
@@ -657,7 +738,9 @@ router.get('/admin/errors/metrics', requireAdmin, async (req, res, next) => {
     const errorCode = req.query.code ? String(req.query.code) : null;
     const route = req.query.route ? String(req.query.route) : null;
 
-    const filters: string[] = ["created_at >= NOW() - ($1 || ' hours')::interval"];
+    const filters: string[] = [
+      "created_at >= NOW() - ($1 || ' hours')::interval",
+    ];
     const params: any[] = [hours];
 
     if (errorCode) {
@@ -684,7 +767,7 @@ router.get('/admin/errors/metrics', requireAdmin, async (req, res, next) => {
        GROUP BY error_code, status, route, method
        ORDER BY count DESC, last_event_at DESC
        LIMIT $${params.length}`,
-      params
+      params,
     );
 
     res.json({ windowHours: hours, rows: summary.rows });

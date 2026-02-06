@@ -19,10 +19,16 @@ const normalizeEmbedding = (value: unknown): number[] => {
   if (!Array.isArray(value)) {
     return [];
   }
-  return value.map((item) => Number(item)).filter((item) => Number.isFinite(item));
+  return value
+    .map((item) => Number(item))
+    .filter((item) => Number.isFinite(item));
 };
 
-const fetchWithTimeout = async (input: RequestInfo, init: RequestInit, timeoutMs: number) => {
+const fetchWithTimeout = async (
+  input: RequestInfo,
+  init: RequestInit,
+  timeoutMs: number,
+) => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -59,7 +65,7 @@ export class EmbeddingServiceImpl {
           fallbackUsed,
           embeddingLength: remote.length,
           durationMs: Date.now() - startedAt,
-          errorCode
+          errorCode,
         });
         return remote;
       }
@@ -77,13 +83,15 @@ export class EmbeddingServiceImpl {
       fallbackUsed,
       embeddingLength: embedding.length,
       durationMs: Date.now() - startedAt,
-      errorCode
+      errorCode,
     });
 
     return embedding.length > 0 ? embedding : null;
   }
 
-  private async fetchJinaEmbedding(imageUrl?: string): Promise<number[] | null> {
+  private async fetchJinaEmbedding(
+    imageUrl?: string,
+  ): Promise<number[] | null> {
     if (!imageUrl) {
       return null;
     }
@@ -94,26 +102,30 @@ export class EmbeddingServiceImpl {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${env.EMBEDDING_API_KEY}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
           },
           body: JSON.stringify({
             model: env.EMBEDDING_MODEL,
             input: [{ image: imageUrl }],
             dimensions: env.EMBEDDING_DIMENSIONS,
-            embedding_format: 'float'
-          })
+            embedding_format: 'float',
+          }),
         },
-        env.EMBEDDING_TIMEOUT_MS
+        env.EMBEDDING_TIMEOUT_MS,
       );
 
       if (!response.ok) {
         throw new Error(`Embedding provider responded ${response.status}`);
       }
 
-      const payload = (await response.json()) as JinaEmbeddingResponse | number[];
+      const payload = (await response.json()) as
+        | JinaEmbeddingResponse
+        | number[];
       const embedding = Array.isArray(payload)
         ? normalizeEmbedding(payload)
-        : normalizeEmbedding(payload?.embedding ?? payload?.data?.[0]?.embedding);
+        : normalizeEmbedding(
+            payload?.embedding ?? payload?.data?.[0]?.embedding,
+          );
 
       return embedding.length > 0 ? embedding : null;
     } catch (error) {
@@ -148,8 +160,8 @@ export class EmbeddingServiceImpl {
           input.fallbackUsed,
           input.embeddingLength,
           input.durationMs,
-          input.errorCode
-        ]
+          input.errorCode,
+        ],
       );
     } catch (error) {
       logger.warn({ err: error }, 'Embedding telemetry insert failed');

@@ -1,4 +1,4 @@
-import { Pool } from 'pg';
+import type { Pool } from 'pg';
 import type { DbClient } from '../auth/types';
 import { ServiceError } from '../common/errors';
 import { GLOWUP_MAJOR_WEIGHT, GLOWUP_MINOR_WEIGHT } from '../metrics/constants';
@@ -14,7 +14,7 @@ import type {
   ObserverPrediction,
   ObserverWatchlistItem,
   PredictionOutcome,
-  PullRequestPredictionSummary
+  PullRequestPredictionSummary,
 } from './types';
 
 const getDb = (pool: Pool, client?: DbClient): DbClient => client ?? pool;
@@ -27,7 +27,7 @@ const mapArcSummary = (row: any): DraftArcSummary => ({
   fixOpenCount: Number(row.fix_open_count ?? 0),
   prPendingCount: Number(row.pr_pending_count ?? 0),
   lastMergeAt: row.last_merge_at ?? null,
-  updatedAt: row.updated_at
+  updatedAt: row.updated_at,
 });
 
 const mapDigestEntry = (row: any): ObserverDigestEntry => ({
@@ -39,13 +39,13 @@ const mapDigestEntry = (row: any): ObserverDigestEntry => ({
   latestMilestone: row.latest_milestone,
   isSeen: Boolean(row.is_seen),
   createdAt: row.created_at,
-  updatedAt: row.updated_at
+  updatedAt: row.updated_at,
 });
 
 const mapWatchlistItem = (row: any): ObserverWatchlistItem => ({
   observerId: row.observer_id,
   draftId: row.draft_id,
-  createdAt: row.created_at
+  createdAt: row.created_at,
 });
 
 const mapPrediction = (row: any): ObserverPrediction => ({
@@ -56,7 +56,7 @@ const mapPrediction = (row: any): ObserverPrediction => ({
   resolvedOutcome: row.resolved_outcome ?? null,
   isCorrect: row.is_correct ?? null,
   createdAt: row.created_at,
-  resolvedAt: row.resolved_at ?? null
+  resolvedAt: row.resolved_at ?? null,
 });
 
 const asNumber = (value: unknown): number => Number(value ?? 0);
@@ -67,11 +67,16 @@ const calcGlowUp = (majorMerged: number, minorMerged: number): number => {
   if (prCount === 0) {
     return 0;
   }
-  const weighted = majorMerged * GLOWUP_MAJOR_WEIGHT + minorMerged * GLOWUP_MINOR_WEIGHT;
+  const weighted =
+    majorMerged * GLOWUP_MAJOR_WEIGHT + minorMerged * GLOWUP_MINOR_WEIGHT;
   return weighted * (1 + Math.log(prCount + 1));
 };
 
-const inferState = (status: string, fixOpenCount: number, prPendingCount: number): DraftArcState => {
+const inferState = (
+  status: string,
+  fixOpenCount: number,
+  prPendingCount: number,
+): DraftArcState => {
   if (status === 'release') {
     return 'released';
   }
@@ -88,7 +93,7 @@ const inferMilestone = (
   latestEventKind: string | null,
   state: DraftArcState,
   fixOpenCount: number,
-  prPendingCount: number
+  prPendingCount: number,
 ): string => {
   if (latestEventKind === 'draft_release') {
     return 'Draft released';
@@ -100,19 +105,27 @@ const inferMilestone = (
     return 'Recent PR rejected';
   }
   if (latestEventKind === 'pr_submitted') {
-    return prPendingCount > 1 ? `${prPendingCount} PRs pending review` : 'PR pending review';
+    return prPendingCount > 1
+      ? `${prPendingCount} PRs pending review`
+      : 'PR pending review';
   }
   if (latestEventKind === 'fix_request') {
-    return fixOpenCount > 1 ? `${fixOpenCount} open fix requests` : '1 open fix request';
+    return fixOpenCount > 1
+      ? `${fixOpenCount} open fix requests`
+      : '1 open fix request';
   }
   if (state === 'released') {
     return 'Draft released';
   }
   if (state === 'ready_for_review') {
-    return prPendingCount > 1 ? `${prPendingCount} PRs pending review` : 'PR pending review';
+    return prPendingCount > 1
+      ? `${prPendingCount} PRs pending review`
+      : 'PR pending review';
   }
   if (state === 'in_progress') {
-    return fixOpenCount > 1 ? `${fixOpenCount} open fix requests` : '1 open fix request';
+    return fixOpenCount > 1
+      ? `${fixOpenCount} open fix requests`
+      : '1 open fix request';
   }
   return 'No activity yet';
 };
@@ -143,7 +156,10 @@ export class DraftArcServiceImpl implements DraftArcService {
     return { summary, recap24h };
   }
 
-  async recomputeDraftArcSummary(draftId: string, client?: DbClient): Promise<DraftArcSummary> {
+  async recomputeDraftArcSummary(
+    draftId: string,
+    client?: DbClient,
+  ): Promise<DraftArcSummary> {
     const db = getDb(this.pool, client);
     await this.ensureDraftExists(draftId, db);
 
@@ -217,7 +233,7 @@ export class DraftArcServiceImpl implements DraftArcService {
        CROSS JOIN merge_data md
        LEFT JOIN latest_event le ON true
        WHERE d.id = $1`,
-      [draftId]
+      [draftId],
     );
 
     if (result.rows.length === 0) {
@@ -228,7 +244,12 @@ export class DraftArcServiceImpl implements DraftArcService {
     const fixOpenCount = asNumber(row.fix_open_count);
     const prPendingCount = asNumber(row.pr_pending_count);
     const state = inferState(row.status, fixOpenCount, prPendingCount);
-    const latestMilestone = inferMilestone(row.latest_event_kind, state, fixOpenCount, prPendingCount);
+    const latestMilestone = inferMilestone(
+      row.latest_event_kind,
+      state,
+      fixOpenCount,
+      prPendingCount,
+    );
 
     const upsert = await db.query(
       `INSERT INTO draft_arc_summaries (
@@ -250,13 +271,24 @@ export class DraftArcServiceImpl implements DraftArcService {
          last_merge_at = EXCLUDED.last_merge_at,
          updated_at = NOW()
        RETURNING *`,
-      [draftId, state, latestMilestone, fixOpenCount, prPendingCount, row.last_merge_at]
+      [
+        draftId,
+        state,
+        latestMilestone,
+        fixOpenCount,
+        prPendingCount,
+        row.last_merge_at,
+      ],
     );
 
     return mapArcSummary(upsert.rows[0]);
   }
 
-  async recordDraftEvent(draftId: string, eventType: DraftEventType, client?: DbClient): Promise<void> {
+  async recordDraftEvent(
+    draftId: string,
+    eventType: DraftEventType,
+    client?: DbClient,
+  ): Promise<void> {
     const db = getDb(this.pool, client);
     const summary = await this.recomputeDraftArcSummary(draftId, db);
     await this.upsertDigestEntriesForFollowers(draftId, eventType, summary, db);
@@ -266,7 +298,7 @@ export class DraftArcServiceImpl implements DraftArcService {
     observerId: string,
     pullRequestId: string,
     predictedOutcome: PredictionOutcome,
-    client?: DbClient
+    client?: DbClient,
   ): Promise<ObserverPrediction> {
     const db = getDb(this.pool, client);
     await this.ensureObserverExists(observerId, db);
@@ -277,11 +309,15 @@ export class DraftArcServiceImpl implements DraftArcService {
        FROM observer_pr_predictions
        WHERE observer_id = $1
          AND pull_request_id = $2`,
-      [observerId, pullRequestId]
+      [observerId, pullRequestId],
     );
 
     if (existing.rows.length > 0 && existing.rows[0].resolved_at) {
-      throw new ServiceError('PREDICTION_RESOLVED', 'Prediction already resolved for this pull request.', 409);
+      throw new ServiceError(
+        'PREDICTION_RESOLVED',
+        'Prediction already resolved for this pull request.',
+        409,
+      );
     }
 
     const upsert = await db.query(
@@ -295,7 +331,7 @@ export class DraftArcServiceImpl implements DraftArcService {
        DO UPDATE SET
          predicted_outcome = EXCLUDED.predicted_outcome
        RETURNING id, observer_id, pull_request_id, predicted_outcome, resolved_outcome, is_correct, created_at, resolved_at`,
-      [observerId, pullRequestId, predictedOutcome]
+      [observerId, pullRequestId, predictedOutcome],
     );
 
     return mapPrediction(upsert.rows[0]);
@@ -304,7 +340,7 @@ export class DraftArcServiceImpl implements DraftArcService {
   async getPredictionSummary(
     observerId: string,
     pullRequestId: string,
-    client?: DbClient
+    client?: DbClient,
   ): Promise<PullRequestPredictionSummary> {
     const db = getDb(this.pool, client);
     await this.ensureObserverExists(observerId, db);
@@ -313,7 +349,7 @@ export class DraftArcServiceImpl implements DraftArcService {
       `SELECT id, status
        FROM pull_requests
        WHERE id = $1`,
-      [pullRequestId]
+      [pullRequestId],
     );
 
     if (pullRequest.rows.length === 0) {
@@ -326,7 +362,7 @@ export class DraftArcServiceImpl implements DraftArcService {
          COUNT(*) FILTER (WHERE predicted_outcome = 'reject')::int AS reject_count
        FROM observer_pr_predictions
        WHERE pull_request_id = $1`,
-      [pullRequestId]
+      [pullRequestId],
     );
     const mergeCount = asNumber(consensusResult.rows[0]?.merge_count);
     const rejectCount = asNumber(consensusResult.rows[0]?.reject_count);
@@ -336,7 +372,7 @@ export class DraftArcServiceImpl implements DraftArcService {
        FROM observer_pr_predictions
        WHERE observer_id = $1
          AND pull_request_id = $2`,
-      [observerId, pullRequestId]
+      [observerId, pullRequestId],
     );
 
     const accuracyResult = await db.query(
@@ -345,7 +381,7 @@ export class DraftArcServiceImpl implements DraftArcService {
          COUNT(*) FILTER (WHERE resolved_outcome IS NOT NULL)::int AS total_count
        FROM observer_pr_predictions
        WHERE observer_id = $1`,
-      [observerId]
+      [observerId],
     );
     const accuracyCorrect = asNumber(accuracyResult.rows[0]?.correct_count);
     const accuracyTotal = asNumber(accuracyResult.rows[0]?.total_count);
@@ -356,19 +392,25 @@ export class DraftArcServiceImpl implements DraftArcService {
       consensus: {
         merge: mergeCount,
         reject: rejectCount,
-        total: mergeCount + rejectCount
+        total: mergeCount + rejectCount,
       },
       observerPrediction:
-        observerPredictionResult.rows.length > 0 ? mapPrediction(observerPredictionResult.rows[0]) : null,
+        observerPredictionResult.rows.length > 0
+          ? mapPrediction(observerPredictionResult.rows[0])
+          : null,
       accuracy: {
         correct: accuracyCorrect,
         total: accuracyTotal,
-        rate: accuracyTotal > 0 ? round2(accuracyCorrect / accuracyTotal) : 0
-      }
+        rate: accuracyTotal > 0 ? round2(accuracyCorrect / accuracyTotal) : 0,
+      },
     };
   }
 
-  async followDraft(observerId: string, draftId: string, client?: DbClient): Promise<ObserverWatchlistItem> {
+  async followDraft(
+    observerId: string,
+    draftId: string,
+    client?: DbClient,
+  ): Promise<ObserverWatchlistItem> {
     const db = getDb(this.pool, client);
     await this.ensureObserverExists(observerId, db);
     await this.ensureDraftExists(draftId, db);
@@ -379,29 +421,36 @@ export class DraftArcServiceImpl implements DraftArcService {
        ON CONFLICT (observer_id, draft_id)
        DO UPDATE SET observer_id = EXCLUDED.observer_id
        RETURNING observer_id, draft_id, created_at`,
-      [observerId, draftId]
+      [observerId, draftId],
     );
 
     return mapWatchlistItem(result.rows[0]);
   }
 
-  async unfollowDraft(observerId: string, draftId: string, client?: DbClient): Promise<{ removed: boolean }> {
+  async unfollowDraft(
+    observerId: string,
+    draftId: string,
+    client?: DbClient,
+  ): Promise<{ removed: boolean }> {
     const db = getDb(this.pool, client);
     const result = await db.query(
       'DELETE FROM observer_draft_follows WHERE observer_id = $1 AND draft_id = $2 RETURNING id',
-      [observerId, draftId]
+      [observerId, draftId],
     );
     return { removed: result.rows.length > 0 };
   }
 
-  async listWatchlist(observerId: string, client?: DbClient): Promise<ObserverWatchlistItem[]> {
+  async listWatchlist(
+    observerId: string,
+    client?: DbClient,
+  ): Promise<ObserverWatchlistItem[]> {
     const db = getDb(this.pool, client);
     const result = await db.query(
       `SELECT observer_id, draft_id, created_at
        FROM observer_draft_follows
        WHERE observer_id = $1
        ORDER BY created_at DESC`,
-      [observerId]
+      [observerId],
     );
     return result.rows.map(mapWatchlistItem);
   }
@@ -409,7 +458,7 @@ export class DraftArcServiceImpl implements DraftArcService {
   async listDigest(
     observerId: string,
     options?: DigestListOptions,
-    client?: DbClient
+    client?: DbClient,
   ): Promise<ObserverDigestEntry[]> {
     const db = getDb(this.pool, client);
     const unseenOnly = Boolean(options?.unseenOnly);
@@ -423,13 +472,17 @@ export class DraftArcServiceImpl implements DraftArcService {
          AND ($2::boolean = false OR is_seen = false)
        ORDER BY is_seen ASC, created_at DESC
        LIMIT $3 OFFSET $4`,
-      [observerId, unseenOnly, limit, offset]
+      [observerId, unseenOnly, limit, offset],
     );
 
     return result.rows.map(mapDigestEntry);
   }
 
-  async markDigestSeen(observerId: string, entryId: string, client?: DbClient): Promise<ObserverDigestEntry> {
+  async markDigestSeen(
+    observerId: string,
+    entryId: string,
+    client?: DbClient,
+  ): Promise<ObserverDigestEntry> {
     const db = getDb(this.pool, client);
     const updated = await db.query(
       `UPDATE observer_digest_entries
@@ -438,17 +491,24 @@ export class DraftArcServiceImpl implements DraftArcService {
        WHERE id = $1
          AND observer_id = $2
        RETURNING id, observer_id, draft_id, title, summary, latest_milestone, is_seen, created_at, updated_at`,
-      [entryId, observerId]
+      [entryId, observerId],
     );
 
     if (updated.rows.length === 0) {
-      throw new ServiceError('DIGEST_ENTRY_NOT_FOUND', 'Digest entry not found.', 404);
+      throw new ServiceError(
+        'DIGEST_ENTRY_NOT_FOUND',
+        'Digest entry not found.',
+        404,
+      );
     }
 
     return mapDigestEntry(updated.rows[0]);
   }
 
-  private async getRecap24h(draftId: string, db: DbClient): Promise<DraftRecap24h> {
+  private async getRecap24h(
+    draftId: string,
+    db: DbClient,
+  ): Promise<DraftRecap24h> {
     const result = await db.query(
       `WITH pr_window AS (
          SELECT
@@ -478,7 +538,7 @@ export class DraftArcServiceImpl implements DraftArcService {
          pw.minor_24h
        FROM fix_window fw
        CROSS JOIN pr_window pw`,
-      [draftId]
+      [draftId],
     );
 
     const row = result.rows[0];
@@ -496,7 +556,10 @@ export class DraftArcServiceImpl implements DraftArcService {
       major24h + minor24h > 0
         ? round2(
             calcGlowUp(majorTotal, minorTotal) -
-              calcGlowUp(Math.max(majorTotal - major24h, 0), Math.max(minorTotal - minor24h, 0))
+              calcGlowUp(
+                Math.max(majorTotal - major24h, 0),
+                Math.max(minorTotal - minor24h, 0),
+              ),
           )
         : null;
 
@@ -508,7 +571,7 @@ export class DraftArcServiceImpl implements DraftArcService {
       prMerged,
       prRejected,
       glowUpDelta,
-      hasChanges
+      hasChanges,
     };
   }
 
@@ -516,13 +579,13 @@ export class DraftArcServiceImpl implements DraftArcService {
     draftId: string,
     eventType: DraftEventType,
     summary: DraftArcSummary,
-    db: DbClient
+    db: DbClient,
   ): Promise<void> {
     const followers = await db.query(
       `SELECT observer_id
        FROM observer_draft_follows
        WHERE draft_id = $1`,
-      [draftId]
+      [draftId],
     );
 
     if (followers.rows.length === 0) {
@@ -542,7 +605,7 @@ export class DraftArcServiceImpl implements DraftArcService {
            AND created_at >= NOW() - ($3::text || ' minutes')::interval
          ORDER BY created_at DESC
          LIMIT 1`,
-        [observerId, draftId, DIGEST_DEDUP_WINDOW_MINUTES]
+        [observerId, draftId, DIGEST_DEDUP_WINDOW_MINUTES],
       );
 
       if (recentEntry.rows.length > 0) {
@@ -554,7 +617,12 @@ export class DraftArcServiceImpl implements DraftArcService {
                is_seen = false,
                updated_at = NOW()
            WHERE id = $4`,
-          [title, digestSummary, summary.latestMilestone, recentEntry.rows[0].id]
+          [
+            title,
+            digestSummary,
+            summary.latestMilestone,
+            recentEntry.rows[0].id,
+          ],
         );
       } else {
         await db.query(
@@ -567,38 +635,55 @@ export class DraftArcServiceImpl implements DraftArcService {
              is_seen
            )
            VALUES ($1, $2, $3, $4, $5, false)`,
-          [observerId, draftId, title, digestSummary, summary.latestMilestone]
+          [observerId, draftId, title, digestSummary, summary.latestMilestone],
         );
       }
     }
   }
 
-  private async ensureDraftExists(draftId: string, db: DbClient): Promise<void> {
-    const result = await db.query('SELECT id FROM drafts WHERE id = $1', [draftId]);
+  private async ensureDraftExists(
+    draftId: string,
+    db: DbClient,
+  ): Promise<void> {
+    const result = await db.query('SELECT id FROM drafts WHERE id = $1', [
+      draftId,
+    ]);
     if (result.rows.length === 0) {
       throw new ServiceError('DRAFT_NOT_FOUND', 'Draft not found.', 404);
     }
   }
 
-  private async ensureObserverExists(observerId: string, db: DbClient): Promise<void> {
-    const result = await db.query('SELECT id FROM users WHERE id = $1', [observerId]);
+  private async ensureObserverExists(
+    observerId: string,
+    db: DbClient,
+  ): Promise<void> {
+    const result = await db.query('SELECT id FROM users WHERE id = $1', [
+      observerId,
+    ]);
     if (result.rows.length === 0) {
       throw new ServiceError('OBSERVER_NOT_FOUND', 'Observer not found.', 404);
     }
   }
 
-  private async ensurePendingPullRequest(pullRequestId: string, db: DbClient): Promise<void> {
+  private async ensurePendingPullRequest(
+    pullRequestId: string,
+    db: DbClient,
+  ): Promise<void> {
     const result = await db.query(
       `SELECT status
        FROM pull_requests
        WHERE id = $1`,
-      [pullRequestId]
+      [pullRequestId],
     );
     if (result.rows.length === 0) {
       throw new ServiceError('PR_NOT_FOUND', 'Pull request not found.', 404);
     }
     if (result.rows[0].status !== 'pending') {
-      throw new ServiceError('PR_NOT_PENDING', 'Predictions are allowed only for pending pull requests.', 400);
+      throw new ServiceError(
+        'PR_NOT_PENDING',
+        'Predictions are allowed only for pending pull requests.',
+        400,
+      );
     }
   }
 }

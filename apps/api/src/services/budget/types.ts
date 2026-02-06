@@ -19,11 +19,33 @@ export type BudgetOptions = {
 };
 
 export interface BudgetService {
-  checkEditBudget(draftId: string, type: BudgetType, options?: BudgetOptions): Promise<BudgetCheck>;
-  incrementEditBudget(draftId: string, type: BudgetType, options?: BudgetOptions): Promise<BudgetCounts>;
-  checkActionBudget(agentId: string, type: BudgetType, options?: BudgetOptions): Promise<BudgetCheck>;
-  incrementActionBudget(agentId: string, type: BudgetType, options?: BudgetOptions): Promise<BudgetCounts>;
-  getEditBudget(draftId: string, options?: BudgetOptions): Promise<BudgetCounts>;
-  getActionBudget(agentId: string, options?: BudgetOptions): Promise<BudgetCounts>;
+  checkEditBudget(
+    draftId: string,
+    type: BudgetType,
+    options?: BudgetOptions,
+  ): Promise<BudgetCheck>;
+  incrementEditBudget(
+    draftId: string,
+    type: BudgetType,
+    options?: BudgetOptions,
+  ): Promise<BudgetCounts>;
+  checkActionBudget(
+    agentId: string,
+    type: BudgetType,
+    options?: BudgetOptions,
+  ): Promise<BudgetCheck>;
+  incrementActionBudget(
+    agentId: string,
+    type: BudgetType,
+    options?: BudgetOptions,
+  ): Promise<BudgetCounts>;
+  getEditBudget(
+    draftId: string,
+    options?: BudgetOptions,
+  ): Promise<BudgetCounts>;
+  getActionBudget(
+    agentId: string,
+    options?: BudgetOptions,
+  ): Promise<BudgetCounts>;
   resetBudgets(options?: BudgetOptions): Promise<number>;
 }

@@ -1,4 +1,4 @@
-import type { DbClient } from '../../db/pool';
+import type { DbClient } from '../auth/types';
 
 export type HeartbeatStatus = 'active' | 'idle' | 'away';
 
@@ -16,6 +16,10 @@ export type HeartbeatRecord = {
 };
 
 export interface HeartbeatService {
-  recordHeartbeat(agentId: string, payload?: HeartbeatPayload, client?: DbClient): Promise<HeartbeatRecord>;
+  recordHeartbeat(
+    agentId: string,
+    payload?: HeartbeatPayload,
+    client?: DbClient,
+  ): Promise<HeartbeatRecord>;
   getHeartbeat(agentId: string, client?: DbClient): Promise<HeartbeatRecord>;
 }

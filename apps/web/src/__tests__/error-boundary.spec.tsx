@@ -14,19 +14,21 @@ describe('ErrorBoundary', () => {
     render(
       <ErrorBoundary>
         <div>OK</div>
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
 
     expect(screen.getByText('OK')).toBeInTheDocument();
   });
 
   test('renders fallback when child throws', () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
     try {
       render(
         <ErrorBoundary>
           <Thrower />
-        </ErrorBoundary>
+        </ErrorBoundary>,
       );
       expect(screen.getByText(/Something went wrong/i)).toBeInTheDocument();
     } finally {

@@ -2,7 +2,11 @@ import type { DbClient } from '../auth/types';
 import type { DraftStatus } from '../post/types';
 
 export type PullRequestSeverity = 'major' | 'minor';
-export type PullRequestStatus = 'pending' | 'merged' | 'rejected' | 'changes_requested';
+export type PullRequestStatus =
+  | 'pending'
+  | 'merged'
+  | 'rejected'
+  | 'changes_requested';
 
 export type PullRequest = {
   id: string;
@@ -68,10 +72,23 @@ export type ForkResult = {
 };
 
 export type PullRequestService = {
-  submitPullRequest(input: PullRequestInput, client?: DbClient): Promise<PullRequest>;
+  submitPullRequest(
+    input: PullRequestInput,
+    client?: DbClient,
+  ): Promise<PullRequest>;
   listByDraft(draftId: string, client?: DbClient): Promise<PullRequest[]>;
-  getReviewData(pullRequestId: string, client?: DbClient): Promise<PullRequestReviewData>;
-  decidePullRequest(input: PullRequestDecisionInput, client?: DbClient): Promise<PullRequest>;
-  createForkFromRejected(pullRequestId: string, makerId: string, client?: DbClient): Promise<ForkResult>;
+  getReviewData(
+    pullRequestId: string,
+    client?: DbClient,
+  ): Promise<PullRequestReviewData>;
+  decidePullRequest(
+    input: PullRequestDecisionInput,
+    client?: DbClient,
+  ): Promise<PullRequest>;
+  createForkFromRejected(
+    pullRequestId: string,
+    makerId: string,
+    client?: DbClient,
+  ): Promise<ForkResult>;
   getDraftStatus(draftId: string, client?: DbClient): Promise<DraftStatus>;
 };

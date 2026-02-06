@@ -1,6 +1,14 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { apiClient, setAuthToken } from '../lib/api';
 
 type AuthUser = {
@@ -13,7 +21,11 @@ type AuthState = {
   token: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, consent: { terms: boolean; privacy: boolean }) => Promise<void>;
+  register: (
+    email: string,
+    password: string,
+    consent: { terms: boolean; privacy: boolean },
+  ) => Promise<void>;
   logout: () => void;
 };
 
@@ -45,7 +57,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const nextToken = response.data.tokens?.accessToken ?? response.data.token;
     const nextUser = {
       id: response.data.userId ?? response.data.user?.id,
-      email: response.data.email ?? response.data.user?.email
+      email: response.data.email ?? response.data.user?.email,
     } as AuthUser;
     setToken(nextToken);
     setUser(nextUser);
@@ -55,19 +67,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const register = useCallback(
-    async (email: string, password: string, consent: { terms: boolean; privacy: boolean }) => {
+    async (
+      email: string,
+      password: string,
+      consent: { terms: boolean; privacy: boolean },
+    ) => {
       const response = await apiClient.post('/auth/register', {
         email,
         password,
         consent: {
           termsAccepted: consent.terms,
-          privacyAccepted: consent.privacy
-        }
+          privacyAccepted: consent.privacy,
+        },
       });
-      const nextToken = response.data.tokens?.accessToken ?? response.data.token;
+      const nextToken =
+        response.data.tokens?.accessToken ?? response.data.token;
       const nextUser = {
         id: response.data.userId ?? response.data.user?.id,
-        email: response.data.email ?? response.data.user?.email
+        email: response.data.email ?? response.data.user?.email,
       } as AuthUser;
       setToken(nextToken);
       setUser(nextUser);
@@ -75,7 +92,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem(TOKEN_KEY, nextToken);
       localStorage.setItem(USER_KEY, JSON.stringify(nextUser));
     },
-    []
+    [],
   );
 
   const logout = useCallback(() => {
@@ -93,9 +110,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       loading,
       login,
       register,
-      logout
+      logout,
     }),
-    [user, token, loading, login, register, logout]
+    [user, token, loading, login, register, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

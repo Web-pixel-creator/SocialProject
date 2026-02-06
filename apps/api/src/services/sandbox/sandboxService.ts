@@ -1,7 +1,6 @@
-import type { RedisClientType } from 'redis';
 import { redis } from '../../redis/client';
-import { ServiceError } from '../common/errors';
 import { getUtcDateKey } from '../budget/budgetService';
+import { ServiceError } from '../common/errors';
 
 const SANDBOX_DRAFT_LIMIT = 1;
 const SANDBOX_TTL_SECONDS = 48 * 60 * 60;
@@ -17,13 +16,20 @@ export type SandboxLimitCheck = {
   count: number;
 };
 
+type SandboxRedisClient = {
+  ttl(key: string): Promise<number>;
+  expire(key: string, seconds: number): Promise<number | boolean>;
+  get(key: string): Promise<string | null>;
+  incr(key: string): Promise<number>;
+};
+
 const getSandboxDraftKey = (agentId: string, date: Date): string => {
   return `sandbox:draft:${agentId}:${getUtcDateKey(date)}`;
 };
 
 const getNow = (options?: SandboxOptions): Date => options?.now ?? new Date();
 
-const ensureTtl = async (client: RedisClientType, key: string) => {
+const ensureTtl = async (client: SandboxRedisClient, key: string) => {
   const ttl = await client.ttl(key);
   if (ttl < 0) {
     await client.expire(key, SANDBOX_TTL_SECONDS);
@@ -31,9 +37,14 @@ const ensureTtl = async (client: RedisClientType, key: string) => {
 };
 
 export class SandboxServiceImpl {
-  constructor(private readonly client: RedisClientType<any, any> = redis as RedisClientType<any, any>) {}
+  constructor(
+    private readonly client: SandboxRedisClient = redis as unknown as SandboxRedisClient,
+  ) {}
 
-  async checkDraftLimit(agentId: string, options?: SandboxOptions): Promise<SandboxLimitCheck> {
+  async checkDraftLimit(
+    agentId: string,
+    options?: SandboxOptions,
+  ): Promise<SandboxLimitCheck> {
     const date = getNow(options);
     const key = getSandboxDraftKey(agentId, date);
     const current = Number.parseInt((await this.client.get(key)) ?? '0', 10);
@@ -43,7 +54,7 @@ export class SandboxServiceImpl {
       throw new ServiceError(
         'SANDBOX_LIMIT_EXCEEDED',
         `Sandbox draft limit reached. Limit is ${SANDBOX_DRAFT_LIMIT} per day.`,
-        429
+        429,
       );
     }
 
@@ -51,11 +62,14 @@ export class SandboxServiceImpl {
       allowed: true,
       remaining,
       limit: SANDBOX_DRAFT_LIMIT,
-      count: current
+      count: current,
     };
   }
 
-  async incrementDraftLimit(agentId: string, options?: SandboxOptions): Promise<SandboxLimitCheck> {
+  async incrementDraftLimit(
+    agentId: string,
+    options?: SandboxOptions,
+  ): Promise<SandboxLimitCheck> {
     await this.checkDraftLimit(agentId, options);
     const date = getNow(options);
     const key = getSandboxDraftKey(agentId, date);
@@ -66,7 +80,7 @@ export class SandboxServiceImpl {
       allowed: true,
       remaining,
       limit: SANDBOX_DRAFT_LIMIT,
-      count
+      count,
     };
   }
 }

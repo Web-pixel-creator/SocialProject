@@ -5,7 +5,9 @@ import { createApp } from '../server';
 const app = createApp();
 
 const resetDb = async () => {
-  await db.query('TRUNCATE TABLE commission_responses RESTART IDENTITY CASCADE');
+  await db.query(
+    'TRUNCATE TABLE commission_responses RESTART IDENTITY CASCADE',
+  );
   await db.query('TRUNCATE TABLE commissions RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE payment_events RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE viewing_history RESTART IDENTITY CASCADE');
@@ -36,24 +38,30 @@ const resetDb = async () => {
 const registerAgent = async (studioName = 'Agent Studio') => {
   const response = await request(app).post('/api/agents/register').send({
     studioName,
-    personality: 'Tester'
+    personality: 'Tester',
   });
   const { agentId, apiKey, claimToken, emailToken } = response.body;
   const verify = await request(app).post('/api/agents/claim/verify').send({
     claimToken,
     method: 'email',
-    emailToken
+    emailToken,
   });
-  expect(verify.status).toBe(200);
+  if (verify.status !== 200) {
+    throw new Error(
+      `Agent claim verification failed with status ${verify.status}`,
+    );
+  }
   return { agentId, apiKey };
 };
 
 const registerHuman = async (email = 'observer@example.com') => {
-  const response = await request(app).post('/api/auth/register').send({
-    email,
-    password: 'password123',
-    consent: { termsAccepted: true, privacyAccepted: true }
-  });
+  const response = await request(app)
+    .post('/api/auth/register')
+    .send({
+      email,
+      password: 'password123',
+      consent: { termsAccepted: true, privacyAccepted: true },
+    });
   return response.body;
 };
 
@@ -69,7 +77,8 @@ describe('observer read-only permissions', () => {
   test('observer can use watchlist/predict but cannot mutate draft workflow', async () => {
     const human = await registerHuman('readonly-observer@example.com');
     const observerToken = human.tokens.accessToken;
-    const { agentId: authorId, apiKey: authorKey } = await registerAgent('Readonly Author');
+    const { agentId: authorId, apiKey: authorKey } =
+      await registerAgent('Readonly Author');
 
     const draftRes = await request(app)
       .post('/api/drafts')
@@ -77,7 +86,7 @@ describe('observer read-only permissions', () => {
       .set('x-api-key', authorKey)
       .send({
         imageUrl: 'https://example.com/readonly-v1.png',
-        thumbnailUrl: 'https://example.com/readonly-v1-thumb.png'
+        thumbnailUrl: 'https://example.com/readonly-v1-thumb.png',
       });
     expect(draftRes.status).toBe(200);
     const draftId = draftRes.body.draft.id;
@@ -92,7 +101,7 @@ describe('observer read-only permissions', () => {
          status
        ) VALUES ($1, $2, 2, 'Readonly PR', 'minor', 'pending')
        RETURNING id`,
-      [draftId, authorId]
+      [draftId, authorId],
     );
     const pullRequestId = insertedPr.rows[0].id as string;
 
@@ -113,7 +122,7 @@ describe('observer read-only permissions', () => {
       .set('Authorization', `Bearer ${observerToken}`)
       .send({
         imageUrl: 'https://example.com/human-v1.png',
-        thumbnailUrl: 'https://example.com/human-v1-thumb.png'
+        thumbnailUrl: 'https://example.com/human-v1-thumb.png',
       });
     expect(createDraftDenied.status).toBe(401);
     expect(createDraftDenied.body.error).toBe('AGENT_AUTH_REQUIRED');
@@ -121,7 +130,10 @@ describe('observer read-only permissions', () => {
     const createFixDenied = await request(app)
       .post(`/api/drafts/${draftId}/fix-requests`)
       .set('Authorization', `Bearer ${observerToken}`)
-      .send({ category: 'Focus', description: 'Human should not create fixes' });
+      .send({
+        category: 'Focus',
+        description: 'Human should not create fixes',
+      });
     expect(createFixDenied.status).toBe(401);
     expect(createFixDenied.body.error).toBe('AGENT_AUTH_REQUIRED');
 
@@ -132,7 +144,7 @@ describe('observer read-only permissions', () => {
         description: 'Human should not create PRs',
         severity: 'minor',
         imageUrl: 'https://example.com/human-pr.png',
-        thumbnailUrl: 'https://example.com/human-pr-thumb.png'
+        thumbnailUrl: 'https://example.com/human-pr-thumb.png',
       });
     expect(createPrDenied.status).toBe(401);
     expect(createPrDenied.body.error).toBe('AGENT_AUTH_REQUIRED');
@@ -155,7 +167,9 @@ describe('observer read-only permissions', () => {
     expect(draftState.status).toBe(200);
     expect(draftState.body.draft.status).toBe('draft');
 
-    const prState = await request(app).get(`/api/pull-requests/${pullRequestId}`);
+    const prState = await request(app).get(
+      `/api/pull-requests/${pullRequestId}`,
+    );
     expect(prState.status).toBe(200);
     expect(prState.body.pullRequest.status).toBe('pending');
   });
@@ -168,11 +182,13 @@ describe('observer read-only permissions', () => {
       .set('x-api-key', apiKey)
       .send({
         imageUrl: 'https://example.com/observer-auth-v1.png',
-        thumbnailUrl: 'https://example.com/observer-auth-v1-thumb.png'
+        thumbnailUrl: 'https://example.com/observer-auth-v1-thumb.png',
       });
     const draftId = draftRes.body.draft.id;
 
-    const watchlistNoAuth = await request(app).post(`/api/observers/watchlist/${draftId}`).send();
+    const watchlistNoAuth = await request(app)
+      .post(`/api/observers/watchlist/${draftId}`)
+      .send();
     expect(watchlistNoAuth.status).toBe(401);
     expect(watchlistNoAuth.body.error).toBe('AUTH_REQUIRED');
 

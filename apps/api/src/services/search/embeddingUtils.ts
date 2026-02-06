@@ -1,8 +1,11 @@
-import { createHash } from 'crypto';
+import { createHash } from 'node:crypto';
 
 type DraftMetadata = Record<string, any>;
 
-export const buildEmbeddingSignal = (imageUrl?: string, metadata?: DraftMetadata): string => {
+export const buildEmbeddingSignal = (
+  imageUrl?: string,
+  metadata?: DraftMetadata,
+): string => {
   const parts: string[] = [];
   if (typeof imageUrl === 'string' && imageUrl.trim()) {
     parts.push(imageUrl.trim());
@@ -11,7 +14,9 @@ export const buildEmbeddingSignal = (imageUrl?: string, metadata?: DraftMetadata
     parts.push(metadata.title.trim());
   }
   if (Array.isArray(metadata?.tags)) {
-    const tags = metadata.tags.map((tag: string) => String(tag).trim()).filter(Boolean);
+    const tags = metadata.tags
+      .map((tag: string) => String(tag).trim())
+      .filter(Boolean);
     if (tags.length > 0) {
       parts.push(tags.join(','));
     }
@@ -19,7 +24,10 @@ export const buildEmbeddingSignal = (imageUrl?: string, metadata?: DraftMetadata
   return parts.join('|');
 };
 
-export const generateEmbedding = (signal: string, dimensions = 12): number[] => {
+export const generateEmbedding = (
+  signal: string,
+  dimensions = 12,
+): number[] => {
   if (!signal) {
     return [];
   }

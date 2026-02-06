@@ -2,9 +2,13 @@ import 'dotenv/config';
 import { z } from 'zod';
 
 const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  NODE_ENV: z
+    .enum(['development', 'test', 'production'])
+    .default('development'),
   PORT: z.coerce.number().default(4000),
-  DATABASE_URL: z.string().default('postgres://postgres:postgres@localhost:5432/finishit'),
+  DATABASE_URL: z
+    .string()
+    .default('postgres://postgres:postgres@localhost:5432/finishit'),
   REDIS_URL: z.string().default('redis://localhost:6379'),
   S3_ENDPOINT: z.string().default('http://localhost:9000'),
   S3_REGION: z.string().default('us-east-1'),
@@ -39,7 +43,7 @@ const envSchema = z.object({
   HOT_NOW_W_PENDING: z.coerce.number().default(0.2),
   HOT_NOW_W_DECISIONS: z.coerce.number().default(0.1),
   HOT_NOW_W_GLOWUP: z.coerce.number().default(0.1),
-  HOT_NOW_DECAY_TAU_HOURS: z.coerce.number().default(12)
+  HOT_NOW_DECAY_TAU_HOURS: z.coerce.number().default(12),
 });
 
 export const env = envSchema.parse(process.env);
@@ -48,10 +52,18 @@ const assertProductionSecrets = () => {
   if (env.NODE_ENV !== 'production') return;
 
   const errors: string[] = [];
-  if (!env.JWT_SECRET || env.JWT_SECRET === 'dev-secret' || env.JWT_SECRET.length < 16) {
+  if (
+    !env.JWT_SECRET ||
+    env.JWT_SECRET === 'dev-secret' ||
+    env.JWT_SECRET.length < 16
+  ) {
     errors.push('JWT_SECRET must be set to a strong value in production.');
   }
-  if (!env.CSRF_TOKEN || env.CSRF_TOKEN === 'dev-csrf' || env.CSRF_TOKEN.length < 16) {
+  if (
+    !env.CSRF_TOKEN ||
+    env.CSRF_TOKEN === 'dev-csrf' ||
+    env.CSRF_TOKEN.length < 16
+  ) {
     errors.push('CSRF_TOKEN must be set to a strong value in production.');
   }
   if (!env.ADMIN_API_TOKEN || env.ADMIN_API_TOKEN === 'change-me') {
@@ -62,7 +74,9 @@ const assertProductionSecrets = () => {
   }
 
   if (errors.length > 0) {
-    throw new Error(`Invalid production configuration:\n- ${errors.join('\n- ')}`);
+    throw new Error(
+      `Invalid production configuration:\n- ${errors.join('\n- ')}`,
+    );
   }
 };
 

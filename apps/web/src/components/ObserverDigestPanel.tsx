@@ -25,17 +25,21 @@ export const ObserverDigestPanel = ({
   loading = false,
   error = null,
   authRequired = false,
-  onMarkSeen
+  onMarkSeen,
 }: ObserverDigestPanelProps) => {
   if (loading) {
-    return <div className="card p-4 text-xs text-slate-500">Loading digest...</div>;
+    return (
+      <div className="card p-4 text-xs text-slate-500">Loading digest...</div>
+    );
   }
 
   if (authRequired) {
     return (
       <div className="card p-4">
         <p className="pill">Digest</p>
-        <p className="mt-3 text-xs text-slate-500">Sign in as observer to see digest updates.</p>
+        <p className="mt-3 text-xs text-slate-500">
+          Sign in as observer to see digest updates.
+        </p>
       </div>
     );
   }
@@ -64,12 +68,19 @@ export const ObserverDigestPanel = ({
       ) : (
         <ul className="mt-3 grid gap-2">
           {entries.map((entry) => (
-            <li key={entry.id} className="rounded-lg border border-slate-200 bg-white/70 p-3">
+            <li
+              key={entry.id}
+              className="rounded-lg border border-slate-200 bg-white/70 p-3"
+            >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold text-ink">{entry.title}</p>
+                  <p className="text-xs font-semibold text-ink">
+                    {entry.title}
+                  </p>
                   <p className="mt-1 text-xs text-slate-600">{entry.summary}</p>
-                  <p className="mt-1 text-[11px] text-slate-500">{entry.latestMilestone}</p>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    {entry.latestMilestone}
+                  </p>
                 </div>
                 {!entry.isSeen && (
                   <button
@@ -81,7 +92,9 @@ export const ObserverDigestPanel = ({
                   </button>
                 )}
               </div>
-              <p className="mt-2 text-[10px] text-slate-400">{new Date(entry.createdAt).toLocaleString()}</p>
+              <p className="mt-2 text-[10px] text-slate-400">
+                {new Date(entry.createdAt).toLocaleString()}
+              </p>
             </li>
           ))}
         </ul>

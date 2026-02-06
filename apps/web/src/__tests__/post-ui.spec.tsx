@@ -2,13 +2,13 @@
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { AutopsyCard } from '../components/AutopsyCard';
-import { VersionTimeline } from '../components/VersionTimeline';
 import { BeforeAfterSlider } from '../components/BeforeAfterSlider';
 import { FixRequestList } from '../components/FixRequestList';
-import { PullRequestList } from '../components/PullRequestList';
 import { HeatMapOverlay } from '../components/HeatMapOverlay';
+import { PullRequestList } from '../components/PullRequestList';
+import { VersionTimeline } from '../components/VersionTimeline';
 
 describe('post detail UI', () => {
   test('version timeline updates selection', () => {
@@ -25,13 +25,25 @@ describe('post detail UI', () => {
   });
 
   test('before/after slider renders only before image when after is missing', () => {
-    render(<BeforeAfterSlider beforeLabel="v1" afterLabel="v2" beforeImageUrl="/before.png" />);
+    render(
+      <BeforeAfterSlider
+        beforeLabel="v1"
+        afterLabel="v2"
+        beforeImageUrl="/before.png"
+      />,
+    );
     expect(screen.getByRole('img', { name: /Before v1/i })).toBeInTheDocument();
     expect(screen.queryByRole('img', { name: /After v2/i })).toBeNull();
   });
 
   test('before/after slider renders only after image when before is missing', () => {
-    render(<BeforeAfterSlider beforeLabel="v1" afterLabel="v2" afterImageUrl="/after.png" />);
+    render(
+      <BeforeAfterSlider
+        beforeLabel="v1"
+        afterLabel="v2"
+        afterImageUrl="/after.png"
+      />,
+    );
     expect(screen.getByRole('img', { name: /After v2/i })).toBeInTheDocument();
     expect(screen.queryByRole('img', { name: /Before v1/i })).toBeNull();
   });
@@ -45,12 +57,24 @@ describe('post detail UI', () => {
     render(
       <FixRequestList
         items={[
-          { id: '1', category: 'Focus', description: 'Adjust focus', critic: 'A' },
-          { id: '2', category: 'Color/Light', description: 'Boost contrast', critic: 'B' }
+          {
+            id: '1',
+            category: 'Focus',
+            description: 'Adjust focus',
+            critic: 'A',
+          },
+          {
+            id: '2',
+            category: 'Color/Light',
+            description: 'Boost contrast',
+            critic: 'B',
+          },
         ]}
-      />
+      />,
     );
-    fireEvent.change(screen.getByDisplayValue('All'), { target: { value: 'Focus' } });
+    fireEvent.change(screen.getByDisplayValue('All'), {
+      target: { value: 'Focus' },
+    });
     expect(screen.getByText(/Adjust focus/i)).toBeInTheDocument();
   });
 
@@ -59,11 +83,13 @@ describe('post detail UI', () => {
       <PullRequestList
         items={[
           { id: '1', status: 'pending', description: 'Pending', maker: 'A' },
-          { id: '2', status: 'merged', description: 'Merged', maker: 'B' }
+          { id: '2', status: 'merged', description: 'Merged', maker: 'B' },
         ]}
-      />
+      />,
     );
-    fireEvent.change(screen.getByDisplayValue('All'), { target: { value: 'merged' } });
+    fireEvent.change(screen.getByDisplayValue('All'), {
+      target: { value: 'merged' },
+    });
     expect(screen.getAllByText(/Merged/i).length).toBeGreaterThan(0);
   });
 
@@ -75,8 +101,12 @@ describe('post detail UI', () => {
 
   test('autopsy card renders published date when provided', () => {
     const publishedAt = new Date('2024-01-01T00:00:00Z').toISOString();
-    render(<AutopsyCard id="auto-1" summary="Summary" publishedAt={publishedAt} />);
-    expect(screen.getByText(new Date(publishedAt).toLocaleString())).toBeInTheDocument();
+    render(
+      <AutopsyCard id="auto-1" summary="Summary" publishedAt={publishedAt} />,
+    );
+    expect(
+      screen.getByText(new Date(publishedAt).toLocaleString()),
+    ).toBeInTheDocument();
   });
 
   test('autopsy card falls back to draft label without date', () => {
