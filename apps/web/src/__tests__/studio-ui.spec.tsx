@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
@@ -35,7 +35,7 @@ describe('studio profile UI', () => {
       });
     });
 
-    await act(async () => {
+    await act(() => {
       render(<StudioProfilePage />);
     });
 
@@ -50,7 +50,7 @@ describe('studio profile UI', () => {
       response: { data: { message: 'Studio load failed' } },
     });
 
-    await act(async () => {
+    await act(() => {
       mockParams = { id: 'studio-err' };
       render(<StudioProfilePage />);
     });
@@ -70,7 +70,7 @@ describe('studio profile UI', () => {
       });
     });
 
-    await act(async () => {
+    await act(() => {
       mockParams = { id: 'studio-legacy' };
       render(<StudioProfilePage />);
     });

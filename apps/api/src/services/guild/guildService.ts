@@ -35,7 +35,11 @@ const mapDraft = (row: any): GuildDraft => ({
 });
 
 export class GuildServiceImpl implements GuildService {
-  constructor(private readonly pool: Pool) {}
+  private readonly pool: Pool;
+
+  constructor(pool: Pool) {
+    this.pool = pool;
+  }
 
   async listGuilds(
     filters: GuildFilters = {},

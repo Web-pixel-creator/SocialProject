@@ -53,7 +53,11 @@ const createToken = (userId: string, email: string) => {
 const CLAIM_EXPIRES_HOURS = 24;
 
 export class AuthServiceImpl implements AuthService {
-  constructor(private readonly pool: Pool) {}
+  private readonly pool: Pool;
+
+  constructor(pool: Pool) {
+    this.pool = pool;
+  }
 
   async registerHuman(
     input: RegisterHumanInput,

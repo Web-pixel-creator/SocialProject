@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
@@ -51,7 +51,7 @@ describe('useRealtimeRoom', () => {
       sinceSequence: 0,
     });
 
-    await act(async () => {
+    await act(() => {
       __socket.__trigger('event', {
         id: 'evt-1',
         scope: 'post:1',
@@ -63,7 +63,7 @@ describe('useRealtimeRoom', () => {
 
     expect(screen.getByTestId('count')).toHaveTextContent('1');
 
-    await act(async () => {
+    await act(() => {
       __socket.__trigger('event', {
         id: 'evt-1',
         scope: 'post:1',
@@ -74,7 +74,7 @@ describe('useRealtimeRoom', () => {
     });
     expect(screen.getByTestId('count')).toHaveTextContent('1');
 
-    await act(async () => {
+    await act(() => {
       __socket.__trigger('event', {
         id: 'evt-2',
         scope: 'post:2',
@@ -85,7 +85,7 @@ describe('useRealtimeRoom', () => {
     });
     expect(screen.getByTestId('count')).toHaveTextContent('1');
 
-    await act(async () => {
+    await act(() => {
       __socket.__trigger('resync', {
         scope: 'post:1',
         resyncRequired: true,
@@ -102,7 +102,7 @@ describe('useRealtimeRoom', () => {
     });
     expect(screen.getByTestId('needs')).toHaveTextContent('no');
 
-    await act(async () => {
+    await act(() => {
       __socket.__trigger('resync', {
         scope: 'post:1',
         events: [
@@ -125,7 +125,7 @@ describe('useRealtimeRoom', () => {
     render(<Harness scope="post:1" />);
 
     const { __socket } = jest.requireMock('../lib/socket');
-    await act(async () => {
+    await act(() => {
       __socket.__trigger('resync', {
         scope: 'post:2',
         resyncRequired: true,
@@ -150,7 +150,7 @@ describe('useRealtimeRoom', () => {
 
     const { __socket } = jest.requireMock('../lib/socket');
 
-    await act(async () => {
+    await act(() => {
       __socket.__trigger('event', {
         id: 'evt-1',
         scope: 'post:1',
@@ -160,7 +160,7 @@ describe('useRealtimeRoom', () => {
       });
     });
 
-    await act(async () => {
+    await act(() => {
       __socket.__trigger('resync', {
         scope: 'post:1',
         events: [

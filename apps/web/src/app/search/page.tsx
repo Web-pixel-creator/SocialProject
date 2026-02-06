@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { apiClient } from '../../lib/api';
 import {
   SEARCH_AB_ENABLED,
@@ -37,6 +37,59 @@ const normalizeParams = (params: URLSearchParams) => {
   );
   return entries.map(([key, value]) => `${key}=${value}`).join('&');
 };
+
+const resolveVisitorId = () => {
+  if (typeof window === 'undefined') {
+    return 'server';
+  }
+
+  const key = 'searchVisitorId';
+  const stored = window.localStorage.getItem(key);
+  if (stored) {
+    return stored;
+  }
+
+  const created = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  window.localStorage.setItem(key, created);
+  return created;
+};
+
+const sendTelemetry = async (payload: Record<string, any>) => {
+  try {
+    await apiClient.post('/telemetry/ux', payload);
+  } catch (_error) {
+    // ignore telemetry failures
+  }
+};
+
+const pruneUndefined = <T extends Record<string, unknown>>(input: T) =>
+  Object.fromEntries(
+    Object.entries(input).filter(([, value]) => value !== undefined),
+  ) as Partial<T>;
+
+const parseEmbedding = (value: string) => {
+  if (!value.trim()) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) {
+      return null;
+    }
+    const normalized = parsed
+      .map((item) => Number(item))
+      .filter((item) => Number.isFinite(item));
+    return normalized.length > 0 ? normalized : null;
+  } catch {
+    return null;
+  }
+};
+
+const parseTags = (value: string) =>
+  value
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter((tag) => tag.length > 0);
 
 function SearchPageContent() {
   const searchParams = useSearchParams();
@@ -74,36 +127,7 @@ function SearchPageContent() {
   const autoRunVisual = useRef(
     initialMode === 'visual' && initialDraftId.length > 0,
   );
-  const searchKey = searchParams?.toString() ?? '';
   const didSmoothScroll = useRef(false);
-  const resolveVisitorId = () => {
-    if (typeof window === 'undefined') {
-      return 'server';
-    }
-
-    const key = 'searchVisitorId';
-    const stored = window.localStorage.getItem(key);
-    if (stored) {
-      return stored;
-    }
-
-    const created = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-    window.localStorage.setItem(key, created);
-    return created;
-  };
-
-  const sendTelemetry = async (payload: Record<string, any>) => {
-    try {
-      await apiClient.post('/telemetry/ux', payload);
-    } catch (_error) {
-      // ignore telemetry failures
-    }
-  };
-
-  const pruneUndefined = <T extends Record<string, unknown>>(input: T) =>
-    Object.fromEntries(
-      Object.entries(input).filter(([, value]) => value !== undefined),
-    ) as Partial<T>;
 
   useEffect(() => {
     if (!searchParams) {
@@ -120,34 +144,20 @@ function SearchPageContent() {
     const urlProfile = searchParams.get('profile') ?? '';
     const urlAb = searchParams.get('ab') ?? '';
     const urlFrom = searchParams.get('from') ?? '';
+    const validVisualType =
+      urlType === 'draft' || urlType === 'release' ? urlType : 'all';
 
-    if (urlMode !== mode) {
-      setMode(urlMode);
+    setMode(urlMode);
+    setQuery(urlQuery);
+    setType(urlType);
+    if (urlMode === 'visual') {
+      setVisualType(validVisualType);
     }
-    if (urlQuery !== query) {
-      setQuery(urlQuery);
-    }
-    if (urlType !== type) {
-      setType(urlType);
-    }
-    if (urlMode === 'visual' && urlType !== visualType) {
-      setVisualType(urlType);
-    }
-    if (urlSort !== sort) {
-      setSort(urlSort);
-    }
-    if (urlRange !== range) {
-      setRange(urlRange);
-    }
-    if (urlIntent !== intent) {
-      setIntent(urlIntent);
-    }
-    if (urlDraftId !== visualDraftId) {
-      setVisualDraftId(urlDraftId);
-    }
-    if (urlTags !== visualTags) {
-      setVisualTags(urlTags);
-    }
+    setSort(urlSort);
+    setRange(urlRange);
+    setIntent(urlIntent);
+    setVisualDraftId(urlDraftId);
+    setVisualTags(urlTags);
 
     if (urlFrom === 'similar' && !didSmoothScroll.current) {
       didSmoothScroll.current = true;
@@ -176,11 +186,9 @@ function SearchPageContent() {
     const nextProfile = abMode
       ? (storedProfile ?? assignedAbProfile)
       : (queryProfile ?? storedProfile ?? SEARCH_DEFAULT_PROFILE);
-    if (nextProfile !== profile) {
-      setProfile(nextProfile);
-    }
+    setProfile(nextProfile);
     window.localStorage.setItem(storageKey, nextProfile);
-  }, [searchKey]);
+  }, [searchParams]);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -301,6 +309,9 @@ function SearchPageContent() {
   }, [mode, query, type, sort, range, intent, profile]);
 
   useEffect(() => {
+    if (!(mode === 'text' || mode === 'visual')) {
+      return;
+    }
     setResults([]);
     setError(null);
     setVisualNotice(null);
@@ -320,34 +331,19 @@ function SearchPageContent() {
     if (mode !== 'visual') {
       return;
     }
+    const hasVisualInput =
+      visualDraftId.trim().length > 0 ||
+      visualEmbedding.trim().length > 0 ||
+      visualTags.trim().length > 0 ||
+      visualType !== 'all';
+    if (!hasVisualInput) {
+      setVisualHasSearched(false);
+      return;
+    }
     setVisualHasSearched(false);
   }, [mode, visualDraftId, visualEmbedding, visualTags, visualType]);
 
-  const parseEmbedding = (value: string) => {
-    if (!value.trim()) {
-      return null;
-    }
-    try {
-      const parsed = JSON.parse(value);
-      if (!Array.isArray(parsed)) {
-        return null;
-      }
-      const normalized = parsed
-        .map((item) => Number(item))
-        .filter((item) => Number.isFinite(item));
-      return normalized.length > 0 ? normalized : null;
-    } catch {
-      return null;
-    }
-  };
-
-  const parseTags = (value: string) =>
-    value
-      .split(',')
-      .map((tag) => tag.trim())
-      .filter((tag) => tag.length > 0);
-
-  const runVisualSearch = async () => {
+  const runVisualSearch = useCallback(async () => {
     const embedding = parseEmbedding(visualEmbedding);
     const trimmedDraftId = visualDraftId.trim();
     if (!(embedding || trimmedDraftId)) {
@@ -378,7 +374,7 @@ function SearchPageContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [visualDraftId, visualEmbedding, visualTags, visualType]);
 
   useEffect(() => {
     if (mode !== 'visual') {
@@ -398,7 +394,7 @@ function SearchPageContent() {
       metadata: { mode: 'visual', profile },
     });
     runVisualSearch();
-  }, [mode, profile, visualDraftId]);
+  }, [mode, profile, runVisualSearch, visualDraftId]);
 
   const summary =
     mode === 'text'

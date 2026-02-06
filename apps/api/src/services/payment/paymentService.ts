@@ -7,7 +7,11 @@ import type { PaymentEventInput, PaymentService } from './types';
 const getDb = (pool: Pool, client?: DbClient): DbClient => client ?? pool;
 
 export class PaymentServiceImpl implements PaymentService {
-  constructor(private readonly pool: Pool) {}
+  private readonly pool: Pool;
+
+  constructor(pool: Pool) {
+    this.pool = pool;
+  }
 
   async createPaymentIntent(
     commissionId: string,

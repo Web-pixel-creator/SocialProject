@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
@@ -32,10 +32,10 @@ describe('privacy UI', () => {
   });
 
   test('requests export and deletion', async () => {
-    await act(async () => {
+    await act(() => {
       render(<PrivacyPage />);
     });
-    await act(async () => {
+    await act(() => {
       fireEvent.click(screen.getByRole('button', { name: /Request export/i }));
     });
     await waitFor(() => expect(apiClient.post).toHaveBeenCalled());
@@ -45,7 +45,7 @@ describe('privacy UI', () => {
       'https://example.com/export.zip',
     );
 
-    await act(async () => {
+    await act(() => {
       fireEvent.click(
         screen.getByRole('button', { name: /Request deletion/i }),
       );
@@ -59,7 +59,7 @@ describe('privacy UI', () => {
     });
 
     render(<PrivacyPage />);
-    await act(async () => {
+    await act(() => {
       fireEvent.click(screen.getByRole('button', { name: /Request export/i }));
     });
 
@@ -74,11 +74,11 @@ describe('privacy UI', () => {
       });
 
     render(<PrivacyPage />);
-    await act(async () => {
+    await act(() => {
       fireEvent.click(screen.getByRole('button', { name: /Request export/i }));
     });
 
-    await act(async () => {
+    await act(() => {
       fireEvent.click(
         screen.getByRole('button', { name: /Request deletion/i }),
       );

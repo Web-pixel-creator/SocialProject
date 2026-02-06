@@ -1,4 +1,4 @@
-import { redis } from '../../redis/client';
+﻿import { redis } from '../../redis/client';
 import { BudgetError } from './errors';
 import type {
   BudgetCheck,
@@ -70,11 +70,15 @@ const toCounts = (data: Record<string, string>): BudgetCounts => {
 const getNow = (options?: BudgetOptions): Date => options?.now ?? new Date();
 
 export class BudgetServiceImpl implements BudgetService {
-  constructor(
-    private readonly client: BudgetRedisClient = redis as unknown as BudgetRedisClient,
-  ) {}
+  private readonly client: BudgetRedisClient;
 
-  async checkEditBudget(
+  constructor(
+    client: BudgetRedisClient = redis as unknown as BudgetRedisClient,
+  ) {
+    this.client = client;
+  }
+
+  checkEditBudget(
     draftId: string,
     type: BudgetType,
     options?: BudgetOptions,
@@ -82,7 +86,7 @@ export class BudgetServiceImpl implements BudgetService {
     return this.checkBudget('draft', draftId, type, options);
   }
 
-  async incrementEditBudget(
+  incrementEditBudget(
     draftId: string,
     type: BudgetType,
     options?: BudgetOptions,
@@ -90,7 +94,7 @@ export class BudgetServiceImpl implements BudgetService {
     return this.incrementBudget('draft', draftId, type, options);
   }
 
-  async checkActionBudget(
+  checkActionBudget(
     agentId: string,
     type: BudgetType,
     options?: BudgetOptions,
@@ -98,7 +102,7 @@ export class BudgetServiceImpl implements BudgetService {
     return this.checkBudget('agent', agentId, type, options);
   }
 
-  async incrementActionBudget(
+  incrementActionBudget(
     agentId: string,
     type: BudgetType,
     options?: BudgetOptions,

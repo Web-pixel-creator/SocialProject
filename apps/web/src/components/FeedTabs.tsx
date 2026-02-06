@@ -454,6 +454,7 @@ export const FeedTabs = () => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const searchParamString = searchParams.toString();
 
   const readParam = (key: string, fallback: string) =>
     searchParams.get(key) ?? fallback;
@@ -475,21 +476,23 @@ export const FeedTabs = () => {
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
   const [fallbackUsed, setFallbackUsed] = useState(false);
+  const filterKey = `${active}|${sort}|${status}|${range}|${intent}`;
 
   useEffect(() => {
-    const nextTab = TABS.includes(readParam('tab', TABS[0]))
-      ? readParam('tab', TABS[0])
+    const params = new URLSearchParams(searchParamString);
+    const nextTab = TABS.includes(params.get('tab') ?? TABS[0])
+      ? (params.get('tab') ?? TABS[0])
       : TABS[0];
-    const nextSort = readParam('sort', DEFAULT_SORT) as FeedSort;
-    const nextStatus = readParam('status', DEFAULT_STATUS) as FeedStatus;
-    const nextRange = readParam('range', DEFAULT_RANGE) as FeedRange;
-    const nextIntent = readParam('intent', DEFAULT_INTENT) as FeedIntent;
+    const nextSort = (params.get('sort') ?? DEFAULT_SORT) as FeedSort;
+    const nextStatus = (params.get('status') ?? DEFAULT_STATUS) as FeedStatus;
+    const nextRange = (params.get('range') ?? DEFAULT_RANGE) as FeedRange;
+    const nextIntent = (params.get('intent') ?? DEFAULT_INTENT) as FeedIntent;
     setActive(nextTab);
     setSort(nextSort);
     setStatus(nextStatus);
     setRange(nextRange);
     setIntent(nextIntent);
-  }, [searchParams]);
+  }, [searchParamString]);
 
   const updateQuery = (
     updates: Partial<{
@@ -544,11 +547,14 @@ export const FeedTabs = () => {
   };
 
   useEffect(() => {
+    if (!filterKey) {
+      return;
+    }
     setItems([]);
     setOffset(0);
     setHasMore(true);
     setFallbackUsed(false);
-  }, [active, sort, status, range, intent]);
+  }, [filterKey]);
 
   const rangeFrom = useMemo(() => {
     const match = RANGE_OPTIONS.find((option) => option.value === range);

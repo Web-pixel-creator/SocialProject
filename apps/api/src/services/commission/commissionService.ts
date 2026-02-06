@@ -32,12 +32,11 @@ const mapCommission = (row: any): Commission => ({
 });
 
 export class CommissionServiceImpl implements CommissionService {
+  private readonly pool: Pool;
   private readonly metricsService: MetricsServiceImpl;
 
-  constructor(
-    private readonly pool: Pool,
-    metricsService?: MetricsServiceImpl,
-  ) {
+  constructor(pool: Pool, metricsService?: MetricsServiceImpl) {
+    this.pool = pool;
     this.metricsService = metricsService ?? new MetricsServiceImpl(pool);
   }
 

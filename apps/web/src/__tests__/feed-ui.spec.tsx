@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
@@ -48,14 +48,12 @@ describe('feed UI', () => {
   });
 
   test('switches tabs', async () => {
-    await act(async () => {
+    await act(() => {
       render(<FeedTabs />);
     });
-    await act(async () => {
-      await waitFor(() => expect(apiClient.get).toHaveBeenCalled());
-    });
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalled());
     const tab = screen.getByRole('button', { name: /GlowUps/i });
-    await act(async () => {
+    await act(() => {
       fireEvent.click(tab);
     });
     expect(tab).toHaveClass('bg-ink');
@@ -67,12 +65,12 @@ describe('feed UI', () => {
       .mockRejectedValueOnce(new Error('for-you failed'))
       .mockResolvedValueOnce({ data: [] });
 
-    await act(async () => {
+    await act(() => {
       render(<FeedTabs />);
     });
 
     const forYouTab = screen.getByRole('button', { name: /For You/i });
-    await act(async () => {
+    await act(() => {
       fireEvent.click(forYouTab);
     });
 
@@ -94,12 +92,12 @@ describe('feed UI', () => {
         ],
       });
 
-    await act(async () => {
+    await act(() => {
       render(<FeedTabs />);
     });
 
     const archiveTab = screen.getByRole('button', { name: /Archive/i });
-    await act(async () => {
+    await act(() => {
       fireEvent.click(archiveTab);
     });
 
@@ -117,12 +115,12 @@ describe('feed UI', () => {
         ],
       });
 
-    await act(async () => {
+    await act(() => {
       render(<FeedTabs />);
     });
 
     const studiosTab = screen.getByRole('button', { name: /Studios/i });
-    await act(async () => {
+    await act(() => {
       fireEvent.click(studiosTab);
     });
 
@@ -160,12 +158,12 @@ describe('feed UI', () => {
   test('requests battles feed endpoint', async () => {
     (apiClient.get as jest.Mock).mockResolvedValue({ data: [] });
 
-    await act(async () => {
+    await act(() => {
       render(<FeedTabs />);
     });
 
     const battlesTab = screen.getByRole('button', { name: /Battles/i });
-    await act(async () => {
+    await act(() => {
       fireEvent.click(battlesTab);
     });
 
@@ -193,12 +191,12 @@ describe('feed UI', () => {
       .mockResolvedValueOnce({ data: [] })
       .mockResolvedValueOnce({ data: progressPayload });
 
-    await act(async () => {
+    await act(() => {
       render(<FeedTabs />);
     });
 
     const progressTab = screen.getByRole('button', { name: /Progress/i });
-    await act(async () => {
+    await act(() => {
       fireEvent.click(progressTab);
     });
 
@@ -227,12 +225,12 @@ describe('feed UI', () => {
       .mockResolvedValueOnce({ data: [] })
       .mockResolvedValueOnce({ data: payload });
 
-    await act(async () => {
+    await act(() => {
       render(<FeedTabs />);
     });
 
     const hotNowTab = screen.getByRole('button', { name: /Hot Now/i });
-    await act(async () => {
+    await act(() => {
       fireEvent.click(hotNowTab);
     });
 
@@ -263,12 +261,12 @@ describe('feed UI', () => {
         ],
       });
 
-    await act(async () => {
+    await act(() => {
       render(<FeedTabs />);
     });
 
     const guildTab = screen.getByRole('button', { name: /Guilds/i });
-    await act(async () => {
+    await act(() => {
       fireEvent.click(guildTab);
     });
 
@@ -291,12 +289,12 @@ describe('feed UI', () => {
       .mockResolvedValueOnce({ data: [] })
       .mockResolvedValueOnce({ data: archivePayload });
 
-    await act(async () => {
+    await act(() => {
       render(<FeedTabs />);
     });
 
     const archiveTab = screen.getByRole('button', { name: /Archive/i });
-    await act(async () => {
+    await act(() => {
       fireEvent.click(archiveTab);
     });
 
@@ -310,12 +308,12 @@ describe('feed UI', () => {
       .mockResolvedValueOnce({ data: [] })
       .mockRejectedValueOnce(new Error('studios failed'));
 
-    await act(async () => {
+    await act(() => {
       render(<FeedTabs />);
     });
 
     const studiosTab = screen.getByRole('button', { name: /Studios/i });
-    await act(async () => {
+    await act(() => {
       fireEvent.click(studiosTab);
     });
 
@@ -330,12 +328,12 @@ describe('feed UI', () => {
       .mockResolvedValueOnce({ data: [] })
       .mockRejectedValueOnce(new Error('archive failed'));
 
-    await act(async () => {
+    await act(() => {
       render(<FeedTabs />);
     });
 
     const archiveTab = screen.getByRole('button', { name: /Archive/i });
-    await act(async () => {
+    await act(() => {
       fireEvent.click(archiveTab);
     });
 
@@ -355,12 +353,12 @@ describe('feed UI', () => {
       .mockResolvedValueOnce({ data: [] })
       .mockResolvedValueOnce({ data: payload });
 
-    await act(async () => {
+    await act(() => {
       render(<FeedTabs />);
     });
 
     const forYouTab = screen.getByRole('button', { name: /For You/i });
-    await act(async () => {
+    await act(() => {
       fireEvent.click(forYouTab);
     });
 
@@ -400,12 +398,12 @@ describe('feed UI', () => {
       .mockResolvedValueOnce({ data: [] })
       .mockResolvedValueOnce({ data: archivePayload });
 
-    await act(async () => {
+    await act(() => {
       render(<FeedTabs />);
     });
 
     const archiveTab = screen.getByRole('button', { name: /Archive/i });
-    await act(async () => {
+    await act(() => {
       fireEvent.click(archiveTab);
     });
 
@@ -436,12 +434,12 @@ describe('feed UI', () => {
       .mockResolvedValueOnce({ data: [] })
       .mockResolvedValueOnce({ data: studiosPayload });
 
-    await act(async () => {
+    await act(() => {
       render(<FeedTabs />);
     });
 
     const studiosTab = screen.getByRole('button', { name: /Studios/i });
-    await act(async () => {
+    await act(() => {
       fireEvent.click(studiosTab);
     });
 
@@ -468,17 +466,17 @@ describe('feed UI', () => {
       .mockRejectedValueOnce(new Error('for-you page failed'))
       .mockResolvedValueOnce({ data: fallbackPage });
 
-    await act(async () => {
+    await act(() => {
       render(<FeedTabs />);
     });
 
     const forYouTab = screen.getByRole('button', { name: /For You/i });
-    await act(async () => {
+    await act(() => {
       fireEvent.click(forYouTab);
     });
 
     const loadMore = await screen.findByRole('button', { name: /Load more/i });
-    await act(async () => {
+    await act(() => {
       fireEvent.click(loadMore);
     });
 
@@ -514,13 +512,13 @@ describe('feed UI', () => {
       writable: true,
     });
 
-    await act(async () => {
+    await act(() => {
       render(<FeedTabs />);
     });
 
     await waitFor(() => expect(apiClient.get).toHaveBeenCalledTimes(1));
 
-    await act(async () => {
+    await act(() => {
       fireEvent.scroll(window);
     });
 
@@ -534,12 +532,12 @@ describe('feed UI', () => {
       .mockResolvedValueOnce({ data: [] })
       .mockRejectedValueOnce(new Error('live drafts failed'));
 
-    await act(async () => {
+    await act(() => {
       render(<FeedTabs />);
     });
 
     const liveTab = screen.getByRole('button', { name: /Live Drafts/i });
-    await act(async () => {
+    await act(() => {
       fireEvent.click(liveTab);
     });
 
@@ -566,17 +564,17 @@ describe('feed UI', () => {
       .mockResolvedValueOnce({ data: firstPage })
       .mockResolvedValueOnce({ data: secondPage });
 
-    await act(async () => {
+    await act(() => {
       render(<FeedTabs />);
     });
 
     const forYouTab = screen.getByRole('button', { name: /For You/i });
-    await act(async () => {
+    await act(() => {
       fireEvent.click(forYouTab);
     });
 
     const loadMore = await screen.findByRole('button', { name: /Load more/i });
-    await act(async () => {
+    await act(() => {
       fireEvent.click(loadMore);
     });
 
@@ -588,12 +586,12 @@ describe('feed UI', () => {
 
   test('syncs filters to URL query', async () => {
     searchParams = new URLSearchParams('tab=All');
-    await act(async () => {
+    await act(() => {
       render(<FeedTabs />);
     });
 
     const sortSelect = screen.getByLabelText(/Sort/i);
-    await act(async () => {
+    await act(() => {
       fireEvent.change(sortSelect, { target: { value: 'impact' } });
     });
     expect(replaceMock).toHaveBeenCalled();
@@ -602,7 +600,7 @@ describe('feed UI', () => {
     expect(lastCall).toContain('sort=impact');
 
     const statusSelect = screen.getByLabelText(/Status/i);
-    await act(async () => {
+    await act(() => {
       fireEvent.change(statusSelect, { target: { value: 'release' } });
     });
     const statusCall = replaceMock.mock.calls.at(-1)?.[0] as string;
@@ -613,7 +611,7 @@ describe('feed UI', () => {
     searchParams = new URLSearchParams(
       'tab=All&sort=impact&status=release&range=7d',
     );
-    await act(async () => {
+    await act(() => {
       render(<FeedTabs />);
     });
 

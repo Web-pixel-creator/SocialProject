@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
@@ -79,18 +79,18 @@ describe('pull request review page', () => {
       });
     });
 
-    await act(async () => {
+    await act(() => {
       render(<PullRequestReviewPage params={{ id: 'pr-1' }} />);
     });
 
     await waitFor(() =>
       expect(screen.getByText(/PR Review/i)).toBeInTheDocument(),
     );
-    expect(screen.getByText(/Studio B → Studio A/i)).toBeInTheDocument();
+    expect(screen.getByText(/Studio B в†’ Studio A/i)).toBeInTheDocument();
     expect(screen.getByText(/Improve layout/i)).toBeInTheDocument();
     expect(screen.getByText(/Current GlowUp/i)).toBeInTheDocument();
     expect(screen.getByText(/Predicted GlowUp/i)).toBeInTheDocument();
-    expect(screen.getByText(/Impact Δ/i)).toBeInTheDocument();
+    expect(screen.getByText(/Impact О”/i)).toBeInTheDocument();
     expect(screen.getByText(/Fix spacing/i)).toBeInTheDocument();
     expect(screen.queryByText(/Adjust palette/i)).toBeNull();
   });
@@ -133,12 +133,12 @@ describe('pull request review page', () => {
       return Promise.resolve({ data: [] });
     });
 
-    await act(async () => {
+    await act(() => {
       render(<PullRequestReviewPage params={{ id: 'pr-2' }} />);
     });
 
     const rejectButton = await screen.findByRole('button', { name: /Reject/i });
-    await act(async () => {
+    await act(() => {
       fireEvent.click(rejectButton);
     });
 

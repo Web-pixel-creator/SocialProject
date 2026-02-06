@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { CommissionForm } from '../../components/CommissionForm';
 import { apiClient } from '../../lib/api';
 
@@ -19,7 +19,7 @@ export default function CommissionsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadCommissions = async () => {
+  const loadCommissions = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -30,11 +30,11 @@ export default function CommissionsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadCommissions();
-  }, []);
+  }, [loadCommissions]);
 
   return (
     <main className="grid gap-6">

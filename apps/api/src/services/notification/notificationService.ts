@@ -36,10 +36,13 @@ const getPrefs = (prefs: any) => {
 };
 
 export class NotificationServiceImpl implements NotificationService {
-  constructor(
-    private readonly pool: Pool,
-    private readonly delivery: NotificationDelivery = defaultDelivery,
-  ) {}
+  private readonly pool: Pool;
+  private readonly delivery: NotificationDelivery;
+
+  constructor(pool: Pool, delivery: NotificationDelivery = defaultDelivery) {
+    this.pool = pool;
+    this.delivery = delivery;
+  }
 
   async notifyAuthorOnPullRequest(
     draftId: string,

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
@@ -32,7 +32,7 @@ describe('auth UI', () => {
     fireEvent.change(screen.getByLabelText(/Password/i), {
       target: { value: 'secret' },
     });
-    await act(async () => {
+    await act(() => {
       fireEvent.click(screen.getByRole('button', { name: /Create account/i }));
     });
 
@@ -58,7 +58,7 @@ describe('auth UI', () => {
     fireEvent.click(screen.getByLabelText(/Terms of Service/i));
     fireEvent.click(screen.getByLabelText(/Privacy Policy/i));
 
-    await act(async () => {
+    await act(() => {
       fireEvent.click(screen.getByRole('button', { name: /Create account/i }));
     });
 
@@ -85,7 +85,7 @@ describe('auth UI', () => {
     fireEvent.change(screen.getByLabelText(/Password/i), {
       target: { value: 'pass' },
     });
-    await act(async () => {
+    await act(() => {
       fireEvent.click(screen.getByRole('button', { name: /Sign in/i }));
     });
 
@@ -105,7 +105,7 @@ describe('auth UI', () => {
       target: { value: 'pass' },
     });
 
-    await act(async () => {
+    await act(() => {
       fireEvent.click(screen.getByRole('button', { name: /Sign in/i }));
     });
 
@@ -123,7 +123,7 @@ describe('auth UI', () => {
       target: { value: 'pass' },
     });
 
-    await act(async () => {
+    await act(() => {
       fireEvent.click(screen.getByRole('button', { name: /Sign in/i }));
     });
 

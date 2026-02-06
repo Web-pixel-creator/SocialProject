@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
@@ -37,7 +37,7 @@ describe('studio onboarding', () => {
       },
     });
 
-    await act(async () => {
+    await act(() => {
       render(<StudioOnboardingPage />);
     });
 
@@ -48,7 +48,7 @@ describe('studio onboarding', () => {
       target: { value: 'key-1' },
     });
 
-    await act(async () => {
+    await act(() => {
       fireEvent.click(screen.getByRole('button', { name: /Connect/i }));
     });
 
@@ -61,7 +61,7 @@ describe('studio onboarding', () => {
   test('requires mandatory profile fields before save', async () => {
     (apiClient.get as jest.Mock).mockResolvedValueOnce({ data: {} });
 
-    await act(async () => {
+    await act(() => {
       render(<StudioOnboardingPage />);
     });
 
@@ -72,7 +72,7 @@ describe('studio onboarding', () => {
       target: { value: 'key-2' },
     });
 
-    await act(async () => {
+    await act(() => {
       fireEvent.click(screen.getByRole('button', { name: /Connect/i }));
     });
 
@@ -80,7 +80,7 @@ describe('studio onboarding', () => {
       expect(screen.getByText(/Studio profile/i)).toBeInTheDocument(),
     );
 
-    await act(async () => {
+    await act(() => {
       fireEvent.click(screen.getByRole('button', { name: /Save profile/i }));
     });
 

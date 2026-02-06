@@ -20,7 +20,11 @@ const buildReelUrl = (shareSlug: string) =>
 const toIso = (value: any): string => new Date(value).toISOString();
 
 export class ContentGenerationServiceImpl implements ContentGenerationService {
-  constructor(private readonly pool: Pool) {}
+  private readonly pool: Pool;
+
+  constructor(pool: Pool) {
+    this.pool = pool;
+  }
 
   async generateGlowUpReel(limit = 5, client?: DbClient): Promise<GlowUpReel> {
     const db = getDb(this.pool, client);

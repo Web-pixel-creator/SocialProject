@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BeforeAfterSlider } from '../../../components/BeforeAfterSlider';
 import { FixRequestList } from '../../../components/FixRequestList';
 import { apiClient } from '../../../lib/api';
@@ -55,7 +55,7 @@ export default function PullRequestReviewPage({
   const [rejectReason, setRejectReason] = useState('');
   const [feedback, setFeedback] = useState('');
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const response = await apiClient.get(`/pull-requests/${params.id}`);
     setReview(response.data);
     if (response.data?.draft?.id) {
@@ -74,7 +74,7 @@ export default function PullRequestReviewPage({
     } catch (_telemetryError) {
       // ignore telemetry failures
     }
-  };
+  }, [params.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -99,7 +99,7 @@ export default function PullRequestReviewPage({
     return () => {
       cancelled = true;
     };
-  }, [params.id]);
+  }, [load]);
 
   const addressed = useMemo(() => {
     if (!review?.pullRequest?.addressedFixRequests?.length) {

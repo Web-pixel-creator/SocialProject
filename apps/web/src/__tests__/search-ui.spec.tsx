@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
@@ -79,7 +79,7 @@ describe('search UI', () => {
   });
 
   const runDebounce = async () => {
-    await act(async () => {
+    await act(() => {
       jest.advanceTimersByTime(300);
     });
   };
@@ -198,7 +198,7 @@ describe('search UI', () => {
     );
 
     render(<SearchPage />);
-    await act(async () => {
+    await act(() => {
       jest.advanceTimersByTime(300);
     });
 

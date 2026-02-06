@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BeforeAfterSlider } from '../../../components/BeforeAfterSlider';
 import {
   DraftArcCard,
@@ -146,32 +146,32 @@ export default function DraftDetailPage() {
     draftId ? `post:${draftId}` : 'post:unknown',
   );
 
-  const loadDraft = async () => {
+  const loadDraft = useCallback(async () => {
     if (!draftId) {
       return;
     }
     const response = await apiClient.get(`/drafts/${draftId}`);
     setDraft(response.data.draft);
     setVersions(response.data.versions ?? []);
-  };
+  }, [draftId]);
 
-  const loadFixRequests = async () => {
+  const loadFixRequests = useCallback(async () => {
     if (!draftId) {
       return;
     }
     const response = await apiClient.get(`/drafts/${draftId}/fix-requests`);
     setFixRequests(response.data ?? []);
-  };
+  }, [draftId]);
 
-  const loadPullRequests = async () => {
+  const loadPullRequests = useCallback(async () => {
     if (!draftId) {
       return;
     }
     const response = await apiClient.get(`/drafts/${draftId}/pull-requests`);
     setPullRequests(response.data ?? []);
-  };
+  }, [draftId]);
 
-  const loadArc = async () => {
+  const loadArc = useCallback(async () => {
     if (!draftId) {
       return;
     }
@@ -198,9 +198,9 @@ export default function DraftDetailPage() {
     } finally {
       setArcLoading(false);
     }
-  };
+  }, [draftId]);
 
-  const loadWatchlist = async () => {
+  const loadWatchlist = useCallback(async () => {
     if (!draftId) {
       return;
     }
@@ -222,9 +222,9 @@ export default function DraftDetailPage() {
       }
       setIsFollowed(false);
     }
-  };
+  }, [draftId]);
 
-  const loadDigest = async () => {
+  const loadDigest = useCallback(async () => {
     setDigestLoading(true);
     setDigestError(null);
     try {
@@ -246,9 +246,9 @@ export default function DraftDetailPage() {
     } finally {
       setDigestLoading(false);
     }
-  };
+  }, []);
 
-  const loadPredictionSummary = async (pullRequestId: string) => {
+  const loadPredictionSummary = useCallback(async (pullRequestId: string) => {
     setPredictionLoading(true);
     setPredictionError(null);
     try {
@@ -279,9 +279,9 @@ export default function DraftDetailPage() {
     } finally {
       setPredictionLoading(false);
     }
-  };
+  }, []);
 
-  const runDemoFlow = async () => {
+  const runDemoFlow = useCallback(async () => {
     if (!draftId) {
       return;
     }
@@ -296,7 +296,7 @@ export default function DraftDetailPage() {
     } finally {
       setDemoLoading(false);
     }
-  };
+  }, [draftId, loadDraft, loadFixRequests, loadPullRequests]);
 
   const copyDraftId = async () => {
     if (!draftId || typeof navigator === 'undefined') {
@@ -312,7 +312,7 @@ export default function DraftDetailPage() {
     }
   };
 
-  const loadSimilarDrafts = async () => {
+  const loadSimilarDrafts = useCallback(async () => {
     if (!draftId) {
       setSimilarDrafts([]);
       setSimilarStatus('Draft id missing.');
@@ -365,7 +365,7 @@ export default function DraftDetailPage() {
     } finally {
       setSimilarLoading(false);
     }
-  };
+  }, [draftId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -395,7 +395,14 @@ export default function DraftDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [draftId]);
+  }, [
+    loadArc,
+    loadDigest,
+    loadDraft,
+    loadFixRequests,
+    loadPullRequests,
+    loadWatchlist,
+  ]);
 
   const markDigestSeen = async (entryId: string) => {
     try {
@@ -476,7 +483,7 @@ export default function DraftDetailPage() {
 
   useEffect(() => {
     loadSimilarDrafts();
-  }, [draftId]);
+  }, [loadSimilarDrafts]);
 
   useEffect(() => {
     if (!(arcView?.summary && arcView?.recap24h)) {
@@ -520,7 +527,15 @@ export default function DraftDetailPage() {
       loadDraft();
       loadArc();
     }
-  }, [events.length, isFollowed]);
+  }, [
+    events,
+    isFollowed,
+    loadArc,
+    loadDigest,
+    loadDraft,
+    loadFixRequests,
+    loadPullRequests,
+  ]);
 
   useEffect(() => {
     const pendingPull = pullRequests.find((item) => item.status === 'pending');
@@ -530,30 +545,33 @@ export default function DraftDetailPage() {
       return;
     }
     loadPredictionSummary(pendingPull.id);
-  }, [pullRequests]);
+  }, [pullRequests, loadPredictionSummary]);
 
-  const formatEventMessage = (
-    eventType: string,
-    payload: Record<string, unknown>,
-  ) => {
-    if (eventType === 'fix_request') {
-      return 'New fix request submitted';
-    }
-    if (eventType === 'pull_request') {
-      return 'New pull request submitted';
-    }
-    if (eventType === 'pull_request_decision') {
-      const decision = String(payload?.decision ?? 'updated').replace('_', ' ');
-      return `Pull request ${decision}`;
-    }
-    if (eventType === 'glowup_update') {
-      return 'GlowUp score updated';
-    }
-    if (eventType === 'draft_released') {
-      return 'Draft released';
-    }
-    return 'Draft activity updated';
-  };
+  const formatEventMessage = useCallback(
+    (eventType: string, payload: Record<string, unknown>) => {
+      if (eventType === 'fix_request') {
+        return 'New fix request submitted';
+      }
+      if (eventType === 'pull_request') {
+        return 'New pull request submitted';
+      }
+      if (eventType === 'pull_request_decision') {
+        const decision = String(payload?.decision ?? 'updated').replace(
+          '_',
+          ' ',
+        );
+        return `Pull request ${decision}`;
+      }
+      if (eventType === 'glowup_update') {
+        return 'GlowUp score updated';
+      }
+      if (eventType === 'draft_released') {
+        return 'Draft released';
+      }
+      return 'Draft activity updated';
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!isFollowed || events.length === 0) {
@@ -575,7 +593,7 @@ export default function DraftDetailPage() {
       };
     });
     setNotifications((prev) => [...next, ...prev].slice(0, 5));
-  }, [events, isFollowed]);
+  }, [events, formatEventMessage, isFollowed]);
 
   const versionNumbers = useMemo(
     () => versions.map((version) => version.versionNumber),

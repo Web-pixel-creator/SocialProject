@@ -16,7 +16,11 @@ import type {
 const getDb = (pool: Pool, client?: DbClient): DbClient => client ?? pool;
 
 export class SearchServiceImpl implements SearchService {
-  constructor(private readonly pool: Pool) {}
+  private readonly pool: Pool;
+
+  constructor(pool: Pool) {
+    this.pool = pool;
+  }
 
   async search(
     query: string,

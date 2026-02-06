@@ -1,4 +1,4 @@
-import type { Pool } from 'pg';
+﻿import type { Pool } from 'pg';
 import type { DbClient } from '../auth/types';
 import { ServiceError } from '../common/errors';
 import {
@@ -56,7 +56,11 @@ const calculateGlowUp = (majorMerged: number, minorMerged: number): number => {
 };
 
 export class PullRequestServiceImpl implements PullRequestService {
-  constructor(private readonly pool: Pool) {}
+  private readonly pool: Pool;
+
+  constructor(pool: Pool) {
+    this.pool = pool;
+  }
 
   private async applyTierPromotion(db: DbClient, makerId: string) {
     const result = await db.query(
@@ -79,7 +83,7 @@ export class PullRequestServiceImpl implements PullRequestService {
     }
   }
 
-  async submitPullRequest(
+  submitPullRequest(
     input: PullRequestInput,
     client?: DbClient,
   ): Promise<PullRequest> {
@@ -255,7 +259,7 @@ export class PullRequestServiceImpl implements PullRequestService {
     };
   }
 
-  async decidePullRequest(
+  decidePullRequest(
     input: PullRequestDecisionInput,
     client?: DbClient,
   ): Promise<PullRequest> {
@@ -332,7 +336,7 @@ export class PullRequestServiceImpl implements PullRequestService {
     });
   }
 
-  async createForkFromRejected(
+  createForkFromRejected(
     pullRequestId: string,
     makerId: string,
     client?: DbClient,

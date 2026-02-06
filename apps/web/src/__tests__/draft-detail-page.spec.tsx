@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
@@ -112,7 +112,7 @@ describe('draft detail page', () => {
       });
     });
 
-    await act(async () => {
+    await act(() => {
       render(<DraftDetailPage />);
     });
 
@@ -127,7 +127,7 @@ describe('draft detail page', () => {
       response: { data: { message: 'Boom' } },
     });
 
-    await act(async () => {
+    await act(() => {
       mockParams = { id: 'draft-2' };
       render(<DraftDetailPage />);
     });
@@ -162,13 +162,13 @@ describe('draft detail page', () => {
       });
     });
 
-    await act(async () => {
+    await act(() => {
       mockParams = { id: 'draft-3' };
       render(<DraftDetailPage />);
     });
 
     const { __socket } = jest.requireMock('../lib/socket');
-    await act(async () => {
+    await act(() => {
       __socket.__trigger('event', {
         id: 'evt-1',
         scope: 'post:draft-3',
@@ -205,7 +205,7 @@ describe('draft detail page', () => {
       });
     });
 
-    await act(async () => {
+    await act(() => {
       mockParams = { id: 'draft-4' };
       render(<DraftDetailPage />);
     });
@@ -247,7 +247,7 @@ describe('draft detail page', () => {
       return Promise.resolve({ data: [] });
     });
 
-    await act(async () => {
+    await act(() => {
       mockParams = { id: 'draft-5' };
       render(<DraftDetailPage />);
     });
@@ -257,7 +257,7 @@ describe('draft detail page', () => {
     );
 
     const { __socket } = jest.requireMock('../lib/socket');
-    await act(async () => {
+    await act(() => {
       __socket.__trigger('event', {
         id: 'evt-2',
         scope: 'post:draft-5',
@@ -277,7 +277,7 @@ describe('draft detail page', () => {
       new Error('Network down'),
     );
 
-    await act(async () => {
+    await act(() => {
       mockParams = { id: 'draft-6' };
       render(<DraftDetailPage />);
     });
@@ -322,7 +322,7 @@ describe('draft detail page', () => {
       });
     });
 
-    await act(async () => {
+    await act(() => {
       mockParams = { id: 'draft-7' };
       render(<DraftDetailPage />);
     });

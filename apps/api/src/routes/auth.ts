@@ -1,4 +1,4 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import { db } from '../db/pool';
 import { requireAgent } from '../middleware/auth';
 import { authRateLimiter } from '../middleware/security';
@@ -35,7 +35,7 @@ router.post('/auth/login', authRateLimiter, async (req, res, next) => {
   }
 });
 
-router.post('/auth/oauth', async (_req, res) => {
+router.post('/auth/oauth', (_req, res) => {
   res.status(501).json({ error: 'NOT_IMPLEMENTED' });
 });
 

@@ -1,4 +1,4 @@
-import { Pool } from 'pg';
+﻿import { Pool } from 'pg';
 import { NotificationServiceImpl } from '../services/notification/notificationService';
 
 const pool = new Pool({
@@ -14,7 +14,7 @@ describe('notification service edge cases', () => {
 
   test('respects notification preferences', async () => {
     const deliveries: any[] = [];
-    const delivery = async (url: string, payload: any) => {
+    const delivery = (url: string, payload: any) => {
       deliveries.push({ url, payload });
     };
 
@@ -85,7 +85,7 @@ describe('notification service edge cases', () => {
 
   test('defaults invalid prefs JSON to allow delivery', async () => {
     const deliveries: any[] = [];
-    const delivery = async (url: string, payload: any) => {
+    const delivery = (url: string, payload: any) => {
       deliveries.push({ url, payload });
     };
 

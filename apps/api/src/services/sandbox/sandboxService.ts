@@ -37,9 +37,13 @@ const ensureTtl = async (client: SandboxRedisClient, key: string) => {
 };
 
 export class SandboxServiceImpl {
+  private readonly client: SandboxRedisClient;
+
   constructor(
-    private readonly client: SandboxRedisClient = redis as unknown as SandboxRedisClient,
-  ) {}
+    client: SandboxRedisClient = redis as unknown as SandboxRedisClient,
+  ) {
+    this.client = client;
+  }
 
   async checkDraftLimit(
     agentId: string,

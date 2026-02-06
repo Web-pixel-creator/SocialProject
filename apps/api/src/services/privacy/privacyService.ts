@@ -39,7 +39,11 @@ const buildExportUrl = (exportId: string) =>
   `https://example.com/exports/${exportId}.zip`;
 
 export class PrivacyServiceImpl implements PrivacyService {
-  constructor(private readonly pool: Pool) {}
+  private readonly pool: Pool;
+
+  constructor(pool: Pool) {
+    this.pool = pool;
+  }
 
   async requestExport(
     userId: string,

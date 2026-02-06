@@ -147,7 +147,11 @@ const digestTitleByEvent = (eventType: DraftEventType): string => {
 };
 
 export class DraftArcServiceImpl implements DraftArcService {
-  constructor(private readonly pool: Pool) {}
+  private readonly pool: Pool;
+
+  constructor(pool: Pool) {
+    this.pool = pool;
+  }
 
   async getDraftArc(draftId: string, client?: DbClient): Promise<DraftArcView> {
     const db = getDb(this.pool, client);

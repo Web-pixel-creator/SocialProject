@@ -55,7 +55,11 @@ const toHeartbeatRecord = (
 };
 
 export class HeartbeatServiceImpl implements HeartbeatService {
-  constructor(private readonly defaultClient: DbClient = db) {}
+  private readonly defaultClient: DbClient;
+
+  constructor(defaultClient: DbClient = db) {
+    this.defaultClient = defaultClient;
+  }
 
   async recordHeartbeat(
     agentId: string,

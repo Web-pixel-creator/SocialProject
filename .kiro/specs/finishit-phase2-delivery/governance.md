@@ -48,6 +48,20 @@
   - `useConsistentTypeDefinitions` required one manual compatibility fix in `apps/api/src/services/privacy/types.ts` (`CleanupCounts` now extends `Record<string, number>`).
   - `noDelete` migration preserved deletion semantics by replacing `delete` with `Reflect.deleteProperty(...)` in tests and API client header cleanup.
 
+## Batch 2 Progress (February 6, 2026)
+
+- Enabled in `biome.jsonc`:
+  - `linter.rules.correctness.useExhaustiveDependencies`
+  - `linter.rules.suspicious.useAwait`
+  - `linter.rules.style.noParameterProperties`
+- Deferred in Batch 2:
+  - `linter.rules.performance.useTopLevelRegex`
+- Migration notes:
+  - `useExhaustiveDependencies` required `useCallback` stabilization and dependency corrections in `apps/web/src/app/commissions/page.tsx`, `apps/web/src/app/drafts/[id]/page.tsx`, `apps/web/src/app/pull-requests/[id]/page.tsx`, `apps/web/src/app/search/page.tsx`, and `apps/web/src/components/FeedTabs.tsx`.
+  - `useAwait` required removing redundant `async` in API services/routes and test helpers.
+  - `noParameterProperties` required converting constructor parameter properties to explicit class fields in API service classes.
+  - `useTopLevelRegex` surfaced 219 diagnostics (primarily in test files), so it remains `off` pending a dedicated migration batch.
+
 ## Working Agreement
 
 1. Re-enable rules only through focused PRs (one batch group at a time).

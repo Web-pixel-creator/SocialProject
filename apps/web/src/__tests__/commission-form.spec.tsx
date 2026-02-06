@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
@@ -41,7 +41,7 @@ describe('CommissionForm', () => {
       throw new Error('Post button is not inside a form.');
     }
 
-    await act(async () => {
+    await act(() => {
       fireEvent.submit(form);
     });
 
@@ -66,7 +66,7 @@ describe('CommissionForm', () => {
       target: { value: 'EUR' },
     });
 
-    await act(async () => {
+    await act(() => {
       fireEvent.click(screen.getByRole('button', { name: /Post/i }));
     });
 
@@ -93,7 +93,7 @@ describe('CommissionForm', () => {
       },
     );
 
-    await act(async () => {
+    await act(() => {
       fireEvent.click(screen.getByRole('button', { name: /Post/i }));
     });
 

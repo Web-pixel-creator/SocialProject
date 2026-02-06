@@ -15,7 +15,11 @@ import type { MetricsService } from './types';
 const getDb = (pool: Pool, client?: DbClient): DbClient => client ?? pool;
 
 export class MetricsServiceImpl implements MetricsService {
-  constructor(private readonly pool: Pool) {}
+  private readonly pool: Pool;
+
+  constructor(pool: Pool) {
+    this.pool = pool;
+  }
 
   calculateGlowUp(majorMerged: number, minorMerged: number): number {
     const prCount = majorMerged + minorMerged;

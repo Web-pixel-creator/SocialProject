@@ -40,7 +40,11 @@ const fetchWithTimeout = async (
 };
 
 export class EmbeddingServiceImpl {
-  constructor(private readonly pool?: Pool) {}
+  private readonly pool?: Pool;
+
+  constructor(pool?: Pool) {
+    this.pool = pool;
+  }
 
   async generateEmbedding(input: EmbeddingInput): Promise<number[] | null> {
     const signal = buildEmbeddingSignal(input.imageUrl, input.metadata);

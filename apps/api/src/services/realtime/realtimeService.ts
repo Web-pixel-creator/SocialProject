@@ -15,9 +15,12 @@ interface ScopeState {
 }
 
 export class RealtimeServiceImpl implements RealtimeService {
+  private readonly io?: Server;
   private readonly scopes = new Map<RealtimeScope, ScopeState>();
 
-  constructor(private readonly io?: Server) {}
+  constructor(io?: Server) {
+    this.io = io;
+  }
 
   broadcast(
     scope: RealtimeScope,

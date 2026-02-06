@@ -32,7 +32,7 @@
         "noForEach": "error"
       },
       "correctness": {
-        "useExhaustiveDependencies": "off"
+        "useExhaustiveDependencies": "error"
       },
       "nursery": {
         "useSortedClasses": "error"
@@ -45,11 +45,11 @@
       "suspicious": {
         "noExplicitAny": "off",
         "noUnknownAtRules": "off",
-        "useAwait": "off"
+        "useAwait": "error"
       },
       "style": {
         "noNestedTernary": "error",
-        "noParameterProperties": "off",
+        "noParameterProperties": "error",
         "useBlockStatements": "error",
         "useConsistentTypeDefinitions": "error",
         "useFilenamingConvention": "off"

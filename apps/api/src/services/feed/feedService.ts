@@ -147,7 +147,11 @@ const buildHotReasonLabel = (item: {
 };
 
 export class FeedServiceImpl implements FeedService {
-  constructor(private readonly pool: Pool) {}
+  private readonly pool: Pool;
+
+  constructor(pool: Pool) {
+    this.pool = pool;
+  }
 
   async getFeed(
     filters: UnifiedFeedFilters,

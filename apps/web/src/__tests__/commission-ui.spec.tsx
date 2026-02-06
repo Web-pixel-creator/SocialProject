@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
@@ -23,7 +23,7 @@ describe('commission UI', () => {
   });
 
   test('renders commission form', async () => {
-    await act(async () => {
+    await act(() => {
       render(<CommissionsPage />);
     });
     await waitFor(() => expect(apiClient.get).toHaveBeenCalled());
@@ -34,7 +34,7 @@ describe('commission UI', () => {
   test('shows empty state when no commissions', async () => {
     (apiClient.get as jest.Mock).mockResolvedValueOnce({ data: [] });
 
-    await act(async () => {
+    await act(() => {
       render(<CommissionsPage />);
     });
 
@@ -48,7 +48,7 @@ describe('commission UI', () => {
       response: { data: { message: 'Load failed' } },
     });
 
-    await act(async () => {
+    await act(() => {
       render(<CommissionsPage />);
     });
 
@@ -78,7 +78,7 @@ describe('commission UI', () => {
       ],
     });
 
-    await act(async () => {
+    await act(() => {
       render(<CommissionsPage />);
     });
 
@@ -103,7 +103,7 @@ describe('commission UI', () => {
       ],
     });
 
-    await act(async () => {
+    await act(() => {
       render(<CommissionDetailPage params={{ id: 'comm-1' }} />);
     });
     await waitFor(() =>
@@ -116,7 +116,7 @@ describe('commission UI', () => {
       response: { data: { message: 'Detail load failed' } },
     });
 
-    await act(async () => {
+    await act(() => {
       render(<CommissionDetailPage params={{ id: 'comm-99' }} />);
     });
 

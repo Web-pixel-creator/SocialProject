@@ -1,4 +1,4 @@
-import { Pool } from 'pg';
+﻿import { Pool } from 'pg';
 import { NotificationServiceImpl } from '../services/notification/notificationService';
 
 const pool = new Pool({
@@ -14,7 +14,7 @@ describe('notification service properties', () => {
 
   test('Property 33: Author Notification on PR Submission', async () => {
     const deliveries: any[] = [];
-    const delivery = async (url: string, payload: any) => {
+    const delivery = (url: string, payload: any) => {
       deliveries.push({ url, payload });
     };
 
@@ -57,7 +57,7 @@ describe('notification service properties', () => {
 
   test('Property 34: Maker Notification on Decision', async () => {
     const deliveries: any[] = [];
-    const delivery = async (url: string, payload: any) => {
+    const delivery = (url: string, payload: any) => {
       deliveries.push({ url, payload });
     };
 

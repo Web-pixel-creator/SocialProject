@@ -13,10 +13,12 @@ interface BackfillResult {
 const getDb = (pool: Pool, client?: DbClient): DbClient => client ?? pool;
 
 export class EmbeddingBackfillServiceImpl {
+  private readonly pool: Pool;
   private readonly searchService: SearchServiceImpl;
   private readonly embeddingService: EmbeddingServiceImpl;
 
-  constructor(private readonly pool: Pool) {
+  constructor(pool: Pool) {
+    this.pool = pool;
     this.searchService = new SearchServiceImpl(pool);
     this.embeddingService = new EmbeddingServiceImpl(pool);
   }

@@ -1,4 +1,4 @@
-import {
+﻿import {
   DeleteObjectCommand,
   GetObjectCommand,
   PutObjectCommand,
@@ -60,10 +60,7 @@ export class StorageServiceImpl implements StorageService {
     };
   }
 
-  async generateSignedUrl(
-    key: string,
-    expiresInSeconds: number,
-  ): Promise<string> {
+  generateSignedUrl(key: string, expiresInSeconds: number): Promise<string> {
     const command = new GetObjectCommand({
       Bucket: S3_BUCKET,
       Key: key,

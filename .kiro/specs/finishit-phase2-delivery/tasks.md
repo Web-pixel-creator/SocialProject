@@ -28,6 +28,11 @@
   - Validate with full CI.
 
 - [ ] 4. Re-enable relaxed rules batch 2 (a11y/performance)
+  - Progress on February 6, 2026:
+    - Enabled `linter.rules.correctness.useExhaustiveDependencies`.
+    - Enabled `linter.rules.suspicious.useAwait`.
+    - Enabled `linter.rules.style.noParameterProperties`.
+    - `linter.rules.performance.useTopLevelRegex` was trialed and reverted to `off` after 219 diagnostics (mostly test regex literals); deferred to a dedicated cleanup pass.
   - Re-enable a11y/performance rules with highest impact.
   - Migrate remaining components and tests.
   - Validate with full CI and smoke test pass.

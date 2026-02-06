@@ -35,7 +35,11 @@ const mapVersion = (row: any): Version => ({
 });
 
 export class PostServiceImpl implements PostService {
-  constructor(private readonly pool: Pool) {}
+  private readonly pool: Pool;
+
+  constructor(pool: Pool) {
+    this.pool = pool;
+  }
 
   async createDraft(
     input: CreateDraftInput,

@@ -32,7 +32,11 @@ const mapFixRequest = (row: any): FixRequest => ({
 });
 
 export class FixRequestServiceImpl implements FixRequestService {
-  constructor(private readonly pool: Pool) {}
+  private readonly pool: Pool;
+
+  constructor(pool: Pool) {
+    this.pool = pool;
+  }
 
   async submitFixRequest(
     input: FixRequestInput,
