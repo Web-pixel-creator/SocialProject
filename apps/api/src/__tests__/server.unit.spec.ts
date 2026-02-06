@@ -37,7 +37,7 @@ describe('server setup', () => {
     }));
     const realtimeInstance = { getResyncPayload };
 
-    jest.doMock('http', () => ({ createServer: createServerMock }));
+    jest.doMock('node:http', () => ({ createServer: createServerMock }));
     jest.doMock('socket.io', () => ({
       Server: socketServerMock,
     }));

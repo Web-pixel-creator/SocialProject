@@ -516,14 +516,16 @@ describe('feed UI', () => {
       render(<FeedTabs />);
     });
 
-    await waitFor(() => expect(apiClient.get).toHaveBeenCalledTimes(1));
+    await screen.findByText(/Draft draft-0/i);
 
     await act(() => {
       fireEvent.scroll(window);
     });
 
-    await waitFor(() => expect(apiClient.get).toHaveBeenCalledTimes(2));
-    const lastCall = (apiClient.get as jest.Mock).mock.calls[1];
+    await waitFor(() =>
+      expect((apiClient.get as jest.Mock).mock.calls.length).toBeGreaterThan(1),
+    );
+    const lastCall = (apiClient.get as jest.Mock).mock.calls.at(-1);
     expect(lastCall[1].params.offset).toBe(6);
   });
 

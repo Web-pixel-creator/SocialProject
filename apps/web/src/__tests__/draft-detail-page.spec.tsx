@@ -272,7 +272,7 @@ describe('draft detail page', () => {
     );
   });
 
-  test('shows runtime error when load fails without response payload', async () => {
+  test('shows fallback error when load fails without response payload', async () => {
     (apiClient.get as jest.Mock).mockRejectedValue(new Error('Network down'));
 
     await act(() => {
@@ -281,7 +281,7 @@ describe('draft detail page', () => {
     });
 
     await waitFor(() =>
-      expect(screen.getAllByText(/Network down/i).length).toBeGreaterThan(0),
+      expect(screen.getAllByText(/Failed to load/i).length).toBeGreaterThan(0),
     );
   });
 

@@ -39,8 +39,8 @@ describe('privacy UI', () => {
       fireEvent.click(screen.getByRole('button', { name: /Request export/i }));
     });
     await waitFor(() => expect(apiClient.post).toHaveBeenCalled());
-    expect(screen.getByText(/Requested/i)).toBeInTheDocument();
-    expect(screen.getByText(/Download export/i)).toHaveAttribute(
+    expect(await screen.findByText(/Requested/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Download export/i)).toHaveAttribute(
       'href',
       'https://example.com/export.zip',
     );
@@ -50,7 +50,9 @@ describe('privacy UI', () => {
         screen.getByRole('button', { name: /Request deletion/i }),
       );
     });
-    expect(screen.getByText(/Pending/i)).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByText(/Pending/i)).toBeInTheDocument(),
+    );
   });
 
   test('shows export error', async () => {

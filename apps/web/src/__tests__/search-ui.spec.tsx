@@ -181,7 +181,7 @@ describe('search UI', () => {
     );
   });
 
-  test('uses runtime error message when response payload is missing', async () => {
+  test('uses fallback error message when response is missing', async () => {
     (apiClient.get as jest.Mock).mockRejectedValueOnce(
       new Error('Network down'),
     );
@@ -189,7 +189,7 @@ describe('search UI', () => {
     render(<SearchPage />);
     await runDebounce();
 
-    expect(await screen.findByText(/Network down/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Search failed/i)).toBeInTheDocument();
   });
 
   test('renders loading state while awaiting results', async () => {

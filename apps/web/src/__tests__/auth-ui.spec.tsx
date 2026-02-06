@@ -112,7 +112,7 @@ describe('auth UI', () => {
     expect(await screen.findByText(/Invalid credentials/i)).toBeInTheDocument();
   });
 
-  test('shows runtime error message when response payload is missing', async () => {
+  test('shows default error message when response payload is missing', async () => {
     (apiClient.post as jest.Mock).mockRejectedValue(new Error('Network down'));
 
     renderWithProvider(<AuthForm mode="login" />);
@@ -127,6 +127,6 @@ describe('auth UI', () => {
       fireEvent.click(screen.getByRole('button', { name: /Sign in/i }));
     });
 
-    expect(await screen.findByText(/Network down/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Something went wrong/i)).toBeInTheDocument();
   });
 });

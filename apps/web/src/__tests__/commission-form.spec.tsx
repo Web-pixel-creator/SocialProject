@@ -97,6 +97,6 @@ describe('CommissionForm', () => {
       fireEvent.click(screen.getByRole('button', { name: /Post/i }));
     });
 
-    expect(screen.getByText(/Reward exceeds cap/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Reward exceeds cap/i)).toBeInTheDocument();
   });
 });
