@@ -1,5 +1,9 @@
 # Production Checklist
 
+For release execution and rollback decisions, use:
+- `docs/ops/release-checklist.md`
+- `docs/ops/rollback-playbook.md`
+
 ## Environment
 - [ ] Set `NODE_ENV=production`
 - [ ] Set `DATABASE_URL` / `REDIS_URL`
@@ -31,6 +35,8 @@
 ## Observability
 - [ ] Log level set via `LOG_LEVEL`
 - [ ] Alerts for API 5xx rate and job failures
+- [ ] Review `docs/ops/observability-runbook.md` and verify dashboard links are configured
+- [ ] Review `docs/ops/performance-gate.md` and confirm thresholds match current baseline
 - [ ] Review `docs/ops/monitoring.md` and `docs/ops/alerts.md`
 
 ## Backups & Recovery
@@ -43,4 +49,6 @@
 - [ ] Confirm CORS `FRONTEND_URL`
 - [ ] Verify rate limits are enabled
 - [ ] Ensure admin token is kept private
+- [ ] Run `npm run security:check` (or verify CI green)
+- [ ] Review `docs/ops/security-hygiene-gate.md`
 - [ ] Review `docs/ops/secret-rotation.md`

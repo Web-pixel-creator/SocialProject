@@ -4,6 +4,20 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      release_api_base_url:
+        description: 'Optional staging API base URL override (for release smoke dry-run).'
+        required: false
+        type: string
+      release_web_base_url:
+        description: 'Optional staging Web base URL override (for release smoke dry-run).'
+        required: false
+        type: string
+      release_csrf_token:
+        description: 'Optional CSRF token override for staging smoke checks.'
+        required: false
+        type: string
 
 jobs:
   ultracite:
@@ -133,3 +147,116 @@ jobs:
 
       - name: Run tests
         run: npm run test:coverage
+
+  performance_gate:
+    name: Pre-release Performance Gate (staging/manual)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run pre-release performance gate
+        shell: bash
+        run: |
+          if [ -z "${{ vars.PERF_API_BASE_URL }}" ] || [ -z "${{ vars.PERF_WEB_BASE_URL }}" ]; then
+            echo "Skipping performance gate: PERF_API_BASE_URL / PERF_WEB_BASE_URL repository variables are not configured."
+            exit 0
+          fi
+
+          PERF_API_BASE_URL="${{ vars.PERF_API_BASE_URL }}" \
+          PERF_WEB_BASE_URL="${{ vars.PERF_WEB_BASE_URL }}" \
+          PERF_RESULTS_PATH="artifacts/perf/pre-release-results.json" \
+          npm run perf:pre-release
+
+      - name: Upload performance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-pre-release-report
+          path: artifacts/perf/pre-release-results.json
+          if-no-files-found: ignore
+
+  release_smoke_staging:
+    name: Release Smoke Dry-Run (staging/manual)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run staging smoke check
+        shell: bash
+        run: |
+          API_URL="${{ github.event.inputs.release_api_base_url }}"
+          WEB_URL="${{ github.event.inputs.release_web_base_url }}"
+          CSRF_TOKEN="${{ github.event.inputs.release_csrf_token }}"
+
+          if [ -z "$API_URL" ]; then
+            API_URL="${{ vars.RELEASE_API_BASE_URL }}"
+          fi
+          if [ -z "$WEB_URL" ]; then
+            WEB_URL="${{ vars.RELEASE_WEB_BASE_URL }}"
+          fi
+          if [ -z "$CSRF_TOKEN" ]; then
+            CSRF_TOKEN="${{ secrets.RELEASE_CSRF_TOKEN }}"
+          fi
+
+          if [ -n "$API_URL" ] && [ -n "$WEB_URL" ]; then
+            echo "Running release smoke check against configured staging URLs."
+            RELEASE_API_BASE_URL="$API_URL" \
+            RELEASE_WEB_BASE_URL="$WEB_URL" \
+            RELEASE_CSRF_TOKEN="$CSRF_TOKEN" \
+            RELEASE_RESULTS_PATH="artifacts/release/smoke-results.json" \
+            npm run release:smoke
+            exit 0
+          fi
+
+          echo "Staging URLs are not configured. Running local-stack release dry-run fallback."
+          RELEASE_RESULTS_PATH="artifacts/release/smoke-results.json" \
+          npm run release:dry-run:local
+
+      - name: Upload release smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-smoke-report
+          path: artifacts/release/smoke-results.json
+          if-no-files-found: ignore
+
+  security_hygiene:
+    name: Security Hygiene Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run security hygiene checks
+        run: npm run security:check
