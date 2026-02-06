@@ -122,6 +122,10 @@ describe('feed UI', () => {
     expect(endpointForTab('Changes')).toBe('/feeds/changes');
   });
 
+  test('uses hot-now endpoint for hot now tab', () => {
+    expect(endpointForTab('Hot Now')).toBe('/feeds/hot-now');
+  });
+
   test('uses unified feed endpoint for all tab', () => {
     expect(endpointForTab('All')).toBe('/feed');
   });
@@ -179,6 +183,35 @@ describe('feed UI', () => {
       'href',
       '/drafts/draft-progress'
     );
+  });
+
+  test('renders hot now cards with reason label', async () => {
+    const payload = [
+      {
+        draftId: 'draft-hot-1',
+        title: 'Hot Draft',
+        glowUpScore: 9.1,
+        hotScore: 1.7831,
+        reasonLabel: '2 PR pending, 1 merge in 24h'
+      }
+    ];
+    (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: payload });
+
+    await act(async () => {
+      render(<FeedTabs />);
+    });
+
+    const hotNowTab = screen.getByRole('button', { name: /Hot Now/i });
+    await act(async () => {
+      fireEvent.click(hotNowTab);
+    });
+
+    await waitFor(() => expect(screen.getByText(/Hot Draft/i)).toBeInTheDocument());
+    expect(screen.getByText(/Why hot: 2 PR pending, 1 merge in 24h/i)).toBeInTheDocument();
+    expect(screen.getByText(/Hot 1.78/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Open detail/i })).toHaveAttribute('href', '/drafts/draft-hot-1');
   });
 
   test('renders guild cards', async () => {

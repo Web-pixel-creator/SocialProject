@@ -10,7 +10,7 @@ import { GuildCard } from './GuildCard';
 import { StudioCard } from './StudioCard';
 import { ChangeCard } from './ChangeCard';
 
-const TABS = ['All', 'Progress', 'Changes', 'For You', 'Live Drafts', 'GlowUps', 'Guilds', 'Studios', 'Battles', 'Archive'];
+const TABS = ['All', 'Progress', 'Changes', 'For You', 'Hot Now', 'Live Drafts', 'GlowUps', 'Guilds', 'Studios', 'Battles', 'Archive'];
 const PAGE_SIZE = 6;
 const DEFAULT_SORT = 'recent';
 const DEFAULT_STATUS = 'all';
@@ -96,6 +96,30 @@ const demoDrafts = [
   }
 ];
 
+const demoHotNow = [
+  {
+    id: 'draft-1',
+    title: 'Synthwave Poster',
+    glowUpScore: 18.2,
+    hotScore: 2.6,
+    reasonLabel: '3 PR pending, 2 open fix'
+  },
+  {
+    id: 'draft-2',
+    title: 'Minimalist Landing',
+    glowUpScore: 11.4,
+    hotScore: 2.1,
+    reasonLabel: '1 merge in 24h, 2 decisions in 24h'
+  },
+  {
+    id: 'draft-3',
+    title: 'Editorial Cover',
+    glowUpScore: 7.9,
+    hotScore: 1.5,
+    reasonLabel: '1 PR pending'
+  }
+];
+
 const demoProgress = [
   {
     draftId: 'draft-1',
@@ -155,6 +179,18 @@ type DraftFeedItem = {
   afterImageUrl?: string;
 };
 
+type HotNowFeedItem = {
+  kind: 'hot';
+  id: string;
+  title: string;
+  glowUpScore: number;
+  hotScore: number;
+  reasonLabel: string;
+  updatedAt?: string;
+  beforeImageUrl?: string;
+  afterImageUrl?: string;
+};
+
 type ProgressFeedItem = {
   kind: 'progress';
   draftId: string;
@@ -202,7 +238,14 @@ type AutopsyFeedItem = {
   publishedAt?: string;
 };
 
-type FeedItem = DraftFeedItem | ProgressFeedItem | GuildFeedItem | StudioFeedItem | ChangeFeedItem | AutopsyFeedItem;
+type FeedItem =
+  | DraftFeedItem
+  | HotNowFeedItem
+  | ProgressFeedItem
+  | GuildFeedItem
+  | StudioFeedItem
+  | ChangeFeedItem
+  | AutopsyFeedItem;
 
 export const endpointForTab = (tab: string) => {
   switch (tab) {
@@ -214,6 +257,8 @@ export const endpointForTab = (tab: string) => {
       return '/feeds/changes';
     case 'For You':
       return '/feeds/for-you';
+    case 'Hot Now':
+      return '/feeds/hot-now';
     case 'Live Drafts':
       return '/feeds/live-drafts';
     case 'GlowUps':
@@ -299,6 +344,19 @@ const mapProgress = (data: any[]): ProgressFeedItem[] =>
     authorStudio: item.authorStudio ?? item.studio_name ?? 'Studio'
   }));
 
+const mapHotNow = (data: any[]): HotNowFeedItem[] =>
+  data.map((item) => ({
+    kind: 'hot',
+    id: item.draftId ?? item.draft_id,
+    title: item.title ?? item.draft_title ?? 'Untitled',
+    glowUpScore: Number(item.glowUpScore ?? item.glow_up_score ?? 0),
+    hotScore: Number(item.hotScore ?? item.hot_score ?? 0),
+    reasonLabel: item.reasonLabel ?? item.reason_label ?? 'Low activity',
+    updatedAt: item.lastActivity ?? item.last_activity ?? item.updatedAt ?? item.updated_at,
+    beforeImageUrl: item.beforeImageUrl ?? item.before_image_url,
+    afterImageUrl: item.afterImageUrl ?? item.after_image_url
+  }));
+
 const mapGuilds = (data: any[]): GuildFeedItem[] =>
   data.map((item) => ({
     kind: 'guild',
@@ -311,6 +369,9 @@ const mapGuilds = (data: any[]): GuildFeedItem[] =>
 const fallbackItemsFor = (tab: string): FeedItem[] => {
   if (tab === 'Progress') {
     return demoProgress.map((item) => ({ ...item, kind: 'progress' as const }));
+  }
+  if (tab === 'Hot Now') {
+    return demoHotNow.map((item) => ({ ...item, kind: 'hot' as const }));
   }
   if (tab === 'Guilds') {
     return demoGuilds.map((item) => ({ ...item, kind: 'guild' as const }));
@@ -464,8 +525,10 @@ export const FeedTabs = () => {
             ? mapProgress(response.data)
             : active === 'Changes'
               ? mapChanges(response.data)
-            : active === 'Guilds'
-              ? mapGuilds(response.data)
+              : active === 'Hot Now'
+                ? mapHotNow(response.data)
+              : active === 'Guilds'
+                ? mapGuilds(response.data)
               : active === 'Studios'
                 ? mapStudios(response.data)
                 : active === 'Archive'
@@ -665,29 +728,43 @@ export const FeedTabs = () => {
             if (item.kind === 'guild') {
               return <GuildCard key={item.id ?? `guild-${index}`} {...item} />;
             }
-          if (item.kind === 'progress') {
-            const key =
-              item.draftId ??
-              item.beforeImageUrl ??
-              item.afterImageUrl ??
-              item.lastActivity ??
-              `progress-${index}`;
-            return (
-              <BeforeAfterCard
-                key={String(key)}
-                {...item}
-                onOpen={() =>
-                  sendTelemetry({ eventType: 'feed_card_open', draftId: item.draftId, source: 'feed' })
-                }
-              />
-            );
-          }
-          if (item.kind === 'change') {
-            return <ChangeCard key={item.id ?? `change-${index}`} {...item} />;
-          }
-          if (item.kind === 'autopsy') {
-            return <AutopsyCard key={item.id ?? `autopsy-${index}`} {...item} />;
-          }
+            if (item.kind === 'hot') {
+              return (
+                <DraftCard
+                  key={item.id ?? `hot-${index}`}
+                  id={item.id}
+                  title={item.title}
+                  glowUpScore={item.glowUpScore}
+                  beforeImageUrl={item.beforeImageUrl}
+                  afterImageUrl={item.afterImageUrl}
+                  reasonLabel={item.reasonLabel}
+                  hotScore={item.hotScore}
+                />
+              );
+            }
+            if (item.kind === 'progress') {
+              const key =
+                item.draftId ??
+                item.beforeImageUrl ??
+                item.afterImageUrl ??
+                item.lastActivity ??
+                `progress-${index}`;
+              return (
+                <BeforeAfterCard
+                  key={String(key)}
+                  {...item}
+                  onOpen={() =>
+                    sendTelemetry({ eventType: 'feed_card_open', draftId: item.draftId, source: 'feed' })
+                  }
+                />
+              );
+            }
+            if (item.kind === 'change') {
+              return <ChangeCard key={item.id ?? `change-${index}`} {...item} />;
+            }
+            if (item.kind === 'autopsy') {
+              return <AutopsyCard key={item.id ?? `autopsy-${index}`} {...item} />;
+            }
             return <DraftCard key={item.id ?? `draft-${index}`} {...item} />;
           })}
         </div>

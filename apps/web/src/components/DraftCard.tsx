@@ -9,14 +9,34 @@ type DraftCardProps = {
   live?: boolean;
   beforeImageUrl?: string;
   afterImageUrl?: string;
+  reasonLabel?: string;
+  hotScore?: number;
 };
 
-export const DraftCard = ({ id, title, glowUpScore, live, beforeImageUrl, afterImageUrl }: DraftCardProps) => {
+export const DraftCard = ({
+  id,
+  title,
+  glowUpScore,
+  live,
+  beforeImageUrl,
+  afterImageUrl,
+  reasonLabel,
+  hotScore
+}: DraftCardProps) => {
   return (
     <article className="card grid gap-3 p-4 transition hover:-translate-y-1 hover:shadow-lg">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-ink">{title}</h3>
-        {live && <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700">Live</span>}
+        <div className="flex items-center gap-2">
+          {typeof hotScore === 'number' && (
+            <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-semibold text-amber-800">
+              Hot {hotScore.toFixed(2)}
+            </span>
+          )}
+          {live && (
+            <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700">Live</span>
+          )}
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-2">
         {beforeImageUrl ? (
@@ -52,6 +72,7 @@ export const DraftCard = ({ id, title, glowUpScore, live, beforeImageUrl, afterI
           Open detail
         </Link>
       </div>
+      {reasonLabel && <p className="text-xs text-slate-600">Why hot: {reasonLabel}</p>}
       <p className="text-sm font-semibold text-slate-700">GlowUp score: {glowUpScore.toFixed(1)}</p>
     </article>
   );

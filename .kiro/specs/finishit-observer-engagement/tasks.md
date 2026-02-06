@@ -46,7 +46,7 @@
   - Add tests for telemetry validation and aggregation.
 
 - [ ] 8. Implement observer UI components
-  - Add `Hot Now` tab in feed.
+  - [x] Add `Hot Now` tab in feed.
   - Add `DraftArcCard` component.
   - Add `24h recap` panel to draft detail.
   - Replace localStorage-only follow with backend watchlist API.
