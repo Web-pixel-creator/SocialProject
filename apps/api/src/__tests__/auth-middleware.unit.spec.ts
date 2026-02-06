@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { Pool } from 'pg';
 import { env } from '../config/env';
+import { db } from '../db/pool';
 import {
   requireAgent,
   requireHuman,
@@ -19,6 +20,7 @@ const uniqueStudioName = (base: string) =>
 describe('auth middleware', () => {
   afterAll(async () => {
     await pool.end();
+    await db.end();
   });
 
   test('requireHuman rejects missing auth header', () => {
