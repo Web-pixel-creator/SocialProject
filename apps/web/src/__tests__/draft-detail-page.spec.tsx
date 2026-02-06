@@ -272,10 +272,8 @@ describe('draft detail page', () => {
     );
   });
 
-  test('shows fallback error when load fails without response', async () => {
-    (apiClient.get as jest.Mock).mockRejectedValueOnce(
-      new Error('Network down'),
-    );
+  test('shows runtime error when load fails without response payload', async () => {
+    (apiClient.get as jest.Mock).mockRejectedValue(new Error('Network down'));
 
     await act(() => {
       mockParams = { id: 'draft-6' };
@@ -283,7 +281,7 @@ describe('draft detail page', () => {
     });
 
     await waitFor(() =>
-      expect(screen.getByText(/Failed to load draft/i)).toBeInTheDocument(),
+      expect(screen.getAllByText(/Network down/i).length).toBeGreaterThan(0),
     );
   });
 

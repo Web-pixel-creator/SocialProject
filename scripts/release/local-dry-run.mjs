@@ -72,6 +72,64 @@ const runCommand = ({ command, args, name, env, shell }) => {
   });
 };
 
+const checkCommand = ({ command, args, env, shell }) => {
+  return new Promise((resolve) => {
+    let child;
+    try {
+      child = spawn(command, args, {
+        env: { ...process.env, ...(env ?? {}) },
+        stdio: 'ignore',
+        shell: shell ?? false,
+      });
+    } catch {
+      resolve(false);
+      return;
+    }
+
+    child.on('error', () => resolve(false));
+    child.on('close', (code) => resolve(code === 0));
+  });
+};
+
+const waitForInfraReady = async ({
+  timeoutMs,
+  intervalMs,
+  checkShell = false,
+}) => {
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    const postgresReady = await checkCommand({
+      command: 'docker',
+      args: [
+        'compose',
+        'exec',
+        '-T',
+        'postgres',
+        'pg_isready',
+        '-U',
+        'postgres',
+      ],
+      shell: checkShell,
+    });
+    const redisReady = await checkCommand({
+      command: 'docker',
+      args: ['compose', 'exec', '-T', 'redis', 'redis-cli', 'ping'],
+      shell: checkShell,
+    });
+
+    if (postgresReady && redisReady) {
+      return;
+    }
+
+    await sleep(intervalMs);
+  }
+
+  throw new Error(
+    `Timeout waiting for infrastructure readiness (postgres/redis) after ${timeoutMs}ms.`,
+  );
+};
+
 const waitForUrl = async (url, timeoutMs, intervalMs) => {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -101,7 +159,7 @@ const taskKill = (pid) => {
 };
 
 const stopProcess = async (child) => {
-  if (!(child && child.pid)) {
+  if (!child?.pid) {
     return;
   }
 
@@ -115,7 +173,7 @@ const stopProcess = async (child) => {
   }
 
   child.kill('SIGTERM');
-  const deadline = Date.now() + 5_000;
+  const deadline = Date.now() + 5000;
   while (Date.now() < deadline) {
     if (child.exitCode !== null) {
       return;
@@ -135,9 +193,7 @@ const startService = ({ command, args, name, env, shell }) => {
     });
   } catch (error) {
     process.stderr.write(
-      `${name} failed to spawn (${command} ${args.join(' ')}): ${String(
-        error,
-      )}\n`,
+      `${name} failed to spawn (${command} ${args.join(' ')}): ${String(error)}\n`,
     );
     throw error;
   }
@@ -181,6 +237,12 @@ const main = async () => {
       args: ['compose', 'up', '-d', 'postgres', 'redis'],
       name: 'docker compose up',
       shell: false,
+    });
+
+    await waitForInfraReady({
+      timeoutMs,
+      intervalMs,
+      checkShell: false,
     });
 
     const migrateInvocation = getNpmInvocation([

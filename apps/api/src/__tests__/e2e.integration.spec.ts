@@ -61,6 +61,82 @@ const registerHuman = async (app: any, email = 'human@example.com') => {
   return response.body.tokens.accessToken as string;
 };
 
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+const waitForDatabaseReady = async () => {
+  const deadline = Date.now() + 20_000;
+  let lastError: unknown = null;
+
+  while (Date.now() < deadline) {
+    try {
+      await db.query('SELECT 1');
+      return;
+    } catch (error) {
+      lastError = error;
+      await sleep(250);
+    }
+  }
+
+  const details = lastError instanceof Error ? lastError.message : 'unknown';
+  throw new Error(`Database did not become ready in time: ${details}`);
+};
+
+const waitForSocketConnect = async (socket: Socket) =>
+  new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error('Socket connect timeout'));
+    }, 10_000);
+
+    socket.once('connect', () => {
+      clearTimeout(timeout);
+      resolve();
+    });
+
+    socket.once('connect_error', (error) => {
+      clearTimeout(timeout);
+      reject(error);
+    });
+  });
+
+const waitForRealtimeEvent = async (socket: Socket) =>
+  new Promise<Record<string, unknown>>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error('Realtime event timeout'));
+    }, 10_000);
+
+    socket.once('event', (event) => {
+      clearTimeout(timeout);
+      if (event && typeof event === 'object') {
+        resolve(event as Record<string, unknown>);
+        return;
+      }
+      reject(new Error('Realtime event payload is invalid'));
+    });
+  });
+
+const closeSocket = async (socket: Socket) =>
+  new Promise<void>((resolve) => {
+    if (socket.disconnected) {
+      socket.close();
+      resolve();
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      socket.close();
+      resolve();
+    }, 2000);
+
+    socket.once('disconnect', () => {
+      clearTimeout(timeout);
+      resolve();
+    });
+    socket.close();
+  });
+
 describe('E2E workflows', () => {
   let app: any;
   let httpServer: any;
@@ -68,6 +144,7 @@ describe('E2E workflows', () => {
   let ioServer: any;
 
   beforeAll(async () => {
+    await waitForDatabaseReady();
     await initInfra();
     const server = createServer();
     app = server.app;
@@ -82,12 +159,13 @@ describe('E2E workflows', () => {
   });
 
   beforeEach(async () => {
+    await waitForDatabaseReady();
     await resetDb();
   });
 
   afterAll(async () => {
     if (ioServer) {
-      ioServer.close();
+      await new Promise<void>((resolve) => ioServer.close(() => resolve()));
     }
     if (httpServer) {
       await new Promise<void>((resolve) => httpServer.close(() => resolve()));
@@ -236,23 +314,23 @@ describe('E2E workflows', () => {
       transports: ['websocket'],
       forceNew: true,
     });
-    await new Promise<void>((resolve) => socket.on('connect', () => resolve()));
-    socket.emit('subscribe', scope);
+    try {
+      await waitForSocketConnect(socket);
+      socket.emit('subscribe', scope);
 
-    const eventPromise = new Promise<any>((resolve) => {
-      socket.on('event', (event) => resolve(event));
-    });
+      const eventPromise = waitForRealtimeEvent(socket);
 
-    await request(app)
-      .post(`/api/drafts/${draftId}/fix-requests`)
-      .set('x-agent-id', agentId)
-      .set('x-api-key', apiKey)
-      .send({ category: 'Focus', description: 'Realtime check' });
+      await request(app)
+        .post(`/api/drafts/${draftId}/fix-requests`)
+        .set('x-agent-id', agentId)
+        .set('x-api-key', apiKey)
+        .send({ category: 'Focus', description: 'Realtime check' });
 
-    const event = await eventPromise;
-    expect(event.type).toBe('fix_request');
-
-    socket.close();
+      const event = await eventPromise;
+      expect(event.type).toBe('fix_request');
+    } finally {
+      await closeSocket(socket);
+    }
   });
 
   test('feeds return archive content', async () => {

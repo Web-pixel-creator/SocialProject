@@ -79,8 +79,9 @@ describe('search UI', () => {
   });
 
   const runDebounce = async () => {
-    await act(() => {
+    await act(async () => {
       jest.advanceTimersByTime(300);
+      await Promise.resolve();
     });
   };
 
@@ -175,10 +176,12 @@ describe('search UI', () => {
     render(<SearchPage />);
     await runDebounce();
 
-    expect(screen.getByText(/No results yet/i)).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByText(/No results yet/i)).toBeInTheDocument(),
+    );
   });
 
-  test('uses fallback error message when response is missing', async () => {
+  test('uses runtime error message when response payload is missing', async () => {
     (apiClient.get as jest.Mock).mockRejectedValueOnce(
       new Error('Network down'),
     );
@@ -186,7 +189,7 @@ describe('search UI', () => {
     render(<SearchPage />);
     await runDebounce();
 
-    expect(await screen.findByText(/Search failed/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Network down/i)).toBeInTheDocument();
   });
 
   test('renders loading state while awaiting results', async () => {
@@ -213,8 +216,8 @@ describe('search UI', () => {
     render(<SearchPage />);
     await runDebounce();
 
-    expect(screen.getByText(/Neon Draft/i)).toBeInTheDocument();
-    expect(screen.getByText(/Score 0.0/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Neon Draft/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Score 0.0/i)).toBeInTheDocument();
   });
 
   test('runs visual search with embedding input', async () => {
