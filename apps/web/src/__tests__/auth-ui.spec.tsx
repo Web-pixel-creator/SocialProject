@@ -127,6 +127,8 @@ describe('auth UI', () => {
       fireEvent.click(screen.getByRole('button', { name: /Sign in/i }));
     });
 
-    expect(await screen.findByText(/Something went wrong/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Something went wrong/i),
+    ).toBeInTheDocument();
   });
 });
