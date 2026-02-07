@@ -33,6 +33,28 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-02-07 - release-ops-validation-e60bbc1
+
+- Scope: Post-automation validation for staging input manager + CSRF variable fallback on head `e60bbc1`.
+- Release commander: Codex automation.
+- Window (UTC): 2026-02-07 17:17 -> 2026-02-07 17:26.
+- Dry-run:
+  - Local rehearsal: pass (URL-input helper boots local API/Web + tunnels automatically).
+  - Staging smoke: pass (`release_smoke_staging`, workflow run `#104`, fallback mode).
+  - Staging smoke (URL-input mode via helper command): pass (`release:smoke:dispatch:tunnel`, workflow run `#105`).
+  - Smoke report artifact/link:
+    - fallback mode: `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21783838888`, artifact id `5417997686`)
+    - URL-input mode (helper command): `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21783938460`, artifact id `5418022773`)
+- Gates:
+  - ultracite (local): pass (`npm run ultracite:check`).
+  - CI workflow_dispatch corroboration (run `#104`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+  - CI workflow_dispatch corroboration (run `#105`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+- Rollout result: process hardening validated; no production rollout executed in this window.
+- Incidents:
+  - none.
+- Follow-ups:
+  - Optional: replace temporary tunnel URLs with persistent staging URLs and rerun URL-input smoke for long-lived evidence.
+
 ### 2026-02-07 - v0.1.2
 
 - Scope: Release workflow automation update with tunnel-based URL-input dispatch helper.
