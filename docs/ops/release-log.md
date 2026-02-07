@@ -33,6 +33,34 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-02-07 - v0.1.6
+
+- Scope: Smoke regression comparator tooling for release evidence (`release:smoke:diff`).
+- Release commander: Codex automation.
+- Window (UTC): 2026-02-07 18:15 -> 2026-02-07 18:20.
+- Release artifact:
+  - GitHub Release: `https://github.com/Web-pixel-creator/SocialProject/releases/tag/v0.1.6`
+- Dry-run:
+  - Local rehearsal: pass (URL-input helper starts local API/Web and tunnels automatically).
+  - Staging smoke: pass (`release_smoke_staging`, workflow run `#120`, fallback mode) on head `d9f9539`.
+  - Staging smoke (URL-input mode via helper command): pass (`release:smoke:dispatch:tunnel`, workflow run `#121`) on head `d9f9539`.
+  - Smoke report artifact/link:
+    - fallback mode: `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21784651309`, artifact id `5418224782`)
+    - URL-input mode (helper command): `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21784688052`, artifact id `5418233535`)
+    - Local downloaded and extracted copy: `artifacts/release/ci-run-21784688052/smoke-results.json`
+  - Smoke diff evidence:
+    - Command: `npm run release:smoke:diff -- 21784477548 21784688052`
+    - Result: pass -> pass, failed steps `0 -> 0`, total duration improved `8244.33ms -> 6404.88ms` (delta `-1839.45ms`), no pass regressions.
+- Gates:
+  - ultracite (local): pass (`npm run ultracite:check`).
+  - CI workflow_dispatch corroboration (run `#120`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+  - CI workflow_dispatch corroboration (run `#121`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+- Rollout result: release prepared and tagged.
+- Incidents:
+  - none.
+- Follow-ups:
+  - Optional: persist smoke diff snapshots as JSON to support trend charts across releases.
+
 ### 2026-02-07 - v0.1.5
 
 - Scope: Release artifact downloader auto-extraction for immediate local smoke report verification.
