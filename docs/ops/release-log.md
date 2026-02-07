@@ -33,6 +33,35 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-02-07 - v0.1.7
+
+- Scope: Persisted JSON smoke diff reports for release-over-release trend tracking.
+- Release commander: Codex automation.
+- Window (UTC): 2026-02-07 18:30 -> 2026-02-07 18:38.
+- Release artifact:
+  - GitHub Release: `https://github.com/Web-pixel-creator/SocialProject/releases/tag/v0.1.7`
+- Dry-run:
+  - Local rehearsal: pass (URL-input helper starts local API/Web and tunnels automatically).
+  - Staging smoke: pass (`release_smoke_staging`, workflow run `#124`, fallback mode) on head `18b1d33`.
+  - Staging smoke (URL-input mode via helper command): pass (`release:smoke:dispatch:tunnel`, workflow run `#126`) on head `18b1d33`.
+  - Smoke report artifact/link:
+    - fallback mode: `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21784851509`, artifact id `5418281999`)
+    - URL-input mode (helper command): `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21784927346`, artifact id `5418300223`)
+    - Local downloaded and extracted copy: `artifacts/release/ci-run-21784927346/smoke-results.json`
+  - Smoke diff evidence:
+    - Command: `npm run release:smoke:diff -- 21784688052 21784927346`
+    - JSON report: `artifacts/release/smoke-diff-21784688052-vs-21784927346.json`
+    - Result: pass -> pass, failed steps `0 -> 0`, total duration `6404.88ms -> 7099.34ms` (delta `+694.46ms`), no pass regressions.
+- Gates:
+  - ultracite (local): pass (`npm run ultracite:check`).
+  - CI workflow_dispatch corroboration (run `#124`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+  - CI workflow_dispatch corroboration (run `#126`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+- Rollout result: release prepared and tagged.
+- Incidents:
+  - URL-input run `#125` failed in `release_smoke_staging` due transient tunnel reachability; immediate rerun (`#126`) succeeded on the same head.
+- Follow-ups:
+  - Optional: introduce one automatic retry in `release:smoke:dispatch:tunnel` when only `release_smoke_staging` fails and all other CI jobs pass.
+
 ### 2026-02-07 - v0.1.6
 
 - Scope: Smoke regression comparator tooling for release evidence (`release:smoke:diff`).
