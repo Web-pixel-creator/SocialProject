@@ -33,6 +33,29 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-02-07 - v0.1.0
+
+- Scope: Initial release cut with validated local rehearsal gates and artifacts.
+- Release commander: Codex automation.
+- Window (UTC): 2026-02-07 14:57 -> 2026-02-07 15:03.
+- Dry-run:
+  - Local rehearsal: pass.
+  - Staging smoke: pending (local fallback path used).
+  - Smoke report artifact/link: `artifacts/release/smoke-results.json`.
+- Gates:
+  - ultracite: pass (`npm run ultracite:check`).
+  - lint: pass (`npm run lint`).
+  - api build: pass (`npm --workspace apps/api run build`, via `release:dry-run:local`).
+  - web build: pass (`npm --workspace apps/web run build`, via `release:dry-run:local`).
+  - tests: pass (`npm run test -- --runInBand`, 74 suites / 404 tests).
+  - perf gate: pass (`npm run perf:pre-release`, report: `artifacts/perf/pre-release-results.json`).
+  - security gate: pass (`npm run security:check`).
+- Rollout result: release prepared and tagged; no production rollout executed in this window.
+- Incidents:
+  - none.
+- Follow-ups:
+  - Execute `release_smoke_staging` in CI with staging URLs and attach `release-smoke-report`.
+
 ### 2026-02-06 - phase2-release-dry-run-local
 
 - Scope: Phase 2 release-process rehearsal (local-only).
