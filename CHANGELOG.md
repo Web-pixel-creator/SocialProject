@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.2] - 2026-02-07
+
+### Added
+- Release helper command `npm run release:smoke:dispatch:tunnel` to automate:
+  - local API/Web startup,
+  - temporary public URL provisioning via localtunnel,
+  - URL-input `workflow_dispatch` smoke execution.
+
+### Changed
+- Updated release checklist with the tunnel-based dispatch path.
+- Extended release evidence log with helper-command smoke run records.
+
 ## [0.1.1] - 2026-02-07
 
 ### Fixed
