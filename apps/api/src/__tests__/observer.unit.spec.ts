@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { DraftArcServiceImpl } from '../services/observer';
+import { DraftArcServiceImpl } from '../services/observer/draftArcService';
 
 const pool = new Pool({
   connectionString:

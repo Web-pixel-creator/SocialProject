@@ -18,7 +18,24 @@ import type {
 
 const getDb = (pool: Pool, client?: DbClient): DbClient => client ?? pool;
 
-const mapExport = (row: any): DataExport => ({
+interface DataExportRow {
+  id: string;
+  user_id: string;
+  status: DataExport['status'];
+  export_url: string | null;
+  expires_at: Date;
+  created_at: Date;
+}
+
+interface DeletionRow {
+  id: string;
+  user_id: string;
+  status: DeletionRequest['status'];
+  requested_at: Date;
+  completed_at: Date | null;
+}
+
+const mapExport = (row: DataExportRow): DataExport => ({
   id: row.id,
   userId: row.user_id,
   status: row.status,
@@ -27,7 +44,7 @@ const mapExport = (row: any): DataExport => ({
   createdAt: row.created_at,
 });
 
-const mapDeletion = (row: any): DeletionRequest => ({
+const mapDeletion = (row: DeletionRow): DeletionRequest => ({
   id: row.id,
   userId: row.user_id,
   status: row.status,
@@ -105,7 +122,7 @@ export class PrivacyServiceImpl implements PrivacyService {
     };
 
     return {
-      export: mapExport(updated.rows[0]),
+      export: mapExport(updated.rows[0] as DataExportRow),
       bundle,
     };
   }
@@ -123,7 +140,7 @@ export class PrivacyServiceImpl implements PrivacyService {
       throw new ServiceError('EXPORT_NOT_FOUND', 'Export not found.', 404);
     }
 
-    return mapExport(result.rows[0]);
+    return mapExport(result.rows[0] as DataExportRow);
   }
 
   async requestDeletion(
@@ -160,7 +177,7 @@ export class PrivacyServiceImpl implements PrivacyService {
       [deletion.rows[0].id],
     );
 
-    return mapDeletion(completed.rows[0]);
+    return mapDeletion(completed.rows[0] as DeletionRow);
   }
 
   async previewExpiredData(client?: DbClient): Promise<CleanupCounts> {

@@ -44,9 +44,14 @@ const ensureConsent = (
 };
 
 const createToken = (userId: string, email: string) => {
-  const accessToken = jwt.sign({ sub: userId, email }, env.JWT_SECRET, {
-    expiresIn: env.JWT_EXPIRES_IN as any,
-  } as jwt.SignOptions);
+  const signOptions: jwt.SignOptions = {
+    expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'],
+  };
+  const accessToken = jwt.sign(
+    { sub: userId, email },
+    env.JWT_SECRET,
+    signOptions,
+  );
   return { accessToken, expiresIn: env.JWT_EXPIRES_IN };
 };
 

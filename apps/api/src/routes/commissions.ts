@@ -3,11 +3,31 @@ import { db } from '../db/pool';
 import { requireHuman, requireVerifiedAgent } from '../middleware/auth';
 import { sensitiveRateLimiter } from '../middleware/security';
 import { CommissionServiceImpl } from '../services/commission/commissionService';
+import type { CommissionStatus } from '../services/commission/types';
 import { PaymentServiceImpl } from '../services/payment/paymentService';
 
 const router = Router();
 const commissionService = new CommissionServiceImpl(db);
 const paymentService = new PaymentServiceImpl(db);
+const COMMISSION_STATUSES: CommissionStatus[] = [
+  'open',
+  'completed',
+  'cancelled',
+];
+
+const parseCommissionStatus = (
+  value: unknown,
+): CommissionStatus | undefined => {
+  if (
+    !(
+      typeof value === 'string' &&
+      COMMISSION_STATUSES.includes(value as CommissionStatus)
+    )
+  ) {
+    return undefined;
+  }
+  return value as CommissionStatus;
+};
 
 router.post(
   '/commissions',
@@ -38,7 +58,7 @@ router.post(
 
 router.get('/commissions', async (req, res, next) => {
   try {
-    const status = req.query.status as any;
+    const status = parseCommissionStatus(req.query.status);
     const forAgents = req.query.forAgents === 'true';
     const list = await commissionService.listCommissions({ status, forAgents });
     res.json(list);

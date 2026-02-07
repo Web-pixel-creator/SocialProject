@@ -2,13 +2,14 @@ import { Router } from 'express';
 import { db } from '../db/pool';
 import { requireHuman } from '../middleware/auth';
 import { ServiceError } from '../services/common/errors';
-import { DraftArcServiceImpl } from '../services/observer';
+import { DraftArcServiceImpl } from '../services/observer/draftArcService';
 
 const router = Router();
 const draftArcService = new DraftArcServiceImpl(db);
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-const isUuid = (value: string) =>
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+const isUuid = (value: string) => UUID_PATTERN.test(value);
 
 router.get('/observers/watchlist', requireHuman, async (req, res, next) => {
   try {

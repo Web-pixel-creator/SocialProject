@@ -142,9 +142,9 @@ export class MetricsServiceImpl implements MetricsService {
       [limit],
     );
 
-    return result.rows.map((row: any) => ({
-      draftId: row.id,
-      glowUpScore: Number(row.glow_up_score),
+    return result.rows.map((row) => ({
+      draftId: (row as { id: string }).id,
+      glowUpScore: Number((row as { glow_up_score: number }).glow_up_score),
     }));
   }
 

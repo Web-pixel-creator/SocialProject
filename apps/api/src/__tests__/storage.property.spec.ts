@@ -1,6 +1,6 @@
 import fc from 'fast-check';
 import { Pool } from 'pg';
-import { createStorageKey } from '../services/storage';
+import { createStorageKey } from '../services/storage/utils/storageKeys';
 
 const pool = new Pool({
   connectionString:

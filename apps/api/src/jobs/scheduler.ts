@@ -160,13 +160,11 @@ export const startScheduler = (pool: Pool): JobHandle | null => {
           const result =
             await embeddingBackfillService.backfillDraftEmbeddings(200);
           logger.info({ ...result }, 'Draft embedding backfill complete');
-          await recordJobRun(
-            pool,
-            'embedding_backfill',
-            'success',
-            startedAt,
-            result as any,
-          );
+          await recordJobRun(pool, 'embedding_backfill', 'success', startedAt, {
+            processed: result.processed,
+            inserted: result.inserted,
+            skipped: result.skipped,
+          });
         } catch (error) {
           logger.error({ err: error }, 'Draft embedding backfill failed');
           await recordJobRun(

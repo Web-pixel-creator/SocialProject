@@ -20,7 +20,46 @@ import type {
 const getDb = (pool: Pool, client?: DbClient): DbClient => client ?? pool;
 const DIGEST_DEDUP_WINDOW_MINUTES = 10;
 
-const mapArcSummary = (row: any): DraftArcSummary => ({
+interface ArcSummaryRow {
+  draft_id: string;
+  state: DraftArcState;
+  latest_milestone: string;
+  fix_open_count: number | string | null;
+  pr_pending_count: number | string | null;
+  last_merge_at: Date | null;
+  updated_at: Date;
+}
+
+interface DigestEntryRow {
+  id: string;
+  observer_id: string;
+  draft_id: string;
+  title: string;
+  summary: string;
+  latest_milestone: string;
+  is_seen: boolean;
+  created_at: Date;
+  updated_at: Date;
+}
+
+interface WatchlistRow {
+  observer_id: string;
+  draft_id: string;
+  created_at: Date;
+}
+
+interface PredictionRow {
+  id: string;
+  observer_id: string;
+  pull_request_id: string;
+  predicted_outcome: PredictionOutcome;
+  resolved_outcome: PredictionOutcome | null;
+  is_correct: boolean | null;
+  created_at: Date;
+  resolved_at: Date | null;
+}
+
+const mapArcSummary = (row: ArcSummaryRow): DraftArcSummary => ({
   draftId: row.draft_id,
   state: row.state,
   latestMilestone: row.latest_milestone,
@@ -30,7 +69,7 @@ const mapArcSummary = (row: any): DraftArcSummary => ({
   updatedAt: row.updated_at,
 });
 
-const mapDigestEntry = (row: any): ObserverDigestEntry => ({
+const mapDigestEntry = (row: DigestEntryRow): ObserverDigestEntry => ({
   id: row.id,
   observerId: row.observer_id,
   draftId: row.draft_id,
@@ -42,13 +81,13 @@ const mapDigestEntry = (row: any): ObserverDigestEntry => ({
   updatedAt: row.updated_at,
 });
 
-const mapWatchlistItem = (row: any): ObserverWatchlistItem => ({
+const mapWatchlistItem = (row: WatchlistRow): ObserverWatchlistItem => ({
   observerId: row.observer_id,
   draftId: row.draft_id,
   createdAt: row.created_at,
 });
 
-const mapPrediction = (row: any): ObserverPrediction => ({
+const mapPrediction = (row: PredictionRow): ObserverPrediction => ({
   id: row.id,
   observerId: row.observer_id,
   pullRequestId: row.pull_request_id,
@@ -285,7 +324,7 @@ export class DraftArcServiceImpl implements DraftArcService {
       ],
     );
 
-    return mapArcSummary(upsert.rows[0]);
+    return mapArcSummary(upsert.rows[0] as ArcSummaryRow);
   }
 
   async recordDraftEvent(
@@ -338,7 +377,7 @@ export class DraftArcServiceImpl implements DraftArcService {
       [observerId, pullRequestId, predictedOutcome],
     );
 
-    return mapPrediction(upsert.rows[0]);
+    return mapPrediction(upsert.rows[0] as PredictionRow);
   }
 
   async getPredictionSummary(
@@ -400,7 +439,7 @@ export class DraftArcServiceImpl implements DraftArcService {
       },
       observerPrediction:
         observerPredictionResult.rows.length > 0
-          ? mapPrediction(observerPredictionResult.rows[0])
+          ? mapPrediction(observerPredictionResult.rows[0] as PredictionRow)
           : null,
       accuracy: {
         correct: accuracyCorrect,
@@ -428,7 +467,7 @@ export class DraftArcServiceImpl implements DraftArcService {
       [observerId, draftId],
     );
 
-    return mapWatchlistItem(result.rows[0]);
+    return mapWatchlistItem(result.rows[0] as WatchlistRow);
   }
 
   async unfollowDraft(
@@ -456,7 +495,7 @@ export class DraftArcServiceImpl implements DraftArcService {
        ORDER BY created_at DESC`,
       [observerId],
     );
-    return result.rows.map(mapWatchlistItem);
+    return result.rows.map((row) => mapWatchlistItem(row as WatchlistRow));
   }
 
   async listDigest(
@@ -479,7 +518,7 @@ export class DraftArcServiceImpl implements DraftArcService {
       [observerId, unseenOnly, limit, offset],
     );
 
-    return result.rows.map(mapDigestEntry);
+    return result.rows.map((row) => mapDigestEntry(row as DigestEntryRow));
   }
 
   async markDigestSeen(
@@ -506,7 +545,7 @@ export class DraftArcServiceImpl implements DraftArcService {
       );
     }
 
-    return mapDigestEntry(updated.rows[0]);
+    return mapDigestEntry(updated.rows[0] as DigestEntryRow);
   }
 
   private async getRecap24h(

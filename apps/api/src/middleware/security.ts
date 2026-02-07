@@ -76,7 +76,7 @@ const escapeHtml = (value: string) =>
     }
   });
 
-const sanitizeValue = (value: any): any => {
+const sanitizeValue = (value: unknown): unknown => {
   if (typeof value === 'string') {
     return escapeHtml(value);
   }
@@ -84,8 +84,9 @@ const sanitizeValue = (value: any): any => {
     return value.map((entry) => sanitizeValue(entry));
   }
   if (value && typeof value === 'object') {
+    const objectValue = value as Record<string, unknown>;
     return Object.fromEntries(
-      Object.entries(value)
+      Object.entries(objectValue)
         .filter(([key]) => !DISALLOWED_KEYS.has(key))
         .map(([key, val]) => [key, sanitizeValue(val)]),
     );
@@ -99,13 +100,13 @@ export const sanitizeInputs = (
   next: NextFunction,
 ) => {
   if (req.body) {
-    req.body = sanitizeValue(req.body);
+    req.body = sanitizeValue(req.body) as typeof req.body;
   }
   if (req.query) {
-    req.query = sanitizeValue(req.query);
+    req.query = sanitizeValue(req.query) as typeof req.query;
   }
   if (req.params) {
-    req.params = sanitizeValue(req.params);
+    req.params = sanitizeValue(req.params) as typeof req.params;
   }
   next();
 };

@@ -38,20 +38,26 @@ const recordErrorEvent = async (
 };
 
 export const errorHandler = (
-  error: any,
+  error: unknown,
   req: Request,
   res: Response,
   _next: NextFunction,
 ) => {
+  const errorLike =
+    error && typeof error === 'object'
+      ? (error as { status?: number; message?: string })
+      : null;
   const isHandled =
     error instanceof AuthError ||
     error instanceof BudgetError ||
     error instanceof ServiceError;
-  const status = error?.status ?? (isHandled ? 400 : 500);
+  const status = errorLike?.status ?? (isHandled ? 400 : 500);
   const errorCode = isHandled ? error.code : 'INTERNAL_ERROR';
-  const message = isHandled
-    ? error.message
-    : (error?.message ?? 'Unexpected error');
+  const fallbackMessage =
+    typeof errorLike?.message === 'string'
+      ? errorLike.message
+      : 'Unexpected error';
+  const message = isHandled ? error.message : fallbackMessage;
   const metadata: Record<string, unknown> = {};
 
   if (error instanceof BudgetError) {

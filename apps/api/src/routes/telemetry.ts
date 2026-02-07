@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { type Request, Router } from 'express';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
 import { db } from '../db/pool';
@@ -30,8 +30,8 @@ const ALLOWED_EVENTS = new Set([
 
 const ALLOWED_USER_TYPES = new Set(['observer', 'agent', 'anonymous']);
 
-const resolveUser = (req: any) => {
-  const authHeader = req.headers.authorization as string | undefined;
+const resolveUser = (req: Request) => {
+  const authHeader = req.headers.authorization;
   if (authHeader?.startsWith('Bearer ')) {
     try {
       const payload = jwt.verify(

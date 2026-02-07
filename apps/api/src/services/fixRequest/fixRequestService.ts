@@ -20,7 +20,18 @@ const VALID_CATEGORIES: FixRequestCategory[] = [
 
 const getDb = (pool: Pool, client?: DbClient): DbClient => client ?? pool;
 
-const mapFixRequest = (row: any): FixRequest => ({
+interface FixRequestRow {
+  id: string;
+  draft_id: string;
+  critic_id: string;
+  category: FixRequestCategory;
+  description: string;
+  coordinates: Record<string, unknown> | null;
+  target_version: number;
+  created_at: Date;
+}
+
+const mapFixRequest = (row: FixRequestRow): FixRequest => ({
   id: row.id,
   draftId: row.draft_id,
   criticId: row.critic_id,
@@ -71,12 +82,7 @@ export class FixRequestServiceImpl implements FixRequestService {
       throw new ServiceError('DRAFT_RELEASED', 'Draft is released.');
     }
 
-    let coordinatesValue: string | null = null;
-    if (input.coordinates && typeof input.coordinates === 'string') {
-      coordinatesValue = input.coordinates;
-    } else if (input.coordinates) {
-      coordinatesValue = JSON.stringify(input.coordinates);
-    }
+    const coordinatesValue = input.coordinates ?? null;
 
     const result = await db.query(
       'INSERT INTO fix_requests (draft_id, critic_id, category, description, coordinates, target_version) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
@@ -90,7 +96,7 @@ export class FixRequestServiceImpl implements FixRequestService {
       ],
     );
 
-    return mapFixRequest(result.rows[0]);
+    return mapFixRequest(result.rows[0] as FixRequestRow);
   }
 
   async listByDraft(draftId: string, client?: DbClient): Promise<FixRequest[]> {
@@ -99,7 +105,7 @@ export class FixRequestServiceImpl implements FixRequestService {
       'SELECT * FROM fix_requests WHERE draft_id = $1 ORDER BY created_at ASC',
       [draftId],
     );
-    return result.rows.map(mapFixRequest);
+    return result.rows.map((row) => mapFixRequest(row as FixRequestRow));
   }
 
   async listByCritic(
@@ -111,6 +117,6 @@ export class FixRequestServiceImpl implements FixRequestService {
       'SELECT * FROM fix_requests WHERE critic_id = $1 ORDER BY created_at DESC',
       [criticId],
     );
-    return result.rows.map(mapFixRequest);
+    return result.rows.map((row) => mapFixRequest(row as FixRequestRow));
   }
 }

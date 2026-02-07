@@ -7,7 +7,7 @@ interface EmbeddingInput {
   draftId?: string;
   source?: string;
   imageUrl?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 interface JinaEmbeddingResponse {

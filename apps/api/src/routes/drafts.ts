@@ -12,8 +12,9 @@ import { ServiceError } from '../services/common/errors';
 import { FixRequestServiceImpl } from '../services/fixRequest/fixRequestService';
 import { MetricsServiceImpl } from '../services/metrics/metricsService';
 import { NotificationServiceImpl } from '../services/notification/notificationService';
-import { DraftArcServiceImpl } from '../services/observer';
+import { DraftArcServiceImpl } from '../services/observer/draftArcService';
 import { PostServiceImpl } from '../services/post/postService';
+import type { DraftStatus } from '../services/post/types';
 import { PullRequestServiceImpl } from '../services/pullRequest/pullRequestService';
 import type { RealtimeService } from '../services/realtime/types';
 import { SandboxServiceImpl } from '../services/sandbox/sandboxService';
@@ -33,6 +34,9 @@ const notificationService = new NotificationServiceImpl(db, async () =>
 const searchService = new SearchServiceImpl(db);
 const embeddingService = new EmbeddingServiceImpl(db);
 const draftArcService = new DraftArcServiceImpl(db);
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const DRAFT_STATUSES: DraftStatus[] = ['draft', 'release'];
 
 const getRealtime = (req: Request): RealtimeService | undefined => {
   return req.app.get('realtime');
@@ -40,8 +44,7 @@ const getRealtime = (req: Request): RealtimeService | undefined => {
 
 // We only need a "looks like UUID" guard to catch obvious mistakes like "undefined".
 // Keep it permissive so test fixtures and non-v4 UUIDs still pass validation.
-const isUuid = (value: string) =>
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+const isUuid = (value: string) => UUID_PATTERN.test(value);
 
 router.post(
   '/drafts',
@@ -108,8 +111,13 @@ router.post(
 router.get('/drafts', async (req, res, next) => {
   try {
     const { status, authorId, limit, offset } = req.query;
+    const parsedStatus =
+      typeof status === 'string' &&
+      DRAFT_STATUSES.includes(status as DraftStatus)
+        ? (status as DraftStatus)
+        : undefined;
     const drafts = await postService.listDrafts({
-      status: status as any,
+      status: parsedStatus,
       authorId: authorId as string,
       limit: limit ? Number(limit) : undefined,
       offset: offset ? Number(offset) : undefined,

@@ -12,6 +12,16 @@ const router = Router();
 const metricsService = new MetricsServiceImpl(db);
 const heartbeatService = new HeartbeatServiceImpl(db);
 
+interface StudioLedgerRow {
+  kind: 'pr_merged' | 'fix_request';
+  id: string;
+  draft_id: string;
+  description: string;
+  severity: 'major' | 'minor' | null;
+  occurred_at: string;
+  draft_title: string;
+}
+
 router.get('/studios/:id', async (req, res, next) => {
   try {
     const result = await db.query(
@@ -116,10 +126,11 @@ router.get('/studios/:id/ledger', async (req, res, next) => {
       [req.params.id, safeLimit],
     );
 
-    const entries = result.rows.map((row: any) => {
-      const severity = row.severity as 'major' | 'minor' | null;
+    const entries = result.rows.map((row) => {
+      const ledgerRow = row as StudioLedgerRow;
+      const severity = ledgerRow.severity;
       let impactDelta = 0;
-      if (row.kind === 'pr_merged') {
+      if (ledgerRow.kind === 'pr_merged') {
         impactDelta =
           severity === 'major'
             ? IMPACT_MAJOR_INCREMENT
@@ -127,13 +138,13 @@ router.get('/studios/:id/ledger', async (req, res, next) => {
       }
 
       return {
-        kind: row.kind,
-        id: row.id,
-        draftId: row.draft_id,
-        draftTitle: row.draft_title,
-        description: row.description,
+        kind: ledgerRow.kind,
+        id: ledgerRow.id,
+        draftId: ledgerRow.draft_id,
+        draftTitle: ledgerRow.draft_title,
+        description: ledgerRow.description,
         severity,
-        occurredAt: row.occurred_at,
+        occurredAt: ledgerRow.occurred_at,
         impactDelta,
       };
     });

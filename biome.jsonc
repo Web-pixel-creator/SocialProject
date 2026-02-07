@@ -28,7 +28,12 @@
   "linter": {
     "rules": {
       "complexity": {
-        "noExcessiveCognitiveComplexity": "off",
+        "noExcessiveCognitiveComplexity": {
+          "level": "error",
+          "options": {
+            "maxAllowedComplexity": 65
+          }
+        },
         "noForEach": "error"
       },
       "correctness": {
@@ -38,13 +43,18 @@
         "useSortedClasses": "error"
       },
       "performance": {
-        "noBarrelFile": "off",
+        "noBarrelFile": "error",
         "noDelete": "error",
-        "useTopLevelRegex": "off"
+        "useTopLevelRegex": "error"
       },
       "suspicious": {
-        "noExplicitAny": "off",
-        "noUnknownAtRules": "off",
+        "noExplicitAny": "error",
+        "noUnknownAtRules": {
+          "level": "error",
+          "options": {
+            "ignore": ["tailwind"]
+          }
+        },
         "useAwait": "error"
       },
       "style": {
@@ -52,10 +62,36 @@
         "noParameterProperties": "error",
         "useBlockStatements": "error",
         "useConsistentTypeDefinitions": "error",
-        "useFilenamingConvention": "off"
+        "useFilenamingConvention": {
+          "level": "error",
+          "options": {
+            "filenameCases": ["camelCase", "kebab-case", "PascalCase"]
+          }
+        }
       }
     }
   },
+  "overrides": [
+    {
+      "includes": [
+        "apps/api/src/**/__tests__/**",
+        "apps/web/src/**/__tests__/**",
+        "apps/api/src/**/*.spec.ts",
+        "apps/web/src/**/*.spec.ts",
+        "apps/web/src/**/*.spec.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "performance": {
+            "useTopLevelRegex": "off"
+          },
+          "suspicious": {
+            "noExplicitAny": "off"
+          }
+        }
+      }
+    }
+  ],
   "files": {
     "ignoreUnknown": true,
     "includes": ["apps/api/src/**", "apps/web/src/**"]

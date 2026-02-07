@@ -14,6 +14,41 @@ import type {
 } from './types';
 
 const getDb = (pool: Pool, client?: DbClient): DbClient => client ?? pool;
+const WHITESPACE_PATTERN = /\s+/;
+
+interface DraftSearchRow {
+  id: string;
+  status: string;
+  glow_up_score: number | string | null;
+  metadata: Record<string, unknown> | null;
+  updated_at: Date | string | null;
+  before_image_url: string | null;
+  after_image_url: string | null;
+}
+
+interface StudioSearchRow {
+  id: string;
+  studio_name: string;
+  impact: number | string | null;
+}
+
+interface VisualSearchRow {
+  id: string;
+  status: string;
+  glow_up_score: number | string | null;
+  metadata: Record<string, unknown> | null;
+  embedding: unknown;
+  before_image_url: string | null;
+  after_image_url: string | null;
+}
+
+const getMetadataTitle = (metadata: Record<string, unknown> | null): string => {
+  const title = metadata?.title;
+  if (typeof title === 'string' && title.trim().length > 0) {
+    return title;
+  }
+  return 'Untitled';
+};
 
 export class SearchServiceImpl implements SearchService {
   private readonly pool: Pool;
@@ -84,14 +119,18 @@ export class SearchServiceImpl implements SearchService {
       );
 
       const draftResults: Array<SearchResult & { relevanceScore?: number }> =
-        drafts.rows.map((row: any) => {
-          const title = row.metadata?.title ?? 'Untitled';
-          const score = Number(row.glow_up_score ?? 0);
-          const updatedAt = row.updated_at ? new Date(row.updated_at) : null;
+        drafts.rows.map((row) => {
+          const typedRow = row as DraftSearchRow;
+          const title = getMetadataTitle(typedRow.metadata);
+          const score = Number(typedRow.glow_up_score ?? 0);
+          const updatedAt = typedRow.updated_at
+            ? new Date(typedRow.updated_at)
+            : null;
+          const metadata = typedRow.metadata ?? {};
           const relevanceScore =
             sort === 'relevance'
               ? scoreRelevance(
-                  JSON.stringify(row.metadata ?? {}),
+                  JSON.stringify(metadata),
                   score,
                   updatedAt,
                   terms,
@@ -99,12 +138,12 @@ export class SearchServiceImpl implements SearchService {
                 )
               : undefined;
           return {
-            type: row.status === 'release' ? 'release' : 'draft',
-            id: row.id,
+            type: typedRow.status === 'release' ? 'release' : 'draft',
+            id: typedRow.id,
             title,
             score,
-            beforeImageUrl: row.before_image_url ?? undefined,
-            afterImageUrl: row.after_image_url ?? undefined,
+            beforeImageUrl: typedRow.before_image_url ?? undefined,
+            afterImageUrl: typedRow.after_image_url ?? undefined,
             relevanceScore,
           };
         });
@@ -134,12 +173,13 @@ export class SearchServiceImpl implements SearchService {
       );
 
       const studioResults: Array<SearchResult & { relevanceScore?: number }> =
-        studios.rows.map((row: any) => {
-          const score = Number(row.impact ?? 0);
+        studios.rows.map((row) => {
+          const typedRow = row as StudioSearchRow;
+          const score = Number(typedRow.impact ?? 0);
           const relevanceScore =
             sort === 'relevance'
               ? scoreStudioRelevance(
-                  row.studio_name ?? '',
+                  typedRow.studio_name ?? '',
                   score,
                   terms,
                   getStudioWeights(profile),
@@ -147,8 +187,8 @@ export class SearchServiceImpl implements SearchService {
               : undefined;
           return {
             type: 'studio',
-            id: row.id,
-            title: row.studio_name,
+            id: typedRow.id,
+            title: typedRow.studio_name,
             score,
             relevanceScore,
           };
@@ -271,7 +311,7 @@ export class SearchServiceImpl implements SearchService {
     } else if (type === 'release') {
       statusFilter = "d.status = 'release'";
     }
-    const params: any[] = [candidateLimit];
+    const params: unknown[] = [candidateLimit];
     const clauses = [`${statusFilter}`, 'd.is_sandbox = false'];
     let paramIndex = 2;
 
@@ -308,16 +348,17 @@ export class SearchServiceImpl implements SearchService {
     );
 
     const scored: VisualSearchResult[] = [];
-    for (const row of results.rows as any[]) {
+    for (const row of results.rows as VisualSearchRow[]) {
       const rowEmbedding = parseEmbedding(row.embedding);
       if (!rowEmbedding) {
         continue;
       }
+      const metadata = row.metadata ?? {};
       const score = cosineSimilarity(vector, rowEmbedding);
       scored.push({
         type: row.status === 'release' ? 'release' : 'draft',
         id: row.id,
-        title: row.metadata?.title ?? 'Untitled',
+        title: getMetadataTitle(metadata),
         score,
         glowUpScore: Number(row.glow_up_score ?? 0),
         beforeImageUrl: row.before_image_url ?? undefined,
@@ -359,7 +400,7 @@ const sanitizeEmbedding = (embedding: number[]): number[] => {
 const normalizeTerms = (query: string): string[] =>
   query
     .toLowerCase()
-    .split(/\s+/)
+    .split(WHITESPACE_PATTERN)
     .map((term) => term.trim())
     .filter((term) => term.length > 0);
 

@@ -11,7 +11,30 @@ import type {
 
 const getDb = (pool: Pool, client?: DbClient): DbClient => client ?? pool;
 
-const mapDraft = (row: any): Draft => ({
+interface DraftRow {
+  id: string;
+  author_id: string;
+  current_version: number;
+  status: Draft['status'];
+  glow_up_score: number;
+  is_sandbox?: boolean;
+  metadata?: Record<string, unknown>;
+  created_at: Date;
+  updated_at: Date;
+}
+
+interface VersionRow {
+  id: string;
+  draft_id: string;
+  version_number: number;
+  image_url: string;
+  thumbnail_url: string;
+  created_by: string;
+  pull_request_id?: string | null;
+  created_at: Date;
+}
+
+const mapDraft = (row: DraftRow): Draft => ({
   id: row.id,
   authorId: row.author_id,
   currentVersion: Number(row.current_version),
@@ -23,7 +46,7 @@ const mapDraft = (row: any): Draft => ({
   updatedAt: row.updated_at,
 });
 
-const mapVersion = (row: any): Version => ({
+const mapVersion = (row: VersionRow): Version => ({
   id: row.id,
   draftId: row.draft_id,
   versionNumber: Number(row.version_number),
@@ -72,8 +95,8 @@ export class PostServiceImpl implements PostService {
     );
 
     return {
-      draft: mapDraft(draftRow),
-      version: mapVersion(versionResult.rows[0]),
+      draft: mapDraft(draftRow as DraftRow),
+      version: mapVersion(versionResult.rows[0] as VersionRow),
     };
   }
 
@@ -87,7 +110,7 @@ export class PostServiceImpl implements PostService {
       throw new ServiceError('DRAFT_NOT_FOUND', 'Draft not found.', 404);
     }
 
-    return mapDraft(result.rows[0]);
+    return mapDraft(result.rows[0] as DraftRow);
   }
 
   async getDraftWithVersions(
@@ -113,7 +136,7 @@ export class PostServiceImpl implements PostService {
       [status ?? null, authorId ?? null, limit, offset],
     );
 
-    return result.rows.map(mapDraft);
+    return result.rows.map((row) => mapDraft(row as DraftRow));
   }
 
   async releaseDraft(draftId: string, client?: DbClient): Promise<Draft> {
@@ -127,7 +150,7 @@ export class PostServiceImpl implements PostService {
       throw new ServiceError('DRAFT_NOT_FOUND', 'Draft not found.', 404);
     }
 
-    return mapDraft(result.rows[0]);
+    return mapDraft(result.rows[0] as DraftRow);
   }
 
   async getVersions(draftId: string, client?: DbClient): Promise<Version[]> {
@@ -136,6 +159,6 @@ export class PostServiceImpl implements PostService {
       'SELECT * FROM versions WHERE draft_id = $1 ORDER BY version_number ASC',
       [draftId],
     );
-    return result.rows.map(mapVersion);
+    return result.rows.map((row) => mapVersion(row as VersionRow));
   }
 }

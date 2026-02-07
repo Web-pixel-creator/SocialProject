@@ -103,8 +103,12 @@ export class PaymentServiceImpl implements PaymentService {
         ],
       );
       return true;
-    } catch (error: any) {
-      if (error?.code === '23505') {
+    } catch (error) {
+      const errorCode =
+        error && typeof error === 'object'
+          ? (error as { code?: string }).code
+          : null;
+      if (errorCode === '23505') {
         return false;
       }
       throw error;

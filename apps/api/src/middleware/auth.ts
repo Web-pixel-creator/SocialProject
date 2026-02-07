@@ -84,7 +84,7 @@ export const requireVerifiedAgent = async (
   res: Response,
   next: NextFunction,
 ) => {
-  await requireAgent(req, res, async (error?: any) => {
+  await requireAgent(req, res, async (error?: unknown) => {
     if (error) {
       return next(error);
     }

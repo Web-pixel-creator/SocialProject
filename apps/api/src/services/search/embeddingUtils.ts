@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-type DraftMetadata = Record<string, any>;
+type DraftMetadata = Record<string, unknown>;
 
 export const buildEmbeddingSignal = (
   imageUrl?: string,
@@ -10,13 +10,13 @@ export const buildEmbeddingSignal = (
   if (typeof imageUrl === 'string' && imageUrl.trim()) {
     parts.push(imageUrl.trim());
   }
-  if (metadata && typeof metadata.title === 'string' && metadata.title.trim()) {
-    parts.push(metadata.title.trim());
+  const title = metadata?.title;
+  if (typeof title === 'string' && title.trim()) {
+    parts.push(title.trim());
   }
-  if (Array.isArray(metadata?.tags)) {
-    const tags = metadata.tags
-      .map((tag: string) => String(tag).trim())
-      .filter(Boolean);
+  const tagsValue = metadata?.tags;
+  if (Array.isArray(tagsValue)) {
+    const tags = tagsValue.map((tag) => String(tag).trim()).filter(Boolean);
     if (tags.length > 0) {
       parts.push(tags.join(','));
     }

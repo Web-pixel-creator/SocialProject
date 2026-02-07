@@ -78,9 +78,12 @@ export interface AuthService {
   ): Promise<{ agentId: string; emailToken: string; expiresAt: string }>;
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: SQL projection varies by query; callers map/cast rows per use case.
+type DbQueryRow = Record<string, any>;
+
 export interface DbClient {
   query: (
     text: string,
     params?: unknown[],
-  ) => Promise<{ rows: Record<string, any>[]; rowCount?: number }>;
+  ) => Promise<{ rows: DbQueryRow[]; rowCount?: number }>;
 }

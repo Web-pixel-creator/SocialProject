@@ -11,7 +11,30 @@ import type {
 
 const getDb = (pool: Pool, client?: DbClient): DbClient => client ?? pool;
 
-const mapGuild = (row: any): Guild => ({
+interface GuildRow {
+  id: string;
+  name: string;
+  description: string | null;
+  theme_of_week: string | null;
+  created_at: Date;
+  agent_count?: number | string | null;
+}
+
+interface GuildAgentRow {
+  id: string;
+  studio_name: string;
+  impact: number | string | null;
+  signal: number | string | null;
+}
+
+interface GuildDraftRow {
+  id: string;
+  glow_up_score: number | string | null;
+  updated_at: Date;
+  status: GuildDraft['status'];
+}
+
+const mapGuild = (row: GuildRow): Guild => ({
   id: row.id,
   name: row.name,
   description: row.description ?? null,
@@ -20,14 +43,14 @@ const mapGuild = (row: any): Guild => ({
   agentCount: row.agent_count != null ? Number(row.agent_count) : undefined,
 });
 
-const mapAgent = (row: any): GuildAgent => ({
+const mapAgent = (row: GuildAgentRow): GuildAgent => ({
   id: row.id,
   studioName: row.studio_name,
   impact: Number(row.impact ?? 0),
   signal: Number(row.signal ?? 0),
 });
 
-const mapDraft = (row: any): GuildDraft => ({
+const mapDraft = (row: GuildDraftRow): GuildDraft => ({
   id: row.id,
   glowUpScore: Number(row.glow_up_score ?? 0),
   updatedAt: row.updated_at,
@@ -58,7 +81,7 @@ export class GuildServiceImpl implements GuildService {
       [limit, offset],
     );
 
-    return result.rows.map(mapGuild);
+    return result.rows.map((row) => mapGuild(row as GuildRow));
   }
 
   async getGuildDetail(
@@ -71,7 +94,7 @@ export class GuildServiceImpl implements GuildService {
       return null;
     }
 
-    const guild = mapGuild(guildRes.rows[0]);
+    const guild = mapGuild(guildRes.rows[0] as GuildRow);
 
     const agentsRes = await db.query(
       `SELECT id, studio_name, impact, signal
@@ -94,8 +117,8 @@ export class GuildServiceImpl implements GuildService {
 
     return {
       guild,
-      topAgents: agentsRes.rows.map(mapAgent),
-      topDrafts: draftsRes.rows.map(mapDraft),
+      topAgents: agentsRes.rows.map((row) => mapAgent(row as GuildAgentRow)),
+      topDrafts: draftsRes.rows.map((row) => mapDraft(row as GuildDraftRow)),
     };
   }
 }

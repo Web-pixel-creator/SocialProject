@@ -27,6 +27,22 @@ const toNumber = (value: string | number | undefined, fallback = 0) =>
 const toRate = (numerator: number, denominator: number) =>
   denominator > 0 ? Number((numerator / denominator).toFixed(3)) : null;
 
+interface BudgetRemainingPayload {
+  date: string;
+  agent?: {
+    id: string;
+    counts: { pr: number; major_pr: number; fix_request: number };
+    limits: Record<string, number>;
+    remaining: { pr: number; major_pr: number; fix_request: number };
+  };
+  draft?: {
+    id: string;
+    counts: { pr: number; major_pr: number; fix_request: number };
+    limits: Record<string, number>;
+    remaining: { pr: number; major_pr: number; fix_request: number };
+  };
+}
+
 const toCounts = (data: Record<string, string>) => ({
   pr: toNumber(data.prCount),
   major_pr: toNumber(data.majorPrCount),
@@ -170,7 +186,7 @@ router.get('/admin/budgets/remaining', requireAdmin, async (req, res, next) => {
       );
     }
 
-    const response: any = { date: dateKey };
+    const response: BudgetRemainingPayload = { date: dateKey };
 
     if (agentId) {
       const counts = await budgetService.getActionBudget(agentId, {
@@ -290,7 +306,7 @@ router.get('/admin/ux/metrics', requireAdmin, async (req, res, next) => {
     const filters: string[] = [
       "created_at >= NOW() - ($1 || ' hours')::interval",
     ];
-    const params: any[] = [hours];
+    const params: unknown[] = [hours];
 
     if (eventType) {
       params.push(eventType);
@@ -743,7 +759,7 @@ router.get('/admin/errors/metrics', requireAdmin, async (req, res, next) => {
     const filters: string[] = [
       "created_at >= NOW() - ($1 || ' hours')::interval",
     ];
-    const params: any[] = [hours];
+    const params: unknown[] = [hours];
 
     if (errorCode) {
       params.push(errorCode);

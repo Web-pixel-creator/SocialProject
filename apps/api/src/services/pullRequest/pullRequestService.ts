@@ -1,4 +1,4 @@
-﻿import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import type { DbClient } from '../auth/types';
 import { ServiceError } from '../common/errors';
 import {
@@ -16,14 +16,32 @@ import type {
 
 const getDb = (pool: Pool, client?: DbClient): DbClient => client ?? pool;
 
-const normalizeFixRequests = (value: any): string[] => {
+interface PullRequestRow {
+  id: string;
+  draft_id: string;
+  maker_id: string;
+  proposed_version: number | string;
+  description: string;
+  severity: PullRequest['severity'];
+  status: PullRequest['status'];
+  addressed_fix_requests?: unknown;
+  author_feedback?: string | null;
+  judge_verdict?: unknown;
+  created_at: Date;
+  decided_at: Date | null;
+}
+
+const normalizeFixRequests = (value: unknown): string[] => {
   if (Array.isArray(value)) {
-    return value;
+    return value.filter((item): item is string => typeof item === 'string');
   }
   if (typeof value === 'string') {
     try {
       const parsed = JSON.parse(value);
-      return Array.isArray(parsed) ? parsed : [];
+      if (!Array.isArray(parsed)) {
+        return [];
+      }
+      return parsed.filter((item): item is string => typeof item === 'string');
     } catch {
       return [];
     }
@@ -31,7 +49,7 @@ const normalizeFixRequests = (value: any): string[] => {
   return [];
 };
 
-const mapPullRequest = (row: any): PullRequest => ({
+const mapPullRequest = (row: PullRequestRow): PullRequest => ({
   id: row.id,
   draftId: row.draft_id,
   makerId: row.maker_id,
@@ -41,7 +59,10 @@ const mapPullRequest = (row: any): PullRequest => ({
   status: row.status,
   addressedFixRequests: normalizeFixRequests(row.addressed_fix_requests),
   authorFeedback: row.author_feedback,
-  judgeVerdict: row.judge_verdict,
+  judgeVerdict:
+    typeof row.judge_verdict === 'object' && row.judge_verdict !== null
+      ? (row.judge_verdict as Record<string, unknown>)
+      : null,
   createdAt: row.created_at,
   decidedAt: row.decided_at,
 });
@@ -139,7 +160,7 @@ export class PullRequestServiceImpl implements PullRequestService {
         ],
       );
 
-      const pr = prResult.rows[0];
+      const pr = prResult.rows[0] as PullRequestRow;
 
       await db.query(
         'INSERT INTO versions (draft_id, version_number, image_url, thumbnail_url, created_by, pull_request_id) VALUES ($1, $2, $3, $4, $5, $6)',
@@ -166,7 +187,7 @@ export class PullRequestServiceImpl implements PullRequestService {
       'SELECT * FROM pull_requests WHERE draft_id = $1 ORDER BY created_at DESC',
       [draftId],
     );
-    return result.rows.map(mapPullRequest);
+    return result.rows.map((row) => mapPullRequest(row as PullRequestRow));
   }
 
   async getReviewData(
@@ -192,7 +213,7 @@ export class PullRequestServiceImpl implements PullRequestService {
     }
 
     const prRow = prResult.rows[0];
-    const pullRequest = mapPullRequest(prRow);
+    const pullRequest = mapPullRequest(prRow as PullRequestRow);
 
     const currentVersionResult = await db.query(
       'SELECT image_url, thumbnail_url FROM versions WHERE draft_id = $1 AND version_number = $2',
@@ -332,7 +353,7 @@ export class PullRequestServiceImpl implements PullRequestService {
         );
       }
 
-      return mapPullRequest(updated.rows[0]);
+      return mapPullRequest(updated.rows[0] as PullRequestRow);
     });
   }
 
@@ -429,7 +450,7 @@ export class PullRequestServiceImpl implements PullRequestService {
       return fn(client);
     }
 
-    const poolClient: any = await this.pool.connect();
+    const poolClient: PoolClient = await this.pool.connect();
     try {
       await poolClient.query('BEGIN');
       const result = await fn(poolClient);

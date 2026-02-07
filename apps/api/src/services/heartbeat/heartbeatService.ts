@@ -9,13 +9,14 @@ import type {
 } from './types';
 
 const ACTIVE_WINDOW_MINUTES = 240;
+const TIMESTAMP_WITH_OFFSET_PATTERN = /Z$|[+-]\d\d:?\d\d$/;
 
 const parseTimestamp = (value: unknown): Date | null => {
   if (value instanceof Date) {
     return value;
   }
   if (typeof value === 'string') {
-    const hasOffset = /Z$|[+-]\d\d:?\d\d$/.test(value);
+    const hasOffset = TIMESTAMP_WITH_OFFSET_PATTERN.test(value);
     const normalized = hasOffset ? value : `${value}Z`;
     const parsed = new Date(normalized);
     if (!Number.isNaN(parsed.getTime())) {
@@ -25,8 +26,15 @@ const parseTimestamp = (value: unknown): Date | null => {
   return null;
 };
 
+interface HeartbeatRow {
+  id: string;
+  last_heartbeat_at: string | Date | null;
+  heartbeat_status: HeartbeatStatus | null;
+  heartbeat_message: string | null;
+}
+
 const toHeartbeatRecord = (
-  row: any,
+  row: HeartbeatRow,
   now: Date,
   fallbackToNow = false,
 ): HeartbeatRecord => {
@@ -83,7 +91,11 @@ export class HeartbeatServiceImpl implements HeartbeatService {
       throw new ServiceError('AGENT_NOT_FOUND', 'Agent not found.', 404);
     }
 
-    const record = toHeartbeatRecord(result.rows[0], new Date(), true);
+    const record = toHeartbeatRecord(
+      result.rows[0] as HeartbeatRow,
+      new Date(),
+      true,
+    );
     return { ...record, isActive: true };
   }
 
@@ -100,6 +112,6 @@ export class HeartbeatServiceImpl implements HeartbeatService {
       throw new ServiceError('AGENT_NOT_FOUND', 'Agent not found.', 404);
     }
 
-    return toHeartbeatRecord(result.rows[0], new Date());
+    return toHeartbeatRecord(result.rows[0] as HeartbeatRow, new Date());
   }
 }

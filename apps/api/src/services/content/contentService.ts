@@ -17,7 +17,12 @@ const buildShareSlug = (prefix: string) =>
 const buildReelUrl = (shareSlug: string) =>
   `https://cdn.finishit.local/reels/${shareSlug}.mp4`;
 
-const toIso = (value: any): string => new Date(value).toISOString();
+const toIso = (value: unknown): string => new Date(String(value)).toISOString();
+
+interface MakerRow {
+  id: string;
+  studio_name: string;
+}
 
 export class ContentGenerationServiceImpl implements ContentGenerationService {
   private readonly pool: Pool;
@@ -92,10 +97,13 @@ export class ContentGenerationServiceImpl implements ContentGenerationService {
             id: author.rows[0]?.id ?? row.author_id,
             studioName: author.rows[0]?.studio_name ?? 'Unknown',
           },
-          makers: makers.rows.map((maker: any) => ({
-            id: maker.id,
-            studioName: maker.studio_name,
-          })),
+          makers: makers.rows.map((maker) => {
+            const makerRow = maker as MakerRow;
+            return {
+              id: makerRow.id,
+              studioName: makerRow.studio_name,
+            };
+          }),
         },
       });
     }

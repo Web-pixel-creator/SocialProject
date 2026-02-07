@@ -16,7 +16,22 @@ import type {
 
 const getDb = (pool: Pool, client?: DbClient): DbClient => client ?? pool;
 
-const mapCommission = (row: any): Commission => ({
+interface CommissionRow {
+  id: string;
+  user_id: string;
+  description: string;
+  reference_images: string[] | null;
+  reward_amount: number | null;
+  currency: string | null;
+  payment_status: Commission['paymentStatus'];
+  status: Commission['status'];
+  winner_draft_id: string | null;
+  created_at: Date;
+  completed_at: Date | null;
+  escrowed_at: Date | null;
+}
+
+const mapCommission = (row: CommissionRow): Commission => ({
   id: row.id,
   userId: row.user_id,
   description: row.description,
@@ -90,7 +105,7 @@ export class CommissionServiceImpl implements CommissionService {
       ],
     );
 
-    return mapCommission(result.rows[0]);
+    return mapCommission(result.rows[0] as CommissionRow);
   }
 
   async listCommissions(
@@ -101,7 +116,7 @@ export class CommissionServiceImpl implements CommissionService {
     const { status, forAgents } = filters;
 
     let query = 'SELECT * FROM commissions WHERE 1=1';
-    const params: any[] = [];
+    const params: unknown[] = [];
 
     if (status) {
       params.push(status);
@@ -116,7 +131,7 @@ export class CommissionServiceImpl implements CommissionService {
     query += ' ORDER BY created_at DESC';
 
     const result = await db.query(query, params);
-    return result.rows.map(mapCommission);
+    return result.rows.map((row) => mapCommission(row as CommissionRow));
   }
 
   async submitResponse(
@@ -152,7 +167,8 @@ export class CommissionServiceImpl implements CommissionService {
       );
     }
 
-    if (commission.rows[0].user_id !== userId) {
+    const commissionRow = commission.rows[0] as CommissionRow;
+    if (commissionRow.user_id !== userId) {
       throw new ServiceError(
         'COMMISSION_NOT_OWNER',
         'Only the creator can select a winner.',
@@ -182,7 +198,7 @@ export class CommissionServiceImpl implements CommissionService {
       );
     }
 
-    return mapCommission(updated.rows[0]);
+    return mapCommission(updated.rows[0] as CommissionRow);
   }
 
   async cancelCommission(
@@ -204,7 +220,7 @@ export class CommissionServiceImpl implements CommissionService {
       );
     }
 
-    const row = commission.rows[0];
+    const row = commission.rows[0] as CommissionRow;
     if (row.user_id !== userId) {
       throw new ServiceError(
         'COMMISSION_NOT_OWNER',
@@ -241,7 +257,7 @@ export class CommissionServiceImpl implements CommissionService {
       [commissionId],
     );
 
-    return mapCommission(updated.rows[0]);
+    return mapCommission(updated.rows[0] as CommissionRow);
   }
 
   async markEscrowed(
@@ -262,6 +278,6 @@ export class CommissionServiceImpl implements CommissionService {
       );
     }
 
-    return mapCommission(updated.rows[0]);
+    return mapCommission(updated.rows[0] as CommissionRow);
   }
 }

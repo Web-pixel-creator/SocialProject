@@ -19,16 +19,81 @@ import type {
 
 const getDb = (pool: Pool, client?: DbClient): DbClient => client ?? pool;
 
-const mapFeedItem = (row: any): FeedItem => ({
+interface FeedRow {
+  id: string;
+  status: string;
+  glow_up_score: number | string | null;
+  updated_at: Date;
+  before_image_url?: string | null;
+  before_thumbnail_url?: string | null;
+  after_image_url?: string | null;
+  after_thumbnail_url?: string | null;
+}
+
+interface AutopsyRow {
+  id: string;
+  summary: string;
+  published_at: Date | null;
+  created_at: Date;
+}
+
+interface StudioRow {
+  id: string;
+  studio_name: string;
+  impact: number | string | null;
+  signal: number | string | null;
+}
+
+interface ProgressRow {
+  draft_id: string;
+  before_image_url: string;
+  after_image_url: string;
+  glow_up_score: number | string | null;
+  pr_count: number | string | null;
+  last_activity: Date;
+  studio_name: string;
+  guild_id?: string | null;
+}
+
+interface ChangeRow {
+  kind: ChangeFeedItem['kind'];
+  id: string;
+  draft_id: string;
+  draft_title?: string | null;
+  description: string;
+  severity?: 'major' | 'minor' | null;
+  occurred_at: Date;
+  glow_up_score: number | string | null;
+}
+
+interface HotNowRow {
+  draft_id: string;
+  draft_title?: string | null;
+  glow_up_score: number | string | null;
+  updated_at: Date;
+  before_image_url?: string | null;
+  after_image_url?: string | null;
+  fix_open_count: number | string | null;
+  pr_pending_count: number | string | null;
+  decisions_24h: number | string | null;
+  merges_24h: number | string | null;
+  merged_major_total: number | string | null;
+  merged_minor_total: number | string | null;
+  merged_major_24h: number | string | null;
+  merged_minor_24h: number | string | null;
+  last_activity?: Date | null;
+}
+
+const mapFeedItem = (row: FeedRow): FeedItem => ({
   id: row.id,
   type: row.status === 'release' ? 'release' : 'draft',
   glowUpScore: Number(row.glow_up_score ?? 0),
   updatedAt: row.updated_at,
-  beforeImageUrl: row.before_image_url ?? row.before_thumbnail_url,
-  afterImageUrl: row.after_image_url ?? row.after_thumbnail_url,
+  beforeImageUrl: row.before_image_url ?? row.before_thumbnail_url ?? undefined,
+  afterImageUrl: row.after_image_url ?? row.after_thumbnail_url ?? undefined,
 });
 
-const mapAutopsyItem = (row: any): FeedItem => ({
+const mapAutopsyItem = (row: AutopsyRow): FeedItem => ({
   id: row.id,
   type: 'autopsy',
   glowUpScore: 0,
@@ -36,14 +101,14 @@ const mapAutopsyItem = (row: any): FeedItem => ({
   summary: row.summary,
 });
 
-const mapStudioItem = (row: any): StudioItem => ({
+const mapStudioItem = (row: StudioRow): StudioItem => ({
   id: row.id,
   studioName: row.studio_name,
   impact: Number(row.impact ?? 0),
   signal: Number(row.signal ?? 0),
 });
 
-const mapProgressItem = (row: any): ProgressFeedItem => ({
+const mapProgressItem = (row: ProgressRow): ProgressFeedItem => ({
   draftId: row.draft_id,
   beforeImageUrl: row.before_image_url,
   afterImageUrl: row.after_image_url,
@@ -54,7 +119,7 @@ const mapProgressItem = (row: any): ProgressFeedItem => ({
   guildId: row.guild_id ?? null,
 });
 
-const mapChangeItem = (row: any): ChangeFeedItem => {
+const mapChangeItem = (row: ChangeRow): ChangeFeedItem => {
   const severity = row.severity ?? null;
   let impactDelta = 0;
   if (row.kind === 'pr_merged') {
@@ -248,7 +313,7 @@ export class FeedServiceImpl implements FeedService {
       params,
     );
 
-    return result.rows.map(mapFeedItem);
+    return result.rows.map((row) => mapFeedItem(row as FeedRow));
   }
 
   async getProgress(
@@ -299,8 +364,8 @@ export class FeedServiceImpl implements FeedService {
       [take],
     );
 
-    const scored = result.rows.map((row: any) => {
-      const item = mapProgressItem(row);
+    const scored = result.rows.map((row) => {
+      const item = mapProgressItem(row as ProgressRow);
       const recency = computeRecencyBonus(item.lastActivity);
       const score = 0.7 * item.glowUpScore + 0.2 * recency + 0.1 * item.prCount;
       return { item, score };
@@ -331,7 +396,7 @@ export class FeedServiceImpl implements FeedService {
       );
 
       if (history.rows.length > 0) {
-        return history.rows.map(mapFeedItem);
+        return history.rows.map((row) => mapFeedItem(row as FeedRow));
       }
     }
 
@@ -340,7 +405,7 @@ export class FeedServiceImpl implements FeedService {
       [limit, offset],
     );
 
-    return fallback.rows.map(mapFeedItem);
+    return fallback.rows.map((row) => mapFeedItem(row as FeedRow));
   }
 
   async getLiveDrafts(
@@ -358,7 +423,7 @@ export class FeedServiceImpl implements FeedService {
        LIMIT $1 OFFSET $2`,
       [limit, offset],
     );
-    return result.rows.map(mapFeedItem);
+    return result.rows.map((row) => mapFeedItem(row as FeedRow));
   }
 
   async getGlowUps(
@@ -371,7 +436,7 @@ export class FeedServiceImpl implements FeedService {
       'SELECT * FROM drafts WHERE is_sandbox = false ORDER BY glow_up_score DESC, updated_at DESC LIMIT $1 OFFSET $2',
       [limit, offset],
     );
-    return result.rows.map(mapFeedItem);
+    return result.rows.map((row) => mapFeedItem(row as FeedRow));
   }
 
   async getStudios(
@@ -384,7 +449,7 @@ export class FeedServiceImpl implements FeedService {
       'SELECT * FROM agents ORDER BY impact DESC, signal DESC LIMIT $1 OFFSET $2',
       [limit, offset],
     );
-    return result.rows.map(mapStudioItem);
+    return result.rows.map((row) => mapStudioItem(row as StudioRow));
   }
 
   async getBattles(
@@ -406,7 +471,7 @@ export class FeedServiceImpl implements FeedService {
       [limit, offset],
     );
 
-    return result.rows.map(mapFeedItem);
+    return result.rows.map((row) => mapFeedItem(row as FeedRow));
   }
 
   async getArchive(
@@ -432,8 +497,8 @@ export class FeedServiceImpl implements FeedService {
     );
 
     const combined = [
-      ...releases.rows.map(mapFeedItem),
-      ...autopsies.rows.map(mapAutopsyItem),
+      ...releases.rows.map((row) => mapFeedItem(row as FeedRow)),
+      ...autopsies.rows.map((row) => mapAutopsyItem(row as AutopsyRow)),
     ];
     combined.sort(
       (a, b) => Number(new Date(b.updatedAt)) - Number(new Date(a.updatedAt)),
@@ -485,7 +550,7 @@ export class FeedServiceImpl implements FeedService {
       [safeLimit, safeOffset],
     );
 
-    return result.rows.map(mapChangeItem);
+    return result.rows.map((row) => mapChangeItem(row as ChangeRow));
   }
 
   async getHotNow(
@@ -600,7 +665,7 @@ export class FeedServiceImpl implements FeedService {
       HOT_NOW_DEFAULT_WEIGHTS,
     ) as typeof HOT_NOW_DEFAULT_WEIGHTS;
 
-    const toHotItem = (row: any): HotNowItem => {
+    const toHotItem = (row: HotNowRow): HotNowItem => {
       const fixOpenCount = Number(row.fix_open_count ?? 0);
       const prPendingCount = Number(row.pr_pending_count ?? 0);
       const decisions24h = Number(row.decisions_24h ?? 0);
@@ -651,7 +716,7 @@ export class FeedServiceImpl implements FeedService {
     };
 
     const ranked = rows.rows
-      .map(toHotItem)
+      .map((row) => toHotItem(row as HotNowRow))
       .sort((a, b) => b.hotScore - a.hotScore);
     return ranked.slice(safeOffset, safeOffset + safeLimit);
   }

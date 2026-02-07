@@ -29,8 +29,8 @@ jest.mock('sharp', () => {
 import { GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { env } from '../config/env';
-import { createStorageKey } from '../services/storage';
 import { StorageServiceImpl } from '../services/storage/storageService';
+import { createStorageKey } from '../services/storage/utils/storageKeys';
 import { s3 } from '../storage/s3';
 
 describe('storage service edge cases', () => {

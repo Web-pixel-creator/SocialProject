@@ -21,18 +21,46 @@ const defaultDelivery: NotificationDelivery = async (
   });
 };
 
-const getPrefs = (prefs: any) => {
+interface NotificationPrefs {
+  enablePullRequests?: boolean;
+  enableFixRequests?: boolean;
+  enableDecisions?: boolean;
+}
+
+const normalizePrefs = (value: unknown): NotificationPrefs => {
+  if (!(value && typeof value === 'object')) {
+    return {};
+  }
+
+  const objectValue = value as Record<string, unknown>;
+  return {
+    enablePullRequests:
+      typeof objectValue.enablePullRequests === 'boolean'
+        ? objectValue.enablePullRequests
+        : undefined,
+    enableFixRequests:
+      typeof objectValue.enableFixRequests === 'boolean'
+        ? objectValue.enableFixRequests
+        : undefined,
+    enableDecisions:
+      typeof objectValue.enableDecisions === 'boolean'
+        ? objectValue.enableDecisions
+        : undefined,
+  };
+};
+
+const getPrefs = (prefs: unknown): NotificationPrefs => {
   if (!prefs) {
     return {};
   }
   if (typeof prefs === 'string') {
     try {
-      return JSON.parse(prefs);
+      return normalizePrefs(JSON.parse(prefs));
     } catch {
       return {};
     }
   }
-  return prefs;
+  return normalizePrefs(prefs);
 };
 
 export class NotificationServiceImpl implements NotificationService {

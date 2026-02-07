@@ -3,9 +3,41 @@ import { db } from '../db/pool';
 import { cacheResponse } from '../middleware/responseCache';
 import { ServiceError } from '../services/common/errors';
 import { SearchServiceImpl } from '../services/search/searchService';
+import type {
+  SearchIntent,
+  SearchProfile,
+  SearchRange,
+  SearchSort,
+  SearchType,
+  VisualSearchFilters,
+} from '../services/search/types';
 
 const router = Router();
 const searchService = new SearchServiceImpl(db);
+const SEARCH_TYPES: SearchType[] = ['draft', 'release', 'studio', 'all'];
+const SEARCH_SORTS: SearchSort[] = ['glowup', 'recency', 'impact', 'relevance'];
+const SEARCH_RANGES: SearchRange[] = ['7d', '30d', 'all'];
+const SEARCH_PROFILES: SearchProfile[] = ['balanced', 'quality', 'novelty'];
+const SEARCH_INTENTS: SearchIntent[] = [
+  'needs_help',
+  'seeking_pr',
+  'ready_for_review',
+];
+const VISUAL_TYPES: NonNullable<VisualSearchFilters['type']>[] = [
+  'draft',
+  'release',
+  'all',
+];
+
+const parseEnum = <T extends string>(
+  value: unknown,
+  allowed: readonly T[],
+): T | undefined => {
+  if (!(typeof value === 'string' && allowed.includes(value as T))) {
+    return undefined;
+  }
+  return value as T;
+};
 
 router.get(
   '/search',
@@ -16,11 +48,11 @@ router.get(
   async (req, res, next) => {
     try {
       const q = String(req.query.q ?? '');
-      const type = req.query.type as any;
-      const sort = req.query.sort as any;
-      const range = req.query.range as any;
-      const profile = req.query.profile as any;
-      const intent = req.query.intent as any;
+      const type = parseEnum(req.query.type, SEARCH_TYPES);
+      const sort = parseEnum(req.query.sort, SEARCH_SORTS);
+      const range = parseEnum(req.query.range, SEARCH_RANGES);
+      const profile = parseEnum(req.query.profile, SEARCH_PROFILES);
+      const intent = parseEnum(req.query.intent, SEARCH_INTENTS);
       const limit = req.query.limit ? Number(req.query.limit) : undefined;
       const offset = req.query.offset ? Number(req.query.offset) : undefined;
       const results = await searchService.search(q, {
@@ -52,7 +84,7 @@ router.get(
       if (!draftId) {
         throw new ServiceError('DRAFT_ID_REQUIRED', 'Provide a draftId.', 400);
       }
-      const type = req.query.type as any;
+      const type = parseEnum(req.query.type, VISUAL_TYPES);
       const limit = req.query.limit ? Number(req.query.limit) : undefined;
       const offset = req.query.offset ? Number(req.query.offset) : undefined;
       const excludeDraftId = req.query.exclude

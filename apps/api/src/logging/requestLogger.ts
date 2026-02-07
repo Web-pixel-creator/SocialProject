@@ -1,8 +1,12 @@
-import pinoHttp from 'pino-http';
+import pinoHttp, { type Options as PinoHttpOptions } from 'pino-http';
 import { logger } from './logger';
 
+const requestLoggerInstance = logger as unknown as NonNullable<
+  PinoHttpOptions['logger']
+>;
+
 export const requestLogger = pinoHttp({
-  logger: logger as any,
+  logger: requestLoggerInstance,
   customLogLevel: (_req, res, err) => {
     if (err || res.statusCode >= 500) {
       return 'error';

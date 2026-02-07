@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { type Request, Router } from 'express';
 import { env } from '../config/env';
 import { db } from '../db/pool';
 import { logger } from '../logging/logger';
@@ -19,7 +19,7 @@ const metricsService = new MetricsServiceImpl(db);
 const embeddingService = new EmbeddingServiceImpl(db);
 const searchService = new SearchServiceImpl(db);
 
-const getRealtime = (req: any): RealtimeService | undefined =>
+const getRealtime = (req: Request): RealtimeService | undefined =>
   req.app.get('realtime');
 
 const ensureDemoAgent = async (studioName: string, personality: string) => {
