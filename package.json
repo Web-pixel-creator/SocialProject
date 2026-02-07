@@ -22,6 +22,7 @@
     "release:dry-run:local": "node scripts/release/local-dry-run.mjs",
     "release:smoke:dispatch": "node scripts/release/dispatch-staging-smoke.mjs",
     "release:smoke:dispatch:tunnel": "node scripts/release/dispatch-staging-smoke-tunnel.mjs",
+    "release:smoke:inputs": "node scripts/release/manage-staging-inputs.mjs",
     "ultracite:check": "npx ultracite check apps/api/src apps/web/src",
     "ultracite:fix": "npx ultracite fix apps/api/src apps/web/src"
   },

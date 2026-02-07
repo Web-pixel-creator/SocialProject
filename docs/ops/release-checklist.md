@@ -38,12 +38,16 @@ Use this checklist for every production release.
 - [ ] Trigger staging smoke dry-run in CI (preferred evidence path):
   - [ ] Run `CI` workflow via `workflow_dispatch` and provide inputs:
     - [ ] `release_api_base_url` and `release_web_base_url` (or configure repo variables `RELEASE_API_BASE_URL` / `RELEASE_WEB_BASE_URL`).
-    - [ ] Optional `release_csrf_token` input (or configure secret `RELEASE_CSRF_TOKEN`).
+    - [ ] Optional `release_csrf_token` input (or configure secret/variable `RELEASE_CSRF_TOKEN`; secret is preferred).
   - [ ] If staging URLs are not available, allow `release_smoke_staging` to run the built-in local-stack fallback (`npm run release:dry-run:local`) and collect evidence as a rehearsal run.
   - [ ] Optional terminal dispatch helper (requires `GITHUB_TOKEN` with Actions write):
     - [ ] `RELEASE_API_BASE_URL=<staging-api-url> RELEASE_WEB_BASE_URL=<staging-web-url> npm run release:smoke:dispatch`
     - [ ] Without staging URLs: `npm run release:smoke:dispatch` (runs workflow fallback path).
     - [ ] Tunnel-based URL-input helper (auto local API/Web + localtunnel + dispatch): `npm run release:smoke:dispatch:tunnel`
+    - [ ] Manage persistent staging workflow inputs:
+      - [ ] Show current values: `npm run release:smoke:inputs -- show`
+      - [ ] Set values: `RELEASE_API_BASE_URL=<staging-api-url> RELEASE_WEB_BASE_URL=<staging-web-url> RELEASE_CSRF_TOKEN=<csrf-token> npm run release:smoke:inputs -- set`
+      - [ ] Clear values: `npm run release:smoke:inputs -- clear`
     - [ ] If dispatch returns `Workflow does not have 'workflow_dispatch' trigger`, push updated `.github/workflows/ci.yml` first or set `RELEASE_WORKFLOW_REF` to a ref that contains that trigger.
   - [ ] Confirm artifact `release-smoke-report` is uploaded.
 - [ ] Run automated smoke check:

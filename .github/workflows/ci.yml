@@ -219,6 +219,9 @@ jobs:
           if [ -z "$CSRF_TOKEN" ]; then
             CSRF_TOKEN="${{ secrets.RELEASE_CSRF_TOKEN }}"
           fi
+          if [ -z "$CSRF_TOKEN" ]; then
+            CSRF_TOKEN="${{ vars.RELEASE_CSRF_TOKEN }}"
+          fi
 
           if [ -n "$API_URL" ] && [ -n "$WEB_URL" ]; then
             echo "Running release smoke check against configured staging URLs."
