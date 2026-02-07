@@ -1,8 +1,9 @@
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const DEFAULT_RESULTS_FILE = 'smoke-results.json';
 const DEFAULT_ARTIFACTS_DIR = 'artifacts/release';
+const DEFAULT_DIFF_OUTPUT_DIR = 'artifacts/release';
 
 const parseBoolean = (raw, fallback) => {
   if (!raw) {
@@ -28,6 +29,20 @@ const parseRunOrPath = (raw) => {
   }
   return value;
 };
+
+const isRunId = (raw) => /^\d+$/u.test(raw.trim());
+
+const sanitizeForFileName = (value) =>
+  value
+    .replace(/\\/gu, '-')
+    .replace(/\//gu, '-')
+    .replace(/:/gu, '-')
+    .replace(/\s+/gu, '-')
+    .replace(/[^a-zA-Z0-9._-]/gu, '_')
+    .slice(-64);
+
+const roundNumber = (value, digits = 2) =>
+  Number.parseFloat(value.toFixed(digits));
 
 const readJson = async (filePath) => {
   try {
@@ -84,20 +99,20 @@ const formatMs = (value) => `${value.toFixed(2)}ms`;
 const formatPercent = (value) => `${(value * 100).toFixed(2)}%`;
 
 const buildDurationDelta = (baselineDuration, candidateDuration) => {
-  const delta = candidateDuration - baselineDuration;
+  const delta = roundNumber(candidateDuration - baselineDuration);
   if (baselineDuration === 0) {
     return {
-      baseline: baselineDuration,
-      candidate: candidateDuration,
+      baseline: roundNumber(baselineDuration),
+      candidate: roundNumber(candidateDuration),
       delta,
       relative: null,
     };
   }
   return {
-    baseline: baselineDuration,
-    candidate: candidateDuration,
+    baseline: roundNumber(baselineDuration),
+    candidate: roundNumber(candidateDuration),
     delta,
-    relative: delta / baselineDuration,
+    relative: roundNumber(delta / baselineDuration, 4),
   };
 };
 
@@ -111,6 +126,21 @@ const summarizeDeltas = (deltas, limit = 5) => {
     .sort((left, right) => left.delta - right.delta)
     .slice(0, limit);
   return { regressions, improvements };
+};
+
+const buildDefaultOutputPath = ({ baselineArg, candidateArg }) => {
+  const baselinePart = sanitizeForFileName(baselineArg);
+  const candidatePart = sanitizeForFileName(candidateArg);
+  return path.join(
+    DEFAULT_DIFF_OUTPUT_DIR,
+    `smoke-diff-${baselinePart}-vs-${candidatePart}.json`,
+  );
+};
+
+const writeDiffOutput = async ({ outputPath, payload }) => {
+  const directory = path.dirname(outputPath);
+  await mkdir(directory, { recursive: true });
+  await writeFile(outputPath, JSON.stringify(payload, null, 2));
 };
 
 const printStepList = (label, list) => {
@@ -155,6 +185,10 @@ const main = async () => {
     process.env.RELEASE_SMOKE_DIFF_FAIL_ON_REGRESSION,
     false,
   );
+  const writeOutput = parseBoolean(process.env.RELEASE_SMOKE_DIFF_WRITE_OUTPUT, true);
+  const outputPathFromEnv = process.env.RELEASE_SMOKE_DIFF_OUTPUT_PATH?.trim() ?? '';
+  const outputPath =
+    outputPathFromEnv || buildDefaultOutputPath({ baselineArg, candidateArg });
 
   if (!baselineArg || !candidateArg) {
     throw new Error(
@@ -256,6 +290,49 @@ const main = async () => {
     passRegressions.length > 0 ||
     (baselinePass && !candidatePass) ||
     candidateFailed > baselineFailed;
+
+  const payload = {
+    generatedAtUtc: new Date().toISOString(),
+    inputs: {
+      baselineArg,
+      candidateArg,
+      baselinePath,
+      candidatePath,
+      baselineIsRunId: isRunId(baselineArg),
+      candidateIsRunId: isRunId(candidateArg),
+    },
+    summary: {
+      baselinePass,
+      candidatePass,
+      baselineStepCount: baselineSteps.length,
+      candidateStepCount: candidateSteps.length,
+      baselineFailedSteps: baselineFailed,
+      candidateFailedSteps: candidateFailed,
+      hasRegression,
+      totalDuration: {
+        baselineMs: totalDurationDelta.baseline,
+        candidateMs: totalDurationDelta.candidate,
+        deltaMs: totalDurationDelta.delta,
+      },
+    },
+    changes: {
+      passRegressions,
+      passImprovements,
+      addedSteps,
+      removedSteps,
+      statusChanges,
+      topDurationRegressions: regressions,
+      topDurationImprovements: improvements,
+    },
+  };
+
+  if (writeOutput) {
+    await writeDiffOutput({
+      outputPath,
+      payload,
+    });
+    process.stdout.write(`Diff report: ${outputPath}\n`);
+  }
 
   if (failOnRegression && hasRegression) {
     process.stderr.write(

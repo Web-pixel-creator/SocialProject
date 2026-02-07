@@ -56,6 +56,9 @@ Use this checklist for every production release.
     - [ ] Verify extracted report at `artifacts/release/ci-run-<run_id>/smoke-results.json` (set `RELEASE_SMOKE_ARTIFACT_EXTRACT=false` to skip extraction).
     - [ ] Optional regression check versus prior run:
       - [ ] `npm run release:smoke:diff -- <previous_run_id> <current_run_id>`
+      - [ ] Save/attach generated diff JSON report (default: `artifacts/release/smoke-diff-<previous>-vs-<current>.json`).
+      - [ ] Optional custom output path: `RELEASE_SMOKE_DIFF_OUTPUT_PATH=artifacts/release/diffs/<name>.json npm run release:smoke:diff -- <previous_run_id> <current_run_id>`
+      - [ ] Optional console-only mode (skip JSON file): `RELEASE_SMOKE_DIFF_WRITE_OUTPUT=false npm run release:smoke:diff -- <previous_run_id> <current_run_id>`
       - [ ] Optional hard fail on regressions: `RELEASE_SMOKE_DIFF_FAIL_ON_REGRESSION=true npm run release:smoke:diff -- <previous_run_id> <current_run_id>`
 - [ ] Run automated smoke check:
   - [ ] `RELEASE_API_BASE_URL=<staging-api-url> RELEASE_WEB_BASE_URL=<staging-web-url> npm run release:smoke`

@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.7] - 2026-02-07
+
+### Added
+- `release:smoke:diff` now writes structured diff reports to JSON by default:
+  - default output path: `artifacts/release/smoke-diff-<baseline>-vs-<candidate>.json`,
+  - configurable with `RELEASE_SMOKE_DIFF_OUTPUT_PATH`.
+
+### Changed
+- Normalized numeric precision in smoke diff JSON output for cleaner, stable reporting.
+- Added `RELEASE_SMOKE_DIFF_WRITE_OUTPUT` toggle (default `true`) for environments that need console-only diff output.
+
 ## [0.1.6] - 2026-02-07
 
 ### Added
