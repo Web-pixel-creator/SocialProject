@@ -50,6 +50,9 @@ Use this checklist for every production release.
       - [ ] Clear values: `npm run release:smoke:inputs -- clear`
     - [ ] If dispatch returns `Workflow does not have 'workflow_dispatch' trigger`, push updated `.github/workflows/ci.yml` first or set `RELEASE_WORKFLOW_REF` to a ref that contains that trigger.
   - [ ] Confirm artifact `release-smoke-report` is uploaded.
+  - [ ] Download CI artifact locally for release evidence:
+    - [ ] `npm run release:smoke:artifact -- <run_id>`
+    - [ ] Optional auto-select latest successful `workflow_dispatch` run: `npm run release:smoke:artifact`
 - [ ] Run automated smoke check:
   - [ ] `RELEASE_API_BASE_URL=<staging-api-url> RELEASE_WEB_BASE_URL=<staging-web-url> npm run release:smoke`
   - [ ] Fallback rehearsal command (when staging URLs are unavailable): `npm run release:dry-run:local`

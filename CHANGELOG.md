@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.4] - 2026-02-07
+
+### Added
+- Release artifact downloader command `npm run release:smoke:artifact`:
+  - accepts optional `run_id` argument,
+  - auto-discovers the latest successful `workflow_dispatch` CI run when `run_id` is omitted,
+  - downloads `release-smoke-report` to `artifacts/release/ci-release-smoke-report-run-<run_id>.zip`.
+
+### Changed
+- Updated release checklist with the artifact download step to standardize local evidence collection.
+
 ## [0.1.3] - 2026-02-07
 
 ### Added
