@@ -38,6 +38,8 @@ Copy this block for each release:
 - Scope: Initial release cut with validated local rehearsal gates and artifacts.
 - Release commander: Codex automation.
 - Window (UTC): 2026-02-07 14:57 -> 2026-02-07 15:14.
+- Release artifact:
+  - GitHub Release: `https://github.com/Web-pixel-creator/SocialProject/releases/tag/v0.1.0`
 - Dry-run:
   - Local rehearsal: pass.
   - Staging smoke: pass (`release_smoke_staging`, workflow run `#87`, local-stack fallback mode).
@@ -52,6 +54,7 @@ Copy this block for each release:
   - tests: pass (`npm run test -- --runInBand`, 74 suites / 404 tests).
   - perf gate: pass (`npm run perf:pre-release`, report: `artifacts/perf/pre-release-results.json`).
   - security gate: pass (`npm run security:check`).
+  - CI workflow_dispatch corroboration (run `#87`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
 - Rollout result: release prepared and tagged; no production rollout executed in this window.
 - Incidents:
   - none.
