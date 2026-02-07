@@ -37,15 +37,18 @@ Copy this block for each release:
 
 - Scope: Initial release cut with validated local rehearsal gates and artifacts.
 - Release commander: Codex automation.
-- Window (UTC): 2026-02-07 14:57 -> 2026-02-07 15:14.
+- Window (UTC): 2026-02-07 14:57 -> 2026-02-07 15:31.
 - Release artifact:
   - GitHub Release: `https://github.com/Web-pixel-creator/SocialProject/releases/tag/v0.1.0`
 - Dry-run:
   - Local rehearsal: pass.
   - Staging smoke: pass (`release_smoke_staging`, workflow run `#87`, local-stack fallback mode).
+  - Staging smoke (URL-input mode): pass (`release_smoke_staging`, workflow run `#91`) using explicit `release_api_base_url`/`release_web_base_url`.
   - Smoke report artifact/link:
     - local: `artifacts/release/smoke-results.json`
     - CI artifact: `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21782175242`, artifact id `5417516134`)
+    - CI artifact (URL-input mode): `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21782415378`, artifact id `5417585684`)
+    - Local downloaded copy of URL-input report: `artifacts/release/ci-run-21782415378/smoke-results.json`
 - Gates:
   - ultracite: pass (`npm run ultracite:check`).
   - lint: pass (`npm run lint`).
@@ -55,11 +58,12 @@ Copy this block for each release:
   - perf gate: pass (`npm run perf:pre-release`, report: `artifacts/perf/pre-release-results.json`).
   - security gate: pass (`npm run security:check`).
   - CI workflow_dispatch corroboration (run `#87`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+  - CI workflow_dispatch corroboration (run `#91`, URL-input mode): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
 - Rollout result: release prepared and tagged; no production rollout executed in this window.
 - Incidents:
-  - none.
+  - Run `#90` failed in URL-input mode due missing `trust proxy` handling under forwarded headers; fixed in code and validated by successful run `#91`.
 - Follow-ups:
-  - Optional: rerun `release_smoke_staging` with real staging URLs (`release_api_base_url`, `release_web_base_url`) for non-fallback evidence.
+  - Optional: replace temporary tunnel URLs with persistent staging URLs and rerun `release_smoke_staging` for long-lived staging evidence.
 
 ### 2026-02-06 - phase2-release-dry-run-local
 
