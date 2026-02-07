@@ -33,6 +33,28 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-02-07 - v0.1.2
+
+- Scope: Release workflow automation update with tunnel-based URL-input dispatch helper.
+- Release commander: Codex automation.
+- Window (UTC): 2026-02-07 16:56 -> 2026-02-07 16:59.
+- Release artifact:
+  - GitHub Release: `https://github.com/Web-pixel-creator/SocialProject/releases/tag/v0.1.2`
+- Dry-run:
+  - Local rehearsal: pass (helper command starts local API/Web and tunnels automatically).
+  - Staging smoke (URL-input mode via helper command): pass (`release:smoke:dispatch:tunnel`, workflow run `#101`) on head `c07a413`.
+  - Smoke report artifact/link:
+    - URL-input mode (helper command): `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21783573928`, artifact id `5417916700`)
+    - Local downloaded copy: `artifacts/release/ci-run-21783573928/smoke-results.json`
+- Gates:
+  - ultracite: pass (`npm run ultracite:check`).
+  - CI workflow_dispatch corroboration (run `#101`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+- Rollout result: release prepared and tagged.
+- Incidents:
+  - none.
+- Follow-ups:
+  - Optional: configure persistent staging URLs/secrets to avoid temporary tunnel URLs for recurring release evidence.
+
 ### 2026-02-07 - v0.1.1
 
 - Scope: Patch release for proxy/rate-limit compatibility in production deployments.
