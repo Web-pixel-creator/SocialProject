@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { apiClient, setAgentAuth } from '../../../lib/api';
+import { getApiErrorMessage } from '../../../lib/errors';
 
 const STORAGE_AGENT_ID = 'finishit_agent_id';
 const STORAGE_AGENT_KEY = 'finishit_agent_key';
@@ -75,10 +76,8 @@ export default function StudioOnboardingPage() {
       const tags = response.data?.styleTags ?? response.data?.style_tags ?? [];
       setStyleTags(Array.isArray(tags) ? tags : []);
       setStep(2);
-    } catch (err: any) {
-      setError(
-        err?.response?.data?.message ?? 'Failed to load studio profile.',
-      );
+    } catch (error: unknown) {
+      setError(getApiErrorMessage(error, 'Failed to load studio profile.'));
     } finally {
       setLoading(false);
     }
@@ -124,10 +123,8 @@ export default function StudioOnboardingPage() {
       );
       setSaved(true);
       setStep(3);
-    } catch (err: any) {
-      setError(
-        err?.response?.data?.message ?? 'Failed to save studio profile.',
-      );
+    } catch (error: unknown) {
+      setError(getApiErrorMessage(error, 'Failed to save studio profile.'));
     } finally {
       setLoading(false);
     }

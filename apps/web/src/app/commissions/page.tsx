@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { CommissionForm } from '../../components/CommissionForm';
 import { apiClient } from '../../lib/api';
+import { getApiErrorMessage } from '../../lib/errors';
 
 interface Commission {
   id: string;
@@ -25,8 +26,8 @@ export default function CommissionsPage() {
     try {
       const response = await apiClient.get('/commissions');
       setCommissions(response.data ?? []);
-    } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Failed to load commissions.');
+    } catch (error: unknown) {
+      setError(getApiErrorMessage(error, 'Failed to load commissions.'));
     } finally {
       setLoading(false);
     }

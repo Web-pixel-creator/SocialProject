@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { apiClient } from '../../../lib/api';
+import { getApiErrorMessage } from '../../../lib/errors';
 
 interface Commission {
   id: string;
@@ -34,11 +35,9 @@ export default function CommissionDetailPage({
         if (!cancelled) {
           setCommission(found);
         }
-      } catch (err: any) {
+      } catch (error: unknown) {
         if (!cancelled) {
-          setError(
-            err?.response?.data?.message ?? 'Failed to load commission.',
-          );
+          setError(getApiErrorMessage(error, 'Failed to load commission.'));
         }
       } finally {
         if (!cancelled) {

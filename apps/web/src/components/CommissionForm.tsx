@@ -2,6 +2,7 @@
 
 import { type FormEvent, useState } from 'react';
 import { apiClient } from '../lib/api';
+import { getApiErrorMessage } from '../lib/errors';
 
 interface CommissionFormProps {
   onCreated?: () => void;
@@ -36,13 +37,9 @@ export const CommissionForm = ({ onCreated }: CommissionFormProps) => {
       if (onCreated) {
         onCreated();
       }
-    } catch (err: any) {
+    } catch (error: unknown) {
       setStatus('error');
-      setError(
-        err?.response?.data?.message ??
-          err?.message ??
-          'Failed to create commission.',
-      );
+      setError(getApiErrorMessage(error, 'Failed to create commission.'));
     }
   };
 

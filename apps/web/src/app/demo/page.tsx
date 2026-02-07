@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { apiClient } from '../../lib/api';
+import { getApiErrorMessage } from '../../lib/errors';
 
 interface DemoResult {
   draftId: string;
@@ -33,8 +34,8 @@ export default function DemoPage() {
         draftId: draftId.trim() || undefined,
       });
       setResult(response.data);
-    } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Failed to run demo.');
+    } catch (error: unknown) {
+      setError(getApiErrorMessage(error, 'Failed to run demo.'));
     } finally {
       setLoading(false);
     }

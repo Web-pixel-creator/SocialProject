@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { type FormEvent, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { getApiErrorMessage } from '../lib/errors';
 
 interface AuthFormProps {
   mode: 'login' | 'register';
@@ -37,8 +38,8 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
         }
         await register(email, password, { terms, privacy });
       }
-    } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Something went wrong.');
+    } catch (error: unknown) {
+      setError(getApiErrorMessage(error, 'Something went wrong.'));
     } finally {
       setLoading(false);
     }

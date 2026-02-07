@@ -62,7 +62,7 @@ const INTENT_OPTIONS: Array<{ value: FeedIntent; label: string }> = [
   { value: 'ready_for_review', label: 'Ready for review' },
 ];
 
-const sendTelemetry = async (payload: Record<string, any>) => {
+const sendTelemetry = async (payload: Record<string, unknown>) => {
   try {
     await apiClient.post('/telemetry/ux', payload);
   } catch (_error) {
@@ -269,6 +269,8 @@ type FeedItem =
   | ChangeFeedItem
   | AutopsyFeedItem;
 
+type FeedApiRow = Record<string, unknown>;
+
 export const endpointForTab = (tab: string) => {
   switch (tab) {
     case 'All':
@@ -298,120 +300,161 @@ export const endpointForTab = (tab: string) => {
   }
 };
 
-const mapDraftItems = (data: any[], live: boolean): DraftFeedItem[] =>
+const asFeedRows = (data: unknown): FeedApiRow[] =>
+  Array.isArray(data)
+    ? data.filter(
+        (item): item is FeedApiRow => typeof item === 'object' && item !== null,
+      )
+    : [];
+
+const asString = (value: unknown): string | undefined =>
+  typeof value === 'string' ? value : undefined;
+
+const asNumber = (value: unknown): number => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const asChangeType = (value: unknown): 'pr_merged' | 'fix_request' =>
+  value === 'fix_request' ? 'fix_request' : 'pr_merged';
+
+const asSeverity = (value: unknown): 'major' | 'minor' | null => {
+  if (value === 'major' || value === 'minor') {
+    return value;
+  }
+  return null;
+};
+
+const mapDraftItems = (data: FeedApiRow[], live: boolean): DraftFeedItem[] =>
   data
-    .filter((item) => item.type !== 'autopsy')
+    .filter((item) => asString(item.type) !== 'autopsy')
     .map((item) => ({
       kind: 'draft',
-      id: item.id,
-      title: `${item.type === 'release' ? 'Release' : 'Draft'} ${String(item.id).slice(0, 8)}`,
-      glowUpScore: Number(item.glowUpScore ?? item.glow_up_score ?? 0),
+      id: asString(item.id) ?? '',
+      title: `${asString(item.type) === 'release' ? 'Release' : 'Draft'} ${String(item.id ?? '').slice(0, 8)}`,
+      glowUpScore: asNumber(item.glowUpScore ?? item.glow_up_score),
       live,
-      updatedAt: item.updatedAt ?? item.updated_at,
-      beforeImageUrl: item.beforeImageUrl ?? item.before_image_url,
-      afterImageUrl: item.afterImageUrl ?? item.after_image_url,
+      updatedAt: asString(item.updatedAt) ?? asString(item.updated_at),
+      beforeImageUrl:
+        asString(item.beforeImageUrl) ?? asString(item.before_image_url),
+      afterImageUrl:
+        asString(item.afterImageUrl) ?? asString(item.after_image_url),
     }));
 
-const mapArchiveItems = (data: any[]): FeedItem[] =>
+const mapArchiveItems = (data: FeedApiRow[]): FeedItem[] =>
   data.map((item) => {
-    if (item.type === 'autopsy' || item.summary) {
+    if (asString(item.type) === 'autopsy' || asString(item.summary)) {
       return {
         kind: 'autopsy',
-        id: item.id,
-        summary: item.summary ?? 'Autopsy report',
+        id: asString(item.id) ?? '',
+        summary: asString(item.summary) ?? 'Autopsy report',
         publishedAt:
-          item.publishedAt ??
-          item.published_at ??
-          item.updatedAt ??
-          item.updated_at,
+          asString(item.publishedAt) ??
+          asString(item.published_at) ??
+          asString(item.updatedAt) ??
+          asString(item.updated_at),
       };
     }
     return {
       kind: 'draft',
-      id: item.id,
-      title: `${item.type === 'release' ? 'Release' : 'Draft'} ${String(item.id).slice(0, 8)}`,
-      glowUpScore: Number(item.glowUpScore ?? item.glow_up_score ?? 0),
-      updatedAt: item.updatedAt ?? item.updated_at,
+      id: asString(item.id) ?? '',
+      title: `${asString(item.type) === 'release' ? 'Release' : 'Draft'} ${String(item.id ?? '').slice(0, 8)}`,
+      glowUpScore: asNumber(item.glowUpScore ?? item.glow_up_score),
+      updatedAt: asString(item.updatedAt) ?? asString(item.updated_at),
     };
   });
 
-const mapStudios = (data: any[]): StudioFeedItem[] =>
+const mapStudios = (data: FeedApiRow[]): StudioFeedItem[] =>
   data.map((item) => ({
     kind: 'studio',
-    id: item.id,
-    studioName: item.studioName ?? item.studio_name ?? 'Studio',
-    impact: Number(item.impact ?? 0),
-    signal: Number(item.signal ?? 0),
+    id: asString(item.id) ?? '',
+    studioName:
+      asString(item.studioName) ?? asString(item.studio_name) ?? 'Studio',
+    impact: asNumber(item.impact),
+    signal: asNumber(item.signal),
   }));
 
-const mapChanges = (data: any[]): ChangeFeedItem[] =>
+const mapChanges = (data: FeedApiRow[]): ChangeFeedItem[] =>
   data.map((item) => ({
     kind: 'change',
-    id: item.id,
-    changeType: item.kind ?? item.changeType ?? 'pr_merged',
-    draftId: item.draftId ?? item.draft_id,
-    draftTitle: item.draftTitle ?? item.draft_title ?? 'Untitled',
-    description: item.description ?? '',
-    severity: item.severity ?? null,
-    occurredAt: item.occurredAt ?? item.occurred_at,
-    glowUpScore: Number(item.glowUpScore ?? item.glow_up_score ?? 0),
-    impactDelta: Number(item.impactDelta ?? item.impact_delta ?? 0),
+    id: asString(item.id) ?? '',
+    changeType: asChangeType(item.kind ?? item.changeType),
+    draftId: asString(item.draftId) ?? asString(item.draft_id) ?? '',
+    draftTitle:
+      asString(item.draftTitle) ?? asString(item.draft_title) ?? 'Untitled',
+    description: asString(item.description) ?? '',
+    severity: asSeverity(item.severity),
+    occurredAt: asString(item.occurredAt) ?? asString(item.occurred_at),
+    glowUpScore: asNumber(item.glowUpScore ?? item.glow_up_score),
+    impactDelta: asNumber(item.impactDelta ?? item.impact_delta),
   }));
 
-const mapProgress = (data: any[]): ProgressFeedItem[] =>
+const mapProgress = (data: FeedApiRow[]): ProgressFeedItem[] =>
   data.map((item) => ({
     kind: 'progress',
-    draftId: item.draftId ?? item.draft_id,
-    beforeImageUrl: item.beforeImageUrl ?? item.before_image_url,
-    afterImageUrl: item.afterImageUrl ?? item.after_image_url,
-    glowUpScore: Number(item.glowUpScore ?? item.glow_up_score ?? 0),
-    prCount: Number(item.prCount ?? item.pr_count ?? 0),
-    lastActivity: item.lastActivity ?? item.last_activity,
-    authorStudio: item.authorStudio ?? item.studio_name ?? 'Studio',
+    draftId: asString(item.draftId) ?? asString(item.draft_id) ?? '',
+    beforeImageUrl:
+      asString(item.beforeImageUrl) ?? asString(item.before_image_url) ?? '',
+    afterImageUrl:
+      asString(item.afterImageUrl) ?? asString(item.after_image_url) ?? '',
+    glowUpScore: asNumber(item.glowUpScore ?? item.glow_up_score),
+    prCount: asNumber(item.prCount ?? item.pr_count),
+    lastActivity: asString(item.lastActivity) ?? asString(item.last_activity),
+    authorStudio:
+      asString(item.authorStudio) ?? asString(item.studio_name) ?? 'Studio',
   }));
 
-const mapHotNow = (data: any[]): HotNowFeedItem[] =>
+const mapHotNow = (data: FeedApiRow[]): HotNowFeedItem[] =>
   data.map((item) => ({
     kind: 'hot',
-    id: item.draftId ?? item.draft_id,
-    title: item.title ?? item.draft_title ?? 'Untitled',
-    glowUpScore: Number(item.glowUpScore ?? item.glow_up_score ?? 0),
-    hotScore: Number(item.hotScore ?? item.hot_score ?? 0),
-    reasonLabel: item.reasonLabel ?? item.reason_label ?? 'Low activity',
+    id: asString(item.draftId) ?? asString(item.draft_id) ?? '',
+    title: asString(item.title) ?? asString(item.draft_title) ?? 'Untitled',
+    glowUpScore: asNumber(item.glowUpScore ?? item.glow_up_score),
+    hotScore: asNumber(item.hotScore ?? item.hot_score),
+    reasonLabel:
+      asString(item.reasonLabel) ??
+      asString(item.reason_label) ??
+      'Low activity',
     updatedAt:
-      item.lastActivity ??
-      item.last_activity ??
-      item.updatedAt ??
-      item.updated_at,
-    beforeImageUrl: item.beforeImageUrl ?? item.before_image_url,
-    afterImageUrl: item.afterImageUrl ?? item.after_image_url,
+      asString(item.lastActivity) ??
+      asString(item.last_activity) ??
+      asString(item.updatedAt) ??
+      asString(item.updated_at),
+    beforeImageUrl:
+      asString(item.beforeImageUrl) ?? asString(item.before_image_url),
+    afterImageUrl:
+      asString(item.afterImageUrl) ?? asString(item.after_image_url),
   }));
 
-const mapGuilds = (data: any[]): GuildFeedItem[] =>
+const mapGuilds = (data: FeedApiRow[]): GuildFeedItem[] =>
   data.map((item) => ({
     kind: 'guild',
-    id: item.id,
-    name: item.name ?? 'Guild',
-    themeOfWeek: item.themeOfWeek ?? item.theme_of_week ?? 'Theme of the week',
-    agentCount: Number(item.agentCount ?? item.agent_count ?? 0),
+    id: asString(item.id) ?? '',
+    name: asString(item.name) ?? 'Guild',
+    themeOfWeek:
+      asString(item.themeOfWeek) ??
+      asString(item.theme_of_week) ??
+      'Theme of the week',
+    agentCount: asNumber(item.agentCount ?? item.agent_count),
   }));
 
-const mapItemsForTab = (tab: string, data: any): FeedItem[] => {
+const mapItemsForTab = (tab: string, data: unknown): FeedItem[] => {
+  const rows = asFeedRows(data);
   switch (tab) {
     case 'Progress':
-      return mapProgress(data);
+      return mapProgress(rows);
     case 'Changes':
-      return mapChanges(data);
+      return mapChanges(rows);
     case 'Hot Now':
-      return mapHotNow(data);
+      return mapHotNow(rows);
     case 'Guilds':
-      return mapGuilds(data);
+      return mapGuilds(rows);
     case 'Studios':
-      return mapStudios(data);
+      return mapStudios(rows);
     case 'Archive':
-      return mapArchiveItems(data);
+      return mapArchiveItems(rows);
     default:
-      return mapDraftItems(data, tab === 'Live Drafts');
+      return mapDraftItems(rows, tab === 'Live Drafts');
   }
 };
 
@@ -590,7 +633,7 @@ export const FeedTabs = () => {
       setLoading(true);
       const startedAt = performance.now();
       const endpoint = endpointForTab(active);
-      const params: Record<string, any> = { limit: PAGE_SIZE, offset };
+      const params: Record<string, unknown> = { limit: PAGE_SIZE, offset };
       if (active === 'All') {
         params.sort = sort;
         if (status !== 'all') {

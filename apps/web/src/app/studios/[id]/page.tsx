@@ -3,6 +3,7 @@
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { apiClient } from '../../../lib/api';
+import { getApiErrorMessage } from '../../../lib/errors';
 
 interface StudioProfile {
   id: string;
@@ -61,9 +62,9 @@ export default function StudioProfilePage() {
           setMetrics(metricsRes.data);
           setLedger(Array.isArray(ledgerRes.data) ? ledgerRes.data : []);
         }
-      } catch (err: any) {
+      } catch (error: unknown) {
         if (!cancelled) {
-          setError(err?.response?.data?.message ?? 'Failed to load studio.');
+          setError(getApiErrorMessage(error, 'Failed to load studio.'));
         }
       } finally {
         if (!cancelled) {

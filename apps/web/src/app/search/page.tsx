@@ -10,6 +10,7 @@ import {
   SEARCH_AB_WEIGHTS,
   SEARCH_DEFAULT_PROFILE,
 } from '../../lib/config';
+import { getApiErrorCode, getApiErrorMessage } from '../../lib/errors';
 import {
   assignAbProfile,
   parseSearchProfile,
@@ -54,7 +55,7 @@ const resolveVisitorId = () => {
   return created;
 };
 
-const sendTelemetry = async (payload: Record<string, any>) => {
+const sendTelemetry = async (payload: Record<string, unknown>) => {
   try {
     await apiClient.post('/telemetry/ux', payload);
   } catch (_error) {
@@ -291,9 +292,9 @@ function SearchPageContent() {
             },
           });
         }
-      } catch (err: any) {
+      } catch (error: unknown) {
         if (!cancelled) {
-          setError(err?.response?.data?.message ?? 'Search failed.');
+          setError(getApiErrorMessage(error, 'Search failed.'));
         }
       } finally {
         if (!cancelled) {
@@ -363,13 +364,13 @@ function SearchPageContent() {
       });
       setResults(response.data ?? []);
       setVisualHasSearched(true);
-    } catch (err: any) {
-      const code = err?.response?.data?.error;
+    } catch (error: unknown) {
+      const code = getApiErrorCode(error);
       if (code === 'EMBEDDING_NOT_FOUND') {
         setResults([]);
         setVisualNotice('Similar works available after analysis.');
       } else {
-        setError(err?.response?.data?.message ?? 'Visual search failed.');
+        setError(getApiErrorMessage(error, 'Visual search failed.'));
       }
     } finally {
       setLoading(false);

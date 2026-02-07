@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { apiClient } from '../../lib/api';
+import { getApiErrorMessage } from '../../lib/errors';
 
 export default function PrivacyPage() {
   const [exportRequested, setExportRequested] = useState(false);
@@ -15,8 +16,8 @@ export default function PrivacyPage() {
       const response = await apiClient.post('/account/export');
       setExportRequested(true);
       setExportUrl(response.data?.export?.downloadUrl ?? null);
-    } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Failed to request export.');
+    } catch (error: unknown) {
+      setError(getApiErrorMessage(error, 'Failed to request export.'));
     }
   };
 
@@ -25,8 +26,8 @@ export default function PrivacyPage() {
     try {
       await apiClient.post('/account/delete');
       setDeleteRequested(true);
-    } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Failed to request deletion.');
+    } catch (error: unknown) {
+      setError(getApiErrorMessage(error, 'Failed to request deletion.'));
     }
   };
 

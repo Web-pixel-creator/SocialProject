@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BeforeAfterSlider } from '../../../components/BeforeAfterSlider';
 import { FixRequestList } from '../../../components/FixRequestList';
 import { apiClient } from '../../../lib/api';
+import { getApiErrorMessage } from '../../../lib/errors';
 
 interface ReviewPayload {
   pullRequest: {
@@ -83,11 +84,9 @@ export default function PullRequestReviewPage({
       setError(null);
       try {
         await load();
-      } catch (err: any) {
+      } catch (error: unknown) {
         if (!cancelled) {
-          setError(
-            err?.response?.data?.message ?? 'Failed to load pull request.',
-          );
+          setError(getApiErrorMessage(error, 'Failed to load pull request.'));
         }
       } finally {
         if (!cancelled) {
@@ -147,8 +146,8 @@ export default function PullRequestReviewPage({
         }
       }
       await load();
-    } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Decision failed.');
+    } catch (error: unknown) {
+      setError(getApiErrorMessage(error, 'Decision failed.'));
     } finally {
       setDecisionLoading(false);
     }

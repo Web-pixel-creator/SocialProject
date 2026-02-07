@@ -27,6 +27,11 @@ import { VersionTimeline } from '../../../components/VersionTimeline';
 import { useRealtimeRoom } from '../../../hooks/useRealtimeRoom';
 import { apiClient } from '../../../lib/api';
 import { SEARCH_DEFAULT_PROFILE } from '../../../lib/config';
+import {
+  getApiErrorCode,
+  getApiErrorMessage,
+  getApiErrorStatus,
+} from '../../../lib/errors';
 
 const HeatMapOverlay = dynamic(
   () =>
@@ -92,7 +97,7 @@ interface SimilarDraft {
   type: 'draft' | 'release';
 }
 
-const sendTelemetry = async (payload: Record<string, any>) => {
+const sendTelemetry = async (payload: Record<string, unknown>) => {
   try {
     await apiClient.post('/telemetry/ux', payload);
   } catch (_error) {
@@ -100,9 +105,17 @@ const sendTelemetry = async (payload: Record<string, any>) => {
   }
 };
 
-const isAuthRequiredError = (error: any) => {
-  const status = error?.response?.status;
+const isAuthRequiredError = (error: unknown) => {
+  const status = getApiErrorStatus(error);
   return status === 401 || status === 403;
+};
+
+const isWatchlistEntryForDraft = (item: unknown, draftId: string): boolean => {
+  if (typeof item !== 'object' || item === null) {
+    return false;
+  }
+  const entry = item as { draftId?: unknown; draft_id?: unknown };
+  return entry.draftId === draftId || entry.draft_id === draftId;
 };
 
 export default function DraftDetailPage() {
@@ -192,9 +205,9 @@ export default function DraftDetailPage() {
       } else {
         setArcView(null);
       }
-    } catch (err: any) {
+    } catch (error: unknown) {
       setArcView(null);
-      setArcError(err?.response?.data?.message ?? 'Failed to load arc.');
+      setArcError(getApiErrorMessage(error, 'Failed to load arc.'));
     } finally {
       setArcLoading(false);
     }
@@ -209,13 +222,10 @@ export default function DraftDetailPage() {
       const list = Array.isArray(response.data) ? response.data : [];
       setObserverAuthRequired(false);
       setIsFollowed(
-        list.some(
-          (item: any) =>
-            item?.draftId === draftId || item?.draft_id === draftId,
-        ),
+        list.some((item) => isWatchlistEntryForDraft(item, draftId)),
       );
-    } catch (err: any) {
-      if (isAuthRequiredError(err)) {
+    } catch (error: unknown) {
+      if (isAuthRequiredError(error)) {
         setObserverAuthRequired(true);
         setIsFollowed(false);
         return;
@@ -233,14 +243,12 @@ export default function DraftDetailPage() {
       });
       setObserverAuthRequired(false);
       setDigestEntries(Array.isArray(response.data) ? response.data : []);
-    } catch (err: any) {
-      if (isAuthRequiredError(err)) {
+    } catch (error: unknown) {
+      if (isAuthRequiredError(error)) {
         setObserverAuthRequired(true);
         setDigestEntries([]);
       } else {
-        setDigestError(
-          err?.response?.data?.message ?? 'Failed to load digest.',
-        );
+        setDigestError(getApiErrorMessage(error, 'Failed to load digest.'));
         setDigestEntries([]);
       }
     } finally {
@@ -266,13 +274,13 @@ export default function DraftDetailPage() {
       } else {
         setPredictionSummary(null);
       }
-    } catch (err: any) {
-      if (isAuthRequiredError(err)) {
+    } catch (error: unknown) {
+      if (isAuthRequiredError(error)) {
         setObserverAuthRequired(true);
         setPredictionSummary(null);
       } else {
         setPredictionError(
-          err?.response?.data?.message ?? 'Failed to load prediction summary.',
+          getApiErrorMessage(error, 'Failed to load prediction summary.'),
         );
         setPredictionSummary(null);
       }
@@ -291,8 +299,8 @@ export default function DraftDetailPage() {
       await apiClient.post('/demo/flow', { draftId });
       setDemoStatus('Demo flow complete. New fix request and PR created.');
       await Promise.all([loadDraft(), loadFixRequests(), loadPullRequests()]);
-    } catch (err: any) {
-      setDemoStatus(err?.response?.data?.message ?? 'Failed to run demo flow.');
+    } catch (error: unknown) {
+      setDemoStatus(getApiErrorMessage(error, 'Failed to run demo flow.'));
     } finally {
       setDemoLoading(false);
     }
@@ -343,8 +351,8 @@ export default function DraftDetailPage() {
           metadata: { ...telemetryBase, count: items.length },
         });
       }
-    } catch (err: any) {
-      const code = err?.response?.data?.error;
+    } catch (error: unknown) {
+      const code = getApiErrorCode(error);
       const reason = code ?? 'error';
       if (code === 'EMBEDDING_NOT_FOUND') {
         setSimilarStatus('Similar works available after analysis.');
@@ -352,7 +360,7 @@ export default function DraftDetailPage() {
         setSimilarStatus('Draft not found.');
       } else {
         setSimilarStatus(
-          err?.response?.data?.message ?? 'Failed to load similar drafts.',
+          getApiErrorMessage(error, 'Failed to load similar drafts.'),
         );
       }
       setSimilarDrafts([]);
@@ -381,9 +389,9 @@ export default function DraftDetailPage() {
           loadWatchlist(),
           loadDigest(),
         ]);
-      } catch (err: any) {
+      } catch (error: unknown) {
         if (!cancelled) {
-          setError(err?.response?.data?.message ?? 'Failed to load draft.');
+          setError(getApiErrorMessage(error, 'Failed to load draft.'));
         }
       } finally {
         if (!cancelled) {
@@ -443,8 +451,8 @@ export default function DraftDetailPage() {
       if (nextState) {
         loadDigest();
       }
-    } catch (err: any) {
-      if (isAuthRequiredError(err)) {
+    } catch (error: unknown) {
+      if (isAuthRequiredError(error)) {
         setObserverAuthRequired(true);
       }
     }
@@ -468,12 +476,12 @@ export default function DraftDetailPage() {
         metadata: { outcome },
       });
       await loadPredictionSummary(pendingPull.id);
-    } catch (err: any) {
-      if (isAuthRequiredError(err)) {
+    } catch (error: unknown) {
+      if (isAuthRequiredError(error)) {
         setObserverAuthRequired(true);
       } else {
         setPredictionError(
-          err?.response?.data?.message ?? 'Failed to submit prediction.',
+          getApiErrorMessage(error, 'Failed to submit prediction.'),
         );
       }
     } finally {

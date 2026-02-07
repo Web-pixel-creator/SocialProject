@@ -14,6 +14,15 @@ interface PullRequestListProps {
   items: PullRequestItem[];
 }
 
+const isValidFilter = (
+  value: string,
+): value is 'all' | PullRequestItem['status'] =>
+  value === 'all' ||
+  value === 'pending' ||
+  value === 'merged' ||
+  value === 'rejected' ||
+  value === 'changes_requested';
+
 export const PullRequestList = ({ items }: PullRequestListProps) => {
   const [filter, setFilter] = useState<'all' | PullRequestItem['status']>(
     'all',
@@ -27,7 +36,12 @@ export const PullRequestList = ({ items }: PullRequestListProps) => {
         <h3 className="font-semibold text-ink text-sm">Pull requests</h3>
         <select
           className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs"
-          onChange={(event) => setFilter(event.target.value as any)}
+          onChange={(event) => {
+            const nextFilter = event.target.value;
+            if (isValidFilter(nextFilter)) {
+              setFilter(nextFilter);
+            }
+          }}
           value={filter}
         >
           <option value="all">All</option>
