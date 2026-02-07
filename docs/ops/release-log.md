@@ -37,23 +37,28 @@ Copy this block for each release:
 
 - Scope: Patch release for proxy/rate-limit compatibility in production deployments.
 - Release commander: Codex automation.
-- Window (UTC): 2026-02-07 15:42 -> 2026-02-07 15:46.
+- Window (UTC): 2026-02-07 15:42 -> 2026-02-07 16:26.
 - Release artifact:
   - GitHub Release: `https://github.com/Web-pixel-creator/SocialProject/releases/tag/v0.1.1`
 - Dry-run:
   - Local rehearsal: previously validated in v0.1.0 window.
   - Staging smoke: pass (`release_smoke_staging`, workflow run `#93`, fallback mode on latest head `55bb488`).
-  - Smoke report artifact/link: `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21782564047`, artifact id `5417629936`).
+  - Staging smoke (URL-input mode): pass (`release_smoke_staging`, workflow run `#96`) using explicit `release_api_base_url`/`release_web_base_url`.
+  - Smoke report artifact/link:
+    - fallback mode: `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21782564047`, artifact id `5417629936`)
+    - URL-input mode: `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21783133764`, artifact id `5417788610`)
+    - Local downloaded copy of URL-input report: `artifacts/release/ci-run-21783133764/smoke-results.json`
 - Gates:
   - ultracite: pass (`npm run ultracite:check`).
   - tests (targeted): pass (`npm run test -- --runInBand --testPathPattern=apps/api/src/__tests__/server.unit.spec.ts`).
   - api build: pass (`npm --workspace apps/api run build`).
   - CI workflow_dispatch corroboration (run `#93`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+  - CI workflow_dispatch corroboration (run `#96`, URL-input mode): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
 - Rollout result: release prepared and tagged.
 - Incidents:
   - none.
 - Follow-ups:
-  - Optional: run smoke once more against persistent staging URLs (instead of temporary tunnel URLs) and append artifact links.
+  - Optional: replace temporary tunnel URLs with persistent staging URLs and rerun `release_smoke_staging` for long-lived staging evidence.
 
 ### 2026-02-07 - v0.1.0
 
