@@ -4,6 +4,21 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.3] - 2026-02-07
+
+### Added
+- Release staging input manager command `npm run release:smoke:inputs` with modes:
+  - `show` for current configured release variables,
+  - `set` for upsert of persistent release smoke inputs,
+  - `clear` for cleanup of persisted release variables.
+
+### Changed
+- Release smoke CI flow now resolves CSRF token in this order:
+  - `workflow_dispatch` input `release_csrf_token`,
+  - repository secret `RELEASE_CSRF_TOKEN`,
+  - repository variable `RELEASE_CSRF_TOKEN`.
+- Updated release checklist and release log evidence for post-automation validation runs.
+
 ## [0.1.2] - 2026-02-07
 
 ### Added
