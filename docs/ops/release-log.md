@@ -38,6 +38,8 @@ Copy this block for each release:
 - Scope: Patch release for proxy/rate-limit compatibility in production deployments.
 - Release commander: Codex automation.
 - Window (UTC): 2026-02-07 15:42 -> 2026-02-07 15:46.
+- Release artifact:
+  - GitHub Release: `https://github.com/Web-pixel-creator/SocialProject/releases/tag/v0.1.1`
 - Dry-run:
   - Local rehearsal: previously validated in v0.1.0 window.
   - Staging smoke: pass (`release_smoke_staging`, workflow run `#93`, fallback mode on latest head `55bb488`).
