@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.6] - 2026-02-07
+
+### Added
+- New release smoke comparator command `npm run release:smoke:diff -- <baseline> <candidate>`:
+  - accepts file paths or CI run ids,
+  - compares pass/fail status, step set changes, HTTP status changes, and per-step duration deltas,
+  - supports strict gate mode with `RELEASE_SMOKE_DIFF_FAIL_ON_REGRESSION=true`.
+
+### Changed
+- Extended release checklist with optional smoke regression diff validation between runs.
+
 ## [0.1.5] - 2026-02-07
 
 ### Added

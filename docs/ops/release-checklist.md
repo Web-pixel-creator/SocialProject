@@ -54,6 +54,9 @@ Use this checklist for every production release.
     - [ ] `npm run release:smoke:artifact -- <run_id>`
     - [ ] Optional auto-select latest successful `workflow_dispatch` run: `npm run release:smoke:artifact`
     - [ ] Verify extracted report at `artifacts/release/ci-run-<run_id>/smoke-results.json` (set `RELEASE_SMOKE_ARTIFACT_EXTRACT=false` to skip extraction).
+    - [ ] Optional regression check versus prior run:
+      - [ ] `npm run release:smoke:diff -- <previous_run_id> <current_run_id>`
+      - [ ] Optional hard fail on regressions: `RELEASE_SMOKE_DIFF_FAIL_ON_REGRESSION=true npm run release:smoke:diff -- <previous_run_id> <current_run_id>`
 - [ ] Run automated smoke check:
   - [ ] `RELEASE_API_BASE_URL=<staging-api-url> RELEASE_WEB_BASE_URL=<staging-web-url> npm run release:smoke`
   - [ ] Fallback rehearsal command (when staging URLs are unavailable): `npm run release:dry-run:local`
