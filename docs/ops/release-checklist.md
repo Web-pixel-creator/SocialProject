@@ -43,6 +43,7 @@ Use this checklist for every production release.
   - [ ] Optional terminal dispatch helper (requires `GITHUB_TOKEN` with Actions write):
     - [ ] `RELEASE_API_BASE_URL=<staging-api-url> RELEASE_WEB_BASE_URL=<staging-web-url> npm run release:smoke:dispatch`
     - [ ] Without staging URLs: `npm run release:smoke:dispatch` (runs workflow fallback path).
+    - [ ] Tunnel-based URL-input helper (auto local API/Web + localtunnel + dispatch): `npm run release:smoke:dispatch:tunnel`
     - [ ] If dispatch returns `Workflow does not have 'workflow_dispatch' trigger`, push updated `.github/workflows/ci.yml` first or set `RELEASE_WORKFLOW_REF` to a ref that contains that trigger.
   - [ ] Confirm artifact `release-smoke-report` is uploaded.
 - [ ] Run automated smoke check:
