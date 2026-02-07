@@ -37,11 +37,13 @@ Copy this block for each release:
 
 - Scope: Initial release cut with validated local rehearsal gates and artifacts.
 - Release commander: Codex automation.
-- Window (UTC): 2026-02-07 14:57 -> 2026-02-07 15:03.
+- Window (UTC): 2026-02-07 14:57 -> 2026-02-07 15:14.
 - Dry-run:
   - Local rehearsal: pass.
-  - Staging smoke: pending (local fallback path used).
-  - Smoke report artifact/link: `artifacts/release/smoke-results.json`.
+  - Staging smoke: pass (`release_smoke_staging`, workflow run `#87`, local-stack fallback mode).
+  - Smoke report artifact/link:
+    - local: `artifacts/release/smoke-results.json`
+    - CI artifact: `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21782175242`, artifact id `5417516134`)
 - Gates:
   - ultracite: pass (`npm run ultracite:check`).
   - lint: pass (`npm run lint`).
@@ -54,7 +56,7 @@ Copy this block for each release:
 - Incidents:
   - none.
 - Follow-ups:
-  - Execute `release_smoke_staging` in CI with staging URLs and attach `release-smoke-report`.
+  - Optional: rerun `release_smoke_staging` with real staging URLs (`release_api_base_url`, `release_web_base_url`) for non-fallback evidence.
 
 ### 2026-02-06 - phase2-release-dry-run-local
 
