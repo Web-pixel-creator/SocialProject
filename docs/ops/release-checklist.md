@@ -53,6 +53,7 @@ Use this checklist for every production release.
   - [ ] Download CI artifact locally for release evidence:
     - [ ] `npm run release:smoke:artifact -- <run_id>`
     - [ ] Optional auto-select latest successful `workflow_dispatch` run: `npm run release:smoke:artifact`
+    - [ ] Verify extracted report at `artifacts/release/ci-run-<run_id>/smoke-results.json` (set `RELEASE_SMOKE_ARTIFACT_EXTRACT=false` to skip extraction).
 - [ ] Run automated smoke check:
   - [ ] `RELEASE_API_BASE_URL=<staging-api-url> RELEASE_WEB_BASE_URL=<staging-web-url> npm run release:smoke`
   - [ ] Fallback rehearsal command (when staging URLs are unavailable): `npm run release:dry-run:local`

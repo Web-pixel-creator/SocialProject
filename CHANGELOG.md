@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.5] - 2026-02-07
+
+### Added
+- `release:smoke:artifact` now auto-extracts downloaded ZIP artifacts into `artifacts/release/ci-run-<run_id>` by default.
+
+### Changed
+- Added cross-platform extraction fallback chain for artifact archives (`Expand-Archive` / `tar` / `unzip`).
+- Added optional env switch `RELEASE_SMOKE_ARTIFACT_EXTRACT=false` to keep download-only mode.
+- Updated release checklist with explicit verification path for extracted `smoke-results.json`.
+
 ## [0.1.4] - 2026-02-07
 
 ### Added
