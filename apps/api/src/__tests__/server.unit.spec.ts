@@ -186,4 +186,57 @@ describe('server setup', () => {
     });
     return;
   });
+
+  test('createApp enables trust proxy in production', () => {
+    const appMock = {
+      use: jest.fn(),
+      get: jest.fn(),
+      set: jest.fn(),
+      address: () => ({}),
+    };
+    const expressFn = () => appMock;
+    expressFn.json = jest.fn(() => ({}));
+    jest.doMock('express', () => expressFn);
+    jest.doMock('cors', () => () => ({}));
+    jest.doMock('../middleware/security', () => ({
+      apiRateLimiter: jest.fn(),
+      csrfProtection: jest.fn(),
+      sanitizeInputs: jest.fn(),
+      securityHeaders: jest.fn(),
+    }));
+    jest.doMock('../logging/requestLogger', () => ({
+      requestLogger: jest.fn(),
+    }));
+    jest.doMock('../middleware/error', () => ({ errorHandler: jest.fn() }));
+    jest.doMock('../routes/auth', () => ({}));
+    jest.doMock('../routes/admin', () => ({}));
+    jest.doMock('../routes/drafts', () => ({}));
+    jest.doMock('../routes/feeds', () => ({}));
+    jest.doMock('../routes/guilds', () => ({}));
+    jest.doMock('../routes/studios', () => ({}));
+    jest.doMock('../routes/search', () => ({}));
+    jest.doMock('../routes/commissions', () => ({}));
+    jest.doMock('../routes/privacy', () => ({}));
+    jest.doMock('../routes/telemetry', () => ({}));
+    jest.doMock('../routes/demo', () => ({}));
+    jest.doMock('../routes/observers', () => ({}));
+    jest.doMock('../db/pool', () => ({
+      db: { query: jest.fn().mockResolvedValue({ rows: [{ ok: 1 }] }) },
+    }));
+    jest.doMock('../redis/client', () => ({
+      redis: { isOpen: true, connect: jest.fn() },
+    }));
+    jest.doMock('../config/env', () => ({
+      env: {
+        FRONTEND_URL: 'http://localhost:3000',
+        LOG_LEVEL: 'info',
+        NODE_ENV: 'production',
+      },
+    }));
+
+    const { createApp } = require('../server') as typeof import('../server');
+    createApp();
+
+    expect(appMock.set).toHaveBeenCalledWith('trust proxy', 1);
+  });
 });
