@@ -4,6 +4,15 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.1] - 2026-02-07
+
+### Fixed
+- Enabled `trust proxy` in API production mode to ensure `express-rate-limit` works correctly behind forwarded headers (`X-Forwarded-For`).
+- Added a server unit test to prevent regression in production proxy handling.
+
+### Changed
+- Documented additional release evidence for fallback and URL-input smoke runs in release operations log.
+
 ## [0.1.0] - 2026-02-07
 
 ### Added
@@ -19,4 +28,3 @@ The format is based on Keep a Changelog.
 
 ### Security
 - Added and validated security hygiene gate (`npm run security:check`) with dependency audit and secret scanning.
-

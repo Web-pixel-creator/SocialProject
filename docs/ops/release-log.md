@@ -33,6 +33,26 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-02-07 - v0.1.1
+
+- Scope: Patch release for proxy/rate-limit compatibility in production deployments.
+- Release commander: Codex automation.
+- Window (UTC): 2026-02-07 15:42 -> 2026-02-07 15:46.
+- Dry-run:
+  - Local rehearsal: previously validated in v0.1.0 window.
+  - Staging smoke: pass (`release_smoke_staging`, workflow run `#93`, fallback mode on latest head `55bb488`).
+  - Smoke report artifact/link: `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21782564047`, artifact id `5417629936`).
+- Gates:
+  - ultracite: pass (`npm run ultracite:check`).
+  - tests (targeted): pass (`npm run test -- --runInBand --testPathPattern=apps/api/src/__tests__/server.unit.spec.ts`).
+  - api build: pass (`npm --workspace apps/api run build`).
+  - CI workflow_dispatch corroboration (run `#93`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+- Rollout result: release prepared and tagged.
+- Incidents:
+  - none.
+- Follow-ups:
+  - Optional: run smoke once more against persistent staging URLs (instead of temporary tunnel URLs) and append artifact links.
+
 ### 2026-02-07 - v0.1.0
 
 - Scope: Initial release cut with validated local rehearsal gates and artifacts.
