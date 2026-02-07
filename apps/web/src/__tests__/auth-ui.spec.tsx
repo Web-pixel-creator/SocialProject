@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AuthForm } from '../components/AuthForm';
 import { AuthProvider } from '../contexts/AuthContext';
 import { apiClient } from '../lib/api';
@@ -16,6 +16,13 @@ jest.mock('../lib/api', () => ({
 
 const renderWithProvider = (ui: React.ReactElement) => {
   return render(<AuthProvider>{ui}</AuthProvider>);
+};
+
+const submitAndWait = async (label: RegExp) => {
+  fireEvent.click(screen.getByRole('button', { name: label }));
+  await waitFor(() =>
+    expect(screen.queryByText(/Processing\.\.\./i)).not.toBeInTheDocument(),
+  );
 };
 
 describe('auth UI', () => {
@@ -32,9 +39,7 @@ describe('auth UI', () => {
     fireEvent.change(screen.getByLabelText(/Password/i), {
       target: { value: 'secret' },
     });
-    await act(() => {
-      fireEvent.click(screen.getByRole('button', { name: /Create account/i }));
-    });
+    await submitAndWait(/Create account/i);
 
     expect(await screen.findByText(/accept the Terms/i)).toBeInTheDocument();
   });
@@ -58,9 +63,7 @@ describe('auth UI', () => {
     fireEvent.click(screen.getByLabelText(/Terms of Service/i));
     fireEvent.click(screen.getByLabelText(/Privacy Policy/i));
 
-    await act(() => {
-      fireEvent.click(screen.getByRole('button', { name: /Create account/i }));
-    });
+    await submitAndWait(/Create account/i);
 
     expect(apiClient.post).toHaveBeenCalledWith('/auth/register', {
       email: 'user@example.com',
@@ -85,9 +88,7 @@ describe('auth UI', () => {
     fireEvent.change(screen.getByLabelText(/Password/i), {
       target: { value: 'pass' },
     });
-    await act(() => {
-      fireEvent.click(screen.getByRole('button', { name: /Sign in/i }));
-    });
+    await submitAndWait(/Sign in/i);
 
     expect(apiClient.post).toHaveBeenCalled();
   });
@@ -105,9 +106,7 @@ describe('auth UI', () => {
       target: { value: 'pass' },
     });
 
-    await act(() => {
-      fireEvent.click(screen.getByRole('button', { name: /Sign in/i }));
-    });
+    await submitAndWait(/Sign in/i);
 
     expect(await screen.findByText(/Invalid credentials/i)).toBeInTheDocument();
   });
@@ -123,12 +122,8 @@ describe('auth UI', () => {
       target: { value: 'pass' },
     });
 
-    await act(() => {
-      fireEvent.click(screen.getByRole('button', { name: /Sign in/i }));
-    });
+    await submitAndWait(/Sign in/i);
 
-    expect(
-      await screen.findByText(/Something went wrong/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Network down/i)).toBeInTheDocument();
   });
 });

@@ -3,7 +3,6 @@
  */
 import '@testing-library/jest-dom';
 import {
-  act,
   fireEvent,
   render,
   screen,
@@ -41,9 +40,7 @@ describe('CommissionForm', () => {
       throw new Error('Post button is not inside a form.');
     }
 
-    await act(() => {
-      fireEvent.submit(form);
-    });
+    fireEvent.submit(form);
 
     expect(screen.getByText(/Invalid reward amount/i)).toBeInTheDocument();
   });
@@ -66,9 +63,7 @@ describe('CommissionForm', () => {
       target: { value: 'EUR' },
     });
 
-    await act(() => {
-      fireEvent.click(screen.getByRole('button', { name: /Post/i }));
-    });
+    fireEvent.click(screen.getByRole('button', { name: /Post/i }));
 
     await waitFor(() =>
       expect(screen.getByText(/Commission created/i)).toBeInTheDocument(),
@@ -93,9 +88,7 @@ describe('CommissionForm', () => {
       },
     );
 
-    await act(() => {
-      fireEvent.click(screen.getByRole('button', { name: /Post/i }));
-    });
+    fireEvent.click(screen.getByRole('button', { name: /Post/i }));
 
     expect(await screen.findByText(/Reward exceeds cap/i)).toBeInTheDocument();
   });

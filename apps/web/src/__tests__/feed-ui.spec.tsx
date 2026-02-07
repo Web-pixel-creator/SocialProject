@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
@@ -29,6 +29,38 @@ jest.mock('../lib/api', () => ({
   setAuthToken: jest.fn(),
 }));
 
+const flushAsync = () =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, 0);
+  });
+
+const renderFeedTabs = async () => {
+  await act(async () => {
+    render(<FeedTabs />);
+    await flushAsync();
+  });
+};
+
+const clickAndFlush = async (element: HTMLElement) => {
+  await act(async () => {
+    fireEvent.click(element);
+    await flushAsync();
+  });
+};
+
+const scrollAndFlush = async () => {
+  await act(async () => {
+    fireEvent.scroll(window);
+    await flushAsync();
+  });
+};
+
+const changeAndFlush = async (element: HTMLElement, value: string) => {
+  await act(async () => {
+    fireEvent.change(element, { target: { value } });
+    await flushAsync();
+  });
+};
 describe('feed UI', () => {
   beforeEach(() => {
     (apiClient.get as jest.Mock).mockReset();
@@ -37,6 +69,12 @@ describe('feed UI', () => {
     (apiClient.post as jest.Mock).mockResolvedValue({ data: {} });
     replaceMock.mockReset();
     searchParams = new URLSearchParams('');
+  });
+
+  afterEach(async () => {
+    await act(async () => {
+      await flushAsync();
+    });
   });
 
   test('renders draft card', () => {
@@ -48,14 +86,10 @@ describe('feed UI', () => {
   });
 
   test('switches tabs', async () => {
-    await act(() => {
-      render(<FeedTabs />);
-    });
+    await renderFeedTabs();
     await waitFor(() => expect(apiClient.get).toHaveBeenCalled());
     const tab = screen.getByRole('button', { name: /GlowUps/i });
-    await act(() => {
-      fireEvent.click(tab);
-    });
+    await clickAndFlush(tab);
     expect(tab).toHaveClass('bg-ink');
   });
 
@@ -65,14 +99,10 @@ describe('feed UI', () => {
       .mockRejectedValueOnce(new Error('for-you failed'))
       .mockResolvedValueOnce({ data: [] });
 
-    await act(() => {
-      render(<FeedTabs />);
-    });
+    await renderFeedTabs();
 
     const forYouTab = screen.getByRole('button', { name: /For You/i });
-    await act(() => {
-      fireEvent.click(forYouTab);
-    });
+    await clickAndFlush(forYouTab);
 
     await waitFor(() =>
       expect(screen.getByText(/Fallback data/i)).toBeInTheDocument(),
@@ -92,14 +122,10 @@ describe('feed UI', () => {
         ],
       });
 
-    await act(() => {
-      render(<FeedTabs />);
-    });
+    await renderFeedTabs();
 
     const archiveTab = screen.getByRole('button', { name: /Archive/i });
-    await act(() => {
-      fireEvent.click(archiveTab);
-    });
+    await clickAndFlush(archiveTab);
 
     await waitFor(() =>
       expect(screen.getByText(/Autopsy summary/i)).toBeInTheDocument(),
@@ -115,14 +141,10 @@ describe('feed UI', () => {
         ],
       });
 
-    await act(() => {
-      render(<FeedTabs />);
-    });
+    await renderFeedTabs();
 
     const studiosTab = screen.getByRole('button', { name: /Studios/i });
-    await act(() => {
-      fireEvent.click(studiosTab);
-    });
+    await clickAndFlush(studiosTab);
 
     await waitFor(() =>
       expect(screen.getByText(/Studio Nine/i)).toBeInTheDocument(),
@@ -158,14 +180,10 @@ describe('feed UI', () => {
   test('requests battles feed endpoint', async () => {
     (apiClient.get as jest.Mock).mockResolvedValue({ data: [] });
 
-    await act(() => {
-      render(<FeedTabs />);
-    });
+    await renderFeedTabs();
 
     const battlesTab = screen.getByRole('button', { name: /Battles/i });
-    await act(() => {
-      fireEvent.click(battlesTab);
-    });
+    await clickAndFlush(battlesTab);
 
     await waitFor(() =>
       expect(apiClient.get).toHaveBeenCalledWith(
@@ -191,14 +209,10 @@ describe('feed UI', () => {
       .mockResolvedValueOnce({ data: [] })
       .mockResolvedValueOnce({ data: progressPayload });
 
-    await act(() => {
-      render(<FeedTabs />);
-    });
+    await renderFeedTabs();
 
     const progressTab = screen.getByRole('button', { name: /Progress/i });
-    await act(() => {
-      fireEvent.click(progressTab);
-    });
+    await clickAndFlush(progressTab);
 
     await waitFor(() =>
       expect(screen.getByText(/Before \/ After/i)).toBeInTheDocument(),
@@ -225,14 +239,10 @@ describe('feed UI', () => {
       .mockResolvedValueOnce({ data: [] })
       .mockResolvedValueOnce({ data: payload });
 
-    await act(() => {
-      render(<FeedTabs />);
-    });
+    await renderFeedTabs();
 
     const hotNowTab = screen.getByRole('button', { name: /Hot Now/i });
-    await act(() => {
-      fireEvent.click(hotNowTab);
-    });
+    await clickAndFlush(hotNowTab);
 
     await waitFor(() =>
       expect(screen.getByText(/Hot Draft/i)).toBeInTheDocument(),
@@ -261,14 +271,10 @@ describe('feed UI', () => {
         ],
       });
 
-    await act(() => {
-      render(<FeedTabs />);
-    });
+    await renderFeedTabs();
 
     const guildTab = screen.getByRole('button', { name: /Guilds/i });
-    await act(() => {
-      fireEvent.click(guildTab);
-    });
+    await clickAndFlush(guildTab);
 
     await waitFor(() =>
       expect(screen.getByText(/Guild Arc/i)).toBeInTheDocument(),
@@ -289,14 +295,10 @@ describe('feed UI', () => {
       .mockResolvedValueOnce({ data: [] })
       .mockResolvedValueOnce({ data: archivePayload });
 
-    await act(() => {
-      render(<FeedTabs />);
-    });
+    await renderFeedTabs();
 
     const archiveTab = screen.getByRole('button', { name: /Archive/i });
-    await act(() => {
-      fireEvent.click(archiveTab);
-    });
+    await clickAndFlush(archiveTab);
 
     await waitFor(() =>
       expect(screen.getByText(/Release rel-123/i)).toBeInTheDocument(),
@@ -308,14 +310,10 @@ describe('feed UI', () => {
       .mockResolvedValueOnce({ data: [] })
       .mockRejectedValueOnce(new Error('studios failed'));
 
-    await act(() => {
-      render(<FeedTabs />);
-    });
+    await renderFeedTabs();
 
     const studiosTab = screen.getByRole('button', { name: /Studios/i });
-    await act(() => {
-      fireEvent.click(studiosTab);
-    });
+    await clickAndFlush(studiosTab);
 
     await waitFor(() =>
       expect(screen.getByText(/Studio Nova/i)).toBeInTheDocument(),
@@ -328,14 +326,10 @@ describe('feed UI', () => {
       .mockResolvedValueOnce({ data: [] })
       .mockRejectedValueOnce(new Error('archive failed'));
 
-    await act(() => {
-      render(<FeedTabs />);
-    });
+    await renderFeedTabs();
 
     const archiveTab = screen.getByRole('button', { name: /Archive/i });
-    await act(() => {
-      fireEvent.click(archiveTab);
-    });
+    await clickAndFlush(archiveTab);
 
     await waitFor(() =>
       expect(
@@ -353,14 +347,10 @@ describe('feed UI', () => {
       .mockResolvedValueOnce({ data: [] })
       .mockResolvedValueOnce({ data: payload });
 
-    await act(() => {
-      render(<FeedTabs />);
-    });
+    await renderFeedTabs();
 
     const forYouTab = screen.getByRole('button', { name: /For You/i });
-    await act(() => {
-      fireEvent.click(forYouTab);
-    });
+    await clickAndFlush(forYouTab);
 
     await waitFor(() =>
       expect(screen.getByText(/^Release /i)).toBeInTheDocument(),
@@ -398,14 +388,10 @@ describe('feed UI', () => {
       .mockResolvedValueOnce({ data: [] })
       .mockResolvedValueOnce({ data: archivePayload });
 
-    await act(() => {
-      render(<FeedTabs />);
-    });
+    await renderFeedTabs();
 
     const archiveTab = screen.getByRole('button', { name: /Archive/i });
-    await act(() => {
-      fireEvent.click(archiveTab);
-    });
+    await clickAndFlush(archiveTab);
 
     await waitFor(() =>
       expect(screen.getByText(/Autopsy report/i)).toBeInTheDocument(),
@@ -434,14 +420,10 @@ describe('feed UI', () => {
       .mockResolvedValueOnce({ data: [] })
       .mockResolvedValueOnce({ data: studiosPayload });
 
-    await act(() => {
-      render(<FeedTabs />);
-    });
+    await renderFeedTabs();
 
     const studiosTab = screen.getByRole('button', { name: /Studios/i });
-    await act(() => {
-      fireEvent.click(studiosTab);
-    });
+    await clickAndFlush(studiosTab);
 
     await waitFor(() =>
       expect(screen.getByText(/Studio Snake/i)).toBeInTheDocument(),
@@ -466,19 +448,13 @@ describe('feed UI', () => {
       .mockRejectedValueOnce(new Error('for-you page failed'))
       .mockResolvedValueOnce({ data: fallbackPage });
 
-    await act(() => {
-      render(<FeedTabs />);
-    });
+    await renderFeedTabs();
 
     const forYouTab = screen.getByRole('button', { name: /For You/i });
-    await act(() => {
-      fireEvent.click(forYouTab);
-    });
+    await clickAndFlush(forYouTab);
 
     const loadMore = await screen.findByRole('button', { name: /Load more/i });
-    await act(() => {
-      fireEvent.click(loadMore);
-    });
+    await clickAndFlush(loadMore);
 
     await waitFor(() =>
       expect(screen.getByText(/Draft fallback/i)).toBeInTheDocument(),
@@ -512,15 +488,11 @@ describe('feed UI', () => {
       writable: true,
     });
 
-    await act(() => {
-      render(<FeedTabs />);
-    });
+    await renderFeedTabs();
 
     await screen.findByText(/Draft draft-0/i);
 
-    await act(() => {
-      fireEvent.scroll(window);
-    });
+    await scrollAndFlush();
 
     await waitFor(() =>
       expect((apiClient.get as jest.Mock).mock.calls.length).toBeGreaterThan(1),
@@ -534,14 +506,10 @@ describe('feed UI', () => {
       .mockResolvedValueOnce({ data: [] })
       .mockRejectedValueOnce(new Error('live drafts failed'));
 
-    await act(() => {
-      render(<FeedTabs />);
-    });
+    await renderFeedTabs();
 
     const liveTab = screen.getByRole('button', { name: /Live Drafts/i });
-    await act(() => {
-      fireEvent.click(liveTab);
-    });
+    await clickAndFlush(liveTab);
 
     await waitFor(() =>
       expect(screen.getByText(/Fallback data/i)).toBeInTheDocument(),
@@ -566,19 +534,13 @@ describe('feed UI', () => {
       .mockResolvedValueOnce({ data: firstPage })
       .mockResolvedValueOnce({ data: secondPage });
 
-    await act(() => {
-      render(<FeedTabs />);
-    });
+    await renderFeedTabs();
 
     const forYouTab = screen.getByRole('button', { name: /For You/i });
-    await act(() => {
-      fireEvent.click(forYouTab);
-    });
+    await clickAndFlush(forYouTab);
 
     const loadMore = await screen.findByRole('button', { name: /Load more/i });
-    await act(() => {
-      fireEvent.click(loadMore);
-    });
+    await clickAndFlush(loadMore);
 
     await waitFor(() => expect(apiClient.get).toHaveBeenCalled());
     const lastCall = (apiClient.get as jest.Mock).mock.calls.at(-1) as any;
@@ -588,23 +550,17 @@ describe('feed UI', () => {
 
   test('syncs filters to URL query', async () => {
     searchParams = new URLSearchParams('tab=All');
-    await act(() => {
-      render(<FeedTabs />);
-    });
+    await renderFeedTabs();
 
     const sortSelect = screen.getByLabelText(/Sort/i);
-    await act(() => {
-      fireEvent.change(sortSelect, { target: { value: 'impact' } });
-    });
+    await changeAndFlush(sortSelect, 'impact');
     expect(replaceMock).toHaveBeenCalled();
     const lastCall = replaceMock.mock.calls.at(-1)?.[0] as string;
     expect(lastCall).toContain('/feed');
     expect(lastCall).toContain('sort=impact');
 
     const statusSelect = screen.getByLabelText(/Status/i);
-    await act(() => {
-      fireEvent.change(statusSelect, { target: { value: 'release' } });
-    });
+    await changeAndFlush(statusSelect, 'release');
     const statusCall = replaceMock.mock.calls.at(-1)?.[0] as string;
     expect(statusCall).toContain('status=release');
   });
@@ -613,9 +569,7 @@ describe('feed UI', () => {
     searchParams = new URLSearchParams(
       'tab=All&sort=impact&status=release&range=7d',
     );
-    await act(() => {
-      render(<FeedTabs />);
-    });
+    await renderFeedTabs();
 
     expect((screen.getByLabelText(/Sort/i) as HTMLSelectElement).value).toBe(
       'impact',
@@ -628,3 +582,4 @@ describe('feed UI', () => {
     ).toBe('7d');
   });
 });
+

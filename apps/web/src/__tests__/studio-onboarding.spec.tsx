@@ -2,13 +2,7 @@
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import StudioOnboardingPage from '../app/studios/onboarding/page';
 import { apiClient } from '../lib/api';
 
@@ -37,9 +31,7 @@ describe('studio onboarding', () => {
       },
     });
 
-    await act(() => {
-      render(<StudioOnboardingPage />);
-    });
+    render(<StudioOnboardingPage />);
 
     fireEvent.change(screen.getByLabelText(/Agent ID/i), {
       target: { value: 'agent-1' },
@@ -48,9 +40,7 @@ describe('studio onboarding', () => {
       target: { value: 'key-1' },
     });
 
-    await act(() => {
-      fireEvent.click(screen.getByRole('button', { name: /Connect/i }));
-    });
+    fireEvent.click(screen.getByRole('button', { name: /Connect/i }));
 
     await waitFor(() =>
       expect(apiClient.get).toHaveBeenCalledWith('/studios/agent-1'),
@@ -61,9 +51,7 @@ describe('studio onboarding', () => {
   test('requires mandatory profile fields before save', async () => {
     (apiClient.get as jest.Mock).mockResolvedValueOnce({ data: {} });
 
-    await act(() => {
-      render(<StudioOnboardingPage />);
-    });
+    render(<StudioOnboardingPage />);
 
     fireEvent.change(screen.getByLabelText(/Agent ID/i), {
       target: { value: 'agent-2' },
@@ -72,17 +60,13 @@ describe('studio onboarding', () => {
       target: { value: 'key-2' },
     });
 
-    await act(() => {
-      fireEvent.click(screen.getByRole('button', { name: /Connect/i }));
-    });
+    fireEvent.click(screen.getByRole('button', { name: /Connect/i }));
 
     await waitFor(() =>
       expect(screen.getByText(/Studio profile/i)).toBeInTheDocument(),
     );
 
-    await act(() => {
-      fireEvent.click(screen.getByRole('button', { name: /Save profile/i }));
-    });
+    fireEvent.click(screen.getByRole('button', { name: /Save profile/i }));
 
     await waitFor(() =>
       expect(

@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import CommissionDetailPage from '../app/commissions/[id]/page';
 import CommissionsPage from '../app/commissions/page';
 import { apiClient } from '../lib/api';
@@ -22,10 +22,24 @@ describe('commission UI', () => {
     (apiClient.get as jest.Mock).mockResolvedValue({ data: [] });
   });
 
+  const renderCommissions = async () => {
+    render(<CommissionsPage />);
+    await waitFor(() =>
+      expect(
+        screen.queryByText(/Loading commissions/i),
+      ).not.toBeInTheDocument(),
+    );
+  };
+
+  const renderCommissionDetail = async (id: string) => {
+    render(<CommissionDetailPage params={{ id }} />);
+    await waitFor(() =>
+      expect(screen.queryByText(/Loading commission/i)).not.toBeInTheDocument(),
+    );
+  };
+
   test('renders commission form', async () => {
-    await act(() => {
-      render(<CommissionsPage />);
-    });
+    await renderCommissions();
     await waitFor(() => expect(apiClient.get).toHaveBeenCalled());
     expect(screen.getByText(/Create commission/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/Reward amount/i)).toBeInTheDocument();
@@ -34,9 +48,7 @@ describe('commission UI', () => {
   test('shows empty state when no commissions', async () => {
     (apiClient.get as jest.Mock).mockResolvedValueOnce({ data: [] });
 
-    await act(() => {
-      render(<CommissionsPage />);
-    });
+    await renderCommissions();
 
     await waitFor(() =>
       expect(screen.getByText(/No commissions yet/i)).toBeInTheDocument(),
@@ -48,9 +60,7 @@ describe('commission UI', () => {
       response: { data: { message: 'Load failed' } },
     });
 
-    await act(() => {
-      render(<CommissionsPage />);
-    });
+    await renderCommissions();
 
     await waitFor(() =>
       expect(screen.getByText(/Load failed/i)).toBeInTheDocument(),
@@ -78,9 +88,7 @@ describe('commission UI', () => {
       ],
     });
 
-    await act(() => {
-      render(<CommissionsPage />);
-    });
+    await renderCommissions();
 
     await waitFor(() =>
       expect(screen.getByText(/No reward yet/i)).toBeInTheDocument(),
@@ -103,9 +111,7 @@ describe('commission UI', () => {
       ],
     });
 
-    await act(() => {
-      render(<CommissionDetailPage params={{ id: 'comm-1' }} />);
-    });
+    await renderCommissionDetail('comm-1');
     await waitFor(() =>
       expect(screen.getByText(/Commission comm-1/i)).toBeInTheDocument(),
     );
@@ -116,9 +122,7 @@ describe('commission UI', () => {
       response: { data: { message: 'Detail load failed' } },
     });
 
-    await act(() => {
-      render(<CommissionDetailPage params={{ id: 'comm-99' }} />);
-    });
+    await renderCommissionDetail('comm-99');
 
     await waitFor(() =>
       expect(screen.getByText(/Detail load failed/i)).toBeInTheDocument(),

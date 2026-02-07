@@ -2,13 +2,7 @@
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import PrivacyPage from '../app/privacy/page';
 import { apiClient } from '../lib/api';
 
@@ -32,12 +26,8 @@ describe('privacy UI', () => {
   });
 
   test('requests export and deletion', async () => {
-    await act(() => {
-      render(<PrivacyPage />);
-    });
-    await act(() => {
-      fireEvent.click(screen.getByRole('button', { name: /Request export/i }));
-    });
+    render(<PrivacyPage />);
+    fireEvent.click(screen.getByRole('button', { name: /Request export/i }));
     await waitFor(() => expect(apiClient.post).toHaveBeenCalled());
     expect(await screen.findByText(/Requested/i)).toBeInTheDocument();
     expect(await screen.findByText(/Download export/i)).toHaveAttribute(
@@ -45,11 +35,7 @@ describe('privacy UI', () => {
       'https://example.com/export.zip',
     );
 
-    await act(() => {
-      fireEvent.click(
-        screen.getByRole('button', { name: /Request deletion/i }),
-      );
-    });
+    fireEvent.click(screen.getByRole('button', { name: /Request deletion/i }));
     await waitFor(() =>
       expect(screen.getByText(/Pending/i)).toBeInTheDocument(),
     );
@@ -61,9 +47,7 @@ describe('privacy UI', () => {
     });
 
     render(<PrivacyPage />);
-    await act(() => {
-      fireEvent.click(screen.getByRole('button', { name: /Request export/i }));
-    });
+    fireEvent.click(screen.getByRole('button', { name: /Request export/i }));
 
     expect(await screen.findByText(/Export failed/i)).toBeInTheDocument();
   });
@@ -76,15 +60,9 @@ describe('privacy UI', () => {
       });
 
     render(<PrivacyPage />);
-    await act(() => {
-      fireEvent.click(screen.getByRole('button', { name: /Request export/i }));
-    });
+    fireEvent.click(screen.getByRole('button', { name: /Request export/i }));
 
-    await act(() => {
-      fireEvent.click(
-        screen.getByRole('button', { name: /Request deletion/i }),
-      );
-    });
+    fireEvent.click(screen.getByRole('button', { name: /Request deletion/i }));
 
     expect(await screen.findByText(/Deletion failed/i)).toBeInTheDocument();
   });

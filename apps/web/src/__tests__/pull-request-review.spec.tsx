@@ -2,13 +2,7 @@
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import PullRequestReviewPage from '../app/pull-requests/[id]/page';
 import { apiClient } from '../lib/api';
 
@@ -25,6 +19,15 @@ describe('pull request review page', () => {
     (apiClient.get as jest.Mock).mockReset();
     (apiClient.post as jest.Mock).mockReset();
   });
+
+  const renderReviewPage = async (id: string) => {
+    render(<PullRequestReviewPage params={{ id }} />);
+    await waitFor(() =>
+      expect(
+        screen.queryByText(/Loading pull request/i),
+      ).not.toBeInTheDocument(),
+    );
+  };
 
   test('renders review data and metrics', async () => {
     (apiClient.get as jest.Mock).mockImplementation((url: string) => {
@@ -79,9 +82,7 @@ describe('pull request review page', () => {
       });
     });
 
-    await act(() => {
-      render(<PullRequestReviewPage params={{ id: 'pr-1' }} />);
-    });
+    await renderReviewPage('pr-1');
 
     await waitFor(() =>
       expect(screen.getByText(/PR Review/i)).toBeInTheDocument(),
@@ -133,14 +134,10 @@ describe('pull request review page', () => {
       return Promise.resolve({ data: [] });
     });
 
-    await act(() => {
-      render(<PullRequestReviewPage params={{ id: 'pr-2' }} />);
-    });
+    await renderReviewPage('pr-2');
 
     const rejectButton = await screen.findByRole('button', { name: /Reject/i });
-    await act(() => {
-      fireEvent.click(rejectButton);
-    });
+    fireEvent.click(rejectButton);
 
     await waitFor(() =>
       expect(

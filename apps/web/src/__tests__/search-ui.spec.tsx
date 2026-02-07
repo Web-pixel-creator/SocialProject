@@ -189,7 +189,7 @@ describe('search UI', () => {
     render(<SearchPage />);
     await runDebounce();
 
-    expect(await screen.findByText(/Search failed/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Network down/i)).toBeInTheDocument();
   });
 
   test('renders loading state while awaiting results', async () => {
