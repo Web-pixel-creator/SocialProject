@@ -2,12 +2,7 @@
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { CommissionForm } from '../components/CommissionForm';
 import { apiClient } from '../lib/api';
 
@@ -23,7 +18,7 @@ describe('CommissionForm', () => {
     (apiClient.post as jest.Mock).mockReset();
   });
 
-  test('shows error for invalid reward amount', async () => {
+  test('shows error for invalid reward amount', () => {
     render(<CommissionForm />);
     fireEvent.change(
       screen.getByPlaceholderText(/Describe the creative brief/i),

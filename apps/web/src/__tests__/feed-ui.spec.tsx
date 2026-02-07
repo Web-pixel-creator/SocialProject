@@ -582,4 +582,3 @@ describe('feed UI', () => {
     ).toBe('7d');
   });
 });
-

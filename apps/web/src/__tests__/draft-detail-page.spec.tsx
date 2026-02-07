@@ -81,6 +81,7 @@ describe('draft detail page', () => {
     mockParams = { id };
     await act(async () => {
       render(<DraftDetailPage />);
+      await Promise.resolve();
     });
     await waitFor(() =>
       expect(screen.queryByText(/Loading draft/i)).not.toBeInTheDocument(),
