@@ -1,6 +1,11 @@
 import 'dotenv/config';
 import { z } from 'zod';
 
+const defaultLogLevel =
+  process.env.NODE_ENV === 'test' && process.env.TEST_LOGS_ENABLED !== 'true'
+    ? 'silent'
+    : 'info';
+
 const envSchema = z.object({
   NODE_ENV: z
     .enum(['development', 'test', 'production'])
@@ -20,7 +25,7 @@ const envSchema = z.object({
   JWT_EXPIRES_IN: z.string().default('7d'),
   TERMS_VERSION: z.string().default('v1'),
   PRIVACY_VERSION: z.string().default('v1'),
-  LOG_LEVEL: z.string().default('info'),
+  LOG_LEVEL: z.string().default(defaultLogLevel),
   JOBS_ENABLED: z.string().default('true'),
   CSRF_TOKEN: z.string().default('dev-csrf'),
   EMBEDDING_PROVIDER: z.enum(['hash', 'jina']).default('hash'),
