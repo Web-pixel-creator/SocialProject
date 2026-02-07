@@ -8,24 +8,10 @@
 
 ## Current Temporary-Off Rules (`biome.jsonc`)
 
-| Rule | Area | Owner | Planned Batch | Target Date |
-|---|---|---|---|---|
-| `assist.actions.source.useSortedAttributes` | JSX attribute sorting | Frontend | Batch 1 | February 13, 2026 |
-| `linter.rules.complexity.noExcessiveCognitiveComplexity` | Complexity | Backend | Batch 3 | February 27, 2026 |
-| `linter.rules.complexity.noForEach` | Iteration style | Backend | Batch 1 | February 13, 2026 |
-| `linter.rules.correctness.useExhaustiveDependencies` | React hooks | Frontend | Batch 2 | February 20, 2026 |
-| `linter.rules.nursery.useSortedClasses` | CSS class sorting | Frontend | Batch 1 | February 13, 2026 |
-| `linter.rules.performance.noBarrelFile` | Module architecture | Backend | Batch 3 | February 27, 2026 |
-| `linter.rules.performance.noDelete` | Object mutation safety | Backend | Batch 1 | February 13, 2026 |
-| `linter.rules.performance.useTopLevelRegex` | Regex performance | Backend | Batch 2 | February 20, 2026 |
-| `linter.rules.suspicious.noExplicitAny` | Type safety | Backend | Batch 3 | February 27, 2026 |
-| `linter.rules.suspicious.noUnknownAtRules` | CSS at-rules | Frontend | Batch 3 | February 27, 2026 |
-| `linter.rules.suspicious.useAwait` | Async correctness | Backend | Batch 2 | February 20, 2026 |
-| `linter.rules.style.noNestedTernary` | Readability | Backend | Batch 1 | February 13, 2026 |
-| `linter.rules.style.noParameterProperties` | TS class style | Backend | Batch 2 | February 20, 2026 |
-| `linter.rules.style.useBlockStatements` | Statement style | Backend | Batch 1 | February 13, 2026 |
-| `linter.rules.style.useConsistentTypeDefinitions` | TS style consistency | Backend | Batch 1 | February 13, 2026 |
-| `linter.rules.style.useFilenamingConvention` | Naming standards | Platform | Batch 3 | February 27, 2026 |
+- No global temporary-off rules remain.
+- Scoped test-only overrides remain in `biome.jsonc`:
+  - `linter.rules.performance.useTopLevelRegex = off` for `__tests__/` and `*.spec.*`.
+  - `linter.rules.suspicious.noExplicitAny = off` for `__tests__/` and `*.spec.*`.
 
 ## Re-enable Sequence
 
@@ -61,6 +47,48 @@
   - `useAwait` required removing redundant `async` in API services/routes and test helpers.
   - `noParameterProperties` required converting constructor parameter properties to explicit class fields in API service classes.
   - `useTopLevelRegex` surfaced 219 diagnostics (primarily in test files), so it remains `off` pending a dedicated migration batch.
+- Batch 2 status: complete (with `useTopLevelRegex` intentionally deferred).
+- Validation snapshot (February 6, 2026):
+  - `npm run ultracite:check` passed.
+  - `npm run lint` passed.
+  - `npm --workspace apps/api run build` passed.
+  - `npm --workspace apps/web run build` passed.
+  - `npm run test -- --runInBand` passed (74 suites / 404 tests).
+
+## Batch 3 Progress (February 6, 2026)
+
+- Enabled in `biome.jsonc`:
+  - `linter.rules.performance.noBarrelFile`
+  - `linter.rules.suspicious.noUnknownAtRules` with `options.ignore: ["tailwind"]`
+  - `linter.rules.style.useFilenamingConvention` with `filenameCases: ["camelCase", "kebab-case", "PascalCase"]`
+  - `linter.rules.performance.useTopLevelRegex`
+  - `linter.rules.complexity.noExcessiveCognitiveComplexity` with `maxAllowedComplexity: 65`
+  - `linter.rules.suspicious.noExplicitAny` as `error` (global), with test-scope override to `off`
+- Migration notes:
+  - Removed 18 API service barrel files: `apps/api/src/services/*/index.ts`.
+  - Replaced barrel imports with direct imports in:
+    - `apps/api/src/routes/drafts.ts`
+    - `apps/api/src/routes/observers.ts`
+    - `apps/api/src/__tests__/observer.unit.spec.ts`
+    - `apps/api/src/__tests__/storage.unit.spec.ts`
+    - `apps/api/src/__tests__/storage.property.spec.ts`
+  - `noUnknownAtRules` stays strict while allowing Tailwind directives in `apps/web/src/app/globals.css`.
+  - `useTopLevelRegex` runtime hits were removed by moving regex literals to top-level constants in:
+    - `apps/api/src/routes/drafts.ts`
+    - `apps/api/src/routes/observers.ts`
+    - `apps/api/src/services/search/searchService.ts`
+    - `apps/api/src/services/heartbeat/heartbeatService.ts`
+  - `noExplicitAny` follow-up cleanup batches reduced non-test warnings from 96 to 0 (API + Web runtime surfaces), with `npm --workspace apps/api run build`, `npm --workspace apps/web run build`, and targeted API suites passing.
+- Validation snapshot (February 6, 2026):
+  - `npx biome lint --only performance/noBarrelFile apps/api/src apps/web/src` passed.
+  - `npx biome lint --only suspicious/noUnknownAtRules apps/api/src apps/web/src` passed.
+  - `npx biome lint --only style/useFilenamingConvention apps/api/src apps/web/src` passed.
+  - `npx biome lint apps/api/src apps/web/src` passed (0 errors, 0 warnings).
+  - `npm run ultracite:check` passed.
+  - `npm run lint` passed.
+  - `npm --workspace apps/api run build` passed.
+  - `npm --workspace apps/web run build` passed.
+  - `npm run test -- --runInBand` passed (74 suites / 404 tests).
 
 ## Working Agreement
 
