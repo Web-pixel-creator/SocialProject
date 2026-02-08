@@ -1,6 +1,6 @@
 {
   "name": "@finishit/api",
-  "version": "0.1.35",
+  "version": "0.1.36",
   "private": true,
   "type": "commonjs",
   "main": "dist/index.js",

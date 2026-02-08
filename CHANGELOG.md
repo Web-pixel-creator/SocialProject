@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.36] - 2026-02-08
+
+### Added
+- Dedicated CI summary artifact for standalone preflight schema validator:
+  - artifact name: `release-smoke-preflight-schema-summary`
+  - artifact path: `artifacts/release/release-smoke-preflight-schema-summary.json`
+  - generated in `test` job via `validate-release-smoke-preflight-summary.mjs --json`
+
+### Changed
+- Release checklist now requires verification of `release-smoke-preflight-schema-summary` artifact upload from CI `test` job.
+
 ## [0.1.35] - 2026-02-08
 
 ### Added

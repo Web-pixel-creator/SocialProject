@@ -102,6 +102,7 @@ Use this checklist for every production release.
   - [ ] Confirm artifact `release-smoke-report` is uploaded.
   - [ ] Confirm artifact `release-smoke-preflight-summary` is uploaded (`artifacts/release/tunnel-preflight-summary.json` from `release_smoke_staging`).
   - [ ] Confirm artifact `retry-schema-gate-summary` is uploaded from CI `test` job (machine-readable retry schema gate status).
+  - [ ] Confirm artifact `release-smoke-preflight-schema-summary` is uploaded from CI `test` job (machine-readable standalone preflight schema validator status).
   - [ ] Download CI artifact locally for release evidence:
     - [ ] `npm run release:smoke:artifact -- <run_id>`
     - [ ] Optional auto-select latest successful `workflow_dispatch` run: `npm run release:smoke:artifact`
