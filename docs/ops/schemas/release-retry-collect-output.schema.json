@@ -1,0 +1,271 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Web-pixel-creator/SocialProject/blob/main/docs/ops/schemas/release-retry-collect-output.schema.json",
+  "title": "Release Retry Collect Output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaPath",
+    "schemaVersion",
+    "label",
+    "repoSlug",
+    "runId",
+    "runNumber",
+    "runUrl",
+    "runConclusion",
+    "includeNonFailed",
+    "selectedJobs",
+    "cleanupSummary",
+    "collection",
+    "message"
+  ],
+  "properties": {
+    "schemaPath": {
+      "const": "docs/ops/schemas/release-retry-collect-output.schema.json"
+    },
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "label": {
+      "const": "retry:collect"
+    },
+    "repoSlug": {
+      "type": "string",
+      "minLength": 1
+    },
+    "runId": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "runNumber": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "runUrl": {
+      "type": "string"
+    },
+    "runConclusion": {
+      "type": "string"
+    },
+    "includeNonFailed": {
+      "type": "boolean"
+    },
+    "selectedJobs": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "cleanupSummary": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "outputDir",
+        "enabled",
+        "dryRun",
+        "ttlDays",
+        "maxRuns",
+        "maxFiles",
+        "cutoffIso",
+        "scannedFiles",
+        "matchedFiles",
+        "matchedRuns",
+        "eligibleFiles",
+        "eligibleRuns",
+        "ttlEligibleFiles",
+        "ttlEligibleRuns",
+        "maxRunsEligibleFiles",
+        "maxRunsEligibleRuns",
+        "maxFilesEligibleFiles",
+        "maxFilesEligibleRuns",
+        "keptFiles",
+        "keptRuns",
+        "removedFiles",
+        "removedRuns",
+        "removedBytes",
+        "missingDirectory",
+        "skippedDisabled"
+      ],
+      "properties": {
+        "outputDir": {
+          "type": "string",
+          "minLength": 1
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "dryRun": {
+          "type": "boolean"
+        },
+        "ttlDays": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxRuns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cutoffIso": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "scannedFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "matchedFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "matchedRuns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eligibleFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eligibleRuns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ttlEligibleFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ttlEligibleRuns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxRunsEligibleFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxRunsEligibleRuns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxFilesEligibleFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxFilesEligibleRuns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "keptFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "keptRuns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "removedFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "removedRuns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "removedBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missingDirectory": {
+          "type": "boolean"
+        },
+        "skippedDisabled": {
+          "type": "boolean"
+        }
+      }
+    },
+    "collection": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "metadataPath",
+        "totalJobs",
+        "capturedJobs",
+        "failedJobs",
+        "jobs"
+      ],
+      "properties": {
+        "metadataPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "totalJobs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "capturedJobs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failedJobs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "jobs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name",
+              "htmlUrl",
+              "startedAt",
+              "completedAt",
+              "logFilePath",
+              "logCaptured"
+            ],
+            "properties": {
+              "id": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "htmlUrl": {
+                "type": "string"
+              },
+              "startedAt": {
+                "type": "string"
+              },
+              "completedAt": {
+                "type": "string"
+              },
+              "logFilePath": {
+                "type": "string"
+              },
+              "logCaptured": {
+                "type": "boolean"
+              },
+              "error": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "message": {
+      "type": "string"
+    }
+  }
+}

@@ -11,6 +11,9 @@ import {
 const GITHUB_API_VERSION = '2022-11-28';
 const COLLECT_USAGE =
   'Usage: npm run release:smoke:retry:collect -- <run_id> [--json]';
+const COLLECT_JSON_SCHEMA_PATH =
+  'docs/ops/schemas/release-retry-collect-output.schema.json';
+const COLLECT_JSON_SCHEMA_VERSION = '1.0.0';
 
 const parseInteger = (raw) => {
   const parsed = Number(raw);
@@ -322,6 +325,8 @@ const main = async () => {
   const runUrl = String(run?.html_url ?? '');
   const runConclusion = String(run?.conclusion ?? 'unknown');
   const response = {
+    schemaPath: COLLECT_JSON_SCHEMA_PATH,
+    schemaVersion: COLLECT_JSON_SCHEMA_VERSION,
     label: 'retry:collect',
     repoSlug,
     runId,

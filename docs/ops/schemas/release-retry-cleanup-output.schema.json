@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Web-pixel-creator/SocialProject/blob/main/docs/ops/schemas/release-retry-cleanup-output.schema.json",
+  "title": "Release Retry Cleanup Output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaPath",
+    "schemaVersion",
+    "label",
+    "summary"
+  ],
+  "properties": {
+    "schemaPath": {
+      "const": "docs/ops/schemas/release-retry-cleanup-output.schema.json"
+    },
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "label": {
+      "const": "retry:cleanup"
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "outputDir",
+        "enabled",
+        "dryRun",
+        "ttlDays",
+        "maxRuns",
+        "maxFiles",
+        "cutoffIso",
+        "scannedFiles",
+        "matchedFiles",
+        "matchedRuns",
+        "eligibleFiles",
+        "eligibleRuns",
+        "ttlEligibleFiles",
+        "ttlEligibleRuns",
+        "maxRunsEligibleFiles",
+        "maxRunsEligibleRuns",
+        "maxFilesEligibleFiles",
+        "maxFilesEligibleRuns",
+        "keptFiles",
+        "keptRuns",
+        "removedFiles",
+        "removedRuns",
+        "removedBytes",
+        "missingDirectory",
+        "skippedDisabled"
+      ],
+      "properties": {
+        "outputDir": {
+          "type": "string",
+          "minLength": 1
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "dryRun": {
+          "type": "boolean"
+        },
+        "ttlDays": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxRuns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cutoffIso": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "scannedFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "matchedFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "matchedRuns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eligibleFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eligibleRuns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ttlEligibleFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ttlEligibleRuns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxRunsEligibleFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxRunsEligibleRuns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxFilesEligibleFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxFilesEligibleRuns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "keptFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "keptRuns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "removedFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "removedRuns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "removedBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missingDirectory": {
+          "type": "boolean"
+        },
+        "skippedDisabled": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

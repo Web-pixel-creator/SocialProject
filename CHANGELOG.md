@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.16] - 2026-02-08
+
+### Added
+- JSON schema contracts for retry diagnostics outputs:
+  - `docs/ops/schemas/release-retry-cleanup-output.schema.json`
+  - `docs/ops/schemas/release-retry-collect-output.schema.json`
+
+### Changed
+- `release:smoke:retry:cleanup --json` now includes `schemaPath` and `schemaVersion`.
+- `release:smoke:retry:collect --json` now includes `schemaPath` and `schemaVersion`.
+- Updated release checklist with schema references and payload-version checks.
+
 ## [0.1.15] - 2026-02-08
 
 ### Added
