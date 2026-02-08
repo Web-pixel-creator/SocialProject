@@ -33,6 +33,40 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-02-08 - v0.1.12
+
+- Scope: Max-files retention cap for retry diagnostics cleanup to keep local evidence storage bounded.
+- Release commander: Codex automation.
+- Window (UTC): 2026-02-08 07:05 -> 2026-02-08 07:12.
+- Release artifact:
+  - GitHub Release: `https://github.com/Web-pixel-creator/SocialProject/releases/tag/v0.1.12`
+- Dry-run:
+  - Local rehearsal: pass (URL-input helper starts local API/Web and tunnels automatically).
+  - Staging smoke: pass (`release_smoke_staging`, workflow run `#145`, fallback mode) on head `3a5ccdd`.
+  - Staging smoke (URL-input mode via helper command): pass (`release:smoke:dispatch:tunnel`, workflow run `#146`) on head `3a5ccdd`.
+  - Smoke report artifact/link:
+    - fallback mode: `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21794114572`, artifact id `5421221738`)
+    - URL-input mode (helper command): `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21794143521`, artifact id `5421229074`)
+    - Local downloaded and extracted copy: `artifacts/release/ci-run-21794143521/smoke-results.json`
+  - Smoke diff evidence:
+    - Command: `npm run release:smoke:diff -- 21794008857 21794143521`
+    - JSON report: `artifacts/release/smoke-diff-21794008857-vs-21794143521.json`
+    - Result: pass -> pass, failed steps `0 -> 0`, total duration `6728.17ms -> 6334.55ms` (delta `-393.62ms`), no pass regressions.
+  - Max-files cap validation:
+    - Standalone preview: `RELEASE_RETRY_LOGS_CLEANUP_DRY_RUN=true RELEASE_RETRY_LOGS_MAX_FILES=4 npm run release:smoke:retry:cleanup`
+    - Output: would remove `2` files by max-files cap, keep `4` newest matching files.
+    - Collector preview: `RELEASE_RETRY_LOGS_INCLUDE_NON_FAILED=true RELEASE_RETRY_LOGS_CLEANUP_DRY_RUN=true RELEASE_RETRY_LOGS_MAX_FILES=4 npm run release:smoke:retry:collect -- 21794143521`
+    - Output includes cleanup summary with `max-files` removals before log collection step.
+- Gates:
+  - ultracite (local): pass (`npm run ultracite:check`).
+  - CI workflow_dispatch corroboration (run `#145`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+  - CI workflow_dispatch corroboration (run `#146`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+- Rollout result: release prepared and tagged.
+- Incidents:
+  - none.
+- Follow-ups:
+  - Optional: switch cap from file-level to run-level grouping to always evict log+metadata pairs together.
+
 ### 2026-02-08 - v0.1.11
 
 - Scope: TTL-based retention cleanup for retry diagnostics logs with standalone cleanup command.
