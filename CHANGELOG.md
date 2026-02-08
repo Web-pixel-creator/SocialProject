@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.13] - 2026-02-08
+
+### Changed
+- Retry diagnostics cleanup now applies retention by run group (`runid`) to evict related files together.
+- Added `RELEASE_RETRY_LOGS_MAX_RUNS` (default: `100`) for primary run-level retention control.
+- `RELEASE_RETRY_LOGS_MAX_FILES` is now an additional safety cap that removes oldest run groups until the file count fits.
+- Updated release checklist with run-cap and file-cap dry-run examples.
+
 ## [0.1.12] - 2026-02-08
 
 ### Changed
