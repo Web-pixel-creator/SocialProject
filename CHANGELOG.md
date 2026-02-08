@@ -4,6 +4,21 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.27] - 2026-02-08
+
+### Added
+- Runtime schema validation for non-zero preview-selection JSON outputs in `release:smoke:retry:schema:check`.
+- New validation path executes:
+  - `node scripts/release/generate-retry-schema-samples.mjs --preview --preview=missing-label --json`
+  - expects non-zero exit while still requiring schema-valid JSON payload.
+
+### Changed
+- `release:smoke:retry:schema:check` now validates both:
+  - successful runtime preview-selection JSON payload.
+  - unknown-filter runtime preview-selection JSON payload (non-zero exit path).
+- Retry schema validation payload count increased from `7` to `8`.
+- Release checklist now explicitly includes unknown-filter preview JSON schema verification.
+
 ## [0.1.26] - 2026-02-08
 
 ### Added
