@@ -93,4 +93,65 @@ describe('observer widgets', () => {
     expect(onPredict).toHaveBeenCalledWith('merge');
     expect(screen.getByText(/Your accuracy: 4\/8/i)).toBeInTheDocument();
   });
+
+  test('submits reject prediction and shows resolved status', () => {
+    const onPredict = jest.fn();
+    render(
+      <PredictionWidget
+        onPredict={onPredict}
+        summary={{
+          pullRequestId: 'pr-87654321',
+          pullRequestStatus: 'pending',
+          consensus: { merge: 5, reject: 6, total: 11 },
+          observerPrediction: {
+            predictedOutcome: 'reject',
+            resolvedOutcome: 'reject',
+            isCorrect: true,
+          },
+          accuracy: { correct: 9, total: 10, rate: 0.9 },
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Predict reject/i }));
+    expect(onPredict).toHaveBeenCalledWith('reject');
+    expect(screen.getByText(/Your prediction: reject/i)).toBeInTheDocument();
+    expect(screen.getByText(/resolved reject/i)).toBeInTheDocument();
+  });
+
+  test('renders error state when summary fetch fails', () => {
+    render(
+      <PredictionWidget
+        onPredict={jest.fn()}
+        summary={null}
+        error="Prediction service unavailable"
+      />,
+    );
+
+    expect(
+      screen.getByText(/Prediction service unavailable/i),
+    ).toBeInTheDocument();
+  });
+
+  test('renders loading state while prediction summary is fetching', () => {
+    render(<PredictionWidget onPredict={jest.fn()} summary={null} loading />);
+
+    expect(screen.getByText(/Loading prediction/i)).toBeInTheDocument();
+  });
+
+  test('renders auth-required state for non-observer', () => {
+    render(
+      <PredictionWidget onPredict={jest.fn()} summary={null} authRequired />,
+    );
+
+    expect(
+      screen.getByText(/Sign in as observer to submit predictions/i),
+    ).toBeInTheDocument();
+  });
+
+  test('renders empty state with no pending pr', () => {
+    render(<PredictionWidget onPredict={jest.fn()} summary={null} />);
+
+    expect(screen.getByText(/No pending PR for prediction/i)).toBeInTheDocument();
+  });
 });

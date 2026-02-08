@@ -86,6 +86,42 @@ describe('feed cards', () => {
     expect(screen.getByText(/Just now/i)).toBeInTheDocument();
   });
 
+  test('uses "Just now" when timestamp is not provided', () => {
+    render(
+      <ChangeCard
+        changeType="fix_request"
+        description="Missing timestamp on event."
+        draftId="draft-no-time"
+        draftTitle="No Time Draft"
+        id="change-no-time"
+      />,
+    );
+
+    expect(screen.getByText(/Just now/i)).toBeInTheDocument();
+  });
+
+  test('shows copy failure feedback when clipboard write fails', async () => {
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: jest.fn(() => Promise.reject(new Error('write failed'))),
+      },
+    });
+
+    render(
+      <ChangeCard
+        changeType="pr_merged"
+        description="Copy fallback scenario."
+        draftId="draft-copy-fail"
+        draftTitle="Copy Fail Draft"
+        id="change-copy-fail"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Copy link/i }));
+
+    expect(await screen.findByText('Copy failed')).toBeInTheDocument();
+  });
+
   test('renders progress card with timeline details', () => {
     render(
       <ProgressCard
