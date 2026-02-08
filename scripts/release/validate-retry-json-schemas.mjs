@@ -8,28 +8,11 @@ import {
   RETRY_CLEANUP_JSON_SCHEMA_PATH,
   RETRY_COLLECT_JSON_SCHEMA_PATH,
 } from './retry-json-schema-contracts.mjs';
+import { RETRY_SCHEMA_SAMPLE_FIXTURES } from './retry-schema-sample-fixtures.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..', '..');
-
-const SAMPLE_FIXTURES = [
-  {
-    schemaPath: RETRY_CLEANUP_JSON_SCHEMA_PATH,
-    samplePath: 'docs/ops/schemas/samples/release-retry-cleanup-output.sample.json',
-    label: 'cleanup sample',
-  },
-  {
-    schemaPath: RETRY_COLLECT_JSON_SCHEMA_PATH,
-    samplePath: 'docs/ops/schemas/samples/release-retry-collect-output-empty.sample.json',
-    label: 'collect empty sample',
-  },
-  {
-    schemaPath: RETRY_COLLECT_JSON_SCHEMA_PATH,
-    samplePath: 'docs/ops/schemas/samples/release-retry-collect-output-success.sample.json',
-    label: 'collect success sample',
-  },
-];
 
 const resolvePath = (relativePath) => path.join(projectRoot, relativePath);
 const loadJson = async (relativePath) => {
@@ -95,7 +78,7 @@ const main = async () => {
   const failures = [];
   let validatedPayloads = 0;
 
-  for (const fixture of SAMPLE_FIXTURES) {
+  for (const fixture of RETRY_SCHEMA_SAMPLE_FIXTURES) {
     const payload = await loadJson(fixture.samplePath);
     const validate = validators.get(fixture.schemaPath);
     if (!validate) {

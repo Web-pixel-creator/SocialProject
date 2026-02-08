@@ -4,6 +4,19 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.19] - 2026-02-08
+
+### Added
+- Auto-generated retry schema sample fixtures:
+  - `npm run release:smoke:retry:schema:samples:generate`
+  - `npm run release:smoke:retry:schema:samples:check`
+- Shared fixture definitions module:
+  - `scripts/release/retry-schema-sample-fixtures.mjs`
+
+### Changed
+- Retry schema sync and validation scripts now use the shared fixture source to avoid duplicated sample definitions.
+- Release checklist now includes fixture generate/check commands.
+
 ## [0.1.18] - 2026-02-08
 
 ### Added

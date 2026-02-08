@@ -21,6 +21,7 @@ Use this checklist for every production release.
 - [ ] `npm run perf:pre-release` passes against staging API/Web.
 - [ ] `npm run security:check` passes.
 - [ ] `npm run release:smoke` passes against staging API/Web.
+- [ ] `npm run release:smoke:retry:schema:samples:check` passes.
 - [ ] `npm run release:smoke:retry:schema:sync:check` passes.
 - [ ] `npm run release:smoke:retry:schema:check` passes.
 - [ ] Security scans are green (`dependency audit` + `secret scan` once Task 9 is active).
@@ -69,6 +70,9 @@ Use this checklist for every production release.
         - [ ] Optional dry-run preview: `RELEASE_RETRY_LOGS_CLEANUP_DRY_RUN=true npm run release:smoke:retry:cleanup`
         - [ ] Optional run-cap preview: `RELEASE_RETRY_LOGS_CLEANUP_DRY_RUN=true RELEASE_RETRY_LOGS_MAX_RUNS=50 npm run release:smoke:retry:cleanup`
         - [ ] Optional file-cap preview: `RELEASE_RETRY_LOGS_CLEANUP_DRY_RUN=true RELEASE_RETRY_LOGS_MAX_FILES=50 npm run release:smoke:retry:cleanup`
+      - [ ] Retry schema sample fixtures:
+        - [ ] Generate fixtures: `npm run release:smoke:retry:schema:samples:generate`
+        - [ ] Check fixtures are up to date: `npm run release:smoke:retry:schema:samples:check`
     - [ ] Manage persistent staging workflow inputs:
       - [ ] Show current values: `npm run release:smoke:inputs -- show`
       - [ ] Set values: `RELEASE_API_BASE_URL=<staging-api-url> RELEASE_WEB_BASE_URL=<staging-web-url> RELEASE_CSRF_TOKEN=<csrf-token> npm run release:smoke:inputs -- set`

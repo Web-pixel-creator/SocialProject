@@ -7,22 +7,24 @@ import {
   RETRY_COLLECT_JSON_SCHEMA_PATH,
   RETRY_COLLECT_JSON_SCHEMA_VERSION,
 } from './retry-json-schema-contracts.mjs';
+import {
+  RETRY_SCHEMA_SAMPLE_FIXTURES,
+  stringifyRetrySchemaFixture,
+} from './retry-schema-sample-fixtures.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..', '..');
-
-const SAMPLE_PAYLOAD_PATHS = [
-  'docs/ops/schemas/samples/release-retry-cleanup-output.sample.json',
-  'docs/ops/schemas/samples/release-retry-collect-output-empty.sample.json',
-  'docs/ops/schemas/samples/release-retry-collect-output-success.sample.json',
-];
 
 const resolvePath = (relativePath) => path.join(projectRoot, relativePath);
 const loadJson = async (relativePath) => {
   const text = await readFile(resolvePath(relativePath), 'utf8');
   return JSON.parse(text);
 };
+const loadText = async (relativePath) => {
+  return await readFile(resolvePath(relativePath), 'utf8');
+};
+const normalizeLineEndings = (value) => value.replace(/\r\n/gu, '\n');
 
 const getSchemaConst = (schema, key) =>
   schema?.properties?.[key] && Object.hasOwn(schema.properties[key], 'const')
@@ -87,6 +89,32 @@ const assertSampleContract = ({
   }
 };
 
+const assertSampleFileSync = async ({
+  failures,
+  fixture,
+}) => {
+  const expectedText = stringifyRetrySchemaFixture(fixture.payload);
+  let actualText;
+  try {
+    actualText = await loadText(fixture.samplePath);
+  } catch (error) {
+    const typedError = error;
+    if (typedError?.code === 'ENOENT') {
+      failures.push(`${fixture.samplePath}: file does not exist`);
+      return;
+    }
+    throw error;
+  }
+
+  if (
+    normalizeLineEndings(actualText) !== normalizeLineEndings(expectedText)
+  ) {
+    failures.push(
+      `${fixture.samplePath}: content is out of sync with generated fixture payload`,
+    );
+  }
+};
+
 const main = async () => {
   const failures = [];
   let checks = 0;
@@ -111,9 +139,10 @@ const main = async () => {
   });
   checks += 2;
 
-  for (const samplePath of SAMPLE_PAYLOAD_PATHS) {
+  for (const fixture of RETRY_SCHEMA_SAMPLE_FIXTURES) {
+    const samplePath = fixture.samplePath;
     const samplePayload = await loadJson(samplePath);
-    const isCleanupSample = samplePayload?.label === 'retry:cleanup';
+    const isCleanupSample = fixture.schemaPath === RETRY_CLEANUP_JSON_SCHEMA_PATH;
     assertSampleContract({
       failures,
       samplePath,
@@ -125,6 +154,11 @@ const main = async () => {
         ? RETRY_CLEANUP_JSON_SCHEMA_VERSION
         : RETRY_COLLECT_JSON_SCHEMA_VERSION,
     });
+    await assertSampleFileSync({
+      failures,
+      fixture,
+    });
+    checks += 1;
     checks += 2;
   }
 
