@@ -1,9 +1,14 @@
 import { execFileSync } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import {
+  cleanupRetryFailureLogs,
+  formatRetryLogsCleanupSummary,
+  resolveRetryLogsCleanupConfig,
+  resolveRetryLogsDir,
+} from './retry-failure-logs-utils.mjs';
 
 const GITHUB_API_VERSION = '2022-11-28';
-const DEFAULT_OUTPUT_DIR = 'artifacts/release/retry-failures';
 
 const parseInteger = (raw) => {
   const parsed = Number(raw);
@@ -229,9 +234,8 @@ const main = async () => {
     process.env.RELEASE_RETRY_LOGS_INCLUDE_NON_FAILED,
     false,
   );
-  const outputDir =
-    (process.env.RELEASE_TUNNEL_RETRY_LOGS_DIR ?? DEFAULT_OUTPUT_DIR).trim() ||
-    DEFAULT_OUTPUT_DIR;
+  const outputDir = resolveRetryLogsDir(process.env);
+  const retryLogsCleanupConfig = resolveRetryLogsCleanupConfig(process.env);
 
   const runId = parseInteger(runIdArg);
   const token = resolveToken();
@@ -272,6 +276,17 @@ const main = async () => {
     );
     return;
   }
+
+  const cleanupSummary = await cleanupRetryFailureLogs({
+    outputDir,
+    ...retryLogsCleanupConfig,
+  });
+  process.stdout.write(
+    `${formatRetryLogsCleanupSummary({
+      summary: cleanupSummary,
+      label: 'retry:collect',
+    })}\n`,
+  );
 
   await collectLogs({
     token,

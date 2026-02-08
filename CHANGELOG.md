@@ -4,6 +4,21 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.11] - 2026-02-08
+
+### Added
+- New retry diagnostics cleanup command:
+  - `npm run release:smoke:retry:cleanup`.
+
+### Changed
+- Retry diagnostics collectors now perform automatic TTL cleanup before writing new logs.
+- Added cleanup controls:
+  - `RELEASE_RETRY_LOGS_CLEANUP_ENABLED` (default: `true`)
+  - `RELEASE_RETRY_LOGS_TTL_DAYS` (default: `14`)
+  - `RELEASE_RETRY_LOGS_CLEANUP_DRY_RUN` (default: `false`)
+- Retry diagnostics directory can now be configured with either:
+  - `RELEASE_TUNNEL_RETRY_LOGS_DIR` or `RELEASE_RETRY_LOGS_DIR`.
+
 ## [0.1.10] - 2026-02-08
 
 ### Added

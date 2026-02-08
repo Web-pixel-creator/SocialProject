@@ -1,6 +1,12 @@
 import { spawn } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import {
+  cleanupRetryFailureLogs,
+  formatRetryLogsCleanupSummary,
+  resolveRetryLogsCleanupConfig,
+  resolveRetryLogsDir,
+} from './retry-failure-logs-utils.mjs';
 
 const GITHUB_API_VERSION = '2022-11-28';
 const DEFAULT_API_PORT = '4000';
@@ -11,7 +17,6 @@ const DEFAULT_WAIT_INTERVAL_MS = 750;
 const DEFAULT_RETRY_MAX = 1;
 const DEFAULT_RETRY_DELAY_MS = 5000;
 const DEFAULT_CAPTURE_RETRY_LOGS = true;
-const DEFAULT_RETRY_LOGS_DIR = 'artifacts/release/retry-failures';
 const DEFAULT_CSRF_TOKEN = 'release-smoke-tunnel-csrf-token-123456789';
 const DEFAULT_JWT_SECRET = 'release-smoke-tunnel-jwt-secret-123456789';
 const DEFAULT_ADMIN_TOKEN = 'release-smoke-tunnel-admin-token-123456789';
@@ -599,9 +604,8 @@ const main = async () => {
     process.env.RELEASE_TUNNEL_CAPTURE_RETRY_LOGS,
     DEFAULT_CAPTURE_RETRY_LOGS,
   );
-  const retryLogsDir =
-    (process.env.RELEASE_TUNNEL_RETRY_LOGS_DIR ?? DEFAULT_RETRY_LOGS_DIR).trim() ||
-    DEFAULT_RETRY_LOGS_DIR;
+  const retryLogsDir = resolveRetryLogsDir(process.env);
+  const retryLogsCleanupConfig = resolveRetryLogsCleanupConfig(process.env);
 
   const csrfToken = process.env.RELEASE_CSRF_TOKEN ?? DEFAULT_CSRF_TOKEN;
   const githubToken =
@@ -757,6 +761,23 @@ const main = async () => {
         }
 
         if (captureRetryLogs) {
+          try {
+            const cleanupSummary = await cleanupRetryFailureLogs({
+              outputDir: retryLogsDir,
+              ...retryLogsCleanupConfig,
+            });
+            process.stderr.write(
+              `${formatRetryLogsCleanupSummary({
+                summary: cleanupSummary,
+                label: 'dispatch:tunnel',
+              })}\n`,
+            );
+          } catch (cleanupError) {
+            process.stderr.write(
+              `Retry diagnostics cleanup failed: ${String(cleanupError)}\n`,
+            );
+          }
+
           try {
             await captureRetryFailureLogs({
               token: githubToken,
