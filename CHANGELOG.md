@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.30] - 2026-02-08
+
+### Added
+- CI `test` job now uploads a machine-readable retry schema gate summary artifact:
+  - artifact name: `retry-schema-gate-summary`
+  - artifact path: `artifacts/release/retry-schema-gate-summary.json`
+
+### Changed
+- Retry schema gate summary generation in CI now calls:
+  - `node scripts/release/validate-retry-schema-gate.mjs --json`
+  - to ensure the uploaded artifact is pure JSON without npm script wrapper logs.
+
 ## [0.1.29] - 2026-02-08
 
 ### Added
