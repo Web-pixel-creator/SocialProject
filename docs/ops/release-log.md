@@ -33,6 +33,54 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-02-08 - v0.1.36
+
+- Scope: CI now uploads standalone preflight schema validator summary artifact (`release-smoke-preflight-schema-summary`) from `test` job.
+- Release commander: Codex automation.
+- Window (UTC): 2026-02-08 13:16 -> 2026-02-08 13:33.
+- Release artifact:
+  - GitHub Release: `https://github.com/Web-pixel-creator/SocialProject/releases/tag/v0.1.36`
+- Dry-run:
+  - Local rehearsal: pass (URL-input helper starts local API/Web and tunnels automatically).
+  - Staging smoke: pass (`release_smoke_staging`, workflow run `#234`, fallback mode) on head `b134c3f`.
+  - Staging smoke (URL-input mode via helper command): pass (`release:smoke:dispatch:tunnel`, workflow run `#236`) on head `b134c3f`.
+  - Tunnel helper retry note:
+    - Initial URL-input attempt run `#235` (`https://github.com/Web-pixel-creator/SocialProject/actions/runs/21798893888`) ended with `release_smoke_staging` failure only and was auto-retried by helper.
+    - Retry diagnostics captured:
+      - `artifacts/release/retry-failures/run-235-runid-21798893888-job-62890956779-Release_Smoke_Dry-Run_staging_manual_.log`
+      - `artifacts/release/retry-failures/run-235-runid-21798893888-retry-metadata.json`
+  - Smoke report artifact/link:
+    - fallback mode: `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21798858735`, artifact id `5422625737`)
+    - URL-input mode (helper command): `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21798929394`, artifact id `5422645726`)
+    - Local downloaded and extracted copy: `artifacts/release/ci-run-21798929394/smoke-results.json`
+  - Release smoke preflight summary artifact/link:
+    - fallback mode: `release-smoke-preflight-summary` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21798858735`, artifact id `5422625681`)
+    - URL-input mode (helper command): `release-smoke-preflight-summary` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21798929394`, artifact id `5422645653`)
+    - Fallback summary snapshot: `status=skipped`, `mode=fallback-local-stack`, missing URL inputs.
+    - URL-input summary snapshot: `status=pass`, `mode=url-input`, `attempts=4`, `durationMs=4276`, first success latency `3002ms` for API/Web.
+  - Retry schema gate summary artifact/link:
+    - fallback mode: `retry-schema-gate-summary` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21798858735`, artifact id `5422623628`)
+    - URL-input mode (helper command): `retry-schema-gate-summary` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21798929394`, artifact id `5422646439`)
+    - Gate totals: `validatedPayloads=11` (base `7`, preview strict `4`).
+  - Standalone preflight schema summary artifact/link:
+    - fallback mode: `release-smoke-preflight-schema-summary` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21798858735`, artifact id `5422623682`)
+    - URL-input mode (helper command): `release-smoke-preflight-schema-summary` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21798929394`, artifact id `5422646509`)
+    - Summary payload snapshot: `status=pass`, `validatedPayloads=3` (`fixturePayloads=2`, `runtimePayloads=1`).
+  - Smoke diff evidence:
+    - Command: `npm run release:smoke:diff -- 21798707594 21798929394`
+    - JSON report: `artifacts/release/smoke-diff-21798707594-vs-21798929394.json`
+    - Result: pass -> pass, failed steps `0 -> 0`, total duration `7086.70ms -> 7814.06ms` (delta `+727.36ms`), no pass regressions.
+- Gates:
+  - ultracite (local): pass (`npm run ultracite:check`).
+  - lint (local): pass (`npm run lint`).
+  - CI workflow_dispatch corroboration (run `#234`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+  - CI workflow_dispatch corroboration (run `#236`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+- Rollout result: release prepared and tagged.
+- Incidents:
+  - transient URL-input smoke dry-run failure on run `#235`, auto-recovered by helper retry.
+- Follow-ups:
+  - Optional: add dedicated CI step summary annotation (`$GITHUB_STEP_SUMMARY`) for `release-smoke-preflight-schema-summary` payload totals.
+
 ### 2026-02-08 - v0.1.35
 
 - Scope: standalone preflight-summary schema validator command + JSON mode, with release checklist coverage for optional standalone validation.
