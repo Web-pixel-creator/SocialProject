@@ -57,6 +57,8 @@ Use this checklist for every production release.
         - [ ] `RELEASE_TUNNEL_PREFLIGHT_TIMEOUT_MS=<ms>` (default `45000`)
         - [ ] `RELEASE_TUNNEL_PREFLIGHT_INTERVAL_MS=<ms>` (default `1000`)
         - [ ] `RELEASE_TUNNEL_PREFLIGHT_SUCCESS_STREAK=<n>` (default `2`)
+        - [ ] `RELEASE_TUNNEL_PREFLIGHT_SUMMARY_WRITE=<true|false>` (default `true`)
+        - [ ] `RELEASE_TUNNEL_PREFLIGHT_SUMMARY_PATH=<path>` (default `artifacts/release/tunnel-preflight-summary.json`)
       - [ ] `RELEASE_TUNNEL_CAPTURE_RETRY_LOGS=<true|false>` (default `true`)
       - [ ] `RELEASE_TUNNEL_RETRY_LOGS_DIR=<path>` or `RELEASE_RETRY_LOGS_DIR=<path>` (default `artifacts/release/retry-failures`)
       - [ ] Retry diagnostics retention cleanup controls:

@@ -4,6 +4,24 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.32] - 2026-02-08
+
+### Added
+- Tunnel preflight metrics for `release:smoke:dispatch:tunnel`:
+  - attempts count,
+  - preflight duration,
+  - first-success attempt and latency for both API and Web probes.
+- JSON summary output for tunnel preflight:
+  - default path: `artifacts/release/tunnel-preflight-summary.json`
+  - includes pass/fail status, timings, streak settings, and last probe details.
+
+### Changed
+- Tunnel preflight success log now prints compact metrics summary (attempts and first-success latency).
+- Added preflight summary controls:
+  - `RELEASE_TUNNEL_PREFLIGHT_SUMMARY_WRITE` (default `true`)
+  - `RELEASE_TUNNEL_PREFLIGHT_SUMMARY_PATH` (default `artifacts/release/tunnel-preflight-summary.json`)
+- Release checklist now documents preflight summary controls.
+
 ## [0.1.31] - 2026-02-08
 
 ### Added

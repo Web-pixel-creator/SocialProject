@@ -21,6 +21,9 @@ const DEFAULT_PREFLIGHT_ENABLED = true;
 const DEFAULT_PREFLIGHT_TIMEOUT_MS = 45_000;
 const DEFAULT_PREFLIGHT_INTERVAL_MS = 1000;
 const DEFAULT_PREFLIGHT_SUCCESS_STREAK = 2;
+const DEFAULT_PREFLIGHT_SUMMARY_WRITE = true;
+const DEFAULT_PREFLIGHT_SUMMARY_PATH =
+  'artifacts/release/tunnel-preflight-summary.json';
 const DEFAULT_CSRF_TOKEN = 'release-smoke-tunnel-csrf-token-123456789';
 const DEFAULT_JWT_SECRET = 'release-smoke-tunnel-jwt-secret-123456789';
 const DEFAULT_ADMIN_TOKEN = 'release-smoke-tunnel-admin-token-123456789';
@@ -561,6 +564,8 @@ const buildUrl = (baseUrl, route) => {
   return new URL(normalizedRoute, baseUrl).toString();
 };
 
+const toUtc = (epochMs) => new Date(epochMs).toISOString();
+
 const probeApiHealth = async (apiBaseUrl) => {
   const url = buildUrl(apiBaseUrl, '/health');
   try {
@@ -621,13 +626,20 @@ const waitForTunnelPreflight = async ({
   intervalMs,
   successStreak,
 }) => {
+  const startedAtMs = Date.now();
   const deadline = Date.now() + timeoutMs;
+  let attempts = 0;
   let apiStreak = 0;
   let webStreak = 0;
   let lastApiProbe = null;
   let lastWebProbe = null;
+  let apiFirstSuccessAttempt = null;
+  let webFirstSuccessAttempt = null;
+  let apiFirstSuccessLatencyMs = null;
+  let webFirstSuccessLatencyMs = null;
 
   while (Date.now() < deadline) {
+    attempts += 1;
     const [apiProbe, webProbe] = await Promise.all([
       probeApiHealth(apiBaseUrl),
       probeWebHome(webBaseUrl),
@@ -636,27 +648,96 @@ const waitForTunnelPreflight = async ({
     lastApiProbe = apiProbe;
     lastWebProbe = webProbe;
 
+    if (apiProbe.pass && apiFirstSuccessAttempt === null) {
+      apiFirstSuccessAttempt = attempts;
+      apiFirstSuccessLatencyMs = Date.now() - startedAtMs;
+    }
+    if (webProbe.pass && webFirstSuccessAttempt === null) {
+      webFirstSuccessAttempt = attempts;
+      webFirstSuccessLatencyMs = Date.now() - startedAtMs;
+    }
+
     apiStreak = apiProbe.pass ? apiStreak + 1 : 0;
     webStreak = webProbe.pass ? webStreak + 1 : 0;
 
     if (apiStreak >= successStreak && webStreak >= successStreak) {
-      process.stdout.write(
-        `Tunnel preflight passed with success streak ${successStreak}/${successStreak} (api: ${apiBaseUrl}, web: ${webBaseUrl}).\n`,
-      );
-      return;
+      const completedAtMs = Date.now();
+      return {
+        status: 'pass',
+        startedAtUtc: toUtc(startedAtMs),
+        completedAtUtc: toUtc(completedAtMs),
+        durationMs: completedAtMs - startedAtMs,
+        attempts,
+        timeoutMs,
+        intervalMs,
+        requiredSuccessStreak: successStreak,
+        api: {
+          baseUrl: apiBaseUrl,
+          firstSuccessAttempt: apiFirstSuccessAttempt,
+          firstSuccessLatencyMs: apiFirstSuccessLatencyMs,
+          finalSuccessStreak: apiStreak,
+          lastStatus: apiProbe.status,
+          lastReason: apiProbe.reason,
+        },
+        web: {
+          baseUrl: webBaseUrl,
+          firstSuccessAttempt: webFirstSuccessAttempt,
+          firstSuccessLatencyMs: webFirstSuccessLatencyMs,
+          finalSuccessStreak: webStreak,
+          lastStatus: webProbe.status,
+          lastReason: webProbe.reason,
+        },
+      };
     }
 
     await sleep(intervalMs);
   }
 
+  const completedAtMs = Date.now();
   const apiStatus = lastApiProbe?.status ?? 'n/a';
   const webStatus = lastWebProbe?.status ?? 'n/a';
   const apiReason = lastApiProbe?.reason ?? 'no probe result';
   const webReason = lastWebProbe?.reason ?? 'no probe result';
-
-  throw new Error(
+  const summary = {
+    status: 'fail',
+    startedAtUtc: toUtc(startedAtMs),
+    completedAtUtc: toUtc(completedAtMs),
+    durationMs: completedAtMs - startedAtMs,
+    attempts,
+    timeoutMs,
+    intervalMs,
+    requiredSuccessStreak: successStreak,
+    api: {
+      baseUrl: apiBaseUrl,
+      firstSuccessAttempt: apiFirstSuccessAttempt,
+      firstSuccessLatencyMs: apiFirstSuccessLatencyMs,
+      finalSuccessStreak: apiStreak,
+      lastStatus: lastApiProbe?.status ?? null,
+      lastReason: apiReason,
+    },
+    web: {
+      baseUrl: webBaseUrl,
+      firstSuccessAttempt: webFirstSuccessAttempt,
+      firstSuccessLatencyMs: webFirstSuccessLatencyMs,
+      finalSuccessStreak: webStreak,
+      lastStatus: lastWebProbe?.status ?? null,
+      lastReason: webReason,
+    },
+  };
+  const error = new Error(
     `Tunnel preflight failed after ${timeoutMs}ms. Last API probe: status=${apiStatus}, reason=${apiReason}. Last WEB probe: status=${webStatus}, reason=${webReason}.`,
   );
+  Object.assign(error, {
+    preflightSummary: summary,
+  });
+  throw error;
+};
+
+const writePreflightSummary = async ({ summary, outputPath }) => {
+  const resolvedPath = path.resolve(outputPath);
+  await mkdir(path.dirname(resolvedPath), { recursive: true });
+  await writeFile(resolvedPath, JSON.stringify(summary, null, 2), 'utf8');
+  process.stdout.write(`Tunnel preflight summary written to ${resolvedPath}\n`);
 };
 
 const startTunnel = ({ port, name }) => {
@@ -723,6 +804,13 @@ const main = async () => {
     process.env.RELEASE_TUNNEL_PREFLIGHT_SUCCESS_STREAK,
     DEFAULT_PREFLIGHT_SUCCESS_STREAK,
   );
+  const preflightSummaryWrite = parseBoolean(
+    process.env.RELEASE_TUNNEL_PREFLIGHT_SUMMARY_WRITE,
+    DEFAULT_PREFLIGHT_SUMMARY_WRITE,
+  );
+  const preflightSummaryPath =
+    process.env.RELEASE_TUNNEL_PREFLIGHT_SUMMARY_PATH?.trim() ??
+    DEFAULT_PREFLIGHT_SUMMARY_PATH;
   const captureRetryLogs = parseBoolean(
     process.env.RELEASE_TUNNEL_CAPTURE_RETRY_LOGS,
     DEFAULT_CAPTURE_RETRY_LOGS,
@@ -832,13 +920,41 @@ const main = async () => {
       process.stdout.write(
         `Running tunnel preflight checks (timeout: ${preflightTimeoutMs}ms, interval: ${preflightIntervalMs}ms, success streak: ${preflightSuccessStreak}).\n`,
       );
-      await waitForTunnelPreflight({
-        apiBaseUrl,
-        webBaseUrl,
-        timeoutMs: preflightTimeoutMs,
-        intervalMs: preflightIntervalMs,
-        successStreak: preflightSuccessStreak,
-      });
+      let preflightSummary = null;
+      try {
+        preflightSummary = await waitForTunnelPreflight({
+          apiBaseUrl,
+          webBaseUrl,
+          timeoutMs: preflightTimeoutMs,
+          intervalMs: preflightIntervalMs,
+          successStreak: preflightSuccessStreak,
+        });
+      } catch (error) {
+        preflightSummary = error?.preflightSummary ?? null;
+        if (preflightSummaryWrite && preflightSummary) {
+          try {
+            await writePreflightSummary({
+              summary: preflightSummary,
+              outputPath: preflightSummaryPath,
+            });
+          } catch (summaryError) {
+            process.stderr.write(
+              `Failed to write tunnel preflight summary: ${String(summaryError)}\n`,
+            );
+          }
+        }
+        throw error;
+      }
+
+      process.stdout.write(
+        `Tunnel preflight passed (attempts: ${preflightSummary.attempts}, duration: ${preflightSummary.durationMs}ms, api first success: attempt ${preflightSummary.api.firstSuccessAttempt ?? 'n/a'} / ${preflightSummary.api.firstSuccessLatencyMs ?? 'n/a'}ms, web first success: attempt ${preflightSummary.web.firstSuccessAttempt ?? 'n/a'} / ${preflightSummary.web.firstSuccessLatencyMs ?? 'n/a'}ms).\n`,
+      );
+      if (preflightSummaryWrite) {
+        await writePreflightSummary({
+          summary: preflightSummary,
+          outputPath: preflightSummaryPath,
+        });
+      }
     }
 
     const totalAttempts = retryMax + 1;
