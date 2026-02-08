@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.22] - 2026-02-08
+
+### Added
+- Targeted retry schema fixture preview argument:
+  - `npm run release:smoke:retry:schema:samples:generate -- --preview=<label>`
+  - supports lookup by fixture label slug, sample path, or sample filename.
+
+### Changed
+- Retry schema sample generator help/preview flow now supports both `--preview` (all fixtures) and `--preview=<label>` (single fixture or subset).
+- Release checklist now includes targeted preview command for focused review workflows.
+
 ## [0.1.21] - 2026-02-08
 
 ### Added

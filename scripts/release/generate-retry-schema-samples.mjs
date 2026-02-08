@@ -11,11 +11,29 @@ const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..', '..');
 
 const normalizeLineEndings = (value) => value.replace(/\r\n/gu, '\n');
+const normalizePreviewToken = (value) => value.trim().toLowerCase();
+
+const toPreviewSlug = (value) =>
+  normalizePreviewToken(value)
+    .replace(/[^a-z0-9]+/gu, '-')
+    .replace(/^-|-$/gu, '');
+
+const buildPreviewAliases = (fixture) => {
+  const aliases = [
+    normalizePreviewToken(fixture.label),
+    toPreviewSlug(fixture.label),
+    normalizePreviewToken(fixture.samplePath),
+    normalizePreviewToken(path.basename(fixture.samplePath)),
+  ];
+
+  return [...new Set(aliases.filter((alias) => alias.length > 0))];
+};
 
 const parseArguments = (argv) => {
   const options = {
     check: false,
     preview: false,
+    previewLabel: null,
   };
 
   for (const arg of argv) {
@@ -27,9 +45,20 @@ const parseArguments = (argv) => {
       options.preview = true;
       continue;
     }
+    if (arg.startsWith('--preview=')) {
+      const previewLabel = arg.slice('--preview='.length).trim();
+      if (previewLabel.length === 0) {
+        throw new Error(
+          'Argument --preview=<label> requires a non-empty label value.',
+        );
+      }
+      options.preview = true;
+      options.previewLabel = previewLabel;
+      continue;
+    }
     if (arg === '--help' || arg === '-h') {
       process.stdout.write(
-        'Usage: npm run release:smoke:retry:schema:samples:generate [-- --check|--preview]\n',
+        'Usage: npm run release:smoke:retry:schema:samples:generate [-- --check|--preview|--preview=<label>]\n',
       );
       process.exit(0);
     }
@@ -95,13 +124,42 @@ const writeFixtures = async () => {
   );
 };
 
-const previewFixtures = () => {
-  for (const fixture of RETRY_SCHEMA_SAMPLE_FIXTURES) {
+const resolvePreviewFixtures = (previewLabel) => {
+  if (previewLabel === null) {
+    return RETRY_SCHEMA_SAMPLE_FIXTURES;
+  }
+
+  const normalizedPreviewLabel = normalizePreviewToken(previewLabel);
+  const filteredFixtures = RETRY_SCHEMA_SAMPLE_FIXTURES.filter((fixture) =>
+    buildPreviewAliases(fixture).includes(normalizedPreviewLabel),
+  );
+  if (filteredFixtures.length > 0) {
+    return filteredFixtures;
+  }
+
+  const availableLabels = RETRY_SCHEMA_SAMPLE_FIXTURES.map((fixture) => {
+    const slug = toPreviewSlug(fixture.label);
+    return `${fixture.label} (slug: ${slug})`;
+  }).join(', ');
+  throw new Error(
+    `Unknown preview label "${previewLabel}". Available labels: ${availableLabels}.`,
+  );
+};
+
+const previewFixtures = (previewLabel) => {
+  const fixturesToPreview = resolvePreviewFixtures(previewLabel);
+  if (previewLabel !== null) {
+    process.stdout.write(`Preview filter: ${previewLabel}\n`);
+  }
+
+  for (const fixture of fixturesToPreview) {
     process.stdout.write(`--- ${fixture.samplePath} (${fixture.label}) ---\n`);
     process.stdout.write(stringifyRetrySchemaFixture(fixture.payload));
   }
+
+  const fixtureSuffix = fixturesToPreview.length === 1 ? '' : 's';
   process.stdout.write(
-    `Previewed ${RETRY_SCHEMA_SAMPLE_FIXTURES.length} retry schema sample fixtures.\n`,
+    `Previewed ${fixturesToPreview.length} retry schema sample fixture${fixtureSuffix}.\n`,
   );
 };
 
@@ -112,7 +170,7 @@ const main = async () => {
     return;
   }
   if (options.preview) {
-    previewFixtures();
+    previewFixtures(options.previewLabel);
     return;
   }
   await writeFixtures();
