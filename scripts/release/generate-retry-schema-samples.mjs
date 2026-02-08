@@ -12,6 +12,8 @@ const projectRoot = path.resolve(__dirname, '..', '..');
 
 const normalizeLineEndings = (value) => value.replace(/\r\n/gu, '\n');
 const normalizePreviewToken = (value) => value.trim().toLowerCase();
+const normalizePreviewPathToken = (value) =>
+  normalizePreviewToken(value).replaceAll('\\', '/');
 
 const toPreviewSlug = (value) =>
   normalizePreviewToken(value)
@@ -29,14 +31,28 @@ const buildPreviewAliases = (fixture) => {
   return [...new Set(aliases.filter((alias) => alias.length > 0))];
 };
 
+const buildPreviewFileAliases = (fixture) => {
+  const aliases = [
+    normalizePreviewPathToken(fixture.samplePath),
+    normalizePreviewPathToken(path.basename(fixture.samplePath)),
+  ];
+
+  return [...new Set(aliases.filter((alias) => alias.length > 0))];
+};
+
 const parseArguments = (argv) => {
   const options = {
     check: false,
     preview: false,
     previewLabels: [],
+    previewFiles: [],
   };
 
-  for (const arg of argv) {
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv.at(index);
+    if (arg === undefined) {
+      continue;
+    }
     if (arg === '--check') {
       options.check = true;
       continue;
@@ -56,9 +72,32 @@ const parseArguments = (argv) => {
       options.previewLabels.push(previewLabel);
       continue;
     }
+    if (arg === '--preview-file') {
+      const previewFile = argv.at(index + 1)?.trim() ?? '';
+      if (previewFile.length === 0) {
+        throw new Error(
+          'Argument --preview-file requires a non-empty file path value.',
+        );
+      }
+      options.preview = true;
+      options.previewFiles.push(previewFile);
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith('--preview-file=')) {
+      const previewFile = arg.slice('--preview-file='.length).trim();
+      if (previewFile.length === 0) {
+        throw new Error(
+          'Argument --preview-file=<path> requires a non-empty file path value.',
+        );
+      }
+      options.preview = true;
+      options.previewFiles.push(previewFile);
+      continue;
+    }
     if (arg === '--help' || arg === '-h') {
       process.stdout.write(
-        'Usage: npm run release:smoke:retry:schema:samples:generate [-- --check|--preview|--preview=<label> [--preview=<label> ...]]\n',
+        'Usage: npm run release:smoke:retry:schema:samples:generate [-- --check|--preview|--preview=<label> [--preview=<label> ...]|--preview-file=<path> [--preview-file=<path> ...]]\n',
       );
       process.exit(0);
     }
@@ -130,14 +169,18 @@ const formatAvailablePreviewLabels = () =>
     return `${fixture.label} (slug: ${slug})`;
   }).join(', ');
 
-const resolvePreviewFixtures = (previewLabels) => {
-  if (previewLabels.length === 0) {
+const formatAvailablePreviewFiles = () =>
+  RETRY_SCHEMA_SAMPLE_FIXTURES.map((fixture) => fixture.samplePath).join(', ');
+
+const resolvePreviewFixtures = ({ previewLabels, previewFiles }) => {
+  if (previewLabels.length === 0 && previewFiles.length === 0) {
     return RETRY_SCHEMA_SAMPLE_FIXTURES;
   }
 
   const selectedFixtures = [];
   const selectedPaths = new Set();
   const unknownLabels = [];
+  const unknownFiles = [];
 
   for (const previewLabel of previewLabels) {
     const normalizedPreviewLabel = normalizePreviewToken(previewLabel);
@@ -158,6 +201,25 @@ const resolvePreviewFixtures = (previewLabels) => {
     }
   }
 
+  for (const previewFile of previewFiles) {
+    const normalizedPreviewFile = normalizePreviewPathToken(previewFile);
+    const matchedFixtures = RETRY_SCHEMA_SAMPLE_FIXTURES.filter((fixture) =>
+      buildPreviewFileAliases(fixture).includes(normalizedPreviewFile),
+    );
+    if (matchedFixtures.length === 0) {
+      unknownFiles.push(previewFile);
+      continue;
+    }
+
+    for (const fixture of matchedFixtures) {
+      if (selectedPaths.has(fixture.samplePath)) {
+        continue;
+      }
+      selectedPaths.add(fixture.samplePath);
+      selectedFixtures.push(fixture);
+    }
+  }
+
   if (unknownLabels.length > 0) {
     const unknownLabelSuffix = unknownLabels.length === 1 ? '' : 's';
     throw new Error(
@@ -165,13 +227,26 @@ const resolvePreviewFixtures = (previewLabels) => {
     );
   }
 
+  if (unknownFiles.length > 0) {
+    const unknownFileSuffix = unknownFiles.length === 1 ? '' : 's';
+    throw new Error(
+      `Unknown preview file${unknownFileSuffix}: ${unknownFiles.join(', ')}. Available sample files: ${formatAvailablePreviewFiles()}.`,
+    );
+  }
+
   return selectedFixtures;
 };
 
-const previewFixtures = (previewLabels) => {
-  const fixturesToPreview = resolvePreviewFixtures(previewLabels);
+const previewFixtures = ({ previewLabels, previewFiles }) => {
+  const fixturesToPreview = resolvePreviewFixtures({
+    previewLabels,
+    previewFiles,
+  });
   if (previewLabels.length > 0) {
-    process.stdout.write(`Preview filters: ${previewLabels.join(', ')}\n`);
+    process.stdout.write(`Preview label filters: ${previewLabels.join(', ')}\n`);
+  }
+  if (previewFiles.length > 0) {
+    process.stdout.write(`Preview file filters: ${previewFiles.join(', ')}\n`);
   }
 
   for (const fixture of fixturesToPreview) {
@@ -192,7 +267,10 @@ const main = async () => {
     return;
   }
   if (options.preview) {
-    previewFixtures(options.previewLabels);
+    previewFixtures({
+      previewLabels: options.previewLabels,
+      previewFiles: options.previewFiles,
+    });
     return;
   }
   await writeFixtures();

@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.24] - 2026-02-08
+
+### Added
+- Sample-file targeted retry schema preview:
+  - `npm run release:smoke:retry:schema:samples:generate -- --preview-file=<path>`
+  - supports repeatable `--preview-file` filters and mixed usage with `--preview=<label>`.
+
+### Changed
+- Retry schema sample generator now accepts `--preview-file` in both `--preview-file=<path>` and `--preview-file <path>` forms.
+- Preview output now separates label filters and file filters when both are provided.
+- Release checklist now includes repeatable sample-file preview command.
+
 ## [0.1.23] - 2026-02-08
 
 ### Added
