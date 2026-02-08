@@ -4,6 +4,21 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.8] - 2026-02-08
+
+### Added
+- `release:smoke:dispatch:tunnel` now supports transient-failure retry for URL-input CI smoke dispatch.
+- Automatic retry is triggered only when CI analysis confirms:
+  - failed run conclusion is `failure`,
+  - failing job(s) are limited to `Release Smoke Dry-Run`,
+  - all non-smoke jobs completed with `success` or `skipped`.
+
+### Changed
+- Added retry controls:
+  - `RELEASE_TUNNEL_DISPATCH_RETRY_MAX` (default: `1`),
+  - `RELEASE_TUNNEL_DISPATCH_RETRY_DELAY_MS` (default: `5000`).
+- Enhanced tunnel dispatch diagnostics by capturing dispatch output and correlating failed run/job details through GitHub API.
+
 ## [0.1.7] - 2026-02-07
 
 ### Added

@@ -44,6 +44,9 @@ Use this checklist for every production release.
     - [ ] `RELEASE_API_BASE_URL=<staging-api-url> RELEASE_WEB_BASE_URL=<staging-web-url> npm run release:smoke:dispatch`
     - [ ] Without staging URLs: `npm run release:smoke:dispatch` (runs workflow fallback path).
     - [ ] Tunnel-based URL-input helper (auto local API/Web + localtunnel + dispatch): `npm run release:smoke:dispatch:tunnel`
+    - [ ] Optional tunnel retry controls for transient smoke-only failures:
+      - [ ] `RELEASE_TUNNEL_DISPATCH_RETRY_MAX=<n>` (default `1`)
+      - [ ] `RELEASE_TUNNEL_DISPATCH_RETRY_DELAY_MS=<ms>` (default `5000`)
     - [ ] Manage persistent staging workflow inputs:
       - [ ] Show current values: `npm run release:smoke:inputs -- show`
       - [ ] Set values: `RELEASE_API_BASE_URL=<staging-api-url> RELEASE_WEB_BASE_URL=<staging-web-url> RELEASE_CSRF_TOKEN=<csrf-token> npm run release:smoke:inputs -- set`
