@@ -4,6 +4,15 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.15] - 2026-02-08
+
+### Added
+- `release:smoke:retry:collect` now supports `--json` for machine-readable cleanup and capture results.
+- Added `--help` usage output for collector command arguments.
+
+### Changed
+- Updated release checklist with collector JSON output example for automation/dashboard ingestion.
+
 ## [0.1.14] - 2026-02-08
 
 ### Added

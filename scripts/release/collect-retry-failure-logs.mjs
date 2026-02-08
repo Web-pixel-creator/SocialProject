@@ -9,6 +9,8 @@ import {
 } from './retry-failure-logs-utils.mjs';
 
 const GITHUB_API_VERSION = '2022-11-28';
+const COLLECT_USAGE =
+  'Usage: npm run release:smoke:retry:collect -- <run_id> [--json]';
 
 const parseInteger = (raw) => {
   const parsed = Number(raw);
@@ -30,6 +32,41 @@ const parseBoolean = (raw, fallback) => {
     return false;
   }
   return fallback;
+};
+
+const parseCollectArguments = (argv) => {
+  const positional = [];
+  let json = false;
+
+  for (const arg of argv) {
+    if (arg === '--json') {
+      json = true;
+      continue;
+    }
+    if (arg === '--help' || arg === '-h') {
+      process.stdout.write(`${COLLECT_USAGE}\n`);
+      process.exit(0);
+    }
+    if (arg.startsWith('--')) {
+      throw new Error(`Unknown argument: ${arg}`);
+    }
+    positional.push(arg);
+  }
+
+  if (positional.length > 1) {
+    throw new Error(COLLECT_USAGE);
+  }
+
+  const runIdArg = (
+    positional[0] ??
+    process.env.RELEASE_RETRY_LOGS_RUN_ID ??
+    ''
+  ).trim();
+
+  return {
+    json,
+    runIdArg,
+  };
 };
 
 const readOriginRemote = () => {
@@ -162,6 +199,9 @@ const collectLogs = async ({
   runNumber,
   jobs,
   outputDir,
+  onCaptured,
+  onCaptureFailed,
+  onMetadataWritten,
 }) => {
   await mkdir(outputDir, { recursive: true });
   const runTag = runNumber ?? runId;
@@ -198,7 +238,7 @@ const collectLogs = async ({
         logFilePath,
         logCaptured: true,
       });
-      process.stdout.write(`Captured: ${logFilePath}\n`);
+      onCaptured(logFilePath);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       metadata.jobs.push({
@@ -211,7 +251,7 @@ const collectLogs = async ({
         logCaptured: false,
         error: message,
       });
-      process.stderr.write(`Failed to capture job ${jobId}: ${message}\n`);
+      onCaptureFailed(jobId, message);
     }
   }
 
@@ -220,14 +260,18 @@ const collectLogs = async ({
     `run-${runTag}-runid-${runId}-retry-metadata.json`,
   );
   await writeFile(metadataPath, JSON.stringify(metadata, null, 2), 'utf8');
-  process.stdout.write(`Metadata: ${metadataPath}\n`);
-  return metadataPath;
+  onMetadataWritten(metadataPath);
+  return {
+    metadataPath,
+    metadata,
+  };
 };
 
 const main = async () => {
-  const runIdArg = (process.argv[2] ?? process.env.RELEASE_RETRY_LOGS_RUN_ID ?? '').trim();
+  const options = parseCollectArguments(process.argv.slice(2));
+  const runIdArg = options.runIdArg;
   if (!runIdArg) {
-    throw new Error('Usage: npm run release:smoke:retry:collect -- <run_id>');
+    throw new Error(COLLECT_USAGE);
   }
 
   const includeNonFailed = parseBoolean(
@@ -241,6 +285,16 @@ const main = async () => {
   const token = resolveToken();
   const repoSlug = resolveRepoSlug();
   const baseApiUrl = `https://api.github.com/repos/${repoSlug}`;
+  const writeText = (value) => {
+    if (!options.json) {
+      process.stdout.write(`${value}\n`);
+    }
+  };
+  const writeErrorText = (value) => {
+    if (!options.json) {
+      process.stderr.write(`${value}\n`);
+    }
+  };
 
   const run = await githubRequest({
     token,
@@ -264,16 +318,37 @@ const main = async () => {
     return String(job?.conclusion ?? '') === 'failure';
   });
 
-  process.stdout.write(`Repository: ${repoSlug}\n`);
-  process.stdout.write(
-    `Run: #${run?.run_number ?? '<unknown>'} (id ${runId}) - ${run?.html_url ?? '<unknown>'}\n`,
+  const runNumber = Number(run?.run_number ?? 0) || null;
+  const runUrl = String(run?.html_url ?? '');
+  const runConclusion = String(run?.conclusion ?? 'unknown');
+  const response = {
+    label: 'retry:collect',
+    repoSlug,
+    runId,
+    runNumber,
+    runUrl,
+    runConclusion,
+    includeNonFailed,
+    selectedJobs: selectedJobs.length,
+    cleanupSummary: null,
+    collection: null,
+    message: '',
+  };
+
+  writeText(`Repository: ${repoSlug}`);
+  writeText(
+    `Run: #${run?.run_number ?? '<unknown>'} (id ${runId}) - ${run?.html_url ?? '<unknown>'}`,
   );
-  process.stdout.write(`Run conclusion: ${run?.conclusion ?? 'unknown'}\n`);
+  writeText(`Run conclusion: ${run?.conclusion ?? 'unknown'}`);
 
   if (selectedJobs.length === 0) {
-    process.stdout.write(
-      'No matching Release Smoke Dry-Run jobs selected for log collection.\n',
-    );
+    response.message =
+      'No matching Release Smoke Dry-Run jobs selected for log collection.';
+    if (options.json) {
+      process.stdout.write(`${JSON.stringify(response, null, 2)}\n`);
+      return;
+    }
+    writeText(response.message);
     return;
   }
 
@@ -281,21 +356,46 @@ const main = async () => {
     outputDir,
     ...retryLogsCleanupConfig,
   });
-  process.stdout.write(
+  response.cleanupSummary = cleanupSummary;
+  writeText(
     `${formatRetryLogsCleanupSummary({
       summary: cleanupSummary,
       label: 'retry:collect',
-    })}\n`,
+    })}`,
   );
 
-  await collectLogs({
+  const collectionResult = await collectLogs({
     token,
     repoSlug,
     runId,
-    runNumber: Number(run?.run_number ?? 0) || null,
+    runNumber,
     jobs: selectedJobs,
     outputDir,
+    onCaptured: (logFilePath) => {
+      writeText(`Captured: ${logFilePath}`);
+    },
+    onCaptureFailed: (jobId, message) => {
+      writeErrorText(`Failed to capture job ${jobId}: ${message}`);
+    },
+    onMetadataWritten: (metadataPath) => {
+      writeText(`Metadata: ${metadataPath}`);
+    },
   });
+  const jobsWithCaptureInfo = Array.isArray(collectionResult.metadata?.jobs)
+    ? collectionResult.metadata.jobs
+    : [];
+  response.collection = {
+    metadataPath: collectionResult.metadataPath,
+    totalJobs: jobsWithCaptureInfo.length,
+    capturedJobs: jobsWithCaptureInfo.filter((job) => job.logCaptured).length,
+    failedJobs: jobsWithCaptureInfo.filter((job) => !job.logCaptured).length,
+    jobs: jobsWithCaptureInfo,
+  };
+  response.message = 'Retry diagnostics collection completed.';
+
+  if (options.json) {
+    process.stdout.write(`${JSON.stringify(response, null, 2)}\n`);
+  }
 };
 
 main().catch((error) => {

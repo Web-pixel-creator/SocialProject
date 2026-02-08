@@ -57,6 +57,7 @@ Use this checklist for every production release.
         - [ ] `RELEASE_RETRY_LOGS_CLEANUP_DRY_RUN=<true|false>` (default `false`)
       - [ ] Manual retry diagnostics collection for a known failed run:
         - [ ] `npm run release:smoke:retry:collect -- <run_id>`
+        - [ ] Optional JSON output (for automation/dashboard ingestion): `npm run release:smoke:retry:collect -- <run_id> --json`
         - [ ] Include non-failed smoke jobs when needed: `RELEASE_RETRY_LOGS_INCLUDE_NON_FAILED=true npm run release:smoke:retry:collect -- <run_id>`
       - [ ] Manual cleanup command (standalone):
         - [ ] `npm run release:smoke:retry:cleanup`
