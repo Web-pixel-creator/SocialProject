@@ -33,6 +33,35 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-02-08 - v0.1.9
+
+- Scope: Retry diagnostics capture for tunnel dispatch transient smoke failures.
+- Release commander: Codex automation.
+- Window (UTC): 2026-02-08 06:22 -> 2026-02-08 06:27.
+- Release artifact:
+  - GitHub Release: `https://github.com/Web-pixel-creator/SocialProject/releases/tag/v0.1.9`
+- Dry-run:
+  - Local rehearsal: pass (URL-input helper starts local API/Web and tunnels automatically).
+  - Staging smoke: pass (`release_smoke_staging`, workflow run `#135`, fallback mode) on head `0576a7e`.
+  - Staging smoke (URL-input mode via helper command): pass (`release:smoke:dispatch:tunnel`, workflow run `#136`) on head `0576a7e`.
+  - Smoke report artifact/link:
+    - fallback mode: `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21793595330`, artifact id `5421053639`)
+    - URL-input mode (helper command): `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21793629453`, artifact id `5421064825`)
+    - Local downloaded and extracted copy: `artifacts/release/ci-run-21793629453/smoke-results.json`
+  - Smoke diff evidence:
+    - Command: `npm run release:smoke:diff -- 21793430363 21793629453`
+    - JSON report: `artifacts/release/smoke-diff-21793430363-vs-21793629453.json`
+    - Result: pass -> pass, failed steps `0 -> 0`, total duration `6886.59ms -> 6070.95ms` (delta `-815.64ms`), no pass regressions.
+- Gates:
+  - ultracite (local): pass (`npm run ultracite:check`).
+  - CI workflow_dispatch corroboration (run `#135`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+  - CI workflow_dispatch corroboration (run `#136`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+- Rollout result: release prepared and tagged.
+- Incidents:
+  - none.
+- Follow-ups:
+  - Optional: simulate a controlled retryable failure in a non-production branch to assert end-to-end creation of `artifacts/release/retry-failures` diagnostics.
+
 ### 2026-02-08 - v0.1.8
 
 - Scope: Retry hardening for tunnel-based URL-input smoke dispatch.
