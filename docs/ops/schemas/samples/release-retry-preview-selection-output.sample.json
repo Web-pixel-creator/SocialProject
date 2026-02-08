@@ -1,0 +1,37 @@
+{
+  "schemaPath": "docs/ops/schemas/release-retry-preview-selection-output.schema.json",
+  "schemaVersion": "1.0.0",
+  "label": "retry:schema:samples:preview-selection",
+  "mode": "preview",
+  "filters": {
+    "labels": [],
+    "files": []
+  },
+  "totals": {
+    "available": 3,
+    "matched": 3,
+    "selected": 3,
+    "deduped": 0
+  },
+  "unknown": {
+    "labels": [],
+    "files": []
+  },
+  "selected": [
+    {
+      "label": "cleanup sample",
+      "samplePath": "docs/ops/schemas/samples/release-retry-cleanup-output.sample.json",
+      "schemaPath": "docs/ops/schemas/release-retry-cleanup-output.schema.json"
+    },
+    {
+      "label": "collect empty sample",
+      "samplePath": "docs/ops/schemas/samples/release-retry-collect-output-empty.sample.json",
+      "schemaPath": "docs/ops/schemas/release-retry-collect-output.schema.json"
+    },
+    {
+      "label": "collect success sample",
+      "samplePath": "docs/ops/schemas/samples/release-retry-collect-output-success.sample.json",
+      "schemaPath": "docs/ops/schemas/release-retry-collect-output.schema.json"
+    }
+  ]
+}

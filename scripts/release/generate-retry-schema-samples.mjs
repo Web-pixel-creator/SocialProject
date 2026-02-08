@@ -2,6 +2,10 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  RETRY_PREVIEW_SELECTION_JSON_SCHEMA_PATH,
+  RETRY_PREVIEW_SELECTION_JSON_SCHEMA_VERSION,
+} from './retry-json-schema-contracts.mjs';
+import {
   RETRY_SCHEMA_SAMPLE_FIXTURES,
   stringifyRetrySchemaFixture,
 } from './retry-schema-sample-fixtures.mjs';
@@ -271,6 +275,8 @@ const writePreviewSelectionJson = ({
   unknownFiles,
 }) => {
   const payload = {
+    schemaPath: RETRY_PREVIEW_SELECTION_JSON_SCHEMA_PATH,
+    schemaVersion: RETRY_PREVIEW_SELECTION_JSON_SCHEMA_VERSION,
     label: 'retry:schema:samples:preview-selection',
     mode: 'preview',
     filters: {

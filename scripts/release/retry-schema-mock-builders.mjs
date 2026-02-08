@@ -3,6 +3,8 @@ import {
   RETRY_CLEANUP_JSON_SCHEMA_VERSION,
   RETRY_COLLECT_JSON_SCHEMA_PATH,
   RETRY_COLLECT_JSON_SCHEMA_VERSION,
+  RETRY_PREVIEW_SELECTION_JSON_SCHEMA_PATH,
+  RETRY_PREVIEW_SELECTION_JSON_SCHEMA_VERSION,
 } from './retry-json-schema-contracts.mjs';
 
 const MOCK_REPO_SLUG = 'Web-pixel-creator/SocialProject';
@@ -151,5 +153,83 @@ export const createRetryCollectSuccessOutputMock = () => {
     cleanupSummary,
     collection,
     message: 'Retry diagnostics collection completed.',
+  });
+};
+
+export const createRetryPreviewSelectionEntryMock = (overrides = {}) => {
+  return {
+    label: 'cleanup sample',
+    samplePath: 'docs/ops/schemas/samples/release-retry-cleanup-output.sample.json',
+    schemaPath: RETRY_CLEANUP_JSON_SCHEMA_PATH,
+    ...overrides,
+  };
+};
+
+export const createRetryPreviewSelectionOutputMock = ({
+  filtersOverrides = {},
+  totalsOverrides = {},
+  unknownOverrides = {},
+  selected = [
+    createRetryPreviewSelectionEntryMock(),
+    createRetryPreviewSelectionEntryMock({
+      label: 'collect empty sample',
+      samplePath:
+        'docs/ops/schemas/samples/release-retry-collect-output-empty.sample.json',
+      schemaPath: RETRY_COLLECT_JSON_SCHEMA_PATH,
+    }),
+    createRetryPreviewSelectionEntryMock({
+      label: 'collect success sample',
+      samplePath:
+        'docs/ops/schemas/samples/release-retry-collect-output-success.sample.json',
+      schemaPath: RETRY_COLLECT_JSON_SCHEMA_PATH,
+    }),
+  ],
+  outputOverrides = {},
+} = {}) => {
+  const normalizedSelected = [...selected];
+  const matched = normalizedSelected.length;
+  return {
+    schemaPath: RETRY_PREVIEW_SELECTION_JSON_SCHEMA_PATH,
+    schemaVersion: RETRY_PREVIEW_SELECTION_JSON_SCHEMA_VERSION,
+    label: 'retry:schema:samples:preview-selection',
+    mode: 'preview',
+    filters: {
+      labels: [],
+      files: [],
+      ...filtersOverrides,
+    },
+    totals: {
+      available: 3,
+      matched,
+      selected: normalizedSelected.length,
+      deduped: Math.max(0, matched - normalizedSelected.length),
+      ...totalsOverrides,
+    },
+    unknown: {
+      labels: [],
+      files: [],
+      ...unknownOverrides,
+    },
+    selected: normalizedSelected,
+    ...outputOverrides,
+  };
+};
+
+export const createRetryPreviewSelectionUnknownOutputMock = () => {
+  return createRetryPreviewSelectionOutputMock({
+    filtersOverrides: {
+      labels: ['missing-label'],
+      files: ['missing.sample.json'],
+    },
+    totalsOverrides: {
+      matched: 0,
+      selected: 0,
+      deduped: 0,
+    },
+    unknownOverrides: {
+      labels: ['missing-label'],
+      files: ['missing.sample.json'],
+    },
+    selected: [],
   });
 };

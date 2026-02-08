@@ -6,6 +6,8 @@ import {
   RETRY_CLEANUP_JSON_SCHEMA_VERSION,
   RETRY_COLLECT_JSON_SCHEMA_PATH,
   RETRY_COLLECT_JSON_SCHEMA_VERSION,
+  RETRY_PREVIEW_SELECTION_JSON_SCHEMA_PATH,
+  RETRY_PREVIEW_SELECTION_JSON_SCHEMA_VERSION,
 } from './retry-json-schema-contracts.mjs';
 import {
   RETRY_SCHEMA_SAMPLE_FIXTURES,
@@ -119,40 +121,52 @@ const main = async () => {
   const failures = [];
   let checks = 0;
 
-  const cleanupSchema = await loadJson(RETRY_CLEANUP_JSON_SCHEMA_PATH);
-  assertSchemaContract({
-    failures,
-    schema: cleanupSchema,
-    schemaFilePath: RETRY_CLEANUP_JSON_SCHEMA_PATH,
-    expectedPath: RETRY_CLEANUP_JSON_SCHEMA_PATH,
-    expectedVersion: RETRY_CLEANUP_JSON_SCHEMA_VERSION,
-  });
-  checks += 2;
+  const schemaContracts = [
+    {
+      schemaPath: RETRY_CLEANUP_JSON_SCHEMA_PATH,
+      schemaVersion: RETRY_CLEANUP_JSON_SCHEMA_VERSION,
+    },
+    {
+      schemaPath: RETRY_COLLECT_JSON_SCHEMA_PATH,
+      schemaVersion: RETRY_COLLECT_JSON_SCHEMA_VERSION,
+    },
+    {
+      schemaPath: RETRY_PREVIEW_SELECTION_JSON_SCHEMA_PATH,
+      schemaVersion: RETRY_PREVIEW_SELECTION_JSON_SCHEMA_VERSION,
+    },
+  ];
+  const schemaVersionByPath = new Map(
+    schemaContracts.map((contract) => [contract.schemaPath, contract.schemaVersion]),
+  );
 
-  const collectSchema = await loadJson(RETRY_COLLECT_JSON_SCHEMA_PATH);
-  assertSchemaContract({
-    failures,
-    schema: collectSchema,
-    schemaFilePath: RETRY_COLLECT_JSON_SCHEMA_PATH,
-    expectedPath: RETRY_COLLECT_JSON_SCHEMA_PATH,
-    expectedVersion: RETRY_COLLECT_JSON_SCHEMA_VERSION,
-  });
-  checks += 2;
+  for (const schemaContract of schemaContracts) {
+    const schema = await loadJson(schemaContract.schemaPath);
+    assertSchemaContract({
+      failures,
+      schema,
+      schemaFilePath: schemaContract.schemaPath,
+      expectedPath: schemaContract.schemaPath,
+      expectedVersion: schemaContract.schemaVersion,
+    });
+    checks += 2;
+  }
 
   for (const fixture of RETRY_SCHEMA_SAMPLE_FIXTURES) {
     const samplePath = fixture.samplePath;
     const samplePayload = await loadJson(samplePath);
-    const isCleanupSample = fixture.schemaPath === RETRY_CLEANUP_JSON_SCHEMA_PATH;
+    const expectedVersion = schemaVersionByPath.get(fixture.schemaPath);
+    if (!expectedVersion) {
+      failures.push(
+        `${samplePath}: no schema version contract configured for ${fixture.schemaPath}`,
+      );
+      continue;
+    }
     assertSampleContract({
       failures,
       samplePath,
       samplePayload,
-      expectedPath: isCleanupSample
-        ? RETRY_CLEANUP_JSON_SCHEMA_PATH
-        : RETRY_COLLECT_JSON_SCHEMA_PATH,
-      expectedVersion: isCleanupSample
-        ? RETRY_CLEANUP_JSON_SCHEMA_VERSION
-        : RETRY_COLLECT_JSON_SCHEMA_VERSION,
+      expectedPath: fixture.schemaPath,
+      expectedVersion,
     });
     await assertSampleFileSync({
       failures,

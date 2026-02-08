@@ -1,0 +1,29 @@
+{
+  "schemaPath": "docs/ops/schemas/release-retry-preview-selection-output.schema.json",
+  "schemaVersion": "1.0.0",
+  "label": "retry:schema:samples:preview-selection",
+  "mode": "preview",
+  "filters": {
+    "labels": [
+      "missing-label"
+    ],
+    "files": [
+      "missing.sample.json"
+    ]
+  },
+  "totals": {
+    "available": 3,
+    "matched": 0,
+    "selected": 0,
+    "deduped": 0
+  },
+  "unknown": {
+    "labels": [
+      "missing-label"
+    ],
+    "files": [
+      "missing.sample.json"
+    ]
+  },
+  "selected": []
+}

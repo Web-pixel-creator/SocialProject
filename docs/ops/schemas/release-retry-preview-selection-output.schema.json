@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Web-pixel-creator/SocialProject/blob/main/docs/ops/schemas/release-retry-preview-selection-output.schema.json",
+  "title": "Release Retry Preview Selection Output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaPath",
+    "schemaVersion",
+    "label",
+    "mode",
+    "filters",
+    "totals",
+    "unknown",
+    "selected"
+  ],
+  "properties": {
+    "schemaPath": {
+      "const": "docs/ops/schemas/release-retry-preview-selection-output.schema.json"
+    },
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "label": {
+      "const": "retry:schema:samples:preview-selection"
+    },
+    "mode": {
+      "const": "preview"
+    },
+    "filters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "labels",
+        "files"
+      ],
+      "properties": {
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "available",
+        "matched",
+        "selected",
+        "deduped"
+      ],
+      "properties": {
+        "available": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "matched": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "selected": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "deduped": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "unknown": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "labels",
+        "files"
+      ],
+      "properties": {
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "selected": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "label",
+          "samplePath",
+          "schemaPath"
+        ],
+        "properties": {
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "samplePath": {
+            "type": "string",
+            "minLength": 1
+          },
+          "schemaPath": {
+            "type": "string",
+            "enum": [
+              "docs/ops/schemas/release-retry-cleanup-output.schema.json",
+              "docs/ops/schemas/release-retry-collect-output.schema.json",
+              "docs/ops/schemas/release-retry-preview-selection-output.schema.json"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

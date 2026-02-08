@@ -4,6 +4,25 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.26] - 2026-02-08
+
+### Added
+- New JSON schema contract for preview-selection output:
+  - `docs/ops/schemas/release-retry-preview-selection-output.schema.json`
+- New preview-selection sample fixtures:
+  - `docs/ops/schemas/samples/release-retry-preview-selection-output.sample.json`
+  - `docs/ops/schemas/samples/release-retry-preview-selection-output-unknown.sample.json`
+- Shared schema constants for preview-selection output:
+  - `RETRY_PREVIEW_SELECTION_JSON_SCHEMA_PATH`
+  - `RETRY_PREVIEW_SELECTION_JSON_SCHEMA_VERSION`
+
+### Changed
+- Retry schema sample fixture set now includes preview-selection samples (total fixtures: `5`).
+- `release:smoke:retry:schema:check` now validates preview-selection schema fixtures and runtime preview JSON payload.
+- `release:smoke:retry:schema:sync:check` now enforces schemaPath/schemaVersion sync for cleanup, collect, and preview-selection contracts.
+- Preview-selection JSON output now includes explicit `schemaPath` + `schemaVersion`.
+- Release checklist now references preview-selection schema contract verification.
+
 ## [0.1.25] - 2026-02-08
 
 ### Added
