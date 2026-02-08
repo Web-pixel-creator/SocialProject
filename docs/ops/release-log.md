@@ -33,6 +33,41 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-02-08 - v0.1.10
+
+- Scope: Manual retry diagnostics collector for failed `release_smoke_staging` runs.
+- Release commander: Codex automation.
+- Window (UTC): 2026-02-08 06:39 -> 2026-02-08 06:45.
+- Release artifact:
+  - GitHub Release: `https://github.com/Web-pixel-creator/SocialProject/releases/tag/v0.1.10`
+- Dry-run:
+  - Local rehearsal: pass (URL-input helper starts local API/Web and tunnels automatically).
+  - Staging smoke: pass (`release_smoke_staging`, workflow run `#139`, fallback mode) on head `88fbf9f`.
+  - Staging smoke (URL-input mode via helper command): pass (`release:smoke:dispatch:tunnel`, workflow run `#140`) on head `88fbf9f`.
+  - Smoke report artifact/link:
+    - fallback mode: `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21793795902`, artifact id `5421126373`)
+    - URL-input mode (helper command): `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21793834442`, artifact id `5421135270`)
+    - Local downloaded and extracted copy: `artifacts/release/ci-run-21793834442/smoke-results.json`
+  - Smoke diff evidence:
+    - Command: `npm run release:smoke:diff -- 21793629453 21793834442`
+    - JSON report: `artifacts/release/smoke-diff-21793629453-vs-21793834442.json`
+    - Result: pass -> pass, failed steps `0 -> 0`, total duration `6070.95ms -> 6689.91ms` (delta `+618.96ms`), no pass regressions.
+  - Retry diagnostics collector validation:
+    - Failed-run capture command: `npm run release:smoke:retry:collect -- 21784886065`
+    - Output: `artifacts/release/retry-failures/run-125-runid-21784886065-job-62854650228-Release_Smoke_Dry-Run_staging_manual_.log`
+    - Metadata: `artifacts/release/retry-failures/run-125-runid-21784886065-retry-metadata.json`
+    - Include-non-failed mode validation: `RELEASE_RETRY_LOGS_INCLUDE_NON_FAILED=true npm run release:smoke:retry:collect -- 21793834442`
+    - Output: `artifacts/release/retry-failures/run-140-runid-21793834442-job-62877954482-Release_Smoke_Dry-Run_staging_manual_.log`
+- Gates:
+  - ultracite (local): pass (`npm run ultracite:check`).
+  - CI workflow_dispatch corroboration (run `#139`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+  - CI workflow_dispatch corroboration (run `#140`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+- Rollout result: release prepared and tagged.
+- Incidents:
+  - none.
+- Follow-ups:
+  - Optional: add TTL cleanup for `artifacts/release/retry-failures` to keep local diagnostics storage bounded.
+
 ### 2026-02-08 - v0.1.9
 
 - Scope: Retry diagnostics capture for tunnel dispatch transient smoke failures.
