@@ -33,6 +33,40 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-02-08 - v0.1.13
+
+- Scope: Run-level retry diagnostics retention so log/metadata files are evicted together by run group.
+- Release commander: Codex automation.
+- Window (UTC): 2026-02-08 07:15 -> 2026-02-08 07:24.
+- Release artifact:
+  - GitHub Release: `https://github.com/Web-pixel-creator/SocialProject/releases/tag/v0.1.13`
+- Dry-run:
+  - Local rehearsal: pass (URL-input helper starts local API/Web and tunnels automatically).
+  - Staging smoke: pass (`release_smoke_staging`, workflow run `#148`, fallback mode) on head `14cd4da`.
+  - Staging smoke (URL-input mode via helper command): pass (`release:smoke:dispatch:tunnel`, workflow run `#149`) on head `14cd4da`.
+  - Smoke report artifact/link:
+    - fallback mode: `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21794244711`, artifact id `5421259940`)
+    - URL-input mode (helper command): `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21794281151`, artifact id `5421269142`)
+    - Local downloaded and extracted copy: `artifacts/release/ci-run-21794281151/smoke-results.json`
+  - Smoke diff evidence:
+    - Command: `npm run release:smoke:diff -- 21794143521 21794281151`
+    - JSON report: `artifacts/release/smoke-diff-21794143521-vs-21794281151.json`
+    - Result: pass -> pass, failed steps `0 -> 0`, total duration `6334.55ms -> 6525.40ms` (delta `+190.85ms`), no pass regressions.
+  - Run-level cleanup validation:
+    - Standalone preview: `RELEASE_RETRY_LOGS_CLEANUP_DRY_RUN=true RELEASE_RETRY_LOGS_MAX_RUNS=2 RELEASE_RETRY_LOGS_MAX_FILES=200 npm run release:smoke:retry:cleanup`
+    - Output: would remove `2` run groups (`4` files) by run-cap, keeping grouped log+metadata pairs.
+    - Collector preview: `RELEASE_RETRY_LOGS_INCLUDE_NON_FAILED=true RELEASE_RETRY_LOGS_CLEANUP_DRY_RUN=true RELEASE_RETRY_LOGS_MAX_RUNS=2 RELEASE_RETRY_LOGS_MAX_FILES=200 npm run release:smoke:retry:collect -- 21794281151`
+    - Output includes run-group cleanup summary before diagnostics capture.
+- Gates:
+  - ultracite (local): pass (`npm run ultracite:check`).
+  - CI workflow_dispatch corroboration (run `#148`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+  - CI workflow_dispatch corroboration (run `#149`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+- Rollout result: release prepared and tagged.
+- Incidents:
+  - none.
+- Follow-ups:
+  - Optional: add a `--json` mode for cleanup scripts to simplify dashboard ingestion of retention metrics.
+
 ### 2026-02-08 - v0.1.12
 
 - Scope: Max-files retention cap for retry diagnostics cleanup to keep local evidence storage bounded.
