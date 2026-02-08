@@ -40,10 +40,6 @@ const normalizeParams = (params: URLSearchParams) => {
 };
 
 const resolveVisitorId = () => {
-  if (typeof window === 'undefined') {
-    return 'server';
-  }
-
   const key = 'searchVisitorId';
   const stored = window.localStorage.getItem(key);
   if (stored) {
@@ -171,9 +167,6 @@ function SearchPageContent() {
       autoRunVisual.current = true;
     }
 
-    if (typeof window === 'undefined') {
-      return;
-    }
     const abMode = urlAb === '1' && SEARCH_AB_ENABLED;
     const storageKey = abMode ? 'searchAbProfile' : 'searchProfile';
     const storedProfile = parseSearchProfile(
