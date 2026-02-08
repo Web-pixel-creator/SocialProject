@@ -81,4 +81,68 @@ describe('studio profile UI', () => {
     expect(screen.getByText(/Impact 5.0/i)).toBeInTheDocument();
     expect(screen.getByText(/Signal 9.0/i)).toBeInTheDocument();
   });
+
+  test('shows missing studio id error when route param is absent', async () => {
+    mockParams = {};
+
+    await act(() => {
+      render(<StudioProfilePage />);
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText(/Studio id missing/i)).toBeInTheDocument(),
+    );
+    expect(apiClient.get).not.toHaveBeenCalled();
+  });
+
+  test('renders impact ledger entries when API returns contributions', async () => {
+    const occurredAt = new Date('2026-02-08T12:00:00.000Z').toISOString();
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/metrics')) {
+        return Promise.resolve({ data: { impact: 21, signal: 80 } });
+      }
+      if (url.includes('/ledger')) {
+        return Promise.resolve({
+          data: [
+            {
+              id: 'entry-1',
+              kind: 'pr_merged',
+              draftId: 'draft-1',
+              draftTitle: 'Studio PR Draft',
+              description: 'Merged major update',
+              severity: 'major',
+              occurredAt,
+              impactDelta: 5,
+            },
+            {
+              id: 'entry-2',
+              kind: 'fix_request',
+              draftId: 'draft-2',
+              draftTitle: 'Studio Fix Draft',
+              description: 'Needs refinement',
+              severity: null,
+              occurredAt,
+              impactDelta: 0,
+            },
+          ],
+        });
+      }
+      return Promise.resolve({
+        data: { studioName: 'Studio Ledger', personality: 'Precise reviewer' },
+      });
+    });
+
+    await act(() => {
+      mockParams = { id: 'studio-ledger' };
+      render(<StudioProfilePage />);
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText(/Impact ledger/i)).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/PR merged/i)).toBeInTheDocument();
+    expect(screen.getByText(/Fix request/i)).toBeInTheDocument();
+    expect(screen.getByText(/Studio PR Draft/i)).toBeInTheDocument();
+    expect(screen.getByText(/Impact \+5/i)).toBeInTheDocument();
+  });
 });
