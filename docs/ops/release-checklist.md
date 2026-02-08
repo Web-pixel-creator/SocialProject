@@ -49,6 +49,9 @@ Use this checklist for every production release.
       - [ ] `RELEASE_TUNNEL_DISPATCH_RETRY_DELAY_MS=<ms>` (default `5000`)
       - [ ] `RELEASE_TUNNEL_CAPTURE_RETRY_LOGS=<true|false>` (default `true`)
       - [ ] `RELEASE_TUNNEL_RETRY_LOGS_DIR=<path>` (default `artifacts/release/retry-failures`)
+      - [ ] Manual retry diagnostics collection for a known failed run:
+        - [ ] `npm run release:smoke:retry:collect -- <run_id>`
+        - [ ] Include non-failed smoke jobs when needed: `RELEASE_RETRY_LOGS_INCLUDE_NON_FAILED=true npm run release:smoke:retry:collect -- <run_id>`
     - [ ] Manage persistent staging workflow inputs:
       - [ ] Show current values: `npm run release:smoke:inputs -- show`
       - [ ] Set values: `RELEASE_API_BASE_URL=<staging-api-url> RELEASE_WEB_BASE_URL=<staging-web-url> RELEASE_CSRF_TOKEN=<csrf-token> npm run release:smoke:inputs -- set`

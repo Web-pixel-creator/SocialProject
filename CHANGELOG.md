@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.10] - 2026-02-08
+
+### Added
+- New manual diagnostics command for failed smoke runs:
+  - `npm run release:smoke:retry:collect -- <run_id>`
+  - captures failed `Release Smoke Dry-Run` job logs and metadata into `artifacts/release/retry-failures`.
+
+### Changed
+- Added optional `RELEASE_RETRY_LOGS_INCLUDE_NON_FAILED=true` mode to collect logs for all `Release Smoke Dry-Run` jobs in a run.
+- Updated release checklist with manual retry diagnostics collection steps.
+
 ## [0.1.9] - 2026-02-08
 
 ### Added
