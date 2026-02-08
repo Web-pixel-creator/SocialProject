@@ -364,6 +364,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build API
+        run: npm --workspace apps/api run build
+
+      - name: Build Web
+        run: npm --workspace apps/web run build
+
       - name: Run tunnel helper rehearsal
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

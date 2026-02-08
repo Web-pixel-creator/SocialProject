@@ -22,6 +22,7 @@ The format is based on Keep a Changelog.
 - Release checklist now documents:
   - enabling in-CI tunnel helper rehearsal via `release_run_tunnel_helper=true`,
   - expected tunnel-helper rehearsal artifacts.
+- In-CI tunnel helper rehearsal job now builds API/Web (`apps/api build`, `apps/web build`) before `release:smoke:dispatch:tunnel` to satisfy production start prerequisites.
 
 ## [0.1.38] - 2026-02-08
 
