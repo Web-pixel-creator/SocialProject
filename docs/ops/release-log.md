@@ -33,6 +33,40 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-02-08 - v0.1.23
+
+- Scope: Multi-filter retry schema sample preview support with repeatable `--preview=<label>` arguments.
+- Release commander: Codex automation.
+- Window (UTC): 2026-02-08 09:33 -> 2026-02-08 09:43.
+- Release artifact:
+  - GitHub Release: `https://github.com/Web-pixel-creator/SocialProject/releases/tag/v0.1.23`
+- Dry-run:
+  - Local rehearsal: pass (URL-input helper starts local API/Web and tunnels automatically).
+  - Staging smoke: pass (`release_smoke_staging`, workflow run `#180`, fallback mode) on head `4f87aa7`.
+  - Staging smoke (URL-input mode via helper command): pass (`release:smoke:dispatch:tunnel`, workflow run `#181`) on head `4f87aa7`.
+  - Smoke report artifact/link:
+    - fallback mode: `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21795993819`, artifact id `5421786475`)
+    - URL-input mode (helper command): `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21796026985`, artifact id `5421794208`)
+    - Local downloaded and extracted copy: `artifacts/release/ci-run-21796026985/smoke-results.json`
+  - Smoke diff evidence:
+    - Command: `npm run release:smoke:diff -- 21795856536 21796026985`
+    - JSON report: `artifacts/release/smoke-diff-21795856536-vs-21796026985.json`
+    - Result: pass -> pass, failed steps `0 -> 0`, total duration `5972.66ms -> 6962.14ms` (delta `+989.48ms`), no pass regressions.
+  - Multi-filter preview + schema validation:
+    - Filtered preview command: `npm run release:smoke:retry:schema:samples:generate -- --preview=cleanup-sample --preview=collect-success-sample` -> pass (`2 fixtures`).
+    - Fixture drift check: `npm run release:smoke:retry:schema:samples:check` -> pass (`3 files`).
+    - Schema sync check: `npm run release:smoke:retry:schema:sync:check` -> pass (`13 checks`).
+    - Schema shape validation: `npm run release:smoke:retry:schema:check` -> pass (`4 payloads`).
+- Gates:
+  - ultracite (local): pass (`npm run ultracite:check`).
+  - CI workflow_dispatch corroboration (run `#180`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+  - CI workflow_dispatch corroboration (run `#181`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+- Rollout result: release prepared and tagged.
+- Incidents:
+  - none.
+- Follow-ups:
+  - Optional: add `--preview-file=<path>` shorthand to target fixtures directly without label normalization rules.
+
 ### 2026-02-08 - v0.1.22
 
 - Scope: Targeted retry schema sample preview filter via `--preview=<label>` for focused fixture inspection in release/debug workflows.
