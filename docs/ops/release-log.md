@@ -33,6 +33,43 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-02-08 - v0.1.39
+
+- Scope: add in-CI tunnel helper rehearsal path for retry-diagnostics artifact evidence, then fix helper process shutdown to prevent CI hangs in dispatch-only mode.
+- Release commander: Codex automation.
+- Window (UTC): 2026-02-08 15:39 -> 2026-02-08 16:20.
+- Release artifact:
+  - GitHub Release: `https://github.com/Web-pixel-creator/SocialProject/releases/tag/v0.1.39`
+- Dry-run:
+  - Local rehearsal: pass (`release:smoke:dispatch` dispatch-only verification with `RELEASE_WAIT_FOR_COMPLETION=false`, completed in ~2.66s).
+  - Staging smoke: pass (`release_smoke_staging`, workflow run `#261`, fallback mode) on head `f812f9f`.
+  - In-CI tunnel helper rehearsal: pass (`Release Tunnel Helper Rehearsal`, run `#261`, job `62897161416`), including successful completion of step `Run tunnel helper rehearsal` (`16:16:31Z -> 16:17:04Z`).
+  - Smoke report artifact/link:
+    - fallback mode: `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21801289842`, artifact id `5423361728`)
+    - Local downloaded and extracted copy: `artifacts/release/run261/ci-run-21801289842/smoke-results.json`
+    - Snapshot: `pass=true`, `totalSteps=19`, `failedSteps=0`.
+  - Release smoke preflight summary artifact/link:
+    - fallback mode: `release-smoke-preflight-summary` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21801289842`, artifact id `5423361673`)
+    - Snapshot: `status=skipped`, `mode=fallback-local-stack`, missing URL inputs.
+  - Retry schema gate summary artifact/link:
+    - `retry-schema-gate-summary` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21801289842`, artifact id `5423360325`).
+  - Standalone preflight schema summary artifact/link:
+    - `release-smoke-preflight-schema-summary` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21801289842`, artifact id `5423360378`).
+  - In-CI tunnel helper artifact evidence:
+    - `release-smoke-tunnel-dispatch-retry-summary` (artifact id `5423363042`)
+    - `release-smoke-tunnel-preflight-summary` (artifact id `5423363119`)
+    - `release-smoke-tunnel-retry-failures`: not emitted in successful no-retry path (`if-no-files-found: ignore`).
+    - Local extracted helper snapshots:
+      - `artifacts/release/run261-helper/ci-run-21801289842/tunnel-dispatch-retry-summary.json` -> `status=pass`, `totalAttempts=1`.
+      - `artifacts/release/run261-helper/ci-run-21801289842/tunnel-preflight-summary.json` -> `status=pass`, `mode=url-input`, `attempts=2`, `durationMs=2084`.
+- Gates:
+  - CI workflow_dispatch corroboration (run `#261`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `release_tunnel_helper_ci_rehearsal`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+- Rollout result: release prepared and tagged.
+- Incidents:
+  - run `#256` (`https://github.com/Web-pixel-creator/SocialProject/actions/runs/21800771115`) entered long-running state in `Release Tunnel Helper Rehearsal`; canceled after evidence collection. Root fix: force process exit in `dispatch-staging-smoke-tunnel.mjs` after successful completion.
+- Follow-ups:
+  - none.
+
 ### 2026-02-08 - v0.1.38
 
 - Scope: add dedicated CI upload step for tunnel dispatch retry summary artifact (`release-smoke-tunnel-dispatch-retry-summary`) with optional presence semantics (`if-no-files-found: ignore`).
