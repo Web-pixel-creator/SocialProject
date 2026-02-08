@@ -33,6 +33,54 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-02-08 - v0.1.37
+
+- Scope: CI test-step markdown summary for standalone preflight schema validation, plus tunnel URL-input retry hardening (adaptive backoff, retry preflight checks, machine-readable retry summary).
+- Release commander: Codex automation.
+- Window (UTC): 2026-02-08 13:34 -> 2026-02-08 13:56.
+- Release artifact:
+  - GitHub Release: `https://github.com/Web-pixel-creator/SocialProject/releases/tag/v0.1.37`
+- Dry-run:
+  - Local rehearsal: pass (URL-input helper starts local API/Web and tunnels automatically).
+  - Staging smoke: pass (`release_smoke_staging`, workflow run `#239`, fallback mode) on head `c2c5f03`.
+  - Staging smoke (URL-input mode via helper command): pass (`release:smoke:dispatch:tunnel`, workflow run `#240`) on head `c2c5f03`.
+  - Smoke report artifact/link:
+    - fallback mode: `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21799201852`, artifact id `5422727572`)
+    - URL-input mode (helper command): `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21799237242`, artifact id `5422734792`)
+    - Local downloaded and extracted copy: `artifacts/release/ci-run-21799237242/smoke-results.json`
+  - Release smoke preflight summary artifact/link:
+    - fallback mode: `release-smoke-preflight-summary` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21799201852`, artifact id `5422727527`)
+    - URL-input mode (helper command): `release-smoke-preflight-summary` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21799237242`, artifact id `5422734744`)
+    - Fallback summary snapshot: `status=skipped`, `mode=fallback-local-stack`, missing URL inputs.
+    - URL-input summary snapshot: `status=pass`, `mode=url-input`, `attempts=2`, `durationMs=2169`, first success latency `771ms` for API/Web.
+  - Retry schema gate summary artifact/link:
+    - fallback mode: `retry-schema-gate-summary` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21799201852`, artifact id `5422725055`)
+    - URL-input mode (helper command): `retry-schema-gate-summary` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21799237242`, artifact id `5422736182`)
+    - Gate totals: `validatedPayloads=11` (base `7`, preview strict `4`).
+  - Standalone preflight schema summary artifact/link:
+    - fallback mode: `release-smoke-preflight-schema-summary` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21799201852`, artifact id `5422725104`)
+    - URL-input mode (helper command): `release-smoke-preflight-schema-summary` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21799237242`, artifact id `5422736280`)
+    - Summary payload snapshot: `status=pass`, `validatedPayloads=3` (`fixturePayloads=2`, `runtimePayloads=1`).
+  - CI step summary evidence:
+    - `test` job includes `Append preflight schema summary to step summary` with `success` on both run `#239` and run `#240`.
+  - Tunnel helper retry diagnostics summary:
+    - Local file: `artifacts/release/tunnel-dispatch-retry-summary.json`
+    - Snapshot: `status=pass`, `totalAttempts=2`, completed on first dispatch attempt (attempt `1`), adaptive retry policy persisted in payload (`baseDelayMs=5000`, `backoffFactor=1.5`, `maxDelayMs=30000`).
+  - Smoke diff evidence:
+    - Command: `npm run release:smoke:diff -- 21798929394 21799237242`
+    - JSON report: `artifacts/release/smoke-diff-21798929394-vs-21799237242.json`
+    - Result: pass -> pass, failed steps `0 -> 0`, total duration `7814.06ms -> 5775.39ms` (delta `-2038.67ms`), no pass regressions.
+- Gates:
+  - ultracite (local): pass (`npm run ultracite:check`).
+  - lint (local): pass (`npm run lint`).
+  - CI workflow_dispatch corroboration (run `#239`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+  - CI workflow_dispatch corroboration (run `#240`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+- Rollout result: release prepared and tagged.
+- Incidents:
+  - none.
+- Follow-ups:
+  - Optional: upload `artifacts/release/tunnel-dispatch-retry-summary.json` as a dedicated CI artifact when helper output is available in CI-driven tunnel runs.
+
 ### 2026-02-08 - v0.1.36
 
 - Scope: CI now uploads standalone preflight schema validator summary artifact (`release-smoke-preflight-schema-summary`) from `test` job.
