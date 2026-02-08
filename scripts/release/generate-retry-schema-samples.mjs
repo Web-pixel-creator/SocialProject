@@ -46,6 +46,7 @@ const parseArguments = (argv) => {
     preview: false,
     previewLabels: [],
     previewFiles: [],
+    json: false,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -95,9 +96,13 @@ const parseArguments = (argv) => {
       options.previewFiles.push(previewFile);
       continue;
     }
+    if (arg === '--json') {
+      options.json = true;
+      continue;
+    }
     if (arg === '--help' || arg === '-h') {
       process.stdout.write(
-        'Usage: npm run release:smoke:retry:schema:samples:generate [-- --check|--preview|--preview=<label> [--preview=<label> ...]|--preview-file=<path> [--preview-file=<path> ...]]\n',
+        'Usage: npm run release:smoke:retry:schema:samples:generate [-- --check|--preview|--preview=<label> [--preview=<label> ...]|--preview-file=<path> [--preview-file=<path> ...]|--json]\n',
       );
       process.exit(0);
     }
@@ -106,6 +111,11 @@ const parseArguments = (argv) => {
 
   if (options.check && options.preview) {
     throw new Error('Arguments --check and --preview cannot be used together.');
+  }
+  if (options.json && !options.preview) {
+    throw new Error(
+      'Argument --json can only be used together with preview mode (--preview, --preview=<label>, or --preview-file=<path>).',
+    );
   }
 
   return options;
@@ -172,15 +182,21 @@ const formatAvailablePreviewLabels = () =>
 const formatAvailablePreviewFiles = () =>
   RETRY_SCHEMA_SAMPLE_FIXTURES.map((fixture) => fixture.samplePath).join(', ');
 
-const resolvePreviewFixtures = ({ previewLabels, previewFiles }) => {
+const selectPreviewFixtures = ({ previewLabels, previewFiles }) => {
   if (previewLabels.length === 0 && previewFiles.length === 0) {
-    return RETRY_SCHEMA_SAMPLE_FIXTURES;
+    return {
+      matchedCount: RETRY_SCHEMA_SAMPLE_FIXTURES.length,
+      selectedFixtures: RETRY_SCHEMA_SAMPLE_FIXTURES,
+      unknownLabels: [],
+      unknownFiles: [],
+    };
   }
 
   const selectedFixtures = [];
   const selectedPaths = new Set();
   const unknownLabels = [];
   const unknownFiles = [];
+  let matchedCount = 0;
 
   for (const previewLabel of previewLabels) {
     const normalizedPreviewLabel = normalizePreviewToken(previewLabel);
@@ -191,6 +207,7 @@ const resolvePreviewFixtures = ({ previewLabels, previewFiles }) => {
       unknownLabels.push(previewLabel);
       continue;
     }
+    matchedCount += matchedFixtures.length;
 
     for (const fixture of matchedFixtures) {
       if (selectedPaths.has(fixture.samplePath)) {
@@ -210,6 +227,7 @@ const resolvePreviewFixtures = ({ previewLabels, previewFiles }) => {
       unknownFiles.push(previewFile);
       continue;
     }
+    matchedCount += matchedFixtures.length;
 
     for (const fixture of matchedFixtures) {
       if (selectedPaths.has(fixture.samplePath)) {
@@ -220,6 +238,15 @@ const resolvePreviewFixtures = ({ previewLabels, previewFiles }) => {
     }
   }
 
+  return {
+    matchedCount,
+    selectedFixtures,
+    unknownLabels,
+    unknownFiles,
+  };
+};
+
+const ensurePreviewSelectionIsKnown = ({ unknownLabels, unknownFiles }) => {
   if (unknownLabels.length > 0) {
     const unknownLabelSuffix = unknownLabels.length === 1 ? '' : 's';
     throw new Error(
@@ -233,15 +260,68 @@ const resolvePreviewFixtures = ({ previewLabels, previewFiles }) => {
       `Unknown preview file${unknownFileSuffix}: ${unknownFiles.join(', ')}. Available sample files: ${formatAvailablePreviewFiles()}.`,
     );
   }
-
-  return selectedFixtures;
 };
 
-const previewFixtures = ({ previewLabels, previewFiles }) => {
-  const fixturesToPreview = resolvePreviewFixtures({
+const writePreviewSelectionJson = ({
+  previewLabels,
+  previewFiles,
+  matchedCount,
+  selectedFixtures,
+  unknownLabels,
+  unknownFiles,
+}) => {
+  const payload = {
+    label: 'retry:schema:samples:preview-selection',
+    mode: 'preview',
+    filters: {
+      labels: previewLabels,
+      files: previewFiles,
+    },
+    totals: {
+      available: RETRY_SCHEMA_SAMPLE_FIXTURES.length,
+      matched: matchedCount,
+      selected: selectedFixtures.length,
+      deduped: Math.max(0, matchedCount - selectedFixtures.length),
+    },
+    unknown: {
+      labels: unknownLabels,
+      files: unknownFiles,
+    },
+    selected: selectedFixtures.map((fixture) => ({
+      label: fixture.label,
+      samplePath: fixture.samplePath,
+      schemaPath: fixture.schemaPath,
+    })),
+  };
+  process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+};
+
+const previewFixtures = ({ previewLabels, previewFiles, json }) => {
+  const selection = selectPreviewFixtures({
     previewLabels,
     previewFiles,
   });
+  if (json) {
+    writePreviewSelectionJson({
+      previewLabels,
+      previewFiles,
+      matchedCount: selection.matchedCount,
+      selectedFixtures: selection.selectedFixtures,
+      unknownLabels: selection.unknownLabels,
+      unknownFiles: selection.unknownFiles,
+    });
+    if (selection.unknownLabels.length > 0 || selection.unknownFiles.length > 0) {
+      process.exit(1);
+    }
+    return;
+  }
+
+  ensurePreviewSelectionIsKnown({
+    unknownLabels: selection.unknownLabels,
+    unknownFiles: selection.unknownFiles,
+  });
+
+  const fixturesToPreview = selection.selectedFixtures;
   if (previewLabels.length > 0) {
     process.stdout.write(`Preview label filters: ${previewLabels.join(', ')}\n`);
   }
@@ -270,6 +350,7 @@ const main = async () => {
     previewFixtures({
       previewLabels: options.previewLabels,
       previewFiles: options.previewFiles,
+      json: options.json,
     });
     return;
   }

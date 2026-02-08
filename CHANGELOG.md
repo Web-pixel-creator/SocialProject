@@ -4,6 +4,21 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.25] - 2026-02-08
+
+### Added
+- Compact preview-selection JSON mode for retry schema fixtures:
+  - `npm run release:smoke:retry:schema:samples:preview:json`
+  - `npm run release:smoke:retry:schema:samples:generate -- --preview=<label> --preview-file=<path> --json`
+- JSON output includes filter inputs and compact dashboard-friendly summary:
+  - `totals.available`, `totals.matched`, `totals.selected`, `totals.deduped`
+  - `unknown.labels`, `unknown.files`
+  - selected fixture metadata (`label`, `samplePath`, `schemaPath`)
+
+### Changed
+- Retry schema sample preview now supports `--json` in preview mode and exits non-zero on unknown filters after emitting JSON summary.
+- Release checklist now includes JSON preview-selection commands for CI dashboards.
+
 ## [0.1.24] - 2026-02-08
 
 ### Added
