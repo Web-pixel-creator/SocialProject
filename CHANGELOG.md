@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.12] - 2026-02-08
+
+### Changed
+- Retry diagnostics cleanup now supports file-count retention cap in addition to TTL:
+  - `RELEASE_RETRY_LOGS_MAX_FILES` (default: `200`).
+- Cleanup now removes oldest matching diagnostics files when the cap is exceeded.
+- Updated release checklist with max-files cleanup controls and dry-run example.
+
 ## [0.1.11] - 2026-02-08
 
 ### Added

@@ -52,6 +52,7 @@ Use this checklist for every production release.
       - [ ] Retry diagnostics retention cleanup controls:
         - [ ] `RELEASE_RETRY_LOGS_CLEANUP_ENABLED=<true|false>` (default `true`)
         - [ ] `RELEASE_RETRY_LOGS_TTL_DAYS=<n>` (default `14`, `0` = delete all eligible files older than now)
+        - [ ] `RELEASE_RETRY_LOGS_MAX_FILES=<n>` (default `200`, keeps newest files when limit is exceeded)
         - [ ] `RELEASE_RETRY_LOGS_CLEANUP_DRY_RUN=<true|false>` (default `false`)
       - [ ] Manual retry diagnostics collection for a known failed run:
         - [ ] `npm run release:smoke:retry:collect -- <run_id>`
@@ -59,6 +60,7 @@ Use this checklist for every production release.
       - [ ] Manual cleanup command (standalone):
         - [ ] `npm run release:smoke:retry:cleanup`
         - [ ] Optional dry-run preview: `RELEASE_RETRY_LOGS_CLEANUP_DRY_RUN=true npm run release:smoke:retry:cleanup`
+        - [ ] Optional cap preview: `RELEASE_RETRY_LOGS_CLEANUP_DRY_RUN=true RELEASE_RETRY_LOGS_MAX_FILES=50 npm run release:smoke:retry:cleanup`
     - [ ] Manage persistent staging workflow inputs:
       - [ ] Show current values: `npm run release:smoke:inputs -- show`
       - [ ] Set values: `RELEASE_API_BASE_URL=<staging-api-url> RELEASE_WEB_BASE_URL=<staging-web-url> RELEASE_CSRF_TOKEN=<csrf-token> npm run release:smoke:inputs -- set`

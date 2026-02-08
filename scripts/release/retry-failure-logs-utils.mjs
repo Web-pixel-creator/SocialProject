@@ -3,6 +3,7 @@ import path from 'node:path';
 
 export const DEFAULT_RETRY_LOGS_DIR = 'artifacts/release/retry-failures';
 const DEFAULT_RETRY_LOGS_TTL_DAYS = 14;
+const DEFAULT_RETRY_LOGS_MAX_FILES = 200;
 const DEFAULT_RETRY_LOGS_CLEANUP_ENABLED = true;
 const DEFAULT_RETRY_LOGS_CLEANUP_DRY_RUN = false;
 
@@ -61,6 +62,11 @@ export const resolveRetryLogsCleanupConfig = (env = process.env) => {
       DEFAULT_RETRY_LOGS_TTL_DAYS,
       true,
     ),
+    maxFiles: parseInteger(
+      env.RELEASE_RETRY_LOGS_MAX_FILES,
+      DEFAULT_RETRY_LOGS_MAX_FILES,
+      true,
+    ),
   };
 };
 
@@ -71,6 +77,7 @@ export const cleanupRetryFailureLogs = async ({
   enabled,
   dryRun,
   ttlDays,
+  maxFiles,
   nowMs = Date.now(),
 }) => {
   const cutoffMs = nowMs - ttlDays * DAY_IN_MS;
@@ -79,9 +86,14 @@ export const cleanupRetryFailureLogs = async ({
     enabled,
     dryRun,
     ttlDays,
+    maxFiles,
     cutoffIso: new Date(cutoffMs).toISOString(),
     scannedFiles: 0,
+    matchedFiles: 0,
     eligibleFiles: 0,
+    ttlEligibleFiles: 0,
+    maxFilesEligibleFiles: 0,
+    keptFiles: 0,
     removedFiles: 0,
     removedBytes: 0,
     missingDirectory: false,
@@ -105,6 +117,7 @@ export const cleanupRetryFailureLogs = async ({
     throw error;
   }
 
+  const candidates = [];
   for (const entry of entries) {
     if (!entry.isFile()) {
       continue;
@@ -119,18 +132,51 @@ export const cleanupRetryFailureLogs = async ({
 
     const filePath = path.join(outputDir, fileName);
     const fileStat = await stat(filePath);
-    if (fileStat.mtimeMs > cutoffMs) {
+    candidates.push({
+      fileName,
+      filePath,
+      size: fileStat.size,
+      mtimeMs: fileStat.mtimeMs,
+    });
+  }
+
+  summary.matchedFiles = candidates.length;
+
+  const filesToKeep = [];
+  const filesToRemove = [];
+  for (const candidate of candidates) {
+    if (candidate.mtimeMs <= cutoffMs) {
+      filesToRemove.push({ ...candidate, reason: 'ttl' });
+      summary.ttlEligibleFiles += 1;
       continue;
     }
+    filesToKeep.push(candidate);
+  }
 
-    summary.eligibleFiles += 1;
-    summary.removedBytes += fileStat.size;
+  if (filesToKeep.length > maxFiles) {
+    const overflowCount = filesToKeep.length - maxFiles;
+    const sorted = [...filesToKeep].sort((a, b) => {
+      if (a.mtimeMs !== b.mtimeMs) {
+        return a.mtimeMs - b.mtimeMs;
+      }
+      return a.fileName.localeCompare(b.fileName);
+    });
+    for (const staleCandidate of sorted.slice(0, overflowCount)) {
+      filesToRemove.push({ ...staleCandidate, reason: 'max-files' });
+      summary.maxFilesEligibleFiles += 1;
+    }
+  }
+
+  summary.eligibleFiles = filesToRemove.length;
+  for (const removable of filesToRemove) {
+    summary.removedBytes += removable.size;
     if (!dryRun) {
-      await unlink(filePath);
+      await unlink(removable.filePath);
     }
     summary.removedFiles += 1;
   }
 
+  summary.keptFiles = summary.matchedFiles - summary.removedFiles;
   return summary;
 };
 
@@ -145,5 +191,5 @@ export const formatRetryLogsCleanupSummary = ({ summary, label }) => {
 
   const action = summary.dryRun ? 'would remove' : 'removed';
   const bytesLabel = `${summary.removedBytes} bytes`;
-  return `[${label}] retry logs cleanup ${action} ${summary.removedFiles}/${summary.eligibleFiles} eligible files older than ${summary.ttlDays} day(s); scanned ${summary.scannedFiles} files (${bytesLabel}).`;
+  return `[${label}] retry logs cleanup ${action} ${summary.removedFiles}/${summary.eligibleFiles} eligible files (ttl: ${summary.ttlEligibleFiles}, max-files: ${summary.maxFilesEligibleFiles}); kept ${summary.keptFiles}/${summary.matchedFiles} matching files with max ${summary.maxFiles}; scanned ${summary.scannedFiles} files (${bytesLabel}).`;
 };
