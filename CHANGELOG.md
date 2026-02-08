@@ -23,6 +23,7 @@ The format is based on Keep a Changelog.
   - enabling in-CI tunnel helper rehearsal via `release_run_tunnel_helper=true`,
   - expected tunnel-helper rehearsal artifacts.
 - In-CI tunnel helper rehearsal job now builds API/Web (`apps/api build`, `apps/web build`) before `release:smoke:dispatch:tunnel` to satisfy production start prerequisites.
+- In-CI tunnel helper rehearsal job now pre-initializes local Postgres/Redis and runs API migrations before helper dispatch, preventing missing-schema failures on fresh CI runners.
 
 ## [0.1.38] - 2026-02-08
 
