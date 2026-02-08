@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.20] - 2026-02-08
+
+### Added
+- Canonical retry diagnostics mock builders:
+  - `scripts/release/retry-schema-mock-builders.mjs`
+
+### Changed
+- Retry schema sample fixtures now derive payloads from canonical builder functions instead of duplicated inline JSON structures.
+- Fixture generation/check and schema validation now run against builder-derived payloads from one source of truth.
+
 ## [0.1.19] - 2026-02-08
 
 ### Added
