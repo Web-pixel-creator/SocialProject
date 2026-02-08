@@ -33,6 +33,39 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-02-08 - v0.1.15
+
+- Scope: Machine-readable collector output for retry diagnostics (`release:smoke:retry:collect --json`).
+- Release commander: Codex automation.
+- Window (UTC): 2026-02-08 07:38 -> 2026-02-08 07:46.
+- Release artifact:
+  - GitHub Release: `https://github.com/Web-pixel-creator/SocialProject/releases/tag/v0.1.15`
+- Dry-run:
+  - Local rehearsal: pass (URL-input helper starts local API/Web and tunnels automatically).
+  - Staging smoke: pass (`release_smoke_staging`, workflow run `#154`, fallback mode) on head `d85a3bf`.
+  - Staging smoke (URL-input mode via helper command): pass (`release:smoke:dispatch:tunnel`, workflow run `#155`) on head `d85a3bf`.
+  - Smoke report artifact/link:
+    - fallback mode: `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21794513493`, artifact id `5421337608`)
+    - URL-input mode (helper command): `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21794547923`, artifact id `5421345349`)
+    - Local downloaded and extracted copy: `artifacts/release/ci-run-21794547923/smoke-results.json`
+  - Smoke diff evidence:
+    - Command: `npm run release:smoke:diff -- 21794416064 21794547923`
+    - JSON report: `artifacts/release/smoke-diff-21794416064-vs-21794547923.json`
+    - Result: pass -> pass, failed steps `0 -> 0`, total duration `8621.95ms -> 7584.99ms` (delta `-1036.96ms`), no pass regressions.
+  - Collector JSON validation:
+    - Help/usage: `npm run release:smoke:retry:collect -- --help`
+    - JSON success capture: `RELEASE_RETRY_LOGS_INCLUDE_NON_FAILED=true npm run release:smoke:retry:collect -- 21794547923 --json`
+    - Output includes run metadata, cleanup summary, and capture summary (`totalJobs`, `capturedJobs`, `failedJobs`, `jobs[]`).
+- Gates:
+  - ultracite (local): pass (`npm run ultracite:check`).
+  - CI workflow_dispatch corroboration (run `#154`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+  - CI workflow_dispatch corroboration (run `#155`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+- Rollout result: release prepared and tagged.
+- Incidents:
+  - none.
+- Follow-ups:
+  - Optional: add JSON schema file for collector/cleanup outputs to enforce backward-compatible payload contracts.
+
 ### 2026-02-08 - v0.1.14
 
 - Scope: Machine-readable cleanup metrics output for retry diagnostics retention (`--json`).
