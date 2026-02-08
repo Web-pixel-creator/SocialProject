@@ -33,6 +33,35 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-02-08 - v0.1.8
+
+- Scope: Retry hardening for tunnel-based URL-input smoke dispatch.
+- Release commander: Codex automation.
+- Window (UTC): 2026-02-08 06:06 -> 2026-02-08 06:11.
+- Release artifact:
+  - GitHub Release: `https://github.com/Web-pixel-creator/SocialProject/releases/tag/v0.1.8`
+- Dry-run:
+  - Local rehearsal: pass (URL-input helper starts local API/Web and tunnels automatically).
+  - Staging smoke: pass (`release_smoke_staging`, workflow run `#130`, fallback mode) on head `1076802`.
+  - Staging smoke (URL-input mode via helper command): pass (`release:smoke:dispatch:tunnel`, workflow run `#131`) on head `1076802`.
+  - Smoke report artifact/link:
+    - fallback mode: `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21793398320`, artifact id `5420989983`)
+    - URL-input mode (helper command): `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21793430363`, artifact id `5420997371`)
+    - Local downloaded and extracted copy: `artifacts/release/ci-run-21793430363/smoke-results.json`
+  - Smoke diff evidence:
+    - Command: `npm run release:smoke:diff -- 21784927346 21793430363`
+    - JSON report: `artifacts/release/smoke-diff-21784927346-vs-21793430363.json`
+    - Result: pass -> pass, failed steps `0 -> 0`, total duration `7099.34ms -> 6886.59ms` (delta `-212.75ms`), no pass regressions.
+- Gates:
+  - ultracite (local): pass (`npm run ultracite:check`).
+  - CI workflow_dispatch corroboration (run `#130`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+  - CI workflow_dispatch corroboration (run `#131`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+- Rollout result: release prepared and tagged.
+- Incidents:
+  - none.
+- Follow-ups:
+  - Optional: capture failed `release_smoke_staging` step logs automatically during retry to speed up root-cause triage.
+
 ### 2026-02-07 - v0.1.7
 
 - Scope: Persisted JSON smoke diff reports for release-over-release trend tracking.
