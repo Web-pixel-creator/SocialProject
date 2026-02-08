@@ -1,4 +1,6 @@
 import { spawn } from 'node:child_process';
+import { mkdir, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 
 const GITHUB_API_VERSION = '2022-11-28';
 const DEFAULT_API_PORT = '4000';
@@ -8,6 +10,8 @@ const DEFAULT_WAIT_TIMEOUT_MS = 120_000;
 const DEFAULT_WAIT_INTERVAL_MS = 750;
 const DEFAULT_RETRY_MAX = 1;
 const DEFAULT_RETRY_DELAY_MS = 5000;
+const DEFAULT_CAPTURE_RETRY_LOGS = true;
+const DEFAULT_RETRY_LOGS_DIR = 'artifacts/release/retry-failures';
 const DEFAULT_CSRF_TOKEN = 'release-smoke-tunnel-csrf-token-123456789';
 const DEFAULT_JWT_SECRET = 'release-smoke-tunnel-jwt-secret-123456789';
 const DEFAULT_ADMIN_TOKEN = 'release-smoke-tunnel-admin-token-123456789';
@@ -32,6 +36,20 @@ const parseInteger = (raw, fallback, allowZero = false) => {
     return 0;
   }
   return parsed > 0 ? parsed : fallback;
+};
+
+const parseBoolean = (raw, fallback) => {
+  if (!raw) {
+    return fallback;
+  }
+  const normalized = raw.trim().toLowerCase();
+  if (['1', 'true', 'yes', 'y'].includes(normalized)) {
+    return true;
+  }
+  if (['0', 'false', 'no', 'n'].includes(normalized)) {
+    return false;
+  }
+  return fallback;
 };
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -292,6 +310,26 @@ const githubRequest = async ({ token, method, url, body }) => {
   );
 };
 
+const githubRequestText = async ({ token, url }) => {
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: '*/*',
+      'X-GitHub-Api-Version': GITHUB_API_VERSION,
+    },
+  });
+
+  if (response.ok) {
+    return await response.text();
+  }
+
+  const errorText = await response.text();
+  throw new Error(
+    `GitHub API GET ${url} failed: ${response.status} ${response.statusText}. ${errorText}`,
+  );
+};
+
 const getLatestRunContextFromOutput = (output) => {
   const matches = [
     ...output.matchAll(
@@ -370,9 +408,20 @@ const inspectRetryableFailure = async ({ token, repoSlug, runId }) => {
     };
   }
 
+  const failedReleaseSmokeJobs = failedJobs.map((job) => ({
+    id: Number(job?.id),
+    name: String(job?.name ?? 'release_smoke_job'),
+    htmlUrl: String(job?.html_url ?? ''),
+    startedAt: String(job?.started_at ?? ''),
+    completedAt: String(job?.completed_at ?? ''),
+  }));
+
   return {
     retryable: true,
     reason: `Only release smoke job failed for run #${run?.run_number ?? runId}.`,
+    runNumber: Number(run?.run_number ?? 0) || null,
+    runUrl: String(run?.html_url ?? ''),
+    failedReleaseSmokeJobs,
   };
 };
 
@@ -389,6 +438,79 @@ const extractErrorOutput = (error) => {
   ]
     .filter((chunk) => chunk.trim().length > 0)
     .join('\n');
+};
+
+const sanitizeFilePart = (value) => {
+  return value
+    .replace(/[^a-zA-Z0-9._-]/gu, '_')
+    .replace(/_+/gu, '_')
+    .slice(0, 80);
+};
+
+const captureRetryFailureLogs = async ({
+  token,
+  repoSlug,
+  runId,
+  runNumber,
+  failedReleaseSmokeJobs,
+  outputDir,
+}) => {
+  if (!Array.isArray(failedReleaseSmokeJobs) || failedReleaseSmokeJobs.length === 0) {
+    return;
+  }
+
+  await mkdir(outputDir, { recursive: true });
+  const runTag = runNumber ?? runId;
+  const metadata = {
+    generatedAtUtc: new Date().toISOString(),
+    repoSlug,
+    runId,
+    runNumber,
+    jobs: [],
+  };
+
+  for (const job of failedReleaseSmokeJobs) {
+    const jobId = Number(job.id);
+    const jobName = String(job.name ?? `job-${jobId}`);
+    const safeJobName = sanitizeFilePart(jobName);
+    const logFilePath = path.join(
+      outputDir,
+      `run-${runTag}-runid-${runId}-job-${jobId}-${safeJobName}.log`,
+    );
+    const logUrl = `https://api.github.com/repos/${repoSlug}/actions/jobs/${jobId}/logs`;
+
+    try {
+      const logText = await githubRequestText({
+        token,
+        url: logUrl,
+      });
+      await writeFile(logFilePath, logText, 'utf8');
+      metadata.jobs.push({
+        ...job,
+        logFilePath,
+        logCaptured: true,
+      });
+      process.stderr.write(`Captured retry diagnostics: ${logFilePath}\n`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      metadata.jobs.push({
+        ...job,
+        logFilePath,
+        logCaptured: false,
+        error: message,
+      });
+      process.stderr.write(
+        `Failed to capture retry diagnostics for job ${jobId}: ${message}\n`,
+      );
+    }
+  }
+
+  const metadataPath = path.join(
+    outputDir,
+    `run-${runTag}-runid-${runId}-retry-metadata.json`,
+  );
+  await writeFile(metadataPath, JSON.stringify(metadata, null, 2), 'utf8');
+  process.stderr.write(`Retry diagnostics metadata: ${metadataPath}\n`);
 };
 
 const waitForTunnelUrl = ({ child, name, timeoutMs }) => {
@@ -473,6 +595,13 @@ const main = async () => {
     process.env.RELEASE_TUNNEL_DISPATCH_RETRY_DELAY_MS,
     DEFAULT_RETRY_DELAY_MS,
   );
+  const captureRetryLogs = parseBoolean(
+    process.env.RELEASE_TUNNEL_CAPTURE_RETRY_LOGS,
+    DEFAULT_CAPTURE_RETRY_LOGS,
+  );
+  const retryLogsDir =
+    (process.env.RELEASE_TUNNEL_RETRY_LOGS_DIR ?? DEFAULT_RETRY_LOGS_DIR).trim() ||
+    DEFAULT_RETRY_LOGS_DIR;
 
   const csrfToken = process.env.RELEASE_CSRF_TOKEN ?? DEFAULT_CSRF_TOKEN;
   const githubToken =
@@ -627,8 +756,25 @@ const main = async () => {
           throw error;
         }
 
+        if (captureRetryLogs) {
+          try {
+            await captureRetryFailureLogs({
+              token: githubToken,
+              repoSlug: runContext.repoSlug,
+              runId: runContext.runId,
+              runNumber: inspection.runNumber,
+              failedReleaseSmokeJobs: inspection.failedReleaseSmokeJobs,
+              outputDir: retryLogsDir,
+            });
+          } catch (captureError) {
+            process.stderr.write(
+              `Retry diagnostics capture failed: ${String(captureError)}\n`,
+            );
+          }
+        }
+
         process.stderr.write(
-          `Retrying after transient release smoke failure (${runContext.runUrl}). ${inspection.reason}\n`,
+          `Retrying after transient release smoke failure (${inspection.runUrl || runContext.runUrl}). ${inspection.reason}\n`,
         );
         await sleep(retryDelayMs);
       }

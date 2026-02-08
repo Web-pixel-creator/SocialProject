@@ -47,6 +47,8 @@ Use this checklist for every production release.
     - [ ] Optional tunnel retry controls for transient smoke-only failures:
       - [ ] `RELEASE_TUNNEL_DISPATCH_RETRY_MAX=<n>` (default `1`)
       - [ ] `RELEASE_TUNNEL_DISPATCH_RETRY_DELAY_MS=<ms>` (default `5000`)
+      - [ ] `RELEASE_TUNNEL_CAPTURE_RETRY_LOGS=<true|false>` (default `true`)
+      - [ ] `RELEASE_TUNNEL_RETRY_LOGS_DIR=<path>` (default `artifacts/release/retry-failures`)
     - [ ] Manage persistent staging workflow inputs:
       - [ ] Show current values: `npm run release:smoke:inputs -- show`
       - [ ] Set values: `RELEASE_API_BASE_URL=<staging-api-url> RELEASE_WEB_BASE_URL=<staging-web-url> RELEASE_CSRF_TOKEN=<csrf-token> npm run release:smoke:inputs -- set`

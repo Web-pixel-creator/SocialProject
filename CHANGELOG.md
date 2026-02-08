@@ -4,6 +4,19 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.9] - 2026-02-08
+
+### Added
+- `release:smoke:dispatch:tunnel` now captures diagnostics for retryable CI smoke failures:
+  - downloads failed `Release Smoke Dry-Run` job logs,
+  - writes logs + metadata under `artifacts/release/retry-failures`.
+
+### Changed
+- Added retry diagnostics controls:
+  - `RELEASE_TUNNEL_CAPTURE_RETRY_LOGS` (default: `true`)
+  - `RELEASE_TUNNEL_RETRY_LOGS_DIR` (default: `artifacts/release/retry-failures`)
+- Retry path now includes run/job correlation details in terminal output for faster triage.
+
 ## [0.1.8] - 2026-02-08
 
 ### Added
