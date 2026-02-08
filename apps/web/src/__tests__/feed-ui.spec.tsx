@@ -225,6 +225,40 @@ describe('feed UI', () => {
     );
   });
 
+  test('sends telemetry when opening progress detail card', async () => {
+    const progressPayload = [
+      {
+        draftId: 'draft-progress-telemetry',
+        beforeImageUrl: 'before.png',
+        afterImageUrl: 'after.png',
+        glowUpScore: 9.4,
+        prCount: 2,
+        lastActivity: new Date().toISOString(),
+        authorStudio: 'Progress Studio',
+      },
+    ];
+    (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: progressPayload });
+
+    await renderFeedTabs();
+    const progressTab = screen.getByRole('button', { name: /Progress/i });
+    await clickAndFlush(progressTab);
+    const detailLink = await screen.findByRole('link', { name: /Open detail/i });
+
+    (apiClient.post as jest.Mock).mockClear();
+    await clickAndFlush(detailLink);
+
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/telemetry/ux',
+      expect.objectContaining({
+        eventType: 'feed_card_open',
+        draftId: 'draft-progress-telemetry',
+        source: 'feed',
+      }),
+    );
+  });
+
   test('renders hot now cards with reason label', async () => {
     const payload = [
       {
@@ -282,6 +316,50 @@ describe('feed UI', () => {
     expect(screen.getByText(/Agents: 8/i)).toBeInTheDocument();
   });
 
+  test('renders changes feed with fix-request mapping and defaults', async () => {
+    const occurredAt = new Date().toISOString();
+    (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'change-fix',
+            kind: 'fix_request',
+            draft_id: 'draft-fix',
+            draft_title: 'Fix Request Draft',
+            description: 'Need stronger contrast in CTA.',
+            severity: 'minor',
+            occurred_at: occurredAt,
+            glow_up_score: 6.2,
+            impact_delta: 4,
+          },
+          {
+            id: 'change-merge',
+            kind: 'unknown_kind',
+            draft_id: 'draft-merge',
+            draft_title: 'Merged Draft',
+            description: 'Default mapping should treat as merged.',
+            severity: 'unexpected',
+          },
+        ],
+      });
+
+    await renderFeedTabs();
+
+    const changesTab = screen.getByRole('button', { name: /Changes/i });
+    await clickAndFlush(changesTab);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Fix Request Draft/i)).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/^Fix request$/i)).toBeInTheDocument();
+    expect(screen.getByText(/minor/i)).toBeInTheDocument();
+    expect(screen.getByText(/Impact \+4/i)).toBeInTheDocument();
+    expect(screen.getByText(/GlowUp 6.2/i)).toBeInTheDocument();
+    expect(screen.getByText(/Merged Draft/i)).toBeInTheDocument();
+    expect(screen.getByText(/PR merged/i)).toBeInTheDocument();
+  });
+
   test('renders archive drafts when entries are not autopsies', async () => {
     const archivePayload = [
       {
@@ -336,6 +414,72 @@ describe('feed UI', () => {
         screen.getByText(/Common issues: low fix-request activity/i),
       ).toBeInTheDocument(),
     );
+  });
+
+  test('falls back to demo progress when progress feed fails', async () => {
+    (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: [] })
+      .mockRejectedValueOnce(new Error('progress failed'));
+
+    await renderFeedTabs();
+
+    const progressTab = screen.getByRole('button', { name: /Progress/i });
+    await clickAndFlush(progressTab);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Fallback data/i)).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/Before \/ After/i)).toBeInTheDocument();
+    expect(screen.getByText(/Studio Nova/i)).toBeInTheDocument();
+  });
+
+  test('falls back to demo hot-now entries when feed fails', async () => {
+    (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: [] })
+      .mockRejectedValueOnce(new Error('hot now failed'));
+
+    await renderFeedTabs();
+
+    const hotNowTab = screen.getByRole('button', { name: /Hot Now/i });
+    await clickAndFlush(hotNowTab);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Fallback data/i)).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/Synthwave Poster/i)).toBeInTheDocument();
+    expect(screen.getByText(/Why hot: 3 PR pending, 2 open fix/i)).toBeInTheDocument();
+  });
+
+  test('falls back to demo guilds when guild feed fails', async () => {
+    (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: [] })
+      .mockRejectedValueOnce(new Error('guild failed'));
+
+    await renderFeedTabs();
+
+    const guildTab = screen.getByRole('button', { name: /Guilds/i });
+    await clickAndFlush(guildTab);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Fallback data/i)).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/Guild Arc/i)).toBeInTheDocument();
+  });
+
+  test('falls back to demo changes when changes feed fails', async () => {
+    (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: [] })
+      .mockRejectedValueOnce(new Error('changes failed'));
+
+    await renderFeedTabs();
+
+    const changesTab = screen.getByRole('button', { name: /Changes/i });
+    await clickAndFlush(changesTab);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Fallback data/i)).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/Hero composition refresh/i)).toBeInTheDocument();
   });
 
   test('renders release items and fallback glowup scores', async () => {
@@ -501,6 +645,31 @@ describe('feed UI', () => {
     expect(lastCall[1].params.offset).toBe(6);
   });
 
+  test('does not paginate on scroll when hasMore is false', async () => {
+    (apiClient.get as jest.Mock).mockResolvedValueOnce({
+      data: [{ id: 'draft-single', type: 'draft', glowUpScore: 1 }],
+    });
+
+    Object.defineProperty(window, 'innerHeight', {
+      value: 800,
+      writable: true,
+    });
+    Object.defineProperty(window, 'scrollY', { value: 300, writable: true });
+    Object.defineProperty(document.body, 'offsetHeight', {
+      value: 1000,
+      writable: true,
+    });
+
+    await renderFeedTabs();
+    await screen.findByText(/Draft draft-si/i);
+
+    const beforeScrollCalls = (apiClient.get as jest.Mock).mock.calls.length;
+    await scrollAndFlush();
+    const afterScrollCalls = (apiClient.get as jest.Mock).mock.calls.length;
+
+    expect(afterScrollCalls).toBe(beforeScrollCalls);
+  });
+
   test('falls back to demo drafts when live drafts fail', async () => {
     (apiClient.get as jest.Mock)
       .mockResolvedValueOnce({ data: [] })
@@ -563,11 +732,83 @@ describe('feed UI', () => {
     await changeAndFlush(statusSelect, 'release');
     const statusCall = replaceMock.mock.calls.at(-1)?.[0] as string;
     expect(statusCall).toContain('status=release');
+
+    const rangeSelect = screen.getByLabelText(/Time range/i);
+    await changeAndFlush(rangeSelect, '90d');
+    const rangeCall = replaceMock.mock.calls.at(-1)?.[0] as string;
+    expect(rangeCall).toContain('range=90d');
+
+    const intentSelect = screen.getByLabelText(/^Intent$/i);
+    await changeAndFlush(intentSelect, 'needs_help');
+    const intentCall = replaceMock.mock.calls.at(-1)?.[0] as string;
+    expect(intentCall).toContain('intent=needs_help');
+
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/telemetry/ux',
+      expect.objectContaining({
+        eventType: 'feed_filter_change',
+        range: '90d',
+      }),
+    );
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/telemetry/ux',
+      expect.objectContaining({
+        eventType: 'feed_filter_change',
+        intent: 'needs_help',
+      }),
+    );
+  });
+
+  test('applies intent preset chips and tracks telemetry', async () => {
+    searchParams = new URLSearchParams('tab=All');
+    await renderFeedTabs();
+    (apiClient.post as jest.Mock).mockClear();
+
+    const needsHelpChip = screen.getByRole('button', { name: /Needs help/i });
+    await clickAndFlush(needsHelpChip);
+
+    const lastCall = replaceMock.mock.calls.at(-1)?.[0] as string;
+    expect(lastCall).toContain('intent=needs_help');
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/telemetry/ux',
+      expect.objectContaining({
+        eventType: 'feed_intent_preset',
+        intent: 'needs_help',
+      }),
+    );
+  });
+
+  test('includes all-feed intent parameter for non-default intent', async () => {
+    searchParams = new URLSearchParams('tab=All&intent=needs_help');
+    await renderFeedTabs();
+
+    await waitFor(() =>
+      expect(apiClient.get).toHaveBeenCalledWith(
+        '/feed',
+        expect.objectContaining({
+          params: expect.objectContaining({ intent: 'needs_help' }),
+        }),
+      ),
+    );
+  });
+
+  test('omits from param when all-time range is selected', async () => {
+    searchParams = new URLSearchParams('tab=All&range=all');
+    await renderFeedTabs();
+
+    await waitFor(() =>
+      expect(apiClient.get).toHaveBeenCalledWith(
+        '/feed',
+        expect.objectContaining({
+          params: expect.not.objectContaining({ from: expect.anything() }),
+        }),
+      ),
+    );
   });
 
   test('reads filters from URL query', async () => {
     searchParams = new URLSearchParams(
-      'tab=All&sort=impact&status=release&range=7d',
+      'tab=All&sort=impact&status=release&range=7d&intent=seeking_pr',
     );
     await renderFeedTabs();
 
@@ -580,5 +821,8 @@ describe('feed UI', () => {
     expect(
       (screen.getByLabelText(/Time range/i) as HTMLSelectElement).value,
     ).toBe('7d');
+    expect((screen.getByLabelText(/^Intent$/i) as HTMLSelectElement).value).toBe(
+      'seeking_pr',
+    );
   });
 });

@@ -1,7 +1,23 @@
-import type { ReactNode } from 'react';
+import type { AnchorHTMLAttributes, ReactNode } from 'react';
 
-const Link = ({ href, children }: { href: string; children: ReactNode }) => {
-  return <a href={href}>{children}</a>;
+type LinkProps = AnchorHTMLAttributes<HTMLAnchorElement> & {
+  href: string;
+  children: ReactNode;
+};
+
+const Link = ({ href, children, onClick, ...rest }: LinkProps) => {
+  return (
+    <a
+      href={href}
+      onClick={(event) => {
+        event.preventDefault();
+        onClick?.(event);
+      }}
+      {...rest}
+    >
+      {children}
+    </a>
+  );
 };
 
 export default Link;
