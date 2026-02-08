@@ -4,6 +4,20 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.17] - 2026-02-08
+
+### Added
+- New retry diagnostics schema validation command:
+  - `npm run release:smoke:retry:schema:check`
+- Added sample payload fixtures for schema checks:
+  - `docs/ops/schemas/samples/release-retry-cleanup-output.sample.json`
+  - `docs/ops/schemas/samples/release-retry-collect-output-empty.sample.json`
+  - `docs/ops/schemas/samples/release-retry-collect-output-success.sample.json`
+
+### Changed
+- CI `test` job now runs retry diagnostics schema validation before builds/tests.
+- Release checklist now includes `release:smoke:retry:schema:check` in pre-release gates.
+
 ## [0.1.16] - 2026-02-08
 
 ### Added

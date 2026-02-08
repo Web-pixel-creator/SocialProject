@@ -21,6 +21,7 @@ Use this checklist for every production release.
 - [ ] `npm run perf:pre-release` passes against staging API/Web.
 - [ ] `npm run security:check` passes.
 - [ ] `npm run release:smoke` passes against staging API/Web.
+- [ ] `npm run release:smoke:retry:schema:check` passes.
 - [ ] Security scans are green (`dependency audit` + `secret scan` once Task 9 is active).
 
 ## 2. Migration Readiness

@@ -1,0 +1,15 @@
+{
+  "schemaPath": "docs/ops/schemas/release-retry-collect-output.schema.json",
+  "schemaVersion": "1.0.0",
+  "label": "retry:collect",
+  "repoSlug": "Web-pixel-creator/SocialProject",
+  "runId": 21794547923,
+  "runNumber": 155,
+  "runUrl": "https://github.com/Web-pixel-creator/SocialProject/actions/runs/21794547923",
+  "runConclusion": "success",
+  "includeNonFailed": false,
+  "selectedJobs": 0,
+  "cleanupSummary": null,
+  "collection": null,
+  "message": "No matching Release Smoke Dry-Run jobs selected for log collection."
+}

@@ -1,0 +1,57 @@
+{
+  "schemaPath": "docs/ops/schemas/release-retry-collect-output.schema.json",
+  "schemaVersion": "1.0.0",
+  "label": "retry:collect",
+  "repoSlug": "Web-pixel-creator/SocialProject",
+  "runId": 21794547923,
+  "runNumber": 155,
+  "runUrl": "https://github.com/Web-pixel-creator/SocialProject/actions/runs/21794547923",
+  "runConclusion": "success",
+  "includeNonFailed": true,
+  "selectedJobs": 1,
+  "cleanupSummary": {
+    "outputDir": "artifacts/release/retry-failures",
+    "enabled": true,
+    "dryRun": false,
+    "ttlDays": 14,
+    "maxRuns": 100,
+    "maxFiles": 200,
+    "cutoffIso": "2026-02-08T00:00:00.000Z",
+    "scannedFiles": 12,
+    "matchedFiles": 12,
+    "matchedRuns": 6,
+    "eligibleFiles": 0,
+    "eligibleRuns": 0,
+    "ttlEligibleFiles": 0,
+    "ttlEligibleRuns": 0,
+    "maxRunsEligibleFiles": 0,
+    "maxRunsEligibleRuns": 0,
+    "maxFilesEligibleFiles": 0,
+    "maxFilesEligibleRuns": 0,
+    "keptFiles": 12,
+    "keptRuns": 6,
+    "removedFiles": 0,
+    "removedRuns": 0,
+    "removedBytes": 0,
+    "missingDirectory": false,
+    "skippedDisabled": false
+  },
+  "collection": {
+    "metadataPath": "artifacts/release/retry-failures/run-155-runid-21794547923-retry-metadata.json",
+    "totalJobs": 1,
+    "capturedJobs": 1,
+    "failedJobs": 0,
+    "jobs": [
+      {
+        "id": 62879762025,
+        "name": "Release Smoke Dry-Run (staging/manual)",
+        "htmlUrl": "https://github.com/Web-pixel-creator/SocialProject/actions/runs/21794547923/job/62879762025",
+        "startedAt": "2026-02-08T07:44:06Z",
+        "completedAt": "2026-02-08T07:44:37Z",
+        "logFilePath": "artifacts/release/retry-failures/run-155-runid-21794547923-job-62879762025-Release_Smoke_Dry-Run_staging_manual_.log",
+        "logCaptured": true
+      }
+    ]
+  },
+  "message": "Retry diagnostics collection completed."
+}

@@ -129,6 +129,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate retry diagnostics JSON schemas
+        run: npm run release:smoke:retry:schema:check
+
       - name: Wait for services
         run: |
           node -e "const net=require('net');const wait=port=>new Promise((res,rej)=>{const start=Date.now();(function ping(){const sock=net.connect(port,'127.0.0.1');sock.on('connect',()=>{sock.end();res();});sock.on('error',()=>{if(Date.now()-start>60000) return rej(new Error('timeout '+port)); setTimeout(ping,500);});})();});(async()=>{await wait(5432);await wait(6379);})().catch(err=>{console.error(err);process.exit(1);});"
