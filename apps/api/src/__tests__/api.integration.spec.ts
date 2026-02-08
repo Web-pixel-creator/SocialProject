@@ -11,6 +11,10 @@ import {
 import { CommissionServiceImpl } from '../services/commission/commissionService';
 import { FeedServiceImpl } from '../services/feed/feedService';
 import { FixRequestServiceImpl } from '../services/fixRequest/fixRequestService';
+import {
+  IMPACT_MAJOR_INCREMENT,
+  IMPACT_MINOR_INCREMENT,
+} from '../services/metrics/constants';
 import { MetricsServiceImpl } from '../services/metrics/metricsService';
 import { PaymentServiceImpl } from '../services/payment/paymentService';
 import { PostServiceImpl } from '../services/post/postService';
@@ -1217,6 +1221,98 @@ describe('API integration', () => {
     expect(metrics.body).toHaveProperty('signal');
   });
 
+  test('studio ledger maps impact delta for merged and fix entries', async () => {
+    const studioId = '00000000-0000-0000-0000-000000000009';
+    const occurredAt = new Date().toISOString();
+    const querySpy = jest.spyOn(db, 'query').mockResolvedValueOnce({
+      rows: [
+        {
+          kind: 'pr_merged',
+          id: 'pr-major',
+          draft_id: 'draft-major',
+          draft_title: 'Major Draft',
+          description: 'Major merge',
+          severity: 'major',
+          occurred_at: occurredAt,
+        },
+        {
+          kind: 'pr_merged',
+          id: 'pr-minor',
+          draft_id: 'draft-minor',
+          draft_title: 'Minor Draft',
+          description: 'Minor merge',
+          severity: 'minor',
+          occurred_at: occurredAt,
+        },
+        {
+          kind: 'fix_request',
+          id: 'fix-1',
+          draft_id: 'draft-fix',
+          draft_title: 'Fix Draft',
+          description: 'Need more contrast',
+          severity: null,
+          occurred_at: occurredAt,
+        },
+      ],
+    } as any);
+
+    const ledger = await request(app).get(`/api/studios/${studioId}/ledger?limit=3`);
+    expect(ledger.status).toBe(200);
+    expect(querySpy).toHaveBeenCalledWith(expect.any(String), [studioId, 3]);
+    expect(ledger.body).toEqual([
+      {
+        kind: 'pr_merged',
+        id: 'pr-major',
+        draftId: 'draft-major',
+        draftTitle: 'Major Draft',
+        description: 'Major merge',
+        severity: 'major',
+        occurredAt,
+        impactDelta: IMPACT_MAJOR_INCREMENT,
+      },
+      {
+        kind: 'pr_merged',
+        id: 'pr-minor',
+        draftId: 'draft-minor',
+        draftTitle: 'Minor Draft',
+        description: 'Minor merge',
+        severity: 'minor',
+        occurredAt,
+        impactDelta: IMPACT_MINOR_INCREMENT,
+      },
+      {
+        kind: 'fix_request',
+        id: 'fix-1',
+        draftId: 'draft-fix',
+        draftTitle: 'Fix Draft',
+        description: 'Need more contrast',
+        severity: null,
+        occurredAt,
+        impactDelta: 0,
+      },
+    ]);
+    querySpy.mockRestore();
+  });
+
+  test('studio ledger enforces safe limit bounds', async () => {
+    const studioId = '00000000-0000-0000-0000-000000000010';
+    const querySpy = jest.spyOn(db, 'query').mockResolvedValue({ rows: [] } as any);
+
+    const capped = await request(app).get(`/api/studios/${studioId}/ledger?limit=999`);
+    expect(capped.status).toBe(200);
+    expect(querySpy).toHaveBeenLastCalledWith(expect.any(String), [studioId, 50]);
+
+    const floored = await request(app).get(`/api/studios/${studioId}/ledger?limit=0`);
+    expect(floored.status).toBe(200);
+    expect(querySpy).toHaveBeenLastCalledWith(expect.any(String), [studioId, 1]);
+
+    const fallback = await request(app).get(`/api/studios/${studioId}/ledger?limit=abc`);
+    expect(fallback.status).toBe(200);
+    expect(querySpy).toHaveBeenLastCalledWith(expect.any(String), [studioId, 8]);
+
+    querySpy.mockRestore();
+  });
+
   test('commission endpoints cover lifecycle', async () => {
     const human = await registerHuman('commissioner@example.com');
     const token = human.tokens.accessToken;
@@ -1422,6 +1518,13 @@ describe('API integration', () => {
     );
     expect(metricsRes.status).toBe(500);
     metricsSpy.mockRestore();
+
+    const ledgerSpy = jest
+      .spyOn(db, 'query')
+      .mockRejectedValueOnce(new Error('ledger fail'));
+    const ledgerRes = await request(app).get(`/api/studios/${agentId}/ledger`);
+    expect(ledgerRes.status).toBe(500);
+    ledgerSpy.mockRestore();
   });
 
   test('auth routes propagate handler errors', async () => {
