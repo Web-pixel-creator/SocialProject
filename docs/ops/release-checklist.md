@@ -52,6 +52,11 @@ Use this checklist for every production release.
     - [ ] Optional tunnel retry controls for transient smoke-only failures:
       - [ ] `RELEASE_TUNNEL_DISPATCH_RETRY_MAX=<n>` (default `1`)
       - [ ] `RELEASE_TUNNEL_DISPATCH_RETRY_DELAY_MS=<ms>` (default `5000`)
+      - [ ] Optional tunnel preflight controls (public URL health checks before dispatch):
+        - [ ] `RELEASE_TUNNEL_PREFLIGHT_ENABLED=<true|false>` (default `true`)
+        - [ ] `RELEASE_TUNNEL_PREFLIGHT_TIMEOUT_MS=<ms>` (default `45000`)
+        - [ ] `RELEASE_TUNNEL_PREFLIGHT_INTERVAL_MS=<ms>` (default `1000`)
+        - [ ] `RELEASE_TUNNEL_PREFLIGHT_SUCCESS_STREAK=<n>` (default `2`)
       - [ ] `RELEASE_TUNNEL_CAPTURE_RETRY_LOGS=<true|false>` (default `true`)
       - [ ] `RELEASE_TUNNEL_RETRY_LOGS_DIR=<path>` or `RELEASE_RETRY_LOGS_DIR=<path>` (default `artifacts/release/retry-failures`)
       - [ ] Retry diagnostics retention cleanup controls:

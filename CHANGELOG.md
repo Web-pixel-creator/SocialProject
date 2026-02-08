@@ -4,6 +4,21 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.31] - 2026-02-08
+
+### Added
+- Tunnel dispatch preflight health checks in `release:smoke:dispatch:tunnel`:
+  - validates public API `/health` and Web `/` endpoints before CI URL-input dispatch,
+  - requires configurable consecutive success streak to reduce transient tunnel flakiness.
+
+### Changed
+- Added tunnel preflight controls:
+  - `RELEASE_TUNNEL_PREFLIGHT_ENABLED` (default `true`)
+  - `RELEASE_TUNNEL_PREFLIGHT_TIMEOUT_MS` (default `45000`)
+  - `RELEASE_TUNNEL_PREFLIGHT_INTERVAL_MS` (default `1000`)
+  - `RELEASE_TUNNEL_PREFLIGHT_SUCCESS_STREAK` (default `2`)
+- Release checklist now documents tunnel preflight controls alongside retry controls.
+
 ## [0.1.30] - 2026-02-08
 
 ### Added

@@ -17,6 +17,10 @@ const DEFAULT_WAIT_INTERVAL_MS = 750;
 const DEFAULT_RETRY_MAX = 1;
 const DEFAULT_RETRY_DELAY_MS = 5000;
 const DEFAULT_CAPTURE_RETRY_LOGS = true;
+const DEFAULT_PREFLIGHT_ENABLED = true;
+const DEFAULT_PREFLIGHT_TIMEOUT_MS = 45_000;
+const DEFAULT_PREFLIGHT_INTERVAL_MS = 1000;
+const DEFAULT_PREFLIGHT_SUCCESS_STREAK = 2;
 const DEFAULT_CSRF_TOKEN = 'release-smoke-tunnel-csrf-token-123456789';
 const DEFAULT_JWT_SECRET = 'release-smoke-tunnel-jwt-secret-123456789';
 const DEFAULT_ADMIN_TOKEN = 'release-smoke-tunnel-admin-token-123456789';
@@ -552,6 +556,109 @@ const waitForTunnelUrl = ({ child, name, timeoutMs }) => {
   });
 };
 
+const buildUrl = (baseUrl, route) => {
+  const normalizedRoute = route.startsWith('/') ? route : `/${route}`;
+  return new URL(normalizedRoute, baseUrl).toString();
+};
+
+const probeApiHealth = async (apiBaseUrl) => {
+  const url = buildUrl(apiBaseUrl, '/health');
+  try {
+    const response = await fetch(url, { method: 'GET' });
+    const text = await response.text();
+    let payload = null;
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      payload = null;
+    }
+
+    if (response.status === 200 && payload?.status === 'ok') {
+      return { pass: true, status: response.status, reason: 'ok' };
+    }
+
+    return {
+      pass: false,
+      status: response.status,
+      reason: `expected 200 + {status:'ok'}, received status ${response.status}`,
+    };
+  } catch (error) {
+    return {
+      pass: false,
+      status: null,
+      reason: `network error: ${String(error)}`,
+    };
+  }
+};
+
+const probeWebHome = async (webBaseUrl) => {
+  const url = buildUrl(webBaseUrl, '/');
+  try {
+    const response = await fetch(url, { method: 'GET' });
+    const text = await response.text();
+    if (response.status === 200 && text.includes('Watch AI studios')) {
+      return { pass: true, status: response.status, reason: 'ok' };
+    }
+
+    return {
+      pass: false,
+      status: response.status,
+      reason: `expected 200 + home marker, received status ${response.status}`,
+    };
+  } catch (error) {
+    return {
+      pass: false,
+      status: null,
+      reason: `network error: ${String(error)}`,
+    };
+  }
+};
+
+const waitForTunnelPreflight = async ({
+  apiBaseUrl,
+  webBaseUrl,
+  timeoutMs,
+  intervalMs,
+  successStreak,
+}) => {
+  const deadline = Date.now() + timeoutMs;
+  let apiStreak = 0;
+  let webStreak = 0;
+  let lastApiProbe = null;
+  let lastWebProbe = null;
+
+  while (Date.now() < deadline) {
+    const [apiProbe, webProbe] = await Promise.all([
+      probeApiHealth(apiBaseUrl),
+      probeWebHome(webBaseUrl),
+    ]);
+
+    lastApiProbe = apiProbe;
+    lastWebProbe = webProbe;
+
+    apiStreak = apiProbe.pass ? apiStreak + 1 : 0;
+    webStreak = webProbe.pass ? webStreak + 1 : 0;
+
+    if (apiStreak >= successStreak && webStreak >= successStreak) {
+      process.stdout.write(
+        `Tunnel preflight passed with success streak ${successStreak}/${successStreak} (api: ${apiBaseUrl}, web: ${webBaseUrl}).\n`,
+      );
+      return;
+    }
+
+    await sleep(intervalMs);
+  }
+
+  const apiStatus = lastApiProbe?.status ?? 'n/a';
+  const webStatus = lastWebProbe?.status ?? 'n/a';
+  const apiReason = lastApiProbe?.reason ?? 'no probe result';
+  const webReason = lastWebProbe?.reason ?? 'no probe result';
+
+  throw new Error(
+    `Tunnel preflight failed after ${timeoutMs}ms. Last API probe: status=${apiStatus}, reason=${apiReason}. Last WEB probe: status=${webStatus}, reason=${webReason}.`,
+  );
+};
+
 const startTunnel = ({ port, name }) => {
   const invocation = getNpmInvocation([
     'exec',
@@ -599,6 +706,22 @@ const main = async () => {
   const retryDelayMs = parseNumber(
     process.env.RELEASE_TUNNEL_DISPATCH_RETRY_DELAY_MS,
     DEFAULT_RETRY_DELAY_MS,
+  );
+  const preflightEnabled = parseBoolean(
+    process.env.RELEASE_TUNNEL_PREFLIGHT_ENABLED,
+    DEFAULT_PREFLIGHT_ENABLED,
+  );
+  const preflightTimeoutMs = parseNumber(
+    process.env.RELEASE_TUNNEL_PREFLIGHT_TIMEOUT_MS,
+    DEFAULT_PREFLIGHT_TIMEOUT_MS,
+  );
+  const preflightIntervalMs = parseNumber(
+    process.env.RELEASE_TUNNEL_PREFLIGHT_INTERVAL_MS,
+    DEFAULT_PREFLIGHT_INTERVAL_MS,
+  );
+  const preflightSuccessStreak = parseInteger(
+    process.env.RELEASE_TUNNEL_PREFLIGHT_SUCCESS_STREAK,
+    DEFAULT_PREFLIGHT_SUCCESS_STREAK,
   );
   const captureRetryLogs = parseBoolean(
     process.env.RELEASE_TUNNEL_CAPTURE_RETRY_LOGS,
@@ -705,6 +828,18 @@ const main = async () => {
 
     process.stdout.write(`Using public API URL: ${apiBaseUrl}\n`);
     process.stdout.write(`Using public WEB URL: ${webBaseUrl}\n`);
+    if (preflightEnabled) {
+      process.stdout.write(
+        `Running tunnel preflight checks (timeout: ${preflightTimeoutMs}ms, interval: ${preflightIntervalMs}ms, success streak: ${preflightSuccessStreak}).\n`,
+      );
+      await waitForTunnelPreflight({
+        apiBaseUrl,
+        webBaseUrl,
+        timeoutMs: preflightTimeoutMs,
+        intervalMs: preflightIntervalMs,
+        successStreak: preflightSuccessStreak,
+      });
+    }
 
     const totalAttempts = retryMax + 1;
     for (let attempt = 1; attempt <= totalAttempts; attempt += 1) {
