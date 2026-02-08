@@ -4,6 +4,15 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.14] - 2026-02-08
+
+### Added
+- `release:smoke:retry:cleanup` now supports `--json` for machine-readable retention metrics output.
+- Added `--help` usage output for cleanup command arguments.
+
+### Changed
+- Updated release checklist with cleanup JSON output example for dashboard/automation ingestion.
+
 ## [0.1.13] - 2026-02-08
 
 ### Changed

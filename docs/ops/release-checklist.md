@@ -60,6 +60,7 @@ Use this checklist for every production release.
         - [ ] Include non-failed smoke jobs when needed: `RELEASE_RETRY_LOGS_INCLUDE_NON_FAILED=true npm run release:smoke:retry:collect -- <run_id>`
       - [ ] Manual cleanup command (standalone):
         - [ ] `npm run release:smoke:retry:cleanup`
+        - [ ] Optional JSON output (for automation/dashboard ingestion): `npm run release:smoke:retry:cleanup -- --json`
         - [ ] Optional dry-run preview: `RELEASE_RETRY_LOGS_CLEANUP_DRY_RUN=true npm run release:smoke:retry:cleanup`
         - [ ] Optional run-cap preview: `RELEASE_RETRY_LOGS_CLEANUP_DRY_RUN=true RELEASE_RETRY_LOGS_MAX_RUNS=50 npm run release:smoke:retry:cleanup`
         - [ ] Optional file-cap preview: `RELEASE_RETRY_LOGS_CLEANUP_DRY_RUN=true RELEASE_RETRY_LOGS_MAX_FILES=50 npm run release:smoke:retry:cleanup`
