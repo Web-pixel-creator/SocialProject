@@ -18,6 +18,7 @@ import {
 import { MetricsServiceImpl } from '../services/metrics/metricsService';
 import { PaymentServiceImpl } from '../services/payment/paymentService';
 import { PostServiceImpl } from '../services/post/postService';
+import { DraftArcServiceImpl } from '../services/observer/draftArcService';
 import { PrivacyServiceImpl } from '../services/privacy/privacyService';
 import { PullRequestServiceImpl } from '../services/pullRequest/pullRequestService';
 import { SearchServiceImpl } from '../services/search/searchService';
@@ -25,6 +26,9 @@ import { SearchServiceImpl } from '../services/search/searchService';
 const app = createApp();
 
 const resetDb = async () => {
+  if (redis.isOpen) {
+    await redis.flushAll();
+  }
   await db.query(
     'TRUNCATE TABLE commission_responses RESTART IDENTITY CASCADE',
   );
@@ -56,31 +60,24 @@ const resetDb = async () => {
 };
 
 const registerAgent = async (studioName = 'Agent Studio') => {
-  const response = await request(app).post('/api/agents/register').send({
+  const authService = new AuthServiceImpl(db);
+  const registered = await authService.registerAgent({
     studioName,
     personality: 'Tester',
   });
-  const { agentId, apiKey, claimToken, emailToken } = response.body;
-  const verify = await request(app).post('/api/agents/claim/verify').send({
-    claimToken,
-    method: 'email',
-    emailToken,
-  });
-  if (verify.status !== 200) {
-    throw new Error(
-      `Agent claim verification failed with status ${verify.status}`,
-    );
-  }
-  return { agentId, apiKey };
+  await db.query('UPDATE agents SET trust_tier = 1 WHERE id = $1', [
+    registered.agentId,
+  ]);
+  return { agentId: registered.agentId, apiKey: registered.apiKey };
 };
 
 const registerUnverifiedAgent = async (studioName = 'Sandbox Studio') => {
-  const response = await request(app).post('/api/agents/register').send({
+  const authService = new AuthServiceImpl(db);
+  const registered = await authService.registerAgent({
     studioName,
     personality: 'Tester',
   });
-  const { agentId, apiKey } = response.body;
-  return { agentId, apiKey };
+  return { agentId: registered.agentId, apiKey: registered.apiKey };
 };
 
 const registerHuman = async (email = 'human@example.com') => {
@@ -354,6 +351,55 @@ describe('API integration', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(unfollowRes.status).toBe(200);
     expect(unfollowRes.body.removed).toBe(true);
+  });
+
+  test('observer endpoints validate uuid params', async () => {
+    const human = await registerHuman('observer-uuid@example.com');
+    const token = human.tokens.accessToken;
+
+    const invalidFollow = await request(app)
+      .post('/api/observers/watchlist/not-a-uuid')
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(invalidFollow.status).toBe(400);
+    expect(invalidFollow.body.error).toBe('DRAFT_ID_INVALID');
+
+    const invalidUnfollow = await request(app)
+      .delete('/api/observers/watchlist/not-a-uuid')
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(invalidUnfollow.status).toBe(400);
+    expect(invalidUnfollow.body.error).toBe('DRAFT_ID_INVALID');
+
+    const invalidSeen = await request(app)
+      .post('/api/observers/digest/not-a-uuid/seen')
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(invalidSeen.status).toBe(400);
+    expect(invalidSeen.body.error).toBe('DIGEST_ENTRY_INVALID');
+  });
+
+  test('observer routes propagate service errors for list endpoints', async () => {
+    const human = await registerHuman('observer-errors@example.com');
+    const token = human.tokens.accessToken;
+
+    const watchlistSpy = jest
+      .spyOn(DraftArcServiceImpl.prototype, 'listWatchlist')
+      .mockRejectedValueOnce(new Error('watchlist fail'));
+    const watchlistRes = await request(app)
+      .get('/api/observers/watchlist')
+      .set('Authorization', `Bearer ${token}`);
+    expect(watchlistRes.status).toBe(500);
+    watchlistSpy.mockRestore();
+
+    const digestSpy = jest
+      .spyOn(DraftArcServiceImpl.prototype, 'listDigest')
+      .mockRejectedValueOnce(new Error('digest fail'));
+    const digestRes = await request(app)
+      .get('/api/observers/digest?unseenOnly=TRUE&limit=2&offset=1')
+      .set('Authorization', `Bearer ${token}`);
+    expect(digestRes.status).toBe(500);
+    digestSpy.mockRestore();
   });
 
   test('observer predict mode lifecycle', async () => {
