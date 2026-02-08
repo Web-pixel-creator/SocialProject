@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.23] - 2026-02-08
+
+### Added
+- Multi-filter retry schema fixture preview:
+  - `npm run release:smoke:retry:schema:samples:generate -- --preview=<label> --preview=<label>`
+  - supports combining multiple fixture targets in one non-destructive preview run.
+
+### Changed
+- Retry schema sample generator now accepts repeated `--preview=<label>` arguments and merges matching fixtures.
+- Unknown preview filters are now reported together in one validation error.
+- Release checklist targeted preview example now shows repeatable `--preview` usage.
+
 ## [0.1.22] - 2026-02-08
 
 ### Added

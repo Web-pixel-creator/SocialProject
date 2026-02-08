@@ -33,7 +33,7 @@ const parseArguments = (argv) => {
   const options = {
     check: false,
     preview: false,
-    previewLabel: null,
+    previewLabels: [],
   };
 
   for (const arg of argv) {
@@ -53,12 +53,12 @@ const parseArguments = (argv) => {
         );
       }
       options.preview = true;
-      options.previewLabel = previewLabel;
+      options.previewLabels.push(previewLabel);
       continue;
     }
     if (arg === '--help' || arg === '-h') {
       process.stdout.write(
-        'Usage: npm run release:smoke:retry:schema:samples:generate [-- --check|--preview|--preview=<label>]\n',
+        'Usage: npm run release:smoke:retry:schema:samples:generate [-- --check|--preview|--preview=<label> [--preview=<label> ...]]\n',
       );
       process.exit(0);
     }
@@ -124,32 +124,54 @@ const writeFixtures = async () => {
   );
 };
 
-const resolvePreviewFixtures = (previewLabel) => {
-  if (previewLabel === null) {
-    return RETRY_SCHEMA_SAMPLE_FIXTURES;
-  }
-
-  const normalizedPreviewLabel = normalizePreviewToken(previewLabel);
-  const filteredFixtures = RETRY_SCHEMA_SAMPLE_FIXTURES.filter((fixture) =>
-    buildPreviewAliases(fixture).includes(normalizedPreviewLabel),
-  );
-  if (filteredFixtures.length > 0) {
-    return filteredFixtures;
-  }
-
-  const availableLabels = RETRY_SCHEMA_SAMPLE_FIXTURES.map((fixture) => {
+const formatAvailablePreviewLabels = () =>
+  RETRY_SCHEMA_SAMPLE_FIXTURES.map((fixture) => {
     const slug = toPreviewSlug(fixture.label);
     return `${fixture.label} (slug: ${slug})`;
   }).join(', ');
-  throw new Error(
-    `Unknown preview label "${previewLabel}". Available labels: ${availableLabels}.`,
-  );
+
+const resolvePreviewFixtures = (previewLabels) => {
+  if (previewLabels.length === 0) {
+    return RETRY_SCHEMA_SAMPLE_FIXTURES;
+  }
+
+  const selectedFixtures = [];
+  const selectedPaths = new Set();
+  const unknownLabels = [];
+
+  for (const previewLabel of previewLabels) {
+    const normalizedPreviewLabel = normalizePreviewToken(previewLabel);
+    const matchedFixtures = RETRY_SCHEMA_SAMPLE_FIXTURES.filter((fixture) =>
+      buildPreviewAliases(fixture).includes(normalizedPreviewLabel),
+    );
+    if (matchedFixtures.length === 0) {
+      unknownLabels.push(previewLabel);
+      continue;
+    }
+
+    for (const fixture of matchedFixtures) {
+      if (selectedPaths.has(fixture.samplePath)) {
+        continue;
+      }
+      selectedPaths.add(fixture.samplePath);
+      selectedFixtures.push(fixture);
+    }
+  }
+
+  if (unknownLabels.length > 0) {
+    const unknownLabelSuffix = unknownLabels.length === 1 ? '' : 's';
+    throw new Error(
+      `Unknown preview label${unknownLabelSuffix}: ${unknownLabels.join(', ')}. Available labels: ${formatAvailablePreviewLabels()}.`,
+    );
+  }
+
+  return selectedFixtures;
 };
 
-const previewFixtures = (previewLabel) => {
-  const fixturesToPreview = resolvePreviewFixtures(previewLabel);
-  if (previewLabel !== null) {
-    process.stdout.write(`Preview filter: ${previewLabel}\n`);
+const previewFixtures = (previewLabels) => {
+  const fixturesToPreview = resolvePreviewFixtures(previewLabels);
+  if (previewLabels.length > 0) {
+    process.stdout.write(`Preview filters: ${previewLabels.join(', ')}\n`);
   }
 
   for (const fixture of fixturesToPreview) {
@@ -170,7 +192,7 @@ const main = async () => {
     return;
   }
   if (options.preview) {
-    previewFixtures(options.previewLabel);
+    previewFixtures(options.previewLabels);
     return;
   }
   await writeFixtures();
