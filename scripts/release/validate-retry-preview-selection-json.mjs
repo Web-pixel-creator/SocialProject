@@ -6,6 +6,7 @@ import Ajv2020 from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
 import {
   RETRY_PREVIEW_SELECTION_JSON_SCHEMA_PATH,
+  RETRY_PREVIEW_SELECTION_JSON_SCHEMA_VERSION,
 } from './retry-json-schema-contracts.mjs';
 import { RETRY_SCHEMA_SAMPLE_FIXTURES } from './retry-schema-sample-fixtures.mjs';
 
@@ -22,6 +23,7 @@ const loadJson = async (relativePath) => {
 const parseArguments = (argv) => {
   const options = {
     strict: false,
+    json: false,
   };
 
   for (const arg of argv) {
@@ -29,9 +31,13 @@ const parseArguments = (argv) => {
       options.strict = true;
       continue;
     }
+    if (arg === '--json') {
+      options.json = true;
+      continue;
+    }
     if (arg === '--help' || arg === '-h') {
       process.stdout.write(
-        'Usage: node scripts/release/validate-retry-preview-selection-json.mjs [--strict]\n',
+        'Usage: node scripts/release/validate-retry-preview-selection-json.mjs [--strict] [--json]\n',
       );
       process.exit(0);
     }
@@ -81,6 +87,31 @@ const runPreviewJsonCommand = ({ unknownLabel = null } = {}) => {
   };
 };
 
+const writeJsonSummary = ({
+  strict,
+  status,
+  fixturePayloads,
+  runtimePayloads,
+  validatedPayloads,
+  failures,
+}) => {
+  const payload = {
+    schemaPath: RETRY_PREVIEW_SELECTION_JSON_SCHEMA_PATH,
+    schemaVersion: RETRY_PREVIEW_SELECTION_JSON_SCHEMA_VERSION,
+    label: 'retry:schema:preview:check',
+    mode: 'preview',
+    strict,
+    status,
+    totals: {
+      fixturePayloads,
+      runtimePayloads,
+      validatedPayloads,
+    },
+    failures,
+  };
+  process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+};
+
 const main = async () => {
   const options = parseArguments(process.argv.slice(2));
 
@@ -95,6 +126,8 @@ const main = async () => {
 
   const failures = [];
   let validatedPayloads = 0;
+  let fixturePayloads = 0;
+  let runtimePayloads = 0;
 
   const previewFixtures = RETRY_SCHEMA_SAMPLE_FIXTURES.filter(
     (fixture) => fixture.schemaPath === RETRY_PREVIEW_SELECTION_JSON_SCHEMA_PATH,
@@ -108,6 +141,7 @@ const main = async () => {
       );
       continue;
     }
+    fixturePayloads += 1;
     validatedPayloads += 1;
   }
 
@@ -122,6 +156,7 @@ const main = async () => {
         `runtime preview-selection payload is invalid: ${formatAjvErrors(validatePreview.errors)}`,
       );
     } else {
+      runtimePayloads += 1;
       validatedPayloads += 1;
     }
   } catch (error) {
@@ -149,6 +184,7 @@ const main = async () => {
           `runtime preview-selection unknown-filter payload is missing expected unknown label '${unknownLabel}'`,
         );
       } else {
+        runtimePayloads += 1;
         validatedPayloads += 1;
       }
     } catch (error) {
@@ -160,11 +196,34 @@ const main = async () => {
   }
 
   if (failures.length > 0) {
-    process.stderr.write('Retry preview-selection schema validation failed:\n');
-    for (const failure of failures) {
-      process.stderr.write(`- ${failure}\n`);
+    if (options.json) {
+      writeJsonSummary({
+        strict: options.strict,
+        status: 'fail',
+        fixturePayloads,
+        runtimePayloads,
+        validatedPayloads,
+        failures,
+      });
+    } else {
+      process.stderr.write('Retry preview-selection schema validation failed:\n');
+      for (const failure of failures) {
+        process.stderr.write(`- ${failure}\n`);
+      }
     }
     process.exit(1);
+  }
+
+  if (options.json) {
+    writeJsonSummary({
+      strict: options.strict,
+      status: 'pass',
+      fixturePayloads,
+      runtimePayloads,
+      validatedPayloads,
+      failures: [],
+    });
+    return;
   }
 
   const strictSuffix = options.strict ? ' (strict mode)' : '';

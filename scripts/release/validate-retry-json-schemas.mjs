@@ -19,6 +19,27 @@ const loadJson = async (relativePath) => {
   const text = await readFile(resolvePath(relativePath), 'utf8');
   return JSON.parse(text);
 };
+const parseArguments = (argv) => {
+  const options = {
+    json: false,
+  };
+
+  for (const arg of argv) {
+    if (arg === '--json') {
+      options.json = true;
+      continue;
+    }
+    if (arg === '--help' || arg === '-h') {
+      process.stdout.write(
+        'Usage: node scripts/release/validate-retry-json-schemas.mjs [--json]\n',
+      );
+      process.exit(0);
+    }
+    throw new Error(`Unknown argument: ${arg}`);
+  }
+
+  return options;
+};
 
 const formatAjvErrors = (errors = []) =>
   errors
@@ -56,7 +77,29 @@ const runCleanupJsonCommand = () => {
   return JSON.parse(stdoutText);
 };
 
+const writeJsonSummary = ({
+  status,
+  fixturePayloads,
+  runtimePayloads,
+  validatedPayloads,
+  failures,
+}) => {
+  const payload = {
+    label: 'retry:schema:base:check',
+    mode: 'base',
+    status,
+    totals: {
+      fixturePayloads,
+      runtimePayloads,
+      validatedPayloads,
+    },
+    failures,
+  };
+  process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+};
+
 const main = async () => {
+  const options = parseArguments(process.argv.slice(2));
   const ajv = new Ajv2020({
     allErrors: true,
     strict: false,
@@ -77,6 +120,8 @@ const main = async () => {
 
   const failures = [];
   let validatedPayloads = 0;
+  let fixturePayloads = 0;
+  let runtimePayloads = 0;
 
   for (const fixture of RETRY_SCHEMA_SAMPLE_FIXTURES) {
     if (!schemaByPath.has(fixture.schemaPath)) {
@@ -95,6 +140,7 @@ const main = async () => {
       );
       continue;
     }
+    fixturePayloads += 1;
     validatedPayloads += 1;
   }
 
@@ -108,6 +154,7 @@ const main = async () => {
         `runtime cleanup payload is invalid: ${formatAjvErrors(validateCleanup.errors)}`,
       );
     } else {
+      runtimePayloads += 1;
       validatedPayloads += 1;
     }
   } catch (error) {
@@ -116,11 +163,32 @@ const main = async () => {
   }
 
   if (failures.length > 0) {
-    process.stderr.write('Retry diagnostics schema validation failed:\n');
-    for (const failure of failures) {
-      process.stderr.write(`- ${failure}\n`);
+    if (options.json) {
+      writeJsonSummary({
+        status: 'fail',
+        fixturePayloads,
+        runtimePayloads,
+        validatedPayloads,
+        failures,
+      });
+    } else {
+      process.stderr.write('Retry diagnostics schema validation failed:\n');
+      for (const failure of failures) {
+        process.stderr.write(`- ${failure}\n`);
+      }
     }
     process.exit(1);
+  }
+
+  if (options.json) {
+    writeJsonSummary({
+      status: 'pass',
+      fixturePayloads,
+      runtimePayloads,
+      validatedPayloads,
+      failures: [],
+    });
+    return;
   }
 
   process.stdout.write(

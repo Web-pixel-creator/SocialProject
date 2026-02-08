@@ -25,6 +25,7 @@ Use this checklist for every production release.
 - [ ] `npm run release:smoke:retry:schema:sync:check` passes.
 - [ ] `npm run release:smoke:retry:schema:check` passes.
 - [ ] `npm run release:smoke:retry:schema:preview:check:strict` passes (standalone strict preview-selection gate; included in `schema:check`).
+- [ ] Optional machine-readable schema gate summary: `npm run release:smoke:retry:schema:check:json` (for dashboards/automation).
 - [ ] Security scans are green (`dependency audit` + `secret scan` once Task 9 is active).
 
 ## 2. Migration Readiness
@@ -80,6 +81,7 @@ Use this checklist for every production release.
         - [ ] Preview-selection JSON schema: `docs/ops/schemas/release-retry-preview-selection-output.schema.json` (verify `schemaPath` + `schemaVersion` in payload).
         - [ ] Unknown-filter preview JSON path returns non-zero and still matches schema: `npm run release:smoke:retry:schema:samples:generate -- --preview=missing-label --json`
         - [ ] Optional standalone strict preview-selection validator: `npm run release:smoke:retry:schema:preview:check:strict`
+        - [ ] Optional combined strict schema gate JSON summary: `npm run release:smoke:retry:schema:check:json`
         - [ ] Generate fixtures: `npm run release:smoke:retry:schema:samples:generate`
         - [ ] Check fixtures are up to date: `npm run release:smoke:retry:schema:samples:check`
     - [ ] Manage persistent staging workflow inputs:

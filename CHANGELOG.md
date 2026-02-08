@@ -4,6 +4,22 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.29] - 2026-02-08
+
+### Added
+- New schema gate orchestrator:
+  - `scripts/release/validate-retry-schema-gate.mjs`
+  - emits combined strict gate summary for base + preview validators.
+- New machine-readable summary command:
+  - `npm run release:smoke:retry:schema:check:json`
+  - returns aggregated pass/fail state and per-step validated payload totals.
+
+### Changed
+- `release:smoke:retry:schema:check` now runs the dedicated orchestrator instead of npm script chaining.
+- `validate-retry-json-schemas.mjs` now supports `--json` output mode for structured base-gate reporting.
+- `validate-retry-preview-selection-json.mjs` now supports `--json` output mode for structured preview-gate reporting.
+- Release checklist now includes optional combined schema gate JSON summary command.
+
 ## [0.1.28] - 2026-02-08
 
 ### Added
