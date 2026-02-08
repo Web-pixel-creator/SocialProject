@@ -33,6 +33,42 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-02-08 - v0.1.28
+
+- Scope: Dedicated preview-selection schema validator with explicit `--strict` mode, integrated into the primary retry schema gate.
+- Release commander: Codex automation.
+- Window (UTC): 2026-02-08 11:03 -> 2026-02-08 11:11.
+- Release artifact:
+  - GitHub Release: `https://github.com/Web-pixel-creator/SocialProject/releases/tag/v0.1.28`
+- Dry-run:
+  - Local rehearsal: pass (URL-input helper starts local API/Web and tunnels automatically).
+  - Staging smoke: pass (`release_smoke_staging`, workflow run `#200`, fallback mode) on head `d66705b`.
+  - Staging smoke (URL-input mode via helper command): pass (`release:smoke:dispatch:tunnel`, workflow run `#201`) on head `d66705b`.
+  - Smoke report artifact/link:
+    - fallback mode: `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21797088205`, artifact id `5422112171`)
+    - URL-input mode (helper command): `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21797125039`, artifact id `5422120721`)
+    - Local downloaded and extracted copy: `artifacts/release/ci-run-21797125039/smoke-results.json`
+  - Smoke diff evidence:
+    - Command: `npm run release:smoke:diff -- 21796945766 21797125039`
+    - JSON report: `artifacts/release/smoke-diff-21796945766-vs-21797125039.json`
+    - Result: pass -> pass, failed steps `0 -> 0`, total duration `6411.23ms -> 6976.09ms` (delta `+564.86ms`), no pass regressions.
+  - Strict preview-schema gate validation:
+    - Base retry schema check: `npm run release:smoke:retry:schema:base:check` -> pass (`4 payloads`).
+    - Preview-selection schema check: `npm run release:smoke:retry:schema:preview:check` -> pass (`3 payloads`).
+    - Strict preview-selection check: `npm run release:smoke:retry:schema:preview:check:strict` -> pass (`4 payloads`).
+    - Combined schema gate: `npm run release:smoke:retry:schema:check` -> pass (base + strict preview checks).
+    - Schema sync check: `npm run release:smoke:retry:schema:sync:check` -> pass (`21 checks`).
+    - Fixture drift check: `npm run release:smoke:retry:schema:samples:check` -> pass (`5 files`).
+- Gates:
+  - ultracite (local): pass (`npm run ultracite:check`).
+  - CI workflow_dispatch corroboration (run `#200`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+  - CI workflow_dispatch corroboration (run `#201`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+- Rollout result: release prepared and tagged.
+- Incidents:
+  - none.
+- Follow-ups:
+  - Optional: expose `--strict` for `release:smoke:retry:schema:check` as an explicit CLI flag path (instead of composing npm scripts) for easier external orchestration.
+
 ### 2026-02-08 - v0.1.27
 
 - Scope: Runtime schema validation for non-zero preview-selection JSON output path (unknown filters) in retry schema gate.
