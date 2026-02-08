@@ -33,6 +33,41 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-02-08 - v0.1.30
+
+- Scope: CI upload of machine-readable retry schema gate summary artifact (`retry-schema-gate-summary`) from the `test` job.
+- Release commander: Codex automation.
+- Window (UTC): 2026-02-08 11:34 -> 2026-02-08 11:50.
+- Release artifact:
+  - GitHub Release: `https://github.com/Web-pixel-creator/SocialProject/releases/tag/v0.1.30`
+- Dry-run:
+  - Local rehearsal: pass (URL-input helper starts local API/Web and tunnels automatically).
+  - Staging smoke: pass (`release_smoke_staging`, workflow run `#208`, fallback mode) on head `7f3c890`.
+  - Staging smoke (URL-input mode via helper command): pass (`release:smoke:dispatch:tunnel`, workflow run `#211`) on head `7f3c890`.
+  - Smoke report artifact/link:
+    - fallback mode: `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21797487528`, artifact id `5422224639`)
+    - URL-input mode (helper command): `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21797614271`, artifact id `5422258308`)
+    - Local downloaded and extracted copy: `artifacts/release/ci-run-21797614271/smoke-results.json`
+  - Retry schema gate summary artifact/link:
+    - fallback mode: `retry-schema-gate-summary` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21797487528`, artifact id `5422223711`)
+    - URL-input mode (helper command): `retry-schema-gate-summary` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21797614271`, artifact id `5422259221`)
+  - Smoke diff evidence:
+    - Command: `npm run release:smoke:diff -- 21797331035 21797614271`
+    - JSON report: `artifacts/release/smoke-diff-21797331035-vs-21797614271.json`
+    - Result: pass -> pass, failed steps `0 -> 0`, total duration `7879.31ms -> 7922.67ms` (delta `+43.36ms`), no pass regressions.
+  - Retry-schema gate validation:
+    - Combined strict schema gate: `npm run release:smoke:retry:schema:check` -> pass (base `4` + strict preview `4`, total `8` payloads).
+    - Combined strict schema gate (JSON): `npm run release:smoke:retry:schema:check:json` -> pass.
+- Gates:
+  - ultracite (local): pass (`npm run ultracite:check`).
+  - CI workflow_dispatch corroboration (run `#208`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+  - CI workflow_dispatch corroboration (run `#211`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+- Rollout result: release prepared and tagged.
+- Incidents:
+  - URL-input smoke runs `#209` (`21797521910`) and `#210` (`21797555727`) failed in `release_smoke_staging` due transient `web.home` `503`; next retry run `#211` succeeded on the same head.
+- Follow-ups:
+  - Optional: add tunnel health preflight in `release:smoke:dispatch:tunnel` to reduce transient 5xx retries.
+
 ### 2026-02-08 - v0.1.29
 
 - Scope: Combined machine-readable JSON summary for retry schema gate (`base` + strict `preview`) with dedicated orchestrator command.
