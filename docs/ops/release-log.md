@@ -33,6 +33,44 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-02-08 - v0.1.17
+
+- Scope: Add retry diagnostics schema-check gate with fixtures and CI enforcement.
+- Release commander: Codex automation.
+- Window (UTC): 2026-02-08 08:12 -> 2026-02-08 08:22.
+- Release artifact:
+  - GitHub Release: `https://github.com/Web-pixel-creator/SocialProject/releases/tag/v0.1.17`
+- Dry-run:
+  - Local rehearsal: pass (URL-input helper starts local API/Web and tunnels automatically).
+  - Staging smoke: pass (`release_smoke_staging`, workflow run `#160`, fallback mode) on head `c1bf54a`.
+  - Staging smoke (URL-input mode via helper command): pass (`release:smoke:dispatch:tunnel`, workflow run `#161`) on head `c1bf54a`.
+  - Smoke report artifact/link:
+    - fallback mode: `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21794959514`, artifact id `5421471968`)
+    - URL-input mode (helper command): `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21794993925`, artifact id `5421480808`)
+    - Local downloaded and extracted copy: `artifacts/release/ci-run-21794993925/smoke-results.json`
+  - Smoke diff evidence:
+    - Command: `npm run release:smoke:diff -- 21794841880 21794993925`
+    - JSON report: `artifacts/release/smoke-diff-21794841880-vs-21794993925.json`
+    - Result: pass -> pass, failed steps `0 -> 0`, total duration `5940.88ms -> 7413.43ms` (delta `+1472.55ms`), no pass regressions.
+  - Schema-check gate validation:
+    - Command: `npm run release:smoke:retry:schema:check`
+    - Result: pass (`Retry diagnostics schema validation passed (4 payloads).`)
+    - Fixtures validated:
+      - `docs/ops/schemas/samples/release-retry-cleanup-output.sample.json`
+      - `docs/ops/schemas/samples/release-retry-collect-output-empty.sample.json`
+      - `docs/ops/schemas/samples/release-retry-collect-output-success.sample.json`
+    - Runtime payload validated:
+      - `node scripts/release/cleanup-retry-failure-logs.mjs --json` (dry-run forced by checker).
+- Gates:
+  - ultracite (local): pass (`npm run ultracite:check`).
+  - CI workflow_dispatch corroboration (run `#160`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+  - CI workflow_dispatch corroboration (run `#161`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+- Rollout result: release prepared and tagged.
+- Incidents:
+  - none.
+- Follow-ups:
+  - Optional: validate one real `retry:collect --json` fixture from a captured run in CI using a redacted static payload to protect against API shape drift.
+
 ### 2026-02-08 - v0.1.16
 
 - Scope: Formal JSON schema contracts for retry diagnostics outputs (`retry:cleanup --json`, `retry:collect --json`).
