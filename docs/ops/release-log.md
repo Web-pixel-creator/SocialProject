@@ -33,6 +33,39 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-02-08 - v0.1.18
+
+- Scope: Schema-version sync guard for retry diagnostics contracts (code <-> schema <-> sample payloads) with CI enforcement.
+- Release commander: Codex automation.
+- Window (UTC): 2026-02-08 08:26 -> 2026-02-08 08:36.
+- Release artifact:
+  - GitHub Release: `https://github.com/Web-pixel-creator/SocialProject/releases/tag/v0.1.18`
+- Dry-run:
+  - Local rehearsal: pass (URL-input helper starts local API/Web and tunnels automatically).
+  - Staging smoke: pass (`release_smoke_staging`, workflow run `#163`, fallback mode) on head `41e1387`.
+  - Staging smoke (URL-input mode via helper command): pass (`release:smoke:dispatch:tunnel`, workflow run `#164`) on head `41e1387`.
+  - Smoke report artifact/link:
+    - fallback mode: `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21795141089`, artifact id `5421529552`)
+    - URL-input mode (helper command): `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21795173334`, artifact id `5421537250`)
+    - Local downloaded and extracted copy: `artifacts/release/ci-run-21795173334/smoke-results.json`
+  - Smoke diff evidence:
+    - Command: `npm run release:smoke:diff -- 21794993925 21795173334`
+    - JSON report: `artifacts/release/smoke-diff-21794993925-vs-21795173334.json`
+    - Result: pass -> pass, failed steps `0 -> 0`, total duration `7413.43ms -> 7113.29ms` (delta `-300.14ms`), no pass regressions.
+  - Schema contract guard validation:
+    - Sync check: `npm run release:smoke:retry:schema:sync:check` -> pass (`10 checks`).
+    - Shape check: `npm run release:smoke:retry:schema:check` -> pass (`4 payloads`).
+    - CI `test` job now runs both checks in order before migrations/build/test.
+- Gates:
+  - ultracite (local): pass (`npm run ultracite:check`).
+  - CI workflow_dispatch corroboration (run `#163`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+  - CI workflow_dispatch corroboration (run `#164`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+- Rollout result: release prepared and tagged.
+- Incidents:
+  - none.
+- Follow-ups:
+  - Optional: auto-generate sample fixtures from a canned mock generator to reduce manual fixture maintenance.
+
 ### 2026-02-08 - v0.1.17
 
 - Scope: Add retry diagnostics schema-check gate with fixtures and CI enforcement.
