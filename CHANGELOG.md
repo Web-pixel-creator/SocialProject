@@ -25,6 +25,7 @@ The format is based on Keep a Changelog.
 - In-CI tunnel helper rehearsal job now builds API/Web (`apps/api build`, `apps/web build`) before `release:smoke:dispatch:tunnel` to satisfy production start prerequisites.
 - In-CI tunnel helper rehearsal job now pre-initializes local Postgres/Redis and runs API migrations before helper dispatch, preventing missing-schema failures on fresh CI runners.
 - In-CI tunnel helper rehearsal now runs dispatch in non-blocking mode (`RELEASE_WAIT_FOR_COMPLETION=false`, `RELEASE_TUNNEL_DISPATCH_RETRY_MAX=0`) to avoid CI queue-duration timeouts while still producing retry-summary artifacts.
+- Tunnel helper dispatch script now force-exits after successful completion to prevent CI jobs from hanging due lingering child-process handles after dispatch-only execution.
 
 ## [0.1.38] - 2026-02-08
 

@@ -1309,8 +1309,13 @@ const main = async () => {
   }
 };
 
-main().catch((error) => {
-  const message = error instanceof Error ? error.message : String(error);
-  process.stderr.write(`${message}\n`);
-  process.exit(1);
-});
+main()
+  .then(() => {
+    // Force process termination to avoid lingering child-process handles in CI.
+    process.exit(0);
+  })
+  .catch((error) => {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`${message}\n`);
+    process.exit(1);
+  });
