@@ -20,7 +20,16 @@ const DEFAULT_WAIT_TIMEOUT_MS = 120_000;
 const DEFAULT_WAIT_INTERVAL_MS = 750;
 const DEFAULT_RETRY_MAX = 1;
 const DEFAULT_RETRY_DELAY_MS = 5000;
+const DEFAULT_RETRY_BACKOFF_FACTOR = 1.5;
+const DEFAULT_RETRY_MAX_DELAY_MS = 30_000;
 const DEFAULT_CAPTURE_RETRY_LOGS = true;
+const DEFAULT_RETRY_PREFLIGHT_ENABLED = true;
+const DEFAULT_RETRY_PREFLIGHT_TIMEOUT_MS = 20_000;
+const DEFAULT_RETRY_PREFLIGHT_INTERVAL_MS = 1000;
+const DEFAULT_RETRY_PREFLIGHT_SUCCESS_STREAK = 1;
+const DEFAULT_RETRY_SUMMARY_WRITE = true;
+const DEFAULT_RETRY_SUMMARY_PATH =
+  'artifacts/release/tunnel-dispatch-retry-summary.json';
 const DEFAULT_PREFLIGHT_ENABLED = true;
 const DEFAULT_PREFLIGHT_TIMEOUT_MS = 45_000;
 const DEFAULT_PREFLIGHT_INTERVAL_MS = 1000;
@@ -754,6 +763,51 @@ const writePreflightSummary = async ({ summary, outputPath }) => {
   process.stdout.write(`Tunnel preflight summary written to ${resolvedPath}\n`);
 };
 
+const writeRetrySummary = async ({ summary, outputPath }) => {
+  const resolvedPath = path.resolve(outputPath);
+  await mkdir(path.dirname(resolvedPath), { recursive: true });
+  await writeFile(resolvedPath, JSON.stringify(summary, null, 2), 'utf8');
+  process.stdout.write(`Tunnel dispatch retry summary written to ${resolvedPath}\n`);
+};
+
+const createRetrySummary = ({
+  apiBaseUrl,
+  webBaseUrl,
+  totalAttempts,
+  startedAtMs,
+  retryDelayMs,
+  retryBackoffFactor,
+  retryMaxDelayMs,
+}) => ({
+  label: 'release:smoke:dispatch:tunnel:retry',
+  mode: 'url-input',
+  status: 'in_progress',
+  startedAtUtc: toUtc(startedAtMs),
+  completedAtUtc: null,
+  totalAttempts,
+  endpoints: {
+    apiBaseUrl,
+    webBaseUrl,
+  },
+  retryPolicy: {
+    baseDelayMs: retryDelayMs,
+    backoffFactor: retryBackoffFactor,
+    maxDelayMs: retryMaxDelayMs,
+  },
+  attempts: [],
+});
+
+const probeTunnelEndpoints = async ({ apiBaseUrl, webBaseUrl }) => {
+  const [apiProbe, webProbe] = await Promise.all([
+    probeApiHealth(apiBaseUrl),
+    probeWebHome(webBaseUrl),
+  ]);
+  return {
+    api: apiProbe,
+    web: webProbe,
+  };
+};
+
 const startTunnel = ({ port, name }) => {
   const invocation = getNpmInvocation([
     'exec',
@@ -802,6 +856,40 @@ const main = async () => {
     process.env.RELEASE_TUNNEL_DISPATCH_RETRY_DELAY_MS,
     DEFAULT_RETRY_DELAY_MS,
   );
+  const retryBackoffFactor = Math.max(
+    1,
+    parseNumber(
+      process.env.RELEASE_TUNNEL_DISPATCH_RETRY_BACKOFF_FACTOR,
+      DEFAULT_RETRY_BACKOFF_FACTOR,
+    ),
+  );
+  const retryMaxDelayMs = parseNumber(
+    process.env.RELEASE_TUNNEL_DISPATCH_RETRY_MAX_DELAY_MS,
+    DEFAULT_RETRY_MAX_DELAY_MS,
+  );
+  const retryPreflightEnabled = parseBoolean(
+    process.env.RELEASE_TUNNEL_RETRY_PREFLIGHT_ENABLED,
+    DEFAULT_RETRY_PREFLIGHT_ENABLED,
+  );
+  const retryPreflightTimeoutMs = parseNumber(
+    process.env.RELEASE_TUNNEL_RETRY_PREFLIGHT_TIMEOUT_MS,
+    DEFAULT_RETRY_PREFLIGHT_TIMEOUT_MS,
+  );
+  const retryPreflightIntervalMs = parseNumber(
+    process.env.RELEASE_TUNNEL_RETRY_PREFLIGHT_INTERVAL_MS,
+    DEFAULT_RETRY_PREFLIGHT_INTERVAL_MS,
+  );
+  const retryPreflightSuccessStreak = parseInteger(
+    process.env.RELEASE_TUNNEL_RETRY_PREFLIGHT_SUCCESS_STREAK,
+    DEFAULT_RETRY_PREFLIGHT_SUCCESS_STREAK,
+  );
+  const retrySummaryWrite = parseBoolean(
+    process.env.RELEASE_TUNNEL_RETRY_SUMMARY_WRITE,
+    DEFAULT_RETRY_SUMMARY_WRITE,
+  );
+  const retrySummaryPath =
+    process.env.RELEASE_TUNNEL_RETRY_SUMMARY_PATH?.trim() ??
+    DEFAULT_RETRY_SUMMARY_PATH;
   const preflightEnabled = parseBoolean(
     process.env.RELEASE_TUNNEL_PREFLIGHT_ENABLED,
     DEFAULT_PREFLIGHT_ENABLED,
@@ -867,6 +955,7 @@ const main = async () => {
   let webProcess = null;
   let apiTunnel = null;
   let webTunnel = null;
+  let retrySummary = null;
 
   try {
     apiProcess = startService({
@@ -972,12 +1061,66 @@ const main = async () => {
     }
 
     const totalAttempts = retryMax + 1;
+    const retrySummaryStartedAtMs = Date.now();
+    retrySummary = createRetrySummary({
+      apiBaseUrl,
+      webBaseUrl,
+      totalAttempts,
+      startedAtMs: retrySummaryStartedAtMs,
+      retryDelayMs,
+      retryBackoffFactor,
+      retryMaxDelayMs,
+    });
+
     for (let attempt = 1; attempt <= totalAttempts; attempt += 1) {
+      const attemptStartedAtMs = Date.now();
+      const attemptSummary = {
+        attempt,
+        status: 'in_progress',
+        startedAtUtc: toUtc(attemptStartedAtMs),
+      };
+
+      if (attempt > 1 && retryPreflightEnabled) {
+        process.stdout.write(
+          `Retry preflight before attempt ${attempt}/${totalAttempts} (timeout: ${retryPreflightTimeoutMs}ms, interval: ${retryPreflightIntervalMs}ms, success streak: ${retryPreflightSuccessStreak}).\n`,
+        );
+        try {
+          const retryPreflightSummary = await waitForTunnelPreflight({
+            apiBaseUrl,
+            webBaseUrl,
+            timeoutMs: retryPreflightTimeoutMs,
+            intervalMs: retryPreflightIntervalMs,
+            successStreak: retryPreflightSuccessStreak,
+          });
+          attemptSummary.retryPreflight = {
+            status: 'pass',
+            attempts: retryPreflightSummary.attempts,
+            durationMs: retryPreflightSummary.durationMs,
+          };
+        } catch (error) {
+          const retryPreflightSummary = error?.preflightSummary ?? null;
+          attemptSummary.retryPreflight = {
+            status: 'fail',
+            attempts: retryPreflightSummary?.attempts ?? 0,
+            durationMs: retryPreflightSummary?.durationMs ?? 0,
+            reason: error instanceof Error ? error.message : String(error),
+          };
+          attemptSummary.status = 'fail';
+          attemptSummary.completedAtUtc = toUtc(Date.now());
+          attemptSummary.durationMs = Date.now() - attemptStartedAtMs;
+          retrySummary.attempts.push(attemptSummary);
+          retrySummary.status = 'fail';
+          retrySummary.completedAtUtc = toUtc(Date.now());
+          throw error;
+        }
+      }
+
       process.stdout.write(
         `Dispatch attempt ${attempt}/${totalAttempts} (URL-input smoke)\n`,
       );
+
       try {
-        await runCommand({
+        const dispatchResult = await runCommand({
           command: dispatchInvocation.command,
           args: dispatchInvocation.args,
           name: 'release:smoke:dispatch',
@@ -991,18 +1134,41 @@ const main = async () => {
           shell: dispatchInvocation.shell,
           captureOutput: true,
         });
+        const runContext = getLatestRunContextFromOutput(
+          dispatchResult.combinedOutput ?? '',
+        );
+        attemptSummary.status = 'pass';
+        attemptSummary.runId = runContext?.runId ?? null;
+        attemptSummary.runUrl = runContext?.runUrl ?? null;
+        attemptSummary.completedAtUtc = toUtc(Date.now());
+        attemptSummary.durationMs = Date.now() - attemptStartedAtMs;
+        retrySummary.attempts.push(attemptSummary);
+        retrySummary.status = 'pass';
+        retrySummary.completedAtUtc = toUtc(Date.now());
         break;
       } catch (error) {
-        if (attempt >= totalAttempts) {
-          throw error;
-        }
-
         const output = extractErrorOutput(error);
         const runContext = getLatestRunContextFromOutput(output);
+        attemptSummary.status = 'fail';
+        attemptSummary.completedAtUtc = toUtc(Date.now());
+        attemptSummary.durationMs = Date.now() - attemptStartedAtMs;
+        attemptSummary.runId = runContext?.runId ?? null;
+        attemptSummary.runUrl = runContext?.runUrl ?? null;
+
         if (!runContext) {
           process.stderr.write(
             `Retry skipped: unable to determine failed run id from dispatch output.\n`,
           );
+          attemptSummary.retryable = false;
+          attemptSummary.reason =
+            'Unable to determine failed run id from dispatch output.';
+          attemptSummary.endpointProbeAfterFailure = await probeTunnelEndpoints({
+            apiBaseUrl,
+            webBaseUrl,
+          });
+          retrySummary.attempts.push(attemptSummary);
+          retrySummary.status = 'fail';
+          retrySummary.completedAtUtc = toUtc(Date.now());
           throw error;
         }
 
@@ -1014,14 +1180,39 @@ const main = async () => {
             runId: runContext.runId,
           });
         } catch (inspectionError) {
+          const message =
+            inspectionError instanceof Error
+              ? inspectionError.message
+              : String(inspectionError);
           process.stderr.write(
-            `Retry skipped: unable to inspect run ${runContext.runId}. ${String(inspectionError)}\n`,
+            `Retry skipped: unable to inspect run ${runContext.runId}. ${message}\n`,
           );
+          attemptSummary.retryable = false;
+          attemptSummary.reason = `Unable to inspect failed run: ${message}`;
+          attemptSummary.endpointProbeAfterFailure = await probeTunnelEndpoints({
+            apiBaseUrl,
+            webBaseUrl,
+          });
+          retrySummary.attempts.push(attemptSummary);
+          retrySummary.status = 'fail';
+          retrySummary.completedAtUtc = toUtc(Date.now());
           throw error;
         }
 
+        attemptSummary.retryable = inspection.retryable;
+        attemptSummary.reason = inspection.reason;
+        attemptSummary.failedReleaseSmokeJobs =
+          inspection.failedReleaseSmokeJobs?.length ?? 0;
+
         if (!inspection.retryable) {
           process.stderr.write(`Retry skipped: ${inspection.reason}\n`);
+          attemptSummary.endpointProbeAfterFailure = await probeTunnelEndpoints({
+            apiBaseUrl,
+            webBaseUrl,
+          });
+          retrySummary.attempts.push(attemptSummary);
+          retrySummary.status = 'fail';
+          retrySummary.completedAtUtc = toUtc(Date.now());
           throw error;
         }
 
@@ -1037,10 +1228,14 @@ const main = async () => {
                 label: 'dispatch:tunnel',
               })}\n`,
             );
+            attemptSummary.retryLogsCleanup = cleanupSummary;
           } catch (cleanupError) {
-            process.stderr.write(
-              `Retry diagnostics cleanup failed: ${String(cleanupError)}\n`,
-            );
+            const message =
+              cleanupError instanceof Error
+                ? cleanupError.message
+                : String(cleanupError);
+            process.stderr.write(`Retry diagnostics cleanup failed: ${message}\n`);
+            attemptSummary.retryLogsCleanupError = message;
           }
 
           try {
@@ -1052,20 +1247,61 @@ const main = async () => {
               failedReleaseSmokeJobs: inspection.failedReleaseSmokeJobs,
               outputDir: retryLogsDir,
             });
+            attemptSummary.retryLogsCaptured = true;
           } catch (captureError) {
-            process.stderr.write(
-              `Retry diagnostics capture failed: ${String(captureError)}\n`,
-            );
+            const message =
+              captureError instanceof Error
+                ? captureError.message
+                : String(captureError);
+            process.stderr.write(`Retry diagnostics capture failed: ${message}\n`);
+            attemptSummary.retryLogsCaptured = false;
+            attemptSummary.retryLogsCaptureError = message;
           }
         }
 
-        process.stderr.write(
-          `Retrying after transient release smoke failure (${inspection.runUrl || runContext.runUrl}). ${inspection.reason}\n`,
+        attemptSummary.endpointProbeAfterFailure = await probeTunnelEndpoints({
+          apiBaseUrl,
+          webBaseUrl,
+        });
+
+        if (attempt >= totalAttempts) {
+          retrySummary.attempts.push(attemptSummary);
+          retrySummary.status = 'fail';
+          retrySummary.completedAtUtc = toUtc(Date.now());
+          throw error;
+        }
+
+        const sleepDelayMs = Math.min(
+          retryMaxDelayMs,
+          Math.round(retryDelayMs * retryBackoffFactor ** (attempt - 1)),
         );
-        await sleep(retryDelayMs);
+        attemptSummary.sleepBeforeRetryMs = sleepDelayMs;
+        retrySummary.attempts.push(attemptSummary);
+        process.stderr.write(
+          `Retrying after transient release smoke failure (${inspection.runUrl || runContext.runUrl}). ${inspection.reason}. Next retry in ${sleepDelayMs}ms.\n`,
+        );
+        await sleep(sleepDelayMs);
       }
     }
   } finally {
+    if (retrySummaryWrite && retrySummary) {
+      if (retrySummary.status === 'in_progress') {
+        retrySummary.status = 'fail';
+      }
+      if (retrySummary.completedAtUtc === null) {
+        retrySummary.completedAtUtc = toUtc(Date.now());
+      }
+      try {
+        await writeRetrySummary({
+          summary: retrySummary,
+          outputPath: retrySummaryPath,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        process.stderr.write(`Failed to write tunnel dispatch retry summary: ${message}\n`);
+      }
+    }
+
     await stopProcess(apiTunnel);
     await stopProcess(webTunnel);
     await stopProcess(apiProcess);

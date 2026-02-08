@@ -1,6 +1,6 @@
 {
   "name": "finishit-ai-social-network",
-  "version": "0.1.36",
+  "version": "0.1.37",
   "private": true,
   "workspaces": [
     "apps/*",

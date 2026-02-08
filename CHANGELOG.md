@@ -4,6 +4,30 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.37] - 2026-02-08
+
+### Added
+- CI `test` job now appends standalone preflight schema validation results to GitHub Step Summary:
+  - block title: `Release Smoke Preflight Schema Summary`
+  - source payload: `artifacts/release/release-smoke-preflight-schema-summary.json`
+- Tunnel dispatch helper now writes machine-readable retry diagnostics summary:
+  - default path: `artifacts/release/tunnel-dispatch-retry-summary.json`
+  - includes per-attempt status, failed run context, endpoint probes, and retry delays.
+
+### Changed
+- `release:smoke:dispatch:tunnel` retry behavior now supports adaptive retry backoff:
+  - `RELEASE_TUNNEL_DISPATCH_RETRY_BACKOFF_FACTOR` (default `1.5`)
+  - `RELEASE_TUNNEL_DISPATCH_RETRY_MAX_DELAY_MS` (default `30000`)
+- Added retry preflight check controls before follow-up dispatch attempts:
+  - `RELEASE_TUNNEL_RETRY_PREFLIGHT_ENABLED` (default `true`)
+  - `RELEASE_TUNNEL_RETRY_PREFLIGHT_TIMEOUT_MS` (default `20000`)
+  - `RELEASE_TUNNEL_RETRY_PREFLIGHT_INTERVAL_MS` (default `1000`)
+  - `RELEASE_TUNNEL_RETRY_PREFLIGHT_SUCCESS_STREAK` (default `1`)
+- Added retry summary output controls:
+  - `RELEASE_TUNNEL_RETRY_SUMMARY_WRITE` (default `true`)
+  - `RELEASE_TUNNEL_RETRY_SUMMARY_PATH` (default `artifacts/release/tunnel-dispatch-retry-summary.json`)
+- Release checklist updated with new retry controls and CI step-summary verification.
+
 ## [0.1.36] - 2026-02-08
 
 ### Added

@@ -158,6 +158,41 @@ jobs:
           mkdir -p artifacts/release
           node scripts/release/validate-release-smoke-preflight-summary.mjs --json > artifacts/release/release-smoke-preflight-schema-summary.json
 
+      - name: Append preflight schema summary to step summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -z "${GITHUB_STEP_SUMMARY:-}" ] || [ ! -f artifacts/release/release-smoke-preflight-schema-summary.json ]; then
+            exit 0
+          fi
+
+          node <<'NODE'
+          const fs = require('node:fs');
+          const summaryPath = 'artifacts/release/release-smoke-preflight-schema-summary.json';
+          const summaryOutputPath = process.env.GITHUB_STEP_SUMMARY;
+          if (!summaryOutputPath) {
+            process.exit(0);
+          }
+
+          const payload = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+          const lines = [
+            '### Release Smoke Preflight Schema Summary',
+            '',
+            `- status: \`${String(payload.status ?? 'unknown')}\``,
+            `- validated payloads: \`${String(payload?.totals?.validatedPayloads ?? 0)}\``,
+            `- fixture payloads: \`${String(payload?.totals?.fixturePayloads ?? 0)}\``,
+            `- runtime payloads: \`${String(payload?.totals?.runtimePayloads ?? 0)}\``,
+          ];
+          if (Array.isArray(payload.failures) && payload.failures.length > 0) {
+            lines.push('', 'Failures:');
+            for (const failure of payload.failures) {
+              lines.push(`- ${String(failure)}`);
+            }
+          }
+          lines.push('');
+          fs.appendFileSync(summaryOutputPath, `${lines.join('\n')}\n`);
+          NODE
+
       - name: Upload release smoke preflight schema JSON summary
         if: always()
         uses: actions/upload-artifact@v4

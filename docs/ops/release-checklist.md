@@ -52,6 +52,16 @@ Use this checklist for every production release.
     - [ ] Optional tunnel retry controls for transient smoke-only failures:
       - [ ] `RELEASE_TUNNEL_DISPATCH_RETRY_MAX=<n>` (default `1`)
       - [ ] `RELEASE_TUNNEL_DISPATCH_RETRY_DELAY_MS=<ms>` (default `5000`)
+      - [ ] `RELEASE_TUNNEL_DISPATCH_RETRY_BACKOFF_FACTOR=<n>` (default `1.5`)
+      - [ ] `RELEASE_TUNNEL_DISPATCH_RETRY_MAX_DELAY_MS=<ms>` (default `30000`)
+      - [ ] Retry preflight before retry attempts:
+        - [ ] `RELEASE_TUNNEL_RETRY_PREFLIGHT_ENABLED=<true|false>` (default `true`)
+        - [ ] `RELEASE_TUNNEL_RETRY_PREFLIGHT_TIMEOUT_MS=<ms>` (default `20000`)
+        - [ ] `RELEASE_TUNNEL_RETRY_PREFLIGHT_INTERVAL_MS=<ms>` (default `1000`)
+        - [ ] `RELEASE_TUNNEL_RETRY_PREFLIGHT_SUCCESS_STREAK=<n>` (default `1`)
+      - [ ] Retry summary output controls:
+        - [ ] `RELEASE_TUNNEL_RETRY_SUMMARY_WRITE=<true|false>` (default `true`)
+        - [ ] `RELEASE_TUNNEL_RETRY_SUMMARY_PATH=<path>` (default `artifacts/release/tunnel-dispatch-retry-summary.json`)
       - [ ] Optional tunnel preflight controls (public URL health checks before dispatch):
         - [ ] `RELEASE_TUNNEL_PREFLIGHT_ENABLED=<true|false>` (default `true`)
         - [ ] `RELEASE_TUNNEL_PREFLIGHT_TIMEOUT_MS=<ms>` (default `45000`)
@@ -103,6 +113,7 @@ Use this checklist for every production release.
   - [ ] Confirm artifact `release-smoke-preflight-summary` is uploaded (`artifacts/release/tunnel-preflight-summary.json` from `release_smoke_staging`).
   - [ ] Confirm artifact `retry-schema-gate-summary` is uploaded from CI `test` job (machine-readable retry schema gate status).
   - [ ] Confirm artifact `release-smoke-preflight-schema-summary` is uploaded from CI `test` job (machine-readable standalone preflight schema validator status).
+  - [ ] Confirm CI step summary includes `Release Smoke Preflight Schema Summary` block from the `test` job.
   - [ ] Download CI artifact locally for release evidence:
     - [ ] `npm run release:smoke:artifact -- <run_id>`
     - [ ] Optional auto-select latest successful `workflow_dispatch` run: `npm run release:smoke:artifact`
