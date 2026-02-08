@@ -18,6 +18,11 @@ on:
         description: 'Optional CSRF token override for staging smoke checks.'
         required: false
         type: string
+      release_run_tunnel_helper:
+        description: 'Run in-CI tunnel helper rehearsal (dispatch:tunnel) for retry diagnostics artifact evidence.'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   ultracite:
@@ -337,6 +342,56 @@ jobs:
         with:
           name: release-smoke-tunnel-dispatch-retry-summary
           path: artifacts/release/tunnel-dispatch-retry-summary.json
+          if-no-files-found: ignore
+
+  release_tunnel_helper_ci_rehearsal:
+    name: Release Tunnel Helper Rehearsal (staging/manual)
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.release_run_tunnel_helper == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tunnel helper rehearsal
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_WORKFLOW_REF: ${{ github.ref_name }}
+        run: npm run release:smoke:dispatch:tunnel
+
+      - name: Upload tunnel helper retry summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-smoke-tunnel-dispatch-retry-summary
+          path: artifacts/release/tunnel-dispatch-retry-summary.json
+          if-no-files-found: ignore
+
+      - name: Upload tunnel helper preflight summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-smoke-tunnel-preflight-summary
+          path: artifacts/release/tunnel-preflight-summary.json
+          if-no-files-found: ignore
+
+      - name: Upload tunnel helper retry logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-smoke-tunnel-retry-failures
+          path: artifacts/release/retry-failures
           if-no-files-found: ignore
 
   security_hygiene:

@@ -44,6 +44,7 @@ Use this checklist for every production release.
   - [ ] Run `CI` workflow via `workflow_dispatch` and provide inputs:
     - [ ] `release_api_base_url` and `release_web_base_url` (or configure repo variables `RELEASE_API_BASE_URL` / `RELEASE_WEB_BASE_URL`).
     - [ ] Optional `release_csrf_token` input (or configure secret/variable `RELEASE_CSRF_TOKEN`; secret is preferred).
+    - [ ] Optional `release_run_tunnel_helper=true` input to execute in-CI tunnel helper rehearsal (`release_tunnel_helper_ci_rehearsal` job) and publish tunnel retry diagnostics artifacts.
   - [ ] If staging URLs are not available, allow `release_smoke_staging` to run the built-in local-stack fallback (`npm run release:dry-run:local`) and collect evidence as a rehearsal run.
   - [ ] Optional terminal dispatch helper (requires `GITHUB_TOKEN` with Actions write):
     - [ ] `RELEASE_API_BASE_URL=<staging-api-url> RELEASE_WEB_BASE_URL=<staging-web-url> npm run release:smoke:dispatch`
@@ -114,6 +115,10 @@ Use this checklist for every production release.
   - [ ] Confirm artifact `retry-schema-gate-summary` is uploaded from CI `test` job (machine-readable retry schema gate status).
   - [ ] Confirm artifact `release-smoke-preflight-schema-summary` is uploaded from CI `test` job (machine-readable standalone preflight schema validator status).
   - [ ] Optional: confirm artifact `release-smoke-tunnel-dispatch-retry-summary` is uploaded when `artifacts/release/tunnel-dispatch-retry-summary.json` is present in CI run context.
+  - [ ] Optional (when `release_run_tunnel_helper=true`): confirm tunnel-helper rehearsal artifacts are uploaded from `release_tunnel_helper_ci_rehearsal` job:
+    - [ ] `release-smoke-tunnel-dispatch-retry-summary`
+    - [ ] `release-smoke-tunnel-preflight-summary`
+    - [ ] `release-smoke-tunnel-retry-failures`
   - [ ] Confirm CI step summary includes `Release Smoke Preflight Schema Summary` block from the `test` job.
   - [ ] Download CI artifact locally for release evidence:
     - [ ] `npm run release:smoke:artifact -- <run_id>`

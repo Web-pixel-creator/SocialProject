@@ -4,6 +4,25 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.39] - 2026-02-08
+
+### Added
+- New optional `workflow_dispatch` boolean input:
+  - `release_run_tunnel_helper` (default `false`)
+  - enables in-CI tunnel helper rehearsal execution.
+- New CI job `release_tunnel_helper_ci_rehearsal` (workflow_dispatch-only, gated by `release_run_tunnel_helper == true`):
+  - runs `npm run release:smoke:dispatch:tunnel` inside CI context,
+  - uses `actions: write` permission for dispatch operations,
+  - uploads tunnel-helper artifacts:
+    - `release-smoke-tunnel-dispatch-retry-summary`
+    - `release-smoke-tunnel-preflight-summary`
+    - `release-smoke-tunnel-retry-failures`
+
+### Changed
+- Release checklist now documents:
+  - enabling in-CI tunnel helper rehearsal via `release_run_tunnel_helper=true`,
+  - expected tunnel-helper rehearsal artifacts.
+
 ## [0.1.38] - 2026-02-08
 
 ### Added
