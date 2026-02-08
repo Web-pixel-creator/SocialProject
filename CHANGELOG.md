@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.21] - 2026-02-08
+
+### Added
+- Retry schema sample preview command:
+  - `npm run release:smoke:retry:schema:samples:preview`
+  - prints generated fixture payloads to stdout without modifying files.
+
+### Changed
+- Retry schema sample generator help/argument parser now supports `--preview`.
+- Updated release checklist with preview command for quick review workflows.
+
 ## [0.1.20] - 2026-02-08
 
 ### Added

@@ -71,6 +71,7 @@ Use this checklist for every production release.
         - [ ] Optional run-cap preview: `RELEASE_RETRY_LOGS_CLEANUP_DRY_RUN=true RELEASE_RETRY_LOGS_MAX_RUNS=50 npm run release:smoke:retry:cleanup`
         - [ ] Optional file-cap preview: `RELEASE_RETRY_LOGS_CLEANUP_DRY_RUN=true RELEASE_RETRY_LOGS_MAX_FILES=50 npm run release:smoke:retry:cleanup`
       - [ ] Retry schema sample fixtures:
+        - [ ] Preview generated payloads: `npm run release:smoke:retry:schema:samples:preview`
         - [ ] Generate fixtures: `npm run release:smoke:retry:schema:samples:generate`
         - [ ] Check fixtures are up to date: `npm run release:smoke:retry:schema:samples:check`
     - [ ] Manage persistent staging workflow inputs:

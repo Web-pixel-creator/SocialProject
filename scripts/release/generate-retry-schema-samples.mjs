@@ -15,6 +15,7 @@ const normalizeLineEndings = (value) => value.replace(/\r\n/gu, '\n');
 const parseArguments = (argv) => {
   const options = {
     check: false,
+    preview: false,
   };
 
   for (const arg of argv) {
@@ -22,13 +23,21 @@ const parseArguments = (argv) => {
       options.check = true;
       continue;
     }
+    if (arg === '--preview') {
+      options.preview = true;
+      continue;
+    }
     if (arg === '--help' || arg === '-h') {
       process.stdout.write(
-        'Usage: npm run release:smoke:retry:schema:samples:generate [-- --check]\n',
+        'Usage: npm run release:smoke:retry:schema:samples:generate [-- --check|--preview]\n',
       );
       process.exit(0);
     }
     throw new Error(`Unknown argument: ${arg}`);
+  }
+
+  if (options.check && options.preview) {
+    throw new Error('Arguments --check and --preview cannot be used together.');
   }
 
   return options;
@@ -86,10 +95,24 @@ const writeFixtures = async () => {
   );
 };
 
+const previewFixtures = () => {
+  for (const fixture of RETRY_SCHEMA_SAMPLE_FIXTURES) {
+    process.stdout.write(`--- ${fixture.samplePath} (${fixture.label}) ---\n`);
+    process.stdout.write(stringifyRetrySchemaFixture(fixture.payload));
+  }
+  process.stdout.write(
+    `Previewed ${RETRY_SCHEMA_SAMPLE_FIXTURES.length} retry schema sample fixtures.\n`,
+  );
+};
+
 const main = async () => {
   const options = parseArguments(process.argv.slice(2));
   if (options.check) {
     await checkFixtures();
+    return;
+  }
+  if (options.preview) {
+    previewFixtures();
     return;
   }
   await writeFixtures();
