@@ -4,6 +4,21 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.33] - 2026-02-08
+
+### Added
+- New CI preflight script for release smoke URL targets:
+  - `scripts/release/preflight-smoke-targets.mjs`
+  - validates API `/health` and Web `/` before `release_smoke_staging` smoke execution.
+- New CI artifact for release smoke preflight evidence:
+  - artifact name: `release-smoke-preflight-summary`
+  - artifact path: `artifacts/release/tunnel-preflight-summary.json`
+  - emitted for both URL-input and fallback paths (fallback records `status: "skipped"`).
+
+### Changed
+- `release_smoke_staging` workflow now runs preflight URL checks before the smoke command.
+- Release checklist now includes verification of `release-smoke-preflight-summary`.
+
 ## [0.1.32] - 2026-02-08
 
 ### Added

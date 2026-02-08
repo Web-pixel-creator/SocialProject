@@ -97,6 +97,7 @@ Use this checklist for every production release.
       - [ ] Clear values: `npm run release:smoke:inputs -- clear`
   - [ ] If dispatch returns `Workflow does not have 'workflow_dispatch' trigger`, push updated `.github/workflows/ci.yml` first or set `RELEASE_WORKFLOW_REF` to a ref that contains that trigger.
   - [ ] Confirm artifact `release-smoke-report` is uploaded.
+  - [ ] Confirm artifact `release-smoke-preflight-summary` is uploaded (`artifacts/release/tunnel-preflight-summary.json` from `release_smoke_staging`).
   - [ ] Confirm artifact `retry-schema-gate-summary` is uploaded from CI `test` job (machine-readable retry schema gate status).
   - [ ] Download CI artifact locally for release evidence:
     - [ ] `npm run release:smoke:artifact -- <run_id>`

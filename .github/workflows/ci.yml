@@ -232,6 +232,7 @@ jobs:
           API_URL="${{ github.event.inputs.release_api_base_url }}"
           WEB_URL="${{ github.event.inputs.release_web_base_url }}"
           CSRF_TOKEN="${{ github.event.inputs.release_csrf_token }}"
+          PREFLIGHT_SUMMARY_PATH="artifacts/release/tunnel-preflight-summary.json"
 
           if [ -z "$API_URL" ]; then
             API_URL="${{ vars.RELEASE_API_BASE_URL }}"
@@ -246,6 +247,11 @@ jobs:
             CSRF_TOKEN="${{ vars.RELEASE_CSRF_TOKEN }}"
           fi
 
+          RELEASE_PREFLIGHT_API_BASE_URL="$API_URL" \
+          RELEASE_PREFLIGHT_WEB_BASE_URL="$WEB_URL" \
+          RELEASE_PREFLIGHT_OUTPUT_PATH="$PREFLIGHT_SUMMARY_PATH" \
+          node scripts/release/preflight-smoke-targets.mjs --allow-skip
+
           if [ -n "$API_URL" ] && [ -n "$WEB_URL" ]; then
             echo "Running release smoke check against configured staging URLs."
             RELEASE_API_BASE_URL="$API_URL" \
@@ -259,6 +265,14 @@ jobs:
           echo "Staging URLs are not configured. Running local-stack release dry-run fallback."
           RELEASE_RESULTS_PATH="artifacts/release/smoke-results.json" \
           npm run release:dry-run:local
+
+      - name: Upload release smoke preflight summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-smoke-preflight-summary
+          path: artifacts/release/tunnel-preflight-summary.json
+          if-no-files-found: ignore
 
       - name: Upload release smoke report
         if: always()
