@@ -331,6 +331,14 @@ jobs:
           path: artifacts/release/smoke-results.json
           if-no-files-found: ignore
 
+      - name: Upload tunnel dispatch retry summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-smoke-tunnel-dispatch-retry-summary
+          path: artifacts/release/tunnel-dispatch-retry-summary.json
+          if-no-files-found: ignore
+
   security_hygiene:
     name: Security Hygiene Gate
     runs-on: ubuntu-latest

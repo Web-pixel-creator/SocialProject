@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.38] - 2026-02-08
+
+### Added
+- `release_smoke_staging` CI workflow now includes a dedicated upload step for tunnel dispatch retry summary payloads:
+  - artifact name: `release-smoke-tunnel-dispatch-retry-summary`
+  - artifact path: `artifacts/release/tunnel-dispatch-retry-summary.json`
+  - upload behavior: `if-no-files-found: ignore` (artifact appears when summary is available in run context).
+
+### Changed
+- Release checklist now documents optional verification of `release-smoke-tunnel-dispatch-retry-summary` artifact.
+
 ## [0.1.37] - 2026-02-08
 
 ### Added
