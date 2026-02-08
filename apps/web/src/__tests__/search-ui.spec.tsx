@@ -16,14 +16,17 @@ import {
   getDefaultSearchAbWeights,
 } from '../lib/searchProfiles';
 
-let searchParams = new URLSearchParams('');
+let searchParams: URLSearchParams | null = new URLSearchParams('');
+const pushMock = jest.fn();
+const replaceMock = jest.fn();
+const prefetchMock = jest.fn();
 
 jest.mock('next/navigation', () => ({
   useSearchParams: () => searchParams,
   useRouter: () => ({
-    push: jest.fn(),
-    replace: jest.fn(),
-    prefetch: jest.fn(),
+    push: pushMock,
+    replace: replaceMock,
+    prefetch: prefetchMock,
   }),
 }));
 
@@ -68,6 +71,9 @@ describe('search UI', () => {
     jest.useFakeTimers();
     searchParams = new URLSearchParams('');
     localStorage.clear();
+    pushMock.mockReset();
+    replaceMock.mockReset();
+    prefetchMock.mockReset();
     (apiClient.get as jest.Mock).mockReset();
     (apiClient.get as jest.Mock).mockResolvedValue({ data: [] });
     (apiClient.post as jest.Mock).mockReset();
@@ -317,5 +323,153 @@ describe('search UI', () => {
     );
 
     expect(performedCall?.[1]?.metadata?.profile).toBe(expectedProfile);
+  });
+
+  test('keeps from=similar in URL sync and scrolls to top once', async () => {
+    searchParams = new URLSearchParams('from=similar');
+    const scrollSpy = jest
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => undefined);
+
+    render(<SearchPage />);
+    await runDebounce();
+
+    expect(scrollSpy).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' });
+
+    fireEvent.change(screen.getByPlaceholderText(/Search by keyword/i), {
+      target: { value: 'similar draft' },
+    });
+    await runDebounce();
+
+    const lastReplace = replaceMock.mock.calls.at(-1)?.[0] as string;
+    expect(lastReplace).toContain('q=similar+draft');
+    expect(lastReplace).toContain('from=similar');
+
+    scrollSpy.mockRestore();
+  });
+
+  test('normalizes query comparisons when duplicate params exist', async () => {
+    searchParams = new URLSearchParams('q=beta&q=alpha');
+
+    render(<SearchPage />);
+    await runDebounce();
+
+    fireEvent.change(screen.getByPlaceholderText(/Search by keyword/i), {
+      target: { value: 'beta' },
+    });
+    await runDebounce();
+
+    expect(apiClient.get).toHaveBeenCalled();
+  });
+
+  test('resets intent to all when type switches to studio', async () => {
+    render(<SearchPage />);
+    await runDebounce();
+
+    const [typeSelect, intentSelect] = screen.getAllByRole(
+      'combobox',
+    ) as HTMLSelectElement[];
+
+    fireEvent.change(intentSelect, { target: { value: 'needs_help' } });
+    await runDebounce();
+    expect(intentSelect.value).toBe('needs_help');
+
+    fireEvent.change(typeSelect, { target: { value: 'studio' } });
+    await runDebounce();
+
+    expect(intentSelect.value).toBe('all');
+    const intentReplace = replaceMock.mock.calls
+      .map((call) => call[0] as string)
+      .find((value) => value.includes('intent=needs_help'));
+    expect(intentReplace).toBeTruthy();
+  });
+
+  test('validates visual input when embedding is non-array or invalid JSON', async () => {
+    render(<SearchPage />);
+    await runDebounce();
+
+    fireEvent.click(screen.getByRole('button', { name: /visual search/i }));
+
+    fireEvent.change(screen.getByPlaceholderText(/Embedding/i), {
+      target: { value: '{"x":1}' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /run visual search/i }));
+    expect(
+      await screen.findByText(/Provide a draft ID or an embedding array/i),
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText(/Embedding/i), {
+      target: { value: '[invalid' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /run visual search/i }));
+    expect(
+      await screen.findByText(/Provide a draft ID or an embedding array/i),
+    ).toBeInTheDocument();
+  });
+
+  test('handles visual search embedding-not-found and generic failures', async () => {
+    (apiClient.post as jest.Mock).mockImplementation((url: string) => {
+      if (url === '/search/visual') {
+        return Promise.reject({
+          response: { data: { error: 'EMBEDDING_NOT_FOUND' } },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    render(<SearchPage />);
+    await runDebounce();
+    fireEvent.click(screen.getByRole('button', { name: /visual search/i }));
+
+    fireEvent.change(screen.getByPlaceholderText(/Draft ID/i), {
+      target: { value: 'draft-visual-1' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /run visual search/i }));
+
+    expect(
+      await screen.findByText(/Similar works available after analysis/i),
+    ).toBeInTheDocument();
+
+    (apiClient.post as jest.Mock).mockImplementation((url: string) => {
+      if (url === '/search/visual') {
+        return Promise.reject({
+          response: { data: { message: 'Visual search unavailable' } },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /run visual search/i }));
+    expect(
+      await screen.findByText(/Visual search unavailable/i),
+    ).toBeInTheDocument();
+  });
+
+  test('does not auto-run visual search when draftId is blank after trim', async () => {
+    searchParams = new URLSearchParams('mode=visual&draftId=%20%20%20');
+
+    render(<SearchPage />);
+    await runDebounce();
+
+    const visualCalls = (apiClient.post as jest.Mock).mock.calls.filter(
+      (call) => call[0] === '/search/visual',
+    );
+    expect(visualCalls.length).toBe(0);
+
+    fireEvent.click(screen.getByRole('button', { name: /text search/i }));
+    expect(
+      screen.getByPlaceholderText(/Search by keyword/i),
+    ).toBeInTheDocument();
+  });
+
+  test('handles missing search params object', async () => {
+    searchParams = null;
+
+    render(<SearchPage />);
+    await runDebounce();
+
+    expect(
+      screen.getByText(/Find drafts, releases, and studios/i),
+    ).toBeInTheDocument();
   });
 });
