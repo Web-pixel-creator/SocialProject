@@ -7,7 +7,6 @@ import addFormats from 'ajv-formats';
 import {
   RETRY_CLEANUP_JSON_SCHEMA_PATH,
   RETRY_COLLECT_JSON_SCHEMA_PATH,
-  RETRY_PREVIEW_SELECTION_JSON_SCHEMA_PATH,
 } from './retry-json-schema-contracts.mjs';
 import { RETRY_SCHEMA_SAMPLE_FIXTURES } from './retry-schema-sample-fixtures.mjs';
 
@@ -57,81 +56,6 @@ const runCleanupJsonCommand = () => {
   return JSON.parse(stdoutText);
 };
 
-const runPreviewSelectionJsonCommand = () => {
-  const result = spawnSync(
-    process.execPath,
-    [
-      resolvePath('scripts/release/generate-retry-schema-samples.mjs'),
-      '--preview',
-      '--json',
-    ],
-    {
-      cwd: projectRoot,
-      encoding: 'utf8',
-      env: {
-        ...process.env,
-      },
-    },
-  );
-
-  if (result.status !== 0) {
-    const stderrText = result.stderr?.trim() ?? '';
-    throw new Error(
-      `preview --json command failed with status ${result.status ?? 'unknown'}: ${stderrText}`,
-    );
-  }
-
-  const stdoutText = result.stdout?.trim() ?? '';
-  if (!stdoutText) {
-    throw new Error('preview --json command returned empty stdout.');
-  }
-  return JSON.parse(stdoutText);
-};
-
-const runPreviewSelectionUnknownJsonCommand = () => {
-  const result = spawnSync(
-    process.execPath,
-    [
-      resolvePath('scripts/release/generate-retry-schema-samples.mjs'),
-      '--preview',
-      '--preview=missing-label',
-      '--json',
-    ],
-    {
-      cwd: projectRoot,
-      encoding: 'utf8',
-      env: {
-        ...process.env,
-      },
-    },
-  );
-
-  const stdoutText = result.stdout?.trim() ?? '';
-  if (!stdoutText) {
-    const stderrText = result.stderr?.trim() ?? '';
-    throw new Error(
-      `preview --preview=missing-label --json returned empty stdout (status ${result.status ?? 'unknown'}): ${stderrText}`,
-    );
-  }
-
-  if (result.status === 0) {
-    throw new Error(
-      'preview --preview=missing-label --json unexpectedly exited with status 0.',
-    );
-  }
-
-  const payload = JSON.parse(stdoutText);
-  if (
-    !Array.isArray(payload?.unknown?.labels) ||
-    payload.unknown.labels.length === 0
-  ) {
-    throw new Error(
-      'preview unknown-filter payload must include at least one unknown label.',
-    );
-  }
-  return payload;
-};
-
 const main = async () => {
   const ajv = new Ajv2020({
     allErrors: true,
@@ -141,13 +65,9 @@ const main = async () => {
 
   const cleanupSchema = await loadJson(RETRY_CLEANUP_JSON_SCHEMA_PATH);
   const collectSchema = await loadJson(RETRY_COLLECT_JSON_SCHEMA_PATH);
-  const previewSelectionSchema = await loadJson(
-    RETRY_PREVIEW_SELECTION_JSON_SCHEMA_PATH,
-  );
   const schemaByPath = new Map([
     [RETRY_CLEANUP_JSON_SCHEMA_PATH, cleanupSchema],
     [RETRY_COLLECT_JSON_SCHEMA_PATH, collectSchema],
-    [RETRY_PREVIEW_SELECTION_JSON_SCHEMA_PATH, previewSelectionSchema],
   ]);
 
   const validators = new Map();
@@ -159,6 +79,9 @@ const main = async () => {
   let validatedPayloads = 0;
 
   for (const fixture of RETRY_SCHEMA_SAMPLE_FIXTURES) {
+    if (!schemaByPath.has(fixture.schemaPath)) {
+      continue;
+    }
     const payload = await loadJson(fixture.samplePath);
     const validate = validators.get(fixture.schemaPath);
     if (!validate) {
@@ -190,40 +113,6 @@ const main = async () => {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     failures.push(`runtime cleanup payload validation failed: ${message}`);
-  }
-
-  try {
-    const runtimePreviewPayload = runPreviewSelectionJsonCommand();
-    const validatePreview = validators.get(RETRY_PREVIEW_SELECTION_JSON_SCHEMA_PATH);
-    if (!validatePreview) {
-      failures.push(`Missing validator for schema ${RETRY_PREVIEW_SELECTION_JSON_SCHEMA_PATH}`);
-    } else if (!validatePreview(runtimePreviewPayload)) {
-      failures.push(
-        `runtime preview-selection payload is invalid: ${formatAjvErrors(validatePreview.errors)}`,
-      );
-    } else {
-      validatedPayloads += 1;
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    failures.push(`runtime preview-selection payload validation failed: ${message}`);
-  }
-
-  try {
-    const runtimePreviewUnknownPayload = runPreviewSelectionUnknownJsonCommand();
-    const validatePreview = validators.get(RETRY_PREVIEW_SELECTION_JSON_SCHEMA_PATH);
-    if (!validatePreview) {
-      failures.push(`Missing validator for schema ${RETRY_PREVIEW_SELECTION_JSON_SCHEMA_PATH}`);
-    } else if (!validatePreview(runtimePreviewUnknownPayload)) {
-      failures.push(
-        `runtime preview-selection unknown payload is invalid: ${formatAjvErrors(validatePreview.errors)}`,
-      );
-    } else {
-      validatedPayloads += 1;
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    failures.push(`runtime preview-selection unknown payload validation failed: ${message}`);
   }
 
   if (failures.length > 0) {

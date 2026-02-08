@@ -1,6 +1,6 @@
 {
   "name": "finishit-ai-social-network",
-  "version": "0.1.27",
+  "version": "0.1.28",
   "private": true,
   "workspaces": [
     "apps/*",
@@ -32,7 +32,10 @@
     "release:smoke:retry:schema:samples:preview": "node scripts/release/generate-retry-schema-samples.mjs --preview",
     "release:smoke:retry:schema:samples:preview:json": "node scripts/release/generate-retry-schema-samples.mjs --preview --json",
     "release:smoke:retry:schema:sync:check": "node scripts/release/check-retry-schema-version-sync.mjs",
-    "release:smoke:retry:schema:check": "node scripts/release/validate-retry-json-schemas.mjs",
+    "release:smoke:retry:schema:base:check": "node scripts/release/validate-retry-json-schemas.mjs",
+    "release:smoke:retry:schema:preview:check": "node scripts/release/validate-retry-preview-selection-json.mjs",
+    "release:smoke:retry:schema:preview:check:strict": "node scripts/release/validate-retry-preview-selection-json.mjs --strict",
+    "release:smoke:retry:schema:check": "npm run release:smoke:retry:schema:base:check && npm run release:smoke:retry:schema:preview:check:strict",
     "ultracite:check": "npx ultracite check apps/api/src apps/web/src",
     "ultracite:fix": "npx ultracite fix apps/api/src apps/web/src"
   },

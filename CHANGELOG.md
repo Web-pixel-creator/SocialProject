@@ -4,6 +4,24 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.28] - 2026-02-08
+
+### Added
+- Dedicated preview-selection schema validator:
+  - `scripts/release/validate-retry-preview-selection-json.mjs`
+  - supports `--strict` mode for CI.
+- New npm scripts:
+  - `release:smoke:retry:schema:base:check`
+  - `release:smoke:retry:schema:preview:check`
+  - `release:smoke:retry:schema:preview:check:strict`
+
+### Changed
+- `release:smoke:retry:schema:check` now composes strict gates:
+  - base retry schema checks (`cleanup` + `collect`)
+  - preview-selection strict checks (including unknown-filter non-zero path)
+- `validate-retry-json-schemas.mjs` now validates cleanup/collect contracts only.
+- Release checklist now references standalone strict preview-selection validation command.
+
 ## [0.1.27] - 2026-02-08
 
 ### Added
