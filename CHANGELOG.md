@@ -4,6 +4,19 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.18] - 2026-02-08
+
+### Added
+- New schema-sync check command:
+  - `npm run release:smoke:retry:schema:sync:check`
+- Shared retry diagnostics schema contract constants:
+  - `scripts/release/retry-json-schema-contracts.mjs`
+
+### Changed
+- `retry:cleanup --json`, `retry:collect --json`, and schema validation scripts now use shared schema path/version constants.
+- CI `test` job now runs schema-sync check before schema validation.
+- Release checklist now includes schema-sync check in pre-release gates.
+
 ## [0.1.17] - 2026-02-08
 
 ### Added

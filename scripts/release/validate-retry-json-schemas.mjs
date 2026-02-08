@@ -4,26 +4,28 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Ajv2020 from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
+import {
+  RETRY_CLEANUP_JSON_SCHEMA_PATH,
+  RETRY_COLLECT_JSON_SCHEMA_PATH,
+} from './retry-json-schema-contracts.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..', '..');
 
-const CLEANUP_SCHEMA_PATH = 'docs/ops/schemas/release-retry-cleanup-output.schema.json';
-const COLLECT_SCHEMA_PATH = 'docs/ops/schemas/release-retry-collect-output.schema.json';
 const SAMPLE_FIXTURES = [
   {
-    schemaPath: CLEANUP_SCHEMA_PATH,
+    schemaPath: RETRY_CLEANUP_JSON_SCHEMA_PATH,
     samplePath: 'docs/ops/schemas/samples/release-retry-cleanup-output.sample.json',
     label: 'cleanup sample',
   },
   {
-    schemaPath: COLLECT_SCHEMA_PATH,
+    schemaPath: RETRY_COLLECT_JSON_SCHEMA_PATH,
     samplePath: 'docs/ops/schemas/samples/release-retry-collect-output-empty.sample.json',
     label: 'collect empty sample',
   },
   {
-    schemaPath: COLLECT_SCHEMA_PATH,
+    schemaPath: RETRY_COLLECT_JSON_SCHEMA_PATH,
     samplePath: 'docs/ops/schemas/samples/release-retry-collect-output-success.sample.json',
     label: 'collect success sample',
   },
@@ -78,11 +80,11 @@ const main = async () => {
   });
   addFormats(ajv);
 
-  const cleanupSchema = await loadJson(CLEANUP_SCHEMA_PATH);
-  const collectSchema = await loadJson(COLLECT_SCHEMA_PATH);
+  const cleanupSchema = await loadJson(RETRY_CLEANUP_JSON_SCHEMA_PATH);
+  const collectSchema = await loadJson(RETRY_COLLECT_JSON_SCHEMA_PATH);
   const schemaByPath = new Map([
-    [CLEANUP_SCHEMA_PATH, cleanupSchema],
-    [COLLECT_SCHEMA_PATH, collectSchema],
+    [RETRY_CLEANUP_JSON_SCHEMA_PATH, cleanupSchema],
+    [RETRY_COLLECT_JSON_SCHEMA_PATH, collectSchema],
   ]);
 
   const validators = new Map();
@@ -112,9 +114,9 @@ const main = async () => {
 
   try {
     const runtimeCleanupPayload = runCleanupJsonCommand();
-    const validateCleanup = validators.get(CLEANUP_SCHEMA_PATH);
+    const validateCleanup = validators.get(RETRY_CLEANUP_JSON_SCHEMA_PATH);
     if (!validateCleanup) {
-      failures.push(`Missing validator for schema ${CLEANUP_SCHEMA_PATH}`);
+      failures.push(`Missing validator for schema ${RETRY_CLEANUP_JSON_SCHEMA_PATH}`);
     } else if (!validateCleanup(runtimeCleanupPayload)) {
       failures.push(
         `runtime cleanup payload is invalid: ${formatAjvErrors(validateCleanup.errors)}`,

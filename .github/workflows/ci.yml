@@ -129,6 +129,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check retry schema version sync
+        run: npm run release:smoke:retry:schema:sync:check
+
       - name: Validate retry diagnostics JSON schemas
         run: npm run release:smoke:retry:schema:check
 

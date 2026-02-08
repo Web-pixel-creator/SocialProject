@@ -1,6 +1,6 @@
 {
   "name": "finishit-ai-social-network",
-  "version": "0.1.17",
+  "version": "0.1.18",
   "private": true,
   "workspaces": [
     "apps/*",
@@ -27,6 +27,7 @@
     "release:smoke:diff": "node scripts/release/compare-smoke-results.mjs",
     "release:smoke:retry:collect": "node scripts/release/collect-retry-failure-logs.mjs",
     "release:smoke:retry:cleanup": "node scripts/release/cleanup-retry-failure-logs.mjs",
+    "release:smoke:retry:schema:sync:check": "node scripts/release/check-retry-schema-version-sync.mjs",
     "release:smoke:retry:schema:check": "node scripts/release/validate-retry-json-schemas.mjs",
     "ultracite:check": "npx ultracite check apps/api/src apps/web/src",
     "ultracite:fix": "npx ultracite fix apps/api/src apps/web/src"

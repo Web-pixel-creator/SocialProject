@@ -4,10 +4,10 @@ import {
   resolveRetryLogsCleanupConfig,
   resolveRetryLogsDir,
 } from './retry-failure-logs-utils.mjs';
-
-const CLEANUP_JSON_SCHEMA_PATH =
-  'docs/ops/schemas/release-retry-cleanup-output.schema.json';
-const CLEANUP_JSON_SCHEMA_VERSION = '1.0.0';
+import {
+  RETRY_CLEANUP_JSON_SCHEMA_PATH,
+  RETRY_CLEANUP_JSON_SCHEMA_VERSION,
+} from './retry-json-schema-contracts.mjs';
 
 const parseArguments = (argv) => {
   const options = {
@@ -44,8 +44,8 @@ const main = async () => {
     process.stdout.write(
       `${JSON.stringify(
         {
-          schemaPath: CLEANUP_JSON_SCHEMA_PATH,
-          schemaVersion: CLEANUP_JSON_SCHEMA_VERSION,
+          schemaPath: RETRY_CLEANUP_JSON_SCHEMA_PATH,
+          schemaVersion: RETRY_CLEANUP_JSON_SCHEMA_VERSION,
           label: 'retry:cleanup',
           summary,
         },
