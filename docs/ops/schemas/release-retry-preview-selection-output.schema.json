@@ -122,16 +122,17 @@
             "type": "string",
             "minLength": 1
           },
-          "schemaPath": {
-            "type": "string",
-            "enum": [
-              "docs/ops/schemas/release-retry-cleanup-output.schema.json",
-              "docs/ops/schemas/release-retry-collect-output.schema.json",
-              "docs/ops/schemas/release-retry-preview-selection-output.schema.json"
-            ]
+            "schemaPath": {
+              "type": "string",
+              "enum": [
+                "docs/ops/schemas/release-retry-cleanup-output.schema.json",
+                "docs/ops/schemas/release-retry-collect-output.schema.json",
+                "docs/ops/schemas/release-retry-preview-selection-output.schema.json",
+                "docs/ops/schemas/release-smoke-preflight-summary-output.schema.json"
+              ]
+            }
           }
         }
       }
-    }
   }
 }

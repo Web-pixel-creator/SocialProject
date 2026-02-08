@@ -1,0 +1,21 @@
+{
+  "schemaPath": "docs/ops/schemas/release-smoke-preflight-summary-output.schema.json",
+  "schemaVersion": "1.0.0",
+  "label": "release:smoke:preflight",
+  "status": "skipped",
+  "mode": "fallback-local-stack",
+  "reason": "Missing URL inputs: apiBaseUrl, webBaseUrl",
+  "startedAtUtc": "2026-02-08T12:31:38.156Z",
+  "completedAtUtc": "2026-02-08T12:31:38.156Z",
+  "durationMs": 0,
+  "attempts": 0,
+  "timeoutMs": 45000,
+  "intervalMs": 1000,
+  "requiredSuccessStreak": 2,
+  "api": {
+    "baseUrl": null
+  },
+  "web": {
+    "baseUrl": null
+  }
+}

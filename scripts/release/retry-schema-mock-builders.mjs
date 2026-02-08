@@ -1,4 +1,6 @@
 import {
+  RELEASE_SMOKE_PREFLIGHT_JSON_SCHEMA_PATH,
+  RELEASE_SMOKE_PREFLIGHT_JSON_SCHEMA_VERSION,
   RETRY_CLEANUP_JSON_SCHEMA_PATH,
   RETRY_CLEANUP_JSON_SCHEMA_VERSION,
   RETRY_COLLECT_JSON_SCHEMA_PATH,
@@ -199,7 +201,7 @@ export const createRetryPreviewSelectionOutputMock = ({
       ...filtersOverrides,
     },
     totals: {
-      available: 3,
+      available: 7,
       matched,
       selected: normalizedSelected.length,
       deduped: Math.max(0, matched - normalizedSelected.length),
@@ -232,4 +234,75 @@ export const createRetryPreviewSelectionUnknownOutputMock = () => {
     },
     selected: [],
   });
+};
+
+export const createReleaseSmokePreflightPassOutputMock = ({
+  outputOverrides = {},
+  apiOverrides = {},
+  webOverrides = {},
+} = {}) => {
+  return {
+    schemaPath: RELEASE_SMOKE_PREFLIGHT_JSON_SCHEMA_PATH,
+    schemaVersion: RELEASE_SMOKE_PREFLIGHT_JSON_SCHEMA_VERSION,
+    label: 'release:smoke:preflight',
+    status: 'pass',
+    mode: 'url-input',
+    startedAtUtc: '2026-02-08T12:34:23.663Z',
+    completedAtUtc: '2026-02-08T12:34:25.960Z',
+    durationMs: 2297,
+    attempts: 2,
+    timeoutMs: 45_000,
+    intervalMs: 1000,
+    requiredSuccessStreak: 2,
+    api: {
+      baseUrl: 'https://green-parents-mix.loca.lt',
+      firstSuccessAttempt: 1,
+      firstSuccessLatencyMs: 846,
+      finalSuccessStreak: 2,
+      lastStatus: 200,
+      lastReason: 'ok',
+      ...apiOverrides,
+    },
+    web: {
+      baseUrl: 'https://bitter-donuts-give.loca.lt',
+      firstSuccessAttempt: 1,
+      firstSuccessLatencyMs: 846,
+      finalSuccessStreak: 2,
+      lastStatus: 200,
+      lastReason: 'ok',
+      ...webOverrides,
+    },
+    ...outputOverrides,
+  };
+};
+
+export const createReleaseSmokePreflightSkippedOutputMock = ({
+  outputOverrides = {},
+  apiOverrides = {},
+  webOverrides = {},
+} = {}) => {
+  return {
+    schemaPath: RELEASE_SMOKE_PREFLIGHT_JSON_SCHEMA_PATH,
+    schemaVersion: RELEASE_SMOKE_PREFLIGHT_JSON_SCHEMA_VERSION,
+    label: 'release:smoke:preflight',
+    status: 'skipped',
+    mode: 'fallback-local-stack',
+    reason: 'Missing URL inputs: apiBaseUrl, webBaseUrl',
+    startedAtUtc: '2026-02-08T12:31:38.156Z',
+    completedAtUtc: '2026-02-08T12:31:38.156Z',
+    durationMs: 0,
+    attempts: 0,
+    timeoutMs: 45_000,
+    intervalMs: 1000,
+    requiredSuccessStreak: 2,
+    api: {
+      baseUrl: null,
+      ...apiOverrides,
+    },
+    web: {
+      baseUrl: null,
+      ...webOverrides,
+    },
+    ...outputOverrides,
+  };
 };

@@ -7,6 +7,10 @@ import {
   resolveRetryLogsCleanupConfig,
   resolveRetryLogsDir,
 } from './retry-failure-logs-utils.mjs';
+import {
+  RELEASE_SMOKE_PREFLIGHT_JSON_SCHEMA_PATH,
+  RELEASE_SMOKE_PREFLIGHT_JSON_SCHEMA_VERSION,
+} from './retry-json-schema-contracts.mjs';
 
 const GITHUB_API_VERSION = '2022-11-28';
 const DEFAULT_API_PORT = '4000';
@@ -27,6 +31,7 @@ const DEFAULT_PREFLIGHT_SUMMARY_PATH =
 const DEFAULT_CSRF_TOKEN = 'release-smoke-tunnel-csrf-token-123456789';
 const DEFAULT_JWT_SECRET = 'release-smoke-tunnel-jwt-secret-123456789';
 const DEFAULT_ADMIN_TOKEN = 'release-smoke-tunnel-admin-token-123456789';
+const PREFLIGHT_LABEL = 'release:smoke:preflight';
 
 const parseNumber = (raw, fallback) => {
   if (!raw) {
@@ -565,6 +570,11 @@ const buildUrl = (baseUrl, route) => {
 };
 
 const toUtc = (epochMs) => new Date(epochMs).toISOString();
+const createBasePreflightSummaryFields = () => ({
+  schemaPath: RELEASE_SMOKE_PREFLIGHT_JSON_SCHEMA_PATH,
+  schemaVersion: RELEASE_SMOKE_PREFLIGHT_JSON_SCHEMA_VERSION,
+  label: PREFLIGHT_LABEL,
+});
 
 const probeApiHealth = async (apiBaseUrl) => {
   const url = buildUrl(apiBaseUrl, '/health');
@@ -663,7 +673,9 @@ const waitForTunnelPreflight = async ({
     if (apiStreak >= successStreak && webStreak >= successStreak) {
       const completedAtMs = Date.now();
       return {
+        ...createBasePreflightSummaryFields(),
         status: 'pass',
+        mode: 'url-input',
         startedAtUtc: toUtc(startedAtMs),
         completedAtUtc: toUtc(completedAtMs),
         durationMs: completedAtMs - startedAtMs,
@@ -699,7 +711,9 @@ const waitForTunnelPreflight = async ({
   const apiReason = lastApiProbe?.reason ?? 'no probe result';
   const webReason = lastWebProbe?.reason ?? 'no probe result';
   const summary = {
+    ...createBasePreflightSummaryFields(),
     status: 'fail',
+    mode: 'url-input',
     startedAtUtc: toUtc(startedAtMs),
     completedAtUtc: toUtc(completedAtMs),
     durationMs: completedAtMs - startedAtMs,

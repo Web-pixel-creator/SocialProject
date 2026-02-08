@@ -1,0 +1,30 @@
+{
+  "schemaPath": "docs/ops/schemas/release-smoke-preflight-summary-output.schema.json",
+  "schemaVersion": "1.0.0",
+  "label": "release:smoke:preflight",
+  "status": "pass",
+  "mode": "url-input",
+  "startedAtUtc": "2026-02-08T12:34:23.663Z",
+  "completedAtUtc": "2026-02-08T12:34:25.960Z",
+  "durationMs": 2297,
+  "attempts": 2,
+  "timeoutMs": 45000,
+  "intervalMs": 1000,
+  "requiredSuccessStreak": 2,
+  "api": {
+    "baseUrl": "https://green-parents-mix.loca.lt",
+    "firstSuccessAttempt": 1,
+    "firstSuccessLatencyMs": 846,
+    "finalSuccessStreak": 2,
+    "lastStatus": 200,
+    "lastReason": "ok"
+  },
+  "web": {
+    "baseUrl": "https://bitter-donuts-give.loca.lt",
+    "firstSuccessAttempt": 1,
+    "firstSuccessLatencyMs": 846,
+    "finalSuccessStreak": 2,
+    "lastStatus": 200,
+    "lastReason": "ok"
+  }
+}

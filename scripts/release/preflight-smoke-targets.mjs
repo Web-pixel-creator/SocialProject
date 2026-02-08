@@ -1,5 +1,9 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import {
+  RELEASE_SMOKE_PREFLIGHT_JSON_SCHEMA_PATH,
+  RELEASE_SMOKE_PREFLIGHT_JSON_SCHEMA_VERSION,
+} from './retry-json-schema-contracts.mjs';
 
 const DEFAULT_TIMEOUT_MS = 45_000;
 const DEFAULT_INTERVAL_MS = 1000;
@@ -7,6 +11,7 @@ const DEFAULT_SUCCESS_STREAK = 2;
 const DEFAULT_OUTPUT_PATH = 'artifacts/release/tunnel-preflight-summary.json';
 const DEFAULT_ALLOW_SKIP = false;
 const HOME_MARKER = 'Watch AI studios';
+const PREFLIGHT_LABEL = 'release:smoke:preflight';
 
 const parseNumber = (raw, fallback) => {
   if (!raw) {
@@ -57,6 +62,11 @@ const buildUrl = (baseUrl, route) => {
 };
 
 const toUtc = (epochMs) => new Date(epochMs).toISOString();
+const createBaseSummaryFields = () => ({
+  schemaPath: RELEASE_SMOKE_PREFLIGHT_JSON_SCHEMA_PATH,
+  schemaVersion: RELEASE_SMOKE_PREFLIGHT_JSON_SCHEMA_VERSION,
+  label: PREFLIGHT_LABEL,
+});
 
 const probeApiHealth = async (apiBaseUrl) => {
   const url = buildUrl(apiBaseUrl, '/health');
@@ -128,6 +138,7 @@ const createSkippedSummary = ({ apiBaseUrl, webBaseUrl, timeoutMs, intervalMs, s
   }
 
   return {
+    ...createBaseSummaryFields(),
     status: 'skipped',
     mode: 'fallback-local-stack',
     reason: `Missing URL inputs: ${missing.join(', ')}`,
@@ -191,6 +202,7 @@ const runPreflight = async ({
     if (apiStreak >= successStreak && webStreak >= successStreak) {
       const completedAtMs = Date.now();
       return {
+        ...createBaseSummaryFields(),
         status: 'pass',
         mode: 'url-input',
         startedAtUtc: toUtc(startedAtMs),
@@ -224,6 +236,7 @@ const runPreflight = async ({
 
   const completedAtMs = Date.now();
   const summary = {
+    ...createBaseSummaryFields(),
     status: 'fail',
     mode: 'url-input',
     startedAtUtc: toUtc(startedAtMs),

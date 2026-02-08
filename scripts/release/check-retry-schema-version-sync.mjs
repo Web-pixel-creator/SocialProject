@@ -2,6 +2,8 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  RELEASE_SMOKE_PREFLIGHT_JSON_SCHEMA_PATH,
+  RELEASE_SMOKE_PREFLIGHT_JSON_SCHEMA_VERSION,
   RETRY_CLEANUP_JSON_SCHEMA_PATH,
   RETRY_CLEANUP_JSON_SCHEMA_VERSION,
   RETRY_COLLECT_JSON_SCHEMA_PATH,
@@ -133,6 +135,10 @@ const main = async () => {
     {
       schemaPath: RETRY_PREVIEW_SELECTION_JSON_SCHEMA_PATH,
       schemaVersion: RETRY_PREVIEW_SELECTION_JSON_SCHEMA_VERSION,
+    },
+    {
+      schemaPath: RELEASE_SMOKE_PREFLIGHT_JSON_SCHEMA_PATH,
+      schemaVersion: RELEASE_SMOKE_PREFLIGHT_JSON_SCHEMA_VERSION,
     },
   ];
   const schemaVersionByPath = new Map(

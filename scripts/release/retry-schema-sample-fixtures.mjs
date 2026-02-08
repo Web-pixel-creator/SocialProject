@@ -1,9 +1,12 @@
 import {
+  RELEASE_SMOKE_PREFLIGHT_JSON_SCHEMA_PATH,
   RETRY_CLEANUP_JSON_SCHEMA_PATH,
   RETRY_COLLECT_JSON_SCHEMA_PATH,
   RETRY_PREVIEW_SELECTION_JSON_SCHEMA_PATH,
 } from './retry-json-schema-contracts.mjs';
 import {
+  createReleaseSmokePreflightPassOutputMock,
+  createReleaseSmokePreflightSkippedOutputMock,
   createRetryCleanupOutputMock,
   createRetryCollectEmptyOutputMock,
   createRetryCollectSuccessOutputMock,
@@ -43,6 +46,20 @@ export const RETRY_SCHEMA_SAMPLE_FIXTURES = [
     samplePath:
       'docs/ops/schemas/samples/release-retry-preview-selection-output-unknown.sample.json',
     payload: createRetryPreviewSelectionUnknownOutputMock(),
+  },
+  {
+    label: 'release smoke preflight pass sample',
+    schemaPath: RELEASE_SMOKE_PREFLIGHT_JSON_SCHEMA_PATH,
+    samplePath:
+      'docs/ops/schemas/samples/release-smoke-preflight-summary-output-pass.sample.json',
+    payload: createReleaseSmokePreflightPassOutputMock(),
+  },
+  {
+    label: 'release smoke preflight skipped sample',
+    schemaPath: RELEASE_SMOKE_PREFLIGHT_JSON_SCHEMA_PATH,
+    samplePath:
+      'docs/ops/schemas/samples/release-smoke-preflight-summary-output-skipped.sample.json',
+    payload: createReleaseSmokePreflightSkippedOutputMock(),
   },
 ];
 

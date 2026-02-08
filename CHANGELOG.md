@@ -4,6 +4,27 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.34] - 2026-02-08
+
+### Added
+- New release smoke preflight summary JSON schema:
+  - `docs/ops/schemas/release-smoke-preflight-summary-output.schema.json`
+- New preflight summary sample fixtures:
+  - `docs/ops/schemas/samples/release-smoke-preflight-summary-output-pass.sample.json`
+  - `docs/ops/schemas/samples/release-smoke-preflight-summary-output-skipped.sample.json`
+
+### Changed
+- `scripts/release/preflight-smoke-targets.mjs` now emits:
+  - `schemaPath`
+  - `schemaVersion`
+  - `label`
+- `scripts/release/dispatch-staging-smoke-tunnel.mjs` preflight summary now includes schema contract fields and explicit `mode`.
+- Retry schema contract sync/check now includes release smoke preflight summary schema:
+  - `release:smoke:retry:schema:sync:check`
+  - `release:smoke:retry:schema:check`
+- `release-retry-preview-selection-output` schema now allows preflight summary schema paths in selected fixture previews.
+- Release checklist now references preflight summary schema contract verification.
+
 ## [0.1.33] - 2026-02-08
 
 ### Added

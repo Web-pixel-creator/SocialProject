@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import Ajv2020 from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
 import {
+  RELEASE_SMOKE_PREFLIGHT_JSON_SCHEMA_PATH,
   RETRY_CLEANUP_JSON_SCHEMA_PATH,
   RETRY_COLLECT_JSON_SCHEMA_PATH,
 } from './retry-json-schema-contracts.mjs';
@@ -77,6 +78,36 @@ const runCleanupJsonCommand = () => {
   return JSON.parse(stdoutText);
 };
 
+const runPreflightSummaryCommand = () => {
+  const result = spawnSync(
+    process.execPath,
+    [
+      resolvePath('scripts/release/preflight-smoke-targets.mjs'),
+      '--allow-skip',
+    ],
+    {
+      cwd: projectRoot,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        RELEASE_PREFLIGHT_OUTPUT_PATH:
+          'artifacts/release/tunnel-preflight-summary.json',
+      },
+    },
+  );
+
+  if (result.status !== 0) {
+    const stderrText = result.stderr?.trim() ?? '';
+    throw new Error(
+      `preflight summary command failed with status ${result.status ?? 'unknown'}: ${stderrText}`,
+    );
+  }
+
+  const filePath = resolvePath('artifacts/release/tunnel-preflight-summary.json');
+  const text = readFile(filePath, 'utf8');
+  return text.then((raw) => JSON.parse(raw));
+};
+
 const writeJsonSummary = ({
   status,
   fixturePayloads,
@@ -108,9 +139,11 @@ const main = async () => {
 
   const cleanupSchema = await loadJson(RETRY_CLEANUP_JSON_SCHEMA_PATH);
   const collectSchema = await loadJson(RETRY_COLLECT_JSON_SCHEMA_PATH);
+  const preflightSchema = await loadJson(RELEASE_SMOKE_PREFLIGHT_JSON_SCHEMA_PATH);
   const schemaByPath = new Map([
     [RETRY_CLEANUP_JSON_SCHEMA_PATH, cleanupSchema],
     [RETRY_COLLECT_JSON_SCHEMA_PATH, collectSchema],
+    [RELEASE_SMOKE_PREFLIGHT_JSON_SCHEMA_PATH, preflightSchema],
   ]);
 
   const validators = new Map();
@@ -160,6 +193,28 @@ const main = async () => {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     failures.push(`runtime cleanup payload validation failed: ${message}`);
+  }
+
+  try {
+    const runtimePreflightPayload = await runPreflightSummaryCommand();
+    const validatePreflight = validators.get(
+      RELEASE_SMOKE_PREFLIGHT_JSON_SCHEMA_PATH,
+    );
+    if (!validatePreflight) {
+      failures.push(
+        `Missing validator for schema ${RELEASE_SMOKE_PREFLIGHT_JSON_SCHEMA_PATH}`,
+      );
+    } else if (!validatePreflight(runtimePreflightPayload)) {
+      failures.push(
+        `runtime preflight summary payload is invalid: ${formatAjvErrors(validatePreflight.errors)}`,
+      );
+    } else {
+      runtimePayloads += 1;
+      validatedPayloads += 1;
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    failures.push(`runtime preflight summary payload validation failed: ${message}`);
   }
 
   if (failures.length > 0) {

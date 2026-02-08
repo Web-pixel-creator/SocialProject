@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Web-pixel-creator/SocialProject/blob/main/docs/ops/schemas/release-smoke-preflight-summary-output.schema.json",
+  "title": "Release Smoke Preflight Summary Output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaPath",
+    "schemaVersion",
+    "label",
+    "status",
+    "mode",
+    "startedAtUtc",
+    "completedAtUtc",
+    "durationMs",
+    "attempts",
+    "timeoutMs",
+    "intervalMs",
+    "requiredSuccessStreak",
+    "api",
+    "web"
+  ],
+  "properties": {
+    "schemaPath": {
+      "const": "docs/ops/schemas/release-smoke-preflight-summary-output.schema.json"
+    },
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "label": {
+      "const": "release:smoke:preflight"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail",
+        "skipped"
+      ]
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "url-input",
+        "fallback-local-stack"
+      ]
+    },
+    "reason": {
+      "type": "string"
+    },
+    "startedAtUtc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completedAtUtc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "durationMs": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "attempts": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "timeoutMs": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "intervalMs": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "requiredSuccessStreak": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "api": {
+      "$ref": "#/$defs/probeSummary"
+    },
+    "web": {
+      "$ref": "#/$defs/probeSummary"
+    }
+  },
+  "$defs": {
+    "probeSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "baseUrl"
+      ],
+      "properties": {
+        "baseUrl": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "firstSuccessAttempt": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "firstSuccessLatencyMs": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "finalSuccessStreak": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "lastStatus": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 100,
+          "maximum": 599
+        },
+        "lastReason": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
