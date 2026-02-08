@@ -33,6 +33,42 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-02-08 - v0.1.31
+
+- Scope: Tunnel preflight health checks for `release:smoke:dispatch:tunnel` to validate public API/Web URLs before URL-input CI dispatch.
+- Release commander: Codex automation.
+- Window (UTC): 2026-02-08 11:56 -> 2026-02-08 12:04.
+- Release artifact:
+  - GitHub Release: `https://github.com/Web-pixel-creator/SocialProject/releases/tag/v0.1.31`
+- Dry-run:
+  - Local rehearsal: pass (URL-input helper starts local API/Web and tunnels automatically).
+  - Staging smoke: pass (`release_smoke_staging`, workflow run `#214`, fallback mode) on head `1e960c7`.
+  - Staging smoke (URL-input mode via helper command): pass (`release:smoke:dispatch:tunnel`, workflow run `#215`) on head `1e960c7`.
+  - Smoke report artifact/link:
+    - fallback mode: `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21797755456`, artifact id `5422301937`)
+    - URL-input mode (helper command): `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21797792497`, artifact id `5422310215`)
+    - Local downloaded and extracted copy: `artifacts/release/ci-run-21797792497/smoke-results.json`
+  - Retry schema gate summary artifact/link:
+    - fallback mode: `retry-schema-gate-summary` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21797755456`, artifact id `5422301083`)
+    - URL-input mode (helper command): `retry-schema-gate-summary` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21797792497`, artifact id `5422311249`)
+  - Smoke diff evidence:
+    - Command: `npm run release:smoke:diff -- 21797614271 21797792497`
+    - JSON report: `artifacts/release/smoke-diff-21797614271-vs-21797792497.json`
+    - Result: pass -> pass, failed steps `0 -> 0`, total duration `7922.67ms -> 6737.88ms` (delta `-1184.79ms`), no pass regressions.
+  - Tunnel preflight validation:
+    - Preflight output confirmed before dispatch:
+      - `Running tunnel preflight checks (...)`
+      - `Tunnel preflight passed with success streak 2/2 (...)`
+- Gates:
+  - ultracite (local): pass (`npm run ultracite:check`).
+  - CI workflow_dispatch corroboration (run `#214`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+  - CI workflow_dispatch corroboration (run `#215`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` all completed with `success` (PR-only gate `ultracite_pr` skipped by design).
+- Rollout result: release prepared and tagged.
+- Incidents:
+  - none.
+- Follow-ups:
+  - Optional: include preflight probe metrics (attempt count and first-success latency) in tunnel helper logs.
+
 ### 2026-02-08 - v0.1.30
 
 - Scope: CI upload of machine-readable retry schema gate summary artifact (`retry-schema-gate-summary`) from the `test` job.
