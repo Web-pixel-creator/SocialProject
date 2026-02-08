@@ -88,6 +88,8 @@ Use this checklist for every production release.
         - [ ] Preview-selection JSON schema: `docs/ops/schemas/release-retry-preview-selection-output.schema.json` (verify `schemaPath` + `schemaVersion` in payload).
         - [ ] Release smoke preflight JSON schema: `docs/ops/schemas/release-smoke-preflight-summary-output.schema.json` (verify `schemaPath` + `schemaVersion` in payload).
         - [ ] Unknown-filter preview JSON path returns non-zero and still matches schema: `npm run release:smoke:retry:schema:samples:generate -- --preview=missing-label --json`
+        - [ ] Optional standalone preflight summary schema validator: `npm run release:smoke:retry:schema:preflight:check`
+        - [ ] Optional standalone preflight summary schema validator (JSON): `npm run release:smoke:retry:schema:preflight:check:json`
         - [ ] Optional standalone strict preview-selection validator: `npm run release:smoke:retry:schema:preview:check:strict`
         - [ ] Optional combined strict schema gate JSON summary: `npm run release:smoke:retry:schema:check:json`
         - [ ] Generate fixtures: `npm run release:smoke:retry:schema:samples:generate`

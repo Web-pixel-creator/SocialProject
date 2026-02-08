@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.35] - 2026-02-08
+
+### Added
+- Standalone release smoke preflight summary schema validator:
+  - `scripts/release/validate-release-smoke-preflight-summary.mjs`
+- New npm scripts:
+  - `release:smoke:retry:schema:preflight:check`
+  - `release:smoke:retry:schema:preflight:check:json`
+
+### Changed
+- Release checklist now includes optional standalone preflight summary schema validation commands.
+
 ## [0.1.34] - 2026-02-08
 
 ### Added
