@@ -397,7 +397,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_WORKFLOW_REF: ${{ github.ref_name }}
-          RELEASE_WAIT_TIMEOUT_MS: 1800000
+          RELEASE_WAIT_FOR_COMPLETION: false
+          RELEASE_TUNNEL_DISPATCH_RETRY_MAX: 0
         run: npm run release:smoke:dispatch:tunnel
 
       - name: Upload tunnel helper retry summary
