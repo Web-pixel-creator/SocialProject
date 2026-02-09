@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [0.1.40] - 2026-02-09
+
+### Changed
+- Applied Ultracite formatting updates across API/Web test suites to keep local checks aligned with the CI `Ultracite Full Scope (blocking)` gate.
+- Updated the `next/image` test mock in `apps/web/src/__tests__/cards.spec.tsx` to provide explicit image dimensions and satisfy strict image-size linting.
+- Refreshed release evidence with a successful fallback smoke/perf workflow dispatch run (`#278`) after resolving the prior Ultracite gate failure in run `#276`.
+
 ## [0.1.39] - 2026-02-08
 
 ### Added
