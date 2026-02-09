@@ -1,11 +1,15 @@
 import { execFileSync, spawn } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import {
+  RELEASE_HEALTH_REPORT_JSON_SCHEMA_PATH,
+  RELEASE_HEALTH_REPORT_JSON_SCHEMA_VERSION,
+  RELEASE_HEALTH_REPORT_LABEL,
+} from './release-health-schema-contracts.mjs';
 
 const GITHUB_API_VERSION = '2022-11-28';
 const DEFAULT_WORKFLOW_FILE = 'ci.yml';
 const DEFAULT_OUTPUT_DIR = 'artifacts/release';
-const OUTPUT_LABEL = 'release:health:report';
 const REQUIRED_JOB_NAMES = [
   'Ultracite Full Scope (blocking)',
   'test',
@@ -342,7 +346,7 @@ const buildJobSummary = (jobs) => {
 };
 
 const toJsonSummaryPayload = ({ report, outputPath, strict }) => ({
-  label: OUTPUT_LABEL,
+  label: RELEASE_HEALTH_REPORT_LABEL,
   status: report.summary.pass ? 'pass' : 'fail',
   strict,
   run: {
@@ -460,7 +464,8 @@ const main = async () => {
   }
 
   const report = {
-    schemaVersion: '1.0.0',
+    schemaPath: RELEASE_HEALTH_REPORT_JSON_SCHEMA_PATH,
+    schemaVersion: RELEASE_HEALTH_REPORT_JSON_SCHEMA_VERSION,
     generatedAtUtc: new Date().toISOString(),
     repository: repoSlug,
     run: {

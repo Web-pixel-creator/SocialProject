@@ -167,6 +167,8 @@ Use this checklist for every production release.
   - [ ] Optional explicit run id: `npm run release:health:report -- <run_id>`
   - [ ] Optional machine-readable summary: `npm run release:health:report -- --json`
   - [ ] Optional strict gate (fails command on unhealthy run): `npm run release:health:report -- --strict`
+  - [ ] Validate report schema: `npm run release:health:schema:check` (or explicit file path: `npm run release:health:schema:check -- artifacts/release/post-release-health-run-<run_id>.json`)
+  - [ ] Optional machine-readable schema validation summary: `npm run release:health:schema:check:json`
   - [ ] Save/attach `artifacts/release/post-release-health-run-<run_id>.json` to release ticket.
 - [ ] API error rate within threshold.
 - [ ] API latency p95 within threshold.
@@ -177,5 +179,6 @@ Use this checklist for every production release.
 ## 6. Closeout
 
 - [ ] Release outcome recorded in release log (`docs/ops/release-log.md`).
+- [ ] Optional auto-append post-release health block to release log: `npm run release:health:log -- <run_id>` (use `--dry-run` to preview).
 - [ ] Any incidents linked with timestamps and owner.
 - [ ] Follow-up tasks created for non-blocking regressions.

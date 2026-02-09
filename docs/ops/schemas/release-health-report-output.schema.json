@@ -1,0 +1,331 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Web-pixel-creator/SocialProject/blob/main/docs/ops/schemas/release-health-report-output.schema.json",
+  "title": "Release Health Report Output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaPath",
+    "schemaVersion",
+    "generatedAtUtc",
+    "repository",
+    "run",
+    "summary",
+    "jobs",
+    "artifacts",
+    "smokeReport"
+  ],
+  "properties": {
+    "schemaPath": {
+      "const": "docs/ops/schemas/release-health-report-output.schema.json"
+    },
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "generatedAtUtc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "repository": {
+      "type": "string",
+      "minLength": 1
+    },
+    "run": {
+      "$ref": "#/$defs/run"
+    },
+    "summary": {
+      "$ref": "#/$defs/summary"
+    },
+    "jobs": {
+      "$ref": "#/$defs/jobs"
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/artifact"
+      }
+    },
+    "smokeReport": {
+      "$ref": "#/$defs/smokeReport"
+    }
+  },
+  "$defs": {
+    "nullableDateTime": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "runNumber",
+        "status",
+        "conclusion",
+        "htmlUrl",
+        "headSha",
+        "event",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "runNumber": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "status": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "conclusion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "htmlUrl": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "headSha": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "event": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "createdAt": {
+          "$ref": "#/$defs/nullableDateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/$defs/nullableDateTime"
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pass",
+        "reasons",
+        "requiredJobsTotal",
+        "requiredJobsPassed",
+        "failedJobsTotal"
+      ],
+      "properties": {
+        "pass": {
+          "type": "boolean"
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "requiredJobsTotal": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "requiredJobsPassed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failedJobsTotal": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "jobs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required",
+        "failedJobs",
+        "totalJobs"
+      ],
+      "properties": {
+        "required": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/requiredJob"
+          }
+        },
+        "failedJobs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "totalJobs": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "requiredJob": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "present",
+        "pass",
+        "status",
+        "conclusion",
+        "htmlUrl"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "present": {
+          "type": "boolean"
+        },
+        "pass": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "conclusion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "htmlUrl": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "expired",
+        "sizeInBytes",
+        "createdAt",
+        "updatedAt",
+        "archiveDownloadUrl"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expired": {
+          "type": "boolean"
+        },
+        "sizeInBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "archiveDownloadUrl": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    },
+    "smokeSummary": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "pass",
+        "totalSteps",
+        "failedSteps"
+      ],
+      "properties": {
+        "pass": {
+          "type": "boolean"
+        },
+        "totalSteps": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failedSteps": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "smokeReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "path",
+        "generatedAtUtc",
+        "summary"
+      ],
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": [
+            "local",
+            "unavailable"
+          ]
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generatedAtUtc": {
+          "$ref": "#/$defs/nullableDateTime"
+        },
+        "summary": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/smokeSummary"
+            }
+          ]
+        },
+        "fetchError": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "schemaPath": "docs/ops/schemas/release-health-report-output.schema.json",
+  "schemaVersion": "1.0.0",
+  "generatedAtUtc": "2026-02-09T12:45:00.000Z",
+  "repository": "Web-pixel-creator/SocialProject",
+  "run": {
+    "id": 21815945348,
+    "runNumber": 284,
+    "status": "completed",
+    "conclusion": "success",
+    "htmlUrl": "https://github.com/Web-pixel-creator/SocialProject/actions/runs/21815945348",
+    "headSha": "6ca0891",
+    "event": "workflow_dispatch",
+    "createdAt": "2026-02-09T07:20:00.000Z",
+    "updatedAt": "2026-02-09T07:30:00.000Z"
+  },
+  "summary": {
+    "pass": true,
+    "reasons": [],
+    "requiredJobsTotal": 5,
+    "requiredJobsPassed": 5,
+    "failedJobsTotal": 0
+  },
+  "jobs": {
+    "required": [
+      {
+        "name": "Ultracite Full Scope (blocking)",
+        "present": true,
+        "pass": true,
+        "status": "completed",
+        "conclusion": "success",
+        "htmlUrl": "https://github.com/Web-pixel-creator/SocialProject/actions/runs/21815945348/job/62930610858"
+      },
+      {
+        "name": "test",
+        "present": true,
+        "pass": true,
+        "status": "completed",
+        "conclusion": "success",
+        "htmlUrl": "https://github.com/Web-pixel-creator/SocialProject/actions/runs/21815945348/job/62930610871"
+      },
+      {
+        "name": "Security Hygiene Gate",
+        "present": true,
+        "pass": true,
+        "status": "completed",
+        "conclusion": "success",
+        "htmlUrl": "https://github.com/Web-pixel-creator/SocialProject/actions/runs/21815945348/job/62930610879"
+      },
+      {
+        "name": "Release Smoke Dry-Run (staging/manual)",
+        "present": true,
+        "pass": true,
+        "status": "completed",
+        "conclusion": "success",
+        "htmlUrl": "https://github.com/Web-pixel-creator/SocialProject/actions/runs/21815945348/job/62930610910"
+      },
+      {
+        "name": "Pre-release Performance Gate (staging/manual)",
+        "present": true,
+        "pass": true,
+        "status": "completed",
+        "conclusion": "success",
+        "htmlUrl": "https://github.com/Web-pixel-creator/SocialProject/actions/runs/21815945348/job/62930610922"
+      }
+    ],
+    "failedJobs": [],
+    "totalJobs": 6
+  },
+  "artifacts": [
+    {
+      "id": 5428215041,
+      "name": "release-smoke-report",
+      "expired": false,
+      "sizeInBytes": 3212,
+      "createdAt": "2026-02-09T07:22:00.000Z",
+      "updatedAt": "2026-02-09T07:22:05.000Z",
+      "archiveDownloadUrl": "https://api.github.com/repos/Web-pixel-creator/SocialProject/actions/artifacts/5428215041/zip"
+    }
+  ],
+  "smokeReport": {
+    "source": "local",
+    "path": "C:\\SocialProject\\artifacts\\release\\ci-run-21815945348\\smoke-results.json",
+    "generatedAtUtc": "2026-02-09T07:21:47.214Z",
+    "summary": {
+      "pass": true,
+      "totalSteps": 19,
+      "failedSteps": 0
+    }
+  }
+}
