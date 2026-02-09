@@ -5,6 +5,7 @@ import path from 'node:path';
 const GITHUB_API_VERSION = '2022-11-28';
 const DEFAULT_WORKFLOW_FILE = 'ci.yml';
 const DEFAULT_OUTPUT_DIR = 'artifacts/release';
+const OUTPUT_LABEL = 'release:health:report';
 const REQUIRED_JOB_NAMES = [
   'Ultracite Full Scope (blocking)',
   'test',
@@ -12,10 +13,16 @@ const REQUIRED_JOB_NAMES = [
   'Release Smoke Dry-Run (staging/manual)',
   'Pre-release Performance Gate (staging/manual)',
 ];
-const USAGE = `Usage: npm run release:health:report -- [run_id]
+const USAGE = `Usage: npm run release:health:report -- [run_id] [options]
 
 Arguments:
   run_id   Optional GitHub Actions run id (workflow_dispatch). If omitted, the latest completed workflow_dispatch run is used.
+
+Options:
+  --json             Print machine-readable summary JSON to stdout.
+  --strict           Exit with non-zero status when overall health is not pass.
+  --skip-smoke-fetch Skip automatic local smoke-artifact fetch when missing.
+  --help, -h         Show help.
 `;
 
 const toErrorMessage = (error) =>
@@ -149,15 +156,45 @@ const parseBoolean = (raw, fallback) => {
 
 const parseCliArgs = (argv) => {
   const args = argv.slice(2);
-  if (args.includes('--help') || args.includes('-h')) {
-    return { help: true, runId: null };
-  }
-  if (args.length > 1) {
-    throw new Error(`Unexpected arguments: ${args.join(' ')}\n\n${USAGE}`);
-  }
-  return {
+  const positionals = [];
+  const options = {
     help: false,
-    runId: parseRunId(args[0]),
+    json: false,
+    strict: false,
+    skipSmokeFetch: false,
+    runId: null,
+  };
+
+  for (const arg of args) {
+    if (arg === '--help' || arg === '-h') {
+      options.help = true;
+      continue;
+    }
+    if (arg === '--json') {
+      options.json = true;
+      continue;
+    }
+    if (arg === '--strict') {
+      options.strict = true;
+      continue;
+    }
+    if (arg === '--skip-smoke-fetch') {
+      options.skipSmokeFetch = true;
+      continue;
+    }
+    if (arg.startsWith('-')) {
+      throw new Error(`Unknown argument: ${arg}\n\n${USAGE}`);
+    }
+    positionals.push(arg);
+  }
+
+  if (positionals.length > 1) {
+    throw new Error(`Unexpected arguments: ${positionals.join(' ')}\n\n${USAGE}`);
+  }
+
+  return {
+    ...options,
+    runId: parseRunId(positionals[0]),
   };
 };
 
@@ -304,6 +341,37 @@ const buildJobSummary = (jobs) => {
   };
 };
 
+const toJsonSummaryPayload = ({ report, outputPath, strict }) => ({
+  label: OUTPUT_LABEL,
+  status: report.summary.pass ? 'pass' : 'fail',
+  strict,
+  run: {
+    id: report.run.id,
+    runNumber: report.run.runNumber,
+    status: report.run.status,
+    conclusion: report.run.conclusion,
+    htmlUrl: report.run.htmlUrl,
+  },
+  totals: {
+    requiredJobsTotal: report.summary.requiredJobsTotal,
+    requiredJobsPassed: report.summary.requiredJobsPassed,
+    failedJobsTotal: report.summary.failedJobsTotal,
+    artifactsDiscovered: report.artifacts.length,
+  },
+  reasons: report.summary.reasons,
+  smokeReport: {
+    source: report.smokeReport.source,
+    path: report.smokeReport.path,
+    generatedAtUtc: report.smokeReport.generatedAtUtc,
+    summary: report.smokeReport.summary,
+    fetchError:
+      typeof report.smokeReport.fetchError === 'string'
+        ? report.smokeReport.fetchError
+        : null,
+  },
+  outputPath,
+});
+
 const main = async () => {
   const cli = parseCliArgs(process.argv);
   if (cli.help) {
@@ -346,10 +414,12 @@ const main = async () => {
     : [];
   const jobSummary = buildJobSummary(jobs);
   let smokeSummary = await readLocalSmokeSummary(runId);
-  const shouldFetchSmoke = parseBoolean(
+  const shouldFetchSmokeFromEnv = parseBoolean(
     process.env.RELEASE_HEALTH_REPORT_FETCH_SMOKE,
     true,
   );
+  const shouldFetchSmoke =
+    cli.skipSmokeFetch === true ? false : shouldFetchSmokeFromEnv;
   const smokeArtifactPresent = artifacts.some(
     (artifact) => artifact?.name === 'release-smoke-report' && !artifact?.expired,
   );
@@ -434,29 +504,48 @@ const main = async () => {
   );
   await writeFile(outputPath, JSON.stringify(report, null, 2));
 
-  process.stdout.write(`Repository: ${repoSlug}\n`);
-  process.stdout.write(
-    `Run: #${report.run.runNumber ?? '<unknown>'} (id ${report.run.id})\n`,
-  );
-  process.stdout.write(`Run URL: ${report.run.htmlUrl ?? '<unknown>'}\n`);
-  process.stdout.write(`Overall health: ${report.summary.pass ? 'pass' : 'fail'}\n`);
-  if (!report.summary.pass) {
-    process.stdout.write(`Reasons: ${report.summary.reasons.join('; ')}\n`);
-  }
-  process.stdout.write(
-    `Required jobs: ${report.summary.requiredJobsPassed}/${report.summary.requiredJobsTotal} passed\n`,
-  );
-  process.stdout.write(`Artifacts discovered: ${report.artifacts.length}\n`);
-  if (report.smokeReport.source === 'local' && report.smokeReport.summary) {
-    process.stdout.write(
-      `Smoke summary: pass=${String(report.smokeReport.summary.pass)} totalSteps=${String(
-        report.smokeReport.summary.totalSteps,
-      )} failedSteps=${String(report.smokeReport.summary.failedSteps)}\n`,
-    );
+  const strictMode =
+    cli.strict ||
+    parseBoolean(process.env.RELEASE_HEALTH_REPORT_STRICT, false);
+
+  if (cli.json) {
+    const payload = toJsonSummaryPayload({
+      report,
+      outputPath,
+      strict: strictMode,
+    });
+    process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
   } else {
-    process.stdout.write('Smoke summary: unavailable\n');
+    process.stdout.write(`Repository: ${repoSlug}\n`);
+    process.stdout.write(
+      `Run: #${report.run.runNumber ?? '<unknown>'} (id ${report.run.id})\n`,
+    );
+    process.stdout.write(`Run URL: ${report.run.htmlUrl ?? '<unknown>'}\n`);
+    process.stdout.write(
+      `Overall health: ${report.summary.pass ? 'pass' : 'fail'}\n`,
+    );
+    if (!report.summary.pass) {
+      process.stdout.write(`Reasons: ${report.summary.reasons.join('; ')}\n`);
+    }
+    process.stdout.write(
+      `Required jobs: ${report.summary.requiredJobsPassed}/${report.summary.requiredJobsTotal} passed\n`,
+    );
+    process.stdout.write(`Artifacts discovered: ${report.artifacts.length}\n`);
+    if (report.smokeReport.source === 'local' && report.smokeReport.summary) {
+      process.stdout.write(
+        `Smoke summary: pass=${String(report.smokeReport.summary.pass)} totalSteps=${String(
+          report.smokeReport.summary.totalSteps,
+        )} failedSteps=${String(report.smokeReport.summary.failedSteps)}\n`,
+      );
+    } else {
+      process.stdout.write('Smoke summary: unavailable\n');
+    }
+    process.stdout.write(`Report written: ${outputPath}\n`);
   }
-  process.stdout.write(`Report written: ${outputPath}\n`);
+
+  if (strictMode && !report.summary.pass) {
+    process.exit(1);
+  }
 };
 
 main().catch((error) => {

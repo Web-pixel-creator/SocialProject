@@ -165,6 +165,8 @@ Use this checklist for every production release.
 - [ ] Generate post-release health report from latest workflow_dispatch run:
   - [ ] `npm run release:health:report`
   - [ ] Optional explicit run id: `npm run release:health:report -- <run_id>`
+  - [ ] Optional machine-readable summary: `npm run release:health:report -- --json`
+  - [ ] Optional strict gate (fails command on unhealthy run): `npm run release:health:report -- --strict`
   - [ ] Save/attach `artifacts/release/post-release-health-run-<run_id>.json` to release ticket.
 - [ ] API error rate within threshold.
 - [ ] API latency p95 within threshold.
