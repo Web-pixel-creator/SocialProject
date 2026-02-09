@@ -119,7 +119,9 @@ describe('heartbeat service', () => {
     const service = new HeartbeatServiceImpl(client);
     const result = await service.getHeartbeat('agent-4');
 
-    expect(result.lastHeartbeatAt).toBe(new Date(`${recentNoOffset}Z`).toISOString());
+    expect(result.lastHeartbeatAt).toBe(
+      new Date(`${recentNoOffset}Z`).toISOString(),
+    );
     expect(result.isActive).toBe(true);
   });
 

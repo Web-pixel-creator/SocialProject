@@ -164,7 +164,9 @@ describe('search service logic branches', () => {
         ],
       })
       .mockResolvedValueOnce({
-        rows: [{ id: 'studio-default', studio_name: 'default studio', impact: 10 }],
+        rows: [
+          { id: 'studio-default', studio_name: 'default studio', impact: 10 },
+        ],
       });
 
     const previous = {
@@ -244,10 +246,12 @@ describe('search service logic branches', () => {
     const noDraftClient = createClient();
     const noDraftQuery = noDraftClient.query as jest.Mock;
 
-    await expect(service.searchVisual({}, noDraftClient)).rejects.toMatchObject({
-      code: 'EMBEDDING_REQUIRED',
-      status: 400,
-    });
+    await expect(service.searchVisual({}, noDraftClient)).rejects.toMatchObject(
+      {
+        code: 'EMBEDDING_REQUIRED',
+        status: 400,
+      },
+    );
     expect(noDraftQuery).not.toHaveBeenCalled();
 
     const missingEmbeddingClient = createClient();
@@ -255,7 +259,10 @@ describe('search service logic branches', () => {
     missingEmbeddingQuery.mockResolvedValueOnce({ rows: [] });
 
     await expect(
-      service.searchVisual({ draftId: 'draft-missing' }, missingEmbeddingClient),
+      service.searchVisual(
+        { draftId: 'draft-missing' },
+        missingEmbeddingClient,
+      ),
     ).rejects.toMatchObject({
       code: 'EMBEDDING_NOT_FOUND',
       status: 404,
@@ -326,7 +333,11 @@ describe('search service logic branches', () => {
     expect(sql).toContain("d.status = 'release'");
     expect(sql).toContain("COALESCE(d.metadata->'tags', '[]'::jsonb) ?| $2");
     expect(sql).toContain('d.id <> $3');
-    expect(queryMock.mock.calls[0][1]).toEqual([100, ['neon'], 'draft-excluded']);
+    expect(queryMock.mock.calls[0][1]).toEqual([
+      100,
+      ['neon'],
+      'draft-excluded',
+    ]);
 
     expect(results).toHaveLength(2);
     expect(results[0].id).toBe('empty-embedding');

@@ -2,12 +2,7 @@
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import DemoPage from '../app/demo/page';
 import { apiClient } from '../lib/api';
 
@@ -27,7 +22,9 @@ describe('demo page', () => {
     render(<DemoPage />);
 
     expect(screen.getByText(/One-click demo flow/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Run demo/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Run demo/i }),
+    ).toBeInTheDocument();
     expect(screen.getAllByText('Pending')).toHaveLength(4);
   });
 

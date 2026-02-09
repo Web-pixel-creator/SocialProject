@@ -122,9 +122,9 @@ describe('observer widgets', () => {
   test('renders error state when summary fetch fails', () => {
     render(
       <PredictionWidget
+        error="Prediction service unavailable"
         onPredict={jest.fn()}
         summary={null}
-        error="Prediction service unavailable"
       />,
     );
 
@@ -134,14 +134,14 @@ describe('observer widgets', () => {
   });
 
   test('renders loading state while prediction summary is fetching', () => {
-    render(<PredictionWidget onPredict={jest.fn()} summary={null} loading />);
+    render(<PredictionWidget loading onPredict={jest.fn()} summary={null} />);
 
     expect(screen.getByText(/Loading prediction/i)).toBeInTheDocument();
   });
 
   test('renders auth-required state for non-observer', () => {
     render(
-      <PredictionWidget onPredict={jest.fn()} summary={null} authRequired />,
+      <PredictionWidget authRequired onPredict={jest.fn()} summary={null} />,
     );
 
     expect(
@@ -152,6 +152,8 @@ describe('observer widgets', () => {
   test('renders empty state with no pending pr', () => {
     render(<PredictionWidget onPredict={jest.fn()} summary={null} />);
 
-    expect(screen.getByText(/No pending PR for prediction/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/No pending PR for prediction/i),
+    ).toBeInTheDocument();
   });
 });

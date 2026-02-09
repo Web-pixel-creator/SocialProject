@@ -191,11 +191,14 @@ describe('pull request review page', () => {
     fireEvent.click(screen.getByRole('button', { name: /Request changes/i }));
 
     await waitFor(() => {
-      expect(apiClient.post).toHaveBeenCalledWith('/pull-requests/pr-1/decide', {
-        decision: 'request_changes',
-        rejectionReason: undefined,
-        feedback: 'Please tighten spacing and typography rhythm.',
-      });
+      expect(apiClient.post).toHaveBeenCalledWith(
+        '/pull-requests/pr-1/decide',
+        {
+          decision: 'request_changes',
+          rejectionReason: undefined,
+          feedback: 'Please tighten spacing and typography rhythm.',
+        },
+      );
     });
 
     const telemetryCalls = (apiClient.post as jest.Mock).mock.calls.filter(
@@ -213,17 +216,22 @@ describe('pull request review page', () => {
 
     fireEvent.keyDown(window, { key: 'm' });
     await waitFor(() => {
-      expect(apiClient.post).toHaveBeenCalledWith('/pull-requests/pr-1/decide', {
-        decision: 'merge',
-        rejectionReason: undefined,
-        feedback: undefined,
-      });
+      expect(apiClient.post).toHaveBeenCalledWith(
+        '/pull-requests/pr-1/decide',
+        {
+          decision: 'merge',
+          rejectionReason: undefined,
+          feedback: undefined,
+        },
+      );
     });
 
     const rejectInput = screen.getByPlaceholderText(
       /Rejection reason \(required for reject\)/i,
     );
-    fireEvent.change(rejectInput, { target: { value: 'Need stronger proof.' } });
+    fireEvent.change(rejectInput, {
+      target: { value: 'Need stronger proof.' },
+    });
     fireEvent.keyDown(rejectInput, { key: 'r' });
 
     const rejectCallsAfterInputKeydown = (
@@ -237,32 +245,37 @@ describe('pull request review page', () => {
 
     fireEvent.keyDown(window, { key: 'r' });
     await waitFor(() => {
-      expect(apiClient.post).toHaveBeenCalledWith('/pull-requests/pr-1/decide', {
-        decision: 'reject',
-        rejectionReason: 'Need stronger proof.',
-        feedback: undefined,
-      });
+      expect(apiClient.post).toHaveBeenCalledWith(
+        '/pull-requests/pr-1/decide',
+        {
+          decision: 'reject',
+          rejectionReason: 'Need stronger proof.',
+          feedback: undefined,
+        },
+      );
     });
   });
 
   test('shows decision error when decision request fails', async () => {
     mockSuccessfulLoad();
-    (apiClient.post as jest.Mock).mockImplementation((url: string, payload: unknown) => {
-      if (url === '/telemetry/ux') {
+    (apiClient.post as jest.Mock).mockImplementation(
+      (url: string, payload: unknown) => {
+        if (url === '/telemetry/ux') {
+          return Promise.resolve({ data: { ok: true } });
+        }
+        if (
+          url === '/pull-requests/pr-1/decide' &&
+          typeof payload === 'object' &&
+          payload !== null &&
+          (payload as { decision?: string }).decision === 'merge'
+        ) {
+          return Promise.reject({
+            response: { data: { message: 'Decision API failed' } },
+          });
+        }
         return Promise.resolve({ data: { ok: true } });
-      }
-      if (
-        url === '/pull-requests/pr-1/decide' &&
-        typeof payload === 'object' &&
-        payload !== null &&
-        (payload as { decision?: string }).decision === 'merge'
-      ) {
-        return Promise.reject({
-          response: { data: { message: 'Decision API failed' } },
-        });
-      }
-      return Promise.resolve({ data: { ok: true } });
-    });
+      },
+    );
 
     await renderReviewPage('pr-1');
     fireEvent.click(screen.getByRole('button', { name: /Merge \(M\)/i }));

@@ -244,7 +244,9 @@ describe('feed UI', () => {
     await renderFeedTabs();
     const progressTab = screen.getByRole('button', { name: /Progress/i });
     await clickAndFlush(progressTab);
-    const detailLink = await screen.findByRole('link', { name: /Open detail/i });
+    const detailLink = await screen.findByRole('link', {
+      name: /Open detail/i,
+    });
 
     (apiClient.post as jest.Mock).mockClear();
     await clickAndFlush(detailLink);
@@ -447,7 +449,9 @@ describe('feed UI', () => {
       expect(screen.getByText(/Fallback data/i)).toBeInTheDocument(),
     );
     expect(screen.getByText(/Synthwave Poster/i)).toBeInTheDocument();
-    expect(screen.getByText(/Why hot: 3 PR pending, 2 open fix/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Why hot: 3 PR pending, 2 open fix/i),
+    ).toBeInTheDocument();
   });
 
   test('falls back to demo guilds when guild feed fails', async () => {
@@ -821,8 +825,8 @@ describe('feed UI', () => {
     expect(
       (screen.getByLabelText(/Time range/i) as HTMLSelectElement).value,
     ).toBe('7d');
-    expect((screen.getByLabelText(/^Intent$/i) as HTMLSelectElement).value).toBe(
-      'seeking_pr',
-    );
+    expect(
+      (screen.getByLabelText(/^Intent$/i) as HTMLSelectElement).value,
+    ).toBe('seeking_pr');
   });
 });

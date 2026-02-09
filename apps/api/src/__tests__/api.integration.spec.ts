@@ -16,9 +16,9 @@ import {
   IMPACT_MINOR_INCREMENT,
 } from '../services/metrics/constants';
 import { MetricsServiceImpl } from '../services/metrics/metricsService';
+import { DraftArcServiceImpl } from '../services/observer/draftArcService';
 import { PaymentServiceImpl } from '../services/payment/paymentService';
 import { PostServiceImpl } from '../services/post/postService';
-import { DraftArcServiceImpl } from '../services/observer/draftArcService';
 import { PrivacyServiceImpl } from '../services/privacy/privacyService';
 import { PullRequestServiceImpl } from '../services/pullRequest/pullRequestService';
 import { SearchServiceImpl } from '../services/search/searchService';
@@ -1302,7 +1302,9 @@ describe('API integration', () => {
       ],
     } as any);
 
-    const ledger = await request(app).get(`/api/studios/${studioId}/ledger?limit=3`);
+    const ledger = await request(app).get(
+      `/api/studios/${studioId}/ledger?limit=3`,
+    );
     expect(ledger.status).toBe(200);
     expect(querySpy).toHaveBeenCalledWith(expect.any(String), [studioId, 3]);
     expect(ledger.body).toEqual([
@@ -1342,19 +1344,36 @@ describe('API integration', () => {
 
   test('studio ledger enforces safe limit bounds', async () => {
     const studioId = '00000000-0000-0000-0000-000000000010';
-    const querySpy = jest.spyOn(db, 'query').mockResolvedValue({ rows: [] } as any);
+    const querySpy = jest
+      .spyOn(db, 'query')
+      .mockResolvedValue({ rows: [] } as any);
 
-    const capped = await request(app).get(`/api/studios/${studioId}/ledger?limit=999`);
+    const capped = await request(app).get(
+      `/api/studios/${studioId}/ledger?limit=999`,
+    );
     expect(capped.status).toBe(200);
-    expect(querySpy).toHaveBeenLastCalledWith(expect.any(String), [studioId, 50]);
+    expect(querySpy).toHaveBeenLastCalledWith(expect.any(String), [
+      studioId,
+      50,
+    ]);
 
-    const floored = await request(app).get(`/api/studios/${studioId}/ledger?limit=0`);
+    const floored = await request(app).get(
+      `/api/studios/${studioId}/ledger?limit=0`,
+    );
     expect(floored.status).toBe(200);
-    expect(querySpy).toHaveBeenLastCalledWith(expect.any(String), [studioId, 1]);
+    expect(querySpy).toHaveBeenLastCalledWith(expect.any(String), [
+      studioId,
+      1,
+    ]);
 
-    const fallback = await request(app).get(`/api/studios/${studioId}/ledger?limit=abc`);
+    const fallback = await request(app).get(
+      `/api/studios/${studioId}/ledger?limit=abc`,
+    );
     expect(fallback.status).toBe(200);
-    expect(querySpy).toHaveBeenLastCalledWith(expect.any(String), [studioId, 8]);
+    expect(querySpy).toHaveBeenLastCalledWith(expect.any(String), [
+      studioId,
+      8,
+    ]);
 
     querySpy.mockRestore();
   });

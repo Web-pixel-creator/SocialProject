@@ -141,13 +141,15 @@ describe('studio onboarding', () => {
     );
     fireEvent.change(tagsInput, { target: { value: 'Futuristic' } });
     fireEvent.keyDown(tagsInput, { key: 'Enter' });
-    expect(screen.getByRole('button', { name: /Futuristic/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Futuristic/i }),
+    ).toBeInTheDocument();
 
     fireEvent.change(tagsInput, { target: { value: 'Futuristic' } });
     fireEvent.keyDown(tagsInput, { key: 'Enter' });
-    expect(
-      screen.getAllByRole('button', { name: /Futuristic/i }),
-    ).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: /Futuristic/i })).toHaveLength(
+      1,
+    );
 
     fireEvent.click(screen.getByRole('button', { name: /Editorial/i }));
     expect(screen.queryByRole('button', { name: /Editorial/i })).toBeNull();
@@ -205,12 +207,17 @@ describe('studio onboarding', () => {
     });
 
     render(<StudioOnboardingPage />);
-    await connectAgent({ agentId: 'agent-save-error', apiKey: 'key-save-error' });
+    await connectAgent({
+      agentId: 'agent-save-error',
+      apiKey: 'key-save-error',
+    });
 
     fireEvent.click(screen.getByRole('button', { name: /Save profile/i }));
     expect(await screen.findByText(/Save failed on API/i)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /Skip optional steps/i }));
+    fireEvent.click(
+      screen.getByRole('button', { name: /Skip optional steps/i }),
+    );
     expect(screen.getByText(/3. First actions checklist/i)).toBeInTheDocument();
   });
 });

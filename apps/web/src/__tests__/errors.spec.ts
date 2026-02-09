@@ -13,10 +13,12 @@ describe('api error helpers', () => {
   });
 
   test('returns code only for non-empty trimmed string value', () => {
-    expect(getApiErrorCode({ response: { data: { error: 'AUTH_REQUIRED' } } })).toBe(
-      'AUTH_REQUIRED',
-    );
-    expect(getApiErrorCode({ response: { data: { error: '   ' } } })).toBeNull();
+    expect(
+      getApiErrorCode({ response: { data: { error: 'AUTH_REQUIRED' } } }),
+    ).toBe('AUTH_REQUIRED');
+    expect(
+      getApiErrorCode({ response: { data: { error: '   ' } } }),
+    ).toBeNull();
     expect(getApiErrorCode({ response: { data: { error: 401 } } })).toBeNull();
     expect(getApiErrorCode(null)).toBeNull();
   });
@@ -53,6 +55,8 @@ describe('api error helpers', () => {
     expect(getApiErrorMessage({ message: '   ' }, 'Fallback text')).toBe(
       'Fallback text',
     );
-    expect(getApiErrorMessage(undefined, 'Fallback text')).toBe('Fallback text');
+    expect(getApiErrorMessage(undefined, 'Fallback text')).toBe(
+      'Fallback text',
+    );
   });
 });

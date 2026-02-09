@@ -2,7 +2,13 @@
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import DraftDetailPage from '../app/drafts/[id]/page';
 import { apiClient } from '../lib/api';
 
@@ -15,7 +21,8 @@ jest.mock('next/navigation', () => ({
 jest.mock('next/link', () => ({
   __esModule: true,
   default: ({ href, onClick, scroll: _scroll, children, ...props }: any) => {
-    const resolvedHref = typeof href === 'string' ? href : (href?.pathname ?? '');
+    const resolvedHref =
+      typeof href === 'string' ? href : (href?.pathname ?? '');
     return (
       <a
         href={resolvedHref}
@@ -373,7 +380,9 @@ describe('draft detail page', () => {
 
     expect(screen.getByText(/^Draft$/i)).toBeInTheDocument();
     expect(screen.getByText(/Draft id missing/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Run demo flow/i })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: /Run demo flow/i }),
+    ).toBeDisabled();
     expect(screen.queryByText(/Next best action/i)).toBeNull();
   });
 
@@ -391,7 +400,10 @@ describe('draft detail page', () => {
       if (url.includes('/arc')) {
         return Promise.resolve({ data: null });
       }
-      if (url.includes('/observers/watchlist') || url.includes('/observers/digest')) {
+      if (
+        url.includes('/observers/watchlist') ||
+        url.includes('/observers/digest')
+      ) {
         return Promise.reject({ response: { status: 401 } });
       }
       return Promise.resolve({
@@ -435,7 +447,10 @@ describe('draft detail page', () => {
       if (url.includes('/arc')) {
         return Promise.resolve({ data: null });
       }
-      if (url.includes('/observers/watchlist') || url.includes('/observers/digest')) {
+      if (
+        url.includes('/observers/watchlist') ||
+        url.includes('/observers/digest')
+      ) {
         return Promise.resolve({ data: [] });
       }
       return Promise.resolve({
@@ -459,7 +474,9 @@ describe('draft detail page', () => {
     });
 
     await renderDraftDetailPage('draft-demo');
-    fireEvent.click(screen.getAllByRole('button', { name: /Run demo flow/i })[0]);
+    fireEvent.click(
+      screen.getAllByRole('button', { name: /Run demo flow/i })[0],
+    );
 
     await waitFor(() =>
       expect(apiClient.post).toHaveBeenCalledWith('/demo/flow', {
@@ -467,7 +484,9 @@ describe('draft detail page', () => {
       }),
     );
     expect(
-      await screen.findByText(/Demo flow complete\. New fix request and PR created/i),
+      await screen.findByText(
+        /Demo flow complete\. New fix request and PR created/i,
+      ),
     ).toBeInTheDocument();
   });
 
@@ -500,7 +519,10 @@ describe('draft detail page', () => {
       if (url.includes('/arc')) {
         return Promise.resolve({ data: null });
       }
-      if (url.includes('/observers/watchlist') || url.includes('/observers/digest')) {
+      if (
+        url.includes('/observers/watchlist') ||
+        url.includes('/observers/digest')
+      ) {
         return Promise.resolve({ data: [] });
       }
       return Promise.resolve({
@@ -636,7 +658,9 @@ describe('draft detail page', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Mark seen/i }));
     await waitFor(() =>
-      expect(apiClient.post).toHaveBeenCalledWith('/observers/digest/entry-1/seen'),
+      expect(apiClient.post).toHaveBeenCalledWith(
+        '/observers/digest/entry-1/seen',
+      ),
     );
 
     fireEvent.click(screen.getByRole('button', { name: /Following/i }));
@@ -648,7 +672,9 @@ describe('draft detail page', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Follow chain/i }));
     await waitFor(() =>
-      expect(apiClient.post).toHaveBeenCalledWith('/observers/watchlist/draft-follow'),
+      expect(apiClient.post).toHaveBeenCalledWith(
+        '/observers/watchlist/draft-follow',
+      ),
     );
 
     fireEvent.click(screen.getByRole('link', { name: /See more similar/i }));
@@ -742,7 +768,10 @@ describe('draft detail page', () => {
       if (url.includes('/arc')) {
         return Promise.resolve({ data: null });
       }
-      if (url.includes('/observers/watchlist') || url.includes('/observers/digest')) {
+      if (
+        url.includes('/observers/watchlist') ||
+        url.includes('/observers/digest')
+      ) {
         return Promise.resolve({ data: [] });
       }
       return Promise.resolve({

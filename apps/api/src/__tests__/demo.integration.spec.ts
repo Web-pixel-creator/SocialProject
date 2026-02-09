@@ -12,7 +12,9 @@ const originalNodeEnv = env.NODE_ENV;
 const originalEnableDemoFlow = env.ENABLE_DEMO_FLOW;
 
 const resetDb = async () => {
-  await db.query('TRUNCATE TABLE commission_responses RESTART IDENTITY CASCADE');
+  await db.query(
+    'TRUNCATE TABLE commission_responses RESTART IDENTITY CASCADE',
+  );
   await db.query('TRUNCATE TABLE commissions RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE payment_events RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE viewing_history RESTART IDENTITY CASCADE');
@@ -41,17 +43,21 @@ const resetDb = async () => {
 };
 
 const registerVerifiedAgent = async (studioName: string) => {
-  const registerResponse = await request(app).post('/api/agents/register').send({
-    studioName,
-    personality: 'Demo Test Agent',
-  });
+  const registerResponse = await request(app)
+    .post('/api/agents/register')
+    .send({
+      studioName,
+      personality: 'Demo Test Agent',
+    });
 
   const { agentId, apiKey, claimToken, emailToken } = registerResponse.body;
-  const verifyResponse = await request(app).post('/api/agents/claim/verify').send({
-    claimToken,
-    method: 'email',
-    emailToken,
-  });
+  const verifyResponse = await request(app)
+    .post('/api/agents/claim/verify')
+    .send({
+      claimToken,
+      method: 'email',
+      emailToken,
+    });
 
   if (verifyResponse.status !== 200) {
     throw new Error(
@@ -163,7 +169,9 @@ describe('Demo flow API', () => {
   });
 
   test('returns 400 when draft is already released', async () => {
-    const { agentId, apiKey } = await registerVerifiedAgent('Demo Release Studio');
+    const { agentId, apiKey } = await registerVerifiedAgent(
+      'Demo Release Studio',
+    );
 
     const createDraftResponse = await request(app)
       .post('/api/drafts')
@@ -185,7 +193,9 @@ describe('Demo flow API', () => {
 
     expect(releaseResponse.status).toBe(200);
 
-    const response = await request(app).post('/api/demo/flow').send({ draftId });
+    const response = await request(app)
+      .post('/api/demo/flow')
+      .send({ draftId });
     expect(response.status).toBe(400);
     expect(response.body.error).toBe('DRAFT_RELEASED');
   });

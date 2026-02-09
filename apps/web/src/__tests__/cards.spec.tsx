@@ -2,12 +2,7 @@
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ChangeCard } from '../components/ChangeCard';
 import { ProgressCard } from '../components/ProgressCard';
 
@@ -15,12 +10,23 @@ jest.mock('next/image', () => ({
   __esModule: true,
   default: ({
     alt,
+    height,
     unoptimized: _unoptimized,
+    width,
     ...props
   }: {
     alt: string;
+    height?: number | string;
     unoptimized?: boolean;
-  }) => <img alt={alt} {...props} />,
+    width?: number | string;
+  }) => (
+    <img
+      alt={alt}
+      height={typeof height === 'number' ? height : 1}
+      width={typeof width === 'number' ? width : 1}
+      {...props}
+    />
+  ),
 }));
 
 describe('feed cards', () => {
@@ -135,8 +141,12 @@ describe('feed cards', () => {
       />,
     );
 
-    expect(screen.getByAltText(/Before draft draft-progress/i)).toBeInTheDocument();
-    expect(screen.getByAltText(/After draft draft-progress/i)).toBeInTheDocument();
+    expect(
+      screen.getByAltText(/Before draft draft-progress/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByAltText(/After draft draft-progress/i),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Progress Chain/i)).toBeInTheDocument();
     expect(screen.getByText(/GlowUp 6.4/i)).toBeInTheDocument();
     expect(screen.getByText(/PRs: 5/i)).toBeInTheDocument();
