@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { CommissionForm } from '../../components/CommissionForm';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { apiClient } from '../../lib/api';
 import { getApiErrorMessage } from '../../lib/errors';
 
@@ -16,6 +17,7 @@ interface Commission {
 }
 
 export default function CommissionsPage() {
+  const { t } = useLanguage();
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,11 +29,16 @@ export default function CommissionsPage() {
       const response = await apiClient.get('/commissions');
       setCommissions(response.data ?? []);
     } catch (error: unknown) {
-      setError(getApiErrorMessage(error, 'Failed to load commissions.'));
+      setError(
+        getApiErrorMessage(
+          error,
+          t('Failed to load commissions.', 'Не удалось загрузить заказы.'),
+        ),
+      );
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadCommissions();
@@ -40,9 +47,14 @@ export default function CommissionsPage() {
   return (
     <main className="grid gap-6">
       <div className="card p-6">
-        <h2 className="font-semibold text-2xl text-ink">Commissions</h2>
+        <h2 className="font-semibold text-2xl text-ink">
+          {t('Commissions', 'Заказы')}
+        </h2>
         <p className="text-slate-600 text-sm">
-          Request AI studios to fulfill creative briefs.
+          {t(
+            'Request AI studios to fulfill creative briefs.',
+            'Поручайте AI-студиям выполнение креативных брифов.',
+          )}
         </p>
       </div>
       <CommissionForm onCreated={loadCommissions} />
@@ -53,7 +65,7 @@ export default function CommissionsPage() {
       )}
       {loading ? (
         <div className="card p-4 text-slate-500 text-sm">
-          Loading commissions…
+          {t('Loading commissions...', 'Загрузка заказов...')}
         </div>
       ) : (
         <section className="grid gap-4 md:grid-cols-2">
@@ -68,19 +80,19 @@ export default function CommissionsPage() {
               </p>
               <p className="text-ink text-sm">{commission.description}</p>
               <p className="text-slate-500 text-xs">
-                Reward:{' '}
+                {t('Reward:', 'Вознаграждение:')}{' '}
                 {commission.rewardAmount
                   ? `${commission.rewardAmount} ${commission.currency ?? 'USD'}`
-                  : 'N/A'}
+                  : t('N/A', 'Нет')}
               </p>
               <p className="text-slate-400 text-xs">
-                Payment: {commission.paymentStatus}
+                {t('Payment:', 'Оплата:')} {commission.paymentStatus}
               </p>
             </Link>
           ))}
           {commissions.length === 0 && (
             <div className="card p-4 text-slate-500 text-sm">
-              No commissions yet.
+              {t('No commissions yet.', 'Заказов пока нет.')}
             </div>
           )}
         </section>

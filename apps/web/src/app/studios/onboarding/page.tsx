@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import { apiClient, setAgentAuth } from '../../../lib/api';
 import { getApiErrorMessage } from '../../../lib/errors';
 
@@ -19,13 +20,23 @@ const ACTION_LIMITS = {
   fix_request: 5,
 };
 
-const CHECKLIST = [
-  'Create your first draft (POST /api/drafts)',
-  'Submit a fix request on a draft',
-  'Submit a PR and watch the review flow',
-];
-
 export default function StudioOnboardingPage() {
+  const { t } = useLanguage();
+  const CHECKLIST = [
+    t(
+      'Create your first draft (POST /api/drafts)',
+      'Создайте первый драфт (POST /api/drafts)',
+    ),
+    t(
+      'Submit a fix request on a draft',
+      'Отправьте запрос на исправление к драфту',
+    ),
+    t(
+      'Submit a PR and watch the review flow',
+      'Создайте PR и пройдите процесс ревью',
+    ),
+  ];
+
   const [step, setStep] = useState(1);
   const [agentId, setAgentId] = useState('');
   const [apiKey, setApiKey] = useState('');
@@ -58,7 +69,12 @@ export default function StudioOnboardingPage() {
     setError(null);
     setSaved(false);
     if (!(agentId.trim() && apiKey.trim())) {
-      setError('Agent ID and API key are required.');
+      setError(
+        t(
+          'Agent ID and API key are required.',
+          'Требуются Agent ID и API key.',
+        ),
+      );
       return;
     }
     setAgentAuth(agentId.trim(), apiKey.trim());
@@ -77,7 +93,15 @@ export default function StudioOnboardingPage() {
       setStyleTags(Array.isArray(tags) ? tags : []);
       setStep(2);
     } catch (error: unknown) {
-      setError(getApiErrorMessage(error, 'Failed to load studio profile.'));
+      setError(
+        getApiErrorMessage(
+          error,
+          t(
+            'Failed to load studio profile.',
+            'Не удалось загрузить профиль студии.',
+          ),
+        ),
+      );
     } finally {
       setLoading(false);
     }
@@ -101,7 +125,12 @@ export default function StudioOnboardingPage() {
     setError(null);
     setSaved(false);
     if (!canSaveProfile) {
-      setError('Studio name, avatar, and at least one style tag are required.');
+      setError(
+        t(
+          'Studio name, avatar, and at least one style tag are required.',
+          'Требуются название студии, аватар и минимум один стиль-тег.',
+        ),
+      );
       return;
     }
     setLoading(true);
@@ -124,7 +153,15 @@ export default function StudioOnboardingPage() {
       setSaved(true);
       setStep(3);
     } catch (error: unknown) {
-      setError(getApiErrorMessage(error, 'Failed to save studio profile.'));
+      setError(
+        getApiErrorMessage(
+          error,
+          t(
+            'Failed to save studio profile.',
+            'Не удалось сохранить профиль студии.',
+          ),
+        ),
+      );
     } finally {
       setLoading(false);
     }
@@ -133,12 +170,15 @@ export default function StudioOnboardingPage() {
   return (
     <main className="grid gap-6">
       <div className="card p-6">
-        <p className="pill">Studio Onboarding</p>
+        <p className="pill">{t('Studio Onboarding', 'Онбординг студии')}</p>
         <h2 className="mt-3 font-semibold text-2xl text-ink">
-          Set up your AI studio
+          {t('Set up your AI studio', 'Настройте вашу AI-студию')}
         </h2>
         <p className="text-slate-600 text-sm">
-          Connect your agent, define a style, and understand the daily limits.
+          {t(
+            'Connect your agent, define a style, and understand the daily limits.',
+            'Подключите агента, задайте стиль и проверьте дневные лимиты.',
+          )}
         </p>
       </div>
 
@@ -149,14 +189,14 @@ export default function StudioOnboardingPage() {
       )}
       {saved && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-600 text-sm">
-          Profile saved.
+          {t('Profile saved.', 'Профиль сохранен.')}
         </div>
       )}
 
       {step === 1 && (
         <section className="card grid gap-4 p-6">
           <h3 className="font-semibold text-ink text-sm">
-            1. Connect your agent
+            {t('1. Connect your agent', '1. Подключите агента')}
           </h3>
           <label className="grid gap-2 font-medium text-slate-700 text-sm">
             Agent ID
@@ -172,7 +212,7 @@ export default function StudioOnboardingPage() {
             <input
               className="rounded-xl border border-slate-200 bg-white px-4 py-2"
               onChange={(event) => setApiKey(event.target.value)}
-              placeholder="Agent API key"
+              placeholder={t('Agent API key', 'API-ключ агента')}
               type="password"
               value={apiKey}
             />
@@ -183,7 +223,9 @@ export default function StudioOnboardingPage() {
             onClick={connectAgent}
             type="button"
           >
-            {loading ? 'Connecting...' : 'Connect'}
+            {loading
+              ? t('Connecting...', 'Подключение...')
+              : t('Connect', 'Подключить')}
           </button>
         </section>
       )}
@@ -192,10 +234,10 @@ export default function StudioOnboardingPage() {
         <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">
           <div className="card grid gap-4 p-6">
             <h3 className="font-semibold text-ink text-sm">
-              2. Studio profile
+              {t('2. Studio profile', '2. Профиль студии')}
             </h3>
             <label className="grid gap-2 font-medium text-slate-700 text-sm">
-              Studio name *
+              {t('Studio name *', 'Название студии *')}
               <input
                 className="rounded-xl border border-slate-200 bg-white px-4 py-2"
                 onChange={(event) => setStudioName(event.target.value)}
@@ -204,7 +246,7 @@ export default function StudioOnboardingPage() {
               />
             </label>
             <label className="grid gap-2 font-medium text-slate-700 text-sm">
-              Avatar URL *
+              {t('Avatar URL *', 'URL аватара *')}
               <input
                 className="rounded-xl border border-slate-200 bg-white px-4 py-2"
                 onChange={(event) => setAvatarUrl(event.target.value)}
@@ -213,7 +255,7 @@ export default function StudioOnboardingPage() {
               />
             </label>
             <label className="grid gap-2 font-medium text-slate-700 text-sm">
-              Style tags * (press Enter)
+              {t('Style tags * (press Enter)', 'Теги стиля * (нажмите Enter)')}
               <input
                 className="rounded-xl border border-slate-200 bg-white px-4 py-2"
                 onChange={(event) => setTagInput(event.target.value)}
@@ -223,7 +265,10 @@ export default function StudioOnboardingPage() {
                     addTag();
                   }
                 }}
-                placeholder="Minimal, Editorial, Futuristic..."
+                placeholder={t(
+                  'Minimal, Editorial, Futuristic...',
+                  'Минимализм, Редакционный, Футуризм...',
+                )}
                 value={tagInput}
               />
             </label>
@@ -235,16 +280,19 @@ export default function StudioOnboardingPage() {
                   onClick={() => removeTag(tag)}
                   type="button"
                 >
-                  {tag} ×
+                  {tag} x
                 </button>
               ))}
             </div>
             <label className="grid gap-2 font-medium text-slate-700 text-sm">
-              Personality (optional)
+              {t('Personality (optional)', 'Характер студии (опционально)')}
               <textarea
                 className="rounded-xl border border-slate-200 bg-white px-4 py-2"
                 onChange={(event) => setPersonality(event.target.value)}
-                placeholder="Describe the studio voice and tone."
+                placeholder={t(
+                  'Describe the studio voice and tone.',
+                  'Опишите голос и стиль общения студии.',
+                )}
                 rows={3}
                 value={personality}
               />
@@ -256,38 +304,62 @@ export default function StudioOnboardingPage() {
                 onClick={saveProfile}
                 type="button"
               >
-                {loading ? 'Saving...' : 'Save profile'}
+                {loading
+                  ? t('Saving...', 'Сохранение...')
+                  : t('Save profile', 'Сохранить профиль')}
               </button>
               <button
                 className="rounded-full border border-slate-200 px-5 py-2 font-semibold text-slate-600 text-xs"
                 onClick={() => setStep(3)}
                 type="button"
               >
-                Skip optional steps
+                {t('Skip optional steps', 'Пропустить необязательные шаги')}
               </button>
             </div>
           </div>
           <div className="card grid gap-3 p-6 text-slate-600 text-sm">
-            <h3 className="font-semibold text-ink text-sm">Daily budgets</h3>
+            <h3 className="font-semibold text-ink text-sm">
+              {t('Daily budgets', 'Дневные лимиты')}
+            </h3>
             <div className="rounded-xl border border-slate-200 bg-white/70 p-3 text-xs">
-              <p className="font-semibold text-slate-700">Agent actions</p>
+              <p className="font-semibold text-slate-700">
+                {t('Agent actions', 'Действия агента')}
+              </p>
               <ul className="mt-2 grid gap-1">
-                <li>PRs: {ACTION_LIMITS.pr} / day</li>
-                <li>Major PRs: {ACTION_LIMITS.major_pr} / day</li>
-                <li>Fix requests: {ACTION_LIMITS.fix_request} / day</li>
+                <li>
+                  PRs: {ACTION_LIMITS.pr} / {t('day', 'день')}
+                </li>
+                <li>
+                  Major PRs: {ACTION_LIMITS.major_pr} / {t('day', 'день')}
+                </li>
+                <li>
+                  {t('Fix requests', 'Запросы на исправление')}:{' '}
+                  {ACTION_LIMITS.fix_request} / {t('day', 'день')}
+                </li>
               </ul>
             </div>
             <div className="rounded-xl border border-slate-200 bg-white/70 p-3 text-xs">
-              <p className="font-semibold text-slate-700">Draft edit budgets</p>
+              <p className="font-semibold text-slate-700">
+                {t('Draft edit budgets', 'Лимиты правок драфта')}
+              </p>
               <ul className="mt-2 grid gap-1">
-                <li>PRs: {EDIT_LIMITS.pr} / day</li>
-                <li>Major PRs: {EDIT_LIMITS.major_pr} / day</li>
-                <li>Fix requests: {EDIT_LIMITS.fix_request} / day</li>
+                <li>
+                  PRs: {EDIT_LIMITS.pr} / {t('day', 'день')}
+                </li>
+                <li>
+                  Major PRs: {EDIT_LIMITS.major_pr} / {t('day', 'день')}
+                </li>
+                <li>
+                  {t('Fix requests', 'Запросы на исправление')}:{' '}
+                  {EDIT_LIMITS.fix_request} / {t('day', 'день')}
+                </li>
               </ul>
             </div>
             <p className="text-slate-500 text-xs">
-              Budgets reset daily (UTC). Staying within limits keeps your studio
-              trusted.
+              {t(
+                'Budgets reset daily (UTC). Staying within limits keeps your studio trusted.',
+                'Лимиты сбрасываются ежедневно (UTC). Соблюдение лимитов поддерживает доверие к студии.',
+              )}
             </p>
           </div>
         </section>
@@ -296,7 +368,7 @@ export default function StudioOnboardingPage() {
       {step === 3 && (
         <section className="card grid gap-4 p-6">
           <h3 className="font-semibold text-ink text-sm">
-            3. First actions checklist
+            {t('3. First actions checklist', '3. Чеклист первых действий')}
           </h3>
           <ul className="grid gap-2 text-slate-600 text-sm">
             {CHECKLIST.map((item) => (
@@ -313,7 +385,7 @@ export default function StudioOnboardingPage() {
             onClick={() => setStep(1)}
             type="button"
           >
-            Edit profile
+            {t('Edit profile', 'Редактировать профиль')}
           </button>
         </section>
       )}

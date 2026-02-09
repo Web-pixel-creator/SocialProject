@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { apiClient } from '../../lib/api';
 import {
   SEARCH_AB_ENABLED,
@@ -89,6 +90,7 @@ const parseTags = (value: string) =>
     .filter((tag) => tag.length > 0);
 
 function SearchPageContent() {
+  const { t } = useLanguage();
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialMode =
@@ -287,7 +289,12 @@ function SearchPageContent() {
         }
       } catch (error: unknown) {
         if (!cancelled) {
-          setError(getApiErrorMessage(error, 'Search failed.'));
+          setError(
+            getApiErrorMessage(
+              error,
+              t('Search failed.', 'Поиск не выполнен.'),
+            ),
+          );
         }
       } finally {
         if (!cancelled) {
@@ -300,7 +307,7 @@ function SearchPageContent() {
       cancelled = true;
       clearTimeout(handle);
     };
-  }, [mode, query, type, sort, range, intent, profile]);
+  }, [mode, query, type, sort, range, intent, profile, t]);
 
   useEffect(() => {
     if (!(mode === 'text' || mode === 'visual')) {
@@ -341,7 +348,12 @@ function SearchPageContent() {
     const embedding = parseEmbedding(visualEmbedding);
     const trimmedDraftId = visualDraftId.trim();
     if (!(embedding || trimmedDraftId)) {
-      setError('Provide a draft ID or an embedding array.');
+      setError(
+        t(
+          'Provide a draft ID or an embedding array.',
+          'Укажите ID драфта или массив эмбеддинга.',
+        ),
+      );
       return;
     }
     setLoading(true);
@@ -361,14 +373,24 @@ function SearchPageContent() {
       const code = getApiErrorCode(error);
       if (code === 'EMBEDDING_NOT_FOUND') {
         setResults([]);
-        setVisualNotice('Similar works available after analysis.');
+        setVisualNotice(
+          t(
+            'Similar works available after analysis.',
+            'Похожие работы будут доступны после анализа.',
+          ),
+        );
       } else {
-        setError(getApiErrorMessage(error, 'Visual search failed.'));
+        setError(
+          getApiErrorMessage(
+            error,
+            t('Visual search failed.', 'Визуальный поиск не выполнен.'),
+          ),
+        );
       }
     } finally {
       setLoading(false);
     }
-  }, [visualDraftId, visualEmbedding, visualTags, visualType]);
+  }, [visualDraftId, visualEmbedding, visualTags, visualType, t]);
 
   useEffect(() => {
     if (mode !== 'visual') {
@@ -392,18 +414,38 @@ function SearchPageContent() {
 
   const summary =
     mode === 'text'
-      ? `Results for "${query || '...'}" | type ${type} | intent ${intent} | sorted by ${sort} | range ${range}`
-      : `Visual results | type ${visualType}${
-          visualDraftId.trim() ? ` | draft ${visualDraftId.trim()}` : ''
-        }${visualTags.trim() ? ` | tags ${visualTags.trim()}` : ''}`;
+      ? `${t('Results for', 'Результаты для')} "${query || '...'}" | ${t(
+          'type',
+          'тип',
+        )} ${type} | ${t('intent', 'намерение')} ${intent} | ${t(
+          'sorted by',
+          'сортировка',
+        )} ${sort} | ${t('range', 'диапазон')} ${range}`
+      : `${t('Visual results', 'Визуальные результаты')} | ${t(
+          'type',
+          'тип',
+        )} ${visualType}${
+          visualDraftId.trim()
+            ? ` | ${t('draft', 'драфт')} ${visualDraftId.trim()}`
+            : ''
+        }${
+          visualTags.trim()
+            ? ` | ${t('tags', 'теги')} ${visualTags.trim()}`
+            : ''
+        }`;
   const showAbBadge = abEnabled;
 
   return (
     <main className="grid gap-6">
       <div className="card p-6">
-        <h2 className="font-semibold text-2xl text-ink">Search</h2>
+        <h2 className="font-semibold text-2xl text-ink">
+          {t('Search', 'Поиск')}
+        </h2>
         <p className="text-slate-600 text-sm">
-          Find drafts, releases, and studios.
+          {t(
+            'Find drafts, releases, and studios.',
+            'Находите драфты, релизы и студии.',
+          )}
         </p>
       </div>
       <div className="card grid gap-4 p-6">
@@ -417,7 +459,7 @@ function SearchPageContent() {
             onClick={() => setMode('text')}
             type="button"
           >
-            Text search
+            {t('Text search', 'Текстовый поиск')}
           </button>
           <button
             className={`rounded-lg px-3 py-2 text-sm ${
@@ -428,7 +470,7 @@ function SearchPageContent() {
             onClick={() => setMode('visual')}
             type="button"
           >
-            Visual search
+            {t('Visual search', 'Визуальный поиск')}
           </button>
         </div>
 
@@ -437,7 +479,7 @@ function SearchPageContent() {
             <input
               className="rounded-xl border border-slate-200 bg-white px-4 py-2"
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by keyword"
+              placeholder={t('Search by keyword', 'Поиск по ключевому слову')}
               value={query}
             />
             <div className="flex flex-wrap gap-3">
@@ -446,10 +488,10 @@ function SearchPageContent() {
                 onChange={(event) => setType(event.target.value)}
                 value={type}
               >
-                <option value="all">All types</option>
-                <option value="draft">Drafts</option>
-                <option value="release">Releases</option>
-                <option value="studio">Studios</option>
+                <option value="all">{t('All types', 'Все типы')}</option>
+                <option value="draft">{t('Drafts', 'Драфты')}</option>
+                <option value="release">{t('Releases', 'Релизы')}</option>
+                <option value="studio">{t('Studios', 'Студии')}</option>
               </select>
               <select
                 className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
@@ -457,29 +499,39 @@ function SearchPageContent() {
                 onChange={(event) => setIntent(event.target.value)}
                 value={intent}
               >
-                <option value="all">All intents</option>
-                <option value="needs_help">Needs help</option>
-                <option value="seeking_pr">Seeking PR</option>
-                <option value="ready_for_review">Ready for review</option>
+                <option value="all">{t('All intents', 'Все намерения')}</option>
+                <option value="needs_help">
+                  {t('Needs help', 'Нужна помощь')}
+                </option>
+                <option value="seeking_pr">{t('Seeking PR', 'Ищет PR')}</option>
+                <option value="ready_for_review">
+                  {t('Ready for review', 'Готов к ревью')}
+                </option>
               </select>
               <select
                 className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
                 onChange={(event) => setSort(event.target.value)}
                 value={sort}
               >
-                <option value="relevance">Relevance</option>
-                <option value="recency">Recency</option>
+                <option value="relevance">
+                  {t('Relevance', 'Релевантность')}
+                </option>
+                <option value="recency">{t('Recency', 'Свежие')}</option>
                 <option value="glowup">GlowUp</option>
-                <option value="impact">Impact</option>
+                <option value="impact">{t('Impact', 'Влияние')}</option>
               </select>
               <select
                 className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
                 onChange={(event) => setRange(event.target.value)}
                 value={range}
               >
-                <option value="all">All time</option>
-                <option value="7d">Last 7 days</option>
-                <option value="30d">Last 30 days</option>
+                <option value="all">{t('All time', 'За все время')}</option>
+                <option value="7d">
+                  {t('Last 7 days', 'Последние 7 дней')}
+                </option>
+                <option value="30d">
+                  {t('Last 30 days', 'Последние 30 дней')}
+                </option>
               </select>
             </div>
           </>
@@ -488,19 +540,25 @@ function SearchPageContent() {
             <input
               className="rounded-xl border border-slate-200 bg-white px-4 py-2"
               onChange={(event) => setVisualDraftId(event.target.value)}
-              placeholder="Draft ID (optional)"
+              placeholder={t('Draft ID (optional)', 'ID драфта (опционально)')}
               value={visualDraftId}
             />
             <textarea
               className="min-h-[120px] rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
               onChange={(event) => setVisualEmbedding(event.target.value)}
-              placeholder="Embedding (JSON array, e.g. [0.1, 0.2, 0.3])"
+              placeholder={t(
+                'Embedding (JSON array, e.g. [0.1, 0.2, 0.3])',
+                'Эмбеддинг (массив JSON, например [0.1, 0.2, 0.3])',
+              )}
               value={visualEmbedding}
             />
             <input
               className="rounded-xl border border-slate-200 bg-white px-4 py-2"
               onChange={(event) => setVisualTags(event.target.value)}
-              placeholder="Style tags (comma separated)"
+              placeholder={t(
+                'Style tags (comma separated)',
+                'Теги стиля (через запятую)',
+              )}
               value={visualTags}
             />
             <div className="flex flex-wrap gap-3">
@@ -509,9 +567,9 @@ function SearchPageContent() {
                 onChange={(event) => setVisualType(event.target.value)}
                 value={visualType}
               >
-                <option value="all">All types</option>
-                <option value="draft">Drafts</option>
-                <option value="release">Releases</option>
+                <option value="all">{t('All types', 'Все типы')}</option>
+                <option value="draft">{t('Drafts', 'Драфты')}</option>
+                <option value="release">{t('Releases', 'Релизы')}</option>
               </select>
               <button
                 className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-60"
@@ -519,11 +577,14 @@ function SearchPageContent() {
                 onClick={runVisualSearch}
                 type="button"
               >
-                Run visual search
+                {t('Run visual search', 'Запустить визуальный поиск')}
               </button>
             </div>
             <p className="text-slate-500 text-xs">
-              Provide either a draft ID or an embedding array.
+              {t(
+                'Provide either a draft ID or an embedding array.',
+                'Укажите либо ID драфта, либо массив эмбеддинга.',
+              )}
             </p>
           </>
         )}
@@ -553,11 +614,16 @@ function SearchPageContent() {
           !visualNotice &&
           !loading && (
             <div className="rounded-xl border border-slate-200 bg-white/70 p-3 text-slate-500 text-xs">
-              Search completed, no results.
+              {t(
+                'Search completed, no results.',
+                'Поиск завершен, результатов нет.',
+              )}
             </div>
           )}
         {loading ? (
-          <p className="text-slate-500 text-xs">Searching...</p>
+          <p className="text-slate-500 text-xs">
+            {t('Searching...', 'Выполняется поиск...')}
+          </p>
         ) : (
           <ul className="grid gap-3">
             {results.map((result, index) => {
@@ -611,7 +677,7 @@ function SearchPageContent() {
                           />
                         ) : (
                           <div className="flex h-20 w-full items-center justify-center rounded-lg bg-slate-100 font-semibold text-[11px] text-slate-400">
-                            Before
+                            {t('Before', 'До')}
                           </div>
                         )}
                         {result.afterImageUrl ? (
@@ -626,13 +692,14 @@ function SearchPageContent() {
                           />
                         ) : (
                           <div className="flex h-20 w-full items-center justify-center rounded-lg bg-slate-100 font-semibold text-[11px] text-slate-400">
-                            After
+                            {t('After', 'После')}
                           </div>
                         )}
                       </div>
                     )}
                     <p className="text-slate-500 text-xs">
-                      Score {Number(result.score ?? 0).toFixed(1)}
+                      {t('Score', 'Оценка')}{' '}
+                      {Number(result.score ?? 0).toFixed(1)}
                     </p>
                     {typeof result.glowUpScore === 'number' && (
                       <p className="text-slate-500 text-xs">
@@ -644,7 +711,9 @@ function SearchPageContent() {
               );
             })}
             {results.length === 0 && (
-              <li className="text-slate-500 text-xs">No results yet.</li>
+              <li className="text-slate-500 text-xs">
+                {t('No results yet.', 'Пока нет результатов.')}
+              </li>
             )}
           </ul>
         )}
@@ -654,11 +723,13 @@ function SearchPageContent() {
 }
 
 export default function SearchPage() {
+  const { t } = useLanguage();
+
   return (
     <Suspense
       fallback={
         <main className="card p-6 text-slate-500 text-sm">
-          Loading search...
+          {t('Loading search...', 'Загрузка поиска...')}
         </main>
       }
     >

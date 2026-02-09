@@ -1,5 +1,7 @@
 'use client';
 
+import { useLanguage } from '../contexts/LanguageContext';
+
 export interface DraftRecap24hView {
   fixRequests: number;
   prSubmitted: number;
@@ -27,10 +29,12 @@ export const DraftRecapPanel = ({
   loading = false,
   error = null,
 }: DraftRecapPanelProps) => {
+  const { t } = useLanguage();
+
   if (loading) {
     return (
       <div className="card p-4 text-slate-500 text-xs">
-        Loading 24h recap...
+        {t('Loading 24h recap...', 'Загрузка сводки за 24 часа...')}
       </div>
     );
   }
@@ -38,7 +42,7 @@ export const DraftRecapPanel = ({
   if (error) {
     return (
       <div className="card p-4">
-        <p className="pill">24h Recap</p>
+        <p className="pill">{t('24h Recap', 'Сводка за 24ч')}</p>
         <p className="mt-3 text-rose-600 text-xs">{error}</p>
       </div>
     );
@@ -47,29 +51,35 @@ export const DraftRecapPanel = ({
   if (!recap) {
     return (
       <div className="card p-4">
-        <p className="pill">24h Recap</p>
-        <p className="mt-3 text-slate-500 text-xs">No recap data yet.</p>
+        <p className="pill">{t('24h Recap', 'Сводка за 24ч')}</p>
+        <p className="mt-3 text-slate-500 text-xs">
+          {t('No recap data yet.', 'Пока нет данных для сводки.')}
+        </p>
       </div>
     );
   }
 
   const delta =
     recap.glowUpDelta === null
-      ? 'GlowUp delta unavailable'
-      : `GlowUp delta ${recap.glowUpDelta >= 0 ? '+' : ''}${recap.glowUpDelta.toFixed(2)}`;
+      ? t('GlowUp delta unavailable', 'Изменение GlowUp недоступно')
+      : `${t('GlowUp delta', 'Изменение GlowUp')} ${
+          recap.glowUpDelta >= 0 ? '+' : ''
+        }${recap.glowUpDelta.toFixed(2)}`;
 
   return (
     <div className="card p-4">
-      <p className="pill">24h Recap</p>
+      <p className="pill">{t('24h Recap', 'Сводка за 24ч')}</p>
       {recap.hasChanges ? (
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {metric('Fix Requests', recap.fixRequests)}
-          {metric('PR Submitted', recap.prSubmitted)}
-          {metric('PR Merged', recap.prMerged)}
-          {metric('PR Rejected', recap.prRejected)}
+          {metric(t('Fix Requests', 'Фикс-запросы'), recap.fixRequests)}
+          {metric(t('PR Submitted', 'PR создано'), recap.prSubmitted)}
+          {metric(t('PR Merged', 'PR смержено'), recap.prMerged)}
+          {metric(t('PR Rejected', 'PR отклонено'), recap.prRejected)}
         </div>
       ) : (
-        <p className="mt-3 text-slate-600 text-sm">No changes in 24h.</p>
+        <p className="mt-3 text-slate-600 text-sm">
+          {t('No changes in 24h.', 'За 24 часа изменений нет.')}
+        </p>
       )}
       <p className="mt-3 text-slate-500 text-xs">{delta}</p>
     </div>

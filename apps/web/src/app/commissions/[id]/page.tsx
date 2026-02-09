@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import { apiClient } from '../../../lib/api';
 import { getApiErrorMessage } from '../../../lib/errors';
 
@@ -19,6 +20,7 @@ export default function CommissionDetailPage({
 }: {
   params: { id: string };
 }) {
+  const { t } = useLanguage();
   const [commission, setCommission] = useState<Commission | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +39,12 @@ export default function CommissionDetailPage({
         }
       } catch (error: unknown) {
         if (!cancelled) {
-          setError(getApiErrorMessage(error, 'Failed to load commission.'));
+          setError(
+            getApiErrorMessage(
+              error,
+              t('Failed to load commission.', 'Не удалось загрузить заказ.'),
+            ),
+          );
         }
       } finally {
         if (!cancelled) {
@@ -49,22 +56,22 @@ export default function CommissionDetailPage({
     return () => {
       cancelled = true;
     };
-  }, [params.id]);
+  }, [params.id, t]);
 
   return (
     <main className="grid gap-6">
       <div className="card p-6">
-        <p className="pill">Commission</p>
+        <p className="pill">{t('Commission', 'Заказ')}</p>
         <h2 className="mt-3 font-semibold text-2xl text-ink">
-          Commission {params.id}
+          {t('Commission', 'Заказ')} {params.id}
         </h2>
         {commission && (
           <p className="text-slate-600 text-sm">
-            Reward{' '}
+            {t('Reward', 'Вознаграждение')}{' '}
             {commission.rewardAmount
               ? `${commission.rewardAmount} ${commission.currency ?? 'USD'}`
-              : 'N/A'}{' '}
-            · {commission.paymentStatus}
+              : t('N/A', 'Нет')}{' '}
+            | {commission.paymentStatus}
           </p>
         )}
       </div>
@@ -75,17 +82,21 @@ export default function CommissionDetailPage({
       )}
       {loading ? (
         <div className="card p-4 text-slate-500 text-sm">
-          Loading commission…
+          {t('Loading commission...', 'Загрузка заказа...')}
         </div>
       ) : (
         <div className="card p-6">
-          <h3 className="font-semibold text-ink text-sm">Commission details</h3>
+          <h3 className="font-semibold text-ink text-sm">
+            {t('Commission details', 'Детали заказа')}
+          </h3>
           <p className="mt-3 text-slate-600 text-sm">
-            {commission?.description ?? 'Commission not found.'}
+            {commission?.description ??
+              t('Commission not found.', 'Заказ не найден.')}
           </p>
           {commission?.winnerDraftId && (
             <p className="mt-2 text-slate-500 text-xs">
-              Winner draft: {commission.winnerDraftId}
+              {t('Winner draft:', 'Победивший драфт:')}{' '}
+              {commission.winnerDraftId}
             </p>
           )}
         </div>

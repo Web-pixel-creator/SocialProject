@@ -1,4 +1,6 @@
-﻿'use client';
+'use client';
+
+import { useLanguage } from '../contexts/LanguageContext';
 
 type PredictionOutcome = 'merge' | 'reject';
 
@@ -39,10 +41,12 @@ export const PredictionWidget = ({
   onPredict,
   submitLoading = false,
 }: PredictionWidgetProps) => {
+  const { t } = useLanguage();
+
   if (loading) {
     return (
       <div className="card p-4 text-slate-500 text-xs">
-        Loading prediction...
+        {t('Loading prediction...', 'Загрузка прогноза...')}
       </div>
     );
   }
@@ -50,9 +54,12 @@ export const PredictionWidget = ({
   if (authRequired) {
     return (
       <div className="card p-4">
-        <p className="pill">Predict Mode</p>
+        <p className="pill">{t('Predict Mode', 'Режим прогноза')}</p>
         <p className="mt-3 text-slate-500 text-xs">
-          Sign in as observer to submit predictions.
+          {t(
+            'Sign in as observer to submit predictions.',
+            'Войдите как наблюдатель, чтобы отправлять прогнозы.',
+          )}
         </p>
       </div>
     );
@@ -61,7 +68,7 @@ export const PredictionWidget = ({
   if (error) {
     return (
       <div className="card p-4">
-        <p className="pill">Predict Mode</p>
+        <p className="pill">{t('Predict Mode', 'Режим прогноза')}</p>
         <p className="mt-3 text-rose-600 text-xs">{error}</p>
       </div>
     );
@@ -70,9 +77,12 @@ export const PredictionWidget = ({
   if (!summary) {
     return (
       <div className="card p-4">
-        <p className="pill">Predict Mode</p>
+        <p className="pill">{t('Predict Mode', 'Режим прогноза')}</p>
         <p className="mt-3 text-slate-500 text-xs">
-          No pending PR for prediction.
+          {t(
+            'No pending PR for prediction.',
+            'Нет PR в ожидании для прогноза.',
+          )}
         </p>
       </div>
     );
@@ -83,17 +93,19 @@ export const PredictionWidget = ({
 
   return (
     <div className="card p-4">
-      <p className="pill">Predict Mode</p>
+      <p className="pill">{t('Predict Mode', 'Режим прогноза')}</p>
       <h3 className="mt-3 font-semibold text-ink text-sm">
         PR {summary.pullRequestId.slice(0, 8)}
       </h3>
       <p className="text-slate-600 text-xs">
-        Consensus: Merge {summary.consensus.merge} | Reject{' '}
-        {summary.consensus.reject} | Total {summary.consensus.total}
+        {t('Consensus:', 'Консенсус:')} {t('Merge', 'Смержить')}{' '}
+        {summary.consensus.merge} | {t('Reject', 'Отклонить')}{' '}
+        {summary.consensus.reject} | {t('Total', 'Всего')}{' '}
+        {summary.consensus.total}
       </p>
       <p className="mt-2 text-slate-500 text-xs">
-        Your accuracy: {summary.accuracy.correct}/{summary.accuracy.total} (
-        {accuracyPct}%)
+        {t('Your accuracy:', 'Ваша точность:')} {summary.accuracy.correct}/
+        {summary.accuracy.total} ({accuracyPct}%)
       </p>
       <div className="mt-3 flex items-center gap-2">
         <button
@@ -106,7 +118,7 @@ export const PredictionWidget = ({
           onClick={() => onPredict('merge')}
           type="button"
         >
-          Predict merge
+          {t('Predict merge', 'Прогноз: merge')}
         </button>
         <button
           className={`rounded-full px-3 py-1 font-semibold text-xs ${
@@ -118,15 +130,16 @@ export const PredictionWidget = ({
           onClick={() => onPredict('reject')}
           type="button"
         >
-          Predict reject
+          {t('Predict reject', 'Прогноз: reject')}
         </button>
       </div>
       {summary.observerPrediction && (
         <p className="mt-2 text-[11px] text-slate-500">
-          Your prediction: {summary.observerPrediction.predictedOutcome}
+          {t('Your prediction:', 'Ваш прогноз:')}{' '}
+          {summary.observerPrediction.predictedOutcome}
           {summary.observerPrediction.resolvedOutcome
-            ? ` | resolved ${summary.observerPrediction.resolvedOutcome}`
-            : ' | pending'}
+            ? ` | ${t('resolved', 'итог')} ${summary.observerPrediction.resolvedOutcome}`
+            : ` | ${t('pending', 'в ожидании')}`}
         </p>
       )}
     </div>

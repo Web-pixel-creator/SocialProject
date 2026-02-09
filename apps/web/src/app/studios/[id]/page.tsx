@@ -1,7 +1,8 @@
-﻿'use client';
+'use client';
 
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import { apiClient } from '../../../lib/api';
 import { getApiErrorMessage } from '../../../lib/errors';
 
@@ -26,6 +27,7 @@ interface ImpactLedgerEntry {
 }
 
 export default function StudioProfilePage() {
+  const { t } = useLanguage();
   const params = useParams<{ id?: string | string[] }>();
   const rawId = params?.id;
   const resolvedId = Array.isArray(rawId) ? rawId[0] : rawId;
@@ -43,7 +45,7 @@ export default function StudioProfilePage() {
     let cancelled = false;
     const load = async () => {
       if (!studioId) {
-        setError('Studio id missing.');
+        setError(t('Studio id missing.', 'Не указан id студии.'));
         setLoading(false);
         return;
       }
@@ -64,7 +66,12 @@ export default function StudioProfilePage() {
         }
       } catch (error: unknown) {
         if (!cancelled) {
-          setError(getApiErrorMessage(error, 'Failed to load studio.'));
+          setError(
+            getApiErrorMessage(
+              error,
+              t('Failed to load studio.', 'Не удалось загрузить студию.'),
+            ),
+          );
         }
       } finally {
         if (!cancelled) {
@@ -76,22 +83,23 @@ export default function StudioProfilePage() {
     return () => {
       cancelled = true;
     };
-  }, [studioId]);
+  }, [studioId, t]);
 
   const studioName =
     studio?.studioName ??
     studio?.studio_name ??
-    (studioId ? `Studio ${studioId}` : 'Studio');
+    (studioId ? `Studio ${studioId}` : t('Studio', 'Студия'));
   const impact = metrics?.impact ?? studio?.impact ?? 0;
   const signal = metrics?.signal ?? studio?.signal ?? 0;
 
   return (
     <main className="grid gap-6">
       <div className="card p-6">
-        <p className="pill">Studio Profile</p>
+        <p className="pill">{t('Studio Profile', 'Профиль студии')}</p>
         <h2 className="mt-3 font-semibold text-2xl text-ink">{studioName}</h2>
         <p className="text-slate-600 text-sm">
-          Impact {impact.toFixed(1)} · Signal {signal.toFixed(1)}
+          {t('Impact', 'Влияние')} {impact.toFixed(1)} | {t('Signal', 'Сигнал')}{' '}
+          {signal.toFixed(1)}
         </p>
         {studio?.personality && (
           <p className="mt-2 text-slate-500 text-sm">{studio.personality}</p>
@@ -103,34 +111,45 @@ export default function StudioProfilePage() {
         </div>
       )}
       {loading ? (
-        <div className="card p-6 text-slate-500 text-sm">Loading studio…</div>
+        <div className="card p-6 text-slate-500 text-sm">
+          {t('Loading studio...', 'Загрузка студии...')}
+        </div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="card p-6">
-            <h3 className="font-semibold text-ink text-sm">Top GlowUps</h3>
+            <h3 className="font-semibold text-ink text-sm">
+              {t('Top GlowUps', 'Лучшие GlowUp')}
+            </h3>
             <ul className="mt-4 grid gap-3 text-slate-600 text-sm">
-              <li>Editorial Landing · GlowUp 22</li>
-              <li>Neon Poster · GlowUp 18</li>
-              <li>Product Storyboard · GlowUp 15</li>
+              <li>Editorial Landing | GlowUp 22</li>
+              <li>Neon Poster | GlowUp 18</li>
+              <li>Product Storyboard | GlowUp 15</li>
             </ul>
           </div>
           <div className="card p-6">
-            <h3 className="font-semibold text-ink text-sm">Impact ledger</h3>
+            <h3 className="font-semibold text-ink text-sm">
+              {t('Impact ledger', 'Журнал влияния')}
+            </h3>
             {ledger.length === 0 ? (
               <p className="mt-4 text-slate-500 text-sm">
-                No recent contributions yet.
+                {t(
+                  'No recent contributions yet.',
+                  'Пока нет недавних вкладов.',
+                )}
               </p>
             ) : (
               <ul className="mt-4 grid gap-3 text-slate-600 text-sm">
                 {ledger.map((entry) => (
                   <li key={entry.id}>
                     <span className="font-semibold text-slate-800">
-                      {entry.kind === 'pr_merged' ? 'PR merged' : 'Fix request'}
+                      {entry.kind === 'pr_merged'
+                        ? t('PR merged', 'PR смержен')
+                        : t('Fix request', 'Запрос на исправление')}
                     </span>
-                    {entry.severity ? ` (${entry.severity})` : ''} ·{' '}
+                    {entry.severity ? ` (${entry.severity})` : ''} |{' '}
                     {entry.draftTitle}
                     <div className="text-slate-500 text-xs">
-                      Impact +{entry.impactDelta} ·{' '}
+                      {t('Impact', 'Влияние')} +{entry.impactDelta} |{' '}
                       {new Date(entry.occurredAt).toLocaleString()}
                     </div>
                   </li>
@@ -140,12 +159,12 @@ export default function StudioProfilePage() {
           </div>
           <div className="card p-6">
             <h3 className="font-semibold text-ink text-sm">
-              Recent Contributions
+              {t('Recent Contributions', 'Последние вклады')}
             </h3>
             <ul className="mt-4 grid gap-3 text-slate-600 text-sm">
-              <li>PR #124 · Hero refresh</li>
-              <li>PR #120 · Typography system</li>
-              <li>PR #115 · Color grading</li>
+              <li>PR #124 | Hero refresh</li>
+              <li>PR #120 | Typography system</li>
+              <li>PR #115 | Color grading</li>
             </ul>
           </div>
         </div>

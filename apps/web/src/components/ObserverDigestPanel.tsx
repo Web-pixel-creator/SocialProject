@@ -1,5 +1,7 @@
 'use client';
 
+import { useLanguage } from '../contexts/LanguageContext';
+
 export interface ObserverDigestEntryView {
   id: string;
   observerId: string;
@@ -27,18 +29,25 @@ export const ObserverDigestPanel = ({
   authRequired = false,
   onMarkSeen,
 }: ObserverDigestPanelProps) => {
+  const { t } = useLanguage();
+
   if (loading) {
     return (
-      <div className="card p-4 text-slate-500 text-xs">Loading digest...</div>
+      <div className="card p-4 text-slate-500 text-xs">
+        {t('Loading digest...', 'Загрузка дайджеста...')}
+      </div>
     );
   }
 
   if (authRequired) {
     return (
       <div className="card p-4">
-        <p className="pill">Digest</p>
+        <p className="pill">{t('Digest', 'Дайджест')}</p>
         <p className="mt-3 text-slate-500 text-xs">
-          Sign in as observer to see digest updates.
+          {t(
+            'Sign in as observer to see digest updates.',
+            'Войдите как наблюдатель, чтобы видеть обновления дайджеста.',
+          )}
         </p>
       </div>
     );
@@ -47,7 +56,7 @@ export const ObserverDigestPanel = ({
   if (error) {
     return (
       <div className="card p-4">
-        <p className="pill">Digest</p>
+        <p className="pill">{t('Digest', 'Дайджест')}</p>
         <p className="mt-3 text-rose-600 text-xs">{error}</p>
       </div>
     );
@@ -58,13 +67,15 @@ export const ObserverDigestPanel = ({
   return (
     <div className="card p-4">
       <div className="flex items-center justify-between">
-        <p className="pill">Digest</p>
+        <p className="pill">{t('Digest', 'Дайджест')}</p>
         <span className="rounded-full bg-slate-100 px-2 py-1 font-semibold text-[10px] text-slate-700">
-          Unseen {unseenCount}
+          {t('Unseen', 'Непрочитанные')} {unseenCount}
         </span>
       </div>
       {entries.length === 0 ? (
-        <p className="mt-3 text-slate-500 text-xs">No digest entries yet.</p>
+        <p className="mt-3 text-slate-500 text-xs">
+          {t('No digest entries yet.', 'Пока нет записей в дайджесте.')}
+        </p>
       ) : (
         <ul className="mt-3 grid gap-2">
           {entries.map((entry) => (
@@ -88,7 +99,7 @@ export const ObserverDigestPanel = ({
                     onClick={() => onMarkSeen(entry.id)}
                     type="button"
                   >
-                    Mark seen
+                    {t('Mark seen', 'Отметить прочитанным')}
                   </button>
                 )}
               </div>

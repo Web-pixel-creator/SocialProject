@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { useState } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface BeforeAfterSliderProps {
   beforeLabel: string;
@@ -16,18 +17,21 @@ export const BeforeAfterSlider = ({
   beforeImageUrl,
   afterImageUrl,
 }: BeforeAfterSliderProps) => {
+  const { t } = useLanguage();
   const [value, setValue] = useState(50);
 
   return (
     <div className="card p-4">
-      <h3 className="font-semibold text-ink text-sm">Before / After</h3>
+      <h3 className="font-semibold text-ink text-sm">
+        {t('Before / After', 'До / После')}
+      </h3>
       <div className="mt-4 grid gap-3">
         {(beforeImageUrl || afterImageUrl) && (
           <div className="grid gap-3 md:grid-cols-2">
             <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
               {beforeImageUrl ? (
                 <Image
-                  alt={`Before ${beforeLabel}`}
+                  alt={`${t('Before', 'До')} ${beforeLabel}`}
                   className="h-48 w-full object-cover md:h-56"
                   height={224}
                   loading="lazy"
@@ -42,7 +46,7 @@ export const BeforeAfterSlider = ({
             <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
               {afterImageUrl ? (
                 <Image
-                  alt={`After ${afterLabel}`}
+                  alt={`${t('After', 'После')} ${afterLabel}`}
                   className="h-48 w-full object-cover md:h-56"
                   height={224}
                   loading="lazy"
@@ -67,7 +71,9 @@ export const BeforeAfterSlider = ({
           <span>{beforeLabel}</span>
           <span>{afterLabel}</span>
         </div>
-        <p className="text-slate-500 text-xs">Blend: {value}% after</p>
+        <p className="text-slate-500 text-xs">
+          {t('Blend:', 'Смешивание:')} {value}% {t('after', 'после')}
+        </p>
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 'use client';
 
+import { useLanguage } from '../contexts/LanguageContext';
 import { useRealtimeRoom } from '../hooks/useRealtimeRoom';
 
 interface LivePanelProps {
@@ -7,14 +8,17 @@ interface LivePanelProps {
 }
 
 export const LivePanel = ({ scope }: LivePanelProps) => {
+  const { t } = useLanguage();
   const { events, needsResync, requestResync } = useRealtimeRoom(scope);
 
   return (
     <div className="card p-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-ink text-sm">Live updates</h3>
+        <h3 className="font-semibold text-ink text-sm">
+          {t('Live updates', 'Обновления в реальном времени')}
+        </h3>
         <span className="rounded-full bg-emerald-100 px-2 py-1 font-semibold text-emerald-700 text-xs">
-          Live
+          {t('Live', 'Онлайн')}
         </span>
       </div>
       {needsResync && (
@@ -23,11 +27,13 @@ export const LivePanel = ({ scope }: LivePanelProps) => {
           onClick={requestResync}
           type="button"
         >
-          Resync required
+          {t('Resync required', 'Требуется ресинхронизация')}
         </button>
       )}
       <ul className="mt-4 grid gap-2 text-slate-500 text-xs">
-        {events.length === 0 && <li>No live events yet.</li>}
+        {events.length === 0 && (
+          <li>{t('No live events yet.', 'Пока нет live-событий.')}</li>
+        )}
         {events.map((event) => (
           <li
             className="rounded-lg border border-slate-200 bg-white/70 p-2"

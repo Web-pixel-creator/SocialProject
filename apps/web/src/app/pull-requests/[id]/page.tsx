@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BeforeAfterSlider } from '../../../components/BeforeAfterSlider';
 import { FixRequestList } from '../../../components/FixRequestList';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import { apiClient } from '../../../lib/api';
 import { getApiErrorMessage } from '../../../lib/errors';
 
@@ -48,6 +49,7 @@ export default function PullRequestReviewPage({
 }: {
   params: { id: string };
 }) {
+  const { t } = useLanguage();
   const [review, setReview] = useState<ReviewPayload | null>(null);
   const [fixRequests, setFixRequests] = useState<FixRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,7 +88,15 @@ export default function PullRequestReviewPage({
         await load();
       } catch (error: unknown) {
         if (!cancelled) {
-          setError(getApiErrorMessage(error, 'Failed to load pull request.'));
+          setError(
+            getApiErrorMessage(
+              error,
+              t(
+                'Failed to load pull request.',
+                'Не удалось загрузить пул-реквест.',
+              ),
+            ),
+          );
         }
       } finally {
         if (!cancelled) {
@@ -98,7 +108,7 @@ export default function PullRequestReviewPage({
     return () => {
       cancelled = true;
     };
-  }, [load]);
+  }, [load, t]);
 
   const addressed = useMemo(() => {
     if (!review?.pullRequest?.addressedFixRequests?.length) {
@@ -122,7 +132,9 @@ export default function PullRequestReviewPage({
       return;
     }
     if (decision === 'reject' && !rejectReason.trim()) {
-      setError('Rejection reason is required.');
+      setError(
+        t('Rejection reason is required.', 'Требуется причина отклонения.'),
+      );
       return;
     }
     setDecisionLoading(true);
@@ -147,7 +159,12 @@ export default function PullRequestReviewPage({
       }
       await load();
     } catch (error: unknown) {
-      setError(getApiErrorMessage(error, 'Decision failed.'));
+      setError(
+        getApiErrorMessage(
+          error,
+          t('Decision failed.', 'Не удалось принять решение.'),
+        ),
+      );
     } finally {
       setDecisionLoading(false);
     }
@@ -173,7 +190,7 @@ export default function PullRequestReviewPage({
   if (loading) {
     return (
       <div className="card p-6 text-slate-500 text-sm">
-        Loading pull request...
+        {t('Loading pull request...', 'Загрузка пул-реквеста...')}
       </div>
     );
   }
@@ -181,23 +198,37 @@ export default function PullRequestReviewPage({
   if (!review) {
     return (
       <div className="card p-6 text-slate-500 text-sm">
-        {error ?? 'Pull request not found.'}
+        {error ?? t('Pull request not found.', 'Пул-реквест не найден.')}
       </div>
     );
   }
 
   const { pullRequest, draft, authorStudio, makerStudio, metrics } = review;
+  const statusLabel = (() => {
+    if (pullRequest.status === 'pending') {
+      return t('pending', 'в ожидании');
+    }
+    if (pullRequest.status === 'merged') {
+      return t('merged', 'смержен');
+    }
+    if (pullRequest.status === 'rejected') {
+      return t('rejected', 'отклонен');
+    }
+    return t('changes requested', 'нужны доработки');
+  })();
 
   return (
     <main className="grid gap-6">
       <div className="card p-6">
-        <p className="pill">PR Review</p>
+        <p className="pill">{t('PR Review', 'Ревью PR')}</p>
         <h2 className="mt-3 font-semibold text-2xl text-ink">
           PR {pullRequest.id}
         </h2>
         <p className="text-slate-600 text-sm">
-          {makerStudio} → {authorStudio} · {pullRequest.severity.toUpperCase()}{' '}
-          · {pullRequest.status}
+          {`${makerStudio} -> ${authorStudio}`} |{' '}
+          {pullRequest.severity.toUpperCase()}
+          {' | '}
+          {statusLabel}
         </p>
       </div>
       {error && (
@@ -216,7 +247,9 @@ export default function PullRequestReviewPage({
           />
 
           <div className="card p-4">
-            <h3 className="font-semibold text-ink text-sm">PR Summary</h3>
+            <h3 className="font-semibold text-ink text-sm">
+              {t('PR Summary', 'Сводка PR')}
+            </h3>
             <p className="mt-2 text-slate-600 text-sm">
               {pullRequest.description}
             </p>
@@ -227,40 +260,52 @@ export default function PullRequestReviewPage({
 
         <div className="grid gap-6">
           <div className="card p-4 text-slate-600 text-sm">
-            <h3 className="font-semibold text-ink text-sm">Metrics delta</h3>
+            <h3 className="font-semibold text-ink text-sm">
+              {t('Metrics delta', 'Изменение метрик')}
+            </h3>
             <div className="mt-3 grid gap-2">
               <div className="flex items-center justify-between">
-                <span>Current GlowUp</span>
+                <span>{t('Current GlowUp', 'Текущий GlowUp')}</span>
                 <span>{metrics.currentGlowUp.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span>Predicted GlowUp</span>
+                <span>{t('Predicted GlowUp', 'Прогнозируемый GlowUp')}</span>
                 <span>{metrics.predictedGlowUp.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span>GlowUp Δ</span>
+                <span>{t('GlowUp delta', 'Изменение GlowUp')}</span>
                 <span>{metrics.glowUpDelta.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span>Impact Δ (maker)</span>
+                <span>
+                  {t('Impact delta (maker)', 'Изменение impact (автор)')}
+                </span>
                 <span>+{metrics.impactDelta}</span>
               </div>
             </div>
           </div>
 
           <div className="card p-4">
-            <h3 className="font-semibold text-ink text-sm">Decision</h3>
+            <h3 className="font-semibold text-ink text-sm">
+              {t('Decision', 'Решение')}
+            </h3>
             <textarea
               className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
               onChange={(event) => setFeedback(event.target.value)}
-              placeholder="Add feedback (optional)."
+              placeholder={t(
+                'Add feedback (optional).',
+                'Добавьте комментарий (опционально).',
+              )}
               rows={3}
               value={feedback}
             />
             <textarea
               className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
               onChange={(event) => setRejectReason(event.target.value)}
-              placeholder="Rejection reason (required for reject)."
+              placeholder={t(
+                'Rejection reason (required for reject).',
+                'Причина отклонения (обязательно для reject).',
+              )}
               rows={3}
               value={rejectReason}
             />
@@ -271,7 +316,7 @@ export default function PullRequestReviewPage({
                 onClick={() => handleDecision('merge')}
                 type="button"
               >
-                Merge (M)
+                {t('Merge (M)', 'Смержить (M)')}
               </button>
               <button
                 className="rounded-full border border-slate-200 px-4 py-2 font-semibold text-slate-600 text-xs"
@@ -279,7 +324,7 @@ export default function PullRequestReviewPage({
                 onClick={() => handleDecision('request_changes')}
                 type="button"
               >
-                Request changes
+                {t('Request changes', 'Запросить доработки')}
               </button>
               <button
                 className="rounded-full bg-rose-500 px-4 py-2 font-semibold text-white text-xs"
@@ -287,7 +332,7 @@ export default function PullRequestReviewPage({
                 onClick={() => handleDecision('reject')}
                 type="button"
               >
-                Reject (R)
+                {t('Reject (R)', 'Отклонить (R)')}
               </button>
             </div>
           </div>
