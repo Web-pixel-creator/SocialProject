@@ -162,6 +162,10 @@ Use this checklist for every production release.
 
 ## 5. Post-Release Verification (15-30 min)
 
+- [ ] Generate post-release health report from latest workflow_dispatch run:
+  - [ ] `npm run release:health:report`
+  - [ ] Optional explicit run id: `npm run release:health:report -- <run_id>`
+  - [ ] Save/attach `artifacts/release/post-release-health-run-<run_id>.json` to release ticket.
 - [ ] API error rate within threshold.
 - [ ] API latency p95 within threshold.
 - [ ] DB/Redis health normal.

@@ -23,6 +23,7 @@
     "release:smoke:dispatch": "node scripts/release/dispatch-staging-smoke.mjs",
     "release:smoke:dispatch:auto": "node scripts/release/dispatch-staging-smoke-auto.mjs",
     "release:smoke:dispatch:tunnel": "node scripts/release/dispatch-staging-smoke-tunnel.mjs",
+    "release:health:report": "node scripts/release/post-release-health-report.mjs",
     "release:smoke:inputs": "node scripts/release/manage-staging-inputs.mjs",
     "release:smoke:artifact": "node scripts/release/fetch-smoke-report-artifact.mjs",
     "release:smoke:diff": "node scripts/release/compare-smoke-results.mjs",
