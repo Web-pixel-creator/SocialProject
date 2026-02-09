@@ -1,6 +1,13 @@
 import { execFileSync, spawn } from 'node:child_process';
 
 const GITHUB_API_VERSION = '2022-11-28';
+const USAGE = `Usage: npm run release:smoke:dispatch:auto -- [--help] [--dry-run] [--prefer-tunnel]
+
+Flags:
+  --help           Show this message and exit.
+  --dry-run        Resolve and print selected mode without dispatching.
+  --prefer-tunnel  Force tunnel-helper mode (same as RELEASE_AUTO_PREFER_TUNNEL=true).
+`;
 
 const toErrorMessage = (error) =>
   error instanceof Error ? error.message : String(error);
@@ -169,15 +176,49 @@ const runCommand = ({ args, env }) =>
     });
   });
 
+const parseCliArgs = (argv) => {
+  const args = argv.slice(2);
+  const options = {
+    help: false,
+    dryRun: false,
+    preferTunnel: false,
+  };
+
+  for (const arg of args) {
+    if (arg === '--help' || arg === '-h') {
+      options.help = true;
+      continue;
+    }
+    if (arg === '--dry-run') {
+      options.dryRun = true;
+      continue;
+    }
+    if (arg === '--prefer-tunnel') {
+      options.preferTunnel = true;
+      continue;
+    }
+    throw new Error(`Unsupported argument '${arg}'.\n\n${USAGE}`);
+  }
+
+  return options;
+};
+
 const main = async () => {
+  const cli = parseCliArgs(process.argv);
+  if (cli.help) {
+    process.stdout.write(`${USAGE}\n`);
+    return;
+  }
+
   const token = resolveToken();
   const repoSlug = resolveRepoSlug();
   const envApiBaseUrl = (process.env.RELEASE_API_BASE_URL ?? '').trim();
   const envWebBaseUrl = (process.env.RELEASE_WEB_BASE_URL ?? '').trim();
   const envCsrfToken = (process.env.RELEASE_CSRF_TOKEN ?? '').trim();
   const preferTunnel =
+    cli.preferTunnel ||
     (process.env.RELEASE_AUTO_PREFER_TUNNEL ?? 'false').trim().toLowerCase() ===
-    'true';
+      'true';
 
   let selected = {
     mode: 'tunnel-helper',
@@ -207,6 +248,21 @@ const main = async () => {
 
   process.stdout.write(`Repository: ${repoSlug}\n`);
   process.stdout.write(`Mode: ${selected.mode}\n`);
+  process.stdout.write(`Token configured: ${token.length > 0 ? 'yes' : 'no'}\n`);
+
+  if (cli.dryRun || (process.env.RELEASE_AUTO_DRY_RUN ?? '').trim() === 'true') {
+    if (selected.mode === 'tunnel-helper') {
+      process.stdout.write(
+        'Dry-run selected tunnel-helper mode (release:smoke:dispatch:tunnel).\n',
+      );
+      return;
+    }
+
+    process.stdout.write(
+      `Dry-run selected URL-input mode with api='${selected.apiBaseUrl}' web='${selected.webBaseUrl}' csrf=${selected.csrfToken ? 'configured' : 'not-configured'}.\n`,
+    );
+    return;
+  }
 
   if (selected.mode === 'tunnel-helper') {
     await runCommand({

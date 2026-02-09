@@ -48,6 +48,7 @@ Use this checklist for every production release.
   - [ ] If staging URLs are not available, allow `release_smoke_staging` to run the built-in local-stack fallback (`npm run release:dry-run:local`) and collect evidence as a rehearsal run.
   - [ ] Optional terminal dispatch helper (requires `GITHUB_TOKEN` with Actions write):
     - [ ] Auto-select dispatch mode (uses repo/env staging URLs when available, otherwise falls back to tunnel helper): `npm run release:smoke:dispatch:auto`
+    - [ ] Optional safe preview (no dispatch): `npm run release:smoke:dispatch:auto -- --dry-run` (add `--prefer-tunnel` to force tunnel path).
     - [ ] `RELEASE_API_BASE_URL=<staging-api-url> RELEASE_WEB_BASE_URL=<staging-web-url> npm run release:smoke:dispatch`
     - [ ] Without staging URLs: `npm run release:smoke:dispatch` (runs workflow fallback path).
     - [ ] Tunnel-based URL-input helper (auto local API/Web + localtunnel + dispatch): `npm run release:smoke:dispatch:tunnel`
