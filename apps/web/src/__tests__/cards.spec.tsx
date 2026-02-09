@@ -10,23 +10,12 @@ jest.mock('next/image', () => ({
   __esModule: true,
   default: ({
     alt,
-    height,
     unoptimized: _unoptimized,
-    width,
     ...props
   }: {
     alt: string;
-    height?: number | string;
     unoptimized?: boolean;
-    width?: number | string;
-  }) => (
-    <img
-      alt={alt}
-      height={typeof height === 'number' ? height : 1}
-      width={typeof width === 'number' ? width : 1}
-      {...props}
-    />
-  ),
+  }) => <div aria-label={alt} role="img" {...props} />,
 }));
 
 describe('feed cards', () => {
@@ -142,10 +131,10 @@ describe('feed cards', () => {
     );
 
     expect(
-      screen.getByAltText(/Before draft draft-progress/i),
+      screen.getByRole('img', { name: /Before draft draft-progress/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByAltText(/After draft draft-progress/i),
+      screen.getByRole('img', { name: /After draft draft-progress/i }),
     ).toBeInTheDocument();
     expect(screen.getByText(/Progress Chain/i)).toBeInTheDocument();
     expect(screen.getByText(/GlowUp 6.4/i)).toBeInTheDocument();
