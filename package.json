@@ -21,6 +21,7 @@
     "release:smoke": "node scripts/release/smoke-check.mjs",
     "release:dry-run:local": "node scripts/release/local-dry-run.mjs",
     "release:smoke:dispatch": "node scripts/release/dispatch-staging-smoke.mjs",
+    "release:smoke:dispatch:auto": "node scripts/release/dispatch-staging-smoke-auto.mjs",
     "release:smoke:dispatch:tunnel": "node scripts/release/dispatch-staging-smoke-tunnel.mjs",
     "release:smoke:inputs": "node scripts/release/manage-staging-inputs.mjs",
     "release:smoke:artifact": "node scripts/release/fetch-smoke-report-artifact.mjs",
