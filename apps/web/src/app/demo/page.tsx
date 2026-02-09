@@ -1,7 +1,8 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { apiClient } from '../../lib/api';
 import { getApiErrorMessage } from '../../lib/errors';
 
@@ -13,13 +14,14 @@ interface DemoResult {
 }
 
 const steps = [
-  { key: 'draft', label: 'Draft created' },
-  { key: 'fix', label: 'Fix request created' },
-  { key: 'pr', label: 'PR created and merged' },
-  { key: 'glow', label: 'GlowUp updated' },
+  { key: 'draft', label: 'Draft created', labelRu: 'Черновик создан' },
+  { key: 'fix', label: 'Fix request created', labelRu: 'Фикс создан' },
+  { key: 'pr', label: 'PR created and merged', labelRu: 'PR создан и влит' },
+  { key: 'glow', label: 'GlowUp updated', labelRu: 'GlowUp обновлен' },
 ] as const;
 
 export default function DemoPage() {
+  const { t } = useLanguage();
   const [draftId, setDraftId] = useState('');
   const [result, setResult] = useState<DemoResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -34,8 +36,13 @@ export default function DemoPage() {
         draftId: draftId.trim() || undefined,
       });
       setResult(response.data);
-    } catch (error: unknown) {
-      setError(getApiErrorMessage(error, 'Failed to run demo.'));
+    } catch (typedError: unknown) {
+      setError(
+        getApiErrorMessage(
+          typedError,
+          t('Failed to run demo.', 'Не удалось запустить демо.'),
+        ),
+      );
     } finally {
       setLoading(false);
     }
@@ -63,22 +70,28 @@ export default function DemoPage() {
   return (
     <main className="grid gap-6">
       <div className="card p-6">
-        <p className="pill">Demo</p>
+        <p className="pill">{t('Demo', 'Демо')}</p>
         <h2 className="mt-3 font-semibold text-2xl text-ink">
-          One-click demo flow
+          {t('One-click demo flow', 'Демо-флоу в один клик')}
         </h2>
         <p className="text-slate-600 text-sm">
-          Runs the full loop: Draft -&gt; Fix Request -&gt; PR -&gt; GlowUp.
+          {t(
+            'Runs the full loop: Draft -> Fix Request -> PR -> GlowUp.',
+            'Запускает полный цикл: Черновик -> Фикс -> PR -> GlowUp.',
+          )}
         </p>
       </div>
 
       <section className="card grid gap-4 p-6">
         <label className="grid gap-2 font-medium text-slate-700 text-sm">
-          Draft ID (optional)
+          {t('Draft ID (optional)', 'ID черновика (необязательно)')}
           <input
             className="rounded-xl border border-slate-200 bg-white px-4 py-2"
             onChange={(event) => setDraftId(event.target.value)}
-            placeholder="Draft UUID or leave blank"
+            placeholder={t(
+              'Draft UUID or leave blank',
+              'UUID черновика или оставьте пустым',
+            )}
             value={draftId}
           />
         </label>
@@ -89,14 +102,16 @@ export default function DemoPage() {
             onClick={runDemo}
             type="button"
           >
-            {loading ? 'Running...' : 'Run demo'}
+            {loading
+              ? t('Running...', 'Выполняется...')
+              : t('Run demo', 'Запустить демо')}
           </button>
           {result?.draftId && (
             <Link
               className="rounded-full border border-slate-200 px-5 py-2 font-semibold text-slate-600 text-xs"
               href={`/drafts/${result.draftId}`}
             >
-              Open draft
+              {t('Open draft', 'Открыть черновик')}
             </Link>
           )}
         </div>
@@ -108,27 +123,31 @@ export default function DemoPage() {
       </section>
 
       <section className="card grid gap-3 p-6">
-        <h3 className="font-semibold text-ink text-sm">Steps</h3>
+        <h3 className="font-semibold text-ink text-sm">{t('Steps', 'Шаги')}</h3>
         <ul className="grid gap-2 text-sm">
           {steps.map((step) => (
             <li
               className="flex items-center justify-between rounded-xl border border-slate-200 bg-white/70 p-3"
               key={step.key}
             >
-              <span className="text-slate-700">{step.label}</span>
+              <span className="text-slate-700">
+                {t(step.label, step.labelRu)}
+              </span>
               <span
                 className={
                   isDone(step.key) ? 'text-emerald-600' : 'text-slate-400'
                 }
               >
-                {isDone(step.key) ? 'Done' : 'Pending'}
+                {isDone(step.key)
+                  ? t('Done', 'Готово')
+                  : t('Pending', 'Ожидание')}
               </span>
             </li>
           ))}
         </ul>
         {result && (
           <div className="rounded-xl border border-slate-200 bg-white/70 p-3 text-slate-500 text-xs">
-            GlowUp: {Number(result.glowUp ?? 0).toFixed(1)}
+            {t('GlowUp', 'GlowUp')}: {Number(result.glowUp ?? 0).toFixed(1)}
           </div>
         )}
       </section>

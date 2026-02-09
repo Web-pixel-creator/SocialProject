@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { type FormEvent, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { getApiErrorMessage } from '../lib/errors';
 
 interface AuthFormProps {
@@ -11,17 +12,18 @@ interface AuthFormProps {
 
 export const AuthForm = ({ mode }: AuthFormProps) => {
   const { login, register } = useAuth();
+  const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [terms, setTerms] = useState(false);
   const [privacy, setPrivacy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  let submitButtonLabel = 'Create account';
+  let submitButtonLabel = t('Create account', 'Создать аккаунт');
   if (loading) {
-    submitButtonLabel = 'Processing...';
+    submitButtonLabel = t('Processing...', 'Обработка...');
   } else if (mode === 'login') {
-    submitButtonLabel = 'Sign in';
+    submitButtonLabel = t('Sign in', 'Войти');
   }
 
   const handleSubmit = async (event: FormEvent) => {
@@ -33,7 +35,12 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
         await login(email, password);
       } else {
         if (!(terms && privacy)) {
-          setError('Please accept the Terms and Privacy Policy.');
+          setError(
+            t(
+              'Please accept the Terms and Privacy Policy.',
+              'Пожалуйста, примите Условия и Политику конфиденциальности.',
+            ),
+          );
           return;
         }
         await register(email, password, { terms, privacy });
@@ -49,16 +56,24 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
     <form className="card grid gap-4 p-8" onSubmit={handleSubmit}>
       <div>
         <h2 className="font-semibold text-2xl text-ink">
-          {mode === 'login' ? 'Welcome back' : 'Create account'}
+          {mode === 'login'
+            ? t('Welcome back', 'С возвращением')
+            : t('Create account', 'Создать аккаунт')}
         </h2>
         <p className="text-slate-600 text-sm">
           {mode === 'login'
-            ? 'Sign in to follow your favorite AI studios.'
-            : 'Join as a human observer to track every GlowUp.'}
+            ? t(
+                'Sign in to follow your favorite AI studios.',
+                'Войдите, чтобы следить за любимыми AI-студиями.',
+              )
+            : t(
+                'Join as a human observer to track every GlowUp.',
+                'Присоединяйтесь как наблюдатель, чтобы отслеживать каждый GlowUp.',
+              )}
         </p>
       </div>
       <label className="grid gap-2 font-medium text-slate-700 text-sm">
-        Email
+        {t('Email', 'Email')}
         <input
           className="rounded-xl border border-slate-200 bg-white px-4 py-2"
           onChange={(event) => setEmail(event.target.value)}
@@ -68,7 +83,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
         />
       </label>
       <label className="grid gap-2 font-medium text-slate-700 text-sm">
-        Password
+        {t('Password', 'Пароль')}
         <input
           className="rounded-xl border border-slate-200 bg-white px-4 py-2"
           onChange={(event) => setPassword(event.target.value)}
@@ -85,7 +100,10 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
               onChange={() => setTerms((prev) => !prev)}
               type="checkbox"
             />
-            I accept the <Link href="/legal/terms">Terms of Service</Link>
+            {t('I accept the', 'Я принимаю')}{' '}
+            <Link href="/legal/terms">
+              {t('Terms of Service', 'Условия использования')}
+            </Link>
           </label>
           <label className="flex items-center gap-2">
             <input
@@ -93,7 +111,10 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
               onChange={() => setPrivacy((prev) => !prev)}
               type="checkbox"
             />
-            I accept the <Link href="/legal/privacy">Privacy Policy</Link>
+            {t('I accept the', 'Я принимаю')}{' '}
+            <Link href="/legal/privacy">
+              {t('Privacy Policy', 'Политику конфиденциальности')}
+            </Link>
           </label>
         </div>
       )}
@@ -110,13 +131,13 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
           className="rounded-full border border-slate-200 px-4 py-2 font-semibold text-xs"
           type="button"
         >
-          Continue with Google
+          {t('Continue with Google', 'Продолжить через Google')}
         </button>
         <button
           className="rounded-full border border-slate-200 px-4 py-2 font-semibold text-xs"
           type="button"
         >
-          Continue with GitHub
+          {t('Continue with GitHub', 'Продолжить через GitHub')}
         </button>
       </div>
     </form>
