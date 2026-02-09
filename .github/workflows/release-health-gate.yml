@@ -1,0 +1,135 @@
+name: Release Health Gate
+
+on:
+  workflow_run:
+    workflows: ['CI']
+    types: [completed]
+
+jobs:
+  release_health_gate:
+    name: Release Health Gate
+    if: github.event.workflow_run.event == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    env:
+      RELEASE_TARGET_RUN_ID: ${{ github.event.workflow_run.id }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fetch release smoke artifact (best effort)
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run release:smoke:artifact -- "$RELEASE_TARGET_RUN_ID"
+
+      - name: Generate post-release health report (strict)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          mkdir -p artifacts/release
+          npm run release:health:report -- "$RELEASE_TARGET_RUN_ID" --json --strict --skip-smoke-fetch > "artifacts/release/post-release-health-summary-${RELEASE_TARGET_RUN_ID}.json"
+
+      - name: Validate post-release health report schema
+        run: npm run release:health:schema:check -- "artifacts/release/post-release-health-run-${RELEASE_TARGET_RUN_ID}.json"
+
+      - name: Generate post-release health schema summary
+        shell: bash
+        run: |
+          npm run release:health:schema:check:json -- "artifacts/release/post-release-health-run-${RELEASE_TARGET_RUN_ID}.json" > "artifacts/release/post-release-health-schema-summary-${RELEASE_TARGET_RUN_ID}.json"
+
+      - name: Append post-release health summary to step summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -z "${GITHUB_STEP_SUMMARY:-}" ]; then
+            exit 0
+          fi
+
+          node <<'NODE'
+          const fs = require('node:fs');
+          const runId = process.env.RELEASE_TARGET_RUN_ID;
+          const summaryOutputPath = process.env.GITHUB_STEP_SUMMARY;
+          if (!runId || !summaryOutputPath) {
+            process.exit(0);
+          }
+
+          const healthSummaryPath = `artifacts/release/post-release-health-summary-${runId}.json`;
+          const schemaSummaryPath = `artifacts/release/post-release-health-schema-summary-${runId}.json`;
+          const lines = [
+            '### Post-release Health Gate',
+            '',
+            `- target run id: \`${runId}\``,
+          ];
+
+          if (fs.existsSync(healthSummaryPath)) {
+            try {
+              const payload = JSON.parse(fs.readFileSync(healthSummaryPath, 'utf8'));
+              lines.push(
+                `- health status: \`${String(payload.status ?? 'unknown')}\``,
+                `- required jobs: \`${String(payload?.totals?.requiredJobsPassed ?? 0)}/${String(payload?.totals?.requiredJobsTotal ?? 0)}\``,
+                `- failed jobs: \`${String(payload?.totals?.failedJobsTotal ?? 0)}\``,
+                `- artifacts discovered: \`${String(payload?.totals?.artifactsDiscovered ?? 0)}\``,
+              );
+            } catch (error) {
+              lines.push(`- health summary parse error: \`${String(error && error.message ? error.message : error)}\``);
+            }
+          } else {
+            lines.push('- health summary: `missing`');
+          }
+
+          if (fs.existsSync(schemaSummaryPath)) {
+            try {
+              const payload = JSON.parse(fs.readFileSync(schemaSummaryPath, 'utf8'));
+              lines.push(
+                `- schema status: \`${String(payload.status ?? 'unknown')}\``,
+                `- schema validated payloads: \`${String(payload?.totals?.validatedPayloads ?? 0)}\``,
+              );
+            } catch (error) {
+              lines.push(`- schema summary parse error: \`${String(error && error.message ? error.message : error)}\``);
+            }
+          } else {
+            lines.push('- schema summary: `missing`');
+          }
+
+          lines.push('');
+          fs.appendFileSync(summaryOutputPath, `${lines.join('\n')}\n`);
+          NODE
+
+      - name: Upload post-release health report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: post-release-health-report
+          path: artifacts/release/post-release-health-run-${{ env.RELEASE_TARGET_RUN_ID }}.json
+          if-no-files-found: ignore
+
+      - name: Upload post-release health summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: post-release-health-summary
+          path: artifacts/release/post-release-health-summary-${{ env.RELEASE_TARGET_RUN_ID }}.json
+          if-no-files-found: ignore
+
+      - name: Upload post-release health schema summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: post-release-health-schema-summary
+          path: artifacts/release/post-release-health-schema-summary-${{ env.RELEASE_TARGET_RUN_ID }}.json
+          if-no-files-found: ignore

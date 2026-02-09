@@ -169,6 +169,8 @@ Use this checklist for every production release.
   - [ ] Optional strict gate (fails command on unhealthy run): `npm run release:health:report -- --strict`
   - [ ] Validate report schema: `npm run release:health:schema:check` (or explicit file path: `npm run release:health:schema:check -- artifacts/release/post-release-health-run-<run_id>.json`)
   - [ ] Optional machine-readable schema validation summary: `npm run release:health:schema:check:json`
+  - [ ] Confirm `Release Health Gate` workflow passed for this run (`workflow_run` automation after `CI` `workflow_dispatch`).
+  - [ ] Confirm artifacts from `Release Health Gate`: `post-release-health-report`, `post-release-health-summary`, `post-release-health-schema-summary`.
   - [ ] Save/attach `artifacts/release/post-release-health-run-<run_id>.json` to release ticket.
 - [ ] API error rate within threshold.
 - [ ] API latency p95 within threshold.
