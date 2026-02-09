@@ -37,31 +37,46 @@ Copy this block for each release:
 
 - Scope: recover CI release workflow after a blocking Ultracite full-scope failure by applying test-suite formatting and strict image-mock compliance, then re-running release dispatch gates end-to-end.
 - Release commander: Codex automation.
-- Window (UTC): 2026-02-09 03:57 -> 2026-02-09 06:17.
+- Window (UTC): 2026-02-09 03:57 -> 2026-02-09 06:59.
 - Release artifact:
   - Git tag: `v0.1.40` (prepared in this release step).
 - Dry-run:
   - Local rehearsal: pass (`npm run release:dry-run:local`), summary `pass=true`, `totalSteps=19`, `failedSteps=0`.
   - Staging smoke: pass (`release_smoke_staging`, workflow run `#278`, fallback mode) on head `ab8870e`.
+  - Staging smoke (URL-input mode via helper command): pass (`release:smoke:dispatch:tunnel`, workflow run `#281`) on head `f1abaa7`.
   - Smoke report artifact/link:
     - fallback mode: `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21814461498`, artifact id `5427704062`)
     - Local downloaded and extracted copy: `artifacts/release/ci-run-21814461498/smoke-results.json`
+    - URL-input mode (helper command): `release-smoke-report` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21815398448`, artifact id `5428034061`)
+    - Local downloaded and extracted copy: `artifacts/release/ci-run-21815398448/smoke-results.json`
     - Snapshot: `pass=true`, `totalSteps=19`, `failedSteps=0`.
   - Release smoke preflight summary artifact/link:
     - fallback mode: `release-smoke-preflight-summary` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21814461498`, artifact id `5427703838`)
     - Snapshot: `status=skipped`, `mode=fallback-local-stack`, missing URL inputs.
+    - URL-input mode (helper command): `release-smoke-preflight-summary` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21815398448`, artifact id `5428033977`)
+    - URL-input snapshot: `status=pass`, `mode=url-input`, `attempts=2`, `durationMs=2510`, first success latency `1142ms` for API/Web.
   - Retry schema gate summary artifact/link:
     - `retry-schema-gate-summary` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21814461498`, artifact id `5427701951`).
+    - URL-input mode (helper command): `retry-schema-gate-summary` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21815398448`, artifact id `5428036393`).
   - Standalone preflight schema summary artifact/link:
     - `release-smoke-preflight-schema-summary` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21814461498`, artifact id `5427702054`).
-  - Local perf gate snapshot:
-    - `artifacts/perf/pre-release-results.json`
-    - `api.p95Ms=26.68`, `web.p95Ms=10.75`, `failedRequests=0`, `pass=true`.
+    - URL-input mode (helper command): `release-smoke-preflight-schema-summary` (run: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/21815398448`, artifact id `5428036493`).
+  - Tunnel helper local summary evidence:
+    - `artifacts/release/tunnel-dispatch-retry-summary.json` -> `status=pass`, `totalAttempts=1`, `runId=21815398448`.
+    - `artifacts/release/tunnel-preflight-summary.json` -> `status=pass`, `mode=url-input`, `attempts=2`, `durationMs=2510`.
+  - Smoke diff evidence:
+    - Command: `npm run release:smoke:diff -- 21814461498 21815398448`
+    - JSON report: `artifacts/release/smoke-diff-21814461498-vs-21815398448.json`
+    - Result: pass -> pass, failed steps `0 -> 0`, no pass regressions.
+- Local perf gate snapshot:
+  - `artifacts/perf/pre-release-results.json`
+  - `api.p95Ms=26.68`, `web.p95Ms=10.75`, `failedRequests=0`, `pass=true`.
 - Gates:
   - ultracite (local): pass (`npm run ultracite:check`).
   - tests (local): pass (`npm run test -- --runInBand`, `80/80` suites, `484/484` tests).
   - security gate (local): pass (`npm run security:check`).
   - CI workflow_dispatch corroboration (run `#278`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` completed with `success`; `ultracite_pr` and `release_tunnel_helper_ci_rehearsal` were `skipped` by design.
+  - CI workflow_dispatch corroboration (run `#281`): `ultracite`, `test`, `security_hygiene`, `release_smoke_staging`, `performance_gate` completed with `success`; `ultracite_pr` and `release_tunnel_helper_ci_rehearsal` were `skipped` by design.
 - Rollout result: release prepared and tagged.
 - Incidents:
   - Prior workflow run `#276` (`https://github.com/Web-pixel-creator/SocialProject/actions/runs/21814288733`) failed only on `Ultracite Full Scope (blocking)` while smoke/perf/security/test passed; resolved by formatting and mock-compliance updates in commit `ab8870e`.
