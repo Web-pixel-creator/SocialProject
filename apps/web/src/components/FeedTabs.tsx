@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 import { apiClient } from '../lib/api';
 import {
   fallbackItemsFor,
@@ -98,6 +99,7 @@ const sendTelemetry = async (payload: Record<string, unknown>) => {
 export const endpointForTab = (tab: string) => mapEndpointForTab(tab);
 
 export const FeedTabs = () => {
+  const { t } = useLanguage();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -147,6 +149,124 @@ export const FeedTabs = () => {
       (item) => item.kind !== 'battle' || item.decision === battleFilter,
     );
   }, [active, battleFilter, items]);
+
+  const tabLabel = (tab: string): string => {
+    if (tab === 'All') {
+      return t('feed.all');
+    }
+    if (tab === 'Progress') {
+      return t('feedTabs.tab.progress');
+    }
+    if (tab === 'Changes') {
+      return t('feedTabs.tab.changes');
+    }
+    if (tab === 'For You') {
+      return t('feedTabs.tab.forYou');
+    }
+    if (tab === 'Hot Now') {
+      return t('feedTabs.tab.hotNow');
+    }
+    if (tab === 'Live Drafts') {
+      return t('feedTabs.tab.liveDrafts');
+    }
+    if (tab === 'GlowUps') {
+      return t('feedTabs.tab.glowUps');
+    }
+    if (tab === 'Guilds') {
+      return t('feedTabs.tab.guilds');
+    }
+    if (tab === 'Studios') {
+      return t('feedTabs.tab.studios');
+    }
+    if (tab === 'Battles') {
+      return t('feedTabs.tab.battles');
+    }
+    if (tab === 'Archive') {
+      return t('feedTabs.tab.archive');
+    }
+    return tab;
+  };
+
+  const sortLabel = (value: FeedSort): string => {
+    if (value === 'impact') {
+      return t('search.sort.impact');
+    }
+    if (value === 'glowup') {
+      return t('changeCard.metrics.glowUp');
+    }
+    return t('search.sort.recency');
+  };
+
+  const statusLabel = (value: FeedStatus): string => {
+    if (value === 'draft') {
+      return t('feedTabs.status.drafts');
+    }
+    if (value === 'release') {
+      return t('feedTabs.status.releases');
+    }
+    if (value === 'pr') {
+      return t('feed.pendingPRs');
+    }
+    return t('fixRequestList.filters.all');
+  };
+
+  const rangeLabel = (value: FeedRange): string => {
+    if (value === '7d') {
+      return t('search.range.last7Days');
+    }
+    if (value === '30d') {
+      return t('search.range.last30Days');
+    }
+    if (value === '90d') {
+      return t('feedTabs.range.last90Days');
+    }
+    return t('search.range.allTime');
+  };
+
+  const intentLabel = (value: FeedIntent): string => {
+    if (value === 'needs_help') {
+      return t('feed.needsHelp');
+    }
+    if (value === 'seeking_pr') {
+      return t('search.filters.seekingPr');
+    }
+    if (value === 'ready_for_review') {
+      return t('feed.readyForReview');
+    }
+    return t('search.filters.allIntents');
+  };
+
+  const quickScopeLabel = (id: string): string => {
+    if (id === 'live') {
+      return t('common.live');
+    }
+    if (id === 'top24') {
+      return t('feedTabs.quickScope.top24h');
+    }
+    if (id === 'glowup') {
+      return t('changeCard.metrics.glowUp');
+    }
+    if (id === 'battle-radar') {
+      return t('feedTabs.quickScope.battleRadar');
+    }
+    if (id === 'following') {
+      return t('feedTabs.quickScope.following');
+    }
+    return id;
+  };
+
+  const battleFilterLabel = (value: BattleFilter): string => {
+    if (value === 'pending') {
+      return t('battle.pending');
+    }
+    if (value === 'changes_requested') {
+      return t('battle.changesRequested');
+    }
+    if (value === 'merged') {
+      return t('battle.merged');
+    }
+    return t('feedTabs.battleFilter.allBattles');
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(searchParamString);
@@ -340,7 +460,7 @@ export const FeedTabs = () => {
 
   let filterPanel = (
     <p className="text-muted-foreground text-xs">
-      Filters available in the All feed.
+      {t('feedTabs.filters.availableAll')}
     </p>
   );
 
@@ -349,7 +469,7 @@ export const FeedTabs = () => {
       <div className="grid gap-3 rounded-2xl border border-border bg-muted/60 p-4 text-foreground/85 text-xs md:grid-cols-2 xl:grid-cols-4">
         <label className="grid gap-1">
           <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
-            Sort
+            {t('feedTabs.filters.sort')}
           </span>
           <select
             className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
@@ -369,14 +489,14 @@ export const FeedTabs = () => {
           >
             {SORT_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {sortLabel(option.value)}
               </option>
             ))}
           </select>
         </label>
         <label className="grid gap-1">
           <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
-            Status
+            {t('feedTabs.filters.status')}
           </span>
           <select
             className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
@@ -396,14 +516,14 @@ export const FeedTabs = () => {
           >
             {STATUS_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {statusLabel(option.value)}
               </option>
             ))}
           </select>
         </label>
         <label className="grid gap-1">
           <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
-            Time range
+            {t('feedTabs.filters.timeRange')}
           </span>
           <select
             className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
@@ -423,14 +543,14 @@ export const FeedTabs = () => {
           >
             {RANGE_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {rangeLabel(option.value)}
               </option>
             ))}
           </select>
         </label>
         <label className="grid gap-1">
           <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
-            Intent
+            {t('feedTabs.filters.intent')}
           </span>
           <select
             className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
@@ -450,7 +570,7 @@ export const FeedTabs = () => {
           >
             {INTENT_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {intentLabel(option.value)}
               </option>
             ))}
           </select>
@@ -463,7 +583,7 @@ export const FeedTabs = () => {
     filterPanel = (
       <div className="grid gap-2 rounded-2xl border border-border bg-muted/60 p-3 text-foreground/85 text-xs">
         <p className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
-          Battle status
+          {t('feedTabs.filters.battleStatus')}
         </p>
         <div className="flex flex-wrap gap-2">
           {BATTLE_FILTER_OPTIONS.map((option) => (
@@ -484,7 +604,7 @@ export const FeedTabs = () => {
               }}
               type="button"
             >
-              {option.label}
+              {battleFilterLabel(option.value)}
             </button>
           ))}
         </div>
@@ -515,7 +635,7 @@ export const FeedTabs = () => {
               }}
               type="button"
             >
-              {scope.label}
+              {quickScopeLabel(scope.id)}
             </button>
           ))}
         </div>
@@ -543,7 +663,7 @@ export const FeedTabs = () => {
                     }}
                     type="button"
                   >
-                    {option.label}
+                    {intentLabel(option.value)}
                   </button>
                 ),
               )}
@@ -564,7 +684,7 @@ export const FeedTabs = () => {
               }}
               type="button"
             >
-              {tab}
+              {tabLabel(tab)}
             </button>
           ))}
         </div>
@@ -574,25 +694,22 @@ export const FeedTabs = () => {
         aria-live="polite"
         className="flex flex-wrap items-center gap-3 text-muted-foreground text-xs"
       >
-        {fallbackUsed && <span className="pill">Fallback data</span>}
-        {loading && <span>Loading...</span>}
+        {fallbackUsed && <span className="pill">{t('rail.fallbackData')}</span>}
+        {loading && <span>{t('feedTabs.loadingMore')}</span>}
       </div>
       {visibleItems.length === 0 && !loading ? (
         <div className="card p-6 text-foreground/85 text-sm">
-          {active === 'Battles' &&
-            'No battles for this status yet. Switch to All battles or check Live Drafts.'}
+          {active === 'Battles' && t('feedTabs.empty.battles')}
           {active !== 'Battles' &&
             intent === 'needs_help' &&
-            'No drafts need help right now. Try Seeking PR or run a demo flow.'}
+            t('feedTabs.empty.needsHelp')}
           {active !== 'Battles' &&
             intent === 'seeking_pr' &&
-            'No drafts are waiting for PRs. Try Needs help or check Live Drafts.'}
+            t('feedTabs.empty.seekingPr')}
           {active !== 'Battles' &&
             intent === 'ready_for_review' &&
-            'No pending PRs to review right now. Check GlowUps or Archive.'}
-          {active !== 'Battles' &&
-            intent === 'all' &&
-            'No feed items yet. Start by running a demo flow.'}
+            t('feedTabs.empty.readyForReview')}
+          {active !== 'Battles' && intent === 'all' && t('feedTabs.empty.all')}
         </div>
       ) : (
         <div className={feedGridClass}>
@@ -665,7 +782,7 @@ export const FeedTabs = () => {
           onClick={() => setOffset((prev) => prev + PAGE_SIZE)}
           type="button"
         >
-          Load more
+          {t('feedTabs.loadMore')}
         </button>
       )}
     </section>

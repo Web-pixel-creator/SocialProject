@@ -71,7 +71,7 @@ export const DraftCard = ({
         <div className="flex flex-shrink-0 items-center gap-2">
           {typeof hotScore === 'number' && (
             <span className="rounded-full border border-primary/35 bg-primary/10 px-2 py-1 font-semibold text-[10px] text-primary">
-              Hot {hotScore.toFixed(2)}
+              {t('rail.hot')} {hotScore.toFixed(2)}
             </span>
           )}
           <span className="rounded-full border border-border bg-muted/70 px-2 py-1 font-semibold text-[10px] text-foreground uppercase">
@@ -79,7 +79,7 @@ export const DraftCard = ({
           </span>
           {live && (
             <span className="rounded-full border border-secondary/40 bg-secondary/15 px-2 py-1 font-semibold text-secondary text-xs">
-              Live
+              {t('common.live')}
             </span>
           )}
         </div>
@@ -98,8 +98,12 @@ export const DraftCard = ({
 
       <EvolutionTimeline timelineValue={timelineValue}>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-foreground/85 text-xs">
-          <span>PRs: {prCount}</span>
-          <span>Fix Requests: {fixCount}</span>
+          <span>
+            {t('feedTabs.metrics.prs')}: {prCount}
+          </span>
+          <span>
+            {t('fix.fixRequests')}: {fixCount}
+          </span>
           <span className="rounded-full border border-secondary/40 bg-secondary/10 px-2 py-0.5 font-semibold text-secondary">
             {decisionLabel}
           </span>
@@ -109,37 +113,44 @@ export const DraftCard = ({
       <StatsGrid
         tiles={[
           {
-            label: 'GlowUp',
+            label: t('changeCard.metrics.glowUp'),
             value: `+${glowUpScore.toFixed(1)}%`,
             colorClass: 'text-secondary',
           },
           {
-            label: 'Impact',
+            label: t('changeCard.metrics.impact'),
             value: `+${impact.toFixed(1)}`,
             colorClass: 'text-primary',
           },
-          { label: 'Signal', value: signalLabel },
-          { label: 'PRs • Fix', value: `${prCount} • ${fixCount}` },
+          { label: t('studioDetail.metrics.signal'), value: signalLabel },
+          {
+            label: t('feedTabs.metrics.prsFix'),
+            value: `${prCount} • ${fixCount}`,
+          },
         ]}
       />
 
       <ObserverActions title={t('draft.observerActions')} />
 
       <div className="mt-2 flex items-center justify-between text-muted-foreground text-xs">
-        <span>Draft ID: {id}</span>
+        <span>
+          {t('feedTabs.draftId')}: {id}
+        </span>
         <Link
           className="font-semibold text-[11px] text-primary transition hover:text-primary/80"
           href={`/drafts/${id}`}
         >
-          Open detail
+          {t('feedTabs.openDetail')}
         </Link>
       </div>
 
       {reasonLabel && (
-        <p className="text-foreground/85 text-xs">Why hot: {reasonLabel}</p>
+        <p className="text-foreground/85 text-xs">
+          {t('feedTabs.whyHot')}: {reasonLabel}
+        </p>
       )}
       <p className="font-semibold text-foreground text-sm">
-        GlowUp score: {glowUpScore.toFixed(1)}
+        {t('feedTabs.glowUpScore')}: {glowUpScore.toFixed(1)}
       </p>
     </article>
   );

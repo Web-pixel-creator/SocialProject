@@ -4,6 +4,7 @@
 import { ArrowRightLeft, Bookmark, Eye, Star, UserPlus } from 'lucide-react';
 import Image from 'next/image';
 import { useState } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 /* ── helpers ── */
 
@@ -178,20 +179,22 @@ interface ObserverActionsProps {
 }
 
 export const ObserverActions = ({
-  title = 'Observer actions',
+  title,
   buttonClassName = 'inline-flex items-center justify-center gap-1 rounded-lg border border-border bg-background/60 px-1 py-1.5 text-[10px] text-muted-foreground transition hover:border-primary/40 hover:text-foreground',
 }: ObserverActionsProps) => {
+  const { t } = useLanguage();
+  const resolvedTitle = title ?? t('draft.observerActions');
   const actions = [
-    { icon: Eye, label: 'Watch' },
-    { icon: ArrowRightLeft, label: 'Compare' },
-    { icon: Star, label: 'Rate' },
-    { icon: UserPlus, label: 'Follow' },
-    { icon: Bookmark, label: 'Save' },
+    { icon: Eye, label: t('observerAction.watch') },
+    { icon: ArrowRightLeft, label: t('observerAction.compare') },
+    { icon: Star, label: t('observerAction.rate') },
+    { icon: UserPlus, label: t('observerAction.follow') },
+    { icon: Bookmark, label: t('observerAction.save') },
   ];
 
   return (
     <section className="mt-2 rounded-xl border border-border bg-muted/60 p-2">
-      <p className="mb-2 text-muted-foreground text-xs">{title}</p>
+      <p className="mb-2 text-muted-foreground text-xs">{resolvedTitle}</p>
       <div className="grid grid-cols-5 gap-1">
         {actions.map(({ icon: Icon, label }) => (
           <button className={buttonClassName} key={label} type="button">
@@ -214,24 +217,32 @@ interface EvolutionTimelineProps {
 export const EvolutionTimeline = ({
   timelineValue,
   children,
-}: EvolutionTimelineProps) => (
-  <section className="mt-3 rounded-xl border border-border bg-muted/60 p-3">
-    <div className="flex items-center justify-between gap-2">
-      <p className="font-semibold text-foreground text-sm">Evolution</p>
-      <p className="text-muted-foreground text-xs">Before / After</p>
-    </div>
-    <div className="relative mt-2">
-      <div className="h-1.5 rounded-full bg-muted">
-        <div
-          className="h-full rounded-full bg-gradient-to-r from-primary/35 via-primary to-secondary"
-          style={{ width: `${timelineValue}%` }}
+}: EvolutionTimelineProps) => {
+  const { t } = useLanguage();
+
+  return (
+    <section className="mt-3 rounded-xl border border-border bg-muted/60 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="font-semibold text-foreground text-sm">
+          {t('common.evolution')}
+        </p>
+        <p className="text-muted-foreground text-xs">
+          {t('common.beforeAfter')}
+        </p>
+      </div>
+      <div className="relative mt-2">
+        <div className="h-1.5 rounded-full bg-muted">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-primary/35 via-primary to-secondary"
+            style={{ width: `${timelineValue}%` }}
+          />
+        </div>
+        <span
+          className="absolute top-1/2 inline-flex h-3.5 w-3.5 -translate-y-1/2 rounded-full border border-primary/70 bg-primary shadow-[0_0_8px_rgba(12,220,247,0.45)]"
+          style={{ left: `calc(${timelineValue}% - 7px)` }}
         />
       </div>
-      <span
-        className="absolute top-1/2 inline-flex h-3.5 w-3.5 -translate-y-1/2 rounded-full border border-primary/70 bg-primary shadow-[0_0_8px_rgba(12,220,247,0.45)]"
-        style={{ left: `calc(${timelineValue}% - 7px)` }}
-      />
-    </div>
-    {children}
-  </section>
-);
+      {children}
+    </section>
+  );
+};
