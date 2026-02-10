@@ -189,7 +189,7 @@ export default function PullRequestReviewPage({
 
   if (loading) {
     return (
-      <div className="card p-6 text-slate-500 text-sm">
+      <div className="card p-6 text-muted-foreground text-sm">
         {t('Loading pull request...', 'Загрузка пул-реквеста...')}
       </div>
     );
@@ -197,7 +197,7 @@ export default function PullRequestReviewPage({
 
   if (!review) {
     return (
-      <div className="card p-6 text-slate-500 text-sm">
+      <div className="card p-6 text-muted-foreground text-sm">
         {error ?? t('Pull request not found.', 'Пул-реквест не найден.')}
       </div>
     );
@@ -221,10 +221,10 @@ export default function PullRequestReviewPage({
     <main className="grid gap-6">
       <div className="card p-6">
         <p className="pill">{t('PR Review', 'Ревью PR')}</p>
-        <h2 className="mt-3 font-semibold text-2xl text-ink">
+        <h2 className="mt-3 font-semibold text-2xl text-foreground">
           PR {pullRequest.id}
         </h2>
-        <p className="text-slate-600 text-sm">
+        <p className="text-muted-foreground text-sm">
           {`${makerStudio} → ${authorStudio}`} |{' '}
           {pullRequest.severity.toUpperCase()}
           {' | '}
@@ -232,7 +232,7 @@ export default function PullRequestReviewPage({
         </p>
       </div>
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-600 text-sm">
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-destructive text-sm">
           {error}
         </div>
       )}
@@ -247,10 +247,10 @@ export default function PullRequestReviewPage({
           />
 
           <div className="card p-4">
-            <h3 className="font-semibold text-ink text-sm">
+            <h3 className="font-semibold text-foreground text-sm">
               {t('PR Summary', 'Сводка PR')}
             </h3>
-            <p className="mt-2 text-slate-600 text-sm">
+            <p className="mt-2 text-muted-foreground text-sm">
               {pullRequest.description}
             </p>
           </div>
@@ -259,8 +259,8 @@ export default function PullRequestReviewPage({
         </div>
 
         <div className="grid gap-6">
-          <div className="card p-4 text-slate-600 text-sm">
-            <h3 className="font-semibold text-ink text-sm">
+          <div className="card p-4 text-muted-foreground text-sm">
+            <h3 className="font-semibold text-foreground text-sm">
               {t('Metrics delta', 'Изменение метрик')}
             </h3>
             <div className="mt-3 grid gap-2">
@@ -286,11 +286,11 @@ export default function PullRequestReviewPage({
           </div>
 
           <div className="card p-4">
-            <h3 className="font-semibold text-ink text-sm">
+            <h3 className="font-semibold text-foreground text-sm">
               {t('Decision', 'Решение')}
             </h3>
             <textarea
-              className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+              className="mt-3 w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70"
               onChange={(event) => setFeedback(event.target.value)}
               placeholder={t(
                 'Add feedback (optional).',
@@ -300,7 +300,7 @@ export default function PullRequestReviewPage({
               value={feedback}
             />
             <textarea
-              className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+              className="mt-3 w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70"
               onChange={(event) => setRejectReason(event.target.value)}
               placeholder={t(
                 'Rejection reason (required for reject).',
@@ -319,7 +319,7 @@ export default function PullRequestReviewPage({
                 {t('Merge (M)', 'Смержить (M)')}
               </button>
               <button
-                className="rounded-full border border-slate-200 px-4 py-2 font-semibold text-slate-600 text-xs"
+                className="rounded-full border border-border bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60"
                 disabled={decisionLoading}
                 onClick={() => handleDecision('request_changes')}
                 type="button"

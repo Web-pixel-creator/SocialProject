@@ -96,59 +96,63 @@ export default function StudioProfilePage() {
     <main className="grid gap-6">
       <div className="card p-6">
         <p className="pill">{t('Studio Profile', 'Профиль студии')}</p>
-        <h2 className="mt-3 font-semibold text-2xl text-ink">{studioName}</h2>
-        <p className="text-slate-600 text-sm">
+        <h2 className="mt-3 font-semibold text-2xl text-foreground">
+          {studioName}
+        </h2>
+        <p className="text-muted-foreground text-sm">
           {t('Impact', 'Влияние')} {impact.toFixed(1)} | {t('Signal', 'Сигнал')}{' '}
           {signal.toFixed(1)}
         </p>
         {studio?.personality && (
-          <p className="mt-2 text-slate-500 text-sm">{studio.personality}</p>
+          <p className="mt-2 text-muted-foreground text-sm">
+            {studio.personality}
+          </p>
         )}
       </div>
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-600 text-sm">
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-destructive text-sm">
           {error}
         </div>
       )}
       {loading ? (
-        <div className="card p-6 text-slate-500 text-sm">
+        <div className="card p-6 text-muted-foreground text-sm">
           {t('Loading studio...', 'Загрузка студии...')}
         </div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="card p-6">
-            <h3 className="font-semibold text-ink text-sm">
+            <h3 className="font-semibold text-foreground text-sm">
               {t('Top GlowUps', 'Лучшие GlowUp')}
             </h3>
-            <ul className="mt-4 grid gap-3 text-slate-600 text-sm">
+            <ul className="mt-4 grid gap-3 text-muted-foreground text-sm">
               <li>Editorial Landing | GlowUp 22</li>
               <li>Neon Poster | GlowUp 18</li>
               <li>Product Storyboard | GlowUp 15</li>
             </ul>
           </div>
           <div className="card p-6">
-            <h3 className="font-semibold text-ink text-sm">
+            <h3 className="font-semibold text-foreground text-sm">
               {t('Impact ledger', 'Журнал влияния')}
             </h3>
             {ledger.length === 0 ? (
-              <p className="mt-4 text-slate-500 text-sm">
+              <p className="mt-4 text-muted-foreground text-sm">
                 {t(
                   'No recent contributions yet.',
                   'Пока нет недавних вкладов.',
                 )}
               </p>
             ) : (
-              <ul className="mt-4 grid gap-3 text-slate-600 text-sm">
+              <ul className="mt-4 grid gap-3 text-muted-foreground text-sm">
                 {ledger.map((entry) => (
                   <li key={entry.id}>
-                    <span className="font-semibold text-slate-800">
+                    <span className="font-semibold text-foreground">
                       {entry.kind === 'pr_merged'
                         ? t('PR merged', 'PR смержен')
                         : t('Fix request', 'Запрос на исправление')}
                     </span>
                     {entry.severity ? ` (${entry.severity})` : ''} |{' '}
                     {entry.draftTitle}
-                    <div className="text-slate-500 text-xs">
+                    <div className="text-muted-foreground text-xs">
                       {t('Impact', 'Влияние')} +{entry.impactDelta} |{' '}
                       {new Date(entry.occurredAt).toLocaleString()}
                     </div>
@@ -158,10 +162,10 @@ export default function StudioProfilePage() {
             )}
           </div>
           <div className="card p-6">
-            <h3 className="font-semibold text-ink text-sm">
+            <h3 className="font-semibold text-foreground text-sm">
               {t('Recent Contributions', 'Последние вклады')}
             </h3>
-            <ul className="mt-4 grid gap-3 text-slate-600 text-sm">
+            <ul className="mt-4 grid gap-3 text-muted-foreground text-sm">
               <li>PR #124 | Hero refresh</li>
               <li>PR #120 | Typography system</li>
               <li>PR #115 | Color grading</li>

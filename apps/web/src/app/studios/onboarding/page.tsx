@@ -171,10 +171,10 @@ export default function StudioOnboardingPage() {
     <main className="grid gap-6">
       <div className="card p-6">
         <p className="pill">{t('Studio Onboarding', 'Онбординг студии')}</p>
-        <h2 className="mt-3 font-semibold text-2xl text-ink">
+        <h2 className="mt-3 font-semibold text-2xl text-foreground">
           {t('Set up your AI studio', 'Настройте вашу AI-студию')}
         </h2>
-        <p className="text-slate-600 text-sm">
+        <p className="text-muted-foreground text-sm">
           {t(
             'Connect your agent, define a style, and understand the daily limits.',
             'Подключите агента, задайте стиль и проверьте дневные лимиты.',
@@ -183,34 +183,34 @@ export default function StudioOnboardingPage() {
       </div>
 
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-600 text-sm">
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-destructive text-sm">
           {error}
         </div>
       )}
       {saved && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-600 text-sm">
+        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-500 text-sm">
           {t('Profile saved.', 'Профиль сохранен.')}
         </div>
       )}
 
       {step === 1 && (
         <section className="card grid gap-4 p-6">
-          <h3 className="font-semibold text-ink text-sm">
+          <h3 className="font-semibold text-foreground text-sm">
             {t('1. Connect your agent', '1. Подключите агента')}
           </h3>
-          <label className="grid gap-2 font-medium text-slate-700 text-sm">
+          <label className="grid gap-2 font-medium text-foreground text-sm">
             Agent ID
             <input
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2"
+              className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
               onChange={(event) => setAgentId(event.target.value)}
               placeholder="UUID"
               value={agentId}
             />
           </label>
-          <label className="grid gap-2 font-medium text-slate-700 text-sm">
+          <label className="grid gap-2 font-medium text-foreground text-sm">
             API key
             <input
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2"
+              className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
               onChange={(event) => setApiKey(event.target.value)}
               placeholder={t('Agent API key', 'API-ключ агента')}
               type="password"
@@ -218,7 +218,7 @@ export default function StudioOnboardingPage() {
             />
           </label>
           <button
-            className="rounded-full bg-ink px-5 py-2 font-semibold text-white text-xs"
+            className="rounded-full bg-primary px-5 py-2 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90"
             disabled={loading}
             onClick={connectAgent}
             type="button"
@@ -233,31 +233,31 @@ export default function StudioOnboardingPage() {
       {step === 2 && (
         <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">
           <div className="card grid gap-4 p-6">
-            <h3 className="font-semibold text-ink text-sm">
+            <h3 className="font-semibold text-foreground text-sm">
               {t('2. Studio profile', '2. Профиль студии')}
             </h3>
-            <label className="grid gap-2 font-medium text-slate-700 text-sm">
+            <label className="grid gap-2 font-medium text-foreground text-sm">
               {t('Studio name *', 'Название студии *')}
               <input
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2"
+                className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
                 onChange={(event) => setStudioName(event.target.value)}
                 placeholder="Studio Nova"
                 value={studioName}
               />
             </label>
-            <label className="grid gap-2 font-medium text-slate-700 text-sm">
+            <label className="grid gap-2 font-medium text-foreground text-sm">
               {t('Avatar URL *', 'URL аватара *')}
               <input
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2"
+                className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
                 onChange={(event) => setAvatarUrl(event.target.value)}
                 placeholder="https://..."
                 value={avatarUrl}
               />
             </label>
-            <label className="grid gap-2 font-medium text-slate-700 text-sm">
+            <label className="grid gap-2 font-medium text-foreground text-sm">
               {t('Style tags * (press Enter)', 'Теги стиля * (нажмите Enter)')}
               <input
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2"
+                className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
                 onChange={(event) => setTagInput(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') {
@@ -275,7 +275,7 @@ export default function StudioOnboardingPage() {
             <div className="flex flex-wrap gap-2">
               {styleTags.map((tag) => (
                 <button
-                  className="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600 text-xs"
+                  className="rounded-full border border-border bg-background/70 px-3 py-1 text-foreground text-xs transition hover:bg-muted/60"
                   key={tag}
                   onClick={() => removeTag(tag)}
                   type="button"
@@ -284,10 +284,10 @@ export default function StudioOnboardingPage() {
                 </button>
               ))}
             </div>
-            <label className="grid gap-2 font-medium text-slate-700 text-sm">
+            <label className="grid gap-2 font-medium text-foreground text-sm">
               {t('Personality (optional)', 'Характер студии (опционально)')}
               <textarea
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2"
+                className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
                 onChange={(event) => setPersonality(event.target.value)}
                 placeholder={t(
                   'Describe the studio voice and tone.',
@@ -299,7 +299,7 @@ export default function StudioOnboardingPage() {
             </label>
             <div className="flex flex-wrap gap-3">
               <button
-                className="rounded-full bg-ink px-5 py-2 font-semibold text-white text-xs"
+                className="rounded-full bg-primary px-5 py-2 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90"
                 disabled={loading}
                 onClick={saveProfile}
                 type="button"
@@ -309,7 +309,7 @@ export default function StudioOnboardingPage() {
                   : t('Save profile', 'Сохранить профиль')}
               </button>
               <button
-                className="rounded-full border border-slate-200 px-5 py-2 font-semibold text-slate-600 text-xs"
+                className="rounded-full border border-border bg-background/70 px-5 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60"
                 onClick={() => setStep(3)}
                 type="button"
               >
@@ -317,12 +317,12 @@ export default function StudioOnboardingPage() {
               </button>
             </div>
           </div>
-          <div className="card grid gap-3 p-6 text-slate-600 text-sm">
-            <h3 className="font-semibold text-ink text-sm">
+          <div className="card grid gap-3 p-6 text-muted-foreground text-sm">
+            <h3 className="font-semibold text-foreground text-sm">
               {t('Daily budgets', 'Дневные лимиты')}
             </h3>
-            <div className="rounded-xl border border-slate-200 bg-white/70 p-3 text-xs">
-              <p className="font-semibold text-slate-700">
+            <div className="rounded-xl border border-border bg-background/70 p-3 text-xs">
+              <p className="font-semibold text-foreground">
                 {t('Agent actions', 'Действия агента')}
               </p>
               <ul className="mt-2 grid gap-1">
@@ -338,8 +338,8 @@ export default function StudioOnboardingPage() {
                 </li>
               </ul>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-white/70 p-3 text-xs">
-              <p className="font-semibold text-slate-700">
+            <div className="rounded-xl border border-border bg-background/70 p-3 text-xs">
+              <p className="font-semibold text-foreground">
                 {t('Draft edit budgets', 'Лимиты правок драфта')}
               </p>
               <ul className="mt-2 grid gap-1">
@@ -355,7 +355,7 @@ export default function StudioOnboardingPage() {
                 </li>
               </ul>
             </div>
-            <p className="text-slate-500 text-xs">
+            <p className="text-muted-foreground text-xs">
               {t(
                 'Budgets reset daily (UTC). Staying within limits keeps your studio trusted.',
                 'Лимиты сбрасываются ежедневно (UTC). Соблюдение лимитов поддерживает доверие к студии.',
@@ -367,13 +367,13 @@ export default function StudioOnboardingPage() {
 
       {step === 3 && (
         <section className="card grid gap-4 p-6">
-          <h3 className="font-semibold text-ink text-sm">
+          <h3 className="font-semibold text-foreground text-sm">
             {t('3. First actions checklist', '3. Чеклист первых действий')}
           </h3>
-          <ul className="grid gap-2 text-slate-600 text-sm">
+          <ul className="grid gap-2 text-muted-foreground text-sm">
             {CHECKLIST.map((item) => (
               <li
-                className="rounded-xl border border-slate-200 bg-white/70 p-3"
+                className="rounded-xl border border-border bg-background/70 p-3"
                 key={item}
               >
                 {item}
@@ -381,7 +381,7 @@ export default function StudioOnboardingPage() {
             ))}
           </ul>
           <button
-            className="rounded-full border border-slate-200 px-5 py-2 font-semibold text-slate-600 text-xs"
+            className="rounded-full border border-border bg-background/70 px-5 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60"
             onClick={() => setStep(1)}
             type="button"
           >
