@@ -90,6 +90,16 @@ export default function StudioProfilePage() {
       : t('studioDetail.header.defaultStudioName'));
   const impact = metrics?.impact ?? studio?.impact ?? 0;
   const signal = metrics?.signal ?? studio?.signal ?? 0;
+  const topGlowUps = [
+    t('studioDetail.topGlowUps.editorialLanding'),
+    t('studioDetail.topGlowUps.neonPoster'),
+    t('studioDetail.topGlowUps.productStoryboard'),
+  ];
+  const recentContributions = [
+    t('studioDetail.recentContributions.heroRefresh'),
+    t('studioDetail.recentContributions.typographySystem'),
+    t('studioDetail.recentContributions.colorGrading'),
+  ];
 
   return (
     <main className="grid gap-6">
@@ -124,9 +134,9 @@ export default function StudioProfilePage() {
               {t('studioDetail.sections.topGlowUps')}
             </h3>
             <ul className="mt-4 grid gap-3 text-muted-foreground text-sm">
-              <li>Editorial Landing | GlowUp 22</li>
-              <li>Neon Poster | GlowUp 18</li>
-              <li>Product Storyboard | GlowUp 15</li>
+              {topGlowUps.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
             </ul>
           </div>
           <div className="card p-6">
@@ -162,9 +172,9 @@ export default function StudioProfilePage() {
               {t('studioDetail.sections.recentContributions')}
             </h3>
             <ul className="mt-4 grid gap-3 text-muted-foreground text-sm">
-              <li>PR #124 | Hero refresh</li>
-              <li>PR #120 | Typography system</li>
-              <li>PR #115 | Color grading</li>
+              {recentContributions.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
             </ul>
           </div>
         </div>

@@ -165,16 +165,16 @@ export default function StudioOnboardingPage() {
             {t('studioOnboarding.steps.connectAgent')}
           </h3>
           <label className="grid gap-2 font-medium text-foreground text-sm">
-            Agent ID
+            {t('studioOnboarding.fields.agentId')}
             <input
               className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
               onChange={(event) => setAgentId(event.target.value)}
-              placeholder="UUID"
+              placeholder={t('studioOnboarding.fields.agentIdPlaceholder')}
               value={agentId}
             />
           </label>
           <label className="grid gap-2 font-medium text-foreground text-sm">
-            API key
+            {t('studioOnboarding.fields.agentApiKey')}
             <input
               className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
               onChange={(event) => setApiKey(event.target.value)}
@@ -207,7 +207,7 @@ export default function StudioOnboardingPage() {
               <input
                 className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
                 onChange={(event) => setStudioName(event.target.value)}
-                placeholder="Studio Nova"
+                placeholder={t('studioOnboarding.fields.studioNamePlaceholder')}
                 value={studioName}
               />
             </label>
@@ -216,7 +216,7 @@ export default function StudioOnboardingPage() {
               <input
                 className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
                 onChange={(event) => setAvatarUrl(event.target.value)}
-                placeholder="https://..."
+                placeholder={t('studioOnboarding.fields.avatarUrlPlaceholder')}
                 value={avatarUrl}
               />
             </label>
@@ -289,11 +289,12 @@ export default function StudioOnboardingPage() {
               </p>
               <ul className="mt-2 grid gap-1">
                 <li>
-                  PRs: {ACTION_LIMITS.pr} / {t('studioOnboarding.budgets.day')}
+                  {t('studioOnboarding.budgets.prs')}: {ACTION_LIMITS.pr} /{' '}
+                  {t('studioOnboarding.budgets.day')}
                 </li>
                 <li>
-                  Major PRs: {ACTION_LIMITS.major_pr} /{' '}
-                  {t('studioOnboarding.budgets.day')}
+                  {t('studioOnboarding.budgets.majorPrs')}:{' '}
+                  {ACTION_LIMITS.major_pr} / {t('studioOnboarding.budgets.day')}
                 </li>
                 <li>
                   {t('studioOnboarding.budgets.fixRequests')}:{' '}
@@ -308,11 +309,12 @@ export default function StudioOnboardingPage() {
               </p>
               <ul className="mt-2 grid gap-1">
                 <li>
-                  PRs: {EDIT_LIMITS.pr} / {t('studioOnboarding.budgets.day')}
+                  {t('studioOnboarding.budgets.prs')}: {EDIT_LIMITS.pr} /{' '}
+                  {t('studioOnboarding.budgets.day')}
                 </li>
                 <li>
-                  Major PRs: {EDIT_LIMITS.major_pr} /{' '}
-                  {t('studioOnboarding.budgets.day')}
+                  {t('studioOnboarding.budgets.majorPrs')}:{' '}
+                  {EDIT_LIMITS.major_pr} / {t('studioOnboarding.budgets.day')}
                 </li>
                 <li>
                   {t('studioOnboarding.budgets.fixRequests')}:{' '}

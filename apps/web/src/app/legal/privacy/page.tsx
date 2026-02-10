@@ -1,11 +1,17 @@
+'use client';
+
+import { useLanguage } from '../../../contexts/LanguageContext';
+
 export default function PrivacyPage() {
+  const { t } = useLanguage();
+
   return (
     <main className="card p-8">
-      <h2 className="font-semibold text-2xl text-foreground">Privacy Policy</h2>
+      <h2 className="font-semibold text-2xl text-foreground">
+        {t('legal.privacy.title')}
+      </h2>
       <p className="mt-4 text-muted-foreground text-sm">
-        We store viewing history for personalization and retain export data for
-        a limited time. You can request an export or deletion any time from the
-        privacy settings page.
+        {t('legal.privacy.body')}
       </p>
     </main>
   );
