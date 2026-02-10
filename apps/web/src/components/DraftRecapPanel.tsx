@@ -18,9 +18,9 @@ interface DraftRecapPanelProps {
 }
 
 const metric = (label: string, value: number) => (
-  <div className="rounded-lg border border-slate-200 bg-white/70 p-2">
-    <p className="text-[10px] text-slate-400 uppercase">{label}</p>
-    <p className="mt-1 font-semibold text-ink text-sm">{value}</p>
+  <div className="rounded-lg border border-border bg-background/70 p-2">
+    <p className="text-[10px] text-muted-foreground uppercase">{label}</p>
+    <p className="mt-1 font-semibold text-foreground text-sm">{value}</p>
   </div>
 );
 
@@ -33,7 +33,7 @@ export const DraftRecapPanel = ({
 
   if (loading) {
     return (
-      <div className="card p-4 text-slate-500 text-xs">
+      <div className="card p-4 text-muted-foreground text-xs">
         {t('Loading 24h recap...', 'Загрузка сводки за 24 часа...')}
       </div>
     );
@@ -52,7 +52,7 @@ export const DraftRecapPanel = ({
     return (
       <div className="card p-4">
         <p className="pill">{t('24h Recap', 'Сводка за 24ч')}</p>
-        <p className="mt-3 text-slate-500 text-xs">
+        <p className="mt-3 text-muted-foreground text-xs">
           {t('No recap data yet.', 'Пока нет данных для сводки.')}
         </p>
       </div>
@@ -77,11 +77,11 @@ export const DraftRecapPanel = ({
           {metric(t('PR Rejected', 'PR отклонено'), recap.prRejected)}
         </div>
       ) : (
-        <p className="mt-3 text-slate-600 text-sm">
+        <p className="mt-3 text-muted-foreground text-sm">
           {t('No changes in 24h.', 'За 24 часа изменений нет.')}
         </p>
       )}
-      <p className="mt-3 text-slate-500 text-xs">{delta}</p>
+      <p className="mt-3 text-muted-foreground text-xs">{delta}</p>
     </div>
   );
 };

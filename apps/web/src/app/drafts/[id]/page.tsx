@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -42,7 +42,9 @@ const HeatMapOverlay = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="card p-4 text-slate-500 text-sm">Loading heat map...</div>
+      <div className="card p-4 text-muted-foreground text-sm">
+        Loading heat map...
+      </div>
     ),
   },
 );
@@ -51,7 +53,7 @@ const LivePanel = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="card p-4 text-slate-500 text-sm">
+      <div className="card p-4 text-muted-foreground text-sm">
         Loading live panel...
       </div>
     ),
@@ -693,12 +695,12 @@ export default function DraftDetailPage() {
     if (hasFixRequests) {
       return {
         label: t('Seeking PR', 'Ищет PR'),
-        tone: 'bg-slate-200 text-slate-700',
+        tone: 'bg-muted/70 text-foreground',
       };
     }
     return {
       label: t('Needs help', 'Нужна помощь'),
-      tone: 'bg-rose-100 text-rose-700',
+      tone: 'bg-rose-500/15 text-rose-500',
     };
   })();
 
@@ -746,7 +748,7 @@ export default function DraftDetailPage() {
       <div className="card p-6">
         <p className="pill">{t('Draft Detail', 'Детали драфта')}</p>
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <h2 className="font-semibold text-2xl text-ink">
+          <h2 className="font-semibold text-2xl text-foreground">
             {draftId
               ? `${t('Draft', 'Драфт')} ${draftId}`
               : t('Draft', 'Драфт')}
@@ -759,7 +761,7 @@ export default function DraftDetailPage() {
             </span>
           )}
         </div>
-        <p className="text-slate-600 text-sm">
+        <p className="text-muted-foreground text-sm">
           {t(
             'Track every critique and PR in real-time.',
             'Отслеживайте каждую критику и PR в реальном времени.',
@@ -768,7 +770,7 @@ export default function DraftDetailPage() {
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
-            className="rounded-full bg-ink px-5 py-2 font-semibold text-white text-xs disabled:opacity-60"
+            className="rounded-full bg-primary px-5 py-2 font-semibold text-white text-xs disabled:opacity-60"
             disabled={demoLoading || !draftId}
             onClick={runDemoFlow}
             type="button"
@@ -778,17 +780,17 @@ export default function DraftDetailPage() {
               : t('Run demo flow', 'Запустить демо-сценарий')}
           </button>
           {demoStatus && (
-            <span className="text-slate-500 text-xs">{demoStatus}</span>
+            <span className="text-muted-foreground text-xs">{demoStatus}</span>
           )}
         </div>
       </div>
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-600 text-sm">
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-destructive text-sm">
           {error}
         </div>
       )}
       {loading ? (
-        <div className="card p-6 text-slate-500 text-sm">
+        <div className="card p-6 text-muted-foreground text-sm">
           {t('Loading draft...', 'Загрузка драфта...')}
         </div>
       ) : (
@@ -799,23 +801,23 @@ export default function DraftDetailPage() {
                 <p className="pill">
                   {t('Next best action', 'Следующее действие')}
                 </p>
-                <h3 className="mt-3 font-semibold text-ink text-lg">
+                <h3 className="mt-3 font-semibold text-foreground text-lg">
                   {nextAction.title}
                 </h3>
-                <p className="text-slate-600 text-sm">
+                <p className="text-muted-foreground text-sm">
                   {nextAction.description}
                 </p>
                 <div className="mt-4 flex flex-wrap items-center gap-3">
                   {'href' in nextAction ? (
                     <Link
-                      className="rounded-full bg-ink px-5 py-2 font-semibold text-white text-xs"
+                      className="rounded-full bg-primary px-5 py-2 font-semibold text-white text-xs"
                       href={nextAction.href as string}
                     >
                       {nextAction.ctaLabel}
                     </Link>
                   ) : (
                     <button
-                      className="rounded-full bg-ink px-5 py-2 font-semibold text-white text-xs disabled:opacity-60"
+                      className="rounded-full bg-primary px-5 py-2 font-semibold text-white text-xs disabled:opacity-60"
                       disabled={demoLoading && !hasFixRequests}
                       onClick={nextAction.onClick}
                       type="button"
@@ -824,7 +826,9 @@ export default function DraftDetailPage() {
                     </button>
                   )}
                   {copyStatus && (
-                    <span className="text-slate-500 text-xs">{copyStatus}</span>
+                    <span className="text-muted-foreground text-xs">
+                      {copyStatus}
+                    </span>
                   )}
                 </div>
               </div>
@@ -856,15 +860,15 @@ export default function DraftDetailPage() {
             </div>
             <div className="card p-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-ink text-sm">
+                <h3 className="font-semibold text-foreground text-sm">
                   {t('Similar drafts', 'Похожие драфты')}
                 </h3>
-                <span className="text-slate-500 text-xs">
+                <span className="text-muted-foreground text-xs">
                   {t('Visual match', 'Визуальное совпадение')}
                 </span>
               </div>
               {similarLoading && (
-                <p className="mt-3 text-slate-500 text-xs">
+                <p className="mt-3 text-muted-foreground text-xs">
                   {t(
                     'Loading similar drafts...',
                     'Загрузка похожих драфтов...',
@@ -872,20 +876,22 @@ export default function DraftDetailPage() {
                 </p>
               )}
               {!similarLoading && similarStatus && (
-                <p className="mt-3 text-slate-500 text-xs">{similarStatus}</p>
+                <p className="mt-3 text-muted-foreground text-xs">
+                  {similarStatus}
+                </p>
               )}
               {!(similarLoading || similarStatus) && (
                 <ul className="mt-3 grid gap-2">
                   {similarDrafts.map((item) => (
                     <li
-                      className="rounded-lg border border-slate-200 bg-white/70 p-3 text-xs"
+                      className="rounded-lg border border-border bg-background/70 p-3 text-xs"
                       key={item.id}
                     >
-                      <p className="text-[10px] text-slate-500 uppercase">
+                      <p className="text-[10px] text-muted-foreground uppercase">
                         {item.type}
                       </p>
-                      <p className="text-ink text-sm">{item.title}</p>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-foreground text-sm">{item.title}</p>
+                      <p className="text-[11px] text-muted-foreground">
                         {t('Similarity', 'Сходство')}{' '}
                         {Number(item.score ?? 0).toFixed(2)} | GlowUp{' '}
                         {Number(item.glowUpScore ?? 0).toFixed(1)}
@@ -896,7 +902,7 @@ export default function DraftDetailPage() {
               )}
               <div className="mt-3">
                 <Link
-                  className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-700 text-xs hover:border-slate-300"
+                  className="inline-flex items-center rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-xs hover:border-border/70"
                   href={
                     draftId
                       ? `/search?mode=visual&draftId=${draftId}&type=draft&from=similar`
@@ -932,17 +938,17 @@ export default function DraftDetailPage() {
             />
             <div className="card p-4">
               <p className="pill">{t('Follow chain', 'Следить за цепочкой')}</p>
-              <h3 className="mt-3 font-semibold text-ink text-sm">
+              <h3 className="mt-3 font-semibold text-foreground text-sm">
                 {t('Track every change', 'Отслеживайте каждое изменение')}
               </h3>
-              <p className="text-slate-600 text-xs">
+              <p className="text-muted-foreground text-xs">
                 {t(
                   'Get notified in-app when this draft receives fixes or PRs.',
                   'Получайте уведомления в приложении, когда драфт получает фиксы или PR.',
                 )}
               </p>
               {observerAuthRequired && (
-                <p className="mt-2 text-slate-500 text-xs">
+                <p className="mt-2 text-muted-foreground text-xs">
                   {t(
                     'Sign in as observer to follow drafts.',
                     'Войдите как наблюдатель, чтобы следить за драфтами.',
@@ -954,7 +960,7 @@ export default function DraftDetailPage() {
                   className={`rounded-full px-4 py-2 font-semibold text-xs ${
                     isFollowed
                       ? 'bg-emerald-600 text-white'
-                      : 'bg-ink text-white'
+                      : 'bg-primary text-white'
                   }`}
                   onClick={toggleFollow}
                   type="button"
@@ -974,10 +980,10 @@ export default function DraftDetailPage() {
             />
             <div className="card p-4">
               <p className="pill">{t('Activity', 'Активность')}</p>
-              <h3 className="mt-3 font-semibold text-ink text-sm">
+              <h3 className="mt-3 font-semibold text-foreground text-sm">
                 {t('In-app updates', 'Обновления в приложении')}
               </h3>
-              <p className="text-slate-600 text-xs">
+              <p className="text-muted-foreground text-xs">
                 {isFollowed
                   ? t(
                       'Updates appear when this draft changes.',
@@ -988,18 +994,18 @@ export default function DraftDetailPage() {
                       'Подпишитесь на цепочку, чтобы видеть обновления здесь.',
                     )}
               </p>
-              <div className="mt-4 grid gap-2 text-slate-500 text-xs">
+              <div className="mt-4 grid gap-2 text-muted-foreground text-xs">
                 {notifications.length === 0 ? (
                   <span>{t('No updates yet.', 'Пока нет обновлений.')}</span>
                 ) : (
                   notifications.map((note) => (
                     <div
-                      className="rounded-lg border border-slate-200 bg-white/70 p-2"
+                      className="rounded-lg border border-border bg-background/70 p-2"
                       key={note.id}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-slate-700">{note.message}</span>
-                        <span className="text-[10px] text-slate-400">
+                        <span className="text-foreground">{note.message}</span>
+                        <span className="text-[10px] text-muted-foreground">
                           {note.time}
                         </span>
                       </div>

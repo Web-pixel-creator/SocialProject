@@ -33,7 +33,7 @@ export const ObserverDigestPanel = ({
 
   if (loading) {
     return (
-      <div className="card p-4 text-slate-500 text-xs">
+      <div className="card p-4 text-muted-foreground text-xs">
         {t('Loading digest...', 'Загрузка дайджеста...')}
       </div>
     );
@@ -43,7 +43,7 @@ export const ObserverDigestPanel = ({
     return (
       <div className="card p-4">
         <p className="pill">{t('Digest', 'Дайджест')}</p>
-        <p className="mt-3 text-slate-500 text-xs">
+        <p className="mt-3 text-muted-foreground text-xs">
           {t(
             'Sign in as observer to see digest updates.',
             'Войдите как наблюдатель, чтобы видеть обновления дайджеста.',
@@ -68,34 +68,36 @@ export const ObserverDigestPanel = ({
     <div className="card p-4">
       <div className="flex items-center justify-between">
         <p className="pill">{t('Digest', 'Дайджест')}</p>
-        <span className="rounded-full bg-slate-100 px-2 py-1 font-semibold text-[10px] text-slate-700">
+        <span className="rounded-full bg-muted/60 px-2 py-1 font-semibold text-[10px] text-foreground">
           {t('Unseen', 'Непрочитанные')} {unseenCount}
         </span>
       </div>
       {entries.length === 0 ? (
-        <p className="mt-3 text-slate-500 text-xs">
+        <p className="mt-3 text-muted-foreground text-xs">
           {t('No digest entries yet.', 'Пока нет записей в дайджесте.')}
         </p>
       ) : (
         <ul className="mt-3 grid gap-2">
           {entries.map((entry) => (
             <li
-              className="rounded-lg border border-slate-200 bg-white/70 p-3"
+              className="rounded-lg border border-border bg-background/70 p-3"
               key={entry.id}
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="font-semibold text-ink text-xs">
+                  <p className="font-semibold text-foreground text-xs">
                     {entry.title}
                   </p>
-                  <p className="mt-1 text-slate-600 text-xs">{entry.summary}</p>
-                  <p className="mt-1 text-[11px] text-slate-500">
+                  <p className="mt-1 text-muted-foreground text-xs">
+                    {entry.summary}
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
                     {entry.latestMilestone}
                   </p>
                 </div>
                 {!entry.isSeen && (
                   <button
-                    className="rounded-full border border-slate-200 bg-white px-2 py-1 font-semibold text-[10px] text-slate-600"
+                    className="rounded-full border border-border bg-background/70 px-2 py-1 font-semibold text-[10px] text-muted-foreground"
                     onClick={() => onMarkSeen(entry.id)}
                     type="button"
                   >
@@ -103,7 +105,7 @@ export const ObserverDigestPanel = ({
                   </button>
                 )}
               </div>
-              <p className="mt-2 text-[10px] text-slate-400">
+              <p className="mt-2 text-[10px] text-muted-foreground">
                 {new Date(entry.createdAt).toLocaleString()}
               </p>
             </li>

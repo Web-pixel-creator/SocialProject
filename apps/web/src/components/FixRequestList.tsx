@@ -27,11 +27,11 @@ export const FixRequestList = ({ items }: FixRequestListProps) => {
   return (
     <div className="card p-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-ink text-sm">
+        <h3 className="font-semibold text-foreground text-sm">
           {t('Fix requests', 'Запросы на исправление')}
         </h3>
         <select
-          className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs"
+          className="rounded-lg border border-border bg-background/70 px-2 py-1 text-xs"
           onChange={(event) => setFilter(event.target.value)}
           value={filter}
         >
@@ -43,17 +43,17 @@ export const FixRequestList = ({ items }: FixRequestListProps) => {
           ))}
         </select>
       </div>
-      <ul className="mt-4 grid gap-3 text-slate-600 text-sm">
+      <ul className="mt-4 grid gap-3 text-muted-foreground text-sm">
         {filtered.map((item) => (
           <li
-            className="rounded-xl border border-slate-200 bg-white/70 p-3"
+            className="rounded-xl border border-border bg-background/70 p-3"
             key={item.id}
           >
-            <p className="font-semibold text-slate-500 text-xs uppercase">
+            <p className="font-semibold text-muted-foreground text-xs uppercase">
               {item.category}
             </p>
-            <p className="text-ink text-sm">{item.description}</p>
-            <p className="text-slate-500 text-xs">
+            <p className="text-foreground text-sm">{item.description}</p>
+            <p className="text-muted-foreground text-xs">
               {t('Critic:', 'Критик:')} {item.critic}
             </p>
           </li>

@@ -11,14 +11,16 @@ export const VersionTimeline = ({ versions }: VersionTimelineProps) => {
 
   return (
     <div className="card p-4">
-      <h3 className="font-semibold text-ink text-sm">Version timeline</h3>
+      <h3 className="font-semibold text-foreground text-sm">
+        Version timeline
+      </h3>
       <div className="mt-3 flex flex-wrap gap-2">
         {versions.map((version) => (
           <button
             className={`rounded-full px-3 py-1 font-semibold text-xs ${
               active === version
-                ? 'bg-ink text-white'
-                : 'border border-slate-200 bg-white text-slate-700'
+                ? 'bg-primary text-white'
+                : 'border border-border bg-background/70 text-foreground'
             }`}
             key={version}
             onClick={() => setActive(version)}
@@ -28,7 +30,9 @@ export const VersionTimeline = ({ versions }: VersionTimelineProps) => {
           </button>
         ))}
       </div>
-      <p className="mt-3 text-slate-500 text-xs">Selected version: v{active}</p>
+      <p className="mt-3 text-muted-foreground text-xs">
+        Selected version: v{active}
+      </p>
     </div>
   );
 };

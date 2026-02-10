@@ -22,13 +22,13 @@ export const BeforeAfterSlider = ({
 
   return (
     <div className="card p-4">
-      <h3 className="font-semibold text-ink text-sm">
+      <h3 className="font-semibold text-foreground text-sm">
         {t('Before / After', 'До / После')}
       </h3>
       <div className="mt-4 grid gap-3">
         {(beforeImageUrl || afterImageUrl) && (
           <div className="grid gap-3 md:grid-cols-2">
-            <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+            <div className="relative overflow-hidden rounded-xl border border-border bg-muted/40">
               {beforeImageUrl ? (
                 <Image
                   alt={`${t('Before', 'До')} ${beforeLabel}`}
@@ -40,10 +40,10 @@ export const BeforeAfterSlider = ({
                   width={640}
                 />
               ) : (
-                <div className="h-48 w-full bg-slate-100 md:h-56" />
+                <div className="h-48 w-full bg-muted/60 md:h-56" />
               )}
             </div>
-            <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+            <div className="relative overflow-hidden rounded-xl border border-border bg-muted/40">
               {afterImageUrl ? (
                 <Image
                   alt={`${t('After', 'После')} ${afterLabel}`}
@@ -55,7 +55,7 @@ export const BeforeAfterSlider = ({
                   width={640}
                 />
               ) : (
-                <div className="h-48 w-full bg-slate-100 md:h-56" />
+                <div className="h-48 w-full bg-muted/60 md:h-56" />
               )}
             </div>
           </div>
@@ -67,11 +67,11 @@ export const BeforeAfterSlider = ({
           type="range"
           value={value}
         />
-        <div className="flex justify-between text-slate-500 text-xs">
+        <div className="flex justify-between text-muted-foreground text-xs">
           <span>{beforeLabel}</span>
           <span>{afterLabel}</span>
         </div>
-        <p className="text-slate-500 text-xs">
+        <p className="text-muted-foreground text-xs">
           {t('Blend:', 'Смешивание:')} {value}% {t('after', 'после')}
         </p>
       </div>

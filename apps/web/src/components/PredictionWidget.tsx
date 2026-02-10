@@ -45,7 +45,7 @@ export const PredictionWidget = ({
 
   if (loading) {
     return (
-      <div className="card p-4 text-slate-500 text-xs">
+      <div className="card p-4 text-muted-foreground text-xs">
         {t('Loading prediction...', 'Загрузка прогноза...')}
       </div>
     );
@@ -55,7 +55,7 @@ export const PredictionWidget = ({
     return (
       <div className="card p-4">
         <p className="pill">{t('Predict Mode', 'Режим прогноза')}</p>
-        <p className="mt-3 text-slate-500 text-xs">
+        <p className="mt-3 text-muted-foreground text-xs">
           {t(
             'Sign in as observer to submit predictions.',
             'Войдите как наблюдатель, чтобы отправлять прогнозы.',
@@ -78,7 +78,7 @@ export const PredictionWidget = ({
     return (
       <div className="card p-4">
         <p className="pill">{t('Predict Mode', 'Режим прогноза')}</p>
-        <p className="mt-3 text-slate-500 text-xs">
+        <p className="mt-3 text-muted-foreground text-xs">
           {t(
             'No pending PR for prediction.',
             'Нет PR в ожидании для прогноза.',
@@ -94,16 +94,16 @@ export const PredictionWidget = ({
   return (
     <div className="card p-4">
       <p className="pill">{t('Predict Mode', 'Режим прогноза')}</p>
-      <h3 className="mt-3 font-semibold text-ink text-sm">
+      <h3 className="mt-3 font-semibold text-foreground text-sm">
         PR {summary.pullRequestId.slice(0, 8)}
       </h3>
-      <p className="text-slate-600 text-xs">
+      <p className="text-muted-foreground text-xs">
         {t('Consensus:', 'Консенсус:')} {t('Merge', 'Смержить')}{' '}
         {summary.consensus.merge} | {t('Reject', 'Отклонить')}{' '}
         {summary.consensus.reject} | {t('Total', 'Всего')}{' '}
         {summary.consensus.total}
       </p>
-      <p className="mt-2 text-slate-500 text-xs">
+      <p className="mt-2 text-muted-foreground text-xs">
         {t('Your accuracy:', 'Ваша точность:')} {summary.accuracy.correct}/
         {summary.accuracy.total} ({accuracyPct}%)
       </p>
@@ -112,7 +112,7 @@ export const PredictionWidget = ({
           className={`rounded-full px-3 py-1 font-semibold text-xs ${
             selected === 'merge'
               ? 'bg-emerald-600 text-white'
-              : 'bg-slate-100 text-slate-700'
+              : 'bg-muted/60 text-foreground'
           }`}
           disabled={submitLoading || summary.pullRequestStatus !== 'pending'}
           onClick={() => onPredict('merge')}
@@ -124,7 +124,7 @@ export const PredictionWidget = ({
           className={`rounded-full px-3 py-1 font-semibold text-xs ${
             selected === 'reject'
               ? 'bg-rose-600 text-white'
-              : 'bg-slate-100 text-slate-700'
+              : 'bg-muted/60 text-foreground'
           }`}
           disabled={submitLoading || summary.pullRequestStatus !== 'pending'}
           onClick={() => onPredict('reject')}
@@ -134,7 +134,7 @@ export const PredictionWidget = ({
         </button>
       </div>
       {summary.observerPrediction && (
-        <p className="mt-2 text-[11px] text-slate-500">
+        <p className="mt-2 text-[11px] text-muted-foreground">
           {t('Your prediction:', 'Ваш прогноз:')}{' '}
           {summary.observerPrediction.predictedOutcome}
           {summary.observerPrediction.resolvedOutcome

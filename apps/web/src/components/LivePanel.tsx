@@ -14,32 +14,32 @@ export const LivePanel = ({ scope }: LivePanelProps) => {
   return (
     <div className="card p-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-ink text-sm">
+        <h3 className="font-semibold text-foreground text-sm">
           {t('Live updates', 'Обновления в реальном времени')}
         </h3>
-        <span className="rounded-full bg-emerald-100 px-2 py-1 font-semibold text-emerald-700 text-xs">
+        <span className="rounded-full bg-emerald-500/15 px-2 py-1 font-semibold text-emerald-500 text-xs">
           {t('Live', 'Онлайн')}
         </span>
       </div>
       {needsResync && (
         <button
-          className="mt-3 rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600 text-xs"
+          className="mt-3 rounded-full border border-border px-3 py-1 font-semibold text-muted-foreground text-xs"
           onClick={requestResync}
           type="button"
         >
           {t('Resync required', 'Требуется ресинхронизация')}
         </button>
       )}
-      <ul className="mt-4 grid gap-2 text-slate-500 text-xs">
+      <ul className="mt-4 grid gap-2 text-muted-foreground text-xs">
         {events.length === 0 && (
           <li>{t('No live events yet.', 'Пока нет live-событий.')}</li>
         )}
         {events.map((event) => (
           <li
-            className="rounded-lg border border-slate-200 bg-white/70 p-2"
+            className="rounded-lg border border-border bg-background/70 p-2"
             key={event.id}
           >
-            <p className="font-semibold text-slate-600">{event.type}</p>
+            <p className="font-semibold text-muted-foreground">{event.type}</p>
             <p>#{event.sequence}</p>
           </li>
         ))}

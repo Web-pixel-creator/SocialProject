@@ -25,10 +25,10 @@ interface DraftArcCardProps {
 }
 
 const stateToTone: Record<DraftArcState, string> = {
-  needs_help: 'bg-rose-100 text-rose-700',
+  needs_help: 'bg-rose-500/15 text-rose-500',
   in_progress: 'bg-sky-100 text-sky-700',
   ready_for_review: 'bg-amber-100 text-amber-800',
-  released: 'bg-emerald-100 text-emerald-700',
+  released: 'bg-emerald-500/15 text-emerald-500',
 };
 
 export const DraftArcCard = ({
@@ -40,7 +40,7 @@ export const DraftArcCard = ({
 
   if (loading) {
     return (
-      <div className="card p-4 text-slate-500 text-xs">
+      <div className="card p-4 text-muted-foreground text-xs">
         {t('Loading arc...', 'Загрузка прогресса...')}
       </div>
     );
@@ -59,7 +59,7 @@ export const DraftArcCard = ({
     return (
       <div className="card p-4">
         <p className="pill">{t('Draft Arc', 'Прогресс драфта')}</p>
-        <p className="mt-3 text-slate-500 text-xs">
+        <p className="mt-3 text-muted-foreground text-xs">
           {t('No arc data yet.', 'Пока нет данных о прогрессе.')}
         </p>
       </div>
@@ -78,7 +78,7 @@ export const DraftArcCard = ({
     }
     return t('Released', 'Релиз');
   })();
-  const stateTone = stateToTone[summary.state] ?? 'bg-slate-100 text-slate-700';
+  const stateTone = stateToTone[summary.state] ?? 'bg-muted/60 text-foreground';
   const lastMerge = summary.lastMergeAt
     ? new Date(summary.lastMergeAt).toLocaleString()
     : t('No merges yet', 'Слияний пока нет');
@@ -94,31 +94,31 @@ export const DraftArcCard = ({
           {stateLabel}
         </span>
       </div>
-      <p className="mt-3 font-semibold text-ink text-sm">
+      <p className="mt-3 font-semibold text-foreground text-sm">
         {summary.latestMilestone}
       </p>
-      <div className="mt-3 grid grid-cols-2 gap-2 text-slate-600 text-xs">
-        <div className="rounded-lg border border-slate-200 bg-white/70 p-2">
-          <p className="text-[10px] text-slate-400 uppercase">
+      <div className="mt-3 grid grid-cols-2 gap-2 text-muted-foreground text-xs">
+        <div className="rounded-lg border border-border bg-background/70 p-2">
+          <p className="text-[10px] text-muted-foreground uppercase">
             {t('Open Fixes', 'Открытые фиксы')}
           </p>
-          <p className="mt-1 font-semibold text-ink text-sm">
+          <p className="mt-1 font-semibold text-foreground text-sm">
             {summary.fixOpenCount}
           </p>
         </div>
-        <div className="rounded-lg border border-slate-200 bg-white/70 p-2">
-          <p className="text-[10px] text-slate-400 uppercase">
+        <div className="rounded-lg border border-border bg-background/70 p-2">
+          <p className="text-[10px] text-muted-foreground uppercase">
             {t('Pending PRs', 'PR в ожидании')}
           </p>
-          <p className="mt-1 font-semibold text-ink text-sm">
+          <p className="mt-1 font-semibold text-foreground text-sm">
             {summary.prPendingCount}
           </p>
         </div>
       </div>
-      <p className="mt-3 text-[11px] text-slate-500">
+      <p className="mt-3 text-[11px] text-muted-foreground">
         {t('Last merge:', 'Последний merge:')} {lastMerge}
       </p>
-      <p className="text-[11px] text-slate-400">
+      <p className="text-[11px] text-muted-foreground">
         {t('Updated:', 'Обновлено:')} {updatedAt}
       </p>
     </div>
