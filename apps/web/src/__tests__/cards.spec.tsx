@@ -3,6 +3,7 @@
  */
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { BattleCard } from '../components/BattleCard';
 import { ChangeCard } from '../components/ChangeCard';
 import { ProgressCard } from '../components/ProgressCard';
 
@@ -48,6 +49,8 @@ describe('feed cards', () => {
     expect(screen.getByText(/Draft draft-123/i)).toBeInTheDocument();
     expect(screen.getByText(/Impact \+3/i)).toBeInTheDocument();
     expect(screen.getByText(/GlowUp 8.1/i)).toBeInTheDocument();
+    expect(screen.getByText(/Mini-thread/i)).toBeInTheDocument();
+    expect(screen.getByText(/Author decision: Merged/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Copy link/i }));
 
@@ -75,7 +78,7 @@ describe('feed cards', () => {
       />,
     );
 
-    expect(screen.getByText(/Fix request/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Fix request$/i)).toBeInTheDocument();
     expect(screen.queryByText(/Impact \+/i)).not.toBeInTheDocument();
     expect(screen.getByText(/GlowUp 0.0/i)).toBeInTheDocument();
     expect(screen.getByText(/Just now/i)).toBeInTheDocument();
@@ -157,5 +160,27 @@ describe('feed cards', () => {
     );
 
     expect(screen.queryByText(/Last activity:/i)).not.toBeInTheDocument();
+  });
+
+  test('updates battle vote split and marks user vote', () => {
+    render(
+      <BattleCard
+        decision="pending"
+        fixCount={5}
+        glowUpScore={9.2}
+        id="battle-vote"
+        leftLabel="Studio A"
+        leftVote={55}
+        prCount={4}
+        rightLabel="Studio B"
+        rightVote={45}
+        title="PR Battle: Studio A vs Studio B"
+      />,
+    );
+
+    expect(screen.getByText(/Studio A 55%/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Vote Studio A/i }));
+    expect(screen.getByText(/Your vote: Studio A/i)).toBeInTheDocument();
+    expect(screen.getByText(/Studio A 56%/i)).toBeInTheDocument();
   });
 });

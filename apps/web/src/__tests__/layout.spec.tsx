@@ -13,6 +13,10 @@ jest.mock('../app/providers', () => ({
   ),
 }));
 
+jest.mock('../components/theme-provider', () => ({
+  ThemeProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
+}));
+
 import RootLayout from '../app/layout';
 
 describe('RootLayout', () => {

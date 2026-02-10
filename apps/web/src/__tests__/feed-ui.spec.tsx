@@ -90,7 +90,8 @@ describe('feed UI', () => {
     await waitFor(() => expect(apiClient.get).toHaveBeenCalled());
     const tab = screen.getByRole('button', { name: /GlowUps/i });
     await clickAndFlush(tab);
-    expect(tab).toHaveClass('bg-ink');
+    expect(tab).toHaveAttribute('aria-pressed', 'true');
+    expect(tab).toHaveClass('text-primary');
   });
 
   test('falls back when for-you feed fails', async () => {
@@ -190,6 +191,101 @@ describe('feed UI', () => {
         '/feeds/battles',
         expect.anything(),
       ),
+    );
+  });
+
+  test('renders battle cards with vote split and decision', async () => {
+    const battlePayload = [
+      {
+        id: 'battle-1',
+        title: 'PR Battle: Apex Studio vs Nova Forge',
+        leftLabel: 'Apex Studio',
+        rightLabel: 'Nova Forge',
+        leftVote: 61,
+        rightVote: 39,
+        glowUpScore: 13.2,
+        prCount: 7,
+        fixCount: 4,
+        decision: 'changes requested',
+      },
+    ];
+
+    (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: battlePayload });
+
+    await renderFeedTabs();
+
+    const battlesTab = screen.getByRole('button', { name: /Battles/i });
+    await clickAndFlush(battlesTab);
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/PR Battle: Apex Studio vs Nova Forge/i),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/Apex Studio 61%/i)).toBeInTheDocument();
+    expect(screen.getByText(/Nova Forge 39%/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Changes requested/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole('link', { name: /Open battle/i })).toHaveAttribute(
+      'href',
+      '/drafts/battle-1',
+    );
+  });
+
+  test('filters battles by status chip and tracks telemetry', async () => {
+    const battlePayload = [
+      {
+        id: 'battle-merged',
+        title: 'PR Battle: Merged Battle',
+        leftLabel: 'A',
+        rightLabel: 'B',
+        leftVote: 52,
+        rightVote: 48,
+        glowUpScore: 11,
+        prCount: 4,
+        fixCount: 3,
+        decision: 'merged',
+      },
+      {
+        id: 'battle-pending',
+        title: 'PR Battle: Pending Battle',
+        leftLabel: 'C',
+        rightLabel: 'D',
+        leftVote: 49,
+        rightVote: 51,
+        glowUpScore: 8,
+        prCount: 2,
+        fixCount: 2,
+        decision: 'pending',
+      },
+    ];
+
+    (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: battlePayload });
+
+    await renderFeedTabs();
+    const battlesTab = screen.getByRole('button', { name: /Battles/i });
+    await clickAndFlush(battlesTab);
+
+    await waitFor(() =>
+      expect(screen.getByText(/PR Battle: Merged Battle/i)).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/PR Battle: Pending Battle/i)).toBeInTheDocument();
+
+    (apiClient.post as jest.Mock).mockClear();
+    const mergedFilter = screen.getByRole('button', { name: /^Merged$/i });
+    await clickAndFlush(mergedFilter);
+
+    expect(screen.getByText(/PR Battle: Merged Battle/i)).toBeInTheDocument();
+    expect(screen.queryByText(/PR Battle: Pending Battle/i)).toBeNull();
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/telemetry/ux',
+      expect.objectContaining({
+        eventType: 'feed_battle_filter',
+        filter: 'merged',
+      }),
     );
   });
 
@@ -360,6 +456,44 @@ describe('feed UI', () => {
     expect(screen.getByText(/GlowUp 6.2/i)).toBeInTheDocument();
     expect(screen.getByText(/Merged Draft/i)).toBeInTheDocument();
     expect(screen.getByText(/PR merged/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Mini-thread/i).length).toBeGreaterThan(0);
+  });
+
+  test('renders provided mini-thread lines in changes cards', async () => {
+    (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'change-thread',
+            kind: 'fix_request',
+            draft_id: 'draft-thread',
+            draft_title: 'Thread Draft',
+            description: 'Tune hierarchy',
+            mini_thread: [
+              'Fix Request: tune hierarchy',
+              'Maker PR: #184 improved composition',
+              'Author decision: merged',
+            ],
+          },
+        ],
+      });
+
+    await renderFeedTabs();
+
+    const changesTab = screen.getByRole('button', { name: /Changes/i });
+    await clickAndFlush(changesTab);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Thread Draft/i)).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByText(/Fix Request: tune hierarchy/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Maker PR: #184 improved composition/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Author decision: merged/i)).toBeInTheDocument();
   });
 
   test('renders archive drafts when entries are not autopsies', async () => {
@@ -432,7 +566,7 @@ describe('feed UI', () => {
       expect(screen.getByText(/Fallback data/i)).toBeInTheDocument(),
     );
     expect(screen.getByText(/Before \/ After/i)).toBeInTheDocument();
-    expect(screen.getByText(/Studio Nova/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Studio Nova/i).length).toBeGreaterThan(0);
   });
 
   test('falls back to demo hot-now entries when feed fails', async () => {

@@ -48,14 +48,14 @@
     "ultracite:fix": "npx ultracite fix apps/api/src apps/web/src"
   },
   "devDependencies": {
-    "ajv": "^8.17.1",
-    "ajv-formats": "^3.0.1",
     "@types/jest": "^29.5.12",
     "@types/node": "^20.11.30",
     "@types/pg": "^8.11.10",
     "@types/supertest": "^2.0.16",
     "@typescript-eslint/eslint-plugin": "^8.54.0",
     "@typescript-eslint/parser": "^8.54.0",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.29.1",
@@ -66,5 +66,14 @@
     "supertest": "^6.3.4",
     "ts-jest": "^29.1.2",
     "typescript": "^5.4.2"
+  },
+  "dependencies": {
+    "@radix-ui/react-slot": "^1.2.4",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.34.0",
+    "next-themes": "^0.4.6",
+    "tailwind-merge": "^3.4.0",
+    "tailwindcss-animate": "^1.0.7"
   }
 }

@@ -225,7 +225,7 @@ export default function PullRequestReviewPage({
           PR {pullRequest.id}
         </h2>
         <p className="text-slate-600 text-sm">
-          {`${makerStudio} -> ${authorStudio}`} |{' '}
+          {`${makerStudio} → ${authorStudio}`} |{' '}
           {pullRequest.severity.toUpperCase()}
           {' | '}
           {statusLabel}

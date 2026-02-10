@@ -1,5 +1,6 @@
-'use client';
+﻿'use client';
 
+import { Languages } from 'lucide-react';
 import { type AppLanguage, useLanguage } from '../contexts/LanguageContext';
 
 const BUTTON_BASE_CLASS =
@@ -17,7 +18,10 @@ export const LanguageSwitcher = () => {
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-slate-500 text-xs">{t('Language', 'Язык')}</span>
+      <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground uppercase tracking-wide">
+        <Languages aria-hidden="true" className="h-3.5 w-3.5" />
+        {t('Language', 'Язык')}
+      </span>
       {languages.map((item) => {
         const active = item === language;
         return (
@@ -26,8 +30,8 @@ export const LanguageSwitcher = () => {
             aria-pressed={active}
             className={`${BUTTON_BASE_CLASS} ${
               active
-                ? 'border-ember bg-ember text-white'
-                : 'border-slate-300 bg-white text-slate-700 hover:border-ember hover:text-ember'
+                ? 'border-primary/60 bg-primary/15 text-primary'
+                : 'border-border bg-muted/70 text-muted-foreground hover:border-primary/40 hover:text-foreground'
             }`}
             key={item}
             onClick={() => setLanguage(item)}

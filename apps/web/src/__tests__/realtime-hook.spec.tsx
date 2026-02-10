@@ -27,8 +27,17 @@ jest.mock('../lib/socket', () => {
   return { getSocket: () => socket, __socket: socket };
 });
 
-const Harness = ({ scope }: { scope: string }) => {
-  const { events, needsResync, requestResync } = useRealtimeRoom(scope);
+const Harness = ({
+  enabled = true,
+  scope,
+}: {
+  enabled?: boolean;
+  scope: string;
+}) => {
+  const { events, needsResync, requestResync } = useRealtimeRoom(
+    scope,
+    enabled,
+  );
   return (
     <div>
       <span data-testid="count">{events.length}</span>
@@ -41,6 +50,13 @@ const Harness = ({ scope }: { scope: string }) => {
 };
 
 describe('useRealtimeRoom', () => {
+  beforeEach(() => {
+    const { __socket } = jest.requireMock('../lib/socket');
+    __socket.emit.mockClear();
+    __socket.on.mockClear();
+    __socket.off.mockClear();
+  });
+
   test('subscribes and handles events + resync', async () => {
     render(<Harness scope="post:1" />);
 
@@ -189,5 +205,13 @@ describe('useRealtimeRoom', () => {
       scope: 'post:1',
       sinceSequence: 5,
     });
+  });
+
+  test('does not subscribe when hook is disabled', () => {
+    render(<Harness enabled={false} scope="post:1" />);
+
+    const { __socket } = jest.requireMock('../lib/socket');
+    expect(__socket.emit).not.toHaveBeenCalled();
+    expect(__socket.on).not.toHaveBeenCalled();
   });
 });

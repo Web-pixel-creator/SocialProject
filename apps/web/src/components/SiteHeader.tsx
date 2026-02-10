@@ -1,52 +1,80 @@
-'use client';
+﻿'use client';
 
+import { Eye, Search } from 'lucide-react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useLanguage } from '../contexts/LanguageContext';
 import { LanguageSwitcher } from './LanguageSwitcher';
 
 export const SiteHeader = () => {
   const { t } = useLanguage();
+  const pathname = usePathname();
+
+  const links = [
+    { href: '/feed', label: t('Feeds', 'Ленты') },
+    { href: '/search', label: t('Search', 'Поиск') },
+    { href: '/commissions', label: t('Commissions', 'Комиссии') },
+    {
+      href: '/studios/onboarding',
+      label: t('Studio onboarding', 'Онбординг студии'),
+    },
+    { href: '/demo', label: t('Demo', 'Демо') },
+  ];
 
   return (
-    <header className="mb-10 flex flex-wrap items-center justify-between gap-4">
-      <div>
-        <p className="pill">{t('AI Social Network', 'AI Социальная сеть')}</p>
-        <h1 className="mt-3 font-bold text-3xl text-ink tracking-tight">
+    <header className="sticky top-4 z-50 mb-6 rounded-2xl border border-border bg-background/90 p-4 backdrop-blur lg:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link
+          className="flex items-center gap-2 font-bold text-foreground text-xl tracking-tight"
+          href="/"
+        >
+          <span className="icon-breathe inline-flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-400 to-emerald-400 text-black">
+            F
+          </span>
           FinishIt
-        </h1>
-        <p className="text-slate-600 text-sm">
-          {t(
-            'Where AI studios debate and evolve creative work.',
-            'Где AI-студии спорят и развивают креативные работы.',
-          )}
-        </p>
-      </div>
-      <div className="grid justify-items-end gap-3">
-        <LanguageSwitcher />
-        <nav className="flex flex-wrap gap-3 font-semibold text-slate-700 text-sm">
-          <Link className="hover:text-ember" href="/feed">
-            {t('Feeds', 'Ленты')}
-          </Link>
-          <Link className="hover:text-ember" href="/search">
-            {t('Search', 'Поиск')}
-          </Link>
-          <Link className="hover:text-ember" href="/commissions">
-            {t('Commissions', 'Комиссии')}
-          </Link>
-          <Link className="hover:text-ember" href="/demo">
-            {t('Demo', 'Демо')}
-          </Link>
-          <Link className="hover:text-ember" href="/studios/onboarding">
-            {t('Studio onboarding', 'Онбординг студии')}
-          </Link>
-          <Link className="hover:text-ember" href="/privacy">
-            {t('Privacy', 'Приватность')}
-          </Link>
-          <Link className="hover:text-ember" href="/login">
+        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="hidden items-center rounded-full border border-border bg-muted/50 px-3 py-2 text-muted-foreground text-xs transition-colors hover:bg-muted sm:flex">
+            <Search aria-hidden="true" className="mr-2 h-4 w-4" />
+            {t(
+              'Search drafts, studios, PRs...',
+              'Поиск драфтов, студий, PR...',
+            )}
+          </div>
+          <LanguageSwitcher />
+          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 font-semibold text-[11px] text-emerald-500 uppercase tracking-wide">
+            <Eye aria-hidden="true" className="h-3.5 w-3.5" />
+            {t('Observer mode', 'Режим наблюдателя')}
+          </span>
+          <Link className="glass-button" href="/login">
             {t('Sign in', 'Войти')}
           </Link>
-        </nav>
+        </div>
       </div>
+      <nav className="mt-4 flex flex-wrap items-center gap-2 font-semibold text-sm">
+        {links.map((link) => {
+          const active = pathname === link.href;
+          return (
+            <Link
+              className={`rounded-full border px-3 py-1.5 transition ${
+                active
+                  ? 'border-cyan-500/50 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400'
+                  : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground'
+              }`}
+              href={link.href}
+              key={link.href}
+            >
+              {link.label}
+            </Link>
+          );
+        })}
+        <Link
+          className="rounded-full border border-transparent px-3 py-1.5 text-muted-foreground transition hover:border-border hover:text-foreground"
+          href="/privacy"
+        >
+          {t('Privacy', 'Приватность')}
+        </Link>
+      </nav>
     </header>
   );
 };

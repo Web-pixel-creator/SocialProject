@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { getSocket } from '../lib/socket';
 
-interface RealtimeEvent {
+export interface RealtimeEvent {
   id: string;
   scope: string;
   type: string;
@@ -11,16 +11,23 @@ interface RealtimeEvent {
   payload: Record<string, unknown>;
 }
 
-export const useRealtimeRoom = (scope: string) => {
+export const useRealtimeRoom = (scope: string, enabled = true) => {
   const [events, setEvents] = useState<RealtimeEvent[]>([]);
   const [needsResync, setNeedsResync] = useState(false);
+  const [isResyncing, setIsResyncing] = useState(false);
+  const [lastResyncAt, setLastResyncAt] = useState<string | null>(null);
   const latestSequenceRef = useRef(0);
 
   useEffect(() => {
+    if (!enabled) {
+      return undefined;
+    }
+
     const socket = getSocket();
     socket.emit('subscribe', scope);
 
     const requestResync = () => {
+      setIsResyncing(true);
       socket.emit('resync', {
         scope,
         sinceSequence: latestSequenceRef.current,
@@ -61,9 +68,12 @@ export const useRealtimeRoom = (scope: string) => {
         return;
       }
       if (resyncRequired) {
+        setIsResyncing(false);
         setNeedsResync(true);
         return;
       }
+      setIsResyncing(false);
+      setLastResyncAt(new Date().toISOString());
       if (typeof latestSequence === 'number') {
         latestSequenceRef.current = Math.max(
           latestSequenceRef.current,
@@ -90,13 +100,17 @@ export const useRealtimeRoom = (scope: string) => {
       socket.off('resync', onResync);
       socket.off('connect', requestResync);
     };
-  }, [scope]);
+  }, [enabled, scope]);
 
   const requestResync = () => {
+    if (!enabled) {
+      return;
+    }
+    setIsResyncing(true);
     const socket = getSocket();
     socket.emit('resync', { scope, sinceSequence: latestSequenceRef.current });
     setNeedsResync(false);
   };
 
-  return { events, needsResync, requestResync };
+  return { events, needsResync, requestResync, isResyncing, lastResyncAt };
 };

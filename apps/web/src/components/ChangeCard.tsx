@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface ChangeCardProps {
   id: string;
@@ -13,6 +14,9 @@ interface ChangeCardProps {
   occurredAt?: string;
   glowUpScore?: number;
   impactDelta?: number;
+  miniThread?: string[];
+  makerPrRef?: string;
+  decisionLabel?: string;
 }
 
 const formatTime = (value?: string) => {
@@ -36,8 +40,50 @@ export const ChangeCard = ({
   occurredAt,
   glowUpScore,
   impactDelta,
+  miniThread,
+  makerPrRef,
+  decisionLabel,
 }: ChangeCardProps) => {
-  const badge = changeType === 'pr_merged' ? 'PR merged' : 'Fix request';
+  const { t } = useLanguage();
+  const badge =
+    changeType === 'pr_merged'
+      ? t('PR merged', 'PR смержен')
+      : t('Fix request', 'Fix request');
+  const decisionText =
+    decisionLabel ??
+    (changeType === 'pr_merged'
+      ? t('Merged', 'Смержено')
+      : t('Awaiting changes', 'Ожидаются изменения'));
+  const threadItems = useMemo(() => {
+    if (miniThread && miniThread.length > 0) {
+      return miniThread;
+    }
+
+    const baseLine =
+      changeType === 'pr_merged'
+        ? `${t('Merged PR', 'Смерженный PR')}: ${description}`
+        : `${t('Fix Request', 'Fix Request')}: ${description}`;
+    const items = [baseLine];
+    if (makerPrRef) {
+      items.push(`${t('Maker PR', 'PR мейкера')}: ${makerPrRef}`);
+    }
+    items.push(`${t('Author decision', 'Решение автора')}: ${decisionText}`);
+    if (typeof glowUpScore === 'number') {
+      items.push(
+        `${t('Auto-update: GlowUp recalculated to', 'Автообновление: GlowUp пересчитан до')} ${glowUpScore.toFixed(1)}`,
+      );
+    }
+    return items;
+  }, [
+    changeType,
+    decisionText,
+    description,
+    glowUpScore,
+    makerPrRef,
+    miniThread,
+    t,
+  ]);
+
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
 
   const copyLink = async () => {
@@ -58,21 +104,34 @@ export const ChangeCard = ({
   return (
     <article className="card grid gap-3 p-4">
       <div className="flex items-center justify-between">
-        <span className="rounded-full bg-ink/10 px-2 py-1 font-semibold text-[10px] text-ink uppercase">
+        <span className="rounded-full border border-primary/40 bg-primary/15 px-2 py-1 font-semibold text-[10px] text-primary uppercase">
           {badge}
         </span>
         {severity && (
-          <span className="rounded-full bg-amber-100 px-2 py-1 font-semibold text-[10px] text-amber-800 uppercase">
+          <span className="rounded-full border border-secondary/40 bg-secondary/10 px-2 py-1 font-semibold text-[10px] text-secondary uppercase">
             {severity}
           </span>
         )}
       </div>
       <div>
-        <p className="font-semibold text-ink text-sm">{draftTitle}</p>
-        <p className="text-slate-500 text-xs">Draft {draftId}</p>
+        <p className="font-semibold text-foreground text-sm">{draftTitle}</p>
+        <p className="text-muted-foreground text-xs">Draft {draftId}</p>
       </div>
-      <p className="text-slate-600 text-sm">{description}</p>
-      <div className="flex items-center justify-between text-slate-500 text-xs">
+      <p className="text-foreground/85 text-sm">{description}</p>
+      <section className="rounded-xl border border-border bg-muted/60 p-3">
+        <p className="font-semibold text-foreground text-xs">Mini-thread</p>
+        <ul className="mt-2 grid gap-1 text-foreground/85 text-xs">
+          {threadItems.map((line) => (
+            <li
+              className="rounded-md border border-border bg-background/55 px-2 py-1.5"
+              key={`${id}-${line}`}
+            >
+              {line}
+            </li>
+          ))}
+        </ul>
+      </section>
+      <div className="flex items-center justify-between text-muted-foreground text-xs">
         <span>{formatTime(occurredAt)}</span>
         <div className="flex items-center gap-2">
           {typeof impactDelta === 'number' && impactDelta > 0 && (
@@ -83,13 +142,16 @@ export const ChangeCard = ({
       </div>
       <div className="flex items-center justify-between text-xs">
         <button
-          className="font-semibold text-slate-600 hover:text-ink"
+          className="font-semibold text-muted-foreground transition hover:text-foreground"
           onClick={copyLink}
           type="button"
         >
           {copyStatus ?? 'Copy link'}
         </button>
-        <Link className="font-semibold text-ink" href={`/drafts/${draftId}`}>
+        <Link
+          className="font-semibold text-primary transition hover:text-primary/80"
+          href={`/drafts/${draftId}`}
+        >
           Open draft
         </Link>
       </div>
