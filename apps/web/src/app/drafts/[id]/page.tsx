@@ -124,6 +124,51 @@ const fetchPullRequests = async (draftId: string): Promise<PullRequest[]> => {
   return response.data ?? [];
 };
 
+const fetchDraftArc = async (draftId: string): Promise<DraftArcView | null> => {
+  const response = await apiClient.get(`/drafts/${draftId}/arc`);
+  const payload = response.data;
+  if (
+    payload &&
+    typeof payload === 'object' &&
+    payload.summary &&
+    typeof payload.summary === 'object' &&
+    payload.recap24h &&
+    typeof payload.recap24h === 'object'
+  ) {
+    return payload as DraftArcView;
+  }
+  return null;
+};
+
+const fetchObserverWatchlist = async (): Promise<unknown[]> => {
+  const response = await apiClient.get('/observers/watchlist');
+  return Array.isArray(response.data) ? response.data : [];
+};
+
+const fetchObserverDigest = async (): Promise<ObserverDigestEntryView[]> => {
+  const response = await apiClient.get('/observers/digest', {
+    params: { unseenOnly: false, limit: 8 },
+  });
+  return Array.isArray(response.data) ? response.data : [];
+};
+
+const fetchPredictionSummary = async (
+  pullRequestId: string,
+): Promise<PullRequestPredictionSummaryView | null> => {
+  const response = await apiClient.get(
+    `/pull-requests/${pullRequestId}/predictions`,
+  );
+  const payload = response.data;
+  if (
+    payload &&
+    typeof payload === 'object' &&
+    typeof payload.pullRequestId === 'string'
+  ) {
+    return payload as PullRequestPredictionSummaryView;
+  }
+  return null;
+};
+
 const sendTelemetry = async (payload: Record<string, unknown>) => {
   try {
     await apiClient.post('/telemetry/ux', payload);
@@ -192,31 +237,114 @@ export default function DraftDetailPage() {
   );
   const draft = draftPayload?.draft ?? null;
   const versions = draftPayload?.versions ?? [];
+  const pendingPull = pullRequests.find((item) => item.status === 'pending');
+  const pendingPullId = pendingPull?.id ?? '';
+  const {
+    data: arcView,
+    error: arcLoadError,
+    isLoading: arcIsLoading,
+    isValidating: arcIsValidating,
+    mutate: mutateArc,
+  } = useSWR<DraftArcView | null>(
+    draftId ? `draft:arc:${draftId}` : null,
+    () => fetchDraftArc(draftId),
+    {
+      revalidateOnFocus: false,
+      shouldRetryOnError: false,
+    },
+  );
+  const {
+    data: watchlistEntries = [],
+    error: watchlistLoadError,
+    mutate: mutateWatchlist,
+  } = useSWR<unknown[]>(
+    draftId ? 'observer:watchlist' : null,
+    fetchObserverWatchlist,
+    {
+      revalidateOnFocus: false,
+      shouldRetryOnError: false,
+    },
+  );
+  const {
+    data: digestEntriesData = [],
+    error: digestLoadError,
+    isLoading: digestIsLoading,
+    isValidating: digestIsValidating,
+    mutate: mutateDigest,
+  } = useSWR<ObserverDigestEntryView[]>(
+    draftId ? 'observer:digest' : null,
+    fetchObserverDigest,
+    {
+      revalidateOnFocus: false,
+      shouldRetryOnError: false,
+    },
+  );
+  const {
+    data: predictionSummaryData,
+    error: predictionLoadError,
+    isLoading: predictionSummaryIsLoading,
+    isValidating: predictionSummaryIsValidating,
+    mutate: mutatePredictionSummary,
+  } = useSWR<PullRequestPredictionSummaryView | null>(
+    pendingPullId ? `pull-request:predictions:${pendingPullId}` : null,
+    () => fetchPredictionSummary(pendingPullId),
+    {
+      revalidateOnFocus: false,
+      shouldRetryOnError: false,
+    },
+  );
   const [similarDrafts, setSimilarDrafts] = useState<SimilarDraft[]>([]);
   const [similarStatus, setSimilarStatus] = useState<string | null>(null);
   const [similarLoading, setSimilarLoading] = useState(false);
-  const [arcView, setArcView] = useState<DraftArcView | null>(null);
-  const [arcLoading, setArcLoading] = useState(false);
-  const [arcError, setArcError] = useState<string | null>(null);
-  const [digestEntries, setDigestEntries] = useState<ObserverDigestEntryView[]>(
-    [],
-  );
-  const [digestLoading, setDigestLoading] = useState(false);
-  const [digestError, setDigestError] = useState<string | null>(null);
-  const [observerAuthRequired, setObserverAuthRequired] = useState(false);
-  const [predictionSummary, setPredictionSummary] =
-    useState<PullRequestPredictionSummaryView | null>(null);
-  const [predictionLoading, setPredictionLoading] = useState(false);
   const [predictionSubmitLoading, setPredictionSubmitLoading] = useState(false);
-  const [predictionError, setPredictionError] = useState<string | null>(null);
+  const [predictionSubmitError, setPredictionSubmitError] = useState<
+    string | null
+  >(null);
+  const [manualObserverAuthRequired, setManualObserverAuthRequired] =
+    useState(false);
   const [demoLoading, setDemoLoading] = useState(false);
   const [demoStatus, setDemoStatus] = useState<string | null>(null);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
-  const [isFollowed, setIsFollowed] = useState(false);
   const [notifications, setNotifications] = useState<
     Array<{ id: string; message: string; time: string }>
   >([]);
   const seenEventsRef = useRef<Set<string>>(new Set());
+  const watchlistAuthRequired = isAuthRequiredError(watchlistLoadError);
+  const digestAuthRequired = isAuthRequiredError(digestLoadError);
+  const predictionAuthRequired = isAuthRequiredError(predictionLoadError);
+  const observerAuthRequired =
+    manualObserverAuthRequired ||
+    watchlistAuthRequired ||
+    digestAuthRequired ||
+    predictionAuthRequired;
+  const isFollowed =
+    draftId.length > 0 &&
+    watchlistEntries.some((item) => isWatchlistEntryForDraft(item, draftId));
+  const digestEntries = digestEntriesData;
+  const digestLoading = digestIsLoading || digestIsValidating;
+  let digestError: string | null = null;
+  if (digestLoadError && !digestAuthRequired) {
+    digestError = getApiErrorMessage(
+      digestLoadError,
+      t('draftDetail.errors.loadDigest'),
+    );
+  }
+  const predictionSummary = predictionSummaryData ?? null;
+  const predictionLoading =
+    predictionSummaryIsLoading ||
+    predictionSummaryIsValidating ||
+    predictionSubmitLoading;
+  let predictionError: string | null = predictionSubmitError;
+  if (!predictionError && predictionLoadError && !predictionAuthRequired) {
+    predictionError = getApiErrorMessage(
+      predictionLoadError,
+      t('draftDetail.errors.loadPredictionSummary'),
+    );
+  }
+  const arcLoading = arcIsLoading || arcIsValidating;
+  const arcError = arcLoadError
+    ? getApiErrorMessage(arcLoadError, t('draftDetail.errors.loadArc'))
+    : null;
   const loading = draftLoading || fixRequestsLoading || pullRequestsLoading;
   let error: string | null = null;
   if (draftLoadError) {
@@ -240,119 +368,6 @@ export default function DraftDetailPage() {
     draftId ? `post:${draftId}` : 'post:unknown',
   );
 
-  const loadArc = useCallback(async () => {
-    if (!draftId) {
-      return;
-    }
-    setArcLoading(true);
-    setArcError(null);
-    try {
-      const response = await apiClient.get(`/drafts/${draftId}/arc`);
-      const payload = response.data;
-      if (
-        payload &&
-        typeof payload === 'object' &&
-        payload.summary &&
-        typeof payload.summary === 'object' &&
-        payload.recap24h &&
-        typeof payload.recap24h === 'object'
-      ) {
-        setArcView(payload);
-      } else {
-        setArcView(null);
-      }
-    } catch (error: unknown) {
-      setArcView(null);
-      setArcError(getApiErrorMessage(error, t('draftDetail.errors.loadArc')));
-    } finally {
-      setArcLoading(false);
-    }
-  }, [draftId, t]);
-
-  const loadWatchlist = useCallback(async () => {
-    if (!draftId) {
-      return;
-    }
-    try {
-      const response = await apiClient.get('/observers/watchlist');
-      const list = Array.isArray(response.data) ? response.data : [];
-      setObserverAuthRequired(false);
-      setIsFollowed(
-        list.some((item) => isWatchlistEntryForDraft(item, draftId)),
-      );
-    } catch (error: unknown) {
-      if (isAuthRequiredError(error)) {
-        setObserverAuthRequired(true);
-        setIsFollowed(false);
-        return;
-      }
-      setIsFollowed(false);
-    }
-  }, [draftId]);
-
-  const loadDigest = useCallback(async () => {
-    setDigestLoading(true);
-    setDigestError(null);
-    try {
-      const response = await apiClient.get('/observers/digest', {
-        params: { unseenOnly: false, limit: 8 },
-      });
-      setObserverAuthRequired(false);
-      setDigestEntries(Array.isArray(response.data) ? response.data : []);
-    } catch (error: unknown) {
-      if (isAuthRequiredError(error)) {
-        setObserverAuthRequired(true);
-        setDigestEntries([]);
-      } else {
-        setDigestError(
-          getApiErrorMessage(error, t('draftDetail.errors.loadDigest')),
-        );
-        setDigestEntries([]);
-      }
-    } finally {
-      setDigestLoading(false);
-    }
-  }, [t]);
-
-  const loadPredictionSummary = useCallback(
-    async (pullRequestId: string) => {
-      setPredictionLoading(true);
-      setPredictionError(null);
-      try {
-        const response = await apiClient.get(
-          `/pull-requests/${pullRequestId}/predictions`,
-        );
-        setObserverAuthRequired(false);
-        const payload = response.data;
-        if (
-          payload &&
-          typeof payload === 'object' &&
-          typeof payload.pullRequestId === 'string'
-        ) {
-          setPredictionSummary(payload);
-        } else {
-          setPredictionSummary(null);
-        }
-      } catch (error: unknown) {
-        if (isAuthRequiredError(error)) {
-          setObserverAuthRequired(true);
-          setPredictionSummary(null);
-        } else {
-          setPredictionError(
-            getApiErrorMessage(
-              error,
-              t('draftDetail.errors.loadPredictionSummary'),
-            ),
-          );
-          setPredictionSummary(null);
-        }
-      } finally {
-        setPredictionLoading(false);
-      }
-    },
-    [t],
-  );
-
   const runDemoFlow = useCallback(async () => {
     if (!draftId) {
       return;
@@ -366,6 +381,7 @@ export default function DraftDetailPage() {
         mutateDraft(),
         mutateFixRequests(),
         mutatePullRequests(),
+        mutateArc(),
       ]);
     } catch (error: unknown) {
       setDemoStatus(
@@ -374,7 +390,14 @@ export default function DraftDetailPage() {
     } finally {
       setDemoLoading(false);
     }
-  }, [draftId, mutateDraft, mutateFixRequests, mutatePullRequests, t]);
+  }, [
+    draftId,
+    mutateArc,
+    mutateDraft,
+    mutateFixRequests,
+    mutatePullRequests,
+    t,
+  ]);
 
   const copyDraftId = async () => {
     if (!draftId || typeof navigator === 'undefined') {
@@ -445,30 +468,25 @@ export default function DraftDetailPage() {
     }
   }, [draftId, t]);
 
-  useEffect(() => {
-    if (!draftId) {
-      return;
-    }
-    loadArc();
-    loadWatchlist();
-    loadDigest();
-  }, [draftId, loadArc, loadDigest, loadWatchlist]);
-
   const markDigestSeen = async (entryId: string) => {
     try {
       await apiClient.post(`/observers/digest/${entryId}/seen`);
-      setDigestEntries((prev) =>
-        prev.map((entry) =>
-          entry.id === entryId ? { ...entry, isSeen: true } : entry,
-        ),
+      await mutateDigest(
+        (current) =>
+          (current ?? []).map((entry) =>
+            entry.id === entryId ? { ...entry, isSeen: true } : entry,
+          ),
+        { revalidate: false },
       );
       sendTelemetry({
         eventType: 'digest_open',
         draftId,
         source: 'draft_detail',
       });
-    } catch {
-      // noop: keep item visible if server mark-seen fails
+    } catch (error: unknown) {
+      if (isAuthRequiredError(error)) {
+        setManualObserverAuthRequired(true);
+      }
     }
   };
 
@@ -482,47 +500,63 @@ export default function DraftDetailPage() {
       } else {
         await apiClient.post(`/observers/watchlist/${draftId}`);
       }
+      setManualObserverAuthRequired(false);
       const nextState = !isFollowed;
-      setObserverAuthRequired(false);
-      setIsFollowed(nextState);
+      await mutateWatchlist(
+        (current) => {
+          const entries = current ?? [];
+          if (nextState) {
+            if (
+              entries.some((item) => isWatchlistEntryForDraft(item, draftId))
+            ) {
+              return entries;
+            }
+            return [...entries, { draftId }];
+          }
+          return entries.filter(
+            (item) => !isWatchlistEntryForDraft(item, draftId),
+          );
+        },
+        { revalidate: false },
+      );
       sendTelemetry({
         eventType: nextState ? 'watchlist_follow' : 'watchlist_unfollow',
         draftId,
         source: 'draft_detail',
       });
       if (nextState) {
-        loadDigest();
+        mutateDigest();
       }
     } catch (error: unknown) {
       if (isAuthRequiredError(error)) {
-        setObserverAuthRequired(true);
+        setManualObserverAuthRequired(true);
       }
     }
   };
 
   const submitPrediction = async (outcome: 'merge' | 'reject') => {
-    const pendingPull = pullRequests.find((item) => item.status === 'pending');
-    if (!pendingPull) {
+    if (!pendingPullId) {
       return;
     }
     setPredictionSubmitLoading(true);
-    setPredictionError(null);
+    setPredictionSubmitError(null);
     try {
-      await apiClient.post(`/pull-requests/${pendingPull.id}/predict`, {
+      await apiClient.post(`/pull-requests/${pendingPullId}/predict`, {
         predictedOutcome: outcome,
       });
+      setManualObserverAuthRequired(false);
       sendTelemetry({
         eventType: 'pr_prediction_submit',
         draftId,
         source: 'draft_detail',
         metadata: { outcome },
       });
-      await loadPredictionSummary(pendingPull.id);
+      await mutatePredictionSummary();
     } catch (error: unknown) {
       if (isAuthRequiredError(error)) {
-        setObserverAuthRequired(true);
+        setManualObserverAuthRequired(true);
       } else {
-        setPredictionError(
+        setPredictionSubmitError(
           getApiErrorMessage(error, t('draftDetail.errors.submitPrediction')),
         );
       }
@@ -568,34 +602,24 @@ export default function DraftDetailPage() {
     ) {
       mutateFixRequests();
       mutatePullRequests();
-      loadArc();
+      mutateArc();
       if (isFollowed) {
-        loadDigest();
+        mutateDigest();
       }
     }
     if (last.type === 'glowup_update') {
       mutateDraft();
-      loadArc();
+      mutateArc();
     }
   }, [
     events,
     isFollowed,
-    loadArc,
-    loadDigest,
     mutateDraft,
+    mutateArc,
+    mutateDigest,
     mutateFixRequests,
     mutatePullRequests,
   ]);
-
-  useEffect(() => {
-    const pendingPull = pullRequests.find((item) => item.status === 'pending');
-    if (!pendingPull) {
-      setPredictionSummary(null);
-      setPredictionError(null);
-      return;
-    }
-    loadPredictionSummary(pendingPull.id);
-  }, [pullRequests, loadPredictionSummary]);
 
   const formatEventMessage = useCallback(
     (eventType: string, payload: Record<string, unknown>) => {
@@ -670,7 +694,6 @@ export default function DraftDetailPage() {
     maker: `Studio ${item.makerId.slice(0, 6)}`,
   }));
 
-  const pendingPull = pullRequests.find((item) => item.status === 'pending');
   const hasFixRequests = fixRequests.length > 0;
   const statusInfo = (() => {
     if (pendingPull) {
