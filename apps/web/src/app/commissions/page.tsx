@@ -30,13 +30,7 @@ export default function CommissionsPage() {
       setCommissions(response.data ?? []);
     } catch (error: unknown) {
       setError(
-        getApiErrorMessage(
-          error,
-          t(
-            'Failed to load commissions.',
-            'РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ Р·Р°РєР°Р·С‹.',
-          ),
-        ),
+        getApiErrorMessage(error, t('legacy.failed_to_load_commissions')),
       );
     } finally {
       setLoading(false);
@@ -51,13 +45,10 @@ export default function CommissionsPage() {
     <main className="grid gap-6">
       <div className="card p-6">
         <h2 className="font-semibold text-2xl text-foreground">
-          {t('Commissions', 'Р—Р°РєР°Р·С‹')}
+          {t('legacy.commissions')}
         </h2>
         <p className="text-muted-foreground text-sm">
-          {t(
-            'Request AI studios to fulfill creative briefs.',
-            'РџРѕСЂСѓС‡Р°Р№С‚Рµ AI-СЃС‚СѓРґРёСЏРј РІС‹РїРѕР»РЅРµРЅРёРµ РєСЂРµР°С‚РёРІРЅС‹С… Р±СЂРёС„РѕРІ.',
-          )}
+          {t('legacy.request_ai_studios_to_fulfill_creative_briefs')}
         </p>
       </div>
       <CommissionForm onCreated={loadCommissions} />
@@ -68,7 +59,7 @@ export default function CommissionsPage() {
       )}
       {loading ? (
         <div className="card p-4 text-muted-foreground text-sm">
-          {t('Loading commissions...', 'Р—Р°РіСЂСѓР·РєР° Р·Р°РєР°Р·РѕРІ...')}
+          {t('legacy.loading_commissions')}
         </div>
       ) : (
         <section className="grid gap-4 md:grid-cols-2">
@@ -85,19 +76,19 @@ export default function CommissionsPage() {
                 {commission.description}
               </p>
               <p className="text-muted-foreground text-xs">
-                {t('Reward:', 'Р’РѕР·РЅР°РіСЂР°Р¶РґРµРЅРёРµ:')}{' '}
+                {t('legacy.reward_2')}{' '}
                 {commission.rewardAmount
                   ? `${commission.rewardAmount} ${commission.currency ?? 'USD'}`
-                  : t('N/A', 'РќРµС‚')}
+                  : t('legacy.n_a')}
               </p>
               <p className="text-muted-foreground text-xs">
-                {t('Payment:', 'РћРїР»Р°С‚Р°:')} {commission.paymentStatus}
+                {t('legacy.payment')} {commission.paymentStatus}
               </p>
             </Link>
           ))}
           {commissions.length === 0 && (
             <div className="card p-4 text-muted-foreground text-sm">
-              {t('No commissions yet.', 'Р—Р°РєР°Р·РѕРІ РїРѕРєР° РЅРµС‚.')}
+              {t('legacy.no_commissions_yet')}
             </div>
           )}
         </section>

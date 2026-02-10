@@ -19,12 +19,7 @@ export default function PrivacyPage() {
       setExportRequested(true);
       setExportUrl(response.data?.export?.downloadUrl ?? null);
     } catch (error: unknown) {
-      setError(
-        getApiErrorMessage(
-          error,
-          t('Failed to request export.', 'Не удалось запросить экспорт.'),
-        ),
-      );
+      setError(getApiErrorMessage(error, t('legacy.failed_to_request_export')));
     }
   };
 
@@ -35,10 +30,7 @@ export default function PrivacyPage() {
       setDeleteRequested(true);
     } catch (error: unknown) {
       setError(
-        getApiErrorMessage(
-          error,
-          t('Failed to request deletion.', 'Не удалось запросить удаление.'),
-        ),
+        getApiErrorMessage(error, t('legacy.failed_to_request_deletion')),
       );
     }
   };
@@ -47,26 +39,20 @@ export default function PrivacyPage() {
     <main className="grid gap-6">
       <div className="card p-6">
         <h2 className="font-semibold text-2xl text-foreground">
-          {t('Privacy & Data', 'Приватность и данные')}
+          {t('legacy.privacy_data')}
         </h2>
         <p className="text-muted-foreground text-sm">
-          {t(
-            'Manage exports, deletion requests, and review retention windows.',
-            'Управляйте экспортом, запросами на удаление и сроками хранения данных.',
-          )}
+          {t('legacy.manage_exports_deletion_requests_and_review_retention')}
         </p>
       </div>
       <div className="card grid gap-4 p-6">
         <div className="flex items-center justify-between">
           <div>
             <p className="font-semibold text-foreground text-sm">
-              {t('Data export', 'Экспорт данных')}
+              {t('legacy.data_export')}
             </p>
             <p className="text-muted-foreground text-xs">
-              {t(
-                'Export bundles expire after 24 hours.',
-                'Ссылка на экспорт истекает через 24 часа.',
-              )}
+              {t('legacy.export_bundles_expire_after_24_hours')}
             </p>
           </div>
           <button
@@ -75,8 +61,8 @@ export default function PrivacyPage() {
             type="button"
           >
             {exportRequested
-              ? t('Requested', 'Запрошено')
-              : t('Request export', 'Запросить экспорт')}
+              ? t('legacy.requested')
+              : t('legacy.request_export')}
           </button>
         </div>
         {exportUrl && (
@@ -84,19 +70,16 @@ export default function PrivacyPage() {
             className="text-primary text-xs underline underline-offset-2"
             href={exportUrl}
           >
-            {t('Download export', 'Скачать экспорт')}
+            {t('legacy.download_export')}
           </a>
         )}
         <div className="flex items-center justify-between">
           <div>
             <p className="font-semibold text-foreground text-sm">
-              {t('Account deletion', 'Удаление аккаунта')}
+              {t('legacy.account_deletion')}
             </p>
             <p className="text-muted-foreground text-xs">
-              {t(
-                'Deletion requests are irreversible.',
-                'Запрос на удаление необратим.',
-              )}
+              {t('legacy.deletion_requests_are_irreversible')}
             </p>
           </div>
           <button
@@ -105,16 +88,13 @@ export default function PrivacyPage() {
             type="button"
           >
             {deleteRequested
-              ? t('Pending', 'В обработке')
-              : t('Request deletion', 'Запросить удаление')}
+              ? t('legacy.pending_2')
+              : t('legacy.request_deletion')}
           </button>
         </div>
         {error && <p className="text-destructive text-xs">{error}</p>}
         <div className="rounded-xl border border-border bg-background/70 p-4 text-muted-foreground text-xs">
-          {t(
-            'Retention: viewing history 180 days | payment events 90 days | exports 7 days.',
-            'Хранение: история просмотров 180 дней | платежи 90 дней | экспорты 7 дней.',
-          )}
+          {t('legacy.retention_viewing_history_180_days_payment_events')}
         </div>
       </div>
     </main>

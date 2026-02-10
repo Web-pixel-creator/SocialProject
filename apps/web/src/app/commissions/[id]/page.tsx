@@ -40,13 +40,7 @@ export default function CommissionDetailPage({
       } catch (error: unknown) {
         if (!cancelled) {
           setError(
-            getApiErrorMessage(
-              error,
-              t(
-                'Failed to load commission.',
-                'РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ Р·Р°РєР°Р·.',
-              ),
-            ),
+            getApiErrorMessage(error, t('legacy.failed_to_load_commission')),
           );
         }
       } finally {
@@ -64,16 +58,16 @@ export default function CommissionDetailPage({
   return (
     <main className="grid gap-6">
       <div className="card p-6">
-        <p className="pill">{t('Commission', 'Р—Р°РєР°Р·')}</p>
+        <p className="pill">{t('legacy.commission')}</p>
         <h2 className="mt-3 font-semibold text-2xl text-foreground">
-          {t('Commission', 'Р—Р°РєР°Р·')} {params.id}
+          {t('legacy.commission')} {params.id}
         </h2>
         {commission && (
           <p className="text-muted-foreground text-sm">
-            {t('Reward', 'Р’РѕР·РЅР°РіСЂР°Р¶РґРµРЅРёРµ')}{' '}
+            {t('legacy.reward')}{' '}
             {commission.rewardAmount
               ? `${commission.rewardAmount} ${commission.currency ?? 'USD'}`
-              : t('N/A', 'РќРµС‚')}{' '}
+              : t('legacy.n_a')}{' '}
             | {commission.paymentStatus}
           </p>
         )}
@@ -85,21 +79,19 @@ export default function CommissionDetailPage({
       )}
       {loading ? (
         <div className="card p-4 text-muted-foreground text-sm">
-          {t('Loading commission...', 'Р—Р°РіСЂСѓР·РєР° Р·Р°РєР°Р·Р°...')}
+          {t('legacy.loading_commission')}
         </div>
       ) : (
         <div className="card p-6">
           <h3 className="font-semibold text-foreground text-sm">
-            {t('Commission details', 'Р”РµС‚Р°Р»Рё Р·Р°РєР°Р·Р°')}
+            {t('legacy.commission_details')}
           </h3>
           <p className="mt-3 text-muted-foreground text-sm">
-            {commission?.description ??
-              t('Commission not found.', 'Р—Р°РєР°Р· РЅРµ РЅР°Р№РґРµРЅ.')}
+            {commission?.description ?? t('legacy.commission_not_found')}
           </p>
           {commission?.winnerDraftId && (
             <p className="mt-2 text-muted-foreground text-xs">
-              {t('Winner draft:', 'РџРѕР±РµРґРёРІС€РёР№ РґСЂР°С„С‚:')}{' '}
-              {commission.winnerDraftId}
+              {t('legacy.winner_draft')} {commission.winnerDraftId}
             </p>
           )}
         </div>

@@ -89,13 +89,7 @@ export default function PullRequestReviewPage({
       } catch (error: unknown) {
         if (!cancelled) {
           setError(
-            getApiErrorMessage(
-              error,
-              t(
-                'Failed to load pull request.',
-                'Не удалось загрузить пул-реквест.',
-              ),
-            ),
+            getApiErrorMessage(error, t('legacy.failed_to_load_pull_request')),
           );
         }
       } finally {
@@ -132,9 +126,7 @@ export default function PullRequestReviewPage({
       return;
     }
     if (decision === 'reject' && !rejectReason.trim()) {
-      setError(
-        t('Rejection reason is required.', 'Требуется причина отклонения.'),
-      );
+      setError(t('legacy.rejection_reason_is_required'));
       return;
     }
     setDecisionLoading(true);
@@ -159,12 +151,7 @@ export default function PullRequestReviewPage({
       }
       await load();
     } catch (error: unknown) {
-      setError(
-        getApiErrorMessage(
-          error,
-          t('Decision failed.', 'Не удалось принять решение.'),
-        ),
-      );
+      setError(getApiErrorMessage(error, t('legacy.decision_failed')));
     } finally {
       setDecisionLoading(false);
     }
@@ -190,7 +177,7 @@ export default function PullRequestReviewPage({
   if (loading) {
     return (
       <div className="card p-6 text-muted-foreground text-sm">
-        {t('Loading pull request...', 'Загрузка пул-реквеста...')}
+        {t('legacy.loading_pull_request')}
       </div>
     );
   }
@@ -198,7 +185,7 @@ export default function PullRequestReviewPage({
   if (!review) {
     return (
       <div className="card p-6 text-muted-foreground text-sm">
-        {error ?? t('Pull request not found.', 'Пул-реквест не найден.')}
+        {error ?? t('legacy.pull_request_not_found')}
       </div>
     );
   }
@@ -206,21 +193,21 @@ export default function PullRequestReviewPage({
   const { pullRequest, draft, authorStudio, makerStudio, metrics } = review;
   const statusLabel = (() => {
     if (pullRequest.status === 'pending') {
-      return t('pending', 'в ожидании');
+      return t('legacy.pending_3');
     }
     if (pullRequest.status === 'merged') {
-      return t('merged', 'смержен');
+      return t('legacy.merged');
     }
     if (pullRequest.status === 'rejected') {
-      return t('rejected', 'отклонен');
+      return t('legacy.rejected');
     }
-    return t('changes requested', 'нужны доработки');
+    return t('legacy.changes_requested');
   })();
 
   return (
     <main className="grid gap-6">
       <div className="card p-6">
-        <p className="pill">{t('PR Review', 'Ревью PR')}</p>
+        <p className="pill">{t('legacy.pr_review')}</p>
         <h2 className="mt-3 font-semibold text-2xl text-foreground">
           PR {pullRequest.id}
         </h2>
@@ -248,7 +235,7 @@ export default function PullRequestReviewPage({
 
           <div className="card p-4">
             <h3 className="font-semibold text-foreground text-sm">
-              {t('PR Summary', 'Сводка PR')}
+              {t('legacy.pr_summary')}
             </h3>
             <p className="mt-2 text-muted-foreground text-sm">
               {pullRequest.description}
@@ -261,25 +248,23 @@ export default function PullRequestReviewPage({
         <div className="grid gap-6">
           <div className="card p-4 text-muted-foreground text-sm">
             <h3 className="font-semibold text-foreground text-sm">
-              {t('Metrics delta', 'Изменение метрик')}
+              {t('legacy.metrics_delta')}
             </h3>
             <div className="mt-3 grid gap-2">
               <div className="flex items-center justify-between">
-                <span>{t('Current GlowUp', 'Текущий GlowUp')}</span>
+                <span>{t('legacy.current_glowup')}</span>
                 <span>{metrics.currentGlowUp.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span>{t('Predicted GlowUp', 'Прогнозируемый GlowUp')}</span>
+                <span>{t('legacy.predicted_glowup')}</span>
                 <span>{metrics.predictedGlowUp.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span>{t('GlowUp delta', 'Изменение GlowUp')}</span>
+                <span>{t('legacy.glowup_delta')}</span>
                 <span>{metrics.glowUpDelta.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span>
-                  {t('Impact delta (maker)', 'Изменение impact (автор)')}
-                </span>
+                <span>{t('legacy.impact_delta_maker')}</span>
                 <span>+{metrics.impactDelta}</span>
               </div>
             </div>
@@ -287,25 +272,19 @@ export default function PullRequestReviewPage({
 
           <div className="card p-4">
             <h3 className="font-semibold text-foreground text-sm">
-              {t('Decision', 'Решение')}
+              {t('legacy.decision')}
             </h3>
             <textarea
               className="mt-3 w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70"
               onChange={(event) => setFeedback(event.target.value)}
-              placeholder={t(
-                'Add feedback (optional).',
-                'Добавьте комментарий (опционально).',
-              )}
+              placeholder={t('legacy.add_feedback_optional')}
               rows={3}
               value={feedback}
             />
             <textarea
               className="mt-3 w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70"
               onChange={(event) => setRejectReason(event.target.value)}
-              placeholder={t(
-                'Rejection reason (required for reject).',
-                'Причина отклонения (обязательно для reject).',
-              )}
+              placeholder={t('legacy.rejection_reason_required_for_reject')}
               rows={3}
               value={rejectReason}
             />
@@ -316,7 +295,7 @@ export default function PullRequestReviewPage({
                 onClick={() => handleDecision('merge')}
                 type="button"
               >
-                {t('Merge (M)', 'Смержить (M)')}
+                {t('legacy.merge_m')}
               </button>
               <button
                 className="rounded-full border border-border bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60"
@@ -324,7 +303,7 @@ export default function PullRequestReviewPage({
                 onClick={() => handleDecision('request_changes')}
                 type="button"
               >
-                {t('Request changes', 'Запросить доработки')}
+                {t('legacy.request_changes')}
               </button>
               <button
                 className="rounded-full bg-rose-500 px-4 py-2 font-semibold text-white text-xs"
@@ -332,7 +311,7 @@ export default function PullRequestReviewPage({
                 onClick={() => handleDecision('reject')}
                 type="button"
               >
-                {t('Reject (R)', 'Отклонить (R)')}
+                {t('legacy.reject_r')}
               </button>
             </div>
           </div>

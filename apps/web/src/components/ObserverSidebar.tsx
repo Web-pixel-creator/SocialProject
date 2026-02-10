@@ -18,68 +18,58 @@ import { useLanguage } from '../contexts/LanguageContext';
 interface NavItem {
   href: string;
   icon: typeof Home;
-  label: string;
-  labelRu: string;
+  labelKey: string;
 }
 
 interface NavSection {
   id: string;
-  title: string;
-  titleRu: string;
+  titleKey: string;
   items: NavItem[];
 }
 
 const navSections: NavSection[] = [
   {
     id: 'core',
-    title: 'Observer',
-    titleRu: 'Наблюдатель',
+    titleKey: 'sidebar.section.observer',
     items: [
-      { href: '/feed', icon: Home, label: 'Home', labelRu: 'Главная' },
-      { href: '/search', icon: Compass, label: 'Explore', labelRu: 'Обзор' },
+      { href: '/feed', icon: Home, labelKey: 'sidebar.item.home' },
+      { href: '/search', icon: Compass, labelKey: 'sidebar.item.explore' },
       {
         href: '/feed?tab=Battles',
         icon: Swords,
-        label: 'Battles',
-        labelRu: 'Баттлы',
+        labelKey: 'sidebar.item.battles',
       },
-      { href: '/search', icon: Search, label: 'Search', labelRu: 'Поиск' },
+      { href: '/search', icon: Search, labelKey: 'sidebar.item.search' },
       {
         href: '/feed?tab=Studios',
         icon: Users,
-        label: 'Studios',
-        labelRu: 'Студии',
+        labelKey: 'sidebar.item.studios',
       },
     ],
   },
   {
     id: 'workspace',
-    title: 'Workspace',
-    titleRu: 'Рабочее',
+    titleKey: 'sidebar.section.workspace',
     items: [
       {
         href: '/commissions',
         icon: Wallet,
-        label: 'Commissions',
-        labelRu: 'Комиссии',
+        labelKey: 'sidebar.item.commissions',
       },
       {
         href: '/feed?tab=Archive',
         icon: BookMarked,
-        label: 'Bookmarks',
-        labelRu: 'Закладки',
+        labelKey: 'sidebar.item.bookmarks',
       },
       {
         href: '/privacy',
         icon: ShieldCheck,
-        label: 'Privacy',
-        labelRu: 'Приватность',
+        labelKey: 'sidebar.item.privacy',
       },
       {
         href: '/demo',
         icon: Settings,
-        label: 'Settings',
-        labelRu: 'Настройки',
+        labelKey: 'sidebar.item.settings',
       },
     ],
   },
@@ -135,20 +125,17 @@ export const ObserverSidebar = ({
     >
       <div className="mb-4 rounded-xl border border-border bg-muted/70 p-3">
         <p className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
-          {t('Navigation', 'Навигация')}
+          {t('legacy.navigation')}
         </p>
         <p className="mt-1 text-foreground text-sm">
-          {t('Application shell', 'Application shell')}
+          {t('legacy.application_shell')}
         </p>
       </div>
-      <nav
-        aria-label={t('Observer navigation', 'Навигация наблюдателя')}
-        className="grid gap-4"
-      >
+      <nav aria-label={t('legacy.observer_navigation')} className="grid gap-4">
         {navSections.map((section) => (
           <section className="grid gap-1.5" key={section.id}>
             <p className="px-2 font-semibold text-[11px] text-muted-foreground/70 uppercase tracking-wide">
-              {t(section.title, section.titleRu)}
+              {t(section.titleKey)}
             </p>
             {section.items.map((item) => {
               const Icon = item.icon;
@@ -161,11 +148,11 @@ export const ObserverSidebar = ({
                       : 'border-border bg-muted/50 text-muted-foreground hover:border-primary/35 hover:text-foreground'
                   }`}
                   href={item.href}
-                  key={`${item.href}:${item.label}`}
+                  key={`${item.href}:${item.labelKey}`}
                   onClick={onNavigate}
                 >
                   <Icon aria-hidden="true" className="h-4 w-4" />
-                  {t(item.label, item.labelRu)}
+                  {t(item.labelKey)}
                 </Link>
               );
             })}

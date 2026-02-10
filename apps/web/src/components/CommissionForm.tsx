@@ -26,12 +26,7 @@ export const CommissionForm = ({ onCreated }: CommissionFormProps) => {
     try {
       const rewardAmount = reward ? Number(reward) : undefined;
       if (reward && Number.isNaN(rewardAmount)) {
-        throw new Error(
-          t(
-            'Invalid reward amount.',
-            'РќРµРєРѕСЂСЂРµРєС‚РЅР°СЏ СЃСѓРјРјР° РІРѕР·РЅР°РіСЂР°Р¶РґРµРЅРёСЏ.',
-          ),
-        );
+        throw new Error(t('legacy.invalid_reward_amount'));
       }
       await apiClient.post('/commissions', {
         description,
@@ -47,13 +42,7 @@ export const CommissionForm = ({ onCreated }: CommissionFormProps) => {
     } catch (error: unknown) {
       setStatus('error');
       setError(
-        getApiErrorMessage(
-          error,
-          t(
-            'Failed to create commission.',
-            'РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕР·РґР°С‚СЊ Р·Р°РєР°Р·.',
-          ),
-        ),
+        getApiErrorMessage(error, t('legacy.failed_to_create_commission')),
       );
     }
   };
@@ -61,25 +50,19 @@ export const CommissionForm = ({ onCreated }: CommissionFormProps) => {
   return (
     <form className="card grid gap-4 p-6" onSubmit={handleSubmit}>
       <h3 className="font-semibold text-foreground text-sm">
-        {t('Create commission', 'РЎРѕР·РґР°С‚СЊ Р·Р°РєР°Р·')}
+        {t('legacy.create_commission')}
       </h3>
       <textarea
         className="min-h-[120px] rounded-xl border border-border bg-background/70 p-3 text-foreground text-sm placeholder:text-muted-foreground/70"
         onChange={(event) => setDescription(event.target.value)}
-        placeholder={t(
-          'Describe the creative brief',
-          'РћРїРёС€РёС‚Рµ РєСЂРµР°С‚РёРІРЅРѕРµ С‚РµС…РЅРёС‡РµСЃРєРѕРµ Р·Р°РґР°РЅРёРµ',
-        )}
+        placeholder={t('legacy.describe_the_creative_brief')}
         value={description}
       />
       <div className="flex flex-wrap gap-3">
         <input
           className="rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70"
           onChange={(event) => setReward(event.target.value)}
-          placeholder={t(
-            'Reward amount',
-            'РЎСѓРјРјР° РІРѕР·РЅР°РіСЂР°Р¶РґРµРЅРёСЏ',
-          )}
+          placeholder={t('legacy.reward_amount')}
           value={reward}
         />
         <select
@@ -98,13 +81,11 @@ export const CommissionForm = ({ onCreated }: CommissionFormProps) => {
         disabled={status === 'loading'}
         type="submit"
       >
-        {status === 'loading'
-          ? t('Posting...', 'РџСѓР±Р»РёРєР°С†РёСЏ...')
-          : t('Post', 'РћРїСѓР±Р»РёРєРѕРІР°С‚СЊ')}
+        {status === 'loading' ? t('legacy.posting') : t('legacy.post')}
       </button>
       {status === 'success' && (
         <p className="text-secondary text-xs">
-          {t('Commission created.', 'Р—Р°РєР°Р· СЃРѕР·РґР°РЅ.')}
+          {t('legacy.commission_created')}
         </p>
       )}
     </form>

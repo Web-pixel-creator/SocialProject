@@ -21,16 +21,13 @@ export default function FeedPageClient() {
             <div>
               <p className="mb-2 inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wide">
                 <Sparkles aria-hidden="true" className="h-3 w-3" />
-                {t('Observer feed shell', 'Shell ленты наблюдателя')}
+                {t('legacy.observer_feed_shell')}
               </p>
               <h2 className="font-semibold text-2xl text-foreground md:text-3xl">
-                {t('Feeds', 'Ленты')}
+                {t('legacy.feeds')}
               </h2>
               <p className="max-w-3xl text-muted-foreground text-sm md:text-base">
-                {t(
-                  'Follow progress chains, PR battles, live changes and top studios in observer mode.',
-                  'Следите за прогрессом, PR-баттлами, live-изменениями и рейтингом студий в режиме наблюдателя.',
-                )}
+                {t('legacy.follow_progress_chains_pr_battles_live_changes')}
               </p>
             </div>
             <div className="grid w-full gap-2 sm:w-auto">
@@ -40,14 +37,10 @@ export default function FeedPageClient() {
                   className="mr-2 h-4 w-4 text-muted-foreground/70"
                 />
                 <input
-                  aria-label={t(
-                    'Search (text + visual)',
-                    'Поиск (текст + визуал)',
-                  )}
+                  aria-label={t('legacy.search_text_visual')}
                   className="w-full bg-transparent text-foreground text-sm outline-none placeholder:text-muted-foreground/60"
                   placeholder={t(
-                    'Search drafts, studios, PRs... (text + visual)',
-                    'Поиск драфтов, студий, PR... (текст + визуал)',
+                    'legacy.search_drafts_studios_prs_text_visual',
                   )}
                   type="search"
                 />
@@ -63,7 +56,7 @@ export default function FeedPageClient() {
                   type="button"
                 >
                   <Menu aria-hidden="true" className="mr-2 h-4 w-4" />
-                  {t('Menu', 'Меню')}
+                  {t('legacy.menu')}
                 </button>
               </div>
             </div>
@@ -74,13 +67,13 @@ export default function FeedPageClient() {
                 aria-hidden="true"
                 className="icon-breathe inline-flex h-2.5 w-2.5 rounded-full bg-secondary"
               />
-              {t('Live + WebSocket connected', 'Live + WebSocket подключен')}
+              {t('legacy.live_websocket_connected')}
             </span>
             <span className="rounded-full border border-primary/35 bg-primary/10 px-3 py-1 font-semibold text-[11px] text-primary uppercase tracking-wide">
-              {t('Observer stream', 'Поток наблюдателя')}
+              {t('legacy.observer_stream')}
             </span>
             <span className="rounded-full border border-border bg-muted px-3 py-1 font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
-              {t('Application shell', 'Application shell')}
+              {t('legacy.application_shell')}
             </span>
           </div>
         </header>
@@ -88,7 +81,7 @@ export default function FeedPageClient() {
         <Suspense
           fallback={
             <div className="card p-6 text-muted-foreground text-sm">
-              {t('Loading feed...', 'Загружаем ленту...')}
+              {t('legacy.loading_feed')}
             </div>
           }
         >
@@ -109,7 +102,7 @@ export default function FeedPageClient() {
                 className="font-semibold text-foreground text-lg"
                 id="mobile-observer-nav-title"
               >
-                {t('Observer navigation', 'Навигация наблюдателя')}
+                {t('legacy.observer_navigation')}
               </h3>
               <button
                 className="inline-flex items-center rounded-full border border-border bg-muted px-3 py-1.5 font-semibold text-foreground text-xs"
@@ -117,7 +110,7 @@ export default function FeedPageClient() {
                 type="button"
               >
                 <X aria-hidden="true" className="mr-1 h-4 w-4" />
-                {t('Close', 'Закрыть')}
+                {t('legacy.close')}
               </button>
             </div>
             <ObserverSidebar

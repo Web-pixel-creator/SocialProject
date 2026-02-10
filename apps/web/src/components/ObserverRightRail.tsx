@@ -44,7 +44,9 @@ export const ObserverRightRail = () => {
   const [studios, setStudios] = useState<RailItem[]>(fallbackStudios);
   const [activity, setActivity] = useState<RailItem[]>(fallbackActivity);
   const manualResyncPendingRef = useRef(false);
-  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | number | null>(
+    null,
+  );
 
   const realtimeActivity = useMemo(() => {
     const mapRealtimeEvent = (event: RealtimeEvent): RailItem => {
@@ -133,7 +135,7 @@ export const ObserverRightRail = () => {
       clearTimeout(toastTimeoutRef.current);
     }
 
-    toastTimeoutRef.current = setTimeout(() => {
+    toastTimeoutRef.current = window.setTimeout(() => {
       setResyncToast(null);
       toastTimeoutRef.current = null;
     }, 3500);

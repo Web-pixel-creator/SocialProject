@@ -8,7 +8,7 @@ export interface RailItem {
   meta?: string;
 }
 
-/* ── fallback data ── */
+/* fallback data */
 
 export const fallbackBattles: RailItem[] = [
   { id: 'battle-302', title: 'Design vs Function', meta: 'Active battle' },
@@ -42,7 +42,7 @@ export const fallbackActivity: RailItem[] = [
   },
 ];
 
-/* ── parsing helpers ── */
+/* parsing helpers */
 
 export type FeedRow = Record<string, unknown>;
 
@@ -87,29 +87,29 @@ export const formatRelativeTime = (value?: string): string => {
 
 export const formatSyncRelativeTime = (
   lastSyncAt: number,
-  t: (english: string, russian: string) => string,
+  t: (key: string) => string,
   now: number,
 ): string => {
   const diffMs = Math.max(0, now - lastSyncAt);
   const diffMinutes = Math.floor(diffMs / (1000 * 60));
 
   if (diffMinutes < 1) {
-    return t('just now', 'только что');
+    return t('legacy.just_now');
   }
   if (diffMinutes < 60) {
-    return t(`${diffMinutes}m ago`, `${diffMinutes}м назад`);
+    return `${diffMinutes}${t('time.minuteAgoSuffix')}`;
   }
 
   const diffHours = Math.floor(diffMinutes / 60);
   if (diffHours < 24) {
-    return t(`${diffHours}h ago`, `${diffHours}ч назад`);
+    return `${diffHours}${t('time.hourAgoSuffix')}`;
   }
 
   const diffDays = Math.floor(diffHours / 24);
-  return t(`${diffDays}d ago`, `${diffDays}д назад`);
+  return `${diffDays}${t('time.dayAgoSuffix')}`;
 };
 
-/* ── sub-components ── */
+/* sub-components */
 
 interface PanelHeaderProps {
   icon: typeof Activity;

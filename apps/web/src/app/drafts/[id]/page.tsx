@@ -211,12 +211,7 @@ export default function DraftDetailPage() {
       }
     } catch (error: unknown) {
       setArcView(null);
-      setArcError(
-        getApiErrorMessage(
-          error,
-          t('Failed to load arc.', 'Не удалось загрузить прогресс.'),
-        ),
-      );
+      setArcError(getApiErrorMessage(error, t('legacy.failed_to_load_arc')));
     } finally {
       setArcLoading(false);
     }
@@ -258,10 +253,7 @@ export default function DraftDetailPage() {
         setDigestEntries([]);
       } else {
         setDigestError(
-          getApiErrorMessage(
-            error,
-            t('Failed to load digest.', 'Не удалось загрузить дайджест.'),
-          ),
+          getApiErrorMessage(error, t('legacy.failed_to_load_digest')),
         );
         setDigestEntries([]);
       }
@@ -297,10 +289,7 @@ export default function DraftDetailPage() {
           setPredictionError(
             getApiErrorMessage(
               error,
-              t(
-                'Failed to load prediction summary.',
-                'Не удалось загрузить сводку прогноза.',
-              ),
+              t('legacy.failed_to_load_prediction_summary'),
             ),
           );
           setPredictionSummary(null);
@@ -320,19 +309,11 @@ export default function DraftDetailPage() {
     setDemoStatus(null);
     try {
       await apiClient.post('/demo/flow', { draftId });
-      setDemoStatus(
-        t(
-          'Demo flow complete. New fix request and PR created.',
-          'Демо-сценарий завершен. Созданы новый фикс-запрос и PR.',
-        ),
-      );
+      setDemoStatus(t('legacy.demo_flow_complete_new_fix_request_and'));
       await Promise.all([loadDraft(), loadFixRequests(), loadPullRequests()]);
     } catch (error: unknown) {
       setDemoStatus(
-        getApiErrorMessage(
-          error,
-          t('Failed to run demo flow.', 'Не удалось запустить демо-сценарий.'),
-        ),
+        getApiErrorMessage(error, t('legacy.failed_to_run_demo_flow')),
       );
     } finally {
       setDemoLoading(false);
@@ -345,10 +326,10 @@ export default function DraftDetailPage() {
     }
     try {
       await navigator.clipboard.writeText(draftId);
-      setCopyStatus(t('Copied', 'Скопировано'));
+      setCopyStatus(t('legacy.copied'));
       setTimeout(() => setCopyStatus(null), 2000);
     } catch (_error) {
-      setCopyStatus(t('Copy failed', 'Не удалось скопировать'));
+      setCopyStatus(t('legacy.copy_failed'));
       setTimeout(() => setCopyStatus(null), 2000);
     }
   };
@@ -356,7 +337,7 @@ export default function DraftDetailPage() {
   const loadSimilarDrafts = useCallback(async () => {
     if (!draftId) {
       setSimilarDrafts([]);
-      setSimilarStatus(t('Draft id missing.', 'Не указан id драфта.'));
+      setSimilarStatus(t('legacy.draft_id_missing'));
       return;
     }
     setSimilarLoading(true);
@@ -369,9 +350,7 @@ export default function DraftDetailPage() {
       const items = response.data ?? [];
       setSimilarDrafts(items);
       if (items.length === 0) {
-        setSimilarStatus(
-          t('No similar drafts yet.', 'Пока нет похожих драфтов.'),
-        );
+        setSimilarStatus(t('legacy.no_similar_drafts_yet'));
         sendTelemetry({
           eventType: 'similar_search_empty',
           draftId,
@@ -390,23 +369,12 @@ export default function DraftDetailPage() {
       const code = getApiErrorCode(error);
       const reason = code ?? 'error';
       if (code === 'EMBEDDING_NOT_FOUND') {
-        setSimilarStatus(
-          t(
-            'Similar works available after analysis.',
-            'Похожие работы будут доступны после анализа.',
-          ),
-        );
+        setSimilarStatus(t('legacy.similar_works_available_after_analysis'));
       } else if (code === 'DRAFT_NOT_FOUND') {
-        setSimilarStatus(t('Draft not found.', 'Драфт не найден.'));
+        setSimilarStatus(t('legacy.draft_not_found'));
       } else {
         setSimilarStatus(
-          getApiErrorMessage(
-            error,
-            t(
-              'Failed to load similar drafts.',
-              'Не удалось загрузить похожие драфты.',
-            ),
-          ),
+          getApiErrorMessage(error, t('legacy.failed_to_load_similar_drafts')),
         );
       }
       setSimilarDrafts([]);
@@ -437,12 +405,7 @@ export default function DraftDetailPage() {
         ]);
       } catch (error: unknown) {
         if (!cancelled) {
-          setError(
-            getApiErrorMessage(
-              error,
-              t('Failed to load draft.', 'Не удалось загрузить драфт.'),
-            ),
-          );
+          setError(getApiErrorMessage(error, t('legacy.failed_to_load_draft')));
         }
       } finally {
         if (!cancelled) {
@@ -533,10 +496,7 @@ export default function DraftDetailPage() {
         setObserverAuthRequired(true);
       } else {
         setPredictionError(
-          getApiErrorMessage(
-            error,
-            t('Failed to submit prediction.', 'Не удалось отправить прогноз.'),
-          ),
+          getApiErrorMessage(error, t('legacy.failed_to_submit_prediction')),
         );
       }
     } finally {
@@ -613,25 +573,25 @@ export default function DraftDetailPage() {
   const formatEventMessage = useCallback(
     (eventType: string, payload: Record<string, unknown>) => {
       if (eventType === 'fix_request') {
-        return t('New fix request submitted', 'Отправлен новый фикс-запрос');
+        return t('legacy.new_fix_request_submitted');
       }
       if (eventType === 'pull_request') {
-        return t('New pull request submitted', 'Отправлен новый пул-реквест');
+        return t('legacy.new_pull_request_submitted');
       }
       if (eventType === 'pull_request_decision') {
         const decision = String(payload?.decision ?? 'updated').replace(
           '_',
           ' ',
         );
-        return `${t('Pull request', 'Пул-реквест')} ${decision}`;
+        return `${t('legacy.pull_request')} ${decision}`;
       }
       if (eventType === 'glowup_update') {
-        return t('GlowUp score updated', 'Оценка GlowUp обновлена');
+        return t('legacy.glowup_score_updated');
       }
       if (eventType === 'draft_released') {
-        return t('Draft released', 'Драфт выпущен');
+        return t('legacy.draft_released');
       }
-      return t('Draft activity updated', 'Активность драфта обновлена');
+      return t('legacy.draft_activity_updated');
     },
     [t],
   );
@@ -688,18 +648,18 @@ export default function DraftDetailPage() {
   const statusInfo = (() => {
     if (pendingPull) {
       return {
-        label: t('Ready for review', 'Готов к ревью'),
+        label: t('legacy.ready_for_review'),
         tone: 'bg-amber-100 text-amber-800',
       };
     }
     if (hasFixRequests) {
       return {
-        label: t('Seeking PR', 'Ищет PR'),
+        label: t('legacy.seeking_pr'),
         tone: 'bg-muted/70 text-foreground',
       };
     }
     return {
-      label: t('Needs help', 'Нужна помощь'),
+      label: t('legacy.needs_help'),
       tone: 'bg-rose-500/15 text-rose-500',
     };
   })();
@@ -710,35 +670,26 @@ export default function DraftDetailPage() {
     }
     if (pendingPull) {
       return {
-        title: t('Review pending PR', 'Проверьте PR в ожидании'),
-        description: t(
-          'A pull request is waiting for review.',
-          'Пул-реквест ожидает ревью.',
-        ),
-        ctaLabel: t('Open PR', 'Открыть PR'),
+        title: t('legacy.review_pending_pr'),
+        description: t('legacy.a_pull_request_is_waiting_for_review'),
+        ctaLabel: t('legacy.open_pr'),
         href: `/pull-requests/${pendingPull.id}`,
       };
     }
     if (hasFixRequests) {
       return {
-        title: t('Share draft for PR', 'Поделитесь драфтом для PR'),
-        description: t(
-          'Fix requests are ready. Share the draft ID to get a PR.',
-          'Запросы на исправления готовы. Поделитесь ID драфта, чтобы получить PR.',
-        ),
-        ctaLabel: copyStatus ?? t('Copy draft ID', 'Скопировать ID драфта'),
+        title: t('legacy.share_draft_for_pr'),
+        description: t('legacy.fix_requests_are_ready_share_the_draft'),
+        ctaLabel: copyStatus ?? t('legacy.copy_draft_id'),
         onClick: copyDraftId,
       };
     }
     return {
-      title: t('Start critique', 'Начать критику'),
-      description: t(
-        'No fix requests yet. Run a demo flow to seed the workflow.',
-        'Пока нет запросов на исправление. Запустите демо-сценарий, чтобы начать процесс.',
-      ),
+      title: t('legacy.start_critique'),
+      description: t('legacy.no_fix_requests_yet_run_a_demo'),
       ctaLabel: demoLoading
-        ? t('Running demo...', 'Запуск демо...')
-        : t('Run demo flow', 'Запустить демо-сценарий'),
+        ? t('legacy.running_demo')
+        : t('legacy.run_demo_flow'),
       onClick: runDemoFlow,
     };
   })();
@@ -746,12 +697,10 @@ export default function DraftDetailPage() {
   return (
     <main className="grid gap-6">
       <div className="card p-6">
-        <p className="pill">{t('Draft Detail', 'Детали драфта')}</p>
+        <p className="pill">{t('legacy.draft_detail')}</p>
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <h2 className="font-semibold text-2xl text-foreground">
-            {draftId
-              ? `${t('Draft', 'Драфт')} ${draftId}`
-              : t('Draft', 'Драфт')}
+            {draftId ? `${t('legacy.draft')} ${draftId}` : t('legacy.draft')}
           </h2>
           {draft && (
             <span
@@ -762,10 +711,7 @@ export default function DraftDetailPage() {
           )}
         </div>
         <p className="text-muted-foreground text-sm">
-          {t(
-            'Track every critique and PR in real-time.',
-            'Отслеживайте каждую критику и PR в реальном времени.',
-          )}{' '}
+          {t('legacy.track_every_critique_and_pr_in_real')}{' '}
           {draft ? `GlowUp ${draft.glowUpScore.toFixed(1)}` : ''}
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -775,9 +721,7 @@ export default function DraftDetailPage() {
             onClick={runDemoFlow}
             type="button"
           >
-            {demoLoading
-              ? t('Running demo...', 'Запуск демо...')
-              : t('Run demo flow', 'Запустить демо-сценарий')}
+            {demoLoading ? t('legacy.running_demo') : t('legacy.run_demo_flow')}
           </button>
           {demoStatus && (
             <span className="text-muted-foreground text-xs">{demoStatus}</span>
@@ -791,16 +735,14 @@ export default function DraftDetailPage() {
       )}
       {loading ? (
         <div className="card p-6 text-muted-foreground text-sm">
-          {t('Loading draft...', 'Загрузка драфта...')}
+          {t('legacy.loading_draft')}
         </div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
           <div className="grid gap-6">
             {nextAction && (
               <div className="card p-4">
-                <p className="pill">
-                  {t('Next best action', 'Следующее действие')}
-                </p>
+                <p className="pill">{t('legacy.next_best_action')}</p>
                 <h3 className="mt-3 font-semibold text-foreground text-lg">
                   {nextAction.title}
                 </h3>
@@ -861,18 +803,15 @@ export default function DraftDetailPage() {
             <div className="card p-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-foreground text-sm">
-                  {t('Similar drafts', 'Похожие драфты')}
+                  {t('legacy.similar_drafts')}
                 </h3>
                 <span className="text-muted-foreground text-xs">
-                  {t('Visual match', 'Визуальное совпадение')}
+                  {t('legacy.visual_match')}
                 </span>
               </div>
               {similarLoading && (
                 <p className="mt-3 text-muted-foreground text-xs">
-                  {t(
-                    'Loading similar drafts...',
-                    'Загрузка похожих драфтов...',
-                  )}
+                  {t('legacy.loading_similar_drafts')}
                 </p>
               )}
               {!similarLoading && similarStatus && (
@@ -892,7 +831,7 @@ export default function DraftDetailPage() {
                       </p>
                       <p className="text-foreground text-sm">{item.title}</p>
                       <p className="text-[11px] text-muted-foreground">
-                        {t('Similarity', 'Сходство')}{' '}
+                        {t('legacy.similarity')}{' '}
                         {Number(item.score ?? 0).toFixed(2)} | GlowUp{' '}
                         {Number(item.glowUpScore ?? 0).toFixed(1)}
                       </p>
@@ -921,7 +860,7 @@ export default function DraftDetailPage() {
                   }
                   scroll={false}
                 >
-                  {t('See more similar', 'Показать больше похожих')}
+                  {t('legacy.see_more_similar')}
                 </Link>
               </div>
             </div>
@@ -937,22 +876,16 @@ export default function DraftDetailPage() {
               summary={predictionSummary}
             />
             <div className="card p-4">
-              <p className="pill">{t('Follow chain', 'Следить за цепочкой')}</p>
+              <p className="pill">{t('legacy.follow_chain')}</p>
               <h3 className="mt-3 font-semibold text-foreground text-sm">
-                {t('Track every change', 'Отслеживайте каждое изменение')}
+                {t('legacy.track_every_change')}
               </h3>
               <p className="text-muted-foreground text-xs">
-                {t(
-                  'Get notified in-app when this draft receives fixes or PRs.',
-                  'Получайте уведомления в приложении, когда драфт получает фиксы или PR.',
-                )}
+                {t('legacy.get_notified_in_app_when_this_draft')}
               </p>
               {observerAuthRequired && (
                 <p className="mt-2 text-muted-foreground text-xs">
-                  {t(
-                    'Sign in as observer to follow drafts.',
-                    'Войдите как наблюдатель, чтобы следить за драфтами.',
-                  )}
+                  {t('legacy.sign_in_as_observer_to_follow_drafts')}
                 </p>
               )}
               <div className="mt-4">
@@ -966,8 +899,8 @@ export default function DraftDetailPage() {
                   type="button"
                 >
                   {isFollowed
-                    ? t('Following', 'Вы подписаны')
-                    : t('Follow chain', 'Следить за цепочкой')}
+                    ? t('legacy.following')
+                    : t('legacy.follow_chain')}
                 </button>
               </div>
             </div>
@@ -979,24 +912,18 @@ export default function DraftDetailPage() {
               onMarkSeen={markDigestSeen}
             />
             <div className="card p-4">
-              <p className="pill">{t('Activity', 'Активность')}</p>
+              <p className="pill">{t('legacy.activity')}</p>
               <h3 className="mt-3 font-semibold text-foreground text-sm">
-                {t('In-app updates', 'Обновления в приложении')}
+                {t('legacy.in_app_updates')}
               </h3>
               <p className="text-muted-foreground text-xs">
                 {isFollowed
-                  ? t(
-                      'Updates appear when this draft changes.',
-                      'Обновления появляются, когда меняется этот драфт.',
-                    )
-                  : t(
-                      'Follow the chain to see updates here.',
-                      'Подпишитесь на цепочку, чтобы видеть обновления здесь.',
-                    )}
+                  ? t('legacy.updates_appear_when_this_draft_changes')
+                  : t('legacy.follow_the_chain_to_see_updates_here')}
               </p>
               <div className="mt-4 grid gap-2 text-muted-foreground text-xs">
                 {notifications.length === 0 ? (
-                  <span>{t('No updates yet.', 'Пока нет обновлений.')}</span>
+                  <span>{t('legacy.no_updates_yet')}</span>
                 ) : (
                   notifications.map((note) => (
                     <div

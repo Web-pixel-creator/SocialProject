@@ -46,7 +46,7 @@ export const PredictionWidget = ({
   if (loading) {
     return (
       <div className="card p-4 text-muted-foreground text-xs">
-        {t('Loading prediction...', 'Загрузка прогноза...')}
+        {t('legacy.loading_prediction')}
       </div>
     );
   }
@@ -54,12 +54,9 @@ export const PredictionWidget = ({
   if (authRequired) {
     return (
       <div className="card p-4">
-        <p className="pill">{t('Predict Mode', 'Режим прогноза')}</p>
+        <p className="pill">{t('legacy.predict_mode')}</p>
         <p className="mt-3 text-muted-foreground text-xs">
-          {t(
-            'Sign in as observer to submit predictions.',
-            'Войдите как наблюдатель, чтобы отправлять прогнозы.',
-          )}
+          {t('legacy.sign_in_as_observer_to_submit_predictions')}
         </p>
       </div>
     );
@@ -68,7 +65,7 @@ export const PredictionWidget = ({
   if (error) {
     return (
       <div className="card p-4">
-        <p className="pill">{t('Predict Mode', 'Режим прогноза')}</p>
+        <p className="pill">{t('legacy.predict_mode')}</p>
         <p className="mt-3 text-rose-600 text-xs">{error}</p>
       </div>
     );
@@ -77,12 +74,9 @@ export const PredictionWidget = ({
   if (!summary) {
     return (
       <div className="card p-4">
-        <p className="pill">{t('Predict Mode', 'Режим прогноза')}</p>
+        <p className="pill">{t('legacy.predict_mode')}</p>
         <p className="mt-3 text-muted-foreground text-xs">
-          {t(
-            'No pending PR for prediction.',
-            'Нет PR в ожидании для прогноза.',
-          )}
+          {t('legacy.no_pending_pr_for_prediction')}
         </p>
       </div>
     );
@@ -93,18 +87,17 @@ export const PredictionWidget = ({
 
   return (
     <div className="card p-4">
-      <p className="pill">{t('Predict Mode', 'Режим прогноза')}</p>
+      <p className="pill">{t('legacy.predict_mode')}</p>
       <h3 className="mt-3 font-semibold text-foreground text-sm">
         PR {summary.pullRequestId.slice(0, 8)}
       </h3>
       <p className="text-muted-foreground text-xs">
-        {t('Consensus:', 'Консенсус:')} {t('Merge', 'Смержить')}{' '}
-        {summary.consensus.merge} | {t('Reject', 'Отклонить')}{' '}
-        {summary.consensus.reject} | {t('Total', 'Всего')}{' '}
+        {t('legacy.consensus')} {t('legacy.merge')} {summary.consensus.merge} |{' '}
+        {t('legacy.reject')} {summary.consensus.reject} | {t('legacy.total')}{' '}
         {summary.consensus.total}
       </p>
       <p className="mt-2 text-muted-foreground text-xs">
-        {t('Your accuracy:', 'Ваша точность:')} {summary.accuracy.correct}/
+        {t('legacy.your_accuracy')} {summary.accuracy.correct}/
         {summary.accuracy.total} ({accuracyPct}%)
       </p>
       <div className="mt-3 flex items-center gap-2">
@@ -118,7 +111,7 @@ export const PredictionWidget = ({
           onClick={() => onPredict('merge')}
           type="button"
         >
-          {t('Predict merge', 'Прогноз: merge')}
+          {t('legacy.predict_merge')}
         </button>
         <button
           className={`rounded-full px-3 py-1 font-semibold text-xs ${
@@ -130,16 +123,16 @@ export const PredictionWidget = ({
           onClick={() => onPredict('reject')}
           type="button"
         >
-          {t('Predict reject', 'Прогноз: reject')}
+          {t('legacy.predict_reject')}
         </button>
       </div>
       {summary.observerPrediction && (
         <p className="mt-2 text-[11px] text-muted-foreground">
-          {t('Your prediction:', 'Ваш прогноз:')}{' '}
+          {t('legacy.your_prediction')}{' '}
           {summary.observerPrediction.predictedOutcome}
           {summary.observerPrediction.resolvedOutcome
-            ? ` | ${t('resolved', 'итог')} ${summary.observerPrediction.resolvedOutcome}`
-            : ` | ${t('pending', 'в ожидании')}`}
+            ? ` | ${t('legacy.resolved')} ${summary.observerPrediction.resolvedOutcome}`
+            : ` | ${t('legacy.pending_3')}`}
         </p>
       )}
     </div>

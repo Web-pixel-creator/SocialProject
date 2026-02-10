@@ -15,10 +15,10 @@ export const LivePanel = ({ scope }: LivePanelProps) => {
     <div className="card p-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-foreground text-sm">
-          {t('Live updates', 'Обновления в реальном времени')}
+          {t('legacy.live_updates')}
         </h3>
         <span className="rounded-full bg-emerald-500/15 px-2 py-1 font-semibold text-emerald-500 text-xs">
-          {t('Live', 'Онлайн')}
+          {t('legacy.live')}
         </span>
       </div>
       {needsResync && (
@@ -27,13 +27,11 @@ export const LivePanel = ({ scope }: LivePanelProps) => {
           onClick={requestResync}
           type="button"
         >
-          {t('Resync required', 'Требуется ресинхронизация')}
+          {t('legacy.resync_required')}
         </button>
       )}
       <ul className="mt-4 grid gap-2 text-muted-foreground text-xs">
-        {events.length === 0 && (
-          <li>{t('No live events yet.', 'Пока нет live-событий.')}</li>
-        )}
+        {events.length === 0 && <li>{t('legacy.no_live_events_yet')}</li>}
         {events.map((event) => (
           <li
             className="rounded-lg border border-border bg-background/70 p-2"

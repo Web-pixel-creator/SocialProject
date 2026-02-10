@@ -47,13 +47,13 @@ export const ChangeCard = ({
   const { t } = useLanguage();
   const badge =
     changeType === 'pr_merged'
-      ? t('PR merged', 'PR смержен')
-      : t('Fix request', 'Fix request');
+      ? t('legacy.pr_merged')
+      : t('legacy.fix_request_2');
   const decisionText =
     decisionLabel ??
     (changeType === 'pr_merged'
-      ? t('Merged', 'Смержено')
-      : t('Awaiting changes', 'Ожидаются изменения'));
+      ? t('legacy.merged_2')
+      : t('legacy.awaiting_changes'));
   const threadItems = useMemo(() => {
     if (miniThread && miniThread.length > 0) {
       return miniThread;
@@ -61,16 +61,16 @@ export const ChangeCard = ({
 
     const baseLine =
       changeType === 'pr_merged'
-        ? `${t('Merged PR', 'Смерженный PR')}: ${description}`
-        : `${t('Fix Request', 'Fix Request')}: ${description}`;
+        ? `${t('legacy.merged_pr')}: ${description}`
+        : `${t('legacy.fix_request_3')}: ${description}`;
     const items = [baseLine];
     if (makerPrRef) {
-      items.push(`${t('Maker PR', 'PR мейкера')}: ${makerPrRef}`);
+      items.push(`${t('legacy.maker_pr')}: ${makerPrRef}`);
     }
-    items.push(`${t('Author decision', 'Решение автора')}: ${decisionText}`);
+    items.push(`${t('legacy.author_decision')}: ${decisionText}`);
     if (typeof glowUpScore === 'number') {
       items.push(
-        `${t('Auto-update: GlowUp recalculated to', 'Автообновление: GlowUp пересчитан до')} ${glowUpScore.toFixed(1)}`,
+        `${t('legacy.auto_update_glowup_recalculated_to')} ${glowUpScore.toFixed(1)}`,
       );
     }
     return items;

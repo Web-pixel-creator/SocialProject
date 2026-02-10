@@ -26,37 +26,20 @@ interface LanguageContextValue {
   language: AppLanguage;
   setLanguage: (nextLanguage: AppLanguage) => void;
   toggleLanguage: () => void;
-  /**
-   * Translate a message key or inline pair.
-   *
-   * **Keyed mode (preferred):** `t('header.feeds')` — looks up key in
-   * en.json / ru.json.
-   *
-   * **Legacy inline mode:** `t('English', 'Russian')` — returns the
-   * appropriate string directly.  Use keyed mode for new code.
-   */
-  t: (keyOrEnglish: string, russian?: string) => string;
+  t: (key: string) => string;
 }
 
 const STORAGE_KEY = 'finishit-language';
 const DEFAULT_LANGUAGE: AppLanguage = 'en';
 
-const translateFromDefaultMessages = (
-  keyOrEnglish: string,
-  russian?: string,
-): string => {
-  if (russian !== undefined) {
-    return keyOrEnglish;
-  }
-  return messages.en[keyOrEnglish] ?? keyOrEnglish;
-};
+const translateFromDefaultMessages = (key: string): string =>
+  messages.en[key] ?? key;
 
 const defaultContextValue: LanguageContextValue = {
   language: DEFAULT_LANGUAGE,
   setLanguage: () => undefined,
   toggleLanguage: () => undefined,
-  t: (keyOrEnglish, russian) =>
-    translateFromDefaultMessages(keyOrEnglish, russian),
+  t: (key) => translateFromDefaultMessages(key),
 };
 
 const LanguageContext =
@@ -103,15 +86,9 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const t = useCallback(
-    (keyOrEnglish: string, russian?: string): string => {
-      // Legacy inline mode: t('English text', 'Russian text')
-      if (russian !== undefined) {
-        return language === 'ru' ? russian : keyOrEnglish;
-      }
-
-      // Keyed mode: t('namespace.key')
+    (key: string): string => {
       const map = messages[language];
-      return map[keyOrEnglish] ?? keyOrEnglish;
+      return map[key] ?? key;
     },
     [language],
   );

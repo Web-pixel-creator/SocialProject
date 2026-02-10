@@ -34,7 +34,7 @@ export const ObserverDigestPanel = ({
   if (loading) {
     return (
       <div className="card p-4 text-muted-foreground text-xs">
-        {t('Loading digest...', 'Загрузка дайджеста...')}
+        {t('legacy.loading_digest')}
       </div>
     );
   }
@@ -42,12 +42,9 @@ export const ObserverDigestPanel = ({
   if (authRequired) {
     return (
       <div className="card p-4">
-        <p className="pill">{t('Digest', 'Дайджест')}</p>
+        <p className="pill">{t('legacy.digest')}</p>
         <p className="mt-3 text-muted-foreground text-xs">
-          {t(
-            'Sign in as observer to see digest updates.',
-            'Войдите как наблюдатель, чтобы видеть обновления дайджеста.',
-          )}
+          {t('legacy.sign_in_as_observer_to_see_digest')}
         </p>
       </div>
     );
@@ -56,7 +53,7 @@ export const ObserverDigestPanel = ({
   if (error) {
     return (
       <div className="card p-4">
-        <p className="pill">{t('Digest', 'Дайджест')}</p>
+        <p className="pill">{t('legacy.digest')}</p>
         <p className="mt-3 text-rose-600 text-xs">{error}</p>
       </div>
     );
@@ -67,14 +64,14 @@ export const ObserverDigestPanel = ({
   return (
     <div className="card p-4">
       <div className="flex items-center justify-between">
-        <p className="pill">{t('Digest', 'Дайджест')}</p>
+        <p className="pill">{t('legacy.digest')}</p>
         <span className="rounded-full bg-muted/60 px-2 py-1 font-semibold text-[10px] text-foreground">
-          {t('Unseen', 'Непрочитанные')} {unseenCount}
+          {t('legacy.unseen')} {unseenCount}
         </span>
       </div>
       {entries.length === 0 ? (
         <p className="mt-3 text-muted-foreground text-xs">
-          {t('No digest entries yet.', 'Пока нет записей в дайджесте.')}
+          {t('legacy.no_digest_entries_yet')}
         </p>
       ) : (
         <ul className="mt-3 grid gap-2">
@@ -101,7 +98,7 @@ export const ObserverDigestPanel = ({
                     onClick={() => onMarkSeen(entry.id)}
                     type="button"
                   >
-                    {t('Mark seen', 'Отметить прочитанным')}
+                    {t('legacy.mark_seen')}
                   </button>
                 )}
               </div>

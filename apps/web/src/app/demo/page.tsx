@@ -14,10 +14,10 @@ interface DemoResult {
 }
 
 const steps = [
-  { key: 'draft', label: 'Draft created', labelRu: 'Черновик создан' },
-  { key: 'fix', label: 'Fix request created', labelRu: 'Фикс создан' },
-  { key: 'pr', label: 'PR created and merged', labelRu: 'PR создан и влит' },
-  { key: 'glow', label: 'GlowUp updated', labelRu: 'GlowUp обновлен' },
+  { key: 'draft', labelKey: 'demo.step.draftCreated' },
+  { key: 'fix', labelKey: 'demo.step.fixRequestCreated' },
+  { key: 'pr', labelKey: 'demo.step.prCreatedMerged' },
+  { key: 'glow', labelKey: 'demo.step.glowUpUpdated' },
 ] as const;
 
 export default function DemoPage() {
@@ -37,12 +37,7 @@ export default function DemoPage() {
       });
       setResult(response.data);
     } catch (typedError: unknown) {
-      setError(
-        getApiErrorMessage(
-          typedError,
-          t('Failed to run demo.', 'Не удалось запустить демо.'),
-        ),
-      );
+      setError(getApiErrorMessage(typedError, t('legacy.failed_to_run_demo')));
     } finally {
       setLoading(false);
     }
@@ -70,28 +65,22 @@ export default function DemoPage() {
   return (
     <main className="grid gap-6">
       <div className="card p-6">
-        <p className="pill">{t('Demo', 'Демо')}</p>
+        <p className="pill">{t('legacy.demo')}</p>
         <h2 className="mt-3 font-semibold text-2xl text-foreground">
-          {t('One-click demo flow', 'Демо-флоу в один клик')}
+          {t('legacy.one_click_demo_flow')}
         </h2>
         <p className="text-muted-foreground text-sm">
-          {t(
-            'Runs the full loop: Draft -> Fix Request -> PR -> GlowUp.',
-            'Запускает полный цикл: Черновик -> Фикс -> PR -> GlowUp.',
-          )}
+          {t('legacy.runs_the_full_loop_draft_fix_request')}
         </p>
       </div>
 
       <section className="card grid gap-4 p-6">
         <label className="grid gap-2 font-medium text-foreground text-sm">
-          {t('Draft ID (optional)', 'ID черновика (необязательно)')}
+          {t('legacy.draft_id_optional')}
           <input
             className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
             onChange={(event) => setDraftId(event.target.value)}
-            placeholder={t(
-              'Draft UUID or leave blank',
-              'UUID черновика или оставьте пустым',
-            )}
+            placeholder={t('legacy.draft_uuid_or_leave_blank')}
             value={draftId}
           />
         </label>
@@ -102,16 +91,14 @@ export default function DemoPage() {
             onClick={runDemo}
             type="button"
           >
-            {loading
-              ? t('Running...', 'Выполняется...')
-              : t('Run demo', 'Запустить демо')}
+            {loading ? t('legacy.running') : t('legacy.run_demo')}
           </button>
           {result?.draftId && (
             <Link
               className="rounded-full border border-border bg-background/70 px-5 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60"
               href={`/drafts/${result.draftId}`}
             >
-              {t('Open draft', 'Открыть черновик')}
+              {t('legacy.open_draft')}
             </Link>
           )}
         </div>
@@ -124,7 +111,7 @@ export default function DemoPage() {
 
       <section className="card grid gap-3 p-6">
         <h3 className="font-semibold text-foreground text-sm">
-          {t('Steps', 'Шаги')}
+          {t('legacy.steps')}
         </h3>
         <ul className="grid gap-2 text-sm">
           {steps.map((step) => (
@@ -132,9 +119,7 @@ export default function DemoPage() {
               className="flex items-center justify-between rounded-xl border border-border bg-background/70 p-3"
               key={step.key}
             >
-              <span className="text-foreground">
-                {t(step.label, step.labelRu)}
-              </span>
+              <span className="text-foreground">{t(step.labelKey)}</span>
               <span
                 className={
                   isDone(step.key)
@@ -142,16 +127,14 @@ export default function DemoPage() {
                     : 'text-muted-foreground'
                 }
               >
-                {isDone(step.key)
-                  ? t('Done', 'Готово')
-                  : t('Pending', 'Ожидание')}
+                {isDone(step.key) ? t('legacy.done') : t('legacy.pending')}
               </span>
             </li>
           ))}
         </ul>
         {result && (
           <div className="rounded-xl border border-border bg-background/70 p-3 text-muted-foreground text-xs">
-            {t('GlowUp', 'GlowUp')}: {Number(result.glowUp ?? 0).toFixed(1)}
+            {t('legacy.glowup')}: {Number(result.glowUp ?? 0).toFixed(1)}
           </div>
         )}
       </section>

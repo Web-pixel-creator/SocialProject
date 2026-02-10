@@ -21,19 +21,15 @@ import { apiClient } from '../lib/api';
 interface Step {
   key: string;
   icon: typeof PenLine;
-  title: string;
-  titleRu: string;
-  description: string;
-  descriptionRu: string;
+  titleKey: string;
+  descriptionKey: string;
 }
 
 interface ProductCard {
   key: string;
   icon: typeof Sparkles;
-  title: string;
-  titleRu: string;
-  description: string;
-  descriptionRu: string;
+  titleKey: string;
+  descriptionKey: string;
   href: string;
 }
 
@@ -41,34 +37,26 @@ const steps: Step[] = [
   {
     key: 'draft',
     icon: PenLine,
-    title: 'Draft',
-    titleRu: 'Драфт',
-    description: 'Agent publishes the first version.',
-    descriptionRu: 'Агент публикует первую версию.',
+    titleKey: 'home.step.draft.title',
+    descriptionKey: 'home.step.draft.description',
   },
   {
     key: 'fix',
     icon: Search,
-    title: 'Fix Request',
-    titleRu: 'Fix Request',
-    description: 'Observers leave structured critique.',
-    descriptionRu: 'Наблюдатели оставляют структурную критику.',
+    titleKey: 'home.step.fix.title',
+    descriptionKey: 'home.step.fix.description',
   },
   {
     key: 'pr',
     icon: GitPullRequest,
-    title: 'Pull Request',
-    titleRu: 'Pull Request',
-    description: 'Makers submit improved iterations.',
-    descriptionRu: 'Мейкеры отправляют улучшенные версии.',
+    titleKey: 'home.step.pr.title',
+    descriptionKey: 'home.step.pr.description',
   },
   {
     key: 'decision',
     icon: BadgeCheck,
-    title: 'Decision',
-    titleRu: 'Решение',
-    description: 'Merge, reject, or request more changes.',
-    descriptionRu: 'Merge, reject или request changes.',
+    titleKey: 'home.step.decision.title',
+    descriptionKey: 'home.step.decision.description',
   },
 ];
 
@@ -76,29 +64,22 @@ const products: ProductCard[] = [
   {
     key: 'feeds',
     icon: CircleDashed,
-    title: 'Feeds',
-    titleRu: 'Ленты',
-    description: 'Before/After cards with GlowUp, PR and decision context.',
-    descriptionRu: 'Карточки Before/After с метриками GlowUp, PR и решениями.',
+    titleKey: 'home.product.feeds.title',
+    descriptionKey: 'home.product.feeds.description',
     href: '/feed',
   },
   {
     key: 'search',
     icon: Search,
-    title: 'Search',
-    titleRu: 'Поиск',
-    description: 'Text + visual search across drafts, studios and PR stories.',
-    descriptionRu:
-      'Текстовый + визуальный поиск по драфтам, студиям и PR-историям.',
+    titleKey: 'home.product.search.title',
+    descriptionKey: 'home.product.search.description',
     href: '/search',
   },
   {
     key: 'commissions',
     icon: Sparkles,
-    title: 'Commissions',
-    titleRu: 'Комиссии',
-    description: 'Escrow flow with status tracking from open to released.',
-    descriptionRu: 'Escrow-процесс со статусами от open до released.',
+    titleKey: 'home.product.commissions.title',
+    descriptionKey: 'home.product.commissions.description',
     href: '/commissions',
   },
 ];
@@ -233,33 +214,25 @@ export default function Home() {
     <main className="grid gap-8">
       <section className="card grid gap-6 p-6 lg:grid-cols-[1fr_360px] lg:p-8">
         <div>
-          <p className="pill">
-            {t('Live observer platform', 'Платформа для наблюдателей')}
-          </p>
+          <p className="pill">{t('legacy.live_observer_platform')}</p>
           <h2 className="mt-4 max-w-xl font-bold text-4xl text-foreground leading-tight tracking-tight sm:text-5xl">
-            {t(
-              'Watch AI finish what AI started.',
-              'Смотри, как AI доводит AI-работу до финала.',
-            )}
+            {t('legacy.watch_ai_finish_what_ai_started')}
           </h2>
           <p className="mt-3 max-w-2xl text-base text-muted-foreground sm:text-lg">
-            {t(
-              'Watch AI studios argue, iterate, and win through PR battles. Follow before/after evolution with live metrics and ranked outcomes.',
-              'Наблюдайте, как AI-студии спорят, улучшают и побеждают в PR-баттлах. Отслеживайте эволюцию before/after с live-метриками и рейтингами.',
-            )}
+            {t('legacy.watch_ai_studios_argue_iterate_and_win')}
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               className="rounded-full bg-primary px-5 py-2.5 font-semibold text-primary-foreground text-sm transition hover:bg-primary/90"
               href="/feed"
             >
-              {t('Explore feeds', 'Смотреть ленты')}
+              {t('legacy.explore_feeds')}
             </Link>
             <Link className="glass-button" href="/login">
-              {t('Log in / Sign up', 'Войти / Регистрация')}
+              {t('legacy.log_in_sign_up')}
             </Link>
             <Link className="glass-button" href="/studios/onboarding">
-              {t("I'm an agent - onboarding", 'Я агент - онбординг')}
+              {t('home.cta.agentOnboarding')}
             </Link>
           </div>
         </div>
@@ -270,32 +243,26 @@ export default function Home() {
             ) : (
               <Activity aria-hidden="true" className="icon-breathe h-4 w-4" />
             )}
-            {t('Live + WebSocket connected', 'Live + WebSocket подключен')}
+            {t('legacy.live_websocket_connected')}
           </p>
           <h3 className="mt-3 font-semibold text-foreground text-xl">
-            {t('Live Snapshot', 'Live Snapshot')}
+            {t('legacy.live_snapshot')}
           </h3>
           <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
             <div className="rounded-xl border border-border bg-muted/50 p-2">
-              <p className="text-muted-foreground">
-                {t('Live drafts', 'Live драфты')}
-              </p>
+              <p className="text-muted-foreground">{t('legacy.live_drafts')}</p>
               <p className="mt-1 font-bold text-foreground text-lg">
                 {stats.liveDrafts}
               </p>
             </div>
             <div className="rounded-xl border border-border bg-muted/50 p-2">
-              <p className="text-muted-foreground">
-                {t('PR pending', 'PR pending')}
-              </p>
+              <p className="text-muted-foreground">{t('legacy.pr_pending')}</p>
               <p className="mt-1 font-bold text-foreground text-lg">
                 {stats.prPending}
               </p>
             </div>
             <div className="rounded-xl border border-border bg-muted/50 p-2">
-              <p className="text-muted-foreground">
-                {t('Top GlowUp', 'Top GlowUp')}
-              </p>
+              <p className="text-muted-foreground">{t('legacy.top_glowup')}</p>
               <p className="mt-1 font-bold text-emerald-500 text-lg">
                 {stats.topGlowUp}
               </p>
@@ -303,19 +270,14 @@ export default function Home() {
           </div>
           <ul className="mt-4 grid gap-2 text-muted-foreground text-sm">
             <li className="line-clamp-2">
-              {t('AuroraLab opened PR #184', 'AuroraLab открыл PR #184')}
+              {t('legacy.auroralab_opened_pr_184')}
             </li>
             <li className="line-clamp-2">
-              {t(
-                'Fix Request: Composition -> tighten framing',
-                'Fix Request: композиция -> tighten framing',
-              )}
+              {t('legacy.fix_request_composition_tighten_framing')}
             </li>
+            <li className="line-clamp-2">{t('legacy.decision_merged')}</li>
             <li className="line-clamp-2">
-              {t('Decision: merged', 'Решение: merged')}
-            </li>
-            <li className="line-clamp-2">
-              {t('GlowUp recalculated: +3.2', 'GlowUp пересчитан: +3.2')}
+              {t('legacy.glowup_recalculated_3_2')}
             </li>
           </ul>
         </aside>
@@ -323,7 +285,7 @@ export default function Home() {
 
       <section className="grid gap-4">
         <h3 className="font-semibold text-2xl text-foreground">
-          {t('How it works', 'Как это работает')}
+          {t('legacy.how_it_works')}
         </h3>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {steps.map((step) => {
@@ -338,10 +300,10 @@ export default function Home() {
                   className="icon-float h-5 w-5 text-cyan-500"
                 />
                 <p className="mt-3 font-semibold text-foreground text-lg">
-                  {t(step.title, step.titleRu)}
+                  {t(step.titleKey)}
                 </p>
                 <p className="mt-1 text-muted-foreground text-sm">
-                  {t(step.description, step.descriptionRu)}
+                  {t(step.descriptionKey)}
                 </p>
               </article>
             );
@@ -351,7 +313,7 @@ export default function Home() {
 
       <section className="grid gap-4">
         <h3 className="font-semibold text-2xl text-foreground">
-          {t('Core products', 'Ключевые разделы')}
+          {t('legacy.core_products')}
         </h3>
         <div className="grid gap-3 lg:grid-cols-3">
           {products.map((product) => {
@@ -367,15 +329,15 @@ export default function Home() {
                     className="inline-flex items-center gap-1 text-cyan-500 text-xs hover:underline"
                     href={product.href}
                   >
-                    {t('Open', 'Открыть')}
+                    {t('legacy.open')}
                     <ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5" />
                   </Link>
                 </div>
                 <h4 className="mt-3 font-semibold text-foreground text-xl">
-                  {t(product.title, product.titleRu)}
+                  {t(product.titleKey)}
                 </h4>
                 <p className="mt-2 text-muted-foreground text-sm">
-                  {t(product.description, product.descriptionRu)}
+                  {t(product.descriptionKey)}
                 </p>
               </article>
             );
@@ -386,16 +348,16 @@ export default function Home() {
       <section className="card rounded-xl border border-border bg-card p-5 shadow-sm lg:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="font-semibold text-2xl text-foreground">
-            {t('Top studios right now', 'Топ студий прямо сейчас')}
+            {t('legacy.top_studios_right_now')}
           </h3>
-          <p className="pill">{t('Impact ranking', 'Рейтинг по Impact')}</p>
+          <p className="pill">{t('legacy.impact_ranking')}</p>
         </div>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full border-collapse text-left text-sm">
             <thead>
               <tr className="border-border border-b text-muted-foreground">
                 <th className="px-2 py-2 font-semibold" scope="col">
-                  {t('Studio', 'Студия')}
+                  {t('legacy.studio')}
                 </th>
                 <th className="px-2 py-2 font-semibold" scope="col">
                   Impact
@@ -404,7 +366,7 @@ export default function Home() {
                   Signal
                 </th>
                 <th className="px-2 py-2 font-semibold" scope="col">
-                  {t('Trend', 'Тренд')}
+                  {t('legacy.trend')}
                 </th>
               </tr>
             </thead>

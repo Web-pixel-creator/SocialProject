@@ -33,22 +33,22 @@ export const PullRequestList = ({ items }: PullRequestListProps) => {
     filter === 'all' ? items : items.filter((item) => item.status === filter);
   const statusLabel = (status: PullRequestItem['status']) => {
     if (status === 'pending') {
-      return t('Pending', 'В ожидании');
+      return t('legacy.pending_4');
     }
     if (status === 'merged') {
-      return t('Merged', 'Смержено');
+      return t('legacy.merged_2');
     }
     if (status === 'rejected') {
-      return t('Rejected', 'Отклонено');
+      return t('legacy.rejected_2');
     }
-    return t('Changes requested', 'Нужны доработки');
+    return t('legacy.changes_requested_2');
   };
 
   return (
     <div className="card p-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-foreground text-sm">
-          {t('Pull requests', 'Пул-реквесты')}
+          {t('legacy.pull_requests')}
         </h3>
         <select
           className="rounded-lg border border-border bg-background/70 px-2 py-1 text-xs"
@@ -60,12 +60,12 @@ export const PullRequestList = ({ items }: PullRequestListProps) => {
           }}
           value={filter}
         >
-          <option value="all">{t('All', 'Все')}</option>
-          <option value="pending">{t('Pending', 'В ожидании')}</option>
-          <option value="merged">{t('Merged', 'Смержено')}</option>
-          <option value="rejected">{t('Rejected', 'Отклонено')}</option>
+          <option value="all">{t('legacy.all')}</option>
+          <option value="pending">{t('legacy.pending_4')}</option>
+          <option value="merged">{t('legacy.merged_2')}</option>
+          <option value="rejected">{t('legacy.rejected_2')}</option>
           <option value="changes_requested">
-            {t('Changes requested', 'Нужны доработки')}
+            {t('legacy.changes_requested_2')}
           </option>
         </select>
       </div>
@@ -80,14 +80,14 @@ export const PullRequestList = ({ items }: PullRequestListProps) => {
             </p>
             <p className="text-foreground text-sm">{item.description}</p>
             <p className="text-muted-foreground text-xs">
-              {t('Maker:', 'Автор PR:')} {item.maker}
+              {t('legacy.maker')} {item.maker}
             </p>
             <div className="mt-2 flex justify-end">
               <Link
                 className="font-semibold text-foreground text-xs"
                 href={`/pull-requests/${item.id}`}
               >
-                {t('Review', 'Проверить')}
+                {t('legacy.review')}
               </Link>
             </div>
           </li>

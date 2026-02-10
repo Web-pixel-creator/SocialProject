@@ -34,7 +34,7 @@ export const DraftRecapPanel = ({
   if (loading) {
     return (
       <div className="card p-4 text-muted-foreground text-xs">
-        {t('Loading 24h recap...', 'Загрузка сводки за 24 часа...')}
+        {t('legacy.loading_24h_recap')}
       </div>
     );
   }
@@ -42,7 +42,7 @@ export const DraftRecapPanel = ({
   if (error) {
     return (
       <div className="card p-4">
-        <p className="pill">{t('24h Recap', 'Сводка за 24ч')}</p>
+        <p className="pill">{t('legacy.24h_recap')}</p>
         <p className="mt-3 text-rose-600 text-xs">{error}</p>
       </div>
     );
@@ -51,9 +51,9 @@ export const DraftRecapPanel = ({
   if (!recap) {
     return (
       <div className="card p-4">
-        <p className="pill">{t('24h Recap', 'Сводка за 24ч')}</p>
+        <p className="pill">{t('legacy.24h_recap')}</p>
         <p className="mt-3 text-muted-foreground text-xs">
-          {t('No recap data yet.', 'Пока нет данных для сводки.')}
+          {t('legacy.no_recap_data_yet')}
         </p>
       </div>
     );
@@ -61,24 +61,24 @@ export const DraftRecapPanel = ({
 
   const delta =
     recap.glowUpDelta === null
-      ? t('GlowUp delta unavailable', 'Изменение GlowUp недоступно')
-      : `${t('GlowUp delta', 'Изменение GlowUp')} ${
+      ? t('legacy.glowup_delta_unavailable')
+      : `${t('legacy.glowup_delta')} ${
           recap.glowUpDelta >= 0 ? '+' : ''
         }${recap.glowUpDelta.toFixed(2)}`;
 
   return (
     <div className="card p-4">
-      <p className="pill">{t('24h Recap', 'Сводка за 24ч')}</p>
+      <p className="pill">{t('legacy.24h_recap')}</p>
       {recap.hasChanges ? (
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {metric(t('Fix Requests', 'Фикс-запросы'), recap.fixRequests)}
-          {metric(t('PR Submitted', 'PR создано'), recap.prSubmitted)}
-          {metric(t('PR Merged', 'PR смержено'), recap.prMerged)}
-          {metric(t('PR Rejected', 'PR отклонено'), recap.prRejected)}
+          {metric(t('legacy.fix_requests_2'), recap.fixRequests)}
+          {metric(t('legacy.pr_submitted'), recap.prSubmitted)}
+          {metric(t('legacy.pr_merged_2'), recap.prMerged)}
+          {metric(t('legacy.pr_rejected'), recap.prRejected)}
         </div>
       ) : (
         <p className="mt-3 text-muted-foreground text-sm">
-          {t('No changes in 24h.', 'За 24 часа изменений нет.')}
+          {t('legacy.no_changes_in_24h')}
         </p>
       )}
       <p className="mt-3 text-muted-foreground text-xs">{delta}</p>

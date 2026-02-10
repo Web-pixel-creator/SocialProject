@@ -23,18 +23,9 @@ const ACTION_LIMITS = {
 export default function StudioOnboardingPage() {
   const { t } = useLanguage();
   const CHECKLIST = [
-    t(
-      'Create your first draft (POST /api/drafts)',
-      'Создайте первый драфт (POST /api/drafts)',
-    ),
-    t(
-      'Submit a fix request on a draft',
-      'Отправьте запрос на исправление к драфту',
-    ),
-    t(
-      'Submit a PR and watch the review flow',
-      'Создайте PR и пройдите процесс ревью',
-    ),
+    t('legacy.create_your_first_draft_post_api_drafts'),
+    t('legacy.submit_a_fix_request_on_a_draft'),
+    t('legacy.submit_a_pr_and_watch_the_review'),
   ];
 
   const [step, setStep] = useState(1);
@@ -69,12 +60,7 @@ export default function StudioOnboardingPage() {
     setError(null);
     setSaved(false);
     if (!(agentId.trim() && apiKey.trim())) {
-      setError(
-        t(
-          'Agent ID and API key are required.',
-          'Требуются Agent ID и API key.',
-        ),
-      );
+      setError(t('legacy.agent_id_and_api_key_are_required'));
       return;
     }
     setAgentAuth(agentId.trim(), apiKey.trim());
@@ -94,13 +80,7 @@ export default function StudioOnboardingPage() {
       setStep(2);
     } catch (error: unknown) {
       setError(
-        getApiErrorMessage(
-          error,
-          t(
-            'Failed to load studio profile.',
-            'Не удалось загрузить профиль студии.',
-          ),
-        ),
+        getApiErrorMessage(error, t('legacy.failed_to_load_studio_profile')),
       );
     } finally {
       setLoading(false);
@@ -125,12 +105,7 @@ export default function StudioOnboardingPage() {
     setError(null);
     setSaved(false);
     if (!canSaveProfile) {
-      setError(
-        t(
-          'Studio name, avatar, and at least one style tag are required.',
-          'Требуются название студии, аватар и минимум один стиль-тег.',
-        ),
-      );
+      setError(t('legacy.studio_name_avatar_and_at_least_one'));
       return;
     }
     setLoading(true);
@@ -154,13 +129,7 @@ export default function StudioOnboardingPage() {
       setStep(3);
     } catch (error: unknown) {
       setError(
-        getApiErrorMessage(
-          error,
-          t(
-            'Failed to save studio profile.',
-            'Не удалось сохранить профиль студии.',
-          ),
-        ),
+        getApiErrorMessage(error, t('legacy.failed_to_save_studio_profile')),
       );
     } finally {
       setLoading(false);
@@ -170,15 +139,12 @@ export default function StudioOnboardingPage() {
   return (
     <main className="grid gap-6">
       <div className="card p-6">
-        <p className="pill">{t('Studio Onboarding', 'Онбординг студии')}</p>
+        <p className="pill">{t('legacy.studio_onboarding')}</p>
         <h2 className="mt-3 font-semibold text-2xl text-foreground">
-          {t('Set up your AI studio', 'Настройте вашу AI-студию')}
+          {t('legacy.set_up_your_ai_studio')}
         </h2>
         <p className="text-muted-foreground text-sm">
-          {t(
-            'Connect your agent, define a style, and understand the daily limits.',
-            'Подключите агента, задайте стиль и проверьте дневные лимиты.',
-          )}
+          {t('legacy.connect_your_agent_define_a_style_and')}
         </p>
       </div>
 
@@ -189,14 +155,14 @@ export default function StudioOnboardingPage() {
       )}
       {saved && (
         <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-500 text-sm">
-          {t('Profile saved.', 'Профиль сохранен.')}
+          {t('legacy.profile_saved')}
         </div>
       )}
 
       {step === 1 && (
         <section className="card grid gap-4 p-6">
           <h3 className="font-semibold text-foreground text-sm">
-            {t('1. Connect your agent', '1. Подключите агента')}
+            {t('legacy.1_connect_your_agent')}
           </h3>
           <label className="grid gap-2 font-medium text-foreground text-sm">
             Agent ID
@@ -212,7 +178,7 @@ export default function StudioOnboardingPage() {
             <input
               className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
               onChange={(event) => setApiKey(event.target.value)}
-              placeholder={t('Agent API key', 'API-ключ агента')}
+              placeholder={t('legacy.agent_api_key')}
               type="password"
               value={apiKey}
             />
@@ -223,9 +189,7 @@ export default function StudioOnboardingPage() {
             onClick={connectAgent}
             type="button"
           >
-            {loading
-              ? t('Connecting...', 'Подключение...')
-              : t('Connect', 'Подключить')}
+            {loading ? t('legacy.connecting') : t('legacy.connect')}
           </button>
         </section>
       )}
@@ -234,10 +198,10 @@ export default function StudioOnboardingPage() {
         <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">
           <div className="card grid gap-4 p-6">
             <h3 className="font-semibold text-foreground text-sm">
-              {t('2. Studio profile', '2. Профиль студии')}
+              {t('legacy.2_studio_profile')}
             </h3>
             <label className="grid gap-2 font-medium text-foreground text-sm">
-              {t('Studio name *', 'Название студии *')}
+              {t('legacy.studio_name')}
               <input
                 className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
                 onChange={(event) => setStudioName(event.target.value)}
@@ -246,7 +210,7 @@ export default function StudioOnboardingPage() {
               />
             </label>
             <label className="grid gap-2 font-medium text-foreground text-sm">
-              {t('Avatar URL *', 'URL аватара *')}
+              {t('legacy.avatar_url')}
               <input
                 className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
                 onChange={(event) => setAvatarUrl(event.target.value)}
@@ -255,7 +219,7 @@ export default function StudioOnboardingPage() {
               />
             </label>
             <label className="grid gap-2 font-medium text-foreground text-sm">
-              {t('Style tags * (press Enter)', 'Теги стиля * (нажмите Enter)')}
+              {t('legacy.style_tags_press_enter')}
               <input
                 className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
                 onChange={(event) => setTagInput(event.target.value)}
@@ -265,10 +229,7 @@ export default function StudioOnboardingPage() {
                     addTag();
                   }
                 }}
-                placeholder={t(
-                  'Minimal, Editorial, Futuristic...',
-                  'Минимализм, Редакционный, Футуризм...',
-                )}
+                placeholder={t('legacy.minimal_editorial_futuristic')}
                 value={tagInput}
               />
             </label>
@@ -285,14 +246,11 @@ export default function StudioOnboardingPage() {
               ))}
             </div>
             <label className="grid gap-2 font-medium text-foreground text-sm">
-              {t('Personality (optional)', 'Характер студии (опционально)')}
+              {t('legacy.personality_optional')}
               <textarea
                 className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
                 onChange={(event) => setPersonality(event.target.value)}
-                placeholder={t(
-                  'Describe the studio voice and tone.',
-                  'Опишите голос и стиль общения студии.',
-                )}
+                placeholder={t('legacy.describe_the_studio_voice_and_tone')}
                 rows={3}
                 value={personality}
               />
@@ -304,62 +262,57 @@ export default function StudioOnboardingPage() {
                 onClick={saveProfile}
                 type="button"
               >
-                {loading
-                  ? t('Saving...', 'Сохранение...')
-                  : t('Save profile', 'Сохранить профиль')}
+                {loading ? t('legacy.saving') : t('legacy.save_profile')}
               </button>
               <button
                 className="rounded-full border border-border bg-background/70 px-5 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60"
                 onClick={() => setStep(3)}
                 type="button"
               >
-                {t('Skip optional steps', 'Пропустить необязательные шаги')}
+                {t('legacy.skip_optional_steps')}
               </button>
             </div>
           </div>
           <div className="card grid gap-3 p-6 text-muted-foreground text-sm">
             <h3 className="font-semibold text-foreground text-sm">
-              {t('Daily budgets', 'Дневные лимиты')}
+              {t('legacy.daily_budgets')}
             </h3>
             <div className="rounded-xl border border-border bg-background/70 p-3 text-xs">
               <p className="font-semibold text-foreground">
-                {t('Agent actions', 'Действия агента')}
+                {t('legacy.agent_actions')}
               </p>
               <ul className="mt-2 grid gap-1">
                 <li>
-                  PRs: {ACTION_LIMITS.pr} / {t('day', 'день')}
+                  PRs: {ACTION_LIMITS.pr} / {t('legacy.day')}
                 </li>
                 <li>
-                  Major PRs: {ACTION_LIMITS.major_pr} / {t('day', 'день')}
+                  Major PRs: {ACTION_LIMITS.major_pr} / {t('legacy.day')}
                 </li>
                 <li>
-                  {t('Fix requests', 'Запросы на исправление')}:{' '}
-                  {ACTION_LIMITS.fix_request} / {t('day', 'день')}
+                  {t('legacy.fix_requests')}: {ACTION_LIMITS.fix_request} /{' '}
+                  {t('legacy.day')}
                 </li>
               </ul>
             </div>
             <div className="rounded-xl border border-border bg-background/70 p-3 text-xs">
               <p className="font-semibold text-foreground">
-                {t('Draft edit budgets', 'Лимиты правок драфта')}
+                {t('legacy.draft_edit_budgets')}
               </p>
               <ul className="mt-2 grid gap-1">
                 <li>
-                  PRs: {EDIT_LIMITS.pr} / {t('day', 'день')}
+                  PRs: {EDIT_LIMITS.pr} / {t('legacy.day')}
                 </li>
                 <li>
-                  Major PRs: {EDIT_LIMITS.major_pr} / {t('day', 'день')}
+                  Major PRs: {EDIT_LIMITS.major_pr} / {t('legacy.day')}
                 </li>
                 <li>
-                  {t('Fix requests', 'Запросы на исправление')}:{' '}
-                  {EDIT_LIMITS.fix_request} / {t('day', 'день')}
+                  {t('legacy.fix_requests')}: {EDIT_LIMITS.fix_request} /{' '}
+                  {t('legacy.day')}
                 </li>
               </ul>
             </div>
             <p className="text-muted-foreground text-xs">
-              {t(
-                'Budgets reset daily (UTC). Staying within limits keeps your studio trusted.',
-                'Лимиты сбрасываются ежедневно (UTC). Соблюдение лимитов поддерживает доверие к студии.',
-              )}
+              {t('legacy.budgets_reset_daily_utc_staying_within_limits')}
             </p>
           </div>
         </section>
@@ -368,7 +321,7 @@ export default function StudioOnboardingPage() {
       {step === 3 && (
         <section className="card grid gap-4 p-6">
           <h3 className="font-semibold text-foreground text-sm">
-            {t('3. First actions checklist', '3. Чеклист первых действий')}
+            {t('legacy.3_first_actions_checklist')}
           </h3>
           <ul className="grid gap-2 text-muted-foreground text-sm">
             {CHECKLIST.map((item) => (
@@ -385,7 +338,7 @@ export default function StudioOnboardingPage() {
             onClick={() => setStep(1)}
             type="button"
           >
-            {t('Edit profile', 'Редактировать профиль')}
+            {t('legacy.edit_profile')}
           </button>
         </section>
       )}

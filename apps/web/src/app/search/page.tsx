@@ -289,12 +289,7 @@ function SearchPageContent() {
         }
       } catch (error: unknown) {
         if (!cancelled) {
-          setError(
-            getApiErrorMessage(
-              error,
-              t('Search failed.', 'РџРѕРёСЃРє РЅРµ РІС‹РїРѕР»РЅРµРЅ.'),
-            ),
-          );
+          setError(getApiErrorMessage(error, t('legacy.search_failed')));
         }
       } finally {
         if (!cancelled) {
@@ -348,12 +343,7 @@ function SearchPageContent() {
     const embedding = parseEmbedding(visualEmbedding);
     const trimmedDraftId = visualDraftId.trim();
     if (!(embedding || trimmedDraftId)) {
-      setError(
-        t(
-          'Provide a draft ID or an embedding array.',
-          'РЈРєР°Р¶РёС‚Рµ ID РґСЂР°С„С‚Р° РёР»Рё РјР°СЃСЃРёРІ СЌРјР±РµРґРґРёРЅРіР°.',
-        ),
-      );
+      setError(t('legacy.provide_a_draft_id_or_an_embedding'));
       return;
     }
     setLoading(true);
@@ -373,22 +363,9 @@ function SearchPageContent() {
       const code = getApiErrorCode(error);
       if (code === 'EMBEDDING_NOT_FOUND') {
         setResults([]);
-        setVisualNotice(
-          t(
-            'Similar works available after analysis.',
-            'РџРѕС…РѕР¶РёРµ СЂР°Р±РѕС‚С‹ Р±СѓРґСѓС‚ РґРѕСЃС‚СѓРїРЅС‹ РїРѕСЃР»Рµ Р°РЅР°Р»РёР·Р°.',
-          ),
-        );
+        setVisualNotice(t('legacy.similar_works_available_after_analysis_2'));
       } else {
-        setError(
-          getApiErrorMessage(
-            error,
-            t(
-              'Visual search failed.',
-              'Р’РёР·СѓР°Р»СЊРЅС‹Р№ РїРѕРёСЃРє РЅРµ РІС‹РїРѕР»РЅРµРЅ.',
-            ),
-          ),
-        );
+        setError(getApiErrorMessage(error, t('legacy.visual_search_failed')));
       }
     } finally {
       setLoading(false);
@@ -417,24 +394,13 @@ function SearchPageContent() {
 
   const summary =
     mode === 'text'
-      ? `${t('Results for', 'Р РµР·СѓР»СЊС‚Р°С‚С‹ РґР»СЏ')} "${query || '...'}" | ${t(
-          'type',
-          'С‚РёРї',
-        )} ${type} | ${t('intent', 'РЅР°РјРµСЂРµРЅРёРµ')} ${intent} | ${t(
-          'sorted by',
-          'СЃРѕСЂС‚РёСЂРѕРІРєР°',
-        )} ${sort} | ${t('range', 'РґРёР°РїР°Р·РѕРЅ')} ${range}`
-      : `${t('Visual results', 'Р’РёР·СѓР°Р»СЊРЅС‹Рµ СЂРµР·СѓР»СЊС‚Р°С‚С‹')} | ${t(
-          'type',
-          'С‚РёРї',
-        )} ${visualType}${
+      ? `${t('legacy.results_for')} "${query || '...'}" | ${t('legacy.type')} ${type} | ${t('legacy.intent')} ${intent} | ${t('legacy.sorted_by')} ${sort} | ${t('legacy.range')} ${range}`
+      : `${t('legacy.visual_results')} | ${t('legacy.type')} ${visualType}${
           visualDraftId.trim()
-            ? ` | ${t('draft', 'РґСЂР°С„С‚')} ${visualDraftId.trim()}`
+            ? ` | ${t('legacy.draft_2')} ${visualDraftId.trim()}`
             : ''
         }${
-          visualTags.trim()
-            ? ` | ${t('tags', 'С‚РµРіРё')} ${visualTags.trim()}`
-            : ''
+          visualTags.trim() ? ` | ${t('legacy.tags')} ${visualTags.trim()}` : ''
         }`;
   const showAbBadge = abEnabled;
 
@@ -442,13 +408,10 @@ function SearchPageContent() {
     <main className="grid gap-6">
       <div className="card p-6">
         <h2 className="font-semibold text-2xl text-foreground">
-          {t('Search', 'РџРѕРёСЃРє')}
+          {t('legacy.search')}
         </h2>
         <p className="text-muted-foreground text-sm">
-          {t(
-            'Find drafts, releases, and studios.',
-            'РќР°С…РѕРґРёС‚Рµ РґСЂР°С„С‚С‹, СЂРµР»РёР·С‹ Рё СЃС‚СѓРґРёРё.',
-          )}
+          {t('legacy.find_drafts_releases_and_studios')}
         </p>
       </div>
       <div className="card grid gap-4 p-6">
@@ -462,7 +425,7 @@ function SearchPageContent() {
             onClick={() => setMode('text')}
             type="button"
           >
-            {t('Text search', 'РўРµРєСЃС‚РѕРІС‹Р№ РїРѕРёСЃРє')}
+            {t('legacy.text_search')}
           </button>
           <button
             className={`rounded-lg px-3 py-2 text-sm ${
@@ -473,7 +436,7 @@ function SearchPageContent() {
             onClick={() => setMode('visual')}
             type="button"
           >
-            {t('Visual search', 'Р’РёР·СѓР°Р»СЊРЅС‹Р№ РїРѕРёСЃРє')}
+            {t('legacy.visual_search')}
           </button>
         </div>
 
@@ -482,10 +445,7 @@ function SearchPageContent() {
             <input
               className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
               onChange={(event) => setQuery(event.target.value)}
-              placeholder={t(
-                'Search by keyword',
-                'РџРѕРёСЃРє РїРѕ РєР»СЋС‡РµРІРѕРјСѓ СЃР»РѕРІСѓ',
-              )}
+              placeholder={t('legacy.search_by_keyword')}
               value={query}
             />
             <div className="flex flex-wrap gap-3">
@@ -494,10 +454,10 @@ function SearchPageContent() {
                 onChange={(event) => setType(event.target.value)}
                 value={type}
               >
-                <option value="all">{t('All types', 'Р’СЃРµ С‚РёРїС‹')}</option>
-                <option value="draft">{t('Drafts', 'Р”СЂР°С„С‚С‹')}</option>
-                <option value="release">{t('Releases', 'Р РµР»РёР·С‹')}</option>
-                <option value="studio">{t('Studios', 'РЎС‚СѓРґРёРё')}</option>
+                <option value="all">{t('legacy.all_types')}</option>
+                <option value="draft">{t('legacy.drafts')}</option>
+                <option value="release">{t('legacy.releases')}</option>
+                <option value="studio">{t('legacy.studios')}</option>
               </select>
               <select
                 className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
@@ -505,17 +465,11 @@ function SearchPageContent() {
                 onChange={(event) => setIntent(event.target.value)}
                 value={intent}
               >
-                <option value="all">
-                  {t('All intents', 'Р’СЃРµ РЅР°РјРµСЂРµРЅРёСЏ')}
-                </option>
-                <option value="needs_help">
-                  {t('Needs help', 'РќСѓР¶РЅР° РїРѕРјРѕС‰СЊ')}
-                </option>
-                <option value="seeking_pr">
-                  {t('Seeking PR', 'РС‰РµС‚ PR')}
-                </option>
+                <option value="all">{t('legacy.all_intents')}</option>
+                <option value="needs_help">{t('legacy.needs_help_2')}</option>
+                <option value="seeking_pr">{t('legacy.seeking_pr_2')}</option>
                 <option value="ready_for_review">
-                  {t('Ready for review', 'Р“РѕС‚РѕРІ Рє СЂРµРІСЊСЋ')}
+                  {t('legacy.ready_for_review_2')}
                 </option>
               </select>
               <select
@@ -523,27 +477,19 @@ function SearchPageContent() {
                 onChange={(event) => setSort(event.target.value)}
                 value={sort}
               >
-                <option value="relevance">
-                  {t('Relevance', 'Р РµР»РµРІР°РЅС‚РЅРѕСЃС‚СЊ')}
-                </option>
-                <option value="recency">{t('Recency', 'РЎРІРµР¶РёРµ')}</option>
+                <option value="relevance">{t('legacy.relevance')}</option>
+                <option value="recency">{t('legacy.recency')}</option>
                 <option value="glowup">GlowUp</option>
-                <option value="impact">{t('Impact', 'Р’Р»РёСЏРЅРёРµ')}</option>
+                <option value="impact">{t('legacy.impact')}</option>
               </select>
               <select
                 className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
                 onChange={(event) => setRange(event.target.value)}
                 value={range}
               >
-                <option value="all">
-                  {t('All time', 'Р—Р° РІСЃРµ РІСЂРµРјСЏ')}
-                </option>
-                <option value="7d">
-                  {t('Last 7 days', 'РџРѕСЃР»РµРґРЅРёРµ 7 РґРЅРµР№')}
-                </option>
-                <option value="30d">
-                  {t('Last 30 days', 'РџРѕСЃР»РµРґРЅРёРµ 30 РґРЅРµР№')}
-                </option>
+                <option value="all">{t('legacy.all_time')}</option>
+                <option value="7d">{t('legacy.last_7_days')}</option>
+                <option value="30d">{t('legacy.last_30_days')}</option>
               </select>
             </div>
           </>
@@ -552,28 +498,19 @@ function SearchPageContent() {
             <input
               className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
               onChange={(event) => setVisualDraftId(event.target.value)}
-              placeholder={t(
-                'Draft ID (optional)',
-                'ID РґСЂР°С„С‚Р° (РѕРїС†РёРѕРЅР°Р»СЊРЅРѕ)',
-              )}
+              placeholder={t('legacy.draft_id_optional_2')}
               value={visualDraftId}
             />
             <textarea
               className="min-h-[120px] rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground text-sm placeholder:text-muted-foreground/70"
               onChange={(event) => setVisualEmbedding(event.target.value)}
-              placeholder={t(
-                'Embedding (JSON array, e.g. [0.1, 0.2, 0.3])',
-                'Р­РјР±РµРґРґРёРЅРі (РјР°СЃСЃРёРІ JSON, РЅР°РїСЂРёРјРµСЂ [0.1, 0.2, 0.3])',
-              )}
+              placeholder={t('legacy.embedding_json_array_e_g_0_1')}
               value={visualEmbedding}
             />
             <input
               className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
               onChange={(event) => setVisualTags(event.target.value)}
-              placeholder={t(
-                'Style tags (comma separated)',
-                'РўРµРіРё СЃС‚РёР»СЏ (С‡РµСЂРµР· Р·Р°РїСЏС‚СѓСЋ)',
-              )}
+              placeholder={t('legacy.style_tags_comma_separated')}
               value={visualTags}
             />
             <div className="flex flex-wrap gap-3">
@@ -582,9 +519,9 @@ function SearchPageContent() {
                 onChange={(event) => setVisualType(event.target.value)}
                 value={visualType}
               >
-                <option value="all">{t('All types', 'Р’СЃРµ С‚РёРїС‹')}</option>
-                <option value="draft">{t('Drafts', 'Р”СЂР°С„С‚С‹')}</option>
-                <option value="release">{t('Releases', 'Р РµР»РёР·С‹')}</option>
+                <option value="all">{t('legacy.all_types')}</option>
+                <option value="draft">{t('legacy.drafts')}</option>
+                <option value="release">{t('legacy.releases')}</option>
               </select>
               <button
                 className="rounded-lg border border-primary/45 bg-primary/15 px-4 py-2 text-primary text-sm transition hover:border-primary/70 disabled:opacity-60"
@@ -592,17 +529,11 @@ function SearchPageContent() {
                 onClick={runVisualSearch}
                 type="button"
               >
-                {t(
-                  'Run visual search',
-                  'Р—Р°РїСѓСЃС‚РёС‚СЊ РІРёР·СѓР°Р»СЊРЅС‹Р№ РїРѕРёСЃРє',
-                )}
+                {t('legacy.run_visual_search')}
               </button>
             </div>
             <p className="text-muted-foreground text-xs">
-              {t(
-                'Provide either a draft ID or an embedding array.',
-                'РЈРєР°Р¶РёС‚Рµ Р»РёР±Рѕ ID РґСЂР°С„С‚Р°, Р»РёР±Рѕ РјР°СЃСЃРёРІ СЌРјР±РµРґРґРёРЅРіР°.',
-              )}
+              {t('legacy.provide_either_a_draft_id_or_an')}
             </p>
           </>
         )}
@@ -632,15 +563,12 @@ function SearchPageContent() {
           !visualNotice &&
           !loading && (
             <div className="rounded-xl border border-border bg-muted/60 p-3 text-muted-foreground text-xs">
-              {t(
-                'Search completed, no results.',
-                'РџРѕРёСЃРє Р·Р°РІРµСЂС€РµРЅ, СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ РЅРµС‚.',
-              )}
+              {t('legacy.search_completed_no_results')}
             </div>
           )}
         {loading ? (
           <p className="text-muted-foreground text-xs">
-            {t('Searching...', 'Р’С‹РїРѕР»РЅСЏРµС‚СЃСЏ РїРѕРёСЃРє...')}
+            {t('legacy.searching')}
           </p>
         ) : (
           <ul className="grid gap-3">
@@ -695,7 +623,7 @@ function SearchPageContent() {
                           />
                         ) : (
                           <div className="flex h-20 w-full items-center justify-center rounded-lg bg-muted font-semibold text-[11px] text-muted-foreground">
-                            {t('Before', 'Р”Рѕ')}
+                            {t('legacy.before')}
                           </div>
                         )}
                         {result.afterImageUrl ? (
@@ -710,14 +638,13 @@ function SearchPageContent() {
                           />
                         ) : (
                           <div className="flex h-20 w-full items-center justify-center rounded-lg bg-muted font-semibold text-[11px] text-muted-foreground">
-                            {t('After', 'РџРѕСЃР»Рµ')}
+                            {t('legacy.after')}
                           </div>
                         )}
                       </div>
                     )}
                     <p className="text-muted-foreground text-xs">
-                      {t('Score', 'РћС†РµРЅРєР°')}{' '}
-                      {Number(result.score ?? 0).toFixed(1)}
+                      {t('legacy.score')} {Number(result.score ?? 0).toFixed(1)}
                     </p>
                     {typeof result.glowUpScore === 'number' && (
                       <p className="text-muted-foreground text-xs">
@@ -730,10 +657,7 @@ function SearchPageContent() {
             })}
             {results.length === 0 && (
               <li className="text-muted-foreground text-xs">
-                {t(
-                  'No results yet.',
-                  'РџРѕРєР° РЅРµС‚ СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ.',
-                )}
+                {t('legacy.no_results_yet')}
               </li>
             )}
           </ul>
@@ -750,7 +674,7 @@ export default function SearchPage() {
     <Suspense
       fallback={
         <main className="card p-6 text-muted-foreground text-sm">
-          {t('Loading search...', 'Р—Р°РіСЂСѓР·РєР° РїРѕРёСЃРєР°...')}
+          {t('legacy.loading_search')}
         </main>
       }
     >

@@ -28,14 +28,14 @@ export const FixRequestList = ({ items }: FixRequestListProps) => {
     <div className="card p-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-foreground text-sm">
-          {t('Fix requests', 'Запросы на исправление')}
+          {t('legacy.fix_requests')}
         </h3>
         <select
           className="rounded-lg border border-border bg-background/70 px-2 py-1 text-xs"
           onChange={(event) => setFilter(event.target.value)}
           value={filter}
         >
-          <option value="all">{t('All', 'Все')}</option>
+          <option value="all">{t('legacy.all')}</option>
           {categories.map((category) => (
             <option key={category} value={category}>
               {category}
@@ -54,7 +54,7 @@ export const FixRequestList = ({ items }: FixRequestListProps) => {
             </p>
             <p className="text-foreground text-sm">{item.description}</p>
             <p className="text-muted-foreground text-xs">
-              {t('Critic:', 'Критик:')} {item.critic}
+              {t('legacy.critic')} {item.critic}
             </p>
           </li>
         ))}
