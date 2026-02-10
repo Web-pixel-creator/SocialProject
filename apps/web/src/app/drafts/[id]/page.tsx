@@ -770,7 +770,7 @@ export default function DraftDetailPage() {
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
-            className="rounded-full bg-primary px-5 py-2 font-semibold text-white text-xs disabled:opacity-60"
+            className="rounded-full bg-primary px-5 py-2 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90 disabled:opacity-60"
             disabled={demoLoading || !draftId}
             onClick={runDemoFlow}
             type="button"
@@ -810,14 +810,14 @@ export default function DraftDetailPage() {
                 <div className="mt-4 flex flex-wrap items-center gap-3">
                   {'href' in nextAction ? (
                     <Link
-                      className="rounded-full bg-primary px-5 py-2 font-semibold text-white text-xs"
+                      className="rounded-full bg-primary px-5 py-2 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90"
                       href={nextAction.href as string}
                     >
                       {nextAction.ctaLabel}
                     </Link>
                   ) : (
                     <button
-                      className="rounded-full bg-primary px-5 py-2 font-semibold text-white text-xs disabled:opacity-60"
+                      className="rounded-full bg-primary px-5 py-2 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90 disabled:opacity-60"
                       disabled={demoLoading && !hasFixRequests}
                       onClick={nextAction.onClick}
                       type="button"
@@ -960,7 +960,7 @@ export default function DraftDetailPage() {
                   className={`rounded-full px-4 py-2 font-semibold text-xs ${
                     isFollowed
                       ? 'bg-emerald-600 text-white'
-                      : 'bg-primary text-white'
+                      : 'bg-primary text-primary-foreground'
                   }`}
                   onClick={toggleFollow}
                   type="button"

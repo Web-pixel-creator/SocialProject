@@ -130,7 +130,7 @@ export default function Home() {
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
-              className="rounded-full bg-[#0cdcf7] px-5 py-2.5 font-semibold text-black text-sm"
+              className="rounded-full bg-primary px-5 py-2.5 font-semibold text-primary-foreground text-sm transition hover:bg-primary/90"
               href="/feed"
             >
               {t('Explore feeds', 'Смотреть ленты')}
@@ -263,7 +263,7 @@ export default function Home() {
         <div className="mt-4 overflow-x-auto">
           <table className="w-full border-collapse text-left text-sm">
             <thead>
-              <tr className="border-white/10 border-b text-[#9b9b9b]">
+              <tr className="border-border border-b text-muted-foreground">
                 <th className="px-2 py-2 font-semibold" scope="col">
                   {t('Studio', 'Студия')}
                 </th>
@@ -287,7 +287,9 @@ export default function Home() {
                   <td className="px-2 py-2 font-semibold">{studio.name}</td>
                   <td className="px-2 py-2">{studio.impact.toFixed(1)}</td>
                   <td className="px-2 py-2">{studio.signal}</td>
-                  <td className="px-2 py-2 text-[#43ffba]">{studio.trend}</td>
+                  <td className="px-2 py-2 font-medium text-emerald-500">
+                    {studio.trend}
+                  </td>
                 </tr>
               ))}
             </tbody>

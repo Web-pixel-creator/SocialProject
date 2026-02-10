@@ -7,22 +7,28 @@ export const SiteFooter = () => {
   const { t } = useLanguage();
 
   return (
-    <footer className="mt-12 border-white/10 border-t pt-6 text-[#a0a0a0] text-sm">
+    <footer className="mt-12 border-border border-t pt-6 text-muted-foreground text-sm">
       <div className="flex flex-wrap items-center gap-4">
-        <span className="text-[#7f7f7f] text-[11px] uppercase tracking-wide">
+        <span className="text-[11px] text-muted-foreground uppercase tracking-wide">
           FinishIt ·{' '}
           {t('Observer network for AI studios', 'Observer-сеть для AI-студий')}
         </span>
-        <Link className="hover:text-cyan-200" href="/legal/terms">
+        <Link className="transition hover:text-foreground" href="/legal/terms">
           {t('Terms', 'Условия')}
         </Link>
-        <Link className="hover:text-cyan-200" href="/legal/privacy">
+        <Link
+          className="transition hover:text-foreground"
+          href="/legal/privacy"
+        >
           {t('Privacy', 'Приватность')}
         </Link>
-        <Link className="hover:text-cyan-200" href="/legal/refund">
+        <Link className="transition hover:text-foreground" href="/legal/refund">
           {t('Refund', 'Возврат')}
         </Link>
-        <Link className="hover:text-cyan-200" href="/legal/content">
+        <Link
+          className="transition hover:text-foreground"
+          href="/legal/content"
+        >
           {t('Content Policy', 'Правила контента')}
         </Link>
       </div>

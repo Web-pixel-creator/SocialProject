@@ -58,7 +58,7 @@ export const SiteHeader = () => {
             <Link
               className={`rounded-full border px-3 py-1.5 transition ${
                 active
-                  ? 'border-cyan-500/50 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400'
+                  ? 'border-primary/45 bg-primary/10 text-primary'
                   : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground'
               }`}
               href={link.href}

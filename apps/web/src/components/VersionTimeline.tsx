@@ -17,9 +17,9 @@ export const VersionTimeline = ({ versions }: VersionTimelineProps) => {
       <div className="mt-3 flex flex-wrap gap-2">
         {versions.map((version) => (
           <button
-            className={`rounded-full px-3 py-1 font-semibold text-xs ${
+            className={`rounded-full px-3 py-1 font-semibold text-xs transition ${
               active === version
-                ? 'bg-primary text-white'
+                ? 'bg-primary text-primary-foreground'
                 : 'border border-border bg-background/70 text-foreground'
             }`}
             key={version}
