@@ -2,6 +2,7 @@
 
 import { Flame, Wifi } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import useSWR from 'swr';
 import { useLanguage } from '../contexts/LanguageContext';
 import { type RealtimeEvent, useRealtimeRoom } from '../hooks/useRealtimeRoom';
 import { apiClient } from '../lib/api';
@@ -22,6 +23,127 @@ import {
   type RailItem,
 } from './RailPanels';
 
+interface ObserverRailData {
+  liveDraftCount: number;
+  prPendingCount: number;
+  battles: RailItem[];
+  glowUps: RailItem[];
+  studios: RailItem[];
+  activity: RailItem[];
+  fallbackUsed: boolean;
+}
+
+const fallbackRailData: ObserverRailData = {
+  liveDraftCount: 128,
+  prPendingCount: 57,
+  battles: fallbackBattles,
+  glowUps: fallbackGlowUps,
+  studios: fallbackStudios,
+  activity: fallbackActivity,
+  fallbackUsed: true,
+};
+
+const fetchObserverRailData = async (): Promise<ObserverRailData> => {
+  try {
+    const [
+      battleResponse,
+      glowUpResponse,
+      studioResponse,
+      liveResponse,
+      hotNowResponse,
+      changesResponse,
+    ] = await Promise.all([
+      apiClient.get('/feeds/battles', { params: { limit: 5 } }),
+      apiClient.get('/feeds/glowups', { params: { limit: 5 } }),
+      apiClient.get('/feeds/studios', { params: { limit: 5 } }),
+      apiClient.get('/feeds/live-drafts', { params: { limit: 200 } }),
+      apiClient.get('/feeds/hot-now', { params: { limit: 10 } }),
+      apiClient.get('/feeds/changes', { params: { limit: 8 } }),
+    ]);
+
+    const battleItems = asRows(battleResponse.data)
+      .map((row, index) => {
+        const id = asString(row.id) ?? `battle-${index}`;
+        const score = asNumber(row.glowUpScore ?? row.glow_up_score);
+        return {
+          id,
+          title: `Draft ${id.slice(0, 8)}`,
+          meta: `GlowUp ${score.toFixed(1)}`,
+        };
+      })
+      .slice(0, 4);
+
+    const glowUpItems = asRows(glowUpResponse.data)
+      .map((row, index) => {
+        const id = asString(row.id) ?? `glow-${index}`;
+        const score = asNumber(row.glowUpScore ?? row.glow_up_score);
+        return {
+          id,
+          title: `Draft ${id.slice(0, 8)}`,
+          meta: `GlowUp ${score.toFixed(1)}`,
+        };
+      })
+      .slice(0, 4);
+
+    const studioItems = asRows(studioResponse.data)
+      .map((row, index) => {
+        const id = asString(row.id) ?? `studio-${index}`;
+        const studioName =
+          asString(row.studioName) ?? asString(row.studio_name) ?? 'Studio';
+        const impact = asNumber(row.impact);
+        const signal = asNumber(row.signal);
+        return {
+          id,
+          title: studioName,
+          meta: `Impact ${impact.toFixed(1)} / Signal ${signal.toFixed(1)}`,
+        };
+      })
+      .slice(0, 4);
+
+    const activityItems = asRows(changesResponse.data)
+      .map((row, index) => {
+        const id = asString(row.id) ?? `activity-${index}`;
+        const draftTitle =
+          asString(row.draftTitle) ?? asString(row.draft_title) ?? 'Draft';
+        const description = asString(row.description) ?? 'Update';
+        const occurredAt =
+          asString(row.occurredAt) ?? asString(row.occurred_at);
+        return {
+          id,
+          title: `${draftTitle}: ${description}`,
+          meta: formatRelativeTime(occurredAt),
+        };
+      })
+      .slice(0, 5);
+
+    const liveRows = asRows(liveResponse.data);
+    const hotRows = asRows(hotNowResponse.data);
+
+    const pendingTotal = hotRows.reduce(
+      (sum, row) => sum + asNumber(row.prPendingCount ?? row.pr_pending_count),
+      0,
+    );
+
+    const hasApiData =
+      battleItems.length > 0 ||
+      glowUpItems.length > 0 ||
+      studioItems.length > 0 ||
+      activityItems.length > 0;
+
+    return {
+      battles: battleItems.length > 0 ? battleItems : fallbackBattles,
+      glowUps: glowUpItems.length > 0 ? glowUpItems : fallbackGlowUps,
+      studios: studioItems.length > 0 ? studioItems : fallbackStudios,
+      activity: activityItems.length > 0 ? activityItems : fallbackActivity,
+      liveDraftCount: liveRows.length,
+      prPendingCount: pendingTotal,
+      fallbackUsed: !hasApiData,
+    };
+  } catch {
+    return fallbackRailData;
+  }
+};
+
 export const ObserverRightRail = () => {
   const { t } = useLanguage();
   const realtimeEnabled = process.env.NODE_ENV !== 'test';
@@ -32,19 +154,33 @@ export const ObserverRightRail = () => {
     lastResyncAt,
     requestResync,
   } = useRealtimeRoom('feed:live', realtimeEnabled);
-  const [loading, setLoading] = useState(true);
-  const [fallbackUsed, setFallbackUsed] = useState(false);
   const [resyncToast, setResyncToast] = useState<string | null>(null);
   const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
   const [syncNow, setSyncNow] = useState(() => Date.now());
-  const [liveDraftCount, setLiveDraftCount] = useState(128);
-  const [prPendingCount, setPrPendingCount] = useState(57);
-  const [battles, setBattles] = useState<RailItem[]>(fallbackBattles);
-  const [glowUps, setGlowUps] = useState<RailItem[]>(fallbackGlowUps);
-  const [studios, setStudios] = useState<RailItem[]>(fallbackStudios);
-  const [activity, setActivity] = useState<RailItem[]>(fallbackActivity);
   const manualResyncPendingRef = useRef(false);
   const toastTimeoutRef = useRef<number | null>(null);
+
+  const { data, isLoading, isValidating } = useSWR<ObserverRailData>(
+    'observer-right-rail-data',
+    fetchObserverRailData,
+    {
+      fallbackData: fallbackRailData,
+      refreshInterval: 30_000,
+      revalidateOnFocus: false,
+      shouldRetryOnError: false,
+    },
+  );
+
+  const loading = isLoading || isValidating;
+  const fallbackUsed = data?.fallbackUsed ?? true;
+  const liveDraftCount =
+    data?.liveDraftCount ?? fallbackRailData.liveDraftCount;
+  const prPendingCount =
+    data?.prPendingCount ?? fallbackRailData.prPendingCount;
+  const battles = data?.battles ?? fallbackRailData.battles;
+  const glowUps = data?.glowUps ?? fallbackRailData.glowUps;
+  const studios = data?.studios ?? fallbackRailData.studios;
+  const activity = data?.activity ?? fallbackRailData.activity;
 
   const realtimeActivity = useMemo(() => {
     const mapRealtimeEvent = (event: RealtimeEvent): RailItem => {
@@ -170,131 +306,6 @@ export const ObserverRightRail = () => {
     manualResyncPendingRef.current = true;
     requestResync();
   };
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const load = async () => {
-      setLoading(true);
-      try {
-        const [
-          battleResponse,
-          glowUpResponse,
-          studioResponse,
-          liveResponse,
-          hotNowResponse,
-          changesResponse,
-        ] = await Promise.all([
-          apiClient.get('/feeds/battles', { params: { limit: 5 } }),
-          apiClient.get('/feeds/glowups', { params: { limit: 5 } }),
-          apiClient.get('/feeds/studios', { params: { limit: 5 } }),
-          apiClient.get('/feeds/live-drafts', { params: { limit: 200 } }),
-          apiClient.get('/feeds/hot-now', { params: { limit: 10 } }),
-          apiClient.get('/feeds/changes', { params: { limit: 8 } }),
-        ]);
-
-        const battleItems = asRows(battleResponse.data)
-          .map((row, index) => {
-            const id = asString(row.id) ?? `battle-${index}`;
-            const score = asNumber(row.glowUpScore ?? row.glow_up_score);
-            return {
-              id,
-              title: `Draft ${id.slice(0, 8)}`,
-              meta: `GlowUp ${score.toFixed(1)}`,
-            };
-          })
-          .slice(0, 4);
-
-        const glowUpItems = asRows(glowUpResponse.data)
-          .map((row, index) => {
-            const id = asString(row.id) ?? `glow-${index}`;
-            const score = asNumber(row.glowUpScore ?? row.glow_up_score);
-            return {
-              id,
-              title: `Draft ${id.slice(0, 8)}`,
-              meta: `GlowUp ${score.toFixed(1)}`,
-            };
-          })
-          .slice(0, 4);
-
-        const studioItems = asRows(studioResponse.data)
-          .map((row, index) => {
-            const id = asString(row.id) ?? `studio-${index}`;
-            const studioName =
-              asString(row.studioName) ?? asString(row.studio_name) ?? 'Studio';
-            const impact = asNumber(row.impact);
-            const signal = asNumber(row.signal);
-            return {
-              id,
-              title: studioName,
-              meta: `Impact ${impact.toFixed(1)} / Signal ${signal.toFixed(1)}`,
-            };
-          })
-          .slice(0, 4);
-
-        const activityItems = asRows(changesResponse.data)
-          .map((row, index) => {
-            const id = asString(row.id) ?? `activity-${index}`;
-            const draftTitle =
-              asString(row.draftTitle) ?? asString(row.draft_title) ?? 'Draft';
-            const description = asString(row.description) ?? 'Update';
-            const occurredAt =
-              asString(row.occurredAt) ?? asString(row.occurred_at);
-            return {
-              id,
-              title: `${draftTitle}: ${description}`,
-              meta: formatRelativeTime(occurredAt),
-            };
-          })
-          .slice(0, 5);
-
-        const liveRows = asRows(liveResponse.data);
-        const hotRows = asRows(hotNowResponse.data);
-
-        const pendingTotal = hotRows.reduce(
-          (sum, row) =>
-            sum + asNumber(row.prPendingCount ?? row.pr_pending_count),
-          0,
-        );
-
-        const hasApiData =
-          battleItems.length > 0 ||
-          glowUpItems.length > 0 ||
-          studioItems.length > 0 ||
-          activityItems.length > 0;
-
-        if (!cancelled) {
-          setBattles(battleItems.length > 0 ? battleItems : fallbackBattles);
-          setGlowUps(glowUpItems.length > 0 ? glowUpItems : fallbackGlowUps);
-          setStudios(studioItems.length > 0 ? studioItems : fallbackStudios);
-          setActivity(
-            activityItems.length > 0 ? activityItems : fallbackActivity,
-          );
-          setLiveDraftCount(liveRows.length);
-          setPrPendingCount(pendingTotal);
-          setFallbackUsed(!hasApiData);
-        }
-      } catch (_error) {
-        if (!cancelled) {
-          setFallbackUsed(true);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    };
-
-    load().catch(() => undefined);
-    const intervalId = window.setInterval(() => {
-      load().catch(() => undefined);
-    }, 30_000);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(intervalId);
-    };
-  }, []);
 
   return (
     <aside className="observer-right-rail grid grid-cols-1 gap-3">

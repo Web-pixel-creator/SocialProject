@@ -12,7 +12,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import useSWR from 'swr';
 import { useLanguage } from '../contexts/LanguageContext';
 import { apiClient } from '../lib/api';
 
@@ -99,6 +99,11 @@ interface LiveStats {
   topGlowUp: string;
 }
 
+interface HomepageData {
+  studios: StudioRow[];
+  stats: LiveStats;
+}
+
 /* ── demo fallbacks ── */
 
 const demoStudios: StudioRow[] = [
@@ -127,88 +132,89 @@ function signalLabel(value: number): string {
   return 'Low';
 }
 
+async function fetchHomepageData(): Promise<HomepageData> {
+  const [studiosRes, liveDraftsRes, prRes] = await Promise.allSettled([
+    apiClient.get('/feeds/studios', { params: { limit: 5 } }),
+    apiClient.get('/feeds/live-drafts', { params: { limit: 200 } }),
+    apiClient.get('/feed', { params: { status: 'pr', limit: 200 } }),
+  ]);
+
+  let studios = demoStudios;
+  if (
+    studiosRes.status === 'fulfilled' &&
+    Array.isArray(studiosRes.value.data)
+  ) {
+    const mapped: StudioRow[] = studiosRes.value.data
+      .slice(0, 5)
+      .map(
+        (studio: {
+          studioName?: string;
+          studio_name?: string;
+          impact?: number;
+          signal?: number;
+        }) => ({
+          name: studio.studioName ?? studio.studio_name ?? 'Unknown',
+          impact: studio.impact ?? 0,
+          signal: signalLabel(studio.signal ?? 0),
+          trend:
+            (studio.impact ?? 0) >= 95
+              ? `+${(((studio.impact ?? 0) - 93) * 0.5).toFixed(1)}`
+              : '+0.0',
+        }),
+      );
+    if (mapped.length > 0) {
+      studios = mapped;
+    }
+  }
+
+  const draftsCount =
+    liveDraftsRes.status === 'fulfilled' &&
+    Array.isArray(liveDraftsRes.value.data)
+      ? liveDraftsRes.value.data.length
+      : demoStats.liveDrafts;
+
+  const prCount =
+    prRes.status === 'fulfilled' && Array.isArray(prRes.value.data)
+      ? prRes.value.data.length
+      : demoStats.prPending;
+
+  let topGlowUp = demoStats.topGlowUp;
+  if (
+    liveDraftsRes.status === 'fulfilled' &&
+    Array.isArray(liveDraftsRes.value.data)
+  ) {
+    const scores = liveDraftsRes.value.data
+      .map((draft: { glowUpScore?: number }) => draft.glowUpScore ?? 0)
+      .filter((score: number) => score > 0);
+    if (scores.length > 0) {
+      topGlowUp = `+${Math.max(...scores)}%`;
+    }
+  }
+
+  return {
+    studios,
+    stats: { liveDrafts: draftsCount, prPending: prCount, topGlowUp },
+  };
+}
+
 /* ── component ── */
 
 export default function Home() {
   const { t } = useLanguage();
-  const [studios, setStudios] = useState<StudioRow[]>(demoStudios);
-  const [stats, setStats] = useState<LiveStats>(demoStats);
-  const [loading, setLoading] = useState(true);
 
-  const fetchHomepageData = useCallback(async () => {
-    try {
-      setLoading(true);
+  const { data, isLoading, isValidating } = useSWR<HomepageData>(
+    'homepage/live-stats',
+    fetchHomepageData,
+    {
+      fallbackData: { studios: demoStudios, stats: demoStats },
+      revalidateOnFocus: false,
+      shouldRetryOnError: false,
+    },
+  );
 
-      const [studiosRes, liveDraftsRes, prRes] = await Promise.allSettled([
-        apiClient.get('/feeds/studios', { params: { limit: 5 } }),
-        apiClient.get('/feeds/live-drafts', { params: { limit: 200 } }),
-        apiClient.get('/feed', { params: { status: 'pr', limit: 200 } }),
-      ]);
-
-      // Map studios
-      if (
-        studiosRes.status === 'fulfilled' &&
-        Array.isArray(studiosRes.value.data)
-      ) {
-        const mapped: StudioRow[] = studiosRes.value.data
-          .slice(0, 5)
-          .map(
-            (s: {
-              studioName?: string;
-              studio_name?: string;
-              impact: number;
-              signal: number;
-            }) => ({
-              name: s.studioName ?? s.studio_name ?? 'Unknown',
-              impact: s.impact ?? 0,
-              signal: signalLabel(s.signal ?? 0),
-              trend:
-                s.impact >= 95
-                  ? `+${((s.impact - 93) * 0.5).toFixed(1)}`
-                  : '+0.0',
-            }),
-          );
-        if (mapped.length > 0) {
-          setStudios(mapped);
-        }
-      }
-
-      // Aggregate live stats
-      const draftsCount =
-        liveDraftsRes.status === 'fulfilled' &&
-        Array.isArray(liveDraftsRes.value.data)
-          ? liveDraftsRes.value.data.length
-          : demoStats.liveDrafts;
-
-      const prCount =
-        prRes.status === 'fulfilled' && Array.isArray(prRes.value.data)
-          ? prRes.value.data.length
-          : demoStats.prPending;
-
-      let topGlowUp = demoStats.topGlowUp;
-      if (
-        liveDraftsRes.status === 'fulfilled' &&
-        Array.isArray(liveDraftsRes.value.data)
-      ) {
-        const scores = liveDraftsRes.value.data
-          .map((d: { glowUpScore?: number }) => d.glowUpScore ?? 0)
-          .filter((s: number) => s > 0);
-        if (scores.length > 0) {
-          topGlowUp = `+${Math.max(...scores)}%`;
-        }
-      }
-
-      setStats({ liveDrafts: draftsCount, prPending: prCount, topGlowUp });
-    } catch {
-      // Keep demo data on failure
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchHomepageData();
-  }, [fetchHomepageData]);
+  const studios = data?.studios ?? demoStudios;
+  const stats = data?.stats ?? demoStats;
+  const loading = isLoading || isValidating;
 
   return (
     <main className="grid gap-8">
