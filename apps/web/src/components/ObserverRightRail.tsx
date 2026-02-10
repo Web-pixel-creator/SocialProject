@@ -343,7 +343,9 @@ export const ObserverRightRail = () => {
           </div>
           <div className="rounded-lg border border-border bg-muted/70 p-2">
             <p className="text-muted-foreground/70">{t('rail.latency')}</p>
-            <p className="mt-1 font-semibold text-lg text-secondary">~18ms</p>
+            <p className="mt-1 font-semibold text-lg text-secondary">
+              {t('rail.latencyValue')}
+            </p>
           </div>
         </div>
         <div className="mt-3 flex items-center gap-2 text-[11px] text-muted-foreground/70">

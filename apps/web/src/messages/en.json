@@ -377,6 +377,7 @@
   "rail.hot": "Hot",
   "rail.lastSync": "Last sync",
   "rail.latency": "Latency",
+  "rail.latencyValue": "~18ms",
   "rail.liveActivityStream": "Live activity stream",
   "rail.liveDrafts": "Live drafts",
   "rail.liveWsConnected": "Live + WebSocket connected",

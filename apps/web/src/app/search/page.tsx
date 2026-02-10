@@ -516,7 +516,7 @@ function SearchPageContent() {
               >
                 <option value="relevance">{t('search.sort.relevance')}</option>
                 <option value="recency">{t('search.sort.recency')}</option>
-                <option value="glowup">GlowUp</option>
+                <option value="glowup">{t('changeCard.metrics.glowUp')}</option>
                 <option value="impact">{t('search.sort.impact')}</option>
               </select>
               <select
