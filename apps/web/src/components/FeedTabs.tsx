@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -458,6 +459,34 @@ export const FeedTabs = () => {
     };
   }, [active, offset, fallbackUsed, sort, status, intent, rangeFrom, range]);
 
+  const isInitialLoading = loading && visibleItems.length === 0;
+
+  const emptyMessage = (() => {
+    if (active === 'Battles') {
+      return t('feedTabs.empty.battles');
+    }
+    if (intent === 'needs_help') {
+      return t('feedTabs.empty.needsHelp');
+    }
+    if (intent === 'seeking_pr') {
+      return t('feedTabs.empty.seekingPr');
+    }
+    if (intent === 'ready_for_review') {
+      return t('feedTabs.empty.readyForReview');
+    }
+    return t('feedTabs.empty.all');
+  })();
+
+  const openLiveDrafts = () => {
+    setActive('Live Drafts');
+    updateQuery({ tab: 'Live Drafts' });
+    sendTelemetry({
+      eventType: 'feed_empty_cta',
+      action: 'open_live_drafts',
+      sourceTab: active,
+    });
+  };
+
   let filterPanel = (
     <p className="text-muted-foreground text-xs">
       {t('feedTabs.filters.availableAll')}
@@ -697,85 +726,127 @@ export const FeedTabs = () => {
         {fallbackUsed && <span className="pill">{t('rail.fallbackData')}</span>}
         {loading && <span>{t('feedTabs.loadingMore')}</span>}
       </div>
-      {visibleItems.length === 0 && !loading ? (
-        <div className="card p-6 text-foreground/85 text-sm">
-          {active === 'Battles' && t('feedTabs.empty.battles')}
-          {active !== 'Battles' &&
-            intent === 'needs_help' &&
-            t('feedTabs.empty.needsHelp')}
-          {active !== 'Battles' &&
-            intent === 'seeking_pr' &&
-            t('feedTabs.empty.seekingPr')}
-          {active !== 'Battles' &&
-            intent === 'ready_for_review' &&
-            t('feedTabs.empty.readyForReview')}
-          {active !== 'Battles' && intent === 'all' && t('feedTabs.empty.all')}
-        </div>
-      ) : (
-        <div className={feedGridClass}>
-          {visibleItems.map((item, index) => {
-            if (item.kind === 'studio') {
-              return (
-                <StudioCard key={item.id ?? `studio-${index}`} {...item} />
-              );
-            }
-            if (item.kind === 'guild') {
-              return <GuildCard key={item.id ?? `guild-${index}`} {...item} />;
-            }
-            if (item.kind === 'hot') {
-              return (
-                <DraftCard
-                  afterImageUrl={item.afterImageUrl}
-                  beforeImageUrl={item.beforeImageUrl}
-                  glowUpScore={item.glowUpScore}
-                  hotScore={item.hotScore}
-                  id={item.id}
-                  key={item.id ?? `hot-${index}`}
-                  reasonLabel={item.reasonLabel}
-                  title={item.title}
-                />
-              );
-            }
-            if (item.kind === 'progress') {
-              const key =
-                item.draftId ??
-                item.beforeImageUrl ??
-                item.afterImageUrl ??
-                item.lastActivity ??
-                `progress-${index}`;
-              return (
-                <BeforeAfterCard
-                  key={String(key)}
-                  {...item}
-                  onOpen={() =>
-                    sendTelemetry({
-                      eventType: 'feed_card_open',
-                      draftId: item.draftId,
-                      source: 'feed',
-                    })
-                  }
-                />
-              );
-            }
-            if (item.kind === 'battle') {
-              return (
-                <BattleCard key={item.id ?? `battle-${index}`} {...item} />
-              );
-            }
-            if (item.kind === 'change') {
-              return (
-                <ChangeCard key={item.id ?? `change-${index}`} {...item} />
-              );
-            }
-            if (item.kind === 'autopsy') {
-              return (
-                <AutopsyCard key={item.id ?? `autopsy-${index}`} {...item} />
-              );
-            }
-            return <DraftCard key={item.id ?? `draft-${index}`} {...item} />;
-          })}
-        </div>
-      )}
+      {(() => {
+        if (isInitialLoading) {
+          return (
+            <div className={feedGridClass}>
+              {Array.from({ length: 3 }, (_, index) => (
+                <article
+                  className="card animate-pulse p-4"
+                  key={`feed-skeleton-${index + 1}`}
+                >
+                  <div className="h-4 w-1/3 rounded bg-muted" />
+                  <div className="mt-3 h-40 rounded-lg bg-muted" />
+                  <div className="mt-3 h-3 w-2/3 rounded bg-muted" />
+                  <div className="mt-2 h-3 w-1/2 rounded bg-muted" />
+                </article>
+              ))}
+            </div>
+          );
+        }
+
+        if (visibleItems.length === 0) {
+          return (
+            <div className="card grid gap-4 p-6 text-foreground/85 text-sm">
+              <p>{emptyMessage}</p>
+              <div className="flex flex-wrap gap-2">
+                {active === 'Battles' ? (
+                  <button
+                    className="rounded-full border border-primary/45 bg-primary/10 px-4 py-2 font-semibold text-primary text-xs transition hover:bg-primary/15"
+                    onClick={openLiveDrafts}
+                    type="button"
+                  >
+                    {t('feedTabs.emptyAction.openLiveDrafts')}
+                  </button>
+                ) : (
+                  <>
+                    <Link
+                      className="rounded-full border border-primary/45 bg-primary/10 px-4 py-2 font-semibold text-primary text-xs transition hover:bg-primary/15"
+                      href="/demo"
+                    >
+                      {t('feedTabs.emptyAction.runDemo')}
+                    </Link>
+                    <Link
+                      className="rounded-full border border-border bg-background/60 px-4 py-2 font-semibold text-foreground text-xs transition hover:border-primary/40 hover:text-primary"
+                      href="/search"
+                    >
+                      {t('feedTabs.emptyAction.openSearch')}
+                    </Link>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div className={feedGridClass}>
+            {visibleItems.map((item, index) => {
+              if (item.kind === 'studio') {
+                return (
+                  <StudioCard key={item.id ?? `studio-${index}`} {...item} />
+                );
+              }
+              if (item.kind === 'guild') {
+                return (
+                  <GuildCard key={item.id ?? `guild-${index}`} {...item} />
+                );
+              }
+              if (item.kind === 'hot') {
+                return (
+                  <DraftCard
+                    afterImageUrl={item.afterImageUrl}
+                    beforeImageUrl={item.beforeImageUrl}
+                    glowUpScore={item.glowUpScore}
+                    hotScore={item.hotScore}
+                    id={item.id}
+                    key={item.id ?? `hot-${index}`}
+                    reasonLabel={item.reasonLabel}
+                    title={item.title}
+                  />
+                );
+              }
+              if (item.kind === 'progress') {
+                const key =
+                  item.draftId ??
+                  item.beforeImageUrl ??
+                  item.afterImageUrl ??
+                  item.lastActivity ??
+                  `progress-${index}`;
+                return (
+                  <BeforeAfterCard
+                    key={String(key)}
+                    {...item}
+                    onOpen={() =>
+                      sendTelemetry({
+                        eventType: 'feed_card_open',
+                        draftId: item.draftId,
+                        source: 'feed',
+                      })
+                    }
+                  />
+                );
+              }
+              if (item.kind === 'battle') {
+                return (
+                  <BattleCard key={item.id ?? `battle-${index}`} {...item} />
+                );
+              }
+              if (item.kind === 'change') {
+                return (
+                  <ChangeCard key={item.id ?? `change-${index}`} {...item} />
+                );
+              }
+              if (item.kind === 'autopsy') {
+                return (
+                  <AutopsyCard key={item.id ?? `autopsy-${index}`} {...item} />
+                );
+              }
+              return <DraftCard key={item.id ?? `draft-${index}`} {...item} />;
+            })}
+          </div>
+        );
+      })()}
       {!fallbackUsed && hasMore && (
         <button
           className="rounded-full border border-border bg-muted/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:border-primary/45 hover:text-primary"

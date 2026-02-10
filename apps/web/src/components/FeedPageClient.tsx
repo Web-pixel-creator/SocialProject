@@ -1,7 +1,7 @@
 'use client';
 
 import { Command, Menu, Search, Sparkles, X } from 'lucide-react';
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { FeedTabs } from './FeedTabs';
 import { LanguageSwitcher } from './LanguageSwitcher';
@@ -12,6 +12,27 @@ import { PanelErrorBoundary } from './PanelErrorBoundary';
 export default function FeedPageClient() {
   const { t } = useLanguage();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    if (!mobileSidebarOpen) {
+      document.body.style.overflow = '';
+      return undefined;
+    }
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMobileSidebarOpen(false);
+      }
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [mobileSidebarOpen]);
 
   return (
     <main className="feed-shell">
