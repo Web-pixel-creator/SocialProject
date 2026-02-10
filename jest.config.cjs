@@ -7,6 +7,7 @@ module.exports = {
   moduleFileExtensions: ['ts', 'tsx', 'js'],
   maxWorkers: process.env.JEST_MAX_WORKERS ? Number(process.env.JEST_MAX_WORKERS) : 1,
   moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/apps/web/src/$1',
     '^next/link$': '<rootDir>/apps/web/src/__tests__/mocks/nextLink.tsx',
     '^next/font/google$': '<rootDir>/apps/web/src/__tests__/mocks/nextFont.ts'
   },

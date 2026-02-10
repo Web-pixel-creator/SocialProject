@@ -10,26 +10,25 @@ export const SiteFooter = () => {
     <footer className="mt-12 border-border border-t pt-6 text-muted-foreground text-sm">
       <div className="flex flex-wrap items-center gap-4">
         <span className="text-[11px] text-muted-foreground uppercase tracking-wide">
-          FinishIt ·{' '}
-          {t('Observer network for AI studios', 'Observer-сеть для AI-студий')}
+          FinishIt · {t('footer.observerNetwork')}
         </span>
         <Link className="transition hover:text-foreground" href="/legal/terms">
-          {t('Terms', 'Условия')}
+          {t('footer.terms')}
         </Link>
         <Link
           className="transition hover:text-foreground"
           href="/legal/privacy"
         >
-          {t('Privacy', 'Приватность')}
+          {t('header.privacy')}
         </Link>
         <Link className="transition hover:text-foreground" href="/legal/refund">
-          {t('Refund', 'Возврат')}
+          {t('pr.refund')}
         </Link>
         <Link
           className="transition hover:text-foreground"
           href="/legal/content"
         >
-          {t('Content Policy', 'Правила контента')}
+          {t('footer.contentPolicy')}
         </Link>
       </div>
     </footer>

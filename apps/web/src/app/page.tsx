@@ -6,12 +6,17 @@ import {
   BadgeCheck,
   CircleDashed,
   GitPullRequest,
+  Loader2,
   PenLine,
   Search,
   Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useCallback, useEffect, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { apiClient } from '../lib/api';
+
+/* ── static content ── */
 
 interface Step {
   key: string;
@@ -98,7 +103,24 @@ const products: ProductCard[] = [
   },
 ];
 
-const topStudios = [
+/* ── types for API data ── */
+
+interface StudioRow {
+  name: string;
+  impact: number;
+  signal: string;
+  trend: string;
+}
+
+interface LiveStats {
+  liveDrafts: number;
+  prPending: number;
+  topGlowUp: string;
+}
+
+/* ── demo fallbacks ── */
+
+const demoStudios: StudioRow[] = [
   { name: 'AuroraLab', impact: 98.5, signal: 'High', trend: '+2.1' },
   { name: 'Nexus Creations', impact: 96.2, signal: 'High', trend: '+1.4' },
   { name: 'Synthetix', impact: 94.8, signal: 'Medium', trend: '+0.3' },
@@ -106,8 +128,106 @@ const topStudios = [
   { name: 'PixelForge', impact: 91.5, signal: 'Low', trend: '+0.8' },
 ];
 
+const demoStats: LiveStats = {
+  liveDrafts: 128,
+  prPending: 57,
+  topGlowUp: '+42%',
+};
+
+/* ── helpers ── */
+
+function signalLabel(value: number): string {
+  if (value >= 80) {
+    return 'High';
+  }
+  if (value >= 40) {
+    return 'Medium';
+  }
+  return 'Low';
+}
+
+/* ── component ── */
+
 export default function Home() {
   const { t } = useLanguage();
+  const [studios, setStudios] = useState<StudioRow[]>(demoStudios);
+  const [stats, setStats] = useState<LiveStats>(demoStats);
+  const [loading, setLoading] = useState(true);
+
+  const fetchHomepageData = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      const [studiosRes, liveDraftsRes, prRes] = await Promise.allSettled([
+        apiClient.get('/feeds/studios', { params: { limit: 5 } }),
+        apiClient.get('/feeds/live-drafts', { params: { limit: 200 } }),
+        apiClient.get('/feed', { params: { status: 'pr', limit: 200 } }),
+      ]);
+
+      // Map studios
+      if (
+        studiosRes.status === 'fulfilled' &&
+        Array.isArray(studiosRes.value.data)
+      ) {
+        const mapped: StudioRow[] = studiosRes.value.data
+          .slice(0, 5)
+          .map(
+            (s: {
+              studioName?: string;
+              studio_name?: string;
+              impact: number;
+              signal: number;
+            }) => ({
+              name: s.studioName ?? s.studio_name ?? 'Unknown',
+              impact: s.impact ?? 0,
+              signal: signalLabel(s.signal ?? 0),
+              trend:
+                s.impact >= 95
+                  ? `+${((s.impact - 93) * 0.5).toFixed(1)}`
+                  : '+0.0',
+            }),
+          );
+        if (mapped.length > 0) {
+          setStudios(mapped);
+        }
+      }
+
+      // Aggregate live stats
+      const draftsCount =
+        liveDraftsRes.status === 'fulfilled' &&
+        Array.isArray(liveDraftsRes.value.data)
+          ? liveDraftsRes.value.data.length
+          : demoStats.liveDrafts;
+
+      const prCount =
+        prRes.status === 'fulfilled' && Array.isArray(prRes.value.data)
+          ? prRes.value.data.length
+          : demoStats.prPending;
+
+      let topGlowUp = demoStats.topGlowUp;
+      if (
+        liveDraftsRes.status === 'fulfilled' &&
+        Array.isArray(liveDraftsRes.value.data)
+      ) {
+        const scores = liveDraftsRes.value.data
+          .map((d: { glowUpScore?: number }) => d.glowUpScore ?? 0)
+          .filter((s: number) => s > 0);
+        if (scores.length > 0) {
+          topGlowUp = `+${Math.max(...scores)}%`;
+        }
+      }
+
+      setStats({ liveDrafts: draftsCount, prPending: prCount, topGlowUp });
+    } catch {
+      // Keep demo data on failure
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchHomepageData();
+  }, [fetchHomepageData]);
 
   return (
     <main className="grid gap-8">
@@ -145,7 +265,11 @@ export default function Home() {
         </div>
         <aside className="rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-sm">
           <p className="inline-flex items-center gap-2 text-emerald-500 text-xs uppercase tracking-wide">
-            <Activity aria-hidden="true" className="icon-breathe h-4 w-4" />
+            {loading ? (
+              <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+            ) : (
+              <Activity aria-hidden="true" className="icon-breathe h-4 w-4" />
+            )}
             {t('Live + WebSocket connected', 'Live + WebSocket подключен')}
           </p>
           <h3 className="mt-3 font-semibold text-foreground text-xl">
@@ -156,19 +280,25 @@ export default function Home() {
               <p className="text-muted-foreground">
                 {t('Live drafts', 'Live драфты')}
               </p>
-              <p className="mt-1 font-bold text-foreground text-lg">128</p>
+              <p className="mt-1 font-bold text-foreground text-lg">
+                {stats.liveDrafts}
+              </p>
             </div>
             <div className="rounded-xl border border-border bg-muted/50 p-2">
               <p className="text-muted-foreground">
                 {t('PR pending', 'PR pending')}
               </p>
-              <p className="mt-1 font-bold text-foreground text-lg">57</p>
+              <p className="mt-1 font-bold text-foreground text-lg">
+                {stats.prPending}
+              </p>
             </div>
             <div className="rounded-xl border border-border bg-muted/50 p-2">
               <p className="text-muted-foreground">
                 {t('Top GlowUp', 'Top GlowUp')}
               </p>
-              <p className="mt-1 font-bold text-emerald-500 text-lg">+42%</p>
+              <p className="mt-1 font-bold text-emerald-500 text-lg">
+                {stats.topGlowUp}
+              </p>
             </div>
           </div>
           <ul className="mt-4 grid gap-2 text-muted-foreground text-sm">
@@ -279,7 +409,7 @@ export default function Home() {
               </tr>
             </thead>
             <tbody>
-              {topStudios.map((studio) => (
+              {studios.map((studio) => (
                 <tr
                   className="border-border border-b text-foreground"
                   key={studio.name}

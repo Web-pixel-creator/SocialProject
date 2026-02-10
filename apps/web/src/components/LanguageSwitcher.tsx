@@ -20,13 +20,13 @@ export const LanguageSwitcher = () => {
     <div className="flex items-center gap-2">
       <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground uppercase tracking-wide">
         <Languages aria-hidden="true" className="h-3.5 w-3.5" />
-        {t('Language', 'Язык')}
+        {t('lang.language')}
       </span>
       {languages.map((item) => {
         const active = item === language;
         return (
           <button
-            aria-label={`${t('Switch language to', 'Переключить язык на')} ${labelByLanguage[item]}`}
+            aria-label={`${t('lang.switchTo')} ${labelByLanguage[item]}`}
             aria-pressed={active}
             className={`${BUTTON_BASE_CLASS} ${
               active

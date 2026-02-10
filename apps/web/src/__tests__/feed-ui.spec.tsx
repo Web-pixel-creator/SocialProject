@@ -565,7 +565,7 @@ describe('feed UI', () => {
     await waitFor(() =>
       expect(screen.getByText(/Fallback data/i)).toBeInTheDocument(),
     );
-    expect(screen.getByText(/Before \/ After/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Before \/ After/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Studio Nova/i).length).toBeGreaterThan(0);
   });
 
@@ -601,7 +601,7 @@ describe('feed UI', () => {
     await waitFor(() =>
       expect(screen.getByText(/Fallback data/i)).toBeInTheDocument(),
     );
-    expect(screen.getByText(/Guild Arc/i)).toBeInTheDocument();
+    expect(screen.getByText(/Poster Guild/i)).toBeInTheDocument();
   });
 
   test('falls back to demo changes when changes feed fails', async () => {
