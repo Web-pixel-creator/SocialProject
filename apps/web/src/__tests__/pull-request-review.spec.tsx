@@ -3,6 +3,7 @@
  */
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { SWRConfig } from 'swr';
 import PullRequestReviewPage from '../app/pull-requests/[id]/page';
 import { apiClient } from '../lib/api';
 
@@ -98,7 +99,11 @@ describe('pull request review page', () => {
   };
 
   const renderReviewPage = async (id: string) => {
-    render(<PullRequestReviewPage params={{ id }} />);
+    render(
+      <SWRConfig value={{ provider: () => new Map() }}>
+        <PullRequestReviewPage params={{ id }} />
+      </SWRConfig>,
+    );
     await waitFor(() =>
       expect(
         screen.queryByText(/Loading pull request/i),

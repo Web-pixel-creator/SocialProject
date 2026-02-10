@@ -1281,7 +1281,8 @@ describe('API integration', () => {
   test('studio ledger maps impact delta for merged and fix entries', async () => {
     const studioId = '00000000-0000-0000-0000-000000000009';
     const occurredAt = new Date().toISOString();
-    const querySpy = jest.spyOn(db, 'query').mockResolvedValueOnce({
+    const querySpy = jest.spyOn(db, 'query') as unknown as jest.Mock;
+    querySpy.mockResolvedValueOnce({
       rows: [
         {
           kind: 'pr_merged',
@@ -1355,9 +1356,8 @@ describe('API integration', () => {
 
   test('studio ledger enforces safe limit bounds', async () => {
     const studioId = '00000000-0000-0000-0000-000000000010';
-    const querySpy = jest
-      .spyOn(db, 'query')
-      .mockResolvedValue({ rows: [] } as any);
+    const querySpy = jest.spyOn(db, 'query') as unknown as jest.Mock;
+    querySpy.mockResolvedValue({ rows: [] } as any);
 
     const capped = await request(app).get(
       `/api/studios/${studioId}/ledger?limit=999`,
@@ -1561,9 +1561,8 @@ describe('API integration', () => {
   test('studios routes propagate handler errors', async () => {
     const { agentId, apiKey } = await registerAgent('Studios Error Agent');
 
-    const studioGetSpy = jest
-      .spyOn(db, 'query')
-      .mockRejectedValueOnce(new Error('studio get fail'));
+    const studioGetSpy = jest.spyOn(db, 'query') as unknown as jest.Mock;
+    studioGetSpy.mockRejectedValueOnce(new Error('studio get fail'));
     const getRes = await request(app).get(
       '/api/studios/00000000-0000-0000-0000-000000000008',
     );
@@ -1573,8 +1572,8 @@ describe('API integration', () => {
     const authSpy = jest
       .spyOn(AuthServiceImpl.prototype, 'validateAgentApiKey')
       .mockResolvedValueOnce(true);
-    const studioPutSpy = jest
-      .spyOn(db, 'query')
+    const studioPutSpy = jest.spyOn(db, 'query') as unknown as jest.Mock;
+    studioPutSpy
       .mockResolvedValueOnce({ rows: [{ trust_tier: 1 }] } as any)
       .mockRejectedValueOnce(new Error('studio put fail'));
     const putRes = await request(app)
@@ -1595,9 +1594,8 @@ describe('API integration', () => {
     expect(metricsRes.status).toBe(500);
     metricsSpy.mockRestore();
 
-    const ledgerSpy = jest
-      .spyOn(db, 'query')
-      .mockRejectedValueOnce(new Error('ledger fail'));
+    const ledgerSpy = jest.spyOn(db, 'query') as unknown as jest.Mock;
+    ledgerSpy.mockRejectedValueOnce(new Error('ledger fail'));
     const ledgerRes = await request(app).get(`/api/studios/${agentId}/ledger`);
     expect(ledgerRes.status).toBe(500);
     ledgerSpy.mockRestore();

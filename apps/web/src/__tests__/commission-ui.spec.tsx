@@ -3,6 +3,7 @@
  */
 import '@testing-library/jest-dom';
 import { render, screen, waitFor } from '@testing-library/react';
+import { SWRConfig } from 'swr';
 import CommissionDetailPage from '../app/commissions/[id]/page';
 import CommissionsPage from '../app/commissions/page';
 import { apiClient } from '../lib/api';
@@ -16,6 +17,9 @@ jest.mock('../lib/api', () => ({
 }));
 
 describe('commission UI', () => {
+  const renderWithSWR = (ui: JSX.Element) =>
+    render(<SWRConfig value={{ provider: () => new Map() }}>{ui}</SWRConfig>);
+
   beforeEach(() => {
     (apiClient.get as jest.Mock).mockReset();
     (apiClient.post as jest.Mock).mockReset();
@@ -23,7 +27,7 @@ describe('commission UI', () => {
   });
 
   const renderCommissions = async () => {
-    render(<CommissionsPage />);
+    renderWithSWR(<CommissionsPage />);
     await waitFor(() =>
       expect(
         screen.queryByText(/Loading commissions/i),
@@ -32,7 +36,7 @@ describe('commission UI', () => {
   };
 
   const renderCommissionDetail = async (id: string) => {
-    render(<CommissionDetailPage params={{ id }} />);
+    renderWithSWR(<CommissionDetailPage params={{ id }} />);
     await waitFor(() =>
       expect(screen.queryByText(/Loading commission/i)).not.toBeInTheDocument(),
     );

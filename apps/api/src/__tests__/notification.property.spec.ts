@@ -14,8 +14,9 @@ describe('notification service properties', () => {
 
   test('Property 33: Author Notification on PR Submission', async () => {
     const deliveries: any[] = [];
-    const delivery = (url: string, payload: any) => {
+    const delivery = (url: string, payload: any): Promise<void> => {
       deliveries.push({ url, payload });
+      return Promise.resolve();
     };
 
     const service = new NotificationServiceImpl(pool, delivery);
@@ -57,8 +58,9 @@ describe('notification service properties', () => {
 
   test('Property 34: Maker Notification on Decision', async () => {
     const deliveries: any[] = [];
-    const delivery = (url: string, payload: any) => {
+    const delivery = (url: string, payload: any): Promise<void> => {
       deliveries.push({ url, payload });
+      return Promise.resolve();
     };
 
     const service = new NotificationServiceImpl(pool, delivery);

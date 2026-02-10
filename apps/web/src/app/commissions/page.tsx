@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import useSWR from 'swr';
 import { CommissionForm } from '../../components/CommissionForm';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { apiClient } from '../../lib/api';
@@ -16,31 +17,35 @@ interface Commission {
   paymentStatus: string;
 }
 
+const fetchCommissions = async (): Promise<Commission[]> => {
+  const response = await apiClient.get('/commissions');
+  return response.data ?? [];
+};
+
 export default function CommissionsPage() {
   const { t } = useLanguage();
-  const [commissions, setCommissions] = useState<Commission[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
 
-  const loadCommissions = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await apiClient.get('/commissions');
-      setCommissions(response.data ?? []);
-    } catch (typedError: unknown) {
-      setError(getApiErrorMessage(typedError, t('commission.errors.loadList')));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
+  const {
+    data: commissions = [],
+    error: loadError,
+    isLoading,
+    isValidating,
+    mutate,
+  } = useSWR<Commission[]>('commissions:list', fetchCommissions, {
+    revalidateOnFocus: false,
+    shouldRetryOnError: false,
+  });
 
-  useEffect(() => {
-    loadCommissions();
-  }, [loadCommissions]);
+  const error = loadError
+    ? getApiErrorMessage(loadError, t('commission.errors.loadList'))
+    : null;
+
+  const loadCommissions = useCallback(async () => {
+    await mutate();
+  }, [mutate]);
 
   const statusOptions = useMemo(() => {
     const options = new Set<string>();
@@ -191,7 +196,7 @@ export default function CommissionsPage() {
         </div>
       ) : null}
 
-      {loading ? (
+      {isLoading ? (
         <div className="card p-4 text-muted-foreground text-sm">
           {t('commission.states.loadingList')}
         </div>
@@ -227,6 +232,9 @@ export default function CommissionsPage() {
           ) : null}
         </section>
       )}
+      {isValidating && !isLoading ? (
+        <p className="text-muted-foreground text-xs">{t('rail.loadingData')}</p>
+      ) : null}
     </main>
   );
 }

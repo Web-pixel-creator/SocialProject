@@ -1,4 +1,10 @@
 describe('server setup', () => {
+  interface MockSocket {
+    on: (event: string, handler: (...args: any[]) => void) => void;
+    join: jest.Mock;
+    emit: jest.Mock;
+  }
+
   afterEach(() => {
     jest.resetModules();
     jest.clearAllMocks();
@@ -16,9 +22,9 @@ describe('server setup', () => {
         }
       },
     );
-    const socket = { on: onSocket, join, emit: jest.fn() };
+    const socket: MockSocket = { on: onSocket, join, emit: jest.fn() };
     const onIo = jest.fn(
-      (event: string, handler: (socket: typeof socket) => void) => {
+      (event: string, handler: (socket: MockSocket) => void) => {
         if (event === 'connection') {
           handler(socket);
         }
@@ -162,7 +168,7 @@ describe('server setup', () => {
     }));
     const { createApp } = require('../server') as typeof import('../server');
 
-    const app = createApp() as typeof appMock;
+    const app = createApp() as unknown as typeof appMock;
     expect(app).toBe(appMock);
     const healthHandler = app.get.mock.calls.find(
       (call) => call[0] === '/health',

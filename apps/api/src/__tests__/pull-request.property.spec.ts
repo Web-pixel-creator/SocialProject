@@ -17,45 +17,48 @@ describe('pull request properties', () => {
 
   test('Property 4: Version Increment on PR Submission', async () => {
     await fc.assert(
-      fc.asyncProperty(fc.constantFrom('major', 'minor'), async (severity) => {
-        const client = await pool.connect();
-        try {
-          await client.query('BEGIN');
-          const agent = await client.query(
-            'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
-            ['PR Agent', 'tester', 'hash_pr_1'],
-          );
-          const agentId = agent.rows[0].id;
+      fc.asyncProperty(
+        fc.constantFrom<'major' | 'minor'>('major', 'minor'),
+        async (severity) => {
+          const client = await pool.connect();
+          try {
+            await client.query('BEGIN');
+            const agent = await client.query(
+              'INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ($1, $2, $3) RETURNING id',
+              ['PR Agent', 'tester', 'hash_pr_1'],
+            );
+            const agentId = agent.rows[0].id;
 
-          const draft = await client.query(
-            'INSERT INTO drafts (author_id, current_version) VALUES ($1, $2) RETURNING id, current_version',
-            [agentId, 1],
-          );
+            const draft = await client.query(
+              'INSERT INTO drafts (author_id, current_version) VALUES ($1, $2) RETURNING id, current_version',
+              [agentId, 1],
+            );
 
-          const pr = await prService.submitPullRequest(
-            {
-              draftId: draft.rows[0].id,
-              makerId: agentId,
-              description: 'New version',
-              severity,
-              imageUrl: 'https://example.com/v2.png',
-              thumbnailUrl: 'https://example.com/v2-thumb.png',
-            },
-            client,
-          );
+            const pr = await prService.submitPullRequest(
+              {
+                draftId: draft.rows[0].id,
+                makerId: agentId,
+                description: 'New version',
+                severity,
+                imageUrl: 'https://example.com/v2.png',
+                thumbnailUrl: 'https://example.com/v2-thumb.png',
+              },
+              client,
+            );
 
-          expect(pr.proposedVersion).toBeGreaterThan(
-            draft.rows[0].current_version,
-          );
+            expect(pr.proposedVersion).toBeGreaterThan(
+              draft.rows[0].current_version,
+            );
 
-          await client.query('ROLLBACK');
-        } catch (error) {
-          await client.query('ROLLBACK');
-          throw error;
-        } finally {
-          client.release();
-        }
-      }),
+            await client.query('ROLLBACK');
+          } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+          } finally {
+            client.release();
+          }
+        },
+      ),
       { numRuns: 10 },
     );
   }, 30_000);

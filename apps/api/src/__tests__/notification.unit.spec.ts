@@ -14,8 +14,9 @@ describe('notification service edge cases', () => {
 
   test('respects notification preferences', async () => {
     const deliveries: any[] = [];
-    const delivery = (url: string, payload: any) => {
+    const delivery = (url: string, payload: any): Promise<void> => {
       deliveries.push({ url, payload });
+      return Promise.resolve();
     };
 
     const service = new NotificationServiceImpl(pool, delivery);
@@ -85,8 +86,9 @@ describe('notification service edge cases', () => {
 
   test('defaults invalid prefs JSON to allow delivery', async () => {
     const deliveries: any[] = [];
-    const delivery = (url: string, payload: any) => {
+    const delivery = (url: string, payload: any): Promise<void> => {
       deliveries.push({ url, payload });
+      return Promise.resolve();
     };
 
     const fakeClient = {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import useSWR from 'swr';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { apiClient } from '../../../lib/api';
 import { getApiErrorMessage } from '../../../lib/errors';
@@ -26,61 +26,63 @@ interface ImpactLedgerEntry {
   impactDelta: number;
 }
 
+interface StudioProfileData {
+  studio: StudioProfile;
+  metrics: {
+    impact: number;
+    signal: number;
+  } | null;
+  ledger: ImpactLedgerEntry[];
+}
+
+const fetchStudioProfile = async (
+  studioId: string,
+): Promise<StudioProfileData> => {
+  const [studioRes, metricsRes, ledgerRes] = await Promise.all([
+    apiClient.get(`/studios/${studioId}`),
+    apiClient.get(`/studios/${studioId}/metrics`),
+    apiClient.get(`/studios/${studioId}/ledger`, {
+      params: { limit: 6 },
+    }),
+  ]);
+
+  return {
+    studio: studioRes.data,
+    metrics: metricsRes.data,
+    ledger: Array.isArray(ledgerRes.data) ? ledgerRes.data : [],
+  };
+};
+
 export default function StudioProfilePage() {
   const { t } = useLanguage();
   const params = useParams<{ id?: string | string[] }>();
   const rawId = params?.id;
   const resolvedId = Array.isArray(rawId) ? rawId[0] : rawId;
   const studioId = resolvedId && resolvedId !== 'undefined' ? resolvedId : '';
-  const [studio, setStudio] = useState<StudioProfile | null>(null);
-  const [metrics, setMetrics] = useState<{
-    impact: number;
-    signal: number;
-  } | null>(null);
-  const [ledger, setLedger] = useState<ImpactLedgerEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const missingStudioId = studioId.length === 0;
+  const {
+    data,
+    error: loadError,
+    isLoading,
+  } = useSWR<StudioProfileData>(
+    missingStudioId ? null : ['studio:profile', studioId],
+    () => fetchStudioProfile(studioId),
+    {
+      revalidateOnFocus: false,
+      shouldRetryOnError: false,
+    },
+  );
 
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      if (!studioId) {
-        setError(t('studioDetail.errors.missingStudioId'));
-        setLoading(false);
-        return;
-      }
-      setLoading(true);
-      setError(null);
-      try {
-        const [studioRes, metricsRes, ledgerRes] = await Promise.all([
-          apiClient.get(`/studios/${studioId}`),
-          apiClient.get(`/studios/${studioId}/metrics`),
-          apiClient.get(`/studios/${studioId}/ledger`, {
-            params: { limit: 6 },
-          }),
-        ]);
-        if (!cancelled) {
-          setStudio(studioRes.data);
-          setMetrics(metricsRes.data);
-          setLedger(Array.isArray(ledgerRes.data) ? ledgerRes.data : []);
-        }
-      } catch (error: unknown) {
-        if (!cancelled) {
-          setError(
-            getApiErrorMessage(error, t('studioDetail.errors.loadStudio')),
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    };
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [studioId, t]);
+  let error: string | null = null;
+  if (missingStudioId) {
+    error = t('studioDetail.errors.missingStudioId');
+  } else if (loadError) {
+    error = getApiErrorMessage(loadError, t('studioDetail.errors.loadStudio'));
+  }
+
+  const studio = data?.studio ?? null;
+  const metrics = data?.metrics ?? null;
+  const ledger = data?.ledger ?? [];
 
   const studioName =
     studio?.studioName ??
@@ -123,7 +125,7 @@ export default function StudioProfilePage() {
           {error}
         </div>
       )}
-      {loading ? (
+      {isLoading ? (
         <div className="card p-6 text-muted-foreground text-sm">
           {t('studioDetail.loading')}
         </div>

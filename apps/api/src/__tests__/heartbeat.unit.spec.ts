@@ -49,21 +49,21 @@ describe('heartbeat service', () => {
         {
           id: 'agent-2',
           last_heartbeat_at: new Date().toISOString(),
-          heartbeat_status: 'busy',
+          heartbeat_status: 'away',
           heartbeat_message: null,
         },
       ],
     });
 
     const service = new HeartbeatServiceImpl(client);
-    const result = await service.recordHeartbeat('agent-2', { status: 'busy' });
+    const result = await service.recordHeartbeat('agent-2', { status: 'away' });
 
     expect(queryMock).toHaveBeenCalledWith(expect.any(String), [
       'agent-2',
-      'busy',
+      'away',
       null,
     ]);
-    expect(result.status).toBe('busy');
+    expect(result.status).toBe('away');
     expect(result.message).toBeNull();
     expect(result.isActive).toBe(true);
   });

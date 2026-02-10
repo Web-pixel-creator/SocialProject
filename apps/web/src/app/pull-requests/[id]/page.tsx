@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import useSWR from 'swr';
 import { BeforeAfterSlider } from '../../../components/BeforeAfterSlider';
 import { FixRequestList } from '../../../components/FixRequestList';
 import { useLanguage } from '../../../contexts/LanguageContext';
@@ -44,65 +45,72 @@ interface FixRequest {
   criticId: string;
 }
 
+interface ReviewPageData {
+  fixRequests: FixRequest[];
+  review: ReviewPayload | null;
+}
+
+const fetchReviewData = async (id: string): Promise<ReviewPageData> => {
+  const response = await apiClient.get(`/pull-requests/${id}`);
+  const review = response.data ?? null;
+  let fixRequests: FixRequest[] = [];
+
+  if (review?.draft?.id) {
+    const fixRes = await apiClient.get(
+      `/drafts/${review.draft.id}/fix-requests`,
+    );
+    fixRequests = fixRes.data ?? [];
+  }
+
+  try {
+    await apiClient.post('/telemetry/ux', {
+      draftId: review?.draft?.id,
+      eventType: 'pr_review_open',
+      prId: review?.pullRequest?.id ?? id,
+      source: 'review',
+    });
+  } catch (_telemetryError) {
+    // ignore telemetry failures
+  }
+
+  return {
+    fixRequests,
+    review,
+  };
+};
+
 export default function PullRequestReviewPage({
   params,
 }: {
   params: { id: string };
 }) {
   const { t } = useLanguage();
-  const [review, setReview] = useState<ReviewPayload | null>(null);
-  const [fixRequests, setFixRequests] = useState<FixRequest[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    data,
+    error: loadError,
+    isLoading,
+    mutate,
+  } = useSWR<ReviewPageData>(
+    `pr:review:${params.id}`,
+    () => fetchReviewData(params.id),
+    {
+      revalidateOnFocus: false,
+      shouldRetryOnError: false,
+    },
+  );
+  const review = data?.review ?? null;
+  const fixRequests = data?.fixRequests ?? [];
   const [decisionLoading, setDecisionLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [feedback, setFeedback] = useState('');
 
-  const load = useCallback(async () => {
-    const response = await apiClient.get(`/pull-requests/${params.id}`);
-    setReview(response.data);
-    if (response.data?.draft?.id) {
-      const fixRes = await apiClient.get(
-        `/drafts/${response.data.draft.id}/fix-requests`,
-      );
-      setFixRequests(fixRes.data ?? []);
-    }
-    try {
-      await apiClient.post('/telemetry/ux', {
-        eventType: 'pr_review_open',
-        prId: response.data?.pullRequest?.id ?? params.id,
-        draftId: response.data?.draft?.id,
-        source: 'review',
-      });
-    } catch (_telemetryError) {
-      // ignore telemetry failures
-    }
-  }, [params.id]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const run = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        await load();
-      } catch (error: unknown) {
-        if (!cancelled) {
-          setError(
-            getApiErrorMessage(error, t('pullRequestReview.errors.load')),
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    };
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, [load, t]);
+  let error: string | null = null;
+  if (actionError) {
+    error = actionError;
+  } else if (loadError) {
+    error = getApiErrorMessage(loadError, t('pullRequestReview.errors.load'));
+  }
 
   const addressed = useMemo(() => {
     if (!review?.pullRequest?.addressedFixRequests?.length) {
@@ -119,45 +127,46 @@ export default function PullRequestReviewPage({
     critic: `Studio ${item.criticId.slice(0, 6)}`,
   }));
 
-  const handleDecision = async (
-    decision: 'merge' | 'reject' | 'request_changes',
-  ) => {
-    if (!review) {
-      return;
-    }
-    if (decision === 'reject' && !rejectReason.trim()) {
-      setError(t('pullRequestReview.errors.rejectionReasonRequired'));
-      return;
-    }
-    setDecisionLoading(true);
-    setError(null);
-    try {
-      await apiClient.post(`/pull-requests/${review.pullRequest.id}/decide`, {
-        decision,
-        rejectionReason: decision === 'reject' ? rejectReason : undefined,
-        feedback: feedback || undefined,
-      });
-      if (decision === 'merge' || decision === 'reject') {
-        try {
-          await apiClient.post('/telemetry/ux', {
-            eventType: decision === 'merge' ? 'pr_merge' : 'pr_reject',
-            prId: review.pullRequest.id,
-            draftId: review.draft.id,
-            source: 'review',
-          });
-        } catch (_telemetryError) {
-          // ignore telemetry failures
-        }
+  const handleDecision = useCallback(
+    async (decision: 'merge' | 'reject' | 'request_changes') => {
+      if (!review) {
+        return;
       }
-      await load();
-    } catch (error: unknown) {
-      setError(
-        getApiErrorMessage(error, t('pullRequestReview.errors.decision')),
-      );
-    } finally {
-      setDecisionLoading(false);
-    }
-  };
+      if (decision === 'reject' && !rejectReason.trim()) {
+        setActionError(t('pullRequestReview.errors.rejectionReasonRequired'));
+        return;
+      }
+      setDecisionLoading(true);
+      setActionError(null);
+      try {
+        await apiClient.post(`/pull-requests/${review.pullRequest.id}/decide`, {
+          decision,
+          feedback: feedback || undefined,
+          rejectionReason: decision === 'reject' ? rejectReason : undefined,
+        });
+        if (decision === 'merge' || decision === 'reject') {
+          try {
+            await apiClient.post('/telemetry/ux', {
+              draftId: review.draft.id,
+              eventType: decision === 'merge' ? 'pr_merge' : 'pr_reject',
+              prId: review.pullRequest.id,
+              source: 'review',
+            });
+          } catch (_telemetryError) {
+            // ignore telemetry failures
+          }
+        }
+        await mutate();
+      } catch (error: unknown) {
+        setActionError(
+          getApiErrorMessage(error, t('pullRequestReview.errors.decision')),
+        );
+      } finally {
+        setDecisionLoading(false);
+      }
+    },
+    [feedback, mutate, rejectReason, review, t],
+  );
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -174,9 +183,9 @@ export default function PullRequestReviewPage({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  });
+  }, [handleDecision]);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="card p-6 text-muted-foreground text-sm">
         {t('pullRequestReview.states.loading')}

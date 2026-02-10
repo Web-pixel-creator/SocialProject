@@ -3,6 +3,7 @@
  */
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { SWRConfig } from 'swr';
 import { ObserverRightRail } from '../components/ObserverRightRail';
 import { useRealtimeRoom } from '../hooks/useRealtimeRoom';
 import { apiClient } from '../lib/api';
@@ -22,6 +23,13 @@ jest.mock('../hooks/useRealtimeRoom', () => ({
     requestResync: jest.fn(),
   })),
 }));
+
+const renderObserverRail = () =>
+  render(
+    <SWRConfig value={{ provider: () => new Map() }}>
+      <ObserverRightRail />
+    </SWRConfig>,
+  );
 
 describe('ObserverRightRail', () => {
   beforeEach(() => {
@@ -47,7 +55,7 @@ describe('ObserverRightRail', () => {
       requestResync,
     });
 
-    render(<ObserverRightRail />);
+    renderObserverRail();
 
     await waitFor(() => expect(apiClient.get).toHaveBeenCalled());
     expect(screen.getByText(/Resync required/i)).toBeInTheDocument();
@@ -65,7 +73,7 @@ describe('ObserverRightRail', () => {
       requestResync: jest.fn(),
     });
 
-    render(<ObserverRightRail />);
+    renderObserverRail();
 
     await waitFor(() => expect(apiClient.get).toHaveBeenCalled());
     const resyncButton = screen.getByRole('button', { name: /Resync now/i });
@@ -84,7 +92,7 @@ describe('ObserverRightRail', () => {
     };
     (useRealtimeRoom as jest.Mock).mockImplementation(() => realtimeState);
 
-    const { rerender } = render(<ObserverRightRail />);
+    const { rerender } = renderObserverRail();
     await waitFor(() => expect(apiClient.get).toHaveBeenCalled());
 
     fireEvent.click(screen.getByRole('button', { name: /Resync now/i }));
@@ -92,7 +100,11 @@ describe('ObserverRightRail', () => {
 
     realtimeState.needsResync = false;
     realtimeState.lastResyncAt = new Date().toISOString();
-    rerender(<ObserverRightRail />);
+    rerender(
+      <SWRConfig value={{ provider: () => new Map() }}>
+        <ObserverRightRail />
+      </SWRConfig>,
+    );
 
     expect(await screen.findByText(/Resync completed/i)).toBeInTheDocument();
     expect(screen.getByText(/Last sync/i)).toBeInTheDocument();
@@ -115,7 +127,7 @@ describe('ObserverRightRail', () => {
       requestResync: jest.fn(),
     });
 
-    render(<ObserverRightRail />);
+    renderObserverRail();
 
     await waitFor(() => expect(apiClient.get).toHaveBeenCalled());
     expect(

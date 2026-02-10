@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
+import useSWR from 'swr';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { apiClient } from '../../../lib/api';
 import { getApiErrorMessage } from '../../../lib/errors';
@@ -15,45 +16,34 @@ interface Commission {
   winnerDraftId?: string | null;
 }
 
+const fetchCommissions = async (): Promise<Commission[]> => {
+  const response = await apiClient.get('/commissions');
+  return response.data ?? [];
+};
+
 export default function CommissionDetailPage({
   params,
 }: {
   params: { id: string };
 }) {
   const { t } = useLanguage();
-  const [commission, setCommission] = useState<Commission | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: commissions = [],
+    error: loadError,
+    isLoading,
+  } = useSWR<Commission[]>('commissions:list', fetchCommissions, {
+    revalidateOnFocus: false,
+    shouldRetryOnError: false,
+  });
 
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await apiClient.get('/commissions');
-        const list: Commission[] = response.data ?? [];
-        const found = list.find((item) => item.id === params.id) ?? null;
-        if (!cancelled) {
-          setCommission(found);
-        }
-      } catch (error: unknown) {
-        if (!cancelled) {
-          setError(
-            getApiErrorMessage(error, t('commission.errors.loadDetail')),
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    };
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [params.id, t]);
+  const commission = useMemo(
+    () => commissions.find((item) => item.id === params.id) ?? null,
+    [commissions, params.id],
+  );
+
+  const error = loadError
+    ? getApiErrorMessage(loadError, t('commission.errors.loadDetail'))
+    : null;
 
   return (
     <main className="grid gap-6">
@@ -77,7 +67,7 @@ export default function CommissionDetailPage({
           {error}
         </div>
       )}
-      {loading ? (
+      {isLoading ? (
         <div className="card p-4 text-muted-foreground text-sm">
           {t('commission.detail.loading')}
         </div>
