@@ -106,6 +106,20 @@ interface DraftPayload {
   versions: Version[];
 }
 
+type NextAction =
+  | {
+      title: string;
+      description: string;
+      ctaLabel: string;
+      href: string;
+    }
+  | {
+      title: string;
+      description: string;
+      ctaLabel: string;
+      onClick: () => void;
+    };
+
 const fetchDraftPayload = async (draftId: string): Promise<DraftPayload> => {
   const response = await apiClient.get(`/drafts/${draftId}`);
   return {
@@ -169,6 +183,13 @@ const fetchPredictionSummary = async (
   return null;
 };
 
+const fetchSimilarDrafts = async (draftId: string): Promise<SimilarDraft[]> => {
+  const response = await apiClient.get('/search/similar', {
+    params: { draftId, limit: 6 },
+  });
+  return response.data ?? [];
+};
+
 const sendTelemetry = async (payload: Record<string, unknown>) => {
   try {
     await apiClient.post('/telemetry/ux', payload);
@@ -188,6 +209,223 @@ const isWatchlistEntryForDraft = (item: unknown, draftId: string): boolean => {
   }
   const entry = item as { draftId?: unknown; draft_id?: unknown };
   return entry.draftId === draftId || entry.draft_id === draftId;
+};
+
+type Translate = (key: string) => string;
+
+const getPrimaryDraftError = (
+  draftLoadError: unknown,
+  fixRequestsLoadError: unknown,
+  pullRequestsLoadError: unknown,
+  t: Translate,
+): string | null => {
+  if (draftLoadError) {
+    return getApiErrorMessage(
+      draftLoadError,
+      t('draftDetail.errors.loadDraft'),
+    );
+  }
+  if (fixRequestsLoadError) {
+    return getApiErrorMessage(
+      fixRequestsLoadError,
+      t('draftDetail.errors.loadDraft'),
+    );
+  }
+  if (pullRequestsLoadError) {
+    return getApiErrorMessage(
+      pullRequestsLoadError,
+      t('draftDetail.errors.loadDraft'),
+    );
+  }
+  return null;
+};
+
+const getSimilarStatus = ({
+  draftId,
+  similarDrafts,
+  similarDraftsError,
+  similarLoading,
+  t,
+}: {
+  draftId: string;
+  similarDrafts: SimilarDraft[];
+  similarDraftsError: unknown;
+  similarLoading: boolean;
+  t: Translate;
+}): string | null => {
+  if (!draftId) {
+    return t('draftDetail.errors.missingDraftId');
+  }
+  if (similarDraftsError) {
+    const code = getApiErrorCode(similarDraftsError);
+    if (code === 'EMBEDDING_NOT_FOUND') {
+      return t('draftDetail.similar.availableAfterAnalysis');
+    }
+    if (code === 'DRAFT_NOT_FOUND') {
+      return t('draftDetail.errors.draftNotFound');
+    }
+    return getApiErrorMessage(
+      similarDraftsError,
+      t('draftDetail.errors.loadSimilar'),
+    );
+  }
+  if (!similarLoading && similarDrafts.length === 0) {
+    return t('draftDetail.similar.noResults');
+  }
+  return null;
+};
+
+const getPredictionError = ({
+  predictionAuthRequired,
+  predictionLoadError,
+  predictionSubmitError,
+  t,
+}: {
+  predictionAuthRequired: boolean;
+  predictionLoadError: unknown;
+  predictionSubmitError: string | null;
+  t: Translate;
+}): string | null => {
+  if (predictionSubmitError) {
+    return predictionSubmitError;
+  }
+  if (predictionLoadError && !predictionAuthRequired) {
+    return getApiErrorMessage(
+      predictionLoadError,
+      t('draftDetail.errors.loadPredictionSummary'),
+    );
+  }
+  return null;
+};
+
+const getDraftStatusInfo = (
+  hasFixRequests: boolean,
+  hasPendingPull: boolean,
+  t: Translate,
+) => {
+  if (hasPendingPull) {
+    return {
+      label: t('draftDetail.status.readyForReview'),
+      tone: 'bg-amber-100 text-amber-800',
+    };
+  }
+  if (hasFixRequests) {
+    return {
+      label: t('draftDetail.status.seekingPr'),
+      tone: 'bg-muted/70 text-foreground',
+    };
+  }
+  return {
+    label: t('draftDetail.status.needsHelp'),
+    tone: 'bg-rose-500/15 text-rose-500',
+  };
+};
+
+const formatDraftEventMessage = (
+  eventType: string,
+  payload: Record<string, unknown>,
+  t: Translate,
+): string => {
+  if (eventType === 'fix_request') {
+    return t('draftDetail.events.newFixRequest');
+  }
+  if (eventType === 'pull_request') {
+    return t('draftDetail.events.newPullRequest');
+  }
+  if (eventType === 'pull_request_decision') {
+    const decision = String(payload.decision ?? 'updated').replace('_', ' ');
+    return `${t('draftDetail.events.pullRequest')} ${decision}`;
+  }
+  if (eventType === 'glowup_update') {
+    return t('draftDetail.events.glowUpUpdated');
+  }
+  if (eventType === 'draft_released') {
+    return t('draftDetail.events.draftReleased');
+  }
+  return t('draftDetail.events.draftActivityUpdated');
+};
+
+const getNextAction = ({
+  draftId,
+  pendingPull,
+  hasFixRequests,
+  copyStatus,
+  demoLoading,
+  copyDraftId,
+  runDemoFlow,
+  t,
+}: {
+  draftId: string;
+  pendingPull: PullRequest | undefined;
+  hasFixRequests: boolean;
+  copyStatus: string | null;
+  demoLoading: boolean;
+  copyDraftId: () => void;
+  runDemoFlow: () => void;
+  t: Translate;
+}): NextAction | null => {
+  if (!draftId) {
+    return null;
+  }
+  if (pendingPull) {
+    return {
+      title: t('draftDetail.nextAction.reviewPendingPr.title'),
+      description: t('draftDetail.nextAction.reviewPendingPr.description'),
+      ctaLabel: t('draftDetail.nextAction.reviewPendingPr.cta'),
+      href: `/pull-requests/${pendingPull.id}`,
+    };
+  }
+  if (hasFixRequests) {
+    return {
+      title: t('draftDetail.nextAction.shareForPr.title'),
+      description: t('draftDetail.nextAction.shareForPr.description'),
+      ctaLabel: copyStatus ?? t('draftDetail.nextAction.shareForPr.cta'),
+      onClick: copyDraftId,
+    };
+  }
+  return {
+    title: t('draftDetail.nextAction.startCritique.title'),
+    description: t('draftDetail.nextAction.startCritique.description'),
+    ctaLabel: demoLoading
+      ? t('draftDetail.actions.runningDemo')
+      : t('draftDetail.actions.runDemoFlow'),
+    onClick: runDemoFlow,
+  };
+};
+
+const getSimilarTelemetryPayload = ({
+  draftId,
+  similarDrafts,
+  similarDraftsError,
+}: {
+  draftId: string;
+  similarDrafts: SimilarDraft[];
+  similarDraftsError: unknown;
+}): {
+  signature: string;
+  eventType: 'similar_search_empty' | 'similar_search_shown';
+  metadata: Record<string, string | number>;
+} | null => {
+  if (similarDraftsError) {
+    const reason = getApiErrorCode(similarDraftsError) ?? 'error';
+    return {
+      signature: `${draftId}:error:${reason}`,
+      eventType: 'similar_search_empty',
+      metadata: { reason },
+    };
+  }
+  if (similarDrafts.length === 0) {
+    return {
+      signature: `${draftId}:empty:no_results`,
+      eventType: 'similar_search_empty',
+      metadata: { reason: 'no_results' },
+    };
+  }
+  return {
+    signature: `${draftId}:shown:${similarDrafts.length}`,
+    eventType: 'similar_search_shown',
+    metadata: { count: similarDrafts.length },
+  };
 };
 
 export default function DraftDetailPage() {
@@ -293,9 +531,19 @@ export default function DraftDetailPage() {
       shouldRetryOnError: false,
     },
   );
-  const [similarDrafts, setSimilarDrafts] = useState<SimilarDraft[]>([]);
-  const [similarStatus, setSimilarStatus] = useState<string | null>(null);
-  const [similarLoading, setSimilarLoading] = useState(false);
+  const {
+    data: similarDraftsData = [],
+    error: similarDraftsError,
+    isLoading: similarDraftsIsLoading,
+    isValidating: similarDraftsIsValidating,
+  } = useSWR<SimilarDraft[]>(
+    draftId ? `draft:similar:${draftId}` : null,
+    () => fetchSimilarDrafts(draftId),
+    {
+      revalidateOnFocus: false,
+      shouldRetryOnError: false,
+    },
+  );
   const [predictionSubmitLoading, setPredictionSubmitLoading] = useState(false);
   const [predictionSubmitError, setPredictionSubmitError] = useState<
     string | null
@@ -309,6 +557,7 @@ export default function DraftDetailPage() {
     Array<{ id: string; message: string; time: string }>
   >([]);
   const seenEventsRef = useRef<Set<string>>(new Set());
+  const similarTelemetryRef = useRef<string | null>(null);
   const watchlistAuthRequired = isAuthRequiredError(watchlistLoadError);
   const digestAuthRequired = isAuthRequiredError(digestLoadError);
   const predictionAuthRequired = isAuthRequiredError(predictionLoadError);
@@ -322,47 +571,41 @@ export default function DraftDetailPage() {
     watchlistEntries.some((item) => isWatchlistEntryForDraft(item, draftId));
   const digestEntries = digestEntriesData;
   const digestLoading = digestIsLoading || digestIsValidating;
-  let digestError: string | null = null;
-  if (digestLoadError && !digestAuthRequired) {
-    digestError = getApiErrorMessage(
-      digestLoadError,
-      t('draftDetail.errors.loadDigest'),
-    );
-  }
+  const digestError =
+    digestLoadError && !digestAuthRequired
+      ? getApiErrorMessage(digestLoadError, t('draftDetail.errors.loadDigest'))
+      : null;
   const predictionSummary = predictionSummaryData ?? null;
   const predictionLoading =
     predictionSummaryIsLoading ||
     predictionSummaryIsValidating ||
     predictionSubmitLoading;
-  let predictionError: string | null = predictionSubmitError;
-  if (!predictionError && predictionLoadError && !predictionAuthRequired) {
-    predictionError = getApiErrorMessage(
-      predictionLoadError,
-      t('draftDetail.errors.loadPredictionSummary'),
-    );
-  }
+  const predictionError = getPredictionError({
+    predictionAuthRequired,
+    predictionLoadError,
+    predictionSubmitError,
+    t,
+  });
   const arcLoading = arcIsLoading || arcIsValidating;
   const arcError = arcLoadError
     ? getApiErrorMessage(arcLoadError, t('draftDetail.errors.loadArc'))
     : null;
+  const similarLoading = similarDraftsIsLoading || similarDraftsIsValidating;
+  const similarDrafts = similarDraftsData;
+  const similarStatus = getSimilarStatus({
+    draftId,
+    similarDrafts,
+    similarDraftsError,
+    similarLoading,
+    t,
+  });
   const loading = draftLoading || fixRequestsLoading || pullRequestsLoading;
-  let error: string | null = null;
-  if (draftLoadError) {
-    error = getApiErrorMessage(
-      draftLoadError,
-      t('draftDetail.errors.loadDraft'),
-    );
-  } else if (fixRequestsLoadError) {
-    error = getApiErrorMessage(
-      fixRequestsLoadError,
-      t('draftDetail.errors.loadDraft'),
-    );
-  } else if (pullRequestsLoadError) {
-    error = getApiErrorMessage(
-      pullRequestsLoadError,
-      t('draftDetail.errors.loadDraft'),
-    );
-  }
+  const error = getPrimaryDraftError(
+    draftLoadError,
+    fixRequestsLoadError,
+    pullRequestsLoadError,
+    t,
+  );
 
   const { events } = useRealtimeRoom(
     draftId ? `post:${draftId}` : 'post:unknown',
@@ -412,61 +655,6 @@ export default function DraftDetailPage() {
       setTimeout(() => setCopyStatus(null), 2000);
     }
   };
-
-  const loadSimilarDrafts = useCallback(async () => {
-    if (!draftId) {
-      setSimilarDrafts([]);
-      setSimilarStatus(t('draftDetail.errors.missingDraftId'));
-      return;
-    }
-    setSimilarLoading(true);
-    setSimilarStatus(null);
-    const telemetryBase = { mode: 'visual', profile: SEARCH_DEFAULT_PROFILE };
-    try {
-      const response = await apiClient.get('/search/similar', {
-        params: { draftId, limit: 6 },
-      });
-      const items = response.data ?? [];
-      setSimilarDrafts(items);
-      if (items.length === 0) {
-        setSimilarStatus(t('draftDetail.similar.noResults'));
-        sendTelemetry({
-          eventType: 'similar_search_empty',
-          draftId,
-          source: 'draft_detail',
-          metadata: { ...telemetryBase, reason: 'no_results' },
-        });
-      } else {
-        sendTelemetry({
-          eventType: 'similar_search_shown',
-          draftId,
-          source: 'draft_detail',
-          metadata: { ...telemetryBase, count: items.length },
-        });
-      }
-    } catch (error: unknown) {
-      const code = getApiErrorCode(error);
-      const reason = code ?? 'error';
-      if (code === 'EMBEDDING_NOT_FOUND') {
-        setSimilarStatus(t('draftDetail.similar.availableAfterAnalysis'));
-      } else if (code === 'DRAFT_NOT_FOUND') {
-        setSimilarStatus(t('draftDetail.errors.draftNotFound'));
-      } else {
-        setSimilarStatus(
-          getApiErrorMessage(error, t('draftDetail.errors.loadSimilar')),
-        );
-      }
-      setSimilarDrafts([]);
-      sendTelemetry({
-        eventType: 'similar_search_empty',
-        draftId,
-        source: 'draft_detail',
-        metadata: { ...telemetryBase, reason },
-      });
-    } finally {
-      setSimilarLoading(false);
-    }
-  }, [draftId, t]);
 
   const markDigestSeen = async (entryId: string) => {
     try {
@@ -566,8 +754,29 @@ export default function DraftDetailPage() {
   };
 
   useEffect(() => {
-    loadSimilarDrafts();
-  }, [loadSimilarDrafts]);
+    if (!draftId || similarLoading) {
+      return;
+    }
+    const payload = getSimilarTelemetryPayload({
+      draftId,
+      similarDrafts,
+      similarDraftsError,
+    });
+    if (!payload || similarTelemetryRef.current === payload.signature) {
+      return;
+    }
+    similarTelemetryRef.current = payload.signature;
+    sendTelemetry({
+      eventType: payload.eventType,
+      draftId,
+      source: 'draft_detail',
+      metadata: {
+        mode: 'visual',
+        profile: SEARCH_DEFAULT_PROFILE,
+        ...payload.metadata,
+      },
+    });
+  }, [draftId, similarDrafts, similarDraftsError, similarLoading]);
 
   useEffect(() => {
     if (!(arcView?.summary && arcView?.recap24h)) {
@@ -622,28 +831,8 @@ export default function DraftDetailPage() {
   ]);
 
   const formatEventMessage = useCallback(
-    (eventType: string, payload: Record<string, unknown>) => {
-      if (eventType === 'fix_request') {
-        return t('draftDetail.events.newFixRequest');
-      }
-      if (eventType === 'pull_request') {
-        return t('draftDetail.events.newPullRequest');
-      }
-      if (eventType === 'pull_request_decision') {
-        const decision = String(payload?.decision ?? 'updated').replace(
-          '_',
-          ' ',
-        );
-        return `${t('draftDetail.events.pullRequest')} ${decision}`;
-      }
-      if (eventType === 'glowup_update') {
-        return t('draftDetail.events.glowUpUpdated');
-      }
-      if (eventType === 'draft_released') {
-        return t('draftDetail.events.draftReleased');
-      }
-      return t('draftDetail.events.draftActivityUpdated');
-    },
+    (eventType: string, payload: Record<string, unknown>) =>
+      formatDraftEventMessage(eventType, payload, t),
     [t],
   );
 
@@ -695,54 +884,21 @@ export default function DraftDetailPage() {
   }));
 
   const hasFixRequests = fixRequests.length > 0;
-  const statusInfo = (() => {
-    if (pendingPull) {
-      return {
-        label: t('draftDetail.status.readyForReview'),
-        tone: 'bg-amber-100 text-amber-800',
-      };
-    }
-    if (hasFixRequests) {
-      return {
-        label: t('draftDetail.status.seekingPr'),
-        tone: 'bg-muted/70 text-foreground',
-      };
-    }
-    return {
-      label: t('draftDetail.status.needsHelp'),
-      tone: 'bg-rose-500/15 text-rose-500',
-    };
-  })();
-
-  const nextAction = (() => {
-    if (!draftId) {
-      return null;
-    }
-    if (pendingPull) {
-      return {
-        title: t('draftDetail.nextAction.reviewPendingPr.title'),
-        description: t('draftDetail.nextAction.reviewPendingPr.description'),
-        ctaLabel: t('draftDetail.nextAction.reviewPendingPr.cta'),
-        href: `/pull-requests/${pendingPull.id}`,
-      };
-    }
-    if (hasFixRequests) {
-      return {
-        title: t('draftDetail.nextAction.shareForPr.title'),
-        description: t('draftDetail.nextAction.shareForPr.description'),
-        ctaLabel: copyStatus ?? t('draftDetail.nextAction.shareForPr.cta'),
-        onClick: copyDraftId,
-      };
-    }
-    return {
-      title: t('draftDetail.nextAction.startCritique.title'),
-      description: t('draftDetail.nextAction.startCritique.description'),
-      ctaLabel: demoLoading
-        ? t('draftDetail.actions.runningDemo')
-        : t('draftDetail.actions.runDemoFlow'),
-      onClick: runDemoFlow,
-    };
-  })();
+  const statusInfo = getDraftStatusInfo(
+    hasFixRequests,
+    Boolean(pendingPull),
+    t,
+  );
+  const nextAction = getNextAction({
+    draftId,
+    pendingPull,
+    hasFixRequests,
+    copyStatus,
+    demoLoading,
+    copyDraftId,
+    runDemoFlow,
+    t,
+  });
 
   return (
     <main className="grid gap-6">
