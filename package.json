@@ -17,6 +17,7 @@
     "security:check": "npm run security:audit && npm run security:scan-secrets",
     "test": "jest",
     "test:coverage": "jest --coverage",
+    "i18n:check": "node scripts/i18n/validate-locales.mjs",
     "perf:pre-release": "node scripts/perf/pre-release-check.mjs",
     "release:smoke": "node scripts/release/smoke-check.mjs",
     "release:dry-run:local": "node scripts/release/local-dry-run.mjs",
