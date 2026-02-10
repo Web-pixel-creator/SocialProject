@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
@@ -9,6 +9,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { SWRConfig } from 'swr';
 import SearchPage from '../app/search/page';
 import { apiClient } from '../lib/api';
 import {
@@ -91,8 +92,15 @@ describe('search UI', () => {
     });
   };
 
+  const renderSearchPage = () =>
+    render(
+      <SWRConfig value={{ provider: () => new Map() }}>
+        <SearchPage />
+      </SWRConfig>,
+    );
+
   test('updates search query', async () => {
-    render(<SearchPage />);
+    renderSearchPage();
     await runDebounce();
     (apiClient.get as jest.Mock).mockClear();
 
@@ -105,7 +113,7 @@ describe('search UI', () => {
   });
 
   test('renders results and respects filters', async () => {
-    render(<SearchPage />);
+    renderSearchPage();
     await runDebounce();
     (apiClient.get as jest.Mock).mockClear();
     (apiClient.get as jest.Mock).mockResolvedValueOnce({
@@ -168,7 +176,7 @@ describe('search UI', () => {
       response: { data: { message: 'Search unavailable' } },
     });
 
-    render(<SearchPage />);
+    renderSearchPage();
     await runDebounce();
 
     await waitFor(() =>
@@ -179,7 +187,7 @@ describe('search UI', () => {
   test('handles null response data gracefully', async () => {
     (apiClient.get as jest.Mock).mockResolvedValueOnce({ data: null });
 
-    render(<SearchPage />);
+    renderSearchPage();
     await runDebounce();
 
     await waitFor(() =>
@@ -192,7 +200,7 @@ describe('search UI', () => {
       new Error('Network down'),
     );
 
-    render(<SearchPage />);
+    renderSearchPage();
     await runDebounce();
 
     expect(await screen.findByText(/Network down/i)).toBeInTheDocument();
@@ -206,7 +214,7 @@ describe('search UI', () => {
         }),
     );
 
-    render(<SearchPage />);
+    renderSearchPage();
     await act(() => {
       jest.advanceTimersByTime(300);
     });
@@ -219,7 +227,7 @@ describe('search UI', () => {
       data: [{ id: 'res-1', type: 'draft', title: 'Neon Draft', score: null }],
     });
 
-    render(<SearchPage />);
+    renderSearchPage();
     await runDebounce();
 
     expect(await screen.findByText(/Neon Draft/i)).toBeInTheDocument();
@@ -244,7 +252,7 @@ describe('search UI', () => {
       return Promise.resolve({ data: { status: 'ok' } });
     });
 
-    render(<SearchPage />);
+    renderSearchPage();
     await runDebounce();
     (apiClient.get as jest.Mock).mockClear();
 
@@ -281,7 +289,7 @@ describe('search UI', () => {
       'mode=visual&draftId=draft-123&type=draft',
     );
 
-    render(<SearchPage />);
+    renderSearchPage();
 
     const draftInput = await screen.findByPlaceholderText(/Draft ID/i);
     expect(draftInput).toHaveValue('draft-123');
@@ -304,7 +312,7 @@ describe('search UI', () => {
       getDefaultSearchAbWeights(),
     );
 
-    render(<SearchPage />);
+    renderSearchPage();
     await runDebounce();
 
     expect(
@@ -331,7 +339,7 @@ describe('search UI', () => {
       .spyOn(window, 'scrollTo')
       .mockImplementation(() => undefined);
 
-    render(<SearchPage />);
+    renderSearchPage();
     await runDebounce();
 
     expect(scrollSpy).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' });
@@ -351,7 +359,7 @@ describe('search UI', () => {
   test('normalizes query comparisons when duplicate params exist', async () => {
     searchParams = new URLSearchParams('q=beta&q=alpha');
 
-    render(<SearchPage />);
+    renderSearchPage();
     await runDebounce();
 
     fireEvent.change(screen.getByPlaceholderText(/Search by keyword/i), {
@@ -363,7 +371,7 @@ describe('search UI', () => {
   });
 
   test('resets intent to all when type switches to studio', async () => {
-    render(<SearchPage />);
+    renderSearchPage();
     await runDebounce();
 
     const [typeSelect, intentSelect] = screen.getAllByRole(
@@ -385,7 +393,7 @@ describe('search UI', () => {
   });
 
   test('validates visual input when embedding is non-array or invalid JSON', async () => {
-    render(<SearchPage />);
+    renderSearchPage();
     await runDebounce();
 
     fireEvent.click(screen.getByRole('button', { name: /visual search/i }));
@@ -417,7 +425,7 @@ describe('search UI', () => {
       return Promise.resolve({ data: {} });
     });
 
-    render(<SearchPage />);
+    renderSearchPage();
     await runDebounce();
     fireEvent.click(screen.getByRole('button', { name: /visual search/i }));
 
@@ -448,7 +456,7 @@ describe('search UI', () => {
   test('does not auto-run visual search when draftId is blank after trim', async () => {
     searchParams = new URLSearchParams('mode=visual&draftId=%20%20%20');
 
-    render(<SearchPage />);
+    renderSearchPage();
     await runDebounce();
 
     const visualCalls = (apiClient.post as jest.Mock).mock.calls.filter(
@@ -465,7 +473,7 @@ describe('search UI', () => {
   test('handles missing search params object', async () => {
     searchParams = null;
 
-    render(<SearchPage />);
+    renderSearchPage();
     await runDebounce();
 
     expect(

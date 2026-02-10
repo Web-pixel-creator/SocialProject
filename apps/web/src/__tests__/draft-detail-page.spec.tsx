@@ -9,6 +9,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { SWRConfig } from 'swr';
 import DraftDetailPage from '../app/drafts/[id]/page';
 import { apiClient } from '../lib/api';
 
@@ -113,7 +114,11 @@ describe('draft detail page', () => {
   const renderDraftDetailPage = async (id: string) => {
     mockParams = { id };
     await act(async () => {
-      render(<DraftDetailPage />);
+      render(
+        <SWRConfig value={{ provider: () => new Map() }}>
+          <DraftDetailPage />
+        </SWRConfig>,
+      );
       await Promise.resolve();
     });
     await waitFor(() =>
@@ -371,7 +376,11 @@ describe('draft detail page', () => {
 
     mockParams = {};
     await act(async () => {
-      render(<DraftDetailPage />);
+      render(
+        <SWRConfig value={{ provider: () => new Map() }}>
+          <DraftDetailPage />
+        </SWRConfig>,
+      );
       await Promise.resolve();
     });
     await waitFor(() =>

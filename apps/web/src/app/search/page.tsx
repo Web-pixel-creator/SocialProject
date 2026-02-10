@@ -1,9 +1,17 @@
-﻿'use client';
+'use client';
 
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import useSWR from 'swr';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { apiClient } from '../../lib/api';
 import {
@@ -129,12 +137,22 @@ function SearchPageContent() {
   const [visualNotice, setVisualNotice] = useState<string | null>(null);
   const [visualHasSearched, setVisualHasSearched] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [manualLoading, setManualLoading] = useState(false);
+  const [manualError, setManualError] = useState<string | null>(null);
+  const [textSearchReady, setTextSearchReady] = useState(false);
+  const [debouncedText, setDebouncedText] = useState({
+    intent: initialIntent,
+    profile: SEARCH_DEFAULT_PROFILE as SearchProfile,
+    query: initialQuery,
+    range: initialRange,
+    sort: initialSort,
+    type: initialType,
+  });
   const autoRunVisual = useRef(
     initialMode === 'visual' && initialDraftId.length > 0,
   );
   const didSmoothScroll = useRef(false);
+  const textTelemetrySignatureRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!searchParams) {
@@ -193,6 +211,122 @@ function SearchPageContent() {
     setProfile(nextProfile);
     window.localStorage.setItem(storageKey, nextProfile);
   }, [searchParams]);
+
+  useEffect(() => {
+    if (mode !== 'text') {
+      return;
+    }
+    setTextSearchReady(false);
+    const handle = window.setTimeout(() => {
+      setDebouncedText({
+        intent,
+        profile,
+        query,
+        range,
+        sort,
+        type,
+      });
+      setTextSearchReady(true);
+    }, 300);
+    return () => {
+      window.clearTimeout(handle);
+    };
+  }, [intent, mode, profile, query, range, sort, type]);
+
+  const textSearchParams = useMemo(
+    () =>
+      pruneUndefined({
+        intent:
+          debouncedText.intent === 'all' ? undefined : debouncedText.intent,
+        profile:
+          debouncedText.profile === 'balanced'
+            ? undefined
+            : debouncedText.profile,
+        q: debouncedText.query,
+        range: debouncedText.range === 'all' ? undefined : debouncedText.range,
+        sort: debouncedText.sort,
+        type: debouncedText.type === 'all' ? undefined : debouncedText.type,
+      }),
+    [debouncedText],
+  );
+
+  const textSearchKey =
+    mode === 'text' && textSearchReady
+      ? `search:text:${JSON.stringify(textSearchParams)}`
+      : null;
+
+  const {
+    data: textResults,
+    error: textSearchError,
+    isLoading: textSearchIsLoading,
+    isValidating: textSearchIsValidating,
+  } = useSWR<SearchResult[]>(
+    textSearchKey,
+    async () => {
+      const response = await apiClient.get('/search', {
+        params: textSearchParams,
+      });
+      return response.data ?? [];
+    },
+    {
+      revalidateOnFocus: false,
+      shouldRetryOnError: false,
+    },
+  );
+
+  useEffect(() => {
+    if (mode !== 'text' || !textResults) {
+      return;
+    }
+    const signature = JSON.stringify({
+      intent: debouncedText.intent,
+      mode: 'text',
+      profile: debouncedText.profile,
+      q: debouncedText.query,
+      range: debouncedText.range,
+      resultCount: textResults.length,
+      sort: debouncedText.sort,
+      type: debouncedText.type,
+    });
+    if (textTelemetrySignatureRef.current === signature) {
+      return;
+    }
+    textTelemetrySignatureRef.current = signature;
+    sendTelemetry({
+      eventType: 'search_performed',
+      intent: debouncedText.intent === 'all' ? undefined : debouncedText.intent,
+      metadata: {
+        mode: 'text',
+        profile: debouncedText.profile,
+        queryLength: debouncedText.query.length,
+        resultCount: textResults.length,
+      },
+      range: debouncedText.range === 'all' ? undefined : debouncedText.range,
+      sort: debouncedText.sort,
+      status: debouncedText.type === 'all' ? undefined : debouncedText.type,
+    });
+  }, [debouncedText, mode, textResults]);
+
+  useEffect(() => {
+    if (!(mode === 'text' || mode === 'visual')) {
+      return;
+    }
+    textTelemetrySignatureRef.current = null;
+    setManualError(null);
+    setVisualNotice(null);
+    setVisualHasSearched(false);
+  }, [mode]);
+
+  const textError =
+    mode === 'text' && textSearchError
+      ? getApiErrorMessage(textSearchError, t('search.errors.searchFailed'))
+      : null;
+  const error = textError ?? manualError;
+  const loading =
+    mode === 'text'
+      ? textSearchIsLoading || textSearchIsValidating
+      : manualLoading;
+  const visibleResults = mode === 'text' ? (textResults ?? []) : results;
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -262,70 +396,6 @@ function SearchPageContent() {
     if (mode !== 'text') {
       return;
     }
-    let cancelled = false;
-    const handle = setTimeout(async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await apiClient.get('/search', {
-          params: pruneUndefined({
-            q: query,
-            type: type === 'all' ? undefined : type,
-            sort,
-            range: range === 'all' ? undefined : range,
-            intent: intent === 'all' ? undefined : intent,
-            profile: profile === 'balanced' ? undefined : profile,
-          }),
-        });
-        if (!cancelled) {
-          setResults(response.data ?? []);
-          sendTelemetry({
-            eventType: 'search_performed',
-            sort,
-            status: type === 'all' ? undefined : type,
-            range: range === 'all' ? undefined : range,
-            intent: intent === 'all' ? undefined : intent,
-            metadata: {
-              profile,
-              mode: 'text',
-              queryLength: query.length,
-              resultCount: Array.isArray(response.data)
-                ? response.data.length
-                : 0,
-            },
-          });
-        }
-      } catch (error: unknown) {
-        if (!cancelled) {
-          setError(getApiErrorMessage(error, t('search.errors.searchFailed')));
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }, 300);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(handle);
-    };
-  }, [mode, query, type, sort, range, intent, profile, t]);
-
-  useEffect(() => {
-    if (!(mode === 'text' || mode === 'visual')) {
-      return;
-    }
-    setResults([]);
-    setError(null);
-    setVisualNotice(null);
-    setVisualHasSearched(false);
-  }, [mode]);
-
-  useEffect(() => {
-    if (mode !== 'text') {
-      return;
-    }
     if (type === 'studio' && intent !== 'all') {
       setIntent('all');
     }
@@ -351,11 +421,11 @@ function SearchPageContent() {
     const embedding = parseEmbedding(visualEmbedding);
     const trimmedDraftId = visualDraftId.trim();
     if (!(embedding || trimmedDraftId)) {
-      setError(t('search.errors.provideDraftOrEmbedding'));
+      setManualError(t('search.errors.provideDraftOrEmbedding'));
       return;
     }
-    setLoading(true);
-    setError(null);
+    setManualLoading(true);
+    setManualError(null);
     setVisualNotice(null);
     try {
       const tags = parseTags(visualTags);
@@ -373,12 +443,12 @@ function SearchPageContent() {
         setResults([]);
         setVisualNotice(t('search.visual.availableAfterAnalysis'));
       } else {
-        setError(
+        setManualError(
           getApiErrorMessage(error, t('search.errors.visualSearchFailed')),
         );
       }
     } finally {
-      setLoading(false);
+      setManualLoading(false);
     }
   }, [visualDraftId, visualEmbedding, visualTags, visualType, t]);
 
@@ -619,7 +689,7 @@ function SearchPageContent() {
         )}
         {mode === 'visual' &&
           visualHasSearched &&
-          results.length === 0 &&
+          visibleResults.length === 0 &&
           !error &&
           !visualNotice &&
           !loading && (
@@ -633,7 +703,7 @@ function SearchPageContent() {
           </p>
         ) : (
           <ul className="grid gap-3">
-            {results.map((result, index) => {
+            {visibleResults.map((result, index) => {
               const href =
                 result.type === 'studio'
                   ? `/studios/${result.id}`
@@ -717,7 +787,7 @@ function SearchPageContent() {
                 </li>
               );
             })}
-            {results.length === 0 && (
+            {visibleResults.length === 0 && (
               <li className="text-muted-foreground text-xs">
                 {t('search.states.noResultsYet')}
               </li>

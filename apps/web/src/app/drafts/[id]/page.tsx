@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import useSWR from 'swr';
 import { BeforeAfterSlider } from '../../../components/BeforeAfterSlider';
 import {
   DraftArcCard,
@@ -100,6 +101,29 @@ interface SimilarDraft {
   type: 'draft' | 'release';
 }
 
+interface DraftPayload {
+  draft: Draft | null;
+  versions: Version[];
+}
+
+const fetchDraftPayload = async (draftId: string): Promise<DraftPayload> => {
+  const response = await apiClient.get(`/drafts/${draftId}`);
+  return {
+    draft: response.data?.draft ?? null,
+    versions: response.data?.versions ?? [],
+  };
+};
+
+const fetchFixRequests = async (draftId: string): Promise<FixRequest[]> => {
+  const response = await apiClient.get(`/drafts/${draftId}/fix-requests`);
+  return response.data ?? [];
+};
+
+const fetchPullRequests = async (draftId: string): Promise<PullRequest[]> => {
+  const response = await apiClient.get(`/drafts/${draftId}/pull-requests`);
+  return response.data ?? [];
+};
+
 const sendTelemetry = async (payload: Record<string, unknown>) => {
   try {
     await apiClient.post('/telemetry/ux', payload);
@@ -127,10 +151,47 @@ export default function DraftDetailPage() {
   const rawId = params?.id;
   const resolvedId = Array.isArray(rawId) ? rawId[0] : rawId;
   const draftId = resolvedId && resolvedId !== 'undefined' ? resolvedId : '';
-  const [draft, setDraft] = useState<Draft | null>(null);
-  const [versions, setVersions] = useState<Version[]>([]);
-  const [fixRequests, setFixRequests] = useState<FixRequest[]>([]);
-  const [pullRequests, setPullRequests] = useState<PullRequest[]>([]);
+  const {
+    data: draftPayload,
+    error: draftLoadError,
+    isLoading: draftLoading,
+    mutate: mutateDraft,
+  } = useSWR<DraftPayload>(
+    draftId ? `draft:detail:${draftId}` : null,
+    () => fetchDraftPayload(draftId),
+    {
+      revalidateOnFocus: false,
+      shouldRetryOnError: false,
+    },
+  );
+  const {
+    data: fixRequests = [],
+    error: fixRequestsLoadError,
+    isLoading: fixRequestsLoading,
+    mutate: mutateFixRequests,
+  } = useSWR<FixRequest[]>(
+    draftId ? `draft:fix-requests:${draftId}` : null,
+    () => fetchFixRequests(draftId),
+    {
+      revalidateOnFocus: false,
+      shouldRetryOnError: false,
+    },
+  );
+  const {
+    data: pullRequests = [],
+    error: pullRequestsLoadError,
+    isLoading: pullRequestsLoading,
+    mutate: mutatePullRequests,
+  } = useSWR<PullRequest[]>(
+    draftId ? `draft:pull-requests:${draftId}` : null,
+    () => fetchPullRequests(draftId),
+    {
+      revalidateOnFocus: false,
+      shouldRetryOnError: false,
+    },
+  );
+  const draft = draftPayload?.draft ?? null;
+  const versions = draftPayload?.versions ?? [];
   const [similarDrafts, setSimilarDrafts] = useState<SimilarDraft[]>([]);
   const [similarStatus, setSimilarStatus] = useState<string | null>(null);
   const [similarLoading, setSimilarLoading] = useState(false);
@@ -156,37 +217,28 @@ export default function DraftDetailPage() {
     Array<{ id: string; message: string; time: string }>
   >([]);
   const seenEventsRef = useRef<Set<string>>(new Set());
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const loading = draftLoading || fixRequestsLoading || pullRequestsLoading;
+  let error: string | null = null;
+  if (draftLoadError) {
+    error = getApiErrorMessage(
+      draftLoadError,
+      t('draftDetail.errors.loadDraft'),
+    );
+  } else if (fixRequestsLoadError) {
+    error = getApiErrorMessage(
+      fixRequestsLoadError,
+      t('draftDetail.errors.loadDraft'),
+    );
+  } else if (pullRequestsLoadError) {
+    error = getApiErrorMessage(
+      pullRequestsLoadError,
+      t('draftDetail.errors.loadDraft'),
+    );
+  }
 
   const { events } = useRealtimeRoom(
     draftId ? `post:${draftId}` : 'post:unknown',
   );
-
-  const loadDraft = useCallback(async () => {
-    if (!draftId) {
-      return;
-    }
-    const response = await apiClient.get(`/drafts/${draftId}`);
-    setDraft(response.data.draft);
-    setVersions(response.data.versions ?? []);
-  }, [draftId]);
-
-  const loadFixRequests = useCallback(async () => {
-    if (!draftId) {
-      return;
-    }
-    const response = await apiClient.get(`/drafts/${draftId}/fix-requests`);
-    setFixRequests(response.data ?? []);
-  }, [draftId]);
-
-  const loadPullRequests = useCallback(async () => {
-    if (!draftId) {
-      return;
-    }
-    const response = await apiClient.get(`/drafts/${draftId}/pull-requests`);
-    setPullRequests(response.data ?? []);
-  }, [draftId]);
 
   const loadArc = useCallback(async () => {
     if (!draftId) {
@@ -310,7 +362,11 @@ export default function DraftDetailPage() {
     try {
       await apiClient.post('/demo/flow', { draftId });
       setDemoStatus(t('draftDetail.status.demoFlowComplete'));
-      await Promise.all([loadDraft(), loadFixRequests(), loadPullRequests()]);
+      await Promise.all([
+        mutateDraft(),
+        mutateFixRequests(),
+        mutatePullRequests(),
+      ]);
     } catch (error: unknown) {
       setDemoStatus(
         getApiErrorMessage(error, t('draftDetail.errors.runDemoFlow')),
@@ -318,7 +374,7 @@ export default function DraftDetailPage() {
     } finally {
       setDemoLoading(false);
     }
-  }, [draftId, loadDraft, loadFixRequests, loadPullRequests, t]);
+  }, [draftId, mutateDraft, mutateFixRequests, mutatePullRequests, t]);
 
   const copyDraftId = async () => {
     if (!draftId || typeof navigator === 'undefined') {
@@ -390,44 +446,13 @@ export default function DraftDetailPage() {
   }, [draftId, t]);
 
   useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        await Promise.all([
-          loadDraft(),
-          loadFixRequests(),
-          loadPullRequests(),
-          loadArc(),
-          loadWatchlist(),
-          loadDigest(),
-        ]);
-      } catch (error: unknown) {
-        if (!cancelled) {
-          setError(
-            getApiErrorMessage(error, t('draftDetail.errors.loadDraft')),
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    };
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    loadArc,
-    loadDigest,
-    loadDraft,
-    loadFixRequests,
-    loadPullRequests,
-    loadWatchlist,
-    t,
-  ]);
+    if (!draftId) {
+      return;
+    }
+    loadArc();
+    loadWatchlist();
+    loadDigest();
+  }, [draftId, loadArc, loadDigest, loadWatchlist]);
 
   const markDigestSeen = async (entryId: string) => {
     try {
@@ -541,15 +566,15 @@ export default function DraftDetailPage() {
         last.type,
       )
     ) {
-      loadFixRequests();
-      loadPullRequests();
+      mutateFixRequests();
+      mutatePullRequests();
       loadArc();
       if (isFollowed) {
         loadDigest();
       }
     }
     if (last.type === 'glowup_update') {
-      loadDraft();
+      mutateDraft();
       loadArc();
     }
   }, [
@@ -557,9 +582,9 @@ export default function DraftDetailPage() {
     isFollowed,
     loadArc,
     loadDigest,
-    loadDraft,
-    loadFixRequests,
-    loadPullRequests,
+    mutateDraft,
+    mutateFixRequests,
+    mutatePullRequests,
   ]);
 
   useEffect(() => {
