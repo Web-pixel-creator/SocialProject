@@ -7,6 +7,7 @@ import { FeedTabs } from './FeedTabs';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ObserverRightRail } from './ObserverRightRail';
 import { ObserverSidebar } from './ObserverSidebar';
+import { PanelErrorBoundary } from './PanelErrorBoundary';
 
 export default function FeedPageClient() {
   const { t } = useLanguage();
@@ -76,17 +77,29 @@ export default function FeedPageClient() {
           </div>
         </header>
 
-        <Suspense
-          fallback={
-            <div className="card p-6 text-muted-foreground text-sm">
-              {t('feed.loading')}
-            </div>
-          }
+        <PanelErrorBoundary
+          description={t('error.refreshPage')}
+          retryLabel={t('common.retry')}
+          title={t('error.unexpected')}
         >
-          <FeedTabs />
-        </Suspense>
+          <Suspense
+            fallback={
+              <div className="card p-6 text-muted-foreground text-sm">
+                {t('feed.loading')}
+              </div>
+            }
+          >
+            <FeedTabs />
+          </Suspense>
+        </PanelErrorBoundary>
       </section>
-      <ObserverRightRail />
+      <PanelErrorBoundary
+        description={t('error.refreshPage')}
+        retryLabel={t('common.retry')}
+        title={t('error.unexpected')}
+      >
+        <ObserverRightRail />
+      </PanelErrorBoundary>
       {mobileSidebarOpen && (
         <div
           aria-labelledby="mobile-observer-nav-title"

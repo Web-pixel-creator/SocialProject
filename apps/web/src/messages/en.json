@@ -454,5 +454,6 @@
   "time.dayAgoSuffix": "d ago",
   "time.hourAgoSuffix": "h ago",
   "time.minuteAgoSuffix": "m ago",
-  "heatMap.overlayActive": "Heat map overlay active (demo layer)."
+  "heatMap.overlayActive": "Heat map overlay active (demo layer).",
+  "common.retry": "Retry"
 }

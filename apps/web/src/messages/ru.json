@@ -454,5 +454,6 @@
   "time.hourAgoSuffix": "? ?????",
   "time.minuteAgoSuffix": "? ?????",
   "heatMap.overlayActive": "Тепловая карта активна (демо-слой).",
-  "lang.switchTo": "Переключить на"
+  "lang.switchTo": "Переключить на",
+  "common.retry": "Повторить"
 }
