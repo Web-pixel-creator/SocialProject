@@ -37,7 +37,7 @@ export default function DemoPage() {
       });
       setResult(response.data);
     } catch (typedError: unknown) {
-      setError(getApiErrorMessage(typedError, t('legacy.failed_to_run_demo')));
+      setError(getApiErrorMessage(typedError, t('demo.errors.runDemo')));
     } finally {
       setLoading(false);
     }
@@ -62,25 +62,37 @@ export default function DemoPage() {
     return false;
   };
 
+  let doneCount = 0;
+  for (const step of steps) {
+    if (isDone(step.key)) {
+      doneCount += 1;
+    }
+  }
+
+  const progressWidth = `${(doneCount / steps.length) * 100}%`;
+
   return (
     <main className="grid gap-6">
       <div className="card p-6">
-        <p className="pill">{t('legacy.demo')}</p>
+        <p className="pill">{t('demo.header.pill')}</p>
         <h2 className="mt-3 font-semibold text-2xl text-foreground">
-          {t('legacy.one_click_demo_flow')}
+          {t('demo.header.title')}
         </h2>
         <p className="text-muted-foreground text-sm">
-          {t('legacy.runs_the_full_loop_draft_fix_request')}
+          {t('demo.header.subtitle')}
         </p>
       </div>
 
       <section className="card grid gap-4 p-6">
+        <div className="rounded-xl border border-border bg-background/70 p-4 text-muted-foreground text-sm">
+          {t('demo.info.trackEveryChange')}
+        </div>
         <label className="grid gap-2 font-medium text-foreground text-sm">
-          {t('legacy.draft_id_optional')}
+          {t('demo.form.draftIdOptional')}
           <input
             className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
             onChange={(event) => setDraftId(event.target.value)}
-            placeholder={t('legacy.draft_uuid_or_leave_blank')}
+            placeholder={t('demo.form.draftIdPlaceholder')}
             value={draftId}
           />
         </label>
@@ -91,28 +103,45 @@ export default function DemoPage() {
             onClick={runDemo}
             type="button"
           >
-            {loading ? t('legacy.running') : t('legacy.run_demo')}
+            {loading ? t('demo.actions.running') : t('demo.actions.run')}
           </button>
-          {result?.draftId && (
+          {result?.draftId ? (
             <Link
               className="rounded-full border border-border bg-background/70 px-5 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60"
               href={`/drafts/${result.draftId}`}
             >
-              {t('legacy.open_draft')}
+              {t('demo.actions.openDraft')}
             </Link>
-          )}
+          ) : null}
+          <Link
+            className="rounded-full border border-border bg-background/70 px-5 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60"
+            href="/feed"
+          >
+            {t('feed.exploreFeeds')}
+          </Link>
         </div>
-        {error && (
+        {error ? (
           <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-destructive text-xs">
             {error}
           </div>
-        )}
+        ) : null}
       </section>
 
-      <section className="card grid gap-3 p-6">
-        <h3 className="font-semibold text-foreground text-sm">
-          {t('legacy.steps')}
-        </h3>
+      <section className="card grid gap-4 p-6">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="font-semibold text-foreground text-sm">
+            {t('demo.progress.title')}
+          </h3>
+          <span className="text-muted-foreground text-xs">
+            {doneCount}/{steps.length}
+          </span>
+        </div>
+        <div className="h-2 overflow-hidden rounded-full bg-muted/70">
+          <div
+            className="h-full rounded-full bg-primary transition-all duration-300"
+            style={{ width: progressWidth }}
+          />
+        </div>
         <ul className="grid gap-2 text-sm">
           {steps.map((step) => (
             <li
@@ -127,17 +156,45 @@ export default function DemoPage() {
                     : 'text-muted-foreground'
                 }
               >
-                {isDone(step.key) ? t('legacy.done') : t('legacy.pending')}
+                {isDone(step.key)
+                  ? t('demo.progress.done')
+                  : t('demo.progress.pending')}
               </span>
             </li>
           ))}
         </ul>
-        {result && (
-          <div className="rounded-xl border border-border bg-background/70 p-3 text-muted-foreground text-xs">
-            {t('legacy.glowup')}: {Number(result.glowUp ?? 0).toFixed(1)}
-          </div>
-        )}
       </section>
+
+      {result ? (
+        <section className="card grid gap-3 p-6 md:grid-cols-2">
+          <div className="rounded-xl border border-border bg-background/70 p-4 text-xs">
+            <p className="text-muted-foreground">{t('demo.summary.draft')}</p>
+            <p className="mt-1 break-all text-foreground">{result.draftId}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-background/70 p-4 text-xs">
+            <p className="text-muted-foreground">
+              {t('demo.summary.fixRequest')}
+            </p>
+            <p className="mt-1 break-all text-foreground">
+              {result.fixRequestId}
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-background/70 p-4 text-xs">
+            <p className="text-muted-foreground">
+              {t('demo.summary.pullRequest')}
+            </p>
+            <p className="mt-1 break-all text-foreground">
+              {result.pullRequestId}
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-background/70 p-4 text-xs">
+            <p className="text-muted-foreground">{t('demo.summary.glowUp')}</p>
+            <p className="mt-1 text-foreground">
+              {`${t('demo.summary.glowUp')}: ${Number(result.glowUp ?? 0).toFixed(1)}`}
+            </p>
+          </div>
+        </section>
+      ) : null}
     </main>
   );
 }

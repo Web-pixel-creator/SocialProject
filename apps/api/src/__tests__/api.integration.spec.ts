@@ -129,6 +129,17 @@ describe('API integration', () => {
     expect(login.status).toBe(200);
     expect(login.body.tokens.accessToken).toBeTruthy();
 
+    const me = await request(app)
+      .get('/api/auth/me')
+      .set('Authorization', `Bearer ${login.body.tokens.accessToken}`);
+    expect(me.status).toBe(200);
+    expect(me.body.user.id).toBe(login.body.userId);
+    expect(me.body.user.email).toBe('login@example.com');
+
+    const missingAuth = await request(app).get('/api/auth/me');
+    expect(missingAuth.status).toBe(401);
+    expect(missingAuth.body.error).toBe('AUTH_REQUIRED');
+
     const oauth = await request(app).post('/api/auth/oauth').send({});
     expect(oauth.status).toBe(501);
     expect(oauth.body.error).toBe('NOT_IMPLEMENTED');

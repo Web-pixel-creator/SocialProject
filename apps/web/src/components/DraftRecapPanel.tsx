@@ -34,7 +34,7 @@ export const DraftRecapPanel = ({
   if (loading) {
     return (
       <div className="card p-4 text-muted-foreground text-xs">
-        {t('legacy.loading_24h_recap')}
+        {t('recap.loading')}
       </div>
     );
   }
@@ -42,7 +42,7 @@ export const DraftRecapPanel = ({
   if (error) {
     return (
       <div className="card p-4">
-        <p className="pill">{t('legacy.24h_recap')}</p>
+        <p className="pill">{t('recap.title')}</p>
         <p className="mt-3 text-rose-600 text-xs">{error}</p>
       </div>
     );
@@ -51,9 +51,9 @@ export const DraftRecapPanel = ({
   if (!recap) {
     return (
       <div className="card p-4">
-        <p className="pill">{t('legacy.24h_recap')}</p>
+        <p className="pill">{t('recap.title')}</p>
         <p className="mt-3 text-muted-foreground text-xs">
-          {t('legacy.no_recap_data_yet')}
+          {t('recap.noData')}
         </p>
       </div>
     );
@@ -61,24 +61,24 @@ export const DraftRecapPanel = ({
 
   const delta =
     recap.glowUpDelta === null
-      ? t('legacy.glowup_delta_unavailable')
-      : `${t('legacy.glowup_delta')} ${
+      ? t('change.glowUpDeltaUnavailable')
+      : `${t('change.glowUpDelta')} ${
           recap.glowUpDelta >= 0 ? '+' : ''
         }${recap.glowUpDelta.toFixed(2)}`;
 
   return (
     <div className="card p-4">
-      <p className="pill">{t('legacy.24h_recap')}</p>
+      <p className="pill">{t('recap.title')}</p>
       {recap.hasChanges ? (
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {metric(t('legacy.fix_requests_2'), recap.fixRequests)}
-          {metric(t('legacy.pr_submitted'), recap.prSubmitted)}
-          {metric(t('legacy.pr_merged_2'), recap.prMerged)}
-          {metric(t('legacy.pr_rejected'), recap.prRejected)}
+          {metric(t('sidebar.fixRequests'), recap.fixRequests)}
+          {metric(t('pr.prSubmitted'), recap.prSubmitted)}
+          {metric(t('pr.prMergedStatus'), recap.prMerged)}
+          {metric(t('pr.prRejected'), recap.prRejected)}
         </div>
       ) : (
         <p className="mt-3 text-muted-foreground text-sm">
-          {t('legacy.no_changes_in_24h')}
+          {t('recap.noChanges')}
         </p>
       )}
       <p className="mt-3 text-muted-foreground text-xs">{delta}</p>

@@ -34,7 +34,7 @@ export const ObserverDigestPanel = ({
   if (loading) {
     return (
       <div className="card p-4 text-muted-foreground text-xs">
-        {t('legacy.loading_digest')}
+        {t('digest.loading')}
       </div>
     );
   }
@@ -42,9 +42,9 @@ export const ObserverDigestPanel = ({
   if (authRequired) {
     return (
       <div className="card p-4">
-        <p className="pill">{t('legacy.digest')}</p>
+        <p className="pill">{t('sidebar.digest')}</p>
         <p className="mt-3 text-muted-foreground text-xs">
-          {t('legacy.sign_in_as_observer_to_see_digest')}
+          {t('digest.signInRequired')}
         </p>
       </div>
     );
@@ -53,7 +53,7 @@ export const ObserverDigestPanel = ({
   if (error) {
     return (
       <div className="card p-4">
-        <p className="pill">{t('legacy.digest')}</p>
+        <p className="pill">{t('sidebar.digest')}</p>
         <p className="mt-3 text-rose-600 text-xs">{error}</p>
       </div>
     );
@@ -64,14 +64,14 @@ export const ObserverDigestPanel = ({
   return (
     <div className="card p-4">
       <div className="flex items-center justify-between">
-        <p className="pill">{t('legacy.digest')}</p>
+        <p className="pill">{t('sidebar.digest')}</p>
         <span className="rounded-full bg-muted/60 px-2 py-1 font-semibold text-[10px] text-foreground">
-          {t('legacy.unseen')} {unseenCount}
+          {t('digest.unseen')} {unseenCount}
         </span>
       </div>
       {entries.length === 0 ? (
         <p className="mt-3 text-muted-foreground text-xs">
-          {t('legacy.no_digest_entries_yet')}
+          {t('digest.noEntries')}
         </p>
       ) : (
         <ul className="mt-3 grid gap-2">
@@ -98,7 +98,7 @@ export const ObserverDigestPanel = ({
                     onClick={() => onMarkSeen(entry.id)}
                     type="button"
                   >
-                    {t('legacy.mark_seen')}
+                    {t('digest.markSeen')}
                   </button>
                 )}
               </div>

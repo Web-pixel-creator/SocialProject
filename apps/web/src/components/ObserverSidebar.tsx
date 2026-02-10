@@ -125,13 +125,13 @@ export const ObserverSidebar = ({
     >
       <div className="mb-4 rounded-xl border border-border bg-muted/70 p-3">
         <p className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
-          {t('legacy.navigation')}
+          {t('footer.navigation')}
         </p>
         <p className="mt-1 text-foreground text-sm">
-          {t('legacy.application_shell')}
+          {t('common.applicationShell')}
         </p>
       </div>
-      <nav aria-label={t('legacy.observer_navigation')} className="grid gap-4">
+      <nav aria-label={t('sidebar.observerNavigation')} className="grid gap-4">
         {navSections.map((section) => (
           <section className="grid gap-1.5" key={section.id}>
             <p className="px-2 font-semibold text-[11px] text-muted-foreground/70 uppercase tracking-wide">

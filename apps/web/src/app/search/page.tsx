@@ -89,6 +89,14 @@ const parseTags = (value: string) =>
     .map((tag) => tag.trim())
     .filter((tag) => tag.length > 0);
 
+const TEXT_QUERY_PRESETS = [
+  'Landing page redesign',
+  'Prompt optimization',
+  'Brand style guide',
+];
+
+const VISUAL_TAG_PRESETS = ['cinematic', 'minimal', 'high contrast'];
+
 function SearchPageContent() {
   const { t } = useLanguage();
   const searchParams = useSearchParams();
@@ -289,7 +297,7 @@ function SearchPageContent() {
         }
       } catch (error: unknown) {
         if (!cancelled) {
-          setError(getApiErrorMessage(error, t('legacy.search_failed')));
+          setError(getApiErrorMessage(error, t('search.errors.searchFailed')));
         }
       } finally {
         if (!cancelled) {
@@ -343,7 +351,7 @@ function SearchPageContent() {
     const embedding = parseEmbedding(visualEmbedding);
     const trimmedDraftId = visualDraftId.trim();
     if (!(embedding || trimmedDraftId)) {
-      setError(t('legacy.provide_a_draft_id_or_an_embedding'));
+      setError(t('search.errors.provideDraftOrEmbedding'));
       return;
     }
     setLoading(true);
@@ -363,9 +371,11 @@ function SearchPageContent() {
       const code = getApiErrorCode(error);
       if (code === 'EMBEDDING_NOT_FOUND') {
         setResults([]);
-        setVisualNotice(t('legacy.similar_works_available_after_analysis_2'));
+        setVisualNotice(t('search.visual.availableAfterAnalysis'));
       } else {
-        setError(getApiErrorMessage(error, t('legacy.visual_search_failed')));
+        setError(
+          getApiErrorMessage(error, t('search.errors.visualSearchFailed')),
+        );
       }
     } finally {
       setLoading(false);
@@ -394,13 +404,15 @@ function SearchPageContent() {
 
   const summary =
     mode === 'text'
-      ? `${t('legacy.results_for')} "${query || '...'}" | ${t('legacy.type')} ${type} | ${t('legacy.intent')} ${intent} | ${t('legacy.sorted_by')} ${sort} | ${t('legacy.range')} ${range}`
-      : `${t('legacy.visual_results')} | ${t('legacy.type')} ${visualType}${
+      ? `${t('search.summary.resultsFor')} "${query || '...'}" | ${t('search.summary.type')} ${type} | ${t('search.summary.intent')} ${intent} | ${t('search.summary.sortedBy')} ${sort} | ${t('search.summary.range')} ${range}`
+      : `${t('search.summary.visualResults')} | ${t('search.summary.type')} ${visualType}${
           visualDraftId.trim()
-            ? ` | ${t('legacy.draft_2')} ${visualDraftId.trim()}`
+            ? ` | ${t('search.summary.draftLower')} ${visualDraftId.trim()}`
             : ''
         }${
-          visualTags.trim() ? ` | ${t('legacy.tags')} ${visualTags.trim()}` : ''
+          visualTags.trim()
+            ? ` | ${t('search.summary.tags')} ${visualTags.trim()}`
+            : ''
         }`;
   const showAbBadge = abEnabled;
 
@@ -408,11 +420,9 @@ function SearchPageContent() {
     <main className="grid gap-6">
       <div className="card p-6">
         <h2 className="font-semibold text-2xl text-foreground">
-          {t('legacy.search')}
+          {t('header.search')}
         </h2>
-        <p className="text-muted-foreground text-sm">
-          {t('legacy.find_drafts_releases_and_studios')}
-        </p>
+        <p className="text-muted-foreground text-sm">{t('search.subtitle')}</p>
       </div>
       <div className="card grid gap-4 p-6">
         <div className="flex flex-wrap gap-2">
@@ -425,7 +435,7 @@ function SearchPageContent() {
             onClick={() => setMode('text')}
             type="button"
           >
-            {t('legacy.text_search')}
+            {t('search.mode.text')}
           </button>
           <button
             className={`rounded-lg px-3 py-2 text-sm ${
@@ -436,7 +446,7 @@ function SearchPageContent() {
             onClick={() => setMode('visual')}
             type="button"
           >
-            {t('legacy.visual_search')}
+            {t('search.mode.visual')}
           </button>
         </div>
 
@@ -445,19 +455,44 @@ function SearchPageContent() {
             <input
               className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
               onChange={(event) => setQuery(event.target.value)}
-              placeholder={t('legacy.search_by_keyword')}
+              placeholder={t('search.placeholders.keyword')}
               value={query}
             />
+            <div className="flex flex-wrap items-center gap-2">
+              {TEXT_QUERY_PRESETS.map((preset) => (
+                <button
+                  className="rounded-full border border-border bg-muted/70 px-3 py-1 text-muted-foreground text-xs transition hover:border-primary/40 hover:text-foreground"
+                  key={preset}
+                  onClick={() => setQuery(preset)}
+                  type="button"
+                >
+                  {preset}
+                </button>
+              ))}
+              <button
+                className="rounded-full border border-border bg-background/70 px-3 py-1 text-muted-foreground text-xs transition hover:border-primary/40 hover:text-foreground"
+                onClick={() => {
+                  setQuery('');
+                  setType('all');
+                  setSort('recency');
+                  setRange('all');
+                  setIntent('all');
+                }}
+                type="button"
+              >
+                {t('search.actions.resetFilters')}
+              </button>
+            </div>
             <div className="flex flex-wrap gap-3">
               <select
                 className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
                 onChange={(event) => setType(event.target.value)}
                 value={type}
               >
-                <option value="all">{t('legacy.all_types')}</option>
-                <option value="draft">{t('legacy.drafts')}</option>
-                <option value="release">{t('legacy.releases')}</option>
-                <option value="studio">{t('legacy.studios')}</option>
+                <option value="all">{t('search.filters.allTypes')}</option>
+                <option value="draft">{t('search.filters.drafts')}</option>
+                <option value="release">{t('search.filters.releases')}</option>
+                <option value="studio">{t('search.filters.studios')}</option>
               </select>
               <select
                 className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
@@ -465,11 +500,13 @@ function SearchPageContent() {
                 onChange={(event) => setIntent(event.target.value)}
                 value={intent}
               >
-                <option value="all">{t('legacy.all_intents')}</option>
-                <option value="needs_help">{t('legacy.needs_help_2')}</option>
-                <option value="seeking_pr">{t('legacy.seeking_pr_2')}</option>
+                <option value="all">{t('search.filters.allIntents')}</option>
+                <option value="needs_help">{t('feed.needsHelp')}</option>
+                <option value="seeking_pr">
+                  {t('search.filters.seekingPr')}
+                </option>
                 <option value="ready_for_review">
-                  {t('legacy.ready_for_review_2')}
+                  {t('feed.readyForReview')}
                 </option>
               </select>
               <select
@@ -477,19 +514,19 @@ function SearchPageContent() {
                 onChange={(event) => setSort(event.target.value)}
                 value={sort}
               >
-                <option value="relevance">{t('legacy.relevance')}</option>
-                <option value="recency">{t('legacy.recency')}</option>
+                <option value="relevance">{t('search.sort.relevance')}</option>
+                <option value="recency">{t('search.sort.recency')}</option>
                 <option value="glowup">GlowUp</option>
-                <option value="impact">{t('legacy.impact')}</option>
+                <option value="impact">{t('search.sort.impact')}</option>
               </select>
               <select
                 className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
                 onChange={(event) => setRange(event.target.value)}
                 value={range}
               >
-                <option value="all">{t('legacy.all_time')}</option>
-                <option value="7d">{t('legacy.last_7_days')}</option>
-                <option value="30d">{t('legacy.last_30_days')}</option>
+                <option value="all">{t('search.range.allTime')}</option>
+                <option value="7d">{t('search.range.last7Days')}</option>
+                <option value="30d">{t('search.range.last30Days')}</option>
               </select>
             </div>
           </>
@@ -498,30 +535,54 @@ function SearchPageContent() {
             <input
               className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
               onChange={(event) => setVisualDraftId(event.target.value)}
-              placeholder={t('legacy.draft_id_optional_2')}
+              placeholder={t('search.placeholders.draftIdOptional')}
               value={visualDraftId}
             />
             <textarea
               className="min-h-[120px] rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground text-sm placeholder:text-muted-foreground/70"
               onChange={(event) => setVisualEmbedding(event.target.value)}
-              placeholder={t('legacy.embedding_json_array_e_g_0_1')}
+              placeholder={t('search.placeholders.embedding')}
               value={visualEmbedding}
             />
             <input
               className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
               onChange={(event) => setVisualTags(event.target.value)}
-              placeholder={t('legacy.style_tags_comma_separated')}
+              placeholder={t('search.placeholders.styleTags')}
               value={visualTags}
             />
+            <div className="flex flex-wrap items-center gap-2">
+              {VISUAL_TAG_PRESETS.map((preset) => (
+                <button
+                  className="rounded-full border border-border bg-muted/70 px-3 py-1 text-muted-foreground text-xs transition hover:border-primary/40 hover:text-foreground"
+                  key={preset}
+                  onClick={() => setVisualTags(preset)}
+                  type="button"
+                >
+                  {preset}
+                </button>
+              ))}
+              <button
+                className="rounded-full border border-border bg-background/70 px-3 py-1 text-muted-foreground text-xs transition hover:border-primary/40 hover:text-foreground"
+                onClick={() => {
+                  setVisualDraftId('');
+                  setVisualEmbedding('');
+                  setVisualTags('');
+                  setVisualType('all');
+                }}
+                type="button"
+              >
+                {t('search.actions.resetFilters')}
+              </button>
+            </div>
             <div className="flex flex-wrap gap-3">
               <select
                 className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
                 onChange={(event) => setVisualType(event.target.value)}
                 value={visualType}
               >
-                <option value="all">{t('legacy.all_types')}</option>
-                <option value="draft">{t('legacy.drafts')}</option>
-                <option value="release">{t('legacy.releases')}</option>
+                <option value="all">{t('search.filters.allTypes')}</option>
+                <option value="draft">{t('search.filters.drafts')}</option>
+                <option value="release">{t('search.filters.releases')}</option>
               </select>
               <button
                 className="rounded-lg border border-primary/45 bg-primary/15 px-4 py-2 text-primary text-sm transition hover:border-primary/70 disabled:opacity-60"
@@ -529,11 +590,11 @@ function SearchPageContent() {
                 onClick={runVisualSearch}
                 type="button"
               >
-                {t('legacy.run_visual_search')}
+                {t('search.actions.runVisualSearch')}
               </button>
             </div>
             <p className="text-muted-foreground text-xs">
-              {t('legacy.provide_either_a_draft_id_or_an')}
+              {t('search.help.provideEither')}
             </p>
           </>
         )}
@@ -563,12 +624,12 @@ function SearchPageContent() {
           !visualNotice &&
           !loading && (
             <div className="rounded-xl border border-border bg-muted/60 p-3 text-muted-foreground text-xs">
-              {t('legacy.search_completed_no_results')}
+              {t('search.states.completedNoResults')}
             </div>
           )}
         {loading ? (
           <p className="text-muted-foreground text-xs">
-            {t('legacy.searching')}
+            {t('search.states.searching')}
           </p>
         ) : (
           <ul className="grid gap-3">
@@ -623,7 +684,7 @@ function SearchPageContent() {
                           />
                         ) : (
                           <div className="flex h-20 w-full items-center justify-center rounded-lg bg-muted font-semibold text-[11px] text-muted-foreground">
-                            {t('legacy.before')}
+                            {t('common.before')}
                           </div>
                         )}
                         {result.afterImageUrl ? (
@@ -638,13 +699,14 @@ function SearchPageContent() {
                           />
                         ) : (
                           <div className="flex h-20 w-full items-center justify-center rounded-lg bg-muted font-semibold text-[11px] text-muted-foreground">
-                            {t('legacy.after')}
+                            {t('common.after')}
                           </div>
                         )}
                       </div>
                     )}
                     <p className="text-muted-foreground text-xs">
-                      {t('legacy.score')} {Number(result.score ?? 0).toFixed(1)}
+                      {t('search.result.score')}{' '}
+                      {Number(result.score ?? 0).toFixed(1)}
                     </p>
                     {typeof result.glowUpScore === 'number' && (
                       <p className="text-muted-foreground text-xs">
@@ -657,7 +719,7 @@ function SearchPageContent() {
             })}
             {results.length === 0 && (
               <li className="text-muted-foreground text-xs">
-                {t('legacy.no_results_yet')}
+                {t('search.states.noResultsYet')}
               </li>
             )}
           </ul>
@@ -674,7 +736,7 @@ export default function SearchPage() {
     <Suspense
       fallback={
         <main className="card p-6 text-muted-foreground text-sm">
-          {t('legacy.loading_search')}
+          {t('search.states.loadingSearch')}
         </main>
       }
     >

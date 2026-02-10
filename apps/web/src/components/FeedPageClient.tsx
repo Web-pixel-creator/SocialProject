@@ -21,13 +21,13 @@ export default function FeedPageClient() {
             <div>
               <p className="mb-2 inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wide">
                 <Sparkles aria-hidden="true" className="h-3 w-3" />
-                {t('legacy.observer_feed_shell')}
+                {t('feed.observerShell')}
               </p>
               <h2 className="font-semibold text-2xl text-foreground md:text-3xl">
-                {t('legacy.feeds')}
+                {t('header.feeds')}
               </h2>
               <p className="max-w-3xl text-muted-foreground text-sm md:text-base">
-                {t('legacy.follow_progress_chains_pr_battles_live_changes')}
+                {t('feed.observerDescription')}
               </p>
             </div>
             <div className="grid w-full gap-2 sm:w-auto">
@@ -37,11 +37,9 @@ export default function FeedPageClient() {
                   className="mr-2 h-4 w-4 text-muted-foreground/70"
                 />
                 <input
-                  aria-label={t('legacy.search_text_visual')}
+                  aria-label={t('feed.searchAriaLabel')}
                   className="w-full bg-transparent text-foreground text-sm outline-none placeholder:text-muted-foreground/60"
-                  placeholder={t(
-                    'legacy.search_drafts_studios_prs_text_visual',
-                  )}
+                  placeholder={t('feed.searchPlaceholderExtended')}
                   type="search"
                 />
                 <span className="ml-2 inline-flex items-center gap-1 rounded-md border border-border bg-background/60 px-1.5 py-0.5 font-semibold text-[10px] text-muted-foreground">
@@ -56,7 +54,7 @@ export default function FeedPageClient() {
                   type="button"
                 >
                   <Menu aria-hidden="true" className="mr-2 h-4 w-4" />
-                  {t('legacy.menu')}
+                  {t('common.menu')}
                 </button>
               </div>
             </div>
@@ -67,13 +65,13 @@ export default function FeedPageClient() {
                 aria-hidden="true"
                 className="icon-breathe inline-flex h-2.5 w-2.5 rounded-full bg-secondary"
               />
-              {t('legacy.live_websocket_connected')}
+              {t('rail.liveWsConnected')}
             </span>
             <span className="rounded-full border border-primary/35 bg-primary/10 px-3 py-1 font-semibold text-[11px] text-primary uppercase tracking-wide">
-              {t('legacy.observer_stream')}
+              {t('feed.observerStream')}
             </span>
             <span className="rounded-full border border-border bg-muted px-3 py-1 font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
-              {t('legacy.application_shell')}
+              {t('common.applicationShell')}
             </span>
           </div>
         </header>
@@ -81,7 +79,7 @@ export default function FeedPageClient() {
         <Suspense
           fallback={
             <div className="card p-6 text-muted-foreground text-sm">
-              {t('legacy.loading_feed')}
+              {t('feed.loading')}
             </div>
           }
         >
@@ -102,7 +100,7 @@ export default function FeedPageClient() {
                 className="font-semibold text-foreground text-lg"
                 id="mobile-observer-nav-title"
               >
-                {t('legacy.observer_navigation')}
+                {t('sidebar.observerNavigation')}
               </h3>
               <button
                 className="inline-flex items-center rounded-full border border-border bg-muted px-3 py-1.5 font-semibold text-foreground text-xs"
@@ -110,7 +108,7 @@ export default function FeedPageClient() {
                 type="button"
               >
                 <X aria-hidden="true" className="mr-1 h-4 w-4" />
-                {t('legacy.close')}
+                {t('common.close')}
               </button>
             </div>
             <ObserverSidebar

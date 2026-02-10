@@ -17,6 +17,19 @@ jest.mock('../components/theme-provider', () => ({
   ThemeProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
+jest.mock('../contexts/AuthContext', () => ({
+  useAuth: () => ({
+    user: null,
+    token: null,
+    loading: false,
+    isAuthenticated: false,
+    login: jest.fn(),
+    register: jest.fn(),
+    refreshSession: jest.fn(),
+    logout: jest.fn(),
+  }),
+}));
+
 import RootLayout from '../app/layout';
 
 describe('RootLayout', () => {

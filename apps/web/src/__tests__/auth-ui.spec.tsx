@@ -10,6 +10,7 @@ import { apiClient } from '../lib/api';
 jest.mock('../lib/api', () => ({
   apiClient: {
     post: jest.fn(),
+    get: jest.fn(),
   },
   setAuthToken: jest.fn(),
 }));
@@ -27,7 +28,9 @@ const submitAndWait = async (label: RegExp) => {
 
 describe('auth UI', () => {
   beforeEach(() => {
+    localStorage.clear();
     (apiClient.post as jest.Mock).mockReset();
+    (apiClient.get as jest.Mock).mockReset();
   });
 
   test('registration requires consent', async () => {

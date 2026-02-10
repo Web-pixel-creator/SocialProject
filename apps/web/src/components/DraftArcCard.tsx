@@ -41,7 +41,7 @@ export const DraftArcCard = ({
   if (loading) {
     return (
       <div className="card p-4 text-muted-foreground text-xs">
-        {t('legacy.loading_arc')}
+        {t('arc.loading')}
       </div>
     );
   }
@@ -49,7 +49,7 @@ export const DraftArcCard = ({
   if (error) {
     return (
       <div className="card p-4">
-        <p className="pill">{t('legacy.draft_arc')}</p>
+        <p className="pill">{t('arc.title')}</p>
         <p className="mt-3 text-rose-600 text-xs">{error}</p>
       </div>
     );
@@ -58,36 +58,34 @@ export const DraftArcCard = ({
   if (!summary) {
     return (
       <div className="card p-4">
-        <p className="pill">{t('legacy.draft_arc')}</p>
-        <p className="mt-3 text-muted-foreground text-xs">
-          {t('legacy.no_arc_data_yet')}
-        </p>
+        <p className="pill">{t('arc.title')}</p>
+        <p className="mt-3 text-muted-foreground text-xs">{t('arc.noData')}</p>
       </div>
     );
   }
 
   const stateLabel = (() => {
     if (summary.state === 'needs_help') {
-      return t('legacy.needs_help');
+      return t('feed.needsHelp');
     }
     if (summary.state === 'in_progress') {
-      return t('legacy.in_progress');
+      return t('pr.inProgress');
     }
     if (summary.state === 'ready_for_review') {
-      return t('legacy.ready_for_review_3');
+      return t('feed.readyForReview');
     }
-    return t('legacy.released');
+    return t('pr.released');
   })();
   const stateTone = stateToTone[summary.state] ?? 'bg-muted/60 text-foreground';
   const lastMerge = summary.lastMergeAt
     ? new Date(summary.lastMergeAt).toLocaleString()
-    : t('legacy.no_merges_yet');
+    : t('pr.noMerges');
   const updatedAt = new Date(summary.updatedAt).toLocaleString();
 
   return (
     <div className="card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="pill">{t('legacy.draft_arc')}</p>
+        <p className="pill">{t('arc.title')}</p>
         <span
           className={`rounded-full px-2 py-1 font-semibold text-[10px] ${stateTone}`}
         >
@@ -100,7 +98,7 @@ export const DraftArcCard = ({
       <div className="mt-3 grid grid-cols-2 gap-2 text-muted-foreground text-xs">
         <div className="rounded-lg border border-border bg-background/70 p-2">
           <p className="text-[10px] text-muted-foreground uppercase">
-            {t('legacy.open_fixes')}
+            {t('feed.openFixes')}
           </p>
           <p className="mt-1 font-semibold text-foreground text-sm">
             {summary.fixOpenCount}
@@ -108,7 +106,7 @@ export const DraftArcCard = ({
         </div>
         <div className="rounded-lg border border-border bg-background/70 p-2">
           <p className="text-[10px] text-muted-foreground uppercase">
-            {t('legacy.pending_prs')}
+            {t('feed.pendingPRs')}
           </p>
           <p className="mt-1 font-semibold text-foreground text-sm">
             {summary.prPendingCount}
@@ -116,10 +114,10 @@ export const DraftArcCard = ({
         </div>
       </div>
       <p className="mt-3 text-[11px] text-muted-foreground">
-        {t('legacy.last_merge')} {lastMerge}
+        {t('pr.lastMerge')} {lastMerge}
       </p>
       <p className="text-[11px] text-muted-foreground">
-        {t('legacy.updated')} {updatedAt}
+        {t('pr.updated')} {updatedAt}
       </p>
     </div>
   );

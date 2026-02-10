@@ -1,7 +1,7 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CommissionForm } from '../../components/CommissionForm';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { apiClient } from '../../lib/api';
@@ -21,6 +21,9 @@ export default function CommissionsPage() {
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [paymentFilter, setPaymentFilter] = useState('all');
 
   const loadCommissions = useCallback(async () => {
     setLoading(true);
@@ -28,10 +31,8 @@ export default function CommissionsPage() {
     try {
       const response = await apiClient.get('/commissions');
       setCommissions(response.data ?? []);
-    } catch (error: unknown) {
-      setError(
-        getApiErrorMessage(error, t('legacy.failed_to_load_commissions')),
-      );
+    } catch (typedError: unknown) {
+      setError(getApiErrorMessage(typedError, t('commission.errors.loadList')));
     } finally {
       setLoading(false);
     }
@@ -41,29 +42,162 @@ export default function CommissionsPage() {
     loadCommissions();
   }, [loadCommissions]);
 
+  const statusOptions = useMemo(() => {
+    const options = new Set<string>();
+    for (const commission of commissions) {
+      options.add(commission.status);
+    }
+    return Array.from(options).sort((a, b) => a.localeCompare(b));
+  }, [commissions]);
+
+  const paymentOptions = useMemo(() => {
+    const options = new Set<string>();
+    for (const commission of commissions) {
+      options.add(commission.paymentStatus);
+    }
+    return Array.from(options).sort((a, b) => a.localeCompare(b));
+  }, [commissions]);
+
+  const filteredCommissions = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+    const filtered: Commission[] = [];
+
+    for (const commission of commissions) {
+      const matchesSearch =
+        normalizedSearch.length === 0 ||
+        commission.description.toLowerCase().includes(normalizedSearch) ||
+        commission.id.toLowerCase().includes(normalizedSearch);
+      const matchesStatus =
+        statusFilter === 'all' || commission.status === statusFilter;
+      const matchesPayment =
+        paymentFilter === 'all' || commission.paymentStatus === paymentFilter;
+
+      if (matchesSearch && matchesStatus && matchesPayment) {
+        filtered.push(commission);
+      }
+    }
+
+    return filtered;
+  }, [commissions, paymentFilter, search, statusFilter]);
+
+  const summary = useMemo(() => {
+    let pending = 0;
+    let released = 0;
+
+    for (const commission of commissions) {
+      const status = commission.status.toLowerCase();
+      if (status === 'pending') {
+        pending += 1;
+      }
+      if (status === 'released' || status === 'completed') {
+        released += 1;
+      }
+    }
+
+    return {
+      pending,
+      released,
+      total: commissions.length,
+    };
+  }, [commissions]);
+
   return (
     <main className="grid gap-6">
       <div className="card p-6">
-        <h2 className="font-semibold text-2xl text-foreground">
-          {t('legacy.commissions')}
-        </h2>
-        <p className="text-muted-foreground text-sm">
-          {t('legacy.request_ai_studios_to_fulfill_creative_briefs')}
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold text-2xl text-foreground">
+              {t('header.commissions')}
+            </h2>
+            <p className="text-muted-foreground text-sm">
+              {t('commission.subtitle')}
+            </p>
+          </div>
+          <button
+            className="rounded-full border border-border bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60"
+            onClick={loadCommissions}
+            type="button"
+          >
+            {t('rail.resyncNow')}
+          </button>
+        </div>
       </div>
+
+      <section className="grid gap-3 sm:grid-cols-3">
+        <div className="card p-4">
+          <p className="text-muted-foreground text-xs">
+            {t('commission.summary.total')}
+          </p>
+          <p className="font-semibold text-2xl text-foreground">
+            {summary.total}
+          </p>
+        </div>
+        <div className="card p-4">
+          <p className="text-muted-foreground text-xs">
+            {t('commission.summary.pending')}
+          </p>
+          <p className="font-semibold text-2xl text-foreground">
+            {summary.pending}
+          </p>
+        </div>
+        <div className="card p-4">
+          <p className="text-muted-foreground text-xs">
+            {t('commission.summary.released')}
+          </p>
+          <p className="font-semibold text-2xl text-foreground">
+            {summary.released}
+          </p>
+        </div>
+      </section>
+
       <CommissionForm onCreated={loadCommissions} />
-      {error && (
+
+      <section className="card grid gap-3 p-4 sm:grid-cols-3">
+        <input
+          className="rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70"
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder={t('search.placeholders.keyword')}
+          value={search}
+        />
+        <select
+          className="rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
+          onChange={(event) => setStatusFilter(event.target.value)}
+          value={statusFilter}
+        >
+          <option value="all">{t('feed.all')}</option>
+          {statusOptions.map((status) => (
+            <option key={status} value={status}>
+              {status}
+            </option>
+          ))}
+        </select>
+        <select
+          className="rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
+          onChange={(event) => setPaymentFilter(event.target.value)}
+          value={paymentFilter}
+        >
+          <option value="all">{t('feed.all')}</option>
+          {paymentOptions.map((status) => (
+            <option key={status} value={status}>
+              {status}
+            </option>
+          ))}
+        </select>
+      </section>
+
+      {error ? (
         <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-destructive text-xs">
           {error}
         </div>
-      )}
+      ) : null}
+
       {loading ? (
         <div className="card p-4 text-muted-foreground text-sm">
-          {t('legacy.loading_commissions')}
+          {t('commission.states.loadingList')}
         </div>
       ) : (
         <section className="grid gap-4 md:grid-cols-2">
-          {commissions.map((commission) => (
+          {filteredCommissions.map((commission) => (
             <Link
               className="card p-4"
               href={`/commissions/${commission.id}`}
@@ -76,21 +210,21 @@ export default function CommissionsPage() {
                 {commission.description}
               </p>
               <p className="text-muted-foreground text-xs">
-                {t('legacy.reward_2')}{' '}
+                {t('commission.labels.reward')}{' '}
                 {commission.rewardAmount
                   ? `${commission.rewardAmount} ${commission.currency ?? 'USD'}`
-                  : t('legacy.n_a')}
+                  : t('commission.labels.na')}
               </p>
               <p className="text-muted-foreground text-xs">
-                {t('legacy.payment')} {commission.paymentStatus}
+                {t('commission.labels.payment')} {commission.paymentStatus}
               </p>
             </Link>
           ))}
-          {commissions.length === 0 && (
+          {filteredCommissions.length === 0 ? (
             <div className="card p-4 text-muted-foreground text-sm">
-              {t('legacy.no_commissions_yet')}
+              {t('commission.states.empty')}
             </div>
-          )}
+          ) : null}
         </section>
       )}
     </main>

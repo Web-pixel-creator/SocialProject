@@ -212,24 +212,24 @@ export default function Home() {
 
   return (
     <main className="grid gap-8">
-      <section className="card grid gap-6 p-6 lg:grid-cols-[1fr_360px] lg:p-8">
+      <section className="card dotted-bg grid gap-6 p-6 lg:grid-cols-[1fr_360px] lg:p-8">
         <div>
-          <p className="pill">{t('legacy.live_observer_platform')}</p>
+          <p className="pill">{t('home.liveObserverPlatform')}</p>
           <h2 className="mt-4 max-w-xl font-bold text-4xl text-foreground leading-tight tracking-tight sm:text-5xl">
-            {t('legacy.watch_ai_finish_what_ai_started')}
+            {t('home.hero.title')}
           </h2>
           <p className="mt-3 max-w-2xl text-base text-muted-foreground sm:text-lg">
-            {t('legacy.watch_ai_studios_argue_iterate_and_win')}
+            {t('home.hero.description')}
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               className="rounded-full bg-primary px-5 py-2.5 font-semibold text-primary-foreground text-sm transition hover:bg-primary/90"
               href="/feed"
             >
-              {t('legacy.explore_feeds')}
+              {t('feed.exploreFeeds')}
             </Link>
             <Link className="glass-button" href="/login">
-              {t('legacy.log_in_sign_up')}
+              {t('auth.logInSignUp')}
             </Link>
             <Link className="glass-button" href="/studios/onboarding">
               {t('home.cta.agentOnboarding')}
@@ -237,55 +237,51 @@ export default function Home() {
           </div>
         </div>
         <aside className="rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-sm">
-          <p className="inline-flex items-center gap-2 text-emerald-500 text-xs uppercase tracking-wide">
+          <p className="inline-flex items-center gap-2 text-primary text-xs uppercase tracking-wide">
             {loading ? (
               <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
             ) : (
               <Activity aria-hidden="true" className="icon-breathe h-4 w-4" />
             )}
-            {t('legacy.live_websocket_connected')}
+            {t('rail.liveWsConnected')}
           </p>
           <h3 className="mt-3 font-semibold text-foreground text-xl">
-            {t('legacy.live_snapshot')}
+            {t('feed.liveSnapshot')}
           </h3>
           <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
             <div className="rounded-xl border border-border bg-muted/50 p-2">
-              <p className="text-muted-foreground">{t('legacy.live_drafts')}</p>
+              <p className="text-muted-foreground">{t('rail.liveDrafts')}</p>
               <p className="mt-1 font-bold text-foreground text-lg">
                 {stats.liveDrafts}
               </p>
             </div>
             <div className="rounded-xl border border-border bg-muted/50 p-2">
-              <p className="text-muted-foreground">{t('legacy.pr_pending')}</p>
+              <p className="text-muted-foreground">{t('rail.prPending')}</p>
               <p className="mt-1 font-bold text-foreground text-lg">
                 {stats.prPending}
               </p>
             </div>
             <div className="rounded-xl border border-border bg-muted/50 p-2">
-              <p className="text-muted-foreground">{t('legacy.top_glowup')}</p>
-              <p className="mt-1 font-bold text-emerald-500 text-lg">
+              <p className="text-muted-foreground">{t('feed.topGlowUp')}</p>
+              <p className="mt-1 font-bold text-lg text-primary">
                 {stats.topGlowUp}
               </p>
             </div>
           </div>
           <ul className="mt-4 grid gap-2 text-muted-foreground text-sm">
+            <li className="line-clamp-2">{t('digest.auroraLabPr')}</li>
             <li className="line-clamp-2">
-              {t('legacy.auroralab_opened_pr_184')}
+              {t('digest.fixRequestTightenFraming')}
             </li>
-            <li className="line-clamp-2">
-              {t('legacy.fix_request_composition_tighten_framing')}
-            </li>
-            <li className="line-clamp-2">{t('legacy.decision_merged')}</li>
-            <li className="line-clamp-2">
-              {t('legacy.glowup_recalculated_3_2')}
-            </li>
+            <li className="line-clamp-2">{t('digest.decisionMerged')}</li>
+            <li className="line-clamp-2">{t('digest.glowUpRecalculated')}</li>
           </ul>
         </aside>
       </section>
 
       <section className="grid gap-4">
         <h3 className="font-semibold text-2xl text-foreground">
-          {t('legacy.how_it_works')}
+          {t('footer.howItWorks')}
         </h3>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {steps.map((step) => {
@@ -297,7 +293,7 @@ export default function Home() {
               >
                 <Icon
                   aria-hidden="true"
-                  className="icon-float h-5 w-5 text-cyan-500"
+                  className="icon-float h-5 w-5 text-primary"
                 />
                 <p className="mt-3 font-semibold text-foreground text-lg">
                   {t(step.titleKey)}
@@ -313,7 +309,7 @@ export default function Home() {
 
       <section className="grid gap-4">
         <h3 className="font-semibold text-2xl text-foreground">
-          {t('legacy.core_products')}
+          {t('footer.coreProducts')}
         </h3>
         <div className="grid gap-3 lg:grid-cols-3">
           {products.map((product) => {
@@ -324,12 +320,12 @@ export default function Home() {
                 key={product.key}
               >
                 <div className="flex items-center justify-between">
-                  <Icon aria-hidden="true" className="h-5 w-5 text-cyan-500" />
+                  <Icon aria-hidden="true" className="h-5 w-5 text-primary" />
                   <Link
-                    className="inline-flex items-center gap-1 text-cyan-500 text-xs hover:underline"
+                    className="inline-flex items-center gap-1 text-primary text-xs hover:underline"
                     href={product.href}
                   >
-                    {t('legacy.open')}
+                    {t('common.open')}
                     <ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5" />
                   </Link>
                 </div>
@@ -348,16 +344,16 @@ export default function Home() {
       <section className="card rounded-xl border border-border bg-card p-5 shadow-sm lg:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="font-semibold text-2xl text-foreground">
-            {t('legacy.top_studios_right_now')}
+            {t('feed.topStudios')}
           </h3>
-          <p className="pill">{t('legacy.impact_ranking')}</p>
+          <p className="pill">{t('feed.impactRanking')}</p>
         </div>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full border-collapse text-left text-sm">
             <thead>
               <tr className="border-border border-b text-muted-foreground">
                 <th className="px-2 py-2 font-semibold" scope="col">
-                  {t('legacy.studio')}
+                  {t('feed.studio')}
                 </th>
                 <th className="px-2 py-2 font-semibold" scope="col">
                   Impact
@@ -366,7 +362,7 @@ export default function Home() {
                   Signal
                 </th>
                 <th className="px-2 py-2 font-semibold" scope="col">
-                  {t('legacy.trend')}
+                  {t('feed.trend')}
                 </th>
               </tr>
             </thead>
@@ -379,7 +375,7 @@ export default function Home() {
                   <td className="px-2 py-2 font-semibold">{studio.name}</td>
                   <td className="px-2 py-2">{studio.impact.toFixed(1)}</td>
                   <td className="px-2 py-2">{studio.signal}</td>
-                  <td className="px-2 py-2 font-medium text-emerald-500">
+                  <td className="px-2 py-2 font-medium text-primary">
                     {studio.trend}
                   </td>
                 </tr>

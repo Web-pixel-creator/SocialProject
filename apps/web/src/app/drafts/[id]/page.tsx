@@ -211,7 +211,7 @@ export default function DraftDetailPage() {
       }
     } catch (error: unknown) {
       setArcView(null);
-      setArcError(getApiErrorMessage(error, t('legacy.failed_to_load_arc')));
+      setArcError(getApiErrorMessage(error, t('draftDetail.errors.loadArc')));
     } finally {
       setArcLoading(false);
     }
@@ -253,7 +253,7 @@ export default function DraftDetailPage() {
         setDigestEntries([]);
       } else {
         setDigestError(
-          getApiErrorMessage(error, t('legacy.failed_to_load_digest')),
+          getApiErrorMessage(error, t('draftDetail.errors.loadDigest')),
         );
         setDigestEntries([]);
       }
@@ -289,7 +289,7 @@ export default function DraftDetailPage() {
           setPredictionError(
             getApiErrorMessage(
               error,
-              t('legacy.failed_to_load_prediction_summary'),
+              t('draftDetail.errors.loadPredictionSummary'),
             ),
           );
           setPredictionSummary(null);
@@ -309,11 +309,11 @@ export default function DraftDetailPage() {
     setDemoStatus(null);
     try {
       await apiClient.post('/demo/flow', { draftId });
-      setDemoStatus(t('legacy.demo_flow_complete_new_fix_request_and'));
+      setDemoStatus(t('draftDetail.status.demoFlowComplete'));
       await Promise.all([loadDraft(), loadFixRequests(), loadPullRequests()]);
     } catch (error: unknown) {
       setDemoStatus(
-        getApiErrorMessage(error, t('legacy.failed_to_run_demo_flow')),
+        getApiErrorMessage(error, t('draftDetail.errors.runDemoFlow')),
       );
     } finally {
       setDemoLoading(false);
@@ -326,10 +326,10 @@ export default function DraftDetailPage() {
     }
     try {
       await navigator.clipboard.writeText(draftId);
-      setCopyStatus(t('legacy.copied'));
+      setCopyStatus(t('draftDetail.copy.copied'));
       setTimeout(() => setCopyStatus(null), 2000);
     } catch (_error) {
-      setCopyStatus(t('legacy.copy_failed'));
+      setCopyStatus(t('draftDetail.copy.failed'));
       setTimeout(() => setCopyStatus(null), 2000);
     }
   };
@@ -337,7 +337,7 @@ export default function DraftDetailPage() {
   const loadSimilarDrafts = useCallback(async () => {
     if (!draftId) {
       setSimilarDrafts([]);
-      setSimilarStatus(t('legacy.draft_id_missing'));
+      setSimilarStatus(t('draftDetail.errors.missingDraftId'));
       return;
     }
     setSimilarLoading(true);
@@ -350,7 +350,7 @@ export default function DraftDetailPage() {
       const items = response.data ?? [];
       setSimilarDrafts(items);
       if (items.length === 0) {
-        setSimilarStatus(t('legacy.no_similar_drafts_yet'));
+        setSimilarStatus(t('draftDetail.similar.noResults'));
         sendTelemetry({
           eventType: 'similar_search_empty',
           draftId,
@@ -369,12 +369,12 @@ export default function DraftDetailPage() {
       const code = getApiErrorCode(error);
       const reason = code ?? 'error';
       if (code === 'EMBEDDING_NOT_FOUND') {
-        setSimilarStatus(t('legacy.similar_works_available_after_analysis'));
+        setSimilarStatus(t('draftDetail.similar.availableAfterAnalysis'));
       } else if (code === 'DRAFT_NOT_FOUND') {
-        setSimilarStatus(t('legacy.draft_not_found'));
+        setSimilarStatus(t('draftDetail.errors.draftNotFound'));
       } else {
         setSimilarStatus(
-          getApiErrorMessage(error, t('legacy.failed_to_load_similar_drafts')),
+          getApiErrorMessage(error, t('draftDetail.errors.loadSimilar')),
         );
       }
       setSimilarDrafts([]);
@@ -405,7 +405,9 @@ export default function DraftDetailPage() {
         ]);
       } catch (error: unknown) {
         if (!cancelled) {
-          setError(getApiErrorMessage(error, t('legacy.failed_to_load_draft')));
+          setError(
+            getApiErrorMessage(error, t('draftDetail.errors.loadDraft')),
+          );
         }
       } finally {
         if (!cancelled) {
@@ -496,7 +498,7 @@ export default function DraftDetailPage() {
         setObserverAuthRequired(true);
       } else {
         setPredictionError(
-          getApiErrorMessage(error, t('legacy.failed_to_submit_prediction')),
+          getApiErrorMessage(error, t('draftDetail.errors.submitPrediction')),
         );
       }
     } finally {
@@ -573,25 +575,25 @@ export default function DraftDetailPage() {
   const formatEventMessage = useCallback(
     (eventType: string, payload: Record<string, unknown>) => {
       if (eventType === 'fix_request') {
-        return t('legacy.new_fix_request_submitted');
+        return t('draftDetail.events.newFixRequest');
       }
       if (eventType === 'pull_request') {
-        return t('legacy.new_pull_request_submitted');
+        return t('draftDetail.events.newPullRequest');
       }
       if (eventType === 'pull_request_decision') {
         const decision = String(payload?.decision ?? 'updated').replace(
           '_',
           ' ',
         );
-        return `${t('legacy.pull_request')} ${decision}`;
+        return `${t('draftDetail.events.pullRequest')} ${decision}`;
       }
       if (eventType === 'glowup_update') {
-        return t('legacy.glowup_score_updated');
+        return t('draftDetail.events.glowUpUpdated');
       }
       if (eventType === 'draft_released') {
-        return t('legacy.draft_released');
+        return t('draftDetail.events.draftReleased');
       }
-      return t('legacy.draft_activity_updated');
+      return t('draftDetail.events.draftActivityUpdated');
     },
     [t],
   );
@@ -648,18 +650,18 @@ export default function DraftDetailPage() {
   const statusInfo = (() => {
     if (pendingPull) {
       return {
-        label: t('legacy.ready_for_review'),
+        label: t('draftDetail.status.readyForReview'),
         tone: 'bg-amber-100 text-amber-800',
       };
     }
     if (hasFixRequests) {
       return {
-        label: t('legacy.seeking_pr'),
+        label: t('draftDetail.status.seekingPr'),
         tone: 'bg-muted/70 text-foreground',
       };
     }
     return {
-      label: t('legacy.needs_help'),
+      label: t('draftDetail.status.needsHelp'),
       tone: 'bg-rose-500/15 text-rose-500',
     };
   })();
@@ -670,26 +672,26 @@ export default function DraftDetailPage() {
     }
     if (pendingPull) {
       return {
-        title: t('legacy.review_pending_pr'),
-        description: t('legacy.a_pull_request_is_waiting_for_review'),
-        ctaLabel: t('legacy.open_pr'),
+        title: t('draftDetail.nextAction.reviewPendingPr.title'),
+        description: t('draftDetail.nextAction.reviewPendingPr.description'),
+        ctaLabel: t('draftDetail.nextAction.reviewPendingPr.cta'),
         href: `/pull-requests/${pendingPull.id}`,
       };
     }
     if (hasFixRequests) {
       return {
-        title: t('legacy.share_draft_for_pr'),
-        description: t('legacy.fix_requests_are_ready_share_the_draft'),
-        ctaLabel: copyStatus ?? t('legacy.copy_draft_id'),
+        title: t('draftDetail.nextAction.shareForPr.title'),
+        description: t('draftDetail.nextAction.shareForPr.description'),
+        ctaLabel: copyStatus ?? t('draftDetail.nextAction.shareForPr.cta'),
         onClick: copyDraftId,
       };
     }
     return {
-      title: t('legacy.start_critique'),
-      description: t('legacy.no_fix_requests_yet_run_a_demo'),
+      title: t('draftDetail.nextAction.startCritique.title'),
+      description: t('draftDetail.nextAction.startCritique.description'),
       ctaLabel: demoLoading
-        ? t('legacy.running_demo')
-        : t('legacy.run_demo_flow'),
+        ? t('draftDetail.actions.runningDemo')
+        : t('draftDetail.actions.runDemoFlow'),
       onClick: runDemoFlow,
     };
   })();
@@ -697,10 +699,10 @@ export default function DraftDetailPage() {
   return (
     <main className="grid gap-6">
       <div className="card p-6">
-        <p className="pill">{t('legacy.draft_detail')}</p>
+        <p className="pill">{t('draftDetail.header.pill')}</p>
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <h2 className="font-semibold text-2xl text-foreground">
-            {draftId ? `${t('legacy.draft')} ${draftId}` : t('legacy.draft')}
+            {draftId ? `${t('common.draft')} ${draftId}` : t('common.draft')}
           </h2>
           {draft && (
             <span
@@ -711,7 +713,7 @@ export default function DraftDetailPage() {
           )}
         </div>
         <p className="text-muted-foreground text-sm">
-          {t('legacy.track_every_critique_and_pr_in_real')}{' '}
+          {t('draftDetail.header.subtitle')}{' '}
           {draft ? `GlowUp ${draft.glowUpScore.toFixed(1)}` : ''}
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -721,7 +723,9 @@ export default function DraftDetailPage() {
             onClick={runDemoFlow}
             type="button"
           >
-            {demoLoading ? t('legacy.running_demo') : t('legacy.run_demo_flow')}
+            {demoLoading
+              ? t('draftDetail.actions.runningDemo')
+              : t('draftDetail.actions.runDemoFlow')}
           </button>
           {demoStatus && (
             <span className="text-muted-foreground text-xs">{demoStatus}</span>
@@ -735,14 +739,14 @@ export default function DraftDetailPage() {
       )}
       {loading ? (
         <div className="card p-6 text-muted-foreground text-sm">
-          {t('legacy.loading_draft')}
+          {t('draftDetail.loadingDraft')}
         </div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
           <div className="grid gap-6">
             {nextAction && (
               <div className="card p-4">
-                <p className="pill">{t('legacy.next_best_action')}</p>
+                <p className="pill">{t('draftDetail.nextAction.pill')}</p>
                 <h3 className="mt-3 font-semibold text-foreground text-lg">
                   {nextAction.title}
                 </h3>
@@ -803,15 +807,15 @@ export default function DraftDetailPage() {
             <div className="card p-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-foreground text-sm">
-                  {t('legacy.similar_drafts')}
+                  {t('draftDetail.similar.title')}
                 </h3>
                 <span className="text-muted-foreground text-xs">
-                  {t('legacy.visual_match')}
+                  {t('draftDetail.similar.visualMatch')}
                 </span>
               </div>
               {similarLoading && (
                 <p className="mt-3 text-muted-foreground text-xs">
-                  {t('legacy.loading_similar_drafts')}
+                  {t('draftDetail.similar.loading')}
                 </p>
               )}
               {!similarLoading && similarStatus && (
@@ -831,7 +835,7 @@ export default function DraftDetailPage() {
                       </p>
                       <p className="text-foreground text-sm">{item.title}</p>
                       <p className="text-[11px] text-muted-foreground">
-                        {t('legacy.similarity')}{' '}
+                        {t('draftDetail.similar.similarity')}{' '}
                         {Number(item.score ?? 0).toFixed(2)} | GlowUp{' '}
                         {Number(item.glowUpScore ?? 0).toFixed(1)}
                       </p>
@@ -860,7 +864,7 @@ export default function DraftDetailPage() {
                   }
                   scroll={false}
                 >
-                  {t('legacy.see_more_similar')}
+                  {t('draftDetail.similar.seeMore')}
                 </Link>
               </div>
             </div>
@@ -876,16 +880,16 @@ export default function DraftDetailPage() {
               summary={predictionSummary}
             />
             <div className="card p-4">
-              <p className="pill">{t('legacy.follow_chain')}</p>
+              <p className="pill">{t('draftDetail.follow.pill')}</p>
               <h3 className="mt-3 font-semibold text-foreground text-sm">
-                {t('legacy.track_every_change')}
+                {t('draftDetail.follow.title')}
               </h3>
               <p className="text-muted-foreground text-xs">
-                {t('legacy.get_notified_in_app_when_this_draft')}
+                {t('draftDetail.follow.description')}
               </p>
               {observerAuthRequired && (
                 <p className="mt-2 text-muted-foreground text-xs">
-                  {t('legacy.sign_in_as_observer_to_follow_drafts')}
+                  {t('draftDetail.follow.authRequired')}
                 </p>
               )}
               <div className="mt-4">
@@ -899,8 +903,8 @@ export default function DraftDetailPage() {
                   type="button"
                 >
                   {isFollowed
-                    ? t('legacy.following')
-                    : t('legacy.follow_chain')}
+                    ? t('draftDetail.follow.following')
+                    : t('draftDetail.follow.follow')}
                 </button>
               </div>
             </div>
@@ -912,18 +916,18 @@ export default function DraftDetailPage() {
               onMarkSeen={markDigestSeen}
             />
             <div className="card p-4">
-              <p className="pill">{t('legacy.activity')}</p>
+              <p className="pill">{t('draftDetail.activity.pill')}</p>
               <h3 className="mt-3 font-semibold text-foreground text-sm">
-                {t('legacy.in_app_updates')}
+                {t('draftDetail.activity.title')}
               </h3>
               <p className="text-muted-foreground text-xs">
                 {isFollowed
-                  ? t('legacy.updates_appear_when_this_draft_changes')
-                  : t('legacy.follow_the_chain_to_see_updates_here')}
+                  ? t('draftDetail.activity.descriptionFollowing')
+                  : t('draftDetail.activity.descriptionNotFollowing')}
               </p>
               <div className="mt-4 grid gap-2 text-muted-foreground text-xs">
                 {notifications.length === 0 ? (
-                  <span>{t('legacy.no_updates_yet')}</span>
+                  <span>{t('draftDetail.activity.empty')}</span>
                 ) : (
                   notifications.map((note) => (
                     <div

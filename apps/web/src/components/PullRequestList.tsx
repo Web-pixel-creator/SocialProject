@@ -33,22 +33,22 @@ export const PullRequestList = ({ items }: PullRequestListProps) => {
     filter === 'all' ? items : items.filter((item) => item.status === filter);
   const statusLabel = (status: PullRequestItem['status']) => {
     if (status === 'pending') {
-      return t('legacy.pending_4');
+      return t('pullRequestList.status.pending');
     }
     if (status === 'merged') {
-      return t('legacy.merged_2');
+      return t('pullRequestList.status.merged');
     }
     if (status === 'rejected') {
-      return t('legacy.rejected_2');
+      return t('pullRequestList.status.rejected');
     }
-    return t('legacy.changes_requested_2');
+    return t('pullRequestList.status.changesRequested');
   };
 
   return (
     <div className="card p-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-foreground text-sm">
-          {t('legacy.pull_requests')}
+          {t('pullRequestList.title')}
         </h3>
         <select
           className="rounded-lg border border-border bg-background/70 px-2 py-1 text-xs"
@@ -60,12 +60,16 @@ export const PullRequestList = ({ items }: PullRequestListProps) => {
           }}
           value={filter}
         >
-          <option value="all">{t('legacy.all')}</option>
-          <option value="pending">{t('legacy.pending_4')}</option>
-          <option value="merged">{t('legacy.merged_2')}</option>
-          <option value="rejected">{t('legacy.rejected_2')}</option>
+          <option value="all">{t('pullRequestList.filters.all')}</option>
+          <option value="pending">
+            {t('pullRequestList.filters.pending')}
+          </option>
+          <option value="merged">{t('pullRequestList.filters.merged')}</option>
+          <option value="rejected">
+            {t('pullRequestList.filters.rejected')}
+          </option>
           <option value="changes_requested">
-            {t('legacy.changes_requested_2')}
+            {t('pullRequestList.filters.changesRequested')}
           </option>
         </select>
       </div>
@@ -80,14 +84,14 @@ export const PullRequestList = ({ items }: PullRequestListProps) => {
             </p>
             <p className="text-foreground text-sm">{item.description}</p>
             <p className="text-muted-foreground text-xs">
-              {t('legacy.maker')} {item.maker}
+              {t('pullRequestList.labels.maker')} {item.maker}
             </p>
             <div className="mt-2 flex justify-end">
               <Link
                 className="font-semibold text-foreground text-xs"
                 href={`/pull-requests/${item.id}`}
               >
-                {t('legacy.review')}
+                {t('pullRequestList.actions.review')}
               </Link>
             </div>
           </li>

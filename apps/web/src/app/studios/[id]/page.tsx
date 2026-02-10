@@ -45,7 +45,7 @@ export default function StudioProfilePage() {
     let cancelled = false;
     const load = async () => {
       if (!studioId) {
-        setError(t('legacy.studio_id_missing'));
+        setError(t('studioDetail.errors.missingStudioId'));
         setLoading(false);
         return;
       }
@@ -67,7 +67,7 @@ export default function StudioProfilePage() {
       } catch (error: unknown) {
         if (!cancelled) {
           setError(
-            getApiErrorMessage(error, t('legacy.failed_to_load_studio')),
+            getApiErrorMessage(error, t('studioDetail.errors.loadStudio')),
           );
         }
       } finally {
@@ -85,20 +85,22 @@ export default function StudioProfilePage() {
   const studioName =
     studio?.studioName ??
     studio?.studio_name ??
-    (studioId ? `Studio ${studioId}` : t('legacy.studio'));
+    (studioId
+      ? `${t('studioDetail.header.defaultStudioName')} ${studioId}`
+      : t('studioDetail.header.defaultStudioName'));
   const impact = metrics?.impact ?? studio?.impact ?? 0;
   const signal = metrics?.signal ?? studio?.signal ?? 0;
 
   return (
     <main className="grid gap-6">
       <div className="card p-6">
-        <p className="pill">{t('legacy.studio_profile')}</p>
+        <p className="pill">{t('studioDetail.header.pill')}</p>
         <h2 className="mt-3 font-semibold text-2xl text-foreground">
           {studioName}
         </h2>
         <p className="text-muted-foreground text-sm">
-          {t('legacy.impact_2')} {impact.toFixed(1)} | {t('legacy.signal')}{' '}
-          {signal.toFixed(1)}
+          {t('studioDetail.metrics.impact')} {impact.toFixed(1)} |{' '}
+          {t('studioDetail.metrics.signal')} {signal.toFixed(1)}
         </p>
         {studio?.personality && (
           <p className="mt-2 text-muted-foreground text-sm">
@@ -113,13 +115,13 @@ export default function StudioProfilePage() {
       )}
       {loading ? (
         <div className="card p-6 text-muted-foreground text-sm">
-          {t('legacy.loading_studio')}
+          {t('studioDetail.loading')}
         </div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="card p-6">
             <h3 className="font-semibold text-foreground text-sm">
-              {t('legacy.top_glowups')}
+              {t('studioDetail.sections.topGlowUps')}
             </h3>
             <ul className="mt-4 grid gap-3 text-muted-foreground text-sm">
               <li>Editorial Landing | GlowUp 22</li>
@@ -129,11 +131,11 @@ export default function StudioProfilePage() {
           </div>
           <div className="card p-6">
             <h3 className="font-semibold text-foreground text-sm">
-              {t('legacy.impact_ledger')}
+              {t('studioDetail.sections.impactLedger')}
             </h3>
             {ledger.length === 0 ? (
               <p className="mt-4 text-muted-foreground text-sm">
-                {t('legacy.no_recent_contributions_yet')}
+                {t('studioDetail.states.noRecentContributions')}
               </p>
             ) : (
               <ul className="mt-4 grid gap-3 text-muted-foreground text-sm">
@@ -141,13 +143,13 @@ export default function StudioProfilePage() {
                   <li key={entry.id}>
                     <span className="font-semibold text-foreground">
                       {entry.kind === 'pr_merged'
-                        ? t('legacy.pr_merged')
-                        : t('legacy.fix_request')}
+                        ? t('studioDetail.ledger.prMerged')
+                        : t('studioDetail.ledger.fixRequest')}
                     </span>
                     {entry.severity ? ` (${entry.severity})` : ''} |{' '}
                     {entry.draftTitle}
                     <div className="text-muted-foreground text-xs">
-                      {t('legacy.impact_2')} +{entry.impactDelta} |{' '}
+                      {t('studioDetail.metrics.impact')} +{entry.impactDelta} |{' '}
                       {new Date(entry.occurredAt).toLocaleString()}
                     </div>
                   </li>
@@ -157,7 +159,7 @@ export default function StudioProfilePage() {
           </div>
           <div className="card p-6">
             <h3 className="font-semibold text-foreground text-sm">
-              {t('legacy.recent_contributions')}
+              {t('studioDetail.sections.recentContributions')}
             </h3>
             <ul className="mt-4 grid gap-3 text-muted-foreground text-sm">
               <li>PR #124 | Hero refresh</li>

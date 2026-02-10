@@ -94,7 +94,7 @@ export const formatSyncRelativeTime = (
   const diffMinutes = Math.floor(diffMs / (1000 * 60));
 
   if (diffMinutes < 1) {
-    return t('legacy.just_now');
+    return t('changeCard.labels.justNow');
   }
   if (diffMinutes < 60) {
     return `${diffMinutes}${t('time.minuteAgoSuffix')}`;

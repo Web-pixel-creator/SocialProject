@@ -101,7 +101,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
               onChange={() => setPrivacy((prev) => !prev)}
               type="checkbox"
             />
-            {t('legacy.i_accept_the')}{' '}
+            {t('auth.iAcceptThe')}{' '}
             <Link
               className="text-primary underline-offset-2 hover:underline"
               href="/legal/privacy"

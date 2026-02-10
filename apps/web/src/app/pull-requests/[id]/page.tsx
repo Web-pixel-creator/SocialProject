@@ -89,7 +89,7 @@ export default function PullRequestReviewPage({
       } catch (error: unknown) {
         if (!cancelled) {
           setError(
-            getApiErrorMessage(error, t('legacy.failed_to_load_pull_request')),
+            getApiErrorMessage(error, t('pullRequestReview.errors.load')),
           );
         }
       } finally {
@@ -126,7 +126,7 @@ export default function PullRequestReviewPage({
       return;
     }
     if (decision === 'reject' && !rejectReason.trim()) {
-      setError(t('legacy.rejection_reason_is_required'));
+      setError(t('pullRequestReview.errors.rejectionReasonRequired'));
       return;
     }
     setDecisionLoading(true);
@@ -151,7 +151,9 @@ export default function PullRequestReviewPage({
       }
       await load();
     } catch (error: unknown) {
-      setError(getApiErrorMessage(error, t('legacy.decision_failed')));
+      setError(
+        getApiErrorMessage(error, t('pullRequestReview.errors.decision')),
+      );
     } finally {
       setDecisionLoading(false);
     }
@@ -177,7 +179,7 @@ export default function PullRequestReviewPage({
   if (loading) {
     return (
       <div className="card p-6 text-muted-foreground text-sm">
-        {t('legacy.loading_pull_request')}
+        {t('pullRequestReview.states.loading')}
       </div>
     );
   }
@@ -185,7 +187,7 @@ export default function PullRequestReviewPage({
   if (!review) {
     return (
       <div className="card p-6 text-muted-foreground text-sm">
-        {error ?? t('legacy.pull_request_not_found')}
+        {error ?? t('pullRequestReview.states.notFound')}
       </div>
     );
   }
@@ -193,21 +195,21 @@ export default function PullRequestReviewPage({
   const { pullRequest, draft, authorStudio, makerStudio, metrics } = review;
   const statusLabel = (() => {
     if (pullRequest.status === 'pending') {
-      return t('legacy.pending_3');
+      return t('pullRequestReview.status.pending');
     }
     if (pullRequest.status === 'merged') {
-      return t('legacy.merged');
+      return t('pullRequestReview.status.merged');
     }
     if (pullRequest.status === 'rejected') {
-      return t('legacy.rejected');
+      return t('pullRequestReview.status.rejected');
     }
-    return t('legacy.changes_requested');
+    return t('pullRequestReview.status.changesRequested');
   })();
 
   return (
     <main className="grid gap-6">
       <div className="card p-6">
-        <p className="pill">{t('legacy.pr_review')}</p>
+        <p className="pill">{t('pullRequestReview.header.pill')}</p>
         <h2 className="mt-3 font-semibold text-2xl text-foreground">
           PR {pullRequest.id}
         </h2>
@@ -235,7 +237,7 @@ export default function PullRequestReviewPage({
 
           <div className="card p-4">
             <h3 className="font-semibold text-foreground text-sm">
-              {t('legacy.pr_summary')}
+              {t('pullRequestReview.summary.title')}
             </h3>
             <p className="mt-2 text-muted-foreground text-sm">
               {pullRequest.description}
@@ -248,23 +250,23 @@ export default function PullRequestReviewPage({
         <div className="grid gap-6">
           <div className="card p-4 text-muted-foreground text-sm">
             <h3 className="font-semibold text-foreground text-sm">
-              {t('legacy.metrics_delta')}
+              {t('pullRequestReview.metrics.title')}
             </h3>
             <div className="mt-3 grid gap-2">
               <div className="flex items-center justify-between">
-                <span>{t('legacy.current_glowup')}</span>
+                <span>{t('pullRequestReview.metrics.currentGlowUp')}</span>
                 <span>{metrics.currentGlowUp.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span>{t('legacy.predicted_glowup')}</span>
+                <span>{t('pullRequestReview.metrics.predictedGlowUp')}</span>
                 <span>{metrics.predictedGlowUp.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span>{t('legacy.glowup_delta')}</span>
+                <span>{t('pullRequestReview.metrics.glowUpDelta')}</span>
                 <span>{metrics.glowUpDelta.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span>{t('legacy.impact_delta_maker')}</span>
+                <span>{t('pullRequestReview.metrics.impactDeltaMaker')}</span>
                 <span>+{metrics.impactDelta}</span>
               </div>
             </div>
@@ -272,19 +274,21 @@ export default function PullRequestReviewPage({
 
           <div className="card p-4">
             <h3 className="font-semibold text-foreground text-sm">
-              {t('legacy.decision')}
+              {t('pullRequestReview.decision.title')}
             </h3>
             <textarea
               className="mt-3 w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70"
               onChange={(event) => setFeedback(event.target.value)}
-              placeholder={t('legacy.add_feedback_optional')}
+              placeholder={t('pullRequestReview.decision.feedbackPlaceholder')}
               rows={3}
               value={feedback}
             />
             <textarea
               className="mt-3 w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70"
               onChange={(event) => setRejectReason(event.target.value)}
-              placeholder={t('legacy.rejection_reason_required_for_reject')}
+              placeholder={t(
+                'pullRequestReview.decision.rejectionReasonPlaceholder',
+              )}
               rows={3}
               value={rejectReason}
             />
@@ -295,7 +299,7 @@ export default function PullRequestReviewPage({
                 onClick={() => handleDecision('merge')}
                 type="button"
               >
-                {t('legacy.merge_m')}
+                {t('pullRequestReview.decision.actions.merge')}
               </button>
               <button
                 className="rounded-full border border-border bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60"
@@ -303,7 +307,7 @@ export default function PullRequestReviewPage({
                 onClick={() => handleDecision('request_changes')}
                 type="button"
               >
-                {t('legacy.request_changes')}
+                {t('pullRequestReview.decision.actions.requestChanges')}
               </button>
               <button
                 className="rounded-full bg-rose-500 px-4 py-2 font-semibold text-white text-xs"
@@ -311,7 +315,7 @@ export default function PullRequestReviewPage({
                 onClick={() => handleDecision('reject')}
                 type="button"
               >
-                {t('legacy.reject_r')}
+                {t('pullRequestReview.decision.actions.reject')}
               </button>
             </div>
           </div>

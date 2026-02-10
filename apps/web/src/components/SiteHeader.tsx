@@ -1,15 +1,20 @@
-﻿'use client';
+'use client';
 
-import { Eye, Search } from 'lucide-react';
+import { Eye, Menu, Search, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ModeToggle } from './mode-toggle';
 
 export const SiteHeader = () => {
   const { t } = useLanguage();
+  const { user, logout, loading } = useAuth();
   const pathname = usePathname();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const userLabel = user?.email?.split('@')[0] ?? user?.email ?? '';
 
   const links = [
     { href: '/feed', label: t('header.feeds') },
@@ -20,11 +25,64 @@ export const SiteHeader = () => {
       label: t('header.studioOnboarding'),
     },
     { href: '/demo', label: t('header.demo') },
+    { href: '/privacy', label: t('header.privacy') },
   ];
+
+  const desktopAuthControl = (() => {
+    if (loading) {
+      return null;
+    }
+    if (user) {
+      return (
+        <>
+          <span className="rounded-full border border-border bg-muted/70 px-3 py-1.5 font-semibold text-foreground text-xs">
+            {userLabel}
+          </span>
+          <button className="glass-button" onClick={logout} type="button">
+            {t('header.signOut')}
+          </button>
+        </>
+      );
+    }
+    return (
+      <Link className="glass-button" href="/login">
+        {t('header.signIn')}
+      </Link>
+    );
+  })();
+
+  const mobileAuthControl = (() => {
+    if (loading) {
+      return null;
+    }
+    if (user) {
+      return (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-border bg-muted/70 px-3 py-1.5 font-semibold text-foreground text-xs">
+            {userLabel}
+          </span>
+          <button className="glass-button" onClick={logout} type="button">
+            {t('header.signOut')}
+          </button>
+        </div>
+      );
+    }
+    return (
+      <Link className="glass-button w-fit" href="/login">
+        {t('header.signIn')}
+      </Link>
+    );
+  })();
+
+  useEffect(() => {
+    if (pathname) {
+      setMobileMenuOpen(false);
+    }
+  }, [pathname]);
 
   return (
     <header className="sticky top-4 z-50 mb-6 rounded-2xl border border-border bg-background/90 p-4 backdrop-blur lg:p-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3">
         <Link
           className="flex items-center gap-2 font-bold text-foreground text-xl tracking-tight"
           href="/"
@@ -34,7 +92,7 @@ export const SiteHeader = () => {
           </span>
           FinishIt
         </Link>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="hidden flex-wrap items-center gap-2 md:flex">
           <div className="hidden items-center rounded-full border border-border bg-muted/50 px-3 py-2 text-muted-foreground text-xs transition-colors hover:bg-muted sm:flex">
             <Search aria-hidden="true" className="mr-2 h-4 w-4" />
             {t('header.searchPlaceholder')}
@@ -45,12 +103,23 @@ export const SiteHeader = () => {
             <Eye aria-hidden="true" className="h-3.5 w-3.5" />
             {t('header.observerMode')}
           </span>
-          <Link className="glass-button" href="/login">
-            {t('header.signIn')}
-          </Link>
+          {desktopAuthControl}
         </div>
+        <button
+          aria-expanded={mobileMenuOpen}
+          aria-label={mobileMenuOpen ? t('common.close') : t('common.menu')}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/70 text-foreground transition hover:bg-muted md:hidden"
+          onClick={() => setMobileMenuOpen((current) => !current)}
+          type="button"
+        >
+          {mobileMenuOpen ? (
+            <X aria-hidden="true" className="h-5 w-5" />
+          ) : (
+            <Menu aria-hidden="true" className="h-5 w-5" />
+          )}
+        </button>
       </div>
-      <nav className="mt-4 flex flex-wrap items-center gap-2 font-semibold text-sm">
+      <nav className="mt-4 hidden flex-wrap items-center gap-2 font-semibold text-sm md:flex">
         {links.map((link) => {
           const active = pathname === link.href;
           return (
@@ -67,13 +136,44 @@ export const SiteHeader = () => {
             </Link>
           );
         })}
-        <Link
-          className="rounded-full border border-transparent px-3 py-1.5 text-muted-foreground transition hover:border-border hover:text-foreground"
-          href="/privacy"
-        >
-          {t('header.privacy')}
-        </Link>
       </nav>
+      {mobileMenuOpen ? (
+        <div className="mt-4 grid gap-4 rounded-xl border border-border bg-background/80 p-4 md:hidden">
+          <div className="flex items-center rounded-full border border-border bg-muted/50 px-3 py-2 text-muted-foreground text-xs">
+            <Search aria-hidden="true" className="mr-2 h-4 w-4" />
+            {t('header.searchPlaceholder')}
+          </div>
+          <nav className="grid gap-2 font-semibold text-sm">
+            {links.map((link) => {
+              const active = pathname === link.href;
+              return (
+                <Link
+                  className={`rounded-xl border px-3 py-2 transition ${
+                    active
+                      ? 'border-primary/45 bg-primary/10 text-primary'
+                      : 'border-transparent bg-muted/40 text-muted-foreground hover:border-border hover:text-foreground'
+                  }`}
+                  href={link.href}
+                  key={link.href}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+          </nav>
+          <div className="grid gap-3 border-border border-t pt-3">
+            <LanguageSwitcher />
+            <div className="flex items-center gap-2">
+              <ModeToggle />
+              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 font-semibold text-[11px] text-emerald-500 uppercase tracking-wide">
+                <Eye aria-hidden="true" className="h-3.5 w-3.5" />
+                {t('header.observerMode')}
+              </span>
+            </div>
+            {mobileAuthControl}
+          </div>
+        </div>
+      ) : null}
     </header>
   );
 };

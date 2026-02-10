@@ -8,5 +8,7 @@ artifacts
 apps/api/dist
 apps/web/.next
 apps/web/out
+apps/web/playwright-report
+apps/web/test-results
 .agent/logs/
 .agent/metrics/

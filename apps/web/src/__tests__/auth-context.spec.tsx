@@ -9,6 +9,7 @@ import { apiClient, setAuthToken } from '../lib/api';
 jest.mock('../lib/api', () => ({
   apiClient: {
     post: jest.fn(),
+    get: jest.fn(),
   },
   setAuthToken: jest.fn(),
 }));
@@ -20,12 +21,18 @@ const Consumer = () => {
       <span data-testid="user">{user?.email ?? 'none'}</span>
       <span data-testid="token">{token ?? 'none'}</span>
       <span data-testid="loading">{loading ? 'yes' : 'no'}</span>
-      <button onClick={() => login('user@example.com', 'pass')} type="button">
+      <button
+        onClick={() => login('user@example.com', 'password123')}
+        type="button"
+      >
         login
       </button>
       <button
         onClick={() =>
-          register('reg@example.com', 'pass', { terms: true, privacy: true })
+          register('reg@example.com', 'password123', {
+            terms: true,
+            privacy: true,
+          })
         }
         type="button"
       >
@@ -42,15 +49,21 @@ describe('auth context', () => {
   beforeEach(() => {
     localStorage.clear();
     (apiClient.post as jest.Mock).mockReset();
+    (apiClient.get as jest.Mock).mockReset();
     (setAuthToken as jest.Mock).mockReset();
   });
 
-  test('hydrates from localStorage', async () => {
+  test('hydrates from localStorage and validates token with /auth/me', async () => {
     localStorage.setItem('finishit_token', 'stored-token');
     localStorage.setItem(
       'finishit_user',
-      JSON.stringify({ id: 'u1', email: 'stored@example.com' }),
+      JSON.stringify({ user: { id: 'u1', email: 'cached@example.com' } }),
     );
+    (apiClient.get as jest.Mock).mockResolvedValue({
+      data: {
+        user: { id: 'u1', email: 'server@example.com' },
+      },
+    });
 
     render(
       <AuthProvider>
@@ -61,12 +74,36 @@ describe('auth context', () => {
     await waitFor(() =>
       expect(screen.getByTestId('loading')).toHaveTextContent('no'),
     );
-    expect(screen.getByTestId('user')).toHaveTextContent('stored@example.com');
+    expect(apiClient.get).toHaveBeenCalledWith('/auth/me');
+    expect(screen.getByTestId('user')).toHaveTextContent('server@example.com');
     expect(screen.getByTestId('token')).toHaveTextContent('stored-token');
     expect(setAuthToken).toHaveBeenCalledWith('stored-token');
   });
 
-  test('login/register/logout update state', async () => {
+  test('clears invalid stored session when /auth/me fails', async () => {
+    localStorage.setItem('finishit_token', 'expired-token');
+    localStorage.setItem(
+      'finishit_user',
+      JSON.stringify({ user: { id: 'u2', email: 'expired@example.com' } }),
+    );
+    (apiClient.get as jest.Mock).mockRejectedValue(new Error('Unauthorized'));
+
+    render(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('loading')).toHaveTextContent('no'),
+    );
+    expect(screen.getByTestId('user')).toHaveTextContent('none');
+    expect(screen.getByTestId('token')).toHaveTextContent('none');
+    expect(setAuthToken).toHaveBeenCalledWith('expired-token');
+    expect(setAuthToken).toHaveBeenCalledWith(null);
+  });
+
+  test('login/register/logout update state with direct payload user', async () => {
     (apiClient.post as jest.Mock).mockResolvedValueOnce({
       data: {
         tokens: { accessToken: 'token-1' },
@@ -105,10 +142,14 @@ describe('auth context', () => {
     expect(setAuthToken).toHaveBeenCalledWith(null);
   });
 
-  test('login and register fall back to token and nested user fields', async () => {
+  test('login falls back to /auth/me when response does not include user', async () => {
     (apiClient.post as jest.Mock).mockResolvedValueOnce({
       data: {
-        token: 'token-fallback',
+        tokens: { accessToken: 'token-no-user' },
+      },
+    });
+    (apiClient.get as jest.Mock).mockResolvedValueOnce({
+      data: {
         user: { id: 'u-fallback', email: 'fallback@example.com' },
       },
     });
@@ -121,26 +162,12 @@ describe('auth context', () => {
 
     fireEvent.click(screen.getByText('login'));
     await waitFor(() =>
-      expect(screen.getByTestId('token')).toHaveTextContent('token-fallback'),
+      expect(screen.getByTestId('token')).toHaveTextContent('token-no-user'),
     );
     expect(screen.getByTestId('user')).toHaveTextContent(
       'fallback@example.com',
     );
-
-    (apiClient.post as jest.Mock).mockResolvedValueOnce({
-      data: {
-        token: 'reg-fallback',
-        user: { id: 'u-reg', email: 'reg-fallback@example.com' },
-      },
-    });
-
-    fireEvent.click(screen.getByText('register'));
-    await waitFor(() =>
-      expect(screen.getByTestId('token')).toHaveTextContent('reg-fallback'),
-    );
-    expect(screen.getByTestId('user')).toHaveTextContent(
-      'reg-fallback@example.com',
-    );
+    expect(apiClient.get).toHaveBeenCalledWith('/auth/me');
   });
 
   test('useAuth throws outside provider', () => {

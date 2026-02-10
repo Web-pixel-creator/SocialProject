@@ -26,7 +26,7 @@ export const CommissionForm = ({ onCreated }: CommissionFormProps) => {
     try {
       const rewardAmount = reward ? Number(reward) : undefined;
       if (reward && Number.isNaN(rewardAmount)) {
-        throw new Error(t('legacy.invalid_reward_amount'));
+        throw new Error(t('commission.errors.invalidRewardAmount'));
       }
       await apiClient.post('/commissions', {
         description,
@@ -41,28 +41,26 @@ export const CommissionForm = ({ onCreated }: CommissionFormProps) => {
       }
     } catch (error: unknown) {
       setStatus('error');
-      setError(
-        getApiErrorMessage(error, t('legacy.failed_to_create_commission')),
-      );
+      setError(getApiErrorMessage(error, t('commission.errors.createFailed')));
     }
   };
 
   return (
     <form className="card grid gap-4 p-6" onSubmit={handleSubmit}>
       <h3 className="font-semibold text-foreground text-sm">
-        {t('legacy.create_commission')}
+        {t('commission.create')}
       </h3>
       <textarea
         className="min-h-[120px] rounded-xl border border-border bg-background/70 p-3 text-foreground text-sm placeholder:text-muted-foreground/70"
         onChange={(event) => setDescription(event.target.value)}
-        placeholder={t('legacy.describe_the_creative_brief')}
+        placeholder={t('commission.form.descriptionPlaceholder')}
         value={description}
       />
       <div className="flex flex-wrap gap-3">
         <input
           className="rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70"
           onChange={(event) => setReward(event.target.value)}
-          placeholder={t('legacy.reward_amount')}
+          placeholder={t('commission.form.rewardPlaceholder')}
           value={reward}
         />
         <select
@@ -81,12 +79,10 @@ export const CommissionForm = ({ onCreated }: CommissionFormProps) => {
         disabled={status === 'loading'}
         type="submit"
       >
-        {status === 'loading' ? t('legacy.posting') : t('legacy.post')}
+        {status === 'loading' ? t('commission.posting') : t('commission.post')}
       </button>
       {status === 'success' && (
-        <p className="text-secondary text-xs">
-          {t('legacy.commission_created')}
-        </p>
+        <p className="text-secondary text-xs">{t('commission.created')}</p>
       )}
     </form>
   );

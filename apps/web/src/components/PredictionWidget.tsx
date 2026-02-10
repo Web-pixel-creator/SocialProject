@@ -46,7 +46,7 @@ export const PredictionWidget = ({
   if (loading) {
     return (
       <div className="card p-4 text-muted-foreground text-xs">
-        {t('legacy.loading_prediction')}
+        {t('prediction.loading')}
       </div>
     );
   }
@@ -54,9 +54,9 @@ export const PredictionWidget = ({
   if (authRequired) {
     return (
       <div className="card p-4">
-        <p className="pill">{t('legacy.predict_mode')}</p>
+        <p className="pill">{t('sidebar.predictMode')}</p>
         <p className="mt-3 text-muted-foreground text-xs">
-          {t('legacy.sign_in_as_observer_to_submit_predictions')}
+          {t('prediction.signInRequired')}
         </p>
       </div>
     );
@@ -65,7 +65,7 @@ export const PredictionWidget = ({
   if (error) {
     return (
       <div className="card p-4">
-        <p className="pill">{t('legacy.predict_mode')}</p>
+        <p className="pill">{t('sidebar.predictMode')}</p>
         <p className="mt-3 text-rose-600 text-xs">{error}</p>
       </div>
     );
@@ -74,9 +74,9 @@ export const PredictionWidget = ({
   if (!summary) {
     return (
       <div className="card p-4">
-        <p className="pill">{t('legacy.predict_mode')}</p>
+        <p className="pill">{t('sidebar.predictMode')}</p>
         <p className="mt-3 text-muted-foreground text-xs">
-          {t('legacy.no_pending_pr_for_prediction')}
+          {t('prediction.noPendingPr')}
         </p>
       </div>
     );
@@ -87,17 +87,17 @@ export const PredictionWidget = ({
 
   return (
     <div className="card p-4">
-      <p className="pill">{t('legacy.predict_mode')}</p>
+      <p className="pill">{t('sidebar.predictMode')}</p>
       <h3 className="mt-3 font-semibold text-foreground text-sm">
         PR {summary.pullRequestId.slice(0, 8)}
       </h3>
       <p className="text-muted-foreground text-xs">
-        {t('legacy.consensus')} {t('legacy.merge')} {summary.consensus.merge} |{' '}
-        {t('legacy.reject')} {summary.consensus.reject} | {t('legacy.total')}{' '}
+        {t('pr.consensus')} {t('pr.merge')} {summary.consensus.merge} |{' '}
+        {t('pr.reject')} {summary.consensus.reject} | {t('pr.total')}{' '}
         {summary.consensus.total}
       </p>
       <p className="mt-2 text-muted-foreground text-xs">
-        {t('legacy.your_accuracy')} {summary.accuracy.correct}/
+        {t('prediction.yourAccuracy')} {summary.accuracy.correct}/
         {summary.accuracy.total} ({accuracyPct}%)
       </p>
       <div className="mt-3 flex items-center gap-2">
@@ -111,7 +111,7 @@ export const PredictionWidget = ({
           onClick={() => onPredict('merge')}
           type="button"
         >
-          {t('legacy.predict_merge')}
+          {t('prediction.predictMerge')}
         </button>
         <button
           className={`rounded-full px-3 py-1 font-semibold text-xs ${
@@ -123,16 +123,16 @@ export const PredictionWidget = ({
           onClick={() => onPredict('reject')}
           type="button"
         >
-          {t('legacy.predict_reject')}
+          {t('prediction.predictReject')}
         </button>
       </div>
       {summary.observerPrediction && (
         <p className="mt-2 text-[11px] text-muted-foreground">
-          {t('legacy.your_prediction')}{' '}
+          {t('prediction.yourPrediction')}{' '}
           {summary.observerPrediction.predictedOutcome}
           {summary.observerPrediction.resolvedOutcome
-            ? ` | ${t('legacy.resolved')} ${summary.observerPrediction.resolvedOutcome}`
-            : ` | ${t('legacy.pending_3')}`}
+            ? ` | ${t('pr.resolved')} ${summary.observerPrediction.resolvedOutcome}`
+            : ` | ${t('battle.pending')}`}
         </p>
       )}
     </div>

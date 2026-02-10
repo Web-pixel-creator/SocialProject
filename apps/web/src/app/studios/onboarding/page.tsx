@@ -23,9 +23,9 @@ const ACTION_LIMITS = {
 export default function StudioOnboardingPage() {
   const { t } = useLanguage();
   const CHECKLIST = [
-    t('legacy.create_your_first_draft_post_api_drafts'),
-    t('legacy.submit_a_fix_request_on_a_draft'),
-    t('legacy.submit_a_pr_and_watch_the_review'),
+    t('studioOnboarding.checklist.createFirstDraft'),
+    t('studioOnboarding.checklist.submitFixRequest'),
+    t('studioOnboarding.checklist.submitPrReview'),
   ];
 
   const [step, setStep] = useState(1);
@@ -60,7 +60,7 @@ export default function StudioOnboardingPage() {
     setError(null);
     setSaved(false);
     if (!(agentId.trim() && apiKey.trim())) {
-      setError(t('legacy.agent_id_and_api_key_are_required'));
+      setError(t('studioOnboarding.errors.missingAgentCredentials'));
       return;
     }
     setAgentAuth(agentId.trim(), apiKey.trim());
@@ -80,7 +80,7 @@ export default function StudioOnboardingPage() {
       setStep(2);
     } catch (error: unknown) {
       setError(
-        getApiErrorMessage(error, t('legacy.failed_to_load_studio_profile')),
+        getApiErrorMessage(error, t('studioOnboarding.errors.loadProfile')),
       );
     } finally {
       setLoading(false);
@@ -105,7 +105,7 @@ export default function StudioOnboardingPage() {
     setError(null);
     setSaved(false);
     if (!canSaveProfile) {
-      setError(t('legacy.studio_name_avatar_and_at_least_one'));
+      setError(t('studioOnboarding.errors.invalidProfile'));
       return;
     }
     setLoading(true);
@@ -129,7 +129,7 @@ export default function StudioOnboardingPage() {
       setStep(3);
     } catch (error: unknown) {
       setError(
-        getApiErrorMessage(error, t('legacy.failed_to_save_studio_profile')),
+        getApiErrorMessage(error, t('studioOnboarding.errors.saveProfile')),
       );
     } finally {
       setLoading(false);
@@ -139,12 +139,12 @@ export default function StudioOnboardingPage() {
   return (
     <main className="grid gap-6">
       <div className="card p-6">
-        <p className="pill">{t('legacy.studio_onboarding')}</p>
+        <p className="pill">{t('studioOnboarding.header.pill')}</p>
         <h2 className="mt-3 font-semibold text-2xl text-foreground">
-          {t('legacy.set_up_your_ai_studio')}
+          {t('studioOnboarding.header.title')}
         </h2>
         <p className="text-muted-foreground text-sm">
-          {t('legacy.connect_your_agent_define_a_style_and')}
+          {t('studioOnboarding.header.subtitle')}
         </p>
       </div>
 
@@ -155,14 +155,14 @@ export default function StudioOnboardingPage() {
       )}
       {saved && (
         <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-500 text-sm">
-          {t('legacy.profile_saved')}
+          {t('studioOnboarding.status.saved')}
         </div>
       )}
 
       {step === 1 && (
         <section className="card grid gap-4 p-6">
           <h3 className="font-semibold text-foreground text-sm">
-            {t('legacy.1_connect_your_agent')}
+            {t('studioOnboarding.steps.connectAgent')}
           </h3>
           <label className="grid gap-2 font-medium text-foreground text-sm">
             Agent ID
@@ -178,7 +178,7 @@ export default function StudioOnboardingPage() {
             <input
               className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
               onChange={(event) => setApiKey(event.target.value)}
-              placeholder={t('legacy.agent_api_key')}
+              placeholder={t('studioOnboarding.fields.agentApiKey')}
               type="password"
               value={apiKey}
             />
@@ -189,7 +189,9 @@ export default function StudioOnboardingPage() {
             onClick={connectAgent}
             type="button"
           >
-            {loading ? t('legacy.connecting') : t('legacy.connect')}
+            {loading
+              ? t('studioOnboarding.actions.connecting')
+              : t('studioOnboarding.actions.connect')}
           </button>
         </section>
       )}
@@ -198,10 +200,10 @@ export default function StudioOnboardingPage() {
         <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">
           <div className="card grid gap-4 p-6">
             <h3 className="font-semibold text-foreground text-sm">
-              {t('legacy.2_studio_profile')}
+              {t('studioOnboarding.steps.studioProfile')}
             </h3>
             <label className="grid gap-2 font-medium text-foreground text-sm">
-              {t('legacy.studio_name')}
+              {t('studioOnboarding.fields.studioName')}
               <input
                 className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
                 onChange={(event) => setStudioName(event.target.value)}
@@ -210,7 +212,7 @@ export default function StudioOnboardingPage() {
               />
             </label>
             <label className="grid gap-2 font-medium text-foreground text-sm">
-              {t('legacy.avatar_url')}
+              {t('studioOnboarding.fields.avatarUrl')}
               <input
                 className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
                 onChange={(event) => setAvatarUrl(event.target.value)}
@@ -219,7 +221,7 @@ export default function StudioOnboardingPage() {
               />
             </label>
             <label className="grid gap-2 font-medium text-foreground text-sm">
-              {t('legacy.style_tags_press_enter')}
+              {t('studioOnboarding.fields.styleTags')}
               <input
                 className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
                 onChange={(event) => setTagInput(event.target.value)}
@@ -229,7 +231,7 @@ export default function StudioOnboardingPage() {
                     addTag();
                   }
                 }}
-                placeholder={t('legacy.minimal_editorial_futuristic')}
+                placeholder={t('studioOnboarding.fields.styleTagsPlaceholder')}
                 value={tagInput}
               />
             </label>
@@ -246,11 +248,13 @@ export default function StudioOnboardingPage() {
               ))}
             </div>
             <label className="grid gap-2 font-medium text-foreground text-sm">
-              {t('legacy.personality_optional')}
+              {t('studioOnboarding.fields.personalityOptional')}
               <textarea
                 className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
                 onChange={(event) => setPersonality(event.target.value)}
-                placeholder={t('legacy.describe_the_studio_voice_and_tone')}
+                placeholder={t(
+                  'studioOnboarding.fields.personalityPlaceholder',
+                )}
                 rows={3}
                 value={personality}
               />
@@ -262,57 +266,63 @@ export default function StudioOnboardingPage() {
                 onClick={saveProfile}
                 type="button"
               >
-                {loading ? t('legacy.saving') : t('legacy.save_profile')}
+                {loading
+                  ? t('studioOnboarding.actions.saving')
+                  : t('studioOnboarding.actions.saveProfile')}
               </button>
               <button
                 className="rounded-full border border-border bg-background/70 px-5 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60"
                 onClick={() => setStep(3)}
                 type="button"
               >
-                {t('legacy.skip_optional_steps')}
+                {t('studioOnboarding.actions.skipOptionalSteps')}
               </button>
             </div>
           </div>
           <div className="card grid gap-3 p-6 text-muted-foreground text-sm">
             <h3 className="font-semibold text-foreground text-sm">
-              {t('legacy.daily_budgets')}
+              {t('studioOnboarding.budgets.title')}
             </h3>
             <div className="rounded-xl border border-border bg-background/70 p-3 text-xs">
               <p className="font-semibold text-foreground">
-                {t('legacy.agent_actions')}
+                {t('studioOnboarding.budgets.agentActions')}
               </p>
               <ul className="mt-2 grid gap-1">
                 <li>
-                  PRs: {ACTION_LIMITS.pr} / {t('legacy.day')}
+                  PRs: {ACTION_LIMITS.pr} / {t('studioOnboarding.budgets.day')}
                 </li>
                 <li>
-                  Major PRs: {ACTION_LIMITS.major_pr} / {t('legacy.day')}
+                  Major PRs: {ACTION_LIMITS.major_pr} /{' '}
+                  {t('studioOnboarding.budgets.day')}
                 </li>
                 <li>
-                  {t('legacy.fix_requests')}: {ACTION_LIMITS.fix_request} /{' '}
-                  {t('legacy.day')}
+                  {t('studioOnboarding.budgets.fixRequests')}:{' '}
+                  {ACTION_LIMITS.fix_request} /{' '}
+                  {t('studioOnboarding.budgets.day')}
                 </li>
               </ul>
             </div>
             <div className="rounded-xl border border-border bg-background/70 p-3 text-xs">
               <p className="font-semibold text-foreground">
-                {t('legacy.draft_edit_budgets')}
+                {t('studioOnboarding.budgets.draftEditBudgets')}
               </p>
               <ul className="mt-2 grid gap-1">
                 <li>
-                  PRs: {EDIT_LIMITS.pr} / {t('legacy.day')}
+                  PRs: {EDIT_LIMITS.pr} / {t('studioOnboarding.budgets.day')}
                 </li>
                 <li>
-                  Major PRs: {EDIT_LIMITS.major_pr} / {t('legacy.day')}
+                  Major PRs: {EDIT_LIMITS.major_pr} /{' '}
+                  {t('studioOnboarding.budgets.day')}
                 </li>
                 <li>
-                  {t('legacy.fix_requests')}: {EDIT_LIMITS.fix_request} /{' '}
-                  {t('legacy.day')}
+                  {t('studioOnboarding.budgets.fixRequests')}:{' '}
+                  {EDIT_LIMITS.fix_request} /{' '}
+                  {t('studioOnboarding.budgets.day')}
                 </li>
               </ul>
             </div>
             <p className="text-muted-foreground text-xs">
-              {t('legacy.budgets_reset_daily_utc_staying_within_limits')}
+              {t('studioOnboarding.budgets.resetHint')}
             </p>
           </div>
         </section>
@@ -321,7 +331,7 @@ export default function StudioOnboardingPage() {
       {step === 3 && (
         <section className="card grid gap-4 p-6">
           <h3 className="font-semibold text-foreground text-sm">
-            {t('legacy.3_first_actions_checklist')}
+            {t('studioOnboarding.steps.firstActionsChecklist')}
           </h3>
           <ul className="grid gap-2 text-muted-foreground text-sm">
             {CHECKLIST.map((item) => (
@@ -338,7 +348,7 @@ export default function StudioOnboardingPage() {
             onClick={() => setStep(1)}
             type="button"
           >
-            {t('legacy.edit_profile')}
+            {t('studioOnboarding.actions.editProfile')}
           </button>
         </section>
       )}

@@ -5,16 +5,16 @@
 @layer base {
   /* ── Light theme (default) ── */
   :root {
-    --background: 0 0% 93%;
+    --background: 0 0% 96%;
     --foreground: 0 0% 5%;
     --card: 0 0% 100%;
     --card-foreground: 0 0% 5%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 5%;
-    --primary: 0 0% 0%;
+    --primary: 192 94% 38%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 10%;
+    --secondary: 154 100% 38%;
+    --secondary-foreground: 0 0% 100%;
     --muted: 0 0% 96%;
     --muted-foreground: 0 0% 40%;
     --accent: 0 0% 96%;
@@ -23,7 +23,7 @@
     --destructive-foreground: 0 0% 100%;
     --border: 0 0% 0% / 8%;
     --input: 0 0% 0% / 10%;
-    --ring: 0 0% 0%;
+    --ring: 192 94% 38%;
     --radius: 0.75rem;
     --surface: rgba(255, 255, 255, 0.92);
     --surface-strong: rgba(248, 248, 248, 0.96);
@@ -32,48 +32,49 @@
     --text-soft: #1a1a1a;
     --pill-bg: rgba(0, 0, 0, 0.06);
     --glass-bg: rgba(255, 255, 255, 0.82);
-    --glass-hover-border: rgba(0, 0, 0, 0.3);
+    --glass-hover-border: rgba(0, 140, 180, 0.4);
     --shadow-glow:
       0 1px 2px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.04);
     --scrollbar-thumb: rgba(0, 0, 0, 0.15);
-    --selection-bg: rgba(0, 0, 0, 0.08);
-    --selection-color: #000000;
+    --selection-bg: rgba(12, 220, 247, 0.12);
+    --selection-color: #0891b2;
+    --dot-color: rgba(0, 0, 0, 0.07);
   }
 
   /* ── Dark theme ── */
   .dark {
-    --background: 0 0% 3%;
+    --background: 0 0% 7%;
     --foreground: 0 0% 93%;
-    --card: 0 0% 7%;
+    --card: 0 0% 12%;
     --card-foreground: 0 0% 93%;
-    --popover: 0 0% 7%;
+    --popover: 0 0% 12%;
     --popover-foreground: 0 0% 93%;
     --primary: 192 94% 51%;
     --primary-foreground: 0 0% 4%;
     --secondary: 154 100% 63%;
     --secondary-foreground: 0 0% 4%;
-    --muted: 0 0% 7%;
+    --muted: 0 0% 14%;
     --muted-foreground: 0 0% 63%;
-    --accent: 0 0% 9%;
+    --accent: 0 0% 16%;
     --accent-foreground: 0 0% 93%;
     --destructive: 0 78% 58%;
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 100% / 10%;
     --input: 0 0% 100% / 15%;
     --ring: 192 94% 51%;
-    --surface: rgba(18, 18, 18, 0.82);
-    --surface-strong: rgba(22, 22, 22, 0.94);
+    --surface: rgba(30, 30, 30, 0.92);
+    --surface-strong: rgba(36, 36, 36, 0.96);
     --border-soft: rgba(255, 255, 255, 0.1);
     --text-muted-soft: #a0a0a0;
     --text-soft: #d2d8e3;
-    --pill-bg: rgba(22, 22, 22, 0.78);
-    --glass-bg: rgba(22, 22, 22, 0.86);
+    --pill-bg: rgba(30, 30, 30, 0.8);
+    --glass-bg: rgba(30, 30, 30, 0.88);
     --glass-hover-border: rgba(12, 220, 247, 0.55);
-    --shadow-glow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 12px 28px rgba(0, 0, 0, 0.45);
-    --scrollbar-thumb: rgba(102, 196, 255, 0.38);
-    --selection-bg: rgba(131, 209, 255, 0.25);
-    --selection-color: #64c6ff;
+    --shadow-glow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 4px 16px rgba(0, 0, 0, 0.3);
+    --scrollbar-thumb: rgba(12, 220, 247, 0.3);
+    --selection-bg: rgba(12, 220, 247, 0.2);
+    --selection-color: #0cdcf7;
+    --dot-color: rgba(12, 220, 247, 0.1);
   }
 
   * {
@@ -85,35 +86,6 @@
     min-height: 100vh;
     font-family: var(--font-space), sans-serif;
     background: hsl(var(--background));
-  }
-
-  /* Light body — clean warm gray, faint tinted glow */
-  :root:not(.dark) body {
-    background:
-      radial-gradient(circle at 82% -10%, rgba(0, 0, 0, 0.02), transparent 40%),
-      radial-gradient(circle at 14% 0%, rgba(0, 0, 0, 0.015), transparent 44%),
-      linear-gradient(180deg, #ececec 0%, #e6e6e6 58%, #e0e0e0 100%);
-  }
-
-  /* Dark body — existing neon-tinted gradients */
-  .dark body {
-    background:
-      radial-gradient(
-        circle at 82% -10%,
-        rgba(12, 220, 247, 0.16),
-        transparent 40%
-      ),
-      radial-gradient(
-        circle at 14% 0%,
-        rgba(67, 255, 186, 0.08),
-        transparent 44%
-      ),
-      radial-gradient(
-        circle at 50% 110%,
-        rgba(41, 110, 198, 0.16),
-        transparent 52%
-      ),
-      linear-gradient(180deg, #080808 0%, #0a0d13 58%, #0b1017 100%);
   }
 }
 
@@ -167,6 +139,11 @@
 .surface-strong {
   background: var(--surface-strong);
   border: 1px solid var(--border-soft);
+}
+
+.dotted-bg {
+  background-image: radial-gradient(var(--dot-color) 1px, transparent 1px);
+  background-size: 16px 16px;
 }
 
 .text-muted {

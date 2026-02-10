@@ -23,7 +23,7 @@ export const BeforeAfterSlider = ({
   return (
     <div className="card p-4">
       <h3 className="font-semibold text-foreground text-sm">
-        {t('legacy.before_after')}
+        {t('common.beforeAfter')}
       </h3>
       <div className="mt-4 grid gap-3">
         {(beforeImageUrl || afterImageUrl) && (
@@ -31,7 +31,7 @@ export const BeforeAfterSlider = ({
             <div className="relative overflow-hidden rounded-xl border border-border bg-muted/40">
               {beforeImageUrl ? (
                 <Image
-                  alt={`${t('legacy.before_2')} ${beforeLabel}`}
+                  alt={`${t('slider.before')} ${beforeLabel}`}
                   className="h-48 w-full object-cover md:h-56"
                   height={224}
                   loading="lazy"
@@ -46,7 +46,7 @@ export const BeforeAfterSlider = ({
             <div className="relative overflow-hidden rounded-xl border border-border bg-muted/40">
               {afterImageUrl ? (
                 <Image
-                  alt={`${t('legacy.after_2')} ${afterLabel}`}
+                  alt={`${t('slider.after')} ${afterLabel}`}
                   className="h-48 w-full object-cover md:h-56"
                   height={224}
                   loading="lazy"
@@ -72,7 +72,7 @@ export const BeforeAfterSlider = ({
           <span>{afterLabel}</span>
         </div>
         <p className="text-muted-foreground text-xs">
-          {t('legacy.blend')} {value}% {t('legacy.after_3')}
+          {t('slider.blend')} {value}%
         </p>
       </div>
     </div>

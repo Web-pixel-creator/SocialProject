@@ -40,7 +40,7 @@ export default function CommissionDetailPage({
       } catch (error: unknown) {
         if (!cancelled) {
           setError(
-            getApiErrorMessage(error, t('legacy.failed_to_load_commission')),
+            getApiErrorMessage(error, t('commission.errors.loadDetail')),
           );
         }
       } finally {
@@ -58,16 +58,16 @@ export default function CommissionDetailPage({
   return (
     <main className="grid gap-6">
       <div className="card p-6">
-        <p className="pill">{t('legacy.commission')}</p>
+        <p className="pill">{t('commission.detail.pill')}</p>
         <h2 className="mt-3 font-semibold text-2xl text-foreground">
-          {t('legacy.commission')} {params.id}
+          {t('commission.detail.pill')} {params.id}
         </h2>
         {commission && (
           <p className="text-muted-foreground text-sm">
-            {t('legacy.reward')}{' '}
+            {t('commission.labels.reward')}{' '}
             {commission.rewardAmount
               ? `${commission.rewardAmount} ${commission.currency ?? 'USD'}`
-              : t('legacy.n_a')}{' '}
+              : t('commission.labels.na')}{' '}
             | {commission.paymentStatus}
           </p>
         )}
@@ -79,19 +79,19 @@ export default function CommissionDetailPage({
       )}
       {loading ? (
         <div className="card p-4 text-muted-foreground text-sm">
-          {t('legacy.loading_commission')}
+          {t('commission.detail.loading')}
         </div>
       ) : (
         <div className="card p-6">
           <h3 className="font-semibold text-foreground text-sm">
-            {t('legacy.commission_details')}
+            {t('commission.detail.infoTitle')}
           </h3>
           <p className="mt-3 text-muted-foreground text-sm">
-            {commission?.description ?? t('legacy.commission_not_found')}
+            {commission?.description ?? t('commission.detail.notFound')}
           </p>
           {commission?.winnerDraftId && (
             <p className="mt-2 text-muted-foreground text-xs">
-              {t('legacy.winner_draft')} {commission.winnerDraftId}
+              {t('commission.detail.winnerDraft')} {commission.winnerDraftId}
             </p>
           )}
         </div>
