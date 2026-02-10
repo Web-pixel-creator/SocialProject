@@ -42,7 +42,10 @@ export default function CommissionDetailPage({
           setError(
             getApiErrorMessage(
               error,
-              t('Failed to load commission.', 'Не удалось загрузить заказ.'),
+              t(
+                'Failed to load commission.',
+                'РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ Р·Р°РєР°Р·.',
+              ),
             ),
           );
         }
@@ -61,41 +64,41 @@ export default function CommissionDetailPage({
   return (
     <main className="grid gap-6">
       <div className="card p-6">
-        <p className="pill">{t('Commission', 'Заказ')}</p>
-        <h2 className="mt-3 font-semibold text-2xl text-ink">
-          {t('Commission', 'Заказ')} {params.id}
+        <p className="pill">{t('Commission', 'Р—Р°РєР°Р·')}</p>
+        <h2 className="mt-3 font-semibold text-2xl text-foreground">
+          {t('Commission', 'Р—Р°РєР°Р·')} {params.id}
         </h2>
         {commission && (
-          <p className="text-slate-600 text-sm">
-            {t('Reward', 'Вознаграждение')}{' '}
+          <p className="text-muted-foreground text-sm">
+            {t('Reward', 'Р’РѕР·РЅР°РіСЂР°Р¶РґРµРЅРёРµ')}{' '}
             {commission.rewardAmount
               ? `${commission.rewardAmount} ${commission.currency ?? 'USD'}`
-              : t('N/A', 'Нет')}{' '}
+              : t('N/A', 'РќРµС‚')}{' '}
             | {commission.paymentStatus}
           </p>
         )}
       </div>
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-red-600 text-xs">
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-destructive text-xs">
           {error}
         </div>
       )}
       {loading ? (
-        <div className="card p-4 text-slate-500 text-sm">
-          {t('Loading commission...', 'Загрузка заказа...')}
+        <div className="card p-4 text-muted-foreground text-sm">
+          {t('Loading commission...', 'Р—Р°РіСЂСѓР·РєР° Р·Р°РєР°Р·Р°...')}
         </div>
       ) : (
         <div className="card p-6">
-          <h3 className="font-semibold text-ink text-sm">
-            {t('Commission details', 'Детали заказа')}
+          <h3 className="font-semibold text-foreground text-sm">
+            {t('Commission details', 'Р”РµС‚Р°Р»Рё Р·Р°РєР°Р·Р°')}
           </h3>
-          <p className="mt-3 text-slate-600 text-sm">
+          <p className="mt-3 text-muted-foreground text-sm">
             {commission?.description ??
-              t('Commission not found.', 'Заказ не найден.')}
+              t('Commission not found.', 'Р—Р°РєР°Р· РЅРµ РЅР°Р№РґРµРЅ.')}
           </p>
           {commission?.winnerDraftId && (
-            <p className="mt-2 text-slate-500 text-xs">
-              {t('Winner draft:', 'Победивший драфт:')}{' '}
+            <p className="mt-2 text-muted-foreground text-xs">
+              {t('Winner draft:', 'РџРѕР±РµРґРёРІС€РёР№ РґСЂР°С„С‚:')}{' '}
               {commission.winnerDraftId}
             </p>
           )}

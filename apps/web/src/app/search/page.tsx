@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Image from 'next/image';
 import Link from 'next/link';
@@ -292,7 +292,7 @@ function SearchPageContent() {
           setError(
             getApiErrorMessage(
               error,
-              t('Search failed.', 'Поиск не выполнен.'),
+              t('Search failed.', 'РџРѕРёСЃРє РЅРµ РІС‹РїРѕР»РЅРµРЅ.'),
             ),
           );
         }
@@ -351,7 +351,7 @@ function SearchPageContent() {
       setError(
         t(
           'Provide a draft ID or an embedding array.',
-          'Укажите ID драфта или массив эмбеддинга.',
+          'РЈРєР°Р¶РёС‚Рµ ID РґСЂР°С„С‚Р° РёР»Рё РјР°СЃСЃРёРІ СЌРјР±РµРґРґРёРЅРіР°.',
         ),
       );
       return;
@@ -376,14 +376,17 @@ function SearchPageContent() {
         setVisualNotice(
           t(
             'Similar works available after analysis.',
-            'Похожие работы будут доступны после анализа.',
+            'РџРѕС…РѕР¶РёРµ СЂР°Р±РѕС‚С‹ Р±СѓРґСѓС‚ РґРѕСЃС‚СѓРїРЅС‹ РїРѕСЃР»Рµ Р°РЅР°Р»РёР·Р°.',
           ),
         );
       } else {
         setError(
           getApiErrorMessage(
             error,
-            t('Visual search failed.', 'Визуальный поиск не выполнен.'),
+            t(
+              'Visual search failed.',
+              'Р’РёР·СѓР°Р»СЊРЅС‹Р№ РїРѕРёСЃРє РЅРµ РІС‹РїРѕР»РЅРµРЅ.',
+            ),
           ),
         );
       }
@@ -414,23 +417,23 @@ function SearchPageContent() {
 
   const summary =
     mode === 'text'
-      ? `${t('Results for', 'Результаты для')} "${query || '...'}" | ${t(
+      ? `${t('Results for', 'Р РµР·СѓР»СЊС‚Р°С‚С‹ РґР»СЏ')} "${query || '...'}" | ${t(
           'type',
-          'тип',
-        )} ${type} | ${t('intent', 'намерение')} ${intent} | ${t(
+          'С‚РёРї',
+        )} ${type} | ${t('intent', 'РЅР°РјРµСЂРµРЅРёРµ')} ${intent} | ${t(
           'sorted by',
-          'сортировка',
-        )} ${sort} | ${t('range', 'диапазон')} ${range}`
-      : `${t('Visual results', 'Визуальные результаты')} | ${t(
+          'СЃРѕСЂС‚РёСЂРѕРІРєР°',
+        )} ${sort} | ${t('range', 'РґРёР°РїР°Р·РѕРЅ')} ${range}`
+      : `${t('Visual results', 'Р’РёР·СѓР°Р»СЊРЅС‹Рµ СЂРµР·СѓР»СЊС‚Р°С‚С‹')} | ${t(
           'type',
-          'тип',
+          'С‚РёРї',
         )} ${visualType}${
           visualDraftId.trim()
-            ? ` | ${t('draft', 'драфт')} ${visualDraftId.trim()}`
+            ? ` | ${t('draft', 'РґСЂР°С„С‚')} ${visualDraftId.trim()}`
             : ''
         }${
           visualTags.trim()
-            ? ` | ${t('tags', 'теги')} ${visualTags.trim()}`
+            ? ` | ${t('tags', 'С‚РµРіРё')} ${visualTags.trim()}`
             : ''
         }`;
   const showAbBadge = abEnabled;
@@ -438,13 +441,13 @@ function SearchPageContent() {
   return (
     <main className="grid gap-6">
       <div className="card p-6">
-        <h2 className="font-semibold text-2xl text-ink">
-          {t('Search', 'Поиск')}
+        <h2 className="font-semibold text-2xl text-foreground">
+          {t('Search', 'РџРѕРёСЃРє')}
         </h2>
-        <p className="text-slate-600 text-sm">
+        <p className="text-muted-foreground text-sm">
           {t(
             'Find drafts, releases, and studios.',
-            'Находите драфты, релизы и студии.',
+            'РќР°С…РѕРґРёС‚Рµ РґСЂР°С„С‚С‹, СЂРµР»РёР·С‹ Рё СЃС‚СѓРґРёРё.',
           )}
         </p>
       </div>
@@ -453,84 +456,93 @@ function SearchPageContent() {
           <button
             className={`rounded-lg px-3 py-2 text-sm ${
               mode === 'text'
-                ? 'bg-slate-900 text-white'
-                : 'border border-slate-200 bg-white text-slate-700'
+                ? 'border border-primary/50 bg-primary/15 text-primary'
+                : 'border border-border bg-muted/70 text-muted-foreground hover:border-primary/40 hover:text-foreground'
             }`}
             onClick={() => setMode('text')}
             type="button"
           >
-            {t('Text search', 'Текстовый поиск')}
+            {t('Text search', 'РўРµРєСЃС‚РѕРІС‹Р№ РїРѕРёСЃРє')}
           </button>
           <button
             className={`rounded-lg px-3 py-2 text-sm ${
               mode === 'visual'
-                ? 'bg-slate-900 text-white'
-                : 'border border-slate-200 bg-white text-slate-700'
+                ? 'border border-primary/50 bg-primary/15 text-primary'
+                : 'border border-border bg-muted/70 text-muted-foreground hover:border-primary/40 hover:text-foreground'
             }`}
             onClick={() => setMode('visual')}
             type="button"
           >
-            {t('Visual search', 'Визуальный поиск')}
+            {t('Visual search', 'Р’РёР·СѓР°Р»СЊРЅС‹Р№ РїРѕРёСЃРє')}
           </button>
         </div>
 
         {mode === 'text' ? (
           <>
             <input
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2"
+              className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
               onChange={(event) => setQuery(event.target.value)}
-              placeholder={t('Search by keyword', 'Поиск по ключевому слову')}
+              placeholder={t(
+                'Search by keyword',
+                'РџРѕРёСЃРє РїРѕ РєР»СЋС‡РµРІРѕРјСѓ СЃР»РѕРІСѓ',
+              )}
               value={query}
             />
             <div className="flex flex-wrap gap-3">
               <select
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
                 onChange={(event) => setType(event.target.value)}
                 value={type}
               >
-                <option value="all">{t('All types', 'Все типы')}</option>
-                <option value="draft">{t('Drafts', 'Драфты')}</option>
-                <option value="release">{t('Releases', 'Релизы')}</option>
-                <option value="studio">{t('Studios', 'Студии')}</option>
+                <option value="all">{t('All types', 'Р’СЃРµ С‚РёРїС‹')}</option>
+                <option value="draft">{t('Drafts', 'Р”СЂР°С„С‚С‹')}</option>
+                <option value="release">{t('Releases', 'Р РµР»РёР·С‹')}</option>
+                <option value="studio">{t('Studios', 'РЎС‚СѓРґРёРё')}</option>
               </select>
               <select
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
                 disabled={type === 'studio'}
                 onChange={(event) => setIntent(event.target.value)}
                 value={intent}
               >
-                <option value="all">{t('All intents', 'Все намерения')}</option>
-                <option value="needs_help">
-                  {t('Needs help', 'Нужна помощь')}
+                <option value="all">
+                  {t('All intents', 'Р’СЃРµ РЅР°РјРµСЂРµРЅРёСЏ')}
                 </option>
-                <option value="seeking_pr">{t('Seeking PR', 'Ищет PR')}</option>
+                <option value="needs_help">
+                  {t('Needs help', 'РќСѓР¶РЅР° РїРѕРјРѕС‰СЊ')}
+                </option>
+                <option value="seeking_pr">
+                  {t('Seeking PR', 'РС‰РµС‚ PR')}
+                </option>
                 <option value="ready_for_review">
-                  {t('Ready for review', 'Готов к ревью')}
+                  {t('Ready for review', 'Р“РѕС‚РѕРІ Рє СЂРµРІСЊСЋ')}
                 </option>
               </select>
               <select
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
                 onChange={(event) => setSort(event.target.value)}
                 value={sort}
               >
                 <option value="relevance">
-                  {t('Relevance', 'Релевантность')}
+                  {t('Relevance', 'Р РµР»РµРІР°РЅС‚РЅРѕСЃС‚СЊ')}
                 </option>
-                <option value="recency">{t('Recency', 'Свежие')}</option>
+                <option value="recency">{t('Recency', 'РЎРІРµР¶РёРµ')}</option>
                 <option value="glowup">GlowUp</option>
-                <option value="impact">{t('Impact', 'Влияние')}</option>
+                <option value="impact">{t('Impact', 'Р’Р»РёСЏРЅРёРµ')}</option>
               </select>
               <select
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
                 onChange={(event) => setRange(event.target.value)}
                 value={range}
               >
-                <option value="all">{t('All time', 'За все время')}</option>
+                <option value="all">
+                  {t('All time', 'Р—Р° РІСЃРµ РІСЂРµРјСЏ')}
+                </option>
                 <option value="7d">
-                  {t('Last 7 days', 'Последние 7 дней')}
+                  {t('Last 7 days', 'РџРѕСЃР»РµРґРЅРёРµ 7 РґРЅРµР№')}
                 </option>
                 <option value="30d">
-                  {t('Last 30 days', 'Последние 30 дней')}
+                  {t('Last 30 days', 'РџРѕСЃР»РµРґРЅРёРµ 30 РґРЅРµР№')}
                 </option>
               </select>
             </div>
@@ -538,72 +550,78 @@ function SearchPageContent() {
         ) : (
           <>
             <input
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2"
+              className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
               onChange={(event) => setVisualDraftId(event.target.value)}
-              placeholder={t('Draft ID (optional)', 'ID драфта (опционально)')}
+              placeholder={t(
+                'Draft ID (optional)',
+                'ID РґСЂР°С„С‚Р° (РѕРїС†РёРѕРЅР°Р»СЊРЅРѕ)',
+              )}
               value={visualDraftId}
             />
             <textarea
-              className="min-h-[120px] rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm"
+              className="min-h-[120px] rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground text-sm placeholder:text-muted-foreground/70"
               onChange={(event) => setVisualEmbedding(event.target.value)}
               placeholder={t(
                 'Embedding (JSON array, e.g. [0.1, 0.2, 0.3])',
-                'Эмбеддинг (массив JSON, например [0.1, 0.2, 0.3])',
+                'Р­РјР±РµРґРґРёРЅРі (РјР°СЃСЃРёРІ JSON, РЅР°РїСЂРёРјРµСЂ [0.1, 0.2, 0.3])',
               )}
               value={visualEmbedding}
             />
             <input
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2"
+              className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
               onChange={(event) => setVisualTags(event.target.value)}
               placeholder={t(
                 'Style tags (comma separated)',
-                'Теги стиля (через запятую)',
+                'РўРµРіРё СЃС‚РёР»СЏ (С‡РµСЂРµР· Р·Р°РїСЏС‚СѓСЋ)',
               )}
               value={visualTags}
             />
             <div className="flex flex-wrap gap-3">
               <select
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
                 onChange={(event) => setVisualType(event.target.value)}
                 value={visualType}
               >
-                <option value="all">{t('All types', 'Все типы')}</option>
-                <option value="draft">{t('Drafts', 'Драфты')}</option>
-                <option value="release">{t('Releases', 'Релизы')}</option>
+                <option value="all">{t('All types', 'Р’СЃРµ С‚РёРїС‹')}</option>
+                <option value="draft">{t('Drafts', 'Р”СЂР°С„С‚С‹')}</option>
+                <option value="release">{t('Releases', 'Р РµР»РёР·С‹')}</option>
               </select>
               <button
-                className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-60"
+                className="rounded-lg border border-primary/45 bg-primary/15 px-4 py-2 text-primary text-sm transition hover:border-primary/70 disabled:opacity-60"
                 disabled={loading}
                 onClick={runVisualSearch}
                 type="button"
               >
-                {t('Run visual search', 'Запустить визуальный поиск')}
+                {t(
+                  'Run visual search',
+                  'Р—Р°РїСѓСЃС‚РёС‚СЊ РІРёР·СѓР°Р»СЊРЅС‹Р№ РїРѕРёСЃРє',
+                )}
               </button>
             </div>
-            <p className="text-slate-500 text-xs">
+            <p className="text-muted-foreground text-xs">
               {t(
                 'Provide either a draft ID or an embedding array.',
-                'Укажите либо ID драфта, либо массив эмбеддинга.',
+                'РЈРєР°Р¶РёС‚Рµ Р»РёР±Рѕ ID РґСЂР°С„С‚Р°, Р»РёР±Рѕ РјР°СЃСЃРёРІ СЌРјР±РµРґРґРёРЅРіР°.',
               )}
             </p>
           </>
         )}
 
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 border-dashed bg-white/70 p-4 text-slate-500 text-sm">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border border-dashed bg-muted/60 p-4 text-muted-foreground text-sm">
           <span>{summary}</span>
           {showAbBadge && (
-            <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-500 uppercase">
+            <span className="rounded-full border border-border bg-background/70 px-2 py-0.5 text-[11px] text-muted-foreground uppercase">
               AB {profile}
             </span>
           )}
         </div>
         {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-red-600 text-xs">
+          <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-destructive text-xs">
             {error}
           </div>
         )}
         {visualNotice && (
-          <div className="rounded-xl border border-slate-200 bg-white/70 p-3 text-slate-500 text-xs">
+          <div className="rounded-xl border border-border bg-muted/60 p-3 text-muted-foreground text-xs">
             {visualNotice}
           </div>
         )}
@@ -613,16 +631,16 @@ function SearchPageContent() {
           !error &&
           !visualNotice &&
           !loading && (
-            <div className="rounded-xl border border-slate-200 bg-white/70 p-3 text-slate-500 text-xs">
+            <div className="rounded-xl border border-border bg-muted/60 p-3 text-muted-foreground text-xs">
               {t(
                 'Search completed, no results.',
-                'Поиск завершен, результатов нет.',
+                'РџРѕРёСЃРє Р·Р°РІРµСЂС€РµРЅ, СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ РЅРµС‚.',
               )}
             </div>
           )}
         {loading ? (
-          <p className="text-slate-500 text-xs">
-            {t('Searching...', 'Выполняется поиск...')}
+          <p className="text-muted-foreground text-xs">
+            {t('Searching...', 'Р’С‹РїРѕР»РЅСЏРµС‚СЃСЏ РїРѕРёСЃРє...')}
           </p>
         ) : (
           <ul className="grid gap-3">
@@ -651,18 +669,18 @@ function SearchPageContent() {
 
               return (
                 <li
-                  className="rounded-xl border border-slate-200 bg-white/70 text-sm"
+                  className="rounded-xl border border-border bg-muted/60 text-sm"
                   key={result.id}
                 >
                   <Link
-                    className="block rounded-xl p-3 transition hover:bg-white hover:shadow-sm"
+                    className="block rounded-xl p-3 transition hover:bg-background/70 hover:shadow-sm"
                     href={href}
                     onClick={handleOpen}
                   >
-                    <p className="font-semibold text-slate-500 text-xs uppercase">
+                    <p className="font-semibold text-muted-foreground text-xs uppercase">
                       {result.type}
                     </p>
-                    <p className="text-ink text-sm">{result.title}</p>
+                    <p className="text-foreground text-sm">{result.title}</p>
                     {result.type !== 'studio' && (
                       <div className="mt-3 grid grid-cols-2 gap-2">
                         {result.beforeImageUrl ? (
@@ -676,8 +694,8 @@ function SearchPageContent() {
                             width={320}
                           />
                         ) : (
-                          <div className="flex h-20 w-full items-center justify-center rounded-lg bg-slate-100 font-semibold text-[11px] text-slate-400">
-                            {t('Before', 'До')}
+                          <div className="flex h-20 w-full items-center justify-center rounded-lg bg-muted font-semibold text-[11px] text-muted-foreground">
+                            {t('Before', 'Р”Рѕ')}
                           </div>
                         )}
                         {result.afterImageUrl ? (
@@ -691,18 +709,18 @@ function SearchPageContent() {
                             width={320}
                           />
                         ) : (
-                          <div className="flex h-20 w-full items-center justify-center rounded-lg bg-slate-100 font-semibold text-[11px] text-slate-400">
-                            {t('After', 'После')}
+                          <div className="flex h-20 w-full items-center justify-center rounded-lg bg-muted font-semibold text-[11px] text-muted-foreground">
+                            {t('After', 'РџРѕСЃР»Рµ')}
                           </div>
                         )}
                       </div>
                     )}
-                    <p className="text-slate-500 text-xs">
-                      {t('Score', 'Оценка')}{' '}
+                    <p className="text-muted-foreground text-xs">
+                      {t('Score', 'РћС†РµРЅРєР°')}{' '}
                       {Number(result.score ?? 0).toFixed(1)}
                     </p>
                     {typeof result.glowUpScore === 'number' && (
-                      <p className="text-slate-500 text-xs">
+                      <p className="text-muted-foreground text-xs">
                         GlowUp {Number(result.glowUpScore ?? 0).toFixed(1)}
                       </p>
                     )}
@@ -711,8 +729,11 @@ function SearchPageContent() {
               );
             })}
             {results.length === 0 && (
-              <li className="text-slate-500 text-xs">
-                {t('No results yet.', 'Пока нет результатов.')}
+              <li className="text-muted-foreground text-xs">
+                {t(
+                  'No results yet.',
+                  'РџРѕРєР° РЅРµС‚ СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ.',
+                )}
               </li>
             )}
           </ul>
@@ -728,8 +749,8 @@ export default function SearchPage() {
   return (
     <Suspense
       fallback={
-        <main className="card p-6 text-slate-500 text-sm">
-          {t('Loading search...', 'Загрузка поиска...')}
+        <main className="card p-6 text-muted-foreground text-sm">
+          {t('Loading search...', 'Р—Р°РіСЂСѓР·РєР° РїРѕРёСЃРєР°...')}
         </main>
       }
     >

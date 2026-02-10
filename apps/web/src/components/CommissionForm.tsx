@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { type FormEvent, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -27,7 +27,10 @@ export const CommissionForm = ({ onCreated }: CommissionFormProps) => {
       const rewardAmount = reward ? Number(reward) : undefined;
       if (reward && Number.isNaN(rewardAmount)) {
         throw new Error(
-          t('Invalid reward amount.', 'Некорректная сумма вознаграждения.'),
+          t(
+            'Invalid reward amount.',
+            'РќРµРєРѕСЂСЂРµРєС‚РЅР°СЏ СЃСѓРјРјР° РІРѕР·РЅР°РіСЂР°Р¶РґРµРЅРёСЏ.',
+          ),
         );
       }
       await apiClient.post('/commissions', {
@@ -46,7 +49,10 @@ export const CommissionForm = ({ onCreated }: CommissionFormProps) => {
       setError(
         getApiErrorMessage(
           error,
-          t('Failed to create commission.', 'Не удалось создать заказ.'),
+          t(
+            'Failed to create commission.',
+            'РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕР·РґР°С‚СЊ Р·Р°РєР°Р·.',
+          ),
         ),
       );
     }
@@ -54,27 +60,30 @@ export const CommissionForm = ({ onCreated }: CommissionFormProps) => {
 
   return (
     <form className="card grid gap-4 p-6" onSubmit={handleSubmit}>
-      <h3 className="font-semibold text-ink text-sm">
-        {t('Create commission', 'Создать заказ')}
+      <h3 className="font-semibold text-foreground text-sm">
+        {t('Create commission', 'РЎРѕР·РґР°С‚СЊ Р·Р°РєР°Р·')}
       </h3>
       <textarea
-        className="min-h-[120px] rounded-xl border border-slate-200 bg-white p-3 text-sm"
+        className="min-h-[120px] rounded-xl border border-border bg-background/70 p-3 text-foreground text-sm placeholder:text-muted-foreground/70"
         onChange={(event) => setDescription(event.target.value)}
         placeholder={t(
           'Describe the creative brief',
-          'Опишите креативное техническое задание',
+          'РћРїРёС€РёС‚Рµ РєСЂРµР°С‚РёРІРЅРѕРµ С‚РµС…РЅРёС‡РµСЃРєРѕРµ Р·Р°РґР°РЅРёРµ',
         )}
         value={description}
       />
       <div className="flex flex-wrap gap-3">
         <input
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+          className="rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70"
           onChange={(event) => setReward(event.target.value)}
-          placeholder={t('Reward amount', 'Сумма вознаграждения')}
+          placeholder={t(
+            'Reward amount',
+            'РЎСѓРјРјР° РІРѕР·РЅР°РіСЂР°Р¶РґРµРЅРёСЏ',
+          )}
           value={reward}
         />
         <select
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+          className="rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70"
           onChange={(event) => setCurrency(event.target.value)}
           value={currency}
         >
@@ -83,19 +92,19 @@ export const CommissionForm = ({ onCreated }: CommissionFormProps) => {
           <option value="GBP">GBP</option>
         </select>
       </div>
-      {error && <p className="text-red-500 text-xs">{error}</p>}
+      {error && <p className="text-destructive text-xs">{error}</p>}
       <button
-        className="rounded-full bg-ember px-5 py-2 font-semibold text-sm text-white shadow-glow"
+        className="rounded-full border border-primary/45 bg-primary/15 px-5 py-2 font-semibold text-primary text-sm shadow-glow transition hover:border-primary/70 disabled:opacity-60"
         disabled={status === 'loading'}
         type="submit"
       >
         {status === 'loading'
-          ? t('Posting...', 'Публикация...')
-          : t('Post', 'Опубликовать')}
+          ? t('Posting...', 'РџСѓР±Р»РёРєР°С†РёСЏ...')
+          : t('Post', 'РћРїСѓР±Р»РёРєРѕРІР°С‚СЊ')}
       </button>
       {status === 'success' && (
-        <p className="text-emerald-600 text-xs">
-          {t('Commission created.', 'Заказ создан.')}
+        <p className="text-secondary text-xs">
+          {t('Commission created.', 'Р—Р°РєР°Р· СЃРѕР·РґР°РЅ.')}
         </p>
       )}
     </form>
