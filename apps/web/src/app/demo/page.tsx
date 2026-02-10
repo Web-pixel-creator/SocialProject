@@ -71,10 +71,10 @@ export default function DemoPage() {
     <main className="grid gap-6">
       <div className="card p-6">
         <p className="pill">{t('Demo', 'Демо')}</p>
-        <h2 className="mt-3 font-semibold text-2xl text-ink">
+        <h2 className="mt-3 font-semibold text-2xl text-foreground">
           {t('One-click demo flow', 'Демо-флоу в один клик')}
         </h2>
-        <p className="text-slate-600 text-sm">
+        <p className="text-muted-foreground text-sm">
           {t(
             'Runs the full loop: Draft -> Fix Request -> PR -> GlowUp.',
             'Запускает полный цикл: Черновик -> Фикс -> PR -> GlowUp.',
@@ -83,10 +83,10 @@ export default function DemoPage() {
       </div>
 
       <section className="card grid gap-4 p-6">
-        <label className="grid gap-2 font-medium text-slate-700 text-sm">
+        <label className="grid gap-2 font-medium text-foreground text-sm">
           {t('Draft ID (optional)', 'ID черновика (необязательно)')}
           <input
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2"
+            className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
             onChange={(event) => setDraftId(event.target.value)}
             placeholder={t(
               'Draft UUID or leave blank',
@@ -97,7 +97,7 @@ export default function DemoPage() {
         </label>
         <div className="flex flex-wrap items-center gap-3">
           <button
-            className="rounded-full bg-ink px-5 py-2 font-semibold text-white text-xs disabled:opacity-60"
+            className="rounded-full bg-primary px-5 py-2 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90 disabled:opacity-60"
             disabled={loading}
             onClick={runDemo}
             type="button"
@@ -108,7 +108,7 @@ export default function DemoPage() {
           </button>
           {result?.draftId && (
             <Link
-              className="rounded-full border border-slate-200 px-5 py-2 font-semibold text-slate-600 text-xs"
+              className="rounded-full border border-border bg-background/70 px-5 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60"
               href={`/drafts/${result.draftId}`}
             >
               {t('Open draft', 'Открыть черновик')}
@@ -116,26 +116,30 @@ export default function DemoPage() {
           )}
         </div>
         {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-red-600 text-xs">
+          <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-destructive text-xs">
             {error}
           </div>
         )}
       </section>
 
       <section className="card grid gap-3 p-6">
-        <h3 className="font-semibold text-ink text-sm">{t('Steps', 'Шаги')}</h3>
+        <h3 className="font-semibold text-foreground text-sm">
+          {t('Steps', 'Шаги')}
+        </h3>
         <ul className="grid gap-2 text-sm">
           {steps.map((step) => (
             <li
-              className="flex items-center justify-between rounded-xl border border-slate-200 bg-white/70 p-3"
+              className="flex items-center justify-between rounded-xl border border-border bg-background/70 p-3"
               key={step.key}
             >
-              <span className="text-slate-700">
+              <span className="text-foreground">
                 {t(step.label, step.labelRu)}
               </span>
               <span
                 className={
-                  isDone(step.key) ? 'text-emerald-600' : 'text-slate-400'
+                  isDone(step.key)
+                    ? 'text-emerald-500'
+                    : 'text-muted-foreground'
                 }
               >
                 {isDone(step.key)
@@ -146,7 +150,7 @@ export default function DemoPage() {
           ))}
         </ul>
         {result && (
-          <div className="rounded-xl border border-slate-200 bg-white/70 p-3 text-slate-500 text-xs">
+          <div className="rounded-xl border border-border bg-background/70 p-3 text-muted-foreground text-xs">
             {t('GlowUp', 'GlowUp')}: {Number(result.glowUp ?? 0).toFixed(1)}
           </div>
         )}

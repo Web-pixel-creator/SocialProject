@@ -25,10 +25,10 @@ export class ErrorBoundary extends Component<
     if (this.state.hasError) {
       return (
         <div className="card p-6">
-          <h2 className="font-semibold text-2xl text-ink">
+          <h2 className="font-semibold text-2xl text-foreground">
             Something went wrong.
           </h2>
-          <p className="text-slate-600 text-sm">
+          <p className="text-muted-foreground text-sm">
             Please refresh the page or try again later.
           </p>
         </div>

@@ -55,12 +55,12 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
   return (
     <form className="card grid gap-4 p-8" onSubmit={handleSubmit}>
       <div>
-        <h2 className="font-semibold text-2xl text-ink">
+        <h2 className="font-semibold text-2xl text-foreground">
           {mode === 'login'
             ? t('Welcome back', 'С возвращением')
             : t('Create account', 'Создать аккаунт')}
         </h2>
-        <p className="text-slate-600 text-sm">
+        <p className="text-muted-foreground text-sm">
           {mode === 'login'
             ? t(
                 'Sign in to follow your favorite AI studios.',
@@ -72,20 +72,20 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
               )}
         </p>
       </div>
-      <label className="grid gap-2 font-medium text-slate-700 text-sm">
+      <label className="grid gap-2 font-medium text-foreground text-sm">
         {t('Email', 'Email')}
         <input
-          className="rounded-xl border border-slate-200 bg-white px-4 py-2"
+          className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
           onChange={(event) => setEmail(event.target.value)}
           required
           type="email"
           value={email}
         />
       </label>
-      <label className="grid gap-2 font-medium text-slate-700 text-sm">
+      <label className="grid gap-2 font-medium text-foreground text-sm">
         {t('Password', 'Пароль')}
         <input
-          className="rounded-xl border border-slate-200 bg-white px-4 py-2"
+          className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
           onChange={(event) => setPassword(event.target.value)}
           required
           type="password"
@@ -93,7 +93,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
         />
       </label>
       {mode === 'register' && (
-        <div className="grid gap-2 text-slate-600 text-sm">
+        <div className="grid gap-2 text-muted-foreground text-sm">
           <label className="flex items-center gap-2">
             <input
               checked={terms}
@@ -101,7 +101,10 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
               type="checkbox"
             />
             {t('I accept the', 'Я принимаю')}{' '}
-            <Link href="/legal/terms">
+            <Link
+              className="text-primary underline-offset-2 hover:underline"
+              href="/legal/terms"
+            >
               {t('Terms of Service', 'Условия использования')}
             </Link>
           </label>
@@ -112,29 +115,32 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
               type="checkbox"
             />
             {t('I accept the', 'Я принимаю')}{' '}
-            <Link href="/legal/privacy">
+            <Link
+              className="text-primary underline-offset-2 hover:underline"
+              href="/legal/privacy"
+            >
               {t('Privacy Policy', 'Политику конфиденциальности')}
             </Link>
           </label>
         </div>
       )}
-      {error && <p className="text-red-500 text-sm">{error}</p>}
+      {error && <p className="text-destructive text-sm">{error}</p>}
       <button
-        className="rounded-full bg-ember px-5 py-2 font-semibold text-sm text-white shadow-glow"
+        className="rounded-full bg-primary px-5 py-2 font-semibold text-primary-foreground text-sm shadow-sm transition hover:bg-primary/90"
         disabled={loading}
         type="submit"
       >
         {submitButtonLabel}
       </button>
-      <div className="grid gap-2 text-slate-500 text-xs">
+      <div className="grid gap-2 text-muted-foreground text-xs">
         <button
-          className="rounded-full border border-slate-200 px-4 py-2 font-semibold text-xs"
+          className="rounded-full border border-border bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60"
           type="button"
         >
           {t('Continue with Google', 'Продолжить через Google')}
         </button>
         <button
-          className="rounded-full border border-slate-200 px-4 py-2 font-semibold text-xs"
+          className="rounded-full border border-border bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60"
           type="button"
         >
           {t('Continue with GitHub', 'Продолжить через GitHub')}

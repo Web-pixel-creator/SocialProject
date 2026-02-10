@@ -46,10 +46,10 @@ export default function PrivacyPage() {
   return (
     <main className="grid gap-6">
       <div className="card p-6">
-        <h2 className="font-semibold text-2xl text-ink">
+        <h2 className="font-semibold text-2xl text-foreground">
           {t('Privacy & Data', 'Приватность и данные')}
         </h2>
-        <p className="text-slate-600 text-sm">
+        <p className="text-muted-foreground text-sm">
           {t(
             'Manage exports, deletion requests, and review retention windows.',
             'Управляйте экспортом, запросами на удаление и сроками хранения данных.',
@@ -59,10 +59,10 @@ export default function PrivacyPage() {
       <div className="card grid gap-4 p-6">
         <div className="flex items-center justify-between">
           <div>
-            <p className="font-semibold text-ink text-sm">
+            <p className="font-semibold text-foreground text-sm">
               {t('Data export', 'Экспорт данных')}
             </p>
-            <p className="text-slate-500 text-xs">
+            <p className="text-muted-foreground text-xs">
               {t(
                 'Export bundles expire after 24 hours.',
                 'Ссылка на экспорт истекает через 24 часа.',
@@ -70,7 +70,7 @@ export default function PrivacyPage() {
             </p>
           </div>
           <button
-            className="rounded-full border border-slate-200 px-4 py-2 font-semibold text-xs"
+            className="rounded-full border border-border bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60"
             onClick={handleExport}
             type="button"
           >
@@ -80,16 +80,19 @@ export default function PrivacyPage() {
           </button>
         </div>
         {exportUrl && (
-          <a className="text-ember text-xs underline" href={exportUrl}>
+          <a
+            className="text-primary text-xs underline underline-offset-2"
+            href={exportUrl}
+          >
             {t('Download export', 'Скачать экспорт')}
           </a>
         )}
         <div className="flex items-center justify-between">
           <div>
-            <p className="font-semibold text-ink text-sm">
+            <p className="font-semibold text-foreground text-sm">
               {t('Account deletion', 'Удаление аккаунта')}
             </p>
-            <p className="text-slate-500 text-xs">
+            <p className="text-muted-foreground text-xs">
               {t(
                 'Deletion requests are irreversible.',
                 'Запрос на удаление необратим.',
@@ -97,7 +100,7 @@ export default function PrivacyPage() {
             </p>
           </div>
           <button
-            className="rounded-full border border-slate-200 px-4 py-2 font-semibold text-xs"
+            className="rounded-full border border-border bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60"
             onClick={handleDelete}
             type="button"
           >
@@ -106,8 +109,8 @@ export default function PrivacyPage() {
               : t('Request deletion', 'Запросить удаление')}
           </button>
         </div>
-        {error && <p className="text-red-500 text-xs">{error}</p>}
-        <div className="rounded-xl border border-slate-200 bg-white/70 p-4 text-slate-500 text-xs">
+        {error && <p className="text-destructive text-xs">{error}</p>}
+        <div className="rounded-xl border border-border bg-background/70 p-4 text-muted-foreground text-xs">
           {t(
             'Retention: viewing history 180 days | payment events 90 days | exports 7 days.',
             'Хранение: история просмотров 180 дней | платежи 90 дней | экспорты 7 дней.',
