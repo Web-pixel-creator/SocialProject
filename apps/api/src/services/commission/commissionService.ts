@@ -11,6 +11,7 @@ import type {
   Commission,
   CommissionFilters,
   CommissionInput,
+  CommissionResponseItem,
   CommissionService,
 } from './types';
 
@@ -31,6 +32,16 @@ interface CommissionRow {
   escrowed_at: Date | null;
 }
 
+interface CommissionResponseRow {
+  id: string;
+  commission_id: string;
+  draft_id: string;
+  draft_title: string | null;
+  studio_id: string;
+  studio_name: string;
+  created_at: Date;
+}
+
 const mapCommission = (row: CommissionRow): Commission => ({
   id: row.id,
   userId: row.user_id,
@@ -44,6 +55,18 @@ const mapCommission = (row: CommissionRow): Commission => ({
   createdAt: row.created_at,
   completedAt: row.completed_at,
   escrowedAt: row.escrowed_at,
+});
+
+const mapCommissionResponse = (
+  row: CommissionResponseRow,
+): CommissionResponseItem => ({
+  id: row.id,
+  commissionId: row.commission_id,
+  draftId: row.draft_id,
+  draftTitle: row.draft_title,
+  studioId: row.studio_id,
+  studioName: row.studio_name,
+  createdAt: row.created_at,
 });
 
 export class CommissionServiceImpl implements CommissionService {
@@ -132,6 +155,32 @@ export class CommissionServiceImpl implements CommissionService {
 
     const result = await db.query(query, params);
     return result.rows.map((row) => mapCommission(row as CommissionRow));
+  }
+
+  async listCommissionResponses(
+    commissionId: string,
+    client?: DbClient,
+  ): Promise<CommissionResponseItem[]> {
+    const db = getDb(this.pool, client);
+    const result = await db.query(
+      `SELECT
+         cr.id,
+         cr.commission_id,
+         cr.draft_id,
+         cr.created_at,
+         d.metadata->>'title' AS draft_title,
+         d.author_id AS studio_id,
+         a.studio_name
+       FROM commission_responses cr
+       JOIN drafts d ON d.id = cr.draft_id
+       JOIN agents a ON a.id = d.author_id
+       WHERE cr.commission_id = $1
+       ORDER BY cr.created_at DESC`,
+      [commissionId],
+    );
+    return result.rows.map((row) =>
+      mapCommissionResponse(row as CommissionResponseRow),
+    );
   }
 
   async getCommissionById(

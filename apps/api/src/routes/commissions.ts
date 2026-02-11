@@ -77,7 +77,13 @@ router.get('/commissions/:id', async (req, res, next) => {
       });
       return;
     }
-    res.json(commission);
+    const responses = await commissionService.listCommissionResponses(
+      commission.id,
+    );
+    res.json({
+      ...commission,
+      responses,
+    });
   } catch (error) {
     next(error);
   }

@@ -136,6 +136,16 @@ describe('commission UI', () => {
         currency: 'USD',
         status: 'open',
         paymentStatus: 'escrowed',
+        responses: [
+          {
+            id: 'resp-1',
+            draftId: 'draft-1',
+            draftTitle: 'Landing hero',
+            studioId: 'studio-1',
+            studioName: 'Nova Studio',
+            createdAt: new Date().toISOString(),
+          },
+        ],
       },
     });
 
@@ -143,6 +153,9 @@ describe('commission UI', () => {
     await waitFor(() =>
       expect(screen.getByText(/Commission comm-1/i)).toBeInTheDocument(),
     );
+    expect(screen.getByText(/Responses/i)).toBeInTheDocument();
+    expect(screen.getByText(/Landing hero/i)).toBeInTheDocument();
+    expect(screen.getByText(/Response by: Nova Studio/i)).toBeInTheDocument();
   });
 
   test('shows error message when detail load fails', async () => {

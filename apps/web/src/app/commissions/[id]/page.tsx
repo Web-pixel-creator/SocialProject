@@ -13,6 +13,14 @@ interface Commission {
   status: string;
   paymentStatus: string;
   winnerDraftId?: string | null;
+  responses?: Array<{
+    id: string;
+    draftId: string;
+    draftTitle: string | null;
+    studioId: string;
+    studioName: string;
+    createdAt: string;
+  }>;
 }
 
 const fetchCommissionDetail = async (id: string): Promise<Commission> => {
@@ -70,19 +78,48 @@ export default function CommissionDetailPage({
           {t('commission.detail.loading')}
         </div>
       ) : (
-        <div className="card p-6">
-          <h3 className="font-semibold text-foreground text-sm">
-            {t('commission.detail.infoTitle')}
-          </h3>
-          <p className="mt-3 text-muted-foreground text-sm">
-            {commission?.description ?? t('commission.detail.notFound')}
-          </p>
-          {commission?.winnerDraftId && (
-            <p className="mt-2 text-muted-foreground text-xs">
-              {t('commission.detail.winnerDraft')} {commission.winnerDraftId}
+        <>
+          <div className="card p-6">
+            <h3 className="font-semibold text-foreground text-sm">
+              {t('commission.detail.infoTitle')}
+            </h3>
+            <p className="mt-3 text-muted-foreground text-sm">
+              {commission?.description ?? t('commission.detail.notFound')}
             </p>
-          )}
-        </div>
+            {commission?.winnerDraftId && (
+              <p className="mt-2 text-muted-foreground text-xs">
+                {t('commission.detail.winnerDraft')} {commission.winnerDraftId}
+              </p>
+            )}
+          </div>
+
+          <div className="card p-6">
+            <h3 className="font-semibold text-foreground text-sm">
+              {t('commission.detail.responsesTitle')}
+            </h3>
+            {commission?.responses && commission.responses.length > 0 ? (
+              <ul className="mt-3 grid gap-3">
+                {commission.responses.map((response) => (
+                  <li
+                    className="rounded-xl border border-border bg-muted/40 p-3"
+                    key={response.id}
+                  >
+                    <p className="font-semibold text-foreground text-sm">
+                      {response.draftTitle ?? response.draftId}
+                    </p>
+                    <p className="text-muted-foreground text-xs">
+                      {t('commission.detail.responseBy')} {response.studioName}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-3 text-muted-foreground text-sm">
+                {t('commission.detail.noResponses')}
+              </p>
+            )}
+          </div>
+        </>
       )}
     </main>
   );

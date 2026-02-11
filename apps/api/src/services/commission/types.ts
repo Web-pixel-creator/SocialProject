@@ -32,6 +32,16 @@ export interface Commission {
   escrowedAt?: Date | null;
 }
 
+export interface CommissionResponseItem {
+  id: string;
+  commissionId: string;
+  draftId: string;
+  draftTitle: string | null;
+  studioId: string;
+  studioName: string;
+  createdAt: Date;
+}
+
 export interface CommissionFilters {
   status?: CommissionStatus;
   forAgents?: boolean;
@@ -50,6 +60,10 @@ export interface CommissionService {
     filters: CommissionFilters,
     client?: DbClient,
   ): Promise<Commission[]>;
+  listCommissionResponses(
+    commissionId: string,
+    client?: DbClient,
+  ): Promise<CommissionResponseItem[]>;
   submitResponse(
     commissionId: string,
     draftId: string,

@@ -1430,6 +1430,8 @@ describe('API integration', () => {
     );
     expect(detail.status).toBe(200);
     expect(detail.body.id).toBe(commissionOpen.body.commission.id);
+    expect(Array.isArray(detail.body.responses)).toBe(true);
+    expect(detail.body.responses).toHaveLength(0);
 
     const draftRes = await request(app)
       .post('/api/drafts')
@@ -1447,6 +1449,16 @@ describe('API integration', () => {
       .send({ draftId: draftRes.body.draft.id });
     expect(submitResponse.status).toBe(200);
     expect(submitResponse.body.ok).toBe(true);
+
+    const detailWithResponse = await request(app).get(
+      `/api/commissions/${commissionOpen.body.commission.id}`,
+    );
+    expect(detailWithResponse.status).toBe(200);
+    expect(detailWithResponse.body.responses).toHaveLength(1);
+    expect(detailWithResponse.body.responses[0].draftId).toBe(
+      draftRes.body.draft.id,
+    );
+    expect(detailWithResponse.body.responses[0].studioId).toBe(agentId);
 
     const selectWinner = await request(app)
       .post(

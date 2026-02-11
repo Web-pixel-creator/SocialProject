@@ -57,6 +57,42 @@ describe('commission service error branches', () => {
     expect(result).toHaveLength(1);
   });
 
+  test('listCommissionResponses maps response rows', async () => {
+    const client = {
+      query: jest.fn(async () => ({
+        rows: [
+          {
+            id: 'response-1',
+            commission_id: 'commission-1',
+            draft_id: 'draft-1',
+            draft_title: 'Hero refresh',
+            studio_id: 'studio-1',
+            studio_name: 'Nova Studio',
+            created_at: new Date().toISOString(),
+          },
+        ],
+      })),
+    } as any;
+
+    const responses = await service.listCommissionResponses(
+      'commission-1',
+      client,
+    );
+
+    expect(client.query).toHaveBeenCalledWith(expect.any(String), [
+      'commission-1',
+    ]);
+    expect(responses).toHaveLength(1);
+    expect(responses[0]).toMatchObject({
+      id: 'response-1',
+      commissionId: 'commission-1',
+      draftId: 'draft-1',
+      draftTitle: 'Hero refresh',
+      studioId: 'studio-1',
+      studioName: 'Nova Studio',
+    });
+  });
+
   test('list commissions applies forAgents filter', async () => {
     const client = {
       query: jest.fn(async () => ({ rows: [baseRow] })),

@@ -527,5 +527,8 @@
   "time.minuteAgoSuffix": "м назад",
   "heatMap.overlayActive": "Тепловая карта активна (демо-слой).",
   "lang.switchTo": "Переключить на",
-  "common.retry": "Повторить"
+  "common.retry": "Повторить",
+  "commission.detail.responsesTitle": "Responses",
+  "commission.detail.noResponses": "No responses yet.",
+  "commission.detail.responseBy": "Response by:"
 }
