@@ -585,6 +585,9 @@ export default function DraftDetailPage() {
   >([]);
   const seenEventsRef = useRef<Set<string>>(new Set());
   const similarTelemetryRef = useRef<string | null>(null);
+  const arcTelemetryRef = useRef<string | null>(null);
+  const lastRealtimeMutationEventIdRef = useRef<string | null>(null);
+  const copyStatusTimeoutRef = useRef<number | null>(null);
   const watchlistAuthRequired = isAuthRequiredError(watchlistLoadError);
   const digestAuthRequired = isAuthRequiredError(digestLoadError);
   const predictionAuthRequired = isAuthRequiredError(predictionLoadError);
@@ -671,13 +674,23 @@ export default function DraftDetailPage() {
     if (!draftId || typeof navigator === 'undefined') {
       return;
     }
+    if (copyStatusTimeoutRef.current !== null) {
+      window.clearTimeout(copyStatusTimeoutRef.current);
+      copyStatusTimeoutRef.current = null;
+    }
     try {
       await navigator.clipboard.writeText(draftId);
       setCopyStatus(t('draftDetail.copy.copied'));
-      setTimeout(() => setCopyStatus(null), 2000);
+      copyStatusTimeoutRef.current = window.setTimeout(() => {
+        setCopyStatus(null);
+        copyStatusTimeoutRef.current = null;
+      }, 2000);
     } catch (_error) {
       setCopyStatus(t('draftDetail.copy.failed'));
-      setTimeout(() => setCopyStatus(null), 2000);
+      copyStatusTimeoutRef.current = window.setTimeout(() => {
+        setCopyStatus(null);
+        copyStatusTimeoutRef.current = null;
+      }, 2000);
     }
   };
 
@@ -808,6 +821,11 @@ export default function DraftDetailPage() {
     if (!(arcView?.summary && arcView?.recap24h)) {
       return;
     }
+    const signature = `${draftId}:${arcView.summary.state}:${arcView.recap24h.hasChanges}`;
+    if (arcTelemetryRef.current === signature) {
+      return;
+    }
+    arcTelemetryRef.current = signature;
     sendTelemetry({
       eventType: 'draft_arc_view',
       draftId,
@@ -830,6 +848,10 @@ export default function DraftDetailPage() {
     if (!last) {
       return;
     }
+    if (lastRealtimeMutationEventIdRef.current === last.id) {
+      return;
+    }
+    lastRealtimeMutationEventIdRef.current = last.id;
     if (
       ['fix_request', 'pull_request', 'pull_request_decision'].includes(
         last.type,
@@ -884,6 +906,17 @@ export default function DraftDetailPage() {
     setNotifications((prev) => [...next, ...prev].slice(0, 5));
   }, [events, formatEventMessage, isFollowed]);
 
+  useEffect(
+    () => () => {
+      if (copyStatusTimeoutRef.current === null) {
+        return;
+      }
+      window.clearTimeout(copyStatusTimeoutRef.current);
+      copyStatusTimeoutRef.current = null;
+    },
+    [],
+  );
+
   const versionNumbers = useMemo(
     () => versions.map((version) => version.versionNumber),
     [versions],
@@ -895,19 +928,27 @@ export default function DraftDetailPage() {
   const beforeImageUrl = versions.length > 0 ? versions[0].imageUrl : undefined;
   const afterImageUrl = versions.at(-1)?.imageUrl;
 
-  const fixList = fixRequests.map((item) => ({
-    id: item.id,
-    category: item.category,
-    description: item.description,
-    critic: `Studio ${item.criticId.slice(0, 6)}`,
-  }));
+  const fixList = useMemo(
+    () =>
+      fixRequests.map((item) => ({
+        id: item.id,
+        category: item.category,
+        description: item.description,
+        critic: `Studio ${item.criticId.slice(0, 6)}`,
+      })),
+    [fixRequests],
+  );
 
-  const prList = pullRequests.map((item) => ({
-    id: item.id,
-    status: item.status,
-    description: item.description,
-    maker: `Studio ${item.makerId.slice(0, 6)}`,
-  }));
+  const prList = useMemo(
+    () =>
+      pullRequests.map((item) => ({
+        id: item.id,
+        status: item.status,
+        description: item.description,
+        maker: `Studio ${item.makerId.slice(0, 6)}`,
+      })),
+    [pullRequests],
+  );
 
   const hasFixRequests = fixRequests.length > 0;
   const statusInfo = getDraftStatusInfo(
