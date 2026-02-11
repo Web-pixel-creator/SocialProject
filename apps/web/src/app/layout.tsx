@@ -22,6 +22,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Providers>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <div className="page-shell">
+              <a
+                className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:rounded-full focus:bg-primary focus:px-4 focus:py-2 focus:font-semibold focus:text-primary-foreground focus:outline-none"
+                href="#main-content"
+              >
+                Skip to main content
+              </a>
               <SiteHeader />
               <RouteTransition>{children}</RouteTransition>
               <SiteFooter />

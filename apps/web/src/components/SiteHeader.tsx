@@ -3,7 +3,7 @@
 import { Eye, Menu, Search, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { LanguageSwitcher } from './LanguageSwitcher';
@@ -14,6 +14,9 @@ export const SiteHeader = () => {
   const { user, logout, loading } = useAuth();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileToggleRef = useRef<HTMLButtonElement | null>(null);
+  const firstMobileLinkRef = useRef<HTMLAnchorElement | null>(null);
+  const previousBodyOverflowRef = useRef<string>('');
   const userLabel = user?.email?.split('@')[0] ?? user?.email ?? '';
 
   const links = [
@@ -82,7 +85,8 @@ export const SiteHeader = () => {
 
   useEffect(() => {
     if (!mobileMenuOpen) {
-      document.body.style.overflow = '';
+      document.body.style.overflow = previousBodyOverflowRef.current;
+      mobileToggleRef.current?.focus();
       return undefined;
     }
 
@@ -92,11 +96,13 @@ export const SiteHeader = () => {
       }
     };
 
+    previousBodyOverflowRef.current = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    firstMobileLinkRef.current?.focus();
     window.addEventListener('keydown', handleEscape);
 
     return () => {
-      document.body.style.overflow = '';
+      document.body.style.overflow = previousBodyOverflowRef.current;
       window.removeEventListener('keydown', handleEscape);
     };
   }, [mobileMenuOpen]);
@@ -127,10 +133,12 @@ export const SiteHeader = () => {
           {desktopAuthControl}
         </div>
         <button
+          aria-controls="mobile-site-menu"
           aria-expanded={mobileMenuOpen}
           aria-label={mobileMenuOpen ? t('common.close') : t('common.menu')}
           className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/70 text-foreground transition hover:bg-muted md:hidden"
           onClick={() => setMobileMenuOpen((current) => !current)}
+          ref={mobileToggleRef}
           type="button"
         >
           {mobileMenuOpen ? (
@@ -159,12 +167,20 @@ export const SiteHeader = () => {
         })}
       </nav>
       {mobileMenuOpen ? (
-        <div className="mt-4 grid gap-4 rounded-xl border border-border bg-background/80 p-4 md:hidden">
+        <div
+          aria-label={t('common.menu')}
+          className="mt-4 grid gap-4 rounded-xl border border-border bg-background/80 p-4 md:hidden"
+          id="mobile-site-menu"
+          role="dialog"
+        >
           <div className="flex items-center rounded-full border border-border bg-muted/50 px-3 py-2 text-muted-foreground text-xs">
             <Search aria-hidden="true" className="mr-2 h-4 w-4" />
             {t('header.searchPlaceholder')}
           </div>
-          <nav className="grid gap-2 font-semibold text-sm">
+          <nav
+            aria-label={t('common.menu')}
+            className="grid gap-2 font-semibold text-sm"
+          >
             {links.map((link) => {
               const active = pathname === link.href;
               return (
@@ -176,6 +192,11 @@ export const SiteHeader = () => {
                   }`}
                   href={link.href}
                   key={link.href}
+                  ref={
+                    link.href === links[0]?.href
+                      ? firstMobileLinkRef
+                      : undefined
+                  }
                 >
                   {link.label}
                 </Link>
