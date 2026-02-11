@@ -74,6 +74,9 @@ const INTENT_OPTIONS: Array<{ value: FeedIntent; label: string }> = [
   { value: 'seeking_pr', label: 'Seeking PR' },
   { value: 'ready_for_review', label: 'Ready for review' },
 ];
+const INTENT_PRESET_OPTIONS = INTENT_OPTIONS.filter(
+  (option) => option.value !== 'all',
+);
 
 const QUICK_SCOPE_TABS: Array<{ id: string; label: string; tab: string }> = [
   { id: 'live', label: 'Live', tab: 'Live Drafts' },
@@ -319,8 +322,8 @@ export const FeedTabs = () => {
   const searchParams = useSearchParams();
   const searchParamString = searchParams.toString();
   const queryState = useMemo(
-    () => parseQueryState(searchParams),
-    [searchParams],
+    () => parseQueryState(new URLSearchParams(searchParamString)),
+    [searchParamString],
   );
 
   const [active, setActive] = useState(queryState.tab);
@@ -347,42 +350,23 @@ export const FeedTabs = () => {
     );
   }, [active, battleFilter, items]);
 
-  const tabLabel = (tab: string): string => {
-    if (tab === 'All') {
-      return t('feed.all');
-    }
-    if (tab === 'Progress') {
-      return t('feedTabs.tab.progress');
-    }
-    if (tab === 'Changes') {
-      return t('feedTabs.tab.changes');
-    }
-    if (tab === 'For You') {
-      return t('feedTabs.tab.forYou');
-    }
-    if (tab === 'Hot Now') {
-      return t('feedTabs.tab.hotNow');
-    }
-    if (tab === 'Live Drafts') {
-      return t('feedTabs.tab.liveDrafts');
-    }
-    if (tab === 'GlowUps') {
-      return t('feedTabs.tab.glowUps');
-    }
-    if (tab === 'Guilds') {
-      return t('feedTabs.tab.guilds');
-    }
-    if (tab === 'Studios') {
-      return t('feedTabs.tab.studios');
-    }
-    if (tab === 'Battles') {
-      return t('feedTabs.tab.battles');
-    }
-    if (tab === 'Archive') {
-      return t('feedTabs.tab.archive');
-    }
-    return tab;
-  };
+  const tabLabels = useMemo(
+    () =>
+      ({
+        All: t('feed.all'),
+        Progress: t('feedTabs.tab.progress'),
+        Changes: t('feedTabs.tab.changes'),
+        'For You': t('feedTabs.tab.forYou'),
+        'Hot Now': t('feedTabs.tab.hotNow'),
+        'Live Drafts': t('feedTabs.tab.liveDrafts'),
+        GlowUps: t('feedTabs.tab.glowUps'),
+        Guilds: t('feedTabs.tab.guilds'),
+        Studios: t('feedTabs.tab.studios'),
+        Battles: t('feedTabs.tab.battles'),
+        Archive: t('feedTabs.tab.archive'),
+      }) as Record<string, string>,
+    [t],
+  );
 
   const sortLabel = useCallback(
     (value: FeedSort): string => {
@@ -445,24 +429,17 @@ export const FeedTabs = () => {
     [t],
   );
 
-  const quickScopeLabel = (id: string): string => {
-    if (id === 'live') {
-      return t('common.live');
-    }
-    if (id === 'top24') {
-      return t('feedTabs.quickScope.top24h');
-    }
-    if (id === 'glowup') {
-      return t('changeCard.metrics.glowUp');
-    }
-    if (id === 'battle-radar') {
-      return t('feedTabs.quickScope.battleRadar');
-    }
-    if (id === 'following') {
-      return t('feedTabs.quickScope.following');
-    }
-    return id;
-  };
+  const quickScopeLabels = useMemo(
+    () =>
+      ({
+        live: t('common.live'),
+        top24: t('feedTabs.quickScope.top24h'),
+        glowup: t('changeCard.metrics.glowUp'),
+        'battle-radar': t('feedTabs.quickScope.battleRadar'),
+        following: t('feedTabs.quickScope.following'),
+      }) as Record<string, string>,
+    [t],
+  );
 
   const battleFilterLabel = useCallback(
     (value: BattleFilter): string => {
@@ -506,6 +483,14 @@ export const FeedTabs = () => {
   const localizedIntentOptions = useMemo(
     () =>
       INTENT_OPTIONS.map((option) => ({
+        value: option.value,
+        label: intentLabel(option.value),
+      })),
+    [intentLabel],
+  );
+  const localizedIntentPresetOptions = useMemo(
+    () =>
+      INTENT_PRESET_OPTIONS.map((option) => ({
         value: option.value,
         label: intentLabel(option.value),
       })),
@@ -1027,38 +1012,36 @@ export const FeedTabs = () => {
               }}
               type="button"
             >
-              {quickScopeLabel(scope.id)}
+              {quickScopeLabels[scope.id] ?? scope.id}
             </button>
           ))}
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {active === 'All' && (
             <div className="flex flex-wrap gap-2">
-              {INTENT_OPTIONS.filter((option) => option.value !== 'all').map(
-                (option) => (
-                  <button
-                    aria-pressed={intent === option.value}
-                    className={`rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide ${
-                      intent === option.value
-                        ? 'border border-primary/45 bg-primary/15 text-primary'
-                        : 'border border-border bg-background/60 text-muted-foreground'
-                    }`}
-                    key={option.value}
-                    onClick={() => {
-                      const next = option.value as FeedIntent;
-                      setIntent(next);
-                      updateQuery({ tab: 'All', intent: next });
-                      sendTelemetry({
-                        eventType: 'feed_intent_preset',
-                        intent: next,
-                      });
-                    }}
-                    type="button"
-                  >
-                    {intentLabel(option.value)}
-                  </button>
-                ),
-              )}
+              {localizedIntentPresetOptions.map((option) => (
+                <button
+                  aria-pressed={intent === option.value}
+                  className={`rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide ${
+                    intent === option.value
+                      ? 'border border-primary/45 bg-primary/15 text-primary'
+                      : 'border border-border bg-background/60 text-muted-foreground'
+                  }`}
+                  key={option.value}
+                  onClick={() => {
+                    const next = option.value as FeedIntent;
+                    setIntent(next);
+                    updateQuery({ tab: 'All', intent: next });
+                    sendTelemetry({
+                      eventType: 'feed_intent_preset',
+                      intent: next,
+                    });
+                  }}
+                  type="button"
+                >
+                  {option.label}
+                </button>
+              ))}
             </div>
           )}
           {TABS.map((tab) => (
@@ -1072,7 +1055,7 @@ export const FeedTabs = () => {
               }}
               type="button"
             >
-              {tabLabel(tab)}
+              {tabLabels[tab] ?? tab}
             </button>
           ))}
         </div>
