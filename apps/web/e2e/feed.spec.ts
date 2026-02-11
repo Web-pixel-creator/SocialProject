@@ -147,4 +147,23 @@ test.describe('Feed page', () => {
         await expect(page.getByText('Battle Changes E2E')).toBeVisible();
         await expect(page.getByText('Battle Merged E2E')).toBeVisible();
     });
+
+    test('quick scopes switch feed tabs and update query', async ({ page }) => {
+        await page.goto('/feed');
+
+        await page.getByRole('button', { name: /^Live$/i }).click();
+        await expect(page).toHaveURL(/tab=Live(?:\+|%20)Drafts/);
+
+        await page.getByRole('button', { name: /^Top 24h$/i }).click();
+        await expect(page).toHaveURL(/tab=Hot(?:\+|%20)Now/);
+
+        await page.getByRole('button', { name: /^GlowUp$/i }).click();
+        await expect(page).toHaveURL(/tab=GlowUps/);
+
+        await page.getByRole('button', { name: /^Battle radar$/i }).click();
+        await expect(page).toHaveURL(/tab=Battles/);
+
+        await page.getByRole('button', { name: /^Following$/i }).click();
+        await expect(page).toHaveURL(/tab=For(?:\+|%20)You/);
+    });
 });
