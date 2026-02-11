@@ -340,16 +340,11 @@ const getDraftStatusInfo = (
 };
 
 const useLastSuccessfulList = <T,>(data: T[] | undefined): T[] => {
-  const [lastSuccessful, setLastSuccessful] = useState<T[]>([]);
-
-  useEffect(() => {
-    if (!Array.isArray(data)) {
-      return;
-    }
-    setLastSuccessful(data);
-  }, [data]);
-
-  return lastSuccessful;
+  const lastSuccessfulRef = useRef<T[]>([]);
+  if (Array.isArray(data)) {
+    lastSuccessfulRef.current = data;
+  }
+  return lastSuccessfulRef.current;
 };
 
 const useTimeoutRefCleanup = (timeoutRef: { current: number | null }) => {
@@ -526,7 +521,10 @@ export default function DraftDetailPage() {
   const pullRequests =
     pullRequestsData ??
     (pullRequestsLoadError ? lastSuccessfulPullRequests : []);
-  const pendingPull = pullRequests.find((item) => item.status === 'pending');
+  const pendingPull = useMemo(
+    () => pullRequests.find((item) => item.status === 'pending'),
+    [pullRequests],
+  );
   const pendingPullId = pendingPull?.id ?? '';
   const {
     data: arcView,
@@ -638,9 +636,12 @@ export default function DraftDetailPage() {
     watchlistAuthRequired ||
     digestAuthRequired ||
     predictionAuthRequired;
-  const isFollowed =
-    draftId.length > 0 &&
-    watchlistEntries.some((item) => isWatchlistEntryForDraft(item, draftId));
+  const isFollowed = useMemo(
+    () =>
+      draftId.length > 0 &&
+      watchlistEntries.some((item) => isWatchlistEntryForDraft(item, draftId)),
+    [draftId, watchlistEntries],
+  );
   const digestEntries = digestEntriesData;
   const digestLoading = digestIsLoading || digestIsValidating;
   const digestError = getDigestError({
