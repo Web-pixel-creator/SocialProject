@@ -165,6 +165,7 @@ interface FeedPageResponse {
   fallbackUsed: boolean;
   hasMore: boolean;
   replaceCurrentItems?: boolean;
+  keepCurrentItems?: boolean;
   loadTimingMs?: number;
 }
 
@@ -526,10 +527,10 @@ export const FeedTabs = () => {
         }
 
         return {
-          items: fallbackItemsFor(active),
+          items: offset > 0 ? [] : fallbackItemsFor(active),
           fallbackUsed: true,
           hasMore: false,
-          replaceCurrentItems: offset > 0,
+          keepCurrentItems: offset > 0,
         };
       }
     },
@@ -565,6 +566,9 @@ export const FeedTabs = () => {
     }
 
     setItems((prev) => {
+      if (pageData.keepCurrentItems) {
+        return prev;
+      }
       if (pageData.replaceCurrentItems) {
         return pageData.items;
       }

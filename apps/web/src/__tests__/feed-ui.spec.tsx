@@ -745,6 +745,39 @@ describe('feed UI', () => {
     expect(screen.getByText(/Fallback data/i)).toBeInTheDocument();
   });
 
+  test('keeps current hot-now items when loading next page fails', async () => {
+    const firstPage = Array.from({ length: 6 }, (_, index) => ({
+      draftId: `hot-${index}`,
+      title: `API Hot ${index + 1}`,
+      glowUpScore: 2.1,
+      hotScore: 1.2,
+      reasonLabel: 'API trend',
+    }));
+
+    (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: firstPage })
+      .mockRejectedValueOnce(new Error('hot-now page failed'));
+
+    await renderFeedTabs();
+
+    const hotNowTab = screen.getByRole('button', { name: /Hot Now/i });
+    await clickAndFlush(hotNowTab);
+
+    await waitFor(() =>
+      expect(screen.getByText(/API Hot 1/i)).toBeInTheDocument(),
+    );
+
+    const loadMore = await screen.findByRole('button', { name: /Load more/i });
+    await clickAndFlush(loadMore);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Fallback data/i)).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/API Hot 1/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Synthwave Poster/i)).toBeNull();
+  });
+
   test('loads next page on scroll near bottom', async () => {
     const firstPage = Array.from({ length: 6 }, (_, index) => ({
       id: `draft-${index}`,
