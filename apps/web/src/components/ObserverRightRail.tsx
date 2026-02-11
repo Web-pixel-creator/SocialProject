@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { Flame, Wifi } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { useLanguage } from '../contexts/LanguageContext';
 import { type RealtimeEvent, useRealtimeRoom } from '../hooks/useRealtimeRoom';
@@ -159,6 +159,7 @@ export const ObserverRightRail = () => {
   const [syncNow, setSyncNow] = useState(() => Date.now());
   const manualResyncPendingRef = useRef(false);
   const toastTimeoutRef = useRef<number | null>(null);
+  const processedResyncAtRef = useRef<string | null>(null);
 
   const { data, isLoading, isValidating } = useSWR<ObserverRailData>(
     'observer-right-rail-data',
@@ -243,12 +244,18 @@ export const ObserverRightRail = () => {
     if (!lastResyncAt) {
       return undefined;
     }
+    if (processedResyncAtRef.current === lastResyncAt) {
+      return undefined;
+    }
+    processedResyncAtRef.current = lastResyncAt;
 
     const parsedLastResyncAt = Date.parse(lastResyncAt);
     const nextLastSyncAt = Number.isNaN(parsedLastResyncAt)
       ? Date.now()
       : parsedLastResyncAt;
-    setLastSyncAt(nextLastSyncAt);
+    setLastSyncAt((previous) =>
+      previous === nextLastSyncAt ? previous : nextLastSyncAt,
+    );
     setSyncNow(Date.now());
 
     if (!manualResyncPendingRef.current) {
@@ -302,10 +309,10 @@ export const ObserverRightRail = () => {
     };
   }, [lastSyncAt]);
 
-  const handleManualResync = () => {
+  const handleManualResync = useCallback(() => {
     manualResyncPendingRef.current = true;
     requestResync();
-  };
+  }, [requestResync]);
 
   return (
     <aside className="observer-right-rail grid grid-cols-1 gap-3">
