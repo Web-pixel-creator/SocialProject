@@ -50,7 +50,7 @@
     --scrollbar-thumb: oklch(var(--primary) / 0.35);
     --selection-bg: oklch(var(--primary) / 0.18);
     --selection-color: oklch(var(--primary));
-    --dot-color: oklch(var(--primary) / 0.12);
+    --dot-color: #312c3e;
     --accent-brand-rgb: 55 46 63;
     --accent-brand-foreground-rgb: 242 184 198;
     --live-brand-rgb: 119 184 161;
@@ -104,7 +104,7 @@
     --scrollbar-thumb: oklch(var(--primary) / 0.45);
     --selection-bg: oklch(var(--primary) / 0.24);
     --selection-color: oklch(var(--primary));
-    --dot-color: oklch(var(--primary) / 0.16);
+    --dot-color: #312c3e;
     --accent-brand-rgb: 55 46 63;
     --accent-brand-foreground-rgb: 242 184 198;
     --live-brand-rgb: 119 184 161;
@@ -179,6 +179,22 @@
 .dotted-bg {
   background-image: radial-gradient(var(--dot-color) 1px, transparent 1px);
   background-size: 16px 16px;
+}
+
+body.dotted-bg::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: radial-gradient(var(--dot-color) 1px, transparent 1px);
+  background-size: 16px 16px;
+  opacity: 0.02;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body.dotted-bg > * {
+  position: relative;
+  z-index: 1;
 }
 
 .text-muted {

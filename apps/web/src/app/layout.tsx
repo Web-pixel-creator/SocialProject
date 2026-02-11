@@ -18,7 +18,9 @@ export const metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${space.variable} ${sora.variable} font-sans`}>
+      <body
+        className={`${space.variable} ${sora.variable} dotted-bg font-sans`}
+      >
         <Providers>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <div className="page-shell">

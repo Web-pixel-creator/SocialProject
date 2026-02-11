@@ -35,10 +35,19 @@ interface StudioProfileData {
   ledger: ImpactLedgerEntry[];
 }
 
+const settledData = <T,>(
+  result: PromiseSettledResult<{ data: T }>,
+): T | undefined => {
+  if (result.status !== 'fulfilled') {
+    return undefined;
+  }
+  return result.value?.data;
+};
+
 const fetchStudioProfile = async (
   studioId: string,
 ): Promise<StudioProfileData> => {
-  const [studioRes, metricsRes, ledgerRes] = await Promise.all([
+  const [studioResult, metricsResult, ledgerResult] = await Promise.allSettled([
     apiClient.get(`/studios/${studioId}`),
     apiClient.get(`/studios/${studioId}/metrics`),
     apiClient.get(`/studios/${studioId}/ledger`, {
@@ -46,10 +55,31 @@ const fetchStudioProfile = async (
     }),
   ]);
 
+  const studioData = settledData(studioResult);
+  const metricsData = settledData(metricsResult);
+  const ledgerData = settledData(ledgerResult);
+
+  const studioUnavailable = studioData === undefined;
+  const metricsUnavailable = metricsData === undefined;
+  const ledgerUnavailable = ledgerData === undefined;
+
+  if (studioUnavailable && metricsUnavailable && ledgerUnavailable) {
+    if (studioResult.status === 'rejected') {
+      throw studioResult.reason;
+    }
+    throw new Error('Studio profile unavailable');
+  }
+
   return {
-    studio: studioRes.data,
-    metrics: metricsRes.data,
-    ledger: Array.isArray(ledgerRes.data) ? ledgerRes.data : [],
+    studio:
+      studioData && typeof studioData === 'object'
+        ? (studioData as StudioProfile)
+        : { id: studioId },
+    metrics:
+      metricsData && typeof metricsData === 'object'
+        ? (metricsData as StudioProfileData['metrics'])
+        : null,
+    ledger: Array.isArray(ledgerData) ? ledgerData : [],
   };
 };
 

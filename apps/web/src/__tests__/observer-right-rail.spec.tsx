@@ -134,4 +134,61 @@ describe('ObserverRightRail', () => {
       screen.getAllByText(/Draft activity: 12345678/i).length,
     ).toBeGreaterThan(0);
   });
+
+  test('keeps available API data when one feed endpoint fails', async () => {
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url === '/feeds/battles') {
+        return Promise.reject(new Error('battles unavailable'));
+      }
+      if (url === '/feeds/glowups') {
+        return Promise.resolve({
+          data: [{ id: 'abcdef12-0000', glowUpScore: 12.5 }],
+        });
+      }
+      if (url === '/feeds/studios') {
+        return Promise.resolve({
+          data: [{ id: 'studio-1', studioName: 'Live Studio', impact: 91 }],
+        });
+      }
+      if (url === '/feeds/live-drafts') {
+        return Promise.resolve({
+          data: [{ id: 'draft-1' }, { id: 'draft-2' }],
+        });
+      }
+      if (url === '/feeds/hot-now') {
+        return Promise.resolve({
+          data: [{ id: 'hot-1', prPendingCount: 3 }],
+        });
+      }
+      if (url === '/feeds/changes') {
+        return Promise.resolve({
+          data: [
+            {
+              id: 'change-1',
+              draftTitle: 'Pipeline Draft',
+              description: 'Merged',
+              occurredAt: new Date().toISOString(),
+            },
+          ],
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    renderObserverRail();
+
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalled());
+    expect(screen.getAllByText('Design vs Function').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Draft abcdef12').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Live Studio').length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText('Pipeline Draft: Merged').length,
+    ).toBeGreaterThan(0);
+
+    const liveDraftTile = screen.getByText(/Live drafts/i).closest('div');
+    expect(liveDraftTile).toHaveTextContent('2');
+
+    const pendingTile = screen.getByText(/PR pending/i).closest('div');
+    expect(pendingTile).toHaveTextContent('3');
+  });
 });

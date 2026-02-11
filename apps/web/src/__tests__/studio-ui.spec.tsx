@@ -82,6 +82,32 @@ describe('studio profile UI', () => {
     expect(screen.getByText(/Signal 9.0/i)).toBeInTheDocument();
   });
 
+  test('keeps profile page available when studio endpoint fails but metrics load', async () => {
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/metrics')) {
+        return Promise.resolve({ data: { impact: 44, signal: 81 } });
+      }
+      if (url.includes('/ledger')) {
+        return Promise.resolve({ data: [] });
+      }
+      return Promise.reject(new Error('Studio endpoint unavailable'));
+    });
+
+    await act(() => {
+      mockParams = { id: 'studio-partial' };
+      render(<StudioProfilePage />);
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText(/studio-partial/i)).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/Impact 44.0/i)).toBeInTheDocument();
+    expect(screen.getByText(/Signal 81.0/i)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Studio endpoint unavailable/i),
+    ).not.toBeInTheDocument();
+  });
+
   test('shows missing studio id error when route param is absent', async () => {
     mockParams = {};
 

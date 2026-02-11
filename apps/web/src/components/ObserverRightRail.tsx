@@ -46,13 +46,13 @@ const fallbackRailData: ObserverRailData = {
 const fetchObserverRailData = async (): Promise<ObserverRailData> => {
   try {
     const [
-      battleResponse,
-      glowUpResponse,
-      studioResponse,
-      liveResponse,
-      hotNowResponse,
-      changesResponse,
-    ] = await Promise.all([
+      battleResult,
+      glowUpResult,
+      studioResult,
+      liveResult,
+      hotNowResult,
+      changesResult,
+    ] = await Promise.allSettled([
       apiClient.get('/feeds/battles', { params: { limit: 5 } }),
       apiClient.get('/feeds/glowups', { params: { limit: 5 } }),
       apiClient.get('/feeds/studios', { params: { limit: 5 } }),
@@ -61,7 +61,19 @@ const fetchObserverRailData = async (): Promise<ObserverRailData> => {
       apiClient.get('/feeds/changes', { params: { limit: 8 } }),
     ]);
 
-    const battleItems = asRows(battleResponse.data)
+    const rowsFromResult = (
+      result: PromiseSettledResult<{ data: unknown }>,
+    ): Record<string, unknown>[] =>
+      result.status === 'fulfilled' ? asRows(result.value.data) : [];
+
+    const battleRows = rowsFromResult(battleResult);
+    const glowUpRows = rowsFromResult(glowUpResult);
+    const studioRows = rowsFromResult(studioResult);
+    const liveRows = rowsFromResult(liveResult);
+    const hotRows = rowsFromResult(hotNowResult);
+    const activityRows = rowsFromResult(changesResult);
+
+    const battleItems = battleRows
       .map((row, index) => {
         const id = asString(row.id) ?? `battle-${index}`;
         const score = asNumber(row.glowUpScore ?? row.glow_up_score);
@@ -73,7 +85,7 @@ const fetchObserverRailData = async (): Promise<ObserverRailData> => {
       })
       .slice(0, 4);
 
-    const glowUpItems = asRows(glowUpResponse.data)
+    const glowUpItems = glowUpRows
       .map((row, index) => {
         const id = asString(row.id) ?? `glow-${index}`;
         const score = asNumber(row.glowUpScore ?? row.glow_up_score);
@@ -85,7 +97,7 @@ const fetchObserverRailData = async (): Promise<ObserverRailData> => {
       })
       .slice(0, 4);
 
-    const studioItems = asRows(studioResponse.data)
+    const studioItems = studioRows
       .map((row, index) => {
         const id = asString(row.id) ?? `studio-${index}`;
         const studioName =
@@ -100,7 +112,7 @@ const fetchObserverRailData = async (): Promise<ObserverRailData> => {
       })
       .slice(0, 4);
 
-    const activityItems = asRows(changesResponse.data)
+    const activityItems = activityRows
       .map((row, index) => {
         const id = asString(row.id) ?? `activity-${index}`;
         const draftTitle =
@@ -116,28 +128,36 @@ const fetchObserverRailData = async (): Promise<ObserverRailData> => {
       })
       .slice(0, 5);
 
-    const liveRows = asRows(liveResponse.data);
-    const hotRows = asRows(hotNowResponse.data);
-
     const pendingTotal = hotRows.reduce(
       (sum, row) => sum + asNumber(row.prPendingCount ?? row.pr_pending_count),
       0,
     );
-
-    const hasApiData =
-      battleItems.length > 0 ||
-      glowUpItems.length > 0 ||
-      studioItems.length > 0 ||
-      activityItems.length > 0;
+    const battleFallback = battleItems.length === 0;
+    const glowUpFallback = glowUpItems.length === 0;
+    const studioFallback = studioItems.length === 0;
+    const activityFallback = activityItems.length === 0;
+    const countFallback =
+      liveResult.status === 'rejected' || hotNowResult.status === 'rejected';
 
     return {
-      battles: battleItems.length > 0 ? battleItems : fallbackBattles,
-      glowUps: glowUpItems.length > 0 ? glowUpItems : fallbackGlowUps,
-      studios: studioItems.length > 0 ? studioItems : fallbackStudios,
-      activity: activityItems.length > 0 ? activityItems : fallbackActivity,
-      liveDraftCount: liveRows.length,
-      prPendingCount: pendingTotal,
-      fallbackUsed: !hasApiData,
+      battles: battleFallback ? fallbackBattles : battleItems,
+      glowUps: glowUpFallback ? fallbackGlowUps : glowUpItems,
+      studios: studioFallback ? fallbackStudios : studioItems,
+      activity: activityFallback ? fallbackActivity : activityItems,
+      liveDraftCount:
+        liveResult.status === 'fulfilled'
+          ? liveRows.length
+          : fallbackRailData.liveDraftCount,
+      prPendingCount:
+        hotNowResult.status === 'fulfilled'
+          ? pendingTotal
+          : fallbackRailData.prPendingCount,
+      fallbackUsed:
+        battleFallback ||
+        glowUpFallback ||
+        studioFallback ||
+        activityFallback ||
+        countFallback,
     };
   } catch {
     return fallbackRailData;
