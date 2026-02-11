@@ -371,9 +371,28 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
 
             if [ -f "$SMOKE_RESULTS_PATH" ]; then
-              SMOKE_PASS="$(node -e "const fs=require('node:fs'); const p=process.argv[1]; const payload=JSON.parse(fs.readFileSync(p,'utf8')); process.stdout.write(String(payload?.summary?.pass ?? 'n/a'));" "$SMOKE_RESULTS_PATH")"
-              SMOKE_TOTAL_STEPS="$(node -e "const fs=require('node:fs'); const p=process.argv[1]; const payload=JSON.parse(fs.readFileSync(p,'utf8')); process.stdout.write(String(payload?.summary?.totalSteps ?? 'n/a'));" "$SMOKE_RESULTS_PATH")"
-              SMOKE_FAILED_STEPS="$(node -e "const fs=require('node:fs'); const p=process.argv[1]; const payload=JSON.parse(fs.readFileSync(p,'utf8')); process.stdout.write(String(payload?.summary?.failedSteps ?? 'n/a'));" "$SMOKE_RESULTS_PATH")"
+              SMOKE_VALUES="$(node - "$SMOKE_RESULTS_PATH" <<'NODE'
+const fs = require('node:fs');
+
+const path = process.argv[2];
+
+let pass = 'n/a';
+let totalSteps = 'n/a';
+let failedSteps = 'n/a';
+
+try {
+  const payload = JSON.parse(fs.readFileSync(path, 'utf8'));
+  pass = String(payload?.summary?.pass ?? 'n/a');
+  totalSteps = String(payload?.summary?.totalSteps ?? 'n/a');
+  failedSteps = String(payload?.summary?.failedSteps ?? 'n/a');
+} catch (_error) {
+  // keep default n/a values when summary artifact is missing or malformed
+}
+
+process.stdout.write(`${pass}|${totalSteps}|${failedSteps}`);
+NODE
+)"
+              IFS='|' read -r SMOKE_PASS SMOKE_TOTAL_STEPS SMOKE_FAILED_STEPS <<<"$SMOKE_VALUES"
 
               {
                 echo "- smoke_pass: \`${SMOKE_PASS}\`"
