@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { CommissionForm } from '../../components/CommissionForm';
+import { PanelErrorBoundary } from '../../components/PanelErrorBoundary';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { apiClient } from '../../lib/api';
@@ -165,109 +166,117 @@ export default function CommissionsPage() {
         </div>
       </section>
 
-      {authLoading ? (
-        <div className="card p-4 text-muted-foreground text-sm">
-          {t('search.states.loadingSearch')}
-        </div>
-      ) : null}
+      <PanelErrorBoundary
+        description={t('error.refreshPage')}
+        retryLabel={t('common.retry')}
+        title={t('error.unexpected')}
+      >
+        {authLoading ? (
+          <div className="card p-4 text-muted-foreground text-sm">
+            {t('search.states.loadingSearch')}
+          </div>
+        ) : null}
 
-      {isAuthenticated ? (
-        <CommissionForm onCreated={loadCommissions} />
-      ) : (
-        <section className="card grid gap-3 p-6">
-          <h3 className="font-semibold text-foreground text-sm">
-            {t('header.signIn')}
-          </h3>
-          <p className="text-muted-foreground text-xs">
-            {t('auth.signInSubtitle')}
-          </p>
-          <Link
-            className="w-fit rounded-full border border-border bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60"
-            href="/login"
-          >
-            {t('header.signIn')}
-          </Link>
-        </section>
-      )}
-
-      <section className="card grid gap-3 p-4 sm:grid-cols-3">
-        <input
-          className="rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70"
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder={t('search.placeholders.keyword')}
-          value={search}
-        />
-        <select
-          className="rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
-          onChange={(event) => setStatusFilter(event.target.value)}
-          value={statusFilter}
-        >
-          <option value="all">{t('feed.all')}</option>
-          {statusOptions.map((status) => (
-            <option key={status} value={status}>
-              {status}
-            </option>
-          ))}
-        </select>
-        <select
-          className="rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
-          onChange={(event) => setPaymentFilter(event.target.value)}
-          value={paymentFilter}
-        >
-          <option value="all">{t('feed.all')}</option>
-          {paymentOptions.map((status) => (
-            <option key={status} value={status}>
-              {status}
-            </option>
-          ))}
-        </select>
-      </section>
-
-      {error ? (
-        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-destructive text-xs">
-          {error}
-        </div>
-      ) : null}
-
-      {isLoading ? (
-        <div className="card p-4 text-muted-foreground text-sm">
-          {t('commission.states.loadingList')}
-        </div>
-      ) : (
-        <section className="grid gap-4 md:grid-cols-2">
-          {filteredCommissions.map((commission) => (
+        {isAuthenticated ? (
+          <CommissionForm onCreated={loadCommissions} />
+        ) : (
+          <section className="card grid gap-3 p-6">
+            <h3 className="font-semibold text-foreground text-sm">
+              {t('header.signIn')}
+            </h3>
+            <p className="text-muted-foreground text-xs">
+              {t('auth.signInSubtitle')}
+            </p>
             <Link
-              className="card p-4"
-              href={`/commissions/${commission.id}`}
-              key={commission.id}
+              className="w-fit rounded-full border border-border bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60"
+              href="/login"
             >
-              <p className="font-semibold text-muted-foreground text-xs uppercase">
-                {commission.status}
-              </p>
-              <p className="text-foreground text-sm">
-                {commission.description}
-              </p>
-              <p className="text-muted-foreground text-xs">
-                {t('commission.labels.reward')}{' '}
-                {commission.rewardAmount
-                  ? `${commission.rewardAmount} ${commission.currency ?? 'USD'}`
-                  : t('commission.labels.na')}
-              </p>
-              <p className="text-muted-foreground text-xs">
-                {t('commission.labels.payment')} {commission.paymentStatus}
-              </p>
+              {t('header.signIn')}
             </Link>
-          ))}
-          {filteredCommissions.length === 0 ? (
-            <div className="card p-4 text-muted-foreground text-sm">
-              {t('commission.states.empty')}
-            </div>
-          ) : null}
+          </section>
+        )}
+
+        <section className="card grid gap-3 p-4 sm:grid-cols-3">
+          <input
+            className="rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70"
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={t('search.placeholders.keyword')}
+            value={search}
+          />
+          <select
+            className="rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
+            onChange={(event) => setStatusFilter(event.target.value)}
+            value={statusFilter}
+          >
+            <option value="all">{t('feed.all')}</option>
+            {statusOptions.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
+          <select
+            className="rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
+            onChange={(event) => setPaymentFilter(event.target.value)}
+            value={paymentFilter}
+          >
+            <option value="all">{t('feed.all')}</option>
+            {paymentOptions.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
         </section>
-      )}
-      {isValidating && !isLoading ? (
-        <p className="text-muted-foreground text-xs">{t('rail.loadingData')}</p>
-      ) : null}
+
+        {error ? (
+          <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-destructive text-xs">
+            {error}
+          </div>
+        ) : null}
+
+        {isLoading ? (
+          <div className="card p-4 text-muted-foreground text-sm">
+            {t('commission.states.loadingList')}
+          </div>
+        ) : (
+          <section className="grid gap-4 md:grid-cols-2">
+            {filteredCommissions.map((commission) => (
+              <Link
+                className="card p-4"
+                href={`/commissions/${commission.id}`}
+                key={commission.id}
+              >
+                <p className="font-semibold text-muted-foreground text-xs uppercase">
+                  {commission.status}
+                </p>
+                <p className="text-foreground text-sm">
+                  {commission.description}
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  {t('commission.labels.reward')}{' '}
+                  {commission.rewardAmount
+                    ? `${commission.rewardAmount} ${commission.currency ?? 'USD'}`
+                    : t('commission.labels.na')}
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  {t('commission.labels.payment')} {commission.paymentStatus}
+                </p>
+              </Link>
+            ))}
+            {filteredCommissions.length === 0 ? (
+              <div className="card p-4 text-muted-foreground text-sm">
+                {t('commission.states.empty')}
+              </div>
+            ) : null}
+          </section>
+        )}
+        {isValidating && !isLoading ? (
+          <p className="text-muted-foreground text-xs">
+            {t('rail.loadingData')}
+          </p>
+        ) : null}
+      </PanelErrorBoundary>
     </main>
   );
 }
