@@ -76,4 +76,33 @@ test.describe('Auth pages', () => {
 
         await expect(page).toHaveURL(/\/feed/);
     });
+
+    test('shows API error on failed login', async ({ page }) => {
+        await page.route('**/api/**', async (route) => {
+            const requestUrl = new URL(route.request().url());
+            const path = requestUrl.pathname;
+
+            if (route.request().method() === 'POST' && path === '/api/auth/login') {
+                return route.fulfill({
+                    status: 401,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ message: 'Invalid credentials' }),
+                });
+            }
+
+            return route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify([]),
+            });
+        });
+
+        await page.goto('/login');
+        await page.getByLabel(/email/i).fill('observer@example.com');
+        await page.getByLabel(/password/i).fill('wrong-pass');
+        await page.getByRole('button', { name: /sign in/i }).click();
+
+        await expect(page.getByText(/Invalid credentials/i)).toBeVisible();
+        await expect(page).toHaveURL(/\/login/);
+    });
 });
