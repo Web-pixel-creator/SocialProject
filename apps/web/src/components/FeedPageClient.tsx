@@ -1,7 +1,7 @@
 'use client';
 
 import { Command, Menu, Search, Sparkles, X } from 'lucide-react';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { FeedTabs } from './FeedTabs';
 import { LanguageSwitcher } from './LanguageSwitcher';
@@ -12,16 +12,26 @@ import { PanelErrorBoundary } from './PanelErrorBoundary';
 export default function FeedPageClient() {
   const { t } = useLanguage();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const previousBodyOverflowRef = useRef<string | null>(null);
+
+  const openMobileSidebar = useCallback(() => {
+    setMobileSidebarOpen(true);
+  }, []);
+
+  const closeMobileSidebar = useCallback(() => {
+    setMobileSidebarOpen(false);
+  }, []);
 
   useEffect(() => {
     if (!mobileSidebarOpen) {
-      document.body.style.overflow = '';
       return undefined;
     }
 
+    previousBodyOverflowRef.current = document.body.style.overflow;
+
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setMobileSidebarOpen(false);
+        closeMobileSidebar();
       }
     };
 
@@ -29,10 +39,11 @@ export default function FeedPageClient() {
     window.addEventListener('keydown', handleEscape);
 
     return () => {
-      document.body.style.overflow = '';
+      document.body.style.overflow = previousBodyOverflowRef.current ?? '';
+      previousBodyOverflowRef.current = null;
       window.removeEventListener('keydown', handleEscape);
     };
-  }, [mobileSidebarOpen]);
+  }, [closeMobileSidebar, mobileSidebarOpen]);
 
   return (
     <main className="feed-shell">
@@ -72,7 +83,7 @@ export default function FeedPageClient() {
                 <LanguageSwitcher />
                 <button
                   className="inline-flex items-center rounded-full border border-border bg-muted px-3 py-2 font-semibold text-foreground text-xs lg:hidden"
-                  onClick={() => setMobileSidebarOpen(true)}
+                  onClick={openMobileSidebar}
                   type="button"
                 >
                   <Menu aria-hidden="true" className="mr-2 h-4 w-4" />
@@ -138,17 +149,14 @@ export default function FeedPageClient() {
               </h3>
               <button
                 className="inline-flex items-center rounded-full border border-border bg-muted px-3 py-1.5 font-semibold text-foreground text-xs"
-                onClick={() => setMobileSidebarOpen(false)}
+                onClick={closeMobileSidebar}
                 type="button"
               >
                 <X aria-hidden="true" className="mr-1 h-4 w-4" />
                 {t('common.close')}
               </button>
             </div>
-            <ObserverSidebar
-              mobile
-              onNavigate={() => setMobileSidebarOpen(false)}
-            />
+            <ObserverSidebar mobile onNavigate={closeMobileSidebar} />
           </div>
         </div>
       )}
