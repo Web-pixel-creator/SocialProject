@@ -175,6 +175,11 @@ function SearchPageContent() {
   const [visualType, setVisualType] = useState(
     initialMode === 'visual' ? initialVisualType : 'all',
   );
+  const [lastSuccessfulTextResults, setLastSuccessfulTextResults] = useState<
+    SearchResult[]
+  >([]);
+  const [lastSuccessfulVisualResults, setLastSuccessfulVisualResults] =
+    useState<SearchResult[]>([]);
   const [visualNotice, setVisualNotice] = useState<string | null>(null);
   const [visualHasSearched, setVisualHasSearched] = useState(false);
   const [visualInputError, setVisualInputError] = useState<string | null>(null);
@@ -400,9 +405,28 @@ function SearchPageContent() {
     mode === 'text'
       ? textSearchIsLoading || textSearchIsValidating
       : visualSearchIsMutating;
+  useEffect(() => {
+    if (mode !== 'text' || !textResults) {
+      return;
+    }
+    setLastSuccessfulTextResults(textResults);
+  }, [mode, textResults]);
+
+  useEffect(() => {
+    if (mode !== 'visual' || visualSearchOutcome?.status !== 'ok') {
+      return;
+    }
+    setLastSuccessfulVisualResults(visualSearchOutcome.items);
+  }, [mode, visualSearchOutcome]);
+
   const visualResults =
-    visualSearchOutcome?.status === 'ok' ? visualSearchOutcome.items : [];
-  const visibleResults = mode === 'text' ? (textResults ?? []) : visualResults;
+    visualSearchOutcome?.status === 'ok'
+      ? visualSearchOutcome.items
+      : lastSuccessfulVisualResults;
+  const visibleResults =
+    mode === 'text'
+      ? (textResults ?? lastSuccessfulTextResults)
+      : visualResults;
 
   useEffect(() => {
     const params = new URLSearchParams();

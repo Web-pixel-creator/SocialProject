@@ -206,6 +206,47 @@ describe('search UI', () => {
     );
   });
 
+  test('keeps last successful text results when a follow-up request fails', async () => {
+    renderSearchPage();
+    await runDebounce();
+    (apiClient.get as jest.Mock).mockClear();
+
+    let requestCount = 0;
+    (apiClient.get as jest.Mock).mockImplementation(() => {
+      requestCount += 1;
+      if (requestCount === 1) {
+        return Promise.resolve({
+          data: [
+            {
+              id: 'draft-keep-1',
+              type: 'draft',
+              title: 'Aurora Draft',
+              score: 8.4,
+            },
+          ],
+        });
+      }
+
+      return Promise.reject({
+        response: { data: { message: 'Search unavailable' } },
+      });
+    });
+
+    fireEvent.change(screen.getByPlaceholderText(/Search by keyword/i), {
+      target: { value: 'aurora' },
+    });
+    await runDebounce();
+    expect(await screen.findByText(/Aurora Draft/i)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText(/Search by keyword/i), {
+      target: { value: 'broken query' },
+    });
+    await runDebounce();
+
+    expect(await screen.findByText(/Search unavailable/i)).toBeInTheDocument();
+    expect(screen.getByText(/Aurora Draft/i)).toBeInTheDocument();
+  });
+
   test('handles null response data gracefully', async () => {
     (apiClient.get as jest.Mock).mockResolvedValueOnce({ data: null });
 
