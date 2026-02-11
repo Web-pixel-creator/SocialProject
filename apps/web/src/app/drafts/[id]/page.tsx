@@ -225,25 +225,11 @@ type Translate = (key: string) => string;
 
 const getPrimaryDraftError = (
   draftLoadError: unknown,
-  fixRequestsLoadError: unknown,
-  pullRequestsLoadError: unknown,
   t: Translate,
 ): string | null => {
   if (draftLoadError) {
     return getApiErrorMessage(
       draftLoadError,
-      t('draftDetail.errors.loadDraft'),
-    );
-  }
-  if (fixRequestsLoadError) {
-    return getApiErrorMessage(
-      fixRequestsLoadError,
-      t('draftDetail.errors.loadDraft'),
-    );
-  }
-  if (pullRequestsLoadError) {
-    return getApiErrorMessage(
-      pullRequestsLoadError,
       t('draftDetail.errors.loadDraft'),
     );
   }
@@ -308,6 +294,30 @@ const getPredictionError = ({
   return null;
 };
 
+const getDigestError = ({
+  digestAuthRequired,
+  digestLoadError,
+  t,
+}: {
+  digestAuthRequired: boolean;
+  digestLoadError: unknown;
+  t: Translate;
+}): string | null =>
+  digestLoadError && !digestAuthRequired
+    ? getApiErrorMessage(digestLoadError, t('draftDetail.errors.loadDigest'))
+    : null;
+
+const getArcError = ({
+  arcLoadError,
+  t,
+}: {
+  arcLoadError: unknown;
+  t: Translate;
+}): string | null =>
+  arcLoadError
+    ? getApiErrorMessage(arcLoadError, t('draftDetail.errors.loadArc'))
+    : null;
+
 const getDraftStatusInfo = (
   hasFixRequests: boolean,
   hasPendingPull: boolean,
@@ -329,6 +339,32 @@ const getDraftStatusInfo = (
     label: t('draftDetail.status.needsHelp'),
     tone: 'tag-alert border',
   };
+};
+
+const useLastSuccessfulList = <T,>(data: T[] | undefined): T[] => {
+  const [lastSuccessful, setLastSuccessful] = useState<T[]>([]);
+
+  useEffect(() => {
+    if (!Array.isArray(data)) {
+      return;
+    }
+    setLastSuccessful(data);
+  }, [data]);
+
+  return lastSuccessful;
+};
+
+const useTimeoutRefCleanup = (timeoutRef: { current: number | null }) => {
+  useEffect(
+    () => () => {
+      if (timeoutRef.current === null) {
+        return;
+      }
+      window.clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    },
+    [timeoutRef],
+  );
 };
 
 const formatDraftEventMessage = (
@@ -458,7 +494,7 @@ export default function DraftDetailPage() {
     },
   );
   const {
-    data: fixRequests = [],
+    data: fixRequestsData,
     error: fixRequestsLoadError,
     isLoading: fixRequestsLoading,
     mutate: mutateFixRequests,
@@ -471,7 +507,7 @@ export default function DraftDetailPage() {
     },
   );
   const {
-    data: pullRequests = [],
+    data: pullRequestsData,
     error: pullRequestsLoadError,
     isLoading: pullRequestsLoading,
     mutate: mutatePullRequests,
@@ -485,6 +521,13 @@ export default function DraftDetailPage() {
   );
   const draft = draftPayload?.draft ?? null;
   const versions = draftPayload?.versions ?? [];
+  const lastSuccessfulFixRequests = useLastSuccessfulList(fixRequestsData);
+  const lastSuccessfulPullRequests = useLastSuccessfulList(pullRequestsData);
+  const fixRequests =
+    fixRequestsData ?? (fixRequestsLoadError ? lastSuccessfulFixRequests : []);
+  const pullRequests =
+    pullRequestsData ??
+    (pullRequestsLoadError ? lastSuccessfulPullRequests : []);
   const pendingPull = pullRequests.find((item) => item.status === 'pending');
   const pendingPullId = pendingPull?.id ?? '';
   const {
@@ -588,6 +631,7 @@ export default function DraftDetailPage() {
   const arcTelemetryRef = useRef<string | null>(null);
   const lastRealtimeMutationEventIdRef = useRef<string | null>(null);
   const copyStatusTimeoutRef = useRef<number | null>(null);
+  useTimeoutRefCleanup(copyStatusTimeoutRef);
   const watchlistAuthRequired = isAuthRequiredError(watchlistLoadError);
   const digestAuthRequired = isAuthRequiredError(digestLoadError);
   const predictionAuthRequired = isAuthRequiredError(predictionLoadError);
@@ -601,10 +645,11 @@ export default function DraftDetailPage() {
     watchlistEntries.some((item) => isWatchlistEntryForDraft(item, draftId));
   const digestEntries = digestEntriesData;
   const digestLoading = digestIsLoading || digestIsValidating;
-  const digestError =
-    digestLoadError && !digestAuthRequired
-      ? getApiErrorMessage(digestLoadError, t('draftDetail.errors.loadDigest'))
-      : null;
+  const digestError = getDigestError({
+    digestAuthRequired,
+    digestLoadError,
+    t,
+  });
   const predictionSummary = predictionSummaryData ?? null;
   const predictionLoading =
     predictionSummaryIsLoading ||
@@ -617,9 +662,7 @@ export default function DraftDetailPage() {
     t,
   });
   const arcLoading = arcIsLoading || arcIsValidating;
-  const arcError = arcLoadError
-    ? getApiErrorMessage(arcLoadError, t('draftDetail.errors.loadArc'))
-    : null;
+  const arcError = getArcError({ arcLoadError, t });
   const similarLoading = similarDraftsIsLoading || similarDraftsIsValidating;
   const similarDrafts = similarDraftsData;
   const similarStatus = getSimilarStatus({
@@ -630,12 +673,7 @@ export default function DraftDetailPage() {
     t,
   });
   const loading = draftLoading || fixRequestsLoading || pullRequestsLoading;
-  const error = getPrimaryDraftError(
-    draftLoadError,
-    fixRequestsLoadError,
-    pullRequestsLoadError,
-    t,
-  );
+  const error = getPrimaryDraftError(draftLoadError, t);
 
   const { events } = useRealtimeRoom(
     draftId ? `post:${draftId}` : 'post:unknown',
@@ -655,15 +693,11 @@ export default function DraftDetailPage() {
         mutatePullRequests(),
         mutateArc(),
       ]);
-      const hasRefreshError = refreshResults.some(
-        (result) => result.status === 'rejected',
-      );
-      if (hasRefreshError) {
+      refreshResults.some((result) => result.status === 'rejected') &&
         sendTelemetry({
           eventType: 'demo_flow_refresh_partial_failure',
           draftId,
         });
-      }
     } catch (error: unknown) {
       setDemoStatus(
         getApiErrorMessage(error, t('draftDetail.errors.runDemoFlow')),
@@ -850,14 +884,8 @@ export default function DraftDetailPage() {
   }, [arcView, draftId]);
 
   useEffect(() => {
-    if (events.length === 0) {
-      return;
-    }
     const last = events.at(-1);
-    if (!last) {
-      return;
-    }
-    if (lastRealtimeMutationEventIdRef.current === last.id) {
+    if (!(last && lastRealtimeMutationEventIdRef.current !== last.id)) {
       return;
     }
     lastRealtimeMutationEventIdRef.current = last.id;
@@ -914,17 +942,6 @@ export default function DraftDetailPage() {
     });
     setNotifications((prev) => [...next, ...prev].slice(0, 5));
   }, [events, formatEventMessage, isFollowed]);
-
-  useEffect(
-    () => () => {
-      if (copyStatusTimeoutRef.current === null) {
-        return;
-      }
-      window.clearTimeout(copyStatusTimeoutRef.current);
-      copyStatusTimeoutRef.current = null;
-    },
-    [],
-  );
 
   const versionNumbers = useMemo(
     () => versions.map((version) => version.versionNumber),

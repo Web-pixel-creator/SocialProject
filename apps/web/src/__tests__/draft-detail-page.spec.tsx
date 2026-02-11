@@ -890,6 +890,111 @@ describe('draft detail page', () => {
     expect(screen.getByText(/Draft released/i)).toBeInTheDocument();
   });
 
+  test('keeps fix and pull request data when realtime refresh fails', async () => {
+    let fixCalls = 0;
+    let pullCalls = 0;
+
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/search/similar')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/fix-requests')) {
+        fixCalls += 1;
+        if (fixCalls === 1) {
+          return Promise.resolve({
+            data: [
+              {
+                id: 'fix-keep',
+                category: 'Focus',
+                description: 'Keep this fix request',
+                criticId: 'critic-keep',
+              },
+            ],
+          });
+        }
+        return Promise.reject({
+          response: { data: { message: 'Fix refresh failed' } },
+        });
+      }
+      if (url.includes('/pull-requests') && !url.includes('/predictions')) {
+        pullCalls += 1;
+        if (pullCalls === 1) {
+          return Promise.resolve({
+            data: [
+              {
+                id: 'pr-keep',
+                status: 'pending',
+                description: 'Keep this pull request',
+                makerId: 'maker-keep',
+              },
+            ],
+          });
+        }
+        return Promise.reject({
+          response: { data: { message: 'Pull refresh failed' } },
+        });
+      }
+      if (url.includes('/predictions')) {
+        return Promise.resolve({
+          data: {
+            pullRequestId: 'pr-keep',
+            pullRequestStatus: 'pending',
+            consensus: { merge: 0, reject: 0, total: 0 },
+            observerPrediction: null,
+            accuracy: { correct: 0, total: 0, rate: 0 },
+          },
+        });
+      }
+      if (url.includes('/arc')) {
+        return Promise.resolve({ data: null });
+      }
+      if (
+        url.includes('/observers/watchlist') ||
+        url.includes('/observers/digest')
+      ) {
+        return Promise.resolve({ data: [] });
+      }
+      return Promise.resolve({
+        data: {
+          draft: {
+            id: 'draft-refresh-failure',
+            currentVersion: 1,
+            glowUpScore: 1.1,
+            status: 'draft',
+            updatedAt: new Date().toISOString(),
+          },
+          versions: [],
+        },
+      });
+    });
+
+    await renderDraftDetailPage('draft-refresh-failure');
+
+    expect(screen.getByText(/Keep this fix request/i)).toBeInTheDocument();
+    expect(screen.getByText(/Keep this pull request/i)).toBeInTheDocument();
+
+    const { __socket } = jest.requireMock('../lib/socket');
+    await act(async () => {
+      __socket.__trigger('event', {
+        id: 'evt-refresh-failure',
+        scope: 'post:draft-refresh-failure',
+        type: 'fix_request',
+        sequence: 1,
+        payload: {},
+      });
+      await Promise.resolve();
+    });
+    await flushAsyncState();
+
+    await waitFor(() => expect(fixCalls).toBeGreaterThan(1));
+    await waitFor(() => expect(pullCalls).toBeGreaterThan(1));
+
+    expect(screen.getByText(/Keep this fix request/i)).toBeInTheDocument();
+    expect(screen.getByText(/Keep this pull request/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Fix refresh failed/i)).toBeNull();
+    expect(screen.queryByText(/Pull refresh failed/i)).toBeNull();
+  });
+
   test('handles similar-search and prediction failures gracefully', async () => {
     (apiClient.get as jest.Mock).mockImplementation((url: string) => {
       if (url.includes('/search/similar')) {
