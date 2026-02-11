@@ -260,6 +260,7 @@ function SearchPageContent() {
     error: textSearchError,
     isLoading: textSearchIsLoading,
     isValidating: textSearchIsValidating,
+    mutate: mutateTextSearch,
   } = useSWR<SearchResult[]>(
     textSearchKey,
     async () => {
@@ -485,6 +486,15 @@ function SearchPageContent() {
             : ''
         }`;
   const showAbBadge = abEnabled;
+  const retrySearch = useCallback(() => {
+    if (mode === 'text') {
+      setManualError(null);
+      textTelemetrySignatureRef.current = null;
+      mutateTextSearch();
+      return;
+    }
+    runVisualSearch();
+  }, [mode, mutateTextSearch, runVisualSearch]);
 
   return (
     <main className="grid gap-6">
@@ -679,7 +689,15 @@ function SearchPageContent() {
         </div>
         {error && (
           <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-destructive text-xs">
-            {error}
+            <p>{error}</p>
+            <button
+              className="mt-2 rounded-full border border-destructive/40 px-3 py-1 font-semibold text-[11px] transition hover:bg-destructive/10 disabled:opacity-60"
+              disabled={loading}
+              onClick={retrySearch}
+              type="button"
+            >
+              {t('common.retry')}
+            </button>
           </div>
         )}
         {visualNotice && (

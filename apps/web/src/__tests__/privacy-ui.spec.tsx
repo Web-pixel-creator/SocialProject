@@ -8,9 +8,24 @@ import { apiClient } from '../lib/api';
 
 jest.mock('../lib/api', () => ({
   apiClient: {
+    get: jest.fn(() =>
+      Promise.resolve({
+        data: {
+          id: 'export-1',
+          status: 'ready',
+          downloadUrl: 'https://example.com/export.zip',
+        },
+      }),
+    ),
     post: jest.fn(() =>
       Promise.resolve({
-        data: { export: { downloadUrl: 'https://example.com/export.zip' } },
+        data: {
+          export: {
+            id: 'export-1',
+            status: 'ready',
+            downloadUrl: 'https://example.com/export.zip',
+          },
+        },
       }),
     ),
   },
@@ -19,9 +34,34 @@ jest.mock('../lib/api', () => ({
 
 describe('privacy UI', () => {
   beforeEach(() => {
+    localStorage.clear();
+    (apiClient.get as jest.Mock).mockReset();
+    (apiClient.get as jest.Mock).mockResolvedValue({
+      data: {
+        id: 'export-1',
+        status: 'ready',
+        downloadUrl: 'https://example.com/export.zip',
+      },
+    });
     (apiClient.post as jest.Mock).mockReset();
-    (apiClient.post as jest.Mock).mockResolvedValue({
-      data: { export: { downloadUrl: 'https://example.com/export.zip' } },
+    (apiClient.post as jest.Mock).mockImplementation((url: string) => {
+      if (url === '/account/export') {
+        return Promise.resolve({
+          data: {
+            export: {
+              id: 'export-1',
+              status: 'ready',
+              downloadUrl: 'https://example.com/export.zip',
+            },
+          },
+        });
+      }
+      if (url === '/account/delete') {
+        return Promise.resolve({
+          data: { status: 'completed' },
+        });
+      }
+      return Promise.resolve({ data: {} });
     });
   });
 
@@ -29,6 +69,9 @@ describe('privacy UI', () => {
     render(<PrivacyPage />);
     fireEvent.click(screen.getByRole('button', { name: /Request export/i }));
     await waitFor(() => expect(apiClient.post).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(apiClient.get).toHaveBeenCalledWith('/account/exports/export-1'),
+    );
     expect(await screen.findByText(/Requested/i)).toBeInTheDocument();
     expect(await screen.findByText(/Download export/i)).toHaveAttribute(
       'href',
@@ -54,7 +97,11 @@ describe('privacy UI', () => {
 
   test('shows deletion error', async () => {
     (apiClient.post as jest.Mock)
-      .mockResolvedValueOnce({ data: { export: { downloadUrl: null } } })
+      .mockResolvedValueOnce({
+        data: {
+          export: { id: 'export-2', status: 'ready', downloadUrl: null },
+        },
+      })
       .mockRejectedValueOnce({
         response: { data: { message: 'Deletion failed' } },
       });
@@ -65,5 +112,35 @@ describe('privacy UI', () => {
     fireEvent.click(screen.getByRole('button', { name: /Request deletion/i }));
 
     expect(await screen.findByText(/Deletion failed/i)).toBeInTheDocument();
+  });
+
+  test('restores stored export status and supports resync', async () => {
+    localStorage.setItem('finishit-privacy-export-id', 'export-stored');
+    (apiClient.get as jest.Mock).mockResolvedValue({
+      data: {
+        id: 'export-stored',
+        status: 'ready',
+        downloadUrl: 'https://example.com/export-stored.zip',
+      },
+    });
+
+    render(<PrivacyPage />);
+
+    await waitFor(() =>
+      expect(apiClient.get).toHaveBeenCalledWith(
+        '/account/exports/export-stored',
+      ),
+    );
+    expect(await screen.findByText(/Download export/i)).toHaveAttribute(
+      'href',
+      'https://example.com/export-stored.zip',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Resync now/i }));
+    await waitFor(() =>
+      expect(apiClient.get).toHaveBeenCalledWith(
+        '/account/exports/export-stored',
+      ),
+    );
   });
 });

@@ -17,8 +17,12 @@ interface Commission {
   paymentStatus: string;
 }
 
-const fetchCommissions = async (): Promise<Commission[]> => {
-  const response = await apiClient.get('/commissions');
+const fetchCommissions = async (
+  statusFilter: string,
+): Promise<Commission[]> => {
+  const response = await apiClient.get('/commissions', {
+    params: statusFilter === 'all' ? undefined : { status: statusFilter },
+  });
   return response.data ?? [];
 };
 
@@ -34,10 +38,14 @@ export default function CommissionsPage() {
     isLoading,
     isValidating,
     mutate,
-  } = useSWR<Commission[]>('commissions:list', fetchCommissions, {
-    revalidateOnFocus: false,
-    shouldRetryOnError: false,
-  });
+  } = useSWR<Commission[]>(
+    `commissions:list:${statusFilter}`,
+    () => fetchCommissions(statusFilter),
+    {
+      revalidateOnFocus: false,
+      shouldRetryOnError: false,
+    },
+  );
 
   const error = loadError
     ? getApiErrorMessage(loadError, t('commission.errors.loadList'))
