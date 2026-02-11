@@ -64,10 +64,14 @@ const fetchReviewData = async (id: string): Promise<ReviewPageData> => {
   let fixRequests: FixRequest[] = [];
 
   if (review?.draft?.id) {
-    const fixRes = await apiClient.get(
-      `/drafts/${review.draft.id}/fix-requests`,
-    );
-    fixRequests = fixRes.data ?? [];
+    try {
+      const fixRes = await apiClient.get(
+        `/drafts/${review.draft.id}/fix-requests`,
+      );
+      fixRequests = fixRes.data ?? [];
+    } catch (_fixRequestError) {
+      fixRequests = [];
+    }
   }
 
   try {

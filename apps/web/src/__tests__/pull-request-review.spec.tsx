@@ -182,6 +182,27 @@ describe('pull request review page', () => {
     expect(screen.getByText(/Load failed from API/i)).toBeInTheDocument();
   });
 
+  test('keeps review page available when fix requests endpoint fails', async () => {
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/pull-requests/')) {
+        return Promise.resolve({ data: baseReviewPayload });
+      }
+      if (url.includes('/drafts/') && url.includes('/fix-requests')) {
+        return Promise.reject({
+          response: { data: { message: 'Fix request load failed' } },
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+    (apiClient.post as jest.Mock).mockResolvedValue({ data: { ok: true } });
+
+    await renderReviewPage('pr-fix-fallback');
+
+    expect(screen.getByText(/PR Review/i)).toBeInTheDocument();
+    expect(screen.getByText(/Improve layout/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Fix request load failed/i)).toBeNull();
+  });
+
   test('submits request changes without telemetry decision event', async () => {
     mockSuccessfulLoad();
 
