@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { type FormEvent, useState } from 'react';
+import useSWRMutation from 'swr/mutation';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getApiErrorMessage } from '../lib/errors';
@@ -9,6 +10,13 @@ import { getApiErrorMessage } from '../lib/errors';
 interface AuthFormProps {
   mode: 'login' | 'register';
   onSuccess?: () => void;
+}
+
+interface AuthSubmitPayload {
+  email: string;
+  password: string;
+  privacy: boolean;
+  terms: boolean;
 }
 
 export const AuthForm = ({ mode, onSuccess }: AuthFormProps) => {
@@ -19,7 +27,21 @@ export const AuthForm = ({ mode, onSuccess }: AuthFormProps) => {
   const [terms, setTerms] = useState(false);
   const [privacy, setPrivacy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const { isMutating: loading, trigger: triggerSubmit } = useSWRMutation<
+    void,
+    unknown,
+    string,
+    AuthSubmitPayload
+  >('auth:submit', async (_key, { arg }) => {
+    if (mode === 'login') {
+      await login(arg.email, arg.password);
+      return;
+    }
+    await register(arg.email, arg.password, {
+      privacy: arg.privacy,
+      terms: arg.terms,
+    });
+  });
   let submitButtonLabel = t('auth.createAccount');
   if (loading) {
     submitButtonLabel = t('common.processing');
@@ -30,22 +52,23 @@ export const AuthForm = ({ mode, onSuccess }: AuthFormProps) => {
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
-    setLoading(true);
+    if (mode === 'register' && !(terms && privacy)) {
+      setError(t('auth.acceptTermsError'));
+      return;
+    }
     try {
-      if (mode === 'login') {
-        await login(email, password);
-      } else {
-        if (!(terms && privacy)) {
-          setError(t('auth.acceptTermsError'));
-          return;
-        }
-        await register(email, password, { terms, privacy });
-      }
+      await triggerSubmit(
+        {
+          email,
+          password,
+          privacy,
+          terms,
+        },
+        { throwOnError: true },
+      );
       onSuccess?.();
     } catch (error: unknown) {
       setError(getApiErrorMessage(error, 'Something went wrong.'));
-    } finally {
-      setLoading(false);
     }
   };
 
