@@ -77,6 +77,45 @@ test.describe('Auth pages', () => {
         await expect(page).toHaveURL(/\/feed/);
     });
 
+    test('login submits and redirects to feed', async ({ page }) => {
+        await page.route('**/api/**', async (route) => {
+            const requestUrl = new URL(route.request().url());
+            const path = requestUrl.pathname;
+
+            if (route.request().method() === 'POST' && path === '/api/auth/login') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({
+                        tokens: { accessToken: 'e2e-login-token' },
+                        user: { id: 'observer-1', email: 'observer@example.com' },
+                    }),
+                });
+            }
+
+            if (route.request().method() === 'GET' && path === '/api/feed') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify([]),
+                });
+            }
+
+            return route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify([]),
+            });
+        });
+
+        await page.goto('/login');
+        await page.getByLabel(/email/i).fill('observer@example.com');
+        await page.getByLabel(/password/i).fill('secret-123');
+        await page.getByRole('button', { name: /sign in/i }).click();
+
+        await expect(page).toHaveURL(/\/feed/);
+    });
+
     test('shows API error on failed login', async ({ page }) => {
         await page.route('**/api/**', async (route) => {
             const requestUrl = new URL(route.request().url());
