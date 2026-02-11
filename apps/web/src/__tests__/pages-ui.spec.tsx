@@ -9,6 +9,23 @@ import LoginPage from '../app/login/page';
 import Home from '../app/page';
 import RegisterPage from '../app/register/page';
 
+const replaceMock = jest.fn();
+
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({
+    replace: replaceMock,
+  }),
+  usePathname: () => '/feed',
+  useSearchParams: () => new URLSearchParams(''),
+}));
+
+jest.mock('../contexts/AuthContext', () => ({
+  useAuth: () => ({
+    isAuthenticated: false,
+    loading: false,
+  }),
+}));
+
 jest.mock('../components/FeedTabs', () => ({
   FeedTabs: () => <div>FeedTabs</div>,
 }));

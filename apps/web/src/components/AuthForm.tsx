@@ -8,9 +8,10 @@ import { getApiErrorMessage } from '../lib/errors';
 
 interface AuthFormProps {
   mode: 'login' | 'register';
+  onSuccess?: () => void;
 }
 
-export const AuthForm = ({ mode }: AuthFormProps) => {
+export const AuthForm = ({ mode, onSuccess }: AuthFormProps) => {
   const { login, register } = useAuth();
   const { t } = useLanguage();
   const [email, setEmail] = useState('');
@@ -40,6 +41,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
         }
         await register(email, password, { terms, privacy });
       }
+      onSuccess?.();
     } catch (error: unknown) {
       setError(getApiErrorMessage(error, 'Something went wrong.'));
     } finally {

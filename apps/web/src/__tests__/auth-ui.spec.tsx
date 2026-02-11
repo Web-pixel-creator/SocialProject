@@ -96,6 +96,29 @@ describe('auth UI', () => {
     expect(apiClient.post).toHaveBeenCalled();
   });
 
+  test('calls onSuccess after successful login', async () => {
+    (apiClient.post as jest.Mock).mockResolvedValue({
+      data: {
+        tokens: { accessToken: 'token' },
+        userId: 'u1',
+        email: 'user@example.com',
+      },
+    });
+    const onSuccess = jest.fn();
+
+    renderWithProvider(<AuthForm mode="login" onSuccess={onSuccess} />);
+    fireEvent.change(screen.getByLabelText(/Email/i), {
+      target: { value: 'user@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText(/Password/i), {
+      target: { value: 'pass' },
+    });
+
+    await submitAndWait(/Sign in/i);
+
+    expect(onSuccess).toHaveBeenCalledTimes(1);
+  });
+
   test('shows error message on failed login', async () => {
     (apiClient.post as jest.Mock).mockRejectedValue({
       response: { data: { message: 'Invalid credentials' } },
