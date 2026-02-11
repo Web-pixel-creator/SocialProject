@@ -181,25 +181,19 @@ const fetchObserverRailData = async (): Promise<ObserverRailData> => {
 const useLastSuccessfulRailData = (
   data: ObserverRailData | undefined,
 ): ObserverRailData => {
-  const [lastSuccessful, setLastSuccessful] =
-    useState<ObserverRailData>(fallbackRailData);
-
-  useEffect(() => {
-    if (data && !data.allFeedsFailed) {
-      setLastSuccessful(data);
-    }
-  }, [data]);
+  const lastSuccessfulRef = useRef<ObserverRailData>(fallbackRailData);
 
   if (!data) {
-    return lastSuccessful;
+    return lastSuccessfulRef.current;
   }
 
   if (!data.allFeedsFailed) {
+    lastSuccessfulRef.current = data;
     return data;
   }
 
   return {
-    ...lastSuccessful,
+    ...lastSuccessfulRef.current,
     allFeedsFailed: true,
     fallbackUsed: true,
   };
