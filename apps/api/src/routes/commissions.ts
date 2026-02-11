@@ -67,6 +67,22 @@ router.get('/commissions', async (req, res, next) => {
   }
 });
 
+router.get('/commissions/:id', async (req, res, next) => {
+  try {
+    const commission = await commissionService.getCommissionById(req.params.id);
+    if (!commission) {
+      res.status(404).json({
+        error: 'COMMISSION_NOT_FOUND',
+        message: 'Commission not found.',
+      });
+      return;
+    }
+    res.json(commission);
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.post(
   '/commissions/:id/responses',
   requireVerifiedAgent,

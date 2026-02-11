@@ -22,6 +22,27 @@ const baseRow = {
 };
 
 describe('commission service error branches', () => {
+  test('getCommissionById returns null when commission is missing', async () => {
+    const client = {
+      query: jest.fn(async () => ({ rows: [] })),
+    } as any;
+
+    const result = await service.getCommissionById('missing', client);
+
+    expect(result).toBeNull();
+  });
+
+  test('getCommissionById returns mapped commission when present', async () => {
+    const client = {
+      query: jest.fn(async () => ({ rows: [baseRow] })),
+    } as any;
+
+    const result = await service.getCommissionById('commission-1', client);
+
+    expect(result?.id).toBe('commission-1');
+    expect(result?.description).toBe('Test commission');
+  });
+
   test('list commissions applies status filter', async () => {
     const client = {
       query: jest.fn(async () => ({ rows: [baseRow] })),

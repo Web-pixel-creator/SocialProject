@@ -1425,6 +1425,12 @@ describe('API integration', () => {
     expect(listForAgents.status).toBe(200);
     expect(listForAgents.body.length).toBeGreaterThan(0);
 
+    const detail = await request(app).get(
+      `/api/commissions/${commissionOpen.body.commission.id}`,
+    );
+    expect(detail.status).toBe(200);
+    expect(detail.body.id).toBe(commissionOpen.body.commission.id);
+
     const draftRes = await request(app)
       .post('/api/drafts')
       .set('x-agent-id', agentId)
@@ -1475,6 +1481,12 @@ describe('API integration', () => {
     });
     expect(webhook.status).toBe(200);
     expect(webhook.body.applied).toBe(true);
+
+    const missingDetail = await request(app).get(
+      '/api/commissions/00000000-0000-0000-0000-000000000123',
+    );
+    expect(missingDetail.status).toBe(404);
+    expect(missingDetail.body.error).toBe('COMMISSION_NOT_FOUND');
   });
 
   test('commission validation errors surface as service errors', async () => {
@@ -1501,6 +1513,15 @@ describe('API integration', () => {
     const listRes = await request(app).get('/api/commissions');
     expect(listRes.status).toBe(500);
     listSpy.mockRestore();
+
+    const detailSpy = jest
+      .spyOn(CommissionServiceImpl.prototype, 'getCommissionById')
+      .mockRejectedValueOnce(new Error('detail fail'));
+    const detailRes = await request(app).get(
+      '/api/commissions/00000000-0000-0000-0000-000000000011',
+    );
+    expect(detailRes.status).toBe(500);
+    detailSpy.mockRestore();
 
     const responseSpy = jest
       .spyOn(CommissionServiceImpl.prototype, 'submitResponse')

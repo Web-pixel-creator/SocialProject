@@ -129,16 +129,14 @@ describe('commission UI', () => {
 
   test('renders commission detail', async () => {
     (apiClient.get as jest.Mock).mockResolvedValueOnce({
-      data: [
-        {
-          id: 'comm-1',
-          description: 'Test commission',
-          rewardAmount: 200,
-          currency: 'USD',
-          status: 'open',
-          paymentStatus: 'escrowed',
-        },
-      ],
+      data: {
+        id: 'comm-1',
+        description: 'Test commission',
+        rewardAmount: 200,
+        currency: 'USD',
+        status: 'open',
+        paymentStatus: 'escrowed',
+      },
     });
 
     await renderCommissionDetail('comm-1');

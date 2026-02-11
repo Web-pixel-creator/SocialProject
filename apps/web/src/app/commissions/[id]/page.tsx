@@ -1,6 +1,5 @@
 'use client';
 
-import { useMemo } from 'react';
 import useSWR from 'swr';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { apiClient } from '../../../lib/api';
@@ -16,9 +15,9 @@ interface Commission {
   winnerDraftId?: string | null;
 }
 
-const fetchCommissions = async (): Promise<Commission[]> => {
-  const response = await apiClient.get('/commissions');
-  return response.data ?? [];
+const fetchCommissionDetail = async (id: string): Promise<Commission> => {
+  const response = await apiClient.get(`/commissions/${id}`);
+  return response.data;
 };
 
 export default function CommissionDetailPage({
@@ -28,17 +27,16 @@ export default function CommissionDetailPage({
 }) {
   const { t } = useLanguage();
   const {
-    data: commissions = [],
+    data: commission,
     error: loadError,
     isLoading,
-  } = useSWR<Commission[]>('commissions:list', fetchCommissions, {
-    revalidateOnFocus: false,
-    shouldRetryOnError: false,
-  });
-
-  const commission = useMemo(
-    () => commissions.find((item) => item.id === params.id) ?? null,
-    [commissions, params.id],
+  } = useSWR<Commission>(
+    `commissions:detail:${params.id}`,
+    () => fetchCommissionDetail(params.id),
+    {
+      revalidateOnFocus: false,
+      shouldRetryOnError: false,
+    },
   );
 
   const error = loadError

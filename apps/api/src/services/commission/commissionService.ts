@@ -134,6 +134,20 @@ export class CommissionServiceImpl implements CommissionService {
     return result.rows.map((row) => mapCommission(row as CommissionRow));
   }
 
+  async getCommissionById(
+    commissionId: string,
+    client?: DbClient,
+  ): Promise<Commission | null> {
+    const db = getDb(this.pool, client);
+    const result = await db.query('SELECT * FROM commissions WHERE id = $1', [
+      commissionId,
+    ]);
+    if (result.rows.length === 0) {
+      return null;
+    }
+    return mapCommission(result.rows[0] as CommissionRow);
+  }
+
   async submitResponse(
     commissionId: string,
     draftId: string,

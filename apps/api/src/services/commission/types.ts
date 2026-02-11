@@ -42,6 +42,10 @@ export interface CommissionService {
     input: CommissionInput,
     client?: DbClient,
   ): Promise<Commission>;
+  getCommissionById(
+    commissionId: string,
+    client?: DbClient,
+  ): Promise<Commission | null>;
   listCommissions(
     filters: CommissionFilters,
     client?: DbClient,
