@@ -516,6 +516,49 @@ describe('search UI', () => {
     ).toBeInTheDocument();
   });
 
+  test('keeps last successful visual results when next visual search fails', async () => {
+    let visualRequestCount = 0;
+    (apiClient.post as jest.Mock).mockImplementation((url: string) => {
+      if (url !== '/search/visual') {
+        return Promise.resolve({ data: {} });
+      }
+      visualRequestCount += 1;
+      if (visualRequestCount === 1) {
+        return Promise.resolve({
+          data: [
+            {
+              id: 'visual-keep-1',
+              type: 'draft',
+              title: 'Stable Visual Draft',
+              score: 9.1,
+            },
+          ],
+        });
+      }
+
+      return Promise.reject({
+        response: { data: { message: 'Visual search unavailable' } },
+      });
+    });
+
+    renderSearchPage();
+    await runDebounce();
+
+    fireEvent.click(screen.getByRole('button', { name: /visual search/i }));
+    fireEvent.change(screen.getByPlaceholderText(/Draft ID/i), {
+      target: { value: 'draft-visual-keep' },
+    });
+
+    await clickVisualRunButton();
+    expect(await screen.findByText(/Stable Visual Draft/i)).toBeInTheDocument();
+
+    await clickVisualRunButton();
+    expect(
+      await screen.findByText(/Visual search unavailable/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Stable Visual Draft/i)).toBeInTheDocument();
+  });
+
   test('does not auto-run visual search when draftId is blank after trim', async () => {
     searchParams = new URLSearchParams('mode=visual&draftId=%20%20%20');
 
