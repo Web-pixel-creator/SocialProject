@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import net from 'node:net';
 
 const NPM_BIN = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const DEFAULT_API_BASE_URL = 'http://127.0.0.1:4000';
@@ -18,6 +19,36 @@ const parseNumber = (raw, fallback) => {
 };
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const resolvePortNumber = (raw, fallback) => {
+  const resolved = raw || fallback;
+  const parsed = Number(resolved);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`Invalid port value: ${String(resolved)}`);
+  }
+  return parsed;
+};
+
+const isPortListening = (host, port, timeoutMs = 1_000) => {
+  return new Promise((resolve) => {
+    const socket = net.createConnection({ host, port });
+    let settled = false;
+
+    const finish = (value) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      socket.destroy();
+      resolve(value);
+    };
+
+    socket.setTimeout(timeoutMs);
+    socket.on('connect', () => finish(true));
+    socket.on('timeout', () => finish(false));
+    socket.on('error', () => finish(false));
+  });
+};
 
 const getNpmInvocation = (args) => {
   const npmExecPath = process.env.npm_execpath;
@@ -147,6 +178,24 @@ const waitForUrl = async (url, timeoutMs, intervalMs) => {
   throw new Error(`Timeout waiting for ${url}`);
 };
 
+const probeApiHealth = async (baseUrl, timeoutMs) => {
+  const response = await timedRequest({
+    method: 'GET',
+    timeoutMs,
+    url: buildUrl(baseUrl, '/health'),
+  });
+  return response.status === 200 && response.json?.status === 'ok';
+};
+
+const probeWebHealth = async (baseUrl, timeoutMs) => {
+  const response = await timedRequest({
+    method: 'GET',
+    timeoutMs,
+    url: buildUrl(baseUrl, '/'),
+  });
+  return response.status !== null && response.status >= 200 && response.status < 500;
+};
+
 const taskKill = (pid) => {
   return new Promise((resolve) => {
     const killer = spawn('taskkill', ['/PID', String(pid), '/T', '/F'], {
@@ -207,6 +256,41 @@ const startService = ({ command, args, name, env, shell }) => {
   return child;
 };
 
+const timedRequest = async ({ url, method, timeoutMs, headers, body }) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      method,
+      headers,
+      body,
+      signal: controller.signal,
+    });
+    const contentType = response.headers.get('content-type') ?? '';
+    const text = await response.text();
+    let json = null;
+    if (contentType.includes('application/json')) {
+      try {
+        json = JSON.parse(text);
+      } catch {
+        json = null;
+      }
+    }
+    return {
+      status: response.status,
+      json,
+    };
+  } catch {
+    return {
+      status: null,
+      json: null,
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
 const main = async () => {
   const apiBaseUrl = process.env.RELEASE_API_BASE_URL ?? DEFAULT_API_BASE_URL;
   const webBaseUrl = process.env.RELEASE_WEB_BASE_URL ?? DEFAULT_WEB_BASE_URL;
@@ -223,7 +307,10 @@ const main = async () => {
   const webUrl = new URL(webBaseUrl);
   const apiPort = apiUrl.port || '4000';
   const webPort = webUrl.port || '3000';
+  const apiHost = apiUrl.hostname || '127.0.0.1';
   const webHost = webUrl.hostname || '127.0.0.1';
+  const apiPortNumber = resolvePortNumber(apiPort, '4000');
+  const webPortNumber = resolvePortNumber(webPort, '3000');
 
   const csrfToken = process.env.RELEASE_CSRF_TOKEN ?? DEFAULT_CSRF_TOKEN;
 
@@ -328,20 +415,47 @@ const main = async () => {
   let webProcess = null;
 
   try {
-    apiProcess = startService({
-      command: apiStartInvocation.command,
-      args: apiStartInvocation.args,
-      name: 'api',
-      env: apiEnv,
-      shell: apiStartInvocation.shell,
-    });
-    webProcess = startService({
-      command: webStartInvocation.command,
-      args: webStartInvocation.args,
-      name: 'web',
-      env: webEnv,
-      shell: webStartInvocation.shell,
-    });
+    const [apiReady, webReady, apiPortInUse, webPortInUse] = await Promise.all([
+      probeApiHealth(apiBaseUrl, intervalMs),
+      probeWebHealth(webBaseUrl, intervalMs),
+      isPortListening(apiHost, apiPortNumber),
+      isPortListening(webHost, webPortNumber),
+    ]);
+
+    if (apiPortInUse && !apiReady) {
+      throw new Error(
+        `Port ${apiPortNumber} is already in use, but ${buildUrl(apiBaseUrl, '/health')} is not ready. Stop the conflicting process or change RELEASE_API_BASE_URL.`,
+      );
+    }
+    if (webPortInUse && !webReady) {
+      throw new Error(
+        `Port ${webPortNumber} is already in use, but ${buildUrl(webBaseUrl, '/')} is not reachable. Stop the conflicting process or change RELEASE_WEB_BASE_URL.`,
+      );
+    }
+
+    if (apiReady) {
+      process.stdout.write(`Reusing existing API service at ${apiBaseUrl}\n`);
+    } else {
+      apiProcess = startService({
+        command: apiStartInvocation.command,
+        args: apiStartInvocation.args,
+        name: 'api',
+        env: apiEnv,
+        shell: apiStartInvocation.shell,
+      });
+    }
+
+    if (webReady) {
+      process.stdout.write(`Reusing existing Web service at ${webBaseUrl}\n`);
+    } else {
+      webProcess = startService({
+        command: webStartInvocation.command,
+        args: webStartInvocation.args,
+        name: 'web',
+        env: webEnv,
+        shell: webStartInvocation.shell,
+      });
+    }
 
     await waitForUrl(buildUrl(apiBaseUrl, '/health'), timeoutMs, intervalMs);
     await waitForUrl(buildUrl(webBaseUrl, '/'), timeoutMs, intervalMs);
