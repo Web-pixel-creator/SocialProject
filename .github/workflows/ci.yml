@@ -342,6 +342,8 @@ jobs:
       - name: Run staging smoke check
         shell: bash
         run: |
+          set -euo pipefail
+
           API_URL="${{ github.event.inputs.release_api_base_url }}"
           WEB_URL="${{ github.event.inputs.release_web_base_url }}"
           CSRF_TOKEN="${{ github.event.inputs.release_csrf_token }}"
@@ -360,6 +362,23 @@ jobs:
             CSRF_TOKEN="${{ vars.RELEASE_CSRF_TOKEN }}"
           fi
 
+          if { [ -n "$API_URL" ] && [ -z "$WEB_URL" ]; } || { [ -z "$API_URL" ] && [ -n "$WEB_URL" ]; }; then
+            echo "::error::Release smoke configuration is partial. Set both API and WEB URLs or leave both empty for local fallback."
+            echo "API_URL set: $([ -n "$API_URL" ] && echo yes || echo no)"
+            echo "WEB_URL set: $([ -n "$WEB_URL" ] && echo yes || echo no)"
+            exit 1
+          fi
+
+          if [ -n "$API_URL" ] && [ -n "$WEB_URL" ]; then
+            echo "Release smoke mode: staging"
+            echo "Resolved API URL: $API_URL"
+            echo "Resolved WEB URL: $WEB_URL"
+            echo "CSRF token configured: $([ -n "$CSRF_TOKEN" ] && echo yes || echo no)"
+          else
+            echo "Release smoke mode: local fallback"
+            echo "Reason: staging URLs are not configured."
+          fi
+
           RELEASE_PREFLIGHT_API_BASE_URL="$API_URL" \
           RELEASE_PREFLIGHT_WEB_BASE_URL="$WEB_URL" \
           RELEASE_PREFLIGHT_OUTPUT_PATH="$PREFLIGHT_SUMMARY_PATH" \
@@ -376,6 +395,8 @@ jobs:
           fi
 
           echo "Staging URLs are not configured. Running local-stack release dry-run fallback."
+          RELEASE_API_BASE_URL="http://127.0.0.1:4000" \
+          RELEASE_WEB_BASE_URL="http://127.0.0.1:3000" \
           RELEASE_RESULTS_PATH="artifacts/release/smoke-results.json" \
           npm run release:dry-run:local
 
