@@ -620,6 +620,65 @@ export const FeedTabs = () => {
       sourceTab: active,
     });
   };
+  const handleProgressCardOpen = useCallback((draftId: string) => {
+    sendTelemetry({
+      eventType: 'feed_card_open',
+      draftId,
+      source: 'feed',
+    });
+  }, []);
+
+  const renderedItems = useMemo(
+    () =>
+      visibleItems.map((item, index) => {
+        if (item.kind === 'studio') {
+          return <StudioCard key={item.id ?? `studio-${index}`} {...item} />;
+        }
+        if (item.kind === 'guild') {
+          return <GuildCard key={item.id ?? `guild-${index}`} {...item} />;
+        }
+        if (item.kind === 'hot') {
+          return (
+            <DraftCard
+              afterImageUrl={item.afterImageUrl}
+              beforeImageUrl={item.beforeImageUrl}
+              glowUpScore={item.glowUpScore}
+              hotScore={item.hotScore}
+              id={item.id}
+              key={item.id ?? `hot-${index}`}
+              reasonLabel={item.reasonLabel}
+              title={item.title}
+            />
+          );
+        }
+        if (item.kind === 'progress') {
+          const key =
+            item.draftId ??
+            item.beforeImageUrl ??
+            item.afterImageUrl ??
+            item.lastActivity ??
+            `progress-${index}`;
+          return (
+            <BeforeAfterCard
+              key={String(key)}
+              {...item}
+              onOpen={() => handleProgressCardOpen(item.draftId)}
+            />
+          );
+        }
+        if (item.kind === 'battle') {
+          return <BattleCard key={item.id ?? `battle-${index}`} {...item} />;
+        }
+        if (item.kind === 'change') {
+          return <ChangeCard key={item.id ?? `change-${index}`} {...item} />;
+        }
+        if (item.kind === 'autopsy') {
+          return <AutopsyCard key={item.id ?? `autopsy-${index}`} {...item} />;
+        }
+        return <DraftCard key={item.id ?? `draft-${index}`} {...item} />;
+      }),
+    [visibleItems, handleProgressCardOpen],
+  );
 
   let filterPanel = (
     <p className="text-muted-foreground text-xs">
@@ -905,73 +964,7 @@ export const FeedTabs = () => {
           );
         }
 
-        return (
-          <div className={feedGridClass}>
-            {visibleItems.map((item, index) => {
-              if (item.kind === 'studio') {
-                return (
-                  <StudioCard key={item.id ?? `studio-${index}`} {...item} />
-                );
-              }
-              if (item.kind === 'guild') {
-                return (
-                  <GuildCard key={item.id ?? `guild-${index}`} {...item} />
-                );
-              }
-              if (item.kind === 'hot') {
-                return (
-                  <DraftCard
-                    afterImageUrl={item.afterImageUrl}
-                    beforeImageUrl={item.beforeImageUrl}
-                    glowUpScore={item.glowUpScore}
-                    hotScore={item.hotScore}
-                    id={item.id}
-                    key={item.id ?? `hot-${index}`}
-                    reasonLabel={item.reasonLabel}
-                    title={item.title}
-                  />
-                );
-              }
-              if (item.kind === 'progress') {
-                const key =
-                  item.draftId ??
-                  item.beforeImageUrl ??
-                  item.afterImageUrl ??
-                  item.lastActivity ??
-                  `progress-${index}`;
-                return (
-                  <BeforeAfterCard
-                    key={String(key)}
-                    {...item}
-                    onOpen={() =>
-                      sendTelemetry({
-                        eventType: 'feed_card_open',
-                        draftId: item.draftId,
-                        source: 'feed',
-                      })
-                    }
-                  />
-                );
-              }
-              if (item.kind === 'battle') {
-                return (
-                  <BattleCard key={item.id ?? `battle-${index}`} {...item} />
-                );
-              }
-              if (item.kind === 'change') {
-                return (
-                  <ChangeCard key={item.id ?? `change-${index}`} {...item} />
-                );
-              }
-              if (item.kind === 'autopsy') {
-                return (
-                  <AutopsyCard key={item.id ?? `autopsy-${index}`} {...item} />
-                );
-              }
-              return <DraftCard key={item.id ?? `draft-${index}`} {...item} />;
-            })}
-          </div>
-        );
+        return <div className={feedGridClass}>{renderedItems}</div>;
       })()}
       {!fallbackUsed && hasMore && (
         <button
