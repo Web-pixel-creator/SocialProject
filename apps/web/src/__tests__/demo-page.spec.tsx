@@ -90,4 +90,43 @@ describe('demo page', () => {
     expect(await screen.findByText(/Demo failed in API/i)).toBeInTheDocument();
     expect(screen.getAllByText('Pending')).toHaveLength(4);
   });
+
+  test('keeps previous result visible when rerun fails and allows retry', async () => {
+    (apiClient.post as jest.Mock)
+      .mockResolvedValueOnce({
+        data: {
+          draftId: 'draft-stable',
+          fixRequestId: 'fix-stable',
+          pullRequestId: 'pr-stable',
+          glowUp: 5.8,
+        },
+      })
+      .mockRejectedValueOnce({
+        response: { data: { message: 'Temporary demo failure' } },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          draftId: 'draft-stable',
+          fixRequestId: 'fix-stable',
+          pullRequestId: 'pr-stable',
+          glowUp: 6.1,
+        },
+      });
+
+    render(<DemoPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Run demo/i }));
+    await waitFor(() => expect(screen.getAllByText('Done')).toHaveLength(4));
+    expect(screen.getByText(/GlowUp: 5.8/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Run demo/i }));
+    expect(
+      await screen.findByText(/Temporary demo failure/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/GlowUp: 5.8/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Retry/i }));
+    await waitFor(() => expect(apiClient.post).toHaveBeenCalledTimes(3));
+    expect(await screen.findByText(/GlowUp: 6.1/i)).toBeInTheDocument();
+  });
 });

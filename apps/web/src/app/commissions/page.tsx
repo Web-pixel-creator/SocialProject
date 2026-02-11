@@ -109,6 +109,17 @@ export default function CommissionsPage() {
     return filtered;
   }, [commissions, paymentFilter, search, statusFilter]);
 
+  const hasActiveFilters =
+    search.trim().length > 0 ||
+    statusFilter !== 'all' ||
+    paymentFilter !== 'all';
+
+  const resetFilters = useCallback(() => {
+    setSearch('');
+    setStatusFilter('all');
+    setPaymentFilter('all');
+  }, []);
+
   const summary = useMemo(() => {
     let pending = 0;
     let released = 0;
@@ -241,6 +252,32 @@ export default function CommissionsPage() {
             ))}
           </select>
         </section>
+        {hasActiveFilters ? (
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            {search.trim().length > 0 ? (
+              <span className="pill normal-case tracking-normal">
+                {search.trim()}
+              </span>
+            ) : null}
+            {statusFilter !== 'all' ? (
+              <span className="pill normal-case tracking-normal">
+                {statusFilter}
+              </span>
+            ) : null}
+            {paymentFilter !== 'all' ? (
+              <span className="pill normal-case tracking-normal">
+                {paymentFilter}
+              </span>
+            ) : null}
+            <button
+              className="rounded-full border border-border bg-background/70 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:border-primary/40 hover:text-primary"
+              onClick={resetFilters}
+              type="button"
+            >
+              {t('search.actions.resetFilters')}
+            </button>
+          </div>
+        ) : null}
 
         {error ? (
           <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-destructive text-xs">
@@ -278,8 +315,21 @@ export default function CommissionsPage() {
               </Link>
             ))}
             {filteredCommissions.length === 0 ? (
-              <div className="card p-4 text-muted-foreground text-sm">
-                {t('commission.states.empty')}
+              <div className="card grid gap-3 p-4 text-muted-foreground text-sm">
+                <p>
+                  {hasActiveFilters
+                    ? t('search.states.noResultsYet')
+                    : t('commission.states.empty')}
+                </p>
+                {hasActiveFilters ? (
+                  <button
+                    className="w-fit rounded-full border border-border bg-background/70 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:border-primary/40 hover:text-primary"
+                    onClick={resetFilters}
+                    type="button"
+                  >
+                    {t('search.actions.resetFilters')}
+                  </button>
+                ) : null}
               </div>
             ) : null}
           </section>

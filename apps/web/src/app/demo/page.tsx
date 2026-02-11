@@ -43,7 +43,6 @@ export default function DemoPage() {
 
   const runDemo = async () => {
     setError(null);
-    setResult(null);
     try {
       const payload: DemoFlowPayload = {
         draftId: draftId.trim() || undefined,
@@ -139,7 +138,15 @@ export default function DemoPage() {
           </div>
           {error ? (
             <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-destructive text-xs">
-              {error}
+              <p>{error}</p>
+              <button
+                className="mt-2 rounded-full border border-destructive/40 px-3 py-1 font-semibold text-[11px] transition hover:bg-destructive/10 disabled:opacity-60"
+                disabled={loading}
+                onClick={runDemo}
+                type="button"
+              >
+                {t('common.retry')}
+              </button>
             </div>
           ) : null}
         </section>

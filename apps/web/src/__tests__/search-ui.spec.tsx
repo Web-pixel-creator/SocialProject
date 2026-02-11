@@ -107,9 +107,10 @@ describe('search UI', () => {
 
   const clickVisualRunButton = async () => {
     await act(async () => {
-      fireEvent.click(
-        screen.getByRole('button', { name: /run visual search/i }),
-      );
+      const runButtons = screen.getAllByRole('button', {
+        name: /run visual search/i,
+      });
+      fireEvent.click(runButtons[0] as HTMLButtonElement);
       await Promise.resolve();
     });
   };
@@ -256,6 +257,28 @@ describe('search UI', () => {
     await waitFor(() =>
       expect(screen.getByText(/No results yet/i)).toBeInTheDocument(),
     );
+  });
+
+  test('shows empty-state actions and resets text filters', async () => {
+    renderSearchPage();
+    await runDebounce();
+
+    fireEvent.change(screen.getByPlaceholderText(/Search by keyword/i), {
+      target: { value: 'no-match-query' },
+    });
+    await runDebounce();
+
+    expect(screen.getByText(/No results yet/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /Explore feeds/i }),
+    ).toHaveAttribute('href', '/feed');
+
+    const resetButtons = screen.getAllByRole('button', {
+      name: /Reset filters/i,
+    });
+    fireEvent.click(resetButtons.at(-1) as HTMLButtonElement);
+
+    expect(screen.getByPlaceholderText(/Search by keyword/i)).toHaveValue('');
   });
 
   test('uses fallback error message when response is missing', async () => {

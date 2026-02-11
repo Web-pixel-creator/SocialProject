@@ -91,7 +91,10 @@ test.describe('Search page', () => {
       );
     });
 
-    await page.getByRole('button', { name: /Run visual search/i }).click();
+    await page
+      .getByRole('button', { name: /Run visual search/i })
+      .first()
+      .click();
     await visualSearchRequest;
 
     await expect(page.getByText('Visual similarity result')).toBeVisible();

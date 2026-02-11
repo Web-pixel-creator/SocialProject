@@ -427,6 +427,8 @@ function SearchPageContent() {
     mode === 'text'
       ? (textResults ?? lastSuccessfulTextResults)
       : visualResults;
+  const showEmptyState = !loading && visibleResults.length === 0 && !error;
+  const showResults = !(loading || showEmptyState);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -597,6 +599,25 @@ function SearchPageContent() {
     runVisualSearch();
   }, [mode, mutateTextSearch, runVisualSearch]);
 
+  const resetTextFilters = useCallback(() => {
+    setQuery('');
+    setType('all');
+    setSort('recency');
+    setRange('all');
+    setIntent('all');
+  }, []);
+
+  const resetVisualFilters = useCallback(() => {
+    setVisualDraftId('');
+    setVisualEmbedding('');
+    setVisualTags('');
+    setVisualType('all');
+    setVisualInputError(null);
+    setVisualNotice(null);
+    setVisualHasSearched(false);
+    resetVisualSearch();
+  }, [resetVisualSearch]);
+
   return (
     <main className="grid gap-6">
       <div className="card p-6">
@@ -652,13 +673,7 @@ function SearchPageContent() {
               ))}
               <button
                 className="rounded-full border border-border bg-background/70 px-3 py-1 text-muted-foreground text-xs transition hover:border-primary/40 hover:text-foreground"
-                onClick={() => {
-                  setQuery('');
-                  setType('all');
-                  setSort('recency');
-                  setRange('all');
-                  setIntent('all');
-                }}
+                onClick={resetTextFilters}
                 type="button"
               >
                 {t('search.actions.resetFilters')}
@@ -744,12 +759,7 @@ function SearchPageContent() {
               ))}
               <button
                 className="rounded-full border border-border bg-background/70 px-3 py-1 text-muted-foreground text-xs transition hover:border-primary/40 hover:text-foreground"
-                onClick={() => {
-                  setVisualDraftId('');
-                  setVisualEmbedding('');
-                  setVisualTags('');
-                  setVisualType('all');
-                }}
+                onClick={resetVisualFilters}
                 type="button"
               >
                 {t('search.actions.resetFilters')}
@@ -808,21 +818,48 @@ function SearchPageContent() {
             {visualNotice}
           </div>
         )}
-        {mode === 'visual' &&
-          visualHasSearched &&
-          visibleResults.length === 0 &&
-          !error &&
-          !visualNotice &&
-          !loading && (
-            <div className="rounded-xl border border-border bg-muted/60 p-3 text-muted-foreground text-xs">
-              {t('search.states.completedNoResults')}
-            </div>
-          )}
         {loading ? (
           <p className="text-muted-foreground text-xs">
             {t('search.states.searching')}
           </p>
-        ) : (
+        ) : null}
+        {showEmptyState ? (
+          <div className="grid gap-3 rounded-xl border border-border bg-muted/60 p-4 text-muted-foreground text-sm">
+            <p>
+              {mode === 'visual' && visualHasSearched
+                ? t('search.states.completedNoResults')
+                : t('search.states.noResultsYet')}
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                className="rounded-full border border-border bg-background/70 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:border-primary/40 hover:text-primary"
+                onClick={
+                  mode === 'visual' ? resetVisualFilters : resetTextFilters
+                }
+                type="button"
+              >
+                {t('search.actions.resetFilters')}
+              </button>
+              {mode === 'visual' ? (
+                <button
+                  className="rounded-full border border-primary/45 bg-primary/15 px-3 py-1.5 font-semibold text-primary text-xs transition hover:border-primary/70 disabled:opacity-60"
+                  disabled={loading}
+                  onClick={runVisualSearch}
+                  type="button"
+                >
+                  {t('search.actions.runVisualSearch')}
+                </button>
+              ) : null}
+              <Link
+                className="rounded-full border border-border bg-background/70 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:border-primary/40 hover:text-primary"
+                href="/feed"
+              >
+                {t('feed.exploreFeeds')}
+              </Link>
+            </div>
+          </div>
+        ) : null}
+        {showResults ? (
           <ul className="grid gap-3">
             {visibleResults.map((result, index) => {
               const href =
@@ -908,13 +945,8 @@ function SearchPageContent() {
                 </li>
               );
             })}
-            {visibleResults.length === 0 && (
-              <li className="text-muted-foreground text-xs">
-                {t('search.states.noResultsYet')}
-              </li>
-            )}
           </ul>
-        )}
+        ) : null}
       </div>
     </main>
   );

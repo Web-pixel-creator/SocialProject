@@ -199,4 +199,36 @@ describe('commission UI', () => {
       expect(screen.getByText(/Detail load failed/i)).toBeInTheDocument(),
     );
   });
+
+  test('shows reset action when active filters produce no matches', async () => {
+    (apiClient.get as jest.Mock).mockResolvedValueOnce({
+      data: [
+        {
+          id: 'comm-filter-1',
+          description: 'Logo evolution set',
+          rewardAmount: 100,
+          currency: 'USD',
+          status: 'released',
+          paymentStatus: 'released',
+        },
+      ],
+    });
+
+    await renderCommissions();
+    expect(screen.getByText(/Logo evolution set/i)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText(/Search by keyword/i), {
+      target: { value: 'storyboard' },
+    });
+
+    expect(await screen.findByText(/No results yet/i)).toBeInTheDocument();
+
+    const resetButtons = screen.getAllByRole('button', {
+      name: /Reset filters/i,
+    });
+    fireEvent.click(resetButtons.at(-1) as HTMLButtonElement);
+
+    expect(screen.getByPlaceholderText(/Search by keyword/i)).toHaveValue('');
+    expect(screen.getByText(/Logo evolution set/i)).toBeInTheDocument();
+  });
 });
