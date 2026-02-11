@@ -97,12 +97,10 @@ const resolveVisitorId = () => {
   return created;
 };
 
-const sendTelemetry = async (payload: Record<string, unknown>) => {
-  try {
-    await apiClient.post('/telemetry/ux', payload);
-  } catch (_error) {
+const sendTelemetry = (payload: Record<string, unknown>): void => {
+  apiClient.post('/telemetry/ux', payload).catch(() => {
     // ignore telemetry failures
-  }
+  });
 };
 
 const pruneUndefined = <T extends Record<string, unknown>>(input: T) =>

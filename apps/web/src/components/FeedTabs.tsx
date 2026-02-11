@@ -150,12 +150,10 @@ const parseQueryState = (params: { get: (key: string) => string | null }) => {
   return { tab, sort, status, range, intent } satisfies FeedQueryState;
 };
 
-const sendTelemetry = async (payload: Record<string, unknown>) => {
-  try {
-    await apiClient.post('/telemetry/ux', payload);
-  } catch (_error) {
+const sendTelemetry = (payload: Record<string, unknown>): void => {
+  apiClient.post('/telemetry/ux', payload).catch(() => {
     // ignore telemetry failures
-  }
+  });
 };
 
 export const endpointForTab = (tab: string) => mapEndpointForTab(tab);
