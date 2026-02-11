@@ -8,6 +8,15 @@ import CommissionDetailPage from '../app/commissions/[id]/page';
 import CommissionsPage from '../app/commissions/page';
 import { apiClient } from '../lib/api';
 
+const useAuthMock = jest.fn(() => ({
+  isAuthenticated: true,
+  loading: false,
+}));
+
+jest.mock('../contexts/AuthContext', () => ({
+  useAuth: () => useAuthMock(),
+}));
+
 jest.mock('../lib/api', () => ({
   apiClient: {
     get: jest.fn(() => Promise.resolve({ data: [] })),
@@ -21,6 +30,10 @@ describe('commission UI', () => {
     render(<SWRConfig value={{ provider: () => new Map() }}>{ui}</SWRConfig>);
 
   beforeEach(() => {
+    useAuthMock.mockReturnValue({
+      isAuthenticated: true,
+      loading: false,
+    });
     (apiClient.get as jest.Mock).mockReset();
     (apiClient.post as jest.Mock).mockReset();
     (apiClient.get as jest.Mock).mockResolvedValue({ data: [] });
@@ -69,6 +82,19 @@ describe('commission UI', () => {
     await waitFor(() =>
       expect(screen.getByText(/Load failed/i)).toBeInTheDocument(),
     );
+  });
+
+  test('shows sign-in prompt instead of creation form for guests', async () => {
+    useAuthMock.mockReturnValue({
+      isAuthenticated: false,
+      loading: false,
+    });
+
+    await renderCommissions();
+
+    expect(screen.queryByText(/Create commission/i)).not.toBeInTheDocument();
+    const signInLink = screen.getAllByRole('link', { name: /Sign in/i }).at(0);
+    expect(signInLink).toHaveAttribute('href', '/login');
   });
 
   test('renders commission rewards and defaults', async () => {

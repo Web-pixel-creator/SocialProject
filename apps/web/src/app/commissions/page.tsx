@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { CommissionForm } from '../../components/CommissionForm';
+import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { apiClient } from '../../lib/api';
 import { getApiErrorMessage } from '../../lib/errors';
@@ -28,6 +29,7 @@ const fetchCommissions = async (
 
 export default function CommissionsPage() {
   const { t } = useLanguage();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
@@ -163,7 +165,30 @@ export default function CommissionsPage() {
         </div>
       </section>
 
-      <CommissionForm onCreated={loadCommissions} />
+      {authLoading ? (
+        <div className="card p-4 text-muted-foreground text-sm">
+          {t('search.states.loadingSearch')}
+        </div>
+      ) : null}
+
+      {isAuthenticated ? (
+        <CommissionForm onCreated={loadCommissions} />
+      ) : (
+        <section className="card grid gap-3 p-6">
+          <h3 className="font-semibold text-foreground text-sm">
+            {t('header.signIn')}
+          </h3>
+          <p className="text-muted-foreground text-xs">
+            {t('auth.signInSubtitle')}
+          </p>
+          <Link
+            className="w-fit rounded-full border border-border bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60"
+            href="/login"
+          >
+            {t('header.signIn')}
+          </Link>
+        </section>
+      )}
 
       <section className="card grid gap-3 p-4 sm:grid-cols-3">
         <input

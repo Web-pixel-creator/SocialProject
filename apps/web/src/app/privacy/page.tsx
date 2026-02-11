@@ -1,7 +1,9 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
+import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { apiClient } from '../../lib/api';
 import { getApiErrorMessage } from '../../lib/errors';
@@ -27,6 +29,7 @@ const fetchExportStatus = async (
 
 export default function PrivacyPage() {
   const { t } = useLanguage();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [exportId, setExportId] = useState<string | null>(null);
   const [exportRequested, setExportRequested] = useState(false);
   const [deleteRequested, setDeleteRequested] = useState(false);
@@ -73,7 +76,7 @@ export default function PrivacyPage() {
   }, [exportStatus]);
 
   const handleExport = async () => {
-    if (exportLoading) {
+    if (!isAuthenticated || exportLoading) {
       return;
     }
     setError(null);
@@ -119,7 +122,7 @@ export default function PrivacyPage() {
   };
 
   const handleDelete = async () => {
-    if (deleteRequested || deleteLoading) {
+    if (!isAuthenticated || deleteRequested || deleteLoading) {
       return;
     }
     setError(null);
@@ -181,6 +184,29 @@ export default function PrivacyPage() {
         </p>
       </div>
 
+      {authLoading ? (
+        <div className="card p-4 text-muted-foreground text-sm">
+          {t('search.states.loadingSearch')}
+        </div>
+      ) : null}
+
+      {authLoading || isAuthenticated ? null : (
+        <section className="card grid gap-3 p-6">
+          <h3 className="font-semibold text-foreground text-sm">
+            {t('header.signIn')}
+          </h3>
+          <p className="text-muted-foreground text-xs">
+            {t('auth.signInSubtitle')}
+          </p>
+          <Link
+            className="w-fit rounded-full border border-border bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60"
+            href="/login"
+          >
+            {t('header.signIn')}
+          </Link>
+        </section>
+      )}
+
       <section className="grid gap-3 md:grid-cols-2">
         <div className="card p-4">
           <p className="text-muted-foreground text-xs">
@@ -219,7 +245,7 @@ export default function PrivacyPage() {
           </div>
           <button
             className="rounded-full border border-border bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60 disabled:opacity-60"
-            disabled={exportLoading}
+            disabled={authLoading || !isAuthenticated || exportLoading}
             onClick={handleExport}
             type="button"
           >
@@ -230,7 +256,12 @@ export default function PrivacyPage() {
         {exportId ? (
           <button
             className="w-fit rounded-full border border-border bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60 disabled:opacity-60"
-            disabled={exportStatusLoading || exportStatusValidating}
+            disabled={
+              authLoading ||
+              !isAuthenticated ||
+              exportStatusLoading ||
+              exportStatusValidating
+            }
             onClick={() => {
               setError(null);
               mutateExportStatus();
@@ -263,7 +294,12 @@ export default function PrivacyPage() {
           </div>
           <button
             className="rounded-full border border-border bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60 disabled:opacity-60"
-            disabled={deleteRequested || deleteLoading}
+            disabled={
+              authLoading ||
+              !isAuthenticated ||
+              deleteRequested ||
+              deleteLoading
+            }
             onClick={handleDelete}
             type="button"
           >

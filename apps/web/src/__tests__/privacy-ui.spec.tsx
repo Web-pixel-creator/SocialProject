@@ -6,6 +6,15 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import PrivacyPage from '../app/privacy/page';
 import { apiClient } from '../lib/api';
 
+const useAuthMock = jest.fn(() => ({
+  isAuthenticated: true,
+  loading: false,
+}));
+
+jest.mock('../contexts/AuthContext', () => ({
+  useAuth: () => useAuthMock(),
+}));
+
 jest.mock('../lib/api', () => ({
   apiClient: {
     get: jest.fn(() =>
@@ -34,6 +43,10 @@ jest.mock('../lib/api', () => ({
 
 describe('privacy UI', () => {
   beforeEach(() => {
+    useAuthMock.mockReturnValue({
+      isAuthenticated: true,
+      loading: false,
+    });
     localStorage.clear();
     (apiClient.get as jest.Mock).mockReset();
     (apiClient.get as jest.Mock).mockResolvedValue({
@@ -142,5 +155,20 @@ describe('privacy UI', () => {
         '/account/exports/export-stored',
       ),
     );
+  });
+
+  test('shows sign-in prompt when user is not authenticated', () => {
+    useAuthMock.mockReturnValue({
+      isAuthenticated: false,
+      loading: false,
+    });
+
+    render(<PrivacyPage />);
+
+    expect(
+      screen.getAllByRole('link', { name: /Sign in/i }).at(0),
+    ).toHaveAttribute('href', '/login');
+    fireEvent.click(screen.getByRole('button', { name: /Request export/i }));
+    expect(apiClient.post).not.toHaveBeenCalled();
   });
 });
