@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
+import useSWRMutation from 'swr/mutation';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { apiClient } from '../../lib/api';
@@ -33,8 +34,6 @@ export default function PrivacyPage() {
   const [exportId, setExportId] = useState<string | null>(null);
   const [exportRequested, setExportRequested] = useState(false);
   const [deleteRequested, setDeleteRequested] = useState(false);
-  const [exportLoading, setExportLoading] = useState(false);
-  const [deleteLoading, setDeleteLoading] = useState(false);
   const [exportUrl, setExportUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,6 +51,25 @@ export default function PrivacyPage() {
       shouldRetryOnError: false,
     },
   );
+
+  const { trigger: requestExport, isMutating: exportLoading } = useSWRMutation<
+    Partial<DataExportRecord> | undefined,
+    unknown,
+    string,
+    void
+  >('privacy:request-export', async () => {
+    const response = await apiClient.post('/account/export');
+    return response.data?.export as Partial<DataExportRecord> | undefined;
+  });
+
+  const { trigger: requestDeletion, isMutating: deleteLoading } =
+    useSWRMutation<Partial<DeletionRecord> | undefined, unknown, string, void>(
+      'privacy:request-deletion',
+      async () => {
+        const response = await apiClient.post('/account/delete');
+        return response.data as Partial<DeletionRecord> | undefined;
+      },
+    );
 
   useEffect(() => {
     try {
@@ -80,12 +98,8 @@ export default function PrivacyPage() {
       return;
     }
     setError(null);
-    setExportLoading(true);
     try {
-      const response = await apiClient.post('/account/export');
-      const exportPayload = response.data?.export as
-        | Partial<DataExportRecord>
-        | undefined;
+      const exportPayload = await requestExport();
       setExportRequested(true);
       if (typeof exportPayload?.downloadUrl === 'string') {
         setExportUrl(exportPayload.downloadUrl);
@@ -116,8 +130,6 @@ export default function PrivacyPage() {
       setError(
         getApiErrorMessage(typedError, t('privacy.errors.requestExport')),
       );
-    } finally {
-      setExportLoading(false);
     }
   };
 
@@ -126,12 +138,8 @@ export default function PrivacyPage() {
       return;
     }
     setError(null);
-    setDeleteLoading(true);
     try {
-      const response = await apiClient.post('/account/delete');
-      const deletionPayload = response.data as
-        | Partial<DeletionRecord>
-        | undefined;
+      const deletionPayload = await requestDeletion();
       setDeleteRequested(
         deletionPayload?.status === 'completed' ||
           deletionPayload?.status === 'pending' ||
@@ -141,8 +149,6 @@ export default function PrivacyPage() {
       setError(
         getApiErrorMessage(typedError, t('privacy.errors.requestDeletion')),
       );
-    } finally {
-      setDeleteLoading(false);
     }
   };
 
