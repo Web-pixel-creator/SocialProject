@@ -12,7 +12,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useRef } from 'react';
 import useSWR from 'swr';
 import { useLanguage } from '../contexts/LanguageContext';
 import { apiClient } from '../lib/api';
@@ -212,20 +212,14 @@ const useLastSuccessfulValue = <T,>(
   loadFailed: boolean,
   fallbackValue: T,
 ): T => {
-  const [lastSuccessful, setLastSuccessful] = useState<T>(fallbackValue);
+  const lastSuccessfulRef = useRef<T>(fallbackValue);
 
-  useEffect(() => {
-    if (value === undefined || loadFailed) {
-      return;
-    }
-    setLastSuccessful(value);
-  }, [loadFailed, value]);
-
-  if (value === undefined || loadFailed) {
-    return lastSuccessful;
+  if (value !== undefined && !loadFailed) {
+    lastSuccessfulRef.current = value;
+    return value;
   }
 
-  return value;
+  return lastSuccessfulRef.current;
 };
 
 /* ── component ── */
