@@ -4,6 +4,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
+  type Dispatch,
+  type SetStateAction,
   Suspense,
   useCallback,
   useEffect,
@@ -48,6 +50,8 @@ type VisualSearchOutcome =
   | { status: 'ok'; items: SearchResult[] }
   | { status: 'embedding_not_found' };
 
+type VisualSearchType = 'all' | 'draft' | 'release';
+
 const normalizeParams = (params: URLSearchParams) => {
   const entries = Array.from(params.entries()).sort(
     ([aKey, aValue], [bKey, bValue]) => {
@@ -60,15 +64,35 @@ const normalizeParams = (params: URLSearchParams) => {
   return entries.map(([key, value]) => `${key}=${value}`).join('&');
 };
 
+let cachedVisitorId: string | null = null;
+
+const updateStateIfChanged = <T,>(
+  setState: Dispatch<SetStateAction<T>>,
+  nextValue: T,
+) => {
+  setState((previousValue) =>
+    Object.is(previousValue, nextValue) ? previousValue : nextValue,
+  );
+};
+
 const resolveVisitorId = () => {
+  if (cachedVisitorId) {
+    return cachedVisitorId;
+  }
+
   const key = 'searchVisitorId';
   const stored = window.localStorage.getItem(key);
   if (stored) {
+    cachedVisitorId = stored;
     return stored;
   }
 
-  const created = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  const generated =
+    window.crypto?.randomUUID?.() ??
+    `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  const created = generated.toLowerCase();
   window.localStorage.setItem(key, created);
+  cachedVisitorId = created;
   return created;
 };
 
@@ -109,6 +133,9 @@ const parseTags = (value: string) =>
     .map((tag) => tag.trim())
     .filter((tag) => tag.length > 0);
 
+const parseVisualType = (value: string): VisualSearchType =>
+  value === 'draft' || value === 'release' ? value : 'all';
+
 const TEXT_QUERY_PRESETS = [
   'Landing page redesign',
   'Prompt optimization',
@@ -125,6 +152,7 @@ function SearchPageContent() {
     searchParams?.get('mode') === 'visual' ? 'visual' : 'text';
   const initialQuery = searchParams?.get('q') ?? '';
   const initialType = searchParams?.get('type') ?? 'all';
+  const initialVisualType = parseVisualType(initialType);
   const initialSort = searchParams?.get('sort') ?? 'recency';
   const initialRange = searchParams?.get('range') ?? 'all';
   const initialIntent = searchParams?.get('intent') ?? 'all';
@@ -144,7 +172,7 @@ function SearchPageContent() {
   const [visualEmbedding, setVisualEmbedding] = useState('');
   const [visualTags, setVisualTags] = useState(initialTags);
   const [visualType, setVisualType] = useState(
-    initialMode === 'visual' ? initialType : 'all',
+    initialMode === 'visual' ? initialVisualType : 'all',
   );
   const [visualNotice, setVisualNotice] = useState<string | null>(null);
   const [visualHasSearched, setVisualHasSearched] = useState(false);
@@ -179,20 +207,19 @@ function SearchPageContent() {
     const urlProfile = searchParams.get('profile') ?? '';
     const urlAb = searchParams.get('ab') ?? '';
     const urlFrom = searchParams.get('from') ?? '';
-    const validVisualType =
-      urlType === 'draft' || urlType === 'release' ? urlType : 'all';
+    const validVisualType = parseVisualType(urlType);
 
-    setMode(urlMode);
-    setQuery(urlQuery);
-    setType(urlType);
+    updateStateIfChanged(setMode, urlMode);
+    updateStateIfChanged(setQuery, urlQuery);
+    updateStateIfChanged(setType, urlType);
     if (urlMode === 'visual') {
-      setVisualType(validVisualType);
+      updateStateIfChanged(setVisualType, validVisualType);
     }
-    setSort(urlSort);
-    setRange(urlRange);
-    setIntent(urlIntent);
-    setVisualDraftId(urlDraftId);
-    setVisualTags(urlTags);
+    updateStateIfChanged(setSort, urlSort);
+    updateStateIfChanged(setRange, urlRange);
+    updateStateIfChanged(setIntent, urlIntent);
+    updateStateIfChanged(setVisualDraftId, urlDraftId);
+    updateStateIfChanged(setVisualTags, urlTags);
 
     if (urlFrom === 'similar' && !didSmoothScroll.current) {
       didSmoothScroll.current = true;
@@ -218,7 +245,7 @@ function SearchPageContent() {
     const nextProfile = abMode
       ? (storedProfile ?? assignedAbProfile)
       : (queryProfile ?? storedProfile ?? SEARCH_DEFAULT_PROFILE);
-    setProfile(nextProfile);
+    updateStateIfChanged(setProfile, nextProfile);
     window.localStorage.setItem(storageKey, nextProfile);
   }, [searchParams]);
 
@@ -706,7 +733,9 @@ function SearchPageContent() {
             <div className="flex flex-wrap gap-3">
               <select
                 className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
-                onChange={(event) => setVisualType(event.target.value)}
+                onChange={(event) =>
+                  setVisualType(parseVisualType(event.target.value))
+                }
                 value={visualType}
               >
                 <option value="all">{t('search.filters.allTypes')}</option>
