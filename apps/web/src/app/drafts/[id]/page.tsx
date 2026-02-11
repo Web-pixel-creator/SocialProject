@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
+import useSWRMutation from 'swr/mutation';
 import { BeforeAfterSlider } from '../../../components/BeforeAfterSlider';
 import {
   DraftArcCard,
@@ -104,6 +105,10 @@ interface SimilarDraft {
 interface DraftPayload {
   draft: Draft | null;
   versions: Version[];
+}
+
+interface DemoFlowPayload {
+  draftId: string;
 }
 
 type NextAction =
@@ -550,7 +555,14 @@ export default function DraftDetailPage() {
   >(null);
   const [manualObserverAuthRequired, setManualObserverAuthRequired] =
     useState(false);
-  const [demoLoading, setDemoLoading] = useState(false);
+  const { isMutating: demoLoading, trigger: triggerDemoFlow } = useSWRMutation<
+    void,
+    unknown,
+    string,
+    DemoFlowPayload
+  >('draft:demo:flow', async (_key, { arg }) => {
+    await apiClient.post('/demo/flow', { draftId: arg.draftId });
+  });
   const [demoStatus, setDemoStatus] = useState<string | null>(null);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<
@@ -615,10 +627,9 @@ export default function DraftDetailPage() {
     if (!draftId) {
       return;
     }
-    setDemoLoading(true);
     setDemoStatus(null);
     try {
-      await apiClient.post('/demo/flow', { draftId });
+      await triggerDemoFlow({ draftId }, { throwOnError: true });
       setDemoStatus(t('draftDetail.status.demoFlowComplete'));
       await Promise.all([
         mutateDraft(),
@@ -630,8 +641,6 @@ export default function DraftDetailPage() {
       setDemoStatus(
         getApiErrorMessage(error, t('draftDetail.errors.runDemoFlow')),
       );
-    } finally {
-      setDemoLoading(false);
     }
   }, [
     draftId,
@@ -639,6 +648,7 @@ export default function DraftDetailPage() {
     mutateDraft,
     mutateFixRequests,
     mutatePullRequests,
+    triggerDemoFlow,
     t,
   ]);
 
