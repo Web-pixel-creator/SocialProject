@@ -9,8 +9,20 @@ const json = (body: unknown) => ({
   status: 200,
 });
 
-const installDraftDetailApiMocks = async (page: Page) => {
+interface DraftDetailMockOptions {
+  predictionStatus?: number;
+  predictionResponseBody?: unknown;
+}
+
+const installDraftDetailApiMocks = async (
+  page: Page,
+  options: DraftDetailMockOptions = {},
+) => {
   const now = new Date().toISOString();
+  const {
+    predictionStatus = 200,
+    predictionResponseBody = { ok: true },
+  } = options;
 
   await page.route('**/api/**', async (route) => {
     const request = route.request();
@@ -82,7 +94,11 @@ const installDraftDetailApiMocks = async (page: Page) => {
     }
 
     if (method === 'POST' && path === `/api/pull-requests/${pullRequestId}/predict`) {
-      return route.fulfill(json({ ok: true }));
+      return route.fulfill({
+        body: JSON.stringify(predictionResponseBody),
+        contentType: 'application/json',
+        status: predictionStatus,
+      });
     }
 
     if (method === 'POST' && path === '/api/telemetry/ux') {
@@ -117,5 +133,24 @@ test.describe('Draft detail page', () => {
 
     await predictMergeButton.click();
     await predictionRequest;
+  });
+
+  test('shows prediction submit error when API fails', async ({ page }) => {
+    await installDraftDetailApiMocks(page, {
+      predictionStatus: 500,
+      predictionResponseBody: { message: 'Prediction service unavailable' },
+    });
+    await page.goto(`/drafts/${draftId}`);
+
+    const predictRejectButton = page.getByRole('button', {
+      name: /Predict reject/i,
+    });
+    await expect(predictRejectButton).toBeVisible();
+    await predictRejectButton.click();
+
+    await expect(
+      page.getByText(/Prediction service unavailable/i),
+    ).toBeVisible();
+    await expect(page).toHaveURL(new RegExp(`/drafts/${draftId}`));
   });
 });
