@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import useSWR from 'swr';
 import { useLanguage } from '../contexts/LanguageContext';
 import { apiClient } from '../lib/api';
 import {
@@ -99,6 +100,14 @@ const sendTelemetry = async (payload: Record<string, unknown>) => {
 
 export const endpointForTab = (tab: string) => mapEndpointForTab(tab);
 
+interface FeedPageResponse {
+  items: FeedItem[];
+  fallbackUsed: boolean;
+  hasMore: boolean;
+  replaceCurrentItems?: boolean;
+  loadTimingMs?: number;
+}
+
 export const FeedTabs = () => {
   const { t } = useLanguage();
   const router = useRouter();
@@ -124,7 +133,6 @@ export const FeedTabs = () => {
   const [items, setItems] = useState<FeedItem[]>([]);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const [loading, setLoading] = useState(false);
   const [fallbackUsed, setFallbackUsed] = useState(false);
   const [battleFilter, setBattleFilter] = useState<BattleFilter>('all');
   const filterKey = `${active}|${sort}|${status}|${range}|${intent}`;
@@ -365,6 +373,77 @@ export const FeedTabs = () => {
     return fromDate.toISOString();
   }, [range]);
 
+  const {
+    data: pageData,
+    isLoading,
+    isValidating,
+  } = useSWR<FeedPageResponse>(
+    fallbackUsed
+      ? null
+      : ['feed-tabs', active, offset, sort, status, intent, range, rangeFrom],
+    async () => {
+      const endpoint = endpointForTab(active);
+      const params: Record<string, unknown> = { limit: PAGE_SIZE, offset };
+      if (active === 'All') {
+        params.sort = sort;
+        if (status !== 'all') {
+          params.status = status;
+        }
+        if (intent !== 'all') {
+          params.intent = intent;
+        }
+        if (rangeFrom) {
+          params.from = rangeFrom;
+        }
+      }
+
+      const startedAt = performance.now();
+
+      try {
+        const response = await apiClient.get(endpoint, { params });
+        const nextItems = mapItemsForTab(active, response.data);
+        return {
+          items: nextItems,
+          fallbackUsed: false,
+          hasMore: nextItems.length >= PAGE_SIZE,
+          loadTimingMs:
+            active === 'All' && offset === 0
+              ? Math.round(performance.now() - startedAt)
+              : undefined,
+        };
+      } catch (_error) {
+        if (active === 'For You') {
+          try {
+            const response = await apiClient.get('/feeds/glowups', { params });
+            const nextItems = mapDraftItems(response.data, false);
+            return {
+              items: nextItems,
+              fallbackUsed: true,
+              hasMore: false,
+            };
+          } catch (_fallbackError) {
+            // fallthrough to demo data
+          }
+        }
+
+        return {
+          items: fallbackItemsFor(active),
+          fallbackUsed: true,
+          hasMore: false,
+          replaceCurrentItems: offset > 0,
+        };
+      }
+    },
+    {
+      revalidateOnFocus: false,
+      shouldRetryOnError: false,
+      revalidateIfStale: true,
+      revalidateOnMount: true,
+    },
+  );
+
+  const loading = isLoading || isValidating;
+
   useEffect(() => {
     const onScroll = () => {
       if (loading || !hasMore || fallbackUsed) {
@@ -382,82 +461,31 @@ export const FeedTabs = () => {
   }, [loading, hasMore, fallbackUsed]);
 
   useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      if (fallbackUsed) {
-        return;
-      }
-      setLoading(true);
-      const startedAt = performance.now();
-      const endpoint = endpointForTab(active);
-      const params: Record<string, unknown> = { limit: PAGE_SIZE, offset };
-      if (active === 'All') {
-        params.sort = sort;
-        if (status !== 'all') {
-          params.status = status;
-        }
-        if (intent !== 'all') {
-          params.intent = intent;
-        }
-        if (rangeFrom) {
-          params.from = rangeFrom;
-        }
-      }
+    if (!pageData) {
+      return;
+    }
 
-      try {
-        const response = await apiClient.get(endpoint, { params });
-        const nextItems = mapItemsForTab(active, response.data);
-        if (!cancelled) {
-          setItems((prev) =>
-            offset === 0 ? nextItems : [...prev, ...nextItems],
-          );
-          setHasMore(nextItems.length >= PAGE_SIZE);
-          if (active === 'All' && offset === 0) {
-            const timingMs = Math.round(performance.now() - startedAt);
-            sendTelemetry({
-              eventType: 'feed_load_timing',
-              sort,
-              status: status === 'all' ? undefined : status,
-              intent: intent === 'all' ? undefined : intent,
-              range,
-              timingMs,
-            });
-          }
-        }
-      } catch (_error) {
-        if (active === 'For You') {
-          try {
-            const response = await apiClient.get('/feeds/glowups', { params });
-            const nextItems = mapDraftItems(response.data, false);
-            if (!cancelled) {
-              setItems((prev) =>
-                offset === 0 ? nextItems : [...prev, ...nextItems],
-              );
-              setHasMore(nextItems.length >= PAGE_SIZE);
-              setFallbackUsed(true);
-            }
-            return;
-          } catch (_fallbackError) {
-            // fallthrough to demo data
-          }
-        }
-        if (!cancelled) {
-          setItems(fallbackItemsFor(active));
-          setHasMore(false);
-          setFallbackUsed(true);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+    setItems((prev) => {
+      if (pageData.replaceCurrentItems) {
+        return pageData.items;
       }
-    };
-
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [active, offset, fallbackUsed, sort, status, intent, rangeFrom, range]);
+      return offset === 0 ? pageData.items : [...prev, ...pageData.items];
+    });
+    setHasMore(pageData.hasMore);
+    if (pageData.fallbackUsed) {
+      setFallbackUsed(true);
+    }
+    if (pageData.loadTimingMs !== undefined) {
+      sendTelemetry({
+        eventType: 'feed_load_timing',
+        sort,
+        status: status === 'all' ? undefined : status,
+        intent: intent === 'all' ? undefined : intent,
+        range,
+        timingMs: pageData.loadTimingMs,
+      });
+    }
+  }, [pageData, offset, sort, status, intent, range]);
 
   const isInitialLoading = loading && visibleItems.length === 0;
 
