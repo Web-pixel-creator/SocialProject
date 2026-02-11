@@ -10,6 +10,7 @@ apps/web/.next
 apps/web/out
 apps/web/playwright-report
 apps/web/test-results
+apps/web/storybook-static
 .agent/logs/
 .agent/metrics/
 .agent/skills/
