@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { useLanguage } from '../contexts/LanguageContext';
 import { apiClient } from '../lib/api';
@@ -90,6 +90,66 @@ const BATTLE_FILTER_OPTIONS: Array<{ value: BattleFilter; label: string }> = [
   { value: 'merged', label: 'Merged' },
 ];
 
+const STORY_TABS = new Set([
+  'All',
+  'Progress',
+  'Changes',
+  'For You',
+  'Hot Now',
+  'Live Drafts',
+  'GlowUps',
+  'Battles',
+]);
+
+const SORT_VALUES = new Set<FeedSort>(['recent', 'impact', 'glowup']);
+const STATUS_VALUES = new Set<FeedStatus>(['all', 'draft', 'release', 'pr']);
+const RANGE_VALUES = new Set<FeedRange>(['7d', '30d', '90d', 'all']);
+const INTENT_VALUES = new Set<FeedIntent>([
+  'all',
+  'needs_help',
+  'seeking_pr',
+  'ready_for_review',
+]);
+
+interface FeedQueryState {
+  tab: string;
+  sort: FeedSort;
+  status: FeedStatus;
+  range: FeedRange;
+  intent: FeedIntent;
+}
+
+const parseQueryState = (params: { get: (key: string) => string | null }) => {
+  const rawTab = params.get('tab');
+  const tab = rawTab && TABS.includes(rawTab) ? rawTab : TABS[0];
+
+  const rawSort = params.get('sort');
+  const sort =
+    rawSort && SORT_VALUES.has(rawSort as FeedSort)
+      ? (rawSort as FeedSort)
+      : DEFAULT_SORT;
+
+  const rawStatus = params.get('status');
+  const status =
+    rawStatus && STATUS_VALUES.has(rawStatus as FeedStatus)
+      ? (rawStatus as FeedStatus)
+      : DEFAULT_STATUS;
+
+  const rawRange = params.get('range');
+  const range =
+    rawRange && RANGE_VALUES.has(rawRange as FeedRange)
+      ? (rawRange as FeedRange)
+      : DEFAULT_RANGE;
+
+  const rawIntent = params.get('intent');
+  const intent =
+    rawIntent && INTENT_VALUES.has(rawIntent as FeedIntent)
+      ? (rawIntent as FeedIntent)
+      : DEFAULT_INTENT;
+
+  return { tab, sort, status, range, intent } satisfies FeedQueryState;
+};
+
 const sendTelemetry = async (payload: Record<string, unknown>) => {
   try {
     await apiClient.post('/telemetry/ux', payload);
@@ -114,39 +174,23 @@ export const FeedTabs = () => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const searchParamString = searchParams.toString();
+  const queryState = useMemo(
+    () => parseQueryState(searchParams),
+    [searchParams],
+  );
 
-  const readParam = (key: string, fallback: string) =>
-    searchParams.get(key) ?? fallback;
-  const initialTab = TABS.includes(readParam('tab', TABS[0]))
-    ? readParam('tab', TABS[0])
-    : TABS[0];
-  const initialSort = readParam('sort', DEFAULT_SORT) as FeedSort;
-  const initialStatus = readParam('status', DEFAULT_STATUS) as FeedStatus;
-  const initialRange = readParam('range', DEFAULT_RANGE) as FeedRange;
-  const initialIntent = readParam('intent', DEFAULT_INTENT) as FeedIntent;
-
-  const [active, setActive] = useState(initialTab);
-  const [sort, setSort] = useState<FeedSort>(initialSort);
-  const [status, setStatus] = useState<FeedStatus>(initialStatus);
-  const [range, setRange] = useState<FeedRange>(initialRange);
-  const [intent, setIntent] = useState<FeedIntent>(initialIntent);
+  const [active, setActive] = useState(queryState.tab);
+  const [sort, setSort] = useState<FeedSort>(queryState.sort);
+  const [status, setStatus] = useState<FeedStatus>(queryState.status);
+  const [range, setRange] = useState<FeedRange>(queryState.range);
+  const [intent, setIntent] = useState<FeedIntent>(queryState.intent);
   const [items, setItems] = useState<FeedItem[]>([]);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [fallbackUsed, setFallbackUsed] = useState(false);
   const [battleFilter, setBattleFilter] = useState<BattleFilter>('all');
   const filterKey = `${active}|${sort}|${status}|${range}|${intent}`;
-  const storyTabs = new Set([
-    'All',
-    'Progress',
-    'Changes',
-    'For You',
-    'Hot Now',
-    'Live Drafts',
-    'GlowUps',
-    'Battles',
-  ]);
-  const feedGridClass = storyTabs.has(active)
+  const feedGridClass = STORY_TABS.has(active)
     ? 'grid gap-4'
     : 'grid gap-4 md:grid-cols-2 xl:grid-cols-3';
   const visibleItems = useMemo(() => {
@@ -278,72 +322,101 @@ export const FeedTabs = () => {
   };
 
   useEffect(() => {
-    const params = new URLSearchParams(searchParamString);
-    const nextTab = TABS.includes(params.get('tab') ?? TABS[0])
-      ? (params.get('tab') ?? TABS[0])
-      : TABS[0];
-    const nextSort = (params.get('sort') ?? DEFAULT_SORT) as FeedSort;
-    const nextStatus = (params.get('status') ?? DEFAULT_STATUS) as FeedStatus;
-    const nextRange = (params.get('range') ?? DEFAULT_RANGE) as FeedRange;
-    const nextIntent = (params.get('intent') ?? DEFAULT_INTENT) as FeedIntent;
-    setActive(nextTab);
-    setSort(nextSort);
-    setStatus(nextStatus);
-    setRange(nextRange);
-    setIntent(nextIntent);
-  }, [searchParamString]);
+    setActive((previous) =>
+      previous === queryState.tab ? previous : queryState.tab,
+    );
+    setSort((previous) =>
+      previous === queryState.sort ? previous : queryState.sort,
+    );
+    setStatus((previous) =>
+      previous === queryState.status ? previous : queryState.status,
+    );
+    setRange((previous) =>
+      previous === queryState.range ? previous : queryState.range,
+    );
+    setIntent((previous) =>
+      previous === queryState.intent ? previous : queryState.intent,
+    );
+  }, [queryState]);
 
-  const updateQuery = (
-    updates: Partial<{
-      tab: string;
-      sort: FeedSort;
-      status: FeedStatus;
-      range: FeedRange;
-      intent: FeedIntent;
-    }>,
-  ) => {
-    const params = new URLSearchParams(searchParams.toString());
-    const next = {
-      tab: updates.tab ?? active,
-      sort: updates.sort ?? sort,
-      status: updates.status ?? status,
-      range: updates.range ?? range,
-      intent: updates.intent ?? intent,
-    };
+  const updateQuery = useCallback(
+    (
+      updates: Partial<{
+        tab: string;
+        sort: FeedSort;
+        status: FeedStatus;
+        range: FeedRange;
+        intent: FeedIntent;
+      }>,
+    ) => {
+      const params = new URLSearchParams(searchParamString);
+      const next = {
+        tab: updates.tab ?? active,
+        sort: updates.sort ?? sort,
+        status: updates.status ?? status,
+        range: updates.range ?? range,
+        intent: updates.intent ?? intent,
+      };
 
-    if (next.tab !== TABS[0]) {
-      params.set('tab', next.tab);
-    } else {
-      params.delete('tab');
-    }
+      if (
+        next.tab === queryState.tab &&
+        next.sort === queryState.sort &&
+        next.status === queryState.status &&
+        next.range === queryState.range &&
+        next.intent === queryState.intent
+      ) {
+        return;
+      }
 
-    if (next.sort !== DEFAULT_SORT) {
-      params.set('sort', next.sort);
-    } else {
-      params.delete('sort');
-    }
+      if (next.tab !== TABS[0]) {
+        params.set('tab', next.tab);
+      } else {
+        params.delete('tab');
+      }
 
-    if (next.status !== DEFAULT_STATUS) {
-      params.set('status', next.status);
-    } else {
-      params.delete('status');
-    }
+      if (next.sort !== DEFAULT_SORT) {
+        params.set('sort', next.sort);
+      } else {
+        params.delete('sort');
+      }
 
-    if (next.range !== DEFAULT_RANGE) {
-      params.set('range', next.range);
-    } else {
-      params.delete('range');
-    }
+      if (next.status !== DEFAULT_STATUS) {
+        params.set('status', next.status);
+      } else {
+        params.delete('status');
+      }
 
-    if (next.intent !== DEFAULT_INTENT) {
-      params.set('intent', next.intent);
-    } else {
-      params.delete('intent');
-    }
+      if (next.range !== DEFAULT_RANGE) {
+        params.set('range', next.range);
+      } else {
+        params.delete('range');
+      }
 
-    const queryString = params.toString();
-    router.replace(queryString ? `${pathname}?${queryString}` : pathname);
-  };
+      if (next.intent !== DEFAULT_INTENT) {
+        params.set('intent', next.intent);
+      } else {
+        params.delete('intent');
+      }
+
+      const queryString = params.toString();
+      router.replace(queryString ? `${pathname}?${queryString}` : pathname);
+    },
+    [
+      active,
+      intent,
+      pathname,
+      queryState.intent,
+      queryState.range,
+      queryState.sort,
+      queryState.status,
+      queryState.tab,
+      range,
+      router,
+      searchParamString,
+      sort,
+      status,
+    ],
+  );
 
   useEffect(() => {
     if (!filterKey) {
@@ -489,7 +562,7 @@ export const FeedTabs = () => {
 
   const isInitialLoading = loading && visibleItems.length === 0;
 
-  const emptyMessage = (() => {
+  const emptyMessage = useMemo(() => {
     if (active === 'Battles') {
       return t('feedTabs.empty.battles');
     }
@@ -503,7 +576,7 @@ export const FeedTabs = () => {
       return t('feedTabs.empty.readyForReview');
     }
     return t('feedTabs.empty.all');
-  })();
+  }, [active, intent, t]);
 
   const openLiveDrafts = () => {
     setActive('Live Drafts');
