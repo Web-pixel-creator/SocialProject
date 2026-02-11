@@ -203,6 +203,46 @@ describe('pull request review page', () => {
     expect(screen.queryByText(/Fix request load failed/i)).toBeNull();
   });
 
+  test('keeps previous fix requests visible when post-decision refresh fails', async () => {
+    let fixRequestFetchCount = 0;
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/pull-requests/')) {
+        return Promise.resolve({ data: baseReviewPayload });
+      }
+      if (url.includes('/drafts/') && url.includes('/fix-requests')) {
+        fixRequestFetchCount += 1;
+        if (fixRequestFetchCount === 1) {
+          return Promise.resolve({ data: baseFixRequests });
+        }
+        return Promise.reject({
+          response: { data: { message: 'Fix refresh failed' } },
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+    (apiClient.post as jest.Mock).mockResolvedValue({ data: { ok: true } });
+
+    await renderReviewPage('pr-fix-refresh');
+
+    expect(screen.getByText(/Fix spacing/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Request changes/i }));
+
+    await waitFor(() => {
+      expect(apiClient.post).toHaveBeenCalledWith(
+        '/pull-requests/pr-1/decide',
+        {
+          decision: 'request_changes',
+          rejectionReason: undefined,
+          feedback: undefined,
+        },
+      );
+    });
+
+    expect(screen.getByText(/Fix spacing/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Fix refresh failed/i)).toBeNull();
+  });
+
   test('submits request changes without telemetry decision event', async () => {
     mockSuccessfulLoad();
 

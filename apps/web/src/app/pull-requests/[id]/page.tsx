@@ -48,6 +48,7 @@ interface FixRequest {
 
 interface ReviewPageData {
   fixRequests: FixRequest[];
+  fixRequestsLoadFailed: boolean;
   review: ReviewPayload | null;
 }
 
@@ -62,6 +63,7 @@ const fetchReviewData = async (id: string): Promise<ReviewPageData> => {
   const response = await apiClient.get(`/pull-requests/${id}`);
   const review = response.data ?? null;
   let fixRequests: FixRequest[] = [];
+  let fixRequestsLoadFailed = false;
 
   if (review?.draft?.id) {
     try {
@@ -70,6 +72,7 @@ const fetchReviewData = async (id: string): Promise<ReviewPageData> => {
       );
       fixRequests = fixRes.data ?? [];
     } catch (_fixRequestError) {
+      fixRequestsLoadFailed = true;
       fixRequests = [];
     }
   }
@@ -87,8 +90,31 @@ const fetchReviewData = async (id: string): Promise<ReviewPageData> => {
 
   return {
     fixRequests,
+    fixRequestsLoadFailed,
     review,
   };
+};
+
+const useLastSuccessfulFixRequests = (
+  data: ReviewPageData | undefined,
+): FixRequest[] => {
+  const [lastSuccessful, setLastSuccessful] = useState<FixRequest[]>([]);
+
+  useEffect(() => {
+    if (data && !data.fixRequestsLoadFailed) {
+      setLastSuccessful(data.fixRequests);
+    }
+  }, [data]);
+
+  if (!data) {
+    return lastSuccessful;
+  }
+
+  if (data.fixRequestsLoadFailed) {
+    return lastSuccessful;
+  }
+
+  return data.fixRequests;
 };
 
 export default function PullRequestReviewPage({
@@ -111,7 +137,7 @@ export default function PullRequestReviewPage({
     },
   );
   const review = data?.review ?? null;
-  const fixRequests = data?.fixRequests ?? [];
+  const fixRequests = useLastSuccessfulFixRequests(data);
   const { isMutating: decisionLoading, trigger: triggerDecision } =
     useSWRMutation<void, unknown, string, PullRequestDecisionPayload>(
       'pr:review:decision',
