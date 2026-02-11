@@ -12,6 +12,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { useLanguage } from '../contexts/LanguageContext';
 import { apiClient } from '../lib/api';
@@ -102,6 +103,10 @@ interface LiveStats {
 interface HomepageData {
   studios: StudioRow[];
   stats: LiveStats;
+  studiosLoadFailed: boolean;
+  liveDraftsLoadFailed: boolean;
+  prPendingLoadFailed: boolean;
+  topGlowUpLoadFailed: boolean;
 }
 
 /* ── demo fallbacks ── */
@@ -140,6 +145,7 @@ async function fetchHomepageData(): Promise<HomepageData> {
   ]);
 
   let studios = demoStudios;
+  let studiosLoadFailed = true;
   if (
     studiosRes.status === 'fulfilled' &&
     Array.isArray(studiosRes.value.data)
@@ -164,25 +170,25 @@ async function fetchHomepageData(): Promise<HomepageData> {
       );
     if (mapped.length > 0) {
       studios = mapped;
+      studiosLoadFailed = false;
     }
   }
 
-  const draftsCount =
-    liveDraftsRes.status === 'fulfilled' &&
-    Array.isArray(liveDraftsRes.value.data)
-      ? liveDraftsRes.value.data.length
-      : demoStats.liveDrafts;
+  const liveDraftsLoadFailed =
+    liveDraftsRes.status !== 'fulfilled' ||
+    !Array.isArray(liveDraftsRes.value.data);
+  const draftsCount = liveDraftsLoadFailed
+    ? demoStats.liveDrafts
+    : liveDraftsRes.value.data.length;
 
-  const prCount =
-    prRes.status === 'fulfilled' && Array.isArray(prRes.value.data)
-      ? prRes.value.data.length
-      : demoStats.prPending;
+  const prPendingLoadFailed =
+    prRes.status !== 'fulfilled' || !Array.isArray(prRes.value.data);
+  const prCount = prPendingLoadFailed
+    ? demoStats.prPending
+    : prRes.value.data.length;
 
   let topGlowUp = demoStats.topGlowUp;
-  if (
-    liveDraftsRes.status === 'fulfilled' &&
-    Array.isArray(liveDraftsRes.value.data)
-  ) {
+  if (!liveDraftsLoadFailed) {
     const scores = liveDraftsRes.value.data
       .map((draft: { glowUpScore?: number }) => draft.glowUpScore ?? 0)
       .filter((score: number) => score > 0);
@@ -193,9 +199,34 @@ async function fetchHomepageData(): Promise<HomepageData> {
 
   return {
     studios,
+    studiosLoadFailed,
+    liveDraftsLoadFailed,
+    prPendingLoadFailed,
+    topGlowUpLoadFailed: liveDraftsLoadFailed,
     stats: { liveDrafts: draftsCount, prPending: prCount, topGlowUp },
   };
 }
+
+const useLastSuccessfulValue = <T,>(
+  value: T | undefined,
+  loadFailed: boolean,
+  fallbackValue: T,
+): T => {
+  const [lastSuccessful, setLastSuccessful] = useState<T>(fallbackValue);
+
+  useEffect(() => {
+    if (value === undefined || loadFailed) {
+      return;
+    }
+    setLastSuccessful(value);
+  }, [loadFailed, value]);
+
+  if (value === undefined || loadFailed) {
+    return lastSuccessful;
+  }
+
+  return value;
+};
 
 /* ── component ── */
 
@@ -206,14 +237,39 @@ export default function Home() {
     'homepage/live-stats',
     fetchHomepageData,
     {
-      fallbackData: { studios: demoStudios, stats: demoStats },
+      fallbackData: {
+        studios: demoStudios,
+        stats: demoStats,
+        studiosLoadFailed: false,
+        liveDraftsLoadFailed: false,
+        prPendingLoadFailed: false,
+        topGlowUpLoadFailed: false,
+      },
       revalidateOnFocus: false,
       shouldRetryOnError: false,
     },
   );
 
-  const studios = data?.studios ?? demoStudios;
-  const stats = data?.stats ?? demoStats;
+  const studios = useLastSuccessfulValue<StudioRow[]>(
+    data?.studios,
+    data?.studiosLoadFailed ?? true,
+    demoStudios,
+  );
+  const liveDrafts = useLastSuccessfulValue<number>(
+    data?.stats.liveDrafts,
+    data?.liveDraftsLoadFailed ?? true,
+    demoStats.liveDrafts,
+  );
+  const prPending = useLastSuccessfulValue<number>(
+    data?.stats.prPending,
+    data?.prPendingLoadFailed ?? true,
+    demoStats.prPending,
+  );
+  const topGlowUp = useLastSuccessfulValue<string>(
+    data?.stats.topGlowUp,
+    data?.topGlowUpLoadFailed ?? true,
+    demoStats.topGlowUp,
+  );
   const loading = isLoading || isValidating;
 
   return (
@@ -258,20 +314,18 @@ export default function Home() {
             <div className="rounded-xl border border-border bg-muted/50 p-2">
               <p className="text-muted-foreground">{t('rail.liveDrafts')}</p>
               <p className="mt-1 font-bold text-foreground text-lg">
-                {stats.liveDrafts}
+                {liveDrafts}
               </p>
             </div>
             <div className="rounded-xl border border-border bg-muted/50 p-2">
               <p className="text-muted-foreground">{t('rail.prPending')}</p>
               <p className="mt-1 font-bold text-foreground text-lg">
-                {stats.prPending}
+                {prPending}
               </p>
             </div>
             <div className="rounded-xl border border-border bg-muted/50 p-2">
               <p className="text-muted-foreground">{t('feed.topGlowUp')}</p>
-              <p className="mt-1 font-bold text-lg text-primary">
-                {stats.topGlowUp}
-              </p>
+              <p className="mt-1 font-bold text-lg text-primary">{topGlowUp}</p>
             </div>
           </div>
           <ul className="mt-4 grid gap-2 text-muted-foreground text-sm">
