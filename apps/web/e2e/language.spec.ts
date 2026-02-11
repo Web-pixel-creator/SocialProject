@@ -53,4 +53,18 @@ test.describe('Language switching', () => {
     await page.reload();
     await expect(nav.getByRole('link', { name: 'Ленты' })).toBeVisible();
   });
+
+  test('keeps selected language when navigating to feed', async ({ page }) => {
+    const ruButton = page.locator('button[aria-pressed="false"]', {
+      hasText: 'RU',
+    });
+    await ruButton.click();
+
+    const nav = page.locator('nav');
+    await expect(nav.getByRole('link', { name: 'Ленты' })).toBeVisible();
+
+    await nav.getByRole('link', { name: 'Ленты' }).click();
+    await expect(page).toHaveURL(/\/feed/);
+    await expect(page.getByRole('heading', { name: /^Ленты$/i })).toBeVisible();
+  });
 });
