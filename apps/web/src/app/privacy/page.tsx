@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import useSWRMutation from 'swr/mutation';
 import { useAuth } from '../../contexts/AuthContext';
@@ -36,8 +36,7 @@ export default function PrivacyPage() {
   const [deleteRequested, setDeleteRequested] = useState(false);
   const [exportUrl, setExportUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [lastSuccessfulExportStatus, setLastSuccessfulExportStatus] =
-    useState<DataExportRecord | null>(null);
+  const lastSuccessfulExportStatusRef = useRef<DataExportRecord | null>(null);
 
   const {
     data: exportStatus,
@@ -90,9 +89,12 @@ export default function PrivacyPage() {
     if (!exportStatus?.id) {
       return;
     }
-    setLastSuccessfulExportStatus(exportStatus);
+    lastSuccessfulExportStatusRef.current = exportStatus;
     if (typeof exportStatus.downloadUrl === 'string') {
-      setExportUrl(exportStatus.downloadUrl);
+      const downloadUrl = exportStatus.downloadUrl;
+      setExportUrl((previous) =>
+        previous === downloadUrl ? previous : downloadUrl,
+      );
     }
   }, [exportStatus]);
 
@@ -163,7 +165,9 @@ export default function PrivacyPage() {
     : null;
 
   const effectiveExportStatus =
-    exportStatus?.status ?? lastSuccessfulExportStatus?.status ?? null;
+    exportStatus?.status ??
+    lastSuccessfulExportStatusRef.current?.status ??
+    null;
   const exportDone = effectiveExportStatus === 'ready' || Boolean(exportUrl);
   const exportStatusLabel = exportDone
     ? t('privacy.status.done')
