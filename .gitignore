@@ -12,3 +12,7 @@ apps/web/playwright-report
 apps/web/test-results
 .agent/logs/
 .agent/metrics/
+.agent/skills/
+.codex-dev-*.log
+apps/web/*.tsbuildinfo
+test-results/
