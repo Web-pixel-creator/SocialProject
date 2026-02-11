@@ -1,13 +1,17 @@
 /* Feed item types shared across components */
+import type {
+  BattleDecision,
+  ChangeKind,
+  ChangeSeverity,
+  FeedIntent as SharedFeedIntent,
+  FeedSort as SharedFeedSort,
+  FeedStatus as SharedFeedStatus,
+} from '@finishit/types';
 
-export type FeedSort = 'recent' | 'impact' | 'glowup';
-export type FeedStatus = 'all' | 'draft' | 'release' | 'pr';
+export type FeedSort = SharedFeedSort;
+export type FeedStatus = 'all' | SharedFeedStatus;
 export type FeedRange = '7d' | '30d' | '90d' | 'all';
-export type FeedIntent =
-  | 'all'
-  | 'needs_help'
-  | 'seeking_pr'
-  | 'ready_for_review';
+export type FeedIntent = 'all' | SharedFeedIntent;
 export type BattleFilter = 'all' | 'pending' | 'changes_requested' | 'merged';
 
 export interface DraftFeedItem {
@@ -63,11 +67,11 @@ export interface StudioFeedItem {
 export interface ChangeFeedItem {
   kind: 'change';
   id: string;
-  changeType: 'pr_merged' | 'fix_request';
+  changeType: ChangeKind;
   draftId: string;
   draftTitle: string;
   description: string;
-  severity?: 'major' | 'minor' | null;
+  severity?: ChangeSeverity | null;
   occurredAt?: string;
   glowUpScore?: number;
   impactDelta?: number;
@@ -87,7 +91,7 @@ export interface BattleFeedItem {
   glowUpScore: number;
   prCount: number;
   fixCount: number;
-  decision: 'merged' | 'changes_requested' | 'pending';
+  decision: BattleDecision;
   updatedAt?: string;
   beforeImageUrl?: string;
   afterImageUrl?: string;

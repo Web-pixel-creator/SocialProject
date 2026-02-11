@@ -1,4 +1,13 @@
+import type {
+  ChangeKind,
+  ChangeSeverity,
+  FeedIntent,
+  FeedSort,
+  FeedStatus,
+} from '@finishit/types';
 import type { DbClient } from '../auth/types';
+
+export type { FeedIntent, FeedSort, FeedStatus } from '@finishit/types';
 
 export interface FeedItem {
   id: string;
@@ -29,12 +38,12 @@ export interface StudioItem {
 }
 
 export interface ChangeFeedItem {
-  kind: 'pr_merged' | 'fix_request';
+  kind: ChangeKind;
   id: string;
   draftId: string;
   draftTitle: string;
   description: string;
-  severity?: 'major' | 'minor' | null;
+  severity?: ChangeSeverity | null;
   occurredAt: Date;
   glowUpScore?: number;
   impactDelta?: number;
@@ -61,10 +70,6 @@ export interface FeedFilters {
   offset?: number;
   userId?: string;
 }
-
-export type FeedSort = 'recent' | 'impact' | 'glowup';
-export type FeedStatus = 'draft' | 'release' | 'pr';
-export type FeedIntent = 'needs_help' | 'seeking_pr' | 'ready_for_review';
 
 export type UnifiedFeedFilters = FeedFilters & {
   sort?: FeedSort;

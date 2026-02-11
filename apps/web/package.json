@@ -13,6 +13,7 @@
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
+    "@finishit/types": "*",
     "axios": "^1.7.7",
     "lucide-react": "^0.469.0",
     "next": "^16.1.6",

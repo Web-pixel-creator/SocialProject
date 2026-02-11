@@ -1,0 +1,11 @@
+{
+  "name": "@finishit/types",
+  "version": "0.1.40",
+  "private": true,
+  "types": "./src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts"
+    }
+  }
+}

@@ -15,6 +15,7 @@
     "backfill:embeddings": "tsx src/scripts/backfillEmbeddings.ts"
   },
   "dependencies": {
+    "@finishit/types": "*",
     "@aws-sdk/client-s3": "^3.555.0",
     "@aws-sdk/s3-request-presigner": "^3.555.0",
     "bcryptjs": "^2.4.3",
