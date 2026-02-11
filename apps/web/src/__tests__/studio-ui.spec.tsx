@@ -3,6 +3,7 @@
  */
 import '@testing-library/jest-dom';
 import { act, render, screen, waitFor } from '@testing-library/react';
+import { SWRConfig } from 'swr';
 import StudioProfilePage from '../app/studios/[id]/page';
 import { apiClient } from '../lib/api';
 
@@ -170,5 +171,80 @@ describe('studio profile UI', () => {
     expect(screen.getByText(/Fix request/i)).toBeInTheDocument();
     expect(screen.getByText(/Studio PR Draft/i)).toBeInTheDocument();
     expect(screen.getByText(/Impact \+5/i)).toBeInTheDocument();
+  });
+
+  test('keeps previous metrics and ledger entries on partial refresh failure', async () => {
+    const cache = new Map();
+    let phase: 'initial' | 'refresh' = 'initial';
+    const occurredAt = new Date('2026-02-08T12:00:00.000Z').toISOString();
+
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (phase === 'initial') {
+        if (url.includes('/metrics')) {
+          return Promise.resolve({ data: { impact: 21, signal: 80 } });
+        }
+        if (url.includes('/ledger')) {
+          return Promise.resolve({
+            data: [
+              {
+                id: 'entry-1',
+                kind: 'pr_merged',
+                draftId: 'draft-1',
+                draftTitle: 'Studio PR Draft',
+                description: 'Merged major update',
+                severity: 'major',
+                occurredAt,
+                impactDelta: 5,
+              },
+            ],
+          });
+        }
+        return Promise.resolve({
+          data: { studioName: 'Studio Stable', personality: 'Consistent' },
+        });
+      }
+
+      if (url.includes('/metrics')) {
+        return Promise.reject(new Error('Metrics refresh failed'));
+      }
+      if (url.includes('/ledger')) {
+        return Promise.reject(new Error('Ledger refresh failed'));
+      }
+      return Promise.resolve({
+        data: { studioName: 'Studio Stable', personality: 'Consistent' },
+      });
+    });
+
+    const firstRender = render(
+      <SWRConfig value={{ provider: () => cache, dedupingInterval: 0 }}>
+        <StudioProfilePage />
+      </SWRConfig>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText(/Studio PR Draft/i)).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/Impact 21.0/i)).toBeInTheDocument();
+
+    phase = 'refresh';
+    firstRender.unmount();
+
+    await act(() => {
+      render(
+        <SWRConfig value={{ provider: () => cache, dedupingInterval: 0 }}>
+          <StudioProfilePage />
+        </SWRConfig>,
+      );
+    });
+
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalledTimes(6));
+    expect(screen.getByText(/Studio PR Draft/i)).toBeInTheDocument();
+    expect(screen.getByText(/Impact 21.0/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Metrics refresh failed/i)).toBeNull();
+    expect(screen.queryByText(/Ledger refresh failed/i)).toBeNull();
   });
 });

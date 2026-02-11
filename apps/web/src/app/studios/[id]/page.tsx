@@ -1,6 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { apiClient } from '../../../lib/api';
@@ -28,11 +29,14 @@ interface ImpactLedgerEntry {
 
 interface StudioProfileData {
   studio: StudioProfile;
+  studioLoadFailed: boolean;
   metrics: {
     impact: number;
     signal: number;
   } | null;
+  metricsLoadFailed: boolean;
   ledger: ImpactLedgerEntry[];
+  ledgerLoadFailed: boolean;
 }
 
 const settledData = <T,>(
@@ -75,11 +79,56 @@ const fetchStudioProfile = async (
       studioData && typeof studioData === 'object'
         ? (studioData as StudioProfile)
         : { id: studioId },
+    studioLoadFailed: studioUnavailable,
     metrics:
       metricsData && typeof metricsData === 'object'
         ? (metricsData as StudioProfileData['metrics'])
         : null,
+    metricsLoadFailed: metricsUnavailable,
     ledger: Array.isArray(ledgerData) ? ledgerData : [],
+    ledgerLoadFailed: ledgerUnavailable,
+  };
+};
+
+const useLastSuccessfulStudioData = (
+  data: StudioProfileData | undefined,
+): {
+  studio: StudioProfile | null;
+  metrics: StudioProfileData['metrics'];
+  ledger: ImpactLedgerEntry[];
+} => {
+  const [lastStudio, setLastStudio] = useState<StudioProfile | null>(null);
+  const [lastMetrics, setLastMetrics] =
+    useState<StudioProfileData['metrics']>(null);
+  const [lastLedger, setLastLedger] = useState<ImpactLedgerEntry[]>([]);
+
+  useEffect(() => {
+    if (!data) {
+      return;
+    }
+    if (!data.studioLoadFailed) {
+      setLastStudio(data.studio);
+    }
+    if (!data.metricsLoadFailed) {
+      setLastMetrics(data.metrics);
+    }
+    if (!data.ledgerLoadFailed) {
+      setLastLedger(data.ledger);
+    }
+  }, [data]);
+
+  if (!data) {
+    return {
+      studio: lastStudio,
+      metrics: lastMetrics,
+      ledger: lastLedger,
+    };
+  }
+
+  return {
+    studio: data.studioLoadFailed ? lastStudio : data.studio,
+    metrics: data.metricsLoadFailed ? lastMetrics : data.metrics,
+    ledger: data.ledgerLoadFailed ? lastLedger : data.ledger,
   };
 };
 
@@ -110,9 +159,14 @@ export default function StudioProfilePage() {
     error = getApiErrorMessage(loadError, t('studioDetail.errors.loadStudio'));
   }
 
-  const studio = data?.studio ?? null;
-  const metrics = data?.metrics ?? null;
-  const ledger = data?.ledger ?? [];
+  const {
+    studio: stableStudio,
+    metrics: stableMetrics,
+    ledger: stableLedger,
+  } = useLastSuccessfulStudioData(data);
+  const studio = stableStudio;
+  const metrics = stableMetrics ?? null;
+  const ledger = stableLedger;
 
   const studioName =
     studio?.studioName ??
