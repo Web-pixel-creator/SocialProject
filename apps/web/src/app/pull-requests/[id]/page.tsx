@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import useSWRMutation from 'swr/mutation';
 import { BeforeAfterSlider } from '../../../components/BeforeAfterSlider';
@@ -99,22 +99,17 @@ const fetchReviewData = async (id: string): Promise<ReviewPageData> => {
 const useLastSuccessfulFixRequests = (
   data: ReviewPageData | undefined,
 ): FixRequest[] => {
-  const [lastSuccessful, setLastSuccessful] = useState<FixRequest[]>([]);
-
-  useEffect(() => {
-    if (data && !data.fixRequestsLoadFailed) {
-      setLastSuccessful(data.fixRequests);
-    }
-  }, [data]);
+  const lastSuccessfulRef = useRef<FixRequest[]>([]);
 
   if (!data) {
-    return lastSuccessful;
+    return lastSuccessfulRef.current;
   }
 
   if (data.fixRequestsLoadFailed) {
-    return lastSuccessful;
+    return lastSuccessfulRef.current;
   }
 
+  lastSuccessfulRef.current = data.fixRequests;
   return data.fixRequests;
 };
 
