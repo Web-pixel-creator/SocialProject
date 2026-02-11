@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import useSWRMutation from 'swr/mutation';
 import { PanelErrorBoundary } from '../../components/PanelErrorBoundary';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { apiClient } from '../../lib/api';
@@ -12,6 +13,10 @@ interface DemoResult {
   fixRequestId: string;
   pullRequestId: string;
   glowUp: number;
+}
+
+interface DemoFlowPayload {
+  draftId?: string;
 }
 
 const steps = [
@@ -25,22 +30,28 @@ export default function DemoPage() {
   const { t } = useLanguage();
   const [draftId, setDraftId] = useState('');
   const [result, setResult] = useState<DemoResult | null>(null);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { isMutating: loading, trigger: triggerDemoFlow } = useSWRMutation<
+    DemoResult,
+    unknown,
+    string,
+    DemoFlowPayload
+  >('demo:flow', async (_key, { arg }) => {
+    const response = await apiClient.post('/demo/flow', arg);
+    return response.data as DemoResult;
+  });
 
   const runDemo = async () => {
-    setLoading(true);
     setError(null);
     setResult(null);
     try {
-      const response = await apiClient.post('/demo/flow', {
+      const payload: DemoFlowPayload = {
         draftId: draftId.trim() || undefined,
-      });
-      setResult(response.data);
+      };
+      const nextResult = await triggerDemoFlow(payload, { throwOnError: true });
+      setResult(nextResult);
     } catch (typedError: unknown) {
       setError(getApiErrorMessage(typedError, t('demo.errors.runDemo')));
-    } finally {
-      setLoading(false);
     }
   };
 
