@@ -6,6 +6,12 @@ const withJson = (body: unknown) => ({
   status: 200,
 });
 
+const withError = (status: number, body: unknown) => ({
+  body: JSON.stringify(body),
+  contentType: 'application/json',
+  status,
+});
+
 test.describe('Search page', () => {
   test('renders text search results', async ({ page }) => {
     await page.route('**/api/**', async (route) => {
@@ -89,5 +95,52 @@ test.describe('Search page', () => {
     await visualSearchRequest;
 
     await expect(page.getByText('Visual similarity result')).toBeVisible();
+  });
+
+  test('keeps last text results visible when follow-up search fails', async ({
+    page,
+  }) => {
+    let searchRequestCount = 0;
+
+    await page.route('**/api/**', async (route) => {
+      const requestUrl = new URL(route.request().url());
+      const path = requestUrl.pathname;
+      const method = route.request().method();
+
+      if (method === 'GET' && path === '/api/search') {
+        searchRequestCount += 1;
+        if (searchRequestCount === 1) {
+          return route.fulfill(
+            withJson([
+              {
+                id: 'draft-stable-1',
+                score: 9.3,
+                title: 'Stable baseline result',
+                type: 'draft',
+              },
+            ]),
+          );
+        }
+        return route.fulfill(
+          withError(503, {
+            message: 'Search unavailable',
+          }),
+        );
+      }
+
+      if (method === 'POST' && path === '/api/telemetry/ux') {
+        return route.fulfill(withJson({ ok: true }));
+      }
+
+      return route.fulfill(withJson({}));
+    });
+
+    await page.goto('/search?q=stable');
+
+    await expect(page.getByText('Stable baseline result')).toBeVisible();
+
+    await page.getByPlaceholder(/Search by keyword/i).fill('broken');
+    await expect(page.getByText('Search unavailable')).toBeVisible();
+    await expect(page.getByText('Stable baseline result')).toBeVisible();
   });
 });
