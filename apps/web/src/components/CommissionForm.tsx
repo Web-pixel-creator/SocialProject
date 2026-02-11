@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import { type FormEvent, useState } from 'react';
+import useSWRMutation from 'swr/mutation';
 import { useLanguage } from '../contexts/LanguageContext';
 import { apiClient } from '../lib/api';
 import { getApiErrorMessage } from '../lib/errors';
@@ -9,38 +10,52 @@ interface CommissionFormProps {
   onCreated?: () => void;
 }
 
+interface CreateCommissionPayload {
+  currency: string;
+  description: string;
+  rewardAmount?: number;
+}
+
 export const CommissionForm = ({ onCreated }: CommissionFormProps) => {
   const { t } = useLanguage();
   const [description, setDescription] = useState('');
   const [reward, setReward] = useState('');
   const [currency, setCurrency] = useState('USD');
-  const [status, setStatus] = useState<
-    'idle' | 'loading' | 'success' | 'error'
-  >('idle');
+  const [created, setCreated] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { isMutating: isSubmitting, trigger: triggerCreateCommission } =
+    useSWRMutation<void, unknown, string, CreateCommissionPayload>(
+      'commission:create',
+      async (_key, { arg }) => {
+        await apiClient.post('/commissions', arg);
+      },
+    );
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setStatus('loading');
+    setCreated(false);
     setError(null);
     try {
       const rewardAmount = reward ? Number(reward) : undefined;
       if (reward && Number.isNaN(rewardAmount)) {
         throw new Error(t('commission.errors.invalidRewardAmount'));
       }
-      await apiClient.post('/commissions', {
-        description,
-        rewardAmount,
-        currency,
-      });
-      setStatus('success');
+      await triggerCreateCommission(
+        {
+          description,
+          rewardAmount,
+          currency,
+        },
+        { throwOnError: true },
+      );
+      setCreated(true);
       setDescription('');
       setReward('');
       if (onCreated) {
         onCreated();
       }
     } catch (error: unknown) {
-      setStatus('error');
+      setCreated(false);
       setError(getApiErrorMessage(error, t('commission.errors.createFailed')));
     }
   };
@@ -76,12 +91,12 @@ export const CommissionForm = ({ onCreated }: CommissionFormProps) => {
       {error && <p className="text-destructive text-xs">{error}</p>}
       <button
         className="rounded-full border border-primary/45 bg-primary/15 px-5 py-2 font-semibold text-primary text-sm shadow-glow transition hover:border-primary/70 disabled:opacity-60"
-        disabled={status === 'loading'}
+        disabled={isSubmitting}
         type="submit"
       >
-        {status === 'loading' ? t('commission.posting') : t('commission.post')}
+        {isSubmitting ? t('commission.posting') : t('commission.post')}
       </button>
-      {status === 'success' && (
+      {created && (
         <p className="text-secondary text-xs">{t('commission.created')}</p>
       )}
     </form>
