@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { useLanguage } from '../contexts/LanguageContext';
 import { apiClient } from '../lib/api';
@@ -169,6 +169,151 @@ interface FeedPageResponse {
   loadTimingMs?: number;
 }
 
+interface AllFeedFiltersProps {
+  sort: FeedSort;
+  status: FeedStatus;
+  range: FeedRange;
+  intent: FeedIntent;
+  sortOptions: Array<{ value: FeedSort; label: string }>;
+  statusOptions: Array<{ value: FeedStatus; label: string }>;
+  rangeOptions: Array<{ value: FeedRange; label: string }>;
+  intentOptions: Array<{ value: FeedIntent; label: string }>;
+  labels: {
+    sort: string;
+    status: string;
+    timeRange: string;
+    intent: string;
+  };
+  onSortChange: (value: FeedSort) => void;
+  onStatusChange: (value: FeedStatus) => void;
+  onRangeChange: (value: FeedRange) => void;
+  onIntentChange: (value: FeedIntent) => void;
+}
+
+const AllFeedFilters = memo(function AllFeedFilters({
+  sort,
+  status,
+  range,
+  intent,
+  sortOptions,
+  statusOptions,
+  rangeOptions,
+  intentOptions,
+  labels,
+  onSortChange,
+  onStatusChange,
+  onRangeChange,
+  onIntentChange,
+}: AllFeedFiltersProps) {
+  return (
+    <div className="grid gap-3 rounded-2xl border border-border bg-muted/60 p-4 text-foreground/85 text-xs md:grid-cols-2 xl:grid-cols-4">
+      <label className="grid gap-1">
+        <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
+          {labels.sort}
+        </span>
+        <select
+          className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
+          onChange={(event) => onSortChange(event.target.value as FeedSort)}
+          value={sort}
+        >
+          {sortOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="grid gap-1">
+        <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
+          {labels.status}
+        </span>
+        <select
+          className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
+          onChange={(event) => onStatusChange(event.target.value as FeedStatus)}
+          value={status}
+        >
+          {statusOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="grid gap-1">
+        <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
+          {labels.timeRange}
+        </span>
+        <select
+          className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
+          onChange={(event) => onRangeChange(event.target.value as FeedRange)}
+          value={range}
+        >
+          {rangeOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="grid gap-1">
+        <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
+          {labels.intent}
+        </span>
+        <select
+          className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
+          onChange={(event) => onIntentChange(event.target.value as FeedIntent)}
+          value={intent}
+        >
+          {intentOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
+  );
+});
+
+interface BattleFiltersProps {
+  battleFilter: BattleFilter;
+  battleFilterOptions: Array<{ value: BattleFilter; label: string }>;
+  label: string;
+  onBattleFilterChange: (value: BattleFilter) => void;
+}
+
+const BattleFilters = memo(function BattleFilters({
+  battleFilter,
+  battleFilterOptions,
+  label,
+  onBattleFilterChange,
+}: BattleFiltersProps) {
+  return (
+    <div className="grid gap-2 rounded-2xl border border-border bg-muted/60 p-3 text-foreground/85 text-xs">
+      <p className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
+        {label}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {battleFilterOptions.map((option) => (
+          <button
+            aria-pressed={battleFilter === option.value}
+            className={`rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide ${
+              battleFilter === option.value
+                ? 'border border-primary/45 bg-primary/15 text-primary'
+                : 'border border-border bg-background/60 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+            }`}
+            key={option.value}
+            onClick={() => onBattleFilterChange(option.value)}
+            type="button"
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+});
+
 export const FeedTabs = () => {
   const { t } = useLanguage();
   const router = useRouter();
@@ -241,54 +386,66 @@ export const FeedTabs = () => {
     return tab;
   };
 
-  const sortLabel = (value: FeedSort): string => {
-    if (value === 'impact') {
-      return t('search.sort.impact');
-    }
-    if (value === 'glowup') {
-      return t('changeCard.metrics.glowUp');
-    }
-    return t('search.sort.recency');
-  };
+  const sortLabel = useCallback(
+    (value: FeedSort): string => {
+      if (value === 'impact') {
+        return t('search.sort.impact');
+      }
+      if (value === 'glowup') {
+        return t('changeCard.metrics.glowUp');
+      }
+      return t('search.sort.recency');
+    },
+    [t],
+  );
 
-  const statusLabel = (value: FeedStatus): string => {
-    if (value === 'draft') {
-      return t('feedTabs.status.drafts');
-    }
-    if (value === 'release') {
-      return t('feedTabs.status.releases');
-    }
-    if (value === 'pr') {
-      return t('feed.pendingPRs');
-    }
-    return t('fixRequestList.filters.all');
-  };
+  const statusLabel = useCallback(
+    (value: FeedStatus): string => {
+      if (value === 'draft') {
+        return t('feedTabs.status.drafts');
+      }
+      if (value === 'release') {
+        return t('feedTabs.status.releases');
+      }
+      if (value === 'pr') {
+        return t('feed.pendingPRs');
+      }
+      return t('fixRequestList.filters.all');
+    },
+    [t],
+  );
 
-  const rangeLabel = (value: FeedRange): string => {
-    if (value === '7d') {
-      return t('search.range.last7Days');
-    }
-    if (value === '30d') {
-      return t('search.range.last30Days');
-    }
-    if (value === '90d') {
-      return t('feedTabs.range.last90Days');
-    }
-    return t('search.range.allTime');
-  };
+  const rangeLabel = useCallback(
+    (value: FeedRange): string => {
+      if (value === '7d') {
+        return t('search.range.last7Days');
+      }
+      if (value === '30d') {
+        return t('search.range.last30Days');
+      }
+      if (value === '90d') {
+        return t('feedTabs.range.last90Days');
+      }
+      return t('search.range.allTime');
+    },
+    [t],
+  );
 
-  const intentLabel = (value: FeedIntent): string => {
-    if (value === 'needs_help') {
-      return t('feed.needsHelp');
-    }
-    if (value === 'seeking_pr') {
-      return t('search.filters.seekingPr');
-    }
-    if (value === 'ready_for_review') {
-      return t('feed.readyForReview');
-    }
-    return t('search.filters.allIntents');
-  };
+  const intentLabel = useCallback(
+    (value: FeedIntent): string => {
+      if (value === 'needs_help') {
+        return t('feed.needsHelp');
+      }
+      if (value === 'seeking_pr') {
+        return t('search.filters.seekingPr');
+      }
+      if (value === 'ready_for_review') {
+        return t('feed.readyForReview');
+      }
+      return t('search.filters.allIntents');
+    },
+    [t],
+  );
 
   const quickScopeLabel = (id: string): string => {
     if (id === 'live') {
@@ -309,18 +466,70 @@ export const FeedTabs = () => {
     return id;
   };
 
-  const battleFilterLabel = (value: BattleFilter): string => {
-    if (value === 'pending') {
-      return t('battle.pending');
-    }
-    if (value === 'changes_requested') {
-      return t('battle.changesRequested');
-    }
-    if (value === 'merged') {
-      return t('battle.merged');
-    }
-    return t('feedTabs.battleFilter.allBattles');
-  };
+  const battleFilterLabel = useCallback(
+    (value: BattleFilter): string => {
+      if (value === 'pending') {
+        return t('battle.pending');
+      }
+      if (value === 'changes_requested') {
+        return t('battle.changesRequested');
+      }
+      if (value === 'merged') {
+        return t('battle.merged');
+      }
+      return t('feedTabs.battleFilter.allBattles');
+    },
+    [t],
+  );
+  const localizedSortOptions = useMemo(
+    () =>
+      SORT_OPTIONS.map((option) => ({
+        value: option.value,
+        label: sortLabel(option.value),
+      })),
+    [sortLabel],
+  );
+  const localizedStatusOptions = useMemo(
+    () =>
+      STATUS_OPTIONS.map((option) => ({
+        value: option.value,
+        label: statusLabel(option.value),
+      })),
+    [statusLabel],
+  );
+  const localizedRangeOptions = useMemo(
+    () =>
+      RANGE_OPTIONS.map((option) => ({
+        value: option.value,
+        label: rangeLabel(option.value),
+      })),
+    [rangeLabel],
+  );
+  const localizedIntentOptions = useMemo(
+    () =>
+      INTENT_OPTIONS.map((option) => ({
+        value: option.value,
+        label: intentLabel(option.value),
+      })),
+    [intentLabel],
+  );
+  const localizedBattleFilterOptions = useMemo(
+    () =>
+      BATTLE_FILTER_OPTIONS.map((option) => ({
+        value: option.value,
+        label: battleFilterLabel(option.value),
+      })),
+    [battleFilterLabel],
+  );
+  const filterLabels = useMemo(
+    () => ({
+      sort: t('feedTabs.filters.sort'),
+      status: t('feedTabs.filters.status'),
+      timeRange: t('feedTabs.filters.timeRange'),
+      intent: t('feedTabs.filters.intent'),
+    }),
+    [t],
+  );
 
   const quickScopeClass = (scopeId: string, isActive: boolean): string => {
     if (!isActive) {
@@ -620,6 +829,69 @@ export const FeedTabs = () => {
       sourceTab: active,
     });
   };
+  const handleSortChange = useCallback(
+    (next: FeedSort) => {
+      setSort(next);
+      updateQuery({ sort: next });
+      sendTelemetry({
+        eventType: 'feed_filter_change',
+        sort: next,
+        status,
+        intent,
+        range,
+      });
+    },
+    [intent, range, status, updateQuery],
+  );
+  const handleStatusChange = useCallback(
+    (next: FeedStatus) => {
+      setStatus(next);
+      updateQuery({ status: next });
+      sendTelemetry({
+        eventType: 'feed_filter_change',
+        sort,
+        status: next,
+        intent,
+        range,
+      });
+    },
+    [intent, range, sort, updateQuery],
+  );
+  const handleRangeChange = useCallback(
+    (next: FeedRange) => {
+      setRange(next);
+      updateQuery({ range: next });
+      sendTelemetry({
+        eventType: 'feed_filter_change',
+        sort,
+        status,
+        intent,
+        range: next,
+      });
+    },
+    [intent, sort, status, updateQuery],
+  );
+  const handleIntentChange = useCallback(
+    (next: FeedIntent) => {
+      setIntent(next);
+      updateQuery({ intent: next });
+      sendTelemetry({
+        eventType: 'feed_filter_change',
+        sort,
+        status,
+        intent: next,
+        range,
+      });
+    },
+    [range, sort, status, updateQuery],
+  );
+  const handleBattleFilterChange = useCallback((next: BattleFilter) => {
+    setBattleFilter(next);
+    sendTelemetry({
+      eventType: 'feed_battle_filter',
+      filter: next,
+    });
+  }, []);
   const handleProgressCardOpen = useCallback((draftId: string) => {
     sendTelemetry({
       eventType: 'feed_card_open',
@@ -680,159 +952,63 @@ export const FeedTabs = () => {
     [visibleItems, handleProgressCardOpen],
   );
 
-  let filterPanel = (
-    <p className="text-muted-foreground text-xs">
-      {t('feedTabs.filters.availableAll')}
-    </p>
-  );
+  const filterPanel = useMemo(() => {
+    if (active === 'All') {
+      return (
+        <AllFeedFilters
+          intent={intent}
+          intentOptions={localizedIntentOptions}
+          labels={filterLabels}
+          onIntentChange={handleIntentChange}
+          onRangeChange={handleRangeChange}
+          onSortChange={handleSortChange}
+          onStatusChange={handleStatusChange}
+          range={range}
+          rangeOptions={localizedRangeOptions}
+          sort={sort}
+          sortOptions={localizedSortOptions}
+          status={status}
+          statusOptions={localizedStatusOptions}
+        />
+      );
+    }
 
-  if (active === 'All') {
-    filterPanel = (
-      <div className="grid gap-3 rounded-2xl border border-border bg-muted/60 p-4 text-foreground/85 text-xs md:grid-cols-2 xl:grid-cols-4">
-        <label className="grid gap-1">
-          <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
-            {t('feedTabs.filters.sort')}
-          </span>
-          <select
-            className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
-            onChange={(event) => {
-              const next = event.target.value as FeedSort;
-              setSort(next);
-              updateQuery({ sort: next });
-              sendTelemetry({
-                eventType: 'feed_filter_change',
-                sort: next,
-                status,
-                intent,
-                range,
-              });
-            }}
-            value={sort}
-          >
-            {SORT_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {sortLabel(option.value)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="grid gap-1">
-          <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
-            {t('feedTabs.filters.status')}
-          </span>
-          <select
-            className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
-            onChange={(event) => {
-              const next = event.target.value as FeedStatus;
-              setStatus(next);
-              updateQuery({ status: next });
-              sendTelemetry({
-                eventType: 'feed_filter_change',
-                sort,
-                status: next,
-                intent,
-                range,
-              });
-            }}
-            value={status}
-          >
-            {STATUS_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {statusLabel(option.value)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="grid gap-1">
-          <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
-            {t('feedTabs.filters.timeRange')}
-          </span>
-          <select
-            className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
-            onChange={(event) => {
-              const next = event.target.value as FeedRange;
-              setRange(next);
-              updateQuery({ range: next });
-              sendTelemetry({
-                eventType: 'feed_filter_change',
-                sort,
-                status,
-                intent,
-                range: next,
-              });
-            }}
-            value={range}
-          >
-            {RANGE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {rangeLabel(option.value)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="grid gap-1">
-          <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
-            {t('feedTabs.filters.intent')}
-          </span>
-          <select
-            className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
-            onChange={(event) => {
-              const next = event.target.value as FeedIntent;
-              setIntent(next);
-              updateQuery({ intent: next });
-              sendTelemetry({
-                eventType: 'feed_filter_change',
-                sort,
-                status,
-                intent: next,
-                range,
-              });
-            }}
-            value={intent}
-          >
-            {INTENT_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {intentLabel(option.value)}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-    );
-  }
+    if (active === 'Battles') {
+      return (
+        <BattleFilters
+          battleFilter={battleFilter}
+          battleFilterOptions={localizedBattleFilterOptions}
+          label={t('feedTabs.filters.battleStatus')}
+          onBattleFilterChange={handleBattleFilterChange}
+        />
+      );
+    }
 
-  if (active === 'Battles') {
-    filterPanel = (
-      <div className="grid gap-2 rounded-2xl border border-border bg-muted/60 p-3 text-foreground/85 text-xs">
-        <p className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
-          {t('feedTabs.filters.battleStatus')}
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {BATTLE_FILTER_OPTIONS.map((option) => (
-            <button
-              aria-pressed={battleFilter === option.value}
-              className={`rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide ${
-                battleFilter === option.value
-                  ? 'border border-primary/45 bg-primary/15 text-primary'
-                  : 'border border-border bg-background/60 text-muted-foreground hover:border-primary/40 hover:text-foreground'
-              }`}
-              key={option.value}
-              onClick={() => {
-                setBattleFilter(option.value);
-                sendTelemetry({
-                  eventType: 'feed_battle_filter',
-                  filter: option.value,
-                });
-              }}
-              type="button"
-            >
-              {battleFilterLabel(option.value)}
-            </button>
-          ))}
-        </div>
-      </div>
+    return (
+      <p className="text-muted-foreground text-xs">
+        {t('feedTabs.filters.availableAll')}
+      </p>
     );
-  }
+  }, [
+    active,
+    battleFilter,
+    filterLabels,
+    handleBattleFilterChange,
+    handleIntentChange,
+    handleRangeChange,
+    handleSortChange,
+    handleStatusChange,
+    intent,
+    localizedBattleFilterOptions,
+    localizedIntentOptions,
+    localizedRangeOptions,
+    localizedSortOptions,
+    localizedStatusOptions,
+    range,
+    sort,
+    status,
+    t,
+  ]);
 
   return (
     <section className="grid gap-6">
