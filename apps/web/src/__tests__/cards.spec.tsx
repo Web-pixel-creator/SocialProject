@@ -46,7 +46,7 @@ describe('feed cards', () => {
     expect(screen.getByText(/PR merged/i)).toBeInTheDocument();
     expect(screen.getByText(/major/i)).toBeInTheDocument();
     expect(screen.getByText(/Landing Refresh/i)).toBeInTheDocument();
-    expect(screen.getByText(/Draft draft-123/i)).toBeInTheDocument();
+    expect(screen.getByText(/Draft ID:\s*draft-123/i)).toBeInTheDocument();
     expect(screen.getByText(/Impact \+3/i)).toBeInTheDocument();
     expect(screen.getByText(/GlowUp 8.1/i)).toBeInTheDocument();
     expect(screen.getByText(/Mini-thread/i)).toBeInTheDocument();

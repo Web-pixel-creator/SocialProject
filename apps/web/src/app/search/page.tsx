@@ -76,15 +76,16 @@ const updateStateIfChanged = <T,>(
 };
 
 const resolveVisitorId = () => {
-  if (cachedVisitorId) {
-    return cachedVisitorId;
-  }
-
   const key = 'searchVisitorId';
   const stored = window.localStorage.getItem(key);
   if (stored) {
     cachedVisitorId = stored;
     return stored;
+  }
+
+  if (cachedVisitorId) {
+    window.localStorage.setItem(key, cachedVisitorId);
+    return cachedVisitorId;
   }
 
   const generated =
