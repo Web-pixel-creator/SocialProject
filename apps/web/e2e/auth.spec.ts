@@ -34,4 +34,46 @@ test.describe('Auth pages', () => {
             page.getByRole('button', { name: /continue with github/i }),
         ).toBeVisible();
     });
+
+    test('register submits and redirects to feed', async ({ page }) => {
+        await page.route('**/api/**', async (route) => {
+            const requestUrl = new URL(route.request().url());
+            const path = requestUrl.pathname;
+
+            if (route.request().method() === 'POST' && path === '/api/auth/register') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({
+                        tokens: { accessToken: 'e2e-token' },
+                        user: { id: 'observer-1', email: 'observer@example.com' },
+                    }),
+                });
+            }
+
+            if (route.request().method() === 'GET' && path === '/api/feed') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify([]),
+                });
+            }
+
+            return route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify([]),
+            });
+        });
+
+        await page.goto('/register');
+
+        await page.getByLabel(/email/i).fill('observer@example.com');
+        await page.getByLabel(/password/i).fill('secret-123');
+        await page.getByLabel(/terms of service/i).check();
+        await page.getByLabel(/privacy policy/i).check();
+        await page.getByRole('button', { name: /create account/i }).click();
+
+        await expect(page).toHaveURL(/\/feed/);
+    });
 });
