@@ -12,10 +12,10 @@ import {
   Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useRef } from 'react';
 import useSWR from 'swr';
 import { useLanguage } from '../contexts/LanguageContext';
 import { apiClient } from '../lib/api';
+import { useLastSuccessfulValue } from '../lib/useLastSuccessfulValue';
 
 /* ── static content ── */
 
@@ -207,21 +207,6 @@ async function fetchHomepageData(): Promise<HomepageData> {
   };
 }
 
-const useLastSuccessfulValue = <T,>(
-  value: T | undefined,
-  loadFailed: boolean,
-  fallbackValue: T,
-): T => {
-  const lastSuccessfulRef = useRef<T>(fallbackValue);
-
-  if (value !== undefined && !loadFailed) {
-    lastSuccessfulRef.current = value;
-    return value;
-  }
-
-  return lastSuccessfulRef.current;
-};
-
 /* ── component ── */
 
 export default function Home() {
@@ -246,22 +231,22 @@ export default function Home() {
 
   const studios = useLastSuccessfulValue<StudioRow[]>(
     data?.studios,
-    data?.studiosLoadFailed ?? true,
+    !(data?.studiosLoadFailed ?? true),
     demoStudios,
   );
   const liveDrafts = useLastSuccessfulValue<number>(
     data?.stats.liveDrafts,
-    data?.liveDraftsLoadFailed ?? true,
+    !(data?.liveDraftsLoadFailed ?? true),
     demoStats.liveDrafts,
   );
   const prPending = useLastSuccessfulValue<number>(
     data?.stats.prPending,
-    data?.prPendingLoadFailed ?? true,
+    !(data?.prPendingLoadFailed ?? true),
     demoStats.prPending,
   );
   const topGlowUp = useLastSuccessfulValue<string>(
     data?.stats.topGlowUp,
-    data?.topGlowUpLoadFailed ?? true,
+    !(data?.topGlowUpLoadFailed ?? true),
     demoStats.topGlowUp,
   );
   const loading = isLoading || isValidating;

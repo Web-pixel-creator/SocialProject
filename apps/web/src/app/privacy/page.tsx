@@ -1,13 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import useSWRMutation from 'swr/mutation';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { apiClient } from '../../lib/api';
 import { getApiErrorMessage } from '../../lib/errors';
+import { useLastSuccessfulValue } from '../../lib/useLastSuccessfulValue';
 
 interface DataExportRecord {
   id: string;
@@ -36,7 +37,6 @@ export default function PrivacyPage() {
   const [deleteRequested, setDeleteRequested] = useState(false);
   const [exportUrl, setExportUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const lastSuccessfulExportStatusRef = useRef<DataExportRecord | null>(null);
 
   const {
     data: exportStatus,
@@ -89,7 +89,6 @@ export default function PrivacyPage() {
     if (!exportStatus?.id) {
       return;
     }
-    lastSuccessfulExportStatusRef.current = exportStatus;
     if (typeof exportStatus.downloadUrl === 'string') {
       const downloadUrl = exportStatus.downloadUrl;
       setExportUrl((previous) =>
@@ -97,6 +96,13 @@ export default function PrivacyPage() {
       );
     }
   }, [exportStatus]);
+
+  const lastSuccessfulExportStatus =
+    useLastSuccessfulValue<DataExportRecord | null>(
+      exportStatus,
+      Boolean(exportStatus?.id),
+      null,
+    );
 
   const handleExport = async () => {
     if (!isAuthenticated || exportLoading) {
@@ -165,9 +171,7 @@ export default function PrivacyPage() {
     : null;
 
   const effectiveExportStatus =
-    exportStatus?.status ??
-    lastSuccessfulExportStatusRef.current?.status ??
-    null;
+    exportStatus?.status ?? lastSuccessfulExportStatus?.status ?? null;
   const exportDone = effectiveExportStatus === 'ready' || Boolean(exportUrl);
   const exportStatusLabel = exportDone
     ? t('privacy.status.done')

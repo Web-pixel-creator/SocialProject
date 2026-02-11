@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { CommissionForm } from '../../components/CommissionForm';
 import { PanelErrorBoundary } from '../../components/PanelErrorBoundary';
@@ -9,6 +9,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { apiClient } from '../../lib/api';
 import { getApiErrorMessage } from '../../lib/errors';
+import { useLastSuccessfulValue } from '../../lib/useLastSuccessfulValue';
 
 interface Commission {
   id: string;
@@ -34,7 +35,6 @@ export default function CommissionsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
-  const lastSuccessfulCommissionsRef = useRef<Commission[]>([]);
 
   const {
     data: commissionsData,
@@ -51,12 +51,14 @@ export default function CommissionsPage() {
     },
   );
 
-  if (Array.isArray(commissionsData)) {
-    lastSuccessfulCommissionsRef.current = commissionsData;
-  }
+  const lastSuccessfulCommissions = useLastSuccessfulValue<Commission[]>(
+    commissionsData,
+    Array.isArray(commissionsData),
+    [],
+  );
 
   const commissions =
-    commissionsData ?? (loadError ? lastSuccessfulCommissionsRef.current : []);
+    commissionsData ?? (loadError ? lastSuccessfulCommissions : []);
 
   const error = loadError
     ? getApiErrorMessage(loadError, t('commission.errors.loadList'))

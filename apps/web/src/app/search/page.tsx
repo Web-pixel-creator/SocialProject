@@ -28,6 +28,7 @@ import {
   parseSearchProfile,
   type SearchProfile,
 } from '../../lib/searchProfiles';
+import { useLastSuccessfulValue } from '../../lib/useLastSuccessfulValue';
 
 interface SearchResult {
   id: string;
@@ -173,8 +174,6 @@ function SearchPageContent() {
   const [visualType, setVisualType] = useState(
     initialMode === 'visual' ? initialVisualType : 'all',
   );
-  const lastSuccessfulTextResultsRef = useRef<SearchResult[]>([]);
-  const lastSuccessfulVisualResultsRef = useRef<SearchResult[]>([]);
   const [visualNotice, setVisualNotice] = useState<string | null>(null);
   const [visualHasSearched, setVisualHasSearched] = useState(false);
   const [visualInputError, setVisualInputError] = useState<string | null>(null);
@@ -400,21 +399,28 @@ function SearchPageContent() {
     mode === 'text'
       ? textSearchIsLoading || textSearchIsValidating
       : visualSearchIsMutating;
-  if (mode === 'text' && textResults) {
-    lastSuccessfulTextResultsRef.current = textResults;
-  }
-
-  if (mode === 'visual' && visualSearchOutcome?.status === 'ok') {
-    lastSuccessfulVisualResultsRef.current = visualSearchOutcome.items;
-  }
+  const lastSuccessfulTextResults = useLastSuccessfulValue<SearchResult[]>(
+    textResults,
+    mode === 'text' && Array.isArray(textResults),
+    [],
+  );
+  const visualResultItems =
+    visualSearchOutcome?.status === 'ok'
+      ? visualSearchOutcome.items
+      : undefined;
+  const lastSuccessfulVisualResults = useLastSuccessfulValue<SearchResult[]>(
+    visualResultItems,
+    mode === 'visual' && Array.isArray(visualResultItems),
+    [],
+  );
 
   const visualResults =
     visualSearchOutcome?.status === 'ok'
       ? visualSearchOutcome.items
-      : lastSuccessfulVisualResultsRef.current;
+      : lastSuccessfulVisualResults;
   const visibleResults =
     mode === 'text'
-      ? (textResults ?? lastSuccessfulTextResultsRef.current)
+      ? (textResults ?? lastSuccessfulTextResults)
       : visualResults;
   const showEmptyState = !loading && visibleResults.length === 0 && !error;
   const showResults = !(loading || showEmptyState);
