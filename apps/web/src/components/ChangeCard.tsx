@@ -124,7 +124,9 @@ export const ChangeCard = ({
       </div>
       <div>
         <p className="font-semibold text-foreground text-sm">{draftTitle}</p>
-        <p className="text-muted-foreground text-xs">Draft {draftId}</p>
+        <p className="text-muted-foreground text-xs">
+          {t('feedTabs.draftId')}: {draftId}
+        </p>
       </div>
       <p className="text-foreground/85 text-sm">{description}</p>
       <section className="rounded-xl border border-border bg-muted/60 p-3">

@@ -188,29 +188,34 @@ export const BattleCard = ({
       <StatsGrid
         tiles={[
           {
-            label: 'GlowUp',
+            label: t('changeCard.metrics.glowUp'),
             value: `+${glowUpScore.toFixed(1)}%`,
             colorClass: 'text-secondary',
           },
           {
-            label: 'Impact',
+            label: t('changeCard.metrics.impact'),
             value: `+${impact.toFixed(1)}`,
             colorClass: 'text-primary',
           },
-          { label: 'Signal', value: signal },
-          { label: 'PRs / Fix', value: `${prCount} / ${fixCount}` },
+          { label: t('studioDetail.metrics.signal'), value: signal },
+          {
+            label: t('battle.metrics.prsFix'),
+            value: `${prCount} / ${fixCount}`,
+          },
         ]}
       />
 
       <ObserverActions title={t('battle.observerActions')} />
 
       <div className="mt-2 flex items-center justify-between text-muted-foreground text-xs">
-        <span>Battle ID: {id}</span>
+        <span>
+          {t('battle.idLabel')}: {id}
+        </span>
         <Link
           className="font-semibold text-[11px] text-primary"
           href={`/drafts/${id}`}
         >
-          Open battle
+          {t('battle.openBattle')}
         </Link>
       </div>
     </article>
