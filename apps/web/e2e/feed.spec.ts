@@ -52,4 +52,99 @@ test.describe('Feed page', () => {
         await expect(rangeSelect).toHaveValue('7d');
         await expect(intentSelect).toHaveValue('needs_help');
     });
+
+    test('filters battles by decision status chips', async ({ page }) => {
+        await page.route('**/api/**', async (route) => {
+            const requestUrl = new URL(route.request().url());
+            const path = requestUrl.pathname;
+            const method = route.request().method();
+
+            if (method === 'GET' && path === '/api/feeds/battles') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify([
+                        {
+                            id: 'battle-pending-e2e',
+                            title: 'Battle Pending E2E',
+                            leftLabel: 'Studio A',
+                            rightLabel: 'Studio B',
+                            leftVote: 51,
+                            rightVote: 49,
+                            glowUpScore: 12.4,
+                            prCount: 6,
+                            fixCount: 2,
+                            decision: 'pending',
+                        },
+                        {
+                            id: 'battle-changes-e2e',
+                            title: 'Battle Changes E2E',
+                            leftLabel: 'Studio C',
+                            rightLabel: 'Studio D',
+                            leftVote: 48,
+                            rightVote: 52,
+                            glowUpScore: 11.1,
+                            prCount: 5,
+                            fixCount: 3,
+                            decision: 'changes_requested',
+                        },
+                        {
+                            id: 'battle-merged-e2e',
+                            title: 'Battle Merged E2E',
+                            leftLabel: 'Studio E',
+                            rightLabel: 'Studio F',
+                            leftVote: 57,
+                            rightVote: 43,
+                            glowUpScore: 14.2,
+                            prCount: 8,
+                            fixCount: 4,
+                            decision: 'merged',
+                        },
+                    ]),
+                });
+            }
+
+            if (method === 'POST' && path === '/api/telemetry/ux') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ ok: true }),
+                });
+            }
+
+            return route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify([]),
+            });
+        });
+
+        await page.goto('/feed');
+        await page.getByRole('button', { name: /Battles/i }).click();
+        await expect(page).toHaveURL(/tab=Battles/);
+
+        await expect(page.getByText('Battle Pending E2E')).toBeVisible();
+        await expect(page.getByText('Battle Changes E2E')).toBeVisible();
+        await expect(page.getByText('Battle Merged E2E')).toBeVisible();
+
+        await page.getByRole('button', { name: /^Pending$/i }).click();
+        await expect(page.getByText('Battle Pending E2E')).toBeVisible();
+        await expect(page.getByText('Battle Changes E2E')).toHaveCount(0);
+        await expect(page.getByText('Battle Merged E2E')).toHaveCount(0);
+
+        await page.getByRole('button', { name: /Changes requested/i }).click();
+        await expect(page.getByText('Battle Pending E2E')).toHaveCount(0);
+        await expect(page.getByText('Battle Changes E2E')).toBeVisible();
+        await expect(page.getByText('Battle Merged E2E')).toHaveCount(0);
+
+        await page.getByRole('button', { name: /^Merged$/i }).click();
+        await expect(page.getByText('Battle Pending E2E')).toHaveCount(0);
+        await expect(page.getByText('Battle Changes E2E')).toHaveCount(0);
+        await expect(page.getByText('Battle Merged E2E')).toBeVisible();
+
+        await page.getByRole('button', { name: /All battles/i }).click();
+        await expect(page.getByText('Battle Pending E2E')).toBeVisible();
+        await expect(page.getByText('Battle Changes E2E')).toBeVisible();
+        await expect(page.getByText('Battle Merged E2E')).toBeVisible();
+    });
 });
