@@ -17,7 +17,7 @@ export const LivePanel = ({ scope }: LivePanelProps) => {
         <h3 className="font-semibold text-foreground text-sm">
           {t('footer.liveUpdates')}
         </h3>
-        <span className="rounded-full bg-emerald-500/15 px-2 py-1 font-semibold text-emerald-500 text-xs">
+        <span className="tag-live rounded-full border px-2 py-1 font-semibold text-xs">
           {t('common.live')}
         </span>
       </div>

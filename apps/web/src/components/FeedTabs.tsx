@@ -321,6 +321,32 @@ export const FeedTabs = () => {
     return t('feedTabs.battleFilter.allBattles');
   };
 
+  const quickScopeClass = (scopeId: string, isActive: boolean): string => {
+    if (!isActive) {
+      return 'border-border bg-muted/70 text-muted-foreground hover:border-secondary/45 hover:text-foreground';
+    }
+    if (scopeId === 'live') {
+      return 'tag-live';
+    }
+    if (scopeId === 'top24') {
+      return 'tag-hot';
+    }
+    return 'border-secondary/45 bg-secondary/15 text-secondary';
+  };
+
+  const tabClass = (tab: string, isActive: boolean): string => {
+    if (!isActive) {
+      return 'border-border bg-muted/70 text-muted-foreground hover:border-primary/40 hover:text-foreground';
+    }
+    if (tab === 'Hot Now') {
+      return 'tag-hot';
+    }
+    if (tab === 'Live Drafts') {
+      return 'tag-live';
+    }
+    return 'border-primary/50 bg-primary/15 text-primary';
+  };
+
   useEffect(() => {
     setActive((previous) =>
       previous === queryState.tab ? previous : queryState.tab,
@@ -749,11 +775,7 @@ export const FeedTabs = () => {
           {QUICK_SCOPE_TABS.map((scope) => (
             <button
               aria-pressed={active === scope.tab}
-              className={`rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide ${
-                active === scope.tab
-                  ? 'border border-secondary/45 bg-secondary/15 text-secondary'
-                  : 'border border-border bg-muted/70 text-muted-foreground hover:border-secondary/45 hover:text-foreground'
-              }`}
+              className={`rounded-full border px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide ${quickScopeClass(scope.id, active === scope.tab)}`}
               key={scope.id}
               onClick={() => {
                 setActive(scope.tab);
@@ -802,11 +824,7 @@ export const FeedTabs = () => {
           {TABS.map((tab) => (
             <button
               aria-pressed={active === tab}
-              className={`rounded-full px-4 py-2 font-semibold text-xs uppercase tracking-wide ${
-                active === tab
-                  ? 'border border-primary/50 bg-primary/15 text-primary shadow-[0_0_0_1px_rgba(12,220,247,0.2)]'
-                  : 'border border-border bg-muted/70 text-muted-foreground hover:border-primary/40 hover:text-foreground'
-              }`}
+              className={`rounded-full border px-4 py-2 font-semibold text-xs uppercase tracking-wide ${tabClass(tab, active === tab)}`}
               key={tab}
               onClick={() => {
                 setActive(tab);

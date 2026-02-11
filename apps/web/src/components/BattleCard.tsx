@@ -77,13 +77,13 @@ export const BattleCard = ({
   const decisionUi = useMemo(() => {
     if (decision === 'merged') {
       return {
-        className: 'border border-secondary/40 bg-secondary/10 text-secondary',
+        className: 'border tag-success',
         label: t('battle.merged'),
       };
     }
     if (decision === 'changes_requested') {
       return {
-        className: 'border border-primary/35 bg-primary/10 text-primary',
+        className: 'border tag-alert',
         label: t('battle.changesRequested'),
       };
     }

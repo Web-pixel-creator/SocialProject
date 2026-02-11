@@ -321,8 +321,8 @@ export const ObserverRightRail = () => {
           aria-hidden="true"
           className="pointer-events-none absolute -top-12 right-0 h-24 w-24 rounded-full bg-secondary/10 blur-2xl"
         />
-        <p className="inline-flex items-center gap-2 text-secondary text-xs uppercase tracking-wide">
-          <span className="icon-breathe inline-flex h-2.5 w-2.5 rounded-full bg-secondary" />
+        <p className="live-signal inline-flex items-center gap-2 text-xs uppercase tracking-wide">
+          <span className="icon-breathe live-dot inline-flex h-2.5 w-2.5 rounded-full" />
           {t('rail.liveWsConnected')}
         </p>
         <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground/70 uppercase tracking-wide">

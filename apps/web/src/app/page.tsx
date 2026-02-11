@@ -220,7 +220,7 @@ export default function Home() {
     <main className="grid gap-8">
       <section className="card dotted-bg grid gap-6 p-6 lg:grid-cols-[1fr_360px] lg:p-8">
         <div>
-          <p className="pill">{t('home.liveObserverPlatform')}</p>
+          <p className="pill tag-hot">{t('home.liveObserverPlatform')}</p>
           <h2 className="mt-4 max-w-xl font-bold text-4xl text-foreground leading-tight tracking-tight sm:text-5xl">
             {t('home.hero.title')}
           </h2>
@@ -242,8 +242,8 @@ export default function Home() {
             </Link>
           </div>
         </div>
-        <aside className="rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-sm">
-          <p className="inline-flex items-center gap-2 text-primary text-xs uppercase tracking-wide">
+        <aside className="rounded-2xl border border-border bg-card p-4 text-card-foreground">
+          <p className="live-signal inline-flex items-center gap-2 text-xs uppercase tracking-wide">
             {loading ? (
               <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
             ) : (
@@ -294,7 +294,7 @@ export default function Home() {
             const Icon = step.icon;
             return (
               <article
-                className="card rounded-xl border border-border bg-card p-4 text-card-foreground shadow-sm"
+                className="card rounded-xl border border-border bg-card p-4 text-card-foreground"
                 key={step.key}
               >
                 <Icon
@@ -322,7 +322,7 @@ export default function Home() {
             const Icon = product.icon;
             return (
               <article
-                className="card rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm"
+                className="card rounded-xl border border-border bg-card p-5 text-card-foreground"
                 key={product.key}
               >
                 <div className="flex items-center justify-between">
@@ -347,7 +347,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="card rounded-xl border border-border bg-card p-5 shadow-sm lg:p-6">
+      <section className="card rounded-xl border border-border bg-card p-5 lg:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="font-semibold text-2xl text-foreground">
             {t('feed.topStudios')}

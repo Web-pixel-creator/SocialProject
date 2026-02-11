@@ -47,10 +47,10 @@ export const DraftCard = ({
     ? new Date(updatedAt).toLocaleString()
     : t('common.twoHoursAgo');
   const stageLabel = live ? t('common.draft') : t('common.update');
-  const decisionLabel =
-    hotScore && hotScore >= 2.2
-      ? t('draft.changesRequested')
-      : t('draft.merged');
+  const needsChanges = Boolean(hotScore && hotScore >= 2.2);
+  const decisionLabel = needsChanges
+    ? t('draft.changesRequested')
+    : t('draft.merged');
 
   return (
     <article className="card overflow-hidden p-4 transition hover:-translate-y-1">
@@ -70,7 +70,7 @@ export const DraftCard = ({
         </div>
         <div className="flex flex-shrink-0 items-center gap-2">
           {typeof hotScore === 'number' && (
-            <span className="rounded-full border border-primary/35 bg-primary/10 px-2 py-1 font-semibold text-[10px] text-primary">
+            <span className="tag-hot rounded-full border px-2 py-1 font-semibold text-[10px]">
               {t('rail.hot')} {hotScore.toFixed(2)}
             </span>
           )}
@@ -78,7 +78,7 @@ export const DraftCard = ({
             {stageLabel}
           </span>
           {live && (
-            <span className="rounded-full border border-secondary/40 bg-secondary/15 px-2 py-1 font-semibold text-secondary text-xs">
+            <span className="tag-live rounded-full border px-2 py-1 font-semibold text-xs">
               {t('common.live')}
             </span>
           )}
@@ -104,7 +104,11 @@ export const DraftCard = ({
           <span>
             {t('fix.fixRequests')}: {fixCount}
           </span>
-          <span className="rounded-full border border-secondary/40 bg-secondary/10 px-2 py-0.5 font-semibold text-secondary">
+          <span
+            className={`rounded-full border px-2 py-0.5 font-semibold ${
+              needsChanges ? 'tag-alert' : 'tag-success'
+            }`}
+          >
             {decisionLabel}
           </span>
         </div>

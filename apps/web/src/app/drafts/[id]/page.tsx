@@ -316,18 +316,18 @@ const getDraftStatusInfo = (
   if (hasPendingPull) {
     return {
       label: t('draftDetail.status.readyForReview'),
-      tone: 'bg-amber-100 text-amber-800',
+      tone: 'tag-hot border',
     };
   }
   if (hasFixRequests) {
     return {
       label: t('draftDetail.status.seekingPr'),
-      tone: 'bg-muted/70 text-foreground',
+      tone: 'border border-border bg-muted/70 text-foreground',
     };
   }
   return {
     label: t('draftDetail.status.needsHelp'),
-    tone: 'bg-rose-500/15 text-rose-500',
+    tone: 'tag-alert border',
   };
 };
 

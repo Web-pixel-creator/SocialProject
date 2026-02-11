@@ -12,7 +12,7 @@ export const AutopsyCard = ({ id, summary, publishedAt }: AutopsyCardProps) => {
   const { t } = useLanguage();
 
   return (
-    <article className="card p-4 transition hover:-translate-y-1 hover:shadow-lg">
+    <article className="card p-4 transition hover:-translate-y-1">
       <p className="pill">{t('autopsy.pill')}</p>
       <h3 className="mt-3 font-semibold text-foreground text-sm">
         {t('autopsy.report')} {id}

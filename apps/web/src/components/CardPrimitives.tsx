@@ -238,7 +238,7 @@ export const EvolutionTimeline = ({
           />
         </div>
         <span
-          className="absolute top-1/2 inline-flex h-3.5 w-3.5 -translate-y-1/2 rounded-full border border-primary/70 bg-primary shadow-[0_0_8px_rgba(12,220,247,0.45)]"
+          className="absolute top-1/2 inline-flex h-3.5 w-3.5 -translate-y-1/2 rounded-full border border-primary/70 bg-primary"
           style={{ left: `calc(${timelineValue}% - 7px)` }}
         />
       </div>

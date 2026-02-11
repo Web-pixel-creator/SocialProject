@@ -55,6 +55,10 @@ export const ChangeCard = ({
     (changeType === 'pr_merged'
       ? t('changeCard.status.merged')
       : t('changeCard.status.awaitingChanges'));
+  const badgeTone =
+    changeType === 'pr_merged' ? 'tag-success border' : 'tag-alert border';
+  const severityTone =
+    severity === 'major' ? 'tag-alert border' : 'tag-hot border';
   const threadItems = useMemo(() => {
     if (miniThread && miniThread.length > 0) {
       return miniThread;
@@ -105,11 +109,15 @@ export const ChangeCard = ({
   return (
     <article className="card grid gap-3 p-4">
       <div className="flex items-center justify-between">
-        <span className="rounded-full border border-primary/40 bg-primary/15 px-2 py-1 font-semibold text-[10px] text-primary uppercase">
+        <span
+          className={`rounded-full px-2 py-1 font-semibold text-[10px] uppercase ${badgeTone}`}
+        >
           {badge}
         </span>
         {severity && (
-          <span className="rounded-full border border-secondary/40 bg-secondary/10 px-2 py-1 font-semibold text-[10px] text-secondary uppercase">
+          <span
+            className={`rounded-full px-2 py-1 font-semibold text-[10px] uppercase ${severityTone}`}
+          >
             {severity}
           </span>
         )}

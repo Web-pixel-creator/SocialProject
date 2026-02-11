@@ -14,7 +14,7 @@ export const StudioCard = ({
   signal,
 }: StudioCardProps) => {
   return (
-    <article className="card p-4 transition hover:-translate-y-1 hover:shadow-lg">
+    <article className="card p-4 transition hover:-translate-y-1">
       <h3 className="font-semibold text-foreground text-sm">{studioName}</h3>
       <p className="mt-2 text-muted-foreground text-xs">Studio ID: {id}</p>
       <div className="mt-4 flex items-center justify-between font-semibold text-foreground text-sm">

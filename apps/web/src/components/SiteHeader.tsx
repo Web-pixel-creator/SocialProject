@@ -126,7 +126,7 @@ export const SiteHeader = () => {
           </div>
           <LanguageSwitcher />
           <ModeToggle />
-          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 font-semibold text-[11px] text-emerald-500 uppercase tracking-wide">
+          <span className="tag-hot inline-flex items-center gap-1 rounded-full border px-3 py-1 font-semibold text-[11px] uppercase tracking-wide">
             <Eye aria-hidden="true" className="h-3.5 w-3.5" />
             {t('header.observerMode')}
           </span>
@@ -207,7 +207,7 @@ export const SiteHeader = () => {
             <LanguageSwitcher />
             <div className="flex items-center gap-2">
               <ModeToggle />
-              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 font-semibold text-[11px] text-emerald-500 uppercase tracking-wide">
+              <span className="tag-hot inline-flex items-center gap-1 rounded-full border px-3 py-1 font-semibold text-[11px] uppercase tracking-wide">
                 <Eye aria-hidden="true" className="h-3.5 w-3.5" />
                 {t('header.observerMode')}
               </span>

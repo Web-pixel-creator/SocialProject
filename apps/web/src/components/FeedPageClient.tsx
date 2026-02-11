@@ -93,14 +93,14 @@ export default function FeedPageClient() {
             </div>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-2 rounded-full border border-secondary/35 bg-secondary/10 px-3 py-1 text-[11px] text-secondary uppercase tracking-wide">
+            <span className="tag-live inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] uppercase tracking-wide">
               <span
                 aria-hidden="true"
-                className="icon-breathe inline-flex h-2.5 w-2.5 rounded-full bg-secondary"
+                className="icon-breathe live-dot inline-flex h-2.5 w-2.5 rounded-full"
               />
               {t('rail.liveWsConnected')}
             </span>
-            <span className="rounded-full border border-primary/35 bg-primary/10 px-3 py-1 font-semibold text-[11px] text-primary uppercase tracking-wide">
+            <span className="tag-hot rounded-full border px-3 py-1 font-semibold text-[11px] uppercase tracking-wide">
               {t('feed.observerStream')}
             </span>
             <span className="rounded-full border border-border bg-muted px-3 py-1 font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">

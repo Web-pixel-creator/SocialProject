@@ -44,6 +44,16 @@ export const PullRequestList = ({ items }: PullRequestListProps) => {
     return t('pullRequestList.status.changesRequested');
   };
 
+  const statusTone = (status: PullRequestItem['status']) => {
+    if (status === 'pending') {
+      return 'tag-hot border';
+    }
+    if (status === 'merged') {
+      return 'tag-success border';
+    }
+    return 'tag-alert border';
+  };
+
   return (
     <div className="card p-4">
       <div className="flex items-center justify-between">
@@ -79,10 +89,12 @@ export const PullRequestList = ({ items }: PullRequestListProps) => {
             className="rounded-xl border border-border bg-background/70 p-3"
             key={item.id}
           >
-            <p className="font-semibold text-muted-foreground text-xs uppercase">
+            <span
+              className={`rounded-full px-2 py-1 font-semibold text-[10px] uppercase ${statusTone(item.status)}`}
+            >
               {statusLabel(item.status)}
-            </p>
-            <p className="text-foreground text-sm">{item.description}</p>
+            </span>
+            <p className="mt-2 text-foreground text-sm">{item.description}</p>
             <p className="text-muted-foreground text-xs">
               {t('pullRequestList.labels.maker')} {item.maker}
             </p>

@@ -115,21 +115,38 @@ interface PanelHeaderProps {
   icon: typeof Activity;
   title: string;
   badge?: string;
+  badgeTone?: 'default' | 'hot' | 'live';
 }
 
-export const PanelHeader = ({ icon: Icon, title, badge }: PanelHeaderProps) => (
-  <div className="mb-2 flex items-center justify-between gap-2">
-    <h3 className="inline-flex items-center gap-2 font-semibold text-foreground text-sm">
-      <Icon aria-hidden="true" className="h-4 w-4 text-primary" />
-      {title}
-    </h3>
-    {badge ? (
-      <span className="rounded-full border border-border bg-muted/80 px-2 py-0.5 font-semibold text-[10px] text-muted-foreground uppercase tracking-wide">
-        {badge}
-      </span>
-    ) : null}
-  </div>
-);
+export const PanelHeader = ({
+  icon: Icon,
+  title,
+  badge,
+  badgeTone = 'default',
+}: PanelHeaderProps) => {
+  let badgeClass = 'border-border bg-muted/80 text-muted-foreground';
+  if (badgeTone === 'hot') {
+    badgeClass = 'tag-hot';
+  } else if (badgeTone === 'live') {
+    badgeClass = 'tag-live';
+  }
+
+  return (
+    <div className="mb-2 flex items-center justify-between gap-2">
+      <h3 className="inline-flex items-center gap-2 font-semibold text-foreground text-sm">
+        <Icon aria-hidden="true" className="h-4 w-4 text-primary" />
+        {title}
+      </h3>
+      {badge ? (
+        <span
+          className={`rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide ${badgeClass}`}
+        >
+          {badge}
+        </span>
+      ) : null}
+    </div>
+  );
+};
 
 interface ItemListProps {
   icon: typeof Activity;
@@ -187,7 +204,7 @@ export const BattleList = ({
   className,
 }: BattleListProps) => (
   <section className={`card p-3 ${className ?? ''}`}>
-    <PanelHeader badge={hotLabel} icon={Swords} title={title} />
+    <PanelHeader badge={hotLabel} badgeTone="hot" icon={Swords} title={title} />
     <ul className="grid gap-2 text-xs">
       {items.map((item, index) => (
         <li
@@ -198,9 +215,7 @@ export const BattleList = ({
             <p className="line-clamp-2 text-foreground">{item.title}</p>
             <span
               className={`rounded-full px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide ${
-                index === 0
-                  ? 'border border-primary/40 bg-primary/15 text-primary'
-                  : 'border border-primary/35 bg-primary/10 text-primary'
+                index === 0 ? 'tag-hot border' : 'tag-live border'
               }`}
             >
               {index === 0 ? hotLabel : liveLabel}
@@ -239,7 +254,7 @@ export const ActivityTicker = ({
           <div className="flex items-start gap-2">
             <span
               aria-hidden="true"
-              className="icon-breathe mt-1 inline-flex h-2 w-2 rounded-full bg-secondary"
+              className="icon-breathe live-dot mt-1 inline-flex h-2 w-2 rounded-full"
             />
             <div>
               <p className="line-clamp-2 text-foreground">{item.title}</p>

@@ -233,19 +233,33 @@ export default function PullRequestReviewPage({
     }
     return t('pullRequestReview.status.changesRequested');
   })();
+  const statusTone = (() => {
+    if (pullRequest.status === 'pending') {
+      return 'tag-hot border';
+    }
+    if (pullRequest.status === 'merged') {
+      return 'tag-success border';
+    }
+    return 'tag-alert border';
+  })();
 
   return (
     <main className="grid gap-6">
       <div className="card p-6">
         <p className="pill">{t('pullRequestReview.header.pill')}</p>
-        <h2 className="mt-3 font-semibold text-2xl text-foreground">
-          PR {pullRequest.id}
-        </h2>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <h2 className="font-semibold text-2xl text-foreground">
+            PR {pullRequest.id}
+          </h2>
+          <span
+            className={`rounded-full px-2.5 py-1 font-semibold text-[10px] uppercase ${statusTone}`}
+          >
+            {statusLabel}
+          </span>
+        </div>
         <p className="text-muted-foreground text-sm">
           {`${makerStudio} → ${authorStudio}`} |{' '}
           {pullRequest.severity.toUpperCase()}
-          {' | '}
-          {statusLabel}
         </p>
       </div>
       {error && (
@@ -322,7 +336,7 @@ export default function PullRequestReviewPage({
             />
             <div className="mt-4 grid gap-2">
               <button
-                className="rounded-full bg-emerald-500 px-4 py-2 font-semibold text-white text-xs"
+                className="tag-success rounded-full border px-4 py-2 font-semibold text-xs"
                 disabled={decisionLoading}
                 onClick={() => handleDecision('merge')}
                 type="button"
@@ -330,7 +344,7 @@ export default function PullRequestReviewPage({
                 {t('pullRequestReview.decision.actions.merge')}
               </button>
               <button
-                className="rounded-full border border-border bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60"
+                className="tag-hot rounded-full border px-4 py-2 font-semibold text-xs transition"
                 disabled={decisionLoading}
                 onClick={() => handleDecision('request_changes')}
                 type="button"
@@ -338,7 +352,7 @@ export default function PullRequestReviewPage({
                 {t('pullRequestReview.decision.actions.requestChanges')}
               </button>
               <button
-                className="rounded-full bg-rose-500 px-4 py-2 font-semibold text-white text-xs"
+                className="tag-alert rounded-full border px-4 py-2 font-semibold text-xs"
                 disabled={decisionLoading}
                 onClick={() => handleDecision('reject')}
                 type="button"

@@ -828,7 +828,7 @@ function SearchPageContent() {
                   key={result.id}
                 >
                   <Link
-                    className="block rounded-xl p-3 transition hover:bg-background/70 hover:shadow-sm"
+                    className="block rounded-xl p-3 transition hover:bg-background/70"
                     href={href}
                     onClick={handleOpen}
                   >

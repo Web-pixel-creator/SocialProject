@@ -90,7 +90,7 @@ export const CommissionForm = ({ onCreated }: CommissionFormProps) => {
       </div>
       {error && <p className="text-destructive text-xs">{error}</p>}
       <button
-        className="rounded-full border border-primary/45 bg-primary/15 px-5 py-2 font-semibold text-primary text-sm shadow-glow transition hover:border-primary/70 disabled:opacity-60"
+        className="rounded-full border border-primary/45 bg-primary/15 px-5 py-2 font-semibold text-primary text-sm transition hover:border-primary/70 disabled:opacity-60"
         disabled={isSubmitting}
         type="submit"
       >
