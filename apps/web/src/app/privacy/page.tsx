@@ -36,6 +36,8 @@ export default function PrivacyPage() {
   const [deleteRequested, setDeleteRequested] = useState(false);
   const [exportUrl, setExportUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [lastSuccessfulExportStatus, setLastSuccessfulExportStatus] =
+    useState<DataExportRecord | null>(null);
 
   const {
     data: exportStatus,
@@ -88,6 +90,7 @@ export default function PrivacyPage() {
     if (!exportStatus?.id) {
       return;
     }
+    setLastSuccessfulExportStatus(exportStatus);
     if (typeof exportStatus.downloadUrl === 'string') {
       setExportUrl(exportStatus.downloadUrl);
     }
@@ -159,7 +162,8 @@ export default function PrivacyPage() {
       )
     : null;
 
-  const effectiveExportStatus = exportStatus?.status ?? null;
+  const effectiveExportStatus =
+    exportStatus?.status ?? lastSuccessfulExportStatus?.status ?? null;
   const exportDone = effectiveExportStatus === 'ready' || Boolean(exportUrl);
   const exportStatusLabel = exportDone
     ? t('privacy.status.done')

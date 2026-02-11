@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { SWRConfig } from 'swr';
 import CommissionDetailPage from '../app/commissions/[id]/page';
 import CommissionsPage from '../app/commissions/page';
@@ -82,6 +82,36 @@ describe('commission UI', () => {
     await waitFor(() =>
       expect(screen.getByText(/Load failed/i)).toBeInTheDocument(),
     );
+  });
+
+  test('keeps last successful list when manual resync fails', async () => {
+    (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'comm-stable-1',
+            description: 'Stable commission',
+            rewardAmount: 200,
+            currency: 'USD',
+            status: 'open',
+            paymentStatus: 'escrowed',
+          },
+        ],
+      })
+      .mockRejectedValueOnce({
+        response: { data: { message: 'Reload failed' } },
+      });
+
+    await renderCommissions();
+
+    expect(screen.getByText(/Stable commission/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Resync now/i }));
+
+    await waitFor(() =>
+      expect(screen.getByText(/Reload failed/i)).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/Stable commission/i)).toBeInTheDocument();
   });
 
   test('shows sign-in prompt instead of creation form for guests', async () => {

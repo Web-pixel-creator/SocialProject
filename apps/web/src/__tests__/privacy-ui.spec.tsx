@@ -157,6 +157,43 @@ describe('privacy UI', () => {
     );
   });
 
+  test('keeps last successful export state when resync fails', async () => {
+    localStorage.setItem('finishit-privacy-export-id', 'export-stable');
+    (apiClient.get as jest.Mock).mockResolvedValue({
+      data: {
+        id: 'export-stable',
+        status: 'ready',
+        downloadUrl: 'https://example.com/export-stable.zip',
+      },
+    });
+
+    render(<PrivacyPage />);
+
+    await waitFor(() =>
+      expect(apiClient.get).toHaveBeenCalledWith(
+        '/account/exports/export-stable',
+      ),
+    );
+    expect(await screen.findByText(/Download export/i)).toHaveAttribute(
+      'href',
+      'https://example.com/export-stable.zip',
+    );
+
+    (apiClient.get as jest.Mock).mockRejectedValueOnce({
+      response: { data: { message: 'Status reload failed' } },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Resync now/i }));
+
+    expect(
+      await screen.findByText(/Status reload failed/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Download export/i)).toHaveAttribute(
+      'href',
+      'https://example.com/export-stable.zip',
+    );
+  });
+
   test('shows sign-in prompt when user is not authenticated', () => {
     useAuthMock.mockReturnValue({
       isAuthenticated: false,
