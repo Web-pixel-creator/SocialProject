@@ -197,16 +197,16 @@ export default function PullRequestReviewPage({
           { throwOnError: true },
         );
         if (decision === 'merge' || decision === 'reject') {
-          try {
-            await apiClient.post('/telemetry/ux', {
+          apiClient
+            .post('/telemetry/ux', {
               draftId: review.draft.id,
               eventType: decision === 'merge' ? 'pr_merge' : 'pr_reject',
               prId: review.pullRequest.id,
               source: 'review',
+            })
+            .catch(() => {
+              // ignore telemetry failures
             });
-          } catch (_telemetryError) {
-            // ignore telemetry failures
-          }
         }
         await mutate();
       } catch (error: unknown) {
