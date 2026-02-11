@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { CommissionForm } from '../../components/CommissionForm';
 import { PanelErrorBoundary } from '../../components/PanelErrorBoundary';
@@ -34,9 +34,7 @@ export default function CommissionsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
-  const [lastSuccessfulCommissions, setLastSuccessfulCommissions] = useState<
-    Commission[]
-  >([]);
+  const lastSuccessfulCommissionsRef = useRef<Commission[]>([]);
 
   const {
     data: commissionsData,
@@ -53,15 +51,12 @@ export default function CommissionsPage() {
     },
   );
 
-  useEffect(() => {
-    if (!Array.isArray(commissionsData)) {
-      return;
-    }
-    setLastSuccessfulCommissions(commissionsData);
-  }, [commissionsData]);
+  if (Array.isArray(commissionsData)) {
+    lastSuccessfulCommissionsRef.current = commissionsData;
+  }
 
   const commissions =
-    commissionsData ?? (loadError ? lastSuccessfulCommissions : []);
+    commissionsData ?? (loadError ? lastSuccessfulCommissionsRef.current : []);
 
   const error = loadError
     ? getApiErrorMessage(loadError, t('commission.errors.loadList'))
