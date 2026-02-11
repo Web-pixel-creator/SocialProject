@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import useSWRMutation from 'swr/mutation';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { apiClient, setAgentAuth } from '../../../lib/api';
 import { getApiErrorMessage } from '../../../lib/errors';
@@ -20,6 +21,30 @@ const ACTION_LIMITS = {
   fix_request: 5,
 };
 
+interface StudioProfilePayload {
+  avatar_url?: string | null;
+  avatarUrl?: string | null;
+  personality?: string | null;
+  studio_name?: string | null;
+  studioName?: string | null;
+  style_tags?: string[] | null;
+  styleTags?: string[] | null;
+}
+
+interface ConnectAgentPayload {
+  agentId: string;
+  apiKey: string;
+}
+
+interface SaveProfilePayload {
+  agentId: string;
+  apiKey: string;
+  studioName: string;
+  personality: string | null;
+  avatarUrl: string;
+  styleTags: string[];
+}
+
 export default function StudioOnboardingPage() {
   const { t } = useLanguage();
   const CHECKLIST = [
@@ -36,9 +61,41 @@ export default function StudioOnboardingPage() {
   const [personality, setPersonality] = useState('');
   const [styleTags, setStyleTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+
+  const { isMutating: connectingAgent, trigger: triggerConnectAgent } =
+    useSWRMutation<StudioProfilePayload, unknown, string, ConnectAgentPayload>(
+      'studio:onboarding:connect',
+      async (_key, { arg }) => {
+        const response = await apiClient.get(`/studios/${arg.agentId}`);
+        return (response.data ?? {}) as StudioProfilePayload;
+      },
+    );
+
+  const { isMutating: savingProfile, trigger: triggerSaveProfile } =
+    useSWRMutation<void, unknown, string, SaveProfilePayload>(
+      'studio:onboarding:save',
+      async (_key, { arg }) => {
+        await apiClient.put(
+          `/studios/${arg.agentId}`,
+          {
+            studioName: arg.studioName,
+            personality: arg.personality,
+            avatarUrl: arg.avatarUrl,
+            styleTags: arg.styleTags,
+          },
+          {
+            headers: {
+              'x-agent-id': arg.agentId,
+              'x-api-key': arg.apiKey,
+            },
+          },
+        );
+      },
+    );
+
+  const loading = connectingAgent || savingProfile;
 
   useEffect(() => {
     const storedId = localStorage.getItem(STORAGE_AGENT_ID) ?? '';
@@ -67,23 +124,24 @@ export default function StudioOnboardingPage() {
     localStorage.setItem(STORAGE_AGENT_ID, agentId.trim());
     localStorage.setItem(STORAGE_AGENT_KEY, apiKey.trim());
 
-    setLoading(true);
     try {
-      const response = await apiClient.get(`/studios/${agentId.trim()}`);
-      setStudioName(
-        response.data?.studioName ?? response.data?.studio_name ?? '',
+      const profile = await triggerConnectAgent(
+        {
+          agentId: agentId.trim(),
+          apiKey: apiKey.trim(),
+        },
+        { throwOnError: true },
       );
-      setPersonality(response.data?.personality ?? '');
-      setAvatarUrl(response.data?.avatarUrl ?? response.data?.avatar_url ?? '');
-      const tags = response.data?.styleTags ?? response.data?.style_tags ?? [];
+      setStudioName(profile?.studioName ?? profile?.studio_name ?? '');
+      setPersonality(profile?.personality ?? '');
+      setAvatarUrl(profile?.avatarUrl ?? profile?.avatar_url ?? '');
+      const tags = profile?.styleTags ?? profile?.style_tags ?? [];
       setStyleTags(Array.isArray(tags) ? tags : []);
       setStep(2);
     } catch (error: unknown) {
       setError(
         getApiErrorMessage(error, t('studioOnboarding.errors.loadProfile')),
       );
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -108,22 +166,17 @@ export default function StudioOnboardingPage() {
       setError(t('studioOnboarding.errors.invalidProfile'));
       return;
     }
-    setLoading(true);
     try {
-      await apiClient.put(
-        `/studios/${agentId}`,
+      await triggerSaveProfile(
         {
+          agentId,
+          apiKey,
           studioName: studioName.trim(),
           personality: personality.trim() || null,
           avatarUrl: avatarUrl.trim(),
           styleTags,
         },
-        {
-          headers: {
-            'x-agent-id': agentId,
-            'x-api-key': apiKey,
-          },
-        },
+        { throwOnError: true },
       );
       setSaved(true);
       setStep(3);
@@ -131,8 +184,6 @@ export default function StudioOnboardingPage() {
       setError(
         getApiErrorMessage(error, t('studioOnboarding.errors.saveProfile')),
       );
-    } finally {
-      setLoading(false);
     }
   };
 
