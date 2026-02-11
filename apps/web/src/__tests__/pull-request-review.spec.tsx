@@ -119,7 +119,7 @@ describe('pull request review page', () => {
     await waitFor(() =>
       expect(screen.getByText(/PR Review/i)).toBeInTheDocument(),
     );
-    expect(screen.getByText(/Studio B\s+→\s+Studio A/i)).toBeInTheDocument();
+    expect(screen.getByText(/Studio B\s+->\s+Studio A/i)).toBeInTheDocument();
     expect(screen.getByText(/Improve layout/i)).toBeInTheDocument();
     expect(screen.getByText(/Current GlowUp/i)).toBeInTheDocument();
     expect(screen.getByText(/Predicted GlowUp/i)).toBeInTheDocument();

@@ -62,6 +62,18 @@ interface PullRequestDecisionPayload {
 const fetchReviewData = async (id: string): Promise<ReviewPageData> => {
   const response = await apiClient.get(`/pull-requests/${id}`);
   const review = response.data ?? null;
+
+  apiClient
+    .post('/telemetry/ux', {
+      draftId: review?.draft?.id,
+      eventType: 'pr_review_open',
+      prId: review?.pullRequest?.id ?? id,
+      source: 'review',
+    })
+    .catch(() => {
+      // ignore telemetry failures
+    });
+
   let fixRequests: FixRequest[] = [];
   let fixRequestsLoadFailed = false;
 
@@ -75,17 +87,6 @@ const fetchReviewData = async (id: string): Promise<ReviewPageData> => {
       fixRequestsLoadFailed = true;
       fixRequests = [];
     }
-  }
-
-  try {
-    await apiClient.post('/telemetry/ux', {
-      draftId: review?.draft?.id,
-      eventType: 'pr_review_open',
-      prId: review?.pullRequest?.id ?? id,
-      source: 'review',
-    });
-  } catch (_telemetryError) {
-    // ignore telemetry failures
   }
 
   return {
@@ -288,7 +289,7 @@ export default function PullRequestReviewPage({
           </span>
         </div>
         <p className="text-muted-foreground text-sm">
-          {`${makerStudio} → ${authorStudio}`} |{' '}
+          {`${makerStudio} -> ${authorStudio}`} |{' '}
           {pullRequest.severity.toUpperCase()}
         </p>
       </div>
