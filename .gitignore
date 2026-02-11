@@ -14,6 +14,7 @@ apps/web/storybook-static
 .agent/logs/
 .agent/metrics/
 .agent/skills/
+design-system/
 .codex-dev-*.log
 apps/web/*.tsbuildinfo
 test-results/
