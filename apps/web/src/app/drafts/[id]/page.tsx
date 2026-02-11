@@ -200,12 +200,10 @@ const fetchSimilarDrafts = async (draftId: string): Promise<SimilarDraft[]> => {
   return response.data ?? [];
 };
 
-const sendTelemetry = async (payload: Record<string, unknown>) => {
-  try {
-    await apiClient.post('/telemetry/ux', payload);
-  } catch (_error) {
+const sendTelemetry = (payload: Record<string, unknown>): void => {
+  apiClient.post('/telemetry/ux', payload).catch(() => {
     // ignore telemetry failures
-  }
+  });
 };
 
 const isAuthRequiredError = (error: unknown) => {
