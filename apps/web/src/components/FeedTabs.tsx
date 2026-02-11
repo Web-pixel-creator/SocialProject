@@ -572,6 +572,9 @@ export const FeedTabs = () => {
       if (pageData.replaceCurrentItems) {
         return pageData.items;
       }
+      if (pageData.fallbackUsed && offset === 0 && prev.length > 0) {
+        return prev;
+      }
       return offset === 0 ? pageData.items : [...prev, ...pageData.items];
     });
     setHasMore(pageData.hasMore);

@@ -9,6 +9,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { mutate } from 'swr';
 import { DraftCard } from '../components/DraftCard';
 import { endpointForTab, FeedTabs } from '../components/FeedTabs';
 import { apiClient } from '../lib/api';
@@ -776,6 +777,53 @@ describe('feed UI', () => {
     );
     expect(screen.getByText(/API Hot 1/i)).toBeInTheDocument();
     expect(screen.queryByText(/Synthwave Poster/i)).toBeNull();
+  });
+
+  test('keeps current hot-now items when first-page refresh fails', async () => {
+    searchParams = new URLSearchParams('tab=Hot%20Now');
+    let phase: 'initial' | 'failed' = 'initial';
+
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url === '/feeds/hot-now' && phase === 'initial') {
+        return Promise.resolve({
+          data: [
+            {
+              draftId: 'hot-stable',
+              title: 'API Hot Stable',
+              glowUpScore: 7.5,
+              hotScore: 1.5,
+              reasonLabel: 'Stable momentum',
+            },
+          ],
+        });
+      }
+      return Promise.reject(new Error('refresh failed'));
+    });
+
+    render(<FeedTabs />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/API Hot Stable/i)).toBeInTheDocument(),
+    );
+
+    phase = 'failed';
+    await act(async () => {
+      await mutate(
+        (key) => Array.isArray(key) && key[0] === 'feed-tabs',
+        undefined,
+        {
+          revalidate: true,
+        },
+      );
+      await flushAsync();
+    });
+
+    await waitFor(() =>
+      expect((apiClient.get as jest.Mock).mock.calls.length).toBeGreaterThan(1),
+    );
+    expect(screen.getByText(/API Hot Stable/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Synthwave Poster/i)).toBeNull();
+    expect(screen.getByText(/Fallback data/i)).toBeInTheDocument();
   });
 
   test('loads next page on scroll near bottom', async () => {
