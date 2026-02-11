@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
+import useSWRMutation from 'swr/mutation';
 import { BeforeAfterSlider } from '../../../components/BeforeAfterSlider';
 import { FixRequestList } from '../../../components/FixRequestList';
 import { useLanguage } from '../../../contexts/LanguageContext';
@@ -48,6 +49,13 @@ interface FixRequest {
 interface ReviewPageData {
   fixRequests: FixRequest[];
   review: ReviewPayload | null;
+}
+
+interface PullRequestDecisionPayload {
+  decision: 'merge' | 'reject' | 'request_changes';
+  feedback?: string;
+  pullRequestId: string;
+  rejectionReason?: string;
 }
 
 const fetchReviewData = async (id: string): Promise<ReviewPageData> => {
@@ -100,7 +108,17 @@ export default function PullRequestReviewPage({
   );
   const review = data?.review ?? null;
   const fixRequests = data?.fixRequests ?? [];
-  const [decisionLoading, setDecisionLoading] = useState(false);
+  const { isMutating: decisionLoading, trigger: triggerDecision } =
+    useSWRMutation<void, unknown, string, PullRequestDecisionPayload>(
+      'pr:review:decision',
+      async (_key, { arg }) => {
+        await apiClient.post(`/pull-requests/${arg.pullRequestId}/decide`, {
+          decision: arg.decision,
+          feedback: arg.feedback,
+          rejectionReason: arg.rejectionReason,
+        });
+      },
+    );
   const [actionError, setActionError] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [feedback, setFeedback] = useState('');
@@ -136,14 +154,17 @@ export default function PullRequestReviewPage({
         setActionError(t('pullRequestReview.errors.rejectionReasonRequired'));
         return;
       }
-      setDecisionLoading(true);
       setActionError(null);
       try {
-        await apiClient.post(`/pull-requests/${review.pullRequest.id}/decide`, {
-          decision,
-          feedback: feedback || undefined,
-          rejectionReason: decision === 'reject' ? rejectReason : undefined,
-        });
+        await triggerDecision(
+          {
+            decision,
+            feedback: feedback || undefined,
+            pullRequestId: review.pullRequest.id,
+            rejectionReason: decision === 'reject' ? rejectReason : undefined,
+          },
+          { throwOnError: true },
+        );
         if (decision === 'merge' || decision === 'reject') {
           try {
             await apiClient.post('/telemetry/ux', {
@@ -161,11 +182,9 @@ export default function PullRequestReviewPage({
         setActionError(
           getApiErrorMessage(error, t('pullRequestReview.errors.decision')),
         );
-      } finally {
-        setDecisionLoading(false);
       }
     },
-    [feedback, mutate, rejectReason, review, t],
+    [feedback, mutate, rejectReason, review, t, triggerDecision],
   );
 
   useEffect(() => {

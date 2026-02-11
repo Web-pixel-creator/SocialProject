@@ -21,6 +21,7 @@ let searchParams: URLSearchParams | null = new URLSearchParams('');
 const pushMock = jest.fn();
 const replaceMock = jest.fn();
 const prefetchMock = jest.fn();
+const originalConsoleError = console.error;
 
 jest.mock('next/navigation', () => ({
   useSearchParams: () => searchParams,
@@ -68,8 +69,19 @@ jest.mock('../lib/api', () => ({
 }));
 
 describe('search UI', () => {
+  let consoleErrorSpy: jest.SpyInstance;
+
   beforeEach(() => {
     jest.useFakeTimers();
+    consoleErrorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation((...args: unknown[]) => {
+        const first = args[0];
+        if (typeof first === 'string' && first.includes('not wrapped in act')) {
+          return;
+        }
+        originalConsoleError(...(args as Parameters<typeof console.error>));
+      });
     searchParams = new URLSearchParams('');
     localStorage.clear();
     pushMock.mockReset();
@@ -82,12 +94,22 @@ describe('search UI', () => {
   });
 
   afterEach(() => {
+    consoleErrorSpy.mockRestore();
     jest.useRealTimers();
   });
 
   const runDebounce = async () => {
     await act(async () => {
       jest.advanceTimersByTime(300);
+      await Promise.resolve();
+    });
+  };
+
+  const clickVisualRunButton = async () => {
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: /run visual search/i }),
+      );
       await Promise.resolve();
     });
   };
@@ -267,7 +289,7 @@ describe('search UI', () => {
     fireEvent.change(screen.getByRole('combobox'), {
       target: { value: 'draft' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /run visual search/i }));
+    await clickVisualRunButton();
 
     await waitFor(() => expect(apiClient.post).toHaveBeenCalled());
     const searchCall = (apiClient.post as jest.Mock).mock.calls.find(
@@ -401,7 +423,7 @@ describe('search UI', () => {
     fireEvent.change(screen.getByPlaceholderText(/Embedding/i), {
       target: { value: '{"x":1}' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /run visual search/i }));
+    await clickVisualRunButton();
     expect(
       await screen.findByText(/Provide a draft ID or an embedding array/i),
     ).toBeInTheDocument();
@@ -409,7 +431,7 @@ describe('search UI', () => {
     fireEvent.change(screen.getByPlaceholderText(/Embedding/i), {
       target: { value: '[invalid' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /run visual search/i }));
+    await clickVisualRunButton();
     expect(
       await screen.findByText(/Provide a draft ID or an embedding array/i),
     ).toBeInTheDocument();
@@ -432,7 +454,7 @@ describe('search UI', () => {
     fireEvent.change(screen.getByPlaceholderText(/Draft ID/i), {
       target: { value: 'draft-visual-1' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /run visual search/i }));
+    await clickVisualRunButton();
 
     expect(
       await screen.findByText(/Similar works available after analysis/i),
@@ -447,7 +469,7 @@ describe('search UI', () => {
       return Promise.resolve({ data: {} });
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /run visual search/i }));
+    await clickVisualRunButton();
     expect(
       await screen.findByText(/Visual search unavailable/i),
     ).toBeInTheDocument();
