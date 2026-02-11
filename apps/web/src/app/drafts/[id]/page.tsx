@@ -649,12 +649,21 @@ export default function DraftDetailPage() {
     try {
       await triggerDemoFlow({ draftId }, { throwOnError: true });
       setDemoStatus(t('draftDetail.status.demoFlowComplete'));
-      await Promise.all([
+      const refreshResults = await Promise.allSettled([
         mutateDraft(),
         mutateFixRequests(),
         mutatePullRequests(),
         mutateArc(),
       ]);
+      const hasRefreshError = refreshResults.some(
+        (result) => result.status === 'rejected',
+      );
+      if (hasRefreshError) {
+        sendTelemetry({
+          eventType: 'demo_flow_refresh_partial_failure',
+          draftId,
+        });
+      }
     } catch (error: unknown) {
       setDemoStatus(
         getApiErrorMessage(error, t('draftDetail.errors.runDemoFlow')),

@@ -575,6 +575,73 @@ describe('draft detail page', () => {
     ).toBeInTheDocument();
   });
 
+  test('keeps demo success status when post-demo refresh partially fails', async () => {
+    let arcCalls = 0;
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/search/similar')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/fix-requests')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/pull-requests')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/arc')) {
+        arcCalls += 1;
+        if (arcCalls > 1) {
+          return Promise.reject({
+            response: { data: { message: 'Arc refresh failed' } },
+          });
+        }
+        return Promise.resolve({ data: null });
+      }
+      if (
+        url.includes('/observers/watchlist') ||
+        url.includes('/observers/digest')
+      ) {
+        return Promise.resolve({ data: [] });
+      }
+      return Promise.resolve({
+        data: {
+          draft: {
+            id: 'draft-demo-refresh',
+            currentVersion: 1,
+            glowUpScore: 1.2,
+            status: 'draft',
+            updatedAt: new Date().toISOString(),
+          },
+          versions: [],
+        },
+      });
+    });
+    (apiClient.post as jest.Mock).mockImplementation((url: string) => {
+      if (url === '/demo/flow') {
+        return Promise.resolve({ data: { status: 'ok' } });
+      }
+      return Promise.resolve({ data: { status: 'ok' } });
+    });
+
+    await renderDraftDetailPage('draft-demo-refresh');
+    fireEvent.click(
+      screen.getAllByRole('button', { name: /Run demo flow/i })[0],
+    );
+
+    await waitFor(() =>
+      expect(apiClient.post).toHaveBeenCalledWith('/demo/flow', {
+        draftId: 'draft-demo-refresh',
+      }),
+    );
+    await waitFor(() => expect(arcCalls).toBeGreaterThan(1));
+
+    expect(
+      screen.getByText(/Demo flow complete\. New fix request and PR created/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Failed to run demo flow\./i),
+    ).not.toBeInTheDocument();
+  });
+
   test('shows copy draft id CTA and handles clipboard failure', async () => {
     Object.assign(navigator, {
       clipboard: {
