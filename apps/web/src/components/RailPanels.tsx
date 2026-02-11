@@ -1,6 +1,7 @@
 /* Reusable sub-components for the Observer Right Rail */
 
 import { Activity, Swords } from 'lucide-react';
+import { memo } from 'react';
 
 export interface RailItem {
   id: string;
@@ -118,12 +119,12 @@ interface PanelHeaderProps {
   badgeTone?: 'default' | 'hot' | 'live';
 }
 
-export const PanelHeader = ({
+export const PanelHeader = memo(function PanelHeader({
   icon: Icon,
   title,
   badge,
   badgeTone = 'default',
-}: PanelHeaderProps) => {
+}: PanelHeaderProps) {
   let badgeClass = 'border-border bg-muted/80 text-muted-foreground';
   if (badgeTone === 'hot') {
     badgeClass = 'tag-hot';
@@ -146,7 +147,7 @@ export const PanelHeader = ({
       ) : null}
     </div>
   );
-};
+});
 
 interface ItemListProps {
   icon: typeof Activity;
@@ -155,38 +156,40 @@ interface ItemListProps {
   className?: string;
 }
 
-export const ItemList = ({
+export const ItemList = memo(function ItemList({
   icon: Icon,
   title,
   items,
   className,
-}: ItemListProps) => (
-  <section className={`card p-3 ${className ?? ''}`}>
-    <PanelHeader icon={Icon} title={title} />
-    <ul className="grid gap-2 text-xs">
-      {items.map((item, index) => (
-        <li
-          className="rounded-lg border border-border bg-muted/70 p-2"
-          key={item.id}
-        >
-          <div className="flex items-start gap-2">
-            <span className="inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border border-border bg-background/80 font-semibold text-[10px] text-muted-foreground">
-              {index + 1}
-            </span>
-            <div className="min-w-0">
-              <p className="line-clamp-2 text-foreground">{item.title}</p>
-              {item.meta && (
-                <p className="mt-1 text-[11px] text-muted-foreground/70">
-                  {item.meta}
-                </p>
-              )}
+}: ItemListProps) {
+  return (
+    <section className={`card p-3 ${className ?? ''}`}>
+      <PanelHeader icon={Icon} title={title} />
+      <ul className="grid gap-2 text-xs">
+        {items.map((item, index) => (
+          <li
+            className="rounded-lg border border-border bg-muted/70 p-2"
+            key={item.id}
+          >
+            <div className="flex items-start gap-2">
+              <span className="inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border border-border bg-background/80 font-semibold text-[10px] text-muted-foreground">
+                {index + 1}
+              </span>
+              <div className="min-w-0">
+                <p className="line-clamp-2 text-foreground">{item.title}</p>
+                {item.meta && (
+                  <p className="mt-1 text-[11px] text-muted-foreground/70">
+                    {item.meta}
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
-        </li>
-      ))}
-    </ul>
-  </section>
-);
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+});
 
 interface BattleListProps {
   title: string;
@@ -196,41 +199,48 @@ interface BattleListProps {
   className?: string;
 }
 
-export const BattleList = ({
+export const BattleList = memo(function BattleList({
   title,
   items,
   hotLabel,
   liveLabel,
   className,
-}: BattleListProps) => (
-  <section className={`card p-3 ${className ?? ''}`}>
-    <PanelHeader badge={hotLabel} badgeTone="hot" icon={Swords} title={title} />
-    <ul className="grid gap-2 text-xs">
-      {items.map((item, index) => (
-        <li
-          className="rounded-lg border border-border bg-muted/70 p-2"
-          key={item.id}
-        >
-          <div className="flex items-start justify-between gap-2">
-            <p className="line-clamp-2 text-foreground">{item.title}</p>
-            <span
-              className={`rounded-full px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide ${
-                index === 0 ? 'tag-hot border' : 'tag-live border'
-              }`}
-            >
-              {index === 0 ? hotLabel : liveLabel}
-            </span>
-          </div>
-          {item.meta && (
-            <p className="mt-1 line-clamp-1 text-[11px] text-muted-foreground/70">
-              {item.meta}
-            </p>
-          )}
-        </li>
-      ))}
-    </ul>
-  </section>
-);
+}: BattleListProps) {
+  return (
+    <section className={`card p-3 ${className ?? ''}`}>
+      <PanelHeader
+        badge={hotLabel}
+        badgeTone="hot"
+        icon={Swords}
+        title={title}
+      />
+      <ul className="grid gap-2 text-xs">
+        {items.map((item, index) => (
+          <li
+            className="rounded-lg border border-border bg-muted/70 p-2"
+            key={item.id}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <p className="line-clamp-2 text-foreground">{item.title}</p>
+              <span
+                className={`rounded-full px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide ${
+                  index === 0 ? 'tag-hot border' : 'tag-live border'
+                }`}
+              >
+                {index === 0 ? hotLabel : liveLabel}
+              </span>
+            </div>
+            {item.meta && (
+              <p className="mt-1 line-clamp-1 text-[11px] text-muted-foreground/70">
+                {item.meta}
+              </p>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+});
 
 interface ActivityTickerProps {
   title: string;
@@ -238,35 +248,37 @@ interface ActivityTickerProps {
   className?: string;
 }
 
-export const ActivityTicker = ({
+export const ActivityTicker = memo(function ActivityTicker({
   title,
   items,
   className,
-}: ActivityTickerProps) => (
-  <section className={`card p-3 ${className ?? ''}`}>
-    <PanelHeader icon={Activity} title={title} />
-    <ul className="max-h-64 space-y-2 overflow-y-auto pr-1 text-xs">
-      {items.map((item) => (
-        <li
-          className="rounded-lg border border-border bg-muted/70 p-2"
-          key={item.id}
-        >
-          <div className="flex items-start gap-2">
-            <span
-              aria-hidden="true"
-              className="icon-breathe live-dot mt-1 inline-flex h-2 w-2 rounded-full"
-            />
-            <div>
-              <p className="line-clamp-2 text-foreground">{item.title}</p>
-              {item.meta && (
-                <p className="mt-1 text-[11px] text-muted-foreground/70">
-                  {item.meta}
-                </p>
-              )}
+}: ActivityTickerProps) {
+  return (
+    <section className={`card p-3 ${className ?? ''}`}>
+      <PanelHeader icon={Activity} title={title} />
+      <ul className="max-h-64 space-y-2 overflow-y-auto pr-1 text-xs">
+        {items.map((item) => (
+          <li
+            className="rounded-lg border border-border bg-muted/70 p-2"
+            key={item.id}
+          >
+            <div className="flex items-start gap-2">
+              <span
+                aria-hidden="true"
+                className="icon-breathe live-dot mt-1 inline-flex h-2 w-2 rounded-full"
+              />
+              <div>
+                <p className="line-clamp-2 text-foreground">{item.title}</p>
+                {item.meta && (
+                  <p className="mt-1 text-[11px] text-muted-foreground/70">
+                    {item.meta}
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
-        </li>
-      ))}
-    </ul>
-  </section>
-);
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+});
