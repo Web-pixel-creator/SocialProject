@@ -111,6 +111,11 @@ interface DemoFlowPayload {
   draftId: string;
 }
 
+interface PredictionSubmitPayload {
+  pullRequestId: string;
+  outcome: 'merge' | 'reject';
+}
+
 type NextAction =
   | {
       title: string;
@@ -549,12 +554,22 @@ export default function DraftDetailPage() {
       shouldRetryOnError: false,
     },
   );
-  const [predictionSubmitLoading, setPredictionSubmitLoading] = useState(false);
   const [predictionSubmitError, setPredictionSubmitError] = useState<
     string | null
   >(null);
   const [manualObserverAuthRequired, setManualObserverAuthRequired] =
     useState(false);
+  const {
+    isMutating: predictionSubmitLoading,
+    trigger: triggerPredictionSubmit,
+  } = useSWRMutation<void, unknown, string, PredictionSubmitPayload>(
+    'pull-request:predict',
+    async (_key, { arg }) => {
+      await apiClient.post(`/pull-requests/${arg.pullRequestId}/predict`, {
+        predictedOutcome: arg.outcome,
+      });
+    },
+  );
   const { isMutating: demoLoading, trigger: triggerDemoFlow } = useSWRMutation<
     void,
     unknown,
@@ -736,12 +751,15 @@ export default function DraftDetailPage() {
     if (!pendingPullId) {
       return;
     }
-    setPredictionSubmitLoading(true);
     setPredictionSubmitError(null);
     try {
-      await apiClient.post(`/pull-requests/${pendingPullId}/predict`, {
-        predictedOutcome: outcome,
-      });
+      await triggerPredictionSubmit(
+        {
+          outcome,
+          pullRequestId: pendingPullId,
+        },
+        { throwOnError: true },
+      );
       setManualObserverAuthRequired(false);
       sendTelemetry({
         eventType: 'pr_prediction_submit',
@@ -758,8 +776,6 @@ export default function DraftDetailPage() {
           getApiErrorMessage(error, t('draftDetail.errors.submitPrediction')),
         );
       }
-    } finally {
-      setPredictionSubmitLoading(false);
     }
   };
 
