@@ -232,6 +232,82 @@ describe('draft detail page', () => {
     expect(apiClient.get).toHaveBeenCalled();
   });
 
+  test('does not re-fetch fix requests again when dependencies change without new realtime events', async () => {
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/search/similar')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/fix-requests')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/pull-requests')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/arc')) {
+        return Promise.resolve({ data: null });
+      }
+      if (url.includes('/observers/watchlist')) {
+        return Promise.resolve({ data: [{ draft_id: 'draft-rt-dup' }] });
+      }
+      if (url.includes('/observers/digest')) {
+        return Promise.resolve({ data: [] });
+      }
+      return Promise.resolve({
+        data: {
+          draft: {
+            id: 'draft-rt-dup',
+            glowUpScore: 1.2,
+            currentVersion: 1,
+            status: 'draft',
+            updatedAt: new Date().toISOString(),
+          },
+          versions: [],
+        },
+      });
+    });
+
+    await renderDraftDetailPage('draft-rt-dup');
+
+    const fixCallsBeforeRealtime = (apiClient.get as jest.Mock).mock.calls
+      .map(([url]) => String(url))
+      .filter((url) => url.includes('/fix-requests')).length;
+
+    const { __socket } = jest.requireMock('../lib/socket');
+    await act(async () => {
+      __socket.__trigger('event', {
+        id: 'evt-dup-1',
+        scope: 'post:draft-rt-dup',
+        type: 'fix_request',
+        sequence: 1,
+        payload: {},
+      });
+      await Promise.resolve();
+    });
+    await flushAsyncState();
+
+    const fixCallsAfterRealtime = (apiClient.get as jest.Mock).mock.calls
+      .map(([url]) => String(url))
+      .filter((url) => url.includes('/fix-requests')).length;
+
+    expect(fixCallsAfterRealtime).toBeGreaterThan(fixCallsBeforeRealtime);
+
+    fireEvent.click(screen.getByRole('button', { name: /Following/i }));
+
+    await waitFor(() =>
+      expect(apiClient.delete).toHaveBeenCalledWith(
+        '/observers/watchlist/draft-rt-dup',
+      ),
+    );
+
+    const fixCallsAfterDependencyChange = (
+      apiClient.get as jest.Mock
+    ).mock.calls
+      .map(([url]) => String(url))
+      .filter((url) => url.includes('/fix-requests')).length;
+
+    expect(fixCallsAfterDependencyChange).toBe(fixCallsAfterRealtime);
+  });
+
   test('defaults to v1 when versions are missing', async () => {
     (apiClient.get as jest.Mock).mockImplementation((url: string) => {
       if (url.includes('/search/similar')) {
