@@ -348,6 +348,51 @@ jobs:
           WEB_URL="${{ github.event.inputs.release_web_base_url }}"
           CSRF_TOKEN="${{ github.event.inputs.release_csrf_token }}"
           PREFLIGHT_SUMMARY_PATH="artifacts/release/tunnel-preflight-summary.json"
+          SMOKE_RESULTS_PATH="artifacts/release/smoke-results.json"
+          MODE=""
+          EFFECTIVE_API_URL=""
+          EFFECTIVE_WEB_URL=""
+          CSRF_CONFIGURED="no"
+
+          write_step_summary() {
+            local status="$1"
+            if [ -z "${GITHUB_STEP_SUMMARY:-}" ]; then
+              return
+            fi
+
+            {
+              echo "### Release Smoke Summary"
+              echo ""
+              echo "- mode: \`${MODE}\`"
+              echo "- api_url: \`${EFFECTIVE_API_URL}\`"
+              echo "- web_url: \`${EFFECTIVE_WEB_URL}\`"
+              echo "- csrf_token_configured: \`${CSRF_CONFIGURED}\`"
+              echo "- status: \`${status}\`"
+            } >> "$GITHUB_STEP_SUMMARY"
+
+            if [ -f "$SMOKE_RESULTS_PATH" ]; then
+              SMOKE_PASS="$(node -e "const fs=require('node:fs'); const p=process.argv[1]; const payload=JSON.parse(fs.readFileSync(p,'utf8')); process.stdout.write(String(payload?.summary?.pass ?? 'n/a'));" "$SMOKE_RESULTS_PATH")"
+              SMOKE_TOTAL_STEPS="$(node -e "const fs=require('node:fs'); const p=process.argv[1]; const payload=JSON.parse(fs.readFileSync(p,'utf8')); process.stdout.write(String(payload?.summary?.totalSteps ?? 'n/a'));" "$SMOKE_RESULTS_PATH")"
+              SMOKE_FAILED_STEPS="$(node -e "const fs=require('node:fs'); const p=process.argv[1]; const payload=JSON.parse(fs.readFileSync(p,'utf8')); process.stdout.write(String(payload?.summary?.failedSteps ?? 'n/a'));" "$SMOKE_RESULTS_PATH")"
+
+              {
+                echo "- smoke_pass: \`${SMOKE_PASS}\`"
+                echo "- smoke_total_steps: \`${SMOKE_TOTAL_STEPS}\`"
+                echo "- smoke_failed_steps: \`${SMOKE_FAILED_STEPS}\`"
+              } >> "$GITHUB_STEP_SUMMARY"
+            fi
+          }
+
+          on_exit() {
+            local code=$?
+            if [ "$code" -eq 0 ]; then
+              write_step_summary "success"
+            else
+              write_step_summary "failed"
+            fi
+          }
+
+          trap on_exit EXIT
 
           if [ -z "$API_URL" ]; then
             API_URL="${{ vars.RELEASE_API_BASE_URL }}"
@@ -361,6 +406,9 @@ jobs:
           if [ -z "$CSRF_TOKEN" ]; then
             CSRF_TOKEN="${{ vars.RELEASE_CSRF_TOKEN }}"
           fi
+          if [ -n "$CSRF_TOKEN" ]; then
+            CSRF_CONFIGURED="yes"
+          fi
 
           if { [ -n "$API_URL" ] && [ -z "$WEB_URL" ]; } || { [ -z "$API_URL" ] && [ -n "$WEB_URL" ]; }; then
             echo "::error::Release smoke configuration is partial. Set both API and WEB URLs or leave both empty for local fallback."
@@ -370,11 +418,17 @@ jobs:
           fi
 
           if [ -n "$API_URL" ] && [ -n "$WEB_URL" ]; then
+            MODE="staging"
+            EFFECTIVE_API_URL="$API_URL"
+            EFFECTIVE_WEB_URL="$WEB_URL"
             echo "Release smoke mode: staging"
-            echo "Resolved API URL: $API_URL"
-            echo "Resolved WEB URL: $WEB_URL"
-            echo "CSRF token configured: $([ -n "$CSRF_TOKEN" ] && echo yes || echo no)"
+            echo "Resolved API URL: $EFFECTIVE_API_URL"
+            echo "Resolved WEB URL: $EFFECTIVE_WEB_URL"
+            echo "CSRF token configured: $CSRF_CONFIGURED"
           else
+            MODE="local-fallback"
+            EFFECTIVE_API_URL="http://127.0.0.1:4000"
+            EFFECTIVE_WEB_URL="http://127.0.0.1:3000"
             echo "Release smoke mode: local fallback"
             echo "Reason: staging URLs are not configured."
           fi
@@ -384,21 +438,20 @@ jobs:
           RELEASE_PREFLIGHT_OUTPUT_PATH="$PREFLIGHT_SUMMARY_PATH" \
           node scripts/release/preflight-smoke-targets.mjs --allow-skip
 
-          if [ -n "$API_URL" ] && [ -n "$WEB_URL" ]; then
+          if [ "$MODE" = "staging" ]; then
             echo "Running release smoke check against configured staging URLs."
-            RELEASE_API_BASE_URL="$API_URL" \
-            RELEASE_WEB_BASE_URL="$WEB_URL" \
+            RELEASE_API_BASE_URL="$EFFECTIVE_API_URL" \
+            RELEASE_WEB_BASE_URL="$EFFECTIVE_WEB_URL" \
             RELEASE_CSRF_TOKEN="$CSRF_TOKEN" \
-            RELEASE_RESULTS_PATH="artifacts/release/smoke-results.json" \
+            RELEASE_RESULTS_PATH="$SMOKE_RESULTS_PATH" \
             npm run release:smoke
-            exit 0
+          else
+            echo "Staging URLs are not configured. Running local-stack release dry-run fallback."
+            RELEASE_API_BASE_URL="$EFFECTIVE_API_URL" \
+            RELEASE_WEB_BASE_URL="$EFFECTIVE_WEB_URL" \
+            RELEASE_RESULTS_PATH="$SMOKE_RESULTS_PATH" \
+            npm run release:dry-run:local
           fi
-
-          echo "Staging URLs are not configured. Running local-stack release dry-run fallback."
-          RELEASE_API_BASE_URL="http://127.0.0.1:4000" \
-          RELEASE_WEB_BASE_URL="http://127.0.0.1:3000" \
-          RELEASE_RESULTS_PATH="artifacts/release/smoke-results.json" \
-          npm run release:dry-run:local
 
       - name: Upload release smoke preflight summary
         if: always()
