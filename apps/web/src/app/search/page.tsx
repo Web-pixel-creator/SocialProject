@@ -12,6 +12,7 @@ import {
   useState,
 } from 'react';
 import useSWR from 'swr';
+import useSWRMutation from 'swr/mutation';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { apiClient } from '../../lib/api';
 import {
@@ -35,6 +36,17 @@ interface SearchResult {
   beforeImageUrl?: string;
   afterImageUrl?: string;
 }
+
+interface VisualSearchPayload {
+  draftId: string;
+  embedding: number[] | null;
+  tags: string[];
+  type: string;
+}
+
+type VisualSearchOutcome =
+  | { status: 'ok'; items: SearchResult[] }
+  | { status: 'embedding_not_found' };
 
 const normalizeParams = (params: URLSearchParams) => {
   const entries = Array.from(params.entries()).sort(
@@ -136,9 +148,7 @@ function SearchPageContent() {
   );
   const [visualNotice, setVisualNotice] = useState<string | null>(null);
   const [visualHasSearched, setVisualHasSearched] = useState(false);
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [manualLoading, setManualLoading] = useState(false);
-  const [manualError, setManualError] = useState<string | null>(null);
+  const [visualInputError, setVisualInputError] = useState<string | null>(null);
   const [textSearchReady, setTextSearchReady] = useState(false);
   const [debouncedText, setDebouncedText] = useState({
     intent: initialIntent,
@@ -275,6 +285,33 @@ function SearchPageContent() {
     },
   );
 
+  const {
+    data: visualSearchOutcome,
+    error: visualSearchError,
+    isMutating: visualSearchIsMutating,
+    reset: resetVisualSearch,
+    trigger: triggerVisualSearch,
+  } = useSWRMutation<VisualSearchOutcome, unknown, string, VisualSearchPayload>(
+    'search:visual',
+    async (_key, { arg }) => {
+      try {
+        const response = await apiClient.post('/search/visual', {
+          draftId: arg.draftId || undefined,
+          embedding: arg.embedding ?? undefined,
+          tags: arg.tags.length > 0 ? arg.tags : undefined,
+          type: arg.type === 'all' ? undefined : arg.type,
+        });
+        return { status: 'ok', items: response.data ?? [] };
+      } catch (error: unknown) {
+        const code = getApiErrorCode(error);
+        if (code === 'EMBEDDING_NOT_FOUND') {
+          return { status: 'embedding_not_found' };
+        }
+        throw error;
+      }
+    },
+  );
+
   useEffect(() => {
     if (mode !== 'text' || !textResults) {
       return;
@@ -313,21 +350,31 @@ function SearchPageContent() {
       return;
     }
     textTelemetrySignatureRef.current = null;
-    setManualError(null);
+    setVisualInputError(null);
     setVisualNotice(null);
     setVisualHasSearched(false);
-  }, [mode]);
+    resetVisualSearch();
+  }, [mode, resetVisualSearch]);
 
   const textError =
     mode === 'text' && textSearchError
       ? getApiErrorMessage(textSearchError, t('search.errors.searchFailed'))
       : null;
-  const error = textError ?? manualError;
+  const visualError =
+    mode === 'visual' && visualSearchError
+      ? getApiErrorMessage(
+          visualSearchError,
+          t('search.errors.visualSearchFailed'),
+        )
+      : null;
+  const error = textError ?? visualInputError ?? visualError;
   const loading =
     mode === 'text'
       ? textSearchIsLoading || textSearchIsValidating
-      : manualLoading;
-  const visibleResults = mode === 'text' ? (textResults ?? []) : results;
+      : visualSearchIsMutating;
+  const visualResults =
+    visualSearchOutcome?.status === 'ok' ? visualSearchOutcome.items : [];
+  const visibleResults = mode === 'text' ? (textResults ?? []) : visualResults;
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -415,6 +462,7 @@ function SearchPageContent() {
       setVisualHasSearched(false);
       return;
     }
+    setVisualInputError(null);
     setVisualHasSearched(false);
   }, [mode, visualDraftId, visualEmbedding, visualTags, visualType]);
 
@@ -422,36 +470,37 @@ function SearchPageContent() {
     const embedding = parseEmbedding(visualEmbedding);
     const trimmedDraftId = visualDraftId.trim();
     if (!(embedding || trimmedDraftId)) {
-      setManualError(t('search.errors.provideDraftOrEmbedding'));
+      setVisualInputError(t('search.errors.provideDraftOrEmbedding'));
       return;
     }
-    setManualLoading(true);
-    setManualError(null);
+    setVisualInputError(null);
     setVisualNotice(null);
-    try {
-      const tags = parseTags(visualTags);
-      const response = await apiClient.post('/search/visual', {
-        embedding: embedding ?? undefined,
-        draftId: trimmedDraftId || undefined,
-        type: visualType === 'all' ? undefined : visualType,
-        tags: tags.length > 0 ? tags : undefined,
-      });
-      setResults(response.data ?? []);
-      setVisualHasSearched(true);
-    } catch (error: unknown) {
-      const code = getApiErrorCode(error);
-      if (code === 'EMBEDDING_NOT_FOUND') {
-        setResults([]);
-        setVisualNotice(t('search.visual.availableAfterAnalysis'));
-      } else {
-        setManualError(
-          getApiErrorMessage(error, t('search.errors.visualSearchFailed')),
-        );
-      }
-    } finally {
-      setManualLoading(false);
+    const tags = parseTags(visualTags);
+    const outcome = await triggerVisualSearch(
+      {
+        draftId: trimmedDraftId,
+        embedding,
+        tags,
+        type: visualType,
+      },
+      { throwOnError: false },
+    );
+    if (!outcome) {
+      return;
     }
-  }, [visualDraftId, visualEmbedding, visualTags, visualType, t]);
+    if (outcome.status === 'ok') {
+      setVisualHasSearched(true);
+      return;
+    }
+    setVisualNotice(t('search.visual.availableAfterAnalysis'));
+  }, [
+    triggerVisualSearch,
+    visualDraftId,
+    visualEmbedding,
+    visualTags,
+    visualType,
+    t,
+  ]);
 
   useEffect(() => {
     if (mode !== 'visual') {
@@ -488,7 +537,7 @@ function SearchPageContent() {
   const showAbBadge = abEnabled;
   const retrySearch = useCallback(() => {
     if (mode === 'text') {
-      setManualError(null);
+      setVisualInputError(null);
       textTelemetrySignatureRef.current = null;
       mutateTextSearch();
       return;
