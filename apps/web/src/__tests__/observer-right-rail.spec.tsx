@@ -191,4 +191,106 @@ describe('ObserverRightRail', () => {
     const pendingTile = screen.getByText(/PR pending/i).closest('div');
     expect(pendingTile).toHaveTextContent('3');
   });
+
+  test('keeps previous rail data when all feed endpoints fail on refresh', async () => {
+    const cache = new Map();
+    let phase: 'initial' | 'failed' = 'initial';
+
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (phase === 'failed') {
+        return Promise.reject(new Error('rail refresh failed'));
+      }
+      if (url === '/feeds/battles') {
+        return Promise.resolve({
+          data: [{ id: 'battle-1', glowUpScore: 8.4 }],
+        });
+      }
+      if (url === '/feeds/glowups') {
+        return Promise.resolve({
+          data: [{ id: 'glow-1', glowUpScore: 12.5 }],
+        });
+      }
+      if (url === '/feeds/studios') {
+        return Promise.resolve({
+          data: [
+            {
+              id: 'studio-1',
+              studioName: 'Stable Studio',
+              impact: 91,
+              signal: 76,
+            },
+          ],
+        });
+      }
+      if (url === '/feeds/live-drafts') {
+        return Promise.resolve({
+          data: [{ id: 'draft-1' }, { id: 'draft-2' }, { id: 'draft-3' }],
+        });
+      }
+      if (url === '/feeds/hot-now') {
+        return Promise.resolve({
+          data: [{ id: 'hot-1', prPendingCount: 9 }],
+        });
+      }
+      if (url === '/feeds/changes') {
+        return Promise.resolve({
+          data: [
+            {
+              id: 'change-1',
+              draftTitle: 'Stable Draft',
+              description: 'Merged',
+              occurredAt: new Date().toISOString(),
+            },
+          ],
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    const firstRender = render(
+      <SWRConfig value={{ provider: () => cache, dedupingInterval: 0 }}>
+        <ObserverRightRail />
+      </SWRConfig>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getAllByText('Stable Studio').length).toBeGreaterThan(0),
+    );
+    expect(screen.getAllByText('Stable Draft: Merged').length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.getByText(/Live drafts/i).closest('div')).toHaveTextContent(
+      '3',
+    );
+    expect(screen.getByText(/PR pending/i).closest('div')).toHaveTextContent(
+      '9',
+    );
+
+    phase = 'failed';
+    firstRender.unmount();
+
+    render(
+      <SWRConfig value={{ provider: () => cache, dedupingInterval: 0 }}>
+        <ObserverRightRail />
+      </SWRConfig>,
+    );
+
+    await waitFor(() =>
+      expect(
+        (apiClient.get as jest.Mock).mock.calls.length,
+      ).toBeGreaterThanOrEqual(12),
+    );
+
+    expect(screen.getAllByText('Stable Studio').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Stable Draft: Merged').length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.getByText(/Live drafts/i).closest('div')).toHaveTextContent(
+      '3',
+    );
+    expect(screen.getByText(/PR pending/i).closest('div')).toHaveTextContent(
+      '9',
+    );
+    expect(screen.queryByText('Design vs Function')).toBeNull();
+  });
 });

@@ -30,6 +30,7 @@ interface ObserverRailData {
   glowUps: RailItem[];
   studios: RailItem[];
   activity: RailItem[];
+  allFeedsFailed: boolean;
   fallbackUsed: boolean;
 }
 
@@ -40,6 +41,7 @@ const fallbackRailData: ObserverRailData = {
   glowUps: fallbackGlowUps,
   studios: fallbackStudios,
   activity: fallbackActivity,
+  allFeedsFailed: false,
   fallbackUsed: true,
 };
 
@@ -138,6 +140,14 @@ const fetchObserverRailData = async (): Promise<ObserverRailData> => {
     const activityFallback = activityItems.length === 0;
     const countFallback =
       liveResult.status === 'rejected' || hotNowResult.status === 'rejected';
+    const allFeedsFailed = [
+      battleResult,
+      glowUpResult,
+      studioResult,
+      liveResult,
+      hotNowResult,
+      changesResult,
+    ].every((result) => result.status === 'rejected');
 
     return {
       battles: battleFallback ? fallbackBattles : battleItems,
@@ -152,6 +162,7 @@ const fetchObserverRailData = async (): Promise<ObserverRailData> => {
         hotNowResult.status === 'fulfilled'
           ? pendingTotal
           : fallbackRailData.prPendingCount,
+      allFeedsFailed,
       fallbackUsed:
         battleFallback ||
         glowUpFallback ||
@@ -160,8 +171,38 @@ const fetchObserverRailData = async (): Promise<ObserverRailData> => {
         countFallback,
     };
   } catch {
-    return fallbackRailData;
+    return {
+      ...fallbackRailData,
+      allFeedsFailed: true,
+    };
   }
+};
+
+const useLastSuccessfulRailData = (
+  data: ObserverRailData | undefined,
+): ObserverRailData => {
+  const [lastSuccessful, setLastSuccessful] =
+    useState<ObserverRailData>(fallbackRailData);
+
+  useEffect(() => {
+    if (data && !data.allFeedsFailed) {
+      setLastSuccessful(data);
+    }
+  }, [data]);
+
+  if (!data) {
+    return lastSuccessful;
+  }
+
+  if (!data.allFeedsFailed) {
+    return data;
+  }
+
+  return {
+    ...lastSuccessful,
+    allFeedsFailed: true,
+    fallbackUsed: true,
+  };
 };
 
 export const ObserverRightRail = () => {
@@ -192,16 +233,15 @@ export const ObserverRightRail = () => {
     },
   );
 
+  const stableData = useLastSuccessfulRailData(data);
   const loading = isLoading || isValidating;
-  const fallbackUsed = data?.fallbackUsed ?? true;
-  const liveDraftCount =
-    data?.liveDraftCount ?? fallbackRailData.liveDraftCount;
-  const prPendingCount =
-    data?.prPendingCount ?? fallbackRailData.prPendingCount;
-  const battles = data?.battles ?? fallbackRailData.battles;
-  const glowUps = data?.glowUps ?? fallbackRailData.glowUps;
-  const studios = data?.studios ?? fallbackRailData.studios;
-  const activity = data?.activity ?? fallbackRailData.activity;
+  const fallbackUsed = stableData.fallbackUsed;
+  const liveDraftCount = stableData.liveDraftCount;
+  const prPendingCount = stableData.prPendingCount;
+  const battles = stableData.battles;
+  const glowUps = stableData.glowUps;
+  const studios = stableData.studios;
+  const activity = stableData.activity;
 
   const realtimeActivity = useMemo(() => {
     const mapRealtimeEvent = (event: RealtimeEvent): RailItem => {
