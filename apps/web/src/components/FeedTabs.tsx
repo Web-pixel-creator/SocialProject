@@ -556,7 +556,7 @@ export const FeedTabs = () => {
         setOffset((prev) => prev + PAGE_SIZE);
       }
     };
-    window.addEventListener('scroll', onScroll);
+    window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, [loading, hasMore, fallbackUsed]);
 
