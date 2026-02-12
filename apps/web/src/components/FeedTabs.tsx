@@ -1467,7 +1467,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
         <div
           aria-labelledby="feed-mobile-filters-title"
           aria-modal="true"
-          className="fixed inset-0 z-40 flex items-end bg-background/80 p-3 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-[70] flex items-end bg-background/80 p-3 backdrop-blur-sm lg:hidden"
           role="dialog"
         >
           <button
@@ -1511,7 +1511,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
         <div
           aria-labelledby="feed-mobile-more-title"
           aria-modal="true"
-          className="fixed inset-0 z-40 flex items-end bg-background/80 p-3 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-[70] flex items-end bg-background/80 p-3 backdrop-blur-sm lg:hidden"
           role="dialog"
         >
           <button

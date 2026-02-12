@@ -190,7 +190,7 @@ export default function FeedPageClient() {
         <div
           aria-labelledby="mobile-observer-nav-title"
           aria-modal="true"
-          className="fixed inset-0 z-40 bg-background/90 p-4 lg:hidden"
+          className="fixed inset-0 z-[70] bg-background/90 p-4 lg:hidden"
           role="dialog"
         >
           <div className="mx-auto grid max-w-sm gap-3">

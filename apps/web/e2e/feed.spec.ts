@@ -1,6 +1,14 @@
 import { expect, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
 
 test.describe('Feed page', () => {
+    const openFiltersPanel = async (page: Page) => {
+        const filtersButton = page.getByRole('button', {
+            name: /Filters/i,
+        });
+        await filtersButton.click();
+    };
+
     test.beforeEach(async ({ page }) => {
         await page.goto('/feed');
     });
@@ -15,12 +23,14 @@ test.describe('Feed page', () => {
     });
 
     test('switches to Battles tab', async ({ page }) => {
-        const battlesTab = page.getByRole('button', { name: /Battles/i });
+        const battlesTab = page.getByRole('button', { name: /^Battles$/i });
         await battlesTab.click();
         await expect(page).toHaveURL(/tab=Battles/);
     });
 
     test('syncs all-feed filters to query params', async ({ page }) => {
+        await openFiltersPanel(page);
+
         const sortSelect = page.getByRole('combobox').nth(0);
         const statusSelect = page.getByRole('combobox').nth(1);
         const rangeSelect = page.getByRole('combobox').nth(2);
@@ -41,6 +51,7 @@ test.describe('Feed page', () => {
         await page.goto(
             '/feed?sort=impact&status=draft&range=7d&intent=needs_help',
         );
+        await openFiltersPanel(page);
 
         const sortSelect = page.getByRole('combobox').nth(0);
         const statusSelect = page.getByRole('combobox').nth(1);
@@ -120,8 +131,9 @@ test.describe('Feed page', () => {
         });
 
         await page.goto('/feed');
-        await page.getByRole('button', { name: /Battles/i }).click();
+        await page.getByRole('button', { name: /^Battles$/i }).click();
         await expect(page).toHaveURL(/tab=Battles/);
+        await openFiltersPanel(page);
 
         await expect(page.getByText('Battle Pending E2E')).toBeVisible();
         await expect(page.getByText('Battle Changes E2E')).toBeVisible();
@@ -148,22 +160,134 @@ test.describe('Feed page', () => {
         await expect(page.getByText('Battle Merged E2E')).toBeVisible();
     });
 
-    test('quick scopes switch feed tabs and update query', async ({ page }) => {
+    test('primary and more tabs switch feed and update query', async ({
+        page,
+    }) => {
         await page.goto('/feed');
 
-        await page.getByRole('button', { name: /^Live$/i }).click();
+        await page.getByRole('button', { name: /^Live Drafts$/i }).click();
         await expect(page).toHaveURL(/tab=Live(?:\+|%20)Drafts/);
 
-        await page.getByRole('button', { name: /^Top 24h$/i }).click();
+        await page.getByRole('button', { name: /^Hot Now$/i }).click();
         await expect(page).toHaveURL(/tab=Hot(?:\+|%20)Now/);
 
-        await page.getByRole('button', { name: /^GlowUp$/i }).click();
-        await expect(page).toHaveURL(/tab=GlowUps/);
-
-        await page.getByRole('button', { name: /^Battle radar$/i }).click();
+        await page.getByRole('button', { name: /^Battles$/i }).click();
         await expect(page).toHaveURL(/tab=Battles/);
 
-        await page.getByRole('button', { name: /^Following$/i }).click();
+        await page.getByRole('button', { name: /^For You$/i }).click();
         await expect(page).toHaveURL(/tab=For(?:\+|%20)You/);
+
+        await page
+            .locator('summary')
+            .filter({ hasText: /^More$/i })
+            .click();
+        await page.getByRole('button', { name: /^GlowUps$/i }).click();
+        await expect(page).toHaveURL(/tab=GlowUps/);
+    });
+
+    test('switches between observer and focus modes and persists preference', async ({
+        page,
+    }) => {
+        const mainShell = page.locator('main.feed-shell');
+        const observerModeButton = page.getByRole('button', {
+            name: /Observer mode/i,
+        });
+        const focusModeButton = page.getByRole('button', {
+            name: /Focus mode/i,
+        });
+
+        await expect(observerModeButton).toHaveAttribute('aria-pressed', 'true');
+        await expect(mainShell).not.toHaveClass(/feed-shell-focus/);
+
+        await focusModeButton.click();
+        await expect(focusModeButton).toHaveAttribute('aria-pressed', 'true');
+        await expect(mainShell).toHaveClass(/feed-shell-focus/);
+        await expect
+            .poll(
+                async () =>
+                    await page.evaluate(() =>
+                        window.localStorage.getItem('finishit-feed-view-mode'),
+                    ),
+            )
+            .toBe('focus');
+
+        await observerModeButton.click();
+        await expect(observerModeButton).toHaveAttribute('aria-pressed', 'true');
+        await expect(mainShell).not.toHaveClass(/feed-shell-focus/);
+        await expect
+            .poll(
+                async () =>
+                    await page.evaluate(() =>
+                        window.localStorage.getItem('finishit-feed-view-mode'),
+                    ),
+            )
+            .toBe('observer');
+    });
+
+    test('shows and applies mobile observer rail panel controls', async ({
+        page,
+    }) => {
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.goto('/feed');
+
+        const mobileControls = page.getByTestId('observer-rail-mobile-controls');
+        await expect(mobileControls).toBeVisible();
+
+        const trendingButton = mobileControls.getByRole('button', {
+            name: /Trending battles/i,
+        });
+        const activityButton = mobileControls.getByRole('button', {
+            name: /Live activity stream/i,
+        });
+        const glowUpsButton = mobileControls.getByRole('button', {
+            name: /Top GlowUps/i,
+        });
+        const studiosButton = mobileControls.getByRole('button', {
+            name: /Top studios/i,
+        });
+
+        await mobileControls.getByRole('button', { name: /Hide all/i }).click();
+        await expect(trendingButton).toHaveAttribute('aria-pressed', 'false');
+        await expect(activityButton).toHaveAttribute('aria-pressed', 'false');
+        await expect(glowUpsButton).toHaveAttribute('aria-pressed', 'false');
+        await expect(studiosButton).toHaveAttribute('aria-pressed', 'false');
+
+        await mobileControls.getByRole('button', { name: /Show all/i }).click();
+        await expect(trendingButton).toHaveAttribute('aria-pressed', 'true');
+        await expect(activityButton).toHaveAttribute('aria-pressed', 'true');
+        await expect(glowUpsButton).toHaveAttribute('aria-pressed', 'true');
+        await expect(studiosButton).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    test('shows language switcher inside feed mobile menu', async ({ page }) => {
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.goto('/feed');
+
+        await page
+            .locator('.observer-feed-header')
+            .getByRole('button', { name: /^Menu$/i })
+            .click();
+        const mobileDialog = page.getByRole('dialog', {
+            name: /Observer navigation/i,
+        });
+        await expect(mobileDialog).toBeVisible();
+
+        const ruButton = mobileDialog.getByRole('button', {
+            name: /Switch language to RU/i,
+        });
+        await ruButton.click();
+        await expect
+            .poll(
+                async () =>
+                    await page.evaluate(() =>
+                        window.localStorage.getItem('finishit-language'),
+                    ),
+            )
+            .toBe('ru');
+        await expect
+            .poll(
+                async () => await page.evaluate(() => document.documentElement.lang),
+            )
+            .toBe('ru');
     });
 });
