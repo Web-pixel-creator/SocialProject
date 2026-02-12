@@ -136,14 +136,6 @@ const parseTags = (value: string) =>
 const parseVisualType = (value: string): VisualSearchType =>
   value === 'draft' || value === 'release' ? value : 'all';
 
-const TEXT_QUERY_PRESETS = [
-  'Landing page redesign',
-  'Prompt optimization',
-  'Brand style guide',
-];
-
-const VISUAL_TAG_PRESETS = ['cinematic', 'minimal', 'high contrast'];
-
 function SearchPageContent() {
   const { t } = useLanguage();
   const searchParams = useSearchParams();
@@ -191,6 +183,22 @@ function SearchPageContent() {
   );
   const didSmoothScroll = useRef(false);
   const textTelemetrySignatureRef = useRef<string | null>(null);
+  const textQueryPresets = useMemo(
+    () => [
+      t('search.presets.query.landingPageRedesign'),
+      t('search.presets.query.promptOptimization'),
+      t('search.presets.query.brandStyleGuide'),
+    ],
+    [t],
+  );
+  const visualTagPresets = useMemo(
+    () => [
+      t('search.presets.tag.cinematic'),
+      t('search.presets.tag.minimal'),
+      t('search.presets.tag.highContrast'),
+    ],
+    [t],
+  );
 
   useEffect(() => {
     if (!searchParams) {
@@ -656,7 +664,7 @@ function SearchPageContent() {
               value={query}
             />
             <div className="flex flex-wrap items-center gap-2">
-              {TEXT_QUERY_PRESETS.map((preset) => (
+              {textQueryPresets.map((preset) => (
                 <button
                   className="rounded-full border border-border bg-muted/70 px-3 py-1 text-muted-foreground text-xs transition hover:border-primary/40 hover:text-foreground"
                   key={preset}
@@ -742,7 +750,7 @@ function SearchPageContent() {
               value={visualTags}
             />
             <div className="flex flex-wrap items-center gap-2">
-              {VISUAL_TAG_PRESETS.map((preset) => (
+              {visualTagPresets.map((preset) => (
                 <button
                   className="rounded-full border border-border bg-muted/70 px-3 py-1 text-muted-foreground text-xs transition hover:border-primary/40 hover:text-foreground"
                   key={preset}
@@ -897,7 +905,7 @@ function SearchPageContent() {
                       <div className="mt-3 grid grid-cols-2 gap-2">
                         {result.beforeImageUrl ? (
                           <Image
-                            alt="Before preview"
+                            alt={`${t('search.result.beforePreviewAlt')} ${result.id}`}
                             className="h-20 w-full rounded-lg object-cover"
                             height={80}
                             loading="lazy"
@@ -912,7 +920,7 @@ function SearchPageContent() {
                         )}
                         {result.afterImageUrl ? (
                           <Image
-                            alt="After preview"
+                            alt={`${t('search.result.afterPreviewAlt')} ${result.id}`}
                             className="h-20 w-full rounded-lg object-cover"
                             height={80}
                             loading="lazy"
@@ -933,7 +941,8 @@ function SearchPageContent() {
                     </p>
                     {typeof result.glowUpScore === 'number' && (
                       <p className="text-muted-foreground text-xs">
-                        GlowUp {Number(result.glowUpScore ?? 0).toFixed(1)}
+                        {t('changeCard.metrics.glowUp')}{' '}
+                        {Number(result.glowUpScore ?? 0).toFixed(1)}
                       </p>
                     )}
                   </Link>
