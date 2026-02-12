@@ -14,6 +14,7 @@ export const SiteHeader = () => {
   const { user, logout, loading } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
+  const isFeedPage = pathname === '/feed';
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const mobileToggleRef = useRef<HTMLButtonElement | null>(null);
@@ -154,30 +155,32 @@ export const SiteHeader = () => {
           FinishIt
         </Link>
         <div className="hidden flex-wrap items-center gap-2 md:flex">
-          <form
-            className="hidden items-center rounded-full border border-border bg-muted/50 px-3 py-2 text-xs transition-colors hover:bg-muted sm:flex"
-            onSubmit={handleSearchSubmit}
-          >
-            <Search
-              aria-hidden="true"
-              className="mr-2 h-4 w-4 text-muted-foreground"
-            />
-            <input
-              aria-label={t('feed.searchAriaLabel')}
-              className="w-52 bg-transparent text-foreground outline-none placeholder:text-muted-foreground"
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder={t('header.searchPlaceholder')}
-              type="search"
-              value={searchQuery}
-            />
-            <button
-              aria-label={t('header.search')}
-              className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-transparent text-muted-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              type="submit"
+          {isFeedPage ? null : (
+            <form
+              className="hidden items-center rounded-full border border-border bg-muted/50 px-3 py-2 text-xs transition-colors hover:bg-muted sm:flex"
+              onSubmit={handleSearchSubmit}
             >
-              <Search aria-hidden="true" className="h-3.5 w-3.5" />
-            </button>
-          </form>
+              <Search
+                aria-hidden="true"
+                className="mr-2 h-4 w-4 text-muted-foreground"
+              />
+              <input
+                aria-label={t('feed.searchAriaLabel')}
+                className="w-52 bg-transparent text-foreground outline-none placeholder:text-muted-foreground"
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder={t('header.searchPlaceholder')}
+                type="search"
+                value={searchQuery}
+              />
+              <button
+                aria-label={t('header.search')}
+                className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-transparent text-muted-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                type="submit"
+              >
+                <Search aria-hidden="true" className="h-3.5 w-3.5" />
+              </button>
+            </form>
+          )}
           <LanguageSwitcher />
           <ModeToggle />
           <span className="tag-hot inline-flex items-center gap-1 rounded-full border px-3 py-1 font-semibold text-[11px] uppercase tracking-wide">
@@ -227,30 +230,32 @@ export const SiteHeader = () => {
           id="mobile-site-menu"
           role="dialog"
         >
-          <form
-            className="flex items-center rounded-full border border-border bg-muted/50 px-3 py-2 text-xs"
-            onSubmit={handleSearchSubmit}
-          >
-            <Search
-              aria-hidden="true"
-              className="mr-2 h-4 w-4 text-muted-foreground"
-            />
-            <input
-              aria-label={t('feed.searchAriaLabel')}
-              className="w-full bg-transparent text-foreground outline-none placeholder:text-muted-foreground"
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder={t('header.searchPlaceholder')}
-              type="search"
-              value={searchQuery}
-            />
-            <button
-              aria-label={t('header.search')}
-              className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-transparent text-muted-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              type="submit"
+          {isFeedPage ? null : (
+            <form
+              className="flex items-center rounded-full border border-border bg-muted/50 px-3 py-2 text-xs"
+              onSubmit={handleSearchSubmit}
             >
-              <Search aria-hidden="true" className="h-3.5 w-3.5" />
-            </button>
-          </form>
+              <Search
+                aria-hidden="true"
+                className="mr-2 h-4 w-4 text-muted-foreground"
+              />
+              <input
+                aria-label={t('feed.searchAriaLabel')}
+                className="w-full bg-transparent text-foreground outline-none placeholder:text-muted-foreground"
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder={t('header.searchPlaceholder')}
+                type="search"
+                value={searchQuery}
+              />
+              <button
+                aria-label={t('header.search')}
+                className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-transparent text-muted-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                type="submit"
+              >
+                <Search aria-hidden="true" className="h-3.5 w-3.5" />
+              </button>
+            </form>
+          )}
           <nav
             aria-label={t('common.menu')}
             className="grid gap-2 font-semibold text-sm"

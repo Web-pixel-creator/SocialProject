@@ -36,16 +36,14 @@ describe('SiteHeader', () => {
     window.history.pushState({}, '', '/');
   });
 
-  test('submits header search query and filters feed when opened from feed page', () => {
+  test('hides header search on feed page to avoid duplicate search controls', () => {
     render(<SiteHeader />);
 
-    const searchInput = screen.getByRole('searchbox', {
-      name: /Search \(text \+ visual\)/i,
-    });
-    fireEvent.change(searchInput, { target: { value: 'visual search' } });
-    fireEvent.submit(searchInput.closest('form') as HTMLFormElement);
-
-    expect(pushMock).toHaveBeenCalledWith('/feed?q=visual+search');
+    expect(
+      screen.queryByRole('searchbox', {
+        name: /Search \(text \+ visual\)/i,
+      }),
+    ).toBeNull();
   });
 
   test('submits header search query and navigates to search page from non-feed pages', () => {
@@ -81,7 +79,7 @@ describe('SiteHeader', () => {
     });
   });
 
-  test('prefills header search input from feed query params on /feed', async () => {
+  test('does not render feed search input in header even when feed query has q', async () => {
     pathnameMock = '/feed';
     window.history.pushState({}, '', '/feed?tab=All&q=observer');
 
@@ -89,10 +87,10 @@ describe('SiteHeader', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole('searchbox', {
+        screen.queryByRole('searchbox', {
           name: /Search \(text \+ visual\)/i,
         }),
-      ).toHaveValue('observer');
+      ).toBeNull();
     });
   });
 });

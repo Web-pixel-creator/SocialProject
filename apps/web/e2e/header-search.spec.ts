@@ -9,26 +9,15 @@ const readUrlParts = (urlValue: string) => {
 };
 
 test.describe('Site header search routing', () => {
-  test('keeps user on feed page and applies q param', async ({ page }) => {
+  test('hides global header search on feed page', async ({ page }) => {
     await page.goto('/feed?tab=Battles');
 
-    const headerSearch = page
-      .locator('header')
-      .first()
-      .getByRole('searchbox', { name: /Search \(text \+ visual\)/i });
-
-    await headerSearch.fill('studio battle');
-    await headerSearch
-      .locator('xpath=ancestor::form')
-      .getByRole('button', { name: /^Search$/i })
-      .click();
-
-    await expect
-      .poll(() => {
-        const { pathname, searchParams } = readUrlParts(page.url());
-        return `${pathname}|${searchParams.get('tab')}|${searchParams.get('q')}`;
-      })
-      .toBe('/feed|Battles|studio battle');
+    await expect(
+      page
+        .locator('header')
+        .first()
+        .getByRole('searchbox', { name: /Search \(text \+ visual\)/i }),
+    ).toHaveCount(0);
   });
 
   test('routes to search page from non-feed pages', async ({ page }) => {
