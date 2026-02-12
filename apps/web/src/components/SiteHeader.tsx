@@ -170,6 +170,13 @@ export const SiteHeader = () => {
               type="search"
               value={searchQuery}
             />
+            <button
+              aria-label={t('header.search')}
+              className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-transparent text-muted-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              type="submit"
+            >
+              <Search aria-hidden="true" className="h-3.5 w-3.5" />
+            </button>
           </form>
           <LanguageSwitcher />
           <ModeToggle />
@@ -236,6 +243,13 @@ export const SiteHeader = () => {
               type="search"
               value={searchQuery}
             />
+            <button
+              aria-label={t('header.search')}
+              className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-transparent text-muted-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              type="submit"
+            >
+              <Search aria-hidden="true" className="h-3.5 w-3.5" />
+            </button>
           </form>
           <nav
             aria-label={t('common.menu')}
