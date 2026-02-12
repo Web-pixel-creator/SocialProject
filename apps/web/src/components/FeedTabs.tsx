@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, Inbox, Search, X } from 'lucide-react';
+import { ArrowUp, ChevronDown, Inbox, Search, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -1428,7 +1428,12 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                   data-testid="feed-more-summary"
                 >
                   {moreLabel}
-                  <ChevronDown aria-hidden="true" className="h-3 w-3" />
+                  <ChevronDown
+                    aria-hidden="true"
+                    className={`h-3 w-3 transition-transform motion-reduce:transform-none motion-reduce:transition-none ${
+                      desktopMoreOpen ? 'rotate-180' : ''
+                    }`}
+                  />
                 </summary>
                 <div className="absolute left-0 z-20 mt-2 grid min-w-[16rem] gap-2 rounded-xl border border-border bg-card p-2">
                   {morePanelContent}
@@ -1713,7 +1718,10 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           type="button"
         >
-          ^ {backToTopLabel}
+          <span className="inline-flex items-center gap-1">
+            <ArrowUp aria-hidden="true" className="h-3 w-3" />
+            {backToTopLabel}
+          </span>
         </button>
       )}
     </section>
