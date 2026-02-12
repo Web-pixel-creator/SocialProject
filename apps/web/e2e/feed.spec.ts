@@ -224,6 +224,34 @@ test.describe('Feed page', () => {
             .toBe('observer');
     });
 
+    test('supports keyboard toggling for observer and focus modes', async ({
+        page,
+    }) => {
+        const observerModeButton = page.getByRole('button', {
+            name: /Observer mode/i,
+        });
+        const focusModeButton = page.getByRole('button', {
+            name: /Focus mode/i,
+        });
+        const observerRailShell = page.getByTestId('feed-right-rail-shell');
+
+        await focusModeButton.focus();
+        await expect(focusModeButton).toBeFocused();
+        await page.keyboard.press('Enter');
+        await expect(focusModeButton).toHaveAttribute('aria-pressed', 'true');
+        await expect(observerRailShell).toHaveClass(
+            /observer-right-rail-shell-collapsed/,
+        );
+
+        await observerModeButton.focus();
+        await expect(observerModeButton).toBeFocused();
+        await page.keyboard.press('Space');
+        await expect(observerModeButton).toHaveAttribute('aria-pressed', 'true');
+        await expect(observerRailShell).toHaveClass(
+            /observer-right-rail-shell-open/,
+        );
+    });
+
     test('restores focus mode from localStorage after reload', async ({
         page,
     }) => {
@@ -347,6 +375,55 @@ test.describe('Feed page', () => {
                 name: /Top studios/i,
             }),
         ).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    test('supports keyboard toggling for desktop observer panel controls', async ({
+        page,
+    }) => {
+        const desktopControls = page.getByTestId(
+            'observer-rail-desktop-controls',
+        );
+        await expect(desktopControls).toBeVisible();
+
+        const hideAllButton = desktopControls.getByRole('button', {
+            name: /Hide all/i,
+        });
+        const showAllButton = desktopControls.getByRole('button', {
+            name: /Show all/i,
+        });
+        const glowUpsToggle = desktopControls.getByRole('button', {
+            name: /Top GlowUps/i,
+        });
+        const battlesToggle = desktopControls.getByRole('button', {
+            name: /Trending battles/i,
+        });
+        const activityToggle = desktopControls.getByRole('button', {
+            name: /Live activity stream/i,
+        });
+        const studiosToggle = desktopControls.getByRole('button', {
+            name: /Top studios/i,
+        });
+
+        await hideAllButton.focus();
+        await expect(hideAllButton).toBeFocused();
+        await page.keyboard.press('Enter');
+        await expect(battlesToggle).toHaveAttribute('aria-pressed', 'false');
+        await expect(activityToggle).toHaveAttribute('aria-pressed', 'false');
+        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'false');
+        await expect(studiosToggle).toHaveAttribute('aria-pressed', 'false');
+
+        await showAllButton.focus();
+        await expect(showAllButton).toBeFocused();
+        await page.keyboard.press('Space');
+        await expect(battlesToggle).toHaveAttribute('aria-pressed', 'true');
+        await expect(activityToggle).toHaveAttribute('aria-pressed', 'true');
+        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'true');
+        await expect(studiosToggle).toHaveAttribute('aria-pressed', 'true');
+
+        await glowUpsToggle.focus();
+        await expect(glowUpsToggle).toBeFocused();
+        await page.keyboard.press('Space');
+        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'false');
     });
 
     test('keeps observer rail panel controls hidden on mobile viewport', async ({
