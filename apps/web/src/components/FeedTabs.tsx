@@ -1066,6 +1066,9 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
   const isInitialLoading = loading && visibleItems.length === 0;
 
   const emptyMessage = useMemo(() => {
+    if (query.trim()) {
+      return t('feedTabs.empty.search');
+    }
     if (active === 'Battles') {
       return t('feedTabs.empty.battles');
     }
@@ -1079,9 +1082,12 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
       return t('feedTabs.empty.readyForReview');
     }
     return t('feedTabs.empty.all');
-  }, [active, intent, t]);
+  }, [active, intent, query, t]);
 
   const emptyStateTitle = useMemo(() => {
+    if (query.trim()) {
+      return t('feedTabs.empty.title.search');
+    }
     if (active === 'Battles') {
       return t('feedTabs.empty.title.battles');
     }
@@ -1095,7 +1101,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
       return t('feedTabs.empty.title.readyForReview');
     }
     return t('feedTabs.empty.title');
-  }, [active, intent, t]);
+  }, [active, intent, query, t]);
 
   const openLiveDrafts = () => {
     handleTabSelect('Live Drafts');

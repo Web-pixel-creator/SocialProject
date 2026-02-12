@@ -1391,11 +1391,11 @@ describe('feed UI', () => {
     await renderFeedTabs();
 
     await waitFor(() =>
-      expect(screen.getByText(/Feed is quiet right now/i)).toBeInTheDocument(),
+      expect(screen.getByText(/No search results/i)).toBeInTheDocument(),
     );
 
     const emptyStateCard = screen
-      .getByText(/Feed is quiet right now/i)
+      .getByText(/No search results/i)
       .closest('.card');
     expect(emptyStateCard).not.toBeNull();
 
