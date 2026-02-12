@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import useSWRMutation from 'swr/mutation';
 import { BeforeAfterSlider } from '../../../components/BeforeAfterSlider';
@@ -8,6 +8,7 @@ import { FixRequestList } from '../../../components/FixRequestList';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { apiClient } from '../../../lib/api';
 import { getApiErrorMessage } from '../../../lib/errors';
+import { useLastSuccessfulValue } from '../../../lib/useLastSuccessfulValue';
 
 interface ReviewPayload {
   pullRequest: {
@@ -96,23 +97,6 @@ const fetchReviewData = async (id: string): Promise<ReviewPageData> => {
   };
 };
 
-const useLastSuccessfulFixRequests = (
-  data: ReviewPageData | undefined,
-): FixRequest[] => {
-  const lastSuccessfulRef = useRef<FixRequest[]>([]);
-
-  if (!data) {
-    return lastSuccessfulRef.current;
-  }
-
-  if (data.fixRequestsLoadFailed) {
-    return lastSuccessfulRef.current;
-  }
-
-  lastSuccessfulRef.current = data.fixRequests;
-  return data.fixRequests;
-};
-
 export default function PullRequestReviewPage({
   params,
 }: {
@@ -133,7 +117,11 @@ export default function PullRequestReviewPage({
     },
   );
   const review = data?.review ?? null;
-  const fixRequests = useLastSuccessfulFixRequests(data);
+  const fixRequests = useLastSuccessfulValue<FixRequest[]>(
+    data?.fixRequests,
+    data?.fixRequestsLoadFailed === false,
+    [],
+  );
   const { isMutating: decisionLoading, trigger: triggerDecision } =
     useSWRMutation<void, unknown, string, PullRequestDecisionPayload>(
       'pr:review:decision',

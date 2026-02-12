@@ -35,6 +35,7 @@ import {
   getApiErrorMessage,
   getApiErrorStatus,
 } from '../../../lib/errors';
+import { useLastSuccessfulValue } from '../../../lib/useLastSuccessfulValue';
 
 const HeatMapOverlay = dynamic(
   () =>
@@ -339,14 +340,6 @@ const getDraftStatusInfo = (
   };
 };
 
-const useLastSuccessfulList = <T,>(data: T[] | undefined): T[] => {
-  const lastSuccessfulRef = useRef<T[]>([]);
-  if (Array.isArray(data)) {
-    lastSuccessfulRef.current = data;
-  }
-  return lastSuccessfulRef.current;
-};
-
 const useTimeoutRefCleanup = (timeoutRef: { current: number | null }) => {
   useEffect(
     () => () => {
@@ -488,7 +481,6 @@ export default function DraftDetailPage() {
   );
   const {
     data: fixRequestsData,
-    error: fixRequestsLoadError,
     isLoading: fixRequestsLoading,
     mutate: mutateFixRequests,
   } = useSWR<FixRequest[]>(
@@ -501,7 +493,6 @@ export default function DraftDetailPage() {
   );
   const {
     data: pullRequestsData,
-    error: pullRequestsLoadError,
     isLoading: pullRequestsLoading,
     mutate: mutatePullRequests,
   } = useSWR<PullRequest[]>(
@@ -514,13 +505,16 @@ export default function DraftDetailPage() {
   );
   const draft = draftPayload?.draft ?? null;
   const versions = draftPayload?.versions ?? [];
-  const lastSuccessfulFixRequests = useLastSuccessfulList(fixRequestsData);
-  const lastSuccessfulPullRequests = useLastSuccessfulList(pullRequestsData);
-  const fixRequests =
-    fixRequestsData ?? (fixRequestsLoadError ? lastSuccessfulFixRequests : []);
-  const pullRequests =
-    pullRequestsData ??
-    (pullRequestsLoadError ? lastSuccessfulPullRequests : []);
+  const fixRequests = useLastSuccessfulValue<FixRequest[]>(
+    fixRequestsData,
+    Array.isArray(fixRequestsData),
+    [],
+  );
+  const pullRequests = useLastSuccessfulValue<PullRequest[]>(
+    pullRequestsData,
+    Array.isArray(pullRequestsData),
+    [],
+  );
   const pendingPull = useMemo(
     () => pullRequests.find((item) => item.status === 'pending'),
     [pullRequests],
