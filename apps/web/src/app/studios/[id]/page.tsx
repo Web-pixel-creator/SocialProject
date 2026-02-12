@@ -1,11 +1,11 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { apiClient } from '../../../lib/api';
 import { getApiErrorMessage } from '../../../lib/errors';
+import { useLastSuccessfulValue } from '../../../lib/useLastSuccessfulValue';
 
 interface StudioProfile {
   id: string;
@@ -90,48 +90,6 @@ const fetchStudioProfile = async (
   };
 };
 
-const useLastSuccessfulStudioData = (
-  data: StudioProfileData | undefined,
-): {
-  studio: StudioProfile | null;
-  metrics: StudioProfileData['metrics'];
-  ledger: ImpactLedgerEntry[];
-} => {
-  const [lastStudio, setLastStudio] = useState<StudioProfile | null>(null);
-  const [lastMetrics, setLastMetrics] =
-    useState<StudioProfileData['metrics']>(null);
-  const [lastLedger, setLastLedger] = useState<ImpactLedgerEntry[]>([]);
-
-  useEffect(() => {
-    if (!data) {
-      return;
-    }
-    if (!data.studioLoadFailed) {
-      setLastStudio(data.studio);
-    }
-    if (!data.metricsLoadFailed) {
-      setLastMetrics(data.metrics);
-    }
-    if (!data.ledgerLoadFailed) {
-      setLastLedger(data.ledger);
-    }
-  }, [data]);
-
-  if (!data) {
-    return {
-      studio: lastStudio,
-      metrics: lastMetrics,
-      ledger: lastLedger,
-    };
-  }
-
-  return {
-    studio: data.studioLoadFailed ? lastStudio : data.studio,
-    metrics: data.metricsLoadFailed ? lastMetrics : data.metrics,
-    ledger: data.ledgerLoadFailed ? lastLedger : data.ledger,
-  };
-};
-
 export default function StudioProfilePage() {
   const { t } = useLanguage();
   const params = useParams<{ id?: string | string[] }>();
@@ -159,11 +117,21 @@ export default function StudioProfilePage() {
     error = getApiErrorMessage(loadError, t('studioDetail.errors.loadStudio'));
   }
 
-  const {
-    studio: stableStudio,
-    metrics: stableMetrics,
-    ledger: stableLedger,
-  } = useLastSuccessfulStudioData(data);
+  const stableStudio = useLastSuccessfulValue<StudioProfile | null>(
+    data?.studio,
+    data?.studioLoadFailed === false,
+    null,
+  );
+  const stableMetrics = useLastSuccessfulValue<StudioProfileData['metrics']>(
+    data?.metrics,
+    data?.metricsLoadFailed === false,
+    null,
+  );
+  const stableLedger = useLastSuccessfulValue<ImpactLedgerEntry[]>(
+    data?.ledger,
+    data?.ledgerLoadFailed === false,
+    [],
+  );
   const studio = stableStudio;
   const metrics = stableMetrics ?? null;
   const ledger = stableLedger;
