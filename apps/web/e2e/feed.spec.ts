@@ -336,4 +336,19 @@ test.describe('Feed page', () => {
             )
             .toBe('ru');
     });
+
+    test('clears query via empty-state reset filters action', async ({ page }) => {
+        await page.goto('/feed?tab=All&q=zzzz-unmatched-e2e-query');
+
+        await expect(page.getByText(/Feed is quiet right now/i)).toBeVisible();
+
+        await page.getByRole('button', { name: /Reset filters/i }).click();
+
+        await expect
+            .poll(() => {
+                const url = new URL(page.url());
+                return url.searchParams.get('q');
+            })
+            .toBeNull();
+    });
 });
