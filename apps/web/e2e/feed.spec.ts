@@ -224,6 +224,52 @@ test.describe('Feed page', () => {
             .toBe('observer');
     });
 
+    test('persists desktop observer rail panel visibility after reload', async ({
+        page,
+    }) => {
+        await page.evaluate(() =>
+            window.localStorage.removeItem('finishit-observer-rail-panels'),
+        );
+        await page.reload();
+
+        const desktopControls = page.getByTestId(
+            'observer-rail-desktop-controls',
+        );
+        await expect(desktopControls).toBeVisible();
+
+        const glowUpsToggle = desktopControls.getByRole('button', {
+            name: /Top GlowUps/i,
+        });
+        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'true');
+
+        await glowUpsToggle.click();
+        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'false');
+
+        await expect
+            .poll(() =>
+                page.evaluate(() =>
+                    window.localStorage.getItem('finishit-observer-rail-panels'),
+                ),
+            )
+            .toContain('"glowUps":false');
+
+        await page.reload();
+
+        const desktopControlsAfterReload = page.getByTestId(
+            'observer-rail-desktop-controls',
+        );
+        const glowUpsToggleAfterReload = desktopControlsAfterReload.getByRole(
+            'button',
+            {
+                name: /Top GlowUps/i,
+            },
+        );
+        await expect(glowUpsToggleAfterReload).toHaveAttribute(
+            'aria-pressed',
+            'false',
+        );
+    });
+
     test('shows and applies mobile observer rail panel controls', async ({
         page,
     }) => {
