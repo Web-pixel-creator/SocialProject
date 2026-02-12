@@ -185,6 +185,25 @@ test.describe('Feed page', () => {
         await expect(page).toHaveURL(/tab=GlowUps/);
     });
 
+    test('opens More menu via keyboard and selects tab', async ({ page }) => {
+        const moreSummary = page
+            .locator('summary')
+            .filter({ hasText: /^More$/i });
+
+        await moreSummary.focus();
+        await expect(moreSummary).toBeFocused();
+        await page.keyboard.press('Enter');
+
+        const glowUpsTab = page.getByRole('button', { name: /^GlowUps$/i });
+        await expect(glowUpsTab).toBeVisible();
+
+        await glowUpsTab.focus();
+        await expect(glowUpsTab).toBeFocused();
+        await page.keyboard.press('Enter');
+
+        await expect(page).toHaveURL(/tab=GlowUps/);
+    });
+
     test('switches between observer and focus modes and persists preference', async ({
         page,
     }) => {
@@ -424,6 +443,32 @@ test.describe('Feed page', () => {
         await expect(glowUpsToggle).toBeFocused();
         await page.keyboard.press('Space');
         await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    test('respects reduced motion preference for live indicators', async ({
+        page,
+    }) => {
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await page.goto('/feed');
+
+        const liveDot = page.locator('.observer-feed-header .icon-breathe').first();
+        await expect(liveDot).toBeVisible();
+
+        const animationState = await liveDot.evaluate((element) => {
+            const styles = window.getComputedStyle(element);
+            return {
+                animationName: styles.animationName,
+                animationDurationSeconds: Number.parseFloat(
+                    styles.animationDuration,
+                ),
+            };
+        });
+
+        expect(animationState.animationName).toBe('none');
+        expect(Number.isNaN(animationState.animationDurationSeconds)).toBe(
+            false,
+        );
+        expect(animationState.animationDurationSeconds).toBeLessThan(0.001);
     });
 
     test('keeps observer rail panel controls hidden on mobile viewport', async ({
