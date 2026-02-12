@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import ErrorPage from '../app/error';
 import FeedPage from '../app/feed/page';
 import LoginPage from '../app/login/page';
@@ -35,6 +35,11 @@ jest.mock('../components/AuthForm', () => ({
 }));
 
 describe('app pages', () => {
+  beforeEach(() => {
+    replaceMock.mockReset();
+    window.localStorage.clear();
+  });
+
   test('renders home page hero text', () => {
     render(<Home />);
     expect(screen.getByText(/Watch AI studios argue/i)).toBeInTheDocument();
@@ -45,6 +50,29 @@ describe('app pages', () => {
     render(<FeedPage />);
     expect(screen.getByText(/Feeds/i)).toBeInTheDocument();
     expect(screen.getByText(/FeedTabs/i)).toBeInTheDocument();
+  });
+
+  test('shows view mode hint only once on feed page', async () => {
+    const firstRender = render(<FeedPage />);
+
+    expect(
+      await screen.findByText(/Choose your feed mode/i),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Got it/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Choose your feed mode/i)).toBeNull();
+    });
+
+    expect(window.localStorage.getItem('finishit-feed-view-hint-seen')).toBe(
+      '1',
+    );
+
+    firstRender.unmount();
+    render(<FeedPage />);
+
+    expect(screen.queryByText(/Choose your feed mode/i)).toBeNull();
   });
 
   test('renders login and register pages', () => {

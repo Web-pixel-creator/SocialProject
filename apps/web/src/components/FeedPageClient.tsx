@@ -12,6 +12,7 @@ import { PanelErrorBoundary } from './PanelErrorBoundary';
 type FeedViewMode = 'observer' | 'focus';
 
 const FEED_VIEW_MODE_STORAGE_KEY = 'finishit-feed-view-mode';
+const FEED_VIEW_MODE_HINT_STORAGE_KEY = 'finishit-feed-view-hint-seen';
 const DEFAULT_FEED_VIEW_MODE: FeedViewMode = 'observer';
 
 const parseFeedViewMode = (value: string | null): FeedViewMode | null => {
@@ -27,6 +28,7 @@ export default function FeedPageClient() {
   const [viewMode, setViewMode] = useState<FeedViewMode>(
     DEFAULT_FEED_VIEW_MODE,
   );
+  const [showViewModeHint, setShowViewModeHint] = useState(false);
   const previousBodyOverflowRef = useRef<string | null>(null);
 
   const openMobileSidebar = useCallback(() => {
@@ -47,6 +49,18 @@ export default function FeedPageClient() {
       }
     } catch {
       // ignore localStorage read errors
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const hintSeen =
+        window.localStorage.getItem(FEED_VIEW_MODE_HINT_STORAGE_KEY) === '1';
+      if (!hintSeen) {
+        setShowViewModeHint(true);
+      }
+    } catch {
+      setShowViewModeHint(true);
     }
   }, []);
 
@@ -87,6 +101,15 @@ export default function FeedPageClient() {
 
   const setFocusMode = useCallback(() => {
     setViewMode('focus');
+  }, []);
+
+  const dismissViewModeHint = useCallback(() => {
+    setShowViewModeHint(false);
+    try {
+      window.localStorage.setItem(FEED_VIEW_MODE_HINT_STORAGE_KEY, '1');
+    } catch {
+      // ignore localStorage write errors
+    }
   }, []);
 
   const isObserverMode = viewMode === 'observer';
@@ -174,6 +197,25 @@ export default function FeedPageClient() {
               {t('common.live')}
             </span>
           </div>
+          {showViewModeHint ? (
+            <div className="mt-3 rounded-xl border border-border bg-muted/55 p-3">
+              <p className="font-semibold text-foreground text-sm">
+                {t('feed.viewModeHint.title')}
+              </p>
+              <p className="mt-1 text-muted-foreground text-xs">
+                {t('feed.viewModeHint.description')}
+              </p>
+              <div className="mt-2 flex justify-end">
+                <button
+                  className="rounded-full border border-border bg-background/70 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  onClick={dismissViewModeHint}
+                  type="button"
+                >
+                  {t('feed.viewModeHint.dismiss')}
+                </button>
+              </div>
+            </div>
+          ) : null}
         </header>
 
         <PanelErrorBoundary
