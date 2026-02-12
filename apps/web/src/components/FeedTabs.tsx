@@ -578,7 +578,6 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
   const moreLabel = t('feedTabs.more');
   const shownLabel = t('feedTabs.shown');
   const backToTopLabel = t('feedTabs.backToTop');
-  const emptyStateTitle = t('feedTabs.empty.title');
   const densityLabel = t('feedTabs.density.label');
   const comfortLabel = t('feedTabs.density.comfort');
   const compactLabel = t('feedTabs.density.compact');
@@ -1080,6 +1079,22 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
       return t('feedTabs.empty.readyForReview');
     }
     return t('feedTabs.empty.all');
+  }, [active, intent, t]);
+
+  const emptyStateTitle = useMemo(() => {
+    if (active === 'Battles') {
+      return t('feedTabs.empty.title.battles');
+    }
+    if (intent === 'needs_help') {
+      return t('feedTabs.empty.title.needsHelp');
+    }
+    if (intent === 'seeking_pr') {
+      return t('feedTabs.empty.title.seekingPr');
+    }
+    if (intent === 'ready_for_review') {
+      return t('feedTabs.empty.title.readyForReview');
+    }
+    return t('feedTabs.empty.title');
   }, [active, intent, t]);
 
   const openLiveDrafts = () => {
