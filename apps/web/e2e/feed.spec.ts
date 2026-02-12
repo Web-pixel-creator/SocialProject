@@ -204,6 +204,40 @@ test.describe('Feed page', () => {
         await expect(page).toHaveURL(/tab=GlowUps/);
     });
 
+    test('closes desktop More menu with Escape', async ({ page }) => {
+        const moreSummary = page.getByTestId('feed-more-summary');
+        const moreDetails = page.getByTestId('feed-more-details');
+
+        await moreSummary.focus();
+        await page.keyboard.press('Enter');
+        await expect
+            .poll(() =>
+                moreDetails.evaluate((element) => {
+                    return (element as HTMLDetailsElement).open;
+                }),
+            )
+            .toBe(true);
+
+        await page.keyboard.press('Escape');
+        await expect
+            .poll(() =>
+                moreDetails.evaluate((element) => {
+                    return (element as HTMLDetailsElement).open;
+                }),
+            )
+            .toBe(false);
+    });
+
+    test('keeps focus-visible ring classes on feed tab controls', async ({
+        page,
+    }) => {
+        const allTab = page.getByRole('button', { name: /^All$/i });
+        const moreSummary = page.getByTestId('feed-more-summary');
+
+        await expect(allTab).toHaveClass(/focus-visible:ring-2/);
+        await expect(moreSummary).toHaveClass(/focus-visible:ring-2/);
+    });
+
     test('switches between observer and focus modes and persists preference', async ({
         page,
     }) => {

@@ -3,7 +3,7 @@
 import { ChevronDown, Inbox, Search, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { useLanguage } from '../contexts/LanguageContext';
 import { apiClient } from '../lib/api';
@@ -374,9 +374,11 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
   const [battleFilter, setBattleFilter] = useState<BattleFilter>('all');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [desktopMoreOpen, setDesktopMoreOpen] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [density, setDensity] = useState<FeedDensity>('comfort');
+  const desktopMoreDetailsRef = useRef<HTMLDetailsElement | null>(null);
   const isCompactDensity = density === 'compact';
   const normalizedQuery = useMemo(() => normalizeQuery(query), [query]);
   const filterKey = `${active}|${sort}|${status}|${range}|${intent}|${normalizedQuery}`;
@@ -635,6 +637,34 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
       setMoreOpen(false);
     }
   }, [isMobileViewport, moreOpen]);
+
+  const closeDesktopMore = useCallback(() => {
+    const details = desktopMoreDetailsRef.current;
+    if (details?.open) {
+      details.removeAttribute('open');
+    }
+    setDesktopMoreOpen(false);
+  }, []);
+
+  useEffect(() => {
+    if (isMobileViewport) {
+      closeDesktopMore();
+      return;
+    }
+    if (!desktopMoreOpen) {
+      return;
+    }
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeDesktopMore();
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => {
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [closeDesktopMore, desktopMoreOpen, isMobileViewport]);
 
   useEffect(() => {
     try {
@@ -1278,12 +1308,12 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
       ? `${visibleItems.length} / ${items.length}+`
       : `${visibleItems.length} / ${items.length}`;
   const handleMoreTabSelect = useCallback(
-    (tab: string, closeMenu?: () => void) => {
+    (tab: string) => {
       handleTabSelect(tab);
       setMoreOpen(false);
-      closeMenu?.();
+      closeDesktopMore();
     },
-    [handleTabSelect],
+    [closeDesktopMore, handleTabSelect],
   );
   const morePanelContent = (
     <>
@@ -1297,13 +1327,8 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                 : 'border-border bg-background/60 text-muted-foreground hover:border-primary/40 hover:text-foreground'
             }`}
             key={tab}
-            onClick={(event) => {
-              const detailsElement = event.currentTarget.closest('details');
-              handleMoreTabSelect(tab, () => {
-                if (detailsElement) {
-                  detailsElement.removeAttribute('open');
-                }
-              });
+            onClick={() => {
+              handleMoreTabSelect(tab);
             }}
             type="button"
           >
@@ -1371,13 +1396,21 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                 />
               </button>
             ) : (
-              <details className="relative">
+              <details
+                className="relative"
+                data-testid="feed-more-details"
+                onToggle={(event) => {
+                  setDesktopMoreOpen(event.currentTarget.open);
+                }}
+                ref={desktopMoreDetailsRef}
+              >
                 <summary
                   className={`inline-flex cursor-pointer list-none items-center gap-1 rounded-full border px-4 py-2 font-semibold text-xs uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [&::-webkit-details-marker]:hidden ${
                     MORE_TABS.includes(active)
                       ? 'border-primary/50 bg-primary/15 text-primary'
                       : 'border-border bg-muted/70 text-muted-foreground hover:border-primary/40 hover:text-foreground'
                   }`}
+                  data-testid="feed-more-summary"
                 >
                   {moreLabel}
                   <ChevronDown aria-hidden="true" className="h-3 w-3" />
