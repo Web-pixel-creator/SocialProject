@@ -1649,6 +1649,14 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
           {t('feedTabs.loadMore')}
         </button>
       )}
+      {!(loading || fallbackUsed || hasMore) && visibleItems.length > 0 ? (
+        <div
+          className="inline-flex w-fit items-center rounded-full border border-border bg-background/70 px-3 py-1 text-muted-foreground text-xs"
+          data-testid="feed-end-indicator"
+        >
+          {shownLabel}: {shownValue}
+        </div>
+      ) : null}
       {showBackToTop && (
         <button
           className={`fixed right-4 bottom-4 z-30 rounded-full border border-primary/45 bg-card px-4 py-2 font-semibold text-primary text-xs transition hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${

@@ -1148,6 +1148,19 @@ describe('feed UI', () => {
     expect(lastCall[1].params.offset).toBe(6);
   });
 
+  test('shows feed end indicator when all results are loaded', async () => {
+    (apiClient.get as jest.Mock).mockResolvedValueOnce({
+      data: [{ id: 'draft-single', type: 'draft', glowUpScore: 1 }],
+    });
+
+    await renderFeedTabs();
+    await screen.findByText(/Draft draft-si/i);
+
+    const endIndicator = screen.getByTestId('feed-end-indicator');
+    expect(endIndicator).toBeInTheDocument();
+    expect(endIndicator).toHaveTextContent(/Results:\s*1\s*\/\s*1/i);
+  });
+
   test('syncs filters to URL query', async () => {
     searchParams = new URLSearchParams('tab=All');
     await renderFeedTabs();
