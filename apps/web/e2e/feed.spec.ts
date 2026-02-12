@@ -502,6 +502,83 @@ test.describe('Feed page', () => {
         ).toHaveAttribute('aria-pressed', 'false');
     });
 
+    test('uses flat observer rail panel toggles without close or more gates', async ({
+        page,
+    }) => {
+        const desktopControls = page.getByTestId(
+            'observer-rail-desktop-controls',
+        );
+        await expect(desktopControls).toBeVisible();
+
+        await expect(
+            desktopControls.getByRole('button', { name: /^Close$/i }),
+        ).toHaveCount(0);
+        await expect(
+            desktopControls.getByRole('button', { name: /^More$/i }),
+        ).toHaveCount(0);
+
+        await expect(
+            desktopControls.getByRole('button', { name: /Trending battles/i }),
+        ).toBeVisible();
+        await expect(
+            desktopControls.getByRole('button', { name: /Live activity stream/i }),
+        ).toBeVisible();
+        await expect(
+            desktopControls.getByRole('button', { name: /Top GlowUps/i }),
+        ).toBeVisible();
+        await expect(
+            desktopControls.getByRole('button', { name: /Top studios/i }),
+        ).toBeVisible();
+    });
+
+    test('toggles glowups and studios panels independently', async ({ page }) => {
+        const desktopControls = page.getByTestId(
+            'observer-rail-desktop-controls',
+        );
+        await expect(desktopControls).toBeVisible();
+
+        const glowUpsToggle = desktopControls.getByRole('button', {
+            name: /Top GlowUps/i,
+        });
+        const studiosToggle = desktopControls.getByRole('button', {
+            name: /Top studios/i,
+        });
+
+        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'true');
+        await expect(studiosToggle).toHaveAttribute('aria-pressed', 'true');
+
+        await glowUpsToggle.click();
+        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'false');
+        await expect(studiosToggle).toHaveAttribute('aria-pressed', 'true');
+        await expect(
+            page
+                .locator('.observer-right-rail')
+                .getByRole('heading', { name: /Top GlowUps/i }),
+        ).toHaveCount(0);
+        await expect(
+            page
+                .locator('.observer-right-rail')
+                .getByRole('heading', { name: /Top studios/i }),
+        ).toBeVisible();
+
+        await studiosToggle.click();
+        await expect(studiosToggle).toHaveAttribute('aria-pressed', 'false');
+        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'false');
+        await expect(
+            page
+                .locator('.observer-right-rail')
+                .getByRole('heading', { name: /Top studios/i }),
+        ).toHaveCount(0);
+
+        await glowUpsToggle.click();
+        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'true');
+        await expect(
+            page
+                .locator('.observer-right-rail')
+                .getByRole('heading', { name: /Top GlowUps/i }),
+        ).toBeVisible();
+    });
+
     test('supports keyboard toggling for desktop observer panel controls', async ({
         page,
     }) => {
