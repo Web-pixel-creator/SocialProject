@@ -425,6 +425,7 @@
   "rail.resyncNow": "Resync now",
   "rail.resyncRequired": "Resync required",
   "rail.panelsVisible": "Panels",
+  "rail.visiblePanels": "Visible panels",
   "rail.noPanelsSelected": "No rail widgets selected.",
   "rail.restoreDefaultPanels": "Restore defaults",
   "rail.showAll": "Show all",

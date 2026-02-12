@@ -515,7 +515,7 @@ export const ObserverRightRail = () => {
         )}
         <div className="mt-2 flex items-center justify-between gap-2 text-[11px]">
           <span className="rounded-full border border-border bg-background/70 px-2 py-1 font-semibold text-muted-foreground">
-            {t('rail.panelsVisible')}: {visiblePanelCount}/{panelToggles.length}
+            {t('rail.visiblePanels')}: {visiblePanelCount}/{panelToggles.length}
           </span>
           {allPanelsHidden ? (
             <button
@@ -602,7 +602,7 @@ export const ObserverRightRail = () => {
               {t('rail.hideAll')}
             </button>
             <span className="rounded-full border border-border bg-background/70 px-2 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wide">
-              {t('rail.panelsVisible')}: {visiblePanelCount}/
+              {t('rail.visiblePanels')}: {visiblePanelCount}/
               {panelToggles.length}
             </span>
           </div>

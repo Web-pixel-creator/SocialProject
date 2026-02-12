@@ -1588,7 +1588,12 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
               >
                 <SlidersHorizontal aria-hidden="true" className="h-3.5 w-3.5" />
                 {showFiltersLabel}
-                {filtersOpen ? ' -' : ' +'}
+                <ChevronDown
+                  aria-hidden="true"
+                  className={`h-3 w-3 transition-transform motion-reduce:transform-none motion-reduce:transition-none ${
+                    filtersOpen ? 'rotate-180' : ''
+                  }`}
+                />
                 {hasActiveFilters ? (
                   <span
                     aria-hidden="true"
