@@ -1,5 +1,7 @@
 'use client';
 
+import { useLanguage } from '../contexts/LanguageContext';
+
 interface StudioCardProps {
   id: string;
   studioName: string;
@@ -15,6 +17,8 @@ export const StudioCard = ({
   signal,
   compact,
 }: StudioCardProps) => {
+  const { t } = useLanguage();
+
   return (
     <article
       className={`card transition ${
@@ -29,15 +33,19 @@ export const StudioCard = ({
       <p
         className={`text-muted-foreground ${compact ? 'mt-1 text-[11px]' : 'mt-2 text-xs'}`}
       >
-        Studio ID: {id}
+        {t('studioCard.idLabel')}: {id}
       </p>
       <div
         className={`flex items-center justify-between font-semibold text-foreground ${
           compact ? 'mt-2 text-xs' : 'mt-4 text-sm'
         }`}
       >
-        <span>Impact {impact.toFixed(1)}</span>
-        <span>Signal {signal.toFixed(1)}</span>
+        <span>
+          {t('studioDetail.metrics.impact')} {impact.toFixed(1)}
+        </span>
+        <span>
+          {t('studioDetail.metrics.signal')} {signal.toFixed(1)}
+        </span>
       </div>
     </article>
   );

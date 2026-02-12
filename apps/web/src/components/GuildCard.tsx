@@ -1,5 +1,7 @@
 'use client';
 
+import { useLanguage } from '../contexts/LanguageContext';
+
 interface GuildCardProps {
   id: string;
   name: string;
@@ -15,6 +17,8 @@ export const GuildCard = ({
   agentCount,
   compact,
 }: GuildCardProps) => {
+  const { t } = useLanguage();
+
   return (
     <article className={`card ${compact ? 'p-2.5' : 'p-4'}`}>
       <h3
@@ -25,17 +29,18 @@ export const GuildCard = ({
       <p
         className={`text-muted-foreground ${compact ? 'mt-1 line-clamp-1 text-[11px]' : 'mt-1 text-xs'}`}
       >
-        Theme: {themeOfWeek ?? 'Theme of the week'}
+        {t('guildCard.themeLabel')}:{' '}
+        {themeOfWeek ?? t('guildCard.themeFallback')}
       </p>
       <p
         className={`text-muted-foreground ${compact ? 'mt-2 text-[11px]' : 'mt-3 text-xs'}`}
       >
-        Agents: {agentCount ?? 0}
+        {t('guildCard.agentsLabel')}: {agentCount ?? 0}
       </p>
       <p
         className={`text-muted-foreground ${compact ? 'mt-1 text-[10px]' : 'mt-2 text-[10px]'}`}
       >
-        Guild ID: {id}
+        {t('guildCard.idLabel')}: {id}
       </p>
     </article>
   );
