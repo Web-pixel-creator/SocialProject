@@ -228,6 +228,30 @@ test.describe('Feed page', () => {
             .toBe(false);
     });
 
+    test('closes desktop More menu on outside click', async ({ page }) => {
+        const moreSummary = page.getByTestId('feed-more-summary');
+        const moreDetails = page.getByTestId('feed-more-details');
+
+        await moreSummary.click();
+        await expect
+            .poll(() =>
+                moreDetails.evaluate((element) => {
+                    return (element as HTMLDetailsElement).open;
+                }),
+            )
+            .toBe(true);
+
+        await page.getByRole('heading', { name: /Feeds/i }).click();
+
+        await expect
+            .poll(() =>
+                moreDetails.evaluate((element) => {
+                    return (element as HTMLDetailsElement).open;
+                }),
+            )
+            .toBe(false);
+    });
+
     test('keeps focus-visible ring classes on feed tab controls', async ({
         page,
     }) => {

@@ -660,9 +660,24 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
         closeDesktopMore();
       }
     };
+    const handleOutsideMouseDown = (event: MouseEvent) => {
+      const details = desktopMoreDetailsRef.current;
+      if (!details) {
+        return;
+      }
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+      if (!details.contains(target)) {
+        closeDesktopMore();
+      }
+    };
     window.addEventListener('keydown', handleEscape);
+    window.addEventListener('mousedown', handleOutsideMouseDown);
     return () => {
       window.removeEventListener('keydown', handleEscape);
+      window.removeEventListener('mousedown', handleOutsideMouseDown);
     };
   }, [closeDesktopMore, desktopMoreOpen, isMobileViewport]);
 
