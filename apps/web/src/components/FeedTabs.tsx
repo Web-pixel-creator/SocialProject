@@ -1,6 +1,15 @@
 'use client';
 
-import { ArrowUp, ChevronDown, Inbox, Search, X } from 'lucide-react';
+import {
+  ArrowUp,
+  ChevronDown,
+  Inbox,
+  LayoutGrid,
+  Rows3,
+  Search,
+  SlidersHorizontal,
+  X,
+} from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -1374,7 +1383,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
   return (
     <section className="grid gap-6">
       <div className="grid gap-3">
-        <div className="grid gap-3 rounded-2xl border border-border bg-muted/35 p-3">
+        <div className="grid gap-2 rounded-2xl border border-border bg-muted/35 p-3">
           <div className="flex flex-wrap items-center gap-2">
             {PRIMARY_TABS.map((tab) => (
               <button
@@ -1440,7 +1449,9 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                 </div>
               </details>
             )}
-            <label className="flex min-w-[16rem] flex-1 items-center gap-2 rounded-full border border-border bg-background/85 px-3 py-2 text-muted-foreground text-xs">
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-border bg-background/85 px-3 py-2 text-muted-foreground text-xs sm:min-w-[16rem]">
               <Search aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
               <input
                 aria-label={t('feed.searchAriaLabel')}
@@ -1464,7 +1475,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
             {hasFilterPanel ? (
               <button
                 aria-expanded={filtersOpen}
-                className="rounded-full border border-border bg-muted/70 px-4 py-2 font-semibold text-xs uppercase tracking-wide transition hover:border-primary/45 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/70 px-4 py-2 font-semibold text-xs uppercase tracking-wide transition hover:border-primary/45 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 onClick={() => {
                   setFiltersOpen((previous) => !previous);
                   if (isMobileViewport) {
@@ -1473,14 +1484,24 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                 }}
                 type="button"
               >
-                {showFiltersLabel} {filtersOpen ? '-' : '+'}
+                <SlidersHorizontal aria-hidden="true" className="h-3.5 w-3.5" />
+                {showFiltersLabel}
+                {filtersOpen ? ' -' : ' +'}
+                {hasActiveFilters ? (
+                  <span
+                    aria-hidden="true"
+                    className="ml-1 rounded-full border border-primary/45 bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary"
+                  >
+                    {activeFilterCount}
+                  </span>
+                ) : null}
               </button>
             ) : null}
             <fieldset className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/70 p-1">
               <legend className="sr-only">{densityLabel}</legend>
               <button
                 aria-pressed={density === 'comfort'}
-                className={`rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                   density === 'comfort'
                     ? 'border border-primary/45 bg-primary/10 text-primary'
                     : 'text-muted-foreground hover:text-foreground'
@@ -1488,11 +1509,13 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                 onClick={() => handleDensityChange('comfort')}
                 type="button"
               >
-                {comfortLabel}
+                <LayoutGrid aria-hidden="true" className="h-3 w-3" />
+                <span className="hidden sm:inline">{comfortLabel}</span>
+                <span className="sr-only sm:hidden">{comfortLabel}</span>
               </button>
               <button
                 aria-pressed={density === 'compact'}
-                className={`rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                   density === 'compact'
                     ? 'border border-primary/45 bg-primary/10 text-primary'
                     : 'text-muted-foreground hover:text-foreground'
@@ -1500,7 +1523,9 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                 onClick={() => handleDensityChange('compact')}
                 type="button"
               >
-                {compactLabel}
+                <Rows3 aria-hidden="true" className="h-3 w-3" />
+                <span className="hidden sm:inline">{compactLabel}</span>
+                <span className="sr-only sm:hidden">{compactLabel}</span>
               </button>
             </fieldset>
           </div>
@@ -1508,12 +1533,14 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
             <span className="rounded-full border border-border bg-background/60 px-3 py-1">
               {shownLabel}: {shownValue}
             </span>
-            <span
-              className="rounded-full border border-border bg-background/70 px-3 py-1 font-semibold text-[11px]"
-              title={activeFilterPills.join(' | ')}
-            >
-              {t('feedTabs.activeFilters')}: {activeFilterCount}
-            </span>
+            {hasActiveFilters ? (
+              <span
+                className="rounded-full border border-border bg-background/70 px-3 py-1 font-semibold text-[11px]"
+                title={activeFilterPills.join(' | ')}
+              >
+                {t('feedTabs.activeFilters')}: {activeFilterCount}
+              </span>
+            ) : null}
           </div>
         </div>
         {hasFilterPanel && filtersOpen && !isMobileViewport
