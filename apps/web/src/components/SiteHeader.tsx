@@ -2,8 +2,8 @@
 
 import { Eye, Menu, Search, X } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { LanguageSwitcher } from './LanguageSwitcher';
@@ -13,7 +13,9 @@ export const SiteHeader = () => {
   const { t } = useLanguage();
   const { user, logout, loading } = useAuth();
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const mobileToggleRef = useRef<HTMLButtonElement | null>(null);
   const firstMobileLinkRef = useRef<HTMLAnchorElement | null>(null);
   const previousBodyOverflowRef = useRef<string>('');
@@ -84,6 +86,25 @@ export const SiteHeader = () => {
   }, [pathname]);
 
   useEffect(() => {
+    if (pathname !== '/search') {
+      return;
+    }
+    const currentSearch = new URLSearchParams(window.location.search);
+    setSearchQuery(currentSearch.get('q') ?? '');
+  }, [pathname]);
+
+  const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const nextQuery = searchQuery.trim();
+    const nextParams = new URLSearchParams();
+    nextParams.set('mode', 'text');
+    if (nextQuery) {
+      nextParams.set('q', nextQuery);
+    }
+    router.push(`/search?${nextParams.toString()}`);
+  };
+
+  useEffect(() => {
     if (!mobileMenuOpen) {
       document.body.style.overflow = previousBodyOverflowRef.current;
       mobileToggleRef.current?.focus();
@@ -120,10 +141,23 @@ export const SiteHeader = () => {
           FinishIt
         </Link>
         <div className="hidden flex-wrap items-center gap-2 md:flex">
-          <div className="hidden items-center rounded-full border border-border bg-muted/50 px-3 py-2 text-muted-foreground text-xs transition-colors hover:bg-muted sm:flex">
-            <Search aria-hidden="true" className="mr-2 h-4 w-4" />
-            {t('header.searchPlaceholder')}
-          </div>
+          <form
+            className="hidden items-center rounded-full border border-border bg-muted/50 px-3 py-2 text-xs transition-colors hover:bg-muted sm:flex"
+            onSubmit={handleSearchSubmit}
+          >
+            <Search
+              aria-hidden="true"
+              className="mr-2 h-4 w-4 text-muted-foreground"
+            />
+            <input
+              aria-label={t('feed.searchAriaLabel')}
+              className="w-52 bg-transparent text-foreground outline-none placeholder:text-muted-foreground"
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder={t('header.searchPlaceholder')}
+              type="search"
+              value={searchQuery}
+            />
+          </form>
           <LanguageSwitcher />
           <ModeToggle />
           <span className="tag-hot inline-flex items-center gap-1 rounded-full border px-3 py-1 font-semibold text-[11px] uppercase tracking-wide">
@@ -173,10 +207,23 @@ export const SiteHeader = () => {
           id="mobile-site-menu"
           role="dialog"
         >
-          <div className="flex items-center rounded-full border border-border bg-muted/50 px-3 py-2 text-muted-foreground text-xs">
-            <Search aria-hidden="true" className="mr-2 h-4 w-4" />
-            {t('header.searchPlaceholder')}
-          </div>
+          <form
+            className="flex items-center rounded-full border border-border bg-muted/50 px-3 py-2 text-xs"
+            onSubmit={handleSearchSubmit}
+          >
+            <Search
+              aria-hidden="true"
+              className="mr-2 h-4 w-4 text-muted-foreground"
+            />
+            <input
+              aria-label={t('feed.searchAriaLabel')}
+              className="w-full bg-transparent text-foreground outline-none placeholder:text-muted-foreground"
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder={t('header.searchPlaceholder')}
+              type="search"
+              value={searchQuery}
+            />
+          </form>
           <nav
             aria-label={t('common.menu')}
             className="grid gap-2 font-semibold text-sm"
