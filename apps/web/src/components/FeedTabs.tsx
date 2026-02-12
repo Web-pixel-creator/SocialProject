@@ -386,6 +386,8 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
     () => parseQueryState(new URLSearchParams(searchParamString)),
     [searchParamString],
   );
+  const queryStateRef = useRef<FeedQueryState>(queryState);
+  const pendingQueryStringRef = useRef<string | null>(null);
 
   const [active, setActive] = useState(queryState.tab);
   const [sort, setSort] = useState<FeedSort>(queryState.sort);
@@ -595,6 +597,16 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
   };
 
   useEffect(() => {
+    const pendingQueryString = pendingQueryStringRef.current;
+    if (
+      pendingQueryString !== null &&
+      searchParamString !== pendingQueryString
+    ) {
+      return;
+    }
+
+    pendingQueryStringRef.current = null;
+    queryStateRef.current = queryState;
     setActive((previous) =>
       previous === queryState.tab ? previous : queryState.tab,
     );
@@ -613,7 +625,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
     setQuery((previous) =>
       previous === queryState.query ? previous : queryState.query,
     );
-  }, [queryState]);
+  }, [queryState, searchParamString]);
 
   useEffect(() => {
     if (typeof window.matchMedia !== 'function') {
@@ -788,27 +800,30 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
         query: string;
       }>,
     ) => {
-      const params = new URLSearchParams(searchParamString);
+      const previous = queryStateRef.current;
       const next = {
-        tab: updates.tab ?? active,
-        sort: updates.sort ?? sort,
-        status: updates.status ?? status,
-        range: updates.range ?? range,
-        intent: updates.intent ?? intent,
-        query: (updates.query ?? query).trim(),
+        tab: updates.tab ?? previous.tab,
+        sort: updates.sort ?? previous.sort,
+        status: updates.status ?? previous.status,
+        range: updates.range ?? previous.range,
+        intent: updates.intent ?? previous.intent,
+        query: (updates.query ?? previous.query).trim(),
       };
 
       if (
-        next.tab === queryState.tab &&
-        next.sort === queryState.sort &&
-        next.status === queryState.status &&
-        next.range === queryState.range &&
-        next.intent === queryState.intent &&
-        next.query === queryState.query
+        next.tab === previous.tab &&
+        next.sort === previous.sort &&
+        next.status === previous.status &&
+        next.range === previous.range &&
+        next.intent === previous.intent &&
+        next.query === previous.query
       ) {
         return;
       }
 
+      queryStateRef.current = next;
+
+      const params = new URLSearchParams();
       if (next.tab !== TABS[0]) {
         params.set('tab', next.tab);
       } else {
@@ -846,25 +861,10 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
       }
 
       const queryString = params.toString();
+      pendingQueryStringRef.current = queryString;
       router.replace(queryString ? `${pathname}?${queryString}` : pathname);
     },
-    [
-      active,
-      intent,
-      pathname,
-      query,
-      queryState.query,
-      queryState.intent,
-      queryState.range,
-      queryState.sort,
-      queryState.status,
-      queryState.tab,
-      range,
-      router,
-      searchParamString,
-      sort,
-      status,
-    ],
+    [pathname, router],
   );
 
   const handleTabSelect = useCallback(

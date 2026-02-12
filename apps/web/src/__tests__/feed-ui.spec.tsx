@@ -1211,6 +1211,31 @@ describe('feed UI', () => {
     );
   });
 
+  test('preserves all filter params during rapid successive updates', async () => {
+    searchParams = new URLSearchParams('tab=All');
+    await renderFeedTabs();
+    await openFilters();
+
+    const sortSelect = screen.getByLabelText(/Sort/i);
+    const statusSelect = screen.getByLabelText(/Status/i);
+    const rangeSelect = screen.getByLabelText(/Time range/i);
+    const intentSelect = screen.getByLabelText(/^Intent$/i);
+
+    await act(async () => {
+      fireEvent.change(sortSelect, { target: { value: 'impact' } });
+      fireEvent.change(statusSelect, { target: { value: 'draft' } });
+      fireEvent.change(rangeSelect, { target: { value: '7d' } });
+      fireEvent.change(intentSelect, { target: { value: 'needs_help' } });
+      await flushAsync();
+    });
+
+    const finalUrl = replaceMock.mock.calls.at(-1)?.[0] as string;
+    expect(finalUrl).toContain('sort=impact');
+    expect(finalUrl).toContain('status=draft');
+    expect(finalUrl).toContain('range=7d');
+    expect(finalUrl).toContain('intent=needs_help');
+  });
+
   test('updates intent through filters and tracks telemetry', async () => {
     searchParams = new URLSearchParams('tab=All');
     await renderFeedTabs();
