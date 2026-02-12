@@ -769,15 +769,31 @@ test.describe('Feed page', () => {
             .toBe('ru');
     });
 
-    test('keeps observer rail panel controls hidden on mobile viewport', async ({
+    test('shows observer rail panel controls on mobile viewport', async ({
         page,
     }) => {
         await page.setViewportSize({ width: 390, height: 844 });
         await page.goto('/feed');
 
         const mobileControls = page.getByTestId('observer-rail-mobile-controls');
-        await expect(mobileControls).toBeHidden();
-        await expect(page.getByTestId('feed-right-rail-shell')).toBeHidden();
+        const rightRailShell = page.getByTestId('feed-right-rail-shell');
+        await expect(rightRailShell).toBeVisible();
+        await expect(mobileControls).toBeVisible();
+
+        const studiosToggle = mobileControls.getByRole('button', {
+            name: /Top studios/i,
+        });
+        await expect(studiosToggle).toHaveAttribute('aria-pressed', 'true');
+        await studiosToggle.click();
+        await expect(studiosToggle).toHaveAttribute('aria-pressed', 'false');
+
+        await expect
+            .poll(() =>
+                page.evaluate(() =>
+                    window.localStorage.getItem('finishit-observer-rail-panels'),
+                ),
+            )
+            .toContain('"studios":false');
     });
 
     test('shows language switcher inside feed mobile menu', async ({ page }) => {

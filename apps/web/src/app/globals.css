@@ -339,6 +339,14 @@ body.dotted-bg > * {
 }
 
 .observer-right-rail-shell {
+  display: block;
+}
+
+.observer-right-rail-shell-open {
+  display: block;
+}
+
+.observer-right-rail-shell-collapsed {
   display: none;
 }
 
