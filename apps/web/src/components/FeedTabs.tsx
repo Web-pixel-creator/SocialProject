@@ -1392,7 +1392,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
               {query ? (
                 <button
                   aria-label={t('common.close')}
-                  className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-border bg-background/90 text-muted-foreground transition hover:border-primary/45 hover:text-primary"
+                  className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-border bg-background/90 text-muted-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   onClick={clearQuery}
                   type="button"
                 >
@@ -1481,7 +1481,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                 {showFiltersLabel}
               </h3>
               <button
-                className="rounded-full border border-border bg-muted/70 px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition hover:border-primary/45 hover:text-primary"
+                className="rounded-full border border-border bg-muted/70 px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 onClick={() => setFiltersOpen(false)}
                 type="button"
               >
@@ -1525,7 +1525,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                 {moreLabel}
               </h3>
               <button
-                className="rounded-full border border-border bg-muted/70 px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition hover:border-primary/45 hover:text-primary"
+                className="rounded-full border border-border bg-muted/70 px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 onClick={() => setMoreOpen(false)}
                 type="button"
               >
