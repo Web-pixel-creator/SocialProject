@@ -8,6 +8,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { mutate } from 'swr';
 import { DraftCard } from '../components/DraftCard';
@@ -1271,5 +1272,29 @@ describe('feed UI', () => {
     expect(
       (screen.getByLabelText(/^Intent$/i) as HTMLSelectElement).value,
     ).toBe('seeking_pr');
+  });
+
+  test('shows active filter summary and reset action in empty state', async () => {
+    searchParams = new URLSearchParams('tab=All&q=nomatch');
+    await renderFeedTabs();
+
+    await waitFor(() =>
+      expect(screen.getByText(/Feed is quiet right now/i)).toBeInTheDocument(),
+    );
+
+    const emptyStateCard = screen
+      .getByText(/Feed is quiet right now/i)
+      .closest('.card');
+    expect(emptyStateCard).not.toBeNull();
+
+    const scoped = within(emptyStateCard as HTMLElement);
+    expect(scoped.getByText(/Active filters:\s*1/i)).toBeInTheDocument();
+    expect(scoped.getByText(/Search:\s*nomatch/i)).toBeInTheDocument();
+
+    await clickAndFlush(scoped.getByRole('button', { name: /Reset filters/i }));
+
+    const lastCall = replaceMock.mock.calls.at(-1)?.[0] as string;
+    expect(lastCall).toBe('/feed');
+    expect(lastCall).not.toContain('q=');
   });
 });

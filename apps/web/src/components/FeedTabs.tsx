@@ -1582,6 +1582,32 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                 </p>
                 <p>{emptyMessage}</p>
               </div>
+              {hasActiveFilters ? (
+                <div className="grid gap-2 rounded-xl border border-border bg-background/60 p-3">
+                  <p className="font-semibold text-foreground text-xs uppercase tracking-wide">
+                    {t('feedTabs.activeFilters')}: {activeFilterCount}
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {activeFilterPills.map((pill) => (
+                      <span
+                        className="rounded-full border border-border bg-muted/70 px-2 py-1 text-[11px] text-muted-foreground"
+                        key={pill}
+                      >
+                        {pill}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex justify-start">
+                    <button
+                      className="rounded-full border border-border bg-background/70 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:border-primary/45 hover:text-primary"
+                      onClick={handleResetFilters}
+                      type="button"
+                    >
+                      {t('search.actions.resetFilters')}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
               <div className="flex flex-wrap gap-2">
                 {active === 'Battles' ? (
                   <button
