@@ -213,6 +213,20 @@ body.dotted-bg > * {
   color: oklch(var(--foreground));
 }
 
+.settings-menu .settings-menu-icon {
+  transition: transform 180ms ease;
+}
+
+.settings-menu[open] > summary {
+  border-color: oklch(var(--primary) / 0.45);
+  background: oklch(var(--primary) / 0.1);
+  color: oklch(var(--primary));
+}
+
+.settings-menu[open] .settings-menu-icon {
+  transform: rotate(180deg);
+}
+
 .tag-hot {
   border-color: rgb(var(--accent-brand-rgb) / 0.45);
   background: rgb(var(--accent-brand-rgb) / 0.14);

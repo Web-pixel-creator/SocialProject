@@ -1,6 +1,6 @@
 'use client';
 
-import { Menu, SlidersHorizontal, X } from 'lucide-react';
+import { ChevronDown, Menu, SlidersHorizontal, X } from 'lucide-react';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { FeedTabs } from './FeedTabs';
@@ -134,16 +134,23 @@ export default function FeedPageClient() {
                   </button>
                 </div>
                 <div className="relative hidden lg:block">
-                  <details className="group relative">
+                  <details className="settings-menu group relative">
                     <summary className="inline-flex cursor-pointer list-none items-center gap-2 rounded-full border border-border bg-muted px-3 py-2 font-semibold text-foreground text-xs transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [&::-webkit-details-marker]:hidden">
                       <SlidersHorizontal
                         aria-hidden="true"
                         className="h-4 w-4"
                       />
                       {t('sidebar.item.settings')}
+                      <ChevronDown
+                        aria-hidden="true"
+                        className="settings-menu-icon h-3.5 w-3.5"
+                      />
                     </summary>
-                    <div className="absolute right-0 z-30 mt-2 min-w-[15rem] rounded-2xl border border-border bg-card p-3">
-                      <LanguageSwitcher />
+                    <div className="absolute right-0 z-30 mt-2 min-w-[15rem] rounded-2xl border border-border bg-card/95 p-3 backdrop-blur-sm">
+                      <p className="mb-2 text-[10px] text-muted-foreground uppercase tracking-wide">
+                        {t('lang.language')}
+                      </p>
+                      <LanguageSwitcher showLabel={false} />
                     </div>
                   </details>
                 </div>

@@ -4,24 +4,32 @@ import { Languages } from 'lucide-react';
 import { type AppLanguage, useLanguage } from '../contexts/LanguageContext';
 
 const BUTTON_BASE_CLASS =
-  'rounded-full border px-3 py-1 font-semibold text-xs transition';
+  'rounded-full border px-3 py-1 font-semibold text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
 
 const labelByLanguage: Record<AppLanguage, string> = {
   en: 'EN',
   ru: 'RU',
 };
 
-export const LanguageSwitcher = () => {
+interface LanguageSwitcherProps {
+  showLabel?: boolean;
+}
+
+export const LanguageSwitcher = ({
+  showLabel = true,
+}: LanguageSwitcherProps) => {
   const { language, setLanguage, t } = useLanguage();
 
   const languages: AppLanguage[] = ['en', 'ru'];
 
   return (
     <div className="flex items-center gap-2">
-      <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground uppercase tracking-wide">
-        <Languages aria-hidden="true" className="h-3.5 w-3.5" />
-        {t('lang.language')}
-      </span>
+      {showLabel ? (
+        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground uppercase tracking-wide">
+          <Languages aria-hidden="true" className="h-3.5 w-3.5" />
+          {t('lang.language')}
+        </span>
+      ) : null}
       {languages.map((item) => {
         const active = item === language;
         return (
