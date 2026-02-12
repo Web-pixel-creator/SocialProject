@@ -2,7 +2,13 @@
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { SWRConfig } from 'swr';
 import { ObserverRightRail } from '../components/ObserverRightRail';
 import { useRealtimeRoom } from '../hooks/useRealtimeRoom';
@@ -35,6 +41,7 @@ describe('ObserverRightRail', () => {
   beforeEach(() => {
     (apiClient.get as jest.Mock).mockClear();
     (apiClient.get as jest.Mock).mockResolvedValue({ data: [] });
+    window.localStorage.removeItem('finishit-observer-rail-panels');
     (useRealtimeRoom as jest.Mock).mockReset();
     (useRealtimeRoom as jest.Mock).mockReturnValue({
       events: [],
@@ -292,5 +299,25 @@ describe('ObserverRightRail', () => {
       '9',
     );
     expect(screen.queryByText('Design vs Function')).toBeNull();
+  });
+
+  test('toggles desktop panel visibility buttons', async () => {
+    renderObserverRail();
+
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalled());
+
+    const desktopControls = screen.getByTestId(
+      'observer-rail-desktop-controls',
+    );
+    const battlesToggle = within(desktopControls).getByRole('button', {
+      name: /Trending battles/i,
+    });
+    expect(battlesToggle).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.click(battlesToggle);
+    expect(battlesToggle).toHaveAttribute('aria-pressed', 'false');
+
+    fireEvent.click(battlesToggle);
+    expect(battlesToggle).toHaveAttribute('aria-pressed', 'true');
   });
 });

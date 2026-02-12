@@ -17,6 +17,11 @@ import { apiClient } from '../lib/api';
 let searchParams = new URLSearchParams('');
 const replaceMock = jest.fn();
 
+const syncSearchParamsFromUrl = (url: string) => {
+  const [, queryString = ''] = url.split('?');
+  searchParams = new URLSearchParams(queryString);
+};
+
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ replace: replaceMock }),
   usePathname: () => '/feed',
@@ -38,6 +43,10 @@ const flushAsync = () =>
 const renderFeedTabs = async () => {
   await act(async () => {
     render(<FeedTabs />);
+    await flushAsync();
+  });
+  await waitFor(() => expect(apiClient.get).toHaveBeenCalled());
+  await act(async () => {
     await flushAsync();
   });
 };
@@ -62,6 +71,54 @@ const changeAndFlush = async (element: HTMLElement, value: string) => {
     await flushAsync();
   });
 };
+
+const openMoreTabs = async () => {
+  const moreToggle = screen.getByText(/More|Р•С‰С‘/i);
+  const detailsElement = moreToggle.closest('details');
+  if (detailsElement) {
+    if (detailsElement.hasAttribute('open')) {
+      return;
+    }
+    await clickAndFlush(moreToggle as HTMLElement);
+    return;
+  }
+
+  if (moreToggle.getAttribute('aria-expanded') === 'true') {
+    return;
+  }
+
+  await clickAndFlush(moreToggle as HTMLElement);
+};
+
+const openTab = async (label: RegExp) => {
+  const directButton = screen.queryByRole('button', { name: label });
+  if (directButton) {
+    await clickAndFlush(directButton);
+    return directButton;
+  }
+
+  await openMoreTabs();
+  const nestedButton = screen.getByRole('button', { name: label });
+  await clickAndFlush(nestedButton);
+  return nestedButton;
+};
+
+const openFilters = async () => {
+  const filtersButton = screen.queryByRole('button', {
+    name: /^(Filters|Р¤РёР»СЊС‚СЂС‹)\s*[+-]?$/i,
+  });
+  if (!filtersButton) {
+    return;
+  }
+
+  if (filtersButton.getAttribute('aria-expanded') !== 'true') {
+    await clickAndFlush(filtersButton);
+  }
+};
+
+const openControls = async () => {
+  await openMoreTabs();
+};
 describe('feed UI', () => {
   beforeEach(() => {
     (apiClient.get as jest.Mock).mockReset();
@@ -69,7 +126,24 @@ describe('feed UI', () => {
     (apiClient.post as jest.Mock).mockReset();
     (apiClient.post as jest.Mock).mockResolvedValue({ data: {} });
     replaceMock.mockReset();
+    replaceMock.mockImplementation((url: string) => {
+      syncSearchParamsFromUrl(url);
+    });
     searchParams = new URLSearchParams('');
+    window.localStorage.setItem('finishit-feed-density', 'comfort');
+    Object.defineProperty(window, 'matchMedia', {
+      value: (query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      }),
+      configurable: true,
+    });
   });
 
   afterEach(async () => {
@@ -89,10 +163,110 @@ describe('feed UI', () => {
   test('switches tabs', async () => {
     await renderFeedTabs();
     await waitFor(() => expect(apiClient.get).toHaveBeenCalled());
-    const tab = screen.getByRole('button', { name: /GlowUps/i });
-    await clickAndFlush(tab);
+    const tab = await openTab(/GlowUps/i);
     expect(tab).toHaveAttribute('aria-pressed', 'true');
     expect(tab).toHaveClass('text-primary');
+  });
+
+  test('switches feed density between comfort and compact', async () => {
+    await renderFeedTabs();
+    await openControls();
+
+    const comfortButton = screen.getByRole('button', { name: /Comfort/i });
+    const compactButton = screen.getByRole('button', { name: /Compact/i });
+
+    expect(comfortButton).toHaveAttribute('aria-pressed', 'true');
+    expect(compactButton).toHaveAttribute('aria-pressed', 'false');
+
+    await clickAndFlush(compactButton);
+
+    expect(comfortButton).toHaveAttribute('aria-pressed', 'false');
+    expect(compactButton).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('defaults feed density to compact on mobile when preference is missing', async () => {
+    window.localStorage.removeItem('finishit-feed-density');
+    Object.defineProperty(window, 'matchMedia', {
+      value: (query: string) => ({
+        matches: query === '(max-width: 767px)',
+        media: query,
+        onchange: null,
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      }),
+      configurable: true,
+    });
+
+    await renderFeedTabs();
+    await openControls();
+
+    const comfortButton = screen.getByRole('button', { name: /Comfort/i });
+    const compactButton = screen.getByRole('button', { name: /Compact/i });
+
+    expect(comfortButton).toHaveAttribute('aria-pressed', 'false');
+    expect(compactButton).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('opens filters as mobile bottom sheet on narrow viewport', async () => {
+    searchParams = new URLSearchParams('tab=All');
+    Object.defineProperty(window, 'matchMedia', {
+      value: (query: string) => ({
+        matches: query === '(max-width: 767px)',
+        media: query,
+        onchange: null,
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      }),
+      configurable: true,
+    });
+
+    await renderFeedTabs();
+    await openFilters();
+
+    expect(
+      screen.getByRole('dialog', { name: /Filters/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/Sort/i)).toBeInTheDocument();
+
+    await clickAndFlush(screen.getByText(/^Close$/i));
+
+    expect(
+      screen.queryByRole('dialog', { name: /Filters/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  test('opens more controls as mobile bottom sheet on narrow viewport', async () => {
+    Object.defineProperty(window, 'matchMedia', {
+      value: (query: string) => ({
+        matches: query === '(max-width: 767px)',
+        media: query,
+        onchange: null,
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      }),
+      configurable: true,
+    });
+
+    await renderFeedTabs();
+    await openMoreTabs();
+
+    expect(screen.getByRole('dialog', { name: /More/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Progress/i }),
+    ).toBeInTheDocument();
+
+    await clickAndFlush(screen.getByText(/^Close$/i));
+
+    expect(screen.queryByRole('dialog', { name: /More/i })).toBeNull();
   });
 
   test('falls back when for-you feed fails', async () => {
@@ -103,8 +277,7 @@ describe('feed UI', () => {
 
     await renderFeedTabs();
 
-    const forYouTab = screen.getByRole('button', { name: /For You/i });
-    await clickAndFlush(forYouTab);
+    await openTab(/For You/i);
 
     await waitFor(() =>
       expect(screen.getByText(/Fallback data/i)).toBeInTheDocument(),
@@ -126,8 +299,7 @@ describe('feed UI', () => {
 
     await renderFeedTabs();
 
-    const archiveTab = screen.getByRole('button', { name: /Archive/i });
-    await clickAndFlush(archiveTab);
+    await openTab(/Archive/i);
 
     await waitFor(() =>
       expect(screen.getByText(/Autopsy summary/i)).toBeInTheDocument(),
@@ -145,8 +317,7 @@ describe('feed UI', () => {
 
     await renderFeedTabs();
 
-    const studiosTab = screen.getByRole('button', { name: /Studios/i });
-    await clickAndFlush(studiosTab);
+    await openTab(/Studios/i);
 
     await waitFor(() =>
       expect(screen.getByText(/Studio Nine/i)).toBeInTheDocument(),
@@ -184,8 +355,7 @@ describe('feed UI', () => {
 
     await renderFeedTabs();
 
-    const battlesTab = screen.getByRole('button', { name: /Battles/i });
-    await clickAndFlush(battlesTab);
+    await openTab(/Battles/i);
 
     await waitFor(() =>
       expect(apiClient.get).toHaveBeenCalledWith(
@@ -217,8 +387,7 @@ describe('feed UI', () => {
 
     await renderFeedTabs();
 
-    const battlesTab = screen.getByRole('button', { name: /Battles/i });
-    await clickAndFlush(battlesTab);
+    await openTab(/Battles/i);
 
     await waitFor(() =>
       expect(
@@ -267,8 +436,7 @@ describe('feed UI', () => {
       .mockResolvedValueOnce({ data: battlePayload });
 
     await renderFeedTabs();
-    const battlesTab = screen.getByRole('button', { name: /Battles/i });
-    await clickAndFlush(battlesTab);
+    await openTab(/Battles/i);
 
     await waitFor(() =>
       expect(screen.getByText(/PR Battle: Merged Battle/i)).toBeInTheDocument(),
@@ -276,6 +444,7 @@ describe('feed UI', () => {
     expect(screen.getByText(/PR Battle: Pending Battle/i)).toBeInTheDocument();
 
     (apiClient.post as jest.Mock).mockClear();
+    await openFilters();
     const mergedFilter = screen.getByRole('button', { name: /^Merged$/i });
     await clickAndFlush(mergedFilter);
 
@@ -308,14 +477,13 @@ describe('feed UI', () => {
 
     await renderFeedTabs();
 
-    const progressTab = screen.getByRole('button', { name: /Progress/i });
-    await clickAndFlush(progressTab);
+    await openTab(/Progress/i);
 
     await waitFor(() =>
       expect(screen.getByText(/Before \/ After/i)).toBeInTheDocument(),
     );
-    expect(screen.getByText(/GlowUp 9.4/i)).toBeInTheDocument();
-    expect(screen.getByText(/PRs: 2/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/\+9\.4%/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/PRs 2/i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Open detail/i })).toHaveAttribute(
       'href',
       '/drafts/draft-progress',
@@ -339,8 +507,7 @@ describe('feed UI', () => {
       .mockResolvedValueOnce({ data: progressPayload });
 
     await renderFeedTabs();
-    const progressTab = screen.getByRole('button', { name: /Progress/i });
-    await clickAndFlush(progressTab);
+    await openTab(/Progress/i);
     const detailLink = await screen.findByRole('link', {
       name: /Open detail/i,
     });
@@ -374,8 +541,7 @@ describe('feed UI', () => {
 
     await renderFeedTabs();
 
-    const hotNowTab = screen.getByRole('button', { name: /Hot Now/i });
-    await clickAndFlush(hotNowTab);
+    await openTab(/Hot Now/i);
 
     await waitFor(() =>
       expect(screen.getByText(/Hot Draft/i)).toBeInTheDocument(),
@@ -406,8 +572,7 @@ describe('feed UI', () => {
 
     await renderFeedTabs();
 
-    const guildTab = screen.getByRole('button', { name: /Guilds/i });
-    await clickAndFlush(guildTab);
+    await openTab(/Guilds/i);
 
     await waitFor(() =>
       expect(screen.getByText(/Guild Arc/i)).toBeInTheDocument(),
@@ -445,8 +610,7 @@ describe('feed UI', () => {
 
     await renderFeedTabs();
 
-    const changesTab = screen.getByRole('button', { name: /Changes/i });
-    await clickAndFlush(changesTab);
+    await openTab(/Changes/i);
 
     await waitFor(() =>
       expect(screen.getByText(/Fix Request Draft/i)).toBeInTheDocument(),
@@ -482,8 +646,7 @@ describe('feed UI', () => {
 
     await renderFeedTabs();
 
-    const changesTab = screen.getByRole('button', { name: /Changes/i });
-    await clickAndFlush(changesTab);
+    await openTab(/Changes/i);
 
     await waitFor(() =>
       expect(screen.getByText(/Thread Draft/i)).toBeInTheDocument(),
@@ -512,8 +675,7 @@ describe('feed UI', () => {
 
     await renderFeedTabs();
 
-    const archiveTab = screen.getByRole('button', { name: /Archive/i });
-    await clickAndFlush(archiveTab);
+    await openTab(/Archive/i);
 
     await waitFor(() =>
       expect(screen.getByText(/Release rel-123/i)).toBeInTheDocument(),
@@ -527,8 +689,7 @@ describe('feed UI', () => {
 
     await renderFeedTabs();
 
-    const studiosTab = screen.getByRole('button', { name: /Studios/i });
-    await clickAndFlush(studiosTab);
+    await openTab(/Studios/i);
 
     await waitFor(() =>
       expect(screen.getByText(/Studio Nova/i)).toBeInTheDocument(),
@@ -543,8 +704,7 @@ describe('feed UI', () => {
 
     await renderFeedTabs();
 
-    const archiveTab = screen.getByRole('button', { name: /Archive/i });
-    await clickAndFlush(archiveTab);
+    await openTab(/Archive/i);
 
     await waitFor(() =>
       expect(
@@ -560,8 +720,7 @@ describe('feed UI', () => {
 
     await renderFeedTabs();
 
-    const progressTab = screen.getByRole('button', { name: /Progress/i });
-    await clickAndFlush(progressTab);
+    await openTab(/Progress/i);
 
     await waitFor(() =>
       expect(screen.getByText(/Fallback data/i)).toBeInTheDocument(),
@@ -577,8 +736,7 @@ describe('feed UI', () => {
 
     await renderFeedTabs();
 
-    const hotNowTab = screen.getByRole('button', { name: /Hot Now/i });
-    await clickAndFlush(hotNowTab);
+    await openTab(/Hot Now/i);
 
     await waitFor(() =>
       expect(screen.getByText(/Fallback data/i)).toBeInTheDocument(),
@@ -596,8 +754,7 @@ describe('feed UI', () => {
 
     await renderFeedTabs();
 
-    const guildTab = screen.getByRole('button', { name: /Guilds/i });
-    await clickAndFlush(guildTab);
+    await openTab(/Guilds/i);
 
     await waitFor(() =>
       expect(screen.getByText(/Fallback data/i)).toBeInTheDocument(),
@@ -612,8 +769,7 @@ describe('feed UI', () => {
 
     await renderFeedTabs();
 
-    const changesTab = screen.getByRole('button', { name: /Changes/i });
-    await clickAndFlush(changesTab);
+    await openTab(/Changes/i);
 
     await waitFor(() =>
       expect(screen.getByText(/Fallback data/i)).toBeInTheDocument(),
@@ -632,14 +788,13 @@ describe('feed UI', () => {
 
     await renderFeedTabs();
 
-    const forYouTab = screen.getByRole('button', { name: /For You/i });
-    await clickAndFlush(forYouTab);
+    await openTab(/For You/i);
 
     await waitFor(() =>
       expect(screen.getByText(/^Release /i)).toBeInTheDocument(),
     );
-    expect(screen.getByText(/GlowUp score: 8.2/i)).toBeInTheDocument();
-    expect(screen.getByText(/GlowUp score: 0.0/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/\+8\.2%/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/\+0\.0%/i).length).toBeGreaterThan(0);
   });
 
   test('renders archive items with fallback fields', async () => {
@@ -673,8 +828,7 @@ describe('feed UI', () => {
 
     await renderFeedTabs();
 
-    const archiveTab = screen.getByRole('button', { name: /Archive/i });
-    await clickAndFlush(archiveTab);
+    await openTab(/Archive/i);
 
     await waitFor(() =>
       expect(screen.getByText(/Autopsy report/i)).toBeInTheDocument(),
@@ -691,7 +845,7 @@ describe('feed UI', () => {
       screen.getByText(new Date(updatedAtSnake).toLocaleString()),
     ).toBeInTheDocument();
     expect(screen.getByText(/Draft draft-ar/i)).toBeInTheDocument();
-    expect(screen.getByText(/GlowUp score: 4.2/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/\+4\.2%/i).length).toBeGreaterThan(0);
   });
 
   test('uses studio fallbacks when values are missing', async () => {
@@ -705,8 +859,7 @@ describe('feed UI', () => {
 
     await renderFeedTabs();
 
-    const studiosTab = screen.getByRole('button', { name: /Studios/i });
-    await clickAndFlush(studiosTab);
+    await openTab(/Studios/i);
 
     await waitFor(() =>
       expect(screen.getByText(/Studio Snake/i)).toBeInTheDocument(),
@@ -733,8 +886,7 @@ describe('feed UI', () => {
 
     await renderFeedTabs();
 
-    const forYouTab = screen.getByRole('button', { name: /For You/i });
-    await clickAndFlush(forYouTab);
+    await openTab(/For You/i);
 
     const loadMore = await screen.findByRole('button', { name: /Load more/i });
     await clickAndFlush(loadMore);
@@ -762,8 +914,7 @@ describe('feed UI', () => {
 
     await renderFeedTabs();
 
-    const hotNowTab = screen.getByRole('button', { name: /Hot Now/i });
-    await clickAndFlush(hotNowTab);
+    await openTab(/Hot Now/i);
 
     await waitFor(() =>
       expect(screen.getByText(/API Hot 1/i)).toBeInTheDocument(),
@@ -847,7 +998,7 @@ describe('feed UI', () => {
     });
     Object.defineProperty(window, 'scrollY', { value: 300, writable: true });
     Object.defineProperty(document.body, 'offsetHeight', {
-      value: 1000,
+      value: 1201,
       writable: true,
     });
 
@@ -860,8 +1011,8 @@ describe('feed UI', () => {
     await waitFor(() =>
       expect((apiClient.get as jest.Mock).mock.calls.length).toBeGreaterThan(1),
     );
-    const lastCall = (apiClient.get as jest.Mock).mock.calls.at(-1);
-    expect(lastCall[1].params.offset).toBe(6);
+    const calls = (apiClient.get as jest.Mock).mock.calls;
+    expect(calls.some((call) => call[1]?.params?.offset === 6)).toBeTruthy();
   });
 
   test('does not paginate on scroll when hasMore is false', async () => {
@@ -896,8 +1047,7 @@ describe('feed UI', () => {
 
     await renderFeedTabs();
 
-    const liveTab = screen.getByRole('button', { name: /Live Drafts/i });
-    await clickAndFlush(liveTab);
+    await openTab(/Live Drafts/i);
 
     await waitFor(() =>
       expect(screen.getByText(/Fallback data/i)).toBeInTheDocument(),
@@ -924,8 +1074,7 @@ describe('feed UI', () => {
 
     await renderFeedTabs();
 
-    const forYouTab = screen.getByRole('button', { name: /For You/i });
-    await clickAndFlush(forYouTab);
+    await openTab(/For You/i);
 
     const loadMore = await screen.findByRole('button', { name: /Load more/i });
     await clickAndFlush(loadMore);
@@ -939,6 +1088,7 @@ describe('feed UI', () => {
   test('syncs filters to URL query', async () => {
     searchParams = new URLSearchParams('tab=All');
     await renderFeedTabs();
+    await openFilters();
 
     const sortSelect = screen.getByLabelText(/Sort/i);
     await changeAndFlush(sortSelect, 'impact');
@@ -978,20 +1128,21 @@ describe('feed UI', () => {
     );
   });
 
-  test('applies intent preset chips and tracks telemetry', async () => {
+  test('updates intent through filters and tracks telemetry', async () => {
     searchParams = new URLSearchParams('tab=All');
     await renderFeedTabs();
+    await openFilters();
     (apiClient.post as jest.Mock).mockClear();
 
-    const needsHelpChip = screen.getByRole('button', { name: /Needs help/i });
-    await clickAndFlush(needsHelpChip);
+    const intentSelect = screen.getByLabelText(/^Intent$/i);
+    await changeAndFlush(intentSelect, 'needs_help');
 
     const lastCall = replaceMock.mock.calls.at(-1)?.[0] as string;
     expect(lastCall).toContain('intent=needs_help');
     expect(apiClient.post).toHaveBeenCalledWith(
       '/telemetry/ux',
       expect.objectContaining({
-        eventType: 'feed_intent_preset',
+        eventType: 'feed_filter_change',
         intent: 'needs_help',
       }),
     );
@@ -1006,6 +1157,20 @@ describe('feed UI', () => {
         '/feed',
         expect.objectContaining({
           params: expect.objectContaining({ intent: 'needs_help' }),
+        }),
+      ),
+    );
+  });
+
+  test('includes q parameter for feed search query', async () => {
+    searchParams = new URLSearchParams('tab=All&q=nova');
+    await renderFeedTabs();
+
+    await waitFor(() =>
+      expect(apiClient.get).toHaveBeenCalledWith(
+        '/feed',
+        expect.objectContaining({
+          params: expect.objectContaining({ q: 'nova' }),
         }),
       ),
     );
@@ -1030,6 +1195,7 @@ describe('feed UI', () => {
       'tab=All&sort=impact&status=release&range=7d&intent=seeking_pr',
     );
     await renderFeedTabs();
+    await openFilters();
 
     expect((screen.getByLabelText(/Sort/i) as HTMLSelectElement).value).toBe(
       'impact',

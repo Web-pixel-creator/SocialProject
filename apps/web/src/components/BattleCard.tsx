@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import {
+  CardDetails,
   ImagePair,
   normalizeVotes,
   ObserverActions,
@@ -14,6 +15,7 @@ import {
 interface BattleCardProps {
   id: string;
   title: string;
+  compact?: boolean;
   leftLabel: string;
   rightLabel: string;
   leftVote: number;
@@ -30,6 +32,7 @@ interface BattleCardProps {
 export const BattleCard = ({
   id,
   title,
+  compact,
   leftLabel,
   rightLabel,
   leftVote,
@@ -100,10 +103,18 @@ export const BattleCard = ({
     : t('common.liveNow');
 
   return (
-    <article className="card overflow-hidden p-4 transition hover:-translate-y-1">
+    <article
+      className={`card overflow-hidden transition ${
+        compact ? 'p-3' : 'p-4 hover:-translate-y-1'
+      }`}
+    >
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate font-semibold text-foreground text-lg">
+          <p
+            className={`truncate font-semibold text-foreground ${
+              compact ? 'text-base' : 'text-lg'
+            }`}
+          >
             {title}
           </p>
           <p className="truncate text-muted-foreground text-xs">
@@ -128,7 +139,7 @@ export const BattleCard = ({
               VS
             </span>
           }
-          heightClass="h-52"
+          heightClass={compact ? 'h-44' : 'h-52'}
           id={`battle ${id}`}
         />
       </section>
@@ -152,32 +163,34 @@ export const BattleCard = ({
             {rightLabel} {voteState.right}%
           </span>
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <button
-            aria-pressed={userVote === 'left'}
-            className={`rounded-lg border px-2 py-1.5 font-semibold text-[11px] transition ${
-              userVote === 'left'
-                ? 'border-primary/45 bg-primary/15 text-primary'
-                : 'border-border bg-muted/70 text-muted-foreground hover:border-primary/40 hover:text-foreground'
-            }`}
-            onClick={() => castVote('left')}
-            type="button"
-          >
-            {t('battle.vote')} {leftLabel}
-          </button>
-          <button
-            aria-pressed={userVote === 'right'}
-            className={`rounded-lg border px-2 py-1.5 font-semibold text-[11px] transition ${
-              userVote === 'right'
-                ? 'border-primary/45 bg-primary/15 text-primary'
-                : 'border-border bg-muted/70 text-muted-foreground hover:border-primary/40 hover:text-foreground'
-            }`}
-            onClick={() => castVote('right')}
-            type="button"
-          >
-            {t('battle.vote')} {rightLabel}
-          </button>
-        </div>
+        {compact ? null : (
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button
+              aria-pressed={userVote === 'left'}
+              className={`rounded-lg border px-2 py-1.5 font-semibold text-[11px] transition ${
+                userVote === 'left'
+                  ? 'border-primary/45 bg-primary/15 text-primary'
+                  : 'border-border bg-muted/70 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+              }`}
+              onClick={() => castVote('left')}
+              type="button"
+            >
+              {t('battle.vote')} {leftLabel}
+            </button>
+            <button
+              aria-pressed={userVote === 'right'}
+              className={`rounded-lg border px-2 py-1.5 font-semibold text-[11px] transition ${
+                userVote === 'right'
+                  ? 'border-primary/45 bg-primary/15 text-primary'
+                  : 'border-border bg-muted/70 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+              }`}
+              onClick={() => castVote('right')}
+              type="button"
+            >
+              {t('battle.vote')} {rightLabel}
+            </button>
+          </div>
+        )}
         {voteLabel && (
           <p className="mt-2 text-[11px] text-secondary">
             {t('battle.yourVote')}: {voteLabel}
@@ -185,32 +198,51 @@ export const BattleCard = ({
         )}
       </section>
 
-      <StatsGrid
-        tiles={[
-          {
-            label: t('changeCard.metrics.glowUp'),
-            value: `+${glowUpScore.toFixed(1)}%`,
-            colorClass: 'text-secondary',
-          },
-          {
-            label: t('changeCard.metrics.impact'),
-            value: `+${impact.toFixed(1)}`,
-            colorClass: 'text-primary',
-          },
-          { label: t('studioDetail.metrics.signal'), value: signal },
-          {
-            label: t('battle.metrics.prsFix'),
-            value: `${prCount} / ${fixCount}`,
-          },
-        ]}
-      />
+      {compact ? (
+        <section className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+          <span className="rounded-full border border-secondary/45 bg-secondary/15 px-2 py-0.5 font-semibold text-secondary">
+            +{glowUpScore.toFixed(1)}%
+          </span>
+          <span className="text-muted-foreground">
+            {t('battle.metrics.prsFix')}: {prCount} / {fixCount}
+          </span>
+          <span className="text-muted-foreground">
+            {t('studioDetail.metrics.signal')}: {signal}
+          </span>
+        </section>
+      ) : (
+        <CardDetails summaryLabel={t('card.viewDetails')}>
+          <StatsGrid
+            tiles={[
+              {
+                label: t('changeCard.metrics.glowUp'),
+                value: `+${glowUpScore.toFixed(1)}%`,
+                colorClass: 'text-secondary',
+              },
+              {
+                label: t('changeCard.metrics.impact'),
+                value: `+${impact.toFixed(1)}`,
+                colorClass: 'text-primary',
+              },
+              { label: t('studioDetail.metrics.signal'), value: signal },
+              {
+                label: t('battle.metrics.prsFix'),
+                value: `${prCount} / ${fixCount}`,
+              },
+            ]}
+          />
+          <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
+            <span>
+              {t('battle.idLabel')}: {id}
+            </span>
+            <span>{activityLabel}</span>
+          </div>
 
-      <ObserverActions title={t('battle.observerActions')} />
+          <ObserverActions title={t('battle.observerActions')} />
+        </CardDetails>
+      )}
 
-      <div className="mt-2 flex items-center justify-between text-muted-foreground text-xs">
-        <span>
-          {t('battle.idLabel')}: {id}
-        </span>
+      <div className="mt-2 flex items-center justify-end text-muted-foreground text-xs">
         <Link
           className="font-semibold text-[11px] text-primary"
           href={`/drafts/${id}`}

@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { Flame, Wifi } from 'lucide-react';
+import { Flame } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -33,6 +33,45 @@ interface ObserverRailData {
   allFeedsFailed: boolean;
   fallbackUsed: boolean;
 }
+
+type RailPanelKey = 'battles' | 'activity' | 'glowUps' | 'studios';
+type RailPanelVisibility = Record<RailPanelKey, boolean>;
+
+const PANEL_VISIBILITY_STORAGE_KEY = 'finishit-observer-rail-panels';
+
+const DEFAULT_PANEL_VISIBILITY: RailPanelVisibility = {
+  battles: true,
+  activity: true,
+  glowUps: true,
+  studios: true,
+};
+
+const parsePanelVisibility = (
+  value: string | null,
+): RailPanelVisibility | null => {
+  if (!value) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(value) as Partial<RailPanelVisibility>;
+    if (
+      typeof parsed.battles !== 'boolean' ||
+      typeof parsed.activity !== 'boolean' ||
+      typeof parsed.glowUps !== 'boolean' ||
+      typeof parsed.studios !== 'boolean'
+    ) {
+      return null;
+    }
+    return {
+      battles: parsed.battles,
+      activity: parsed.activity,
+      glowUps: parsed.glowUps,
+      studios: parsed.studios,
+    };
+  } catch {
+    return null;
+  }
+};
 
 const fallbackRailData: ObserverRailData = {
   liveDraftCount: 128,
@@ -212,6 +251,9 @@ export const ObserverRightRail = () => {
   const [resyncToast, setResyncToast] = useState<string | null>(null);
   const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
   const [syncNow, setSyncNow] = useState(() => Date.now());
+  const [panelVisibility, setPanelVisibility] = useState<RailPanelVisibility>(
+    DEFAULT_PANEL_VISIBILITY,
+  );
   const manualResyncPendingRef = useRef(false);
   const toastTimeoutRef = useRef<number | null>(null);
   const processedResyncAtRef = useRef<string | null>(null);
@@ -286,6 +328,17 @@ export const ObserverRightRail = () => {
     const base = realtimeEvents.length + mergedActivity.length;
     return Math.max(12, base * 3);
   }, [mergedActivity.length, realtimeEvents.length]);
+
+  const panelToggles = useMemo(
+    () =>
+      [
+        { key: 'battles', label: t('rail.trendingBattles') },
+        { key: 'activity', label: t('rail.liveActivityStream') },
+        { key: 'glowUps', label: t('rail.topGlowUps24h') },
+        { key: 'studios', label: t('rail.topStudios') },
+      ] as Array<{ key: RailPanelKey; label: string }>,
+    [t],
+  );
 
   const lastSyncLabel = useMemo(() => {
     if (lastSyncAt === null) {
@@ -363,10 +416,41 @@ export const ObserverRightRail = () => {
     };
   }, [lastSyncAt]);
 
+  useEffect(() => {
+    try {
+      const storedVisibility = parsePanelVisibility(
+        window.localStorage.getItem(PANEL_VISIBILITY_STORAGE_KEY),
+      );
+      if (storedVisibility) {
+        setPanelVisibility(storedVisibility);
+      }
+    } catch {
+      // ignore localStorage read errors
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        PANEL_VISIBILITY_STORAGE_KEY,
+        JSON.stringify(panelVisibility),
+      );
+    } catch {
+      // ignore localStorage write errors
+    }
+  }, [panelVisibility]);
+
   const handleManualResync = useCallback(() => {
     manualResyncPendingRef.current = true;
     requestResync();
   }, [requestResync]);
+
+  const togglePanel = useCallback((panelKey: RailPanelKey) => {
+    setPanelVisibility((previous) => ({
+      ...previous,
+      [panelKey]: !previous[panelKey],
+    }));
+  }, []);
 
   return (
     <aside className="observer-right-rail grid grid-cols-1 gap-3">
@@ -376,13 +460,9 @@ export const ObserverRightRail = () => {
           className="pointer-events-none absolute -top-12 right-0 h-24 w-24 rounded-full bg-secondary/10 blur-2xl"
         />
         <p className="live-signal inline-flex items-center gap-2 text-xs uppercase tracking-wide">
-          <span className="icon-breathe live-dot inline-flex h-2.5 w-2.5 rounded-full" />
+          <span className="icon-breathe live-dot inline-flex h-2.5 w-2.5 rounded-full motion-reduce:animate-none" />
           {t('rail.liveWsConnected')}
         </p>
-        <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground/70 uppercase tracking-wide">
-          <Wifi aria-hidden="true" className="h-3.5 w-3.5 text-primary" />
-          {t('rail.realtimeShell')}
-        </div>
         <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
           <div className="rounded-lg border border-border bg-muted/70 p-2">
             <p className="text-muted-foreground/70">{t('rail.liveDrafts')}</p>
@@ -426,7 +506,7 @@ export const ObserverRightRail = () => {
             </span>
             <button
               aria-label={t('rail.resyncNow')}
-              className="rounded-full border border-primary/45 px-2 py-1 font-semibold text-[10px] text-primary uppercase tracking-wide"
+              className="rounded-full border border-primary/45 px-2 py-1 font-semibold text-[10px] text-primary uppercase tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               disabled={isResyncing}
               onClick={handleManualResync}
               type="button"
@@ -443,71 +523,177 @@ export const ObserverRightRail = () => {
             {resyncToast}
           </div>
         )}
+        <div
+          className="mt-2 hidden flex-wrap gap-1 lg:flex"
+          data-testid="observer-rail-desktop-controls"
+        >
+          <button
+            className="rounded-full border border-border bg-background/70 px-2 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wide transition hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            onClick={() => setPanelVisibility(DEFAULT_PANEL_VISIBILITY)}
+            type="button"
+          >
+            {t('rail.showAll')}
+          </button>
+          <button
+            className="rounded-full border border-border bg-background/70 px-2 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wide transition hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            onClick={() =>
+              setPanelVisibility({
+                battles: false,
+                activity: false,
+                glowUps: false,
+                studios: false,
+              })
+            }
+            type="button"
+          >
+            {t('rail.hideAll')}
+          </button>
+          {panelToggles.map((panel) => (
+            <button
+              aria-pressed={panelVisibility[panel.key]}
+              className={`rounded-full border px-2 py-1 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                panelVisibility[panel.key]
+                  ? 'border-primary/45 bg-primary/10 text-primary'
+                  : 'border-border bg-background/70 text-muted-foreground hover:text-foreground'
+              }`}
+              key={panel.key}
+              onClick={() => togglePanel(panel.key)}
+              type="button"
+            >
+              {panel.label}
+            </button>
+          ))}
+        </div>
       </section>
       <section className="card p-3 lg:hidden">
         <PanelHeader icon={Flame} title={t('rail.pulseRadar')} />
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-lg border border-border bg-muted/70 p-2">
-            <p className="font-semibold text-foreground text-xs">
-              {t('rail.trendingBattles')}
-            </p>
-            <ul className="mt-2 grid gap-1 text-[11px] text-muted-foreground">
-              {battles.slice(0, 2).map((item) => (
-                <li className="line-clamp-1" key={`mobile-battle-${item.id}`}>
-                  {item.title}
-                </li>
-              ))}
-            </ul>
+        <div
+          className="mt-2 grid gap-2"
+          data-testid="observer-rail-mobile-controls"
+        >
+          <div className="flex flex-wrap gap-1">
+            <button
+              className="rounded-full border border-border bg-background/70 px-2 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wide transition hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              onClick={() => setPanelVisibility(DEFAULT_PANEL_VISIBILITY)}
+              type="button"
+            >
+              {t('rail.showAll')}
+            </button>
+            <button
+              className="rounded-full border border-border bg-background/70 px-2 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wide transition hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              onClick={() =>
+                setPanelVisibility({
+                  battles: false,
+                  activity: false,
+                  glowUps: false,
+                  studios: false,
+                })
+              }
+              type="button"
+            >
+              {t('rail.hideAll')}
+            </button>
           </div>
-          <div className="rounded-lg border border-border bg-muted/70 p-2">
-            <p className="font-semibold text-foreground text-xs">
-              {t('rail.topGlowUps24h')}
-            </p>
-            <ul className="mt-2 grid gap-1 text-[11px] text-muted-foreground">
-              {glowUps.slice(0, 2).map((item) => (
-                <li className="line-clamp-1" key={`mobile-glow-${item.id}`}>
-                  {item.title}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-        <div className="mt-3 rounded-lg border border-border bg-muted/70 p-2">
-          <p className="font-semibold text-foreground text-xs">
-            {t('rail.liveActivityStream')}
-          </p>
-          <ul className="mt-2 grid gap-1 text-[11px] text-muted-foreground">
-            {mergedActivity.slice(0, 3).map((item) => (
-              <li className="line-clamp-1" key={`mobile-activity-${item.id}`}>
-                {item.title}
-              </li>
+          <div className="flex flex-wrap gap-1">
+            {panelToggles.map((panel) => (
+              <button
+                aria-pressed={panelVisibility[panel.key]}
+                className={`rounded-full border px-2 py-1 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                  panelVisibility[panel.key]
+                    ? 'border-primary/45 bg-primary/10 text-primary'
+                    : 'border-border bg-background/70 text-muted-foreground hover:text-foreground'
+                }`}
+                key={`mobile-toggle-${panel.key}`}
+                onClick={() => togglePanel(panel.key)}
+                type="button"
+              >
+                {panel.label}
+              </button>
             ))}
-          </ul>
+          </div>
         </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {panelVisibility.battles ? (
+            <div className="rounded-lg border border-border bg-muted/70 p-2">
+              <p className="font-semibold text-foreground text-xs">
+                {t('rail.trendingBattles')}
+              </p>
+              <ul className="mt-2 grid gap-1 text-[11px] text-muted-foreground">
+                {battles.slice(0, 2).map((item) => (
+                  <li className="line-clamp-1" key={`mobile-battle-${item.id}`}>
+                    {item.title}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {panelVisibility.glowUps ? (
+            <div className="rounded-lg border border-border bg-muted/70 p-2">
+              <p className="font-semibold text-foreground text-xs">
+                {t('rail.topGlowUps24h')}
+              </p>
+              <ul className="mt-2 grid gap-1 text-[11px] text-muted-foreground">
+                {glowUps.slice(0, 2).map((item) => (
+                  <li className="line-clamp-1" key={`mobile-glow-${item.id}`}>
+                    {item.title}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {panelVisibility.studios ? (
+            <div className="rounded-lg border border-border bg-muted/70 p-2">
+              <p className="font-semibold text-foreground text-xs">
+                {t('rail.topStudios')}
+              </p>
+              <ul className="mt-2 grid gap-1 text-[11px] text-muted-foreground">
+                {studios.slice(0, 2).map((item) => (
+                  <li className="line-clamp-1" key={`mobile-studio-${item.id}`}>
+                    {item.title}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+        {panelVisibility.activity ? (
+          <div className="mt-3 rounded-lg border border-border bg-muted/70 p-2">
+            <p className="font-semibold text-foreground text-xs">
+              {t('rail.liveActivityStream')}
+            </p>
+            <ul className="mt-2 grid gap-1 text-[11px] text-muted-foreground">
+              {mergedActivity.slice(0, 3).map((item) => (
+                <li className="line-clamp-1" key={`mobile-activity-${item.id}`}>
+                  {item.title}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </section>
       <BattleList
-        className="hidden lg:block"
+        className={panelVisibility.battles ? 'hidden lg:block' : 'hidden'}
         hotLabel={t('rail.hot')}
         items={battles}
         liveLabel={t('common.live')}
         title={t('rail.trendingBattles')}
       />
+      <ActivityTicker
+        className={panelVisibility.activity ? 'hidden lg:block' : 'hidden'}
+        items={mergedActivity}
+        title={t('rail.liveActivityStream')}
+      />
       <ItemList
-        className="hidden lg:block"
+        className={panelVisibility.glowUps ? 'hidden lg:block' : 'hidden'}
         icon={Flame}
         items={glowUps}
         title={t('rail.topGlowUps24h')}
       />
       <ItemList
-        className="hidden lg:block"
+        className={panelVisibility.studios ? 'hidden lg:block' : 'hidden'}
         icon={Flame}
         items={studios}
         title={t('rail.topStudios')}
-      />
-      <ActivityTicker
-        className="hidden lg:block"
-        items={mergedActivity}
-        title={t('rail.liveActivityStream')}
       />
     </aside>
   );

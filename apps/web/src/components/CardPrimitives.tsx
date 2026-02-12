@@ -1,12 +1,19 @@
 /* Shared primitives reused across BattleCard, DraftCard, and BeforeAfterCard */
 'use client';
 
-import { ArrowRightLeft, Bookmark, Eye, Star, UserPlus } from 'lucide-react';
+import {
+  ArrowRightLeft,
+  Bookmark,
+  Eye,
+  MoreHorizontal,
+  Star,
+  UserPlus,
+} from 'lucide-react';
 import Image from 'next/image';
 import { useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 
-/* ── helpers ── */
+/* helpers */
 
 export const signalForGlowUp = (glowUpScore: number): string => {
   if (glowUpScore >= 18) {
@@ -44,7 +51,7 @@ export const normalizeVotes = (
   };
 };
 
-/* ── Image pair with error handling ── */
+/* Image pair with error handling */
 
 interface ImagePairProps {
   id: string;
@@ -141,7 +148,7 @@ export const ImagePair = ({
   );
 };
 
-/* ── Stats grid (GlowUp, Impact, Signal, PRs) ── */
+/* Stats grid (GlowUp, Impact, Signal, PRs) */
 
 export interface StatTile {
   label: string;
@@ -171,7 +178,29 @@ export const StatsGrid = ({ tiles }: StatsGridProps) => (
   </section>
 );
 
-/* ── Observer actions (Watch, Compare, Rate, Follow, Save) ── */
+interface KeyMetricPreviewProps {
+  label: string;
+  value: string;
+  helper?: string;
+  toneClass?: string;
+}
+
+export const KeyMetricPreview = ({
+  label,
+  value,
+  helper,
+  toneClass = 'text-secondary',
+}: KeyMetricPreviewProps) => (
+  <section className="mt-3 rounded-xl border border-border bg-muted/65 p-3">
+    <p className="text-muted-foreground text-xs">{label}</p>
+    <p className={`font-semibold text-2xl ${toneClass}`}>{value}</p>
+    {helper ? (
+      <p className="mt-1 text-foreground/80 text-xs">{helper}</p>
+    ) : null}
+  </section>
+);
+
+/* Observer actions (Watch, Compare, Rate, Follow, Save) */
 
 interface ObserverActionsProps {
   title?: string;
@@ -183,6 +212,7 @@ export const ObserverActions = ({
   buttonClassName = 'inline-flex items-center justify-center gap-1 rounded-lg border border-border bg-background/60 px-1 py-1.5 text-[10px] text-muted-foreground transition hover:border-primary/40 hover:text-foreground',
 }: ObserverActionsProps) => {
   const { t } = useLanguage();
+  const [expanded, setExpanded] = useState(false);
   const resolvedTitle = title ?? t('draft.observerActions');
   const actions = [
     { icon: Eye, label: t('observerAction.watch') },
@@ -191,23 +221,44 @@ export const ObserverActions = ({
     { icon: UserPlus, label: t('observerAction.follow') },
     { icon: Bookmark, label: t('observerAction.save') },
   ];
+  const primaryActions = actions.slice(0, 2);
+  const secondaryActions = actions.slice(2);
 
   return (
     <section className="mt-2 rounded-xl border border-border bg-muted/60 p-2">
       <p className="mb-2 text-muted-foreground text-xs">{resolvedTitle}</p>
-      <div className="grid grid-cols-5 gap-1">
-        {actions.map(({ icon: Icon, label }) => (
+      <div className="grid grid-cols-3 gap-1">
+        {primaryActions.map(({ icon: Icon, label }) => (
           <button className={buttonClassName} key={label} type="button">
             <Icon aria-hidden="true" className="h-3.5 w-3.5" />
             {label}
           </button>
         ))}
+        <button
+          aria-expanded={expanded}
+          className={buttonClassName}
+          onClick={() => setExpanded((previous) => !previous)}
+          type="button"
+        >
+          <MoreHorizontal aria-hidden="true" className="h-3.5 w-3.5" />
+          {t('feedTabs.more')}
+        </button>
       </div>
+      {expanded ? (
+        <div className="mt-1 grid grid-cols-3 gap-1">
+          {secondaryActions.map(({ icon: Icon, label }) => (
+            <button className={buttonClassName} key={label} type="button">
+              <Icon aria-hidden="true" className="h-3.5 w-3.5" />
+              {label}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 };
 
-/* ── Evolution timeline bar ── */
+/* Evolution timeline bar */
 
 interface EvolutionTimelineProps {
   timelineValue: number;
@@ -246,3 +297,24 @@ export const EvolutionTimeline = ({
     </section>
   );
 };
+
+/* Compact feed details */
+
+interface CardDetailsProps {
+  summaryLabel: string;
+  children: React.ReactNode;
+}
+
+export const CardDetails = ({ summaryLabel, children }: CardDetailsProps) => (
+  <details className="mt-3 overflow-hidden rounded-xl border border-border bg-muted/55">
+    <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2 font-semibold text-[11px] text-muted-foreground uppercase tracking-wide transition hover:text-foreground [&::-webkit-details-marker]:hidden">
+      {summaryLabel}
+      <span aria-hidden="true" className="text-[10px]">
+        +
+      </span>
+    </summary>
+    <div className="grid gap-2 border-border/60 border-t px-3 py-3">
+      {children}
+    </div>
+  </details>
+);

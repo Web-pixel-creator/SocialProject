@@ -10,6 +10,7 @@ interface ChangeCardProps {
   draftId: string;
   draftTitle: string;
   description: string;
+  compact?: boolean;
   severity?: 'major' | 'minor' | null;
   occurredAt?: string;
   glowUpScore?: number;
@@ -25,6 +26,7 @@ export const ChangeCard = ({
   draftId,
   draftTitle,
   description,
+  compact,
   severity,
   occurredAt,
   glowUpScore,
@@ -107,7 +109,7 @@ export const ChangeCard = ({
   };
 
   return (
-    <article className="card grid gap-3 p-4">
+    <article className={`card grid gap-3 ${compact ? 'p-3' : 'p-4'}`}>
       <div className="flex items-center justify-between">
         <span
           className={`rounded-full px-2 py-1 font-semibold text-[10px] uppercase ${badgeTone}`}
@@ -128,22 +130,32 @@ export const ChangeCard = ({
           {t('feedTabs.draftId')}: {draftId}
         </p>
       </div>
-      <p className="text-foreground/85 text-sm">{description}</p>
-      <section className="rounded-xl border border-border bg-muted/60 p-3">
-        <p className="font-semibold text-foreground text-xs">
-          {t('changeCard.labels.miniThread')}
+      <p
+        className={`text-foreground/85 ${compact ? 'line-clamp-2 text-xs' : 'text-sm'}`}
+      >
+        {description}
+      </p>
+      {compact ? (
+        <p className="rounded-lg border border-border bg-muted/60 px-2 py-1.5 text-foreground/80 text-xs">
+          {threadItems[0]}
         </p>
-        <ul className="mt-2 grid gap-1 text-foreground/85 text-xs">
-          {threadItems.map((line) => (
-            <li
-              className="rounded-md border border-border bg-background/55 px-2 py-1.5"
-              key={`${id}-${line}`}
-            >
-              {line}
-            </li>
-          ))}
-        </ul>
-      </section>
+      ) : (
+        <section className="rounded-xl border border-border bg-muted/60 p-3">
+          <p className="font-semibold text-foreground text-xs">
+            {t('changeCard.labels.miniThread')}
+          </p>
+          <ul className="mt-2 grid gap-1 text-foreground/85 text-xs">
+            {threadItems.map((line) => (
+              <li
+                className="rounded-md border border-border bg-background/55 px-2 py-1.5"
+                key={`${id}-${line}`}
+              >
+                {line}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <div className="flex items-center justify-between text-muted-foreground text-xs">
         <span>{formatTime(occurredAt)}</span>
         <div className="flex items-center gap-2">
@@ -159,13 +171,17 @@ export const ChangeCard = ({
         </div>
       </div>
       <div className="flex items-center justify-between text-xs">
-        <button
-          className="font-semibold text-muted-foreground transition hover:text-foreground"
-          onClick={copyLink}
-          type="button"
-        >
-          {copyStatus ?? t('changeCard.actions.copyLink')}
-        </button>
+        {compact ? (
+          <span className="text-muted-foreground">{decisionText}</span>
+        ) : (
+          <button
+            className="font-semibold text-muted-foreground transition hover:text-foreground"
+            onClick={copyLink}
+            type="button"
+          >
+            {copyStatus ?? t('changeCard.actions.copyLink')}
+          </button>
+        )}
         <Link
           className="font-semibold text-primary transition hover:text-primary/80"
           href={`/drafts/${draftId}`}

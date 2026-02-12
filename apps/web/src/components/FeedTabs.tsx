@@ -1,5 +1,6 @@
 'use client';
 
+import { ChevronDown, Inbox, Search, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
@@ -41,11 +42,25 @@ const TABS = [
   'Battles',
   'Archive',
 ];
+const PRIMARY_TABS = ['All', 'Hot Now', 'Live Drafts', 'Battles', 'For You'];
+const MORE_TABS = TABS.filter((tab) => !PRIMARY_TABS.includes(tab));
 const PAGE_SIZE = 6;
 const DEFAULT_SORT = 'recent';
 const DEFAULT_STATUS = 'all';
 const DEFAULT_RANGE = '30d';
 const DEFAULT_INTENT = 'all';
+const DEFAULT_QUERY = '';
+const FEED_DENSITY_STORAGE_KEY = 'finishit-feed-density';
+const MOBILE_DENSITY_MEDIA_QUERY = '(max-width: 767px)';
+
+type FeedDensity = 'comfort' | 'compact';
+
+const parseFeedDensity = (value: string | null): FeedDensity | null => {
+  if (value === 'comfort' || value === 'compact') {
+    return value;
+  }
+  return null;
+};
 
 const SORT_OPTIONS: Array<{ value: FeedSort; label: string }> = [
   { value: 'recent', label: 'Recent' },
@@ -73,17 +88,6 @@ const INTENT_OPTIONS: Array<{ value: FeedIntent; label: string }> = [
   { value: 'needs_help', label: 'Needs help' },
   { value: 'seeking_pr', label: 'Seeking PR' },
   { value: 'ready_for_review', label: 'Ready for review' },
-];
-const INTENT_PRESET_OPTIONS = INTENT_OPTIONS.filter(
-  (option) => option.value !== 'all',
-);
-
-const QUICK_SCOPE_TABS: Array<{ id: string; label: string; tab: string }> = [
-  { id: 'live', label: 'Live', tab: 'Live Drafts' },
-  { id: 'top24', label: 'Top 24h', tab: 'Hot Now' },
-  { id: 'glowup', label: 'GlowUp', tab: 'GlowUps' },
-  { id: 'battle-radar', label: 'Battle radar', tab: 'Battles' },
-  { id: 'following', label: 'Following', tab: 'For You' },
 ];
 
 const BATTLE_FILTER_OPTIONS: Array<{ value: BattleFilter; label: string }> = [
@@ -120,6 +124,7 @@ interface FeedQueryState {
   status: FeedStatus;
   range: FeedRange;
   intent: FeedIntent;
+  query: string;
 }
 
 const parseQueryState = (params: { get: (key: string) => string | null }) => {
@@ -149,8 +154,34 @@ const parseQueryState = (params: { get: (key: string) => string | null }) => {
     rawIntent && INTENT_VALUES.has(rawIntent as FeedIntent)
       ? (rawIntent as FeedIntent)
       : DEFAULT_INTENT;
+  const rawQuery = params.get('q') ?? DEFAULT_QUERY;
+  const query = rawQuery.trim();
 
-  return { tab, sort, status, range, intent } satisfies FeedQueryState;
+  return { tab, sort, status, range, intent, query } satisfies FeedQueryState;
+};
+
+const normalizeQuery = (value: string): string => value.trim().toLowerCase();
+
+const searchableTextByItemKind = (item: FeedItem): string => {
+  if (item.kind === 'draft' || item.kind === 'hot') {
+    return `${item.title} ${item.id}`;
+  }
+  if (item.kind === 'progress') {
+    return `${item.draftId} ${item.authorStudio}`;
+  }
+  if (item.kind === 'guild') {
+    return `${item.name} ${item.themeOfWeek ?? ''}`;
+  }
+  if (item.kind === 'studio') {
+    return `${item.studioName} ${item.id}`;
+  }
+  if (item.kind === 'change') {
+    return `${item.draftTitle} ${item.draftId} ${item.description} ${item.changeType}`;
+  }
+  if (item.kind === 'battle') {
+    return `${item.title} ${item.leftLabel} ${item.rightLabel} ${item.id}`;
+  }
+  return `${item.summary} ${item.id}`;
 };
 
 const sendTelemetry = (payload: Record<string, unknown>): void => {
@@ -315,7 +346,11 @@ const BattleFilters = memo(function BattleFilters({
   );
 });
 
-export const FeedTabs = () => {
+interface FeedTabsProps {
+  isObserverMode?: boolean;
+}
+
+export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
   const { t } = useLanguage();
   const router = useRouter();
   const pathname = usePathname();
@@ -331,24 +366,39 @@ export const FeedTabs = () => {
   const [status, setStatus] = useState<FeedStatus>(queryState.status);
   const [range, setRange] = useState<FeedRange>(queryState.range);
   const [intent, setIntent] = useState<FeedIntent>(queryState.intent);
+  const [query, setQuery] = useState(queryState.query);
   const [items, setItems] = useState<FeedItem[]>([]);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [fallbackUsed, setFallbackUsed] = useState(false);
   const [battleFilter, setBattleFilter] = useState<BattleFilter>('all');
-  const filterKey = `${active}|${sort}|${status}|${range}|${intent}`;
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [showBackToTop, setShowBackToTop] = useState(false);
+  const [density, setDensity] = useState<FeedDensity>('comfort');
+  const isCompactDensity = density === 'compact';
+  const normalizedQuery = useMemo(() => normalizeQuery(query), [query]);
+  const filterKey = `${active}|${sort}|${status}|${range}|${intent}|${normalizedQuery}`;
   const feedGridClass = STORY_TABS.has(active)
-    ? 'grid gap-4'
-    : 'grid gap-4 md:grid-cols-2 xl:grid-cols-3';
+    ? `grid ${isCompactDensity ? 'gap-3' : 'gap-4'}`
+    : `grid ${isCompactDensity ? 'gap-3' : 'gap-4'} md:grid-cols-2 xl:grid-cols-3`;
   const visibleItems = useMemo(() => {
-    if (active !== 'Battles' || battleFilter === 'all') {
-      return items;
+    let filteredItems = items;
+    if (active === 'Battles' && battleFilter !== 'all') {
+      filteredItems = filteredItems.filter(
+        (item) => item.kind !== 'battle' || item.decision === battleFilter,
+      );
     }
 
-    return items.filter(
-      (item) => item.kind !== 'battle' || item.decision === battleFilter,
+    if (!normalizedQuery) {
+      return filteredItems;
+    }
+
+    return filteredItems.filter((item) =>
+      searchableTextByItemKind(item).toLowerCase().includes(normalizedQuery),
     );
-  }, [active, battleFilter, items]);
+  }, [active, battleFilter, items, normalizedQuery]);
 
   const tabLabels = useMemo(
     () =>
@@ -429,18 +479,6 @@ export const FeedTabs = () => {
     [t],
   );
 
-  const quickScopeLabels = useMemo(
-    () =>
-      ({
-        live: t('common.live'),
-        top24: t('feedTabs.quickScope.top24h'),
-        glowup: t('changeCard.metrics.glowUp'),
-        'battle-radar': t('feedTabs.quickScope.battleRadar'),
-        following: t('feedTabs.quickScope.following'),
-      }) as Record<string, string>,
-    [t],
-  );
-
   const battleFilterLabel = useCallback(
     (value: BattleFilter): string => {
       if (value === 'pending') {
@@ -488,14 +526,6 @@ export const FeedTabs = () => {
       })),
     [intentLabel],
   );
-  const localizedIntentPresetOptions = useMemo(
-    () =>
-      INTENT_PRESET_OPTIONS.map((option) => ({
-        value: option.value,
-        label: intentLabel(option.value),
-      })),
-    [intentLabel],
-  );
   const localizedBattleFilterOptions = useMemo(
     () =>
       BATTLE_FILTER_OPTIONS.map((option) => ({
@@ -513,19 +543,14 @@ export const FeedTabs = () => {
     }),
     [t],
   );
-
-  const quickScopeClass = (scopeId: string, isActive: boolean): string => {
-    if (!isActive) {
-      return 'border-border bg-muted/70 text-muted-foreground hover:border-secondary/45 hover:text-foreground';
-    }
-    if (scopeId === 'live') {
-      return 'tag-live';
-    }
-    if (scopeId === 'top24') {
-      return 'tag-hot';
-    }
-    return 'border-secondary/45 bg-secondary/15 text-secondary';
-  };
+  const showFiltersLabel = t('feedTabs.filters.toggle');
+  const moreLabel = t('feedTabs.more');
+  const shownLabel = t('feedTabs.shown');
+  const backToTopLabel = t('feedTabs.backToTop');
+  const emptyStateTitle = t('feedTabs.empty.title');
+  const densityLabel = t('feedTabs.density.label');
+  const comfortLabel = t('feedTabs.density.comfort');
+  const compactLabel = t('feedTabs.density.compact');
 
   const tabClass = (tab: string, isActive: boolean): string => {
     if (!isActive) {
@@ -556,7 +581,68 @@ export const FeedTabs = () => {
     setIntent((previous) =>
       previous === queryState.intent ? previous : queryState.intent,
     );
+    setQuery((previous) =>
+      previous === queryState.query ? previous : queryState.query,
+    );
   }, [queryState]);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') {
+      return;
+    }
+
+    const mediaQueryList = window.matchMedia(MOBILE_DENSITY_MEDIA_QUERY);
+    const syncViewportState = () => {
+      setIsMobileViewport(mediaQueryList.matches);
+    };
+
+    syncViewportState();
+    if (typeof mediaQueryList.addEventListener === 'function') {
+      mediaQueryList.addEventListener('change', syncViewportState);
+      return () => {
+        mediaQueryList.removeEventListener('change', syncViewportState);
+      };
+    }
+
+    mediaQueryList.addListener(syncViewportState);
+    return () => {
+      mediaQueryList.removeListener(syncViewportState);
+    };
+  }, []);
+
+  useEffect(() => {
+    try {
+      const storedDensity = parseFeedDensity(
+        window.localStorage.getItem(FEED_DENSITY_STORAGE_KEY),
+      );
+      if (storedDensity) {
+        setDensity(storedDensity);
+        return;
+      }
+      if (typeof window.matchMedia === 'function') {
+        const prefersCompactDensity = window.matchMedia(
+          MOBILE_DENSITY_MEDIA_QUERY,
+        ).matches;
+        setDensity(prefersCompactDensity ? 'compact' : 'comfort');
+      }
+    } catch {
+      // ignore localStorage read errors
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isMobileViewport && moreOpen) {
+      setMoreOpen(false);
+    }
+  }, [isMobileViewport, moreOpen]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(FEED_DENSITY_STORAGE_KEY, density);
+    } catch {
+      // ignore localStorage write errors
+    }
+  }, [density]);
 
   const updateQuery = useCallback(
     (
@@ -566,6 +652,7 @@ export const FeedTabs = () => {
         status: FeedStatus;
         range: FeedRange;
         intent: FeedIntent;
+        query: string;
       }>,
     ) => {
       const params = new URLSearchParams(searchParamString);
@@ -575,6 +662,7 @@ export const FeedTabs = () => {
         status: updates.status ?? status,
         range: updates.range ?? range,
         intent: updates.intent ?? intent,
+        query: (updates.query ?? query).trim(),
       };
 
       if (
@@ -582,7 +670,8 @@ export const FeedTabs = () => {
         next.sort === queryState.sort &&
         next.status === queryState.status &&
         next.range === queryState.range &&
-        next.intent === queryState.intent
+        next.intent === queryState.intent &&
+        next.query === queryState.query
       ) {
         return;
       }
@@ -617,6 +706,12 @@ export const FeedTabs = () => {
         params.delete('intent');
       }
 
+      if (next.query) {
+        params.set('q', next.query);
+      } else {
+        params.delete('q');
+      }
+
       const queryString = params.toString();
       router.replace(queryString ? `${pathname}?${queryString}` : pathname);
     },
@@ -624,6 +719,8 @@ export const FeedTabs = () => {
       active,
       intent,
       pathname,
+      query,
+      queryState.query,
       queryState.intent,
       queryState.range,
       queryState.sort,
@@ -636,6 +733,27 @@ export const FeedTabs = () => {
       status,
     ],
   );
+
+  const handleTabSelect = useCallback(
+    (tab: string) => {
+      setActive(tab);
+      updateQuery({ tab });
+    },
+    [updateQuery],
+  );
+
+  useEffect(() => {
+    const timeoutHandle = window.setTimeout(() => {
+      const trimmedQuery = query.trim();
+      if (trimmedQuery !== queryState.query) {
+        updateQuery({ query: trimmedQuery });
+      }
+    }, 200);
+
+    return () => {
+      window.clearTimeout(timeoutHandle);
+    };
+  }, [query, queryState.query, updateQuery]);
 
   useEffect(() => {
     if (!filterKey) {
@@ -656,6 +774,13 @@ export const FeedTabs = () => {
     }
   }, [active, battleFilter]);
 
+  useEffect(() => {
+    if (active) {
+      setFiltersOpen(false);
+      setMoreOpen(false);
+    }
+  }, [active]);
+
   const rangeFrom = useMemo(() => {
     const match = RANGE_OPTIONS.find((option) => option.value === range);
     if (!match?.days) {
@@ -672,10 +797,23 @@ export const FeedTabs = () => {
   } = useSWR<FeedPageResponse>(
     fallbackUsed
       ? null
-      : ['feed-tabs', active, offset, sort, status, intent, range, rangeFrom],
+      : [
+          'feed-tabs',
+          active,
+          offset,
+          sort,
+          status,
+          intent,
+          range,
+          rangeFrom,
+          normalizedQuery,
+        ],
     async () => {
       const endpoint = endpointForTab(active);
       const params: Record<string, unknown> = { limit: PAGE_SIZE, offset };
+      if (normalizedQuery) {
+        params.q = normalizedQuery;
+      }
       if (active === 'All') {
         params.sort = sort;
         if (status !== 'all') {
@@ -738,7 +876,14 @@ export const FeedTabs = () => {
 
   useEffect(() => {
     const onScroll = () => {
+      setShowBackToTop(window.scrollY > 520);
       if (loading || !hasMore || fallbackUsed) {
+        return;
+      }
+      if (visibleItems.length === 0) {
+        return;
+      }
+      if (document.body.offsetHeight <= window.innerHeight + 200) {
         return;
       }
       if (
@@ -748,9 +893,10 @@ export const FeedTabs = () => {
         setOffset((prev) => prev + PAGE_SIZE);
       }
     };
+    onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
-  }, [loading, hasMore, fallbackUsed]);
+  }, [loading, hasMore, fallbackUsed, visibleItems.length]);
 
   useEffect(() => {
     if (!pageData) {
@@ -804,14 +950,43 @@ export const FeedTabs = () => {
   }, [active, intent, t]);
 
   const openLiveDrafts = () => {
-    setActive('Live Drafts');
-    updateQuery({ tab: 'Live Drafts' });
+    handleTabSelect('Live Drafts');
     sendTelemetry({
       eventType: 'feed_empty_cta',
       action: 'open_live_drafts',
       sourceTab: active,
     });
   };
+
+  const handleQueryChange = useCallback((nextQuery: string) => {
+    setQuery(nextQuery);
+  }, []);
+
+  const clearQuery = useCallback(() => {
+    setQuery(DEFAULT_QUERY);
+  }, []);
+
+  const handleResetFilters = useCallback(() => {
+    setSort(DEFAULT_SORT);
+    setStatus(DEFAULT_STATUS);
+    setRange(DEFAULT_RANGE);
+    setIntent(DEFAULT_INTENT);
+    setBattleFilter('all');
+    setQuery(DEFAULT_QUERY);
+    setFiltersOpen(false);
+    updateQuery({
+      sort: DEFAULT_SORT,
+      status: DEFAULT_STATUS,
+      range: DEFAULT_RANGE,
+      intent: DEFAULT_INTENT,
+      query: DEFAULT_QUERY,
+    });
+    sendTelemetry({
+      eventType: 'feed_filter_reset',
+      tab: active,
+    });
+  }, [active, updateQuery]);
+
   const handleSortChange = useCallback(
     (next: FeedSort) => {
       setSort(next);
@@ -875,6 +1050,13 @@ export const FeedTabs = () => {
       filter: next,
     });
   }, []);
+  const handleDensityChange = useCallback((next: FeedDensity) => {
+    setDensity(next);
+    sendTelemetry({
+      eventType: 'feed_density_change',
+      density: next,
+    });
+  }, []);
   const handleProgressCardOpen = useCallback((draftId: string) => {
     sendTelemetry({
       eventType: 'feed_card_open',
@@ -897,6 +1079,7 @@ export const FeedTabs = () => {
             <DraftCard
               afterImageUrl={item.afterImageUrl}
               beforeImageUrl={item.beforeImageUrl}
+              compact={isCompactDensity}
               glowUpScore={item.glowUpScore}
               hotScore={item.hotScore}
               id={item.id}
@@ -917,22 +1100,47 @@ export const FeedTabs = () => {
             <BeforeAfterCard
               key={String(key)}
               {...item}
+              compact={isCompactDensity}
               onOpen={() => handleProgressCardOpen(item.draftId)}
             />
           );
         }
         if (item.kind === 'battle') {
-          return <BattleCard key={item.id ?? `battle-${index}`} {...item} />;
+          return (
+            <BattleCard
+              compact={isCompactDensity}
+              key={item.id ?? `battle-${index}`}
+              {...item}
+            />
+          );
         }
         if (item.kind === 'change') {
-          return <ChangeCard key={item.id ?? `change-${index}`} {...item} />;
+          return (
+            <ChangeCard
+              compact={isCompactDensity}
+              key={item.id ?? `change-${index}`}
+              {...item}
+            />
+          );
         }
         if (item.kind === 'autopsy') {
-          return <AutopsyCard key={item.id ?? `autopsy-${index}`} {...item} />;
+          return (
+            <AutopsyCard
+              compact={isCompactDensity}
+              key={item.id ?? `autopsy-${index}`}
+              {...item}
+            />
+          );
         }
-        return <DraftCard key={item.id ?? `draft-${index}`} {...item} />;
+        return (
+          <DraftCard
+            compact={isCompactDensity}
+            key={item.id ?? `draft-${index}`}
+            {...item}
+          />
+        );
       }),
-    [visibleItems, handleProgressCardOpen],
+    [visibleItems, handleProgressCardOpen, isCompactDensity],
   );
 
   const filterPanel = useMemo(() => {
@@ -967,11 +1175,7 @@ export const FeedTabs = () => {
       );
     }
 
-    return (
-      <p className="text-muted-foreground text-xs">
-        {t('feedTabs.filters.availableAll')}
-      </p>
-    );
+    return null;
   }, [
     active,
     battleFilter,
@@ -993,74 +1197,349 @@ export const FeedTabs = () => {
     t,
   ]);
 
+  const activeFilterPills = useMemo(() => {
+    const pills: string[] = [];
+
+    if (active === 'All') {
+      if (sort !== DEFAULT_SORT) {
+        pills.push(`${filterLabels.sort}: ${sortLabel(sort)}`);
+      }
+      if (status !== DEFAULT_STATUS) {
+        pills.push(`${filterLabels.status}: ${statusLabel(status)}`);
+      }
+      if (range !== DEFAULT_RANGE) {
+        pills.push(`${filterLabels.timeRange}: ${rangeLabel(range)}`);
+      }
+      if (intent !== DEFAULT_INTENT) {
+        pills.push(`${filterLabels.intent}: ${intentLabel(intent)}`);
+      }
+    }
+
+    if (active === 'Battles' && battleFilter !== 'all') {
+      pills.push(
+        `${t('feedTabs.filters.battleStatus')}: ${battleFilterLabel(battleFilter)}`,
+      );
+    }
+
+    if (query.trim()) {
+      pills.push(`${t('header.search')}: ${query.trim()}`);
+    }
+
+    return pills;
+  }, [
+    active,
+    battleFilter,
+    battleFilterLabel,
+    filterLabels.intent,
+    filterLabels.sort,
+    filterLabels.status,
+    filterLabels.timeRange,
+    intent,
+    intentLabel,
+    range,
+    rangeLabel,
+    sort,
+    sortLabel,
+    status,
+    statusLabel,
+    query,
+    t,
+  ]);
+
+  const hasFilterPanel = active === 'All' || active === 'Battles';
+  const activeFilterCount = activeFilterPills.length;
+  const hasActiveFilters = activeFilterCount > 0;
+  const hasMobileOverlayOpen =
+    isMobileViewport && ((filtersOpen && hasFilterPanel) || moreOpen);
+
+  useEffect(() => {
+    if (!hasMobileOverlayOpen) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [hasMobileOverlayOpen]);
+
+  const shownValue =
+    hasMore && !fallbackUsed
+      ? `${visibleItems.length} / ${items.length}+`
+      : `${visibleItems.length} / ${items.length}`;
+  const handleMoreTabSelect = useCallback(
+    (tab: string, closeMenu?: () => void) => {
+      handleTabSelect(tab);
+      setMoreOpen(false);
+      closeMenu?.();
+    },
+    [handleTabSelect],
+  );
+  const morePanelContent = (
+    <>
+      <div className="grid gap-1">
+        {MORE_TABS.map((tab) => (
+          <button
+            aria-pressed={active === tab}
+            className={`rounded-lg border px-3 py-2 text-left font-semibold text-xs uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+              active === tab
+                ? 'border-primary/45 bg-primary/15 text-primary'
+                : 'border-border bg-background/60 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+            }`}
+            key={tab}
+            onClick={(event) => {
+              const detailsElement = event.currentTarget.closest('details');
+              handleMoreTabSelect(tab, () => {
+                if (detailsElement) {
+                  detailsElement.removeAttribute('open');
+                }
+              });
+            }}
+            type="button"
+          >
+            {tabLabels[tab] ?? tab}
+          </button>
+        ))}
+      </div>
+      <div className="grid gap-2 border-border/60 border-t pt-2">
+        <span className="font-semibold text-[10px] text-muted-foreground uppercase tracking-wide">
+          {densityLabel}
+        </span>
+        <div className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/70 p-1">
+          <button
+            aria-pressed={density === 'comfort'}
+            className={`rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+              density === 'comfort'
+                ? 'border border-primary/45 bg-primary/10 text-primary'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+            onClick={() => handleDensityChange('comfort')}
+            type="button"
+          >
+            {comfortLabel}
+          </button>
+          <button
+            aria-pressed={density === 'compact'}
+            className={`rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+              density === 'compact'
+                ? 'border border-primary/45 bg-primary/10 text-primary'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+            onClick={() => handleDensityChange('compact')}
+            type="button"
+          >
+            {compactLabel}
+          </button>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-border/60 border-t pt-2">
+        <span
+          className="rounded-full border border-border bg-background/70 px-3 py-1 font-semibold text-[11px] text-muted-foreground"
+          title={activeFilterPills.join(' | ')}
+        >
+          {t('feedTabs.activeFilters')}: {activeFilterCount}
+        </span>
+        {hasActiveFilters ? (
+          <button
+            className="rounded-full border border-border bg-background/70 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            onClick={handleResetFilters}
+            type="button"
+          >
+            {t('search.actions.resetFilters')}
+          </button>
+        ) : null}
+      </div>
+    </>
+  );
+
   return (
     <section className="grid gap-6">
       <div className="grid gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          {QUICK_SCOPE_TABS.map((scope) => (
-            <button
-              aria-pressed={active === scope.tab}
-              className={`rounded-full border px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide ${quickScopeClass(scope.id, active === scope.tab)}`}
-              key={scope.id}
-              onClick={() => {
-                setActive(scope.tab);
-                updateQuery({ tab: scope.tab });
-                sendTelemetry({
-                  eventType: 'feed_quick_scope',
-                  tab: scope.tab,
-                });
-              }}
-              type="button"
-            >
-              {quickScopeLabels[scope.id] ?? scope.id}
-            </button>
-          ))}
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {active === 'All' && (
-            <div className="flex flex-wrap gap-2">
-              {localizedIntentPresetOptions.map((option) => (
-                <button
-                  aria-pressed={intent === option.value}
-                  className={`rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide ${
-                    intent === option.value
-                      ? 'border border-primary/45 bg-primary/15 text-primary'
-                      : 'border border-border bg-background/60 text-muted-foreground'
+        <div className="grid gap-3 rounded-2xl border border-border bg-muted/35 p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {PRIMARY_TABS.map((tab) => (
+              <button
+                aria-pressed={active === tab}
+                className={`rounded-full border px-4 py-2 font-semibold text-xs uppercase tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${tabClass(
+                  tab,
+                  active === tab,
+                )}`}
+                key={tab}
+                onClick={() => handleTabSelect(tab)}
+                type="button"
+              >
+                {tabLabels[tab] ?? tab}
+              </button>
+            ))}
+            {isMobileViewport ? (
+              <button
+                aria-expanded={moreOpen}
+                className={`inline-flex items-center gap-1 rounded-full border px-4 py-2 font-semibold text-xs uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                  MORE_TABS.includes(active)
+                    ? 'border-primary/50 bg-primary/15 text-primary'
+                    : 'border-border bg-muted/70 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                }`}
+                onClick={() => {
+                  setMoreOpen((previous) => !previous);
+                  setFiltersOpen(false);
+                }}
+                type="button"
+              >
+                {moreLabel}
+                <ChevronDown
+                  aria-hidden="true"
+                  className={`h-3 w-3 transition-transform motion-reduce:transform-none motion-reduce:transition-none ${moreOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+            ) : (
+              <details className="relative">
+                <summary
+                  className={`inline-flex cursor-pointer list-none items-center gap-1 rounded-full border px-4 py-2 font-semibold text-xs uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [&::-webkit-details-marker]:hidden ${
+                    MORE_TABS.includes(active)
+                      ? 'border-primary/50 bg-primary/15 text-primary'
+                      : 'border-border bg-muted/70 text-muted-foreground hover:border-primary/40 hover:text-foreground'
                   }`}
-                  key={option.value}
-                  onClick={() => {
-                    const next = option.value as FeedIntent;
-                    setIntent(next);
-                    updateQuery({ tab: 'All', intent: next });
-                    sendTelemetry({
-                      eventType: 'feed_intent_preset',
-                      intent: next,
-                    });
-                  }}
+                >
+                  {moreLabel}
+                  <ChevronDown aria-hidden="true" className="h-3 w-3" />
+                </summary>
+                <div className="absolute left-0 z-20 mt-2 grid min-w-[16rem] gap-2 rounded-xl border border-border bg-card p-2">
+                  {morePanelContent}
+                </div>
+              </details>
+            )}
+            <label className="flex min-w-[16rem] flex-1 items-center gap-2 rounded-full border border-border bg-background/85 px-3 py-2 text-muted-foreground text-xs">
+              <Search aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+              <input
+                aria-label={t('feed.searchAriaLabel')}
+                className="w-full bg-transparent text-foreground text-sm outline-none placeholder:text-muted-foreground/65"
+                onChange={(event) => handleQueryChange(event.target.value)}
+                placeholder={t('feed.searchPlaceholderExtended')}
+                type="search"
+                value={query}
+              />
+              {query ? (
+                <button
+                  aria-label={t('common.close')}
+                  className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-border bg-background/90 text-muted-foreground transition hover:border-primary/45 hover:text-primary"
+                  onClick={clearQuery}
                   type="button"
                 >
-                  {option.label}
+                  <X aria-hidden="true" className="h-3.5 w-3.5" />
                 </button>
-              ))}
-            </div>
-          )}
-          {TABS.map((tab) => (
-            <button
-              aria-pressed={active === tab}
-              className={`rounded-full border px-4 py-2 font-semibold text-xs uppercase tracking-wide ${tabClass(tab, active === tab)}`}
-              key={tab}
-              onClick={() => {
-                setActive(tab);
-                updateQuery({ tab });
-              }}
-              type="button"
+              ) : null}
+            </label>
+            {hasFilterPanel ? (
+              <button
+                aria-expanded={filtersOpen}
+                className="rounded-full border border-border bg-muted/70 px-4 py-2 font-semibold text-xs uppercase tracking-wide transition hover:border-primary/45 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                onClick={() => {
+                  setFiltersOpen((previous) => !previous);
+                  if (isMobileViewport) {
+                    setMoreOpen(false);
+                  }
+                }}
+                type="button"
+              >
+                {showFiltersLabel} {filtersOpen ? '-' : '+'}
+              </button>
+            ) : null}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
+            <span className="rounded-full border border-border bg-background/60 px-3 py-1">
+              {shownLabel}: {shownValue}
+            </span>
+            <span
+              className="rounded-full border border-border bg-background/70 px-3 py-1 font-semibold text-[11px]"
+              title={activeFilterPills.join(' | ')}
             >
-              {tabLabels[tab] ?? tab}
-            </button>
-          ))}
+              {t('feedTabs.activeFilters')}: {activeFilterCount}
+            </span>
+          </div>
         </div>
+        {hasFilterPanel && filtersOpen && !isMobileViewport
+          ? filterPanel
+          : null}
       </div>
-      {filterPanel}
+      {hasFilterPanel && filtersOpen && isMobileViewport ? (
+        <div
+          aria-labelledby="feed-mobile-filters-title"
+          aria-modal="true"
+          className="fixed inset-0 z-40 flex items-end bg-background/80 p-3 backdrop-blur-sm lg:hidden"
+          role="dialog"
+        >
+          <button
+            aria-label={t('common.close')}
+            className="absolute inset-0"
+            onClick={() => setFiltersOpen(false)}
+            type="button"
+          />
+          <section className="relative z-10 max-h-[78vh] w-full overflow-y-auto rounded-2xl border border-border bg-card p-3">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h3
+                className="font-semibold text-foreground text-sm"
+                id="feed-mobile-filters-title"
+              >
+                {showFiltersLabel}
+              </h3>
+              <button
+                className="rounded-full border border-border bg-muted/70 px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition hover:border-primary/45 hover:text-primary"
+                onClick={() => setFiltersOpen(false)}
+                type="button"
+              >
+                {t('common.close')}
+              </button>
+            </div>
+            {filterPanel}
+            {hasActiveFilters ? (
+              <div className="mt-3 flex items-center justify-end">
+                <button
+                  className="rounded-full border border-border bg-background/70 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:border-primary/45 hover:text-primary"
+                  onClick={handleResetFilters}
+                  type="button"
+                >
+                  {t('search.actions.resetFilters')}
+                </button>
+              </div>
+            ) : null}
+          </section>
+        </div>
+      ) : null}
+      {moreOpen && isMobileViewport ? (
+        <div
+          aria-labelledby="feed-mobile-more-title"
+          aria-modal="true"
+          className="fixed inset-0 z-40 flex items-end bg-background/80 p-3 backdrop-blur-sm lg:hidden"
+          role="dialog"
+        >
+          <button
+            aria-label={t('common.close')}
+            className="absolute inset-0"
+            onClick={() => setMoreOpen(false)}
+            type="button"
+          />
+          <section className="relative z-10 max-h-[78vh] w-full overflow-y-auto rounded-2xl border border-border bg-card p-3">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h3
+                className="font-semibold text-foreground text-sm"
+                id="feed-mobile-more-title"
+              >
+                {moreLabel}
+              </h3>
+              <button
+                className="rounded-full border border-border bg-muted/70 px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition hover:border-primary/45 hover:text-primary"
+                onClick={() => setMoreOpen(false)}
+                type="button"
+              >
+                {t('common.close')}
+              </button>
+            </div>
+            <div className="grid gap-2">{morePanelContent}</div>
+          </section>
+        </div>
+      ) : null}
       <div
         aria-live="polite"
         className="flex flex-wrap items-center gap-3 text-muted-foreground text-xs"
@@ -1074,7 +1553,7 @@ export const FeedTabs = () => {
             <div className={feedGridClass}>
               {Array.from({ length: 3 }, (_, index) => (
                 <article
-                  className="card animate-pulse p-4"
+                  className="card p-4 motion-safe:animate-pulse motion-reduce:animate-none"
                   key={`feed-skeleton-${index + 1}`}
                 >
                   <div className="h-4 w-1/3 rounded bg-muted" />
@@ -1090,7 +1569,15 @@ export const FeedTabs = () => {
         if (visibleItems.length === 0) {
           return (
             <div className="card grid gap-4 p-6 text-foreground/85 text-sm">
-              <p>{emptyMessage}</p>
+              <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-muted/65 text-muted-foreground">
+                <Inbox aria-hidden="true" className="h-5 w-5" />
+              </div>
+              <div className="grid gap-1">
+                <p className="font-semibold text-base text-foreground">
+                  {emptyStateTitle}
+                </p>
+                <p>{emptyMessage}</p>
+              </div>
               <div className="flex flex-wrap gap-2">
                 {active === 'Battles' ? (
                   <button
@@ -1130,6 +1617,17 @@ export const FeedTabs = () => {
           type="button"
         >
           {t('feedTabs.loadMore')}
+        </button>
+      )}
+      {showBackToTop && (
+        <button
+          className={`fixed right-4 bottom-4 z-30 rounded-full border border-primary/45 bg-card px-4 py-2 font-semibold text-primary text-xs transition hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+            isObserverMode ? 'lg:right-[22rem]' : ''
+          }`}
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          type="button"
+        >
+          ^ {backToTopLabel}
         </button>
       )}
     </section>

@@ -1,16 +1,6 @@
 'use client';
 
-import {
-  BookMarked,
-  Compass,
-  Home,
-  Search,
-  Settings,
-  ShieldCheck,
-  Swords,
-  Users,
-  Wallet,
-} from 'lucide-react';
+import { Home, Search, Settings, ShieldCheck, Wallet } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -33,17 +23,11 @@ const navSections: NavSection[] = [
     titleKey: 'sidebar.section.observer',
     items: [
       { href: '/feed', icon: Home, labelKey: 'sidebar.item.home' },
-      { href: '/search', icon: Compass, labelKey: 'sidebar.item.explore' },
-      {
-        href: '/feed?tab=Battles',
-        icon: Swords,
-        labelKey: 'sidebar.item.battles',
-      },
       { href: '/search', icon: Search, labelKey: 'sidebar.item.search' },
       {
-        href: '/feed?tab=Studios',
-        icon: Users,
-        labelKey: 'sidebar.item.studios',
+        href: '/commissions',
+        icon: Wallet,
+        labelKey: 'sidebar.item.commissions',
       },
     ],
   },
@@ -51,16 +35,6 @@ const navSections: NavSection[] = [
     id: 'workspace',
     titleKey: 'sidebar.section.workspace',
     items: [
-      {
-        href: '/commissions',
-        icon: Wallet,
-        labelKey: 'sidebar.item.commissions',
-      },
-      {
-        href: '/feed?tab=Archive',
-        icon: BookMarked,
-        labelKey: 'sidebar.item.bookmarks',
-      },
       {
         href: '/privacy',
         icon: ShieldCheck,
@@ -91,9 +65,6 @@ const isNavItemActive = (
   }
 
   if (!queryString) {
-    if (basePath === '/feed' && tabValue && tabValue !== 'All') {
-      return false;
-    }
     return true;
   }
 

@@ -211,7 +211,17 @@
   "feedTabs.filters.intent": "Интент",
   "feedTabs.filters.sort": "Сортировка",
   "feedTabs.filters.status": "Статус",
+  "feedTabs.filters.toggle": "Фильтры",
   "feedTabs.filters.timeRange": "Временной диапазон",
+  "feedTabs.more": "Ещё",
+  "feedTabs.controls": "Панель",
+  "feedTabs.shown": "Результаты",
+  "feedTabs.backToTop": "Наверх",
+  "feedTabs.activeFilters": "Активные фильтры",
+  "feedTabs.density.label": "Плотность",
+  "feedTabs.density.comfort": "Комфорт",
+  "feedTabs.density.compact": "Компактно",
+  "feedTabs.empty.title": "Лента пока пустая",
   "feedTabs.glowUpScore": "Оценка GlowUp",
   "feedTabs.lastActivity": "Последняя активность",
   "feedTabs.loadMore": "Загрузить больше",
@@ -533,5 +543,9 @@
   "common.retry": "Повторить",
   "commission.detail.responsesTitle": "Responses",
   "commission.detail.noResponses": "No responses yet.",
-  "commission.detail.responseBy": "Response by:"
+  "commission.detail.responseBy": "Response by:",
+  "card.viewDetails": "Подробности",
+  "header.focusMode": "Режим фокуса",
+  "rail.showAll": "Показать все",
+  "rail.hideAll": "Скрыть все"
 }

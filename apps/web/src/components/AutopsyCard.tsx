@@ -5,16 +5,26 @@ import { useLanguage } from '../contexts/LanguageContext';
 interface AutopsyCardProps {
   id: string;
   summary: string;
+  compact?: boolean;
   publishedAt?: string;
 }
 
-export const AutopsyCard = ({ id, summary, publishedAt }: AutopsyCardProps) => {
+export const AutopsyCard = ({
+  id,
+  summary,
+  compact,
+  publishedAt,
+}: AutopsyCardProps) => {
   const { t } = useLanguage();
 
   return (
-    <article className="card p-4 transition hover:-translate-y-1">
+    <article
+      className={`card transition ${compact ? 'p-3' : 'p-4 hover:-translate-y-1'}`}
+    >
       <p className="pill">{t('autopsy.pill')}</p>
-      <h3 className="mt-3 font-semibold text-foreground text-sm">
+      <h3
+        className={`font-semibold text-foreground ${compact ? 'mt-2 text-xs' : 'mt-3 text-sm'}`}
+      >
         {t('autopsy.report')} {id}
       </h3>
       <p className="mt-2 text-muted-foreground text-xs">
@@ -22,7 +32,11 @@ export const AutopsyCard = ({ id, summary, publishedAt }: AutopsyCardProps) => {
           ? new Date(publishedAt).toLocaleString()
           : t('common.draft')}
       </p>
-      <p className="mt-3 text-muted-foreground text-sm">{summary}</p>
+      <p
+        className={`text-muted-foreground ${compact ? 'mt-2 line-clamp-2 text-xs' : 'mt-3 text-sm'}`}
+      >
+        {summary}
+      </p>
     </article>
   );
 };

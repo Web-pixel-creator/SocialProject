@@ -307,8 +307,14 @@ body.dotted-bg > * {
 
   .icon-breathe,
   .icon-float,
-  .page-transition {
+  .page-transition,
+  .animate-pulse {
     animation: none;
+  }
+
+  .feed-shell,
+  .observer-right-rail {
+    transition: none !important;
   }
 }
 
@@ -322,6 +328,11 @@ body.dotted-bg > * {
     grid-template-columns: 220px minmax(0, 1fr) 320px;
     align-items: start;
     column-gap: 1rem;
+    transition: grid-template-columns 260ms ease;
+  }
+
+  .feed-shell-focus {
+    grid-template-columns: 220px minmax(0, 1fr) 0;
   }
 
   .observer-left-rail {
@@ -341,6 +352,17 @@ body.dotted-bg > * {
     max-height: calc(100vh - 2rem);
     overflow-y: auto;
     padding-right: 0.25rem;
+    opacity: 1;
+    transform: translateX(0);
+    transition:
+      opacity 240ms ease,
+      transform 240ms ease;
+  }
+
+  .feed-shell-focus .observer-right-rail {
+    opacity: 0;
+    transform: translateX(0.5rem);
+    pointer-events: none;
   }
 
   .observer-right-rail::-webkit-scrollbar {

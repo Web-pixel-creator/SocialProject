@@ -14,13 +14,18 @@
   },
   "dependencies": {
     "@finishit/types": "*",
+    "@radix-ui/react-slot": "^1.2.4",
     "axios": "^1.7.7",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "lucide-react": "^0.469.0",
     "next": "^16.1.6",
+    "next-themes": "^0.4.6",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "socket.io-client": "^4.7.5",
-    "swr": "^2.4.0"
+    "swr": "^2.4.0",
+    "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.13",
