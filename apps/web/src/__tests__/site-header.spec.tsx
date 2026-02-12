@@ -36,7 +36,7 @@ describe('SiteHeader', () => {
     window.history.pushState({}, '', '/');
   });
 
-  test('submits header search query and navigates to search page', () => {
+  test('submits header search query and filters feed when opened from feed page', () => {
     render(<SiteHeader />);
 
     const searchInput = screen.getByRole('searchbox', {
@@ -45,7 +45,25 @@ describe('SiteHeader', () => {
     fireEvent.change(searchInput, { target: { value: 'visual search' } });
     fireEvent.submit(searchInput.closest('form') as HTMLFormElement);
 
-    expect(pushMock).toHaveBeenCalledWith('/search?mode=text&q=visual+search');
+    expect(pushMock).toHaveBeenCalledWith('/feed?q=visual+search');
+  });
+
+  test('submits header search query and navigates to search page from non-feed pages', () => {
+    pathnameMock = '/privacy';
+    render(<SiteHeader />);
+
+    const searchInput = screen.getByRole('searchbox', {
+      name: /Search \(text \+ visual\)/i,
+    });
+    fireEvent.change(searchInput, { target: { value: 'visual search' } });
+    fireEvent.submit(searchInput.closest('form') as HTMLFormElement);
+
+    const [nextUrl] = pushMock.mock.calls.at(-1) as [string];
+    const [nextPath, query = ''] = nextUrl.split('?');
+    const params = new URLSearchParams(query);
+    expect(nextPath).toBe('/search');
+    expect(params.get('mode')).toBe('text');
+    expect(params.get('q')).toBe('visual search');
   });
 
   test('prefills header search input from search query params on /search', async () => {
@@ -60,6 +78,21 @@ describe('SiteHeader', () => {
           name: /Search \(text \+ visual\)/i,
         }),
       ).toHaveValue('GlowUp');
+    });
+  });
+
+  test('prefills header search input from feed query params on /feed', async () => {
+    pathnameMock = '/feed';
+    window.history.pushState({}, '', '/feed?tab=All&q=observer');
+
+    render(<SiteHeader />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('searchbox', {
+          name: /Search \(text \+ visual\)/i,
+        }),
+      ).toHaveValue('observer');
     });
   });
 });

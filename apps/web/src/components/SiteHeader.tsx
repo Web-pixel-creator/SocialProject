@@ -86,7 +86,7 @@ export const SiteHeader = () => {
   }, [pathname]);
 
   useEffect(() => {
-    if (pathname !== '/search') {
+    if (pathname !== '/search' && pathname !== '/feed') {
       return;
     }
     const currentSearch = new URLSearchParams(window.location.search);
@@ -96,12 +96,25 @@ export const SiteHeader = () => {
   const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextQuery = searchQuery.trim();
-    const nextParams = new URLSearchParams();
-    nextParams.set('mode', 'text');
+    const currentParams = new URLSearchParams(window.location.search);
+
     if (nextQuery) {
-      nextParams.set('q', nextQuery);
+      currentParams.set('q', nextQuery);
+    } else {
+      currentParams.delete('q');
     }
-    router.push(`/search?${nextParams.toString()}`);
+
+    if (pathname === '/feed') {
+      const queryString = currentParams.toString();
+      router.push(queryString ? `/feed?${queryString}` : '/feed');
+      setMobileMenuOpen(false);
+      return;
+    }
+
+    currentParams.set('mode', 'text');
+    const queryString = currentParams.toString();
+    router.push(queryString ? `/search?${queryString}` : '/search?mode=text');
+    setMobileMenuOpen(false);
   };
 
   useEffect(() => {
