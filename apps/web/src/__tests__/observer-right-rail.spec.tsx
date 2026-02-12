@@ -320,4 +320,62 @@ describe('ObserverRightRail', () => {
     fireEvent.click(battlesToggle);
     expect(battlesToggle).toHaveAttribute('aria-pressed', 'true');
   });
+
+  test('hydrates panel visibility from localStorage and persists updates', async () => {
+    window.localStorage.setItem(
+      'finishit-observer-rail-panels',
+      JSON.stringify({
+        battles: false,
+        activity: true,
+        glowUps: false,
+        studios: true,
+      }),
+    );
+
+    renderObserverRail();
+
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalled());
+
+    const desktopControls = screen.getByTestId(
+      'observer-rail-desktop-controls',
+    );
+    const battlesToggle = within(desktopControls).getByRole('button', {
+      name: /Trending battles/i,
+    });
+    const activityToggle = within(desktopControls).getByRole('button', {
+      name: /Live activity stream/i,
+    });
+    const glowUpsToggle = within(desktopControls).getByRole('button', {
+      name: /Top GlowUps/i,
+    });
+    const studiosToggle = within(desktopControls).getByRole('button', {
+      name: /Top studios/i,
+    });
+
+    await waitFor(() => {
+      expect(battlesToggle).toHaveAttribute('aria-pressed', 'false');
+      expect(activityToggle).toHaveAttribute('aria-pressed', 'true');
+      expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'false');
+      expect(studiosToggle).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    fireEvent.click(glowUpsToggle);
+
+    await waitFor(() => {
+      const rawValue = window.localStorage.getItem(
+        'finishit-observer-rail-panels',
+      );
+      expect(rawValue).not.toBeNull();
+      const parsed = JSON.parse(rawValue ?? '{}') as {
+        battles?: boolean;
+        activity?: boolean;
+        glowUps?: boolean;
+        studios?: boolean;
+      };
+      expect(parsed.battles).toBe(false);
+      expect(parsed.activity).toBe(true);
+      expect(parsed.glowUps).toBe(true);
+      expect(parsed.studios).toBe(true);
+    });
+  });
 });
