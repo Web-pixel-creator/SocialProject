@@ -8,6 +8,9 @@ test.describe('Feed page', () => {
         });
         await filtersButton.click();
     };
+    const focusFeedContent = async (page: Page) => {
+        await page.getByRole('heading', { name: /Feeds/i }).click();
+    };
 
     test.beforeEach(async ({ page }) => {
         await page.goto('/feed');
@@ -62,6 +65,51 @@ test.describe('Feed page', () => {
         await expect(statusSelect).toHaveValue('draft');
         await expect(rangeSelect).toHaveValue('7d');
         await expect(intentSelect).toHaveValue('needs_help');
+    });
+
+    test('focuses feed search with slash shortcut', async ({ page }) => {
+        const feedSearch = page.getByPlaceholder(
+            'Search drafts, studios, PRs... (text + visual)',
+        );
+        await expect(feedSearch).not.toBeFocused();
+        await focusFeedContent(page);
+
+        await page.keyboard.press('/');
+
+        await expect(feedSearch).toBeFocused();
+    });
+
+    test('toggles filters panel with Shift+F on filterable tabs', async ({
+        page,
+    }) => {
+        const filtersButton = page.getByRole('button', { name: /^Filters/i });
+        await expect(filtersButton).toHaveAttribute('aria-expanded', 'false');
+        await focusFeedContent(page);
+
+        await page.keyboard.press('Shift+F');
+        await expect(filtersButton).toHaveAttribute('aria-expanded', 'true');
+
+        await page.keyboard.press('Shift+F');
+        await expect(filtersButton).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    test('ignores Shift+F on tabs without filters panel', async ({ page }) => {
+        await page
+            .locator('summary')
+            .filter({ hasText: /^More$/i })
+            .click();
+        await page.getByRole('button', { name: /^Progress$/i }).click();
+        await expect(page).toHaveURL(/tab=Progress/);
+        await expect(page.getByRole('button', { name: /^Filters/i })).toHaveCount(
+            0,
+        );
+        await focusFeedContent(page);
+
+        await page.keyboard.press('Shift+F');
+
+        await expect(page.getByRole('button', { name: /^Filters/i })).toHaveCount(
+            0,
+        );
     });
 
     test('filters battles by decision status chips', async ({ page }) => {
