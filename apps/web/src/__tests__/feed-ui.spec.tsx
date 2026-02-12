@@ -1402,11 +1402,45 @@ describe('feed UI', () => {
     const scoped = within(emptyStateCard as HTMLElement);
     expect(scoped.getByText(/Active filters:\s*1/i)).toBeInTheDocument();
     expect(scoped.getByText(/Search:\s*nomatch/i)).toBeInTheDocument();
+    expect(
+      scoped.getByRole('button', { name: /Clear search/i }),
+    ).toBeInTheDocument();
 
     await clickAndFlush(scoped.getByRole('button', { name: /Reset filters/i }));
 
     const lastCall = replaceMock.mock.calls.at(-1)?.[0] as string;
     expect(lastCall).toBe('/feed');
     expect(lastCall).not.toContain('q=');
+  });
+
+  test('clears only query from empty-state action and keeps other filters', async () => {
+    searchParams = new URLSearchParams('tab=All&sort=impact&q=nomatch');
+    await renderFeedTabs();
+
+    await waitFor(() =>
+      expect(screen.getByText(/No search results/i)).toBeInTheDocument(),
+    );
+
+    const emptyStateCard = screen
+      .getByText(/No search results/i)
+      .closest('.card');
+    expect(emptyStateCard).not.toBeNull();
+
+    const scoped = within(emptyStateCard as HTMLElement);
+    (apiClient.post as jest.Mock).mockClear();
+    await clickAndFlush(scoped.getByRole('button', { name: /Clear search/i }));
+
+    const lastCall = replaceMock.mock.calls.at(-1)?.[0] as string;
+    expect(lastCall).toContain('/feed?sort=impact');
+    expect(lastCall).not.toContain('q=');
+    expect(lastCall).not.toBe('/feed');
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/telemetry/ux',
+      expect.objectContaining({
+        eventType: 'feed_empty_cta',
+        action: 'clear_search',
+        sourceTab: 'All',
+      }),
+    );
   });
 });

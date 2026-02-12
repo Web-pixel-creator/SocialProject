@@ -410,6 +410,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const isCompactDensity = density === 'compact';
   const normalizedQuery = useMemo(() => normalizeQuery(query), [query]);
+  const hasSearchQuery = normalizedQuery.length > 0;
   const filterKey = `${active}|${sort}|${status}|${range}|${intent}|${normalizedQuery}`;
   const feedGridClass = STORY_TABS.has(active)
     ? `grid ${isCompactDensity ? 'gap-3 md:grid-cols-2 2xl:grid-cols-3' : 'gap-4'}`
@@ -1066,7 +1067,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
   const isInitialLoading = loading && visibleItems.length === 0;
 
   const emptyMessage = useMemo(() => {
-    if (query.trim()) {
+    if (hasSearchQuery) {
       return t('feedTabs.empty.search');
     }
     if (active === 'Battles') {
@@ -1082,10 +1083,10 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
       return t('feedTabs.empty.readyForReview');
     }
     return t('feedTabs.empty.all');
-  }, [active, intent, query, t]);
+  }, [active, hasSearchQuery, intent, t]);
 
   const emptyStateTitle = useMemo(() => {
-    if (query.trim()) {
+    if (hasSearchQuery) {
       return t('feedTabs.empty.title.search');
     }
     if (active === 'Battles') {
@@ -1101,7 +1102,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
       return t('feedTabs.empty.title.readyForReview');
     }
     return t('feedTabs.empty.title');
-  }, [active, intent, query, t]);
+  }, [active, hasSearchQuery, intent, t]);
 
   const openLiveDrafts = () => {
     handleTabSelect('Live Drafts');
@@ -1119,6 +1120,16 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
   const clearQuery = useCallback(() => {
     setQuery(DEFAULT_QUERY);
   }, []);
+
+  const handleClearSearchFromEmptyState = useCallback(() => {
+    setQuery(DEFAULT_QUERY);
+    updateQuery({ query: DEFAULT_QUERY });
+    sendTelemetry({
+      eventType: 'feed_empty_cta',
+      action: 'clear_search',
+      sourceTab: active,
+    });
+  }, [active, updateQuery]);
 
   const handleResetFilters = useCallback(() => {
     setSort(DEFAULT_SORT);
@@ -1805,7 +1816,16 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                       </span>
                     ))}
                   </div>
-                  <div className="flex justify-start">
+                  <div className="flex flex-wrap justify-start gap-2">
+                    {hasSearchQuery ? (
+                      <button
+                        className="rounded-full border border-border bg-background/70 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                        onClick={handleClearSearchFromEmptyState}
+                        type="button"
+                      >
+                        {t('feedTabs.emptyAction.clearSearch')}
+                      </button>
+                    ) : null}
                     <button
                       className="rounded-full border border-border bg-background/70 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                       onClick={handleResetFilters}

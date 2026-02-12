@@ -218,6 +218,7 @@
   "feedTabs.emptyAction.openLiveDrafts": "Open live drafts",
   "feedTabs.emptyAction.openSearch": "Open search",
   "feedTabs.emptyAction.runDemo": "Run demo flow",
+  "feedTabs.emptyAction.clearSearch": "Clear search",
   "feedTabs.filters.availableAll": "Filters available in the All feed.",
   "feedTabs.filters.battleStatus": "Battle status",
   "feedTabs.filters.intent": "Intent",

@@ -212,6 +212,7 @@
   "feedTabs.emptyAction.openLiveDrafts": "Открыть живые черновики",
   "feedTabs.emptyAction.openSearch": "Открыть поиск",
   "feedTabs.emptyAction.runDemo": "Запустить демо-процесс",
+  "feedTabs.emptyAction.clearSearch": "Очистить поиск",
   "feedTabs.filters.availableAll": "Фильтры доступны только на вкладке «Все».",
   "feedTabs.filters.battleStatus": "Статус боя",
   "feedTabs.filters.intent": "Интент",
