@@ -136,6 +136,23 @@ interface FeedQueryState {
   query: string;
 }
 
+const isEditableTarget = (target: EventTarget | null): boolean => {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  const tag = target.tagName.toLowerCase();
+  if (tag === 'input' || tag === 'textarea' || tag === 'select') {
+    return true;
+  }
+
+  if (target.isContentEditable) {
+    return true;
+  }
+
+  return target.getAttribute('role') === 'textbox';
+};
+
 const parseQueryState = (params: { get: (key: string) => string | null }) => {
   const rawTab = params.get('tab');
   const tab = rawTab && TABS.includes(rawTab) ? rawTab : TABS[0];
@@ -388,6 +405,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [density, setDensity] = useState<FeedDensity>('comfort');
   const desktopMoreDetailsRef = useRef<HTMLDetailsElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const isCompactDensity = density === 'compact';
   const normalizedQuery = useMemo(() => normalizeQuery(query), [query]);
   const filterKey = `${active}|${sort}|${status}|${range}|${intent}|${normalizedQuery}`;
@@ -646,6 +664,51 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
       setMoreOpen(false);
     }
   }, [isMobileViewport, moreOpen]);
+
+  useEffect(() => {
+    const handleGlobalShortcuts = (event: KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey
+      ) {
+        return;
+      }
+
+      if (event.key === '/') {
+        if (isEditableTarget(event.target)) {
+          return;
+        }
+        event.preventDefault();
+        const searchInput = searchInputRef.current;
+        if (!searchInput) {
+          return;
+        }
+        searchInput.focus();
+        searchInput.select();
+        return;
+      }
+
+      if (event.key !== 'Escape') {
+        return;
+      }
+
+      const searchInput = searchInputRef.current;
+      if (searchInput && document.activeElement === searchInput) {
+        event.preventDefault();
+        if (searchInput.value.length > 0) {
+          setQuery(DEFAULT_QUERY);
+        }
+        searchInput.blur();
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalShortcuts);
+    return () => {
+      window.removeEventListener('keydown', handleGlobalShortcuts);
+    };
+  }, []);
 
   const closeDesktopMore = useCallback(() => {
     const details = desktopMoreDetailsRef.current;
@@ -1476,6 +1539,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                 className="w-full bg-transparent text-foreground text-sm outline-none placeholder:text-muted-foreground/65"
                 onChange={(event) => handleQueryChange(event.target.value)}
                 placeholder={t('feed.searchPlaceholderExtended')}
+                ref={searchInputRef}
                 type="search"
                 value={query}
               />
@@ -1488,7 +1552,11 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                 >
                   <X aria-hidden="true" className="h-3.5 w-3.5" />
                 </button>
-              ) : null}
+              ) : (
+                <span className="hidden rounded border border-border bg-background/70 px-1.5 py-0.5 font-semibold text-[10px] text-muted-foreground uppercase sm:inline">
+                  /
+                </span>
+              )}
             </label>
             {hasFilterPanel ? (
               <button

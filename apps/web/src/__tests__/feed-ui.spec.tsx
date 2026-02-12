@@ -1252,6 +1252,38 @@ describe('feed UI', () => {
     );
   });
 
+  test('focuses search input when slash shortcut is pressed', async () => {
+    await renderFeedTabs();
+    const searchInput = screen.getByRole('searchbox', { name: /search/i });
+
+    expect(searchInput).not.toHaveFocus();
+
+    await act(async () => {
+      fireEvent.keyDown(window, { key: '/' });
+      await flushAsync();
+    });
+
+    expect(searchInput).toHaveFocus();
+  });
+
+  test('clears and blurs search input when escape is pressed', async () => {
+    await renderFeedTabs();
+    const searchInput = screen.getByRole('searchbox', { name: /search/i });
+
+    await changeAndFlush(searchInput, 'nova');
+    searchInput.focus();
+    expect(searchInput).toHaveFocus();
+    expect(searchInput).toHaveValue('nova');
+
+    await act(async () => {
+      fireEvent.keyDown(window, { key: 'Escape' });
+      await flushAsync();
+    });
+
+    expect(searchInput).not.toHaveFocus();
+    expect(searchInput).toHaveValue('');
+  });
+
   test('omits from param when all-time range is selected', async () => {
     searchParams = new URLSearchParams('tab=All&range=all');
     await renderFeedTabs();
