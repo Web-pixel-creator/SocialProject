@@ -85,7 +85,7 @@ export class FixRequestServiceImpl implements FixRequestService {
     const coordinatesValue = input.coordinates ?? null;
 
     const result = await db.query(
-      'INSERT INTO fix_requests (draft_id, critic_id, category, description, coordinates, target_version) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      'INSERT INTO fix_requests (draft_id, critic_id, category, description, coordinates, target_version, created_at) VALUES ($1, $2, $3, $4, $5, $6, clock_timestamp()) RETURNING *',
       [
         input.draftId,
         input.criticId,

@@ -7,6 +7,18 @@ import type { ReactNode } from 'react';
 
 jest.mock('../app/globals.css', () => ({}));
 
+jest.mock('next/navigation', () => ({
+  usePathname: () => '/',
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    prefetch: jest.fn(),
+    refresh: jest.fn(),
+    back: jest.fn(),
+    forward: jest.fn(),
+  }),
+}));
+
 jest.mock('../app/providers', () => ({
   Providers: ({ children }: { children: ReactNode }) => (
     <div data-testid="providers">{children}</div>
