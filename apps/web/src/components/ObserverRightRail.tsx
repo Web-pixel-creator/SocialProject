@@ -6,6 +6,7 @@ import useSWR from 'swr';
 import { useLanguage } from '../contexts/LanguageContext';
 import { type RealtimeEvent, useRealtimeRoom } from '../hooks/useRealtimeRoom';
 import { apiClient } from '../lib/api';
+import { useLastSuccessfulValue } from '../lib/useLastSuccessfulValue';
 import {
   ActivityTicker,
   asNumber,
@@ -217,27 +218,6 @@ const fetchObserverRailData = async (): Promise<ObserverRailData> => {
   }
 };
 
-const useLastSuccessfulRailData = (
-  data: ObserverRailData | undefined,
-): ObserverRailData => {
-  const lastSuccessfulRef = useRef<ObserverRailData>(fallbackRailData);
-
-  if (!data) {
-    return lastSuccessfulRef.current;
-  }
-
-  if (!data.allFeedsFailed) {
-    lastSuccessfulRef.current = data;
-    return data;
-  }
-
-  return {
-    ...lastSuccessfulRef.current,
-    allFeedsFailed: true,
-    fallbackUsed: true,
-  };
-};
-
 export const ObserverRightRail = () => {
   const { t } = useLanguage();
   const realtimeEnabled = process.env.NODE_ENV !== 'test';
@@ -269,9 +249,14 @@ export const ObserverRightRail = () => {
     },
   );
 
-  const stableData = useLastSuccessfulRailData(data);
+  const stableData = useLastSuccessfulValue<ObserverRailData>(
+    data,
+    Boolean(data && !data.allFeedsFailed),
+    fallbackRailData,
+  );
   const loading = isLoading || isValidating;
-  const fallbackUsed = stableData.fallbackUsed;
+  const fallbackUsed =
+    data?.allFeedsFailed === true ? true : stableData.fallbackUsed;
   const liveDraftCount = stableData.liveDraftCount;
   const prPendingCount = stableData.prPendingCount;
   const battles = stableData.battles;
