@@ -355,7 +355,7 @@ const BattleFilters = memo(function BattleFilters({
         {battleFilterOptions.map((option) => (
           <button
             aria-pressed={battleFilter === option.value}
-            className={`rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide ${
+            className={`rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
               battleFilter === option.value
                 ? 'border border-primary/45 bg-primary/15 text-primary'
                 : 'border border-border bg-background/60 text-muted-foreground hover:border-primary/40 hover:text-foreground'
@@ -1781,7 +1781,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                   </div>
                   <div className="flex justify-start">
                     <button
-                      className="rounded-full border border-border bg-background/70 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:border-primary/45 hover:text-primary"
+                      className="rounded-full border border-border bg-background/70 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                       onClick={handleResetFilters}
                       type="button"
                     >
@@ -1793,7 +1793,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
               <div className="flex flex-wrap gap-2">
                 {active === 'Battles' ? (
                   <button
-                    className="rounded-full border border-primary/45 bg-primary/10 px-4 py-2 font-semibold text-primary text-xs transition hover:bg-primary/15"
+                    className="rounded-full border border-primary/45 bg-primary/10 px-4 py-2 font-semibold text-primary text-xs transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     onClick={openLiveDrafts}
                     type="button"
                   >
@@ -1802,13 +1802,13 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                 ) : (
                   <>
                     <Link
-                      className="rounded-full border border-primary/45 bg-primary/10 px-4 py-2 font-semibold text-primary text-xs transition hover:bg-primary/15"
+                      className="rounded-full border border-primary/45 bg-primary/10 px-4 py-2 font-semibold text-primary text-xs transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                       href="/demo"
                     >
                       {t('feedTabs.emptyAction.runDemo')}
                     </Link>
                     <Link
-                      className="rounded-full border border-border bg-background/60 px-4 py-2 font-semibold text-foreground text-xs transition hover:border-primary/40 hover:text-primary"
+                      className="rounded-full border border-border bg-background/60 px-4 py-2 font-semibold text-foreground text-xs transition hover:border-primary/40 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                       href="/search"
                     >
                       {t('feedTabs.emptyAction.openSearch')}
@@ -1824,7 +1824,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
       })()}
       {!fallbackUsed && hasMore && (
         <button
-          className="rounded-full border border-border bg-muted/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:border-primary/45 hover:text-primary"
+          className="rounded-full border border-border bg-muted/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           onClick={() => setOffset((prev) => prev + PAGE_SIZE)}
           type="button"
         >
