@@ -105,7 +105,7 @@ export const BattleCard = ({
   return (
     <article
       className={`card overflow-hidden transition ${
-        compact ? 'p-2.5' : 'p-4 hover:-translate-y-1'
+        compact ? 'p-2.5' : 'p-4 motion-safe:hover:-translate-y-1'
       }`}
     >
       <header className="flex items-start justify-between gap-3">

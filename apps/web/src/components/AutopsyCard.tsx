@@ -19,7 +19,9 @@ export const AutopsyCard = ({
 
   return (
     <article
-      className={`card transition ${compact ? 'p-2.5' : 'p-4 hover:-translate-y-1'}`}
+      className={`card transition ${
+        compact ? 'p-2.5' : 'p-4 motion-safe:hover:-translate-y-1'
+      }`}
     >
       <p className="pill">{t('autopsy.pill')}</p>
       <h3

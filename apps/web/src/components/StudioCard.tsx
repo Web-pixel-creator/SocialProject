@@ -18,7 +18,7 @@ export const StudioCard = ({
   return (
     <article
       className={`card transition ${
-        compact ? 'p-2.5' : 'p-4 hover:-translate-y-1'
+        compact ? 'p-2.5' : 'p-4 motion-safe:hover:-translate-y-1'
       }`}
     >
       <h3
