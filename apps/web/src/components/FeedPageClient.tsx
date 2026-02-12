@@ -1,6 +1,6 @@
 'use client';
 
-import { Menu, X } from 'lucide-react';
+import { Menu, SlidersHorizontal, X } from 'lucide-react';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { FeedTabs } from './FeedTabs';
@@ -133,8 +133,19 @@ export default function FeedPageClient() {
                     {t('header.focusMode')}
                   </button>
                 </div>
-                <div className="hidden lg:block">
-                  <LanguageSwitcher />
+                <div className="relative hidden lg:block">
+                  <details className="group relative">
+                    <summary className="inline-flex cursor-pointer list-none items-center gap-2 rounded-full border border-border bg-muted px-3 py-2 font-semibold text-foreground text-xs transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [&::-webkit-details-marker]:hidden">
+                      <SlidersHorizontal
+                        aria-hidden="true"
+                        className="h-4 w-4"
+                      />
+                      {t('sidebar.item.settings')}
+                    </summary>
+                    <div className="absolute right-0 z-30 mt-2 min-w-[15rem] rounded-2xl border border-border bg-card p-3">
+                      <LanguageSwitcher />
+                    </div>
+                  </details>
                 </div>
                 <button
                   className="inline-flex items-center rounded-full border border-border bg-muted px-3 py-2 font-semibold text-foreground text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:hidden"
