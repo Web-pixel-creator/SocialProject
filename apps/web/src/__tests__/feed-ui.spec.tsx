@@ -58,6 +58,13 @@ const clickAndFlush = async (element: HTMLElement) => {
   });
 };
 
+const pressEscapeAndFlush = async () => {
+  await act(async () => {
+    fireEvent.keyDown(window, { key: 'Escape' });
+    await flushAsync();
+  });
+};
+
 const scrollAndFlush = async () => {
   await act(async () => {
     fireEvent.scroll(window);
@@ -241,6 +248,36 @@ describe('feed UI', () => {
     ).not.toBeInTheDocument();
   });
 
+  test('closes filters mobile bottom sheet with escape', async () => {
+    searchParams = new URLSearchParams('tab=All');
+    Object.defineProperty(window, 'matchMedia', {
+      value: (query: string) => ({
+        matches: query === '(max-width: 767px)',
+        media: query,
+        onchange: null,
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      }),
+      configurable: true,
+    });
+
+    await renderFeedTabs();
+    await openFilters();
+
+    expect(
+      screen.getByRole('dialog', { name: /Filters/i }),
+    ).toBeInTheDocument();
+
+    await pressEscapeAndFlush();
+
+    expect(
+      screen.queryByRole('dialog', { name: /Filters/i }),
+    ).not.toBeInTheDocument();
+  });
+
   test('opens more controls as mobile bottom sheet on narrow viewport', async () => {
     Object.defineProperty(window, 'matchMedia', {
       value: (query: string) => ({
@@ -265,6 +302,31 @@ describe('feed UI', () => {
     ).toBeInTheDocument();
 
     await clickAndFlush(screen.getByText(/^Close$/i));
+
+    expect(screen.queryByRole('dialog', { name: /More/i })).toBeNull();
+  });
+
+  test('closes more mobile bottom sheet with escape', async () => {
+    Object.defineProperty(window, 'matchMedia', {
+      value: (query: string) => ({
+        matches: query === '(max-width: 767px)',
+        media: query,
+        onchange: null,
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      }),
+      configurable: true,
+    });
+
+    await renderFeedTabs();
+    await openMoreTabs();
+
+    expect(screen.getByRole('dialog', { name: /More/i })).toBeInTheDocument();
+
+    await pressEscapeAndFlush();
 
     expect(screen.queryByRole('dialog', { name: /More/i })).toBeNull();
   });

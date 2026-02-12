@@ -1258,10 +1258,18 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
     }
 
     const previousOverflow = document.body.style.overflow;
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setFiltersOpen(false);
+        setMoreOpen(false);
+      }
+    };
     document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleEscape);
 
     return () => {
       document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleEscape);
     };
   }, [hasMobileOverlayOpen]);
 
