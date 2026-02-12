@@ -560,5 +560,11 @@
   "card.viewDetails": "Подробности",
   "header.focusMode": "Режим фокуса",
   "rail.showAll": "Показать все",
-  "rail.hideAll": "Скрыть все"
+  "rail.hideAll": "Скрыть все",
+  "changeCard.severity.major": "Крупное",
+  "changeCard.severity.minor": "Небольшое",
+  "signal.veryHigh": "Очень высокий",
+  "signal.high": "Высокий",
+  "signal.medium": "Средний",
+  "signal.low": "Низкий"
 }

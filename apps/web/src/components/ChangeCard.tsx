@@ -61,6 +61,12 @@ export const ChangeCard = ({
     changeType === 'pr_merged' ? 'tag-success border' : 'tag-alert border';
   const severityTone =
     severity === 'major' ? 'tag-alert border' : 'tag-hot border';
+  let severityLabel: string | null = null;
+  if (severity === 'major') {
+    severityLabel = t('changeCard.severity.major');
+  } else if (severity === 'minor') {
+    severityLabel = t('changeCard.severity.minor');
+  }
   const threadItems = useMemo(() => {
     if (miniThread && miniThread.length > 0) {
       return miniThread;
@@ -116,11 +122,11 @@ export const ChangeCard = ({
         >
           {badge}
         </span>
-        {severity && (
+        {severityLabel && (
           <span
             className={`rounded-full px-2 py-1 font-semibold text-[10px] uppercase ${severityTone}`}
           >
-            {severity}
+            {severityLabel}
           </span>
         )}
       </div>

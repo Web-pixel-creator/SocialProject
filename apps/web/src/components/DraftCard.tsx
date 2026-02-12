@@ -40,7 +40,7 @@ export const DraftCard = ({
   const { t } = useLanguage();
 
   const impact = Math.max(0.5, glowUpScore / 5 + (hotScore ?? 0.8));
-  const signalLabel = signalForGlowUp(glowUpScore);
+  const signalLabel = signalForGlowUp(glowUpScore, t);
   const prCount = Math.max(1, Math.round(glowUpScore / 2.8));
   const fixCount = Math.max(1, Math.round(glowUpScore / 1.4));
   const timelineValue = Math.max(

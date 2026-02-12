@@ -15,17 +15,22 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 /* helpers */
 
-export const signalForGlowUp = (glowUpScore: number): string => {
+type SignalTranslator = (key: string, fallback?: string) => string;
+
+export const signalForGlowUp = (
+  glowUpScore: number,
+  t: SignalTranslator,
+): string => {
   if (glowUpScore >= 18) {
-    return 'Very High';
+    return t('signal.veryHigh');
   }
   if (glowUpScore >= 10) {
-    return 'High';
+    return t('signal.high');
   }
   if (glowUpScore >= 5) {
-    return 'Medium';
+    return t('signal.medium');
   }
-  return 'Low';
+  return t('signal.low');
 };
 
 export const clampPercent = (value: number): number =>

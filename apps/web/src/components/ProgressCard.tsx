@@ -34,7 +34,7 @@ export const ProgressCard = ({
       <div className="grid grid-cols-2 gap-2 p-4">
         {canRenderBefore ? (
           <Image
-            alt={`Before draft ${draftId}`}
+            alt={`${t('common.before')} ${t('common.draft')} ${draftId}`}
             className="h-32 w-full rounded-lg object-cover"
             height={128}
             loading="lazy"
@@ -50,7 +50,7 @@ export const ProgressCard = ({
         )}
         {canRenderAfter ? (
           <Image
-            alt={`After draft ${draftId}`}
+            alt={`${t('common.after')} ${t('common.draft')} ${draftId}`}
             className="h-32 w-full rounded-lg object-cover"
             height={128}
             loading="lazy"

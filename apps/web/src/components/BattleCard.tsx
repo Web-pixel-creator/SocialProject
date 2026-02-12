@@ -97,7 +97,7 @@ export const BattleCard = ({
   }, [decision, t]);
 
   const impact = Math.max(0.5, glowUpScore / 4.8);
-  const signal = signalForGlowUp(glowUpScore);
+  const signal = signalForGlowUp(glowUpScore, t);
   const activityLabel = updatedAt
     ? new Date(updatedAt).toLocaleString()
     : t('common.liveNow');

@@ -9,6 +9,7 @@ import {
   KeyMetricPreview,
   ObserverActions,
   StatsGrid,
+  signalForGlowUp,
 } from './CardPrimitives';
 
 interface BeforeAfterCardProps {
@@ -37,12 +38,7 @@ export const BeforeAfterCard = ({
   const { t } = useLanguage();
   const timelineValue = Math.max(22, Math.min(95, Math.round(glowUpScore * 4)));
   const impact = Math.max(0.5, glowUpScore / 4.4);
-  let signalLabel = 'Low';
-  if (glowUpScore >= 12) {
-    signalLabel = 'High';
-  } else if (glowUpScore >= 7) {
-    signalLabel = 'Medium';
-  }
+  const signalLabel = signalForGlowUp(glowUpScore, t);
 
   return (
     <article className={`card overflow-hidden ${compact ? 'p-2.5' : 'p-4'}`}>
