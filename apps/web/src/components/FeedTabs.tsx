@@ -667,6 +667,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
 
   useEffect(() => {
     const handleGlobalShortcuts = (event: KeyboardEvent) => {
+      const hasFiltersForActiveTab = active === 'All' || active === 'Battles';
       if (
         event.defaultPrevented ||
         event.altKey ||
@@ -690,6 +691,21 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
         return;
       }
 
+      if (event.shiftKey && (event.key === 'F' || event.key === 'f')) {
+        if (!hasFiltersForActiveTab || isEditableTarget(event.target)) {
+          return;
+        }
+        event.preventDefault();
+        setFiltersOpen((previous) => {
+          const next = !previous;
+          if (isMobileViewport && next) {
+            setMoreOpen(false);
+          }
+          return next;
+        });
+        return;
+      }
+
       if (event.key !== 'Escape') {
         return;
       }
@@ -708,7 +724,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
     return () => {
       window.removeEventListener('keydown', handleGlobalShortcuts);
     };
-  }, []);
+  }, [active, isMobileViewport]);
 
   const closeDesktopMore = useCallback(() => {
     const details = desktopMoreDetailsRef.current;

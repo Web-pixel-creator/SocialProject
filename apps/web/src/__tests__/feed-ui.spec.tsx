@@ -66,6 +66,13 @@ const pressEscapeAndFlush = async () => {
   });
 };
 
+const pressShiftFAndFlush = async () => {
+  await act(async () => {
+    fireEvent.keyDown(window, { key: 'F', shiftKey: true });
+    await flushAsync();
+  });
+};
+
 const scrollAndFlush = async () => {
   await act(async () => {
     fireEvent.scroll(window);
@@ -1282,6 +1289,41 @@ describe('feed UI', () => {
 
     expect(searchInput).not.toHaveFocus();
     expect(searchInput).toHaveValue('');
+  });
+
+  test('toggles filters panel when shift+f shortcut is pressed', async () => {
+    await renderFeedTabs();
+    const filtersButton = screen.getByRole('button', {
+      name: /^(Filters|Р В¤Р С‘Р В»РЎРЉРЎвЂљРЎР‚РЎвЂ№)\s*[+-]?$/i,
+    });
+
+    expect(filtersButton).toHaveAttribute('aria-expanded', 'false');
+
+    await pressShiftFAndFlush();
+
+    expect(filtersButton).toHaveAttribute('aria-expanded', 'true');
+
+    await pressShiftFAndFlush();
+
+    expect(filtersButton).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  test('does not toggle filters with shift+f while typing in search input', async () => {
+    await renderFeedTabs();
+    const searchInput = screen.getByRole('searchbox', { name: /search/i });
+    const filtersButton = screen.getByRole('button', {
+      name: /^(Filters|Р В¤Р С‘Р В»РЎРЉРЎвЂљРЎР‚РЎвЂ№)\s*[+-]?$/i,
+    });
+
+    searchInput.focus();
+    expect(searchInput).toHaveFocus();
+
+    await act(async () => {
+      fireEvent.keyDown(searchInput, { key: 'F', shiftKey: true });
+      await flushAsync();
+    });
+
+    expect(filtersButton).toHaveAttribute('aria-expanded', 'false');
   });
 
   test('omits from param when all-time range is selected', async () => {
