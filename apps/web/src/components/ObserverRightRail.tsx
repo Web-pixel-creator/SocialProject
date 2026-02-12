@@ -339,6 +339,11 @@ export const ObserverRightRail = () => {
       ] as Array<{ key: RailPanelKey; label: string }>,
     [t],
   );
+  const visiblePanelCount = useMemo(
+    () => panelToggles.filter((panel) => panelVisibility[panel.key]).length,
+    [panelToggles, panelVisibility],
+  );
+  const allPanelsHidden = visiblePanelCount === 0;
 
   const lastSyncLabel = useMemo(() => {
     if (lastSyncAt === null) {
@@ -523,53 +528,23 @@ export const ObserverRightRail = () => {
             {resyncToast}
           </div>
         )}
-        <div
-          className="mt-2 hidden flex-wrap gap-1 lg:flex"
-          data-testid="observer-rail-desktop-controls"
-        >
-          <button
-            className="rounded-full border border-border bg-background/70 px-2 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wide transition hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            onClick={() => setPanelVisibility(DEFAULT_PANEL_VISIBILITY)}
-            type="button"
-          >
-            {t('rail.showAll')}
-          </button>
-          <button
-            className="rounded-full border border-border bg-background/70 px-2 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wide transition hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            onClick={() =>
-              setPanelVisibility({
-                battles: false,
-                activity: false,
-                glowUps: false,
-                studios: false,
-              })
-            }
-            type="button"
-          >
-            {t('rail.hideAll')}
-          </button>
-          {panelToggles.map((panel) => (
+        <div className="mt-2 flex items-center justify-between gap-2 text-[11px]">
+          <span className="rounded-full border border-border bg-background/70 px-2 py-1 font-semibold text-muted-foreground">
+            {t('rail.panelsVisible')}: {visiblePanelCount}/{panelToggles.length}
+          </span>
+          {allPanelsHidden ? (
             <button
-              aria-pressed={panelVisibility[panel.key]}
-              className={`rounded-full border px-2 py-1 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
-                panelVisibility[panel.key]
-                  ? 'border-primary/45 bg-primary/10 text-primary'
-                  : 'border-border bg-background/70 text-muted-foreground hover:text-foreground'
-              }`}
-              key={panel.key}
-              onClick={() => togglePanel(panel.key)}
+              className="rounded-full border border-primary/45 bg-primary/10 px-2 py-1 font-semibold text-primary uppercase tracking-wide transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              onClick={() => setPanelVisibility(DEFAULT_PANEL_VISIBILITY)}
               type="button"
             >
-              {panel.label}
+              {t('rail.restoreDefaultPanels')}
             </button>
-          ))}
+          ) : null}
         </div>
-      </section>
-      <section className="card p-3 lg:hidden">
-        <PanelHeader icon={Flame} title={t('rail.pulseRadar')} />
         <div
-          className="mt-2 grid gap-2"
-          data-testid="observer-rail-mobile-controls"
+          className="mt-2 hidden gap-2 lg:grid"
+          data-testid="observer-rail-desktop-controls"
         >
           <div className="flex flex-wrap gap-1">
             <button
@@ -603,6 +578,58 @@ export const ObserverRightRail = () => {
                     ? 'border-primary/45 bg-primary/10 text-primary'
                     : 'border-border bg-background/70 text-muted-foreground hover:text-foreground'
                 }`}
+                key={panel.key}
+                onClick={() => togglePanel(panel.key)}
+                type="button"
+              >
+                {panel.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+      <section className="card p-3 lg:hidden">
+        <PanelHeader icon={Flame} title={t('rail.pulseRadar')} />
+        <div
+          className="mt-2 grid gap-2"
+          data-testid="observer-rail-mobile-controls"
+        >
+          <div className="flex flex-wrap gap-1">
+            <button
+              className="rounded-full border border-border bg-background/70 px-2 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wide transition hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              onClick={() => setPanelVisibility(DEFAULT_PANEL_VISIBILITY)}
+              type="button"
+            >
+              {t('rail.showAll')}
+            </button>
+            <button
+              className="rounded-full border border-border bg-background/70 px-2 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wide transition hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              onClick={() =>
+                setPanelVisibility({
+                  battles: false,
+                  activity: false,
+                  glowUps: false,
+                  studios: false,
+                })
+              }
+              type="button"
+            >
+              {t('rail.hideAll')}
+            </button>
+            <span className="rounded-full border border-border bg-background/70 px-2 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wide">
+              {t('rail.panelsVisible')}: {visiblePanelCount}/
+              {panelToggles.length}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {panelToggles.map((panel) => (
+              <button
+                aria-pressed={panelVisibility[panel.key]}
+                className={`rounded-full border px-2 py-1 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                  panelVisibility[panel.key]
+                    ? 'border-primary/45 bg-primary/10 text-primary'
+                    : 'border-border bg-background/70 text-muted-foreground hover:text-foreground'
+                }`}
                 key={`mobile-toggle-${panel.key}`}
                 onClick={() => togglePanel(panel.key)}
                 type="button"
@@ -612,6 +639,20 @@ export const ObserverRightRail = () => {
             ))}
           </div>
         </div>
+        {allPanelsHidden ? (
+          <div className="mt-3 rounded-lg border border-border bg-muted/65 p-2 text-[11px] text-muted-foreground">
+            <p>{t('rail.noPanelsSelected')}</p>
+            <div className="mt-2 flex justify-end">
+              <button
+                className="rounded-full border border-primary/45 bg-primary/10 px-2 py-1 font-semibold text-primary uppercase tracking-wide transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                onClick={() => setPanelVisibility(DEFAULT_PANEL_VISIBILITY)}
+                type="button"
+              >
+                {t('rail.restoreDefaultPanels')}
+              </button>
+            </div>
+          </div>
+        ) : null}
         <div className="grid gap-3 sm:grid-cols-2">
           {panelVisibility.battles ? (
             <div className="rounded-lg border border-border bg-muted/70 p-2">
@@ -695,6 +736,20 @@ export const ObserverRightRail = () => {
         items={studios}
         title={t('rail.topStudios')}
       />
+      {allPanelsHidden ? (
+        <section className="card hidden p-3 text-[11px] text-muted-foreground lg:block">
+          <p>{t('rail.noPanelsSelected')}</p>
+          <div className="mt-2">
+            <button
+              className="rounded-full border border-primary/45 bg-primary/10 px-2 py-1 font-semibold text-primary uppercase tracking-wide transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              onClick={() => setPanelVisibility(DEFAULT_PANEL_VISIBILITY)}
+              type="button"
+            >
+              {t('rail.restoreDefaultPanels')}
+            </button>
+          </div>
+        </section>
+      ) : null}
     </aside>
   );
 };
