@@ -580,6 +580,70 @@ test.describe('Feed page', () => {
         );
     });
 
+    test('shows view-mode hint only once after dismiss', async ({ page }) => {
+        await page.evaluate(() =>
+            window.localStorage.removeItem('finishit-feed-view-hint-seen'),
+        );
+        await page.reload();
+
+        const hintTitle = page.getByText(
+            /Choose your feed mode|Выберите режим ленты/i,
+        );
+        const dismissButton = page.getByRole('button', {
+            name: /Got it|Понятно/i,
+        });
+
+        await expect(hintTitle).toBeVisible();
+        await dismissButton.click();
+        await expect(hintTitle).toHaveCount(0);
+
+        await expect
+            .poll(
+                async () =>
+                    await page.evaluate(() =>
+                        window.localStorage.getItem(
+                            'finishit-feed-view-hint-seen',
+                        ),
+                    ),
+            )
+            .toBe('1');
+
+        await page.reload();
+        await expect(
+            page.getByText(/Choose your feed mode|Выберите режим ленты/i),
+        ).toHaveCount(0);
+    });
+
+    test('switches language from desktop settings menu', async ({ page }) => {
+        await page.evaluate(() =>
+            window.localStorage.removeItem('finishit-language'),
+        );
+        await page.reload();
+
+        const settingsSummary = page.locator('.settings-menu summary');
+        await settingsSummary.click();
+
+        const ruButton = page
+            .locator('.settings-menu')
+            .getByRole('button', { name: /Switch language to RU/i });
+        await expect(ruButton).toBeVisible();
+        await ruButton.click();
+
+        await expect
+            .poll(
+                async () =>
+                    await page.evaluate(() =>
+                        window.localStorage.getItem('finishit-language'),
+                    ),
+            )
+            .toBe('ru');
+        await expect
+            .poll(
+                async () => await page.evaluate(() => document.documentElement.lang),
+            )
+            .toBe('ru');
+    });
+
     test('keeps observer rail panel controls hidden on mobile viewport', async ({
         page,
     }) => {
