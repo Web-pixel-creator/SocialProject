@@ -236,7 +236,12 @@ export default function FeedPageClient() {
       </section>
       <div
         aria-hidden={!isObserverMode}
-        className={isObserverMode ? '' : 'hidden lg:block'}
+        className={`observer-right-rail-shell ${
+          isObserverMode
+            ? 'observer-right-rail-shell-open'
+            : 'observer-right-rail-shell-collapsed'
+        }`}
+        data-testid="feed-right-rail-shell"
       >
         <PanelErrorBoundary
           description={t('error.refreshPage')}

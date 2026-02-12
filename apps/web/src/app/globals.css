@@ -327,6 +327,7 @@ body.dotted-bg > * {
   }
 
   .feed-shell,
+  .observer-right-rail-shell,
   .observer-right-rail {
     transition: none !important;
   }
@@ -335,6 +336,10 @@ body.dotted-bg > * {
 .feed-shell {
   @apply grid gap-4;
   grid-template-columns: minmax(0, 1fr);
+}
+
+.observer-right-rail-shell {
+  display: none;
 }
 
 @media (min-width: 1100px) {
@@ -347,6 +352,32 @@ body.dotted-bg > * {
 
   .feed-shell-focus {
     grid-template-columns: 220px minmax(0, 1fr) 0;
+  }
+
+  .observer-right-rail-shell {
+    display: block;
+    min-width: 0;
+    max-width: 20rem;
+    overflow: hidden;
+    opacity: 1;
+    transform: translateX(0);
+    transition:
+      max-width 260ms ease,
+      opacity 240ms ease,
+      transform 240ms ease;
+  }
+
+  .observer-right-rail-shell-open {
+    max-width: 20rem;
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .observer-right-rail-shell-collapsed {
+    max-width: 0;
+    opacity: 0;
+    transform: translateX(0.5rem);
+    pointer-events: none;
   }
 
   .observer-left-rail {
