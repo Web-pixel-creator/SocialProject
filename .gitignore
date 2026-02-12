@@ -18,3 +18,4 @@ design-system/
 .codex-dev-*.log
 apps/web/*.tsbuildinfo
 test-results/
+.logs/
