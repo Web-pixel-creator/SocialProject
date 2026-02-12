@@ -1303,37 +1303,6 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
           </button>
         ))}
       </div>
-      <div className="grid gap-2 border-border/60 border-t pt-2">
-        <span className="font-semibold text-[10px] text-muted-foreground uppercase tracking-wide">
-          {densityLabel}
-        </span>
-        <div className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/70 p-1">
-          <button
-            aria-pressed={density === 'comfort'}
-            className={`rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
-              density === 'comfort'
-                ? 'border border-primary/45 bg-primary/10 text-primary'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-            onClick={() => handleDensityChange('comfort')}
-            type="button"
-          >
-            {comfortLabel}
-          </button>
-          <button
-            aria-pressed={density === 'compact'}
-            className={`rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
-              density === 'compact'
-                ? 'border border-primary/45 bg-primary/10 text-primary'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-            onClick={() => handleDensityChange('compact')}
-            type="button"
-          >
-            {compactLabel}
-          </button>
-        </div>
-      </div>
       <div className="flex flex-wrap items-center justify-between gap-2 border-border/60 border-t pt-2">
         <span
           className="rounded-full border border-border bg-background/70 px-3 py-1 font-semibold text-[11px] text-muted-foreground"
@@ -1446,6 +1415,33 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                 {showFiltersLabel} {filtersOpen ? '-' : '+'}
               </button>
             ) : null}
+            <fieldset className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/70 p-1">
+              <legend className="sr-only">{densityLabel}</legend>
+              <button
+                aria-pressed={density === 'comfort'}
+                className={`rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                  density === 'comfort'
+                    ? 'border border-primary/45 bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                onClick={() => handleDensityChange('comfort')}
+                type="button"
+              >
+                {comfortLabel}
+              </button>
+              <button
+                aria-pressed={density === 'compact'}
+                className={`rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                  density === 'compact'
+                    ? 'border border-primary/45 bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                onClick={() => handleDensityChange('compact')}
+                type="button"
+              >
+                {compactLabel}
+              </button>
+            </fieldset>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
             <span className="rounded-full border border-border bg-background/60 px-3 py-1">
