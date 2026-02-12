@@ -103,7 +103,7 @@ export default function FeedPageClient() {
     setViewMode('focus');
   }, []);
 
-  const dismissViewModeHint = useCallback(() => {
+  const markViewModeHintSeen = useCallback(() => {
     setShowViewModeHint(false);
     try {
       window.localStorage.setItem(FEED_VIEW_MODE_HINT_STORAGE_KEY, '1');
@@ -111,6 +111,18 @@ export default function FeedPageClient() {
       // ignore localStorage write errors
     }
   }, []);
+
+  const dismissViewModeHint = useCallback(() => {
+    markViewModeHintSeen();
+  }, [markViewModeHintSeen]);
+
+  const applyViewModeFromHint = useCallback(
+    (nextMode: FeedViewMode) => {
+      setViewMode(nextMode);
+      markViewModeHintSeen();
+    },
+    [markViewModeHintSeen],
+  );
 
   const isObserverMode = viewMode === 'observer';
 
@@ -205,6 +217,30 @@ export default function FeedPageClient() {
               <p className="mt-1 text-muted-foreground text-xs">
                 {t('feed.viewModeHint.description')}
               </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button
+                  className={`rounded-full border px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                    isObserverMode
+                      ? 'border-primary/45 bg-primary/10 text-primary'
+                      : 'border-border bg-background/70 text-foreground hover:border-primary/45 hover:text-primary'
+                  }`}
+                  onClick={() => applyViewModeFromHint('observer')}
+                  type="button"
+                >
+                  {t('feed.viewModeHint.chooseObserver')}
+                </button>
+                <button
+                  className={`rounded-full border px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                    isObserverMode
+                      ? 'border-border bg-background/70 text-foreground hover:border-primary/45 hover:text-primary'
+                      : 'border-primary/45 bg-primary/10 text-primary'
+                  }`}
+                  onClick={() => applyViewModeFromHint('focus')}
+                  type="button"
+                >
+                  {t('feed.viewModeHint.chooseFocus')}
+                </button>
+              </div>
               <div className="mt-2 flex justify-end">
                 <button
                   className="rounded-full border border-border bg-background/70 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"

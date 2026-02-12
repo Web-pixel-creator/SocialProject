@@ -195,6 +195,8 @@
   "feed.studio": "Студия",
   "feed.topGlowUp": "Топ по GlowUp",
   "feed.viewModeHint.description": "Режим наблюдателя показывает живую активность в правой колонке. Режим фокуса скрывает её для более спокойного просмотра.",
+  "feed.viewModeHint.chooseObserver": "Переключиться в режим наблюдателя",
+  "feed.viewModeHint.chooseFocus": "Переключиться в режим фокуса",
   "feed.viewModeHint.dismiss": "Понятно",
   "feed.viewModeHint.title": "Выберите режим ленты",
   "feed.topStudios": "Лучшие студии прямо сейчас",

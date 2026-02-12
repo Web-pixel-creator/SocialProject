@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import FeedPageClient from '../components/FeedPageClient';
 
 jest.mock('../components/FeedTabs', () => ({
@@ -40,7 +40,7 @@ describe('FeedPageClient', () => {
     expect(rightRailShell).toHaveClass('observer-right-rail-shell-open');
     expect(screen.getByTestId('feed-tabs')).toHaveTextContent('observer');
 
-    fireEvent.click(screen.getByRole('button', { name: /Focus mode/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Focus mode$/i }));
 
     expect(pageMain).toHaveClass('feed-shell-focus');
     expect(rightRailShell).toHaveClass('observer-right-rail-shell-collapsed');
@@ -49,7 +49,7 @@ describe('FeedPageClient', () => {
       'focus',
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /Observer mode/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Observer mode$/i }));
 
     expect(pageMain).not.toHaveClass('feed-shell-focus');
     expect(rightRailShell).toHaveClass('observer-right-rail-shell-open');
@@ -57,5 +57,25 @@ describe('FeedPageClient', () => {
     expect(window.localStorage.getItem('finishit-feed-view-mode')).toBe(
       'observer',
     );
+  });
+
+  test('lets user pick mode from onboarding hint and saves choice', async () => {
+    render(<FeedPageClient />);
+
+    expect(screen.getByText(/Choose your feed mode/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Switch to focus/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Choose your feed mode/i)).toBeNull();
+    });
+
+    expect(window.localStorage.getItem('finishit-feed-view-hint-seen')).toBe(
+      '1',
+    );
+    expect(window.localStorage.getItem('finishit-feed-view-mode')).toBe(
+      'focus',
+    );
+    expect(screen.getByTestId('feed-tabs')).toHaveTextContent('focus');
   });
 });
