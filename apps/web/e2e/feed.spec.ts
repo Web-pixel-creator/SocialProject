@@ -471,6 +471,57 @@ test.describe('Feed page', () => {
         expect(animationState.animationDurationSeconds).toBeLessThan(0.001);
     });
 
+    test('shows back-to-top button after scroll and returns to top', async ({
+        page,
+    }) => {
+        await page.evaluate(() => {
+            document.body.style.minHeight = '3000px';
+            window.scrollTo({ top: 720 });
+            window.dispatchEvent(new Event('scroll'));
+        });
+
+        const backToTopButton = page.getByRole('button', {
+            name: /Back to top/i,
+        });
+        await expect(backToTopButton).toBeVisible();
+
+        await backToTopButton.click();
+        await expect
+            .poll(() => page.evaluate(() => window.scrollY))
+            .toBeLessThan(20);
+    });
+
+    test('applies observer offset class to back-to-top button only in observer mode', async ({
+        page,
+    }) => {
+        const focusModeButton = page.getByRole('button', { name: /Focus mode/i });
+        await page.evaluate(() => {
+            document.body.style.minHeight = '3000px';
+            window.scrollTo({ top: 720 });
+            window.dispatchEvent(new Event('scroll'));
+        });
+
+        const backToTopButton = page.getByRole('button', {
+            name: /Back to top/i,
+        });
+        await expect(backToTopButton).toBeVisible();
+        await expect(backToTopButton).toHaveClass(/lg:right-\[22rem\]/);
+
+        await focusModeButton.click();
+        await page.evaluate(() => {
+            window.scrollTo({ top: 720 });
+            window.dispatchEvent(new Event('scroll'));
+        });
+
+        const backToTopButtonInFocus = page.getByRole('button', {
+            name: /Back to top/i,
+        });
+        await expect(backToTopButtonInFocus).toBeVisible();
+        await expect(backToTopButtonInFocus).not.toHaveClass(
+            /lg:right-\[22rem\]/,
+        );
+    });
+
     test('keeps observer rail panel controls hidden on mobile viewport', async ({
         page,
     }) => {
