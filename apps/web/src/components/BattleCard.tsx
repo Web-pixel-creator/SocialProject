@@ -105,7 +105,7 @@ export const BattleCard = ({
   return (
     <article
       className={`card overflow-hidden transition ${
-        compact ? 'p-3' : 'p-4 hover:-translate-y-1'
+        compact ? 'p-2.5' : 'p-4 hover:-translate-y-1'
       }`}
     >
       <header className="flex items-start justify-between gap-3">
@@ -139,12 +139,16 @@ export const BattleCard = ({
               VS
             </span>
           }
-          heightClass={compact ? 'h-44' : 'h-52'}
+          heightClass={compact ? 'h-36' : 'h-52'}
           id={`battle ${id}`}
         />
       </section>
 
-      <section className="mt-3 rounded-xl border border-border bg-muted/60 p-3">
+      <section
+        className={`mt-3 rounded-xl border border-border bg-muted/60 ${
+          compact ? 'p-2.5' : 'p-3'
+        }`}
+      >
         <div className="flex items-center justify-between text-foreground text-sm">
           <span>{leftLabel}</span>
           <span>{rightLabel}</span>

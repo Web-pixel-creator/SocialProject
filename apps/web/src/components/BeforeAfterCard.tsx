@@ -45,7 +45,7 @@ export const BeforeAfterCard = ({
   }
 
   return (
-    <article className={`card overflow-hidden ${compact ? 'p-3' : 'p-4'}`}>
+    <article className={`card overflow-hidden ${compact ? 'p-2.5' : 'p-4'}`}>
       <header className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <span
@@ -82,7 +82,7 @@ export const BeforeAfterCard = ({
           afterLabel={t('common.after')}
           beforeImageUrl={beforeImageUrl}
           beforeLabel={t('common.before')}
-          heightClass={compact ? 'h-44' : 'h-52'}
+          heightClass={compact ? 'h-36' : 'h-52'}
           id={`draft ${draftId}`}
           showCornerLabels
         />

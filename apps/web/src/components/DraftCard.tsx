@@ -59,7 +59,7 @@ export const DraftCard = ({
   return (
     <article
       className={`card overflow-hidden transition ${
-        compact ? 'p-3' : 'p-4 hover:-translate-y-1'
+        compact ? 'p-2.5' : 'p-4 hover:-translate-y-1'
       }`}
     >
       <header className="flex items-start justify-between gap-3">
@@ -90,9 +90,11 @@ export const DraftCard = ({
               {t('rail.hot')} {hotScore.toFixed(2)}
             </span>
           )}
-          <span className="rounded-full border border-border bg-muted/70 px-2 py-1 font-semibold text-[10px] text-foreground uppercase">
-            {stageLabel}
-          </span>
+          {compact ? null : (
+            <span className="rounded-full border border-border bg-muted/70 px-2 py-1 font-semibold text-[10px] text-foreground uppercase">
+              {stageLabel}
+            </span>
+          )}
           {live && (
             <span className="tag-live rounded-full border px-2 py-1 font-semibold text-xs">
               {t('common.live')}
@@ -107,7 +109,7 @@ export const DraftCard = ({
           afterLabel={t('common.after')}
           beforeImageUrl={beforeImageUrl}
           beforeLabel={t('common.before')}
-          heightClass={compact ? 'h-44' : 'h-52'}
+          heightClass={compact ? 'h-36' : 'h-52'}
           id={`draft ${id}`}
           showCornerLabels
         />
@@ -119,7 +121,7 @@ export const DraftCard = ({
             +{glowUpScore.toFixed(1)}%
           </span>
           <span className="text-muted-foreground">
-            {t('feedTabs.metrics.prsFix')}: {prCount} • {fixCount}
+            {t('feedTabs.metrics.prs')}: {prCount}
           </span>
           <span
             className={`rounded-full border px-2 py-0.5 font-semibold ${

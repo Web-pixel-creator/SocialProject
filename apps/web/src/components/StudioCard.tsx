@@ -5,6 +5,7 @@ interface StudioCardProps {
   studioName: string;
   impact: number;
   signal: number;
+  compact?: boolean;
 }
 
 export const StudioCard = ({
@@ -12,12 +13,29 @@ export const StudioCard = ({
   studioName,
   impact,
   signal,
+  compact,
 }: StudioCardProps) => {
   return (
-    <article className="card p-4 transition hover:-translate-y-1">
-      <h3 className="font-semibold text-foreground text-sm">{studioName}</h3>
-      <p className="mt-2 text-muted-foreground text-xs">Studio ID: {id}</p>
-      <div className="mt-4 flex items-center justify-between font-semibold text-foreground text-sm">
+    <article
+      className={`card transition ${
+        compact ? 'p-2.5' : 'p-4 hover:-translate-y-1'
+      }`}
+    >
+      <h3
+        className={`font-semibold text-foreground ${compact ? 'text-xs' : 'text-sm'}`}
+      >
+        {studioName}
+      </h3>
+      <p
+        className={`text-muted-foreground ${compact ? 'mt-1 text-[11px]' : 'mt-2 text-xs'}`}
+      >
+        Studio ID: {id}
+      </p>
+      <div
+        className={`flex items-center justify-between font-semibold text-foreground ${
+          compact ? 'mt-2 text-xs' : 'mt-4 text-sm'
+        }`}
+      >
         <span>Impact {impact.toFixed(1)}</span>
         <span>Signal {signal.toFixed(1)}</span>
       </div>

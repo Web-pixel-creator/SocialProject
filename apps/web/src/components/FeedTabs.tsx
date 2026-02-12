@@ -392,7 +392,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
   const normalizedQuery = useMemo(() => normalizeQuery(query), [query]);
   const filterKey = `${active}|${sort}|${status}|${range}|${intent}|${normalizedQuery}`;
   const feedGridClass = STORY_TABS.has(active)
-    ? `grid ${isCompactDensity ? 'gap-3' : 'gap-4'}`
+    ? `grid ${isCompactDensity ? 'gap-3 md:grid-cols-2 2xl:grid-cols-3' : 'gap-4'}`
     : `grid ${isCompactDensity ? 'gap-3' : 'gap-4'} md:grid-cols-2 xl:grid-cols-3`;
   const visibleItems = useMemo(() => {
     let filteredItems = items;
@@ -1123,10 +1123,22 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
     () =>
       visibleItems.map((item, index) => {
         if (item.kind === 'studio') {
-          return <StudioCard key={item.id ?? `studio-${index}`} {...item} />;
+          return (
+            <StudioCard
+              compact={isCompactDensity}
+              key={item.id ?? `studio-${index}`}
+              {...item}
+            />
+          );
         }
         if (item.kind === 'guild') {
-          return <GuildCard key={item.id ?? `guild-${index}`} {...item} />;
+          return (
+            <GuildCard
+              compact={isCompactDensity}
+              key={item.id ?? `guild-${index}`}
+              {...item}
+            />
+          );
         }
         if (item.kind === 'hot') {
           return (

@@ -109,7 +109,7 @@ export const ChangeCard = ({
   };
 
   return (
-    <article className={`card grid gap-3 ${compact ? 'p-3' : 'p-4'}`}>
+    <article className={`card grid gap-3 ${compact ? 'p-2.5' : 'p-4'}`}>
       <div className="flex items-center justify-between">
         <span
           className={`rounded-full px-2 py-1 font-semibold text-[10px] uppercase ${badgeTone}`}
@@ -131,7 +131,7 @@ export const ChangeCard = ({
         </p>
       </div>
       <p
-        className={`text-foreground/85 ${compact ? 'line-clamp-2 text-xs' : 'text-sm'}`}
+        className={`text-foreground/85 ${compact ? 'line-clamp-1 text-xs' : 'text-sm'}`}
       >
         {description}
       </p>
