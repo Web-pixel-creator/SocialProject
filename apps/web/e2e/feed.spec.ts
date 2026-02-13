@@ -884,6 +884,57 @@ test.describe('Feed page', () => {
             .toContain('"studios":false');
     });
 
+    test('toggles observer and focus modes on mobile viewport', async ({
+        page,
+    }) => {
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.goto('/feed');
+
+        const observerModeButton = page.getByRole('button', {
+            name: /Observer mode/i,
+        });
+        const focusModeButton = page.getByRole('button', {
+            name: /Focus mode/i,
+        });
+        const rightRailShell = page.getByTestId('feed-right-rail-shell');
+
+        await expect(observerModeButton).toHaveAttribute('aria-pressed', 'true');
+        await expect(rightRailShell).toHaveClass(
+            /observer-right-rail-shell-open/,
+        );
+        await expect(rightRailShell).toBeVisible();
+
+        await focusModeButton.click();
+        await expect(focusModeButton).toHaveAttribute('aria-pressed', 'true');
+        await expect(rightRailShell).toHaveClass(
+            /observer-right-rail-shell-collapsed/,
+        );
+        await expect(rightRailShell).toBeHidden();
+        await expect
+            .poll(
+                async () =>
+                    await page.evaluate(() =>
+                        window.localStorage.getItem('finishit-feed-view-mode'),
+                    ),
+            )
+            .toBe('focus');
+
+        await observerModeButton.click();
+        await expect(observerModeButton).toHaveAttribute('aria-pressed', 'true');
+        await expect(rightRailShell).toHaveClass(
+            /observer-right-rail-shell-open/,
+        );
+        await expect(rightRailShell).toBeVisible();
+        await expect
+            .poll(
+                async () =>
+                    await page.evaluate(() =>
+                        window.localStorage.getItem('finishit-feed-view-mode'),
+                    ),
+            )
+            .toBe('observer');
+    });
+
     test('shows language switcher inside feed mobile menu', async ({ page }) => {
         await page.setViewportSize({ width: 390, height: 844 });
         await page.goto('/feed');
