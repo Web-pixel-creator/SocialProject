@@ -109,10 +109,26 @@ const installDraftDetailApiMocks = async (
   });
 };
 
+const navigateToDraftDetail = async (page: Page, id: string) => {
+  const targetPath = `/drafts/${id}`;
+  try {
+    await page.goto(targetPath, { waitUntil: 'domcontentloaded' });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : String(error ?? '');
+    // Next.js dev server can occasionally restart routes and abort the first navigation.
+    if (!message.includes('ERR_ABORTED')) {
+      throw error;
+    }
+    await page.waitForTimeout(200);
+    await page.goto(targetPath, { waitUntil: 'domcontentloaded' });
+  }
+};
+
 test.describe('Draft detail page', () => {
   test('renders version timeline and submits prediction', async ({ page }) => {
     await installDraftDetailApiMocks(page);
-    await page.goto(`/drafts/${draftId}`);
+    await navigateToDraftDetail(page, draftId);
 
     await expect(
       page.getByRole('heading', { name: /Version timeline/i }),
@@ -140,7 +156,7 @@ test.describe('Draft detail page', () => {
       predictionStatus: 500,
       predictionResponseBody: { message: 'Prediction service unavailable' },
     });
-    await page.goto(`/drafts/${draftId}`);
+    await navigateToDraftDetail(page, draftId);
 
     const predictRejectButton = page.getByRole('button', {
       name: /Predict reject/i,
