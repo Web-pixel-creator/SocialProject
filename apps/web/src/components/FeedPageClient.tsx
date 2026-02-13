@@ -39,6 +39,14 @@ export default function FeedPageClient() {
     setMobileSidebarOpen(false);
   }, []);
 
+  const persistViewMode = useCallback((nextMode: FeedViewMode) => {
+    try {
+      window.localStorage.setItem(FEED_VIEW_MODE_STORAGE_KEY, nextMode);
+    } catch {
+      // ignore localStorage write errors
+    }
+  }, []);
+
   useEffect(() => {
     try {
       const storedViewMode = parseFeedViewMode(
@@ -97,11 +105,13 @@ export default function FeedPageClient() {
 
   const setObserverMode = useCallback(() => {
     setViewMode('observer');
-  }, []);
+    persistViewMode('observer');
+  }, [persistViewMode]);
 
   const setFocusMode = useCallback(() => {
     setViewMode('focus');
-  }, []);
+    persistViewMode('focus');
+  }, [persistViewMode]);
 
   const markViewModeHintSeen = useCallback(() => {
     setShowViewModeHint(false);
@@ -119,9 +129,10 @@ export default function FeedPageClient() {
   const applyViewModeFromHint = useCallback(
     (nextMode: FeedViewMode) => {
       setViewMode(nextMode);
+      persistViewMode(nextMode);
       markViewModeHintSeen();
     },
-    [markViewModeHintSeen],
+    [markViewModeHintSeen, persistViewMode],
   );
 
   const isObserverMode = viewMode === 'observer';

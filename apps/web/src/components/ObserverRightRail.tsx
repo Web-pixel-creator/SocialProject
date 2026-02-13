@@ -37,6 +37,9 @@ interface ObserverRailData {
 
 type RailPanelKey = 'battles' | 'activity' | 'glowUps' | 'studios';
 type RailPanelVisibility = Record<RailPanelKey, boolean>;
+type RailPanelVisibilityUpdater =
+  | RailPanelVisibility
+  | ((previous: RailPanelVisibility) => RailPanelVisibility);
 
 const PANEL_VISIBILITY_STORAGE_KEY = 'finishit-observer-rail-panels';
 
@@ -419,28 +422,45 @@ export const ObserverRightRail = () => {
     }
   }, []);
 
-  useEffect(() => {
+  const persistPanelVisibility = useCallback((next: RailPanelVisibility) => {
     try {
       window.localStorage.setItem(
         PANEL_VISIBILITY_STORAGE_KEY,
-        JSON.stringify(panelVisibility),
+        JSON.stringify(next),
       );
     } catch {
       // ignore localStorage write errors
     }
-  }, [panelVisibility]);
+  }, []);
+
+  const applyPanelVisibility = useCallback(
+    (nextOrUpdater: RailPanelVisibilityUpdater) => {
+      setPanelVisibility((previous) => {
+        const next =
+          typeof nextOrUpdater === 'function'
+            ? nextOrUpdater(previous)
+            : nextOrUpdater;
+        persistPanelVisibility(next);
+        return next;
+      });
+    },
+    [persistPanelVisibility],
+  );
 
   const handleManualResync = useCallback(() => {
     manualResyncPendingRef.current = true;
     requestResync();
   }, [requestResync]);
 
-  const togglePanel = useCallback((panelKey: RailPanelKey) => {
-    setPanelVisibility((previous) => ({
-      ...previous,
-      [panelKey]: !previous[panelKey],
-    }));
-  }, []);
+  const togglePanel = useCallback(
+    (panelKey: RailPanelKey) => {
+      applyPanelVisibility((previous) => ({
+        ...previous,
+        [panelKey]: !previous[panelKey],
+      }));
+    },
+    [applyPanelVisibility],
+  );
 
   return (
     <aside className="observer-right-rail grid grid-cols-1 gap-3">
@@ -520,7 +540,7 @@ export const ObserverRightRail = () => {
           {allPanelsHidden ? (
             <button
               className="rounded-full border border-primary/45 bg-primary/10 px-2 py-1 font-semibold text-primary uppercase tracking-wide transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              onClick={() => setPanelVisibility(DEFAULT_PANEL_VISIBILITY)}
+              onClick={() => applyPanelVisibility(DEFAULT_PANEL_VISIBILITY)}
               type="button"
             >
               {t('rail.restoreDefaultPanels')}
@@ -534,7 +554,7 @@ export const ObserverRightRail = () => {
           <div className="flex flex-wrap gap-1">
             <button
               className="rounded-full border border-border bg-background/70 px-2 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wide transition hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              onClick={() => setPanelVisibility(DEFAULT_PANEL_VISIBILITY)}
+              onClick={() => applyPanelVisibility(DEFAULT_PANEL_VISIBILITY)}
               type="button"
             >
               {t('rail.showAll')}
@@ -542,7 +562,7 @@ export const ObserverRightRail = () => {
             <button
               className="rounded-full border border-border bg-background/70 px-2 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wide transition hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={() =>
-                setPanelVisibility({
+                applyPanelVisibility({
                   battles: false,
                   activity: false,
                   glowUps: false,
@@ -582,7 +602,7 @@ export const ObserverRightRail = () => {
           <div className="flex flex-wrap gap-1">
             <button
               className="rounded-full border border-border bg-background/70 px-2 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wide transition hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              onClick={() => setPanelVisibility(DEFAULT_PANEL_VISIBILITY)}
+              onClick={() => applyPanelVisibility(DEFAULT_PANEL_VISIBILITY)}
               type="button"
             >
               {t('rail.showAll')}
@@ -590,7 +610,7 @@ export const ObserverRightRail = () => {
             <button
               className="rounded-full border border-border bg-background/70 px-2 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wide transition hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={() =>
-                setPanelVisibility({
+                applyPanelVisibility({
                   battles: false,
                   activity: false,
                   glowUps: false,
@@ -630,7 +650,7 @@ export const ObserverRightRail = () => {
             <div className="mt-2 flex justify-end">
               <button
                 className="rounded-full border border-primary/45 bg-primary/10 px-2 py-1 font-semibold text-primary uppercase tracking-wide transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                onClick={() => setPanelVisibility(DEFAULT_PANEL_VISIBILITY)}
+                onClick={() => applyPanelVisibility(DEFAULT_PANEL_VISIBILITY)}
                 type="button"
               >
                 {t('rail.restoreDefaultPanels')}
@@ -727,7 +747,7 @@ export const ObserverRightRail = () => {
           <div className="mt-2">
             <button
               className="rounded-full border border-primary/45 bg-primary/10 px-2 py-1 font-semibold text-primary uppercase tracking-wide transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              onClick={() => setPanelVisibility(DEFAULT_PANEL_VISIBILITY)}
+              onClick={() => applyPanelVisibility(DEFAULT_PANEL_VISIBILITY)}
               type="button"
             >
               {t('rail.restoreDefaultPanels')}
