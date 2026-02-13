@@ -82,6 +82,7 @@ jobs:
               lines.push(
                 `- health status: \`${String(payload.status ?? 'unknown')}\``,
                 `- required jobs: \`${String(payload?.totals?.requiredJobsPassed ?? 0)}/${String(payload?.totals?.requiredJobsTotal ?? 0)}\``,
+                `- required artifacts: \`${String(payload?.totals?.requiredArtifactsPresent ?? 0)}/${String(payload?.totals?.requiredArtifactsTotal ?? 0)}\``,
                 `- failed jobs: \`${String(payload?.totals?.failedJobsTotal ?? 0)}\``,
                 `- artifacts discovered: \`${String(payload?.totals?.artifactsDiscovered ?? 0)}\``,
               );

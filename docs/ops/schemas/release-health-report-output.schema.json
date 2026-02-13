@@ -12,6 +12,7 @@
     "run",
     "summary",
     "jobs",
+    "artifactChecks",
     "artifacts",
     "smokeReport"
   ],
@@ -20,7 +21,7 @@
       "const": "docs/ops/schemas/release-health-report-output.schema.json"
     },
     "schemaVersion": {
-      "const": "1.0.0"
+      "const": "1.1.0"
     },
     "generatedAtUtc": {
       "type": "string",
@@ -38,6 +39,9 @@
     },
     "jobs": {
       "$ref": "#/$defs/jobs"
+    },
+    "artifactChecks": {
+      "$ref": "#/$defs/artifactChecks"
     },
     "artifacts": {
       "type": "array",
@@ -129,6 +133,8 @@
         "reasons",
         "requiredJobsTotal",
         "requiredJobsPassed",
+        "requiredArtifactsTotal",
+        "requiredArtifactsPresent",
         "failedJobsTotal"
       ],
       "properties": {
@@ -146,6 +152,14 @@
           "minimum": 0
         },
         "requiredJobsPassed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "requiredArtifactsTotal": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "requiredArtifactsPresent": {
           "type": "integer",
           "minimum": 0
         },
@@ -263,6 +277,58 @@
         "archiveDownloadUrl": {
           "type": "string",
           "format": "uri"
+        }
+      }
+    },
+    "requiredArtifactCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "present",
+        "expired",
+        "artifactId"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "present": {
+          "type": "boolean"
+        },
+        "expired": {
+          "type": "boolean"
+        },
+        "artifactId": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        }
+      }
+    },
+    "artifactChecks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required",
+        "missing"
+      ],
+      "properties": {
+        "required": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/requiredArtifactCheck"
+          }
+        },
+        "missing": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     },

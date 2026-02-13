@@ -140,6 +140,14 @@ const buildEntry = ({ report, reportPath }) => {
     typeof report?.summary?.failedJobsTotal === 'number'
       ? report.summary.failedJobsTotal
       : 0;
+  const requiredArtifactsPresent =
+    typeof report?.summary?.requiredArtifactsPresent === 'number'
+      ? report.summary.requiredArtifactsPresent
+      : 0;
+  const requiredArtifactsTotal =
+    typeof report?.summary?.requiredArtifactsTotal === 'number'
+      ? report.summary.requiredArtifactsTotal
+      : 0;
 
   const reasons = Array.isArray(report?.summary?.reasons)
     ? report.summary.reasons.filter((value) => typeof value === 'string')
@@ -158,6 +166,7 @@ const buildEntry = ({ report, reportPath }) => {
     `- Source workflow run: #${runNumber ?? '<unknown>'} (${runUrl}).`,
     `- Overall health: ${report?.summary?.pass ? 'pass' : 'fail'}.`,
     `- Required jobs: ${requiredJobsPassed}/${requiredJobsTotal} passed.`,
+    `- Required artifacts: ${requiredArtifactsPresent}/${requiredArtifactsTotal} present.`,
     `- Failed jobs total: ${failedJobsTotal}.`,
     `- Smoke summary: ${smokeLine}.`,
     `- Report artifact: \`${toRelative(reportPath)}\`.`,

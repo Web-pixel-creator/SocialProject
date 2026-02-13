@@ -17,6 +17,13 @@ const REQUIRED_JOB_NAMES = [
   'Release Smoke Dry-Run (staging/manual)',
   'Pre-release Performance Gate (staging/manual)',
 ];
+const REQUIRED_ARTIFACT_NAMES = [
+  'release-smoke-report',
+  'release-smoke-preflight-summary',
+  'release-env-preflight-summary',
+  'retry-schema-gate-summary',
+  'release-smoke-preflight-schema-summary',
+];
 const USAGE = `Usage: npm run release:health:report -- [run_id] [options]
 
 Arguments:
@@ -345,6 +352,35 @@ const buildJobSummary = (jobs) => {
   };
 };
 
+const buildArtifactSummary = (artifacts) => {
+  const normalized = artifacts.map((artifact) => ({
+    id: artifact.id,
+    name: artifact.name,
+    expired: artifact.expired,
+  }));
+
+  const required = REQUIRED_ARTIFACT_NAMES.map((name) => {
+    const matches = normalized.filter((artifact) => artifact.name === name);
+    const activeMatch = matches.find((artifact) => artifact.expired === false);
+    return {
+      name,
+      present: Boolean(activeMatch),
+      expired: matches.length > 0 && !activeMatch,
+      artifactId: activeMatch?.id ?? null,
+    };
+  });
+
+  const requiredMissing = required
+    .filter((artifact) => !artifact.present)
+    .map((artifact) => artifact.name);
+
+  return {
+    required,
+    requiredMissing,
+    total: normalized.length,
+  };
+};
+
 const toJsonSummaryPayload = ({ report, outputPath, strict }) => ({
   label: RELEASE_HEALTH_REPORT_LABEL,
   status: report.summary.pass ? 'pass' : 'fail',
@@ -359,6 +395,8 @@ const toJsonSummaryPayload = ({ report, outputPath, strict }) => ({
   totals: {
     requiredJobsTotal: report.summary.requiredJobsTotal,
     requiredJobsPassed: report.summary.requiredJobsPassed,
+    requiredArtifactsTotal: report.summary.requiredArtifactsTotal,
+    requiredArtifactsPresent: report.summary.requiredArtifactsPresent,
     failedJobsTotal: report.summary.failedJobsTotal,
     artifactsDiscovered: report.artifacts.length,
   },
@@ -417,6 +455,7 @@ const main = async () => {
     ? artifactsData.artifacts
     : [];
   const jobSummary = buildJobSummary(jobs);
+  const artifactSummary = buildArtifactSummary(artifacts);
   let smokeSummary = await readLocalSmokeSummary(runId);
   const shouldFetchSmokeFromEnv = parseBoolean(
     process.env.RELEASE_HEALTH_REPORT_FETCH_SMOKE,
@@ -446,7 +485,8 @@ const main = async () => {
   const pass =
     runConclusion === 'success' &&
     jobSummary.requiredMissing.length === 0 &&
-    jobSummary.requiredFailed.length === 0;
+    jobSummary.requiredFailed.length === 0 &&
+    artifactSummary.requiredMissing.length === 0;
 
   const reasons = [];
   if (runConclusion !== 'success') {
@@ -460,6 +500,11 @@ const main = async () => {
   if (jobSummary.requiredFailed.length > 0) {
     reasons.push(
       `required jobs not successful: ${jobSummary.requiredFailed.join(', ')}`,
+    );
+  }
+  if (artifactSummary.requiredMissing.length > 0) {
+    reasons.push(
+      `required artifacts missing: ${artifactSummary.requiredMissing.join(', ')}`,
     );
   }
 
@@ -484,12 +529,20 @@ const main = async () => {
       reasons,
       requiredJobsTotal: jobSummary.required.length,
       requiredJobsPassed: jobSummary.required.filter((job) => job.pass).length,
+      requiredArtifactsTotal: artifactSummary.required.length,
+      requiredArtifactsPresent: artifactSummary.required.filter(
+        (artifact) => artifact.present,
+      ).length,
       failedJobsTotal: jobSummary.failedJobs.length,
     },
     jobs: {
       required: jobSummary.required,
       failedJobs: jobSummary.failedJobs,
       totalJobs: jobSummary.total,
+    },
+    artifactChecks: {
+      required: artifactSummary.required,
+      missing: artifactSummary.requiredMissing,
     },
     artifacts: artifacts.map((artifact) => ({
       id: artifact.id,
@@ -534,6 +587,9 @@ const main = async () => {
     }
     process.stdout.write(
       `Required jobs: ${report.summary.requiredJobsPassed}/${report.summary.requiredJobsTotal} passed\n`,
+    );
+    process.stdout.write(
+      `Required artifacts: ${report.summary.requiredArtifactsPresent}/${report.summary.requiredArtifactsTotal} present\n`,
     );
     process.stdout.write(`Artifacts discovered: ${report.artifacts.length}\n`);
     if (report.smokeReport.source === 'local' && report.smokeReport.summary) {

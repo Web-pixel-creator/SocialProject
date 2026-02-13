@@ -1,6 +1,6 @@
 {
   "schemaPath": "docs/ops/schemas/release-health-report-output.schema.json",
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "1.1.0",
   "generatedAtUtc": "2026-02-09T12:45:00.000Z",
   "repository": "Web-pixel-creator/SocialProject",
   "run": {
@@ -19,6 +19,8 @@
     "reasons": [],
     "requiredJobsTotal": 5,
     "requiredJobsPassed": 5,
+    "requiredArtifactsTotal": 5,
+    "requiredArtifactsPresent": 5,
     "failedJobsTotal": 0
   },
   "jobs": {
@@ -66,6 +68,41 @@
     ],
     "failedJobs": [],
     "totalJobs": 6
+  },
+  "artifactChecks": {
+    "required": [
+      {
+        "name": "release-smoke-report",
+        "present": true,
+        "expired": false,
+        "artifactId": 5428215041
+      },
+      {
+        "name": "release-smoke-preflight-summary",
+        "present": true,
+        "expired": false,
+        "artifactId": 5428215042
+      },
+      {
+        "name": "release-env-preflight-summary",
+        "present": true,
+        "expired": false,
+        "artifactId": 5428215043
+      },
+      {
+        "name": "retry-schema-gate-summary",
+        "present": true,
+        "expired": false,
+        "artifactId": 5428215044
+      },
+      {
+        "name": "release-smoke-preflight-schema-summary",
+        "present": true,
+        "expired": false,
+        "artifactId": 5428215045
+      }
+    ],
+    "missing": []
   },
   "artifacts": [
     {
