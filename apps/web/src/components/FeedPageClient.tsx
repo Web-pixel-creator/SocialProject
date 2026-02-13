@@ -28,6 +28,7 @@ export default function FeedPageClient() {
   const [viewMode, setViewMode] = useState<FeedViewMode>(
     DEFAULT_FEED_VIEW_MODE,
   );
+  const [viewModeHydrated, setViewModeHydrated] = useState(false);
   const [showViewModeHint, setShowViewModeHint] = useState(false);
   const previousBodyOverflowRef = useRef<string | null>(null);
 
@@ -57,6 +58,8 @@ export default function FeedPageClient() {
       }
     } catch {
       // ignore localStorage read errors
+    } finally {
+      setViewModeHydrated(true);
     }
   }, []);
 
@@ -73,12 +76,15 @@ export default function FeedPageClient() {
   }, []);
 
   useEffect(() => {
+    if (!viewModeHydrated) {
+      return;
+    }
     try {
       window.localStorage.setItem(FEED_VIEW_MODE_STORAGE_KEY, viewMode);
     } catch {
       // ignore localStorage write errors
     }
-  }, [viewMode]);
+  }, [viewMode, viewModeHydrated]);
 
   useEffect(() => {
     if (!mobileSidebarOpen) {

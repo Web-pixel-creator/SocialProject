@@ -213,6 +213,13 @@ body.dotted-bg > * {
   color: oklch(var(--foreground));
 }
 
+.glass-button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px oklch(var(--ring)),
+    0 0 0 4px oklch(var(--background));
+}
+
 .settings-menu .settings-menu-icon {
   transition: transform 180ms ease;
 }

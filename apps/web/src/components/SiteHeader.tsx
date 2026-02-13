@@ -193,7 +193,7 @@ export const SiteHeader = () => {
           aria-controls="mobile-site-menu"
           aria-expanded={mobileMenuOpen}
           aria-label={mobileMenuOpen ? t('common.close') : t('common.menu')}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/70 text-foreground transition hover:bg-muted md:hidden"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/70 text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background md:hidden"
           onClick={() => setMobileMenuOpen((current) => !current)}
           ref={mobileToggleRef}
           type="button"
@@ -210,7 +210,7 @@ export const SiteHeader = () => {
           const active = pathname === link.href;
           return (
             <Link
-              className={`rounded-full border px-3 py-1.5 transition ${
+              className={`rounded-full border px-3 py-1.5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                 active
                   ? 'border-primary/45 bg-primary/10 text-primary'
                   : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground'
@@ -264,7 +264,7 @@ export const SiteHeader = () => {
               const active = pathname === link.href;
               return (
                 <Link
-                  className={`rounded-xl border px-3 py-2 transition ${
+                  className={`rounded-xl border px-3 py-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                     active
                       ? 'border-primary/45 bg-primary/10 text-primary'
                       : 'border-transparent bg-muted/40 text-muted-foreground hover:border-border hover:text-foreground'
