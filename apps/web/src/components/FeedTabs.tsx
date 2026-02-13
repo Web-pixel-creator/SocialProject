@@ -270,7 +270,7 @@ const AllFeedFilters = memo(function AllFeedFilters({
           {labels.sort}
         </span>
         <select
-          className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
+          className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           onChange={(event) => onSortChange(event.target.value as FeedSort)}
           value={sort}
         >
@@ -286,7 +286,7 @@ const AllFeedFilters = memo(function AllFeedFilters({
           {labels.status}
         </span>
         <select
-          className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
+          className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           onChange={(event) => onStatusChange(event.target.value as FeedStatus)}
           value={status}
         >
@@ -302,7 +302,7 @@ const AllFeedFilters = memo(function AllFeedFilters({
           {labels.timeRange}
         </span>
         <select
-          className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
+          className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           onChange={(event) => onRangeChange(event.target.value as FeedRange)}
           value={range}
         >
@@ -318,7 +318,7 @@ const AllFeedFilters = memo(function AllFeedFilters({
           {labels.intent}
         </span>
         <select
-          className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
+          className="rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           onChange={(event) => onIntentChange(event.target.value as FeedIntent)}
           value={intent}
         >
@@ -1829,7 +1829,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
             {hasActiveFilters ? (
               <div className="mt-3 flex items-center justify-end">
                 <button
-                  className="rounded-full border border-border bg-background/70 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:border-primary/45 hover:text-primary"
+                  className="rounded-full border border-border bg-background/70 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   onClick={handleResetFilters}
                   type="button"
                 >

@@ -383,12 +383,14 @@ body.dotted-bg > * {
   }
 
   .observer-right-rail-shell-open {
+    display: block;
     max-width: 20rem;
     opacity: 1;
     transform: translateX(0);
   }
 
   .observer-right-rail-shell-collapsed {
+    display: block;
     max-width: 0;
     opacity: 0;
     transform: translateX(0.5rem);
