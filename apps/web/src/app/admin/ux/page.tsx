@@ -47,6 +47,8 @@ interface ObserverEngagementResponse {
   }>;
 }
 
+type HealthLevel = 'critical' | 'healthy' | 'unknown' | 'watch';
+
 const DEFAULT_API_BASE = 'http://localhost:4000/api';
 const TRAILING_SLASH_REGEX = /\/$/;
 
@@ -58,6 +60,51 @@ const toRateText = (value: unknown): string => {
     return 'n/a';
   }
   return `${(value * 100).toFixed(1)}%`;
+};
+
+const resolveHealthLevel = (
+  value: unknown,
+  thresholds: {
+    criticalBelow: number;
+    watchBelow: number;
+  },
+): HealthLevel => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return 'unknown';
+  }
+  if (value < thresholds.criticalBelow) {
+    return 'critical';
+  }
+  if (value < thresholds.watchBelow) {
+    return 'watch';
+  }
+  return 'healthy';
+};
+
+const healthLabel = (level: HealthLevel): string => {
+  if (level === 'healthy') {
+    return 'Healthy';
+  }
+  if (level === 'watch') {
+    return 'Watch';
+  }
+  if (level === 'critical') {
+    return 'Critical';
+  }
+  return 'n/a';
+};
+
+const healthBadgeClass = (level: HealthLevel): string => {
+  if (level === 'healthy') {
+    return 'tag-success';
+  }
+  if (level === 'watch') {
+    return 'tag-hot';
+  }
+  if (level === 'critical') {
+    return 'tag-alert';
+  }
+  return 'pill';
 };
 
 const apiBaseUrl = (): string =>
@@ -170,6 +217,51 @@ export default async function AdminUxObserverEngagementPage({
   const topSegments = [...segments]
     .sort((left, right) => toNumber(right.count) - toNumber(left.count))
     .slice(0, 8);
+  const healthSignals = [
+    {
+      id: 'return24h',
+      label: '24h retention',
+      note: 'observer returns within 24 hours',
+      value: kpis.return24h,
+      thresholds: {
+        criticalBelow: 0.1,
+        watchBelow: 0.2,
+      },
+    },
+    {
+      id: 'followRate',
+      label: 'Follow rate',
+      note: 'watchlist follow events per viewed draft arc',
+      value: kpis.followRate,
+      thresholds: {
+        criticalBelow: 0.15,
+        watchBelow: 0.3,
+      },
+    },
+    {
+      id: 'digestOpenRate',
+      label: 'Digest open rate',
+      note: 'digest_open per watchlist_follow',
+      value: kpis.digestOpenRate,
+      thresholds: {
+        criticalBelow: 0.2,
+        watchBelow: 0.35,
+      },
+    },
+    {
+      id: 'observerModeShare',
+      label: 'Observer mode share',
+      note: 'share of view-mode switches into Observer',
+      value: kpis.viewModeObserverRate,
+      thresholds: {
+        criticalBelow: 0.25,
+        watchBelow: 0.4,
+      },
+    },
+  ].map((signal) => ({
+    ...signal,
+    level: resolveHealthLevel(signal.value, signal.thresholds),
+  }));
 
   return (
     <main className="grid gap-4" id="main-content">
@@ -209,6 +301,35 @@ export default async function AdminUxObserverEngagementPage({
           label="24h retention"
           value={toRateText(kpis.return24h)}
         />
+      </section>
+
+      <section className="card grid gap-3 p-5">
+        <h2 className="font-semibold text-foreground text-lg">
+          Engagement health
+        </h2>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {healthSignals.map((signal) => (
+            <article
+              className="rounded-xl border border-border bg-muted/55 p-3"
+              key={signal.id}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-semibold text-foreground text-sm">
+                  {signal.label}
+                </p>
+                <span
+                  className={`${healthBadgeClass(signal.level)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide`}
+                >
+                  {healthLabel(signal.level)}
+                </span>
+              </div>
+              <p className="mt-2 font-semibold text-base text-foreground">
+                {toRateText(signal.value)}
+              </p>
+              <p className="text-muted-foreground text-xs">{signal.note}</p>
+            </article>
+          ))}
+        </div>
       </section>
 
       <section className="card grid gap-4 p-5">

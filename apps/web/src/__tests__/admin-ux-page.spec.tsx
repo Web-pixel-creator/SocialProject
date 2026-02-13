@@ -100,8 +100,10 @@ describe('admin ux observer engagement page', () => {
     await waitFor(() =>
       expect(screen.getByText(/Feed preference KPIs/i)).toBeInTheDocument(),
     );
+    expect(screen.getByText(/Engagement health/i)).toBeInTheDocument();
+    expect(screen.getByText('Watch')).toBeInTheDocument();
 
-    expect(screen.getByText('33.3%')).toBeInTheDocument();
+    expect(screen.getAllByText('33.3%').length).toBeGreaterThan(0);
     expect(screen.getByText('66.7%')).toBeInTheDocument();
     expect(screen.getByText('75.0%')).toBeInTheDocument();
     expect(screen.getByText(/observer: 1 \| focus: 2/i)).toBeInTheDocument();
