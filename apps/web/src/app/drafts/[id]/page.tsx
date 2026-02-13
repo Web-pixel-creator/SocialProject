@@ -1008,7 +1008,7 @@ export default function DraftDetailPage() {
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
-            className="rounded-full bg-primary px-5 py-2 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90 disabled:opacity-60"
+            className="rounded-full bg-primary px-5 py-2 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-60"
             disabled={demoLoading || !draftId}
             onClick={runDemoFlow}
             type="button"
@@ -1046,14 +1046,14 @@ export default function DraftDetailPage() {
                 <div className="mt-4 flex flex-wrap items-center gap-3">
                   {'href' in nextAction ? (
                     <Link
-                      className="rounded-full bg-primary px-5 py-2 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90"
+                      className="rounded-full bg-primary px-5 py-2 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                       href={nextAction.href as string}
                     >
                       {nextAction.ctaLabel}
                     </Link>
                   ) : (
                     <button
-                      className="rounded-full bg-primary px-5 py-2 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90 disabled:opacity-60"
+                      className="rounded-full bg-primary px-5 py-2 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-60"
                       disabled={demoLoading && !hasFixRequests}
                       onClick={nextAction.onClick}
                       type="button"
@@ -1135,7 +1135,7 @@ export default function DraftDetailPage() {
               )}
               <div className="mt-3">
                 <Link
-                  className="inline-flex items-center rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-xs hover:border-border/70"
+                  className="inline-flex items-center rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-xs transition hover:border-border/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   href={
                     draftId
                       ? `/search?mode=visual&draftId=${draftId}&type=draft&from=similar`
@@ -1184,7 +1184,7 @@ export default function DraftDetailPage() {
               )}
               <div className="mt-4">
                 <button
-                  className={`rounded-full px-4 py-2 font-semibold text-xs ${
+                  className={`rounded-full px-4 py-2 font-semibold text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                     isFollowed
                       ? 'bg-emerald-600 text-white'
                       : 'bg-primary text-primary-foreground'

@@ -333,14 +333,14 @@ export default function PullRequestReviewPage({
               {t('pullRequestReview.decision.title')}
             </h3>
             <textarea
-              className="mt-3 w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70"
+              className="mt-3 w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onChange={(event) => setFeedback(event.target.value)}
               placeholder={t('pullRequestReview.decision.feedbackPlaceholder')}
               rows={3}
               value={feedback}
             />
             <textarea
-              className="mt-3 w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70"
+              className="mt-3 w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onChange={(event) => setRejectReason(event.target.value)}
               placeholder={t(
                 'pullRequestReview.decision.rejectionReasonPlaceholder',
@@ -350,7 +350,7 @@ export default function PullRequestReviewPage({
             />
             <div className="mt-4 grid gap-2">
               <button
-                className="tag-success rounded-full border px-4 py-2 font-semibold text-xs"
+                className="tag-success rounded-full border px-4 py-2 font-semibold text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 disabled={decisionLoading}
                 onClick={() => handleDecision('merge')}
                 type="button"
@@ -358,7 +358,7 @@ export default function PullRequestReviewPage({
                 {t('pullRequestReview.decision.actions.merge')}
               </button>
               <button
-                className="tag-hot rounded-full border px-4 py-2 font-semibold text-xs transition"
+                className="tag-hot rounded-full border px-4 py-2 font-semibold text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 disabled={decisionLoading}
                 onClick={() => handleDecision('request_changes')}
                 type="button"
@@ -366,7 +366,7 @@ export default function PullRequestReviewPage({
                 {t('pullRequestReview.decision.actions.requestChanges')}
               </button>
               <button
-                className="tag-alert rounded-full border px-4 py-2 font-semibold text-xs"
+                className="tag-alert rounded-full border px-4 py-2 font-semibold text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 disabled={decisionLoading}
                 onClick={() => handleDecision('reject')}
                 type="button"

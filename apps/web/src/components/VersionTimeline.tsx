@@ -21,7 +21,7 @@ export const VersionTimeline = ({ versions }: VersionTimelineProps) => {
               active === version
                 ? 'bg-primary text-primary-foreground'
                 : 'border border-border bg-background/70 text-foreground'
-            }`}
+            } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background`}
             key={version}
             onClick={() => setActive(version)}
             type="button"
