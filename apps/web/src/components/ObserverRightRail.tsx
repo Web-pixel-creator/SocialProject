@@ -565,9 +565,6 @@ export const ObserverRightRail = () => {
           className="mt-2 hidden gap-2 lg:grid"
           data-testid="observer-rail-desktop-controls"
         >
-          <p className="font-semibold text-[10px] text-muted-foreground uppercase tracking-wide">
-            {t('feedTabs.controls')}
-          </p>
           <div className="flex flex-wrap gap-1">
             <button
               className={`rounded-full border px-2 py-1 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
@@ -602,9 +599,6 @@ export const ObserverRightRail = () => {
           className="mt-2 grid gap-2"
           data-testid="observer-rail-mobile-controls"
         >
-          <p className="font-semibold text-[10px] text-muted-foreground uppercase tracking-wide">
-            {t('feedTabs.controls')}
-          </p>
           <div className="flex flex-wrap gap-1">
             <button
               className={`rounded-full border px-2 py-1 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
