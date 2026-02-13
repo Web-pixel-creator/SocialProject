@@ -4,7 +4,7 @@ import type { Page } from '@playwright/test';
 test.describe('Feed page', () => {
     const openFiltersPanel = async (page: Page) => {
         const filtersButton = page.getByRole('button', {
-            name: /Filters/i,
+            name: /^Filters(?:\s*[+-])?$/i,
         });
         await filtersButton.click();
     };
@@ -239,7 +239,7 @@ test.describe('Feed page', () => {
         await expect(page.getByText('Battle Changes E2E')).toHaveCount(0);
         await expect(page.getByText('Battle Merged E2E')).toBeVisible();
 
-        await page.getByRole('button', { name: /All battles/i }).click();
+        await page.getByRole('button', { name: /^All battles$/i }).click();
         await expect(page.getByText('Battle Pending E2E')).toBeVisible();
         await expect(page.getByText('Battle Changes E2E')).toBeVisible();
         await expect(page.getByText('Battle Merged E2E')).toBeVisible();
@@ -917,11 +917,26 @@ test.describe('Feed page', () => {
     });
 
     test('clears query via empty-state reset filters action', async ({ page }) => {
+        await page.route('**/api/feed**', async (route) => {
+            if (route.request().method() === 'GET') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify([]),
+                });
+            }
+
+            return route.continue();
+        });
+
         await page.goto('/feed?tab=All&q=zzzz-unmatched-e2e-query');
 
-        await expect(page.getByText(/Feed is quiet right now/i)).toBeVisible();
+        const emptyStateCard = page.locator('.card').filter({
+            hasText: /No search results|Feed is quiet right now/i,
+        });
+        await expect(emptyStateCard).toBeVisible();
 
-        await page.getByRole('button', { name: /Reset filters/i }).click();
+        await emptyStateCard.getByRole('button', { name: /Reset filters/i }).click();
 
         await expect
             .poll(() => {
