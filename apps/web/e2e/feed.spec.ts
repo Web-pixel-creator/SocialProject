@@ -706,7 +706,7 @@ test.describe('Feed page', () => {
         const rightRail = page.locator('.observer-right-rail');
         const visiblePanelsBadge = rightRail
             .locator('span')
-            .filter({ hasText: /(Visible panels|Panels):/i })
+            .filter({ hasText: /Panels:/i })
             .first();
         const desktopControls = page.getByTestId(
             'observer-rail-desktop-controls',

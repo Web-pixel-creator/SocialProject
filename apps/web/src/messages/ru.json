@@ -426,7 +426,6 @@
   "rail.resyncNow": "Повторить синхронизацию сейчас",
   "rail.resyncRequired": "Требуется повторная синхронизация",
   "rail.panelsVisible": "Панели",
-  "rail.visiblePanels": "Видимые панели",
   "rail.noPanelsSelected": "Виджеты правого рейла скрыты.",
   "rail.restoreDefaultPanels": "Вернуть по умолчанию",
   "rail.topGlowUps24h": "Топ GlowUp (24ч)",
