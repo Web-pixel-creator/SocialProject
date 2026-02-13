@@ -108,7 +108,11 @@ export const BattleCard = ({
         compact ? 'p-2' : 'p-4 motion-safe:hover:-translate-y-1'
       }`}
     >
-      <header className="flex items-start justify-between gap-3">
+      <header
+        className={`flex items-start justify-between gap-3 ${
+          compact ? '' : 'border-border/60 border-b pb-3'
+        }`}
+      >
         <div className="min-w-0">
           <p
             className={`truncate font-semibold text-foreground ${
@@ -128,7 +132,7 @@ export const BattleCard = ({
         </span>
       </header>
 
-      <section className="mt-3">
+      <section className={compact ? 'mt-3' : 'mt-4'}>
         <ImagePair
           afterImageUrl={afterImageUrl}
           afterLabel={rightLabel}
@@ -145,7 +149,7 @@ export const BattleCard = ({
       </section>
 
       <section
-        className={`mt-3 rounded-xl border border-border bg-muted/60 ${
+        className={`mt-3.5 rounded-xl border border-border/80 bg-background/35 ${
           compact ? 'p-2.5' : 'p-3'
         }`}
       >

@@ -21,31 +21,50 @@ export const StudioCard = ({
 
   return (
     <article
-      className={`card transition ${
+      className={`card grid gap-2.5 transition ${
         compact ? 'p-2.5' : 'p-4 motion-safe:hover:-translate-y-1'
       }`}
     >
-      <h3
-        className={`font-semibold text-foreground ${compact ? 'text-xs' : 'text-sm'}`}
-      >
-        {studioName}
-      </h3>
-      <p
-        className={`text-muted-foreground ${compact ? 'mt-1 text-[11px]' : 'mt-2 text-xs'}`}
-      >
-        {t('studioCard.idLabel')}: {id}
-      </p>
-      <div
-        className={`flex items-center justify-between font-semibold text-foreground ${
-          compact ? 'mt-2 text-xs' : 'mt-4 text-sm'
-        }`}
-      >
-        <span>
-          {t('studioDetail.metrics.impact')} {impact.toFixed(1)}
-        </span>
-        <span>
-          {t('studioDetail.metrics.signal')} {signal.toFixed(1)}
-        </span>
+      <header className={compact ? '' : 'border-border/60 border-b pb-2.5'}>
+        <h3
+          className={`font-semibold text-foreground ${
+            compact ? 'text-xs' : 'text-sm'
+          }`}
+        >
+          {studioName}
+        </h3>
+        <p className="mt-1 text-[10px] text-muted-foreground uppercase tracking-wide">
+          {t('studioCard.idLabel')}: {id}
+        </p>
+      </header>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-lg border border-border/80 bg-background/35 px-2.5 py-2">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+            {t('studioDetail.metrics.impact')}
+          </p>
+          <span className="sr-only">
+            {t('studioDetail.metrics.impact')} {impact.toFixed(1)}
+          </span>
+          <p
+            className={`mt-1 font-semibold text-foreground ${compact ? 'text-xs' : 'text-sm'}`}
+          >
+            {impact.toFixed(1)}
+          </p>
+        </div>
+        <div className="rounded-lg border border-border/80 bg-background/35 px-2.5 py-2">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+            {t('studioDetail.metrics.signal')}
+          </p>
+          <span className="sr-only">
+            {t('studioDetail.metrics.signal')} {signal.toFixed(1)}
+          </span>
+          <p
+            className={`mt-1 font-semibold text-foreground ${compact ? 'text-xs' : 'text-sm'}`}
+          >
+            {signal.toFixed(1)}
+          </p>
+        </div>
       </div>
     </article>
   );

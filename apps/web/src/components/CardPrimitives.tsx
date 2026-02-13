@@ -90,7 +90,7 @@ export const ImagePair = ({
     Boolean(afterImageUrl) && afterImageUrl !== failedAfterUrl;
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-border bg-muted/75">
+    <div className="relative overflow-hidden rounded-xl border border-border/80 bg-background/45">
       <div className={`grid ${heightClass} grid-cols-2`}>
         <div className="h-full w-full">
           {canRenderBefore ? (
@@ -105,7 +105,7 @@ export const ImagePair = ({
               width={360}
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-muted/70">
+            <div className="flex h-full w-full items-center justify-center bg-muted/55">
               <span className="text-muted-foreground text-xs">
                 {beforeLabel}
               </span>
@@ -125,7 +125,7 @@ export const ImagePair = ({
               width={360}
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-muted/70">
+            <div className="flex h-full w-full items-center justify-center bg-muted/55">
               <span className="text-muted-foreground text-xs">
                 {afterLabel}
               </span>
@@ -133,7 +133,11 @@ export const ImagePair = ({
           )}
         </div>
       </div>
-      <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-foreground/40" />
+      <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-primary/35" />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background/35 via-transparent to-background/10"
+      />
       {centerOverlay ?? (
         <span className="absolute top-1/2 left-1/2 inline-flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background/80 text-foreground">
           <ArrowRightLeft aria-hidden="true" className="h-4 w-4" />
@@ -141,10 +145,10 @@ export const ImagePair = ({
       )}
       {showCornerLabels && (
         <>
-          <span className="absolute bottom-2 left-2 rounded-full bg-background/80 px-2 py-1 font-semibold text-[10px] text-foreground">
+          <span className="absolute bottom-2 left-2 rounded-full border border-border/80 bg-background/80 px-2 py-1 font-semibold text-[10px] text-foreground">
             {beforeLabel}
           </span>
-          <span className="absolute right-2 bottom-2 rounded-full bg-background/80 px-2 py-1 font-semibold text-[10px] text-foreground">
+          <span className="absolute right-2 bottom-2 rounded-full border border-border/80 bg-background/80 px-2 py-1 font-semibold text-[10px] text-foreground">
             {afterLabel}
           </span>
         </>
@@ -166,15 +170,17 @@ interface StatsGridProps {
 }
 
 export const StatsGrid = ({ tiles }: StatsGridProps) => (
-  <section className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+  <section className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
     {tiles.map((tile) => (
       <div
-        className="rounded-xl border border-border bg-muted/70 p-2"
+        className="rounded-xl border border-border/80 bg-background/40 p-2.5"
         key={tile.label}
       >
-        <p className="text-muted-foreground text-xs">{tile.label}</p>
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+          {tile.label}
+        </p>
         <p
-          className={`font-semibold text-lg ${tile.colorClass ?? 'text-foreground'}`}
+          className={`mt-1 font-semibold text-base sm:text-lg ${tile.colorClass ?? 'text-foreground'}`}
         >
           {tile.value}
         </p>
@@ -196,9 +202,15 @@ export const KeyMetricPreview = ({
   helper,
   toneClass = 'text-secondary',
 }: KeyMetricPreviewProps) => (
-  <section className="mt-3 rounded-xl border border-border bg-muted/65 p-3">
-    <p className="text-muted-foreground text-xs">{label}</p>
-    <p className={`font-semibold text-2xl ${toneClass}`}>{value}</p>
+  <section className="mt-3 rounded-xl border border-border/80 bg-background/40 p-3">
+    <div className="flex items-end justify-between gap-3">
+      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+        {label}
+      </p>
+      <p className={`font-semibold text-xl sm:text-2xl ${toneClass}`}>
+        {value}
+      </p>
+    </div>
     {helper ? (
       <p className="mt-1 text-foreground/80 text-xs">{helper}</p>
     ) : null}
@@ -214,7 +226,7 @@ interface ObserverActionsProps {
 
 export const ObserverActions = ({
   title,
-  buttonClassName = 'inline-flex items-center justify-center gap-1 rounded-lg border border-border bg-background/60 px-1 py-1.5 text-[10px] text-muted-foreground transition hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+  buttonClassName = 'inline-flex items-center justify-center gap-1 rounded-lg border border-border/80 bg-background/55 px-1.5 py-1.5 text-[10px] text-muted-foreground transition hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
 }: ObserverActionsProps) => {
   const { t } = useLanguage();
   const [expanded, setExpanded] = useState(false);
@@ -230,9 +242,11 @@ export const ObserverActions = ({
   const secondaryActions = actions.slice(2);
 
   return (
-    <section className="mt-2 rounded-xl border border-border bg-muted/60 p-2">
-      <p className="mb-2 text-muted-foreground text-xs">{resolvedTitle}</p>
-      <div className="grid grid-cols-3 gap-1">
+    <section className="mt-2 rounded-xl border border-border/80 bg-background/35 p-2.5">
+      <p className="mb-2 text-[10px] text-muted-foreground uppercase tracking-wide">
+        {resolvedTitle}
+      </p>
+      <div className="grid grid-cols-3 gap-1.5">
         {primaryActions.map(({ icon: Icon, label }) => (
           <button className={buttonClassName} key={label} type="button">
             <Icon aria-hidden="true" className="h-3.5 w-3.5" />
@@ -250,7 +264,7 @@ export const ObserverActions = ({
         </button>
       </div>
       {expanded ? (
-        <div className="mt-1 grid grid-cols-3 gap-1">
+        <div className="mt-1.5 grid grid-cols-3 gap-1.5">
           {secondaryActions.map(({ icon: Icon, label }) => (
             <button className={buttonClassName} key={label} type="button">
               <Icon aria-hidden="true" className="h-3.5 w-3.5" />
@@ -277,7 +291,7 @@ export const EvolutionTimeline = ({
   const { t } = useLanguage();
 
   return (
-    <section className="mt-3 rounded-xl border border-border bg-muted/60 p-3">
+    <section className="mt-3 rounded-xl border border-border/80 bg-background/35 p-3">
       <div className="flex items-center justify-between gap-2">
         <p className="font-semibold text-foreground text-sm">
           {t('common.evolution')}
@@ -311,10 +325,13 @@ interface CardDetailsProps {
 }
 
 export const CardDetails = ({ summaryLabel, children }: CardDetailsProps) => (
-  <details className="mt-3 overflow-hidden rounded-xl border border-border bg-muted/55">
+  <details className="group mt-3 overflow-hidden rounded-xl border border-border/80 bg-background/35">
     <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2 font-semibold text-[11px] text-muted-foreground uppercase tracking-wide transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [&::-webkit-details-marker]:hidden">
       {summaryLabel}
-      <span aria-hidden="true" className="text-[10px]">
+      <span
+        aria-hidden="true"
+        className="text-[10px] transition-transform group-open:rotate-45"
+      >
         +
       </span>
     </summary>

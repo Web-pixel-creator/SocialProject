@@ -115,8 +115,16 @@ export const ChangeCard = ({
   };
 
   return (
-    <article className={`card grid gap-3 ${compact ? 'p-2.5' : 'p-4'}`}>
-      <div className="flex items-center justify-between">
+    <article
+      className={`card grid gap-3 transition ${
+        compact ? 'p-2.5' : 'p-4 motion-safe:hover:-translate-y-1'
+      }`}
+    >
+      <div
+        className={`flex items-center justify-between ${
+          compact ? '' : 'border-border/60 border-b pb-2.5'
+        }`}
+      >
         <span
           className={`rounded-full px-2 py-1 font-semibold text-[10px] uppercase ${badgeTone}`}
         >
@@ -132,7 +140,7 @@ export const ChangeCard = ({
       </div>
       <div>
         <p className="font-semibold text-foreground text-sm">{draftTitle}</p>
-        <p className="text-muted-foreground text-xs">
+        <p className="mt-1 text-[11px] text-muted-foreground uppercase tracking-wide">
           {t('feedTabs.draftId')}: {draftId}
         </p>
       </div>
@@ -142,18 +150,18 @@ export const ChangeCard = ({
         {description}
       </p>
       {compact ? (
-        <p className="rounded-lg border border-border bg-muted/60 px-2 py-1.5 text-foreground/80 text-xs">
+        <p className="rounded-lg border border-border/80 bg-background/35 px-2 py-1.5 text-foreground/80 text-xs">
           {threadItems[0]}
         </p>
       ) : (
-        <section className="rounded-xl border border-border bg-muted/60 p-3">
-          <p className="font-semibold text-foreground text-xs">
+        <section className="rounded-xl border border-border/80 bg-background/35 p-3">
+          <p className="font-semibold text-[10px] text-foreground uppercase tracking-wide">
             {t('changeCard.labels.miniThread')}
           </p>
           <ul className="mt-2 grid gap-1 text-foreground/85 text-xs">
             {threadItems.map((line) => (
               <li
-                className="rounded-md border border-border bg-background/55 px-2 py-1.5"
+                className="rounded-md border border-border/70 bg-background/55 px-2 py-1.5"
                 key={`${id}-${line}`}
               >
                 {line}
@@ -162,7 +170,11 @@ export const ChangeCard = ({
           </ul>
         </section>
       )}
-      <div className="flex items-center justify-between text-muted-foreground text-xs">
+      <div
+        className={`flex items-center justify-between text-muted-foreground text-xs ${
+          compact ? '' : 'border-border/60 border-t pt-2'
+        }`}
+      >
         <span>{formatTime(occurredAt)}</span>
         <div className="flex items-center gap-2">
           {typeof impactDelta === 'number' && impactDelta > 0 && (
@@ -181,7 +193,7 @@ export const ChangeCard = ({
           <span className="text-muted-foreground">{decisionText}</span>
         ) : (
           <button
-            className="font-semibold text-muted-foreground transition hover:text-foreground"
+            className="font-semibold text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             onClick={copyLink}
             type="button"
           >
@@ -189,7 +201,7 @@ export const ChangeCard = ({
           </button>
         )}
         <Link
-          className="font-semibold text-primary transition hover:text-primary/80"
+          className="font-semibold text-primary transition hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           href={`/drafts/${draftId}`}
         >
           {t('changeCard.actions.openDraft')}

@@ -65,7 +65,11 @@ export const DraftCard = ({
         compact ? 'p-2' : 'p-4 motion-safe:hover:-translate-y-1'
       }`}
     >
-      <header className="flex items-start justify-between gap-3">
+      <header
+        className={`flex items-start justify-between gap-3 ${
+          compact ? '' : 'border-border/60 border-b pb-3'
+        }`}
+      >
         <div className="flex min-w-0 items-center gap-2">
           <span
             className={`inline-flex flex-shrink-0 items-center justify-center rounded-full border border-primary/45 bg-primary/15 font-semibold text-primary uppercase ${
@@ -106,7 +110,7 @@ export const DraftCard = ({
         </div>
       </header>
 
-      <section className="mt-3">
+      <section className={compact ? 'mt-3' : 'mt-4'}>
         <ImagePair
           afterImageUrl={afterImageUrl}
           afterLabel={t('common.after')}
