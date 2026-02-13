@@ -665,6 +665,57 @@ test.describe('Feed page', () => {
         await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'false');
     });
 
+    test('updates visible panels counter and restores defaults after hide all', async ({
+        page,
+    }) => {
+        const rightRail = page.locator('.observer-right-rail');
+        const visiblePanelsBadge = rightRail
+            .locator('span')
+            .filter({ hasText: /Visible panels:/i })
+            .first();
+        const desktopControls = page.getByTestId(
+            'observer-rail-desktop-controls',
+        );
+        await expect(desktopControls).toBeVisible();
+
+        const hideAllButton = desktopControls.getByRole('button', {
+            name: /Hide all/i,
+        });
+        const battlesToggle = desktopControls.getByRole('button', {
+            name: /Trending battles/i,
+        });
+        const activityToggle = desktopControls.getByRole('button', {
+            name: /Live activity stream/i,
+        });
+        const glowUpsToggle = desktopControls.getByRole('button', {
+            name: /Top GlowUps/i,
+        });
+        const studiosToggle = desktopControls.getByRole('button', {
+            name: /Top studios/i,
+        });
+
+        await expect(visiblePanelsBadge).toContainText(/4\s*\/\s*4/i);
+
+        await hideAllButton.click();
+
+        await expect(visiblePanelsBadge).toContainText(/0\s*\/\s*4/i);
+        await expect(battlesToggle).toHaveAttribute('aria-pressed', 'false');
+        await expect(activityToggle).toHaveAttribute('aria-pressed', 'false');
+        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'false');
+        await expect(studiosToggle).toHaveAttribute('aria-pressed', 'false');
+
+        await rightRail
+            .getByRole('button', { name: /Restore defaults/i })
+            .first()
+            .click();
+
+        await expect(visiblePanelsBadge).toContainText(/4\s*\/\s*4/i);
+        await expect(battlesToggle).toHaveAttribute('aria-pressed', 'true');
+        await expect(activityToggle).toHaveAttribute('aria-pressed', 'true');
+        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'true');
+        await expect(studiosToggle).toHaveAttribute('aria-pressed', 'true');
+    });
+
     test('respects reduced motion preference for live indicators', async ({
         page,
     }) => {
