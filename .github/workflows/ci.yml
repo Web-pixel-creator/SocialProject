@@ -401,6 +401,40 @@ NODE
                 echo "- smoke_failed_steps: \`${SMOKE_FAILED_STEPS}\`"
               } >> "$GITHUB_STEP_SUMMARY"
             fi
+
+            if [ -f "$ENV_PREFLIGHT_SUMMARY_PATH" ]; then
+              ENV_PREFLIGHT_VALUES="$(node - "$ENV_PREFLIGHT_SUMMARY_PATH" <<'NODE'
+const fs = require('node:fs');
+
+const path = process.argv[2];
+
+let status = 'n/a';
+let missing = 'n/a';
+let warnings = 'n/a';
+let strict = 'n/a';
+
+try {
+  const payload = JSON.parse(fs.readFileSync(path, 'utf8'));
+  status = String(payload?.status ?? 'n/a');
+  missing = String(Array.isArray(payload?.missing) ? payload.missing.length : 'n/a');
+  warnings = String(Array.isArray(payload?.warnings) ? payload.warnings.length : 'n/a');
+  strict = String(payload?.strict ?? 'n/a');
+} catch (_error) {
+  // keep default n/a values when summary artifact is missing or malformed
+}
+
+process.stdout.write(`${status}|${missing}|${warnings}|${strict}`);
+NODE
+)"
+              IFS='|' read -r ENV_PREFLIGHT_STATUS ENV_PREFLIGHT_MISSING ENV_PREFLIGHT_WARNINGS ENV_PREFLIGHT_STRICT <<<"$ENV_PREFLIGHT_VALUES"
+
+              {
+                echo "- env_preflight_status: \`${ENV_PREFLIGHT_STATUS}\`"
+                echo "- env_preflight_missing_required: \`${ENV_PREFLIGHT_MISSING}\`"
+                echo "- env_preflight_warnings: \`${ENV_PREFLIGHT_WARNINGS}\`"
+                echo "- env_preflight_strict: \`${ENV_PREFLIGHT_STRICT}\`"
+              } >> "$GITHUB_STEP_SUMMARY"
+            fi
           }
 
           on_exit() {
