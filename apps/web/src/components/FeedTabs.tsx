@@ -436,15 +436,21 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
     hasIntentFilterApplied;
 
   return (
-    <div className="grid gap-2 border-border/60 border-t pt-2 text-muted-foreground text-xs">
-      <div className="flex items-center justify-between gap-2">
-        <span className="rounded-full border border-border bg-background/60 px-3 py-1 text-[11px] sm:text-xs">
+    <div
+      className={`grid text-muted-foreground text-xs ${
+        hasSecondaryRow
+          ? 'gap-2 border-border/50 border-t pt-1.5'
+          : 'gap-1 border-border/45 border-t pt-1'
+      }`}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-1.5">
+        <span className="rounded-full border border-border bg-background/60 px-2.5 py-1 text-[11px] sm:text-xs">
           {shownLabel}: {shownValue}
         </span>
         {hasFilterPanel ? (
           <button
             aria-expanded={filtersOpen}
-            className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border border-border bg-muted/70 px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition hover:border-primary/45 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-4 sm:py-2 sm:text-xs"
+            className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border border-border bg-muted/70 px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition hover:border-primary/45 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-3.5 sm:py-1.5 sm:text-xs"
             onClick={onToggleFilters}
             type="button"
           >
@@ -468,10 +474,10 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
         ) : null}
       </div>
       {hasSecondaryRow ? (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           {hasActiveFilters ? (
             <span
-              className="rounded-full border border-border bg-background/70 px-3 py-1 font-semibold text-[11px]"
+              className="rounded-full border border-border bg-background/70 px-2.5 py-1 font-semibold text-[11px]"
               title={activeFilterPills.join(' | ')}
             >
               {labels.activeFilters}: {activeFilterCount}
@@ -1826,9 +1832,9 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
             )}
           </div>
         </div>
-        <div className="grid gap-3 rounded-2xl border border-border bg-card/80 p-3 backdrop-blur-sm lg:p-4">
-          <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-            <label className="group flex w-full min-w-0 items-center gap-2 rounded-full border border-border bg-background/85 px-3 py-2 text-muted-foreground text-xs transition focus-within:border-primary/45 focus-within:bg-background">
+        <div className="grid gap-2.5 rounded-2xl border border-border bg-card/80 p-2.5 backdrop-blur-sm sm:p-3 lg:p-3.5">
+          <div className="grid gap-1.5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+            <label className="group flex w-full min-w-0 items-center gap-2 rounded-full border border-border bg-background/85 px-3 py-1.5 text-muted-foreground text-xs transition focus-within:border-primary/45 focus-within:bg-background">
               <Search aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
               <input
                 aria-label={t('feed.searchAriaLabel')}
@@ -1854,7 +1860,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                 </span>
               )}
             </label>
-            <fieldset className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/70 p-1 lg:justify-self-end">
+            <fieldset className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/70 p-0.5 lg:justify-self-end">
               <legend className="sr-only">{densityLabel}</legend>
               <button
                 aria-pressed={density === 'comfort'}
