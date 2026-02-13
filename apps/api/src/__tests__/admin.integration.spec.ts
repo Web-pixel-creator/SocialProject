@@ -193,6 +193,18 @@ describe('Admin API routes', () => {
          ('hot_now_open', 'observer', $1, 'draft', '{"mode":"hot_now","rankingVariant":"rank_v1"}', NOW() - INTERVAL '3 days')`,
       [observerA, observerB],
     );
+    await db.query(
+      `INSERT INTO ux_events (event_type, user_type, user_id, status, source, metadata, created_at)
+       VALUES
+         ('feed_view_mode_change', 'observer', $1, 'draft', 'header', '{"mode":"observer","previousMode":"focus"}', NOW() - INTERVAL '18 minutes'),
+         ('feed_view_mode_change', 'observer', $1, 'draft', 'hint', '{"mode":"focus","previousMode":"observer"}', NOW() - INTERVAL '17 minutes'),
+         ('feed_view_mode_change', 'observer', $2, 'draft', 'header', '{"mode":"focus","previousMode":"observer"}', NOW() - INTERVAL '16 minutes'),
+         ('feed_view_mode_hint_dismiss', 'observer', $2, 'draft', 'web', '{"mode":"observer"}', NOW() - INTERVAL '15 minutes'),
+         ('feed_density_change', 'observer', $1, 'draft', 'web', '{"density":"compact","previousDensity":"comfort"}', NOW() - INTERVAL '14 minutes'),
+         ('feed_density_change', 'observer', $2, 'draft', 'web', '{"density":"comfort","previousDensity":"compact"}', NOW() - INTERVAL '13 minutes'),
+         ('feed_density_change', 'observer', $2, 'draft', 'web', '{"density":"compact","previousDensity":"comfort"}', NOW() - INTERVAL '12 minutes')`,
+      [observerA, observerB],
+    );
 
     const response = await request(app)
       .get('/api/admin/ux/observer-engagement?hours=24')
@@ -208,9 +220,24 @@ describe('Admin API routes', () => {
     expect(response.body.kpis.digestOpenRate).toBe(1);
     expect(response.body.kpis.return24h).toBe(0.5);
     expect(response.body.kpis.return7d).toBe(0.5);
+    expect(response.body.kpis.viewModeObserverRate).toBe(0.333);
+    expect(response.body.kpis.viewModeFocusRate).toBe(0.667);
+    expect(response.body.kpis.densityComfortRate).toBe(0.333);
+    expect(response.body.kpis.densityCompactRate).toBe(0.667);
+    expect(response.body.kpis.hintDismissRate).toBe(0.5);
     expect(typeof response.body.kpis.observerSessionTimeSec).toBe('number');
     expect(Array.isArray(response.body.segments)).toBe(true);
     expect(Array.isArray(response.body.variants)).toBe(true);
+    expect(response.body.feedPreferences.viewMode.observer).toBe(1);
+    expect(response.body.feedPreferences.viewMode.focus).toBe(2);
+    expect(response.body.feedPreferences.viewMode.total).toBe(3);
+    expect(response.body.feedPreferences.density.comfort).toBe(1);
+    expect(response.body.feedPreferences.density.compact).toBe(2);
+    expect(response.body.feedPreferences.density.total).toBe(3);
+    expect(response.body.feedPreferences.hint.dismissCount).toBe(1);
+    expect(response.body.feedPreferences.hint.switchCount).toBe(1);
+    expect(response.body.feedPreferences.hint.totalInteractions).toBe(2);
+    expect(response.body.feedPreferences.hint.dismissRate).toBe(0.5);
 
     const hotNowSegment = response.body.segments.find(
       (segment: any) =>

@@ -461,6 +461,11 @@ router.get(
         'pr_prediction_submit',
         'pr_prediction_result_view',
       ];
+      const feedPreferenceEvents = [
+        'feed_view_mode_change',
+        'feed_view_mode_hint_dismiss',
+        'feed_density_change',
+      ];
 
       const totalsResult = await db.query(
         `SELECT event_type, COUNT(*)::int AS count
@@ -656,9 +661,115 @@ router.get(
         [hours, trackedEvents],
       );
 
+      const feedPreferenceRows = await db.query(
+        `SELECT event_type,
+              COALESCE(
+                CASE
+                  WHEN event_type = 'feed_view_mode_change' THEN metadata->>'mode'
+                  WHEN event_type = 'feed_view_mode_hint_dismiss' THEN metadata->>'mode'
+                  WHEN event_type = 'feed_density_change' THEN metadata->>'density'
+                  ELSE NULL
+                END,
+                'unknown'
+              ) AS value,
+              COALESCE(source, 'unknown') AS source_value,
+              COUNT(*)::int AS count
+       FROM ux_events
+       WHERE created_at >= NOW() - ($1 || ' hours')::interval
+         AND user_type = 'observer'
+         AND event_type = ANY($2)
+       GROUP BY event_type, value, source_value
+       ORDER BY event_type, value, source_value`,
+        [hours, feedPreferenceEvents],
+      );
+
+      const feedPreferenceTotals = {
+        viewMode: {
+          observer: 0,
+          focus: 0,
+          unknown: 0,
+          total: 0,
+        },
+        density: {
+          comfort: 0,
+          compact: 0,
+          unknown: 0,
+          total: 0,
+        },
+        hint: {
+          dismissCount: 0,
+          switchCount: 0,
+          totalInteractions: 0,
+        },
+      };
+
+      for (const row of feedPreferenceRows.rows) {
+        const eventType = String(row.event_type ?? '');
+        const value = String(row.value ?? 'unknown');
+        const sourceValue = String(row.source_value ?? 'unknown');
+        const count = Number(row.count ?? 0);
+
+        if (eventType === 'feed_view_mode_change') {
+          if (value === 'observer') {
+            feedPreferenceTotals.viewMode.observer += count;
+          } else if (value === 'focus') {
+            feedPreferenceTotals.viewMode.focus += count;
+          } else {
+            feedPreferenceTotals.viewMode.unknown += count;
+          }
+          feedPreferenceTotals.viewMode.total += count;
+          if (sourceValue === 'hint') {
+            feedPreferenceTotals.hint.switchCount += count;
+          }
+          continue;
+        }
+
+        if (eventType === 'feed_view_mode_hint_dismiss') {
+          feedPreferenceTotals.hint.dismissCount += count;
+          continue;
+        }
+
+        if (eventType === 'feed_density_change') {
+          if (value === 'comfort') {
+            feedPreferenceTotals.density.comfort += count;
+          } else if (value === 'compact') {
+            feedPreferenceTotals.density.compact += count;
+          } else {
+            feedPreferenceTotals.density.unknown += count;
+          }
+          feedPreferenceTotals.density.total += count;
+        }
+      }
+
+      feedPreferenceTotals.hint.totalInteractions =
+        feedPreferenceTotals.hint.dismissCount +
+        feedPreferenceTotals.hint.switchCount;
+
+      const viewModeObserverRate = toRate(
+        feedPreferenceTotals.viewMode.observer,
+        feedPreferenceTotals.viewMode.total,
+      );
+      const viewModeFocusRate = toRate(
+        feedPreferenceTotals.viewMode.focus,
+        feedPreferenceTotals.viewMode.total,
+      );
+      const densityComfortRate = toRate(
+        feedPreferenceTotals.density.comfort,
+        feedPreferenceTotals.density.total,
+      );
+      const densityCompactRate = toRate(
+        feedPreferenceTotals.density.compact,
+        feedPreferenceTotals.density.total,
+      );
+      const hintDismissRate = toRate(
+        feedPreferenceTotals.hint.dismissCount,
+        feedPreferenceTotals.hint.totalInteractions,
+      );
+
       res.json({
         windowHours: hours,
         trackedEvents,
+        feedPreferenceEvents,
         totals,
         kpis: {
           observerSessionTimeSec: Number(avgSessionSecRaw.toFixed(2)),
@@ -667,6 +778,35 @@ router.get(
           digestOpenRate: toRate(totals.digestOpens, totals.watchlistFollows),
           return24h: toRate(return24hUsers, retentionTotalUsers),
           return7d: toRate(return7dUsers, retentionTotalUsers),
+          viewModeObserverRate,
+          viewModeFocusRate,
+          densityComfortRate,
+          densityCompactRate,
+          hintDismissRate,
+        },
+        feedPreferences: {
+          viewMode: {
+            ...feedPreferenceTotals.viewMode,
+            observerRate: viewModeObserverRate,
+            focusRate: viewModeFocusRate,
+            unknownRate: toRate(
+              feedPreferenceTotals.viewMode.unknown,
+              feedPreferenceTotals.viewMode.total,
+            ),
+          },
+          density: {
+            ...feedPreferenceTotals.density,
+            comfortRate: densityComfortRate,
+            compactRate: densityCompactRate,
+            unknownRate: toRate(
+              feedPreferenceTotals.density.unknown,
+              feedPreferenceTotals.density.total,
+            ),
+          },
+          hint: {
+            ...feedPreferenceTotals.hint,
+            dismissRate: hintDismissRate,
+          },
         },
         segments: segmentRows.rows.map((row) => ({
           mode: row.mode,

@@ -1039,6 +1039,47 @@ describe('API integration', () => {
     expect(result.rows[0].count).toBe(eventTypes.length);
   });
 
+  test('telemetry endpoint stores supplemental metadata for feed preference events', async () => {
+    const modeResponse = await request(app).post('/api/telemetry/ux').send({
+      eventType: 'feed_view_mode_change',
+      mode: 'focus',
+      previousMode: 'observer',
+      source: 'hint',
+    });
+    expect(modeResponse.status).toBe(200);
+
+    const densityResponse = await request(app).post('/api/telemetry/ux').send({
+      eventType: 'feed_density_change',
+      density: 'compact',
+      previousDensity: 'comfort',
+      sourceTab: 'All',
+    });
+    expect(densityResponse.status).toBe(200);
+
+    const rows = await db.query(
+      `SELECT event_type, source, metadata
+       FROM ux_events
+       WHERE event_type IN ('feed_view_mode_change', 'feed_density_change')
+       ORDER BY created_at ASC`,
+    );
+
+    expect(rows.rows).toHaveLength(2);
+    expect(rows.rows[0].event_type).toBe('feed_view_mode_change');
+    expect(rows.rows[0].source).toBe('hint');
+    expect(rows.rows[0].metadata).toMatchObject({
+      mode: 'focus',
+      previousMode: 'observer',
+    });
+
+    expect(rows.rows[1].event_type).toBe('feed_density_change');
+    expect(rows.rows[1].source).toBe('web');
+    expect(rows.rows[1].metadata).toMatchObject({
+      density: 'compact',
+      previousDensity: 'comfort',
+      sourceTab: 'All',
+    });
+  });
+
   test('guild endpoints return list and detail', async () => {
     const { agentId } = await registerAgent('Guilded Studio');
     const guild = await db.query(

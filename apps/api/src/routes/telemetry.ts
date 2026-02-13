@@ -36,6 +36,26 @@ const ALLOWED_EVENTS = new Set([
 ]);
 
 const ALLOWED_USER_TYPES = new Set(['observer', 'agent', 'anonymous']);
+const SUPPLEMENTAL_METADATA_KEYS = new Set([
+  'action',
+  'count',
+  'density',
+  'draftStatus',
+  'filter',
+  'hasChanges',
+  'intent',
+  'mode',
+  'outcome',
+  'previousDensity',
+  'previousMode',
+  'profile',
+  'queryLength',
+  'reason',
+  'resultCount',
+  'sourceTab',
+  'state',
+  'tab',
+]);
 
 const resolveUser = (req: Request) => {
   const authHeader = req.headers.authorization;
@@ -76,29 +96,65 @@ const normalizeMetadata = (metadata: unknown) => {
   return {};
 };
 
+const isMetadataPrimitive = (
+  value: unknown,
+): value is boolean | number | string => {
+  const valueType = typeof value;
+  return (
+    valueType === 'string' || valueType === 'number' || valueType === 'boolean'
+  );
+};
+
+const extractSupplementalMetadata = (
+  body: Record<string, unknown>,
+): Record<string, boolean | number | string> => {
+  const supplemental: Record<string, boolean | number | string> = {};
+
+  for (const [key, value] of Object.entries(body)) {
+    if (!SUPPLEMENTAL_METADATA_KEYS.has(key)) {
+      continue;
+    }
+    if (!isMetadataPrimitive(value)) {
+      continue;
+    }
+    supplemental[key] = value;
+  }
+
+  return supplemental;
+};
+
 router.post('/telemetry/ux', async (req, res, next) => {
   try {
-    const eventType = String(req.body?.eventType ?? '').trim();
+    const body =
+      req.body && typeof req.body === 'object'
+        ? (req.body as Record<string, unknown>)
+        : {};
+
+    const eventType = String(body.eventType ?? '').trim();
     if (!ALLOWED_EVENTS.has(eventType)) {
       return res.status(400).json({ error: 'INVALID_EVENT_TYPE' });
     }
 
     const { userType: resolvedType, userId } = resolveUser(req);
-    const userType = ALLOWED_USER_TYPES.has(req.body?.userType)
-      ? req.body.userType
-      : resolvedType;
+    const requestedUserType =
+      typeof body.userType === 'string' ? body.userType : null;
+    const userType =
+      requestedUserType && ALLOWED_USER_TYPES.has(requestedUserType)
+        ? requestedUserType
+        : resolvedType;
 
-    const draftId = req.body?.draftId ?? null;
-    const prId = req.body?.prId ?? null;
-    const sort = req.body?.sort ?? null;
-    const status = req.body?.status ?? null;
-    const range = req.body?.range ?? null;
+    const draftId = body.draftId ?? null;
+    const prId = body.prId ?? null;
+    const sort = body.sort ?? null;
+    const status = body.status ?? null;
+    const range = body.range ?? null;
     const timingMs =
-      typeof req.body?.timingMs === 'number'
-        ? Math.max(0, req.body.timingMs)
-        : null;
-    const source = req.body?.source ?? 'web';
-    const metadata = normalizeMetadata(req.body?.metadata);
+      typeof body.timingMs === 'number' ? Math.max(0, body.timingMs) : null;
+    const source = body.source ?? 'web';
+    const metadata = {
+      ...normalizeMetadata(body.metadata),
+      ...extractSupplementalMetadata(body),
+    };
 
     await db.query(
       `INSERT INTO ux_events
