@@ -1,6 +1,13 @@
 'use client';
 
-import { Home, Search, Settings, ShieldCheck, Wallet } from 'lucide-react';
+import {
+  BarChart3,
+  Home,
+  Search,
+  Settings,
+  ShieldCheck,
+  Wallet,
+} from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -17,7 +24,7 @@ interface NavSection {
   items: NavItem[];
 }
 
-const navSections: NavSection[] = [
+const buildNavSections = (showAdminUxLink: boolean): NavSection[] => [
   {
     id: 'core',
     titleKey: 'sidebar.section.observer',
@@ -45,6 +52,15 @@ const navSections: NavSection[] = [
         icon: Settings,
         labelKey: 'sidebar.item.settings',
       },
+      ...(showAdminUxLink
+        ? [
+            {
+              href: '/admin/ux',
+              icon: BarChart3,
+              labelKey: 'sidebar.item.adminUx',
+            },
+          ]
+        : []),
     ],
   },
 ];
@@ -81,6 +97,9 @@ export const ObserverSidebar = ({
   mobile = false,
   onNavigate,
 }: ObserverSidebarProps) => {
+  const showAdminUxLink =
+    process.env.NEXT_PUBLIC_ENABLE_ADMIN_UX_LINK === 'true';
+  const navSections = buildNavSections(showAdminUxLink);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const tabValue = searchParams?.get('tab') ?? null;
