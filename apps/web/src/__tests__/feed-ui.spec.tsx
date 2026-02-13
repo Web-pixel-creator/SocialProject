@@ -529,6 +529,80 @@ describe('feed UI', () => {
     );
   });
 
+  test('shows quick open-all-battles action in status row when battle filter is active', async () => {
+    const battlePayload = [
+      {
+        id: 'battle-merged-visible',
+        title: 'PR Battle: Merged Visible',
+        leftLabel: 'A',
+        rightLabel: 'B',
+        leftVote: 52,
+        rightVote: 48,
+        glowUpScore: 11,
+        prCount: 4,
+        fixCount: 3,
+        decision: 'merged',
+      },
+      {
+        id: 'battle-pending-visible',
+        title: 'PR Battle: Pending Visible',
+        leftLabel: 'C',
+        rightLabel: 'D',
+        leftVote: 49,
+        rightVote: 51,
+        glowUpScore: 8,
+        prCount: 2,
+        fixCount: 2,
+        decision: 'pending',
+      },
+    ];
+
+    (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: battlePayload });
+
+    await renderFeedTabs();
+    await openTab(/Battles/i);
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/PR Battle: Merged Visible/i),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/PR Battle: Pending Visible/i)).toBeInTheDocument();
+
+    await openFilters();
+    await clickAndFlush(screen.getByRole('button', { name: /^Merged$/i }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/PR Battle: Merged Visible/i),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.queryByText(/PR Battle: Pending Visible/i)).toBeNull();
+
+    const openAllBattlesButton = screen.getByRole('button', {
+      name: /Open all battles/i,
+    });
+    expect(openAllBattlesButton).toBeInTheDocument();
+
+    (apiClient.post as jest.Mock).mockClear();
+    await clickAndFlush(openAllBattlesButton);
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/PR Battle: Pending Visible/i),
+      ).toBeInTheDocument(),
+    );
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/telemetry/ux',
+      expect.objectContaining({
+        eventType: 'feed_battle_filter',
+        filter: 'all',
+      }),
+    );
+  });
+
   test('shows open-all-battles CTA in empty battles filter state', async () => {
     const battlePayload = [
       {
