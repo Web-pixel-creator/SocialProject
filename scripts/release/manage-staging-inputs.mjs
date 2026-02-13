@@ -1,10 +1,34 @@
 import { execFileSync } from 'node:child_process';
 
 const GITHUB_API_VERSION = '2022-11-28';
-const TARGET_VARIABLES = [
+const CORE_VARIABLES = [
   'RELEASE_API_BASE_URL',
   'RELEASE_WEB_BASE_URL',
+];
+const OPTIONAL_VARIABLES = [
   'RELEASE_CSRF_TOKEN',
+  'RELEASE_NODE_ENV',
+  'RELEASE_FRONTEND_URL',
+  'RELEASE_S3_ENDPOINT',
+  'RELEASE_S3_REGION',
+  'RELEASE_S3_BUCKET',
+  'RELEASE_EMBEDDING_PROVIDER',
+  'RELEASE_NEXT_PUBLIC_API_BASE_URL',
+  'RELEASE_NEXT_PUBLIC_WS_BASE_URL',
+  'RELEASE_NEXT_PUBLIC_SEARCH_AB_ENABLED',
+  'RELEASE_NEXT_PUBLIC_SEARCH_DEFAULT_PROFILE',
+  'RELEASE_NEXT_PUBLIC_SEARCH_AB_WEIGHTS',
+  'RELEASE_NEXT_PUBLIC_ENABLE_ADMIN_UX_LINK',
+];
+const TARGET_VARIABLES = [...CORE_VARIABLES, ...OPTIONAL_VARIABLES];
+const SECRET_HINTS = [
+  'RELEASE_DATABASE_URL',
+  'RELEASE_REDIS_URL',
+  'RELEASE_JWT_SECRET',
+  'RELEASE_ADMIN_API_TOKEN',
+  'RELEASE_S3_ACCESS_KEY_ID',
+  'RELEASE_S3_SECRET_ACCESS_KEY',
+  'RELEASE_EMBEDDING_API_KEY',
 ];
 
 const readOriginRemote = () => {
@@ -75,6 +99,8 @@ const resolveToken = () => {
   }
   return readTokenFromGitCredentialStore();
 };
+
+const readEnv = (name) => (process.env[name] ?? '').trim();
 
 const githubRequest = async ({ token, method, url, body, allow404 = false }) => {
   const response = await fetch(url, {
@@ -180,12 +206,15 @@ const showVariables = async ({ token, baseApiUrl }) => {
       process.stdout.write(`${name}=<not-set>\n`);
     }
   }
+
+  process.stdout.write(
+    `\nSecrets are not managed by this command: ${SECRET_HINTS.join(', ')}\n`,
+  );
 };
 
 const runSet = async ({ token, baseApiUrl }) => {
-  const apiBaseUrl = (process.env.RELEASE_API_BASE_URL ?? '').trim();
-  const webBaseUrl = (process.env.RELEASE_WEB_BASE_URL ?? '').trim();
-  const csrfToken = (process.env.RELEASE_CSRF_TOKEN ?? '').trim();
+  const apiBaseUrl = readEnv('RELEASE_API_BASE_URL');
+  const webBaseUrl = readEnv('RELEASE_WEB_BASE_URL');
 
   if (!apiBaseUrl || !webBaseUrl) {
     throw new Error(
@@ -197,8 +226,14 @@ const runSet = async ({ token, baseApiUrl }) => {
     { name: 'RELEASE_API_BASE_URL', value: apiBaseUrl },
     { name: 'RELEASE_WEB_BASE_URL', value: webBaseUrl },
   ];
-  if (csrfToken) {
-    operations.push({ name: 'RELEASE_CSRF_TOKEN', value: csrfToken });
+  const optionalSetVariables = [];
+
+  for (const name of OPTIONAL_VARIABLES) {
+    const value = readEnv(name);
+    if (value) {
+      operations.push({ name, value });
+      optionalSetVariables.push(name);
+    }
   }
 
   for (const { name, value } of operations) {
@@ -206,9 +241,11 @@ const runSet = async ({ token, baseApiUrl }) => {
     process.stdout.write(`${name}: ${status}\n`);
   }
 
-  if (!csrfToken) {
+  if (optionalSetVariables.length === 0) {
+    process.stdout.write('No optional RELEASE_* variables provided in environment.\n');
+  } else {
     process.stdout.write(
-      'RELEASE_CSRF_TOKEN not provided; leaving existing variable as-is.\n',
+      `Optional variables updated: ${optionalSetVariables.join(', ')}\n`,
     );
   }
 };

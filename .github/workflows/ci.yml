@@ -348,6 +348,7 @@ jobs:
           WEB_URL="${{ github.event.inputs.release_web_base_url }}"
           CSRF_TOKEN="${{ github.event.inputs.release_csrf_token }}"
           PREFLIGHT_SUMMARY_PATH="artifacts/release/tunnel-preflight-summary.json"
+          ENV_PREFLIGHT_SUMMARY_PATH="artifacts/release/env-preflight-summary.json"
           SMOKE_RESULTS_PATH="artifacts/release/smoke-results.json"
           MODE=""
           EFFECTIVE_API_URL=""
@@ -458,6 +459,131 @@ NODE
           node scripts/release/preflight-smoke-targets.mjs --allow-skip
 
           if [ "$MODE" = "staging" ]; then
+            echo "Running release env preflight gate for staging smoke check."
+
+            RELEASE_NODE_ENV="${{ vars.RELEASE_NODE_ENV }}"
+            if [ -z "$RELEASE_NODE_ENV" ]; then
+              RELEASE_NODE_ENV="staging"
+            fi
+
+            RELEASE_DATABASE_URL="${{ secrets.RELEASE_DATABASE_URL }}"
+            if [ -z "$RELEASE_DATABASE_URL" ]; then
+              RELEASE_DATABASE_URL="${{ vars.RELEASE_DATABASE_URL }}"
+            fi
+
+            RELEASE_REDIS_URL="${{ secrets.RELEASE_REDIS_URL }}"
+            if [ -z "$RELEASE_REDIS_URL" ]; then
+              RELEASE_REDIS_URL="${{ vars.RELEASE_REDIS_URL }}"
+            fi
+
+            RELEASE_S3_ENDPOINT="${{ vars.RELEASE_S3_ENDPOINT }}"
+            if [ -z "$RELEASE_S3_ENDPOINT" ]; then
+              RELEASE_S3_ENDPOINT="${{ secrets.RELEASE_S3_ENDPOINT }}"
+            fi
+
+            RELEASE_S3_REGION="${{ vars.RELEASE_S3_REGION }}"
+            if [ -z "$RELEASE_S3_REGION" ]; then
+              RELEASE_S3_REGION="${{ secrets.RELEASE_S3_REGION }}"
+            fi
+
+            RELEASE_S3_BUCKET="${{ vars.RELEASE_S3_BUCKET }}"
+            if [ -z "$RELEASE_S3_BUCKET" ]; then
+              RELEASE_S3_BUCKET="${{ secrets.RELEASE_S3_BUCKET }}"
+            fi
+
+            RELEASE_S3_ACCESS_KEY_ID="${{ secrets.RELEASE_S3_ACCESS_KEY_ID }}"
+            if [ -z "$RELEASE_S3_ACCESS_KEY_ID" ]; then
+              RELEASE_S3_ACCESS_KEY_ID="${{ vars.RELEASE_S3_ACCESS_KEY_ID }}"
+            fi
+
+            RELEASE_S3_SECRET_ACCESS_KEY="${{ secrets.RELEASE_S3_SECRET_ACCESS_KEY }}"
+            if [ -z "$RELEASE_S3_SECRET_ACCESS_KEY" ]; then
+              RELEASE_S3_SECRET_ACCESS_KEY="${{ vars.RELEASE_S3_SECRET_ACCESS_KEY }}"
+            fi
+
+            RELEASE_FRONTEND_URL="${{ vars.RELEASE_FRONTEND_URL }}"
+            if [ -z "$RELEASE_FRONTEND_URL" ]; then
+              RELEASE_FRONTEND_URL="${EFFECTIVE_WEB_URL}"
+            fi
+
+            RELEASE_JWT_SECRET="${{ secrets.RELEASE_JWT_SECRET }}"
+            if [ -z "$RELEASE_JWT_SECRET" ]; then
+              RELEASE_JWT_SECRET="${{ vars.RELEASE_JWT_SECRET }}"
+            fi
+
+            RELEASE_ADMIN_API_TOKEN="${{ secrets.RELEASE_ADMIN_API_TOKEN }}"
+            if [ -z "$RELEASE_ADMIN_API_TOKEN" ]; then
+              RELEASE_ADMIN_API_TOKEN="${{ vars.RELEASE_ADMIN_API_TOKEN }}"
+            fi
+
+            RELEASE_EMBEDDING_PROVIDER="${{ vars.RELEASE_EMBEDDING_PROVIDER }}"
+            if [ -z "$RELEASE_EMBEDDING_PROVIDER" ]; then
+              RELEASE_EMBEDDING_PROVIDER="${{ secrets.RELEASE_EMBEDDING_PROVIDER }}"
+            fi
+
+            RELEASE_EMBEDDING_API_KEY="${{ secrets.RELEASE_EMBEDDING_API_KEY }}"
+            if [ -z "$RELEASE_EMBEDDING_API_KEY" ]; then
+              RELEASE_EMBEDDING_API_KEY="${{ vars.RELEASE_EMBEDDING_API_KEY }}"
+            fi
+
+            RELEASE_NEXT_PUBLIC_API_BASE_URL="${{ vars.RELEASE_NEXT_PUBLIC_API_BASE_URL }}"
+            if [ -z "$RELEASE_NEXT_PUBLIC_API_BASE_URL" ]; then
+              RELEASE_NEXT_PUBLIC_API_BASE_URL="${{ secrets.RELEASE_NEXT_PUBLIC_API_BASE_URL }}"
+            fi
+            if [ -z "$RELEASE_NEXT_PUBLIC_API_BASE_URL" ]; then
+              RELEASE_NEXT_PUBLIC_API_BASE_URL="$EFFECTIVE_API_URL"
+            fi
+
+            RELEASE_NEXT_PUBLIC_WS_BASE_URL="${{ vars.RELEASE_NEXT_PUBLIC_WS_BASE_URL }}"
+            if [ -z "$RELEASE_NEXT_PUBLIC_WS_BASE_URL" ]; then
+              RELEASE_NEXT_PUBLIC_WS_BASE_URL="${{ secrets.RELEASE_NEXT_PUBLIC_WS_BASE_URL }}"
+            fi
+            if [ -z "$RELEASE_NEXT_PUBLIC_WS_BASE_URL" ]; then
+              RELEASE_NEXT_PUBLIC_WS_BASE_URL="$(node -e "const u=new URL(process.argv[1]);u.protocol=u.protocol==='https:'?'wss:':'ws:';process.stdout.write(u.origin);" "$EFFECTIVE_API_URL")"
+            fi
+
+            RELEASE_NEXT_PUBLIC_SEARCH_AB_ENABLED="${{ vars.RELEASE_NEXT_PUBLIC_SEARCH_AB_ENABLED }}"
+            if [ -z "$RELEASE_NEXT_PUBLIC_SEARCH_AB_ENABLED" ]; then
+              RELEASE_NEXT_PUBLIC_SEARCH_AB_ENABLED="${{ secrets.RELEASE_NEXT_PUBLIC_SEARCH_AB_ENABLED }}"
+            fi
+
+            RELEASE_NEXT_PUBLIC_SEARCH_DEFAULT_PROFILE="${{ vars.RELEASE_NEXT_PUBLIC_SEARCH_DEFAULT_PROFILE }}"
+            if [ -z "$RELEASE_NEXT_PUBLIC_SEARCH_DEFAULT_PROFILE" ]; then
+              RELEASE_NEXT_PUBLIC_SEARCH_DEFAULT_PROFILE="${{ secrets.RELEASE_NEXT_PUBLIC_SEARCH_DEFAULT_PROFILE }}"
+            fi
+
+            RELEASE_NEXT_PUBLIC_SEARCH_AB_WEIGHTS="${{ vars.RELEASE_NEXT_PUBLIC_SEARCH_AB_WEIGHTS }}"
+            if [ -z "$RELEASE_NEXT_PUBLIC_SEARCH_AB_WEIGHTS" ]; then
+              RELEASE_NEXT_PUBLIC_SEARCH_AB_WEIGHTS="${{ secrets.RELEASE_NEXT_PUBLIC_SEARCH_AB_WEIGHTS }}"
+            fi
+
+            RELEASE_NEXT_PUBLIC_ENABLE_ADMIN_UX_LINK="${{ vars.RELEASE_NEXT_PUBLIC_ENABLE_ADMIN_UX_LINK }}"
+            if [ -z "$RELEASE_NEXT_PUBLIC_ENABLE_ADMIN_UX_LINK" ]; then
+              RELEASE_NEXT_PUBLIC_ENABLE_ADMIN_UX_LINK="${{ secrets.RELEASE_NEXT_PUBLIC_ENABLE_ADMIN_UX_LINK }}"
+            fi
+
+            NODE_ENV="$RELEASE_NODE_ENV" \
+            DATABASE_URL="$RELEASE_DATABASE_URL" \
+            REDIS_URL="$RELEASE_REDIS_URL" \
+            S3_ENDPOINT="$RELEASE_S3_ENDPOINT" \
+            S3_REGION="$RELEASE_S3_REGION" \
+            S3_BUCKET="$RELEASE_S3_BUCKET" \
+            S3_ACCESS_KEY_ID="$RELEASE_S3_ACCESS_KEY_ID" \
+            S3_SECRET_ACCESS_KEY="$RELEASE_S3_SECRET_ACCESS_KEY" \
+            FRONTEND_URL="$RELEASE_FRONTEND_URL" \
+            JWT_SECRET="$RELEASE_JWT_SECRET" \
+            CSRF_TOKEN="$CSRF_TOKEN" \
+            ADMIN_API_TOKEN="$RELEASE_ADMIN_API_TOKEN" \
+            EMBEDDING_PROVIDER="$RELEASE_EMBEDDING_PROVIDER" \
+            EMBEDDING_API_KEY="$RELEASE_EMBEDDING_API_KEY" \
+            NEXT_PUBLIC_API_BASE_URL="$RELEASE_NEXT_PUBLIC_API_BASE_URL" \
+            NEXT_PUBLIC_WS_BASE_URL="$RELEASE_NEXT_PUBLIC_WS_BASE_URL" \
+            NEXT_PUBLIC_SEARCH_AB_ENABLED="$RELEASE_NEXT_PUBLIC_SEARCH_AB_ENABLED" \
+            NEXT_PUBLIC_SEARCH_DEFAULT_PROFILE="$RELEASE_NEXT_PUBLIC_SEARCH_DEFAULT_PROFILE" \
+            NEXT_PUBLIC_SEARCH_AB_WEIGHTS="$RELEASE_NEXT_PUBLIC_SEARCH_AB_WEIGHTS" \
+            NEXT_PUBLIC_ENABLE_ADMIN_UX_LINK="$RELEASE_NEXT_PUBLIC_ENABLE_ADMIN_UX_LINK" \
+            npm run release:preflight:env:json | tee "$ENV_PREFLIGHT_SUMMARY_PATH"
+
             echo "Running release smoke check against configured staging URLs."
             RELEASE_API_BASE_URL="$EFFECTIVE_API_URL" \
             RELEASE_WEB_BASE_URL="$EFFECTIVE_WEB_URL" \
@@ -478,6 +604,14 @@ NODE
         with:
           name: release-smoke-preflight-summary
           path: artifacts/release/tunnel-preflight-summary.json
+          if-no-files-found: ignore
+
+      - name: Upload release env preflight summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-env-preflight-summary
+          path: artifacts/release/env-preflight-summary.json
           if-no-files-found: ignore
 
       - name: Upload release smoke report

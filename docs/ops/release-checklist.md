@@ -46,6 +46,13 @@ Use this checklist for every production release.
   - [ ] Run `CI` workflow via `workflow_dispatch` and provide inputs:
     - [ ] `release_api_base_url` and `release_web_base_url` (or configure repo variables `RELEASE_API_BASE_URL` / `RELEASE_WEB_BASE_URL`).
     - [ ] Optional `release_csrf_token` input (or configure secret/variable `RELEASE_CSRF_TOKEN`; secret is preferred).
+    - [ ] Configure release env preflight secrets/variables for staging gate (`release:preflight:env`) before smoke:
+      - [ ] `RELEASE_DATABASE_URL`, `RELEASE_REDIS_URL`
+      - [ ] `RELEASE_S3_ENDPOINT`, `RELEASE_S3_REGION`, `RELEASE_S3_BUCKET`, `RELEASE_S3_ACCESS_KEY_ID`, `RELEASE_S3_SECRET_ACCESS_KEY`
+      - [ ] `RELEASE_JWT_SECRET`, `RELEASE_ADMIN_API_TOKEN`, `RELEASE_EMBEDDING_PROVIDER`
+      - [ ] `RELEASE_NEXT_PUBLIC_SEARCH_AB_ENABLED`, `RELEASE_NEXT_PUBLIC_SEARCH_DEFAULT_PROFILE`, `RELEASE_NEXT_PUBLIC_SEARCH_AB_WEIGHTS`
+      - [ ] `RELEASE_EMBEDDING_API_KEY` when `RELEASE_EMBEDDING_PROVIDER=jina`
+      - [ ] Optional overrides: `RELEASE_NODE_ENV`, `RELEASE_FRONTEND_URL`, `RELEASE_NEXT_PUBLIC_API_BASE_URL`, `RELEASE_NEXT_PUBLIC_WS_BASE_URL`, `RELEASE_NEXT_PUBLIC_ENABLE_ADMIN_UX_LINK`
     - [ ] Optional `release_run_tunnel_helper=true` input to execute in-CI tunnel helper rehearsal (`release_tunnel_helper_ci_rehearsal` job) and publish tunnel retry diagnostics artifacts.
   - [ ] If staging URLs are not available, allow `release_smoke_staging` to run the built-in local-stack fallback (`npm run release:dry-run:local`) and collect evidence as a rehearsal run.
   - [ ] Optional terminal dispatch helper (requires `GITHUB_TOKEN` with Actions write):
@@ -111,11 +118,14 @@ Use this checklist for every production release.
         - [ ] Check fixtures are up to date: `npm run release:smoke:retry:schema:samples:check`
     - [ ] Manage persistent staging workflow inputs:
       - [ ] Show current values: `npm run release:smoke:inputs -- show`
-      - [ ] Set values: `RELEASE_API_BASE_URL=<staging-api-url> RELEASE_WEB_BASE_URL=<staging-web-url> RELEASE_CSRF_TOKEN=<csrf-token> npm run release:smoke:inputs -- set`
+      - [ ] Set values (core): `RELEASE_API_BASE_URL=<staging-api-url> RELEASE_WEB_BASE_URL=<staging-web-url> npm run release:smoke:inputs -- set`
+      - [ ] Set optional preflight variables in the same command by exporting additional `RELEASE_*` env vars (for example: `RELEASE_NEXT_PUBLIC_SEARCH_AB_ENABLED=true`, `RELEASE_NEXT_PUBLIC_SEARCH_DEFAULT_PROFILE=balanced`, `RELEASE_NEXT_PUBLIC_SEARCH_AB_WEIGHTS='{\"balanced\":0.5,\"precision\":0.5}'`).
+      - [ ] Sensitive values (`RELEASE_DATABASE_URL`, `RELEASE_REDIS_URL`, `RELEASE_JWT_SECRET`, `RELEASE_ADMIN_API_TOKEN`, `RELEASE_S3_ACCESS_KEY_ID`, `RELEASE_S3_SECRET_ACCESS_KEY`, `RELEASE_EMBEDDING_API_KEY`) should be stored as repository secrets, not workflow variables.
       - [ ] Clear values: `npm run release:smoke:inputs -- clear`
   - [ ] If dispatch returns `Workflow does not have 'workflow_dispatch' trigger`, push updated `.github/workflows/ci.yml` first or set `RELEASE_WORKFLOW_REF` to a ref that contains that trigger.
   - [ ] Confirm artifact `release-smoke-report` is uploaded.
   - [ ] Confirm artifact `release-smoke-preflight-summary` is uploaded (`artifacts/release/tunnel-preflight-summary.json` from `release_smoke_staging`).
+  - [ ] Confirm artifact `release-env-preflight-summary` is uploaded (`artifacts/release/env-preflight-summary.json` from `release_smoke_staging`).
   - [ ] Confirm artifact `retry-schema-gate-summary` is uploaded from CI `test` job (machine-readable retry schema gate status).
   - [ ] Confirm artifact `release-smoke-preflight-schema-summary` is uploaded from CI `test` job (machine-readable standalone preflight schema validator status).
   - [ ] Optional: confirm artifact `release-smoke-tunnel-dispatch-retry-summary` is uploaded when `artifacts/release/tunnel-dispatch-retry-summary.json` is present in CI run context.
