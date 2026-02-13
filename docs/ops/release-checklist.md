@@ -13,6 +13,8 @@ Use this checklist for every production release.
 
 ## 1. Pre-Release Gates
 
+- [ ] `npm run release:preflight:env` passes in the target release environment.
+- [ ] Optional machine-readable env summary: `npm run release:preflight:env:json`.
 - [ ] `npm run ultracite:check` passes.
 - [ ] `npm run lint` passes.
 - [ ] `npm --workspace apps/api run build` passes.

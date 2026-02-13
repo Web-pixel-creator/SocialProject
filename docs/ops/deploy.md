@@ -16,6 +16,15 @@ Web env (example in `apps/web/.env.example`):
 - `NEXT_PUBLIC_API_BASE_URL`
 - `NEXT_PUBLIC_WS_BASE_URL`
 
+Preflight validation:
+```bash
+npm run release:preflight:env
+```
+Optional machine-readable summary:
+```bash
+npm run release:preflight:env:json
+```
+
 ## 2) Install & build
 ```bash
 npm install
