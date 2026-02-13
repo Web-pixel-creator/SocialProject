@@ -1,0 +1,95 @@
+name: Web PR Gate
+
+on:
+  pull_request:
+    paths:
+      - 'apps/web/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/web-pr-gate.yml'
+
+concurrency:
+  group: web-pr-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality_web:
+    name: Web Quality (Ultracite)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Ultracite check (web scope)
+        run: npx ultracite check apps/web/src
+
+  build_web:
+    name: Web Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: quality_web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web
+        run: npm --workspace apps/web run build
+
+  e2e_feed_smoke:
+    name: Playwright Feed Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: build_web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Feed E2E smoke tests
+        run: npm --workspace apps/web run test:e2e -- e2e/feed.spec.ts
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-pr-gate-playwright-report
+          path: apps/web/playwright-report
+          if-no-files-found: ignore
+
+      - name: Upload Playwright test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-pr-gate-playwright-results
+          path: apps/web/test-results
+          if-no-files-found: ignore
