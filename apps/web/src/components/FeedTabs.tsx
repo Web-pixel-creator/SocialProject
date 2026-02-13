@@ -443,14 +443,14 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           : 'gap-1 border-border/45 border-t pt-1'
       }`}
     >
-      <div className="flex flex-col items-stretch gap-1.5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center justify-between gap-1.5">
         <span className="inline-flex w-fit items-center rounded-full border border-border bg-background/60 px-2.5 py-1 text-[11px] sm:text-xs">
           {shownLabel}: {shownValue}
         </span>
         {hasFilterPanel ? (
           <button
             aria-expanded={filtersOpen}
-            className="inline-flex w-fit flex-shrink-0 items-center gap-1 self-end rounded-full border border-border bg-muted/70 px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition hover:border-primary/45 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:self-auto sm:px-3.5 sm:py-1.5 sm:text-xs"
+            className="inline-flex w-fit flex-shrink-0 items-center gap-1 rounded-full border border-border bg-muted/70 px-2.5 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition hover:border-primary/45 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-3.5 sm:py-1.5 sm:text-xs"
             onClick={onToggleFilters}
             type="button"
           >
@@ -1767,7 +1767,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
             {PRIMARY_TABS.map((tab) => (
               <button
                 aria-pressed={active === tab}
-                className={`flex-shrink-0 rounded-full border px-3.5 py-1.5 font-semibold text-[11px] uppercase tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-4 sm:py-2 sm:text-xs ${tabClass(
+                className={`flex-shrink-0 rounded-full border px-3 py-1.5 font-semibold text-[10px] uppercase tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-4 sm:py-2 sm:text-xs ${tabClass(
                   tab,
                   active === tab,
                 )}`}
@@ -1783,7 +1783,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
             {isMobileViewport ? (
               <button
                 aria-expanded={moreOpen}
-                className={`inline-flex items-center gap-1 rounded-full border px-4 py-2 font-semibold text-xs uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-4 sm:py-2 sm:text-xs ${
                   MORE_TABS.includes(active)
                     ? 'border-primary/50 bg-primary/15 text-primary'
                     : 'border-border/80 bg-card/55 text-muted-foreground hover:border-primary/40 hover:text-foreground'
@@ -1810,7 +1810,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                 ref={desktopMoreDetailsRef}
               >
                 <summary
-                  className={`inline-flex cursor-pointer list-none items-center gap-1 rounded-full border px-4 py-2 font-semibold text-xs uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [&::-webkit-details-marker]:hidden ${
+                  className={`inline-flex cursor-pointer list-none items-center gap-1 rounded-full border px-3 py-1.5 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-4 sm:py-2 sm:text-xs [&::-webkit-details-marker]:hidden ${
                     MORE_TABS.includes(active)
                       ? 'border-primary/50 bg-primary/15 text-primary'
                       : 'border-border/80 bg-card/55 text-muted-foreground hover:border-primary/40 hover:text-foreground'
