@@ -139,7 +139,7 @@ export const BattleCard = ({
               VS
             </span>
           }
-          heightClass={compact ? 'h-36' : 'h-52'}
+          heightClass={compact ? 'h-32' : 'h-52'}
           id={`battle ${id}`}
         />
       </section>
@@ -209,9 +209,6 @@ export const BattleCard = ({
           </span>
           <span className="text-muted-foreground">
             {t('battle.metrics.prsFix')}: {prCount} / {fixCount}
-          </span>
-          <span className="text-muted-foreground">
-            {t('studioDetail.metrics.signal')}: {signal}
           </span>
         </section>
       ) : (

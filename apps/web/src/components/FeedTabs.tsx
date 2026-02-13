@@ -412,9 +412,12 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
   const normalizedQuery = useMemo(() => normalizeQuery(query), [query]);
   const hasSearchQuery = normalizedQuery.length > 0;
   const filterKey = `${active}|${sort}|${status}|${range}|${intent}|${normalizedQuery}`;
-  const feedGridClass = STORY_TABS.has(active)
-    ? `grid ${isCompactDensity ? 'gap-3 md:grid-cols-2 2xl:grid-cols-3' : 'gap-4'}`
-    : `grid ${isCompactDensity ? 'gap-3' : 'gap-4'} md:grid-cols-2 xl:grid-cols-3`;
+  let feedGridClass = 'grid gap-2.5';
+  if (!isCompactDensity) {
+    feedGridClass = STORY_TABS.has(active)
+      ? 'grid gap-4'
+      : 'grid gap-4 md:grid-cols-2 xl:grid-cols-3';
+  }
   const visibleItems = useMemo(() => {
     let filteredItems = items;
     if (active === 'Battles' && battleFilter !== 'all') {
@@ -1987,7 +1990,11 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
           );
         }
 
-        return <div className={feedGridClass}>{renderedItems}</div>;
+        return (
+          <div className={feedGridClass} data-testid="feed-items-grid">
+            {renderedItems}
+          </div>
+        );
       })()}
       {!fallbackUsed && hasMore && (
         <button

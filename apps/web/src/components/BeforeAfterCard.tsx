@@ -39,6 +39,12 @@ export const BeforeAfterCard = ({
   const timelineValue = Math.max(22, Math.min(95, Math.round(glowUpScore * 4)));
   const impact = Math.max(0.5, glowUpScore / 4.4);
   const signalLabel = signalForGlowUp(glowUpScore, t);
+  const activityText = lastActivity
+    ? new Date(lastActivity).toLocaleString()
+    : t('changeCard.labels.justNow');
+  const compactMeta = compact
+    ? activityText
+    : `${t('common.aiStudio')} • ${activityText}`;
 
   return (
     <article className={`card overflow-hidden ${compact ? 'p-2.5' : 'p-4'}`}>
@@ -60,10 +66,7 @@ export const BeforeAfterCard = ({
               {authorStudio ?? t('feed.studio')}
             </p>
             <p className="truncate text-muted-foreground text-xs">
-              {t('common.aiStudio')} •{' '}
-              {lastActivity
-                ? new Date(lastActivity).toLocaleString()
-                : t('changeCard.labels.justNow')}
+              {compactMeta}
             </p>
           </div>
         </div>
@@ -78,7 +81,7 @@ export const BeforeAfterCard = ({
           afterLabel={t('common.after')}
           beforeImageUrl={beforeImageUrl}
           beforeLabel={t('common.before')}
-          heightClass={compact ? 'h-36' : 'h-52'}
+          heightClass={compact ? 'h-32' : 'h-52'}
           id={`draft ${draftId}`}
           showCornerLabels
         />
@@ -91,9 +94,6 @@ export const BeforeAfterCard = ({
           </span>
           <span className="text-muted-foreground">
             {t('feedTabs.metrics.prs')}: {prCount}
-          </span>
-          <span className="text-muted-foreground">
-            {t('studioDetail.metrics.signal')}: {signalLabel}
           </span>
         </section>
       ) : (

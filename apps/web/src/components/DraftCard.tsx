@@ -50,6 +50,9 @@ export const DraftCard = ({
   const activityLabel = updatedAt
     ? new Date(updatedAt).toLocaleString()
     : t('common.twoHoursAgo');
+  const compactActivityMeta = compact
+    ? activityLabel
+    : `${t('common.aiStudio')} • ${activityLabel}`;
   const stageLabel = live ? t('common.draft') : t('common.update');
   const needsChanges = Boolean(hotScore && hotScore >= 2.2);
   const decisionLabel = needsChanges
@@ -80,7 +83,7 @@ export const DraftCard = ({
               {title}
             </h3>
             <p className="truncate text-muted-foreground text-xs">
-              {t('common.aiStudio')} • {activityLabel}
+              {compactActivityMeta}
             </p>
           </div>
         </div>
@@ -109,7 +112,7 @@ export const DraftCard = ({
           afterLabel={t('common.after')}
           beforeImageUrl={beforeImageUrl}
           beforeLabel={t('common.before')}
-          heightClass={compact ? 'h-36' : 'h-52'}
+          heightClass={compact ? 'h-32' : 'h-52'}
           id={`draft ${id}`}
           showCornerLabels
         />
@@ -119,9 +122,6 @@ export const DraftCard = ({
         <section className="mt-2 flex flex-wrap items-center gap-2 text-xs">
           <span className="rounded-full border border-secondary/45 bg-secondary/15 px-2 py-0.5 font-semibold text-secondary">
             +{glowUpScore.toFixed(1)}%
-          </span>
-          <span className="text-muted-foreground">
-            {t('feedTabs.metrics.prs')}: {prCount}
           </span>
           <span
             className={`rounded-full border px-2 py-0.5 font-semibold ${

@@ -88,6 +88,16 @@ const changeAndFlush = async (element: HTMLElement, value: string) => {
 };
 
 const openMoreTabs = async () => {
+  const moreSummary = screen.queryByTestId('feed-more-summary');
+  if (moreSummary) {
+    const detailsElement = moreSummary.closest('details');
+    if (detailsElement?.hasAttribute('open')) {
+      return;
+    }
+    await clickAndFlush(moreSummary);
+    return;
+  }
+
   const moreToggle = screen.getByText(/More|Р•С‰С‘/i);
   const detailsElement = moreToggle.closest('details');
   if (detailsElement) {
@@ -184,19 +194,27 @@ describe('feed UI', () => {
   });
 
   test('switches feed density between comfort and compact', async () => {
+    (apiClient.get as jest.Mock).mockResolvedValueOnce({
+      data: [{ id: 'draft-density', type: 'draft', glowUpScore: 4.2 }],
+    });
     await renderFeedTabs();
     await openControls();
 
     const comfortButton = screen.getByRole('button', { name: /Comfort/i });
     const compactButton = screen.getByRole('button', { name: /Compact/i });
+    const grid = screen.getByTestId('feed-items-grid');
 
     expect(comfortButton).toHaveAttribute('aria-pressed', 'true');
     expect(compactButton).toHaveAttribute('aria-pressed', 'false');
+    expect(grid.className).toContain('gap-4');
+    expect(grid.className).not.toContain('gap-2.5');
 
     await clickAndFlush(compactButton);
 
     expect(comfortButton).toHaveAttribute('aria-pressed', 'false');
     expect(compactButton).toHaveAttribute('aria-pressed', 'true');
+    expect(grid.className).toContain('gap-2.5');
+    expect(grid.className).not.toContain('md:grid-cols-2');
   });
 
   test('defaults feed density to compact on mobile when preference is missing', async () => {
