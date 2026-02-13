@@ -76,7 +76,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run Feed E2E smoke tests
-        run: npm --workspace apps/web run test:e2e -- e2e/feed.spec.ts
+        run: npm --workspace apps/web run test:e2e -- e2e/feed.spec.ts e2e/admin-ux.spec.ts
 
       - name: Upload Playwright report
         if: always()
