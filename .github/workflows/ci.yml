@@ -373,26 +373,26 @@ jobs:
 
             if [ -f "$SMOKE_RESULTS_PATH" ]; then
               SMOKE_VALUES="$(node - "$SMOKE_RESULTS_PATH" <<'NODE'
-const fs = require('node:fs');
+          const fs = require('node:fs');
 
-const path = process.argv[2];
+          const path = process.argv[2];
 
-let pass = 'n/a';
-let totalSteps = 'n/a';
-let failedSteps = 'n/a';
+          let pass = 'n/a';
+          let totalSteps = 'n/a';
+          let failedSteps = 'n/a';
 
-try {
-  const payload = JSON.parse(fs.readFileSync(path, 'utf8'));
-  pass = String(payload?.summary?.pass ?? 'n/a');
-  totalSteps = String(payload?.summary?.totalSteps ?? 'n/a');
-  failedSteps = String(payload?.summary?.failedSteps ?? 'n/a');
-} catch (_error) {
-  // keep default n/a values when summary artifact is missing or malformed
-}
+          try {
+            const payload = JSON.parse(fs.readFileSync(path, 'utf8'));
+            pass = String(payload?.summary?.pass ?? 'n/a');
+            totalSteps = String(payload?.summary?.totalSteps ?? 'n/a');
+            failedSteps = String(payload?.summary?.failedSteps ?? 'n/a');
+          } catch (_error) {
+            // keep default n/a values when summary artifact is missing or malformed
+          }
 
-process.stdout.write(`${pass}|${totalSteps}|${failedSteps}`);
-NODE
-)"
+          process.stdout.write(`${pass}|${totalSteps}|${failedSteps}`);
+          NODE
+              )"
               IFS='|' read -r SMOKE_PASS SMOKE_TOTAL_STEPS SMOKE_FAILED_STEPS <<<"$SMOKE_VALUES"
 
               {
@@ -404,28 +404,28 @@ NODE
 
             if [ -f "$ENV_PREFLIGHT_SUMMARY_PATH" ]; then
               ENV_PREFLIGHT_VALUES="$(node - "$ENV_PREFLIGHT_SUMMARY_PATH" <<'NODE'
-const fs = require('node:fs');
+          const fs = require('node:fs');
 
-const path = process.argv[2];
+          const path = process.argv[2];
 
-let status = 'n/a';
-let missing = 'n/a';
-let warnings = 'n/a';
-let strict = 'n/a';
+          let status = 'n/a';
+          let missing = 'n/a';
+          let warnings = 'n/a';
+          let strict = 'n/a';
 
-try {
-  const payload = JSON.parse(fs.readFileSync(path, 'utf8'));
-  status = String(payload?.status ?? 'n/a');
-  missing = String(Array.isArray(payload?.missing) ? payload.missing.length : 'n/a');
-  warnings = String(Array.isArray(payload?.warnings) ? payload.warnings.length : 'n/a');
-  strict = String(payload?.strict ?? 'n/a');
-} catch (_error) {
-  // keep default n/a values when summary artifact is missing or malformed
-}
+          try {
+            const payload = JSON.parse(fs.readFileSync(path, 'utf8'));
+            status = String(payload?.status ?? 'n/a');
+            missing = String(Array.isArray(payload?.missing) ? payload.missing.length : 'n/a');
+            warnings = String(Array.isArray(payload?.warnings) ? payload.warnings.length : 'n/a');
+            strict = String(payload?.strict ?? 'n/a');
+          } catch (_error) {
+            // keep default n/a values when summary artifact is missing or malformed
+          }
 
-process.stdout.write(`${status}|${missing}|${warnings}|${strict}`);
-NODE
-)"
+          process.stdout.write(`${status}|${missing}|${warnings}|${strict}`);
+          NODE
+              )"
               IFS='|' read -r ENV_PREFLIGHT_STATUS ENV_PREFLIGHT_MISSING ENV_PREFLIGHT_WARNINGS ENV_PREFLIGHT_STRICT <<<"$ENV_PREFLIGHT_VALUES"
 
               {
@@ -627,26 +627,26 @@ NODE
           else
             mkdir -p "$(dirname "$ENV_PREFLIGHT_SUMMARY_PATH")"
             node - "$ENV_PREFLIGHT_SUMMARY_PATH" <<'NODE'
-const fs = require('node:fs');
+          const fs = require('node:fs');
 
-const outputPath = process.argv[2];
-const payload = {
-  checkedAtUtc: new Date().toISOString(),
-  label: 'release:preflight:env',
-  missing: [],
-  status: 'skipped',
-  strict: false,
-  warnings: [
-    {
-      key: 'release_env_preflight',
-      reason: 'skipped in local-fallback mode (no staging URL inputs)',
-      scope: 'ci',
-    },
-  ],
-};
+          const outputPath = process.argv[2];
+          const payload = {
+            checkedAtUtc: new Date().toISOString(),
+            label: 'release:preflight:env',
+            missing: [],
+            status: 'skipped',
+            strict: false,
+            warnings: [
+              {
+                key: 'release_env_preflight',
+                reason: 'skipped in local-fallback mode (no staging URL inputs)',
+                scope: 'ci',
+              },
+            ],
+          };
 
-fs.writeFileSync(outputPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
-NODE
+          fs.writeFileSync(outputPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
+          NODE
 
             echo "Staging URLs are not configured. Running local-stack release dry-run fallback."
             RELEASE_API_BASE_URL="$EFFECTIVE_API_URL" \
