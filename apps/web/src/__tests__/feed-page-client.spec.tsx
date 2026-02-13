@@ -33,9 +33,20 @@ jest.mock('../lib/api', () => ({
 }));
 
 describe('FeedPageClient', () => {
+  const originalAdminUxLinkFlag = process.env.NEXT_PUBLIC_ENABLE_ADMIN_UX_LINK;
+
   beforeEach(() => {
     window.localStorage.clear();
     (apiClient.post as jest.Mock).mockClear();
+    Reflect.deleteProperty(process.env, 'NEXT_PUBLIC_ENABLE_ADMIN_UX_LINK');
+  });
+
+  afterAll(() => {
+    if (originalAdminUxLinkFlag === undefined) {
+      Reflect.deleteProperty(process.env, 'NEXT_PUBLIC_ENABLE_ADMIN_UX_LINK');
+    } else {
+      process.env.NEXT_PUBLIC_ENABLE_ADMIN_UX_LINK = originalAdminUxLinkFlag;
+    }
   });
 
   test('toggles observer and focus mode with animated rail shell classes', () => {
@@ -131,5 +142,28 @@ describe('FeedPageClient', () => {
         mode: 'observer',
       }),
     );
+  });
+
+  test('shows Admin UX link in settings menu when feature flag is enabled', () => {
+    process.env.NEXT_PUBLIC_ENABLE_ADMIN_UX_LINK = 'true';
+
+    render(<FeedPageClient />);
+
+    fireEvent.click(screen.getByText(/Settings/i));
+
+    expect(screen.getByRole('link', { name: /Admin UX/i })).toHaveAttribute(
+      'href',
+      '/admin/ux',
+    );
+  });
+
+  test('hides Admin UX link in settings menu when feature flag is disabled', () => {
+    process.env.NEXT_PUBLIC_ENABLE_ADMIN_UX_LINK = 'false';
+
+    render(<FeedPageClient />);
+
+    fireEvent.click(screen.getByText(/Settings/i));
+
+    expect(screen.queryByRole('link', { name: /Admin UX/i })).toBeNull();
   });
 });

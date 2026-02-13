@@ -1,6 +1,7 @@
 'use client';
 
 import { ChevronDown, Menu, SlidersHorizontal, X } from 'lucide-react';
+import Link from 'next/link';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { apiClient } from '../lib/api';
@@ -31,6 +32,8 @@ const sendTelemetry = (payload: Record<string, unknown>): void => {
 
 export default function FeedPageClient() {
   const { t } = useLanguage();
+  const showAdminUxLink =
+    process.env.NEXT_PUBLIC_ENABLE_ADMIN_UX_LINK === 'true';
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [viewMode, setViewMode] = useState<FeedViewMode>(
     DEFAULT_FEED_VIEW_MODE,
@@ -238,6 +241,16 @@ export default function FeedPageClient() {
                         {t('lang.language')}
                       </p>
                       <LanguageSwitcher showLabel={false} />
+                      {showAdminUxLink ? (
+                        <div className="mt-3 border-border/60 border-t pt-3">
+                          <Link
+                            className="inline-flex items-center rounded-full border border-border bg-background/70 px-3 py-1.5 font-semibold text-[11px] text-foreground uppercase tracking-wide transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                            href="/admin/ux"
+                          >
+                            {t('sidebar.item.adminUx')}
+                          </Link>
+                        </div>
+                      ) : null}
                     </div>
                   </details>
                 </div>
