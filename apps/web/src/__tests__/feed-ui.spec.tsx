@@ -1560,7 +1560,7 @@ describe('feed UI', () => {
   test('toggles filters panel when shift+f shortcut is pressed', async () => {
     await renderFeedTabs();
     const filtersButton = screen.getByRole('button', {
-      name: /^(Filters|Р В¤Р С‘Р В»РЎРЉРЎвЂљРЎР‚РЎвЂ№)\s*[+-]?$/i,
+      name: /filters/i,
     });
 
     expect(filtersButton).toHaveAttribute('aria-expanded', 'false');
@@ -1578,7 +1578,7 @@ describe('feed UI', () => {
     await renderFeedTabs();
     const searchInput = screen.getByRole('searchbox', { name: /search/i });
     const filtersButton = screen.getByRole('button', {
-      name: /^(Filters|Р В¤Р С‘Р В»РЎРЉРЎвЂљРЎР‚РЎвЂ№)\s*[+-]?$/i,
+      name: /filters/i,
     });
 
     searchInput.focus();

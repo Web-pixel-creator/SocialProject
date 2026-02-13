@@ -686,11 +686,12 @@ export default function DraftDetailPage() {
         mutatePullRequests(),
         mutateArc(),
       ]);
-      refreshResults.some((result) => result.status === 'rejected') &&
+      if (refreshResults.some((result) => result.status === 'rejected')) {
         sendTelemetry({
           eventType: 'demo_flow_refresh_partial_failure',
           draftId,
         });
+      }
     } catch (error: unknown) {
       setDemoStatus(
         getApiErrorMessage(error, t('draftDetail.errors.runDemoFlow')),
