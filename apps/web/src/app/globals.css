@@ -347,14 +347,31 @@ body.dotted-bg > * {
 
 .observer-right-rail-shell {
   display: block;
+  min-height: 0;
+  max-height: 200vh;
+  overflow: hidden;
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    max-height 260ms ease,
+    opacity 240ms ease,
+    transform 240ms ease;
 }
 
 .observer-right-rail-shell-open {
   display: block;
+  max-height: 200vh;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
 }
 
 .observer-right-rail-shell-collapsed {
-  display: none;
+  display: block;
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-0.5rem);
+  pointer-events: none;
 }
 
 @media (min-width: 1100px) {
