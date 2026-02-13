@@ -464,38 +464,57 @@ export const ObserverRightRail = () => {
     requestResync();
   }, [requestResync]);
 
+  const metricTileClass =
+    'rounded-lg border border-border/80 bg-background/35 p-2.5';
+  const statusChipClass =
+    'rounded-full border border-border/80 bg-background/60 px-2 py-1';
+  const controlButtonBaseClass =
+    'rounded-full border px-2.5 py-1 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
+  const controlButtonEnabledClass =
+    'border-border/80 bg-background/70 text-muted-foreground hover:border-primary/40 hover:text-foreground';
+  const controlButtonDisabledClass =
+    'cursor-not-allowed border-border/70 bg-background/55 text-muted-foreground/45';
+
   return (
-    <aside className="observer-right-rail grid grid-cols-1 gap-3">
-      <section className="card relative overflow-hidden p-3">
+    <aside className="observer-right-rail grid grid-cols-1 gap-3.5">
+      <section className="card relative overflow-hidden p-3.5">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute -top-12 right-0 h-24 w-24 rounded-full bg-secondary/10 blur-2xl"
         />
-        <p className="live-signal inline-flex items-center gap-2 text-xs uppercase tracking-wide">
+        <p className="live-signal inline-flex items-center gap-2 font-semibold text-xs uppercase tracking-wide">
           <span className="icon-breathe live-dot inline-flex h-2.5 w-2.5 rounded-full motion-reduce:animate-none" />
           {t('rail.liveWsConnected')}
         </p>
         <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-          <div className="rounded-lg border border-border bg-muted/70 p-2">
-            <p className="text-muted-foreground/70">{t('rail.liveDrafts')}</p>
+          <div className={metricTileClass}>
+            <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">
+              {t('rail.liveDrafts')}
+            </p>
             <p className="mt-1 font-semibold text-lg text-primary">
               {liveDraftCount}
             </p>
           </div>
-          <div className="rounded-lg border border-border bg-muted/70 p-2">
-            <p className="text-muted-foreground/70">{t('rail.prPending')}</p>
+          <div className={metricTileClass}>
+            <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">
+              {t('rail.prPending')}
+            </p>
             <p className="mt-1 font-semibold text-lg text-primary">
               {prPendingCount}
             </p>
           </div>
-          <div className="rounded-lg border border-border bg-muted/70 p-2">
-            <p className="text-muted-foreground/70">{t('rail.eventsMin')}</p>
+          <div className={metricTileClass}>
+            <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">
+              {t('rail.eventsMin')}
+            </p>
             <p className="mt-1 font-semibold text-lg text-primary">
               {liveEventRate}+
             </p>
           </div>
-          <div className="rounded-lg border border-border bg-muted/70 p-2">
-            <p className="text-muted-foreground/70">{t('rail.latency')}</p>
+          <div className={metricTileClass}>
+            <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">
+              {t('rail.latency')}
+            </p>
             <p className="mt-1 font-semibold text-lg text-secondary">
               {t('rail.latencyValue')}
             </p>
@@ -503,9 +522,7 @@ export const ObserverRightRail = () => {
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground/70">
           {loading && (
-            <span className="rounded-full border border-border bg-background/60 px-2 py-1">
-              {t('rail.loadingData')}
-            </span>
+            <span className={statusChipClass}>{t('rail.loadingData')}</span>
           )}
           {isResyncing && (
             <span className="rounded-full border border-primary/35 bg-primary/10 px-2 py-1 text-primary">
@@ -513,18 +530,16 @@ export const ObserverRightRail = () => {
             </span>
           )}
           {fallbackUsed && !loading && (
-            <span className="rounded-full border border-border bg-background/60 px-2 py-1">
-              {t('rail.fallbackData')}
-            </span>
+            <span className={statusChipClass}>{t('rail.fallbackData')}</span>
           )}
           {lastSyncLabel && !isResyncing && (
-            <span className="rounded-full border border-border bg-background/60 px-2 py-1">
+            <span className={statusChipClass}>
               {t('rail.lastSync')}: {lastSyncLabel}
             </span>
           )}
         </div>
         {needsResync && (
-          <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-primary/40 bg-primary/10 p-2">
+          <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-primary/45 bg-primary/12 p-2">
             <span className="text-[11px] text-primary">
               {t('rail.resyncRequired')}
             </span>
@@ -548,7 +563,7 @@ export const ObserverRightRail = () => {
           </div>
         )}
         <div className="mt-2 flex items-center justify-between gap-2 text-[11px]">
-          <span className="rounded-full border border-border bg-background/70 px-2 py-1 font-semibold text-muted-foreground">
+          <span className="rounded-full border border-border/80 bg-background/70 px-2 py-1 font-semibold text-muted-foreground">
             {t('rail.panelsVisible')}: {visiblePanelCount}/{PANEL_KEYS.length}
           </span>
           {allPanelsHidden ? (
@@ -562,15 +577,15 @@ export const ObserverRightRail = () => {
           ) : null}
         </div>
         <div
-          className="mt-2 hidden gap-2 lg:grid"
+          className="mt-2 hidden gap-2 border-border/60 border-t pt-2.5 lg:grid"
           data-testid="observer-rail-desktop-controls"
         >
           <div className="flex flex-wrap gap-1">
             <button
-              className={`rounded-full border px-2 py-1 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+              className={`${controlButtonBaseClass} ${
                 allPanelsVisible
-                  ? 'cursor-not-allowed border-border bg-background/55 text-muted-foreground/45'
-                  : 'border-border bg-background/70 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                  ? controlButtonDisabledClass
+                  : controlButtonEnabledClass
               }`}
               disabled={allPanelsVisible}
               onClick={() => applyPanelVisibility(ALL_PANEL_VISIBILITY)}
@@ -579,10 +594,10 @@ export const ObserverRightRail = () => {
               {t('rail.showAll')}
             </button>
             <button
-              className={`rounded-full border px-2 py-1 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+              className={`${controlButtonBaseClass} ${
                 allPanelsHidden
-                  ? 'cursor-not-allowed border-border bg-background/55 text-muted-foreground/45'
-                  : 'border-border bg-background/70 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                  ? controlButtonDisabledClass
+                  : controlButtonEnabledClass
               }`}
               disabled={allPanelsHidden}
               onClick={() => applyPanelVisibility(HIDDEN_PANEL_VISIBILITY)}
@@ -593,7 +608,7 @@ export const ObserverRightRail = () => {
           </div>
         </div>
       </section>
-      <section className="card p-3 lg:hidden">
+      <section className="card p-3.5 lg:hidden">
         <PanelHeader icon={Flame} title={t('rail.pulseRadar')} />
         <div
           className="mt-2 grid gap-2"
@@ -601,10 +616,10 @@ export const ObserverRightRail = () => {
         >
           <div className="flex flex-wrap gap-1">
             <button
-              className={`rounded-full border px-2 py-1 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+              className={`${controlButtonBaseClass} ${
                 allPanelsVisible
-                  ? 'cursor-not-allowed border-border bg-background/55 text-muted-foreground/45'
-                  : 'border-border bg-background/70 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                  ? controlButtonDisabledClass
+                  : controlButtonEnabledClass
               }`}
               disabled={allPanelsVisible}
               onClick={() => applyPanelVisibility(ALL_PANEL_VISIBILITY)}
@@ -613,10 +628,10 @@ export const ObserverRightRail = () => {
               {t('rail.showAll')}
             </button>
             <button
-              className={`rounded-full border px-2 py-1 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+              className={`${controlButtonBaseClass} ${
                 allPanelsHidden
-                  ? 'cursor-not-allowed border-border bg-background/55 text-muted-foreground/45'
-                  : 'border-border bg-background/70 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                  ? controlButtonDisabledClass
+                  : controlButtonEnabledClass
               }`}
               disabled={allPanelsHidden}
               onClick={() => applyPanelVisibility(HIDDEN_PANEL_VISIBILITY)}
@@ -627,7 +642,7 @@ export const ObserverRightRail = () => {
           </div>
         </div>
         {allPanelsHidden ? (
-          <div className="mt-3 rounded-lg border border-border bg-muted/65 p-2 text-[11px] text-muted-foreground">
+          <div className="mt-3 rounded-lg border border-border/80 bg-background/35 p-2 text-[11px] text-muted-foreground">
             <p>{t('rail.noPanelsSelected')}</p>
             <div className="mt-2 flex justify-end">
               <button
@@ -642,7 +657,7 @@ export const ObserverRightRail = () => {
         ) : null}
         <div className="grid gap-3 sm:grid-cols-2">
           {panelVisibility.battles ? (
-            <div className="rounded-lg border border-border bg-muted/70 p-2">
+            <div className="rounded-lg border border-border/80 bg-background/35 p-2">
               <p className="font-semibold text-foreground text-xs">
                 {t('rail.trendingBattles')}
               </p>
@@ -656,7 +671,7 @@ export const ObserverRightRail = () => {
             </div>
           ) : null}
           {panelVisibility.glowUps ? (
-            <div className="rounded-lg border border-border bg-muted/70 p-2">
+            <div className="rounded-lg border border-border/80 bg-background/35 p-2">
               <p className="font-semibold text-foreground text-xs">
                 {t('rail.topGlowUps24h')}
               </p>
@@ -670,7 +685,7 @@ export const ObserverRightRail = () => {
             </div>
           ) : null}
           {panelVisibility.studios ? (
-            <div className="rounded-lg border border-border bg-muted/70 p-2">
+            <div className="rounded-lg border border-border/80 bg-background/35 p-2">
               <p className="font-semibold text-foreground text-xs">
                 {t('rail.topStudios')}
               </p>
@@ -685,7 +700,7 @@ export const ObserverRightRail = () => {
           ) : null}
         </div>
         {panelVisibility.activity ? (
-          <div className="mt-3 rounded-lg border border-border bg-muted/70 p-2">
+          <div className="mt-3 rounded-lg border border-border/80 bg-background/35 p-2">
             <p className="font-semibold text-foreground text-xs">
               {t('rail.liveActivityStream')}
             </p>
@@ -724,7 +739,7 @@ export const ObserverRightRail = () => {
         title={t('rail.topStudios')}
       />
       {allPanelsHidden ? (
-        <section className="card hidden p-3 text-[11px] text-muted-foreground lg:block">
+        <section className="card hidden p-3.5 text-[11px] text-muted-foreground lg:block">
           <p>{t('rail.noPanelsSelected')}</p>
           <div className="mt-2">
             <button
