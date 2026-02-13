@@ -55,7 +55,7 @@ jobs:
         run: npm --workspace apps/web run build
 
   e2e_feed_smoke:
-    name: Playwright Feed Smoke
+    name: Playwright Web Smoke
     runs-on: ubuntu-latest
     timeout-minutes: 25
     needs: build_web
@@ -75,8 +75,8 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run Feed E2E smoke tests
-        run: npm --workspace apps/web run test:e2e -- e2e/feed.spec.ts e2e/admin-ux.spec.ts
+      - name: Run web E2E smoke tests
+        run: npm --workspace apps/web run test:e2e -- e2e/feed.spec.ts e2e/homepage.spec.ts e2e/auth.spec.ts e2e/admin-ux.spec.ts
 
       - name: Upload Playwright report
         if: always()
