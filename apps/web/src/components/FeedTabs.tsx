@@ -1691,6 +1691,15 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                 {t('feedTabs.activeFilters')}: {activeFilterCount}
               </span>
             ) : null}
+            {hasActiveFilters ? (
+              <button
+                className="rounded-full border border-border bg-background/70 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                onClick={handleResetFilters}
+                type="button"
+              >
+                {t('search.actions.resetFilters')}
+              </button>
+            ) : null}
           </div>
         </div>
         {hasFilterPanel && filtersOpen && !isMobileViewport
