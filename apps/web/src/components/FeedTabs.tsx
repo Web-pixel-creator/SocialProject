@@ -437,14 +437,14 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
 
   return (
     <div className="grid gap-2 border-border/60 border-t pt-2 text-muted-foreground text-xs">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-full border border-border bg-background/60 px-3 py-1">
+      <div className="flex items-center justify-between gap-2">
+        <span className="rounded-full border border-border bg-background/60 px-3 py-1 text-[11px] sm:text-xs">
           {shownLabel}: {shownValue}
         </span>
         {hasFilterPanel ? (
           <button
             aria-expanded={filtersOpen}
-            className="ml-auto inline-flex items-center gap-1 rounded-full border border-border bg-muted/70 px-4 py-2 font-semibold text-xs uppercase tracking-wide transition hover:border-primary/45 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border border-border bg-muted/70 px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition hover:border-primary/45 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-4 sm:py-2 sm:text-xs"
             onClick={onToggleFilters}
             type="button"
           >
@@ -1756,12 +1756,12 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
   return (
     <section className="grid gap-5">
       <div className="grid gap-3">
-        <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+          <div className="no-scrollbar flex min-w-0 items-center gap-2 overflow-x-auto pr-1">
             {PRIMARY_TABS.map((tab) => (
               <button
                 aria-pressed={active === tab}
-                className={`rounded-full border px-4 py-2 font-semibold text-xs uppercase tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${tabClass(
+                className={`flex-shrink-0 rounded-full border px-4 py-2 font-semibold text-xs uppercase tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${tabClass(
                   tab,
                   active === tab,
                 )}`}
