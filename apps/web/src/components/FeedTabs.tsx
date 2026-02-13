@@ -1169,6 +1169,39 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
       filter: 'all',
     });
   }, []);
+  const handleResetStatusFilterQuick = useCallback(() => {
+    setStatus(DEFAULT_STATUS);
+    updateQuery({ status: DEFAULT_STATUS });
+    sendTelemetry({
+      eventType: 'feed_filter_change',
+      sort,
+      status: DEFAULT_STATUS,
+      intent,
+      range,
+    });
+  }, [intent, range, sort, updateQuery]);
+  const handleResetSortFilterQuick = useCallback(() => {
+    setSort(DEFAULT_SORT);
+    updateQuery({ sort: DEFAULT_SORT });
+    sendTelemetry({
+      eventType: 'feed_filter_change',
+      sort: DEFAULT_SORT,
+      status,
+      intent,
+      range,
+    });
+  }, [intent, range, status, updateQuery]);
+  const handleResetRangeFilterQuick = useCallback(() => {
+    setRange(DEFAULT_RANGE);
+    updateQuery({ range: DEFAULT_RANGE });
+    sendTelemetry({
+      eventType: 'feed_filter_change',
+      sort,
+      status,
+      intent,
+      range: DEFAULT_RANGE,
+    });
+  }, [intent, sort, status, updateQuery]);
 
   const handleSortChange = useCallback(
     (next: FeedSort) => {
@@ -1450,6 +1483,9 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
   const hasFilterPanel = active === 'All' || active === 'Battles';
   const hasBattleFilterApplied = active === 'Battles' && battleFilter !== 'all';
   const hasIntentFilterApplied = active === 'All' && intent !== DEFAULT_INTENT;
+  const hasStatusFilterApplied = active === 'All' && status !== DEFAULT_STATUS;
+  const hasSortFilterApplied = active === 'All' && sort !== DEFAULT_SORT;
+  const hasRangeFilterApplied = active === 'All' && range !== DEFAULT_RANGE;
   const activeFilterCount = activeFilterPills.length;
   const hasActiveFilters = activeFilterCount > 0;
   const hasMobileOverlayOpen =
@@ -1707,6 +1743,33 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                 type="button"
               >
                 {t('feedTabs.emptyAction.openAllBattles')}
+              </button>
+            ) : null}
+            {hasStatusFilterApplied ? (
+              <button
+                className="rounded-full border border-border bg-background/70 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                onClick={handleResetStatusFilterQuick}
+                type="button"
+              >
+                {t('feedTabs.quickReset.allStatuses')}
+              </button>
+            ) : null}
+            {hasSortFilterApplied ? (
+              <button
+                className="rounded-full border border-border bg-background/70 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                onClick={handleResetSortFilterQuick}
+                type="button"
+              >
+                {t('search.sort.recency')}
+              </button>
+            ) : null}
+            {hasRangeFilterApplied ? (
+              <button
+                className="rounded-full border border-border bg-background/70 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                onClick={handleResetRangeFilterQuick}
+                type="button"
+              >
+                {t('search.range.last30Days')}
               </button>
             ) : null}
             {hasIntentFilterApplied ? (

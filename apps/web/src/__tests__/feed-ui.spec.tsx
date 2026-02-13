@@ -1410,6 +1410,65 @@ describe('feed UI', () => {
     );
   });
 
+  test('shows quick status/sort/range reset actions in status row for all-feed filters', async () => {
+    searchParams = new URLSearchParams(
+      'tab=All&sort=impact&status=release&range=7d',
+    );
+    await renderFeedTabs();
+
+    const allStatusesButton = await screen.findByRole('button', {
+      name: /^All statuses$/i,
+    });
+
+    (apiClient.post as jest.Mock).mockClear();
+    await clickAndFlush(allStatusesButton);
+
+    let lastCall = replaceMock.mock.calls.at(-1)?.[0] as string;
+    expect(lastCall).toContain('/feed?sort=impact');
+    expect(lastCall).toContain('range=7d');
+    expect(lastCall).not.toContain('status=');
+
+    const recencyButton = await screen.findByRole('button', {
+      name: /^Recency$/i,
+    });
+    await clickAndFlush(recencyButton);
+
+    lastCall = replaceMock.mock.calls.at(-1)?.[0] as string;
+    expect(lastCall).toContain('/feed?range=7d');
+    expect(lastCall).not.toContain('sort=');
+
+    const last30DaysButton = await screen.findByRole('button', {
+      name: /^Last 30 days$/i,
+    });
+    await clickAndFlush(last30DaysButton);
+
+    lastCall = replaceMock.mock.calls.at(-1)?.[0] as string;
+    expect(lastCall).toBe('/feed');
+    expect(lastCall).not.toContain('range=');
+
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/telemetry/ux',
+      expect.objectContaining({
+        eventType: 'feed_filter_change',
+        status: 'all',
+      }),
+    );
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/telemetry/ux',
+      expect.objectContaining({
+        eventType: 'feed_filter_change',
+        sort: 'recent',
+      }),
+    );
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/telemetry/ux',
+      expect.objectContaining({
+        eventType: 'feed_filter_change',
+        range: '30d',
+      }),
+    );
+  });
+
   test('includes all-feed intent parameter for non-default intent', async () => {
     searchParams = new URLSearchParams('tab=All&intent=needs_help');
     await renderFeedTabs();
