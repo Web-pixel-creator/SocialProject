@@ -321,6 +321,54 @@ describe('ObserverRightRail', () => {
     expect(battlesToggle).toHaveAttribute('aria-pressed', 'true');
   });
 
+  test('supports hide-all and restore-defaults panel actions', async () => {
+    renderObserverRail();
+
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalled());
+
+    const desktopControls = screen.getByTestId(
+      'observer-rail-desktop-controls',
+    );
+    const hideAllButton = within(desktopControls).getByRole('button', {
+      name: /Hide all/i,
+    });
+    const battlesToggle = within(desktopControls).getByRole('button', {
+      name: /Trending battles/i,
+    });
+    const activityToggle = within(desktopControls).getByRole('button', {
+      name: /Live activity stream/i,
+    });
+    const glowUpsToggle = within(desktopControls).getByRole('button', {
+      name: /Top GlowUps/i,
+    });
+    const studiosToggle = within(desktopControls).getByRole('button', {
+      name: /Top studios/i,
+    });
+
+    expect(
+      screen.queryAllByRole('button', { name: /Restore defaults/i }),
+    ).toHaveLength(0);
+
+    fireEvent.click(hideAllButton);
+
+    expect(battlesToggle).toHaveAttribute('aria-pressed', 'false');
+    expect(activityToggle).toHaveAttribute('aria-pressed', 'false');
+    expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'false');
+    expect(studiosToggle).toHaveAttribute('aria-pressed', 'false');
+    expect(
+      screen.getAllByRole('button', { name: /Restore defaults/i }).length,
+    ).toBeGreaterThan(0);
+
+    fireEvent.click(
+      screen.getAllByRole('button', { name: /Restore defaults/i })[0],
+    );
+
+    expect(battlesToggle).toHaveAttribute('aria-pressed', 'true');
+    expect(activityToggle).toHaveAttribute('aria-pressed', 'true');
+    expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'true');
+    expect(studiosToggle).toHaveAttribute('aria-pressed', 'true');
+  });
+
   test('hydrates panel visibility from localStorage and persists updates', async () => {
     window.localStorage.setItem(
       'finishit-observer-rail-panels',
