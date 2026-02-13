@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+﻿import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
 test.describe('Feed page', () => {
@@ -347,82 +347,21 @@ test.describe('Feed page', () => {
         await expect(moreSummary).toHaveClass(/focus-visible:ring-2/);
     });
 
-    test('switches between observer and focus modes and persists preference', async ({
+    test('renders observer-only mode with rail visible and no focus toggle', async ({
         page,
     }) => {
-        const mainShell = page.locator('main.feed-shell');
-        const observerModeButton = page.getByRole('button', {
-            name: /Observer mode/i,
-        });
-        const focusModeButton = page.getByRole('button', {
-            name: /Focus mode/i,
-        });
-
-        await expect(observerModeButton).toHaveAttribute('aria-pressed', 'true');
-        await expect(mainShell).not.toHaveClass(/feed-shell-focus/);
-
-        await focusModeButton.click();
-        await expect(focusModeButton).toHaveAttribute('aria-pressed', 'true');
-        await expect(mainShell).toHaveClass(/feed-shell-focus/);
-        await expect
-            .poll(
-                async () =>
-                    await page.evaluate(() =>
-                        window.localStorage.getItem('finishit-feed-view-mode'),
-                    ),
-            )
-            .toBe('focus');
-
-        await observerModeButton.click();
-        await expect(observerModeButton).toHaveAttribute('aria-pressed', 'true');
-        await expect(mainShell).not.toHaveClass(/feed-shell-focus/);
-        await expect
-            .poll(
-                async () =>
-                    await page.evaluate(() =>
-                        window.localStorage.getItem('finishit-feed-view-mode'),
-                    ),
-            )
-            .toBe('observer');
-    });
-
-    test('supports keyboard toggling for observer and focus modes', async ({
-        page,
-    }) => {
-        const observerModeButton = page.getByRole('button', {
-            name: /Observer mode/i,
-        });
-        const focusModeButton = page.getByRole('button', {
-            name: /Focus mode/i,
-        });
+        const observerModeChip = page
+            .locator('.observer-feed-header')
+            .getByText(/Observer mode/i)
+            .first();
         const observerRailShell = page.getByTestId('feed-right-rail-shell');
 
-        await focusModeButton.focus();
-        await expect(focusModeButton).toBeFocused();
-        await page.keyboard.press('Enter');
-        await expect(focusModeButton).toHaveAttribute('aria-pressed', 'true');
-        await expect(observerRailShell).toHaveClass(
-            /observer-right-rail-shell-collapsed/,
-        );
-
-        await observerModeButton.focus();
-        await expect(observerModeButton).toBeFocused();
-        await page.keyboard.press('Space');
-        await expect(observerModeButton).toHaveAttribute('aria-pressed', 'true');
+        await expect(observerModeChip).toBeVisible();
+        await expect(
+            page.getByRole('button', { name: /Focus mode/i }),
+        ).toHaveCount(0);
         await expect(observerRailShell).toHaveClass(
             /observer-right-rail-shell-open/,
-        );
-    });
-
-    test('restores focus mode from localStorage after reload', async ({
-        page,
-    }) => {
-        const focusModeButton = page.getByRole('button', { name: /Focus mode/i });
-        const observerRailShell = page.getByTestId('feed-right-rail-shell');
-
-        await focusModeButton.click();
-        await expect(observerRailShell).toHaveClass(
-            /observer-right-rail-shell-collapsed/,
         );
         await expect
             .poll(() =>
@@ -430,14 +369,7 @@ test.describe('Feed page', () => {
                     window.localStorage.getItem('finishit-feed-view-mode'),
                 ),
             )
-            .toBe('focus');
-
-        await page.reload();
-
-        await expect(focusModeButton).toHaveAttribute('aria-pressed', 'true');
-        await expect(observerRailShell).toHaveClass(
-            /observer-right-rail-shell-collapsed/,
-        );
+            .toBeNull();
     });
 
     test('persists desktop observer rail panel visibility after reload', async ({
@@ -453,13 +385,19 @@ test.describe('Feed page', () => {
         );
         await expect(desktopControls).toBeVisible();
 
-        const glowUpsToggle = desktopControls.getByRole('button', {
-            name: /Top GlowUps/i,
+        const showAllButton = desktopControls.getByRole('button', {
+            name: /Show all/i,
         });
-        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'false');
+        const hideAllButton = desktopControls.getByRole('button', {
+            name: /Hide all/i,
+        });
 
-        await glowUpsToggle.click();
-        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'true');
+        await expect(showAllButton).toBeVisible();
+        await expect(hideAllButton).toBeVisible();
+
+        await hideAllButton.click();
+        await expect(showAllButton).toBeEnabled();
+        await expect(hideAllButton).toBeDisabled();
 
         await expect
             .poll(() =>
@@ -467,23 +405,31 @@ test.describe('Feed page', () => {
                     window.localStorage.getItem('finishit-observer-rail-panels'),
                 ),
             )
-            .toContain('"glowUps":true');
+            .toContain('"battles":false');
 
         await page.reload();
 
         const desktopControlsAfterReload = page.getByTestId(
             'observer-rail-desktop-controls',
         );
-        const glowUpsToggleAfterReload = desktopControlsAfterReload.getByRole(
-            'button',
-            {
-                name: /Top GlowUps/i,
-            },
-        );
-        await expect(glowUpsToggleAfterReload).toHaveAttribute(
-            'aria-pressed',
-            'true',
-        );
+        await expect(
+            desktopControlsAfterReload.getByRole('button', {
+                name: /Show all/i,
+            }),
+        ).toBeEnabled();
+        await expect(
+            desktopControlsAfterReload.getByRole('button', {
+                name: /Hide all/i,
+            }),
+        ).toBeDisabled();
+        await expect(
+            page
+                .locator('.observer-right-rail')
+                .getByRole('button', {
+                    name: /Restore defaults/i,
+                })
+                .first(),
+        ).toBeVisible();
     });
 
     test('restores hide-all panel visibility state after reload', async ({
@@ -501,23 +447,12 @@ test.describe('Feed page', () => {
 
         await desktopControls.getByRole('button', { name: /Hide all/i }).click();
 
-        const battlesToggle = desktopControls.getByRole('button', {
-            name: /Trending battles/i,
-        });
-        const activityToggle = desktopControls.getByRole('button', {
-            name: /Live activity stream/i,
-        });
-        const glowUpsToggle = desktopControls.getByRole('button', {
-            name: /Top GlowUps/i,
-        });
-        const studiosToggle = desktopControls.getByRole('button', {
-            name: /Top studios/i,
-        });
-
-        await expect(battlesToggle).toHaveAttribute('aria-pressed', 'false');
-        await expect(activityToggle).toHaveAttribute('aria-pressed', 'false');
-        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'false');
-        await expect(studiosToggle).toHaveAttribute('aria-pressed', 'false');
+        await expect(
+            desktopControls.getByRole('button', { name: /Show all/i }),
+        ).toBeEnabled();
+        await expect(
+            desktopControls.getByRole('button', { name: /Hide all/i }),
+        ).toBeDisabled();
         await expect
             .poll(() =>
                 page.evaluate(() =>
@@ -554,24 +489,14 @@ test.describe('Feed page', () => {
         );
         await expect(
             desktopControlsAfterReload.getByRole('button', {
-                name: /Trending battles/i,
+                name: /Show all/i,
             }),
-        ).toHaveAttribute('aria-pressed', 'false');
+        ).toBeEnabled();
         await expect(
             desktopControlsAfterReload.getByRole('button', {
-                name: /Live activity stream/i,
+                name: /Hide all/i,
             }),
-        ).toHaveAttribute('aria-pressed', 'false');
-        await expect(
-            desktopControlsAfterReload.getByRole('button', {
-                name: /Top GlowUps/i,
-            }),
-        ).toHaveAttribute('aria-pressed', 'false');
-        await expect(
-            desktopControlsAfterReload.getByRole('button', {
-                name: /Top studios/i,
-            }),
-        ).toHaveAttribute('aria-pressed', 'false');
+        ).toBeDisabled();
     });
 
     test('uses flat observer rail panel toggles without close or more gates', async ({
@@ -590,38 +515,46 @@ test.describe('Feed page', () => {
         ).toHaveCount(0);
 
         await expect(
-            desktopControls.getByRole('button', { name: /Trending battles/i }),
+            desktopControls.getByRole('button', {
+                name: /Show all/i,
+            }),
         ).toBeVisible();
+        await expect(
+            desktopControls.getByRole('button', {
+                name: /Hide all/i,
+            }),
+        ).toBeVisible();
+        await expect(
+            desktopControls.getByRole('button', { name: /Trending battles/i }),
+        ).toHaveCount(0);
         await expect(
             desktopControls.getByRole('button', { name: /Live activity stream/i }),
-        ).toBeVisible();
+        ).toHaveCount(0);
         await expect(
             desktopControls.getByRole('button', { name: /Top GlowUps/i }),
-        ).toBeVisible();
+        ).toHaveCount(0);
         await expect(
             desktopControls.getByRole('button', { name: /Top studios/i }),
-        ).toBeVisible();
+        ).toHaveCount(0);
     });
 
-    test('toggles glowups and studios panels independently', async ({ page }) => {
+    test('shows all rail widgets when pressing show all', async ({ page }) => {
         const desktopControls = page.getByTestId(
             'observer-rail-desktop-controls',
         );
         await expect(desktopControls).toBeVisible();
 
-        const glowUpsToggle = desktopControls.getByRole('button', {
-            name: /Top GlowUps/i,
+        const showAllButton = desktopControls.getByRole('button', {
+            name: /Show all/i,
         });
-        const studiosToggle = desktopControls.getByRole('button', {
-            name: /Top studios/i,
+        const hideAllButton = desktopControls.getByRole('button', {
+            name: /Hide all/i,
         });
 
-        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'false');
-        await expect(studiosToggle).toHaveAttribute('aria-pressed', 'false');
+        await hideAllButton.click();
+        await expect(showAllButton).toBeEnabled();
+        await showAllButton.click();
 
-        await glowUpsToggle.click();
-        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'true');
-        await expect(studiosToggle).toHaveAttribute('aria-pressed', 'false');
         await expect(
             page
                 .locator('.observer-right-rail')
@@ -631,24 +564,9 @@ test.describe('Feed page', () => {
             page
                 .locator('.observer-right-rail')
                 .getByRole('heading', { name: /Top studios/i }),
-        ).toHaveCount(0);
-
-        await studiosToggle.click();
-        await expect(studiosToggle).toHaveAttribute('aria-pressed', 'true');
-        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'true');
-        await expect(
-            page
-                .locator('.observer-right-rail')
-                .getByRole('heading', { name: /Top studios/i }),
         ).toBeVisible();
-
-        await glowUpsToggle.click();
-        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'false');
-        await expect(
-            page
-                .locator('.observer-right-rail')
-                .getByRole('heading', { name: /Top GlowUps/i }),
-        ).toHaveCount(0);
+        await expect(showAllButton).toBeDisabled();
+        await expect(hideAllButton).toBeEnabled();
     });
 
     test('supports keyboard toggling for desktop observer panel controls', async ({
@@ -665,39 +583,25 @@ test.describe('Feed page', () => {
         const showAllButton = desktopControls.getByRole('button', {
             name: /Show all/i,
         });
-        const glowUpsToggle = desktopControls.getByRole('button', {
-            name: /Top GlowUps/i,
-        });
-        const battlesToggle = desktopControls.getByRole('button', {
-            name: /Trending battles/i,
-        });
-        const activityToggle = desktopControls.getByRole('button', {
-            name: /Live activity stream/i,
-        });
-        const studiosToggle = desktopControls.getByRole('button', {
-            name: /Top studios/i,
-        });
+        const visiblePanelsBadge = page
+            .locator('.observer-right-rail')
+            .locator('span')
+            .filter({ hasText: /Panels/i })
+            .first();
 
         await hideAllButton.focus();
         await expect(hideAllButton).toBeFocused();
         await page.keyboard.press('Enter');
-        await expect(battlesToggle).toHaveAttribute('aria-pressed', 'false');
-        await expect(activityToggle).toHaveAttribute('aria-pressed', 'false');
-        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'false');
-        await expect(studiosToggle).toHaveAttribute('aria-pressed', 'false');
+        await expect(visiblePanelsBadge).toContainText(/0\s*\/\s*4/i);
+        await expect(showAllButton).toBeEnabled();
+        await expect(hideAllButton).toBeDisabled();
 
         await showAllButton.focus();
         await expect(showAllButton).toBeFocused();
         await page.keyboard.press('Space');
-        await expect(battlesToggle).toHaveAttribute('aria-pressed', 'true');
-        await expect(activityToggle).toHaveAttribute('aria-pressed', 'true');
-        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'true');
-        await expect(studiosToggle).toHaveAttribute('aria-pressed', 'true');
-
-        await glowUpsToggle.focus();
-        await expect(glowUpsToggle).toBeFocused();
-        await page.keyboard.press('Space');
-        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'false');
+        await expect(visiblePanelsBadge).toContainText(/4\s*\/\s*4/i);
+        await expect(showAllButton).toBeDisabled();
+        await expect(hideAllButton).toBeEnabled();
     });
 
     test('updates visible panels counter and restores defaults after hide all', async ({
@@ -716,17 +620,8 @@ test.describe('Feed page', () => {
         const hideAllButton = desktopControls.getByRole('button', {
             name: /Hide all/i,
         });
-        const battlesToggle = desktopControls.getByRole('button', {
-            name: /Trending battles/i,
-        });
-        const activityToggle = desktopControls.getByRole('button', {
-            name: /Live activity stream/i,
-        });
-        const glowUpsToggle = desktopControls.getByRole('button', {
-            name: /Top GlowUps/i,
-        });
-        const studiosToggle = desktopControls.getByRole('button', {
-            name: /Top studios/i,
+        const showAllButton = desktopControls.getByRole('button', {
+            name: /Show all/i,
         });
 
         await expect(visiblePanelsBadge).toContainText(/2\s*\/\s*4/i);
@@ -734,21 +629,19 @@ test.describe('Feed page', () => {
         await hideAllButton.click();
 
         await expect(visiblePanelsBadge).toContainText(/0\s*\/\s*4/i);
-        await expect(battlesToggle).toHaveAttribute('aria-pressed', 'false');
-        await expect(activityToggle).toHaveAttribute('aria-pressed', 'false');
-        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'false');
-        await expect(studiosToggle).toHaveAttribute('aria-pressed', 'false');
+        await expect(showAllButton).toBeEnabled();
+        await expect(hideAllButton).toBeDisabled();
 
         await rightRail
-            .getByRole('button', { name: /Restore defaults/i })
+            .getByRole('button', {
+                name: /Restore defaults/i,
+            })
             .first()
             .click();
 
         await expect(visiblePanelsBadge).toContainText(/2\s*\/\s*4/i);
-        await expect(battlesToggle).toHaveAttribute('aria-pressed', 'true');
-        await expect(activityToggle).toHaveAttribute('aria-pressed', 'true');
-        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'false');
-        await expect(studiosToggle).toHaveAttribute('aria-pressed', 'false');
+        await expect(showAllButton).toBeEnabled();
+        await expect(hideAllButton).toBeEnabled();
     });
 
     test('respects reduced motion preference for live indicators', async ({
@@ -797,10 +690,9 @@ test.describe('Feed page', () => {
             .toBeLessThan(20);
     });
 
-    test('applies observer offset class to back-to-top button only in observer mode', async ({
+    test('applies observer offset class to back-to-top button in observer layout', async ({
         page,
     }) => {
-        const focusModeButton = page.getByRole('button', { name: /Focus mode/i });
         await page.evaluate(() => {
             document.body.style.minHeight = '3000px';
             window.scrollTo({ top: 720 });
@@ -812,86 +704,18 @@ test.describe('Feed page', () => {
         });
         await expect(backToTopButton).toBeVisible();
         await expect(backToTopButton).toHaveClass(/lg:right-\[22rem\]/);
-
-        await focusModeButton.click();
-        await page.evaluate(() => {
-            window.scrollTo({ top: 720 });
-            window.dispatchEvent(new Event('scroll'));
-        });
-
-        const backToTopButtonInFocus = page.getByRole('button', {
-            name: /Back to top/i,
-        });
-        await expect(backToTopButtonInFocus).toBeVisible();
-        await expect(backToTopButtonInFocus).not.toHaveClass(
-            /lg:right-\[22rem\]/,
-        );
     });
 
-    test('shows view-mode hint only once after dismiss', async ({ page }) => {
-        await page.evaluate(() =>
-            window.localStorage.removeItem('finishit-feed-view-hint-seen'),
-        );
-        await page.reload();
-
-        const hintTitle = page.getByText(
-            /Choose your feed mode|Выберите режим ленты/i,
-        );
-        const dismissButton = page.getByRole('button', {
-            name: /Got it|Понятно/i,
-        });
-
-        await expect(hintTitle).toBeVisible();
-        await dismissButton.click();
-        await expect(hintTitle).toHaveCount(0);
-
-        await expect
-            .poll(
-                async () =>
-                    await page.evaluate(() =>
-                        window.localStorage.getItem(
-                            'finishit-feed-view-hint-seen',
-                        ),
-                    ),
-            )
-            .toBe('1');
-
-        await page.reload();
+    test('does not render legacy focus hint and settings menu', async ({
+        page,
+    }) => {
         await expect(
-            page.getByText(/Choose your feed mode|Выберите режим ленты/i),
+            page.getByText(
+                /Choose your feed mode|Got it/i,
+            ),
         ).toHaveCount(0);
+        await expect(page.locator('.settings-menu')).toHaveCount(0);
     });
-
-    test('switches language from desktop settings menu', async ({ page }) => {
-        await page.evaluate(() =>
-            window.localStorage.removeItem('finishit-language'),
-        );
-        await page.reload();
-
-        const settingsSummary = page.locator('.settings-menu summary');
-        await settingsSummary.click();
-
-        const ruButton = page
-            .locator('.settings-menu')
-            .getByRole('button', { name: /Switch language to RU/i });
-        await expect(ruButton).toBeVisible();
-        await ruButton.click();
-
-        await expect
-            .poll(
-                async () =>
-                    await page.evaluate(() =>
-                        window.localStorage.getItem('finishit-language'),
-                    ),
-            )
-            .toBe('ru');
-        await expect
-            .poll(
-                async () => await page.evaluate(() => document.documentElement.lang),
-            )
-            .toBe('ru');
-    });
-
     test('shows observer rail panel controls on mobile viewport', async ({
         page,
     }) => {
@@ -903,12 +727,24 @@ test.describe('Feed page', () => {
         await expect(rightRailShell).toBeVisible();
         await expect(mobileControls).toBeVisible();
 
-        const studiosToggle = mobileControls.getByRole('button', {
-            name: /Top studios/i,
+        const showAllButton = mobileControls.getByRole('button', {
+            name: /Show all/i,
         });
-        await expect(studiosToggle).toHaveAttribute('aria-pressed', 'false');
-        await studiosToggle.click();
-        await expect(studiosToggle).toHaveAttribute('aria-pressed', 'true');
+        const hideAllButton = mobileControls.getByRole('button', {
+            name: /Hide all/i,
+        });
+        await expect(showAllButton).toBeVisible();
+        await expect(hideAllButton).toBeVisible();
+
+        await hideAllButton.click();
+        await expect(showAllButton).toBeEnabled();
+        await expect(hideAllButton).toBeDisabled();
+        await expect(
+            page
+                .locator('.observer-right-rail')
+                .getByText(/No rail widgets selected/i)
+                .first(),
+        ).toBeVisible();
 
         await expect
             .poll(() =>
@@ -916,90 +752,55 @@ test.describe('Feed page', () => {
                     window.localStorage.getItem('finishit-observer-rail-panels'),
                 ),
             )
-            .toContain('"studios":true');
+            .toContain('"studios":false');
     });
 
-    test('toggles observer and focus modes on mobile viewport', async ({
+    test('keeps right rail visible on mobile observer layout', async ({
         page,
     }) => {
         await page.setViewportSize({ width: 390, height: 844 });
         await page.goto('/feed');
 
-        const observerModeButton = page.getByRole('button', {
-            name: /Observer mode/i,
-        });
-        const focusModeButton = page.getByRole('button', {
-            name: /Focus mode/i,
-        });
+        const observerModeChip = page
+            .locator('.observer-feed-header')
+            .getByText(/Observer mode/i)
+            .first();
         const rightRailShell = page.getByTestId('feed-right-rail-shell');
 
-        await expect(observerModeButton).toHaveAttribute('aria-pressed', 'true');
+        await expect(observerModeChip).toBeVisible();
         await expect(rightRailShell).toHaveClass(
             /observer-right-rail-shell-open/,
         );
         await expect(rightRailShell).toBeVisible();
-
-        await focusModeButton.click();
-        await expect(focusModeButton).toHaveAttribute('aria-pressed', 'true');
-        await expect(rightRailShell).toHaveClass(
-            /observer-right-rail-shell-collapsed/,
-        );
-        await expect(rightRailShell).toBeHidden();
-        await expect
-            .poll(
-                async () =>
-                    await page.evaluate(() =>
-                        window.localStorage.getItem('finishit-feed-view-mode'),
-                    ),
-            )
-            .toBe('focus');
-
-        await observerModeButton.click();
-        await expect(observerModeButton).toHaveAttribute('aria-pressed', 'true');
-        await expect(rightRailShell).toHaveClass(
-            /observer-right-rail-shell-open/,
-        );
-        await expect(rightRailShell).toBeVisible();
-        await expect
-            .poll(
-                async () =>
-                    await page.evaluate(() =>
-                        window.localStorage.getItem('finishit-feed-view-mode'),
-                    ),
-            )
-            .toBe('observer');
+        await expect(
+            page.getByRole('button', { name: /Focus mode/i }),
+        ).toHaveCount(0);
     });
 
-    test('shows language switcher inside feed mobile menu', async ({ page }) => {
+    test('opens and closes feed mobile menu without inline language switcher', async ({
+        page,
+    }) => {
         await page.setViewportSize({ width: 390, height: 844 });
         await page.goto('/feed');
 
         await page
             .locator('.observer-feed-header')
-            .getByRole('button', { name: /^Menu$/i })
+            .getByRole('button', { name: /Menu/i })
             .click();
         const mobileDialog = page.getByRole('dialog', {
             name: /Observer navigation/i,
         });
         await expect(mobileDialog).toBeVisible();
+        await expect(
+            mobileDialog.getByRole('button', {
+                name: /Switch language/i,
+            }),
+        ).toHaveCount(0);
 
-        const ruButton = mobileDialog.getByRole('button', {
-            name: /Switch language to RU/i,
-        });
-        await ruButton.click();
-        await expect
-            .poll(
-                async () =>
-                    await page.evaluate(() =>
-                        window.localStorage.getItem('finishit-language'),
-                    ),
-            )
-            .toBe('ru');
-        await expect
-            .poll(
-                async () => await page.evaluate(() => document.documentElement.lang),
-            )
-            .toBe('ru');
+        await mobileDialog
+            .getByRole('button', { name: /Close/i })
+            .click();
+        await expect(mobileDialog).toHaveCount(0);
     });
 
     test('clears query via empty-state reset filters action', async ({ page }) => {
@@ -1032,3 +833,4 @@ test.describe('Feed page', () => {
             .toBeNull();
     });
 });
+
