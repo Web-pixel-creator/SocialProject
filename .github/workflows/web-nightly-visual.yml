@@ -1,0 +1,50 @@
+name: Web Nightly Visual
+
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: web-nightly-visual-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  visual_smoke:
+    name: Playwright Visual Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run visual smoke capture
+        run: npm --workspace apps/web run test:e2e -- e2e/visual-smoke.spec.ts
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-nightly-visual-playwright-report
+          path: apps/web/playwright-report
+          if-no-files-found: ignore
+
+      - name: Upload visual screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-nightly-visual-screenshots
+          path: apps/web/test-results
+          if-no-files-found: ignore
