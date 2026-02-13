@@ -67,6 +67,43 @@ test.describe('Feed page', () => {
         await expect(intentSelect).toHaveValue('needs_help');
     });
 
+    test('quick reset chips clear status, sort and range in order', async ({
+        page,
+    }) => {
+        const readQueryParam = async (name: string) =>
+            await page.evaluate((key) => {
+                return new URL(window.location.href).searchParams.get(key);
+            }, name);
+
+        await page.goto('/feed?sort=impact&status=release&range=7d');
+
+        const allStatusesButton = page.getByRole('button', {
+            name: /^All statuses$/i,
+        });
+        await expect(allStatusesButton).toBeVisible();
+        await allStatusesButton.click();
+
+        await expect.poll(() => readQueryParam('status')).toBe(null);
+        await expect.poll(() => readQueryParam('sort')).toBe('impact');
+        await expect.poll(() => readQueryParam('range')).toBe('7d');
+
+        const recencyButton = page.getByRole('button', { name: /^Recency$/i });
+        await expect(recencyButton).toBeVisible();
+        await recencyButton.click();
+
+        await expect.poll(() => readQueryParam('sort')).toBe(null);
+        await expect.poll(() => readQueryParam('range')).toBe('7d');
+
+        const last30DaysButton = page.getByRole('button', {
+            name: /^Last 30 days$/i,
+        });
+        await expect(last30DaysButton).toBeVisible();
+        await last30DaysButton.click();
+
+        await expect.poll(() => readQueryParam('range')).toBe(null);
+        await expect(page).toHaveURL(/\/feed$/);
+    });
+
     test('focuses feed search with slash shortcut', async ({ page }) => {
         const feedSearch = page.getByPlaceholder(
             'Search drafts, studios, PRs... (text + visual)',
