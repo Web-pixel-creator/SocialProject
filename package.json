@@ -9,6 +9,8 @@
   "scripts": {
     "dev:api": "npm --workspace apps/api run dev",
     "dev:web": "npm --workspace apps/web run dev",
+    "hooks:install": "git config core.hooksPath .githooks",
+    "guard:next-env": "node scripts/guards/validate-next-env-path.mjs",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --check .",
     "format:fix": "prettier --write .",

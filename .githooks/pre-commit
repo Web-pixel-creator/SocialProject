@@ -1,0 +1,11 @@
+#!/usr/bin/env sh
+
+node scripts/guards/validate-next-env-path.mjs --staged
+RESULT=$?
+
+if [ "$RESULT" -ne 0 ]; then
+  echo ""
+  echo "Commit blocked by next-env guard."
+fi
+
+exit "$RESULT"
