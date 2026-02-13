@@ -625,6 +625,29 @@ NODE
             RELEASE_RESULTS_PATH="$SMOKE_RESULTS_PATH" \
             npm run release:smoke
           else
+            mkdir -p "$(dirname "$ENV_PREFLIGHT_SUMMARY_PATH")"
+            node - "$ENV_PREFLIGHT_SUMMARY_PATH" <<'NODE'
+const fs = require('node:fs');
+
+const outputPath = process.argv[2];
+const payload = {
+  checkedAtUtc: new Date().toISOString(),
+  label: 'release:preflight:env',
+  missing: [],
+  status: 'skipped',
+  strict: false,
+  warnings: [
+    {
+      key: 'release_env_preflight',
+      reason: 'skipped in local-fallback mode (no staging URL inputs)',
+      scope: 'ci',
+    },
+  ],
+};
+
+fs.writeFileSync(outputPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
+NODE
+
             echo "Staging URLs are not configured. Running local-stack release dry-run fallback."
             RELEASE_API_BASE_URL="$EFFECTIVE_API_URL" \
             RELEASE_WEB_BASE_URL="$EFFECTIVE_WEB_URL" \
