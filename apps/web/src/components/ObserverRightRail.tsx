@@ -320,11 +320,27 @@ export const ObserverRightRail = () => {
   const panelToggles = useMemo(
     () =>
       [
-        { key: 'battles', label: t('rail.trendingBattles') },
-        { key: 'activity', label: t('rail.liveActivityStream') },
-        { key: 'glowUps', label: t('rail.topGlowUps24h') },
-        { key: 'studios', label: t('rail.topStudios') },
-      ] as Array<{ key: RailPanelKey; label: string }>,
+        {
+          key: 'battles',
+          label: t('rail.trendingBattles'),
+          mobileLabel: t('rail.short.battles'),
+        },
+        {
+          key: 'activity',
+          label: t('rail.liveActivityStream'),
+          mobileLabel: t('rail.short.activity'),
+        },
+        {
+          key: 'glowUps',
+          label: t('rail.topGlowUps24h'),
+          mobileLabel: t('rail.short.glowUps'),
+        },
+        {
+          key: 'studios',
+          label: t('rail.topStudios'),
+          mobileLabel: t('rail.short.studios'),
+        },
+      ] as Array<{ key: RailPanelKey; label: string; mobileLabel: string }>,
     [t],
   );
   const visiblePanelCount = useMemo(
@@ -629,6 +645,7 @@ export const ObserverRightRail = () => {
           <div className="flex flex-wrap gap-1">
             {panelToggles.map((panel) => (
               <button
+                aria-label={panel.label}
                 aria-pressed={panelVisibility[panel.key]}
                 className={`rounded-full border px-2 py-1 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                   panelVisibility[panel.key]
@@ -637,9 +654,10 @@ export const ObserverRightRail = () => {
                 }`}
                 key={`mobile-toggle-${panel.key}`}
                 onClick={() => togglePanel(panel.key)}
+                title={panel.label}
                 type="button"
               >
-                {panel.label}
+                {panel.mobileLabel}
               </button>
             ))}
           </div>

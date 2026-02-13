@@ -1296,9 +1296,7 @@ describe('feed UI', () => {
 
     const endIndicator = screen.getByTestId('feed-end-indicator');
     expect(endIndicator).toBeInTheDocument();
-    expect(endIndicator).toHaveTextContent(
-      /Results(?: shown)?:\s*1\s*\/\s*1/i,
-    );
+    expect(endIndicator).toHaveTextContent(/Results(?: shown)?:\s*1\s*\/\s*1/i);
   });
 
   test('syncs filters to URL query', async () => {
