@@ -1387,6 +1387,29 @@ describe('feed UI', () => {
     );
   });
 
+  test('shows quick all-intents action in status row when intent filter is active', async () => {
+    searchParams = new URLSearchParams('tab=All&sort=impact&intent=needs_help');
+    await renderFeedTabs();
+
+    const allIntentsButton = await screen.findByRole('button', {
+      name: /^All intents$/i,
+    });
+
+    (apiClient.post as jest.Mock).mockClear();
+    await clickAndFlush(allIntentsButton);
+
+    const lastCall = replaceMock.mock.calls.at(-1)?.[0] as string;
+    expect(lastCall).toContain('/feed?sort=impact');
+    expect(lastCall).not.toContain('intent=');
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/telemetry/ux',
+      expect.objectContaining({
+        eventType: 'feed_filter_change',
+        intent: 'all',
+      }),
+    );
+  });
+
   test('includes all-feed intent parameter for non-default intent', async () => {
     searchParams = new URLSearchParams('tab=All&intent=needs_help');
     await renderFeedTabs();

@@ -1449,6 +1449,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
 
   const hasFilterPanel = active === 'All' || active === 'Battles';
   const hasBattleFilterApplied = active === 'Battles' && battleFilter !== 'all';
+  const hasIntentFilterApplied = active === 'All' && intent !== DEFAULT_INTENT;
   const activeFilterCount = activeFilterPills.length;
   const hasActiveFilters = activeFilterCount > 0;
   const hasMobileOverlayOpen =
@@ -1706,6 +1707,15 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                 type="button"
               >
                 {t('feedTabs.emptyAction.openAllBattles')}
+              </button>
+            ) : null}
+            {hasIntentFilterApplied ? (
+              <button
+                className="rounded-full border border-border bg-background/70 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                onClick={() => handleIntentChange(DEFAULT_INTENT)}
+                type="button"
+              >
+                {t('search.filters.allIntents')}
               </button>
             ) : null}
             {hasActiveFilters ? (
