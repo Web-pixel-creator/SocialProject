@@ -20,6 +20,9 @@ interface Commission {
   paymentStatus: string;
 }
 
+const focusRingClass =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
+
 const fetchCommissions = async (
   statusFilter: string,
 ): Promise<Commission[]> => {
@@ -151,7 +154,7 @@ export default function CommissionsPage() {
             </p>
           </div>
           <button
-            className="rounded-full border border-border bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60"
+            className={`rounded-full border border-border bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60 ${focusRingClass}`}
             onClick={loadCommissions}
             type="button"
           >
@@ -209,7 +212,7 @@ export default function CommissionsPage() {
               {t('auth.signInSubtitle')}
             </p>
             <Link
-              className="w-fit rounded-full border border-border bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60"
+              className={`w-fit rounded-full border border-border bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60 ${focusRingClass}`}
               href="/login"
             >
               {t('header.signIn')}
@@ -219,13 +222,13 @@ export default function CommissionsPage() {
 
         <section className="card grid gap-3 p-4 sm:grid-cols-3">
           <input
-            className="rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70"
+            className={`rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70 ${focusRingClass}`}
             onChange={(event) => setSearch(event.target.value)}
             placeholder={t('search.placeholders.keyword')}
             value={search}
           />
           <select
-            className="rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
+            className={`rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm ${focusRingClass}`}
             onChange={(event) => setStatusFilter(event.target.value)}
             value={statusFilter}
           >
@@ -237,7 +240,7 @@ export default function CommissionsPage() {
             ))}
           </select>
           <select
-            className="rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm"
+            className={`rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm ${focusRingClass}`}
             onChange={(event) => setPaymentFilter(event.target.value)}
             value={paymentFilter}
           >
@@ -267,7 +270,7 @@ export default function CommissionsPage() {
               </span>
             ) : null}
             <button
-              className="rounded-full border border-border bg-background/70 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:border-primary/40 hover:text-primary"
+              className={`rounded-full border border-border bg-background/70 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:border-primary/40 hover:text-primary ${focusRingClass}`}
               onClick={resetFilters}
               type="button"
             >
@@ -290,7 +293,7 @@ export default function CommissionsPage() {
           <section className="grid gap-4 md:grid-cols-2">
             {filteredCommissions.map((commission) => (
               <Link
-                className="card p-4"
+                className={`card p-4 ${focusRingClass}`}
                 href={`/commissions/${commission.id}`}
                 key={commission.id}
               >
@@ -320,7 +323,7 @@ export default function CommissionsPage() {
                 </p>
                 {hasActiveFilters ? (
                   <button
-                    className="w-fit rounded-full border border-border bg-background/70 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:border-primary/40 hover:text-primary"
+                    className={`w-fit rounded-full border border-border bg-background/70 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:border-primary/40 hover:text-primary ${focusRingClass}`}
                     onClick={resetFilters}
                     type="button"
                   >

@@ -21,6 +21,9 @@ const ACTION_LIMITS = {
   fix_request: 5,
 };
 
+const focusRingClass =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
+
 interface StudioProfilePayload {
   avatar_url?: string | null;
   avatarUrl?: string | null;
@@ -218,7 +221,7 @@ export default function StudioOnboardingPage() {
           <label className="grid gap-2 font-medium text-foreground text-sm">
             {t('studioOnboarding.fields.agentId')}
             <input
-              className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
+              className={`rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70 ${focusRingClass}`}
               onChange={(event) => setAgentId(event.target.value)}
               placeholder={t('studioOnboarding.fields.agentIdPlaceholder')}
               value={agentId}
@@ -227,7 +230,7 @@ export default function StudioOnboardingPage() {
           <label className="grid gap-2 font-medium text-foreground text-sm">
             {t('studioOnboarding.fields.agentApiKey')}
             <input
-              className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
+              className={`rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70 ${focusRingClass}`}
               onChange={(event) => setApiKey(event.target.value)}
               placeholder={t('studioOnboarding.fields.agentApiKey')}
               type="password"
@@ -235,7 +238,7 @@ export default function StudioOnboardingPage() {
             />
           </label>
           <button
-            className="rounded-full bg-primary px-5 py-2 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90"
+            className={`rounded-full bg-primary px-5 py-2 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90 ${focusRingClass}`}
             disabled={loading}
             onClick={connectAgent}
             type="button"
@@ -256,7 +259,7 @@ export default function StudioOnboardingPage() {
             <label className="grid gap-2 font-medium text-foreground text-sm">
               {t('studioOnboarding.fields.studioName')}
               <input
-                className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
+                className={`rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70 ${focusRingClass}`}
                 onChange={(event) => setStudioName(event.target.value)}
                 placeholder={t('studioOnboarding.fields.studioNamePlaceholder')}
                 value={studioName}
@@ -265,7 +268,7 @@ export default function StudioOnboardingPage() {
             <label className="grid gap-2 font-medium text-foreground text-sm">
               {t('studioOnboarding.fields.avatarUrl')}
               <input
-                className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
+                className={`rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70 ${focusRingClass}`}
                 onChange={(event) => setAvatarUrl(event.target.value)}
                 placeholder={t('studioOnboarding.fields.avatarUrlPlaceholder')}
                 value={avatarUrl}
@@ -274,7 +277,7 @@ export default function StudioOnboardingPage() {
             <label className="grid gap-2 font-medium text-foreground text-sm">
               {t('studioOnboarding.fields.styleTags')}
               <input
-                className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
+                className={`rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70 ${focusRingClass}`}
                 onChange={(event) => setTagInput(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') {
@@ -289,7 +292,7 @@ export default function StudioOnboardingPage() {
             <div className="flex flex-wrap gap-2">
               {styleTags.map((tag) => (
                 <button
-                  className="rounded-full border border-border bg-background/70 px-3 py-1 text-foreground text-xs transition hover:bg-muted/60"
+                  className={`rounded-full border border-border bg-background/70 px-3 py-1 text-foreground text-xs transition hover:bg-muted/60 ${focusRingClass}`}
                   key={tag}
                   onClick={() => removeTag(tag)}
                   type="button"
@@ -301,7 +304,7 @@ export default function StudioOnboardingPage() {
             <label className="grid gap-2 font-medium text-foreground text-sm">
               {t('studioOnboarding.fields.personalityOptional')}
               <textarea
-                className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
+                className={`rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70 ${focusRingClass}`}
                 onChange={(event) => setPersonality(event.target.value)}
                 placeholder={t(
                   'studioOnboarding.fields.personalityPlaceholder',
@@ -312,7 +315,7 @@ export default function StudioOnboardingPage() {
             </label>
             <div className="flex flex-wrap gap-3">
               <button
-                className="rounded-full bg-primary px-5 py-2 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90"
+                className={`rounded-full bg-primary px-5 py-2 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90 ${focusRingClass}`}
                 disabled={loading}
                 onClick={saveProfile}
                 type="button"
@@ -322,7 +325,7 @@ export default function StudioOnboardingPage() {
                   : t('studioOnboarding.actions.saveProfile')}
               </button>
               <button
-                className="rounded-full border border-border bg-background/70 px-5 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60"
+                className={`rounded-full border border-border bg-background/70 px-5 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60 ${focusRingClass}`}
                 onClick={() => setStep(3)}
                 type="button"
               >
@@ -397,7 +400,7 @@ export default function StudioOnboardingPage() {
             ))}
           </ul>
           <button
-            className="rounded-full border border-border bg-background/70 px-5 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60"
+            className={`rounded-full border border-border bg-background/70 px-5 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60 ${focusRingClass}`}
             onClick={() => setStep(1)}
             type="button"
           >
