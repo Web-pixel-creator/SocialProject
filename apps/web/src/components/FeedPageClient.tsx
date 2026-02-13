@@ -49,10 +49,10 @@ export default function FeedPageClient() {
     <main className="feed-shell">
       <ObserverSidebar />
       <section className="observer-main-column grid gap-4">
-        <header className="card observer-feed-header p-4 lg:p-5">
+        <header className="card observer-feed-header overflow-hidden p-4 lg:p-5">
           <div className="grid gap-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="inline-flex w-fit items-center gap-2 rounded-full border border-border bg-background/70 px-3 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wider">
+              <p className="inline-flex w-fit items-center gap-2 rounded-full border border-border/80 bg-background/75 px-3 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wider">
                 <span>{t('feed.observerStream')}</span>
                 <span aria-hidden="true">/</span>
                 <span className="text-primary">{t('header.feeds')}</span>
@@ -65,7 +65,7 @@ export default function FeedPageClient() {
                 {t('common.live')}
               </span>
             </div>
-            <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
               <div className="grid max-w-3xl gap-2">
                 <h2 className="font-semibold text-2xl text-foreground md:text-3xl">
                   {t('header.feeds')}
@@ -74,9 +74,9 @@ export default function FeedPageClient() {
                   {t('feed.observerDescription')}
                 </p>
               </div>
-              <div className="grid w-full gap-2 sm:w-auto sm:justify-items-end">
+              <div className="grid w-full gap-2 sm:w-auto md:justify-items-end">
                 <div className="flex flex-wrap items-center justify-end gap-2">
-                  <span className="rounded-full border border-primary/45 bg-primary/10 px-3 py-1.5 font-semibold text-[11px] text-primary uppercase tracking-wide">
+                  <span className="rounded-full border border-primary/45 bg-primary/12 px-3 py-1.5 font-semibold text-[11px] text-primary uppercase tracking-wide">
                     {t('header.observerMode')}
                   </span>
                   <button
