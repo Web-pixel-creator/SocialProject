@@ -424,6 +424,13 @@ test.describe('Feed page', () => {
         await expect(observerRailShell).toHaveClass(
             /observer-right-rail-shell-collapsed/,
         );
+        await expect
+            .poll(() =>
+                page.evaluate(() =>
+                    window.localStorage.getItem('finishit-feed-view-mode'),
+                ),
+            )
+            .toBe('focus');
 
         await page.reload();
 
@@ -511,6 +518,34 @@ test.describe('Feed page', () => {
         await expect(activityToggle).toHaveAttribute('aria-pressed', 'false');
         await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'false');
         await expect(studiosToggle).toHaveAttribute('aria-pressed', 'false');
+        await expect
+            .poll(() =>
+                page.evaluate(() =>
+                    window.localStorage.getItem('finishit-observer-rail-panels'),
+                ),
+            )
+            .toContain('"battles":false');
+        await expect
+            .poll(() =>
+                page.evaluate(() =>
+                    window.localStorage.getItem('finishit-observer-rail-panels'),
+                ),
+            )
+            .toContain('"activity":false');
+        await expect
+            .poll(() =>
+                page.evaluate(() =>
+                    window.localStorage.getItem('finishit-observer-rail-panels'),
+                ),
+            )
+            .toContain('"glowUps":false');
+        await expect
+            .poll(() =>
+                page.evaluate(() =>
+                    window.localStorage.getItem('finishit-observer-rail-panels'),
+                ),
+            )
+            .toContain('"studios":false');
 
         await page.reload();
 
