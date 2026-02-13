@@ -49,15 +49,15 @@ export default function FeedPageClient() {
     <main className="feed-shell">
       <ObserverSidebar />
       <section className="observer-main-column grid gap-4">
-        <header className="card observer-feed-header overflow-hidden p-4 lg:p-5">
-          <div className="grid gap-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+        <header className="card observer-feed-header overflow-hidden p-3 sm:p-4 lg:p-5">
+          <div className="grid gap-3 sm:gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
               <p className="inline-flex w-fit items-center gap-2 rounded-full border border-border/80 bg-background/75 px-3 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wider">
                 <span>{t('feed.observerStream')}</span>
                 <span aria-hidden="true">/</span>
                 <span className="text-primary">{t('header.feeds')}</span>
               </p>
-              <span className="tag-live inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] uppercase tracking-wide">
+              <span className="tag-live inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-wide sm:px-3">
                 <span
                   aria-hidden="true"
                   className="icon-breathe live-dot inline-flex h-2.5 w-2.5 rounded-full motion-reduce:animate-none"
@@ -65,9 +65,9 @@ export default function FeedPageClient() {
                 {t('common.live')}
               </span>
             </div>
-            <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
+            <div className="grid gap-3 sm:gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
               <div className="grid max-w-3xl gap-2">
-                <h2 className="font-semibold text-2xl text-foreground md:text-3xl">
+                <h2 className="font-semibold text-[28px] text-foreground leading-tight md:text-3xl">
                   {t('header.feeds')}
                 </h2>
                 <p className="text-muted-foreground text-sm md:text-base">
@@ -80,7 +80,7 @@ export default function FeedPageClient() {
                     {t('header.observerMode')}
                   </span>
                   <button
-                    className="inline-flex items-center rounded-full border border-border bg-muted px-3 py-2 font-semibold text-foreground text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:hidden"
+                    className="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-1.5 font-semibold text-foreground text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:hidden"
                     onClick={openMobileSidebar}
                     type="button"
                   >
