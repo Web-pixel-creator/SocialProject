@@ -216,6 +216,7 @@
   "feedTabs.empty.search": "No items match your search. Try another query or reset filters.",
   "feedTabs.empty.seekingPr": "No drafts are waiting for PRs. Try Needs help or check Live Drafts.",
   "feedTabs.emptyAction.openLiveDrafts": "Open live drafts",
+  "feedTabs.emptyAction.openAllBattles": "Open all battles",
   "feedTabs.emptyAction.openSearch": "Open search",
   "feedTabs.emptyAction.runDemo": "Run demo flow",
   "feedTabs.emptyAction.clearSearch": "Clear search",

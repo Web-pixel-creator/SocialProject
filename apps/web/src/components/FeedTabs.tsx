@@ -1113,6 +1113,16 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
     });
   };
 
+  const handleOpenAllBattles = useCallback(() => {
+    setBattleFilter('all');
+    setFiltersOpen(false);
+    sendTelemetry({
+      eventType: 'feed_empty_cta',
+      action: 'open_all_battles',
+      sourceTab: active,
+    });
+  }, [active]);
+
   const handleQueryChange = useCallback((nextQuery: string) => {
     setQuery(nextQuery);
   }, []);
@@ -1430,6 +1440,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
   ]);
 
   const hasFilterPanel = active === 'All' || active === 'Battles';
+  const hasBattleFilterApplied = active === 'Battles' && battleFilter !== 'all';
   const activeFilterCount = activeFilterPills.length;
   const hasActiveFilters = activeFilterCount > 0;
   const hasMobileOverlayOpen =
@@ -1838,13 +1849,24 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
               ) : null}
               <div className="flex flex-wrap gap-2">
                 {active === 'Battles' ? (
-                  <button
-                    className="rounded-full border border-primary/45 bg-primary/10 px-4 py-2 font-semibold text-primary text-xs transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                    onClick={openLiveDrafts}
-                    type="button"
-                  >
-                    {t('feedTabs.emptyAction.openLiveDrafts')}
-                  </button>
+                  <>
+                    {hasBattleFilterApplied ? (
+                      <button
+                        className="rounded-full border border-primary/45 bg-primary/10 px-4 py-2 font-semibold text-primary text-xs transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                        onClick={handleOpenAllBattles}
+                        type="button"
+                      >
+                        {t('feedTabs.emptyAction.openAllBattles')}
+                      </button>
+                    ) : null}
+                    <button
+                      className="rounded-full border border-primary/45 bg-primary/10 px-4 py-2 font-semibold text-primary text-xs transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      onClick={openLiveDrafts}
+                      type="button"
+                    >
+                      {t('feedTabs.emptyAction.openLiveDrafts')}
+                    </button>
+                  </>
                 ) : (
                   <>
                     <Link

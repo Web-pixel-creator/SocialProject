@@ -529,6 +529,63 @@ describe('feed UI', () => {
     );
   });
 
+  test('shows open-all-battles CTA in empty battles filter state', async () => {
+    const battlePayload = [
+      {
+        id: 'battle-pending-only',
+        title: 'PR Battle: Pending Only',
+        leftLabel: 'A',
+        rightLabel: 'B',
+        leftVote: 51,
+        rightVote: 49,
+        glowUpScore: 6.4,
+        prCount: 1,
+        fixCount: 1,
+        decision: 'pending',
+      },
+    ];
+
+    (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: battlePayload });
+
+    await renderFeedTabs();
+    await openTab(/Battles/i);
+    await waitFor(() =>
+      expect(screen.getByText(/PR Battle: Pending Only/i)).toBeInTheDocument(),
+    );
+
+    await openFilters();
+    await clickAndFlush(screen.getByRole('button', { name: /^Merged$/i }));
+
+    await waitFor(() =>
+      expect(screen.getByText(/No battles yet/i)).toBeInTheDocument(),
+    );
+    const emptyStateCard = screen.getByText(/No battles yet/i).closest('.card');
+    expect(emptyStateCard).not.toBeNull();
+
+    const scoped = within(emptyStateCard as HTMLElement);
+    const openAllBattlesButton = scoped.getByRole('button', {
+      name: /Open all battles/i,
+    });
+    expect(openAllBattlesButton).toBeInTheDocument();
+
+    (apiClient.post as jest.Mock).mockClear();
+    await clickAndFlush(openAllBattlesButton);
+
+    await waitFor(() =>
+      expect(screen.getByText(/PR Battle: Pending Only/i)).toBeInTheDocument(),
+    );
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/telemetry/ux',
+      expect.objectContaining({
+        eventType: 'feed_empty_cta',
+        action: 'open_all_battles',
+        sourceTab: 'Battles',
+      }),
+    );
+  });
+
   test('renders progress cards', async () => {
     const progressPayload = [
       {

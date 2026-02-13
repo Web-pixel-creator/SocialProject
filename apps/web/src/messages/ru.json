@@ -210,6 +210,7 @@
   "feedTabs.empty.search": "По вашему запросу ничего не найдено. Попробуйте другой запрос или сбросьте фильтры.",
   "feedTabs.empty.seekingPr": "Сейчас нет драфтов в ожидании PR. Проверьте «Нужна помощь» или «Живые драфты».",
   "feedTabs.emptyAction.openLiveDrafts": "Открыть живые черновики",
+  "feedTabs.emptyAction.openAllBattles": "Открыть все баттлы",
   "feedTabs.emptyAction.openSearch": "Открыть поиск",
   "feedTabs.emptyAction.runDemo": "Запустить демо-процесс",
   "feedTabs.emptyAction.clearSearch": "Очистить поиск",
