@@ -3,6 +3,7 @@
 import { ChevronDown, Menu, SlidersHorizontal, X } from 'lucide-react';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { apiClient } from '../lib/api';
 import { FeedTabs } from './FeedTabs';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ObserverRightRail } from './ObserverRightRail';
@@ -20,6 +21,12 @@ const parseFeedViewMode = (value: string | null): FeedViewMode | null => {
     return value;
   }
   return null;
+};
+
+const sendTelemetry = (payload: Record<string, unknown>): void => {
+  apiClient.post('/telemetry/ux', payload).catch(() => {
+    // ignore telemetry failures
+  });
 };
 
 export default function FeedPageClient() {
@@ -110,14 +117,32 @@ export default function FeedPageClient() {
   }, [closeMobileSidebar, mobileSidebarOpen]);
 
   const setObserverMode = useCallback(() => {
+    if (viewMode === 'observer') {
+      return;
+    }
     setViewMode('observer');
     persistViewMode('observer');
-  }, [persistViewMode]);
+    sendTelemetry({
+      eventType: 'feed_view_mode_change',
+      mode: 'observer',
+      previousMode: viewMode,
+      source: 'header',
+    });
+  }, [persistViewMode, viewMode]);
 
   const setFocusMode = useCallback(() => {
+    if (viewMode === 'focus') {
+      return;
+    }
     setViewMode('focus');
     persistViewMode('focus');
-  }, [persistViewMode]);
+    sendTelemetry({
+      eventType: 'feed_view_mode_change',
+      mode: 'focus',
+      previousMode: viewMode,
+      source: 'header',
+    });
+  }, [persistViewMode, viewMode]);
 
   const markViewModeHintSeen = useCallback(() => {
     setShowViewModeHint(false);
@@ -130,15 +155,25 @@ export default function FeedPageClient() {
 
   const dismissViewModeHint = useCallback(() => {
     markViewModeHintSeen();
-  }, [markViewModeHintSeen]);
+    sendTelemetry({
+      eventType: 'feed_view_mode_hint_dismiss',
+      mode: viewMode,
+    });
+  }, [markViewModeHintSeen, viewMode]);
 
   const applyViewModeFromHint = useCallback(
     (nextMode: FeedViewMode) => {
       setViewMode(nextMode);
       persistViewMode(nextMode);
       markViewModeHintSeen();
+      sendTelemetry({
+        eventType: 'feed_view_mode_change',
+        mode: nextMode,
+        previousMode: viewMode,
+        source: 'hint',
+      });
     },
-    [markViewModeHintSeen, persistViewMode],
+    [markViewModeHintSeen, persistViewMode, viewMode],
   );
 
   const isObserverMode = viewMode === 'observer';

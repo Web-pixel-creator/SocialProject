@@ -1269,13 +1269,21 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
       filter: next,
     });
   }, []);
-  const handleDensityChange = useCallback((next: FeedDensity) => {
-    setDensity(next);
-    sendTelemetry({
-      eventType: 'feed_density_change',
-      density: next,
-    });
-  }, []);
+  const handleDensityChange = useCallback(
+    (next: FeedDensity) => {
+      if (next === density) {
+        return;
+      }
+      setDensity(next);
+      sendTelemetry({
+        eventType: 'feed_density_change',
+        density: next,
+        previousDensity: density,
+        sourceTab: active,
+      });
+    },
+    [active, density],
+  );
   const handleProgressCardOpen = useCallback((draftId: string) => {
     sendTelemetry({
       eventType: 'feed_card_open',

@@ -4,6 +4,7 @@
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import FeedPageClient from '../components/FeedPageClient';
+import { apiClient } from '../lib/api';
 
 jest.mock('../components/FeedTabs', () => ({
   FeedTabs: ({ isObserverMode }: { isObserverMode: boolean }) => (
@@ -25,9 +26,16 @@ jest.mock('../components/PanelErrorBoundary', () => ({
   PanelErrorBoundary: ({ children }: { children: unknown }) => <>{children}</>,
 }));
 
+jest.mock('../lib/api', () => ({
+  apiClient: {
+    post: jest.fn(() => Promise.resolve({ data: {} })),
+  },
+}));
+
 describe('FeedPageClient', () => {
   beforeEach(() => {
     window.localStorage.clear();
+    (apiClient.post as jest.Mock).mockClear();
   });
 
   test('toggles observer and focus mode with animated rail shell classes', () => {
@@ -48,6 +56,15 @@ describe('FeedPageClient', () => {
     expect(window.localStorage.getItem('finishit-feed-view-mode')).toBe(
       'focus',
     );
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/telemetry/ux',
+      expect.objectContaining({
+        eventType: 'feed_view_mode_change',
+        mode: 'focus',
+        previousMode: 'observer',
+        source: 'header',
+      }),
+    );
 
     fireEvent.click(screen.getByRole('button', { name: /^Observer mode$/i }));
 
@@ -56,6 +73,15 @@ describe('FeedPageClient', () => {
     expect(screen.getByTestId('feed-tabs')).toHaveTextContent('observer');
     expect(window.localStorage.getItem('finishit-feed-view-mode')).toBe(
       'observer',
+    );
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/telemetry/ux',
+      expect.objectContaining({
+        eventType: 'feed_view_mode_change',
+        mode: 'observer',
+        previousMode: 'focus',
+        source: 'header',
+      }),
     );
   });
 
@@ -77,5 +103,33 @@ describe('FeedPageClient', () => {
       'focus',
     );
     expect(screen.getByTestId('feed-tabs')).toHaveTextContent('focus');
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/telemetry/ux',
+      expect.objectContaining({
+        eventType: 'feed_view_mode_change',
+        mode: 'focus',
+        previousMode: 'observer',
+        source: 'hint',
+      }),
+    );
+  });
+
+  test('tracks hint dismiss event without mode switch', async () => {
+    render(<FeedPageClient />);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /^(Got it|Dismiss)$/i }),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByText(/Choose your feed mode/i)).toBeNull(),
+    );
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/telemetry/ux',
+      expect.objectContaining({
+        eventType: 'feed_view_mode_hint_dismiss',
+        mode: 'observer',
+      }),
+    );
   });
 });

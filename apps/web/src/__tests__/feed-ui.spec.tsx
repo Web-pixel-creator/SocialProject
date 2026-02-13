@@ -209,12 +209,22 @@ describe('feed UI', () => {
     expect(grid.className).toContain('gap-4');
     expect(grid.className).not.toContain('gap-2.5');
 
+    (apiClient.post as jest.Mock).mockClear();
     await clickAndFlush(compactButton);
 
     expect(comfortButton).toHaveAttribute('aria-pressed', 'false');
     expect(compactButton).toHaveAttribute('aria-pressed', 'true');
     expect(grid.className).toContain('gap-2.5');
     expect(grid.className).not.toContain('md:grid-cols-2');
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/telemetry/ux',
+      expect.objectContaining({
+        eventType: 'feed_density_change',
+        density: 'compact',
+        previousDensity: 'comfort',
+        sourceTab: 'All',
+      }),
+    );
   });
 
   test('defaults feed density to compact on mobile when preference is missing', async () => {
