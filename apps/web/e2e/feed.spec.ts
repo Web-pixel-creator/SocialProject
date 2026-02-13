@@ -456,10 +456,10 @@ test.describe('Feed page', () => {
         const glowUpsToggle = desktopControls.getByRole('button', {
             name: /Top GlowUps/i,
         });
-        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'true');
+        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'false');
 
         await glowUpsToggle.click();
-        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'false');
+        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'true');
 
         await expect
             .poll(() =>
@@ -467,7 +467,7 @@ test.describe('Feed page', () => {
                     window.localStorage.getItem('finishit-observer-rail-panels'),
                 ),
             )
-            .toContain('"glowUps":false');
+            .toContain('"glowUps":true');
 
         await page.reload();
 
@@ -482,7 +482,7 @@ test.describe('Feed page', () => {
         );
         await expect(glowUpsToggleAfterReload).toHaveAttribute(
             'aria-pressed',
-            'false',
+            'true',
         );
     });
 
@@ -616,39 +616,39 @@ test.describe('Feed page', () => {
             name: /Top studios/i,
         });
 
-        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'true');
-        await expect(studiosToggle).toHaveAttribute('aria-pressed', 'true');
+        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'false');
+        await expect(studiosToggle).toHaveAttribute('aria-pressed', 'false');
 
         await glowUpsToggle.click();
-        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'false');
-        await expect(studiosToggle).toHaveAttribute('aria-pressed', 'true');
+        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'true');
+        await expect(studiosToggle).toHaveAttribute('aria-pressed', 'false');
         await expect(
             page
                 .locator('.observer-right-rail')
                 .getByRole('heading', { name: /Top GlowUps/i }),
-        ).toHaveCount(0);
+        ).toBeVisible();
         await expect(
             page
                 .locator('.observer-right-rail')
                 .getByRole('heading', { name: /Top studios/i }),
-        ).toBeVisible();
+        ).toHaveCount(0);
 
         await studiosToggle.click();
-        await expect(studiosToggle).toHaveAttribute('aria-pressed', 'false');
-        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'false');
-        await expect(
-            page
-                .locator('.observer-right-rail')
-                .getByRole('heading', { name: /Top studios/i }),
-        ).toHaveCount(0);
-
-        await glowUpsToggle.click();
+        await expect(studiosToggle).toHaveAttribute('aria-pressed', 'true');
         await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'true');
         await expect(
             page
                 .locator('.observer-right-rail')
-                .getByRole('heading', { name: /Top GlowUps/i }),
+                .getByRole('heading', { name: /Top studios/i }),
         ).toBeVisible();
+
+        await glowUpsToggle.click();
+        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'false');
+        await expect(
+            page
+                .locator('.observer-right-rail')
+                .getByRole('heading', { name: /Top GlowUps/i }),
+        ).toHaveCount(0);
     });
 
     test('supports keyboard toggling for desktop observer panel controls', async ({
@@ -729,7 +729,7 @@ test.describe('Feed page', () => {
             name: /Top studios/i,
         });
 
-        await expect(visiblePanelsBadge).toContainText(/4\s*\/\s*4/i);
+        await expect(visiblePanelsBadge).toContainText(/2\s*\/\s*4/i);
 
         await hideAllButton.click();
 
@@ -744,11 +744,11 @@ test.describe('Feed page', () => {
             .first()
             .click();
 
-        await expect(visiblePanelsBadge).toContainText(/4\s*\/\s*4/i);
+        await expect(visiblePanelsBadge).toContainText(/2\s*\/\s*4/i);
         await expect(battlesToggle).toHaveAttribute('aria-pressed', 'true');
         await expect(activityToggle).toHaveAttribute('aria-pressed', 'true');
-        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'true');
-        await expect(studiosToggle).toHaveAttribute('aria-pressed', 'true');
+        await expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'false');
+        await expect(studiosToggle).toHaveAttribute('aria-pressed', 'false');
     });
 
     test('respects reduced motion preference for live indicators', async ({
@@ -906,9 +906,9 @@ test.describe('Feed page', () => {
         const studiosToggle = mobileControls.getByRole('button', {
             name: /Top studios/i,
         });
-        await expect(studiosToggle).toHaveAttribute('aria-pressed', 'true');
-        await studiosToggle.click();
         await expect(studiosToggle).toHaveAttribute('aria-pressed', 'false');
+        await studiosToggle.click();
+        await expect(studiosToggle).toHaveAttribute('aria-pressed', 'true');
 
         await expect
             .poll(() =>
@@ -916,7 +916,7 @@ test.describe('Feed page', () => {
                     window.localStorage.getItem('finishit-observer-rail-panels'),
                 ),
             )
-            .toContain('"studios":false');
+            .toContain('"studios":true');
     });
 
     test('toggles observer and focus modes on mobile viewport', async ({

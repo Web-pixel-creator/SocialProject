@@ -365,8 +365,8 @@ describe('ObserverRightRail', () => {
 
     expect(battlesToggle).toHaveAttribute('aria-pressed', 'true');
     expect(activityToggle).toHaveAttribute('aria-pressed', 'true');
-    expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'true');
-    expect(studiosToggle).toHaveAttribute('aria-pressed', 'true');
+    expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'false');
+    expect(studiosToggle).toHaveAttribute('aria-pressed', 'false');
   });
 
   test('hydrates panel visibility from localStorage and persists updates', async () => {

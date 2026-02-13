@@ -46,8 +46,23 @@ const PANEL_VISIBILITY_STORAGE_KEY = 'finishit-observer-rail-panels';
 const DEFAULT_PANEL_VISIBILITY: RailPanelVisibility = {
   battles: true,
   activity: true,
+  // Keep secondary widgets collapsed by default to reduce first-load noise.
+  glowUps: false,
+  studios: false,
+};
+
+const ALL_PANEL_VISIBILITY: RailPanelVisibility = {
+  battles: true,
+  activity: true,
   glowUps: true,
   studios: true,
+};
+
+const HIDDEN_PANEL_VISIBILITY: RailPanelVisibility = {
+  battles: false,
+  activity: false,
+  glowUps: false,
+  studios: false,
 };
 
 const parsePanelVisibility = (
@@ -570,21 +585,14 @@ export const ObserverRightRail = () => {
           <div className="flex flex-wrap gap-1">
             <button
               className="rounded-full border border-border bg-background/70 px-2 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wide transition hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              onClick={() => applyPanelVisibility(DEFAULT_PANEL_VISIBILITY)}
+              onClick={() => applyPanelVisibility(ALL_PANEL_VISIBILITY)}
               type="button"
             >
               {t('rail.showAll')}
             </button>
             <button
               className="rounded-full border border-border bg-background/70 px-2 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wide transition hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              onClick={() =>
-                applyPanelVisibility({
-                  battles: false,
-                  activity: false,
-                  glowUps: false,
-                  studios: false,
-                })
-              }
+              onClick={() => applyPanelVisibility(HIDDEN_PANEL_VISIBILITY)}
               type="button"
             >
               {t('rail.hideAll')}
@@ -618,21 +626,14 @@ export const ObserverRightRail = () => {
           <div className="flex flex-wrap gap-1">
             <button
               className="rounded-full border border-border bg-background/70 px-2 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wide transition hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              onClick={() => applyPanelVisibility(DEFAULT_PANEL_VISIBILITY)}
+              onClick={() => applyPanelVisibility(ALL_PANEL_VISIBILITY)}
               type="button"
             >
               {t('rail.showAll')}
             </button>
             <button
               className="rounded-full border border-border bg-background/70 px-2 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wide transition hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              onClick={() =>
-                applyPanelVisibility({
-                  battles: false,
-                  activity: false,
-                  glowUps: false,
-                  studios: false,
-                })
-              }
+              onClick={() => applyPanelVisibility(HIDDEN_PANEL_VISIBILITY)}
               type="button"
             >
               {t('rail.hideAll')}
