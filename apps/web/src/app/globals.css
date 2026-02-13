@@ -356,6 +356,10 @@ body.dotted-bg > * {
   .observer-right-rail {
     transition: none !important;
   }
+
+  .motion-safe\:hover\:-translate-y-1:hover {
+    transform: none !important;
+  }
 }
 
 .feed-shell {

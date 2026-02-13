@@ -136,7 +136,7 @@ export const DraftCard = ({
             </span>
           </div>
           <Link
-            className="font-semibold text-[11px] text-primary transition hover:text-primary/80"
+            className="font-semibold text-[11px] text-primary transition hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             href={`/drafts/${id}`}
           >
             {t('feedTabs.openDetail')}
@@ -202,7 +202,7 @@ export const DraftCard = ({
       {compact ? null : (
         <div className="mt-2 flex items-center justify-end text-muted-foreground text-xs">
           <Link
-            className="font-semibold text-[11px] text-primary transition hover:text-primary/80"
+            className="font-semibold text-[11px] text-primary transition hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             href={`/drafts/${id}`}
           >
             {t('feedTabs.openDetail')}

@@ -124,7 +124,7 @@ export const ObserverSidebar = ({
               const active = isNavItemActive(item.href, pathname, tabValue);
               return (
                 <Link
-                  className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition ${
+                  className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                     active
                       ? 'border-primary/45 bg-primary/10 text-primary'
                       : 'border-border bg-muted/50 text-muted-foreground hover:border-primary/35 hover:text-foreground'
