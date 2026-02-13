@@ -6,12 +6,19 @@ import { db } from '../db/pool';
 const router = Router();
 
 const ALLOWED_EVENTS = new Set([
+  'demo_flow_refresh_partial_failure',
+  'feed_battle_filter',
+  'feed_density_change',
   'feed_filter_change',
+  'feed_filter_reset',
   'feed_card_open',
+  'feed_empty_cta',
   'pr_review_open',
   'pr_merge',
   'pr_reject',
   'feed_load_timing',
+  'feed_view_mode_change',
+  'feed_view_mode_hint_dismiss',
   'similar_search_shown',
   'similar_search_empty',
   'similar_search_clicked',

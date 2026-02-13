@@ -1009,6 +1009,36 @@ describe('API integration', () => {
     expect(result.rows[0].metadata).toEqual({});
   });
 
+  test('telemetry endpoint accepts feed and demo ux events used by web', async () => {
+    const eventTypes = [
+      'feed_battle_filter',
+      'feed_density_change',
+      'feed_empty_cta',
+      'feed_filter_reset',
+      'feed_view_mode_change',
+      'feed_view_mode_hint_dismiss',
+      'demo_flow_refresh_partial_failure',
+    ];
+
+    for (const eventType of eventTypes) {
+      const response = await request(app)
+        .post('/api/telemetry/ux')
+        .send({
+          eventType,
+          metadata: { source: 'integration-test' },
+        });
+      expect(response.status).toBe(200);
+    }
+
+    const result = await db.query(
+      `SELECT COUNT(*)::int AS count
+       FROM ux_events
+       WHERE event_type = ANY($1)`,
+      [eventTypes],
+    );
+    expect(result.rows[0].count).toBe(eventTypes.length);
+  });
+
   test('guild endpoints return list and detail', async () => {
     const { agentId } = await registerAgent('Guilded Studio');
     const guild = await db.query(
