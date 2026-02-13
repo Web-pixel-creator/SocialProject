@@ -372,6 +372,171 @@ const BattleFilters = memo(function BattleFilters({
   );
 });
 
+interface ActiveFilterChipsProps {
+  shownLabel: string;
+  shownValue: string;
+  hasFilterPanel: boolean;
+  filtersOpen: boolean;
+  showFiltersLabel: string;
+  hasActiveFilters: boolean;
+  activeFilterPills: string[];
+  activeFilterCount: number;
+  hasBattleFilterApplied: boolean;
+  hasStatusFilterApplied: boolean;
+  hasSortFilterApplied: boolean;
+  hasRangeFilterApplied: boolean;
+  hasIntentFilterApplied: boolean;
+  labels: {
+    activeFilters: string;
+    resetFilters: string;
+    openAllBattles: string;
+    allStatuses: string;
+    recency: string;
+    last30Days: string;
+    allIntents: string;
+  };
+  onResetBattleFilterQuick: () => void;
+  onResetStatusFilterQuick: () => void;
+  onResetSortFilterQuick: () => void;
+  onResetRangeFilterQuick: () => void;
+  onResetIntentFilterQuick: () => void;
+  onResetFilters: () => void;
+  onToggleFilters: () => void;
+}
+
+const ActiveFilterChips = memo(function ActiveFilterChips({
+  shownLabel,
+  shownValue,
+  hasFilterPanel,
+  filtersOpen,
+  showFiltersLabel,
+  hasActiveFilters,
+  activeFilterPills,
+  activeFilterCount,
+  hasBattleFilterApplied,
+  hasStatusFilterApplied,
+  hasSortFilterApplied,
+  hasRangeFilterApplied,
+  hasIntentFilterApplied,
+  labels,
+  onResetBattleFilterQuick,
+  onResetStatusFilterQuick,
+  onResetSortFilterQuick,
+  onResetRangeFilterQuick,
+  onResetIntentFilterQuick,
+  onResetFilters,
+  onToggleFilters,
+}: ActiveFilterChipsProps) {
+  const hasSecondaryRow =
+    hasActiveFilters ||
+    hasBattleFilterApplied ||
+    hasStatusFilterApplied ||
+    hasSortFilterApplied ||
+    hasRangeFilterApplied ||
+    hasIntentFilterApplied;
+
+  return (
+    <div className="grid gap-2 border-border/60 border-t pt-2 text-muted-foreground text-xs">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-full border border-border bg-background/60 px-3 py-1">
+          {shownLabel}: {shownValue}
+        </span>
+        {hasFilterPanel ? (
+          <button
+            aria-expanded={filtersOpen}
+            className="ml-auto inline-flex items-center gap-1 rounded-full border border-border bg-muted/70 px-4 py-2 font-semibold text-xs uppercase tracking-wide transition hover:border-primary/45 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            onClick={onToggleFilters}
+            type="button"
+          >
+            <SlidersHorizontal aria-hidden="true" className="h-3.5 w-3.5" />
+            {showFiltersLabel}
+            <ChevronDown
+              aria-hidden="true"
+              className={`h-3 w-3 transition-transform motion-reduce:transform-none motion-reduce:transition-none ${
+                filtersOpen ? 'rotate-180' : ''
+              }`}
+            />
+            {hasActiveFilters ? (
+              <span
+                aria-hidden="true"
+                className="ml-1 rounded-full border border-primary/45 bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary"
+              >
+                {activeFilterCount}
+              </span>
+            ) : null}
+          </button>
+        ) : null}
+      </div>
+      {hasSecondaryRow ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {hasActiveFilters ? (
+            <span
+              className="rounded-full border border-border bg-background/70 px-3 py-1 font-semibold text-[11px]"
+              title={activeFilterPills.join(' | ')}
+            >
+              {labels.activeFilters}: {activeFilterCount}
+            </span>
+          ) : null}
+          {hasBattleFilterApplied ? (
+            <button
+              className="rounded-full border border-border bg-background/70 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              onClick={onResetBattleFilterQuick}
+              type="button"
+            >
+              {labels.openAllBattles}
+            </button>
+          ) : null}
+          {hasStatusFilterApplied ? (
+            <button
+              className="rounded-full border border-border bg-background/70 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              onClick={onResetStatusFilterQuick}
+              type="button"
+            >
+              {labels.allStatuses}
+            </button>
+          ) : null}
+          {hasSortFilterApplied ? (
+            <button
+              className="rounded-full border border-border bg-background/70 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              onClick={onResetSortFilterQuick}
+              type="button"
+            >
+              {labels.recency}
+            </button>
+          ) : null}
+          {hasRangeFilterApplied ? (
+            <button
+              className="rounded-full border border-border bg-background/70 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              onClick={onResetRangeFilterQuick}
+              type="button"
+            >
+              {labels.last30Days}
+            </button>
+          ) : null}
+          {hasIntentFilterApplied ? (
+            <button
+              className="rounded-full border border-border bg-background/70 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              onClick={onResetIntentFilterQuick}
+              type="button"
+            >
+              {labels.allIntents}
+            </button>
+          ) : null}
+          {hasActiveFilters ? (
+            <button
+              className="rounded-full border border-border bg-background/70 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              onClick={onResetFilters}
+              type="button"
+            >
+              {labels.resetFilters}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+});
+
 interface FeedTabsProps {
   isObserverMode?: boolean;
 }
@@ -585,6 +750,18 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
   const densityLabel = t('feedTabs.density.label');
   const comfortLabel = t('feedTabs.density.comfort');
   const compactLabel = t('feedTabs.density.compact');
+  const activeFilterLabels = useMemo(
+    () => ({
+      activeFilters: t('feedTabs.activeFilters'),
+      resetFilters: t('search.actions.resetFilters'),
+      openAllBattles: t('feedTabs.emptyAction.openAllBattles'),
+      allStatuses: t('feedTabs.quickReset.allStatuses'),
+      recency: t('search.sort.recency'),
+      last30Days: t('search.range.last30Days'),
+      allIntents: t('search.filters.allIntents'),
+    }),
+    [t],
+  );
 
   const tabClass = (tab: string, isActive: boolean): string => {
     if (!isActive) {
@@ -1577,10 +1754,10 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
   );
 
   return (
-    <section className="grid gap-6">
+    <section className="grid gap-5">
       <div className="grid gap-3">
-        <div className="grid gap-2 rounded-2xl border border-border bg-muted/35 p-3">
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             {PRIMARY_TABS.map((tab) => (
               <button
                 aria-pressed={active === tab}
@@ -1595,6 +1772,8 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                 {tabLabels[tab] ?? tab}
               </button>
             ))}
+          </div>
+          <div className="flex justify-end">
             {isMobileViewport ? (
               <button
                 aria-expanded={moreOpen}
@@ -1640,14 +1819,16 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                     }`}
                   />
                 </summary>
-                <div className="absolute left-0 z-20 mt-2 grid min-w-[16rem] gap-2 rounded-xl border border-border bg-card p-2">
+                <div className="absolute right-0 z-20 mt-2 grid min-w-[16rem] gap-2 rounded-xl border border-border bg-card p-2">
                   {morePanelContent}
                 </div>
               </details>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-border bg-background/85 px-3 py-2 text-muted-foreground text-xs sm:min-w-[16rem]">
+        </div>
+        <div className="grid gap-3 rounded-2xl border border-border bg-card/80 p-3 backdrop-blur-sm lg:p-4">
+          <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+            <label className="group flex w-full min-w-0 items-center gap-2 rounded-full border border-border bg-background/85 px-3 py-2 text-muted-foreground text-xs transition focus-within:border-primary/45 focus-within:bg-background">
               <Search aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
               <input
                 aria-label={t('feed.searchAriaLabel')}
@@ -1668,42 +1849,12 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                   <X aria-hidden="true" className="h-3.5 w-3.5" />
                 </button>
               ) : (
-                <span className="hidden rounded border border-border bg-background/70 px-1.5 py-0.5 font-semibold text-[10px] text-muted-foreground uppercase sm:inline">
-                  /
+                <span className="hidden rounded border border-border bg-background/70 px-1.5 py-0.5 font-semibold text-[10px] text-muted-foreground uppercase transition group-focus-within:inline sm:inline">
+                  Esc
                 </span>
               )}
             </label>
-            {hasFilterPanel ? (
-              <button
-                aria-expanded={filtersOpen}
-                className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/70 px-4 py-2 font-semibold text-xs uppercase tracking-wide transition hover:border-primary/45 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                onClick={() => {
-                  setFiltersOpen((previous) => !previous);
-                  if (isMobileViewport) {
-                    setMoreOpen(false);
-                  }
-                }}
-                type="button"
-              >
-                <SlidersHorizontal aria-hidden="true" className="h-3.5 w-3.5" />
-                {showFiltersLabel}
-                <ChevronDown
-                  aria-hidden="true"
-                  className={`h-3 w-3 transition-transform motion-reduce:transform-none motion-reduce:transition-none ${
-                    filtersOpen ? 'rotate-180' : ''
-                  }`}
-                />
-                {hasActiveFilters ? (
-                  <span
-                    aria-hidden="true"
-                    className="ml-1 rounded-full border border-primary/45 bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary"
-                  >
-                    {activeFilterCount}
-                  </span>
-                ) : null}
-              </button>
-            ) : null}
-            <fieldset className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/70 p-1">
+            <fieldset className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/70 p-1 lg:justify-self-end">
               <legend className="sr-only">{densityLabel}</legend>
               <button
                 aria-pressed={density === 'comfort'}
@@ -1735,73 +1886,34 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
               </button>
             </fieldset>
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
-            <span className="rounded-full border border-border bg-background/60 px-3 py-1">
-              {shownLabel}: {shownValue}
-            </span>
-            {hasActiveFilters ? (
-              <span
-                className="rounded-full border border-border bg-background/70 px-3 py-1 font-semibold text-[11px]"
-                title={activeFilterPills.join(' | ')}
-              >
-                {t('feedTabs.activeFilters')}: {activeFilterCount}
-              </span>
-            ) : null}
-            {hasBattleFilterApplied ? (
-              <button
-                className="rounded-full border border-border bg-background/70 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                onClick={handleResetBattleFilterQuick}
-                type="button"
-              >
-                {t('feedTabs.emptyAction.openAllBattles')}
-              </button>
-            ) : null}
-            {hasStatusFilterApplied ? (
-              <button
-                className="rounded-full border border-border bg-background/70 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                onClick={handleResetStatusFilterQuick}
-                type="button"
-              >
-                {t('feedTabs.quickReset.allStatuses')}
-              </button>
-            ) : null}
-            {hasSortFilterApplied ? (
-              <button
-                className="rounded-full border border-border bg-background/70 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                onClick={handleResetSortFilterQuick}
-                type="button"
-              >
-                {t('search.sort.recency')}
-              </button>
-            ) : null}
-            {hasRangeFilterApplied ? (
-              <button
-                className="rounded-full border border-border bg-background/70 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                onClick={handleResetRangeFilterQuick}
-                type="button"
-              >
-                {t('search.range.last30Days')}
-              </button>
-            ) : null}
-            {hasIntentFilterApplied ? (
-              <button
-                className="rounded-full border border-border bg-background/70 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                onClick={() => handleIntentChange(DEFAULT_INTENT)}
-                type="button"
-              >
-                {t('search.filters.allIntents')}
-              </button>
-            ) : null}
-            {hasActiveFilters ? (
-              <button
-                className="rounded-full border border-border bg-background/70 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-primary/45 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                onClick={handleResetFilters}
-                type="button"
-              >
-                {t('search.actions.resetFilters')}
-              </button>
-            ) : null}
-          </div>
+          <ActiveFilterChips
+            activeFilterCount={activeFilterCount}
+            activeFilterPills={activeFilterPills}
+            filtersOpen={filtersOpen}
+            hasActiveFilters={hasActiveFilters}
+            hasBattleFilterApplied={hasBattleFilterApplied}
+            hasFilterPanel={hasFilterPanel}
+            hasIntentFilterApplied={hasIntentFilterApplied}
+            hasRangeFilterApplied={hasRangeFilterApplied}
+            hasSortFilterApplied={hasSortFilterApplied}
+            hasStatusFilterApplied={hasStatusFilterApplied}
+            labels={activeFilterLabels}
+            onResetBattleFilterQuick={handleResetBattleFilterQuick}
+            onResetFilters={handleResetFilters}
+            onResetIntentFilterQuick={() => handleIntentChange(DEFAULT_INTENT)}
+            onResetRangeFilterQuick={handleResetRangeFilterQuick}
+            onResetSortFilterQuick={handleResetSortFilterQuick}
+            onResetStatusFilterQuick={handleResetStatusFilterQuick}
+            onToggleFilters={() => {
+              setFiltersOpen((previous) => !previous);
+              if (isMobileViewport) {
+                setMoreOpen(false);
+              }
+            }}
+            showFiltersLabel={showFiltersLabel}
+            shownLabel={shownLabel}
+            shownValue={shownValue}
+          />
         </div>
         {hasFilterPanel && filtersOpen && !isMobileViewport
           ? filterPanel

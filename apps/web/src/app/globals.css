@@ -159,9 +159,27 @@
 
 .card {
   @apply rounded-2xl border;
-  background: var(--surface);
+  background: linear-gradient(
+    165deg,
+    oklch(var(--card) / 0.94) 0%,
+    oklch(var(--card) / 0.82) 100%
+  );
   border-color: var(--border-soft);
   box-shadow: none;
+}
+
+.observer-feed-header {
+  background:
+    radial-gradient(
+      circle at top right,
+      oklch(var(--primary) / 0.09) 0%,
+      transparent 52%
+    ),
+    linear-gradient(
+      160deg,
+      oklch(var(--card) / 0.96) 0%,
+      oklch(var(--card) / 0.84) 100%
+    );
 }
 
 .pill {

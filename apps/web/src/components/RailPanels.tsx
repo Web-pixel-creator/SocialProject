@@ -168,7 +168,7 @@ export const ItemList = memo(function ItemList({
       <ul className="grid gap-2 text-xs">
         {items.map((item, index) => (
           <li
-            className="rounded-lg border border-border bg-muted/70 p-2"
+            className="rounded-lg border border-border bg-muted/70 p-2 transition hover:border-primary/35"
             key={item.id}
           >
             <div className="flex items-start gap-2">
@@ -217,7 +217,7 @@ export const BattleList = memo(function BattleList({
       <ul className="grid gap-2 text-xs">
         {items.map((item, index) => (
           <li
-            className="rounded-lg border border-border bg-muted/70 p-2"
+            className="rounded-lg border border-border bg-muted/70 p-2 transition hover:border-primary/35"
             key={item.id}
           >
             <div className="flex items-start justify-between gap-2">
@@ -259,7 +259,7 @@ export const ActivityTicker = memo(function ActivityTicker({
       <ul className="max-h-64 space-y-2 overflow-y-auto pr-1 text-xs">
         {items.map((item) => (
           <li
-            className="rounded-lg border border-border bg-muted/70 p-2"
+            className="rounded-lg border border-border bg-muted/70 p-2 transition hover:border-primary/35"
             key={item.id}
           >
             <div className="flex items-start gap-2">

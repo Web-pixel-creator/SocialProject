@@ -301,7 +301,7 @@ describe('ObserverRightRail', () => {
     expect(screen.queryByText('Design vs Function')).toBeNull();
   });
 
-  test('toggles desktop panel visibility buttons', async () => {
+  test('shows only show-all and hide-all buttons in desktop controls', async () => {
     renderObserverRail();
 
     await waitFor(() => expect(apiClient.get).toHaveBeenCalled());
@@ -309,16 +309,19 @@ describe('ObserverRightRail', () => {
     const desktopControls = screen.getByTestId(
       'observer-rail-desktop-controls',
     );
-    const battlesToggle = within(desktopControls).getByRole('button', {
-      name: /Trending battles/i,
-    });
-    expect(battlesToggle).toHaveAttribute('aria-pressed', 'true');
-
-    fireEvent.click(battlesToggle);
-    expect(battlesToggle).toHaveAttribute('aria-pressed', 'false');
-
-    fireEvent.click(battlesToggle);
-    expect(battlesToggle).toHaveAttribute('aria-pressed', 'true');
+    const controlButtons = within(desktopControls).getAllByRole('button');
+    expect(controlButtons).toHaveLength(2);
+    expect(
+      within(desktopControls).getByRole('button', { name: /Show all/i }),
+    ).toBeInTheDocument();
+    expect(
+      within(desktopControls).getByRole('button', { name: /Hide all/i }),
+    ).toBeInTheDocument();
+    expect(
+      within(desktopControls).queryByRole('button', {
+        name: /Trending battles/i,
+      }),
+    ).toBeNull();
   });
 
   test('supports hide-all and restore-defaults panel actions', async () => {
@@ -329,20 +332,11 @@ describe('ObserverRightRail', () => {
     const desktopControls = screen.getByTestId(
       'observer-rail-desktop-controls',
     );
+    const showAllButton = within(desktopControls).getByRole('button', {
+      name: /Show all/i,
+    });
     const hideAllButton = within(desktopControls).getByRole('button', {
       name: /Hide all/i,
-    });
-    const battlesToggle = within(desktopControls).getByRole('button', {
-      name: /Trending battles/i,
-    });
-    const activityToggle = within(desktopControls).getByRole('button', {
-      name: /Live activity stream/i,
-    });
-    const glowUpsToggle = within(desktopControls).getByRole('button', {
-      name: /Top GlowUps/i,
-    });
-    const studiosToggle = within(desktopControls).getByRole('button', {
-      name: /Top studios/i,
     });
 
     expect(
@@ -351,10 +345,9 @@ describe('ObserverRightRail', () => {
 
     fireEvent.click(hideAllButton);
 
-    expect(battlesToggle).toHaveAttribute('aria-pressed', 'false');
-    expect(activityToggle).toHaveAttribute('aria-pressed', 'false');
-    expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'false');
-    expect(studiosToggle).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByText(/Panels: 0\/4/i)).toBeInTheDocument();
+    expect(showAllButton).toBeEnabled();
+    expect(hideAllButton).toBeDisabled();
     expect(
       screen.getAllByRole('button', { name: /Restore defaults/i }).length,
     ).toBeGreaterThan(0);
@@ -363,10 +356,9 @@ describe('ObserverRightRail', () => {
       screen.getAllByRole('button', { name: /Restore defaults/i })[0],
     );
 
-    expect(battlesToggle).toHaveAttribute('aria-pressed', 'true');
-    expect(activityToggle).toHaveAttribute('aria-pressed', 'true');
-    expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'false');
-    expect(studiosToggle).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByText(/Panels: 2\/4/i)).toBeInTheDocument();
+    expect(showAllButton).toBeEnabled();
+    expect(hideAllButton).toBeEnabled();
   });
 
   test('hydrates panel visibility from localStorage and persists updates', async () => {
@@ -387,27 +379,39 @@ describe('ObserverRightRail', () => {
     const desktopControls = screen.getByTestId(
       'observer-rail-desktop-controls',
     );
-    const battlesToggle = within(desktopControls).getByRole('button', {
-      name: /Trending battles/i,
+    const showAllButton = within(desktopControls).getByRole('button', {
+      name: /Show all/i,
     });
-    const activityToggle = within(desktopControls).getByRole('button', {
-      name: /Live activity stream/i,
-    });
-    const glowUpsToggle = within(desktopControls).getByRole('button', {
-      name: /Top GlowUps/i,
-    });
-    const studiosToggle = within(desktopControls).getByRole('button', {
-      name: /Top studios/i,
+    const hideAllButton = within(desktopControls).getByRole('button', {
+      name: /Hide all/i,
     });
 
     await waitFor(() => {
-      expect(battlesToggle).toHaveAttribute('aria-pressed', 'false');
-      expect(activityToggle).toHaveAttribute('aria-pressed', 'true');
-      expect(glowUpsToggle).toHaveAttribute('aria-pressed', 'false');
-      expect(studiosToggle).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByText(/Panels: 2\/4/i)).toBeInTheDocument();
+      expect(showAllButton).toBeEnabled();
+      expect(hideAllButton).toBeEnabled();
     });
 
-    fireEvent.click(glowUpsToggle);
+    fireEvent.click(showAllButton);
+
+    await waitFor(() => {
+      const rawValue = window.localStorage.getItem(
+        'finishit-observer-rail-panels',
+      );
+      expect(rawValue).not.toBeNull();
+      const parsed = JSON.parse(rawValue ?? '{}') as {
+        battles?: boolean;
+        activity?: boolean;
+        glowUps?: boolean;
+        studios?: boolean;
+      };
+      expect(parsed.battles).toBe(true);
+      expect(parsed.activity).toBe(true);
+      expect(parsed.glowUps).toBe(true);
+      expect(parsed.studios).toBe(true);
+    });
+
+    fireEvent.click(hideAllButton);
 
     await waitFor(() => {
       const rawValue = window.localStorage.getItem(
@@ -421,9 +425,9 @@ describe('ObserverRightRail', () => {
         studios?: boolean;
       };
       expect(parsed.battles).toBe(false);
-      expect(parsed.activity).toBe(true);
-      expect(parsed.glowUps).toBe(true);
-      expect(parsed.studios).toBe(true);
+      expect(parsed.activity).toBe(false);
+      expect(parsed.glowUps).toBe(false);
+      expect(parsed.studios).toBe(false);
     });
   });
 });

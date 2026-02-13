@@ -42,6 +42,12 @@ type RailPanelVisibilityUpdater =
   | ((previous: RailPanelVisibility) => RailPanelVisibility);
 
 const PANEL_VISIBILITY_STORAGE_KEY = 'finishit-observer-rail-panels';
+const PANEL_KEYS: RailPanelKey[] = [
+  'battles',
+  'activity',
+  'glowUps',
+  'studios',
+];
 
 const DEFAULT_PANEL_VISIBILITY: RailPanelVisibility = {
   battles: true,
@@ -332,37 +338,12 @@ export const ObserverRightRail = () => {
     return Math.max(12, base * 3);
   }, [mergedActivity.length, realtimeEvents.length]);
 
-  const panelToggles = useMemo(
-    () =>
-      [
-        {
-          key: 'battles',
-          label: t('rail.trendingBattles'),
-          mobileLabel: t('rail.short.battles'),
-        },
-        {
-          key: 'activity',
-          label: t('rail.liveActivityStream'),
-          mobileLabel: t('rail.short.activity'),
-        },
-        {
-          key: 'glowUps',
-          label: t('rail.topGlowUps24h'),
-          mobileLabel: t('rail.short.glowUps'),
-        },
-        {
-          key: 'studios',
-          label: t('rail.topStudios'),
-          mobileLabel: t('rail.short.studios'),
-        },
-      ] as Array<{ key: RailPanelKey; label: string; mobileLabel: string }>,
-    [t],
-  );
   const visiblePanelCount = useMemo(
-    () => panelToggles.filter((panel) => panelVisibility[panel.key]).length,
-    [panelToggles, panelVisibility],
+    () => PANEL_KEYS.filter((key) => panelVisibility[key]).length,
+    [panelVisibility],
   );
   const allPanelsHidden = visiblePanelCount === 0;
+  const allPanelsVisible = visiblePanelCount === PANEL_KEYS.length;
 
   const lastSyncLabel = useMemo(() => {
     if (lastSyncAt === null) {
@@ -483,16 +464,6 @@ export const ObserverRightRail = () => {
     requestResync();
   }, [requestResync]);
 
-  const togglePanel = useCallback(
-    (panelKey: RailPanelKey) => {
-      applyPanelVisibility((previous) => ({
-        ...previous,
-        [panelKey]: !previous[panelKey],
-      }));
-    },
-    [applyPanelVisibility],
-  );
-
   return (
     <aside className="observer-right-rail grid grid-cols-1 gap-3">
       <section className="card relative overflow-hidden p-3">
@@ -530,12 +501,24 @@ export const ObserverRightRail = () => {
             </p>
           </div>
         </div>
-        <div className="mt-3 flex items-center gap-2 text-[11px] text-muted-foreground/70">
-          {loading && <span>{t('rail.loadingData')}</span>}
-          {isResyncing && <span>{t('rail.resyncingStream')}</span>}
-          {fallbackUsed && !loading && <span>{t('rail.fallbackData')}</span>}
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground/70">
+          {loading && (
+            <span className="rounded-full border border-border bg-background/60 px-2 py-1">
+              {t('rail.loadingData')}
+            </span>
+          )}
+          {isResyncing && (
+            <span className="rounded-full border border-primary/35 bg-primary/10 px-2 py-1 text-primary">
+              {t('rail.resyncingStream')}
+            </span>
+          )}
+          {fallbackUsed && !loading && (
+            <span className="rounded-full border border-border bg-background/60 px-2 py-1">
+              {t('rail.fallbackData')}
+            </span>
+          )}
           {lastSyncLabel && !isResyncing && (
-            <span>
+            <span className="rounded-full border border-border bg-background/60 px-2 py-1">
               {t('rail.lastSync')}: {lastSyncLabel}
             </span>
           )}
@@ -566,7 +549,7 @@ export const ObserverRightRail = () => {
         )}
         <div className="mt-2 flex items-center justify-between gap-2 text-[11px]">
           <span className="rounded-full border border-border bg-background/70 px-2 py-1 font-semibold text-muted-foreground">
-            {t('rail.panelsVisible')}: {visiblePanelCount}/{panelToggles.length}
+            {t('rail.panelsVisible')}: {visiblePanelCount}/{PANEL_KEYS.length}
           </span>
           {allPanelsHidden ? (
             <button
@@ -582,38 +565,34 @@ export const ObserverRightRail = () => {
           className="mt-2 hidden gap-2 lg:grid"
           data-testid="observer-rail-desktop-controls"
         >
+          <p className="font-semibold text-[10px] text-muted-foreground uppercase tracking-wide">
+            {t('feedTabs.controls')}
+          </p>
           <div className="flex flex-wrap gap-1">
             <button
-              className="rounded-full border border-border bg-background/70 px-2 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wide transition hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className={`rounded-full border px-2 py-1 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                allPanelsVisible
+                  ? 'cursor-not-allowed border-border bg-background/55 text-muted-foreground/45'
+                  : 'border-border bg-background/70 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+              }`}
+              disabled={allPanelsVisible}
               onClick={() => applyPanelVisibility(ALL_PANEL_VISIBILITY)}
               type="button"
             >
               {t('rail.showAll')}
             </button>
             <button
-              className="rounded-full border border-border bg-background/70 px-2 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wide transition hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className={`rounded-full border px-2 py-1 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                allPanelsHidden
+                  ? 'cursor-not-allowed border-border bg-background/55 text-muted-foreground/45'
+                  : 'border-border bg-background/70 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+              }`}
+              disabled={allPanelsHidden}
               onClick={() => applyPanelVisibility(HIDDEN_PANEL_VISIBILITY)}
               type="button"
             >
               {t('rail.hideAll')}
             </button>
-          </div>
-          <div className="flex flex-wrap gap-1">
-            {panelToggles.map((panel) => (
-              <button
-                aria-pressed={panelVisibility[panel.key]}
-                className={`rounded-full border px-2 py-1 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
-                  panelVisibility[panel.key]
-                    ? 'border-primary/45 bg-primary/10 text-primary'
-                    : 'border-border bg-background/70 text-muted-foreground hover:text-foreground'
-                }`}
-                key={panel.key}
-                onClick={() => togglePanel(panel.key)}
-                type="button"
-              >
-                {panel.label}
-              </button>
-            ))}
           </div>
         </div>
       </section>
@@ -623,44 +602,34 @@ export const ObserverRightRail = () => {
           className="mt-2 grid gap-2"
           data-testid="observer-rail-mobile-controls"
         >
+          <p className="font-semibold text-[10px] text-muted-foreground uppercase tracking-wide">
+            {t('feedTabs.controls')}
+          </p>
           <div className="flex flex-wrap gap-1">
             <button
-              className="rounded-full border border-border bg-background/70 px-2 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wide transition hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className={`rounded-full border px-2 py-1 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                allPanelsVisible
+                  ? 'cursor-not-allowed border-border bg-background/55 text-muted-foreground/45'
+                  : 'border-border bg-background/70 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+              }`}
+              disabled={allPanelsVisible}
               onClick={() => applyPanelVisibility(ALL_PANEL_VISIBILITY)}
               type="button"
             >
               {t('rail.showAll')}
             </button>
             <button
-              className="rounded-full border border-border bg-background/70 px-2 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wide transition hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className={`rounded-full border px-2 py-1 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                allPanelsHidden
+                  ? 'cursor-not-allowed border-border bg-background/55 text-muted-foreground/45'
+                  : 'border-border bg-background/70 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+              }`}
+              disabled={allPanelsHidden}
               onClick={() => applyPanelVisibility(HIDDEN_PANEL_VISIBILITY)}
               type="button"
             >
               {t('rail.hideAll')}
             </button>
-            <span className="rounded-full border border-border bg-background/70 px-2 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wide">
-              {t('rail.panelsVisible')}: {visiblePanelCount}/
-              {panelToggles.length}
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-1">
-            {panelToggles.map((panel) => (
-              <button
-                aria-label={panel.label}
-                aria-pressed={panelVisibility[panel.key]}
-                className={`rounded-full border px-2 py-1 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
-                  panelVisibility[panel.key]
-                    ? 'border-primary/45 bg-primary/10 text-primary'
-                    : 'border-border bg-background/70 text-muted-foreground hover:text-foreground'
-                }`}
-                key={`mobile-toggle-${panel.key}`}
-                onClick={() => togglePanel(panel.key)}
-                title={panel.label}
-                type="button"
-              >
-                {panel.mobileLabel}
-              </button>
-            ))}
           </div>
         </div>
         {allPanelsHidden ? (

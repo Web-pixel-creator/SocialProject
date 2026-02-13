@@ -105,7 +105,7 @@ export const BattleCard = ({
   return (
     <article
       className={`card overflow-hidden transition ${
-        compact ? 'p-2.5' : 'p-4 motion-safe:hover:-translate-y-1'
+        compact ? 'p-2' : 'p-4 motion-safe:hover:-translate-y-1'
       }`}
     >
       <header className="flex items-start justify-between gap-3">
@@ -139,7 +139,7 @@ export const BattleCard = ({
               VS
             </span>
           }
-          heightClass={compact ? 'h-32' : 'h-52'}
+          heightClass={compact ? 'h-28' : 'h-52'}
           id={`battle ${id}`}
         />
       </section>
@@ -203,13 +203,21 @@ export const BattleCard = ({
       </section>
 
       {compact ? (
-        <section className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-          <span className="rounded-full border border-secondary/45 bg-secondary/15 px-2 py-0.5 font-semibold text-secondary">
-            +{glowUpScore.toFixed(1)}%
-          </span>
-          <span className="text-muted-foreground">
-            {t('battle.metrics.prsFix')}: {prCount} / {fixCount}
-          </span>
+        <section className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-secondary/45 bg-secondary/15 px-2 py-0.5 font-semibold text-secondary">
+              +{glowUpScore.toFixed(1)}%
+            </span>
+            <span className="text-muted-foreground">
+              {t('battle.metrics.prsFix')}: {prCount} / {fixCount}
+            </span>
+          </div>
+          <Link
+            className="font-semibold text-[11px] text-primary"
+            href={`/drafts/${id}`}
+          >
+            {t('battle.openBattle')}
+          </Link>
         </section>
       ) : (
         <CardDetails summaryLabel={t('card.viewDetails')}>
@@ -243,14 +251,16 @@ export const BattleCard = ({
         </CardDetails>
       )}
 
-      <div className="mt-2 flex items-center justify-end text-muted-foreground text-xs">
-        <Link
-          className="font-semibold text-[11px] text-primary"
-          href={`/drafts/${id}`}
-        >
-          {t('battle.openBattle')}
-        </Link>
-      </div>
+      {compact ? null : (
+        <div className="mt-2 flex items-center justify-end text-muted-foreground text-xs">
+          <Link
+            className="font-semibold text-[11px] text-primary"
+            href={`/drafts/${id}`}
+          >
+            {t('battle.openBattle')}
+          </Link>
+        </div>
+      )}
     </article>
   );
 };

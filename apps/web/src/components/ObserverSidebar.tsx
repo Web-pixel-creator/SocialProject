@@ -113,14 +113,6 @@ export const ObserverSidebar = ({
           : 'observer-left-rail surface-strong hidden rounded-2xl p-3 lg:block'
       }
     >
-      <div className="mb-4 rounded-xl border border-border bg-muted/70 p-3">
-        <p className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
-          {t('footer.navigation')}
-        </p>
-        <p className="mt-1 text-foreground text-sm">
-          {t('common.applicationShell')}
-        </p>
-      </div>
       <nav aria-label={t('sidebar.observerNavigation')} className="grid gap-4">
         {navSections.map((section) => (
           <section className="grid gap-1.5" key={section.id}>

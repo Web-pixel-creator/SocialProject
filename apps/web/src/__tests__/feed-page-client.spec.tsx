@@ -4,7 +4,6 @@
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import FeedPageClient from '../components/FeedPageClient';
-import { apiClient } from '../lib/api';
 
 jest.mock('../components/FeedTabs', () => ({
   FeedTabs: ({ isObserverMode }: { isObserverMode: boolean }) => (
@@ -19,37 +18,32 @@ jest.mock('../components/ObserverRightRail', () => ({
 }));
 
 jest.mock('../components/ObserverSidebar', () => ({
-  ObserverSidebar: () => <aside data-testid="observer-sidebar">Sidebar</aside>,
+  ObserverSidebar: ({
+    mobile,
+    onNavigate,
+  }: {
+    mobile?: boolean;
+    onNavigate?: () => void;
+  }) => (
+    <aside
+      data-testid={mobile ? 'observer-sidebar-mobile' : 'observer-sidebar'}
+    >
+      Sidebar
+      {mobile ? (
+        <button onClick={onNavigate} type="button">
+          Navigate
+        </button>
+      ) : null}
+    </aside>
+  ),
 }));
 
 jest.mock('../components/PanelErrorBoundary', () => ({
   PanelErrorBoundary: ({ children }: { children: unknown }) => <>{children}</>,
 }));
 
-jest.mock('../lib/api', () => ({
-  apiClient: {
-    post: jest.fn(() => Promise.resolve({ data: {} })),
-  },
-}));
-
 describe('FeedPageClient', () => {
-  const originalAdminUxLinkFlag = process.env.NEXT_PUBLIC_ENABLE_ADMIN_UX_LINK;
-
-  beforeEach(() => {
-    window.localStorage.clear();
-    (apiClient.post as jest.Mock).mockClear();
-    Reflect.deleteProperty(process.env, 'NEXT_PUBLIC_ENABLE_ADMIN_UX_LINK');
-  });
-
-  afterAll(() => {
-    if (originalAdminUxLinkFlag === undefined) {
-      Reflect.deleteProperty(process.env, 'NEXT_PUBLIC_ENABLE_ADMIN_UX_LINK');
-    } else {
-      process.env.NEXT_PUBLIC_ENABLE_ADMIN_UX_LINK = originalAdminUxLinkFlag;
-    }
-  });
-
-  test('toggles observer and focus mode with animated rail shell classes', () => {
+  test('renders observer mode layout without focus mode toggle', () => {
     render(<FeedPageClient />);
 
     const pageMain = screen.getByRole('main');
@@ -58,112 +52,21 @@ describe('FeedPageClient', () => {
     expect(pageMain).not.toHaveClass('feed-shell-focus');
     expect(rightRailShell).toHaveClass('observer-right-rail-shell-open');
     expect(screen.getByTestId('feed-tabs')).toHaveTextContent('observer');
-
-    fireEvent.click(screen.getByRole('button', { name: /^Focus mode$/i }));
-
-    expect(pageMain).toHaveClass('feed-shell-focus');
-    expect(rightRailShell).toHaveClass('observer-right-rail-shell-collapsed');
-    expect(screen.getByTestId('feed-tabs')).toHaveTextContent('focus');
-    expect(window.localStorage.getItem('finishit-feed-view-mode')).toBe(
-      'focus',
-    );
-    expect(apiClient.post).toHaveBeenCalledWith(
-      '/telemetry/ux',
-      expect.objectContaining({
-        eventType: 'feed_view_mode_change',
-        mode: 'focus',
-        previousMode: 'observer',
-        source: 'header',
-      }),
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: /^Observer mode$/i }));
-
-    expect(pageMain).not.toHaveClass('feed-shell-focus');
-    expect(rightRailShell).toHaveClass('observer-right-rail-shell-open');
-    expect(screen.getByTestId('feed-tabs')).toHaveTextContent('observer');
-    expect(window.localStorage.getItem('finishit-feed-view-mode')).toBe(
-      'observer',
-    );
-    expect(apiClient.post).toHaveBeenCalledWith(
-      '/telemetry/ux',
-      expect.objectContaining({
-        eventType: 'feed_view_mode_change',
-        mode: 'observer',
-        previousMode: 'focus',
-        source: 'header',
-      }),
-    );
+    expect(
+      screen.queryByRole('button', { name: /^Focus mode$/i }),
+    ).not.toBeInTheDocument();
   });
 
-  test('lets user pick mode from onboarding hint and saves choice', async () => {
+  test('opens and closes mobile observer navigation dialog', async () => {
     render(<FeedPageClient />);
 
-    expect(screen.getByText(/Choose your feed mode/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /menu/i }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /Switch to focus/i }));
+    fireEvent.click(screen.getByRole('button', { name: /close/i }));
 
     await waitFor(() => {
-      expect(screen.queryByText(/Choose your feed mode/i)).toBeNull();
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
-
-    expect(window.localStorage.getItem('finishit-feed-view-hint-seen')).toBe(
-      '1',
-    );
-    expect(window.localStorage.getItem('finishit-feed-view-mode')).toBe(
-      'focus',
-    );
-    expect(screen.getByTestId('feed-tabs')).toHaveTextContent('focus');
-    expect(apiClient.post).toHaveBeenCalledWith(
-      '/telemetry/ux',
-      expect.objectContaining({
-        eventType: 'feed_view_mode_change',
-        mode: 'focus',
-        previousMode: 'observer',
-        source: 'hint',
-      }),
-    );
-  });
-
-  test('tracks hint dismiss event without mode switch', async () => {
-    render(<FeedPageClient />);
-
-    fireEvent.click(
-      screen.getByRole('button', { name: /^(Got it|Dismiss)$/i }),
-    );
-
-    await waitFor(() =>
-      expect(screen.queryByText(/Choose your feed mode/i)).toBeNull(),
-    );
-    expect(apiClient.post).toHaveBeenCalledWith(
-      '/telemetry/ux',
-      expect.objectContaining({
-        eventType: 'feed_view_mode_hint_dismiss',
-        mode: 'observer',
-      }),
-    );
-  });
-
-  test('shows Admin UX link in settings menu when feature flag is enabled', () => {
-    process.env.NEXT_PUBLIC_ENABLE_ADMIN_UX_LINK = 'true';
-
-    render(<FeedPageClient />);
-
-    fireEvent.click(screen.getByText(/Settings/i));
-
-    expect(screen.getByRole('link', { name: /Admin UX/i })).toHaveAttribute(
-      'href',
-      '/admin/ux',
-    );
-  });
-
-  test('hides Admin UX link in settings menu when feature flag is disabled', () => {
-    process.env.NEXT_PUBLIC_ENABLE_ADMIN_UX_LINK = 'false';
-
-    render(<FeedPageClient />);
-
-    fireEvent.click(screen.getByText(/Settings/i));
-
-    expect(screen.queryByRole('link', { name: /Admin UX/i })).toBeNull();
   });
 });

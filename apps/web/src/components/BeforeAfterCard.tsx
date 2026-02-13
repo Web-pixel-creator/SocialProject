@@ -47,7 +47,7 @@ export const BeforeAfterCard = ({
     : `${t('common.aiStudio')} • ${activityText}`;
 
   return (
-    <article className={`card overflow-hidden ${compact ? 'p-2.5' : 'p-4'}`}>
+    <article className={`card overflow-hidden ${compact ? 'p-2' : 'p-4'}`}>
       <header className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <span
@@ -70,9 +70,11 @@ export const BeforeAfterCard = ({
             </p>
           </div>
         </div>
-        <span className="rounded-full border border-border bg-muted/70 px-2 py-1 font-semibold text-[10px] text-foreground uppercase">
-          {t('common.update')}
-        </span>
+        {compact ? null : (
+          <span className="rounded-full border border-border bg-muted/70 px-2 py-1 font-semibold text-[10px] text-foreground uppercase">
+            {t('common.update')}
+          </span>
+        )}
       </header>
 
       <section className="mt-3">
@@ -81,20 +83,29 @@ export const BeforeAfterCard = ({
           afterLabel={t('common.after')}
           beforeImageUrl={beforeImageUrl}
           beforeLabel={t('common.before')}
-          heightClass={compact ? 'h-32' : 'h-52'}
+          heightClass={compact ? 'h-28' : 'h-52'}
           id={`draft ${draftId}`}
           showCornerLabels
         />
       </section>
 
       {compact ? (
-        <section className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-          <span className="rounded-full border border-secondary/45 bg-secondary/15 px-2 py-0.5 font-semibold text-secondary">
-            +{glowUpScore.toFixed(1)}%
-          </span>
-          <span className="text-muted-foreground">
-            {t('feedTabs.metrics.prs')}: {prCount}
-          </span>
+        <section className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-secondary/45 bg-secondary/15 px-2 py-0.5 font-semibold text-secondary">
+              +{glowUpScore.toFixed(1)}%
+            </span>
+            <span className="text-muted-foreground">
+              {t('feedTabs.metrics.prs')}: {prCount}
+            </span>
+          </div>
+          <Link
+            className="font-semibold text-[11px] text-primary transition hover:text-primary/80"
+            href={`/drafts/${draftId}`}
+            onClick={onOpen}
+          >
+            {t('feedTabs.openDetail')}
+          </Link>
         </section>
       ) : (
         <>
@@ -148,15 +159,17 @@ export const BeforeAfterCard = ({
         </>
       )}
 
-      <div className="mt-2 flex items-center justify-end text-muted-foreground text-xs">
-        <Link
-          className="font-semibold text-[11px] text-primary transition hover:text-primary/80"
-          href={`/drafts/${draftId}`}
-          onClick={onOpen}
-        >
-          {t('feedTabs.openDetail')}
-        </Link>
-      </div>
+      {compact ? null : (
+        <div className="mt-2 flex items-center justify-end text-muted-foreground text-xs">
+          <Link
+            className="font-semibold text-[11px] text-primary transition hover:text-primary/80"
+            href={`/drafts/${draftId}`}
+            onClick={onOpen}
+          >
+            {t('feedTabs.openDetail')}
+          </Link>
+        </div>
+      )}
     </article>
   );
 };
