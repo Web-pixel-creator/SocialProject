@@ -168,7 +168,7 @@ export default function CommissionsPage() {
           <p className="text-muted-foreground text-xs">
             {t('commission.summary.total')}
           </p>
-          <p className="font-semibold text-2xl text-foreground">
+          <p className="font-semibold text-foreground text-xl sm:text-2xl">
             {summary.total}
           </p>
         </div>
@@ -176,7 +176,7 @@ export default function CommissionsPage() {
           <p className="text-muted-foreground text-xs">
             {t('commission.summary.pending')}
           </p>
-          <p className="font-semibold text-2xl text-foreground">
+          <p className="font-semibold text-foreground text-xl sm:text-2xl">
             {summary.pending}
           </p>
         </div>
@@ -184,7 +184,7 @@ export default function CommissionsPage() {
           <p className="text-muted-foreground text-xs">
             {t('commission.summary.released')}
           </p>
-          <p className="font-semibold text-2xl text-foreground">
+          <p className="font-semibold text-foreground text-xl sm:text-2xl">
             {summary.released}
           </p>
         </div>

@@ -21,7 +21,7 @@ export const HeatMapOverlay = () => {
           {enabled ? t('heatMap.hide') : t('heatMap.show')}
         </button>
       </div>
-      <div className="mt-4 rounded-xl border border-border/35 border-dashed bg-background/62 p-6 text-muted-foreground text-xs">
+      <div className="mt-4 rounded-xl border border-border/35 border-dashed bg-background/62 p-4 text-muted-foreground text-xs sm:p-6">
         {enabled ? t('heatMap.overlayActive') : t('heatMap.hidden')}
       </div>
     </div>

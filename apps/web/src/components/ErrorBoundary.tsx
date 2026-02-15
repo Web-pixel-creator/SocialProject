@@ -24,8 +24,8 @@ export class ErrorBoundary extends Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="card p-6">
-          <h2 className="font-semibold text-2xl text-foreground">
+        <div className="card p-4 sm:p-6">
+          <h2 className="font-semibold text-foreground text-xl sm:text-2xl">
             Something went wrong.
           </h2>
           <p className="text-muted-foreground text-sm">

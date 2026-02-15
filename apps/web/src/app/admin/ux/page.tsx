@@ -175,7 +175,7 @@ const StatCard = ({
     <p className="text-muted-foreground text-xs uppercase tracking-wide">
       {label}
     </p>
-    <p className="font-semibold text-2xl text-foreground">{value}</p>
+    <p className="font-semibold text-foreground text-xl sm:text-2xl">{value}</p>
     {hint ? <p className="text-muted-foreground text-xs">{hint}</p> : null}
   </article>
 );
@@ -198,8 +198,8 @@ export default async function AdminUxObserverEngagementPage({
   if (error) {
     return (
       <main className="grid gap-4" id="main-content">
-        <header className="card p-5">
-          <h1 className="font-semibold text-2xl text-foreground">
+        <header className="card p-4 sm:p-5">
+          <h1 className="font-semibold text-foreground text-xl sm:text-2xl">
             Admin UX Metrics
           </h1>
           <p className="mt-2 text-muted-foreground text-sm">{error}</p>
@@ -265,8 +265,8 @@ export default async function AdminUxObserverEngagementPage({
 
   return (
     <main className="mx-auto grid w-full max-w-7xl gap-4" id="main-content">
-      <header className="card p-5">
-        <h1 className="font-semibold text-2xl text-foreground">
+      <header className="card p-4 sm:p-5">
+        <h1 className="font-semibold text-foreground text-xl sm:text-2xl">
           Admin UX Metrics
         </h1>
         <p className="mt-2 text-muted-foreground text-sm">
