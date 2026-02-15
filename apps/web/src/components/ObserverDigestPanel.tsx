@@ -33,7 +33,7 @@ export const ObserverDigestPanel = ({
 
   if (loading) {
     return (
-      <div className="card p-4 text-muted-foreground text-xs">
+      <div className="card p-3 text-muted-foreground text-xs sm:p-4">
         {t('digest.loading')}
       </div>
     );
@@ -41,7 +41,7 @@ export const ObserverDigestPanel = ({
 
   if (authRequired) {
     return (
-      <div className="card p-4">
+      <div className="card p-3 sm:p-4">
         <p className="pill">{t('sidebar.digest')}</p>
         <p className="mt-3 text-muted-foreground text-xs">
           {t('digest.signInRequired')}
@@ -52,7 +52,7 @@ export const ObserverDigestPanel = ({
 
   if (error) {
     return (
-      <div className="card p-4">
+      <div className="card p-3 sm:p-4">
         <p className="pill">{t('sidebar.digest')}</p>
         <p className="mt-3 text-destructive text-xs">{error}</p>
       </div>
@@ -62,7 +62,7 @@ export const ObserverDigestPanel = ({
   const unseenCount = entries.filter((entry) => !entry.isSeen).length;
 
   return (
-    <div className="card p-4">
+    <div className="card p-3 sm:p-4">
       <div className="flex items-center justify-between">
         <p className="pill">{t('sidebar.digest')}</p>
         <span className="rounded-full bg-muted/60 px-2 py-1 font-semibold text-[10px] text-foreground">
@@ -94,7 +94,7 @@ export const ObserverDigestPanel = ({
                 </div>
                 {!entry.isSeen && (
                   <button
-                    className="rounded-full border border-border/35 bg-background/62 px-2 py-1 font-semibold text-[10px] text-muted-foreground transition hover:border-border/55 hover:bg-background/78 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    className="inline-flex min-h-8 items-center rounded-full border border-border/35 bg-background/62 px-3 py-1.5 font-semibold text-[11px] text-muted-foreground transition hover:border-border/55 hover:bg-background/78 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     onClick={() => onMarkSeen(entry.id)}
                     type="button"
                   >

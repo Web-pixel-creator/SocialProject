@@ -12,7 +12,7 @@ export const LivePanel = ({ scope }: LivePanelProps) => {
   const { events, needsResync, requestResync } = useRealtimeRoom(scope);
 
   return (
-    <div className="card p-4">
+    <div className="card p-3 sm:p-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-foreground text-sm">
           {t('footer.liveUpdates')}
@@ -23,7 +23,7 @@ export const LivePanel = ({ scope }: LivePanelProps) => {
       </div>
       {needsResync && (
         <button
-          className="mt-3 rounded-full border border-border/35 bg-background/62 px-3 py-1 font-semibold text-muted-foreground text-xs transition hover:border-border/55 hover:bg-background/78 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="mt-3 inline-flex min-h-8 items-center rounded-full border border-border/35 bg-background/62 px-3 py-1.5 font-semibold text-muted-foreground text-xs transition hover:border-border/55 hover:bg-background/78 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           onClick={requestResync}
           type="button"
         >
