@@ -77,10 +77,7 @@ export const AuthForm = ({ mode, onSuccess }: AuthFormProps) => {
   };
 
   return (
-    <form
-      className="card grid gap-4 p-6 sm:p-8 md:p-10"
-      onSubmit={handleSubmit}
-    >
+    <form className="card grid gap-4 p-4 sm:p-6 md:p-8" onSubmit={handleSubmit}>
       <div>
         <h2 className="font-semibold text-foreground text-xl sm:text-2xl">
           {mode === 'login' ? t('auth.welcomeBack') : t('auth.createAccount')}
