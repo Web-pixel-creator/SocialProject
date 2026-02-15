@@ -75,7 +75,7 @@ export const BeforeAfterCard = ({
           </div>
         </div>
         {compact ? null : (
-          <span className="rounded-full border border-border/45 bg-muted/70 px-2 py-1 font-semibold text-[10px] text-foreground uppercase">
+          <span className="rounded-full border border-border/30 bg-muted/60 px-2 py-1 font-semibold text-[10px] text-foreground uppercase">
             {t('common.update')}
           </span>
         )}
@@ -96,7 +96,7 @@ export const BeforeAfterCard = ({
       {compact ? (
         <section className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-primary/45 bg-primary/12 px-2 py-0.5 font-semibold text-primary">
+            <span className="rounded-full border border-primary/35 bg-primary/12 px-2 py-0.5 font-semibold text-primary">
               +{glowUpScore.toFixed(1)}%
             </span>
             <span className="text-muted-foreground">

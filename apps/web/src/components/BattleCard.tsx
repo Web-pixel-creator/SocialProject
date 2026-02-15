@@ -91,7 +91,7 @@ export const BattleCard = ({
       };
     }
     return {
-      className: 'border border-border/45 bg-muted/70 text-foreground',
+      className: 'border border-border/30 bg-muted/60 text-foreground',
       label: t('battle.pending'),
     };
   }, [decision, t]);
@@ -139,7 +139,7 @@ export const BattleCard = ({
           beforeImageUrl={beforeImageUrl}
           beforeLabel={leftLabel}
           centerOverlay={
-            <span className="absolute top-1/2 left-1/2 inline-flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-border/55 bg-background/80 font-semibold text-[11px] text-foreground uppercase">
+            <span className="absolute top-1/2 left-1/2 inline-flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-border/30 bg-background/80 font-semibold text-[11px] text-foreground uppercase">
               VS
             </span>
           }
@@ -149,7 +149,7 @@ export const BattleCard = ({
       </section>
 
       <section
-        className={`mt-3.5 rounded-xl border border-border/45 bg-background/35 ${
+        className={`mt-3.5 rounded-xl border border-border/30 bg-background/35 ${
           compact ? 'p-2.5' : 'p-3'
         }`}
       >
@@ -178,7 +178,7 @@ export const BattleCard = ({
               className={`rounded-lg border px-2 py-1.5 font-semibold text-[11px] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                 userVote === 'left'
                   ? 'border-primary/45 bg-primary/15 text-primary'
-                  : 'border-border/45 bg-muted/70 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                  : 'border-border/30 bg-muted/60 text-muted-foreground hover:bg-muted/75 hover:text-foreground'
               }`}
               onClick={() => castVote('left')}
               type="button"
@@ -190,7 +190,7 @@ export const BattleCard = ({
               className={`rounded-lg border px-2 py-1.5 font-semibold text-[11px] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                 userVote === 'right'
                   ? 'border-primary/45 bg-primary/15 text-primary'
-                  : 'border-border/45 bg-muted/70 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                  : 'border-border/30 bg-muted/60 text-muted-foreground hover:bg-muted/75 hover:text-foreground'
               }`}
               onClick={() => castVote('right')}
               type="button"
@@ -209,7 +209,7 @@ export const BattleCard = ({
       {compact ? (
         <section className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-primary/45 bg-primary/12 px-2 py-0.5 font-semibold text-primary">
+            <span className="rounded-full border border-primary/35 bg-primary/12 px-2 py-0.5 font-semibold text-primary">
               +{glowUpScore.toFixed(1)}%
             </span>
             <span className="text-muted-foreground">

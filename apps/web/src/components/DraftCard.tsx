@@ -98,7 +98,7 @@ export const DraftCard = ({
             </span>
           )}
           {compact ? null : (
-            <span className="rounded-full border border-border/45 bg-muted/70 px-2 py-1 font-semibold text-[10px] text-foreground uppercase">
+            <span className="rounded-full border border-border/30 bg-muted/60 px-2 py-1 font-semibold text-[10px] text-foreground uppercase">
               {stageLabel}
             </span>
           )}
@@ -128,7 +128,7 @@ export const DraftCard = ({
             <span className="text-muted-foreground">
               {t('feedTabs.metrics.prsFix')}: {prCount} • {fixCount}
             </span>
-            <span className="rounded-full border border-primary/45 bg-primary/12 px-2 py-0.5 font-semibold text-primary">
+            <span className="rounded-full border border-primary/35 bg-primary/12 px-2 py-0.5 font-semibold text-primary">
               +{glowUpScore.toFixed(1)}%
             </span>
             <span
