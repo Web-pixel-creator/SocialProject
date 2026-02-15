@@ -191,8 +191,8 @@ export default function StudioOnboardingPage() {
   };
 
   return (
-    <main className="grid gap-4 sm:gap-6">
-      <div className="card p-4 sm:p-6">
+    <main className="grid gap-3 sm:gap-5">
+      <div className="card p-3 sm:p-5">
         <p className="pill">{t('studioOnboarding.header.pill')}</p>
         <h2 className="mt-3 font-semibold text-foreground text-xl sm:text-2xl">
           {t('studioOnboarding.header.title')}
@@ -203,25 +203,25 @@ export default function StudioOnboardingPage() {
       </div>
 
       {error && (
-        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-destructive text-sm sm:p-4">
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-2.5 text-destructive text-sm sm:p-4">
           {error}
         </div>
       )}
       {saved && (
-        <div className="rounded-xl border border-chart-2/30 bg-chart-2/12 p-3 text-chart-2 text-sm sm:p-4">
+        <div className="rounded-xl border border-chart-2/30 bg-chart-2/12 p-2.5 text-chart-2 text-sm sm:p-4">
           {t('studioOnboarding.status.saved')}
         </div>
       )}
 
       {step === 1 && (
-        <section className="card grid gap-4 p-4 sm:p-6">
+        <section className="card grid gap-3 p-3 sm:gap-4 sm:p-5">
           <h3 className="font-semibold text-foreground text-sm">
             {t('studioOnboarding.steps.connectAgent')}
           </h3>
           <label className="grid gap-2 font-medium text-foreground text-sm">
             {t('studioOnboarding.fields.agentId')}
             <input
-              className={`rounded-xl border border-border/35 bg-background/62 px-4 py-2 text-foreground placeholder:text-muted-foreground/70 ${focusRingClass}`}
+              className={`rounded-xl border border-border/35 bg-background/62 px-3 py-2 text-foreground placeholder:text-muted-foreground/70 sm:px-4 ${focusRingClass}`}
               onChange={(event) => setAgentId(event.target.value)}
               placeholder={t('studioOnboarding.fields.agentIdPlaceholder')}
               value={agentId}
@@ -230,7 +230,7 @@ export default function StudioOnboardingPage() {
           <label className="grid gap-2 font-medium text-foreground text-sm">
             {t('studioOnboarding.fields.agentApiKey')}
             <input
-              className={`rounded-xl border border-border/35 bg-background/62 px-4 py-2 text-foreground placeholder:text-muted-foreground/70 ${focusRingClass}`}
+              className={`rounded-xl border border-border/35 bg-background/62 px-3 py-2 text-foreground placeholder:text-muted-foreground/70 sm:px-4 ${focusRingClass}`}
               onChange={(event) => setApiKey(event.target.value)}
               placeholder={t('studioOnboarding.fields.agentApiKey')}
               type="password"
@@ -238,7 +238,7 @@ export default function StudioOnboardingPage() {
             />
           </label>
           <button
-            className={`rounded-full bg-primary px-5 py-2 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90 ${focusRingClass}`}
+            className={`rounded-full bg-primary px-5 py-1.5 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90 sm:py-2 ${focusRingClass}`}
             disabled={loading}
             onClick={connectAgent}
             type="button"
@@ -251,15 +251,15 @@ export default function StudioOnboardingPage() {
       )}
 
       {step === 2 && (
-        <section className="grid gap-4 sm:gap-6 lg:grid-cols-[2fr_1fr]">
-          <div className="card grid gap-4 p-4 sm:p-6">
+        <section className="grid gap-3 sm:gap-5 lg:grid-cols-[2fr_1fr]">
+          <div className="card grid gap-3 p-3 sm:gap-4 sm:p-5">
             <h3 className="font-semibold text-foreground text-sm">
               {t('studioOnboarding.steps.studioProfile')}
             </h3>
             <label className="grid gap-2 font-medium text-foreground text-sm">
               {t('studioOnboarding.fields.studioName')}
               <input
-                className={`rounded-xl border border-border/35 bg-background/62 px-4 py-2 text-foreground placeholder:text-muted-foreground/70 ${focusRingClass}`}
+                className={`rounded-xl border border-border/35 bg-background/62 px-3 py-2 text-foreground placeholder:text-muted-foreground/70 sm:px-4 ${focusRingClass}`}
                 onChange={(event) => setStudioName(event.target.value)}
                 placeholder={t('studioOnboarding.fields.studioNamePlaceholder')}
                 value={studioName}
@@ -268,7 +268,7 @@ export default function StudioOnboardingPage() {
             <label className="grid gap-2 font-medium text-foreground text-sm">
               {t('studioOnboarding.fields.avatarUrl')}
               <input
-                className={`rounded-xl border border-border/35 bg-background/62 px-4 py-2 text-foreground placeholder:text-muted-foreground/70 ${focusRingClass}`}
+                className={`rounded-xl border border-border/35 bg-background/62 px-3 py-2 text-foreground placeholder:text-muted-foreground/70 sm:px-4 ${focusRingClass}`}
                 onChange={(event) => setAvatarUrl(event.target.value)}
                 placeholder={t('studioOnboarding.fields.avatarUrlPlaceholder')}
                 value={avatarUrl}
@@ -277,7 +277,7 @@ export default function StudioOnboardingPage() {
             <label className="grid gap-2 font-medium text-foreground text-sm">
               {t('studioOnboarding.fields.styleTags')}
               <input
-                className={`rounded-xl border border-border/35 bg-background/62 px-4 py-2 text-foreground placeholder:text-muted-foreground/70 ${focusRingClass}`}
+                className={`rounded-xl border border-border/35 bg-background/62 px-3 py-2 text-foreground placeholder:text-muted-foreground/70 sm:px-4 ${focusRingClass}`}
                 onChange={(event) => setTagInput(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') {
@@ -304,7 +304,7 @@ export default function StudioOnboardingPage() {
             <label className="grid gap-2 font-medium text-foreground text-sm">
               {t('studioOnboarding.fields.personalityOptional')}
               <textarea
-                className={`rounded-xl border border-border/35 bg-background/62 px-4 py-2 text-foreground placeholder:text-muted-foreground/70 ${focusRingClass}`}
+                className={`rounded-xl border border-border/35 bg-background/62 px-3 py-2 text-foreground placeholder:text-muted-foreground/70 sm:px-4 ${focusRingClass}`}
                 onChange={(event) => setPersonality(event.target.value)}
                 placeholder={t(
                   'studioOnboarding.fields.personalityPlaceholder',
@@ -315,7 +315,7 @@ export default function StudioOnboardingPage() {
             </label>
             <div className="flex flex-wrap gap-3">
               <button
-                className={`rounded-full bg-primary px-5 py-2 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90 ${focusRingClass}`}
+                className={`rounded-full bg-primary px-5 py-1.5 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90 sm:py-2 ${focusRingClass}`}
                 disabled={loading}
                 onClick={saveProfile}
                 type="button"
@@ -325,7 +325,7 @@ export default function StudioOnboardingPage() {
                   : t('studioOnboarding.actions.saveProfile')}
               </button>
               <button
-                className={`rounded-full border border-border/35 bg-background/62 px-5 py-2 font-semibold text-foreground text-xs transition hover:border-border/55 hover:bg-background/78 ${focusRingClass}`}
+                className={`rounded-full border border-border/35 bg-background/62 px-5 py-1.5 font-semibold text-foreground text-xs transition hover:border-border/55 hover:bg-background/78 sm:py-2 ${focusRingClass}`}
                 onClick={() => setStep(3)}
                 type="button"
               >
@@ -333,11 +333,11 @@ export default function StudioOnboardingPage() {
               </button>
             </div>
           </div>
-          <div className="card grid gap-3 p-4 text-muted-foreground text-sm sm:p-6">
+          <div className="card grid gap-3 p-3 text-muted-foreground text-sm sm:p-5">
             <h3 className="font-semibold text-foreground text-sm">
               {t('studioOnboarding.budgets.title')}
             </h3>
-            <div className="rounded-xl border border-border/35 bg-background/62 p-3 text-xs">
+            <div className="rounded-xl border border-border/35 bg-background/62 p-2.5 text-xs sm:p-3">
               <p className="font-semibold text-foreground">
                 {t('studioOnboarding.budgets.agentActions')}
               </p>
@@ -357,7 +357,7 @@ export default function StudioOnboardingPage() {
                 </li>
               </ul>
             </div>
-            <div className="rounded-xl border border-border/35 bg-background/62 p-3 text-xs">
+            <div className="rounded-xl border border-border/35 bg-background/62 p-2.5 text-xs sm:p-3">
               <p className="font-semibold text-foreground">
                 {t('studioOnboarding.budgets.draftEditBudgets')}
               </p>
@@ -385,14 +385,14 @@ export default function StudioOnboardingPage() {
       )}
 
       {step === 3 && (
-        <section className="card grid gap-4 p-4 sm:p-6">
+        <section className="card grid gap-3 p-3 sm:gap-4 sm:p-5">
           <h3 className="font-semibold text-foreground text-sm">
             {t('studioOnboarding.steps.firstActionsChecklist')}
           </h3>
           <ul className="grid gap-2 text-muted-foreground text-sm">
             {CHECKLIST.map((item) => (
               <li
-                className="rounded-xl border border-border/35 bg-background/62 p-3"
+                className="rounded-xl border border-border/35 bg-background/62 p-2.5 sm:p-3"
                 key={item}
               >
                 {item}
@@ -400,7 +400,7 @@ export default function StudioOnboardingPage() {
             ))}
           </ul>
           <button
-            className={`rounded-full border border-border/35 bg-background/62 px-5 py-2 font-semibold text-foreground text-xs transition hover:border-border/55 hover:bg-background/78 ${focusRingClass}`}
+            className={`rounded-full border border-border/35 bg-background/62 px-5 py-1.5 font-semibold text-foreground text-xs transition hover:border-border/55 hover:bg-background/78 sm:py-2 ${focusRingClass}`}
             onClick={() => setStep(1)}
             type="button"
           >
