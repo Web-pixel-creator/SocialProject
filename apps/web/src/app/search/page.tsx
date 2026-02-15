@@ -625,14 +625,14 @@ function SearchPageContent() {
   }, [resetVisualSearch]);
 
   return (
-    <main className="grid gap-6">
-      <div className="card p-6">
+    <main className="grid gap-4 sm:gap-6">
+      <div className="card p-4 sm:p-6">
         <h2 className="font-semibold text-2xl text-foreground">
           {t('header.search')}
         </h2>
         <p className="text-muted-foreground text-sm">{t('search.subtitle')}</p>
       </div>
-      <div className="card grid gap-4 p-6">
+      <div className="card grid gap-4 p-4 sm:p-6">
         <div className="flex flex-wrap gap-2">
           <button
             className={`rounded-lg px-3 py-2 text-sm ${focusRingClass} ${
@@ -687,7 +687,7 @@ function SearchPageContent() {
             </div>
             <div className="flex flex-wrap gap-3">
               <select
-                className={`rounded-lg border border-border/55 bg-background/70 px-3 py-2 text-foreground text-sm ${focusRingClass}`}
+                className={`w-full rounded-lg border border-border/55 bg-background/70 px-3 py-2 text-foreground text-sm sm:w-auto ${focusRingClass}`}
                 onChange={(event) => setType(event.target.value)}
                 value={type}
               >
@@ -697,7 +697,7 @@ function SearchPageContent() {
                 <option value="studio">{t('search.filters.studios')}</option>
               </select>
               <select
-                className={`rounded-lg border border-border/55 bg-background/70 px-3 py-2 text-foreground text-sm ${focusRingClass}`}
+                className={`w-full rounded-lg border border-border/55 bg-background/70 px-3 py-2 text-foreground text-sm sm:w-auto ${focusRingClass}`}
                 disabled={type === 'studio'}
                 onChange={(event) => setIntent(event.target.value)}
                 value={intent}
@@ -712,7 +712,7 @@ function SearchPageContent() {
                 </option>
               </select>
               <select
-                className={`rounded-lg border border-border/55 bg-background/70 px-3 py-2 text-foreground text-sm ${focusRingClass}`}
+                className={`w-full rounded-lg border border-border/55 bg-background/70 px-3 py-2 text-foreground text-sm sm:w-auto ${focusRingClass}`}
                 onChange={(event) => setSort(event.target.value)}
                 value={sort}
               >
@@ -722,7 +722,7 @@ function SearchPageContent() {
                 <option value="impact">{t('search.sort.impact')}</option>
               </select>
               <select
-                className={`rounded-lg border border-border/55 bg-background/70 px-3 py-2 text-foreground text-sm ${focusRingClass}`}
+                className={`w-full rounded-lg border border-border/55 bg-background/70 px-3 py-2 text-foreground text-sm sm:w-auto ${focusRingClass}`}
                 onChange={(event) => setRange(event.target.value)}
                 value={range}
               >
@@ -773,7 +773,7 @@ function SearchPageContent() {
             </div>
             <div className="flex flex-wrap gap-3">
               <select
-                className={`rounded-lg border border-border/55 bg-background/70 px-3 py-2 text-foreground text-sm ${focusRingClass}`}
+                className={`w-full rounded-lg border border-border/55 bg-background/70 px-3 py-2 text-foreground text-sm sm:w-auto ${focusRingClass}`}
                 onChange={(event) =>
                   setVisualType(parseVisualType(event.target.value))
                 }
@@ -784,7 +784,7 @@ function SearchPageContent() {
                 <option value="release">{t('search.filters.releases')}</option>
               </select>
               <button
-                className={`rounded-lg border border-primary/45 bg-primary/15 px-4 py-2 text-primary text-sm transition hover:border-primary/70 disabled:opacity-60 ${focusRingClass}`}
+                className={`w-full rounded-lg border border-primary/45 bg-primary/15 px-4 py-2 text-primary text-sm transition hover:border-primary/70 disabled:opacity-60 sm:w-auto ${focusRingClass}`}
                 disabled={loading}
                 onClick={runVisualSearch}
                 type="button"
@@ -798,7 +798,7 @@ function SearchPageContent() {
           </>
         )}
 
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/45 bg-background/70 p-4 text-muted-foreground text-sm">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/45 bg-background/70 p-4 text-muted-foreground text-xs leading-relaxed sm:text-sm">
           <span>{summary}</span>
           {showAbBadge && (
             <span className="rounded-full border border-border/45 bg-background/70 px-2 py-0.5 text-[11px] text-muted-foreground uppercase">
@@ -905,7 +905,7 @@ function SearchPageContent() {
                     </p>
                     <p className="text-foreground text-sm">{result.title}</p>
                     {result.type !== 'studio' && (
-                      <div className="mt-3 grid grid-cols-2 gap-2">
+                      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                         {result.beforeImageUrl ? (
                           <Image
                             alt={`${t('search.result.beforePreviewAlt')} ${result.id}`}
@@ -965,7 +965,7 @@ export default function SearchPage() {
   return (
     <Suspense
       fallback={
-        <main className="card p-6 text-muted-foreground text-sm">
+        <main className="card p-4 text-muted-foreground text-sm sm:p-6">
           {t('search.states.loadingSearch')}
         </main>
       }

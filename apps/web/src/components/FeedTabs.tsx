@@ -1758,9 +1758,9 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
   );
 
   return (
-    <section className="grid gap-5">
+    <section className="grid gap-4 sm:gap-5">
       <div className="grid gap-3">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
           <div className="no-scrollbar flex min-w-0 items-center gap-1.5 overflow-x-auto rounded-2xl bg-card/55 p-1.5 pr-2">
             {PRIMARY_TABS.map((tab) => (
               <button
@@ -1858,7 +1858,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                 </span>
               )}
             </label>
-            <fieldset className="inline-flex items-center gap-1 rounded-full border border-border/45 bg-background/55 p-0.5 lg:justify-self-end">
+            <fieldset className="inline-flex w-fit items-center gap-1 rounded-full border border-border/45 bg-background/55 p-0.5 lg:justify-self-end">
               <legend className="sr-only">{densityLabel}</legend>
               <button
                 aria-pressed={density === 'comfort'}
@@ -2032,7 +2032,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
 
         if (visibleItems.length === 0) {
           return (
-            <div className="card grid gap-4 p-6 text-foreground/85 text-sm">
+            <div className="card grid gap-4 p-4 text-foreground/85 text-sm sm:p-6">
               <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-muted/65 text-muted-foreground">
                 <Inbox aria-hidden="true" className="h-5 w-5" />
               </div>
