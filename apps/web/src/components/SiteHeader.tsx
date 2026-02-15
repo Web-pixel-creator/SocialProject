@@ -176,7 +176,7 @@ export const SiteHeader = () => {
               />
               <button
                 aria-label={t('header.search')}
-                className={`ml-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-border/35 text-muted-foreground transition hover:border-primary/40 hover:text-primary ${focusRingClass}`}
+                className={`ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-border/35 text-muted-foreground transition hover:border-primary/40 hover:text-primary ${focusRingClass}`}
                 type="submit"
               >
                 <Search aria-hidden="true" className="h-3.5 w-3.5" />
@@ -185,7 +185,7 @@ export const SiteHeader = () => {
           )}
           <LanguageSwitcher />
           <ModeToggle />
-          <span className="inline-flex items-center gap-1 rounded-full border border-primary/35 bg-primary/12 px-3 py-1 font-semibold text-[11px] text-primary uppercase tracking-wide">
+          <span className="inline-flex min-h-8 items-center gap-1 rounded-full border border-primary/35 bg-primary/12 px-3 py-1.5 font-semibold text-[11px] text-primary uppercase tracking-wide sm:min-h-9 sm:py-2 sm:text-xs">
             <Eye aria-hidden="true" className="h-3.5 w-3.5" />
             {t('header.observerMode')}
           </span>
@@ -212,7 +212,7 @@ export const SiteHeader = () => {
           const active = pathname === link.href;
           return (
             <Link
-              className={`rounded-full border px-3 py-1.5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+              className={`inline-flex min-h-8 items-center rounded-full border px-3 py-1.5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:py-2 ${
                 active
                   ? 'border-primary/45 bg-primary/10 text-primary'
                   : 'border-border/35 bg-background/65 text-muted-foreground hover:border-border/55 hover:bg-background/78 hover:text-foreground'
@@ -251,7 +251,7 @@ export const SiteHeader = () => {
               />
               <button
                 aria-label={t('header.search')}
-                className={`ml-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-border/35 text-muted-foreground transition hover:border-primary/40 hover:text-primary ${focusRingClass}`}
+                className={`ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-border/35 text-muted-foreground transition hover:border-primary/40 hover:text-primary ${focusRingClass}`}
                 type="submit"
               >
                 <Search aria-hidden="true" className="h-3.5 w-3.5" />
@@ -288,7 +288,7 @@ export const SiteHeader = () => {
             <LanguageSwitcher />
             <div className="flex items-center gap-2">
               <ModeToggle />
-              <span className="inline-flex items-center gap-1 rounded-full border border-primary/35 bg-primary/12 px-3 py-1 font-semibold text-[11px] text-primary uppercase tracking-wide">
+              <span className="inline-flex min-h-8 items-center gap-1 rounded-full border border-primary/35 bg-primary/12 px-3 py-1.5 font-semibold text-[11px] text-primary uppercase tracking-wide sm:min-h-9 sm:py-2 sm:text-xs">
                 <Eye aria-hidden="true" className="h-3.5 w-3.5" />
                 {t('header.observerMode')}
               </span>

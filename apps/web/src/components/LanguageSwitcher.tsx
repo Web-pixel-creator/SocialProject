@@ -4,7 +4,7 @@ import { Languages } from 'lucide-react';
 import { type AppLanguage, useLanguage } from '../contexts/LanguageContext';
 
 const BUTTON_BASE_CLASS =
-  'rounded-full border px-3 py-1 font-semibold text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
+  'inline-flex min-h-8 items-center rounded-full border px-3 py-1.5 font-semibold text-[11px] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:py-2 sm:text-xs';
 
 const labelByLanguage: Record<AppLanguage, string> = {
   en: 'EN',

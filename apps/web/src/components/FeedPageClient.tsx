@@ -52,12 +52,12 @@ export default function FeedPageClient() {
         <header className="card observer-feed-header overflow-hidden p-3 sm:p-4 lg:p-5">
           <div className="grid gap-3 sm:gap-4">
             <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
-              <p className="inline-flex w-fit items-center gap-2 rounded-full border border-border/35 bg-background/62 px-3 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wider">
+              <p className="inline-flex w-fit items-center gap-2 rounded-full border border-border/35 bg-background/62 px-3 py-1.5 font-semibold text-[10px] text-muted-foreground uppercase tracking-wider sm:py-2">
                 <span>{t('feed.observerStream')}</span>
                 <span aria-hidden="true">/</span>
                 <span className="text-primary">{t('header.feeds')}</span>
               </p>
-              <span className="tag-live inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-wide sm:px-3">
+              <span className="tag-live inline-flex min-h-8 items-center gap-2 rounded-full border px-2.5 py-1.5 text-[11px] uppercase tracking-wide sm:min-h-9 sm:px-3 sm:py-2">
                 <span
                   aria-hidden="true"
                   className="icon-breathe live-dot inline-flex h-2.5 w-2.5 rounded-full motion-reduce:animate-none"
@@ -76,11 +76,11 @@ export default function FeedPageClient() {
               </div>
               <div className="grid w-full gap-2 sm:w-auto md:justify-items-end">
                 <div className="flex flex-wrap items-center justify-end gap-2">
-                  <span className="rounded-full border border-primary/35 bg-primary/10 px-2.5 py-1 font-semibold text-[11px] text-primary uppercase tracking-wide sm:px-3 sm:py-1.5">
+                  <span className="inline-flex min-h-8 items-center rounded-full border border-primary/35 bg-primary/10 px-2.5 py-1.5 font-semibold text-[11px] text-primary uppercase tracking-wide sm:min-h-9 sm:px-3 sm:py-2 sm:text-xs">
                     {t('header.observerMode')}
                   </span>
                   <button
-                    className="inline-flex items-center rounded-full border border-border/35 bg-background/62 px-2.5 py-1.5 font-semibold text-foreground text-xs transition hover:border-border/55 hover:bg-background/78 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:hidden"
+                    className="inline-flex min-h-8 items-center rounded-full border border-border/35 bg-background/62 px-2.5 py-1.5 font-semibold text-foreground text-xs transition hover:border-border/55 hover:bg-background/78 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:py-2 lg:hidden"
                     onClick={openMobileSidebar}
                     type="button"
                   >
@@ -100,7 +100,7 @@ export default function FeedPageClient() {
         >
           <Suspense
             fallback={
-              <div className="card p-4 text-muted-foreground text-sm sm:p-6">
+              <div className="card p-3 text-muted-foreground text-sm sm:p-5">
                 {t('feed.loading')}
               </div>
             }
@@ -138,7 +138,7 @@ export default function FeedPageClient() {
                 {t('sidebar.observerNavigation')}
               </h3>
               <button
-                className="inline-flex items-center rounded-full border border-border/35 bg-background/62 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:border-border/55 hover:bg-background/78 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="inline-flex min-h-8 items-center rounded-full border border-border/35 bg-background/62 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:border-border/55 hover:bg-background/78 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:py-2"
                 onClick={closeMobileSidebar}
                 type="button"
               >
