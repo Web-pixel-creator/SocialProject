@@ -77,7 +77,10 @@ export const AuthForm = ({ mode, onSuccess }: AuthFormProps) => {
   };
 
   return (
-    <form className="card grid gap-4 p-4 sm:p-6 md:p-8" onSubmit={handleSubmit}>
+    <form
+      className="card grid gap-3 p-3 sm:gap-4 sm:p-5 md:p-7"
+      onSubmit={handleSubmit}
+    >
       <div>
         <h2 className="font-semibold text-foreground text-xl sm:text-2xl">
           {mode === 'login' ? t('auth.welcomeBack') : t('auth.createAccount')}
@@ -91,7 +94,7 @@ export const AuthForm = ({ mode, onSuccess }: AuthFormProps) => {
       <label className="grid gap-2 font-medium text-foreground text-sm">
         {t('common.email')}
         <input
-          className={`rounded-xl border border-border/35 bg-background/62 px-4 py-2 text-foreground placeholder:text-muted-foreground/70 ${focusRingClass}`}
+          className={`rounded-xl border border-border/35 bg-background/62 px-3 py-2 text-foreground placeholder:text-muted-foreground/70 sm:px-4 ${focusRingClass}`}
           onChange={(event) => setEmail(event.target.value)}
           required
           type="email"
@@ -101,7 +104,7 @@ export const AuthForm = ({ mode, onSuccess }: AuthFormProps) => {
       <label className="grid gap-2 font-medium text-foreground text-sm">
         {t('common.password')}
         <input
-          className={`rounded-xl border border-border/35 bg-background/62 px-4 py-2 text-foreground placeholder:text-muted-foreground/70 ${focusRingClass}`}
+          className={`rounded-xl border border-border/35 bg-background/62 px-3 py-2 text-foreground placeholder:text-muted-foreground/70 sm:px-4 ${focusRingClass}`}
           onChange={(event) => setPassword(event.target.value)}
           required
           type="password"
@@ -110,7 +113,7 @@ export const AuthForm = ({ mode, onSuccess }: AuthFormProps) => {
       </label>
       {mode === 'register' && (
         <div className="grid gap-2 text-muted-foreground text-sm">
-          <label className="flex items-center gap-2 rounded-xl border border-border/35 bg-background/62 px-3 py-2">
+          <label className="flex items-center gap-2 rounded-xl border border-border/35 bg-background/62 px-3 py-1.5 sm:py-2">
             <input
               checked={terms}
               className={consentCheckboxClass}
@@ -125,7 +128,7 @@ export const AuthForm = ({ mode, onSuccess }: AuthFormProps) => {
               {t('auth.termsOfService')}
             </Link>
           </label>
-          <label className="flex items-center gap-2 rounded-xl border border-border/35 bg-background/62 px-3 py-2">
+          <label className="flex items-center gap-2 rounded-xl border border-border/35 bg-background/62 px-3 py-1.5 sm:py-2">
             <input
               checked={privacy}
               className={consentCheckboxClass}
@@ -148,7 +151,7 @@ export const AuthForm = ({ mode, onSuccess }: AuthFormProps) => {
         </p>
       ) : null}
       <button
-        className={`rounded-full border border-primary/35 bg-primary px-5 py-2 font-semibold text-primary-foreground text-sm transition hover:border-primary/45 hover:bg-primary/90 ${focusRingClass}`}
+        className={`rounded-full border border-primary/35 bg-primary px-5 py-1.5 font-semibold text-primary-foreground text-sm transition hover:border-primary/45 hover:bg-primary/90 sm:py-2 ${focusRingClass}`}
         disabled={loading}
         type="submit"
       >
@@ -156,13 +159,13 @@ export const AuthForm = ({ mode, onSuccess }: AuthFormProps) => {
       </button>
       <div className="grid gap-2 text-muted-foreground text-xs">
         <button
-          className={`rounded-full border border-border/35 bg-background/62 px-4 py-2 font-semibold text-foreground text-xs transition hover:border-border/55 hover:bg-background/78 ${focusRingClass}`}
+          className={`rounded-full border border-border/35 bg-background/62 px-4 py-1.5 font-semibold text-foreground text-xs transition hover:border-border/55 hover:bg-background/78 sm:py-2 ${focusRingClass}`}
           type="button"
         >
           {t('auth.continueWithGoogle')}
         </button>
         <button
-          className={`rounded-full border border-border/35 bg-background/62 px-4 py-2 font-semibold text-foreground text-xs transition hover:border-border/55 hover:bg-background/78 ${focusRingClass}`}
+          className={`rounded-full border border-border/35 bg-background/62 px-4 py-1.5 font-semibold text-foreground text-xs transition hover:border-border/55 hover:bg-background/78 sm:py-2 ${focusRingClass}`}
           type="button"
         >
           {t('auth.continueWithGithub')}

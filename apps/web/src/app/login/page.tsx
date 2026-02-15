@@ -17,14 +17,14 @@ export default function LoginPage() {
 
   if (loading || isAuthenticated) {
     return (
-      <main className="card mx-auto w-full max-w-xl p-4 text-muted-foreground text-sm sm:p-6">
+      <main className="card mx-auto w-full max-w-xl p-3 text-muted-foreground text-sm sm:p-5">
         Loading session...
       </main>
     );
   }
 
   return (
-    <main className="mx-auto grid w-full max-w-xl gap-4 sm:gap-6">
+    <main className="mx-auto grid w-full max-w-xl gap-3 sm:gap-5">
       <AuthForm mode="login" onSuccess={() => router.replace('/feed')} />
     </main>
   );
