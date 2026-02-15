@@ -14,14 +14,14 @@ export const HeatMapOverlay = () => {
           {t('sidebar.heatMap')}
         </h3>
         <button
-          className="rounded-full border border-border/45 bg-background/70 px-3 py-1 font-semibold text-xs transition hover:bg-background/82 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="rounded-full border border-border/35 bg-background/62 px-3 py-1 font-semibold text-xs transition hover:border-border/55 hover:bg-background/78 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           onClick={() => setEnabled((prev) => !prev)}
           type="button"
         >
           {enabled ? t('heatMap.hide') : t('heatMap.show')}
         </button>
       </div>
-      <div className="mt-4 rounded-xl border border-border/55 border-dashed bg-background/70 p-6 text-muted-foreground text-xs">
+      <div className="mt-4 rounded-xl border border-border/35 border-dashed bg-background/62 p-6 text-muted-foreground text-xs">
         {enabled ? t('heatMap.overlayActive') : t('heatMap.hidden')}
       </div>
     </div>

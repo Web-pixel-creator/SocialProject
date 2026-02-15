@@ -105,7 +105,7 @@ export const ImagePair = ({
               width={360}
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-background/70">
+            <div className="flex h-full w-full items-center justify-center bg-background/62">
               <span className="text-muted-foreground text-xs">
                 {beforeLabel}
               </span>
@@ -125,7 +125,7 @@ export const ImagePair = ({
               width={360}
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-background/70">
+            <div className="flex h-full w-full items-center justify-center bg-background/62">
               <span className="text-muted-foreground text-xs">
                 {afterLabel}
               </span>
