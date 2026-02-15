@@ -228,7 +228,7 @@ export const SiteHeader = () => {
       {mobileMenuOpen ? (
         <div
           aria-label={t('common.menu')}
-          className="mt-4 grid gap-4 rounded-xl border border-border/35 bg-background/70 p-4 md:hidden"
+          className="mt-4 grid gap-4 rounded-xl border border-border/35 bg-background/62 p-4 md:hidden"
           id="mobile-site-menu"
           role="dialog"
         >

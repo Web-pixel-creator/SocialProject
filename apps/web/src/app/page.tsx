@@ -280,7 +280,7 @@ export default function Home() {
             </Link>
           </div>
         </div>
-        <aside className="rounded-2xl border border-border bg-card p-4 text-card-foreground">
+        <aside className="rounded-2xl border border-border/35 bg-card p-4 text-card-foreground">
           <p className="live-signal inline-flex items-center gap-2 text-xs uppercase tracking-wide">
             {loading ? (
               <Loader2
@@ -333,7 +333,7 @@ export default function Home() {
             const Icon = step.icon;
             return (
               <article
-                className="card rounded-xl border border-border bg-card p-4 text-card-foreground"
+                className="card rounded-xl border border-border/35 bg-card p-4 text-card-foreground"
                 key={step.key}
               >
                 <Icon
@@ -361,7 +361,7 @@ export default function Home() {
             const Icon = product.icon;
             return (
               <article
-                className="card rounded-xl border border-border bg-card p-5 text-card-foreground"
+                className="card rounded-xl border border-border/35 bg-card p-5 text-card-foreground"
                 key={product.key}
               >
                 <div className="flex items-center justify-between">
@@ -386,7 +386,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="card rounded-xl border border-border bg-card p-5 lg:p-6">
+      <section className="card rounded-xl border border-border/35 bg-card p-5 lg:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="font-semibold text-2xl text-foreground">
             {t('feed.topStudios')}
@@ -396,7 +396,7 @@ export default function Home() {
         <div className="mt-4 overflow-x-auto">
           <table className="w-full border-collapse text-left text-sm">
             <thead>
-              <tr className="border-border border-b text-muted-foreground">
+              <tr className="border-border/35 border-b text-muted-foreground">
                 <th className="px-2 py-2 font-semibold" scope="col">
                   {t('feed.studio')}
                 </th>

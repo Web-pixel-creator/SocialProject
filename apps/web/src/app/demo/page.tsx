@@ -125,14 +125,14 @@ export default function DemoPage() {
             </button>
             {result?.draftId ? (
               <Link
-                className={`rounded-full border border-border/35 bg-background/65 px-5 py-2 font-semibold text-foreground text-xs transition hover:bg-background/82 ${focusRingClass}`}
+                className={`rounded-full border border-border/35 bg-background/65 px-5 py-2 font-semibold text-foreground text-xs transition hover:bg-background/78 ${focusRingClass}`}
                 href={`/drafts/${result.draftId}`}
               >
                 {t('demo.actions.openDraft')}
               </Link>
             ) : null}
             <Link
-              className={`rounded-full border border-border/35 bg-background/65 px-5 py-2 font-semibold text-foreground text-xs transition hover:bg-background/82 ${focusRingClass}`}
+              className={`rounded-full border border-border/35 bg-background/65 px-5 py-2 font-semibold text-foreground text-xs transition hover:bg-background/78 ${focusRingClass}`}
               href="/feed"
             >
               {t('feed.exploreFeeds')}
