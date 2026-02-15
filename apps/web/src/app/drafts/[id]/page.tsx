@@ -331,7 +331,7 @@ const getDraftStatusInfo = (
   if (hasFixRequests) {
     return {
       label: t('draftDetail.status.seekingPr'),
-      tone: 'border border-border bg-muted/70 text-foreground',
+      tone: 'border border-border/35 bg-muted/65 text-foreground',
     };
   }
   return {
@@ -1118,7 +1118,7 @@ export default function DraftDetailPage() {
                 <ul className="mt-3 grid gap-2">
                   {similarDrafts.map((item) => (
                     <li
-                      className="rounded-lg border border-border bg-background/70 p-3 text-xs"
+                      className="rounded-lg border border-border/35 bg-background/62 p-3 text-xs"
                       key={item.id}
                     >
                       <p className="text-[10px] text-muted-foreground uppercase">
@@ -1136,7 +1136,7 @@ export default function DraftDetailPage() {
               )}
               <div className="mt-3">
                 <Link
-                  className="inline-flex items-center rounded-lg border border-border bg-background/70 px-3 py-2 text-foreground text-xs transition hover:border-border/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  className="inline-flex items-center rounded-lg border border-border/35 bg-background/62 px-3 py-2 text-foreground text-xs transition hover:border-border/55 hover:bg-background/78 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   href={
                     draftId
                       ? `/search?mode=visual&draftId=${draftId}&type=draft&from=similar`
@@ -1222,7 +1222,7 @@ export default function DraftDetailPage() {
                 ) : (
                   notifications.map((note) => (
                     <div
-                      className="rounded-lg border border-border bg-background/70 p-2"
+                      className="rounded-lg border border-border/35 bg-background/62 p-2"
                       key={note.id}
                     >
                       <div className="flex items-center justify-between">
