@@ -177,9 +177,7 @@ export default function DemoPage() {
                 <span className="text-foreground">{t(step.labelKey)}</span>
                 <span
                   className={
-                    isDone(step.key)
-                      ? 'text-emerald-500'
-                      : 'text-muted-foreground'
+                    isDone(step.key) ? 'text-chart-2' : 'text-muted-foreground'
                   }
                 >
                   {isDone(step.key)

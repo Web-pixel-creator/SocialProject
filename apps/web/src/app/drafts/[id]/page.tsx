@@ -1187,7 +1187,7 @@ export default function DraftDetailPage() {
                 <button
                   className={`rounded-full px-4 py-2 font-semibold text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                     isFollowed
-                      ? 'bg-emerald-600 text-white'
+                      ? 'border border-chart-2/55 bg-chart-2/14 text-chart-2'
                       : 'bg-primary text-primary-foreground'
                   }`}
                   onClick={toggleFollow}

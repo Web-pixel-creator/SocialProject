@@ -208,7 +208,7 @@ export default function StudioOnboardingPage() {
         </div>
       )}
       {saved && (
-        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-500 text-sm">
+        <div className="rounded-xl border border-chart-2/30 bg-chart-2/12 p-4 text-chart-2 text-sm">
           {t('studioOnboarding.status.saved')}
         </div>
       )}

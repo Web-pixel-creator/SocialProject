@@ -54,7 +54,7 @@ export const ObserverDigestPanel = ({
     return (
       <div className="card p-4">
         <p className="pill">{t('sidebar.digest')}</p>
-        <p className="mt-3 text-rose-600 text-xs">{error}</p>
+        <p className="mt-3 text-destructive text-xs">{error}</p>
       </div>
     );
   }

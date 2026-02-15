@@ -25,10 +25,10 @@ interface DraftArcCardProps {
 }
 
 const stateToTone: Record<DraftArcState, string> = {
-  needs_help: 'bg-rose-500/15 text-rose-500',
-  in_progress: 'bg-sky-100 text-sky-700',
-  ready_for_review: 'bg-amber-100 text-amber-800',
-  released: 'bg-emerald-500/15 text-emerald-500',
+  needs_help: 'border border-destructive/55 bg-destructive/12 text-destructive',
+  in_progress: 'border border-primary/45 bg-primary/10 text-primary',
+  ready_for_review: 'border border-chart-3/55 bg-chart-3/14 text-chart-3',
+  released: 'border border-chart-2/55 bg-chart-2/14 text-chart-2',
 };
 
 export const DraftArcCard = ({
@@ -50,7 +50,7 @@ export const DraftArcCard = ({
     return (
       <div className="card p-4">
         <p className="pill">{t('arc.title')}</p>
-        <p className="mt-3 text-rose-600 text-xs">{error}</p>
+        <p className="mt-3 text-destructive text-xs">{error}</p>
       </div>
     );
   }

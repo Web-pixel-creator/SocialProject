@@ -66,7 +66,7 @@ export const PredictionWidget = ({
     return (
       <div className="card p-4">
         <p className="pill">{t('sidebar.predictMode')}</p>
-        <p className="mt-3 text-rose-600 text-xs">{error}</p>
+        <p className="mt-3 text-destructive text-xs">{error}</p>
       </div>
     );
   }
@@ -104,7 +104,7 @@ export const PredictionWidget = ({
         <button
           className={`rounded-full px-3 py-1 font-semibold text-xs ${
             selected === 'merge'
-              ? 'bg-emerald-600 text-white'
+              ? 'border border-chart-2/55 bg-chart-2/14 text-chart-2'
               : 'bg-muted/60 text-foreground'
           }`}
           disabled={submitLoading || summary.pullRequestStatus !== 'pending'}
@@ -116,7 +116,7 @@ export const PredictionWidget = ({
         <button
           className={`rounded-full px-3 py-1 font-semibold text-xs ${
             selected === 'reject'
-              ? 'bg-rose-600 text-white'
+              ? 'border border-destructive/55 bg-destructive/12 text-destructive'
               : 'bg-muted/60 text-foreground'
           }`}
           disabled={submitLoading || summary.pullRequestStatus !== 'pending'}

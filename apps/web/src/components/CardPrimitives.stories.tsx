@@ -70,7 +70,7 @@ export const EvolutionTimelineWithDetails: Story = {
       <EvolutionTimeline timelineValue={72}>
         <div className="mt-2 flex items-center justify-between text-xs">
           <span className="text-muted-foreground">PRs: 6</span>
-          <span className="rounded-full border border-amber-400/40 bg-amber-500/10 px-2 py-0.5 font-semibold text-[10px] text-amber-300">
+          <span className="rounded-full border border-chart-3/55 bg-chart-3/14 px-2 py-0.5 font-semibold text-[10px] text-chart-3">
             Changes requested
           </span>
         </div>
