@@ -448,7 +448,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
         {hasFilterPanel ? (
           <button
             aria-expanded={filtersOpen}
-            className="inline-flex w-fit flex-shrink-0 items-center gap-1 rounded-full border border-border/35 bg-background/52 px-2.5 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition hover:border-border/35 hover:bg-background/82 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-3.5 sm:py-1.5 sm:text-xs"
+            className="inline-flex min-h-9 w-fit flex-shrink-0 items-center gap-1 rounded-full border border-border/35 bg-background/52 px-3 py-2 font-semibold text-[11px] uppercase tracking-wide transition hover:border-border/35 hover:bg-background/82 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-3.5 sm:py-1.5 sm:text-xs"
             onClick={onToggleFilters}
             type="button"
           >
@@ -483,7 +483,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           ) : null}
           {hasBattleFilterApplied ? (
             <button
-              className="flex-shrink-0 rounded-full bg-muted/55 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="flex-shrink-0 rounded-full bg-muted/55 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={onResetBattleFilterQuick}
               type="button"
             >
@@ -492,7 +492,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           ) : null}
           {hasStatusFilterApplied ? (
             <button
-              className="flex-shrink-0 rounded-full bg-muted/55 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="flex-shrink-0 rounded-full bg-muted/55 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={onResetStatusFilterQuick}
               type="button"
             >
@@ -501,7 +501,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           ) : null}
           {hasSortFilterApplied ? (
             <button
-              className="flex-shrink-0 rounded-full bg-muted/55 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="flex-shrink-0 rounded-full bg-muted/55 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={onResetSortFilterQuick}
               type="button"
             >
@@ -510,7 +510,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           ) : null}
           {hasRangeFilterApplied ? (
             <button
-              className="flex-shrink-0 rounded-full bg-muted/55 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="flex-shrink-0 rounded-full bg-muted/55 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={onResetRangeFilterQuick}
               type="button"
             >
@@ -519,7 +519,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           ) : null}
           {hasIntentFilterApplied ? (
             <button
-              className="flex-shrink-0 rounded-full bg-muted/55 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="flex-shrink-0 rounded-full bg-muted/55 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={onResetIntentFilterQuick}
               type="button"
             >
@@ -528,7 +528,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           ) : null}
           {hasActiveFilters ? (
             <button
-              className="flex-shrink-0 rounded-full bg-muted/55 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="flex-shrink-0 rounded-full bg-muted/55 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={onResetFilters}
               type="button"
             >
@@ -1765,7 +1765,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
             {PRIMARY_TABS.map((tab) => (
               <button
                 aria-pressed={active === tab}
-                className={`flex-shrink-0 rounded-full border px-3 py-1.5 font-semibold text-[10px] uppercase tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-4 sm:py-2 sm:text-xs ${tabClass(
+                className={`min-h-9 flex-shrink-0 rounded-full border px-3.5 py-2 font-semibold text-[11px] uppercase tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-4 sm:py-2 sm:text-xs ${tabClass(
                   tab,
                   active === tab,
                 )}`}
@@ -1781,7 +1781,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
             {isMobileViewport ? (
               <button
                 aria-expanded={moreOpen}
-                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-4 sm:py-2 sm:text-xs ${
+                className={`inline-flex min-h-9 items-center gap-1 rounded-full border px-3.5 py-2 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-4 sm:py-2 sm:text-xs ${
                   MORE_TABS.includes(active)
                     ? 'border-primary/50 bg-primary/15 text-primary'
                     : 'border-border/35 bg-card/55 text-muted-foreground hover:border-border/55 hover:bg-card/80 hover:text-foreground'
@@ -1808,7 +1808,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                 ref={desktopMoreDetailsRef}
               >
                 <summary
-                  className={`inline-flex cursor-pointer list-none items-center gap-1 rounded-full border px-3 py-1.5 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-4 sm:py-2 sm:text-xs [&::-webkit-details-marker]:hidden ${
+                  className={`inline-flex min-h-9 cursor-pointer list-none items-center gap-1 rounded-full border px-3.5 py-2 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-4 sm:py-2 sm:text-xs [&::-webkit-details-marker]:hidden ${
                     MORE_TABS.includes(active)
                       ? 'border-primary/50 bg-primary/15 text-primary'
                       : 'border-border/35 bg-card/55 text-muted-foreground hover:border-border/55 hover:bg-card/80 hover:text-foreground'
@@ -1832,7 +1832,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
         </div>
         <div className="grid gap-2 rounded-2xl border border-border/35 bg-card/72 p-2.5 sm:p-3 lg:p-3.5">
           <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-            <label className="group relative flex w-full min-w-0 items-center gap-2 rounded-full border border-border/35 bg-background/82 px-3.5 py-2 text-muted-foreground text-xs transition focus-within:border-primary/35 focus-within:bg-background hover:border-border/35 hover:bg-background/90">
+            <label className="group relative flex min-h-10 w-full min-w-0 items-center gap-2 rounded-full border border-border/35 bg-background/82 px-3.5 py-2.5 text-muted-foreground text-xs transition focus-within:border-primary/35 focus-within:bg-background hover:border-border/35 hover:bg-background/90">
               <Search aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
               <input
                 aria-label={t('feed.searchAriaLabel')}
@@ -1862,7 +1862,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
               <legend className="sr-only">{densityLabel}</legend>
               <button
                 aria-pressed={density === 'comfort'}
-                className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                className={`inline-flex min-h-9 items-center gap-1 rounded-full px-3.5 py-2 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                   density === 'comfort'
                     ? 'border border-primary/35 bg-primary/10 text-primary'
                     : 'border border-border/35 bg-background/34 text-muted-foreground hover:border-border/55 hover:text-foreground'
@@ -1876,7 +1876,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
               </button>
               <button
                 aria-pressed={density === 'compact'}
-                className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                className={`inline-flex min-h-9 items-center gap-1 rounded-full px-3.5 py-2 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                   density === 'compact'
                     ? 'border border-primary/35 bg-primary/10 text-primary'
                     : 'border border-border/35 bg-background/34 text-muted-foreground hover:border-border/55 hover:text-foreground'
