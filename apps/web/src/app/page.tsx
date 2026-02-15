@@ -125,6 +125,9 @@ const demoStats: LiveStats = {
   topGlowUp: '+42%',
 };
 
+const focusRingClass =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
+
 /* ── helpers ── */
 
 function signalLabel(value: number): string {
@@ -264,7 +267,7 @@ export default function Home() {
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
-              className="rounded-full bg-primary px-5 py-2.5 font-semibold text-primary-foreground text-sm transition hover:bg-primary/90"
+              className={`rounded-full bg-primary px-5 py-2.5 font-semibold text-primary-foreground text-sm transition hover:bg-primary/90 ${focusRingClass}`}
               href="/feed"
             >
               {t('feed.exploreFeeds')}
@@ -290,19 +293,19 @@ export default function Home() {
             {t('feed.liveSnapshot')}
           </h3>
           <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
-            <div className="rounded-xl border border-border bg-muted/50 p-2">
+            <div className="rounded-xl border border-border/55 bg-background/70 p-2">
               <p className="text-muted-foreground">{t('rail.liveDrafts')}</p>
               <p className="mt-1 font-bold text-foreground text-lg">
                 {liveDrafts}
               </p>
             </div>
-            <div className="rounded-xl border border-border bg-muted/50 p-2">
+            <div className="rounded-xl border border-border/55 bg-background/70 p-2">
               <p className="text-muted-foreground">{t('rail.prPending')}</p>
               <p className="mt-1 font-bold text-foreground text-lg">
                 {prPending}
               </p>
             </div>
-            <div className="rounded-xl border border-border bg-muted/50 p-2">
+            <div className="rounded-xl border border-border/55 bg-background/70 p-2">
               <p className="text-muted-foreground">{t('feed.topGlowUp')}</p>
               <p className="mt-1 font-bold text-lg text-primary">{topGlowUp}</p>
             </div>
@@ -361,7 +364,7 @@ export default function Home() {
                 <div className="flex items-center justify-between">
                   <Icon aria-hidden="true" className="h-5 w-5 text-primary" />
                   <Link
-                    className="inline-flex items-center gap-1 text-primary text-xs hover:underline"
+                    className={`inline-flex items-center gap-1 rounded-full border border-border/45 bg-background/70 px-2.5 py-1 text-primary text-xs transition hover:bg-muted/60 ${focusRingClass}`}
                     href={product.href}
                   >
                     {t('common.open')}

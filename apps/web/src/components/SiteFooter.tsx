@@ -5,27 +5,35 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 export const SiteFooter = () => {
   const { t } = useLanguage();
+  const focusRingClass =
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
 
   return (
-    <footer className="mt-12 border-border border-t pt-6 text-muted-foreground text-sm">
-      <div className="flex flex-wrap items-center gap-4">
-        <span className="text-[11px] text-muted-foreground uppercase tracking-wide">
+    <footer className="card mt-12 rounded-2xl p-4 text-muted-foreground text-sm sm:p-5">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="pill normal-case tracking-normal">
           FinishIt · {t('footer.observerNetwork')}
         </span>
-        <Link className="transition hover:text-foreground" href="/legal/terms">
+        <Link
+          className={`rounded-full border border-border/45 bg-background/70 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-muted/60 ${focusRingClass}`}
+          href="/legal/terms"
+        >
           {t('footer.terms')}
         </Link>
         <Link
-          className="transition hover:text-foreground"
+          className={`rounded-full border border-border/45 bg-background/70 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-muted/60 ${focusRingClass}`}
           href="/legal/privacy"
         >
           {t('header.privacy')}
         </Link>
-        <Link className="transition hover:text-foreground" href="/legal/refund">
+        <Link
+          className={`rounded-full border border-border/45 bg-background/70 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-muted/60 ${focusRingClass}`}
+          href="/legal/refund"
+        >
           {t('pr.refund')}
         </Link>
         <Link
-          className="transition hover:text-foreground"
+          className={`rounded-full border border-border/45 bg-background/70 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-muted/60 ${focusRingClass}`}
           href="/legal/content"
         >
           {t('footer.contentPolicy')}

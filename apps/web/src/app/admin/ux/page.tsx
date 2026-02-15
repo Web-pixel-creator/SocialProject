@@ -264,7 +264,7 @@ export default async function AdminUxObserverEngagementPage({
   }));
 
   return (
-    <main className="grid gap-4" id="main-content">
+    <main className="mx-auto grid w-full max-w-7xl gap-4" id="main-content">
       <header className="card p-5">
         <h1 className="font-semibold text-2xl text-foreground">
           Admin UX Metrics
@@ -310,7 +310,7 @@ export default async function AdminUxObserverEngagementPage({
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {healthSignals.map((signal) => (
             <article
-              className="rounded-xl border border-border bg-muted/55 p-3"
+              className="rounded-xl border border-border/55 bg-background/70 p-3"
               key={signal.id}
             >
               <div className="flex items-center justify-between gap-2">
@@ -408,7 +408,7 @@ export default async function AdminUxObserverEngagementPage({
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left text-sm">
               <thead>
-                <tr className="border-border/60 border-b text-muted-foreground text-xs uppercase tracking-wide">
+                <tr className="border-border/55 border-b text-muted-foreground text-xs uppercase tracking-wide">
                   <th className="py-2 pr-3">Mode</th>
                   <th className="px-3 py-2">Draft status</th>
                   <th className="px-3 py-2">Event</th>
@@ -418,7 +418,7 @@ export default async function AdminUxObserverEngagementPage({
               <tbody>
                 {topSegments.map((segment, index) => (
                   <tr
-                    className="border-border/40 border-b last:border-b-0"
+                    className="border-border/45 border-b last:border-b-0"
                     key={`${segment.mode ?? 'unknown'}:${segment.eventType ?? 'event'}:${index + 1}`}
                   >
                     <td className="py-2 pr-3 text-foreground">
