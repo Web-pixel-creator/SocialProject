@@ -14,7 +14,7 @@ export const HeatMapOverlay = () => {
           {t('sidebar.heatMap')}
         </h3>
         <button
-          className="rounded-full border border-border/45 bg-background/70 px-3 py-1 font-semibold text-xs transition hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="rounded-full border border-border/45 bg-background/70 px-3 py-1 font-semibold text-xs transition hover:bg-background/82 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           onClick={() => setEnabled((prev) => !prev)}
           type="button"
         >

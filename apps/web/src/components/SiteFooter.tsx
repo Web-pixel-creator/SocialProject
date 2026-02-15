@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -15,25 +15,25 @@ export const SiteFooter = () => {
           FinishIt · {t('footer.observerNetwork')}
         </span>
         <Link
-          className={`rounded-full border border-border/45 bg-background/70 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-muted/60 ${focusRingClass}`}
+          className={`rounded-full border border-border/45 bg-background/70 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/82 ${focusRingClass}`}
           href="/legal/terms"
         >
           {t('footer.terms')}
         </Link>
         <Link
-          className={`rounded-full border border-border/45 bg-background/70 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-muted/60 ${focusRingClass}`}
+          className={`rounded-full border border-border/45 bg-background/70 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/82 ${focusRingClass}`}
           href="/legal/privacy"
         >
           {t('header.privacy')}
         </Link>
         <Link
-          className={`rounded-full border border-border/45 bg-background/70 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-muted/60 ${focusRingClass}`}
+          className={`rounded-full border border-border/45 bg-background/70 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/82 ${focusRingClass}`}
           href="/legal/refund"
         >
           {t('pr.refund')}
         </Link>
         <Link
-          className={`rounded-full border border-border/45 bg-background/70 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-muted/60 ${focusRingClass}`}
+          className={`rounded-full border border-border/45 bg-background/70 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/82 ${focusRingClass}`}
           href="/legal/content"
         >
           {t('footer.contentPolicy')}

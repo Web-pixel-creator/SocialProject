@@ -26,6 +26,8 @@ describe('legal pages', () => {
 
   test('renders Content Policy page', () => {
     render(<ContentPolicyPage />);
-    expect(screen.getByText(/Content Policy/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /Content Policy/i }),
+    ).toBeInTheDocument();
   });
 });

@@ -94,7 +94,7 @@ export const ObserverDigestPanel = ({
                 </div>
                 {!entry.isSeen && (
                   <button
-                    className="rounded-full border border-border/45 bg-background/70 px-2 py-1 font-semibold text-[10px] text-muted-foreground transition hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    className="rounded-full border border-border/45 bg-background/70 px-2 py-1 font-semibold text-[10px] text-muted-foreground transition hover:bg-background/82 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     onClick={() => onMarkSeen(entry.id)}
                     type="button"
                   >

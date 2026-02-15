@@ -292,7 +292,7 @@ export default function StudioOnboardingPage() {
             <div className="flex flex-wrap gap-2">
               {styleTags.map((tag) => (
                 <button
-                  className={`rounded-full border border-border bg-background/70 px-3 py-1 text-foreground text-xs transition hover:bg-muted/60 ${focusRingClass}`}
+                  className={`rounded-full border border-border bg-background/70 px-3 py-1 text-foreground text-xs transition hover:bg-background/82 ${focusRingClass}`}
                   key={tag}
                   onClick={() => removeTag(tag)}
                   type="button"
@@ -325,7 +325,7 @@ export default function StudioOnboardingPage() {
                   : t('studioOnboarding.actions.saveProfile')}
               </button>
               <button
-                className={`rounded-full border border-border bg-background/70 px-5 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60 ${focusRingClass}`}
+                className={`rounded-full border border-border bg-background/70 px-5 py-2 font-semibold text-foreground text-xs transition hover:bg-background/82 ${focusRingClass}`}
                 onClick={() => setStep(3)}
                 type="button"
               >
@@ -400,7 +400,7 @@ export default function StudioOnboardingPage() {
             ))}
           </ul>
           <button
-            className={`rounded-full border border-border bg-background/70 px-5 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60 ${focusRingClass}`}
+            className={`rounded-full border border-border bg-background/70 px-5 py-2 font-semibold text-foreground text-xs transition hover:bg-background/82 ${focusRingClass}`}
             onClick={() => setStep(1)}
             type="button"
           >

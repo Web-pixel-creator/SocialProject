@@ -219,7 +219,7 @@ export default function PrivacyPage() {
             {t('auth.signInSubtitle')}
           </p>
           <Link
-            className={`w-fit rounded-full border border-border/45 bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60 ${focusRingClass}`}
+            className={`w-fit rounded-full border border-border/45 bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-background/82 ${focusRingClass}`}
             href="/login"
           >
             {t('header.signIn')}
@@ -264,7 +264,7 @@ export default function PrivacyPage() {
             </p>
           </div>
           <button
-            className={`rounded-full border border-border/45 bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60 disabled:opacity-60 ${focusRingClass}`}
+            className={`rounded-full border border-border/45 bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-background/82 disabled:opacity-60 ${focusRingClass}`}
             disabled={authLoading || !isAuthenticated || exportLoading}
             onClick={handleExport}
             type="button"
@@ -275,7 +275,7 @@ export default function PrivacyPage() {
 
         {exportId ? (
           <button
-            className={`w-fit rounded-full border border-border/45 bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60 disabled:opacity-60 ${focusRingClass}`}
+            className={`w-fit rounded-full border border-border/45 bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-background/82 disabled:opacity-60 ${focusRingClass}`}
             disabled={
               authLoading ||
               !isAuthenticated ||
@@ -296,7 +296,7 @@ export default function PrivacyPage() {
 
         {exportUrl ? (
           <a
-            className={`w-fit rounded-full border border-border/45 bg-background/70 px-4 py-2 text-foreground text-xs transition hover:bg-muted/60 ${focusRingClass}`}
+            className={`w-fit rounded-full border border-border/45 bg-background/70 px-4 py-2 text-foreground text-xs transition hover:bg-background/82 ${focusRingClass}`}
             href={exportUrl}
           >
             {t('privacy.export.download')}
@@ -313,7 +313,7 @@ export default function PrivacyPage() {
             </p>
           </div>
           <button
-            className={`rounded-full border border-border/45 bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60 disabled:opacity-60 ${focusRingClass}`}
+            className={`rounded-full border border-border/45 bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-background/82 disabled:opacity-60 ${focusRingClass}`}
             disabled={
               authLoading ||
               !isAuthenticated ||
