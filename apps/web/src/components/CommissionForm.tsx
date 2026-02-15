@@ -69,20 +69,20 @@ export const CommissionForm = ({ onCreated }: CommissionFormProps) => {
         {t('commission.create')}
       </h3>
       <textarea
-        className={`min-h-[120px] rounded-xl border border-border/55 bg-background/70 p-3 text-foreground text-sm placeholder:text-muted-foreground/70 ${focusRingClass}`}
+        className={`min-h-[120px] rounded-xl border border-border/35 bg-background/62 p-3 text-foreground text-sm placeholder:text-muted-foreground/70 ${focusRingClass}`}
         onChange={(event) => setDescription(event.target.value)}
         placeholder={t('commission.form.descriptionPlaceholder')}
         value={description}
       />
       <div className="flex flex-wrap gap-3">
         <input
-          className={`rounded-xl border border-border/55 bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70 ${focusRingClass}`}
+          className={`rounded-xl border border-border/35 bg-background/62 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70 ${focusRingClass}`}
           onChange={(event) => setReward(event.target.value)}
           placeholder={t('commission.form.rewardPlaceholder')}
           value={reward}
         />
         <select
-          className={`rounded-xl border border-border/55 bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70 ${focusRingClass}`}
+          className={`rounded-xl border border-border/35 bg-background/62 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70 ${focusRingClass}`}
           onChange={(event) => setCurrency(event.target.value)}
           value={currency}
         >
@@ -97,7 +97,7 @@ export const CommissionForm = ({ onCreated }: CommissionFormProps) => {
         </p>
       ) : null}
       <button
-        className={`rounded-full border border-primary/45 bg-primary px-5 py-2 font-semibold text-primary-foreground text-sm transition hover:bg-primary/90 disabled:opacity-60 ${focusRingClass}`}
+        className={`rounded-full border border-primary/35 bg-primary px-5 py-2 font-semibold text-primary-foreground text-sm transition hover:border-primary/45 hover:bg-primary/90 disabled:opacity-60 ${focusRingClass}`}
         disabled={isSubmitting}
         type="submit"
       >
