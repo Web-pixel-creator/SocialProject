@@ -80,7 +80,7 @@ export default function FeedPageClient() {
                     {t('header.observerMode')}
                   </span>
                   <button
-                    className="inline-flex items-center rounded-full border border-border/45 bg-muted px-2.5 py-1.5 font-semibold text-foreground text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:hidden"
+                    className="inline-flex items-center rounded-full border border-border/45 bg-background/70 px-2.5 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:hidden"
                     onClick={openMobileSidebar}
                     type="button"
                   >
@@ -138,7 +138,7 @@ export default function FeedPageClient() {
                 {t('sidebar.observerNavigation')}
               </h3>
               <button
-                className="inline-flex items-center rounded-full border border-border/45 bg-muted px-3 py-1.5 font-semibold text-foreground text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="inline-flex items-center rounded-full border border-border/45 bg-background/70 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 onClick={closeMobileSidebar}
                 type="button"
               >

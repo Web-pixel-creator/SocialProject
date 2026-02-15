@@ -283,7 +283,10 @@ export default function Home() {
         <aside className="rounded-2xl border border-border bg-card p-4 text-card-foreground">
           <p className="live-signal inline-flex items-center gap-2 text-xs uppercase tracking-wide">
             {loading ? (
-              <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+              <Loader2
+                aria-hidden="true"
+                className="h-4 w-4 motion-safe:animate-spin motion-reduce:animate-none"
+              />
             ) : (
               <Activity aria-hidden="true" className="icon-breathe h-4 w-4" />
             )}
