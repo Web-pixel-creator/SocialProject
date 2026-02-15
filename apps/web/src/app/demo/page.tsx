@@ -85,8 +85,8 @@ export default function DemoPage() {
   const progressWidth = `${(doneCount / steps.length) * 100}%`;
 
   return (
-    <main className="grid gap-4 sm:gap-6">
-      <div className="card p-4 sm:p-6">
+    <main className="grid gap-3 sm:gap-5">
+      <div className="card p-3 sm:p-5">
         <p className="pill">{t('demo.header.pill')}</p>
         <h2 className="mt-3 font-semibold text-foreground text-xl sm:text-2xl">
           {t('demo.header.title')}
@@ -101,22 +101,22 @@ export default function DemoPage() {
         retryLabel={t('common.retry')}
         title={t('error.unexpected')}
       >
-        <section className="card grid gap-4 p-4 sm:p-6">
-          <div className="rounded-xl border border-border/35 bg-background/65 p-4 text-muted-foreground text-sm">
+        <section className="card grid gap-3 p-3 sm:gap-4 sm:p-5">
+          <div className="rounded-xl border border-border/35 bg-background/65 p-3 text-muted-foreground text-sm sm:p-4">
             {t('demo.info.trackEveryChange')}
           </div>
           <label className="grid gap-2 font-medium text-foreground text-sm">
             {t('demo.form.draftIdOptional')}
             <input
-              className={`rounded-xl border border-border/40 bg-background/68 px-4 py-2 text-foreground placeholder:text-muted-foreground/70 ${focusRingClass}`}
+              className={`rounded-xl border border-border/40 bg-background/68 px-3 py-2 text-foreground placeholder:text-muted-foreground/70 sm:px-4 ${focusRingClass}`}
               onChange={(event) => setDraftId(event.target.value)}
               placeholder={t('demo.form.draftIdPlaceholder')}
               value={draftId}
             />
           </label>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
             <button
-              className={`rounded-full border border-primary/45 bg-primary px-5 py-2 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90 disabled:opacity-60 ${focusRingClass}`}
+              className={`rounded-full border border-primary/45 bg-primary px-5 py-1.5 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90 disabled:opacity-60 sm:py-2 ${focusRingClass}`}
               disabled={loading}
               onClick={runDemo}
               type="button"
@@ -125,21 +125,21 @@ export default function DemoPage() {
             </button>
             {result?.draftId ? (
               <Link
-                className={`rounded-full border border-border/35 bg-background/65 px-5 py-2 font-semibold text-foreground text-xs transition hover:bg-background/78 ${focusRingClass}`}
+                className={`rounded-full border border-border/35 bg-background/65 px-5 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/78 sm:py-2 ${focusRingClass}`}
                 href={`/drafts/${result.draftId}`}
               >
                 {t('demo.actions.openDraft')}
               </Link>
             ) : null}
             <Link
-              className={`rounded-full border border-border/35 bg-background/65 px-5 py-2 font-semibold text-foreground text-xs transition hover:bg-background/78 ${focusRingClass}`}
+              className={`rounded-full border border-border/35 bg-background/65 px-5 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/78 sm:py-2 ${focusRingClass}`}
               href="/feed"
             >
               {t('feed.exploreFeeds')}
             </Link>
           </div>
           {error ? (
-            <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-destructive text-xs">
+            <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-2.5 text-destructive text-xs sm:p-3">
               <p>{error}</p>
               <button
                 className={`mt-2 rounded-full border border-destructive/40 px-3 py-1 font-semibold text-[11px] transition hover:bg-destructive/10 disabled:opacity-60 ${focusRingClass}`}
@@ -153,7 +153,7 @@ export default function DemoPage() {
           ) : null}
         </section>
 
-        <section className="card grid gap-4 p-4 sm:p-6">
+        <section className="card grid gap-3 p-3 sm:gap-4 sm:p-5">
           <div className="flex items-center justify-between gap-3">
             <h3 className="font-semibold text-foreground text-sm">
               {t('demo.progress.title')}
@@ -171,7 +171,7 @@ export default function DemoPage() {
           <ul className="grid gap-2 text-sm">
             {steps.map((step) => (
               <li
-                className="flex items-center justify-between rounded-xl border border-border/35 bg-background/65 p-3"
+                className="flex items-center justify-between rounded-xl border border-border/35 bg-background/65 p-2.5 sm:p-3"
                 key={step.key}
               >
                 <span className="text-foreground">{t(step.labelKey)}</span>
@@ -190,12 +190,12 @@ export default function DemoPage() {
         </section>
 
         {result ? (
-          <section className="card grid gap-3 p-4 sm:p-6 md:grid-cols-2">
-            <div className="rounded-xl border border-border/35 bg-background/65 p-4 text-xs">
+          <section className="card grid gap-3 p-3 sm:p-5 md:grid-cols-2">
+            <div className="rounded-xl border border-border/35 bg-background/65 p-3 text-xs sm:p-4">
               <p className="text-muted-foreground">{t('demo.summary.draft')}</p>
               <p className="mt-1 break-all text-foreground">{result.draftId}</p>
             </div>
-            <div className="rounded-xl border border-border/35 bg-background/65 p-4 text-xs">
+            <div className="rounded-xl border border-border/35 bg-background/65 p-3 text-xs sm:p-4">
               <p className="text-muted-foreground">
                 {t('demo.summary.fixRequest')}
               </p>
@@ -203,7 +203,7 @@ export default function DemoPage() {
                 {result.fixRequestId}
               </p>
             </div>
-            <div className="rounded-xl border border-border/35 bg-background/65 p-4 text-xs">
+            <div className="rounded-xl border border-border/35 bg-background/65 p-3 text-xs sm:p-4">
               <p className="text-muted-foreground">
                 {t('demo.summary.pullRequest')}
               </p>
@@ -211,7 +211,7 @@ export default function DemoPage() {
                 {result.pullRequestId}
               </p>
             </div>
-            <div className="rounded-xl border border-border/35 bg-background/65 p-4 text-xs">
+            <div className="rounded-xl border border-border/35 bg-background/65 p-3 text-xs sm:p-4">
               <p className="text-muted-foreground">
                 {t('demo.summary.glowUp')}
               </p>
