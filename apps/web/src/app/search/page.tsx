@@ -638,7 +638,7 @@ function SearchPageContent() {
             className={`rounded-lg px-3 py-2 text-sm ${focusRingClass} ${
               mode === 'text'
                 ? 'border border-primary/50 bg-primary/15 text-primary'
-                : 'border border-border/45 bg-muted/70 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                : 'border border-border/45 bg-background/70 text-muted-foreground hover:border-primary/40 hover:bg-background/80 hover:text-foreground'
             }`}
             onClick={() => setMode('text')}
             type="button"
@@ -649,7 +649,7 @@ function SearchPageContent() {
             className={`rounded-lg px-3 py-2 text-sm ${focusRingClass} ${
               mode === 'visual'
                 ? 'border border-primary/50 bg-primary/15 text-primary'
-                : 'border border-border/45 bg-muted/70 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                : 'border border-border/45 bg-background/70 text-muted-foreground hover:border-primary/40 hover:bg-background/80 hover:text-foreground'
             }`}
             onClick={() => setMode('visual')}
             type="button"
@@ -669,7 +669,7 @@ function SearchPageContent() {
             <div className="flex flex-wrap items-center gap-2">
               {textQueryPresets.map((preset) => (
                 <button
-                  className={`rounded-full border border-border/45 bg-muted/70 px-3 py-1 text-muted-foreground text-xs transition hover:border-primary/40 hover:text-foreground ${focusRingClass}`}
+                  className={`rounded-full border border-border/45 bg-background/70 px-3 py-1 text-muted-foreground text-xs transition hover:border-primary/40 hover:bg-background/80 hover:text-foreground ${focusRingClass}`}
                   key={preset}
                   onClick={() => setQuery(preset)}
                   type="button"
@@ -755,7 +755,7 @@ function SearchPageContent() {
             <div className="flex flex-wrap items-center gap-2">
               {visualTagPresets.map((preset) => (
                 <button
-                  className={`rounded-full border border-border/45 bg-muted/70 px-3 py-1 text-muted-foreground text-xs transition hover:border-primary/40 hover:text-foreground ${focusRingClass}`}
+                  className={`rounded-full border border-border/45 bg-background/70 px-3 py-1 text-muted-foreground text-xs transition hover:border-primary/40 hover:bg-background/80 hover:text-foreground ${focusRingClass}`}
                   key={preset}
                   onClick={() => setVisualTags(preset)}
                   type="button"
@@ -798,7 +798,7 @@ function SearchPageContent() {
           </>
         )}
 
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/45 border-dashed bg-muted/60 p-4 text-muted-foreground text-sm">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/45 bg-background/70 p-4 text-muted-foreground text-sm">
           <span>{summary}</span>
           {showAbBadge && (
             <span className="rounded-full border border-border/45 bg-background/70 px-2 py-0.5 text-[11px] text-muted-foreground uppercase">
@@ -820,7 +820,7 @@ function SearchPageContent() {
           </div>
         )}
         {visualNotice && (
-          <div className="rounded-xl border border-border/45 bg-muted/60 p-3 text-muted-foreground text-xs">
+          <div className="rounded-xl border border-border/45 bg-background/70 p-3 text-muted-foreground text-xs">
             {visualNotice}
           </div>
         )}
@@ -830,7 +830,7 @@ function SearchPageContent() {
           </p>
         ) : null}
         {showEmptyState ? (
-          <div className="grid gap-3 rounded-xl border border-border/45 bg-muted/60 p-4 text-muted-foreground text-sm">
+          <div className="grid gap-3 rounded-xl border border-border/45 bg-background/70 p-4 text-muted-foreground text-sm">
             <p>
               {mode === 'visual' && visualHasSearched
                 ? t('search.states.completedNoResults')
@@ -892,7 +892,7 @@ function SearchPageContent() {
 
               return (
                 <li
-                  className="rounded-xl border border-border/45 bg-muted/60 text-sm"
+                  className="rounded-xl border border-border/45 bg-background/70 text-sm"
                   key={result.id}
                 >
                   <Link
@@ -917,7 +917,7 @@ function SearchPageContent() {
                             width={320}
                           />
                         ) : (
-                          <div className="flex h-20 w-full items-center justify-center rounded-lg bg-muted font-semibold text-[11px] text-muted-foreground">
+                          <div className="flex h-20 w-full items-center justify-center rounded-lg border border-border/45 bg-background/75 font-semibold text-[11px] text-muted-foreground">
                             {t('common.before')}
                           </div>
                         )}
@@ -932,7 +932,7 @@ function SearchPageContent() {
                             width={320}
                           />
                         ) : (
-                          <div className="flex h-20 w-full items-center justify-center rounded-lg bg-muted font-semibold text-[11px] text-muted-foreground">
+                          <div className="flex h-20 w-full items-center justify-center rounded-lg border border-border/45 bg-background/75 font-semibold text-[11px] text-muted-foreground">
                             {t('common.after')}
                           </div>
                         )}
