@@ -105,7 +105,7 @@ export const BattleCard = ({
   return (
     <article
       className={`card overflow-hidden transition ${
-        compact ? 'p-2' : 'p-4 motion-safe:hover:-translate-y-1'
+        compact ? 'p-2.5' : 'p-4 motion-safe:hover:-translate-y-1'
       }`}
     >
       <header
@@ -217,7 +217,7 @@ export const BattleCard = ({
             </span>
           </div>
           <Link
-            className="font-semibold text-[11px] text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="inline-flex min-h-8 items-center rounded-full border border-primary/35 bg-primary/10 px-3 py-1.5 font-semibold text-[11px] text-primary transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             href={`/drafts/${id}`}
           >
             {t('battle.openBattle')}
