@@ -66,8 +66,8 @@ export default function FeedPageClient() {
               </span>
             </div>
             <div className="grid gap-3 sm:gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
-              <div className="grid max-w-3xl gap-2">
-                <h2 className="font-semibold text-[28px] text-foreground leading-tight md:text-3xl">
+              <div className="grid max-w-3xl gap-1.5 sm:gap-2">
+                <h2 className="font-semibold text-[24px] text-foreground leading-tight sm:text-[28px] md:text-3xl">
                   {t('header.feeds')}
                 </h2>
                 <p className="text-muted-foreground text-sm md:text-base">
@@ -76,7 +76,7 @@ export default function FeedPageClient() {
               </div>
               <div className="grid w-full gap-2 sm:w-auto md:justify-items-end">
                 <div className="flex flex-wrap items-center justify-end gap-2">
-                  <span className="rounded-full border border-primary/35 bg-primary/10 px-3 py-1.5 font-semibold text-[11px] text-primary uppercase tracking-wide">
+                  <span className="rounded-full border border-primary/35 bg-primary/10 px-2.5 py-1 font-semibold text-[11px] text-primary uppercase tracking-wide sm:px-3 sm:py-1.5">
                     {t('header.observerMode')}
                   </span>
                   <button

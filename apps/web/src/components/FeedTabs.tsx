@@ -441,14 +441,14 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
         hasSecondaryRow ? 'gap-2 pt-1.5' : 'gap-1 pt-1'
       }`}
     >
-      <div className="flex items-center justify-between gap-1.5">
-        <span className="inline-flex w-fit items-center rounded-full border border-border/35 bg-background/58 px-2.5 py-1 text-[11px] sm:text-xs">
+      <div className="flex flex-wrap items-center justify-between gap-1.5">
+        <span className="inline-flex w-fit items-center rounded-full border border-border/35 bg-background/58 px-2.5 py-0.5 text-[11px] sm:py-1 sm:text-xs">
           {shownLabel}: {shownValue}
         </span>
         {hasFilterPanel ? (
           <button
             aria-expanded={filtersOpen}
-            className="inline-flex min-h-9 w-fit flex-shrink-0 items-center gap-1 rounded-full border border-border/35 bg-background/52 px-3 py-2 font-semibold text-[11px] uppercase tracking-wide transition hover:border-border/55 hover:bg-background/78 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-3.5 sm:py-1.5 sm:text-xs"
+            className="inline-flex min-h-8 w-fit flex-shrink-0 items-center gap-1 rounded-full border border-border/35 bg-background/52 px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition hover:border-border/55 hover:bg-background/78 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-3.5 sm:py-1.5 sm:text-xs"
             onClick={onToggleFilters}
             type="button"
           >
@@ -1758,14 +1758,14 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
   );
 
   return (
-    <section className="grid gap-4 sm:gap-5">
-      <div className="grid gap-3">
-        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-          <div className="no-scrollbar flex min-w-0 items-center gap-1.5 overflow-x-auto rounded-2xl bg-card/55 p-1.5 pr-2">
+    <section className="grid gap-3 sm:gap-4">
+      <div className="grid gap-2.5 sm:gap-3">
+        <div className="grid gap-1.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+          <div className="no-scrollbar flex min-w-0 items-center gap-1.5 overflow-x-auto rounded-2xl bg-card/55 p-1 pr-1.5 sm:p-1.5 sm:pr-2">
             {PRIMARY_TABS.map((tab) => (
               <button
                 aria-pressed={active === tab}
-                className={`min-h-9 flex-shrink-0 rounded-full border px-3.5 py-2 font-semibold text-[11px] uppercase tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-4 sm:py-2 sm:text-xs ${tabClass(
+                className={`min-h-8 flex-shrink-0 rounded-full border px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-4 sm:py-2 sm:text-xs ${tabClass(
                   tab,
                   active === tab,
                 )}`}
@@ -1781,7 +1781,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
             {isMobileViewport ? (
               <button
                 aria-expanded={moreOpen}
-                className={`inline-flex min-h-9 items-center gap-1 rounded-full border px-3.5 py-2 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-4 sm:py-2 sm:text-xs ${
+                className={`inline-flex min-h-8 items-center gap-1 rounded-full border px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-4 sm:py-2 sm:text-xs ${
                   MORE_TABS.includes(active)
                     ? 'border-primary/50 bg-primary/15 text-primary'
                     : 'border-border/35 bg-card/55 text-muted-foreground hover:border-border/55 hover:bg-card/76 hover:text-foreground'
@@ -1808,7 +1808,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                 ref={desktopMoreDetailsRef}
               >
                 <summary
-                  className={`inline-flex min-h-9 cursor-pointer list-none items-center gap-1 rounded-full border px-3.5 py-2 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-4 sm:py-2 sm:text-xs [&::-webkit-details-marker]:hidden ${
+                  className={`inline-flex min-h-8 cursor-pointer list-none items-center gap-1 rounded-full border px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-4 sm:py-2 sm:text-xs [&::-webkit-details-marker]:hidden ${
                     MORE_TABS.includes(active)
                       ? 'border-primary/50 bg-primary/15 text-primary'
                       : 'border-border/35 bg-card/55 text-muted-foreground hover:border-border/55 hover:bg-card/76 hover:text-foreground'
@@ -1823,16 +1823,16 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                     }`}
                   />
                 </summary>
-                <div className="absolute right-0 z-20 mt-2 grid min-w-[16rem] gap-2 rounded-2xl border border-border/35 bg-card/95 p-2.5">
+                <div className="absolute right-0 z-20 mt-2 grid min-w-[16rem] gap-2 rounded-2xl border border-border/35 bg-card/95 p-2 sm:p-2.5">
                   {morePanelContent}
                 </div>
               </details>
             )}
           </div>
         </div>
-        <div className="grid gap-2 rounded-2xl border border-border/35 bg-card/72 p-2.5 sm:p-3 lg:p-3.5">
+        <div className="grid gap-2 rounded-2xl border border-border/35 bg-card/72 p-2 sm:p-2.5 lg:p-3">
           <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-            <label className="group relative flex min-h-10 w-full min-w-0 items-center gap-2 rounded-full border border-border/35 bg-background/74 px-3.5 py-2.5 text-muted-foreground text-xs transition focus-within:border-primary/35 focus-within:bg-background hover:border-border/55 hover:bg-background/78">
+            <label className="group relative flex min-h-9 w-full min-w-0 items-center gap-2 rounded-full border border-border/35 bg-background/74 px-3 py-2 text-muted-foreground text-xs transition focus-within:border-primary/35 focus-within:bg-background hover:border-border/55 hover:bg-background/78 sm:px-3.5 sm:py-2.5">
               <Search aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
               <input
                 aria-label={t('feed.searchAriaLabel')}
@@ -1862,7 +1862,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
               <legend className="sr-only">{densityLabel}</legend>
               <button
                 aria-pressed={density === 'comfort'}
-                className={`inline-flex min-h-9 items-center gap-1 rounded-full px-3.5 py-2 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                className={`inline-flex min-h-8 items-center gap-1 rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-3.5 sm:py-2 ${
                   density === 'comfort'
                     ? 'border border-primary/35 bg-primary/10 text-primary'
                     : 'border border-border/35 bg-background/34 text-muted-foreground hover:border-border/55 hover:text-foreground'
@@ -1876,7 +1876,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
               </button>
               <button
                 aria-pressed={density === 'compact'}
-                className={`inline-flex min-h-9 items-center gap-1 rounded-full px-3.5 py-2 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                className={`inline-flex min-h-8 items-center gap-1 rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-3.5 sm:py-2 ${
                   density === 'compact'
                     ? 'border border-primary/35 bg-primary/10 text-primary'
                     : 'border border-border/35 bg-background/34 text-muted-foreground hover:border-border/55 hover:text-foreground'

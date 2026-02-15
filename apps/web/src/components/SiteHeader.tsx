@@ -145,13 +145,13 @@ export const SiteHeader = () => {
   }, [mobileMenuOpen]);
 
   return (
-    <header className="topbar-surface sticky top-4 z-50 mb-6 rounded-2xl border border-border/35 p-4 lg:p-5">
+    <header className="topbar-surface sticky top-3 z-50 mb-5 rounded-2xl border border-border/35 p-3 sm:p-4 lg:p-5">
       <div className="flex items-center justify-between gap-3">
         <Link
-          className="flex items-center gap-2 font-bold text-foreground text-xl tracking-tight"
+          className="flex items-center gap-2 font-bold text-foreground text-lg tracking-tight sm:text-xl"
           href="/"
         >
-          <span className="icon-breathe inline-flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground motion-reduce:animate-none">
+          <span className="icon-breathe inline-flex h-6 w-6 items-center justify-center rounded-lg bg-primary text-primary-foreground motion-reduce:animate-none sm:h-7 sm:w-7">
             F
           </span>
           FinishIt
@@ -195,7 +195,7 @@ export const SiteHeader = () => {
           aria-controls="mobile-site-menu"
           aria-expanded={mobileMenuOpen}
           aria-label={mobileMenuOpen ? t('common.close') : t('common.menu')}
-          className={`inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/35 bg-background/65 text-foreground transition hover:bg-background/78 md:hidden ${focusRingClass}`}
+          className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/35 bg-background/65 text-foreground transition hover:bg-background/78 md:hidden ${focusRingClass}`}
           onClick={() => setMobileMenuOpen((current) => !current)}
           ref={mobileToggleRef}
           type="button"
@@ -207,7 +207,7 @@ export const SiteHeader = () => {
           )}
         </button>
       </div>
-      <nav className="mt-4 hidden flex-wrap items-center gap-2 font-semibold text-sm md:flex">
+      <nav className="mt-3 hidden flex-wrap items-center gap-2 font-semibold text-sm md:flex">
         {links.map((link) => {
           const active = pathname === link.href;
           return (
@@ -228,7 +228,7 @@ export const SiteHeader = () => {
       {mobileMenuOpen ? (
         <div
           aria-label={t('common.menu')}
-          className="mt-4 grid gap-4 rounded-xl border border-border/35 bg-background/62 p-4 md:hidden"
+          className="mt-3 grid gap-3 rounded-xl border border-border/35 bg-background/62 p-3 md:hidden"
           id="mobile-site-menu"
           role="dialog"
         >
