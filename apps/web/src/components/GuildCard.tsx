@@ -28,7 +28,7 @@ export const GuildCard = ({
     >
       <header
         className={`flex items-start justify-between gap-2 ${
-          compact ? '' : 'border-border/60 border-b pb-2.5'
+          compact ? '' : 'border-border/55 border-b pb-2.5'
         }`}
       >
         <h3

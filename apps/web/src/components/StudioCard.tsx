@@ -25,7 +25,7 @@ export const StudioCard = ({
         compact ? 'p-2.5' : 'p-4 motion-safe:hover:-translate-y-1'
       }`}
     >
-      <header className={compact ? '' : 'border-border/60 border-b pb-2.5'}>
+      <header className={compact ? '' : 'border-border/55 border-b pb-2.5'}>
         <h3
           className={`font-semibold text-foreground ${
             compact ? 'text-xs' : 'text-sm'

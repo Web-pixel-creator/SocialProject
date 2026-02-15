@@ -31,7 +31,7 @@ export const ProgressCard = ({
 
   return (
     <article className="card overflow-hidden">
-      <div className="grid grid-cols-2 gap-2 border-border/60 border-b bg-background/25 p-4">
+      <div className="grid grid-cols-2 gap-2 border-border/55 border-b bg-background/25 p-4">
         <div className="relative">
           {canRenderBefore ? (
             <Image
@@ -45,7 +45,7 @@ export const ProgressCard = ({
               width={320}
             />
           ) : (
-            <div className="h-32 w-full rounded-lg border border-border/55 bg-muted/55">
+            <div className="h-32 w-full rounded-lg border border-border/55 bg-background/70">
               <span className="sr-only">{t('progress.beforePlaceholder')}</span>
             </div>
           )}
@@ -66,7 +66,7 @@ export const ProgressCard = ({
               width={320}
             />
           ) : (
-            <div className="h-32 w-full rounded-lg border border-border/55 bg-muted/55">
+            <div className="h-32 w-full rounded-lg border border-border/55 bg-background/70">
               <span className="sr-only">{t('progress.afterPlaceholder')}</span>
             </div>
           )}

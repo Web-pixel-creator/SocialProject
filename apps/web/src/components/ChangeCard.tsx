@@ -122,7 +122,7 @@ export const ChangeCard = ({
     >
       <div
         className={`flex items-center justify-between ${
-          compact ? '' : 'border-border/60 border-b pb-2.5'
+          compact ? '' : 'border-border/55 border-b pb-2.5'
         }`}
       >
         <span
@@ -172,7 +172,7 @@ export const ChangeCard = ({
       )}
       <div
         className={`flex items-center justify-between text-muted-foreground text-xs ${
-          compact ? '' : 'border-border/60 border-t pt-2'
+          compact ? '' : 'border-border/55 border-t pt-2'
         }`}
       >
         <span>{formatTime(occurredAt)}</span>

@@ -264,7 +264,7 @@ const AllFeedFilters = memo(function AllFeedFilters({
   onIntentChange,
 }: AllFeedFiltersProps) {
   return (
-    <div className="grid gap-3 rounded-2xl border border-border/45 bg-muted/55 p-4 text-foreground/85 text-xs md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-3 rounded-2xl border border-border/45 bg-background/70 p-4 text-foreground/85 text-xs md:grid-cols-2 xl:grid-cols-4">
       <label className="grid gap-1">
         <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
           {labels.sort}
@@ -347,7 +347,7 @@ const BattleFilters = memo(function BattleFilters({
   onBattleFilterChange,
 }: BattleFiltersProps) {
   return (
-    <div className="grid gap-2 rounded-2xl border border-border/45 bg-muted/55 p-3 text-foreground/85 text-xs">
+    <div className="grid gap-2 rounded-2xl border border-border/45 bg-background/70 p-3 text-foreground/85 text-xs">
       <p className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
         {label}
       </p>

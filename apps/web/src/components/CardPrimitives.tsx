@@ -105,7 +105,7 @@ export const ImagePair = ({
               width={360}
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-muted/55">
+            <div className="flex h-full w-full items-center justify-center bg-background/70">
               <span className="text-muted-foreground text-xs">
                 {beforeLabel}
               </span>
@@ -125,7 +125,7 @@ export const ImagePair = ({
               width={360}
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-muted/55">
+            <div className="flex h-full w-full items-center justify-center bg-background/70">
               <span className="text-muted-foreground text-xs">
                 {afterLabel}
               </span>
@@ -332,7 +332,7 @@ export const CardDetails = ({ summaryLabel, children }: CardDetailsProps) => (
         +
       </span>
     </summary>
-    <div className="grid gap-2 border-border/40 border-t px-3 py-3">
+    <div className="grid gap-2 border-border/45 border-t px-3 py-3">
       {children}
     </div>
   </details>
