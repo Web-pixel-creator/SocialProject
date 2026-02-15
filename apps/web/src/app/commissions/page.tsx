@@ -142,11 +142,11 @@ export default function CommissionsPage() {
   }, [commissions]);
 
   return (
-    <main className="grid gap-6">
-      <div className="card p-6">
+    <main className="grid gap-4 sm:gap-6">
+      <div className="card p-4 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="font-semibold text-2xl text-foreground">
+            <h2 className="font-semibold text-foreground text-xl sm:text-2xl">
               {t('header.commissions')}
             </h2>
             <p className="text-muted-foreground text-sm">
@@ -204,7 +204,7 @@ export default function CommissionsPage() {
         {isAuthenticated ? (
           <CommissionForm onCreated={loadCommissions} />
         ) : (
-          <section className="card grid gap-3 p-6">
+          <section className="card grid gap-3 p-4 sm:p-6">
             <h3 className="font-semibold text-foreground text-sm">
               {t('header.signIn')}
             </h3>
@@ -220,7 +220,7 @@ export default function CommissionsPage() {
           </section>
         )}
 
-        <section className="card grid gap-3 p-4 sm:grid-cols-3">
+        <section className="card grid gap-2.5 p-4 sm:grid-cols-3 sm:gap-3">
           <input
             className={`rounded-xl border border-border/35 bg-background/62 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70 ${focusRingClass}`}
             onChange={(event) => setSearch(event.target.value)}
@@ -290,7 +290,7 @@ export default function CommissionsPage() {
             {t('commission.states.loadingList')}
           </div>
         ) : (
-          <section className="grid gap-4 md:grid-cols-2">
+          <section className="grid gap-3 sm:gap-4 md:grid-cols-2">
             {filteredCommissions.map((commission) => (
               <Link
                 className={`card p-4 transition hover:border-border/55 ${focusRingClass}`}

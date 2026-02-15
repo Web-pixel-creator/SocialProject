@@ -627,12 +627,12 @@ function SearchPageContent() {
   return (
     <main className="grid gap-4 sm:gap-6">
       <div className="card p-4 sm:p-6">
-        <h2 className="font-semibold text-2xl text-foreground">
+        <h2 className="font-semibold text-foreground text-xl sm:text-2xl">
           {t('header.search')}
         </h2>
         <p className="text-muted-foreground text-sm">{t('search.subtitle')}</p>
       </div>
-      <div className="card grid gap-4 p-4 sm:p-6">
+      <div className="card grid gap-3 p-4 sm:gap-4 sm:p-6">
         <div className="flex flex-wrap gap-2">
           <button
             className={`rounded-lg px-3 py-2 text-sm ${focusRingClass} ${
@@ -685,7 +685,7 @@ function SearchPageContent() {
                 {t('search.actions.resetFilters')}
               </button>
             </div>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               <select
                 className={`w-full rounded-lg border border-border/35 bg-background/62 px-3 py-2 text-foreground text-sm sm:w-auto ${focusRingClass}`}
                 onChange={(event) => setType(event.target.value)}
@@ -741,7 +741,7 @@ function SearchPageContent() {
               value={visualDraftId}
             />
             <textarea
-              className={`min-h-[120px] rounded-xl border border-border/35 bg-background/62 px-4 py-2 text-foreground text-sm placeholder:text-muted-foreground/70 ${focusRingClass}`}
+              className={`min-h-[104px] rounded-xl border border-border/35 bg-background/62 px-4 py-2 text-foreground text-sm placeholder:text-muted-foreground/70 sm:min-h-[120px] ${focusRingClass}`}
               onChange={(event) => setVisualEmbedding(event.target.value)}
               placeholder={t('search.placeholders.embedding')}
               value={visualEmbedding}
@@ -771,7 +771,7 @@ function SearchPageContent() {
                 {t('search.actions.resetFilters')}
               </button>
             </div>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               <select
                 className={`w-full rounded-lg border border-border/35 bg-background/62 px-3 py-2 text-foreground text-sm sm:w-auto ${focusRingClass}`}
                 onChange={(event) =>
@@ -798,7 +798,7 @@ function SearchPageContent() {
           </>
         )}
 
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/35 bg-background/62 p-4 text-muted-foreground text-xs leading-relaxed sm:text-sm">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/35 bg-background/62 p-3 text-muted-foreground text-xs leading-relaxed sm:p-4 sm:text-sm">
           <span>{summary}</span>
           {showAbBadge && (
             <span className="rounded-full border border-border/35 bg-background/62 px-2 py-0.5 text-[11px] text-muted-foreground uppercase">
@@ -830,7 +830,7 @@ function SearchPageContent() {
           </p>
         ) : null}
         {showEmptyState ? (
-          <div className="grid gap-3 rounded-xl border border-border/35 bg-background/62 p-4 text-muted-foreground text-sm">
+          <div className="grid gap-3 rounded-xl border border-border/35 bg-background/62 p-3 text-muted-foreground text-sm sm:p-4">
             <p>
               {mode === 'visual' && visualHasSearched
                 ? t('search.states.completedNoResults')
@@ -866,7 +866,7 @@ function SearchPageContent() {
           </div>
         ) : null}
         {showResults ? (
-          <ul className="grid gap-3">
+          <ul className="grid gap-2.5 sm:gap-3">
             {visibleResults.map((result, index) => {
               const href =
                 result.type === 'studio'
@@ -896,7 +896,7 @@ function SearchPageContent() {
                   key={result.id}
                 >
                   <Link
-                    className={`block rounded-xl p-3 transition hover:bg-background/60 ${focusRingClass}`}
+                    className={`block rounded-xl p-2.5 transition hover:bg-background/60 sm:p-3 ${focusRingClass}`}
                     href={href}
                     onClick={handleOpen}
                   >
