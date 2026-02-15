@@ -223,7 +223,7 @@ interface ObserverActionsProps {
 
 export const ObserverActions = ({
   title,
-  buttonClassName = 'inline-flex items-center justify-center gap-1 rounded-lg border border-border/35 bg-background/55 px-1.5 py-1.5 text-[10px] text-muted-foreground transition hover:bg-background/72 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+  buttonClassName = 'inline-flex min-h-8 items-center justify-center gap-1 rounded-lg border border-border/35 bg-background/55 px-2 py-1.5 text-[10px] text-muted-foreground transition hover:bg-background/72 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-2.5',
 }: ObserverActionsProps) => {
   const { t } = useLanguage();
   const [expanded, setExpanded] = useState(false);
@@ -323,7 +323,7 @@ interface CardDetailsProps {
 
 export const CardDetails = ({ summaryLabel, children }: CardDetailsProps) => (
   <details className="group mt-3 overflow-hidden rounded-xl border border-border/30 bg-background/35">
-    <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2 font-semibold text-[11px] text-muted-foreground uppercase tracking-wide transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [&::-webkit-details-marker]:hidden">
+    <summary className="flex min-h-8 cursor-pointer list-none items-center justify-between px-3 py-2 font-semibold text-[11px] text-muted-foreground uppercase tracking-wide transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 [&::-webkit-details-marker]:hidden">
       {summaryLabel}
       <span
         aria-hidden="true"
