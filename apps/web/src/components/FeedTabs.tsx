@@ -358,7 +358,7 @@ const BattleFilters = memo(function BattleFilters({
             className={`rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
               battleFilter === option.value
                 ? 'border border-primary/35 bg-primary/15 text-primary'
-                : 'border border-border/35 bg-background/48 text-muted-foreground hover:border-border/55 hover:bg-background/75 hover:text-foreground'
+                : 'border border-border/35 bg-background/48 text-muted-foreground hover:border-border/55 hover:bg-background/72 hover:text-foreground'
             }`}
             key={option.value}
             onClick={() => onBattleFilterChange(option.value)}
@@ -448,7 +448,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
         {hasFilterPanel ? (
           <button
             aria-expanded={filtersOpen}
-            className="inline-flex min-h-9 w-fit flex-shrink-0 items-center gap-1 rounded-full border border-border/35 bg-background/52 px-3 py-2 font-semibold text-[11px] uppercase tracking-wide transition hover:border-border/35 hover:bg-background/82 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-3.5 sm:py-1.5 sm:text-xs"
+            className="inline-flex min-h-9 w-fit flex-shrink-0 items-center gap-1 rounded-full border border-border/35 bg-background/52 px-3 py-2 font-semibold text-[11px] uppercase tracking-wide transition hover:border-border/55 hover:bg-background/78 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-3.5 sm:py-1.5 sm:text-xs"
             onClick={onToggleFilters}
             type="button"
           >
@@ -769,7 +769,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
 
   const tabClass = (tab: string, isActive: boolean): string => {
     if (!isActive) {
-      return 'border-border/35 bg-background/62 text-muted-foreground hover:border-border/55 hover:bg-background/82 hover:text-foreground';
+      return 'border-border/35 bg-background/62 text-muted-foreground hover:border-border/55 hover:bg-background/78 hover:text-foreground';
     }
     if (tab === 'Hot Now') {
       return 'tag-hot';
@@ -1725,7 +1725,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
             className={`rounded-lg px-3 py-2 text-left font-semibold text-xs uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
               active === tab
                 ? 'border border-primary/35 bg-primary/15 text-primary'
-                : 'border border-border/35 bg-background/48 text-muted-foreground hover:border-border/55 hover:bg-background/75 hover:text-foreground'
+                : 'border border-border/35 bg-background/48 text-muted-foreground hover:border-border/55 hover:bg-background/72 hover:text-foreground'
             }`}
             key={tab}
             onClick={() => {
@@ -1746,7 +1746,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
         </span>
         {hasActiveFilters ? (
           <button
-            className="rounded-full border border-border/35 bg-background/62 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-border/35 hover:bg-background/80 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="rounded-full border border-border/35 bg-background/62 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-border/55 hover:bg-background/78 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             onClick={handleResetFilters}
             type="button"
           >
@@ -1784,7 +1784,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                 className={`inline-flex min-h-9 items-center gap-1 rounded-full border px-3.5 py-2 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-4 sm:py-2 sm:text-xs ${
                   MORE_TABS.includes(active)
                     ? 'border-primary/50 bg-primary/15 text-primary'
-                    : 'border-border/35 bg-card/55 text-muted-foreground hover:border-border/55 hover:bg-card/80 hover:text-foreground'
+                    : 'border-border/35 bg-card/55 text-muted-foreground hover:border-border/55 hover:bg-card/76 hover:text-foreground'
                 }`}
                 onClick={() => {
                   setMoreOpen((previous) => !previous);
@@ -1811,7 +1811,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                   className={`inline-flex min-h-9 cursor-pointer list-none items-center gap-1 rounded-full border px-3.5 py-2 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-4 sm:py-2 sm:text-xs [&::-webkit-details-marker]:hidden ${
                     MORE_TABS.includes(active)
                       ? 'border-primary/50 bg-primary/15 text-primary'
-                      : 'border-border/35 bg-card/55 text-muted-foreground hover:border-border/55 hover:bg-card/80 hover:text-foreground'
+                      : 'border-border/35 bg-card/55 text-muted-foreground hover:border-border/55 hover:bg-card/76 hover:text-foreground'
                   }`}
                   data-testid="feed-more-summary"
                 >
@@ -1832,7 +1832,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
         </div>
         <div className="grid gap-2 rounded-2xl border border-border/35 bg-card/72 p-2.5 sm:p-3 lg:p-3.5">
           <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-            <label className="group relative flex min-h-10 w-full min-w-0 items-center gap-2 rounded-full border border-border/35 bg-background/82 px-3.5 py-2.5 text-muted-foreground text-xs transition focus-within:border-primary/35 focus-within:bg-background hover:border-border/35 hover:bg-background/90">
+            <label className="group relative flex min-h-10 w-full min-w-0 items-center gap-2 rounded-full border border-border/35 bg-background/74 px-3.5 py-2.5 text-muted-foreground text-xs transition focus-within:border-primary/35 focus-within:bg-background hover:border-border/55 hover:bg-background/82">
               <Search aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
               <input
                 aria-label={t('feed.searchAriaLabel')}
@@ -1947,7 +1947,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                 {showFiltersLabel}
               </h3>
               <button
-                className="rounded-full border border-border/35 bg-background/62 px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition hover:border-primary/35 hover:bg-background/82 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="rounded-full border border-border/35 bg-background/62 px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition hover:border-primary/35 hover:bg-background/78 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 onClick={() => setFiltersOpen(false)}
                 type="button"
               >
@@ -1993,7 +1993,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                 {moreLabel}
               </h3>
               <button
-                className="rounded-full border border-border/35 bg-background/62 px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition hover:border-primary/35 hover:bg-background/82 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="rounded-full border border-border/35 bg-background/62 px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition hover:border-primary/35 hover:bg-background/78 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 onClick={() => setMoreOpen(false)}
                 type="button"
               >
@@ -2126,7 +2126,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
       })()}
       {!fallbackUsed && hasMore && (
         <button
-          className="rounded-full border border-border/35 bg-background/62 px-4 py-2 font-semibold text-foreground text-xs transition hover:border-primary/35 hover:bg-background/82 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="rounded-full border border-border/35 bg-background/62 px-4 py-2 font-semibold text-foreground text-xs transition hover:border-primary/35 hover:bg-background/78 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           onClick={() => setOffset((prev) => prev + PAGE_SIZE)}
           type="button"
         >
