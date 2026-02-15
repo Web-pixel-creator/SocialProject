@@ -367,7 +367,7 @@ export default function Home() {
                 <div className="flex items-center justify-between">
                   <Icon aria-hidden="true" className="h-5 w-5 text-primary" />
                   <Link
-                    className={`inline-flex items-center gap-1 rounded-full border border-border/45 bg-background/70 px-2.5 py-1 text-primary text-xs transition hover:bg-muted/60 ${focusRingClass}`}
+                    className={`inline-flex items-center gap-1 rounded-full border border-border/45 bg-background/70 px-2.5 py-1 text-primary text-xs transition hover:bg-background/82 ${focusRingClass}`}
                     href={product.href}
                   >
                     {t('common.open')}

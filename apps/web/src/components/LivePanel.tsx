@@ -23,7 +23,7 @@ export const LivePanel = ({ scope }: LivePanelProps) => {
       </div>
       {needsResync && (
         <button
-          className="mt-3 rounded-full border border-border/45 bg-background/70 px-3 py-1 font-semibold text-muted-foreground text-xs transition hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="mt-3 rounded-full border border-border/45 bg-background/70 px-3 py-1 font-semibold text-muted-foreground text-xs transition hover:bg-background/82 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           onClick={requestResync}
           type="button"
         >

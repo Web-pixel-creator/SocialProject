@@ -154,7 +154,7 @@ export default function CommissionsPage() {
             </p>
           </div>
           <button
-            className={`rounded-full border border-border/45 bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60 ${focusRingClass}`}
+            className={`rounded-full border border-border/45 bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-background/82 ${focusRingClass}`}
             onClick={loadCommissions}
             type="button"
           >
@@ -212,7 +212,7 @@ export default function CommissionsPage() {
               {t('auth.signInSubtitle')}
             </p>
             <Link
-              className={`w-fit rounded-full border border-border/45 bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60 ${focusRingClass}`}
+              className={`w-fit rounded-full border border-border/45 bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-background/82 ${focusRingClass}`}
               href="/login"
             >
               {t('header.signIn')}
