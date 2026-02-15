@@ -91,7 +91,7 @@ export const BattleCard = ({
       };
     }
     return {
-      className: 'border border-border bg-muted/70 text-foreground',
+      className: 'border border-border/45 bg-muted/70 text-foreground',
       label: t('battle.pending'),
     };
   }, [decision, t]);
@@ -178,7 +178,7 @@ export const BattleCard = ({
               className={`rounded-lg border px-2 py-1.5 font-semibold text-[11px] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                 userVote === 'left'
                   ? 'border-primary/45 bg-primary/15 text-primary'
-                  : 'border-border bg-muted/70 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                  : 'border-border/45 bg-muted/70 text-muted-foreground hover:border-primary/40 hover:text-foreground'
               }`}
               onClick={() => castVote('left')}
               type="button"
@@ -190,7 +190,7 @@ export const BattleCard = ({
               className={`rounded-lg border px-2 py-1.5 font-semibold text-[11px] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                 userVote === 'right'
                   ? 'border-primary/45 bg-primary/15 text-primary'
-                  : 'border-border bg-muted/70 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                  : 'border-border/45 bg-muted/70 text-muted-foreground hover:border-primary/40 hover:text-foreground'
               }`}
               onClick={() => castVote('right')}
               type="button"

@@ -102,13 +102,13 @@ export default function DemoPage() {
         title={t('error.unexpected')}
       >
         <section className="card grid gap-4 p-6">
-          <div className="rounded-xl border border-border bg-background/70 p-4 text-muted-foreground text-sm">
+          <div className="rounded-xl border border-border/45 bg-background/70 p-4 text-muted-foreground text-sm">
             {t('demo.info.trackEveryChange')}
           </div>
           <label className="grid gap-2 font-medium text-foreground text-sm">
             {t('demo.form.draftIdOptional')}
             <input
-              className={`rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70 ${focusRingClass}`}
+              className={`rounded-xl border border-border/55 bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70 ${focusRingClass}`}
               onChange={(event) => setDraftId(event.target.value)}
               placeholder={t('demo.form.draftIdPlaceholder')}
               value={draftId}
@@ -125,14 +125,14 @@ export default function DemoPage() {
             </button>
             {result?.draftId ? (
               <Link
-                className={`rounded-full border border-border bg-background/70 px-5 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60 ${focusRingClass}`}
+                className={`rounded-full border border-border/45 bg-background/70 px-5 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60 ${focusRingClass}`}
                 href={`/drafts/${result.draftId}`}
               >
                 {t('demo.actions.openDraft')}
               </Link>
             ) : null}
             <Link
-              className={`rounded-full border border-border bg-background/70 px-5 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60 ${focusRingClass}`}
+              className={`rounded-full border border-border/45 bg-background/70 px-5 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60 ${focusRingClass}`}
               href="/feed"
             >
               {t('feed.exploreFeeds')}
@@ -171,7 +171,7 @@ export default function DemoPage() {
           <ul className="grid gap-2 text-sm">
             {steps.map((step) => (
               <li
-                className="flex items-center justify-between rounded-xl border border-border bg-background/70 p-3"
+                className="flex items-center justify-between rounded-xl border border-border/45 bg-background/70 p-3"
                 key={step.key}
               >
                 <span className="text-foreground">{t(step.labelKey)}</span>
@@ -193,11 +193,11 @@ export default function DemoPage() {
 
         {result ? (
           <section className="card grid gap-3 p-6 md:grid-cols-2">
-            <div className="rounded-xl border border-border bg-background/70 p-4 text-xs">
+            <div className="rounded-xl border border-border/45 bg-background/70 p-4 text-xs">
               <p className="text-muted-foreground">{t('demo.summary.draft')}</p>
               <p className="mt-1 break-all text-foreground">{result.draftId}</p>
             </div>
-            <div className="rounded-xl border border-border bg-background/70 p-4 text-xs">
+            <div className="rounded-xl border border-border/45 bg-background/70 p-4 text-xs">
               <p className="text-muted-foreground">
                 {t('demo.summary.fixRequest')}
               </p>
@@ -205,7 +205,7 @@ export default function DemoPage() {
                 {result.fixRequestId}
               </p>
             </div>
-            <div className="rounded-xl border border-border bg-background/70 p-4 text-xs">
+            <div className="rounded-xl border border-border/45 bg-background/70 p-4 text-xs">
               <p className="text-muted-foreground">
                 {t('demo.summary.pullRequest')}
               </p>
@@ -213,7 +213,7 @@ export default function DemoPage() {
                 {result.pullRequestId}
               </p>
             </div>
-            <div className="rounded-xl border border-border bg-background/70 p-4 text-xs">
+            <div className="rounded-xl border border-border/45 bg-background/70 p-4 text-xs">
               <p className="text-muted-foreground">
                 {t('demo.summary.glowUp')}
               </p>

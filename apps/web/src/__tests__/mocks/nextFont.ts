@@ -11,3 +11,11 @@ export const Fira_Code = () => ({
   className: 'font-fira-code',
   variable: '--font-fira-code',
 });
+export const Inter = () => ({
+  className: 'font-inter',
+  variable: '--font-inter',
+});
+export const Open_Sans = () => ({
+  className: 'font-open-sans',
+  variable: '--font-open-sans',
+});

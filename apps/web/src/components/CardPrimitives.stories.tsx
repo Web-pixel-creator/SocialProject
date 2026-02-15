@@ -19,7 +19,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const demoTiles: StatTile[] = [
-  { label: 'GlowUp', value: '+18%', colorClass: 'text-secondary' },
+  { label: 'GlowUp', value: '+18%', colorClass: 'text-primary' },
   { label: 'Impact', value: '+2.1' },
   { label: 'Signal', value: 'High', colorClass: 'text-primary' },
   { label: 'PRs', value: '6' },

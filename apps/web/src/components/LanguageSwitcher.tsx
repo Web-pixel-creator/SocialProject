@@ -39,7 +39,7 @@ export const LanguageSwitcher = ({
             className={`${BUTTON_BASE_CLASS} ${
               active
                 ? 'border-primary/60 bg-primary/15 text-primary'
-                : 'border-border bg-muted/70 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                : 'border-border/45 bg-muted/70 text-muted-foreground hover:border-primary/40 hover:text-foreground'
             }`}
             key={item}
             onClick={() => setLanguage(item)}

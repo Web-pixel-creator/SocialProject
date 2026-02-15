@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { Flame } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -471,7 +471,7 @@ export const ObserverRightRail = () => {
   const controlButtonBaseClass =
     'rounded-full border px-2.5 py-1 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
   const controlButtonEnabledClass =
-    'border-border/55 bg-background/62 text-muted-foreground hover:border-border/80 hover:bg-background/78 hover:text-foreground';
+    'border-border/55 bg-background/62 text-muted-foreground hover:border-border/70 hover:bg-background/78 hover:text-foreground';
   const controlButtonDisabledClass =
     'cursor-not-allowed border-border/35 bg-background/45 text-muted-foreground/45';
   const primaryActionButtonClass =

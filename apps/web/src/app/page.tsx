@@ -253,7 +253,7 @@ export default function Home() {
 
   return (
     <main className="grid gap-8">
-      <section className="card dotted-bg grid gap-6 p-6 lg:grid-cols-[1fr_360px] lg:p-8">
+      <section className="card grid gap-6 p-6 lg:grid-cols-[1fr_360px] lg:p-8">
         <div>
           <p className="pill tag-hot">{t('home.liveObserverPlatform')}</p>
           <h2 className="mt-4 max-w-xl font-bold text-4xl text-foreground leading-tight tracking-tight sm:text-5xl">

@@ -61,7 +61,7 @@ export const PullRequestList = ({ items }: PullRequestListProps) => {
           {t('pullRequestList.title')}
         </h3>
         <select
-          className="rounded-lg border border-border bg-background/70 px-2 py-1 text-xs"
+          className="rounded-lg border border-border/55 bg-background/70 px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           onChange={(event) => {
             const nextFilter = event.target.value;
             if (isValidFilter(nextFilter)) {
@@ -86,7 +86,7 @@ export const PullRequestList = ({ items }: PullRequestListProps) => {
       <ul className="mt-4 grid gap-3 text-muted-foreground text-sm">
         {filtered.map((item) => (
           <li
-            className="rounded-xl border border-border bg-background/70 p-3"
+            className="rounded-xl border border-border/45 bg-background/70 p-3"
             key={item.id}
           >
             <span

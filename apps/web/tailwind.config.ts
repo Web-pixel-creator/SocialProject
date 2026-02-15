@@ -39,13 +39,6 @@ const config: Config = {
           DEFAULT: 'oklch(var(--card) / <alpha-value>)',
           foreground: 'oklch(var(--card-foreground) / <alpha-value>)',
         },
-        ink: '#0f172a',
-        mist: '#f8fafc',
-        ember: '#43ffba',
-        tide: '#0cdcf7',
-      },
-      boxShadow: {
-        glow: 'inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 12px 28px rgba(0, 0, 0, 0.45)',
       },
       borderRadius: {
         lg: 'var(--radius)',

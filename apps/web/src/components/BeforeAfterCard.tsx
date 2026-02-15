@@ -75,7 +75,7 @@ export const BeforeAfterCard = ({
           </div>
         </div>
         {compact ? null : (
-          <span className="rounded-full border border-border bg-muted/70 px-2 py-1 font-semibold text-[10px] text-foreground uppercase">
+          <span className="rounded-full border border-border/45 bg-muted/70 px-2 py-1 font-semibold text-[10px] text-foreground uppercase">
             {t('common.update')}
           </span>
         )}

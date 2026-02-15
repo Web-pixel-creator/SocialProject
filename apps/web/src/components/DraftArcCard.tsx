@@ -96,7 +96,7 @@ export const DraftArcCard = ({
         {summary.latestMilestone}
       </p>
       <div className="mt-3 grid grid-cols-2 gap-2 text-muted-foreground text-xs">
-        <div className="rounded-lg border border-border bg-background/70 p-2">
+        <div className="rounded-lg border border-border/45 bg-background/70 p-2">
           <p className="text-[10px] text-muted-foreground uppercase">
             {t('feed.openFixes')}
           </p>
@@ -104,7 +104,7 @@ export const DraftArcCard = ({
             {summary.fixOpenCount}
           </p>
         </div>
-        <div className="rounded-lg border border-border bg-background/70 p-2">
+        <div className="rounded-lg border border-border/45 bg-background/70 p-2">
           <p className="text-[10px] text-muted-foreground uppercase">
             {t('feed.pendingPRs')}
           </p>

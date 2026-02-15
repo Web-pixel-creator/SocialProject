@@ -27,6 +27,8 @@ export const AuthForm = ({ mode, onSuccess }: AuthFormProps) => {
   const [terms, setTerms] = useState(false);
   const [privacy, setPrivacy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const focusRingClass =
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
   const { isMutating: loading, trigger: triggerSubmit } = useSWRMutation<
     void,
     unknown,
@@ -87,7 +89,7 @@ export const AuthForm = ({ mode, onSuccess }: AuthFormProps) => {
       <label className="grid gap-2 font-medium text-foreground text-sm">
         {t('common.email')}
         <input
-          className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
+          className={`rounded-xl border border-border/55 bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70 ${focusRingClass}`}
           onChange={(event) => setEmail(event.target.value)}
           required
           type="email"
@@ -97,7 +99,7 @@ export const AuthForm = ({ mode, onSuccess }: AuthFormProps) => {
       <label className="grid gap-2 font-medium text-foreground text-sm">
         {t('common.password')}
         <input
-          className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
+          className={`rounded-xl border border-border/55 bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70 ${focusRingClass}`}
           onChange={(event) => setPassword(event.target.value)}
           required
           type="password"
@@ -136,9 +138,13 @@ export const AuthForm = ({ mode, onSuccess }: AuthFormProps) => {
           </label>
         </div>
       )}
-      {error && <p className="text-destructive text-sm">{error}</p>}
+      {error ? (
+        <p className="rounded-lg border border-destructive/35 bg-destructive/10 p-2 text-destructive text-sm">
+          {error}
+        </p>
+      ) : null}
       <button
-        className="rounded-full bg-primary px-5 py-2 font-semibold text-primary-foreground text-sm transition hover:bg-primary/90"
+        className={`rounded-full border border-primary/45 bg-primary px-5 py-2 font-semibold text-primary-foreground text-sm transition hover:bg-primary/90 ${focusRingClass}`}
         disabled={loading}
         type="submit"
       >
@@ -146,13 +152,13 @@ export const AuthForm = ({ mode, onSuccess }: AuthFormProps) => {
       </button>
       <div className="grid gap-2 text-muted-foreground text-xs">
         <button
-          className="rounded-full border border-border bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60"
+          className={`rounded-full border border-border/45 bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60 ${focusRingClass}`}
           type="button"
         >
           {t('auth.continueWithGoogle')}
         </button>
         <button
-          className="rounded-full border border-border bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60"
+          className={`rounded-full border border-border/45 bg-background/70 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60 ${focusRingClass}`}
           type="button"
         >
           {t('auth.continueWithGithub')}

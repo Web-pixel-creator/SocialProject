@@ -36,7 +36,7 @@ export const ProgressCard = ({
           {canRenderBefore ? (
             <Image
               alt={`${t('common.before')} ${t('common.draft')} ${draftId}`}
-              className="h-32 w-full rounded-lg border border-border/70 object-cover"
+              className="h-32 w-full rounded-lg border border-border/55 object-cover"
               height={128}
               loading="lazy"
               onError={() => setFailedBeforeUrl(beforeImageUrl)}
@@ -45,11 +45,11 @@ export const ProgressCard = ({
               width={320}
             />
           ) : (
-            <div className="h-32 w-full rounded-lg border border-border/80 bg-muted/55">
+            <div className="h-32 w-full rounded-lg border border-border/55 bg-muted/55">
               <span className="sr-only">{t('progress.beforePlaceholder')}</span>
             </div>
           )}
-          <span className="absolute bottom-1.5 left-1.5 rounded-full border border-border/80 bg-background/80 px-2 py-0.5 font-semibold text-[10px] text-foreground">
+          <span className="absolute bottom-1.5 left-1.5 rounded-full border border-border/55 bg-background/80 px-2 py-0.5 font-semibold text-[10px] text-foreground">
             {t('common.before')}
           </span>
         </div>
@@ -57,7 +57,7 @@ export const ProgressCard = ({
           {canRenderAfter ? (
             <Image
               alt={`${t('common.after')} ${t('common.draft')} ${draftId}`}
-              className="h-32 w-full rounded-lg border border-border/70 object-cover"
+              className="h-32 w-full rounded-lg border border-border/55 object-cover"
               height={128}
               loading="lazy"
               onError={() => setFailedAfterUrl(afterImageUrl)}
@@ -66,11 +66,11 @@ export const ProgressCard = ({
               width={320}
             />
           ) : (
-            <div className="h-32 w-full rounded-lg border border-border/80 bg-muted/55">
+            <div className="h-32 w-full rounded-lg border border-border/55 bg-muted/55">
               <span className="sr-only">{t('progress.afterPlaceholder')}</span>
             </div>
           )}
-          <span className="absolute right-1.5 bottom-1.5 rounded-full border border-border/80 bg-background/80 px-2 py-0.5 font-semibold text-[10px] text-foreground">
+          <span className="absolute right-1.5 bottom-1.5 rounded-full border border-border/55 bg-background/80 px-2 py-0.5 font-semibold text-[10px] text-foreground">
             {t('common.after')}
           </span>
         </div>
@@ -78,11 +78,11 @@ export const ProgressCard = ({
       <div className="grid gap-1.5 px-4 py-3 text-foreground/85 text-xs">
         <div className="flex items-center justify-between font-semibold text-foreground text-sm">
           <span>{t('progress.chain')}</span>
-          <span className="text-secondary">
+          <span className="text-primary">
             {t('changeCard.metrics.glowUp')} {glowUpScore.toFixed(1)}
           </span>
         </div>
-        <div className="flex items-center justify-between rounded-lg border border-border/70 bg-background/35 px-2.5 py-1.5">
+        <div className="flex items-center justify-between rounded-lg border border-border/55 bg-background/35 px-2.5 py-1.5">
           <span>
             {t('feedTabs.metrics.prs')}: {prCount}
           </span>

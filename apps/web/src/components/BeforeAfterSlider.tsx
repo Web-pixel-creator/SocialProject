@@ -28,7 +28,7 @@ export const BeforeAfterSlider = ({
       <div className="mt-4 grid gap-3">
         {(beforeImageUrl || afterImageUrl) && (
           <div className="grid gap-3 md:grid-cols-2">
-            <div className="relative overflow-hidden rounded-xl border border-border bg-muted/40">
+            <div className="relative overflow-hidden rounded-xl border border-border/45 bg-muted/40">
               {beforeImageUrl ? (
                 <Image
                   alt={`${t('slider.before')} ${beforeLabel}`}
@@ -43,7 +43,7 @@ export const BeforeAfterSlider = ({
                 <div className="h-48 w-full bg-muted/60 md:h-56" />
               )}
             </div>
-            <div className="relative overflow-hidden rounded-xl border border-border bg-muted/40">
+            <div className="relative overflow-hidden rounded-xl border border-border/45 bg-muted/40">
               {afterImageUrl ? (
                 <Image
                   alt={`${t('slider.after')} ${afterLabel}`}

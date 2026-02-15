@@ -18,7 +18,7 @@ interface DraftRecapPanelProps {
 }
 
 const metric = (label: string, value: number) => (
-  <div className="rounded-lg border border-border bg-background/70 p-2">
+  <div className="rounded-lg border border-border/45 bg-background/70 p-2">
     <p className="text-[10px] text-muted-foreground uppercase">{label}</p>
     <p className="mt-1 font-semibold text-foreground text-sm">{value}</p>
   </div>

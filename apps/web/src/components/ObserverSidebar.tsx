@@ -109,8 +109,8 @@ export const ObserverSidebar = ({
     <aside
       className={
         mobile
-          ? 'surface-strong rounded-2xl p-3'
-          : 'observer-left-rail surface-strong hidden rounded-2xl p-3 lg:block'
+          ? 'rounded-2xl bg-sidebar/70 p-3'
+          : 'observer-left-rail hidden rounded-2xl bg-sidebar/70 p-3 lg:block'
       }
     >
       <nav aria-label={t('sidebar.observerNavigation')} className="grid gap-4">
@@ -126,8 +126,8 @@ export const ObserverSidebar = ({
                 <Link
                   className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                     active
-                      ? 'border-primary/45 bg-primary/10 text-primary'
-                      : 'border-border bg-muted/50 text-muted-foreground hover:border-primary/35 hover:text-foreground'
+                      ? 'border-primary/35 bg-primary/12 text-primary'
+                      : 'border-border/55 bg-transparent text-muted-foreground hover:border-border/70 hover:bg-muted/45 hover:text-foreground'
                   }`}
                   href={item.href}
                   key={`${item.href}:${item.labelKey}`}

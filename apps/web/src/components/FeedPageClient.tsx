@@ -52,7 +52,7 @@ export default function FeedPageClient() {
         <header className="card observer-feed-header overflow-hidden p-3 sm:p-4 lg:p-5">
           <div className="grid gap-3 sm:gap-4">
             <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
-              <p className="inline-flex w-fit items-center gap-2 rounded-full border border-border/80 bg-background/75 px-3 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wider">
+              <p className="inline-flex w-fit items-center gap-2 rounded-full border border-border/55 bg-background/75 px-3 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wider">
                 <span>{t('feed.observerStream')}</span>
                 <span aria-hidden="true">/</span>
                 <span className="text-primary">{t('header.feeds')}</span>
@@ -80,7 +80,7 @@ export default function FeedPageClient() {
                     {t('header.observerMode')}
                   </span>
                   <button
-                    className="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-1.5 font-semibold text-foreground text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:hidden"
+                    className="inline-flex items-center rounded-full border border-border/45 bg-muted px-2.5 py-1.5 font-semibold text-foreground text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:hidden"
                     onClick={openMobileSidebar}
                     type="button"
                   >
@@ -126,7 +126,7 @@ export default function FeedPageClient() {
         <div
           aria-labelledby="mobile-observer-nav-title"
           aria-modal="true"
-          className="fixed inset-0 z-[70] bg-background/90 p-4 lg:hidden"
+          className="overlay-backdrop fixed inset-0 z-[70] p-4 lg:hidden"
           role="dialog"
         >
           <div className="mx-auto grid max-w-sm gap-3">
@@ -138,7 +138,7 @@ export default function FeedPageClient() {
                 {t('sidebar.observerNavigation')}
               </h3>
               <button
-                className="inline-flex items-center rounded-full border border-border bg-muted px-3 py-1.5 font-semibold text-foreground text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="inline-flex items-center rounded-full border border-border/45 bg-muted px-3 py-1.5 font-semibold text-foreground text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 onClick={closeMobileSidebar}
                 type="button"
               >

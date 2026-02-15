@@ -39,7 +39,7 @@ export const StudioCard = ({
       </header>
 
       <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-lg border border-border/80 bg-background/35 px-2.5 py-2">
+        <div className="rounded-lg border border-border/55 bg-background/35 px-2.5 py-2">
           <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
             {t('studioDetail.metrics.impact')}
           </p>
@@ -52,7 +52,7 @@ export const StudioCard = ({
             {impact.toFixed(1)}
           </p>
         </div>
-        <div className="rounded-lg border border-border/80 bg-background/35 px-2.5 py-2">
+        <div className="rounded-lg border border-border/55 bg-background/35 px-2.5 py-2">
           <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
             {t('studioDetail.metrics.signal')}
           </p>

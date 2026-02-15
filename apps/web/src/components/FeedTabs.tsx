@@ -358,7 +358,7 @@ const BattleFilters = memo(function BattleFilters({
             className={`rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
               battleFilter === option.value
                 ? 'border border-primary/45 bg-primary/15 text-primary'
-                : 'border border-border/55 bg-background/55 text-muted-foreground hover:border-border/80 hover:bg-background/75 hover:text-foreground'
+                : 'border border-border/55 bg-background/55 text-muted-foreground hover:border-border/70 hover:bg-background/75 hover:text-foreground'
             }`}
             key={option.value}
             onClick={() => onBattleFilterChange(option.value)}
@@ -769,7 +769,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
 
   const tabClass = (tab: string, isActive: boolean): string => {
     if (!isActive) {
-      return 'border-border/55 bg-muted/70 text-muted-foreground hover:border-border/80 hover:bg-muted/90 hover:text-foreground';
+      return 'border-border/55 bg-muted/70 text-muted-foreground hover:border-border/70 hover:bg-muted/90 hover:text-foreground';
     }
     if (tab === 'Hot Now') {
       return 'tag-hot';
@@ -1725,7 +1725,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
             className={`rounded-lg px-3 py-2 text-left font-semibold text-xs uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
               active === tab
                 ? 'border border-primary/45 bg-primary/15 text-primary'
-                : 'border border-border/55 bg-background/55 text-muted-foreground hover:border-border/80 hover:bg-background/75 hover:text-foreground'
+                : 'border border-border/55 bg-background/55 text-muted-foreground hover:border-border/70 hover:bg-background/75 hover:text-foreground'
             }`}
             key={tab}
             onClick={() => {
@@ -1746,7 +1746,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
         </span>
         {hasActiveFilters ? (
           <button
-            className="rounded-full border border-border/55 bg-background/66 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-border/80 hover:bg-background/82 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="rounded-full border border-border/55 bg-background/66 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-border/70 hover:bg-background/82 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             onClick={handleResetFilters}
             type="button"
           >
@@ -1784,7 +1784,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                 className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-4 sm:py-2 sm:text-xs ${
                   MORE_TABS.includes(active)
                     ? 'border-primary/50 bg-primary/15 text-primary'
-                    : 'border-border/55 bg-card/55 text-muted-foreground hover:border-border/80 hover:bg-card/80 hover:text-foreground'
+                    : 'border-border/55 bg-card/55 text-muted-foreground hover:border-border/70 hover:bg-card/80 hover:text-foreground'
                 }`}
                 onClick={() => {
                   setMoreOpen((previous) => !previous);
@@ -1811,7 +1811,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                   className={`inline-flex cursor-pointer list-none items-center gap-1 rounded-full border px-3 py-1.5 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-4 sm:py-2 sm:text-xs [&::-webkit-details-marker]:hidden ${
                     MORE_TABS.includes(active)
                       ? 'border-primary/50 bg-primary/15 text-primary'
-                      : 'border-border/55 bg-card/55 text-muted-foreground hover:border-border/80 hover:bg-card/80 hover:text-foreground'
+                      : 'border-border/55 bg-card/55 text-muted-foreground hover:border-border/70 hover:bg-card/80 hover:text-foreground'
                   }`}
                   data-testid="feed-more-summary"
                 >
