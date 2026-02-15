@@ -25,10 +25,10 @@ interface DraftArcCardProps {
 }
 
 const stateToTone: Record<DraftArcState, string> = {
-  needs_help: 'border border-destructive/55 bg-destructive/12 text-destructive',
-  in_progress: 'border border-primary/45 bg-primary/10 text-primary',
-  ready_for_review: 'border border-chart-3/55 bg-chart-3/14 text-chart-3',
-  released: 'border border-chart-2/55 bg-chart-2/14 text-chart-2',
+  needs_help: 'border border-destructive/35 bg-destructive/10 text-destructive',
+  in_progress: 'border border-primary/35 bg-primary/10 text-primary',
+  ready_for_review: 'border border-chart-3/35 bg-chart-3/12 text-chart-3',
+  released: 'border border-chart-2/35 bg-chart-2/12 text-chart-2',
 };
 
 export const DraftArcCard = ({
@@ -96,7 +96,7 @@ export const DraftArcCard = ({
         {summary.latestMilestone}
       </p>
       <div className="mt-3 grid grid-cols-2 gap-2 text-muted-foreground text-xs">
-        <div className="rounded-lg border border-border/45 bg-background/70 p-2">
+        <div className="rounded-lg border border-border/35 bg-background/62 p-2">
           <p className="text-[10px] text-muted-foreground uppercase">
             {t('feed.openFixes')}
           </p>
@@ -104,7 +104,7 @@ export const DraftArcCard = ({
             {summary.fixOpenCount}
           </p>
         </div>
-        <div className="rounded-lg border border-border/45 bg-background/70 p-2">
+        <div className="rounded-lg border border-border/35 bg-background/62 p-2">
           <p className="text-[10px] text-muted-foreground uppercase">
             {t('feed.pendingPRs')}
           </p>

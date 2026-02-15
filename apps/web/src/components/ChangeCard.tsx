@@ -122,7 +122,7 @@ export const ChangeCard = ({
     >
       <div
         className={`flex items-center justify-between ${
-          compact ? '' : 'border-border/55 border-b pb-2.5'
+          compact ? '' : 'border-border/35 border-b pb-2.5'
         }`}
       >
         <span
@@ -150,18 +150,18 @@ export const ChangeCard = ({
         {description}
       </p>
       {compact ? (
-        <p className="rounded-lg border border-border/55 bg-background/35 px-2 py-1.5 text-foreground/80 text-xs">
+        <p className="rounded-lg border border-border/35 bg-background/32 px-2 py-1.5 text-foreground/80 text-xs">
           {threadItems[0]}
         </p>
       ) : (
-        <section className="rounded-xl border border-border/55 bg-background/35 p-3">
+        <section className="rounded-xl border border-border/35 bg-background/32 p-3">
           <p className="font-semibold text-[10px] text-foreground uppercase tracking-wide">
             {t('changeCard.labels.miniThread')}
           </p>
           <ul className="mt-2 grid gap-1 text-foreground/85 text-xs">
             {threadItems.map((line) => (
               <li
-                className="rounded-md border border-border/55 bg-background/55 px-2 py-1.5"
+                className="rounded-md border border-border/35 bg-background/48 px-2 py-1.5"
                 key={`${id}-${line}`}
               >
                 {line}
@@ -172,7 +172,7 @@ export const ChangeCard = ({
       )}
       <div
         className={`flex items-center justify-between text-muted-foreground text-xs ${
-          compact ? '' : 'border-border/55 border-t pt-2'
+          compact ? '' : 'border-border/35 border-t pt-2'
         }`}
       >
         <span>{formatTime(occurredAt)}</span>
