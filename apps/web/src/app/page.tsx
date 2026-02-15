@@ -255,8 +255,8 @@ export default function Home() {
   const loading = isLoading || isValidating;
 
   return (
-    <main className="grid gap-8">
-      <section className="card grid gap-6 p-6 lg:grid-cols-[1fr_360px] lg:p-8">
+    <main className="grid gap-6 sm:gap-8">
+      <section className="card grid gap-4 p-4 sm:gap-6 sm:p-6 lg:grid-cols-[1fr_360px] lg:p-8">
         <div>
           <p className="pill tag-hot">{t('home.liveObserverPlatform')}</p>
           <h2 className="mt-4 max-w-xl font-bold text-4xl text-foreground leading-tight tracking-tight sm:text-5xl">
@@ -325,7 +325,7 @@ export default function Home() {
       </section>
 
       <section className="grid gap-4">
-        <h3 className="font-semibold text-2xl text-foreground">
+        <h3 className="font-semibold text-foreground text-xl sm:text-2xl">
           {t('footer.howItWorks')}
         </h3>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -353,7 +353,7 @@ export default function Home() {
       </section>
 
       <section className="grid gap-4">
-        <h3 className="font-semibold text-2xl text-foreground">
+        <h3 className="font-semibold text-foreground text-xl sm:text-2xl">
           {t('footer.coreProducts')}
         </h3>
         <div className="grid gap-3 lg:grid-cols-3">
@@ -361,7 +361,7 @@ export default function Home() {
             const Icon = product.icon;
             return (
               <article
-                className="card rounded-xl border border-border/35 bg-card p-5 text-card-foreground"
+                className="card rounded-xl border border-border/35 bg-card p-4 text-card-foreground sm:p-5"
                 key={product.key}
               >
                 <div className="flex items-center justify-between">
@@ -386,9 +386,9 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="card rounded-xl border border-border/35 bg-card p-5 lg:p-6">
+      <section className="card rounded-xl border border-border/35 bg-card p-4 sm:p-5 lg:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="font-semibold text-2xl text-foreground">
+          <h3 className="font-semibold text-foreground text-xl sm:text-2xl">
             {t('feed.topStudios')}
           </h3>
           <p className="pill">{t('feed.impactRanking')}</p>
