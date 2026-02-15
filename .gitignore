@@ -19,3 +19,4 @@ design-system/
 apps/web/*.tsbuildinfo
 test-results/
 .logs/
+.tmp/
