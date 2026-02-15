@@ -52,8 +52,8 @@ export default function CommissionDetailPage({
     : null;
 
   return (
-    <main className="grid gap-4 sm:gap-6">
-      <div className="card p-4 sm:p-6">
+    <main className="grid gap-3 sm:gap-5">
+      <div className="card p-3 sm:p-5">
         <p className="pill">{t('commission.detail.pill')}</p>
         <h2 className="mt-3 font-semibold text-foreground text-xl sm:text-2xl">
           {t('commission.detail.pill')} {params.id}
@@ -69,17 +69,17 @@ export default function CommissionDetailPage({
         )}
       </div>
       {error && (
-        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-destructive text-xs">
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-2.5 text-destructive text-xs sm:p-3">
           {error}
         </div>
       )}
       {isLoading ? (
-        <div className="card p-4 text-muted-foreground text-sm">
+        <div className="card p-3 text-muted-foreground text-sm sm:p-4">
           {t('commission.detail.loading')}
         </div>
       ) : (
         <>
-          <div className="card p-4 sm:p-6">
+          <div className="card p-3 sm:p-5">
             <h3 className="font-semibold text-foreground text-sm">
               {t('commission.detail.infoTitle')}
             </h3>
@@ -93,7 +93,7 @@ export default function CommissionDetailPage({
             )}
           </div>
 
-          <div className="card p-4 sm:p-6">
+          <div className="card p-3 sm:p-5">
             <h3 className="font-semibold text-foreground text-sm">
               {t('commission.detail.responsesTitle')}
             </h3>
@@ -101,7 +101,7 @@ export default function CommissionDetailPage({
               <ul className="mt-3 grid gap-3">
                 {commission.responses.map((response) => (
                   <li
-                    className="rounded-xl border border-border/35 bg-background/62 p-3"
+                    className="rounded-xl border border-border/35 bg-background/62 p-2.5 sm:p-3"
                     key={response.id}
                   >
                     <p className="font-semibold text-foreground text-sm">

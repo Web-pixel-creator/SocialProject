@@ -988,8 +988,8 @@ export default function DraftDetailPage() {
   });
 
   return (
-    <main className="grid gap-4 sm:gap-6">
-      <div className="card p-4 sm:p-6">
+    <main className="grid gap-3 sm:gap-5">
+      <div className="card p-3 sm:p-5">
         <p className="pill">{t('draftDetail.header.pill')}</p>
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <h2 className="font-semibold text-foreground text-xl sm:text-2xl">
@@ -1007,9 +1007,9 @@ export default function DraftDetailPage() {
           {t('draftDetail.header.subtitle')}{' '}
           {draft ? `GlowUp ${draft.glowUpScore.toFixed(1)}` : ''}
         </p>
-        <div className="mt-4 flex flex-wrap items-center gap-3">
+        <div className="mt-3 flex flex-wrap items-center gap-2.5 sm:mt-4 sm:gap-3">
           <button
-            className="rounded-full bg-primary px-5 py-2 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-60"
+            className="rounded-full bg-primary px-5 py-1.5 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-60 sm:py-2"
             disabled={demoLoading || !draftId}
             onClick={runDemoFlow}
             type="button"
@@ -1029,14 +1029,14 @@ export default function DraftDetailPage() {
         </div>
       )}
       {loading ? (
-        <div className="card p-4 text-muted-foreground text-sm sm:p-6">
+        <div className="card p-3 text-muted-foreground text-sm sm:p-5">
           {t('draftDetail.loadingDraft')}
         </div>
       ) : (
-        <div className="grid gap-4 sm:gap-6 lg:grid-cols-[2fr_1fr]">
-          <div className="grid gap-4 sm:gap-6">
+        <div className="grid gap-3 sm:gap-5 lg:grid-cols-[2fr_1fr]">
+          <div className="grid gap-3 sm:gap-5">
             {nextAction && (
-              <div className="card p-4">
+              <div className="card p-3 sm:p-4">
                 <p className="pill">{t('draftDetail.nextAction.pill')}</p>
                 <h3 className="mt-3 font-semibold text-foreground text-lg">
                   {nextAction.title}
@@ -1044,17 +1044,17 @@ export default function DraftDetailPage() {
                 <p className="text-muted-foreground text-sm">
                   {nextAction.description}
                 </p>
-                <div className="mt-4 flex flex-wrap items-center gap-3">
+                <div className="mt-3 flex flex-wrap items-center gap-2.5 sm:mt-4 sm:gap-3">
                   {'href' in nextAction ? (
                     <Link
-                      className="rounded-full bg-primary px-5 py-2 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      className="rounded-full bg-primary px-5 py-1.5 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:py-2"
                       href={nextAction.href as string}
                     >
                       {nextAction.ctaLabel}
                     </Link>
                   ) : (
                     <button
-                      className="rounded-full bg-primary px-5 py-2 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-60"
+                      className="rounded-full bg-primary px-5 py-1.5 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-60 sm:py-2"
                       disabled={demoLoading && !hasFixRequests}
                       onClick={nextAction.onClick}
                       type="button"
@@ -1095,7 +1095,7 @@ export default function DraftDetailPage() {
             <div id="pull-requests">
               <PullRequestList items={prList} />
             </div>
-            <div className="card p-4">
+            <div className="card p-3 sm:p-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-foreground text-sm">
                   {t('draftDetail.similar.title')}
@@ -1118,7 +1118,7 @@ export default function DraftDetailPage() {
                 <ul className="mt-3 grid gap-2">
                   {similarDrafts.map((item) => (
                     <li
-                      className="rounded-lg border border-border/35 bg-background/62 p-3 text-xs"
+                      className="rounded-lg border border-border/35 bg-background/62 p-2.5 text-xs sm:p-3"
                       key={item.id}
                     >
                       <p className="text-[10px] text-muted-foreground uppercase">
@@ -1170,7 +1170,7 @@ export default function DraftDetailPage() {
               submitLoading={predictionSubmitLoading}
               summary={predictionSummary}
             />
-            <div className="card p-4">
+            <div className="card p-3 sm:p-4">
               <p className="pill">{t('draftDetail.follow.pill')}</p>
               <h3 className="mt-3 font-semibold text-foreground text-sm">
                 {t('draftDetail.follow.title')}
@@ -1185,7 +1185,7 @@ export default function DraftDetailPage() {
               )}
               <div className="mt-4">
                 <button
-                  className={`rounded-full px-4 py-2 font-semibold text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                  className={`rounded-full px-4 py-1.5 font-semibold text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:py-2 ${
                     isFollowed
                       ? 'border border-chart-2/55 bg-chart-2/14 text-chart-2'
                       : 'bg-primary text-primary-foreground'
@@ -1206,7 +1206,7 @@ export default function DraftDetailPage() {
               loading={digestLoading}
               onMarkSeen={markDigestSeen}
             />
-            <div className="card p-4">
+            <div className="card p-3 sm:p-4">
               <p className="pill">{t('draftDetail.activity.pill')}</p>
               <h3 className="mt-3 font-semibold text-foreground text-sm">
                 {t('draftDetail.activity.title')}

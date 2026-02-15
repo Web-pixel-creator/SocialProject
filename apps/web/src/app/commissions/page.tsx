@@ -142,8 +142,8 @@ export default function CommissionsPage() {
   }, [commissions]);
 
   return (
-    <main className="grid gap-4 sm:gap-6">
-      <div className="card p-4 sm:p-6">
+    <main className="grid gap-3 sm:gap-5">
+      <div className="card p-3 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="font-semibold text-foreground text-xl sm:text-2xl">
@@ -154,7 +154,7 @@ export default function CommissionsPage() {
             </p>
           </div>
           <button
-            className={`rounded-full border border-border/35 bg-background/62 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-background/78 ${focusRingClass}`}
+            className={`rounded-full border border-border/35 bg-background/62 px-4 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/78 sm:py-2 ${focusRingClass}`}
             onClick={loadCommissions}
             type="button"
           >
@@ -163,8 +163,8 @@ export default function CommissionsPage() {
         </div>
       </div>
 
-      <section className="grid gap-3 sm:grid-cols-3">
-        <div className="card p-4">
+      <section className="grid gap-2.5 sm:grid-cols-3 sm:gap-3">
+        <div className="card p-3 sm:p-4">
           <p className="text-muted-foreground text-xs">
             {t('commission.summary.total')}
           </p>
@@ -172,7 +172,7 @@ export default function CommissionsPage() {
             {summary.total}
           </p>
         </div>
-        <div className="card p-4">
+        <div className="card p-3 sm:p-4">
           <p className="text-muted-foreground text-xs">
             {t('commission.summary.pending')}
           </p>
@@ -180,7 +180,7 @@ export default function CommissionsPage() {
             {summary.pending}
           </p>
         </div>
-        <div className="card p-4">
+        <div className="card p-3 sm:p-4">
           <p className="text-muted-foreground text-xs">
             {t('commission.summary.released')}
           </p>
@@ -204,7 +204,7 @@ export default function CommissionsPage() {
         {isAuthenticated ? (
           <CommissionForm onCreated={loadCommissions} />
         ) : (
-          <section className="card grid gap-3 p-4 sm:p-6">
+          <section className="card grid gap-3 p-3 sm:p-5">
             <h3 className="font-semibold text-foreground text-sm">
               {t('header.signIn')}
             </h3>
@@ -220,7 +220,7 @@ export default function CommissionsPage() {
           </section>
         )}
 
-        <section className="card grid gap-2.5 p-4 sm:grid-cols-3 sm:gap-3">
+        <section className="card grid gap-2.5 p-3 sm:grid-cols-3 sm:gap-3 sm:p-4">
           <input
             className={`rounded-xl border border-border/35 bg-background/62 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70 ${focusRingClass}`}
             onChange={(event) => setSearch(event.target.value)}
@@ -280,7 +280,7 @@ export default function CommissionsPage() {
         ) : null}
 
         {error ? (
-          <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-destructive text-xs">
+          <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-2.5 text-destructive text-xs sm:p-3">
             {error}
           </div>
         ) : null}
@@ -290,10 +290,10 @@ export default function CommissionsPage() {
             {t('commission.states.loadingList')}
           </div>
         ) : (
-          <section className="grid gap-3 sm:gap-4 md:grid-cols-2">
+          <section className="grid gap-2.5 sm:gap-4 md:grid-cols-2">
             {filteredCommissions.map((commission) => (
               <Link
-                className={`card p-4 transition hover:border-border/55 ${focusRingClass}`}
+                className={`card p-3 transition hover:border-border/55 sm:p-4 ${focusRingClass}`}
                 href={`/commissions/${commission.id}`}
                 key={commission.id}
               >
@@ -315,7 +315,7 @@ export default function CommissionsPage() {
               </Link>
             ))}
             {filteredCommissions.length === 0 ? (
-              <div className="card grid gap-3 p-4 text-muted-foreground text-sm">
+              <div className="card grid gap-3 p-3 text-muted-foreground text-sm sm:p-4">
                 <p>
                   {hasActiveFilters
                     ? t('search.states.noResultsYet')
