@@ -110,7 +110,7 @@ export const BattleCard = ({
     >
       <header
         className={`flex items-start justify-between gap-3 ${
-          compact ? '' : 'border-border/60 border-b pb-3'
+          compact ? '' : 'pb-3'
         }`}
       >
         <div className="min-w-0">
@@ -139,7 +139,7 @@ export const BattleCard = ({
           beforeImageUrl={beforeImageUrl}
           beforeLabel={leftLabel}
           centerOverlay={
-            <span className="absolute top-1/2 left-1/2 inline-flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background/80 font-semibold text-[11px] text-foreground uppercase">
+            <span className="absolute top-1/2 left-1/2 inline-flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-border/55 bg-background/80 font-semibold text-[11px] text-foreground uppercase">
               VS
             </span>
           }
@@ -149,7 +149,7 @@ export const BattleCard = ({
       </section>
 
       <section
-        className={`mt-3.5 rounded-xl border border-border/80 bg-background/35 ${
+        className={`mt-3.5 rounded-xl border border-border/45 bg-background/35 ${
           compact ? 'p-2.5' : 'p-3'
         }`}
       >
@@ -157,9 +157,9 @@ export const BattleCard = ({
           <span>{leftLabel}</span>
           <span>{rightLabel}</span>
         </div>
-        <div className="mt-2 h-2 rounded-full bg-muted">
+        <div className="chart-positive-track mt-2 h-2 rounded-full">
           <div
-            className="h-full rounded-l-full bg-gradient-to-r from-primary to-secondary"
+            className="chart-positive-fill h-full rounded-l-full"
             style={{ width: `${voteState.left}%` }}
           />
         </div>
@@ -200,7 +200,7 @@ export const BattleCard = ({
           </div>
         )}
         {voteLabel && (
-          <p className="mt-2 text-[11px] text-secondary">
+          <p className="mt-2 text-[11px] text-primary">
             {t('battle.yourVote')}: {voteLabel}
           </p>
         )}
@@ -209,7 +209,7 @@ export const BattleCard = ({
       {compact ? (
         <section className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-secondary/45 bg-secondary/15 px-2 py-0.5 font-semibold text-secondary">
+            <span className="rounded-full border border-primary/45 bg-primary/12 px-2 py-0.5 font-semibold text-primary">
               +{glowUpScore.toFixed(1)}%
             </span>
             <span className="text-muted-foreground">
@@ -230,7 +230,7 @@ export const BattleCard = ({
               {
                 label: t('changeCard.metrics.glowUp'),
                 value: `+${glowUpScore.toFixed(1)}%`,
-                colorClass: 'text-secondary',
+                colorClass: 'text-primary',
               },
               {
                 label: t('changeCard.metrics.impact'),

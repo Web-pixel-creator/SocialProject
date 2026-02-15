@@ -465,22 +465,25 @@ export const ObserverRightRail = () => {
   }, [requestResync]);
 
   const metricTileClass =
-    'rounded-lg border border-border/80 bg-background/35 p-2.5';
+    'rounded-lg border border-border/45 bg-background/36 p-2.5';
   const statusChipClass =
-    'rounded-full border border-border/80 bg-background/60 px-2 py-1';
+    'rounded-full border border-border/45 bg-background/58 px-2.5 py-1';
   const controlButtonBaseClass =
     'rounded-full border px-2.5 py-1 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
   const controlButtonEnabledClass =
-    'border-border/80 bg-background/70 text-muted-foreground hover:border-primary/40 hover:text-foreground';
+    'border-border/55 bg-background/62 text-muted-foreground hover:border-border/80 hover:bg-background/78 hover:text-foreground';
   const controlButtonDisabledClass =
-    'cursor-not-allowed border-border/70 bg-background/55 text-muted-foreground/45';
+    'cursor-not-allowed border-border/35 bg-background/45 text-muted-foreground/45';
+  const primaryActionButtonClass =
+    'rounded-full border border-primary/45 bg-primary/12 px-2.5 py-1 font-semibold text-primary uppercase tracking-wide transition hover:bg-primary/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
+  const softPanelClass = 'rounded-lg border border-border/45 bg-background/36';
 
   return (
     <aside className="observer-right-rail grid grid-cols-1 gap-3.5">
       <section className="card relative overflow-hidden p-3.5">
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -top-12 right-0 h-24 w-24 rounded-full bg-secondary/10 blur-2xl"
+          className="pointer-events-none absolute -top-12 right-0 h-24 w-24 rounded-full bg-primary/10 blur-2xl"
         />
         <p className="live-signal inline-flex items-center gap-2 font-semibold text-xs uppercase tracking-wide">
           <span className="icon-breathe live-dot inline-flex h-2.5 w-2.5 rounded-full motion-reduce:animate-none" />
@@ -515,7 +518,7 @@ export const ObserverRightRail = () => {
             <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">
               {t('rail.latency')}
             </p>
-            <p className="mt-1 font-semibold text-lg text-secondary">
+            <p className="mt-1 font-semibold text-foreground text-lg">
               {t('rail.latencyValue')}
             </p>
           </div>
@@ -539,13 +542,13 @@ export const ObserverRightRail = () => {
           )}
         </div>
         {needsResync && (
-          <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-primary/45 bg-primary/12 p-2">
+          <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-primary/35 bg-primary/10 p-2">
             <span className="text-[11px] text-primary">
               {t('rail.resyncRequired')}
             </span>
             <button
               aria-label={t('rail.resyncNow')}
-              className="rounded-full border border-primary/45 px-2 py-1 font-semibold text-[10px] text-primary uppercase tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className={`${primaryActionButtonClass} px-2 text-[10px]`}
               disabled={isResyncing}
               onClick={handleManualResync}
               type="button"
@@ -557,18 +560,20 @@ export const ObserverRightRail = () => {
         {resyncToast && (
           <div
             aria-live="polite"
-            className="mt-2 rounded-lg border border-secondary/40 bg-secondary/10 p-2 text-[11px] text-secondary"
+            className="mt-2 rounded-lg border border-border/45 bg-accent/70 p-2 text-[11px] text-foreground"
           >
             {resyncToast}
           </div>
         )}
         <div className="mt-2 flex items-center justify-between gap-2 text-[11px]">
-          <span className="rounded-full border border-border/80 bg-background/70 px-2 py-1 font-semibold text-muted-foreground">
+          <span
+            className={`${statusChipClass} font-semibold text-muted-foreground`}
+          >
             {t('rail.panelsVisible')}: {visiblePanelCount}/{PANEL_KEYS.length}
           </span>
           {allPanelsHidden ? (
             <button
-              className="rounded-full border border-primary/45 bg-primary/10 px-2 py-1 font-semibold text-primary uppercase tracking-wide transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className={primaryActionButtonClass}
               onClick={() => applyPanelVisibility(DEFAULT_PANEL_VISIBILITY)}
               type="button"
             >
@@ -577,7 +582,7 @@ export const ObserverRightRail = () => {
           ) : null}
         </div>
         <div
-          className="mt-2 hidden gap-2 border-border/60 border-t pt-2.5 lg:grid"
+          className="mt-2 hidden gap-2 border-border/35 border-t pt-2.5 lg:grid"
           data-testid="observer-rail-desktop-controls"
         >
           <div className="flex flex-wrap gap-1">
@@ -642,11 +647,13 @@ export const ObserverRightRail = () => {
           </div>
         </div>
         {allPanelsHidden ? (
-          <div className="mt-3 rounded-lg border border-border/80 bg-background/35 p-2 text-[11px] text-muted-foreground">
+          <div
+            className={`mt-3 p-2 text-[11px] text-muted-foreground ${softPanelClass}`}
+          >
             <p>{t('rail.noPanelsSelected')}</p>
             <div className="mt-2 flex justify-end">
               <button
-                className="rounded-full border border-primary/45 bg-primary/10 px-2 py-1 font-semibold text-primary uppercase tracking-wide transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className={primaryActionButtonClass}
                 onClick={() => applyPanelVisibility(DEFAULT_PANEL_VISIBILITY)}
                 type="button"
               >
@@ -657,7 +664,7 @@ export const ObserverRightRail = () => {
         ) : null}
         <div className="grid gap-3 sm:grid-cols-2">
           {panelVisibility.battles ? (
-            <div className="rounded-lg border border-border/80 bg-background/35 p-2">
+            <div className={`${softPanelClass} p-2.5`}>
               <p className="font-semibold text-foreground text-xs">
                 {t('rail.trendingBattles')}
               </p>
@@ -671,7 +678,7 @@ export const ObserverRightRail = () => {
             </div>
           ) : null}
           {panelVisibility.glowUps ? (
-            <div className="rounded-lg border border-border/80 bg-background/35 p-2">
+            <div className={`${softPanelClass} p-2.5`}>
               <p className="font-semibold text-foreground text-xs">
                 {t('rail.topGlowUps24h')}
               </p>
@@ -685,7 +692,7 @@ export const ObserverRightRail = () => {
             </div>
           ) : null}
           {panelVisibility.studios ? (
-            <div className="rounded-lg border border-border/80 bg-background/35 p-2">
+            <div className={`${softPanelClass} p-2.5`}>
               <p className="font-semibold text-foreground text-xs">
                 {t('rail.topStudios')}
               </p>
@@ -700,7 +707,7 @@ export const ObserverRightRail = () => {
           ) : null}
         </div>
         {panelVisibility.activity ? (
-          <div className="mt-3 rounded-lg border border-border/80 bg-background/35 p-2">
+          <div className={`mt-3 p-2.5 ${softPanelClass}`}>
             <p className="font-semibold text-foreground text-xs">
               {t('rail.liveActivityStream')}
             </p>
@@ -743,7 +750,7 @@ export const ObserverRightRail = () => {
           <p>{t('rail.noPanelsSelected')}</p>
           <div className="mt-2">
             <button
-              className="rounded-full border border-primary/45 bg-primary/10 px-2 py-1 font-semibold text-primary uppercase tracking-wide transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className={primaryActionButtonClass}
               onClick={() => applyPanelVisibility(DEFAULT_PANEL_VISIBILITY)}
               type="button"
             >

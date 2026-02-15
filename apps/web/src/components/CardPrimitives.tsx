@@ -90,7 +90,7 @@ export const ImagePair = ({
     Boolean(afterImageUrl) && afterImageUrl !== failedAfterUrl;
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-border/80 bg-background/45">
+    <div className="relative overflow-hidden rounded-xl border border-border/45 bg-background/45">
       <div className={`grid ${heightClass} grid-cols-2`}>
         <div className="h-full w-full">
           {canRenderBefore ? (
@@ -136,19 +136,19 @@ export const ImagePair = ({
       <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-primary/35" />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background/35 via-transparent to-background/10"
+        className="pointer-events-none absolute inset-0 bg-background/10"
       />
       {centerOverlay ?? (
-        <span className="absolute top-1/2 left-1/2 inline-flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background/80 text-foreground">
+        <span className="absolute top-1/2 left-1/2 inline-flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-border/55 bg-background/80 text-foreground">
           <ArrowRightLeft aria-hidden="true" className="h-4 w-4" />
         </span>
       )}
       {showCornerLabels && (
         <>
-          <span className="absolute bottom-2 left-2 rounded-full border border-border/80 bg-background/80 px-2 py-1 font-semibold text-[10px] text-foreground">
+          <span className="absolute bottom-2 left-2 rounded-full border border-border/55 bg-background/80 px-2 py-1 font-semibold text-[10px] text-foreground">
             {beforeLabel}
           </span>
-          <span className="absolute right-2 bottom-2 rounded-full border border-border/80 bg-background/80 px-2 py-1 font-semibold text-[10px] text-foreground">
+          <span className="absolute right-2 bottom-2 rounded-full border border-border/55 bg-background/80 px-2 py-1 font-semibold text-[10px] text-foreground">
             {afterLabel}
           </span>
         </>
@@ -162,7 +162,7 @@ export const ImagePair = ({
 export interface StatTile {
   label: string;
   value: string;
-  colorClass?: string; // e.g. "text-secondary", default "text-foreground"
+  colorClass?: string; // e.g. "text-primary", default "text-foreground"
 }
 
 interface StatsGridProps {
@@ -172,10 +172,7 @@ interface StatsGridProps {
 export const StatsGrid = ({ tiles }: StatsGridProps) => (
   <section className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
     {tiles.map((tile) => (
-      <div
-        className="rounded-xl border border-border/80 bg-background/40 p-2.5"
-        key={tile.label}
-      >
+      <div className="rounded-xl bg-background/40 p-2.5" key={tile.label}>
         <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
           {tile.label}
         </p>
@@ -200,9 +197,9 @@ export const KeyMetricPreview = ({
   label,
   value,
   helper,
-  toneClass = 'text-secondary',
+  toneClass = 'text-primary',
 }: KeyMetricPreviewProps) => (
-  <section className="mt-3 rounded-xl border border-border/80 bg-background/40 p-3">
+  <section className="mt-3 rounded-xl bg-background/40 p-3">
     <div className="flex items-end justify-between gap-3">
       <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
         {label}
@@ -226,7 +223,7 @@ interface ObserverActionsProps {
 
 export const ObserverActions = ({
   title,
-  buttonClassName = 'inline-flex items-center justify-center gap-1 rounded-lg border border-border/80 bg-background/55 px-1.5 py-1.5 text-[10px] text-muted-foreground transition hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+  buttonClassName = 'inline-flex items-center justify-center gap-1 rounded-lg border border-border/55 bg-background/55 px-1.5 py-1.5 text-[10px] text-muted-foreground transition hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
 }: ObserverActionsProps) => {
   const { t } = useLanguage();
   const [expanded, setExpanded] = useState(false);
@@ -242,7 +239,7 @@ export const ObserverActions = ({
   const secondaryActions = actions.slice(2);
 
   return (
-    <section className="mt-2 rounded-xl border border-border/80 bg-background/35 p-2.5">
+    <section className="mt-2 rounded-xl bg-background/35 p-2.5">
       <p className="mb-2 text-[10px] text-muted-foreground uppercase tracking-wide">
         {resolvedTitle}
       </p>
@@ -291,7 +288,7 @@ export const EvolutionTimeline = ({
   const { t } = useLanguage();
 
   return (
-    <section className="mt-3 rounded-xl border border-border/80 bg-background/35 p-3">
+    <section className="mt-3 rounded-xl bg-background/35 p-3">
       <div className="flex items-center justify-between gap-2">
         <p className="font-semibold text-foreground text-sm">
           {t('common.evolution')}
@@ -301,14 +298,14 @@ export const EvolutionTimeline = ({
         </p>
       </div>
       <div className="relative mt-2">
-        <div className="h-1.5 rounded-full bg-muted">
+        <div className="chart-positive-track h-1.5 rounded-full">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-primary/35 via-primary to-secondary"
+            className="chart-positive-fill h-full rounded-full"
             style={{ width: `${timelineValue}%` }}
           />
         </div>
         <span
-          className="absolute top-1/2 inline-flex h-3.5 w-3.5 -translate-y-1/2 rounded-full border border-primary/70 bg-primary"
+          className="chart-positive-dot absolute top-1/2 inline-flex h-3.5 w-3.5 -translate-y-1/2 rounded-full border"
           style={{ left: `calc(${timelineValue}% - 7px)` }}
         />
       </div>
@@ -325,7 +322,7 @@ interface CardDetailsProps {
 }
 
 export const CardDetails = ({ summaryLabel, children }: CardDetailsProps) => (
-  <details className="group mt-3 overflow-hidden rounded-xl border border-border/80 bg-background/35">
+  <details className="group mt-3 overflow-hidden rounded-xl border border-border/45 bg-background/35">
     <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2 font-semibold text-[11px] text-muted-foreground uppercase tracking-wide transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [&::-webkit-details-marker]:hidden">
       {summaryLabel}
       <span
@@ -335,7 +332,7 @@ export const CardDetails = ({ summaryLabel, children }: CardDetailsProps) => (
         +
       </span>
     </summary>
-    <div className="grid gap-2 border-border/60 border-t px-3 py-3">
+    <div className="grid gap-2 border-border/40 border-t px-3 py-3">
       {children}
     </div>
   </details>

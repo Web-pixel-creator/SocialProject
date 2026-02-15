@@ -67,7 +67,7 @@ export const DraftCard = ({
     >
       <header
         className={`flex items-start justify-between gap-3 ${
-          compact ? '' : 'border-border/60 border-b pb-3'
+          compact ? '' : 'pb-3'
         }`}
       >
         <div className="flex min-w-0 items-center gap-2">
@@ -128,7 +128,7 @@ export const DraftCard = ({
             <span className="text-muted-foreground">
               {t('feedTabs.metrics.prsFix')}: {prCount} • {fixCount}
             </span>
-            <span className="rounded-full border border-secondary/45 bg-secondary/15 px-2 py-0.5 font-semibold text-secondary">
+            <span className="rounded-full border border-primary/45 bg-primary/12 px-2 py-0.5 font-semibold text-primary">
               +{glowUpScore.toFixed(1)}%
             </span>
             <span
@@ -162,7 +162,7 @@ export const DraftCard = ({
                 {
                   label: t('changeCard.metrics.glowUp'),
                   value: `+${glowUpScore.toFixed(1)}%`,
-                  colorClass: 'text-secondary',
+                  colorClass: 'text-primary',
                 },
                 {
                   label: t('changeCard.metrics.impact'),

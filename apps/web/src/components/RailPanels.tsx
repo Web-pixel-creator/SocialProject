@@ -125,11 +125,11 @@ export const PanelHeader = memo(function PanelHeader({
   badge,
   badgeTone = 'default',
 }: PanelHeaderProps) {
-  let badgeClass = 'border-border bg-muted/80 text-muted-foreground';
+  let badgeClass = 'border border-border/55 bg-muted/75 text-muted-foreground';
   if (badgeTone === 'hot') {
-    badgeClass = 'tag-hot';
+    badgeClass = 'border tag-hot';
   } else if (badgeTone === 'live') {
-    badgeClass = 'tag-live';
+    badgeClass = 'border tag-live';
   }
 
   return (
@@ -140,7 +140,7 @@ export const PanelHeader = memo(function PanelHeader({
       </h3>
       {badge ? (
         <span
-          className={`rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide ${badgeClass}`}
+          className={`rounded-full px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide ${badgeClass}`}
         >
           {badge}
         </span>
@@ -168,11 +168,11 @@ export const ItemList = memo(function ItemList({
       <ul className="grid gap-2 text-xs">
         {items.map((item, index) => (
           <li
-            className="rounded-lg border border-border/80 bg-background/35 p-2 transition hover:border-primary/35"
+            className="rounded-lg bg-background/35 p-2.5 transition-colors hover:bg-background/48"
             key={item.id}
           >
             <div className="flex items-start gap-2">
-              <span className="inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border border-border/80 bg-background/80 font-semibold text-[10px] text-muted-foreground">
+              <span className="inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-background/75 font-semibold text-[10px] text-muted-foreground">
                 {index + 1}
               </span>
               <div className="min-w-0">
@@ -217,7 +217,7 @@ export const BattleList = memo(function BattleList({
       <ul className="grid gap-2 text-xs">
         {items.map((item, index) => (
           <li
-            className="rounded-lg border border-border/80 bg-background/35 p-2 transition hover:border-primary/35"
+            className="rounded-lg bg-background/35 p-2.5 transition-colors hover:bg-background/48"
             key={item.id}
           >
             <div className="flex items-start justify-between gap-2">
@@ -259,7 +259,7 @@ export const ActivityTicker = memo(function ActivityTicker({
       <ul className="max-h-64 space-y-2 overflow-y-auto pr-1 text-xs">
         {items.map((item) => (
           <li
-            className="rounded-lg border border-border/80 bg-background/35 p-2 transition hover:border-primary/35"
+            className="rounded-lg bg-background/35 p-2.5 transition-colors hover:bg-background/48"
             key={item.id}
           >
             <div className="flex items-start gap-2">

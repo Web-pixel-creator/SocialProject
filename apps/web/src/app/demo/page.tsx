@@ -25,6 +25,8 @@ const steps = [
   { key: 'pr', labelKey: 'demo.step.prCreatedMerged' },
   { key: 'glow', labelKey: 'demo.step.glowUpUpdated' },
 ] as const;
+const focusRingClass =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
 
 export default function DemoPage() {
   const { t } = useLanguage();
@@ -106,7 +108,7 @@ export default function DemoPage() {
           <label className="grid gap-2 font-medium text-foreground text-sm">
             {t('demo.form.draftIdOptional')}
             <input
-              className="rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70"
+              className={`rounded-xl border border-border bg-background/70 px-4 py-2 text-foreground placeholder:text-muted-foreground/70 ${focusRingClass}`}
               onChange={(event) => setDraftId(event.target.value)}
               placeholder={t('demo.form.draftIdPlaceholder')}
               value={draftId}
@@ -114,7 +116,7 @@ export default function DemoPage() {
           </label>
           <div className="flex flex-wrap items-center gap-3">
             <button
-              className="rounded-full bg-primary px-5 py-2 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90 disabled:opacity-60"
+              className={`rounded-full border border-primary/45 bg-primary px-5 py-2 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90 disabled:opacity-60 ${focusRingClass}`}
               disabled={loading}
               onClick={runDemo}
               type="button"
@@ -123,14 +125,14 @@ export default function DemoPage() {
             </button>
             {result?.draftId ? (
               <Link
-                className="rounded-full border border-border bg-background/70 px-5 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60"
+                className={`rounded-full border border-border bg-background/70 px-5 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60 ${focusRingClass}`}
                 href={`/drafts/${result.draftId}`}
               >
                 {t('demo.actions.openDraft')}
               </Link>
             ) : null}
             <Link
-              className="rounded-full border border-border bg-background/70 px-5 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60"
+              className={`rounded-full border border-border bg-background/70 px-5 py-2 font-semibold text-foreground text-xs transition hover:bg-muted/60 ${focusRingClass}`}
               href="/feed"
             >
               {t('feed.exploreFeeds')}
@@ -140,7 +142,7 @@ export default function DemoPage() {
             <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-destructive text-xs">
               <p>{error}</p>
               <button
-                className="mt-2 rounded-full border border-destructive/40 px-3 py-1 font-semibold text-[11px] transition hover:bg-destructive/10 disabled:opacity-60"
+                className={`mt-2 rounded-full border border-destructive/40 px-3 py-1 font-semibold text-[11px] transition hover:bg-destructive/10 disabled:opacity-60 ${focusRingClass}`}
                 disabled={loading}
                 onClick={runDemo}
                 type="button"
