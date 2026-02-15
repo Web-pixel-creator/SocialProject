@@ -296,7 +296,7 @@ export default function PrivacyPage() {
 
         {exportUrl ? (
           <a
-            className="w-fit text-primary text-xs underline underline-offset-2"
+            className={`w-fit rounded-full border border-border/45 bg-background/70 px-4 py-2 text-foreground text-xs transition hover:bg-muted/60 ${focusRingClass}`}
             href={exportUrl}
           >
             {t('privacy.export.download')}

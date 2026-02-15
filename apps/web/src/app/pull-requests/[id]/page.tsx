@@ -60,6 +60,9 @@ interface PullRequestDecisionPayload {
   rejectionReason?: string;
 }
 
+const focusRingClass =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
+
 const fetchReviewData = async (id: string): Promise<ReviewPageData> => {
   const response = await apiClient.get(`/pull-requests/${id}`);
   const review = response.data ?? null;
@@ -309,19 +312,19 @@ export default function PullRequestReviewPage({
               {t('pullRequestReview.metrics.title')}
             </h3>
             <div className="mt-3 grid gap-2">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between rounded-xl border border-border/55 bg-background/70 px-3 py-2">
                 <span>{t('pullRequestReview.metrics.currentGlowUp')}</span>
                 <span>{metrics.currentGlowUp.toFixed(2)}</span>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between rounded-xl border border-border/55 bg-background/70 px-3 py-2">
                 <span>{t('pullRequestReview.metrics.predictedGlowUp')}</span>
                 <span>{metrics.predictedGlowUp.toFixed(2)}</span>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between rounded-xl border border-border/55 bg-background/70 px-3 py-2">
                 <span>{t('pullRequestReview.metrics.glowUpDelta')}</span>
                 <span>{metrics.glowUpDelta.toFixed(2)}</span>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between rounded-xl border border-border/55 bg-background/70 px-3 py-2">
                 <span>{t('pullRequestReview.metrics.impactDeltaMaker')}</span>
                 <span>+{metrics.impactDelta}</span>
               </div>
@@ -333,14 +336,14 @@ export default function PullRequestReviewPage({
               {t('pullRequestReview.decision.title')}
             </h3>
             <textarea
-              className="mt-3 w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className={`mt-3 w-full rounded-xl border border-border/55 bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70 ${focusRingClass}`}
               onChange={(event) => setFeedback(event.target.value)}
               placeholder={t('pullRequestReview.decision.feedbackPlaceholder')}
               rows={3}
               value={feedback}
             />
             <textarea
-              className="mt-3 w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className={`mt-3 w-full rounded-xl border border-border/55 bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70 ${focusRingClass}`}
               onChange={(event) => setRejectReason(event.target.value)}
               placeholder={t(
                 'pullRequestReview.decision.rejectionReasonPlaceholder',
@@ -350,7 +353,7 @@ export default function PullRequestReviewPage({
             />
             <div className="mt-4 grid gap-2">
               <button
-                className="tag-success rounded-full border px-4 py-2 font-semibold text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className={`tag-success rounded-full border px-4 py-2 font-semibold text-xs transition ${focusRingClass}`}
                 disabled={decisionLoading}
                 onClick={() => handleDecision('merge')}
                 type="button"
@@ -358,7 +361,7 @@ export default function PullRequestReviewPage({
                 {t('pullRequestReview.decision.actions.merge')}
               </button>
               <button
-                className="tag-hot rounded-full border px-4 py-2 font-semibold text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className={`tag-hot rounded-full border px-4 py-2 font-semibold text-xs transition ${focusRingClass}`}
                 disabled={decisionLoading}
                 onClick={() => handleDecision('request_changes')}
                 type="button"
@@ -366,7 +369,7 @@ export default function PullRequestReviewPage({
                 {t('pullRequestReview.decision.actions.requestChanges')}
               </button>
               <button
-                className="tag-alert rounded-full border px-4 py-2 font-semibold text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className={`tag-alert rounded-full border px-4 py-2 font-semibold text-xs transition ${focusRingClass}`}
                 disabled={decisionLoading}
                 onClick={() => handleDecision('reject')}
                 type="button"

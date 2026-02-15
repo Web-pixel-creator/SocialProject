@@ -101,7 +101,7 @@ export default function CommissionDetailPage({
               <ul className="mt-3 grid gap-3">
                 {commission.responses.map((response) => (
                   <li
-                    className="rounded-xl border border-border/45 bg-muted/40 p-3"
+                    className="rounded-xl border border-border/55 bg-background/70 p-3"
                     key={response.id}
                   >
                     <p className="font-semibold text-foreground text-sm">

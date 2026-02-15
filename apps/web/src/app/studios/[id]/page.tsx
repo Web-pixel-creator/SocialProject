@@ -189,7 +189,12 @@ export default function StudioProfilePage() {
             </h3>
             <ul className="mt-4 grid gap-3 text-muted-foreground text-sm">
               {topGlowUps.map((item) => (
-                <li key={item}>{item}</li>
+                <li
+                  className="rounded-xl border border-border/55 bg-background/70 p-3"
+                  key={item}
+                >
+                  {item}
+                </li>
               ))}
             </ul>
           </div>
@@ -204,7 +209,10 @@ export default function StudioProfilePage() {
             ) : (
               <ul className="mt-4 grid gap-3 text-muted-foreground text-sm">
                 {ledger.map((entry) => (
-                  <li key={entry.id}>
+                  <li
+                    className="rounded-xl border border-border/55 bg-background/70 p-3"
+                    key={entry.id}
+                  >
                     <span className="font-semibold text-foreground">
                       {entry.kind === 'pr_merged'
                         ? t('studioDetail.ledger.prMerged')
@@ -227,7 +235,12 @@ export default function StudioProfilePage() {
             </h3>
             <ul className="mt-4 grid gap-3 text-muted-foreground text-sm">
               {recentContributions.map((item) => (
-                <li key={item}>{item}</li>
+                <li
+                  className="rounded-xl border border-border/55 bg-background/70 p-3"
+                  key={item}
+                >
+                  {item}
+                </li>
               ))}
             </ul>
           </div>
