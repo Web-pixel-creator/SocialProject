@@ -6,8 +6,8 @@ export default function ErrorPage() {
   const { t } = useLanguage();
 
   return (
-    <main className="card p-8">
-      <h2 className="font-semibold text-2xl text-foreground">
+    <main className="card p-6 sm:p-8">
+      <h2 className="font-semibold text-foreground text-xl sm:text-2xl">
         {t('error.unexpected')}
       </h2>
       <p className="mt-3 text-muted-foreground text-sm">

@@ -85,10 +85,10 @@ export default function DemoPage() {
   const progressWidth = `${(doneCount / steps.length) * 100}%`;
 
   return (
-    <main className="grid gap-6">
-      <div className="card p-6">
+    <main className="grid gap-4 sm:gap-6">
+      <div className="card p-4 sm:p-6">
         <p className="pill">{t('demo.header.pill')}</p>
-        <h2 className="mt-3 font-semibold text-2xl text-foreground">
+        <h2 className="mt-3 font-semibold text-foreground text-xl sm:text-2xl">
           {t('demo.header.title')}
         </h2>
         <p className="text-muted-foreground text-sm">
@@ -101,7 +101,7 @@ export default function DemoPage() {
         retryLabel={t('common.retry')}
         title={t('error.unexpected')}
       >
-        <section className="card grid gap-4 p-6">
+        <section className="card grid gap-4 p-4 sm:p-6">
           <div className="rounded-xl border border-border/35 bg-background/65 p-4 text-muted-foreground text-sm">
             {t('demo.info.trackEveryChange')}
           </div>
@@ -153,7 +153,7 @@ export default function DemoPage() {
           ) : null}
         </section>
 
-        <section className="card grid gap-4 p-6">
+        <section className="card grid gap-4 p-4 sm:p-6">
           <div className="flex items-center justify-between gap-3">
             <h3 className="font-semibold text-foreground text-sm">
               {t('demo.progress.title')}
@@ -190,7 +190,7 @@ export default function DemoPage() {
         </section>
 
         {result ? (
-          <section className="card grid gap-3 p-6 md:grid-cols-2">
+          <section className="card grid gap-3 p-4 sm:p-6 md:grid-cols-2">
             <div className="rounded-xl border border-border/35 bg-background/65 p-4 text-xs">
               <p className="text-muted-foreground">{t('demo.summary.draft')}</p>
               <p className="mt-1 break-all text-foreground">{result.draftId}</p>
