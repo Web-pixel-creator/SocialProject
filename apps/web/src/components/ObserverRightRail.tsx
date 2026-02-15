@@ -465,27 +465,27 @@ export const ObserverRightRail = () => {
   }, [requestResync]);
 
   const metricTileClass =
-    'rounded-lg border border-border/35 bg-background/42 p-2.5';
+    'rounded-lg border border-border/35 bg-background/42 p-2 sm:p-2.5';
   const statusChipClass =
-    'rounded-full border border-border/35 bg-background/58 px-2.5 py-1';
+    'rounded-full border border-border/35 bg-background/58 px-2 py-0.5 sm:px-2.5 sm:py-1';
   const controlButtonBaseClass =
-    'rounded-full border px-2.5 py-1 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
+    'rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-2.5 sm:py-1';
   const controlButtonEnabledClass =
     'border-border/35 bg-background/58 text-muted-foreground hover:border-border/55 hover:bg-background/74 hover:text-foreground';
   const controlButtonDisabledClass =
     'cursor-not-allowed border-border/35 bg-background/45 text-muted-foreground/45';
   const primaryActionButtonClass =
-    'rounded-full border border-primary/35 bg-primary/10 px-2.5 py-1 font-semibold text-primary uppercase tracking-wide transition hover:border-primary/45 hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
+    'rounded-full border border-primary/35 bg-primary/10 px-2 py-0.5 font-semibold text-primary uppercase tracking-wide transition hover:border-primary/45 hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-2.5 sm:py-1';
   const softPanelClass = 'rounded-lg border border-border/35 bg-background/42';
 
   return (
-    <aside className="observer-right-rail grid grid-cols-1 gap-3.5">
-      <section className="card relative overflow-hidden p-3.5">
+    <aside className="observer-right-rail grid grid-cols-1 gap-3 sm:gap-3.5">
+      <section className="card relative overflow-hidden p-3 sm:p-3.5">
         <p className="live-signal inline-flex items-center gap-2 font-semibold text-xs uppercase tracking-wide">
           <span className="icon-breathe live-dot inline-flex h-2.5 w-2.5 rounded-full motion-reduce:animate-none" />
           {t('rail.liveWsConnected')}
         </p>
-        <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+        <div className="mt-2 grid grid-cols-2 gap-1.5 text-xs sm:mt-3 sm:gap-2">
           <div className={metricTileClass}>
             <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">
               {t('rail.liveDrafts')}
@@ -519,7 +519,7 @@ export const ObserverRightRail = () => {
             </p>
           </div>
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground/70">
+        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground/70 sm:mt-3 sm:gap-2">
           {loading && (
             <span className={statusChipClass}>{t('rail.loadingData')}</span>
           )}
@@ -538,7 +538,7 @@ export const ObserverRightRail = () => {
           )}
         </div>
         {needsResync && (
-          <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-primary/25 bg-primary/10 p-2">
+          <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-primary/25 bg-primary/10 p-1.5 sm:p-2">
             <span className="text-[11px] text-primary">
               {t('rail.resyncRequired')}
             </span>
@@ -556,7 +556,7 @@ export const ObserverRightRail = () => {
         {resyncToast && (
           <div
             aria-live="polite"
-            className="mt-2 rounded-lg border border-border/35 bg-accent/60 p-2 text-[11px] text-foreground"
+            className="mt-2 rounded-lg border border-border/35 bg-accent/60 p-1.5 text-[11px] text-foreground sm:p-2"
           >
             {resyncToast}
           </div>
@@ -578,7 +578,7 @@ export const ObserverRightRail = () => {
           ) : null}
         </div>
         <div
-          className="mt-2 hidden gap-2 pt-2.5 lg:grid"
+          className="mt-2 hidden gap-2 pt-2 lg:grid"
           data-testid="observer-rail-desktop-controls"
         >
           <div className="flex flex-wrap gap-1">
@@ -609,7 +609,7 @@ export const ObserverRightRail = () => {
           </div>
         </div>
       </section>
-      <section className="card p-3.5 lg:hidden">
+      <section className="card p-3 sm:p-3.5 lg:hidden">
         <PanelHeader icon={Flame} title={t('rail.pulseRadar')} />
         <div
           className="mt-2 grid gap-2"
@@ -658,9 +658,9 @@ export const ObserverRightRail = () => {
             </div>
           </div>
         ) : null}
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-2.5 sm:grid-cols-2">
           {panelVisibility.battles ? (
-            <div className={`${softPanelClass} p-2.5`}>
+            <div className={`${softPanelClass} p-2 sm:p-2.5`}>
               <p className="font-semibold text-foreground text-xs">
                 {t('rail.trendingBattles')}
               </p>
@@ -674,7 +674,7 @@ export const ObserverRightRail = () => {
             </div>
           ) : null}
           {panelVisibility.glowUps ? (
-            <div className={`${softPanelClass} p-2.5`}>
+            <div className={`${softPanelClass} p-2 sm:p-2.5`}>
               <p className="font-semibold text-foreground text-xs">
                 {t('rail.topGlowUps24h')}
               </p>
@@ -688,7 +688,7 @@ export const ObserverRightRail = () => {
             </div>
           ) : null}
           {panelVisibility.studios ? (
-            <div className={`${softPanelClass} p-2.5`}>
+            <div className={`${softPanelClass} p-2 sm:p-2.5`}>
               <p className="font-semibold text-foreground text-xs">
                 {t('rail.topStudios')}
               </p>
@@ -703,7 +703,7 @@ export const ObserverRightRail = () => {
           ) : null}
         </div>
         {panelVisibility.activity ? (
-          <div className={`mt-3 p-2.5 ${softPanelClass}`}>
+          <div className={`mt-3 p-2 sm:p-2.5 ${softPanelClass}`}>
             <p className="font-semibold text-foreground text-xs">
               {t('rail.liveActivityStream')}
             </p>
@@ -742,7 +742,7 @@ export const ObserverRightRail = () => {
         title={t('rail.topStudios')}
       />
       {allPanelsHidden ? (
-        <section className="card hidden p-3.5 text-[11px] text-muted-foreground lg:block">
+        <section className="card hidden p-3 text-[11px] text-muted-foreground sm:p-3.5 lg:block">
           <p>{t('rail.noPanelsSelected')}</p>
           <div className="mt-2">
             <button

@@ -133,7 +133,7 @@ export const PanelHeader = memo(function PanelHeader({
   }
 
   return (
-    <div className="mb-2.5 flex items-center justify-between gap-2">
+    <div className="mb-2 flex items-center justify-between gap-2 sm:mb-2.5">
       <h3 className="inline-flex items-center gap-2 font-semibold text-foreground text-sm">
         <Icon aria-hidden="true" className="h-4 w-4 text-primary/90" />
         {title}
@@ -163,12 +163,12 @@ export const ItemList = memo(function ItemList({
   className,
 }: ItemListProps) {
   return (
-    <section className={`card p-3.5 ${className ?? ''}`}>
+    <section className={`card p-3 sm:p-3.5 ${className ?? ''}`}>
       <PanelHeader icon={Icon} title={title} />
       <ul className="grid gap-2 text-xs">
         {items.map((item, index) => (
           <li
-            className="rounded-lg border border-border/35 bg-background/32 p-2.5 transition-colors hover:border-border/55 hover:bg-background/46"
+            className="rounded-lg border border-border/35 bg-background/32 p-2 transition-colors hover:border-border/55 hover:bg-background/46 sm:p-2.5"
             key={item.id}
           >
             <div className="flex items-start gap-2">
@@ -207,7 +207,7 @@ export const BattleList = memo(function BattleList({
   className,
 }: BattleListProps) {
   return (
-    <section className={`card p-3.5 ${className ?? ''}`}>
+    <section className={`card p-3 sm:p-3.5 ${className ?? ''}`}>
       <PanelHeader
         badge={hotLabel}
         badgeTone="hot"
@@ -217,7 +217,7 @@ export const BattleList = memo(function BattleList({
       <ul className="grid gap-2 text-xs">
         {items.map((item, index) => (
           <li
-            className="rounded-lg border border-border/35 bg-background/32 p-2.5 transition-colors hover:border-border/55 hover:bg-background/46"
+            className="rounded-lg border border-border/35 bg-background/32 p-2 transition-colors hover:border-border/55 hover:bg-background/46 sm:p-2.5"
             key={item.id}
           >
             <div className="flex items-start justify-between gap-2">
@@ -254,12 +254,12 @@ export const ActivityTicker = memo(function ActivityTicker({
   className,
 }: ActivityTickerProps) {
   return (
-    <section className={`card p-3.5 ${className ?? ''}`}>
+    <section className={`card p-3 sm:p-3.5 ${className ?? ''}`}>
       <PanelHeader icon={Activity} title={title} />
       <ul className="max-h-64 space-y-2 overflow-y-auto pr-1 text-xs">
         {items.map((item) => (
           <li
-            className="rounded-lg border border-border/35 bg-background/32 p-2.5 transition-colors hover:border-border/55 hover:bg-background/46"
+            className="rounded-lg border border-border/35 bg-background/32 p-2 transition-colors hover:border-border/55 hover:bg-background/46 sm:p-2.5"
             key={item.id}
           >
             <div className="flex items-start gap-2">
