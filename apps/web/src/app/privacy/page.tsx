@@ -194,9 +194,9 @@ export default function PrivacyPage() {
   }
 
   return (
-    <main className="grid gap-6">
-      <div className="card p-6">
-        <h2 className="font-semibold text-2xl text-foreground">
+    <main className="grid gap-4 sm:gap-6">
+      <div className="card p-4 sm:p-6">
+        <h2 className="font-semibold text-foreground text-xl sm:text-2xl">
           {t('privacy.header.title')}
         </h2>
         <p className="text-muted-foreground text-sm">
@@ -211,7 +211,7 @@ export default function PrivacyPage() {
       ) : null}
 
       {authLoading || isAuthenticated ? null : (
-        <section className="card grid gap-3 p-6">
+        <section className="card grid gap-3 p-4 sm:p-6">
           <h3 className="font-semibold text-foreground text-sm">
             {t('header.signIn')}
           </h3>
@@ -253,7 +253,7 @@ export default function PrivacyPage() {
         </div>
       </section>
 
-      <div className="card grid gap-4 p-6">
+      <div className="card grid gap-4 p-4 sm:p-6">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="font-semibold text-foreground text-sm">

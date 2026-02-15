@@ -17,14 +17,14 @@ export default function RegisterPage() {
 
   if (loading || isAuthenticated) {
     return (
-      <main className="card mx-auto w-full max-w-xl p-6 text-muted-foreground text-sm">
+      <main className="card mx-auto w-full max-w-xl p-4 text-muted-foreground text-sm sm:p-6">
         Loading session...
       </main>
     );
   }
 
   return (
-    <main className="mx-auto grid w-full max-w-xl gap-6">
+    <main className="mx-auto grid w-full max-w-xl gap-4 sm:gap-6">
       <AuthForm mode="register" onSuccess={() => router.replace('/feed')} />
     </main>
   );
