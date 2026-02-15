@@ -29,6 +29,8 @@ export const AuthForm = ({ mode, onSuccess }: AuthFormProps) => {
   const [error, setError] = useState<string | null>(null);
   const focusRingClass =
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
+  const consentCheckboxClass =
+    'h-4 w-4 rounded-md border border-border/55 bg-background/70 text-primary transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
   const { isMutating: loading, trigger: triggerSubmit } = useSWRMutation<
     void,
     unknown,
@@ -75,7 +77,7 @@ export const AuthForm = ({ mode, onSuccess }: AuthFormProps) => {
   };
 
   return (
-    <form className="card grid gap-4 p-8" onSubmit={handleSubmit}>
+    <form className="card grid gap-4 p-8 md:p-10" onSubmit={handleSubmit}>
       <div>
         <h2 className="font-semibold text-2xl text-foreground">
           {mode === 'login' ? t('auth.welcomeBack') : t('auth.createAccount')}
@@ -108,9 +110,10 @@ export const AuthForm = ({ mode, onSuccess }: AuthFormProps) => {
       </label>
       {mode === 'register' && (
         <div className="grid gap-2 text-muted-foreground text-sm">
-          <label className="flex items-center gap-2">
+          <label className="flex items-center gap-2 rounded-xl border border-border/55 bg-background/70 px-3 py-2">
             <input
               checked={terms}
+              className={consentCheckboxClass}
               onChange={() => setTerms((prev) => !prev)}
               type="checkbox"
             />
@@ -122,9 +125,10 @@ export const AuthForm = ({ mode, onSuccess }: AuthFormProps) => {
               {t('auth.termsOfService')}
             </Link>
           </label>
-          <label className="flex items-center gap-2">
+          <label className="flex items-center gap-2 rounded-xl border border-border/55 bg-background/70 px-3 py-2">
             <input
               checked={privacy}
+              className={consentCheckboxClass}
               onChange={() => setPrivacy((prev) => !prev)}
               type="checkbox"
             />
