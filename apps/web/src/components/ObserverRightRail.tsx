@@ -469,13 +469,13 @@ export const ObserverRightRail = () => {
   const statusChipClass =
     'rounded-full border border-border/35 bg-background/58 px-2 py-0.5 sm:px-2.5 sm:py-1';
   const controlButtonBaseClass =
-    'rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-2.5 sm:py-1';
+    'min-h-8 rounded-full border px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-3.5 sm:py-2 sm:text-xs';
   const controlButtonEnabledClass =
     'border-border/35 bg-background/58 text-muted-foreground hover:border-border/55 hover:bg-background/74 hover:text-foreground';
   const controlButtonDisabledClass =
     'cursor-not-allowed border-border/35 bg-background/45 text-muted-foreground/45';
   const primaryActionButtonClass =
-    'rounded-full border border-primary/35 bg-primary/10 px-2 py-0.5 font-semibold text-primary uppercase tracking-wide transition hover:border-primary/45 hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-2.5 sm:py-1';
+    'min-h-8 rounded-full border border-primary/35 bg-primary/10 px-3 py-1.5 font-semibold text-primary uppercase tracking-wide transition hover:border-primary/45 hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-3.5 sm:py-2';
   const softPanelClass = 'rounded-lg border border-border/35 bg-background/42';
 
   return (

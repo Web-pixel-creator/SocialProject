@@ -442,7 +442,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
       }`}
     >
       <div className="flex flex-wrap items-center justify-between gap-1.5">
-        <span className="inline-flex w-fit items-center rounded-full border border-border/35 bg-background/58 px-2.5 py-0.5 text-[11px] sm:py-1 sm:text-xs">
+        <span className="inline-flex w-fit items-center rounded-full border border-border/35 bg-background/58 px-2.5 py-1 text-[11px] sm:text-xs">
           {shownLabel}: {shownValue}
         </span>
         {hasFilterPanel ? (
@@ -483,7 +483,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           ) : null}
           {hasBattleFilterApplied ? (
             <button
-              className="flex-shrink-0 rounded-full bg-muted/55 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="min-h-8 flex-shrink-0 rounded-full bg-muted/55 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={onResetBattleFilterQuick}
               type="button"
             >
@@ -492,7 +492,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           ) : null}
           {hasStatusFilterApplied ? (
             <button
-              className="flex-shrink-0 rounded-full bg-muted/55 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="min-h-8 flex-shrink-0 rounded-full bg-muted/55 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={onResetStatusFilterQuick}
               type="button"
             >
@@ -501,7 +501,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           ) : null}
           {hasSortFilterApplied ? (
             <button
-              className="flex-shrink-0 rounded-full bg-muted/55 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="min-h-8 flex-shrink-0 rounded-full bg-muted/55 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={onResetSortFilterQuick}
               type="button"
             >
@@ -510,7 +510,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           ) : null}
           {hasRangeFilterApplied ? (
             <button
-              className="flex-shrink-0 rounded-full bg-muted/55 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="min-h-8 flex-shrink-0 rounded-full bg-muted/55 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={onResetRangeFilterQuick}
               type="button"
             >
@@ -519,7 +519,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           ) : null}
           {hasIntentFilterApplied ? (
             <button
-              className="flex-shrink-0 rounded-full bg-muted/55 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="min-h-8 flex-shrink-0 rounded-full bg-muted/55 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={onResetIntentFilterQuick}
               type="button"
             >
@@ -528,7 +528,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           ) : null}
           {hasActiveFilters ? (
             <button
-              className="flex-shrink-0 rounded-full bg-muted/55 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="min-h-8 flex-shrink-0 rounded-full bg-muted/55 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={onResetFilters}
               type="button"
             >
@@ -1739,14 +1739,14 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
         <span
-          className="rounded-full border border-border/35 bg-background/62 px-3 py-1 font-semibold text-[11px] text-muted-foreground"
+          className="rounded-full border border-border/35 bg-background/62 px-3 py-1.5 font-semibold text-[11px] text-muted-foreground"
           title={activeFilterPills.join(' | ')}
         >
           {activeFilterLabels.activeFilters}: {activeFilterCount}
         </span>
         {hasActiveFilters ? (
           <button
-            className="rounded-full border border-border/35 bg-background/62 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-border/55 hover:bg-background/78 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="min-h-8 rounded-full border border-border/35 bg-background/62 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:border-border/55 hover:bg-background/78 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             onClick={handleResetFilters}
             type="button"
           >
@@ -1846,7 +1846,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
               {query ? (
                 <button
                   aria-label={t('common.close')}
-                  className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-background/90 text-muted-foreground transition hover:bg-background hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-background/90 text-muted-foreground transition hover:bg-background hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   onClick={clearQuery}
                   type="button"
                 >
@@ -2135,7 +2135,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
       )}
       {!(loading || fallbackUsed || hasMore) && visibleItems.length > 0 ? (
         <div
-          className="inline-flex w-fit items-center rounded-full border border-border/35 bg-background/62 px-3 py-1 text-muted-foreground text-xs"
+          className="inline-flex w-fit items-center rounded-full border border-border/35 bg-background/62 px-3 py-1.5 text-muted-foreground text-xs"
           data-testid="feed-end-indicator"
         >
           {shownLabel}: {shownValue}
