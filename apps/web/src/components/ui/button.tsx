@@ -5,7 +5,7 @@ import { type ButtonHTMLAttributes, forwardRef } from 'react';
 import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:border-border/45 disabled:bg-accent disabled:text-muted-foreground disabled:opacity-100',
+  'inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:border-border/35 disabled:bg-accent disabled:text-muted-foreground disabled:opacity-100',
   {
     variants: {
       variant: {
@@ -14,7 +14,7 @@ const buttonVariants = cva(
         destructive:
           'bg-destructive text-destructive-foreground hover:bg-destructive/90',
         outline:
-          'border border-border/45 bg-transparent text-foreground hover:bg-accent active:bg-accent',
+          'border border-border/35 bg-transparent text-foreground hover:bg-accent active:bg-accent',
         secondary:
           'bg-accent text-foreground hover:bg-accent/90 active:bg-accent/80',
         ghost:

@@ -270,14 +270,14 @@
 
 .pill {
   @apply inline-flex items-center rounded-full border px-3 py-1 font-semibold text-[11px] uppercase tracking-wide;
-  border-color: oklch(var(--border));
-  background: oklch(var(--muted));
+  border-color: oklch(var(--border) / 0.35);
+  background: oklch(var(--muted) / 0.62);
   color: oklch(var(--foreground));
 }
 
 .topbar-surface {
   background: oklch(var(--background));
-  border-color: oklch(var(--border));
+  border-color: oklch(var(--border) / 0.35);
   box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
@@ -322,8 +322,8 @@
 
 .glass-button {
   @apply rounded-full border px-4 py-2 font-semibold text-xs transition-all duration-200;
-  border-color: oklch(var(--border));
-  background: oklch(var(--background));
+  border-color: oklch(var(--border) / 0.35);
+  background: oklch(var(--background) / 0.65);
   color: oklch(var(--foreground));
   box-shadow: none;
   backdrop-filter: none;
@@ -331,9 +331,9 @@
 }
 
 .glass-button:hover {
-  border-color: oklch(var(--border));
-  background: oklch(var(--accent));
-  color: oklch(var(--accent-foreground));
+  border-color: oklch(var(--border) / 0.55);
+  background: oklch(var(--background) / 0.82);
+  color: oklch(var(--foreground));
 }
 
 .glass-button:focus-visible {
@@ -344,8 +344,8 @@
 }
 
 .glass-button:active {
-  border-color: oklch(var(--border));
-  background: oklch(var(--secondary));
+  border-color: oklch(var(--border) / 0.55);
+  background: oklch(var(--accent) / 0.74);
 }
 
 .settings-menu .settings-menu-icon {

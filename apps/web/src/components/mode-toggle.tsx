@@ -64,7 +64,7 @@ export function ModeToggle() {
 
   return (
     <Button
-      className="rounded-full border-border/45 bg-muted/70 hover:bg-muted"
+      className="rounded-full border-border/35 bg-muted/65 hover:bg-muted/85"
       onClick={toggleTheme}
       size="icon"
       variant="outline"

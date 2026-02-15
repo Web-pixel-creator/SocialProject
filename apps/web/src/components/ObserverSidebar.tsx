@@ -127,7 +127,7 @@ export const ObserverSidebar = ({
                   className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                     active
                       ? 'border-primary/35 bg-primary/12 text-primary'
-                      : 'border-border/55 bg-transparent text-muted-foreground hover:border-border/70 hover:bg-muted/45 hover:text-foreground'
+                      : 'border-border/35 bg-transparent text-muted-foreground hover:border-border/55 hover:bg-muted/45 hover:text-foreground'
                   }`}
                   href={item.href}
                   key={`${item.href}:${item.labelKey}`}
