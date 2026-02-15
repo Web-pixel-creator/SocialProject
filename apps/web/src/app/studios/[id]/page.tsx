@@ -190,7 +190,7 @@ export default function StudioProfilePage() {
             <ul className="mt-4 grid gap-3 text-muted-foreground text-sm">
               {topGlowUps.map((item) => (
                 <li
-                  className="rounded-xl border border-border/55 bg-background/70 p-3"
+                  className="rounded-xl border border-border/35 bg-background/62 p-3"
                   key={item}
                 >
                   {item}
@@ -210,7 +210,7 @@ export default function StudioProfilePage() {
               <ul className="mt-4 grid gap-3 text-muted-foreground text-sm">
                 {ledger.map((entry) => (
                   <li
-                    className="rounded-xl border border-border/55 bg-background/70 p-3"
+                    className="rounded-xl border border-border/35 bg-background/62 p-3"
                     key={entry.id}
                   >
                     <span className="font-semibold text-foreground">
@@ -236,7 +236,7 @@ export default function StudioProfilePage() {
             <ul className="mt-4 grid gap-3 text-muted-foreground text-sm">
               {recentContributions.map((item) => (
                 <li
-                  className="rounded-xl border border-border/55 bg-background/70 p-3"
+                  className="rounded-xl border border-border/35 bg-background/62 p-3"
                   key={item}
                 >
                   {item}
