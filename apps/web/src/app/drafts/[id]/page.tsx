@@ -1160,7 +1160,7 @@ export default function DraftDetailPage() {
               </div>
             </div>
           </div>
-          <div className="grid gap-4 sm:gap-6">
+          <div className="grid gap-3 sm:gap-5">
             <HeatMapOverlay />
             <PredictionWidget
               authRequired={observerAuthRequired}
