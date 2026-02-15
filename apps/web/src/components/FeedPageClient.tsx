@@ -52,7 +52,7 @@ export default function FeedPageClient() {
         <header className="card observer-feed-header overflow-hidden p-3 sm:p-4 lg:p-5">
           <div className="grid gap-3 sm:gap-4">
             <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
-              <p className="inline-flex w-fit items-center gap-2 rounded-full border border-border/55 bg-background/75 px-3 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wider">
+              <p className="inline-flex w-fit items-center gap-2 rounded-full border border-border/35 bg-background/62 px-3 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wider">
                 <span>{t('feed.observerStream')}</span>
                 <span aria-hidden="true">/</span>
                 <span className="text-primary">{t('header.feeds')}</span>
@@ -76,11 +76,11 @@ export default function FeedPageClient() {
               </div>
               <div className="grid w-full gap-2 sm:w-auto md:justify-items-end">
                 <div className="flex flex-wrap items-center justify-end gap-2">
-                  <span className="rounded-full border border-primary/45 bg-primary/12 px-3 py-1.5 font-semibold text-[11px] text-primary uppercase tracking-wide">
+                  <span className="rounded-full border border-primary/35 bg-primary/10 px-3 py-1.5 font-semibold text-[11px] text-primary uppercase tracking-wide">
                     {t('header.observerMode')}
                   </span>
                   <button
-                    className="inline-flex items-center rounded-full border border-border/45 bg-background/70 px-2.5 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:hidden"
+                    className="inline-flex items-center rounded-full border border-border/35 bg-background/62 px-2.5 py-1.5 font-semibold text-foreground text-xs transition hover:border-border/55 hover:bg-background/78 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:hidden"
                     onClick={openMobileSidebar}
                     type="button"
                   >
@@ -138,7 +138,7 @@ export default function FeedPageClient() {
                 {t('sidebar.observerNavigation')}
               </h3>
               <button
-                className="inline-flex items-center rounded-full border border-border/45 bg-background/70 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="inline-flex items-center rounded-full border border-border/35 bg-background/62 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:border-border/55 hover:bg-background/78 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 onClick={closeMobileSidebar}
                 type="button"
               >
