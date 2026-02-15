@@ -23,7 +23,7 @@ export const LivePanel = ({ scope }: LivePanelProps) => {
       </div>
       {needsResync && (
         <button
-          className="mt-3 rounded-full border border-border/45 bg-background/70 px-3 py-1 font-semibold text-muted-foreground text-xs transition hover:bg-background/82 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="mt-3 rounded-full border border-border/35 bg-background/62 px-3 py-1 font-semibold text-muted-foreground text-xs transition hover:border-border/55 hover:bg-background/78 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           onClick={requestResync}
           type="button"
         >
@@ -34,7 +34,7 @@ export const LivePanel = ({ scope }: LivePanelProps) => {
         {events.length === 0 && <li>{t('live.noEvents')}</li>}
         {events.map((event) => (
           <li
-            className="rounded-lg border border-border/45 bg-background/70 p-2"
+            className="rounded-lg border border-border/35 bg-background/62 p-2"
             key={event.id}
           >
             <p className="font-semibold text-muted-foreground">{event.type}</p>

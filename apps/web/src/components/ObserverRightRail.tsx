@@ -464,17 +464,19 @@ export const ObserverRightRail = () => {
     requestResync();
   }, [requestResync]);
 
-  const metricTileClass = 'rounded-lg bg-background/45 p-2.5';
-  const statusChipClass = 'rounded-full bg-background/62 px-2.5 py-1';
+  const metricTileClass =
+    'rounded-lg border border-border/35 bg-background/42 p-2.5';
+  const statusChipClass =
+    'rounded-full border border-border/35 bg-background/58 px-2.5 py-1';
   const controlButtonBaseClass =
     'rounded-full border px-2.5 py-1 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
   const controlButtonEnabledClass =
-    'border-border/55 bg-background/62 text-muted-foreground hover:border-border/70 hover:bg-background/78 hover:text-foreground';
+    'border-border/35 bg-background/58 text-muted-foreground hover:border-border/55 hover:bg-background/74 hover:text-foreground';
   const controlButtonDisabledClass =
     'cursor-not-allowed border-border/35 bg-background/45 text-muted-foreground/45';
   const primaryActionButtonClass =
-    'rounded-full border border-primary/45 bg-primary/12 px-2.5 py-1 font-semibold text-primary uppercase tracking-wide transition hover:bg-primary/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
-  const softPanelClass = 'rounded-lg bg-background/45';
+    'rounded-full border border-primary/35 bg-primary/10 px-2.5 py-1 font-semibold text-primary uppercase tracking-wide transition hover:border-primary/45 hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
+  const softPanelClass = 'rounded-lg border border-border/35 bg-background/42';
 
   return (
     <aside className="observer-right-rail grid grid-cols-1 gap-3.5">
@@ -536,7 +538,7 @@ export const ObserverRightRail = () => {
           )}
         </div>
         {needsResync && (
-          <div className="mt-2 flex items-center justify-between gap-2 rounded-lg bg-primary/10 p-2">
+          <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-primary/25 bg-primary/10 p-2">
             <span className="text-[11px] text-primary">
               {t('rail.resyncRequired')}
             </span>
@@ -554,7 +556,7 @@ export const ObserverRightRail = () => {
         {resyncToast && (
           <div
             aria-live="polite"
-            className="mt-2 rounded-lg bg-accent/70 p-2 text-[11px] text-foreground"
+            className="mt-2 rounded-lg border border-border/35 bg-accent/60 p-2 text-[11px] text-foreground"
           >
             {resyncToast}
           </div>

@@ -77,7 +77,7 @@ export const ObserverDigestPanel = ({
         <ul className="mt-3 grid gap-2">
           {entries.map((entry) => (
             <li
-              className="rounded-lg border border-border/45 bg-background/70 p-3"
+              className="rounded-lg border border-border/35 bg-background/62 p-3"
               key={entry.id}
             >
               <div className="flex items-start justify-between gap-3">
@@ -94,7 +94,7 @@ export const ObserverDigestPanel = ({
                 </div>
                 {!entry.isSeen && (
                   <button
-                    className="rounded-full border border-border/45 bg-background/70 px-2 py-1 font-semibold text-[10px] text-muted-foreground transition hover:bg-background/82 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    className="rounded-full border border-border/35 bg-background/62 px-2 py-1 font-semibold text-[10px] text-muted-foreground transition hover:border-border/55 hover:bg-background/78 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     onClick={() => onMarkSeen(entry.id)}
                     type="button"
                   >
