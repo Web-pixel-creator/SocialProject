@@ -104,7 +104,9 @@ export const CommissionForm = ({ onCreated }: CommissionFormProps) => {
         {isSubmitting ? t('commission.posting') : t('commission.post')}
       </button>
       {created && (
-        <p className="text-primary text-xs">{t('commission.created')}</p>
+        <p className="rounded-lg border border-chart-2/35 bg-chart-2/12 p-2 text-chart-2 text-xs">
+          {t('commission.created')}
+        </p>
       )}
     </form>
   );
