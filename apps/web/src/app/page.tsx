@@ -414,7 +414,7 @@ export default function Home() {
             <tbody>
               {studios.map((studio) => (
                 <tr
-                  className="border-border border-b text-foreground"
+                  className="border-border/35 border-b text-foreground"
                   key={studio.name}
                 >
                   <td className="px-2 py-2 font-semibold">{studio.name}</td>

@@ -1832,7 +1832,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
         </div>
         <div className="grid gap-2 rounded-2xl border border-border/35 bg-card/72 p-2.5 sm:p-3 lg:p-3.5">
           <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-            <label className="group relative flex min-h-10 w-full min-w-0 items-center gap-2 rounded-full border border-border/35 bg-background/74 px-3.5 py-2.5 text-muted-foreground text-xs transition focus-within:border-primary/35 focus-within:bg-background hover:border-border/55 hover:bg-background/82">
+            <label className="group relative flex min-h-10 w-full min-w-0 items-center gap-2 rounded-full border border-border/35 bg-background/74 px-3.5 py-2.5 text-muted-foreground text-xs transition focus-within:border-primary/35 focus-within:bg-background hover:border-border/55 hover:bg-background/78">
               <Search aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
               <input
                 aria-label={t('feed.searchAriaLabel')}
