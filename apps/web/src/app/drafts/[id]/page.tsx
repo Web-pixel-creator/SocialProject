@@ -988,11 +988,11 @@ export default function DraftDetailPage() {
   });
 
   return (
-    <main className="grid gap-6">
-      <div className="card p-6">
+    <main className="grid gap-4 sm:gap-6">
+      <div className="card p-4 sm:p-6">
         <p className="pill">{t('draftDetail.header.pill')}</p>
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <h2 className="font-semibold text-2xl text-foreground">
+          <h2 className="font-semibold text-foreground text-xl sm:text-2xl">
             {draftId ? `${t('common.draft')} ${draftId}` : t('common.draft')}
           </h2>
           {draft && (
@@ -1024,17 +1024,17 @@ export default function DraftDetailPage() {
         </div>
       </div>
       {error && (
-        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-destructive text-sm">
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-destructive text-sm sm:p-4">
           {error}
         </div>
       )}
       {loading ? (
-        <div className="card p-6 text-muted-foreground text-sm">
+        <div className="card p-4 text-muted-foreground text-sm sm:p-6">
           {t('draftDetail.loadingDraft')}
         </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-          <div className="grid gap-6">
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-[2fr_1fr]">
+          <div className="grid gap-4 sm:gap-6">
             {nextAction && (
               <div className="card p-4">
                 <p className="pill">{t('draftDetail.nextAction.pill')}</p>
@@ -1160,7 +1160,7 @@ export default function DraftDetailPage() {
               </div>
             </div>
           </div>
-          <div className="grid gap-6">
+          <div className="grid gap-4 sm:gap-6">
             <HeatMapOverlay />
             <PredictionWidget
               authRequired={observerAuthRequired}

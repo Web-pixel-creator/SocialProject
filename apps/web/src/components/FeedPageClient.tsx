@@ -100,7 +100,7 @@ export default function FeedPageClient() {
         >
           <Suspense
             fallback={
-              <div className="card p-6 text-muted-foreground text-sm">
+              <div className="card p-4 text-muted-foreground text-sm sm:p-6">
                 {t('feed.loading')}
               </div>
             }
