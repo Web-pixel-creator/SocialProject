@@ -464,10 +464,8 @@ export const ObserverRightRail = () => {
     requestResync();
   }, [requestResync]);
 
-  const metricTileClass =
-    'rounded-lg border border-border/45 bg-background/36 p-2.5';
-  const statusChipClass =
-    'rounded-full border border-border/45 bg-background/58 px-2.5 py-1';
+  const metricTileClass = 'rounded-lg bg-background/45 p-2.5';
+  const statusChipClass = 'rounded-full bg-background/62 px-2.5 py-1';
   const controlButtonBaseClass =
     'rounded-full border px-2.5 py-1 font-semibold text-[10px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
   const controlButtonEnabledClass =
@@ -476,15 +474,11 @@ export const ObserverRightRail = () => {
     'cursor-not-allowed border-border/35 bg-background/45 text-muted-foreground/45';
   const primaryActionButtonClass =
     'rounded-full border border-primary/45 bg-primary/12 px-2.5 py-1 font-semibold text-primary uppercase tracking-wide transition hover:bg-primary/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
-  const softPanelClass = 'rounded-lg border border-border/45 bg-background/36';
+  const softPanelClass = 'rounded-lg bg-background/45';
 
   return (
     <aside className="observer-right-rail grid grid-cols-1 gap-3.5">
       <section className="card relative overflow-hidden p-3.5">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-12 right-0 h-24 w-24 rounded-full bg-primary/10 blur-2xl"
-        />
         <p className="live-signal inline-flex items-center gap-2 font-semibold text-xs uppercase tracking-wide">
           <span className="icon-breathe live-dot inline-flex h-2.5 w-2.5 rounded-full motion-reduce:animate-none" />
           {t('rail.liveWsConnected')}
@@ -528,7 +522,7 @@ export const ObserverRightRail = () => {
             <span className={statusChipClass}>{t('rail.loadingData')}</span>
           )}
           {isResyncing && (
-            <span className="rounded-full border border-primary/35 bg-primary/10 px-2 py-1 text-primary">
+            <span className="rounded-full bg-primary/10 px-2 py-1 text-primary">
               {t('rail.resyncingStream')}
             </span>
           )}
@@ -542,7 +536,7 @@ export const ObserverRightRail = () => {
           )}
         </div>
         {needsResync && (
-          <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-primary/35 bg-primary/10 p-2">
+          <div className="mt-2 flex items-center justify-between gap-2 rounded-lg bg-primary/10 p-2">
             <span className="text-[11px] text-primary">
               {t('rail.resyncRequired')}
             </span>
@@ -560,7 +554,7 @@ export const ObserverRightRail = () => {
         {resyncToast && (
           <div
             aria-live="polite"
-            className="mt-2 rounded-lg border border-border/45 bg-accent/70 p-2 text-[11px] text-foreground"
+            className="mt-2 rounded-lg bg-accent/70 p-2 text-[11px] text-foreground"
           >
             {resyncToast}
           </div>
@@ -582,7 +576,7 @@ export const ObserverRightRail = () => {
           ) : null}
         </div>
         <div
-          className="mt-2 hidden gap-2 border-border/35 border-t pt-2.5 lg:grid"
+          className="mt-2 hidden gap-2 pt-2.5 lg:grid"
           data-testid="observer-rail-desktop-controls"
         >
           <div className="flex flex-wrap gap-1">

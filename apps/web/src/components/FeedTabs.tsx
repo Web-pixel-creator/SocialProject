@@ -442,13 +442,13 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
       }`}
     >
       <div className="flex items-center justify-between gap-1.5">
-        <span className="inline-flex w-fit items-center rounded-full border border-border/45 bg-background/58 px-2.5 py-1 text-[11px] sm:text-xs">
+        <span className="inline-flex w-fit items-center rounded-full border border-border/35 bg-background/58 px-2.5 py-1 text-[11px] sm:text-xs">
           {shownLabel}: {shownValue}
         </span>
         {hasFilterPanel ? (
           <button
             aria-expanded={filtersOpen}
-            className="inline-flex w-fit flex-shrink-0 items-center gap-1 rounded-full border border-border/45 bg-background/70 px-2.5 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition hover:border-border/70 hover:bg-background/82 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-3.5 sm:py-1.5 sm:text-xs"
+            className="inline-flex w-fit flex-shrink-0 items-center gap-1 rounded-full border border-border/35 bg-background/68 px-2.5 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition hover:border-border/55 hover:bg-background/82 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-3.5 sm:py-1.5 sm:text-xs"
             onClick={onToggleFilters}
             type="button"
           >
@@ -463,7 +463,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
             {hasActiveFilters ? (
               <span
                 aria-hidden="true"
-                className="ml-1 rounded-full border border-primary/35 bg-primary/15 px-1.5 py-0.5 text-[10px] text-primary"
+                className="ml-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] text-primary"
               >
                 {activeFilterCount}
               </span>
@@ -475,7 +475,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
         <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto pr-1 pb-0.5">
           {hasActiveFilters ? (
             <span
-              className="flex-shrink-0 rounded-full border border-border/45 bg-background/66 px-2.5 py-1 font-semibold text-[11px]"
+              className="flex-shrink-0 rounded-full bg-muted/55 px-2.5 py-1 font-semibold text-[11px]"
               title={activeFilterPills.join(' | ')}
             >
               {labels.activeFilters}: {activeFilterCount}
@@ -483,7 +483,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           ) : null}
           {hasBattleFilterApplied ? (
             <button
-              className="flex-shrink-0 rounded-full border border-border/45 bg-background/66 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-border/70 hover:bg-background/82 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="flex-shrink-0 rounded-full bg-muted/55 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={onResetBattleFilterQuick}
               type="button"
             >
@@ -492,7 +492,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           ) : null}
           {hasStatusFilterApplied ? (
             <button
-              className="flex-shrink-0 rounded-full border border-border/45 bg-background/66 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-border/70 hover:bg-background/82 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="flex-shrink-0 rounded-full bg-muted/55 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={onResetStatusFilterQuick}
               type="button"
             >
@@ -501,7 +501,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           ) : null}
           {hasSortFilterApplied ? (
             <button
-              className="flex-shrink-0 rounded-full border border-border/45 bg-background/66 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-border/70 hover:bg-background/82 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="flex-shrink-0 rounded-full bg-muted/55 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={onResetSortFilterQuick}
               type="button"
             >
@@ -510,7 +510,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           ) : null}
           {hasRangeFilterApplied ? (
             <button
-              className="flex-shrink-0 rounded-full border border-border/45 bg-background/66 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-border/70 hover:bg-background/82 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="flex-shrink-0 rounded-full bg-muted/55 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={onResetRangeFilterQuick}
               type="button"
             >
@@ -519,7 +519,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           ) : null}
           {hasIntentFilterApplied ? (
             <button
-              className="flex-shrink-0 rounded-full border border-border/45 bg-background/66 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-border/70 hover:bg-background/82 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="flex-shrink-0 rounded-full bg-muted/55 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={onResetIntentFilterQuick}
               type="button"
             >
@@ -528,7 +528,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           ) : null}
           {hasActiveFilters ? (
             <button
-              className="flex-shrink-0 rounded-full border border-border/45 bg-background/66 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-border/70 hover:bg-background/82 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="flex-shrink-0 rounded-full bg-muted/55 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={onResetFilters}
               type="button"
             >
@@ -1737,16 +1737,16 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
           </button>
         ))}
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-2 border-border/30 border-t pt-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
         <span
-          className="rounded-full border border-border/55 bg-background/66 px-3 py-1 font-semibold text-[11px] text-muted-foreground"
+          className="rounded-full border border-border/35 bg-background/62 px-3 py-1 font-semibold text-[11px] text-muted-foreground"
           title={activeFilterPills.join(' | ')}
         >
-          {t('feedTabs.activeFilters')}: {activeFilterCount}
+          {activeFilterLabels.activeFilters}: {activeFilterCount}
         </span>
         {hasActiveFilters ? (
           <button
-            className="rounded-full border border-border/55 bg-background/66 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-border/70 hover:bg-background/82 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="rounded-full border border-border/35 bg-background/62 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:border-border/55 hover:bg-background/80 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             onClick={handleResetFilters}
             type="button"
           >
@@ -1823,16 +1823,16 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                     }`}
                   />
                 </summary>
-                <div className="absolute right-0 z-20 mt-2 grid min-w-[16rem] gap-2 rounded-2xl border border-border/35 bg-card/95 p-2.5 backdrop-blur-sm">
+                <div className="absolute right-0 z-20 mt-2 grid min-w-[16rem] gap-2 rounded-2xl border border-border/35 bg-card/95 p-2.5">
                   {morePanelContent}
                 </div>
               </details>
             )}
           </div>
         </div>
-        <div className="grid gap-2 rounded-2xl border border-border/35 bg-card/72 p-2.5 backdrop-blur-sm sm:p-3 lg:p-3.5">
+        <div className="grid gap-2 rounded-2xl border border-border/35 bg-card/72 p-2.5 sm:p-3 lg:p-3.5">
           <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-            <label className="group relative flex w-full min-w-0 items-center gap-2 rounded-full border border-border/45 bg-background/82 px-3.5 py-2 text-muted-foreground text-xs transition focus-within:border-primary/45 focus-within:bg-background hover:border-border/65 hover:bg-background/90">
+            <label className="group relative flex w-full min-w-0 items-center gap-2 rounded-full border border-border/35 bg-background/82 px-3.5 py-2 text-muted-foreground text-xs transition focus-within:border-primary/45 focus-within:bg-background hover:border-border/55 hover:bg-background/90">
               <Search aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
               <input
                 aria-label={t('feed.searchAriaLabel')}
@@ -1858,7 +1858,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                 </span>
               )}
             </label>
-            <fieldset className="inline-flex w-fit items-center gap-1 rounded-full border border-border/45 bg-background/55 p-0.5 lg:justify-self-end">
+            <fieldset className="inline-flex w-fit items-center gap-1 rounded-full border border-border/35 bg-background/55 p-0.5 lg:justify-self-end">
               <legend className="sr-only">{densityLabel}</legend>
               <button
                 aria-pressed={density === 'comfort'}
