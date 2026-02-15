@@ -194,8 +194,8 @@ export default function PrivacyPage() {
   }
 
   return (
-    <main className="grid gap-4 sm:gap-6">
-      <div className="card p-4 sm:p-6">
+    <main className="grid gap-3 sm:gap-5">
+      <div className="card p-3 sm:p-5">
         <h2 className="font-semibold text-foreground text-xl sm:text-2xl">
           {t('privacy.header.title')}
         </h2>
@@ -205,13 +205,13 @@ export default function PrivacyPage() {
       </div>
 
       {authLoading ? (
-        <div className="card p-4 text-muted-foreground text-sm">
+        <div className="card p-3 text-muted-foreground text-sm sm:p-4">
           {t('search.states.loadingSearch')}
         </div>
       ) : null}
 
       {authLoading || isAuthenticated ? null : (
-        <section className="card grid gap-3 p-4 sm:p-6">
+        <section className="card grid gap-3 p-3 sm:p-5">
           <h3 className="font-semibold text-foreground text-sm">
             {t('header.signIn')}
           </h3>
@@ -219,7 +219,7 @@ export default function PrivacyPage() {
             {t('auth.signInSubtitle')}
           </p>
           <Link
-            className={`w-fit rounded-full border border-border/35 bg-background/65 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-background/78 ${focusRingClass}`}
+            className={`w-fit rounded-full border border-border/35 bg-background/65 px-4 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/78 sm:py-2 ${focusRingClass}`}
             href="/login"
           >
             {t('header.signIn')}
@@ -228,7 +228,7 @@ export default function PrivacyPage() {
       )}
 
       <section className="grid gap-3 md:grid-cols-2">
-        <div className="card p-4">
+        <div className="card p-3 sm:p-4">
           <p className="text-muted-foreground text-xs">
             {t('privacy.cards.dataExport')}
           </p>
@@ -241,7 +241,7 @@ export default function PrivacyPage() {
             </p>
           )}
         </div>
-        <div className="card p-4">
+        <div className="card p-3 sm:p-4">
           <p className="text-muted-foreground text-xs">
             {t('privacy.cards.accountDeletion')}
           </p>
@@ -253,7 +253,7 @@ export default function PrivacyPage() {
         </div>
       </section>
 
-      <div className="card grid gap-4 p-4 sm:p-6">
+      <div className="card grid gap-3 p-3 sm:gap-4 sm:p-5">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="font-semibold text-foreground text-sm">
@@ -264,7 +264,7 @@ export default function PrivacyPage() {
             </p>
           </div>
           <button
-            className={`rounded-full border border-border/35 bg-background/65 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-background/78 disabled:opacity-60 ${focusRingClass}`}
+            className={`rounded-full border border-border/35 bg-background/65 px-4 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/78 disabled:opacity-60 sm:py-2 ${focusRingClass}`}
             disabled={authLoading || !isAuthenticated || exportLoading}
             onClick={handleExport}
             type="button"
@@ -275,7 +275,7 @@ export default function PrivacyPage() {
 
         {exportId ? (
           <button
-            className={`w-fit rounded-full border border-border/35 bg-background/65 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-background/78 disabled:opacity-60 ${focusRingClass}`}
+            className={`w-fit rounded-full border border-border/35 bg-background/65 px-4 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/78 disabled:opacity-60 sm:py-2 ${focusRingClass}`}
             disabled={
               authLoading ||
               !isAuthenticated ||
@@ -296,7 +296,7 @@ export default function PrivacyPage() {
 
         {exportUrl ? (
           <a
-            className={`w-fit rounded-full border border-border/35 bg-background/65 px-4 py-2 text-foreground text-xs transition hover:bg-background/78 ${focusRingClass}`}
+            className={`w-fit rounded-full border border-border/35 bg-background/65 px-4 py-1.5 text-foreground text-xs transition hover:bg-background/78 sm:py-2 ${focusRingClass}`}
             href={exportUrl}
           >
             {t('privacy.export.download')}
@@ -313,7 +313,7 @@ export default function PrivacyPage() {
             </p>
           </div>
           <button
-            className={`rounded-full border border-border/35 bg-background/65 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-background/78 disabled:opacity-60 ${focusRingClass}`}
+            className={`rounded-full border border-border/35 bg-background/65 px-4 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/78 disabled:opacity-60 sm:py-2 ${focusRingClass}`}
             disabled={
               authLoading ||
               !isAuthenticated ||
@@ -338,7 +338,7 @@ export default function PrivacyPage() {
           </div>
         ) : null}
 
-        <div className="rounded-xl border border-border/35 bg-background/65 p-4 text-muted-foreground text-xs">
+        <div className="rounded-xl border border-border/35 bg-background/65 p-3 text-muted-foreground text-xs sm:p-4">
           {t('privacy.retention.note')}
         </div>
       </div>
