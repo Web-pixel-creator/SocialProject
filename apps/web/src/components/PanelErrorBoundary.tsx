@@ -40,7 +40,7 @@ export class PanelErrorBoundary extends Component<
     }
 
     return (
-      <section className="card p-5" role="alert">
+      <section className="card p-4 sm:p-5" role="alert">
         <h3 className="font-semibold text-foreground text-lg">
           {this.props.title}
         </h3>

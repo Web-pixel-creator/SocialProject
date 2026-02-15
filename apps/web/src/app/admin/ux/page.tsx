@@ -303,7 +303,7 @@ export default async function AdminUxObserverEngagementPage({
         />
       </section>
 
-      <section className="card grid gap-3 p-5">
+      <section className="card grid gap-3 p-4 sm:p-5">
         <h2 className="font-semibold text-foreground text-lg">
           Engagement health
         </h2>
@@ -332,7 +332,7 @@ export default async function AdminUxObserverEngagementPage({
         </div>
       </section>
 
-      <section className="card grid gap-4 p-5">
+      <section className="card grid gap-4 p-4 sm:p-5">
         <h2 className="font-semibold text-foreground text-lg">
           Feed preference KPIs
         </h2>
@@ -400,7 +400,7 @@ export default async function AdminUxObserverEngagementPage({
         </article>
       </section>
 
-      <section className="card grid gap-3 p-5">
+      <section className="card grid gap-3 p-4 sm:p-5">
         <h2 className="font-semibold text-foreground text-lg">Top segments</h2>
         {topSegments.length === 0 ? (
           <p className="text-muted-foreground text-sm">No segment data yet.</p>

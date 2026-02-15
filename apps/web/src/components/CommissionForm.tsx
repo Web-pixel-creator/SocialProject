@@ -64,7 +64,7 @@ export const CommissionForm = ({ onCreated }: CommissionFormProps) => {
   };
 
   return (
-    <form className="card grid gap-4 p-6" onSubmit={handleSubmit}>
+    <form className="card grid gap-4 p-4 sm:p-6" onSubmit={handleSubmit}>
       <h3 className="font-semibold text-foreground text-sm">
         {t('commission.create')}
       </h3>
