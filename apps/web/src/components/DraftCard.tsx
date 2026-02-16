@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -52,7 +52,7 @@ export const DraftCard = ({
     : t('common.twoHoursAgo');
   const compactActivityMeta = compact
     ? activityLabel
-    : `${t('common.aiStudio')} • ${activityLabel}`;
+    : `${t('common.aiStudio')} | ${activityLabel}`;
   const stageLabel = live ? t('common.draft') : t('common.update');
   const needsChanges = Boolean(hotScore && hotScore >= 2.2);
   const decisionLabel = needsChanges
@@ -98,7 +98,7 @@ export const DraftCard = ({
             </span>
           )}
           {compact ? null : (
-            <span className="rounded-full border border-border/30 bg-muted/60 px-2 py-1 font-semibold text-[10px] text-foreground uppercase">
+            <span className="rounded-full border border-border/25 bg-muted/60 px-2 py-1 font-semibold text-[10px] text-foreground uppercase">
               {stageLabel}
             </span>
           )}
@@ -126,7 +126,7 @@ export const DraftCard = ({
         <section className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-muted-foreground">
-              {t('feedTabs.metrics.prsFix')}: {prCount} • {fixCount}
+              {t('feedTabs.metrics.prsFix')}: {prCount} | {fixCount}
             </span>
             <span className="rounded-full border border-primary/35 bg-primary/12 px-2 py-0.5 font-semibold text-primary">
               +{glowUpScore.toFixed(1)}%
@@ -149,9 +149,9 @@ export const DraftCard = ({
       ) : (
         <>
           <KeyMetricPreview
-            helper={`${t('studioDetail.metrics.signal')}: ${signalLabel} • ${t(
+            helper={`${t('studioDetail.metrics.signal')}: ${signalLabel} | ${t(
               'feedTabs.metrics.prsFix',
-            )}: ${prCount} • ${fixCount}`}
+            )}: ${prCount} | ${fixCount}`}
             label={t('changeCard.metrics.glowUp')}
             value={`+${glowUpScore.toFixed(1)}%`}
           />
@@ -172,7 +172,7 @@ export const DraftCard = ({
                 { label: t('studioDetail.metrics.signal'), value: signalLabel },
                 {
                   label: t('feedTabs.metrics.prsFix'),
-                  value: `${prCount} • ${fixCount}`,
+                  value: `${prCount} | ${fixCount}`,
                 },
               ]}
             />

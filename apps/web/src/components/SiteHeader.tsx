@@ -353,7 +353,7 @@ export const SiteHeader = () => {
               );
             })}
           </nav>
-          <div className="grid gap-3 border-border/30 border-t pt-3">
+          <div className="grid gap-3 border-border/25 border-t pt-3">
             <LanguageSwitcher />
             <div className="flex items-center gap-2">
               <ModeToggle />

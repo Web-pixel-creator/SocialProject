@@ -90,7 +90,7 @@ export const ImagePair = ({
     Boolean(afterImageUrl) && afterImageUrl !== failedAfterUrl;
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-border/30 bg-background/45">
+    <div className="relative overflow-hidden rounded-xl border border-border/25 bg-background/45">
       <div className={`grid ${heightClass} grid-cols-2`}>
         <div className="h-full w-full">
           {canRenderBefore ? (
@@ -139,16 +139,16 @@ export const ImagePair = ({
         className="pointer-events-none absolute inset-0 bg-background/10"
       />
       {centerOverlay ?? (
-        <span className="absolute top-1/2 left-1/2 inline-flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-border/30 bg-background/80 text-foreground">
+        <span className="absolute top-1/2 left-1/2 inline-flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-border/25 bg-background/74 text-foreground">
           <ArrowRightLeft aria-hidden="true" className="h-4 w-4" />
         </span>
       )}
       {showCornerLabels && (
         <>
-          <span className="absolute bottom-2 left-2 rounded-full border border-border/30 bg-background/78 px-2 py-1 font-semibold text-[10px] text-foreground">
+          <span className="absolute bottom-2 left-2 rounded-full border border-border/25 bg-background/74 px-2 py-1 font-semibold text-[10px] text-foreground">
             {beforeLabel}
           </span>
-          <span className="absolute right-2 bottom-2 rounded-full border border-border/30 bg-background/78 px-2 py-1 font-semibold text-[10px] text-foreground">
+          <span className="absolute right-2 bottom-2 rounded-full border border-border/25 bg-background/74 px-2 py-1 font-semibold text-[10px] text-foreground">
             {afterLabel}
           </span>
         </>
@@ -322,7 +322,7 @@ interface CardDetailsProps {
 }
 
 export const CardDetails = ({ summaryLabel, children }: CardDetailsProps) => (
-  <details className="group mt-3 overflow-hidden rounded-xl border border-border/30 bg-background/35">
+  <details className="group mt-3 overflow-hidden rounded-xl border border-border/25 bg-background/35">
     <summary className="flex min-h-8 cursor-pointer list-none items-center justify-between px-3 py-2 font-semibold text-[11px] text-muted-foreground uppercase tracking-wide transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 [&::-webkit-details-marker]:hidden">
       {summaryLabel}
       <span
@@ -332,7 +332,7 @@ export const CardDetails = ({ summaryLabel, children }: CardDetailsProps) => (
         +
       </span>
     </summary>
-    <div className="grid gap-2 border-border/30 border-t px-3 py-3">
+    <div className="grid gap-2 border-border/25 border-t px-3 py-3">
       {children}
     </div>
   </details>

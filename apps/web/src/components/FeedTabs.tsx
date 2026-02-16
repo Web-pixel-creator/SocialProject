@@ -491,7 +491,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
         <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto pr-1 pb-0.5">
           {hasActiveFilters ? (
             <span
-              className="flex-shrink-0 rounded-full bg-muted/55 px-2.5 py-1 font-semibold text-[11px]"
+              className="flex-shrink-0 rounded-full bg-muted/58 px-2.5 py-1 font-semibold text-[11px]"
               title={activeFilterPills.join(' | ')}
             >
               {labels.activeFilters}: {activeFilterCount}
@@ -499,7 +499,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           ) : null}
           {hasBattleFilterApplied ? (
             <button
-              className="min-h-8 flex-shrink-0 rounded-full bg-muted/55 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="min-h-8 flex-shrink-0 rounded-full bg-muted/58 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/74 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={onResetBattleFilterQuick}
               type="button"
             >
@@ -508,7 +508,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           ) : null}
           {hasStatusFilterApplied ? (
             <button
-              className="min-h-8 flex-shrink-0 rounded-full bg-muted/55 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="min-h-8 flex-shrink-0 rounded-full bg-muted/58 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/74 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={onResetStatusFilterQuick}
               type="button"
             >
@@ -517,7 +517,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           ) : null}
           {hasSortFilterApplied ? (
             <button
-              className="min-h-8 flex-shrink-0 rounded-full bg-muted/55 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="min-h-8 flex-shrink-0 rounded-full bg-muted/58 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/74 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={onResetSortFilterQuick}
               type="button"
             >
@@ -526,7 +526,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           ) : null}
           {hasRangeFilterApplied ? (
             <button
-              className="min-h-8 flex-shrink-0 rounded-full bg-muted/55 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="min-h-8 flex-shrink-0 rounded-full bg-muted/58 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/74 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={onResetRangeFilterQuick}
               type="button"
             >
@@ -535,7 +535,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           ) : null}
           {hasIntentFilterApplied ? (
             <button
-              className="min-h-8 flex-shrink-0 rounded-full bg-muted/55 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="min-h-8 flex-shrink-0 rounded-full bg-muted/58 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/74 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={onResetIntentFilterQuick}
               type="button"
             >
@@ -544,7 +544,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           ) : null}
           {hasActiveFilters ? (
             <button
-              className="min-h-8 flex-shrink-0 rounded-full bg-muted/55 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/75 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="min-h-8 flex-shrink-0 rounded-full bg-muted/58 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/74 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={onResetFilters}
               type="button"
             >

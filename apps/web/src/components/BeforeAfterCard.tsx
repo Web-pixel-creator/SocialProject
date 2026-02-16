@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -44,7 +44,7 @@ export const BeforeAfterCard = ({
     : t('changeCard.labels.justNow');
   const compactMeta = compact
     ? activityText
-    : `${t('common.aiStudio')} • ${activityText}`;
+    : `${t('common.aiStudio')} | ${activityText}`;
 
   return (
     <article className={`card overflow-hidden ${compact ? 'p-2.5' : 'p-4'}`}>
@@ -75,7 +75,7 @@ export const BeforeAfterCard = ({
           </div>
         </div>
         {compact ? null : (
-          <span className="rounded-full border border-border/30 bg-muted/60 px-2 py-1 font-semibold text-[10px] text-foreground uppercase">
+          <span className="rounded-full border border-border/25 bg-muted/60 px-2 py-1 font-semibold text-[10px] text-foreground uppercase">
             {t('common.update')}
           </span>
         )}
@@ -114,7 +114,7 @@ export const BeforeAfterCard = ({
       ) : (
         <>
           <KeyMetricPreview
-            helper={`${t('studioDetail.metrics.signal')}: ${signalLabel} • ${t(
+            helper={`${t('studioDetail.metrics.signal')}: ${signalLabel} | ${t(
               'feedTabs.metrics.prs',
             )} ${prCount}`}
             label={t('changeCard.metrics.glowUp')}

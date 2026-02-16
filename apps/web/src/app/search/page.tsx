@@ -714,7 +714,7 @@ function SearchPageContent() {
             <div className="flex flex-wrap items-center gap-2">
               {textQueryPresets.map((preset) => (
                 <button
-                  className={`rounded-full border border-border/30 bg-muted/55 px-3 py-1 text-muted-foreground text-xs transition hover:bg-muted/75 hover:text-foreground ${focusRingClass}`}
+                  className={`rounded-full border border-border/25 bg-muted/58 px-3 py-1 text-muted-foreground text-xs transition hover:bg-muted/74 hover:text-foreground ${focusRingClass}`}
                   key={preset}
                   onClick={() => setQuery(preset)}
                   type="button"
@@ -723,7 +723,7 @@ function SearchPageContent() {
                 </button>
               ))}
               <button
-                className={`rounded-full border border-border/30 bg-muted/55 px-3 py-1 text-muted-foreground text-xs transition hover:bg-muted/75 hover:text-foreground ${focusRingClass}`}
+                className={`rounded-full border border-border/25 bg-muted/58 px-3 py-1 text-muted-foreground text-xs transition hover:bg-muted/74 hover:text-foreground ${focusRingClass}`}
                 onClick={resetTextFilters}
                 type="button"
               >
@@ -800,7 +800,7 @@ function SearchPageContent() {
             <div className="flex flex-wrap items-center gap-2">
               {visualTagPresets.map((preset) => (
                 <button
-                  className={`rounded-full border border-border/30 bg-muted/55 px-3 py-1 text-muted-foreground text-xs transition hover:bg-muted/75 hover:text-foreground ${focusRingClass}`}
+                  className={`rounded-full border border-border/25 bg-muted/58 px-3 py-1 text-muted-foreground text-xs transition hover:bg-muted/74 hover:text-foreground ${focusRingClass}`}
                   key={preset}
                   onClick={() => setVisualTags(preset)}
                   type="button"
@@ -809,7 +809,7 @@ function SearchPageContent() {
                 </button>
               ))}
               <button
-                className={`rounded-full border border-border/30 bg-muted/55 px-3 py-1 text-muted-foreground text-xs transition hover:bg-muted/75 hover:text-foreground ${focusRingClass}`}
+                className={`rounded-full border border-border/25 bg-muted/58 px-3 py-1 text-muted-foreground text-xs transition hover:bg-muted/74 hover:text-foreground ${focusRingClass}`}
                 onClick={resetVisualFilters}
                 type="button"
               >
@@ -962,7 +962,7 @@ function SearchPageContent() {
                             width={320}
                           />
                         ) : (
-                          <div className="flex h-20 w-full items-center justify-center rounded-lg border border-border/30 bg-muted/55 font-semibold text-[11px] text-muted-foreground">
+                          <div className="flex h-20 w-full items-center justify-center rounded-lg border border-border/25 bg-muted/58 font-semibold text-[11px] text-muted-foreground">
                             {t('common.before')}
                           </div>
                         )}
@@ -977,7 +977,7 @@ function SearchPageContent() {
                             width={320}
                           />
                         ) : (
-                          <div className="flex h-20 w-full items-center justify-center rounded-lg border border-border/30 bg-muted/55 font-semibold text-[11px] text-muted-foreground">
+                          <div className="flex h-20 w-full items-center justify-center rounded-lg border border-border/25 bg-muted/58 font-semibold text-[11px] text-muted-foreground">
                             {t('common.after')}
                           </div>
                         )}
