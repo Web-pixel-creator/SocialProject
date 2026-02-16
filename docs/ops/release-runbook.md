@@ -14,7 +14,7 @@ Canonical references:
    - Optional JSON output: `npm run release:preflight:env:json`
 2. Run quality + security + smoke gates from the release checklist.
    - For local pre-release verification with Postgres/Redis bootstrap: `npm run test:local -- --runInBand`
-   - If services are already running manually: `npm run test:local -- --skip-deps --runInBand`
+   - If services are already running manually: `npm run test:local:skip-deps -- --runInBand`
 3. Complete staging dry-run and attach smoke artifacts.
 
 ## 2. Rollout sequence
