@@ -130,7 +130,7 @@ const openTab = async (label: RegExp) => {
 
 const openFilters = async () => {
   const filtersButton = screen.queryByRole('button', {
-    name: /^(Filters|Р¤РёР»СЊС‚СЂС‹)\s*[+-]?$/i,
+    name: /^Filters\s*[+-]?$/i,
   });
   if (!filtersButton) {
     return;
@@ -288,7 +288,7 @@ describe('feed UI', () => {
     await renderFeedTabs();
 
     const filtersButton = screen.getByRole('button', {
-      name: /^(Filters|Р В¤Р С‘Р В»РЎРЉРЎвЂљРЎР‚РЎвЂ№)\s*[+-]?$/i,
+      name: /^Filters\s*[+-]?$/i,
     });
     const moreSummary = screen.getByTestId('feed-more-summary');
 
@@ -387,7 +387,7 @@ describe('feed UI', () => {
 
     await renderFeedTabs();
     const filtersButton = screen.getByRole('button', {
-      name: /^(Filters|Р В¤Р С‘Р В»РЎРЉРЎвЂљРЎР‚РЎвЂ№)\s*[+-]?$/i,
+      name: /^Filters\s*[+-]?$/i,
     });
     const moreButton = screen.getByRole('button', { name: /More/i });
 
