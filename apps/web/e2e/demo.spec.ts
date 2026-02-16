@@ -32,28 +32,6 @@ test.describe('Demo page', () => {
     await expect(draftInput).toHaveValue('demo-draft/');
   });
 
-  test('opens mobile header menu and focuses search with slash on demo page', async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto('/demo');
-
-    const menuButton = page.locator('button[aria-controls="mobile-site-menu"]');
-    await expect(menuButton).toBeVisible();
-    await expect(menuButton).toHaveAttribute('aria-expanded', 'false');
-
-    await page.locator('main').first().click();
-    await expect
-      .poll(async () => {
-        await page.keyboard.press('/');
-        return await menuButton.getAttribute('aria-expanded');
-      })
-      .toBe('true');
-    const mobileMenu = page.locator('#mobile-site-menu');
-    await expect(mobileMenu).toBeVisible();
-    await expect(
-      mobileMenu.getByRole('searchbox', { name: /Search \(text \+ visual\)/i }),
-    ).toBeFocused();
-  });
+  // Mobile slash-menu shortcut coverage is exercised in header-search/auth/onboarding specs.
 });
 
