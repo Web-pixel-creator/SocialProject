@@ -85,8 +85,8 @@ export default function DemoPage() {
   const progressWidth = `${(doneCount / steps.length) * 100}%`;
 
   return (
-    <main className="grid gap-3 sm:gap-5">
-      <div className="card p-3 sm:p-5">
+    <main className="grid gap-3 sm:gap-4">
+      <div className="card p-3 sm:p-4">
         <p className="pill">{t('demo.header.pill')}</p>
         <h2 className="mt-3 font-semibold text-foreground text-xl sm:text-2xl">
           {t('demo.header.title')}
@@ -101,8 +101,8 @@ export default function DemoPage() {
         retryLabel={t('common.retry')}
         title={t('error.unexpected')}
       >
-        <section className="card grid gap-3 p-3 sm:gap-4 sm:p-5">
-          <div className="rounded-xl border border-border/25 bg-background/60 p-3 text-muted-foreground text-sm sm:p-4">
+        <section className="card grid gap-3 p-3 sm:gap-3.5 sm:p-4">
+          <div className="rounded-xl border border-border/25 bg-background/60 p-3 text-muted-foreground text-sm sm:p-3.5">
             {t('demo.info.trackEveryChange')}
           </div>
           <label className="grid gap-2 font-medium text-foreground text-sm">
@@ -153,7 +153,7 @@ export default function DemoPage() {
           ) : null}
         </section>
 
-        <section className="card grid gap-3 p-3 sm:gap-4 sm:p-5">
+        <section className="card grid gap-3 p-3 sm:gap-3.5 sm:p-4">
           <div className="flex items-center justify-between gap-3">
             <h3 className="font-semibold text-foreground text-sm">
               {t('demo.progress.title')}
@@ -190,12 +190,12 @@ export default function DemoPage() {
         </section>
 
         {result ? (
-          <section className="card grid gap-3 p-3 sm:p-5 md:grid-cols-2">
-            <div className="rounded-xl border border-border/25 bg-background/60 p-3 text-xs sm:p-4">
+          <section className="card grid gap-3 p-3 sm:p-4 md:grid-cols-2">
+            <div className="rounded-xl border border-border/25 bg-background/60 p-3 text-xs sm:p-3.5">
               <p className="text-muted-foreground">{t('demo.summary.draft')}</p>
               <p className="mt-1 break-all text-foreground">{result.draftId}</p>
             </div>
-            <div className="rounded-xl border border-border/25 bg-background/60 p-3 text-xs sm:p-4">
+            <div className="rounded-xl border border-border/25 bg-background/60 p-3 text-xs sm:p-3.5">
               <p className="text-muted-foreground">
                 {t('demo.summary.fixRequest')}
               </p>
@@ -203,7 +203,7 @@ export default function DemoPage() {
                 {result.fixRequestId}
               </p>
             </div>
-            <div className="rounded-xl border border-border/25 bg-background/60 p-3 text-xs sm:p-4">
+            <div className="rounded-xl border border-border/25 bg-background/60 p-3 text-xs sm:p-3.5">
               <p className="text-muted-foreground">
                 {t('demo.summary.pullRequest')}
               </p>
@@ -211,7 +211,7 @@ export default function DemoPage() {
                 {result.pullRequestId}
               </p>
             </div>
-            <div className="rounded-xl border border-border/25 bg-background/60 p-3 text-xs sm:p-4">
+            <div className="rounded-xl border border-border/25 bg-background/60 p-3 text-xs sm:p-3.5">
               <p className="text-muted-foreground">
                 {t('demo.summary.glowUp')}
               </p>
