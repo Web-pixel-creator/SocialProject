@@ -314,37 +314,19 @@ jobs:
               return
             fi
 
-            {
-              echo "### Release Smoke Summary"
-              echo ""
-              echo "- mode: \`${MODE}\`"
-              echo "- api_url: \`${EFFECTIVE_API_URL}\`"
-              echo "- web_url: \`${EFFECTIVE_WEB_URL}\`"
-              echo "- csrf_token_configured: \`${CSRF_CONFIGURED}\`"
-              echo "- status: \`${status}\`"
-            } >> "$GITHUB_STEP_SUMMARY"
+            local summary_md_path="artifacts/release/release-smoke-step-summary.md"
+            node scripts/release/render-release-smoke-step-summary.mjs \
+              --status "$status" \
+              --mode "$MODE" \
+              --api-url "$EFFECTIVE_API_URL" \
+              --web-url "$EFFECTIVE_WEB_URL" \
+              --csrf-configured "$CSRF_CONFIGURED" \
+              --smoke-results "$SMOKE_RESULTS_PATH" \
+              --env-preflight "$ENV_PREFLIGHT_SUMMARY_PATH" \
+              --output "$summary_md_path"
 
-            if [ -f "$SMOKE_RESULTS_PATH" ]; then
-              SMOKE_VALUES="$(node scripts/release/extract-release-summary-values.mjs --kind smoke --input "$SMOKE_RESULTS_PATH")"
-              IFS='|' read -r SMOKE_PASS SMOKE_TOTAL_STEPS SMOKE_FAILED_STEPS <<<"$SMOKE_VALUES"
-
-              {
-                echo "- smoke_pass: \`${SMOKE_PASS}\`"
-                echo "- smoke_total_steps: \`${SMOKE_TOTAL_STEPS}\`"
-                echo "- smoke_failed_steps: \`${SMOKE_FAILED_STEPS}\`"
-              } >> "$GITHUB_STEP_SUMMARY"
-            fi
-
-            if [ -f "$ENV_PREFLIGHT_SUMMARY_PATH" ]; then
-              ENV_PREFLIGHT_VALUES="$(node scripts/release/extract-release-summary-values.mjs --kind env-preflight --input "$ENV_PREFLIGHT_SUMMARY_PATH")"
-              IFS='|' read -r ENV_PREFLIGHT_STATUS ENV_PREFLIGHT_MISSING ENV_PREFLIGHT_WARNINGS ENV_PREFLIGHT_STRICT <<<"$ENV_PREFLIGHT_VALUES"
-
-              {
-                echo "- env_preflight_status: \`${ENV_PREFLIGHT_STATUS}\`"
-                echo "- env_preflight_missing_required: \`${ENV_PREFLIGHT_MISSING}\`"
-                echo "- env_preflight_warnings: \`${ENV_PREFLIGHT_WARNINGS}\`"
-                echo "- env_preflight_strict: \`${ENV_PREFLIGHT_STRICT}\`"
-              } >> "$GITHUB_STEP_SUMMARY"
+            if [ -f "$summary_md_path" ]; then
+              cat "$summary_md_path" >> "$GITHUB_STEP_SUMMARY"
             fi
           }
 
