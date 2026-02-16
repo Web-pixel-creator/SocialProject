@@ -40,6 +40,9 @@ jobs:
       - name: Run actionlint
         uses: rhysd/actionlint@v1
 
+      - name: Validate workflow inline-node usage
+        run: node scripts/ci/validate-workflow-inline-node-usage.mjs
+
   ultracite:
     name: Ultracite Full Scope (blocking)
     runs-on: ubuntu-latest

@@ -17,6 +17,7 @@
     "security:audit": "npm audit --omit=dev --audit-level=high",
     "security:scan-secrets": "node scripts/security/secret-scan.mjs",
     "security:check": "npm run security:audit && npm run security:scan-secrets",
+    "ci:workflow:inline-node-check": "node scripts/ci/validate-workflow-inline-node-usage.mjs",
     "test": "jest",
     "test:coverage": "jest --coverage",
     "test:web:visual": "npm --workspace apps/web run test:e2e:visual",
