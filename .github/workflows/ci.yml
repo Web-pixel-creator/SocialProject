@@ -114,128 +114,17 @@ jobs:
           VISUAL_POLICY_SUMMARY_PATH: artifacts/ci/ci-pr-visual-policy-summary.json
         with:
           script: |
-            const fs = require('node:fs');
-
-            const marker =
-              process.env.VISUAL_POLICY_COMMENT_MARKER ??
-              '<!-- finishit-visual-baseline-checklist -->';
-            const summaryPath = process.env.VISUAL_POLICY_SUMMARY_PATH;
-
-            if (!summaryPath || !fs.existsSync(summaryPath)) {
-              core.info(`Summary file not found at ${summaryPath ?? 'undefined'}, skipping comment update.`);
-              return;
-            }
-
-            const issueNumber = context.payload.pull_request?.number;
-            if (!issueNumber) {
-              core.info('No pull request number found in context, skipping comment update.');
-              return;
-            }
-
-            const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
-            const changedSnapshots = Array.isArray(summary.changedSnapshots)
-              ? summary.changedSnapshots
-              : [];
-            const missingChecklistItems = Array.isArray(summary.missingChecklistItems)
-              ? summary.missingChecklistItems
-              : [];
-            const remediation = summary.remediation ?? {};
-            const commands = Array.isArray(remediation.commands)
-              ? remediation.commands
-              : [
-                  'npm run test:web:visual',
-                  'npm run test:web:visual:update',
-                  'npm run test:web:visual',
-                ];
-            const checklistTemplate = Array.isArray(remediation.checklistTemplate)
-              ? remediation.checklistTemplate
-              : [
-                  '- [ ] I ran `npm run test:web:visual`',
-                  '- [ ] If snapshots changed intentionally, I ran `npm run test:web:visual:update` and re-ran `npm run test:web:visual`',
-                  '- [ ] I reviewed snapshot diffs in `apps/web/e2e/visual-smoke.spec.ts-snapshots/`',
-                  '- [ ] I documented why baseline updates are expected',
-                ];
-            const policyPath =
-              typeof remediation.policyPath === 'string'
-                ? remediation.policyPath
-                : 'apps/web/e2e/VISUAL_BASELINE_POLICY.md';
-
-            const { owner, repo } = context.repo;
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              owner,
-              repo,
-              issue_number: issueNumber,
-              per_page: 100,
-            });
-
-            const existing = comments.find(
-              (comment) =>
-                comment.user?.type === 'Bot' &&
-                typeof comment.body === 'string' &&
-                comment.body.includes(marker),
+            const { upsertVisualPolicyComment } = await import(
+              `${process.env.GITHUB_WORKSPACE}/scripts/ci/upsert-visual-policy-comment.mjs`
             );
 
-            if (summary.status !== 'failed') {
-              if (existing) {
-                await github.rest.issues.deleteComment({
-                  owner,
-                  repo,
-                  comment_id: existing.id,
-                });
-                core.info('Removed stale visual checklist guidance comment.');
-              } else {
-                core.info('Visual checklist gate is not failed, no comment needed.');
-              }
-              return;
-            }
-
-            const bodyLines = [
-              marker,
-              '### Visual Baseline Checklist Required',
-              '',
-              'Snapshot baseline files changed, but required PR checklist items are not marked as completed.',
-              '',
-              `- status: \`${summary.status}\``,
-              `- changed snapshot files: \`${changedSnapshots.length}\``,
-              '',
-              'Missing checklist items:',
-              '',
-              ...missingChecklistItems.map((item) => `- ${item.label}`),
-              '',
-              'How to fix:',
-              '',
-              '1. Run commands:',
-              ...commands.map((command) => `   - \`${command}\``),
-              '',
-              '2. In PR description, mark checklist items:',
-              '',
-              '```markdown',
-              ...checklistTemplate,
-              '```',
-              '',
-              `Policy: \`${policyPath}\``,
-            ];
-
-            const body = bodyLines.join('\n');
-
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner,
-                repo,
-                comment_id: existing.id,
-                body,
-              });
-              core.info('Updated existing visual checklist guidance comment.');
-              return;
-            }
-
-            await github.rest.issues.createComment({
-              owner,
-              repo,
-              issue_number: issueNumber,
-              body,
+            await upsertVisualPolicyComment({
+              github,
+              context,
+              core,
+              marker: process.env.VISUAL_POLICY_COMMENT_MARKER,
+              summaryPath: process.env.VISUAL_POLICY_SUMMARY_PATH,
             });
-            core.info('Created visual checklist guidance comment.');
 
       - name: Run Ultracite check on changed files
         shell: bash
