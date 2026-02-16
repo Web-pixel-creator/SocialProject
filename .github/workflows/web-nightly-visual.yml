@@ -36,42 +36,17 @@ jobs:
           PLAYWRIGHT_JSON_OUTPUT_DIR: test-results
         run: npm --workspace apps/web run test:e2e -- --reporter=html,json e2e/visual-smoke.spec.ts
 
-      - name: Generate visual smoke summary
+      - name: Generate and upload visual smoke summary
         if: always()
-        shell: bash
-        run: |
-          node scripts/ci/summarize-visual-artifacts.mjs \
-            --artifacts-dir apps/web/test-results \
-            --report-json apps/web/test-results/nightly-visual-report.json \
-            --output artifacts/ci/web-nightly-visual-summary.json \
-            --markdown-output artifacts/ci/web-nightly-visual-summary.md \
-            --title "Web Nightly Visual Summary"
-
-      - name: Append visual smoke summary to step summary
-        if: always()
-        shell: bash
-        run: |
-          if [ -n "${GITHUB_STEP_SUMMARY:-}" ] && [ -f artifacts/ci/web-nightly-visual-summary.md ]; then
-            cat artifacts/ci/web-nightly-visual-summary.md >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-      - name: Upload visual smoke summary
-        if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/playwright-visual-summary
         with:
-          name: web-nightly-visual-summary
-          path: |
-            artifacts/ci/web-nightly-visual-summary.json
-            artifacts/ci/web-nightly-visual-summary.md
-          if-no-files-found: ignore
-
-      - name: Upload visual smoke JSON report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: web-nightly-visual-json-report
-          path: apps/web/test-results/nightly-visual-report.json
-          if-no-files-found: ignore
+          artifacts_dir: apps/web/test-results
+          report_json_path: apps/web/test-results/nightly-visual-report.json
+          summary_json_path: artifacts/ci/web-nightly-visual-summary.json
+          summary_md_path: artifacts/ci/web-nightly-visual-summary.md
+          summary_title: Web Nightly Visual Summary
+          artifact_summary_name: web-nightly-visual-summary
+          artifact_json_name: web-nightly-visual-json-report
 
       - name: Upload Playwright report
         if: always()

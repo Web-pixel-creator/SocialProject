@@ -1,0 +1,71 @@
+name: Playwright Visual Summary
+description: Generate Playwright visual summary artifacts, append markdown summary, and upload report artifacts.
+
+inputs:
+  artifacts_dir:
+    description: Directory containing Playwright visual artifacts.
+    required: true
+  report_json_path:
+    description: Optional path to Playwright JSON report.
+    required: false
+    default: ""
+  summary_json_path:
+    description: Output path for generated JSON summary.
+    required: true
+  summary_md_path:
+    description: Output path for generated Markdown summary.
+    required: true
+  summary_title:
+    description: Title used in generated markdown summary.
+    required: true
+  artifact_summary_name:
+    description: Artifact name for summary JSON/Markdown files.
+    required: true
+  artifact_json_name:
+    description: Artifact name for raw Playwright visual JSON report.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Generate Playwright visual summary
+      shell: bash
+      run: |
+        REPORT_JSON_ARGS=()
+        if [ -n "${{ inputs.report_json_path }}" ]; then
+          REPORT_JSON_ARGS+=(--report-json "${{ inputs.report_json_path }}")
+        fi
+
+        node scripts/ci/summarize-visual-artifacts.mjs \
+          --artifacts-dir "${{ inputs.artifacts_dir }}" \
+          --output "${{ inputs.summary_json_path }}" \
+          --markdown-output "${{ inputs.summary_md_path }}" \
+          --title "${{ inputs.summary_title }}" \
+          "${REPORT_JSON_ARGS[@]}"
+
+    - name: Append Playwright visual summary to step summary
+      if: always()
+      shell: bash
+      run: |
+        if [ -n "${GITHUB_STEP_SUMMARY:-}" ] && [ -f "${{ inputs.summary_md_path }}" ]; then
+          cat "${{ inputs.summary_md_path }}" >> "$GITHUB_STEP_SUMMARY"
+        fi
+
+    - name: Upload Playwright visual summary
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact_summary_name }}
+        path: |
+          ${{ inputs.summary_json_path }}
+          ${{ inputs.summary_md_path }}
+        if-no-files-found: ignore
+
+    - name: Upload Playwright visual JSON report
+      if: always() && inputs.report_json_path != '' && inputs.artifact_json_name != ''
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact_json_name }}
+        path: ${{ inputs.report_json_path }}
+        if-no-files-found: ignore

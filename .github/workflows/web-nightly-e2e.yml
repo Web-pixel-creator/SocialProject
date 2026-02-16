@@ -36,43 +36,18 @@ jobs:
           PLAYWRIGHT_JSON_OUTPUT_DIR: test-results
         run: npm --workspace apps/web run test:e2e -- --reporter=html,json
 
-      - name: Generate Playwright nightly summary
+      - name: Generate and upload Playwright nightly summary
         if: always()
-        shell: bash
-        run: |
-          node scripts/ci/summarize-playwright-json.mjs \
-            --input apps/web/test-results/nightly-e2e-report.json \
-            --output artifacts/ci/web-nightly-e2e-summary.json \
-            --markdown-output artifacts/ci/web-nightly-e2e-summary.md \
-            --title "Web Nightly E2E Summary" \
-            --top-slow 15 \
-            --slow-threshold-ms 5000
-
-      - name: Append Playwright nightly summary to step summary
-        if: always()
-        shell: bash
-        run: |
-          if [ -n "${GITHUB_STEP_SUMMARY:-}" ] && [ -f artifacts/ci/web-nightly-e2e-summary.md ]; then
-            cat artifacts/ci/web-nightly-e2e-summary.md >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-      - name: Upload Playwright nightly summary
-        if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/playwright-e2e-summary
         with:
-          name: web-nightly-e2e-summary
-          path: |
-            artifacts/ci/web-nightly-e2e-summary.json
-            artifacts/ci/web-nightly-e2e-summary.md
-          if-no-files-found: ignore
-
-      - name: Upload Playwright nightly JSON report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: web-nightly-e2e-json-report
-          path: apps/web/test-results/nightly-e2e-report.json
-          if-no-files-found: ignore
+          report_json_path: apps/web/test-results/nightly-e2e-report.json
+          summary_json_path: artifacts/ci/web-nightly-e2e-summary.json
+          summary_md_path: artifacts/ci/web-nightly-e2e-summary.md
+          summary_title: Web Nightly E2E Summary
+          artifact_summary_name: web-nightly-e2e-summary
+          artifact_json_name: web-nightly-e2e-json-report
+          top_slow: "15"
+          slow_threshold_ms: "5000"
 
       - name: Upload Playwright report
         if: always()

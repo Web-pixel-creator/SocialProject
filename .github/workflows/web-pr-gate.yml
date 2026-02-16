@@ -105,43 +105,18 @@ jobs:
             e2e/demo.spec.ts \
             e2e/studios-onboarding.spec.ts
 
-      - name: Generate Playwright PR smoke summary
+      - name: Generate and upload Playwright PR smoke summary
         if: always()
-        shell: bash
-        run: |
-          node scripts/ci/summarize-playwright-json.mjs \
-            --input apps/web/test-results/web-pr-gate-e2e-report.json \
-            --output artifacts/ci/web-pr-gate-e2e-summary.json \
-            --markdown-output artifacts/ci/web-pr-gate-e2e-summary.md \
-            --title "Web PR Gate E2E Summary" \
-            --top-slow 10 \
-            --slow-threshold-ms 5000
-
-      - name: Append Playwright PR smoke summary to step summary
-        if: always()
-        shell: bash
-        run: |
-          if [ -n "${GITHUB_STEP_SUMMARY:-}" ] && [ -f artifacts/ci/web-pr-gate-e2e-summary.md ]; then
-            cat artifacts/ci/web-pr-gate-e2e-summary.md >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-      - name: Upload Playwright PR smoke summary
-        if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/playwright-e2e-summary
         with:
-          name: web-pr-gate-playwright-summary
-          path: |
-            artifacts/ci/web-pr-gate-e2e-summary.json
-            artifacts/ci/web-pr-gate-e2e-summary.md
-          if-no-files-found: ignore
-
-      - name: Upload Playwright PR smoke JSON report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: web-pr-gate-playwright-json-report
-          path: apps/web/test-results/web-pr-gate-e2e-report.json
-          if-no-files-found: ignore
+          report_json_path: apps/web/test-results/web-pr-gate-e2e-report.json
+          summary_json_path: artifacts/ci/web-pr-gate-e2e-summary.json
+          summary_md_path: artifacts/ci/web-pr-gate-e2e-summary.md
+          summary_title: Web PR Gate E2E Summary
+          artifact_summary_name: web-pr-gate-playwright-summary
+          artifact_json_name: web-pr-gate-playwright-json-report
+          top_slow: "10"
+          slow_threshold_ms: "5000"
 
       - name: Upload Playwright report
         if: always()
@@ -186,42 +161,17 @@ jobs:
           PLAYWRIGHT_JSON_OUTPUT_DIR: test-results
         run: npm --workspace apps/web run test:e2e -- --reporter=html,json e2e/visual-smoke.spec.ts
 
-      - name: Generate Playwright visual smoke summary
+      - name: Generate and upload Playwright visual smoke summary
         if: always()
-        shell: bash
-        run: |
-          node scripts/ci/summarize-visual-artifacts.mjs \
-            --artifacts-dir apps/web/test-results \
-            --report-json apps/web/test-results/web-pr-gate-visual-report.json \
-            --output artifacts/ci/web-pr-gate-visual-summary.json \
-            --markdown-output artifacts/ci/web-pr-gate-visual-summary.md \
-            --title "Web PR Gate Visual Summary"
-
-      - name: Append Playwright visual smoke summary to step summary
-        if: always()
-        shell: bash
-        run: |
-          if [ -n "${GITHUB_STEP_SUMMARY:-}" ] && [ -f artifacts/ci/web-pr-gate-visual-summary.md ]; then
-            cat artifacts/ci/web-pr-gate-visual-summary.md >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-      - name: Upload Playwright visual smoke summary
-        if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/playwright-visual-summary
         with:
-          name: web-pr-gate-visual-summary
-          path: |
-            artifacts/ci/web-pr-gate-visual-summary.json
-            artifacts/ci/web-pr-gate-visual-summary.md
-          if-no-files-found: ignore
-
-      - name: Upload Playwright visual JSON report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: web-pr-gate-playwright-visual-json-report
-          path: apps/web/test-results/web-pr-gate-visual-report.json
-          if-no-files-found: ignore
+          artifacts_dir: apps/web/test-results
+          report_json_path: apps/web/test-results/web-pr-gate-visual-report.json
+          summary_json_path: artifacts/ci/web-pr-gate-visual-summary.json
+          summary_md_path: artifacts/ci/web-pr-gate-visual-summary.md
+          summary_title: Web PR Gate Visual Summary
+          artifact_summary_name: web-pr-gate-visual-summary
+          artifact_json_name: web-pr-gate-playwright-visual-json-report
 
       - name: Upload Playwright visual report
         if: always()
