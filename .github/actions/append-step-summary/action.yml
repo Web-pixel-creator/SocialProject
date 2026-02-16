@@ -1,0 +1,18 @@
+name: Append Step Summary
+description: Append a markdown file to GITHUB_STEP_SUMMARY when it exists.
+
+inputs:
+  summary_path:
+    description: Path to markdown summary file.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Append markdown summary file
+      if: always()
+      shell: bash
+      run: |
+        if [ -n "${GITHUB_STEP_SUMMARY:-}" ] && [ -f "${{ inputs.summary_path }}" ]; then
+          cat "${{ inputs.summary_path }}" >> "$GITHUB_STEP_SUMMARY"
+        fi

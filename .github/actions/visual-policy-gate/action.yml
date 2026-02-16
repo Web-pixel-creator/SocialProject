@@ -43,12 +43,9 @@ runs:
           --title "${{ inputs.summary_title }}"
 
     - name: Append visual baseline policy summary to step summary
-      if: always()
-      shell: bash
-      run: |
-        if [ -n "${GITHUB_STEP_SUMMARY:-}" ] && [ -f "${{ inputs.summary_md_path }}" ]; then
-          cat "${{ inputs.summary_md_path }}" >> "$GITHUB_STEP_SUMMARY"
-        fi
+      uses: ./.github/actions/append-step-summary
+      with:
+        summary_path: ${{ inputs.summary_md_path }}
 
     - name: Upload visual baseline policy summary
       if: always()

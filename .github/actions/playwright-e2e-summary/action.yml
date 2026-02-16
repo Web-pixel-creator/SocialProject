@@ -44,12 +44,9 @@ runs:
           --slow-threshold-ms "${{ inputs.slow_threshold_ms }}"
 
     - name: Append Playwright E2E summary to step summary
-      if: always()
-      shell: bash
-      run: |
-        if [ -n "${GITHUB_STEP_SUMMARY:-}" ] && [ -f "${{ inputs.summary_md_path }}" ]; then
-          cat "${{ inputs.summary_md_path }}" >> "$GITHUB_STEP_SUMMARY"
-        fi
+      uses: ./.github/actions/append-step-summary
+      with:
+        summary_path: ${{ inputs.summary_md_path }}
 
     - name: Upload Playwright E2E summary
       if: always()
