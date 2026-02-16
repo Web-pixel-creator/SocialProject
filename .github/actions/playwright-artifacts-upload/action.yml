@@ -1,0 +1,38 @@
+name: Playwright Artifacts Upload
+description: Upload Playwright report and optional results artifacts.
+
+inputs:
+  report_artifact_name:
+    description: Artifact name for the Playwright HTML report directory.
+    required: true
+  report_path:
+    description: Path to the Playwright HTML report directory.
+    required: false
+    default: apps/web/playwright-report
+  results_artifact_name:
+    description: Optional artifact name for Playwright results/screenshots directory.
+    required: false
+    default: ""
+  results_path:
+    description: Path to Playwright results/screenshots directory.
+    required: false
+    default: apps/web/test-results
+
+runs:
+  using: composite
+  steps:
+    - name: Upload Playwright report artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.report_artifact_name }}
+        path: ${{ inputs.report_path }}
+        if-no-files-found: ignore
+
+    - name: Upload Playwright results artifact
+      if: always() && inputs.results_artifact_name != ''
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.results_artifact_name }}
+        path: ${{ inputs.results_path }}
+        if-no-files-found: ignore

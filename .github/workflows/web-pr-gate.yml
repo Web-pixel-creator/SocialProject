@@ -118,21 +118,12 @@ jobs:
           top_slow: "10"
           slow_threshold_ms: "5000"
 
-      - name: Upload Playwright report
+      - name: Upload Playwright report and results artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/playwright-artifacts-upload
         with:
-          name: web-pr-gate-playwright-report
-          path: apps/web/playwright-report
-          if-no-files-found: ignore
-
-      - name: Upload Playwright test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: web-pr-gate-playwright-results
-          path: apps/web/test-results
-          if-no-files-found: ignore
+          report_artifact_name: web-pr-gate-playwright-report
+          results_artifact_name: web-pr-gate-playwright-results
 
   visual_smoke:
     name: Playwright Visual Smoke
@@ -173,18 +164,9 @@ jobs:
           artifact_summary_name: web-pr-gate-visual-summary
           artifact_json_name: web-pr-gate-playwright-visual-json-report
 
-      - name: Upload Playwright visual report
+      - name: Upload Playwright report and results artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/playwright-artifacts-upload
         with:
-          name: web-pr-gate-playwright-visual-report
-          path: apps/web/playwright-report
-          if-no-files-found: ignore
-
-      - name: Upload Playwright visual test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: web-pr-gate-playwright-visual-results
-          path: apps/web/test-results
-          if-no-files-found: ignore
+          report_artifact_name: web-pr-gate-playwright-visual-report
+          results_artifact_name: web-pr-gate-playwright-visual-results
