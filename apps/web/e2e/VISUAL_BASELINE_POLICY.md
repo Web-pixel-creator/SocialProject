@@ -8,6 +8,7 @@ This policy defines how Playwright visual baselines are updated and reviewed for
 - Baseline files: `apps/web/e2e/visual-smoke.spec.ts-snapshots/*.png`
 - CI gates:
   - PR: `.github/workflows/web-pr-gate.yml` (`visual_smoke` job)
+  - PR: `.github/workflows/ci.yml` (`ultracite_pr` job checklist validation)
   - Nightly: `.github/workflows/web-nightly-visual.yml`
 
 ## Source of truth
