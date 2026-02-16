@@ -31,7 +31,7 @@ export const FixRequestList = ({ items }: FixRequestListProps) => {
           {t('fixRequestList.title')}
         </h3>
         <select
-          className="min-h-8 rounded-lg border border-border/35 bg-background/62 px-3 py-1.5 text-foreground text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:py-2"
+          className="min-h-8 rounded-lg border border-border/25 bg-background/70 px-3 py-1.5 text-foreground text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:py-2"
           onChange={(event) => setFilter(event.target.value)}
           value={filter}
         >
@@ -46,7 +46,7 @@ export const FixRequestList = ({ items }: FixRequestListProps) => {
       <ul className="mt-4 grid gap-3 text-muted-foreground text-sm">
         {filtered.map((item) => (
           <li
-            className="rounded-xl border border-border/35 bg-background/62 p-3"
+            className="rounded-xl border border-border/25 bg-background/60 p-3"
             key={item.id}
           >
             <p className="font-semibold text-muted-foreground text-xs uppercase">

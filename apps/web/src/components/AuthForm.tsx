@@ -30,7 +30,7 @@ export const AuthForm = ({ mode, onSuccess }: AuthFormProps) => {
   const focusRingClass =
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
   const consentCheckboxClass =
-    'h-4 w-4 rounded-md border border-border/35 bg-background/62 text-primary transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
+    'h-4 w-4 rounded-md border border-border/25 bg-background/70 text-primary transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
   const { isMutating: loading, trigger: triggerSubmit } = useSWRMutation<
     void,
     unknown,
@@ -94,7 +94,7 @@ export const AuthForm = ({ mode, onSuccess }: AuthFormProps) => {
       <label className="grid gap-2 font-medium text-foreground text-sm">
         {t('common.email')}
         <input
-          className={`rounded-xl border border-border/35 bg-background/62 px-3 py-2 text-foreground placeholder:text-muted-foreground/70 sm:px-4 ${focusRingClass}`}
+          className={`rounded-xl border border-border/25 bg-background/70 px-3 py-2 text-foreground placeholder:text-muted-foreground/70 sm:px-4 ${focusRingClass}`}
           onChange={(event) => setEmail(event.target.value)}
           required
           type="email"
@@ -104,7 +104,7 @@ export const AuthForm = ({ mode, onSuccess }: AuthFormProps) => {
       <label className="grid gap-2 font-medium text-foreground text-sm">
         {t('common.password')}
         <input
-          className={`rounded-xl border border-border/35 bg-background/62 px-3 py-2 text-foreground placeholder:text-muted-foreground/70 sm:px-4 ${focusRingClass}`}
+          className={`rounded-xl border border-border/25 bg-background/70 px-3 py-2 text-foreground placeholder:text-muted-foreground/70 sm:px-4 ${focusRingClass}`}
           onChange={(event) => setPassword(event.target.value)}
           required
           type="password"
@@ -113,7 +113,7 @@ export const AuthForm = ({ mode, onSuccess }: AuthFormProps) => {
       </label>
       {mode === 'register' && (
         <div className="grid gap-2 text-muted-foreground text-sm">
-          <label className="flex items-center gap-2 rounded-xl border border-border/35 bg-background/62 px-3 py-1.5 sm:py-2">
+          <label className="flex items-center gap-2 rounded-xl border border-border/25 bg-background/60 px-3 py-1.5 sm:py-2">
             <input
               checked={terms}
               className={consentCheckboxClass}
@@ -128,7 +128,7 @@ export const AuthForm = ({ mode, onSuccess }: AuthFormProps) => {
               {t('auth.termsOfService')}
             </Link>
           </label>
-          <label className="flex items-center gap-2 rounded-xl border border-border/35 bg-background/62 px-3 py-1.5 sm:py-2">
+          <label className="flex items-center gap-2 rounded-xl border border-border/25 bg-background/60 px-3 py-1.5 sm:py-2">
             <input
               checked={privacy}
               className={consentCheckboxClass}
@@ -159,13 +159,13 @@ export const AuthForm = ({ mode, onSuccess }: AuthFormProps) => {
       </button>
       <div className="grid gap-2 text-muted-foreground text-xs">
         <button
-          className={`rounded-full border border-border/35 bg-background/62 px-4 py-1.5 font-semibold text-foreground text-xs transition hover:border-border/55 hover:bg-background/78 sm:py-2 ${focusRingClass}`}
+          className={`rounded-full border border-transparent bg-background/58 px-4 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 sm:py-2 ${focusRingClass}`}
           type="button"
         >
           {t('auth.continueWithGoogle')}
         </button>
         <button
-          className={`rounded-full border border-border/35 bg-background/62 px-4 py-1.5 font-semibold text-foreground text-xs transition hover:border-border/55 hover:bg-background/78 sm:py-2 ${focusRingClass}`}
+          className={`rounded-full border border-transparent bg-background/58 px-4 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 sm:py-2 ${focusRingClass}`}
           type="button"
         >
           {t('auth.continueWithGithub')}
