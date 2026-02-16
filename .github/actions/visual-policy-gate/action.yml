@@ -1,0 +1,82 @@
+name: Visual Policy Gate
+description: Validate visual baseline checklist, publish summary, upload artifacts, and upsert PR remediation comment.
+
+inputs:
+  base_sha:
+    description: Base git SHA for diff comparison.
+    required: true
+  head_sha:
+    description: Head git SHA for diff comparison.
+    required: true
+  summary_json_path:
+    description: Output path for JSON summary artifact.
+    required: true
+  summary_md_path:
+    description: Output path for Markdown summary artifact.
+    required: true
+  summary_title:
+    description: Title used in generated markdown summary.
+    required: true
+  artifact_name:
+    description: Uploaded artifact name for policy summary files.
+    required: true
+  comment_marker:
+    description: Marker used to upsert/delete PR remediation comment.
+    required: false
+    default: "<!-- finishit-visual-baseline-checklist -->"
+  enable_pr_comment:
+    description: Whether to upsert PR remediation comment from summary.
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Validate visual baseline checklist for snapshot updates
+      shell: bash
+      run: |
+        node scripts/ci/validate-visual-pr-checklist.mjs \
+          --base-sha "${{ inputs.base_sha }}" \
+          --head-sha "${{ inputs.head_sha }}" \
+          --output "${{ inputs.summary_json_path }}" \
+          --markdown-output "${{ inputs.summary_md_path }}" \
+          --title "${{ inputs.summary_title }}"
+
+    - name: Append visual baseline policy summary to step summary
+      if: always()
+      shell: bash
+      run: |
+        if [ -n "${GITHUB_STEP_SUMMARY:-}" ] && [ -f "${{ inputs.summary_md_path }}" ]; then
+          cat "${{ inputs.summary_md_path }}" >> "$GITHUB_STEP_SUMMARY"
+        fi
+
+    - name: Upload visual baseline policy summary
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact_name }}
+        path: |
+          ${{ inputs.summary_json_path }}
+          ${{ inputs.summary_md_path }}
+        if-no-files-found: ignore
+
+    - name: Upsert visual baseline guidance comment
+      if: always() && github.event_name == 'pull_request' && inputs.enable_pr_comment == 'true'
+      continue-on-error: true
+      uses: actions/github-script@v7
+      env:
+        VISUAL_POLICY_COMMENT_MARKER: ${{ inputs.comment_marker }}
+        VISUAL_POLICY_SUMMARY_PATH: ${{ inputs.summary_json_path }}
+      with:
+        script: |
+          const { upsertVisualPolicyComment } = await import(
+            `${process.env.GITHUB_WORKSPACE}/scripts/ci/upsert-visual-policy-comment.mjs`
+          );
+
+          await upsertVisualPolicyComment({
+            github,
+            context,
+            core,
+            marker: process.env.VISUAL_POLICY_COMMENT_MARKER,
+            summaryPath: process.env.VISUAL_POLICY_SUMMARY_PATH,
+          });

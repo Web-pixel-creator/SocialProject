@@ -77,54 +77,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Validate visual baseline checklist for snapshot updates
-        shell: bash
-        run: |
-          node scripts/ci/validate-visual-pr-checklist.mjs \
-            --base-sha "${{ github.event.pull_request.base.sha }}" \
-            --head-sha "${{ github.sha }}" \
-            --output artifacts/ci/ci-pr-visual-policy-summary.json \
-            --markdown-output artifacts/ci/ci-pr-visual-policy-summary.md \
-            --title "CI PR Visual Baseline Policy Summary"
-
-      - name: Append visual baseline policy summary to step summary
-        if: always()
-        shell: bash
-        run: |
-          if [ -n "${GITHUB_STEP_SUMMARY:-}" ] && [ -f artifacts/ci/ci-pr-visual-policy-summary.md ]; then
-            cat artifacts/ci/ci-pr-visual-policy-summary.md >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-      - name: Upload visual baseline policy summary
-        if: always()
-        uses: actions/upload-artifact@v4
+      - name: Run visual baseline policy gate
+        uses: ./.github/actions/visual-policy-gate
         with:
-          name: ci-pr-visual-policy-summary
-          path: |
-            artifacts/ci/ci-pr-visual-policy-summary.json
-            artifacts/ci/ci-pr-visual-policy-summary.md
-          if-no-files-found: ignore
-
-      - name: Upsert visual baseline guidance comment
-        if: always() && github.event_name == 'pull_request'
-        continue-on-error: true
-        uses: actions/github-script@v7
-        env:
-          VISUAL_POLICY_COMMENT_MARKER: "<!-- finishit-visual-baseline-checklist -->"
-          VISUAL_POLICY_SUMMARY_PATH: artifacts/ci/ci-pr-visual-policy-summary.json
-        with:
-          script: |
-            const { upsertVisualPolicyComment } = await import(
-              `${process.env.GITHUB_WORKSPACE}/scripts/ci/upsert-visual-policy-comment.mjs`
-            );
-
-            await upsertVisualPolicyComment({
-              github,
-              context,
-              core,
-              marker: process.env.VISUAL_POLICY_COMMENT_MARKER,
-              summaryPath: process.env.VISUAL_POLICY_SUMMARY_PATH,
-            });
+          artifact_name: ci-pr-visual-policy-summary
+          base_sha: ${{ github.event.pull_request.base.sha }}
+          head_sha: ${{ github.sha }}
+          summary_json_path: artifacts/ci/ci-pr-visual-policy-summary.json
+          summary_md_path: artifacts/ci/ci-pr-visual-policy-summary.md
+          summary_title: CI PR Visual Baseline Policy Summary
 
       - name: Run Ultracite check on changed files
         shell: bash

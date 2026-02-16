@@ -56,6 +56,7 @@ This policy defines how Playwright visual baselines are updated and reviewed for
   - JSON report
   - Visual summary (`json`, `md`)
 - CI PR gates (`ci.yml` and `web-pr-gate.yml`) post/update a remediation comment when checklist validation fails.
+- Shared implementation for the PR policy gate lives in `.github/actions/visual-policy-gate/action.yml`.
 - If PR visual job fails, inspect diff traces first, then decide:
   - fix code regression
   - or update baselines intentionally
