@@ -102,7 +102,7 @@ export default function DemoPage() {
         title={t('error.unexpected')}
       >
         <section className="card grid gap-3 p-3 sm:gap-4 sm:p-5">
-          <div className="rounded-xl border border-border/35 bg-background/65 p-3 text-muted-foreground text-sm sm:p-4">
+          <div className="rounded-xl border border-border/25 bg-background/60 p-3 text-muted-foreground text-sm sm:p-4">
             {t('demo.info.trackEveryChange')}
           </div>
           <label className="grid gap-2 font-medium text-foreground text-sm">
@@ -125,14 +125,14 @@ export default function DemoPage() {
             </button>
             {result?.draftId ? (
               <Link
-                className={`rounded-full border border-border/35 bg-background/65 px-5 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/78 sm:py-2 ${focusRingClass}`}
+                className={`rounded-full border border-transparent bg-background/58 px-5 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 sm:py-2 ${focusRingClass}`}
                 href={`/drafts/${result.draftId}`}
               >
                 {t('demo.actions.openDraft')}
               </Link>
             ) : null}
             <Link
-              className={`rounded-full border border-border/35 bg-background/65 px-5 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/78 sm:py-2 ${focusRingClass}`}
+              className={`rounded-full border border-transparent bg-background/58 px-5 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 sm:py-2 ${focusRingClass}`}
               href="/feed"
             >
               {t('feed.exploreFeeds')}
@@ -171,7 +171,7 @@ export default function DemoPage() {
           <ul className="grid gap-2 text-sm">
             {steps.map((step) => (
               <li
-                className="flex items-center justify-between rounded-xl border border-border/35 bg-background/65 p-2.5 sm:p-3"
+                className="flex items-center justify-between rounded-xl border border-border/25 bg-background/60 p-2.5 sm:p-3"
                 key={step.key}
               >
                 <span className="text-foreground">{t(step.labelKey)}</span>
@@ -191,11 +191,11 @@ export default function DemoPage() {
 
         {result ? (
           <section className="card grid gap-3 p-3 sm:p-5 md:grid-cols-2">
-            <div className="rounded-xl border border-border/35 bg-background/65 p-3 text-xs sm:p-4">
+            <div className="rounded-xl border border-border/25 bg-background/60 p-3 text-xs sm:p-4">
               <p className="text-muted-foreground">{t('demo.summary.draft')}</p>
               <p className="mt-1 break-all text-foreground">{result.draftId}</p>
             </div>
-            <div className="rounded-xl border border-border/35 bg-background/65 p-3 text-xs sm:p-4">
+            <div className="rounded-xl border border-border/25 bg-background/60 p-3 text-xs sm:p-4">
               <p className="text-muted-foreground">
                 {t('demo.summary.fixRequest')}
               </p>
@@ -203,7 +203,7 @@ export default function DemoPage() {
                 {result.fixRequestId}
               </p>
             </div>
-            <div className="rounded-xl border border-border/35 bg-background/65 p-3 text-xs sm:p-4">
+            <div className="rounded-xl border border-border/25 bg-background/60 p-3 text-xs sm:p-4">
               <p className="text-muted-foreground">
                 {t('demo.summary.pullRequest')}
               </p>
@@ -211,7 +211,7 @@ export default function DemoPage() {
                 {result.pullRequestId}
               </p>
             </div>
-            <div className="rounded-xl border border-border/35 bg-background/65 p-3 text-xs sm:p-4">
+            <div className="rounded-xl border border-border/25 bg-background/60 p-3 text-xs sm:p-4">
               <p className="text-muted-foreground">
                 {t('demo.summary.glowUp')}
               </p>
