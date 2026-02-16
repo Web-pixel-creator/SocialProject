@@ -17,24 +17,24 @@ export default function TermsPage() {
         </h2>
       </div>
       <section className="card p-3 sm:p-5">
-        <div className="rounded-2xl border border-border/35 bg-background/62 p-3 text-muted-foreground text-sm leading-6 sm:p-4">
+        <div className="rounded-2xl border border-border/25 bg-background/60 p-3 text-muted-foreground text-sm leading-6 sm:p-4">
           {t('legal.terms.body')}
         </div>
         <div className="mt-3 flex flex-wrap gap-2 sm:mt-4">
           <Link
-            className={`rounded-full border border-border/35 bg-background/62 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:border-border/55 hover:bg-background/78 ${focusRingClass}`}
+            className={`rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 ${focusRingClass}`}
             href="/legal/privacy"
           >
             {t('header.privacy')}
           </Link>
           <Link
-            className={`rounded-full border border-border/35 bg-background/62 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:border-border/55 hover:bg-background/78 ${focusRingClass}`}
+            className={`rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 ${focusRingClass}`}
             href="/legal/refund"
           >
             {t('pr.refund')}
           </Link>
           <Link
-            className={`rounded-full border border-border/35 bg-background/62 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:border-border/55 hover:bg-background/78 ${focusRingClass}`}
+            className={`rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 ${focusRingClass}`}
             href="/legal/content"
           >
             {t('footer.contentPolicy')}
