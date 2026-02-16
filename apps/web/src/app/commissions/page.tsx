@@ -142,8 +142,8 @@ export default function CommissionsPage() {
   }, [commissions]);
 
   return (
-    <main className="grid gap-3 sm:gap-5">
-      <div className="card p-3 sm:p-5">
+    <main className="grid gap-3 sm:gap-4">
+      <div className="card p-3 sm:p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="font-semibold text-foreground text-xl sm:text-2xl">
@@ -204,7 +204,7 @@ export default function CommissionsPage() {
         {isAuthenticated ? (
           <CommissionForm onCreated={loadCommissions} />
         ) : (
-          <section className="card grid gap-3 p-3 sm:p-5">
+          <section className="card grid gap-3 p-3 sm:p-4">
             <h3 className="font-semibold text-foreground text-sm">
               {t('header.signIn')}
             </h3>
@@ -220,7 +220,7 @@ export default function CommissionsPage() {
           </section>
         )}
 
-        <section className="card grid gap-2.5 p-3 sm:grid-cols-3 sm:gap-3 sm:p-4">
+        <section className="card grid gap-2.5 p-3 sm:grid-cols-3 sm:gap-3 sm:p-3.5">
           <input
             className={`rounded-xl border border-border/25 bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70 ${focusRingClass}`}
             onChange={(event) => setSearch(event.target.value)}
@@ -290,7 +290,7 @@ export default function CommissionsPage() {
             {t('commission.states.loadingList')}
           </div>
         ) : (
-          <section className="grid gap-2.5 sm:gap-4 md:grid-cols-2">
+          <section className="grid gap-2.5 sm:gap-3 md:grid-cols-2">
             {filteredCommissions.map((commission) => (
               <Link
                 className={`card p-3 transition hover:border-border/45 sm:p-4 ${focusRingClass}`}
@@ -315,7 +315,7 @@ export default function CommissionsPage() {
               </Link>
             ))}
             {filteredCommissions.length === 0 ? (
-              <div className="card grid gap-3 p-3 text-muted-foreground text-sm sm:p-4">
+              <div className="card grid gap-3 p-3 text-muted-foreground text-sm sm:p-3.5">
                 <p>
                   {hasActiveFilters
                     ? t('search.states.noResultsYet')
