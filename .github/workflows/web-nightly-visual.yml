@@ -22,10 +22,10 @@ jobs:
         uses: ./.github/actions/playwright-bootstrap
 
       - name: Run visual smoke capture
-        env:
-          PLAYWRIGHT_JSON_OUTPUT_NAME: nightly-visual-report.json
-          PLAYWRIGHT_JSON_OUTPUT_DIR: test-results
-        run: npm --workspace apps/web run test:e2e -- --reporter=html,json e2e/visual-smoke.spec.ts
+        uses: ./.github/actions/playwright-test-run
+        with:
+          report_json_name: nightly-visual-report.json
+          spec_paths: e2e/visual-smoke.spec.ts
 
       - name: Generate and upload visual smoke summary
         if: always()

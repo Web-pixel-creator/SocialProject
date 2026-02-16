@@ -271,10 +271,9 @@ jobs:
         uses: ./.github/actions/playwright-bootstrap
 
       - name: Run Playwright E2E suite
-        env:
-          PLAYWRIGHT_JSON_OUTPUT_NAME: ci-pr-e2e-report.json
-          PLAYWRIGHT_JSON_OUTPUT_DIR: test-results
-        run: npm --workspace apps/web run test:e2e -- --reporter=html,json
+        uses: ./.github/actions/playwright-test-run
+        with:
+          report_json_name: ci-pr-e2e-report.json
 
       - name: Generate and upload Playwright PR smoke summary
         if: always()

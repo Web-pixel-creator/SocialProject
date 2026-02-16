@@ -1,0 +1,51 @@
+name: Playwright Test Run
+description: Run Playwright tests in apps/web with consistent JSON reporting and optional spec filters.
+
+inputs:
+  report_json_name:
+    description: File name for Playwright JSON report output.
+    required: true
+  report_json_dir:
+    description: Directory for Playwright JSON report output.
+    required: false
+    default: test-results
+  reporter:
+    description: Playwright reporter list.
+    required: false
+    default: html,json
+  spec_paths:
+    description: Optional newline-separated spec paths to run.
+    required: false
+    default: ""
+  workspace:
+    description: npm workspace where Playwright tests run.
+    required: false
+    default: apps/web
+  npm_script:
+    description: npm script name used to run Playwright tests.
+    required: false
+    default: test:e2e
+
+runs:
+  using: composite
+  steps:
+    - name: Run Playwright test command
+      shell: bash
+      env:
+        PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ inputs.report_json_name }}
+        PLAYWRIGHT_JSON_OUTPUT_DIR: ${{ inputs.report_json_dir }}
+        PLAYWRIGHT_REPORTER: ${{ inputs.reporter }}
+        PLAYWRIGHT_SPEC_PATHS: ${{ inputs.spec_paths }}
+      run: |
+        cmd=(npm --workspace "${{ inputs.workspace }}" run "${{ inputs.npm_script }}" -- --reporter="${PLAYWRIGHT_REPORTER}")
+
+        if [ -n "${PLAYWRIGHT_SPEC_PATHS}" ]; then
+          while IFS= read -r spec_path; do
+            if [ -z "${spec_path}" ]; then
+              continue
+            fi
+            cmd+=("${spec_path}")
+          done <<< "${PLAYWRIGHT_SPEC_PATHS}"
+        fi
+
+        "${cmd[@]}"

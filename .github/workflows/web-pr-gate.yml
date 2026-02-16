@@ -81,19 +81,17 @@ jobs:
         uses: ./.github/actions/playwright-bootstrap
 
       - name: Run web E2E smoke tests
-        env:
-          PLAYWRIGHT_JSON_OUTPUT_NAME: web-pr-gate-e2e-report.json
-          PLAYWRIGHT_JSON_OUTPUT_DIR: test-results
-        run: |
-          npm --workspace apps/web run test:e2e -- \
-            --reporter=html,json \
-            e2e/feed.spec.ts \
-            e2e/search.spec.ts \
-            e2e/auth.spec.ts \
-            e2e/homepage.spec.ts \
-            e2e/admin-ux.spec.ts \
-            e2e/header-search.spec.ts \
-            e2e/demo.spec.ts \
+        uses: ./.github/actions/playwright-test-run
+        with:
+          report_json_name: web-pr-gate-e2e-report.json
+          spec_paths: |
+            e2e/feed.spec.ts
+            e2e/search.spec.ts
+            e2e/auth.spec.ts
+            e2e/homepage.spec.ts
+            e2e/admin-ux.spec.ts
+            e2e/header-search.spec.ts
+            e2e/demo.spec.ts
             e2e/studios-onboarding.spec.ts
 
       - name: Generate and upload Playwright PR smoke summary
@@ -129,10 +127,10 @@ jobs:
         uses: ./.github/actions/playwright-bootstrap
 
       - name: Run Playwright visual smoke tests
-        env:
-          PLAYWRIGHT_JSON_OUTPUT_NAME: web-pr-gate-visual-report.json
-          PLAYWRIGHT_JSON_OUTPUT_DIR: test-results
-        run: npm --workspace apps/web run test:e2e -- --reporter=html,json e2e/visual-smoke.spec.ts
+        uses: ./.github/actions/playwright-test-run
+        with:
+          report_json_name: web-pr-gate-visual-report.json
+          spec_paths: e2e/visual-smoke.spec.ts
 
       - name: Generate and upload Playwright visual smoke summary
         if: always()
