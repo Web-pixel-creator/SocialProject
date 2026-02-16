@@ -25,11 +25,15 @@ Policy:
   - `search-desktop-chromium.png`
   - `commissions-desktop-chromium.png`
   - `privacy-desktop-chromium.png`
+  - `demo-desktop-chromium.png`
+  - `legal-terms-desktop-chromium.png`
   - `home-mobile-chromium.png`
   - `feed-mobile-chromium.png`
   - `search-mobile-chromium.png`
   - `commissions-mobile-chromium.png`
   - `privacy-mobile-chromium.png`
+  - `demo-mobile-chromium.png`
+  - `legal-terms-mobile-chromium.png`
 
 ## Update workflow
 

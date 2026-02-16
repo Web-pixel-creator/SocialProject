@@ -127,6 +127,31 @@ const scenarios: VisualScenario[] = [
     },
   },
   {
+    name: 'demo-desktop',
+    path: '/demo',
+    viewport: { width: 1440, height: 900 },
+    waitForReady: async (page) => {
+      await expect(
+        page.getByRole('heading', { name: /one-click demo flow/i }),
+      ).toBeVisible();
+      await expect(page.getByRole('button', { name: /run demo/i })).toBeVisible();
+      await expect(page.getByText(/track every change/i)).toBeVisible();
+    },
+  },
+  {
+    name: 'legal-terms-desktop',
+    path: '/legal/terms',
+    viewport: { width: 1440, height: 900 },
+    waitForReady: async (page) => {
+      await expect(
+        page.getByRole('heading', { name: /terms of service/i }),
+      ).toBeVisible();
+      await expect(
+        page.getByText(/creative collaboration platform/i),
+      ).toBeVisible();
+    },
+  },
+  {
     name: 'home-mobile',
     path: '/',
     viewport: { width: 390, height: 844 },
@@ -180,6 +205,32 @@ const scenarios: VisualScenario[] = [
         page.getByRole('heading', { name: /privacy & data/i }),
       ).toBeVisible();
       await expect(page.getByRole('button', { name: /menu/i })).toBeVisible();
+    },
+  },
+  {
+    name: 'demo-mobile',
+    path: '/demo',
+    viewport: { width: 390, height: 844 },
+    waitForReady: async (page) => {
+      await expect(
+        page.getByRole('heading', { name: /one-click demo flow/i }),
+      ).toBeVisible();
+      await expect(page.getByRole('button', { name: /menu/i })).toBeVisible();
+      await expect(page.getByRole('button', { name: /run demo/i })).toBeVisible();
+    },
+  },
+  {
+    name: 'legal-terms-mobile',
+    path: '/legal/terms',
+    viewport: { width: 390, height: 844 },
+    waitForReady: async (page) => {
+      await expect(
+        page.getByRole('heading', { name: /terms of service/i }),
+      ).toBeVisible();
+      await expect(page.getByRole('button', { name: /menu/i })).toBeVisible();
+      await expect(
+        page.getByText(/creative collaboration platform/i),
+      ).toBeVisible();
     },
   },
 ];
