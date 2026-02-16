@@ -452,14 +452,18 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
       }`}
     >
       <div className="flex flex-wrap items-center justify-between gap-1.5">
-        <span className="inline-flex w-fit items-center rounded-full border border-border/35 bg-background/58 px-2.5 py-1 text-[11px] sm:text-xs">
+        <span className="inline-flex w-fit items-center rounded-full border border-transparent bg-background/55 px-2.5 py-1 text-[11px] sm:text-xs">
           {shownLabel}: {shownValue}
         </span>
         {hasFilterPanel ? (
           <button
             aria-expanded={filtersOpen}
             aria-keyshortcuts="Shift+F"
-            className="inline-flex min-h-8 w-fit flex-shrink-0 items-center gap-1 rounded-full border border-border/35 bg-background/52 px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition hover:border-border/55 hover:bg-background/78 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-3.5 sm:py-1.5 sm:text-xs"
+            className={`inline-flex min-h-8 w-fit flex-shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-3.5 sm:py-1.5 sm:text-xs ${
+              filtersOpen
+                ? 'border-primary/35 bg-primary/10 text-primary'
+                : 'border-transparent bg-background/52 text-muted-foreground hover:bg-background/74 hover:text-foreground'
+            }`}
             onClick={onToggleFilters}
             ref={filtersButtonRef}
             type="button"
@@ -783,7 +787,7 @@ export const FeedTabs = () => {
 
   const tabClass = (tab: string, isActive: boolean): string => {
     if (!isActive) {
-      return 'border-border/35 bg-background/62 text-muted-foreground hover:border-border/55 hover:bg-background/78 hover:text-foreground';
+      return 'border-transparent bg-background/52 text-muted-foreground hover:bg-background/72 hover:text-foreground';
     }
     if (tab === 'Hot Now') {
       return 'tag-hot';
@@ -791,7 +795,7 @@ export const FeedTabs = () => {
     if (tab === 'Live Drafts') {
       return 'tag-live';
     }
-    return 'border-primary/50 bg-primary/15 text-primary';
+    return 'border-primary/45 bg-primary/12 text-primary';
   };
 
   useEffect(() => {
@@ -1819,7 +1823,7 @@ export const FeedTabs = () => {
     <section className="grid gap-3 sm:gap-4">
       <div className="grid gap-2.5 sm:gap-3">
         <div className="grid gap-1.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-          <div className="no-scrollbar flex min-w-0 items-center gap-1.5 overflow-x-auto rounded-2xl bg-card/55 p-1 pr-1.5 sm:p-1.5 sm:pr-2">
+          <div className="no-scrollbar flex min-w-0 items-center gap-1.5 overflow-x-auto rounded-2xl bg-card/48 p-1 pr-1.5 sm:p-1.5 sm:pr-2">
             {PRIMARY_TABS.map((tab) => (
               <button
                 aria-pressed={active === tab}
@@ -1841,8 +1845,8 @@ export const FeedTabs = () => {
                 aria-expanded={moreOpen}
                 className={`inline-flex min-h-8 items-center gap-1 rounded-full border px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-4 sm:py-2 sm:text-xs ${
                   MORE_TABS.includes(active)
-                    ? 'border-primary/50 bg-primary/15 text-primary'
-                    : 'border-border/35 bg-card/55 text-muted-foreground hover:border-border/55 hover:bg-card/76 hover:text-foreground'
+                    ? 'border-primary/45 bg-primary/12 text-primary'
+                    : 'border-transparent bg-card/48 text-muted-foreground hover:bg-card/68 hover:text-foreground'
                 }`}
                 onClick={() => {
                   setMoreOpen((previous) => !previous);
@@ -1869,8 +1873,8 @@ export const FeedTabs = () => {
                 <summary
                   className={`inline-flex min-h-8 cursor-pointer list-none items-center gap-1 rounded-full border px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-4 sm:py-2 sm:text-xs [&::-webkit-details-marker]:hidden ${
                     MORE_TABS.includes(active)
-                      ? 'border-primary/50 bg-primary/15 text-primary'
-                      : 'border-border/35 bg-card/55 text-muted-foreground hover:border-border/55 hover:bg-card/76 hover:text-foreground'
+                      ? 'border-primary/45 bg-primary/12 text-primary'
+                      : 'border-transparent bg-card/48 text-muted-foreground hover:bg-card/68 hover:text-foreground'
                   }`}
                   data-testid="feed-more-summary"
                 >
@@ -1889,9 +1893,9 @@ export const FeedTabs = () => {
             )}
           </div>
         </div>
-        <div className="grid gap-2 rounded-2xl border border-border/35 bg-card/72 p-2 sm:p-2.5 lg:p-3">
+        <div className="grid gap-2 rounded-2xl border border-border/25 bg-card/68 p-2 sm:p-2.5 lg:p-3">
           <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-            <label className="group relative flex min-h-9 w-full min-w-0 items-center gap-2 rounded-full border border-border/35 bg-background/74 px-3 py-2 text-muted-foreground text-xs transition focus-within:border-primary/35 focus-within:bg-background hover:border-border/55 hover:bg-background/78 sm:px-3.5 sm:py-2.5">
+            <label className="group relative flex min-h-9 w-full min-w-0 items-center gap-2 rounded-full border border-border/25 bg-background/70 px-3 py-2 text-muted-foreground text-xs transition focus-within:border-primary/35 focus-within:bg-background hover:border-border/45 hover:bg-background/78 sm:px-3.5 sm:py-2.5">
               <Search aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
               <input
                 aria-keyshortcuts="/"
@@ -1918,14 +1922,14 @@ export const FeedTabs = () => {
                 </span>
               )}
             </label>
-            <fieldset className="inline-flex w-fit items-center gap-1 rounded-full border border-border/35 bg-background/48 p-0.5 lg:justify-self-end">
+            <fieldset className="inline-flex w-fit items-center gap-1 rounded-full border border-transparent bg-background/42 p-0.5 lg:justify-self-end">
               <legend className="sr-only">{densityLabel}</legend>
               <button
                 aria-pressed={density === 'comfort'}
                 className={`inline-flex min-h-8 items-center gap-1 rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-3.5 sm:py-2 ${
                   density === 'comfort'
                     ? 'border border-primary/35 bg-primary/10 text-primary'
-                    : 'border border-border/35 bg-background/34 text-muted-foreground hover:border-border/55 hover:text-foreground'
+                    : 'border border-transparent bg-background/34 text-muted-foreground hover:bg-background/56 hover:text-foreground'
                 }`}
                 onClick={() => handleDensityChange('comfort')}
                 type="button"
@@ -1939,7 +1943,7 @@ export const FeedTabs = () => {
                 className={`inline-flex min-h-8 items-center gap-1 rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-3.5 sm:py-2 ${
                   density === 'compact'
                     ? 'border border-primary/35 bg-primary/10 text-primary'
-                    : 'border border-border/35 bg-background/34 text-muted-foreground hover:border-border/55 hover:text-foreground'
+                    : 'border border-transparent bg-background/34 text-muted-foreground hover:bg-background/56 hover:text-foreground'
                 }`}
                 onClick={() => handleDensityChange('compact')}
                 type="button"
