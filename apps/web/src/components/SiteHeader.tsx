@@ -279,6 +279,7 @@ export const SiteHeader = () => {
           const active = pathname === link.href;
           return (
             <Link
+              aria-current={active ? 'page' : undefined}
               className={`inline-flex min-h-8 items-center rounded-full border px-3 py-1.5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:py-2 ${
                 active
                   ? 'border-primary/45 bg-primary/10 text-primary'
@@ -335,6 +336,7 @@ export const SiteHeader = () => {
               const active = pathname === link.href;
               return (
                 <Link
+                  aria-current={active ? 'page' : undefined}
                   className={`rounded-xl border px-3 py-2 transition ${focusRingClass} ${
                     active
                       ? 'border-primary/45 bg-primary/10 text-primary'

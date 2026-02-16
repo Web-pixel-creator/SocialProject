@@ -677,6 +677,7 @@ function SearchPageContent() {
       <div className="card grid gap-3 p-3 sm:gap-3.5 sm:p-4">
         <div className="flex flex-wrap gap-2">
           <button
+            aria-pressed={mode === 'text'}
             className={`rounded-lg px-3 py-1.5 text-sm sm:py-2 ${focusRingClass} ${
               mode === 'text'
                 ? 'border border-primary/35 bg-primary/10 text-primary'
@@ -688,6 +689,7 @@ function SearchPageContent() {
             {t('search.mode.text')}
           </button>
           <button
+            aria-pressed={mode === 'visual'}
             className={`rounded-lg px-3 py-1.5 text-sm sm:py-2 ${focusRingClass} ${
               mode === 'visual'
                 ? 'border border-primary/35 bg-primary/10 text-primary'
@@ -714,6 +716,7 @@ function SearchPageContent() {
             <div className="flex flex-wrap items-center gap-2">
               {textQueryPresets.map((preset) => (
                 <button
+                  aria-pressed={query === preset}
                   className={`rounded-full border border-border/25 bg-muted/58 px-3 py-1 text-muted-foreground text-xs transition hover:bg-muted/74 hover:text-foreground ${focusRingClass}`}
                   key={preset}
                   onClick={() => setQuery(preset)}
@@ -800,6 +803,7 @@ function SearchPageContent() {
             <div className="flex flex-wrap items-center gap-2">
               {visualTagPresets.map((preset) => (
                 <button
+                  aria-pressed={visualTags === preset}
                   className={`rounded-full border border-border/25 bg-muted/58 px-3 py-1 text-muted-foreground text-xs transition hover:bg-muted/74 hover:text-foreground ${focusRingClass}`}
                   key={preset}
                   onClick={() => setVisualTags(preset)}
