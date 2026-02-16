@@ -139,6 +139,10 @@ jobs:
       - name: Bootstrap Node CI tooling
         uses: ./.github/actions/node-ci-bootstrap
 
+      - name: Validate shell script syntax
+        shell: bash
+        run: bash scripts/ci/check-shell-scripts.sh
+
       - name: Validate locale files
         run: npm run i18n:check
 
