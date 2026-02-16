@@ -15,6 +15,8 @@ test.describe('Mobile navigation', () => {
 
     await page.keyboard.press('Escape');
     await expect(page.locator('#mobile-site-menu')).toHaveCount(0);
+    await expect(menuToggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(menuToggle).toBeFocused();
   });
 
   test('navigates to search from mobile menu', async ({ page }) => {
@@ -29,5 +31,25 @@ test.describe('Mobile navigation', () => {
       .click();
 
     await expect(page).toHaveURL(/\/search/);
+  });
+
+  test('opens mobile menu with slash shortcut and focuses search input', async ({
+    page,
+  }) => {
+    const menuToggle = page.locator('button[aria-controls="mobile-site-menu"]');
+
+    await expect(menuToggle).toBeVisible();
+    await expect(menuToggle).toHaveAttribute('aria-expanded', 'false');
+
+    await page.locator('main').first().click();
+    await page.keyboard.press('/');
+
+    await expect(menuToggle).toHaveAttribute('aria-expanded', 'true');
+    const mobileMenu = page.locator('#mobile-site-menu');
+    await expect(mobileMenu).toBeVisible();
+
+    await expect(
+      mobileMenu.getByRole('searchbox', { name: /Search \(text \+ visual\)/i }),
+    ).toBeFocused();
   });
 });

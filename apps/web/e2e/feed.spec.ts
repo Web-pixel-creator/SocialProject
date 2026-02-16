@@ -1,5 +1,6 @@
-﻿import { expect, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
+import { navigateWithRetry } from './utils/navigation';
 
 test.describe('Feed page', () => {
     const openFiltersPanel = async (page: Page) => {
@@ -13,7 +14,7 @@ test.describe('Feed page', () => {
     };
 
     test.beforeEach(async ({ page }) => {
-        await page.goto('/feed');
+        await navigateWithRetry(page, '/feed');
     });
 
     test('renders the feed page with header', async ({ page }) => {
@@ -51,7 +52,7 @@ test.describe('Feed page', () => {
     });
 
     test('hydrates all-feed filters from query params', async ({ page }) => {
-        await page.goto(
+        await navigateWithRetry(page, 
             '/feed?sort=impact&status=draft&range=7d&intent=needs_help',
         );
         await openFiltersPanel(page);
@@ -75,7 +76,7 @@ test.describe('Feed page', () => {
                 return new URL(window.location.href).searchParams.get(key);
             }, name);
 
-        await page.goto('/feed?sort=impact&status=release&range=7d');
+        await navigateWithRetry(page, '/feed?sort=impact&status=release&range=7d');
 
         const allStatusesButton = page.getByRole('button', {
             name: /^All statuses$/i,
@@ -215,7 +216,7 @@ test.describe('Feed page', () => {
             });
         });
 
-        await page.goto('/feed');
+        await navigateWithRetry(page, '/feed');
         await page.getByRole('button', { name: /^Battles$/i }).click();
         await expect(page).toHaveURL(/tab=Battles/);
         await openFiltersPanel(page);
@@ -248,7 +249,7 @@ test.describe('Feed page', () => {
     test('primary and more tabs switch feed and update query', async ({
         page,
     }) => {
-        await page.goto('/feed');
+        await navigateWithRetry(page, '/feed');
 
         await page.getByRole('button', { name: /^Live Drafts$/i }).click();
         await expect(page).toHaveURL(/tab=Live(?:\+|%20)Drafts/);
@@ -294,7 +295,7 @@ test.describe('Feed page', () => {
         const moreDetails = page.getByTestId('feed-more-details');
 
         await moreSummary.focus();
-        await page.keyboard.press('Enter');
+        await moreSummary.press('Enter');
         await expect
             .poll(() =>
                 moreDetails.evaluate((element) => {
@@ -303,7 +304,7 @@ test.describe('Feed page', () => {
             )
             .toBe(true);
 
-        await page.keyboard.press('Escape');
+        await moreSummary.press('Escape');
         await expect
             .poll(() =>
                 moreDetails.evaluate((element) => {
@@ -591,14 +592,16 @@ test.describe('Feed page', () => {
 
         await hideAllButton.focus();
         await expect(hideAllButton).toBeFocused();
-        await page.keyboard.press('Enter');
+        await expect(hideAllButton).toBeEnabled();
+        await hideAllButton.press('Enter');
         await expect(visiblePanelsBadge).toContainText(/0\s*\/\s*4/i);
         await expect(showAllButton).toBeEnabled();
         await expect(hideAllButton).toBeDisabled();
 
         await showAllButton.focus();
         await expect(showAllButton).toBeFocused();
-        await page.keyboard.press('Space');
+        await expect(showAllButton).toBeEnabled();
+        await showAllButton.press('Space');
         await expect(visiblePanelsBadge).toContainText(/4\s*\/\s*4/i);
         await expect(showAllButton).toBeDisabled();
         await expect(hideAllButton).toBeEnabled();
@@ -648,7 +651,7 @@ test.describe('Feed page', () => {
         page,
     }) => {
         await page.emulateMedia({ reducedMotion: 'reduce' });
-        await page.goto('/feed');
+        await navigateWithRetry(page, '/feed');
 
         const liveDot = page.locator('.observer-feed-header .icon-breathe').first();
         await expect(liveDot).toBeVisible();
@@ -720,7 +723,7 @@ test.describe('Feed page', () => {
         page,
     }) => {
         await page.setViewportSize({ width: 390, height: 844 });
-        await page.goto('/feed');
+        await navigateWithRetry(page, '/feed');
 
         const mobileControls = page.getByTestId('observer-rail-mobile-controls');
         const rightRailShell = page.getByTestId('feed-right-rail-shell');
@@ -755,11 +758,49 @@ test.describe('Feed page', () => {
             .toContain('"studios":false');
     });
 
+    test('supports slash and Shift+F shortcuts on mobile feed controls', async ({
+        page,
+    }) => {
+        await page.setViewportSize({ width: 390, height: 844 });
+        await navigateWithRetry(page, '/feed');
+
+        const feedSearch = page.getByPlaceholder(
+            'Search drafts, studios, PRs... (text + visual)',
+        );
+        await expect(feedSearch).toBeVisible();
+        await expect(feedSearch).not.toBeFocused();
+
+        await focusFeedContent(page);
+        await page.keyboard.press('/');
+        await expect(feedSearch).toBeFocused();
+
+        await focusFeedContent(page);
+        const filtersButton = page
+            .locator('button[aria-expanded]')
+            .filter({ hasText: /Filters/i })
+            .first();
+        await expect(filtersButton).toHaveAttribute('aria-expanded', 'false');
+
+        await page.keyboard.press('Shift+F');
+        await expect(filtersButton).toHaveAttribute('aria-expanded', 'true');
+
+        const filtersDialog = page.getByRole('dialog', { name: /Filters/i });
+        const filtersCloseButton = filtersDialog.getByRole('button', {
+            name: /Close/i,
+        });
+        await expect(filtersCloseButton).toBeFocused();
+
+        await page.keyboard.press('Shift+F');
+        await expect(filtersDialog).toHaveCount(0);
+        await expect(filtersButton).toBeFocused();
+        await expect(filtersButton).toHaveAttribute('aria-expanded', 'false');
+    });
+
     test('keeps right rail visible on mobile observer layout', async ({
         page,
     }) => {
         await page.setViewportSize({ width: 390, height: 844 });
-        await page.goto('/feed');
+        await navigateWithRetry(page, '/feed');
 
         const observerModeChip = page
             .locator('.observer-feed-header')
@@ -781,7 +822,7 @@ test.describe('Feed page', () => {
         page,
     }) => {
         await page.setViewportSize({ width: 390, height: 844 });
-        await page.goto('/feed');
+        await navigateWithRetry(page, '/feed');
 
         await page
             .locator('.observer-feed-header')
@@ -803,6 +844,65 @@ test.describe('Feed page', () => {
         await expect(mobileDialog).toHaveCount(0);
     });
 
+    test('restores focus to mobile menu trigger after closing navigation dialog', async ({
+        page,
+    }) => {
+        await page.setViewportSize({ width: 390, height: 844 });
+        await navigateWithRetry(page, '/feed');
+
+        const menuButton = page
+            .locator('.observer-feed-header')
+            .getByRole('button', { name: /Menu/i });
+        await menuButton.click();
+
+        const mobileDialog = page.getByRole('dialog', {
+            name: /Observer navigation/i,
+        });
+        const closeButton = mobileDialog.getByRole('button', { name: /Close/i });
+
+        await expect(closeButton).toBeFocused();
+        await closeButton.click();
+        await expect(mobileDialog).toHaveCount(0);
+        await expect(menuButton).toBeFocused();
+    });
+
+    test('restores focus to mobile More and Filters triggers after closing overlays', async ({
+        page,
+    }) => {
+        await page.setViewportSize({ width: 390, height: 844 });
+        await navigateWithRetry(page, '/feed');
+
+        const moreButton = page
+            .locator('button[aria-expanded]')
+            .filter({ hasText: /More/i })
+            .first();
+        await expect(moreButton).toBeVisible();
+        await moreButton.click();
+
+        const moreDialog = page.getByRole('dialog', { name: /More/i });
+        const moreCloseButton = moreDialog.getByRole('button', { name: /Close/i });
+        await expect(moreCloseButton).toBeFocused();
+        await moreCloseButton.click();
+        await expect(moreDialog).toHaveCount(0);
+        await expect(moreButton).toBeFocused();
+
+        const filtersButton = page
+            .locator('button[aria-expanded]')
+            .filter({ hasText: /Filters/i })
+            .first();
+        await expect(filtersButton).toBeVisible();
+        await filtersButton.click();
+
+        const filtersDialog = page.getByRole('dialog', { name: /Filters/i });
+        const filtersCloseButton = filtersDialog.getByRole('button', {
+            name: /Close/i,
+        });
+        await expect(filtersCloseButton).toBeFocused();
+        await filtersCloseButton.click();
+        await expect(filtersDialog).toHaveCount(0);
+        await expect(filtersButton).toBeFocused();
+    });
+
     test('clears query via empty-state reset filters action', async ({ page }) => {
         await page.route('**/api/feed**', async (route) => {
             if (route.request().method() === 'GET') {
@@ -816,7 +916,7 @@ test.describe('Feed page', () => {
             return route.continue();
         });
 
-        await page.goto('/feed?tab=All&q=zzzz-unmatched-e2e-query');
+        await navigateWithRetry(page, '/feed?tab=All&q=zzzz-unmatched-e2e-query');
 
         const emptyStateCard = page.locator('.card').filter({
             hasText: /No search results|Feed is quiet right now/i,
@@ -833,4 +933,5 @@ test.describe('Feed page', () => {
             .toBeNull();
     });
 });
+
 

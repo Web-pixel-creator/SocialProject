@@ -136,6 +136,23 @@ const parseTags = (value: string) =>
 const parseVisualType = (value: string): VisualSearchType =>
   value === 'draft' || value === 'release' ? value : 'all';
 
+const isEditableTarget = (target: EventTarget | null): boolean => {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  const tag = target.tagName.toLowerCase();
+  if (tag === 'input' || tag === 'textarea' || tag === 'select') {
+    return true;
+  }
+
+  if (target.isContentEditable) {
+    return true;
+  }
+
+  return target.getAttribute('role') === 'textbox';
+};
+
 const focusRingClass =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
 
@@ -173,6 +190,7 @@ function SearchPageContent() {
   const [visualHasSearched, setVisualHasSearched] = useState(false);
   const [visualInputError, setVisualInputError] = useState<string | null>(null);
   const [textSearchReady, setTextSearchReady] = useState(false);
+  const textSearchInputRef = useRef<HTMLInputElement>(null);
   const [debouncedText, setDebouncedText] = useState({
     intent: initialIntent,
     profile: SEARCH_DEFAULT_PROFILE as SearchProfile,
@@ -280,6 +298,30 @@ function SearchPageContent() {
       window.clearTimeout(handle);
     };
   }, [intent, mode, profile, query, range, sort, type]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== '/') {
+        return;
+      }
+
+      if (event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+
+      if (mode !== 'text' || isEditableTarget(event.target)) {
+        return;
+      }
+
+      event.preventDefault();
+      textSearchInputRef.current?.focus();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [mode]);
 
   const textSearchParams = useMemo(
     () =>
@@ -661,9 +703,12 @@ function SearchPageContent() {
         {mode === 'text' ? (
           <>
             <input
+              aria-keyshortcuts="/"
               className={`rounded-xl border border-border/35 bg-background/62 px-3 py-2 text-foreground placeholder:text-muted-foreground/70 sm:px-4 ${focusRingClass}`}
               onChange={(event) => setQuery(event.target.value)}
               placeholder={t('search.placeholders.keyword')}
+              ref={textSearchInputRef}
+              type="search"
               value={query}
             />
             <div className="flex flex-wrap items-center gap-2">

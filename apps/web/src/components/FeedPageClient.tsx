@@ -12,6 +12,9 @@ export default function FeedPageClient() {
   const { t } = useLanguage();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const previousBodyOverflowRef = useRef<string | null>(null);
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuCloseButtonRef = useRef<HTMLButtonElement>(null);
+  const previousMobileSidebarOpenRef = useRef(false);
   const isObserverMode = true;
 
   const openMobileSidebar = useCallback(() => {
@@ -44,6 +47,23 @@ export default function FeedPageClient() {
       window.removeEventListener('keydown', handleEscape);
     };
   }, [closeMobileSidebar, mobileSidebarOpen]);
+
+  useEffect(() => {
+    const wasOpen = previousMobileSidebarOpenRef.current;
+    if (mobileSidebarOpen && !wasOpen) {
+      window.requestAnimationFrame(() => {
+        mobileMenuCloseButtonRef.current?.focus();
+      });
+    }
+
+    if (!mobileSidebarOpen && wasOpen) {
+      window.requestAnimationFrame(() => {
+        mobileMenuButtonRef.current?.focus();
+      });
+    }
+
+    previousMobileSidebarOpenRef.current = mobileSidebarOpen;
+  }, [mobileSidebarOpen]);
 
   return (
     <main className="feed-shell">
@@ -82,6 +102,7 @@ export default function FeedPageClient() {
                   <button
                     className="inline-flex min-h-8 items-center rounded-full border border-border/35 bg-background/62 px-2.5 py-1.5 font-semibold text-foreground text-xs transition hover:border-border/55 hover:bg-background/78 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:py-2 lg:hidden"
                     onClick={openMobileSidebar}
+                    ref={mobileMenuButtonRef}
                     type="button"
                   >
                     <Menu aria-hidden="true" className="mr-2 h-4 w-4" />
@@ -140,6 +161,7 @@ export default function FeedPageClient() {
               <button
                 className="inline-flex min-h-8 items-center rounded-full border border-border/35 bg-background/62 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:border-border/55 hover:bg-background/78 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:py-2"
                 onClick={closeMobileSidebar}
+                ref={mobileMenuCloseButtonRef}
                 type="button"
               >
                 <X aria-hidden="true" className="mr-1 h-4 w-4" />

@@ -12,7 +12,15 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  memo,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import useSWR from 'swr';
 import { useLanguage } from '../contexts/LanguageContext';
 import { apiClient } from '../lib/api';
@@ -402,6 +410,7 @@ interface ActiveFilterChipsProps {
   onResetIntentFilterQuick: () => void;
   onResetFilters: () => void;
   onToggleFilters: () => void;
+  filtersButtonRef: RefObject<HTMLButtonElement>;
 }
 
 const ActiveFilterChips = memo(function ActiveFilterChips({
@@ -426,6 +435,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
   onResetIntentFilterQuick,
   onResetFilters,
   onToggleFilters,
+  filtersButtonRef,
 }: ActiveFilterChipsProps) {
   const hasSecondaryRow =
     hasActiveFilters ||
@@ -448,8 +458,10 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
         {hasFilterPanel ? (
           <button
             aria-expanded={filtersOpen}
+            aria-keyshortcuts="Shift+F"
             className="inline-flex min-h-8 w-fit flex-shrink-0 items-center gap-1 rounded-full border border-border/35 bg-background/52 px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition hover:border-border/55 hover:bg-background/78 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-3.5 sm:py-1.5 sm:text-xs"
             onClick={onToggleFilters}
+            ref={filtersButtonRef}
             type="button"
           >
             <SlidersHorizontal aria-hidden="true" className="h-3.5 w-3.5" />
@@ -577,6 +589,12 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
   const [density, setDensity] = useState<FeedDensity>('comfort');
   const desktopMoreDetailsRef = useRef<HTMLDetailsElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const mobileMoreButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileMoreCloseButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileFiltersButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileFiltersCloseButtonRef = useRef<HTMLButtonElement>(null);
+  const previousMoreOpenRef = useRef(false);
+  const previousFiltersOpenRef = useRef(false);
   const isCompactDensity = density === 'compact';
   const normalizedQuery = useMemo(() => normalizeQuery(query), [query]);
   const hasSearchQuery = normalizedQuery.length > 0;
@@ -1704,6 +1722,50 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
     };
   }, [hasMobileOverlayOpen]);
 
+  useEffect(() => {
+    const wasOpen = previousMoreOpenRef.current;
+    if (!isMobileViewport) {
+      previousMoreOpenRef.current = moreOpen;
+      return;
+    }
+
+    if (moreOpen && !wasOpen) {
+      window.requestAnimationFrame(() => {
+        mobileMoreCloseButtonRef.current?.focus();
+      });
+    }
+
+    if (!moreOpen && wasOpen) {
+      window.requestAnimationFrame(() => {
+        mobileMoreButtonRef.current?.focus();
+      });
+    }
+
+    previousMoreOpenRef.current = moreOpen;
+  }, [isMobileViewport, moreOpen]);
+
+  useEffect(() => {
+    const wasOpen = previousFiltersOpenRef.current;
+    if (!isMobileViewport) {
+      previousFiltersOpenRef.current = filtersOpen;
+      return;
+    }
+
+    if (filtersOpen && !wasOpen) {
+      window.requestAnimationFrame(() => {
+        mobileFiltersCloseButtonRef.current?.focus();
+      });
+    }
+
+    if (!filtersOpen && wasOpen) {
+      window.requestAnimationFrame(() => {
+        mobileFiltersButtonRef.current?.focus();
+      });
+    }
+
+    previousFiltersOpenRef.current = filtersOpen;
+  }, [filtersOpen, isMobileViewport]);
+
   const shownValue =
     hasMore && !fallbackUsed
       ? `${visibleItems.length} / ${items.length}+`
@@ -1790,6 +1852,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
                   setMoreOpen((previous) => !previous);
                   setFiltersOpen(false);
                 }}
+                ref={mobileMoreButtonRef}
                 type="button"
               >
                 {moreLabel}
@@ -1835,6 +1898,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
             <label className="group relative flex min-h-9 w-full min-w-0 items-center gap-2 rounded-full border border-border/35 bg-background/74 px-3 py-2 text-muted-foreground text-xs transition focus-within:border-primary/35 focus-within:bg-background hover:border-border/55 hover:bg-background/78 sm:px-3.5 sm:py-2.5">
               <Search aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
               <input
+                aria-keyshortcuts="/"
                 aria-label={t('feed.searchAriaLabel')}
                 className="w-full bg-transparent text-foreground text-sm outline-none placeholder:text-muted-foreground/65"
                 onChange={(event) => handleQueryChange(event.target.value)}
@@ -1893,6 +1957,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
           <ActiveFilterChips
             activeFilterCount={activeFilterCount}
             activeFilterPills={activeFilterPills}
+            filtersButtonRef={mobileFiltersButtonRef}
             filtersOpen={filtersOpen}
             hasActiveFilters={hasActiveFilters}
             hasBattleFilterApplied={hasBattleFilterApplied}
@@ -1949,6 +2014,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
               <button
                 className="rounded-full border border-border/35 bg-background/62 px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition hover:border-primary/35 hover:bg-background/78 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 onClick={() => setFiltersOpen(false)}
+                ref={mobileFiltersCloseButtonRef}
                 type="button"
               >
                 {t('common.close')}
@@ -1995,6 +2061,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
               <button
                 className="rounded-full border border-border/35 bg-background/62 px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition hover:border-primary/35 hover:bg-background/78 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 onClick={() => setMoreOpen(false)}
+                ref={mobileMoreCloseButtonRef}
                 type="button"
               >
                 {t('common.close')}

@@ -35,6 +35,59 @@ test.describe('Auth pages', () => {
         ).toBeVisible();
     });
 
+    test('focuses header search with slash on login page', async ({ page }) => {
+        await page.goto('/login');
+
+        const headerSearch = page
+            .locator('header')
+            .first()
+            .getByRole('searchbox', { name: /Search \(text \+ visual\)/i });
+
+        await expect(headerSearch).toBeVisible();
+        await expect(headerSearch).not.toBeFocused();
+
+        await page.getByRole('heading', { name: /welcome back/i }).click();
+        await page.keyboard.press('/');
+        await expect(headerSearch).toBeFocused();
+    });
+
+    test('does not hijack slash when email input is focused on login page', async ({
+        page,
+    }) => {
+        await page.goto('/login');
+
+        const emailInput = page.getByLabel(/email/i);
+        await emailInput.fill('observer@example.com');
+        await expect(emailInput).toHaveValue('observer@example.com');
+
+        await page.keyboard.press('/');
+        await expect(emailInput).toHaveValue('observer@example.com/');
+    });
+
+    test('opens mobile menu and focuses search with slash on register page', async ({
+        page,
+    }) => {
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.goto('/register');
+
+        const menuButton = page.locator('button[aria-controls="mobile-site-menu"]');
+        await expect(menuButton).toBeVisible();
+        await expect(menuButton).toHaveAttribute('aria-expanded', 'false');
+
+        await page.getByRole('heading', { name: /create account/i }).click();
+        await page.keyboard.press('/');
+
+        await expect(menuButton).toHaveAttribute('aria-expanded', 'true');
+        const mobileMenu = page.locator('#mobile-site-menu');
+        await expect(mobileMenu).toBeVisible();
+
+        await expect(
+            mobileMenu.getByRole('searchbox', {
+                name: /Search \(text \+ visual\)/i,
+            }),
+        ).toBeFocused();
+    });
+
     test('register submits and redirects to feed', async ({ page }) => {
         await page.route('**/api/**', async (route) => {
             const requestUrl = new URL(route.request().url());
@@ -145,3 +198,4 @@ test.describe('Auth pages', () => {
         await expect(page).toHaveURL(/\/login/);
     });
 });
+

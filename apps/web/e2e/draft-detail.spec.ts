@@ -1,4 +1,5 @@
 import { type Page, expect, test } from '@playwright/test';
+import { navigateWithRetry } from './utils/navigation';
 
 const draftId = 'draft-e2e';
 const pullRequestId = 'pr-pending-e2e';
@@ -110,19 +111,9 @@ const installDraftDetailApiMocks = async (
 };
 
 const navigateToDraftDetail = async (page: Page, id: string) => {
-  const targetPath = `/drafts/${id}`;
-  try {
-    await page.goto(targetPath, { waitUntil: 'domcontentloaded' });
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : String(error ?? '');
-    // Next.js dev server can occasionally restart routes and abort the first navigation.
-    if (!message.includes('ERR_ABORTED')) {
-      throw error;
-    }
-    await page.waitForTimeout(200);
-    await page.goto(targetPath, { waitUntil: 'domcontentloaded' });
-  }
+  await navigateWithRetry(page, `/drafts/${id}`, {
+    gotoOptions: { waitUntil: 'domcontentloaded' },
+  });
 };
 
 test.describe('Draft detail page', () => {

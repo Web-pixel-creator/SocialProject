@@ -9,6 +9,23 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ModeToggle } from './mode-toggle';
 
+const isEditableTarget = (target: EventTarget | null): boolean => {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  const tag = target.tagName.toLowerCase();
+  if (tag === 'input' || tag === 'textarea' || tag === 'select') {
+    return true;
+  }
+
+  if (target.isContentEditable) {
+    return true;
+  }
+
+  return target.getAttribute('role') === 'textbox';
+};
+
 export const SiteHeader = () => {
   const { t } = useLanguage();
   const { user, logout, loading } = useAuth();
@@ -20,7 +37,10 @@ export const SiteHeader = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const mobileToggleRef = useRef<HTMLButtonElement | null>(null);
+  const desktopSearchInputRef = useRef<HTMLInputElement | null>(null);
+  const mobileSearchInputRef = useRef<HTMLInputElement | null>(null);
   const firstMobileLinkRef = useRef<HTMLAnchorElement | null>(null);
+  const shouldFocusMobileSearchOnOpenRef = useRef(false);
   const previousBodyOverflowRef = useRef<string>('');
   const userLabel = user?.email?.split('@')[0] ?? user?.email ?? '';
 
@@ -135,7 +155,12 @@ export const SiteHeader = () => {
 
     previousBodyOverflowRef.current = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    firstMobileLinkRef.current?.focus();
+    if (shouldFocusMobileSearchOnOpenRef.current) {
+      shouldFocusMobileSearchOnOpenRef.current = false;
+      mobileSearchInputRef.current?.focus();
+    } else {
+      firstMobileLinkRef.current?.focus();
+    }
     window.addEventListener('keydown', handleEscape);
 
     return () => {
@@ -143,6 +168,46 @@ export const SiteHeader = () => {
       window.removeEventListener('keydown', handleEscape);
     };
   }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    const handleSlashShortcut = (event: KeyboardEvent) => {
+      if (event.key !== '/') {
+        return;
+      }
+
+      if (event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+
+      if (pathname === '/feed' || pathname === '/search') {
+        return;
+      }
+
+      if (isEditableTarget(event.target)) {
+        return;
+      }
+
+      event.preventDefault();
+      const isMobileViewport = window.matchMedia('(max-width: 767px)').matches;
+      if (!isMobileViewport) {
+        desktopSearchInputRef.current?.focus();
+        return;
+      }
+
+      if (mobileMenuOpen) {
+        mobileSearchInputRef.current?.focus();
+        return;
+      }
+
+      shouldFocusMobileSearchOnOpenRef.current = true;
+      setMobileMenuOpen(true);
+    };
+
+    window.addEventListener('keydown', handleSlashShortcut);
+    return () => {
+      window.removeEventListener('keydown', handleSlashShortcut);
+    };
+  }, [mobileMenuOpen, pathname]);
 
   return (
     <header className="topbar-surface sticky top-3 z-50 mb-5 rounded-2xl border border-border/35 p-3 sm:p-4 lg:p-5">
@@ -167,10 +232,12 @@ export const SiteHeader = () => {
                 className="mr-2 h-4 w-4 text-muted-foreground"
               />
               <input
+                aria-keyshortcuts="/"
                 aria-label={t('feed.searchAriaLabel')}
                 className="w-52 bg-transparent text-foreground outline-none placeholder:text-muted-foreground"
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder={t('header.searchPlaceholder')}
+                ref={desktopSearchInputRef}
                 type="search"
                 value={searchQuery}
               />
@@ -242,10 +309,12 @@ export const SiteHeader = () => {
                 className="mr-2 h-4 w-4 text-muted-foreground"
               />
               <input
+                aria-keyshortcuts="/"
                 aria-label={t('feed.searchAriaLabel')}
                 className="w-full bg-transparent text-foreground outline-none placeholder:text-muted-foreground"
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder={t('header.searchPlaceholder')}
+                ref={mobileSearchInputRef}
                 type="search"
                 value={searchQuery}
               />
