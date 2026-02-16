@@ -105,11 +105,9 @@ const canConnect = ({ host, port }) =>
 const waitForPort = async ({ host, port, timeoutMs, intervalMs }) => {
   const startedAt = Date.now();
   while (Date.now() - startedAt <= timeoutMs) {
-    // eslint-disable-next-line no-await-in-loop
     if (await canConnect({ host, port })) {
       return;
     }
-    // eslint-disable-next-line no-await-in-loop
     await delay(intervalMs);
   }
   throw new Error(`timeout waiting for ${host}:${String(port)}`);
@@ -118,7 +116,6 @@ const waitForPort = async ({ host, port, timeoutMs, intervalMs }) => {
 const main = async () => {
   const options = parseArgs(process.argv.slice(2));
   for (const port of options.ports) {
-    // eslint-disable-next-line no-await-in-loop
     await waitForPort({
       host: options.host,
       port,
