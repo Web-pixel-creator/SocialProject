@@ -280,7 +280,7 @@ export default function Home() {
             </Link>
           </div>
         </div>
-        <aside className="rounded-2xl border border-border/35 bg-card p-4 text-card-foreground">
+        <aside className="rounded-2xl border border-border/25 bg-card p-4 text-card-foreground">
           <p className="live-signal inline-flex items-center gap-2 text-xs uppercase tracking-wide">
             {loading ? (
               <Loader2
@@ -296,19 +296,19 @@ export default function Home() {
             {t('feed.liveSnapshot')}
           </h3>
           <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
-            <div className="rounded-xl border border-border/35 bg-background/62 p-2">
+            <div className="rounded-xl border border-border/25 bg-background/60 p-2">
               <p className="text-muted-foreground">{t('rail.liveDrafts')}</p>
               <p className="mt-1 font-bold text-foreground text-lg">
                 {liveDrafts}
               </p>
             </div>
-            <div className="rounded-xl border border-border/35 bg-background/62 p-2">
+            <div className="rounded-xl border border-border/25 bg-background/60 p-2">
               <p className="text-muted-foreground">{t('rail.prPending')}</p>
               <p className="mt-1 font-bold text-foreground text-lg">
                 {prPending}
               </p>
             </div>
-            <div className="rounded-xl border border-border/35 bg-background/62 p-2">
+            <div className="rounded-xl border border-border/25 bg-background/60 p-2">
               <p className="text-muted-foreground">{t('feed.topGlowUp')}</p>
               <p className="mt-1 font-bold text-lg text-primary">{topGlowUp}</p>
             </div>
@@ -333,7 +333,7 @@ export default function Home() {
             const Icon = step.icon;
             return (
               <article
-                className="card rounded-xl border border-border/35 bg-card p-4 text-card-foreground"
+                className="card rounded-xl border border-border/25 bg-card p-4 text-card-foreground"
                 key={step.key}
               >
                 <Icon
@@ -361,13 +361,13 @@ export default function Home() {
             const Icon = product.icon;
             return (
               <article
-                className="card rounded-xl border border-border/35 bg-card p-4 text-card-foreground sm:p-5"
+                className="card rounded-xl border border-border/25 bg-card p-4 text-card-foreground sm:p-5"
                 key={product.key}
               >
                 <div className="flex items-center justify-between">
                   <Icon aria-hidden="true" className="h-5 w-5 text-primary" />
                   <Link
-                    className={`inline-flex items-center gap-1 rounded-full border border-border/35 bg-background/62 px-2.5 py-1 text-primary text-xs transition hover:border-border/55 hover:bg-background/78 ${focusRingClass}`}
+                    className={`inline-flex items-center gap-1 rounded-full border border-border/25 bg-background/58 px-2.5 py-1 text-primary text-xs transition hover:border-border/45 hover:bg-background/74 ${focusRingClass}`}
                     href={product.href}
                   >
                     {t('common.open')}
@@ -386,7 +386,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="card rounded-xl border border-border/35 bg-card p-4 sm:p-5 lg:p-6">
+      <section className="card rounded-xl border border-border/25 bg-card p-4 sm:p-5 lg:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="font-semibold text-foreground text-xl sm:text-2xl">
             {t('feed.topStudios')}
@@ -396,7 +396,7 @@ export default function Home() {
         <div className="mt-4 overflow-x-auto">
           <table className="w-full border-collapse text-left text-sm">
             <thead>
-              <tr className="border-border/35 border-b text-muted-foreground">
+              <tr className="border-border/25 border-b text-muted-foreground">
                 <th className="px-2 py-2 font-semibold" scope="col">
                   {t('feed.studio')}
                 </th>
@@ -414,7 +414,7 @@ export default function Home() {
             <tbody>
               {studios.map((studio) => (
                 <tr
-                  className="border-border/35 border-b text-foreground"
+                  className="border-border/25 border-b text-foreground"
                   key={studio.name}
                 >
                   <td className="px-2 py-2 font-semibold">{studio.name}</td>
