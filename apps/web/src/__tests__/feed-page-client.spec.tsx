@@ -6,9 +6,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import FeedPageClient from '../components/FeedPageClient';
 
 jest.mock('../components/FeedTabs', () => ({
-  FeedTabs: ({ isObserverMode }: { isObserverMode: boolean }) => (
-    <div data-testid="feed-tabs">{isObserverMode ? 'observer' : 'focus'}</div>
-  ),
+  FeedTabs: () => <div data-testid="feed-tabs">observer</div>,
 }));
 
 jest.mock('../components/ObserverRightRail', () => ({
@@ -50,7 +48,7 @@ describe('FeedPageClient', () => {
     const rightRailShell = screen.getByTestId('feed-right-rail-shell');
 
     expect(pageMain).not.toHaveClass('feed-shell-focus');
-    expect(rightRailShell).toHaveClass('observer-right-rail-shell-open');
+    expect(rightRailShell).toHaveClass('observer-right-rail-shell');
     expect(screen.getByTestId('feed-tabs')).toHaveTextContent('observer');
     expect(
       screen.queryByRole('button', { name: /^Focus mode$/i }),

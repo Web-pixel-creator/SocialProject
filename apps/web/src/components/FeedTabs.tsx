@@ -553,11 +553,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
   );
 });
 
-interface FeedTabsProps {
-  isObserverMode?: boolean;
-}
-
-export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
+export const FeedTabs = () => {
   const { t } = useLanguage();
   const router = useRouter();
   const pathname = usePathname();
@@ -2210,9 +2206,7 @@ export const FeedTabs = ({ isObserverMode = false }: FeedTabsProps) => {
       ) : null}
       {showBackToTop && (
         <button
-          className={`fixed right-4 bottom-4 z-30 rounded-full border border-primary/35 bg-card px-4 py-2 font-semibold text-primary text-xs transition hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
-            isObserverMode ? 'lg:right-[22rem]' : ''
-          }`}
+          className="fixed right-4 bottom-4 z-30 rounded-full border border-primary/35 bg-card px-4 py-2 font-semibold text-primary text-xs transition hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:right-[22rem]"
           onClick={handleBackToTop}
           type="button"
         >

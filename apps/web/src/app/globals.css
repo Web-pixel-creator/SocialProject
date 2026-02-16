@@ -485,30 +485,6 @@
 .observer-right-rail-shell {
   display: block;
   min-height: 0;
-  max-height: 200vh;
-  overflow: hidden;
-  opacity: 1;
-  transform: translateY(0);
-  transition:
-    max-height 260ms ease,
-    opacity 240ms ease,
-    transform 240ms ease;
-}
-
-.observer-right-rail-shell-open {
-  display: block;
-  max-height: 200vh;
-  opacity: 1;
-  transform: translateY(0);
-  pointer-events: auto;
-}
-
-.observer-right-rail-shell-collapsed {
-  display: block;
-  max-height: 0;
-  opacity: 0;
-  transform: translateY(-0.5rem);
-  pointer-events: none;
 }
 
 @media (min-width: 1100px) {
@@ -516,39 +492,12 @@
     grid-template-columns: 220px minmax(0, 1fr) 320px;
     align-items: start;
     column-gap: 1rem;
-    transition: grid-template-columns 260ms ease;
-  }
-
-  .feed-shell-focus {
-    grid-template-columns: 220px minmax(0, 1fr) 0;
   }
 
   .observer-right-rail-shell {
     display: block;
     min-width: 0;
     max-width: 20rem;
-    overflow: hidden;
-    opacity: 1;
-    transform: translateX(0);
-    transition:
-      max-width 260ms ease,
-      opacity 240ms ease,
-      transform 240ms ease;
-  }
-
-  .observer-right-rail-shell-open {
-    display: block;
-    max-width: 20rem;
-    opacity: 1;
-    transform: translateX(0);
-  }
-
-  .observer-right-rail-shell-collapsed {
-    display: block;
-    max-width: 0;
-    opacity: 0;
-    transform: translateX(0.5rem);
-    pointer-events: none;
   }
 
   .observer-left-rail {
@@ -568,17 +517,6 @@
     max-height: calc(100vh - 2rem);
     overflow-y: auto;
     padding-right: 0.25rem;
-    opacity: 1;
-    transform: translateX(0);
-    transition:
-      opacity 240ms ease,
-      transform 240ms ease;
-  }
-
-  .feed-shell-focus .observer-right-rail {
-    opacity: 0;
-    transform: translateX(0.5rem);
-    pointer-events: none;
   }
 
   .observer-right-rail::-webkit-scrollbar {

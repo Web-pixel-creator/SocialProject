@@ -15,7 +15,6 @@ export default function FeedPageClient() {
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const mobileMenuCloseButtonRef = useRef<HTMLButtonElement>(null);
   const previousMobileSidebarOpenRef = useRef(false);
-  const isObserverMode = true;
 
   const openMobileSidebar = useCallback(() => {
     setMobileSidebarOpen(true);
@@ -126,13 +125,13 @@ export default function FeedPageClient() {
               </div>
             }
           >
-            <FeedTabs isObserverMode={isObserverMode} />
+            <FeedTabs />
           </Suspense>
         </PanelErrorBoundary>
       </section>
       <div
         aria-hidden={false}
-        className="observer-right-rail-shell observer-right-rail-shell-open"
+        className="observer-right-rail-shell"
         data-testid="feed-right-rail-shell"
       >
         <PanelErrorBoundary
