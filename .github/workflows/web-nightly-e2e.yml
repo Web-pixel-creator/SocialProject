@@ -31,7 +31,47 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run full web E2E suite
-        run: npm --workspace apps/web run test:e2e
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: nightly-e2e-report.json
+          PLAYWRIGHT_JSON_OUTPUT_DIR: test-results
+        run: npm --workspace apps/web run test:e2e -- --reporter=html,json
+
+      - name: Generate Playwright nightly summary
+        if: always()
+        shell: bash
+        run: |
+          node scripts/ci/summarize-playwright-json.mjs \
+            --input apps/web/test-results/nightly-e2e-report.json \
+            --output artifacts/ci/web-nightly-e2e-summary.json \
+            --markdown-output artifacts/ci/web-nightly-e2e-summary.md \
+            --top-slow 15 \
+            --slow-threshold-ms 5000
+
+      - name: Append Playwright nightly summary to step summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -n "${GITHUB_STEP_SUMMARY:-}" ] && [ -f artifacts/ci/web-nightly-e2e-summary.md ]; then
+            cat artifacts/ci/web-nightly-e2e-summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload Playwright nightly summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-nightly-e2e-summary
+          path: |
+            artifacts/ci/web-nightly-e2e-summary.json
+            artifacts/ci/web-nightly-e2e-summary.md
+          if-no-files-found: ignore
+
+      - name: Upload Playwright nightly JSON report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-nightly-e2e-json-report
+          path: apps/web/test-results/nightly-e2e-report.json
+          if-no-files-found: ignore
 
       - name: Upload Playwright report
         if: always()
