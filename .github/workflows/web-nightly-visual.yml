@@ -31,7 +31,47 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run visual smoke capture
-        run: npm --workspace apps/web run test:e2e -- e2e/visual-smoke.spec.ts
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: nightly-visual-report.json
+          PLAYWRIGHT_JSON_OUTPUT_DIR: test-results
+        run: npm --workspace apps/web run test:e2e -- --reporter=html,json e2e/visual-smoke.spec.ts
+
+      - name: Generate visual smoke summary
+        if: always()
+        shell: bash
+        run: |
+          node scripts/ci/summarize-visual-artifacts.mjs \
+            --artifacts-dir apps/web/test-results \
+            --report-json apps/web/test-results/nightly-visual-report.json \
+            --output artifacts/ci/web-nightly-visual-summary.json \
+            --markdown-output artifacts/ci/web-nightly-visual-summary.md \
+            --title "Web Nightly Visual Summary"
+
+      - name: Append visual smoke summary to step summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -n "${GITHUB_STEP_SUMMARY:-}" ] && [ -f artifacts/ci/web-nightly-visual-summary.md ]; then
+            cat artifacts/ci/web-nightly-visual-summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload visual smoke summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-nightly-visual-summary
+          path: |
+            artifacts/ci/web-nightly-visual-summary.json
+            artifacts/ci/web-nightly-visual-summary.md
+          if-no-files-found: ignore
+
+      - name: Upload visual smoke JSON report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-nightly-visual-json-report
+          path: apps/web/test-results/nightly-visual-report.json
+          if-no-files-found: ignore
 
       - name: Upload Playwright report
         if: always()
