@@ -68,8 +68,8 @@ export default function FeedPageClient() {
     <main className="feed-shell">
       <ObserverSidebar />
       <section className="observer-main-column grid gap-4">
-        <header className="card observer-feed-header overflow-hidden p-3 sm:p-4 lg:p-5">
-          <div className="grid gap-3 sm:gap-4">
+        <header className="card observer-feed-header overflow-hidden p-4 sm:p-5 lg:p-6">
+          <div className="grid gap-4 sm:gap-5">
             <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
               <p className="inline-flex w-fit items-center gap-2 rounded-full border border-border/25 bg-background/60 px-3 py-1.5 font-semibold text-[10px] text-muted-foreground uppercase tracking-wider sm:py-2">
                 <span>{t('feed.observerStream')}</span>
@@ -120,7 +120,7 @@ export default function FeedPageClient() {
         >
           <Suspense
             fallback={
-              <div className="card p-3 text-muted-foreground text-sm sm:p-5">
+              <div className="card p-4 text-muted-foreground text-sm sm:p-6">
                 {t('feed.loading')}
               </div>
             }

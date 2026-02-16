@@ -479,8 +479,8 @@ export const ObserverRightRail = () => {
   const softPanelClass = 'rounded-lg border border-border/25 bg-background/42';
 
   return (
-    <aside className="observer-right-rail grid grid-cols-1 gap-3 sm:gap-3.5">
-      <section className="card relative overflow-hidden p-3 sm:p-3.5">
+    <aside className="observer-right-rail grid grid-cols-1 gap-4 sm:gap-4">
+      <section className="card relative overflow-hidden p-4 sm:p-4">
         <p className="live-signal inline-flex items-center gap-2 font-semibold text-xs uppercase tracking-wide">
           <span className="icon-breathe live-dot inline-flex h-2.5 w-2.5 rounded-full motion-reduce:animate-none" />
           {t('rail.liveWsConnected')}
@@ -609,7 +609,7 @@ export const ObserverRightRail = () => {
           </div>
         </div>
       </section>
-      <section className="card p-3 sm:p-3.5 lg:hidden">
+      <section className="card p-4 sm:p-4 lg:hidden">
         <PanelHeader icon={Flame} title={t('rail.pulseRadar')} />
         <div
           className="mt-2 grid gap-2"
@@ -742,7 +742,7 @@ export const ObserverRightRail = () => {
         title={t('rail.topStudios')}
       />
       {allPanelsHidden ? (
-        <section className="card hidden p-3 text-[11px] text-muted-foreground sm:p-3.5 lg:block">
+        <section className="card hidden p-4 text-[11px] text-muted-foreground sm:p-4 lg:block">
           <p>{t('rail.noPanelsSelected')}</p>
           <div className="mt-2">
             <button
