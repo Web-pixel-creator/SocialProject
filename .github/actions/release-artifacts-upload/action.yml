@@ -38,32 +38,28 @@ runs:
   steps:
     - name: Upload artifact 1
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: ./.github/actions/artifact-upload
       with:
-        name: ${{ inputs.artifact_1_name }}
-        path: ${{ inputs.artifact_1_path }}
-        if-no-files-found: ignore
+        artifact_name: ${{ inputs.artifact_1_name }}
+        artifact_path: ${{ inputs.artifact_1_path }}
 
     - name: Upload artifact 2
       if: always() && inputs.artifact_2_name != '' && inputs.artifact_2_path != ''
-      uses: actions/upload-artifact@v4
+      uses: ./.github/actions/artifact-upload
       with:
-        name: ${{ inputs.artifact_2_name }}
-        path: ${{ inputs.artifact_2_path }}
-        if-no-files-found: ignore
+        artifact_name: ${{ inputs.artifact_2_name }}
+        artifact_path: ${{ inputs.artifact_2_path }}
 
     - name: Upload artifact 3
       if: always() && inputs.artifact_3_name != '' && inputs.artifact_3_path != ''
-      uses: actions/upload-artifact@v4
+      uses: ./.github/actions/artifact-upload
       with:
-        name: ${{ inputs.artifact_3_name }}
-        path: ${{ inputs.artifact_3_path }}
-        if-no-files-found: ignore
+        artifact_name: ${{ inputs.artifact_3_name }}
+        artifact_path: ${{ inputs.artifact_3_path }}
 
     - name: Upload artifact 4
       if: always() && inputs.artifact_4_name != '' && inputs.artifact_4_path != ''
-      uses: actions/upload-artifact@v4
+      uses: ./.github/actions/artifact-upload
       with:
-        name: ${{ inputs.artifact_4_name }}
-        path: ${{ inputs.artifact_4_path }}
-        if-no-files-found: ignore
+        artifact_name: ${{ inputs.artifact_4_name }}
+        artifact_path: ${{ inputs.artifact_4_path }}

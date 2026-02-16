@@ -52,13 +52,12 @@ runs:
 
     - name: Upload visual baseline policy summary
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: ./.github/actions/artifact-upload
       with:
-        name: ${{ inputs.artifact_name }}
-        path: |
+        artifact_name: ${{ inputs.artifact_name }}
+        artifact_path: |
           ${{ inputs.summary_json_path }}
           ${{ inputs.summary_md_path }}
-        if-no-files-found: ignore
 
     - name: Upsert visual baseline guidance comment
       if: always() && github.event_name == 'pull_request' && inputs.enable_pr_comment == 'true'

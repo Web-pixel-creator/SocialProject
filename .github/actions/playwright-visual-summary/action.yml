@@ -54,18 +54,16 @@ runs:
 
     - name: Upload Playwright visual summary
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: ./.github/actions/artifact-upload
       with:
-        name: ${{ inputs.artifact_summary_name }}
-        path: |
+        artifact_name: ${{ inputs.artifact_summary_name }}
+        artifact_path: |
           ${{ inputs.summary_json_path }}
           ${{ inputs.summary_md_path }}
-        if-no-files-found: ignore
 
     - name: Upload Playwright visual JSON report
       if: always() && inputs.report_json_path != '' && inputs.artifact_json_name != ''
-      uses: actions/upload-artifact@v4
+      uses: ./.github/actions/artifact-upload
       with:
-        name: ${{ inputs.artifact_json_name }}
-        path: ${{ inputs.report_json_path }}
-        if-no-files-found: ignore
+        artifact_name: ${{ inputs.artifact_json_name }}
+        artifact_path: ${{ inputs.report_json_path }}
