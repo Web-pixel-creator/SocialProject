@@ -16,19 +16,10 @@ jobs:
     env:
       RELEASE_TARGET_RUN_ID: ${{ github.event.workflow_run.id }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Bootstrap Node CI tooling
+        uses: ./.github/actions/node-ci-bootstrap
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
+          checkout_ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Fetch release smoke artifact (best effort)
         continue-on-error: true
@@ -111,26 +102,13 @@ jobs:
           fs.appendFileSync(summaryOutputPath, `${lines.join('\n')}\n`);
           NODE
 
-      - name: Upload post-release health report
+      - name: Upload post-release health artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/release-artifacts-upload
         with:
-          name: post-release-health-report
-          path: artifacts/release/post-release-health-run-${{ env.RELEASE_TARGET_RUN_ID }}.json
-          if-no-files-found: ignore
-
-      - name: Upload post-release health summary
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: post-release-health-summary
-          path: artifacts/release/post-release-health-summary-${{ env.RELEASE_TARGET_RUN_ID }}.json
-          if-no-files-found: ignore
-
-      - name: Upload post-release health schema summary
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: post-release-health-schema-summary
-          path: artifacts/release/post-release-health-schema-summary-${{ env.RELEASE_TARGET_RUN_ID }}.json
-          if-no-files-found: ignore
+          artifact_1_name: post-release-health-report
+          artifact_1_path: artifacts/release/post-release-health-run-${{ env.RELEASE_TARGET_RUN_ID }}.json
+          artifact_2_name: post-release-health-summary
+          artifact_2_path: artifacts/release/post-release-health-summary-${{ env.RELEASE_TARGET_RUN_ID }}.json
+          artifact_3_name: post-release-health-schema-summary
+          artifact_3_path: artifacts/release/post-release-health-schema-summary-${{ env.RELEASE_TARGET_RUN_ID }}.json

@@ -2,6 +2,10 @@ name: Node CI Bootstrap
 description: Checkout repository, setup Node.js, and install npm dependencies.
 
 inputs:
+  checkout_ref:
+    description: Optional git ref/SHA to checkout.
+    required: false
+    default: ""
   fetch_depth:
     description: Checkout fetch depth.
     required: false
@@ -22,9 +26,17 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Checkout
+    - name: Checkout (default ref)
+      if: inputs.checkout_ref == ''
       uses: actions/checkout@v4
       with:
+        fetch-depth: ${{ inputs.fetch_depth }}
+
+    - name: Checkout (explicit ref)
+      if: inputs.checkout_ref != ''
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.checkout_ref }}
         fetch-depth: ${{ inputs.fetch_depth }}
 
     - name: Setup Node
