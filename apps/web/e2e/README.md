@@ -2,6 +2,10 @@
 
 This folder contains Playwright E2E specs and baseline screenshots for visual regression.
 
+Policy:
+
+- See `apps/web/e2e/VISUAL_BASELINE_POLICY.md` for baseline update/review rules.
+
 ## Commands
 
 - Run visual regression checks:
@@ -30,6 +34,7 @@ This folder contains Playwright E2E specs and baseline screenshots for visual re
 3. If failures are expected, run `npm run test:web:visual:update`.
 4. Re-run `npm run test:web:visual`.
 5. Review image diffs in `git diff` / IDE before committing snapshot updates.
+6. Document intentional baseline updates in PR description.
 
 ## CI behavior
 
