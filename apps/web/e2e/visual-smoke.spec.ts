@@ -152,6 +152,67 @@ const scenarios: VisualScenario[] = [
     },
   },
   {
+    name: 'legal-privacy-desktop',
+    path: '/legal/privacy',
+    viewport: { width: 1440, height: 900 },
+    waitForReady: async (page) => {
+      await expect(
+        page.getByRole('heading', { name: /privacy policy/i }),
+      ).toBeVisible();
+      await expect(
+        page.getByText(/request an export or deletion/i),
+      ).toBeVisible();
+    },
+  },
+  {
+    name: 'legal-refund-desktop',
+    path: '/legal/refund',
+    viewport: { width: 1440, height: 900 },
+    waitForReady: async (page) => {
+      await expect(
+        page.getByRole('heading', { name: /refund policy/i }),
+      ).toBeVisible();
+      await expect(page.getByText(/held in escrow/i)).toBeVisible();
+    },
+  },
+  {
+    name: 'legal-content-desktop',
+    path: '/legal/content',
+    viewport: { width: 1440, height: 900 },
+    waitForReady: async (page) => {
+      await expect(
+        page.getByRole('heading', { name: /content policy/i }),
+      ).toBeVisible();
+      await expect(page.getByText(/constructive creative critique/i)).toBeVisible();
+    },
+  },
+  {
+    name: 'login-desktop',
+    path: '/login',
+    viewport: { width: 1440, height: 900 },
+    waitForReady: async (page) => {
+      await expect(
+        page.getByRole('heading', { name: /welcome back/i }),
+      ).toBeVisible();
+      await expect(page.getByRole('button', { name: /^Sign in$/i })).toBeVisible();
+      await expect(page.getByLabel(/email/i)).toBeVisible();
+    },
+  },
+  {
+    name: 'register-desktop',
+    path: '/register',
+    viewport: { width: 1440, height: 900 },
+    waitForReady: async (page) => {
+      await expect(
+        page.getByRole('heading', { name: /create account/i }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: /create account/i }).first(),
+      ).toBeVisible();
+      await expect(page.getByText(/terms of service/i)).toBeVisible();
+    },
+  },
+  {
     name: 'home-mobile',
     path: '/',
     viewport: { width: 390, height: 844 },
@@ -231,6 +292,68 @@ const scenarios: VisualScenario[] = [
       await expect(
         page.getByText(/creative collaboration platform/i),
       ).toBeVisible();
+    },
+  },
+  {
+    name: 'legal-privacy-mobile',
+    path: '/legal/privacy',
+    viewport: { width: 390, height: 844 },
+    waitForReady: async (page) => {
+      await expect(
+        page.getByRole('heading', { name: /privacy policy/i }),
+      ).toBeVisible();
+      await expect(page.getByRole('button', { name: /menu/i })).toBeVisible();
+      await expect(
+        page.getByText(/request an export or deletion/i),
+      ).toBeVisible();
+    },
+  },
+  {
+    name: 'legal-refund-mobile',
+    path: '/legal/refund',
+    viewport: { width: 390, height: 844 },
+    waitForReady: async (page) => {
+      await expect(
+        page.getByRole('heading', { name: /refund policy/i }),
+      ).toBeVisible();
+      await expect(page.getByRole('button', { name: /menu/i })).toBeVisible();
+      await expect(page.getByText(/held in escrow/i)).toBeVisible();
+    },
+  },
+  {
+    name: 'legal-content-mobile',
+    path: '/legal/content',
+    viewport: { width: 390, height: 844 },
+    waitForReady: async (page) => {
+      await expect(
+        page.getByRole('heading', { name: /content policy/i }),
+      ).toBeVisible();
+      await expect(page.getByRole('button', { name: /menu/i })).toBeVisible();
+      await expect(page.getByText(/constructive creative critique/i)).toBeVisible();
+    },
+  },
+  {
+    name: 'login-mobile',
+    path: '/login',
+    viewport: { width: 390, height: 844 },
+    waitForReady: async (page) => {
+      await expect(
+        page.getByRole('heading', { name: /welcome back/i }),
+      ).toBeVisible();
+      await expect(page.getByRole('button', { name: /menu/i })).toBeVisible();
+      await expect(page.getByRole('button', { name: /^Sign in$/i })).toBeVisible();
+    },
+  },
+  {
+    name: 'register-mobile',
+    path: '/register',
+    viewport: { width: 390, height: 844 },
+    waitForReady: async (page) => {
+      await expect(
+        page.getByRole('heading', { name: /create account/i }),
+      ).toBeVisible();
+      await expect(page.getByRole('button', { name: /menu/i })).toBeVisible();
+      await expect(page.getByText(/terms of service/i)).toBeVisible();
     },
   },
 ];

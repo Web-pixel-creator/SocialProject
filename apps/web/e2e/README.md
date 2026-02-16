@@ -27,6 +27,11 @@ Policy:
   - `privacy-desktop-chromium.png`
   - `demo-desktop-chromium.png`
   - `legal-terms-desktop-chromium.png`
+  - `legal-privacy-desktop-chromium.png`
+  - `legal-refund-desktop-chromium.png`
+  - `legal-content-desktop-chromium.png`
+  - `login-desktop-chromium.png`
+  - `register-desktop-chromium.png`
   - `home-mobile-chromium.png`
   - `feed-mobile-chromium.png`
   - `search-mobile-chromium.png`
@@ -34,6 +39,11 @@ Policy:
   - `privacy-mobile-chromium.png`
   - `demo-mobile-chromium.png`
   - `legal-terms-mobile-chromium.png`
+  - `legal-privacy-mobile-chromium.png`
+  - `legal-refund-mobile-chromium.png`
+  - `legal-content-mobile-chromium.png`
+  - `login-mobile-chromium.png`
+  - `register-mobile-chromium.png`
 
 ## Update workflow
 
