@@ -76,8 +76,12 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run web E2E smoke tests
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: web-pr-gate-e2e-report.json
+          PLAYWRIGHT_JSON_OUTPUT_DIR: test-results
         run: |
           npm --workspace apps/web run test:e2e -- \
+            --reporter=html,json \
             e2e/feed.spec.ts \
             e2e/search.spec.ts \
             e2e/auth.spec.ts \
@@ -86,6 +90,44 @@ jobs:
             e2e/header-search.spec.ts \
             e2e/demo.spec.ts \
             e2e/studios-onboarding.spec.ts
+
+      - name: Generate Playwright PR smoke summary
+        if: always()
+        shell: bash
+        run: |
+          node scripts/ci/summarize-playwright-json.mjs \
+            --input apps/web/test-results/web-pr-gate-e2e-report.json \
+            --output artifacts/ci/web-pr-gate-e2e-summary.json \
+            --markdown-output artifacts/ci/web-pr-gate-e2e-summary.md \
+            --title "Web PR Gate E2E Summary" \
+            --top-slow 10 \
+            --slow-threshold-ms 5000
+
+      - name: Append Playwright PR smoke summary to step summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -n "${GITHUB_STEP_SUMMARY:-}" ] && [ -f artifacts/ci/web-pr-gate-e2e-summary.md ]; then
+            cat artifacts/ci/web-pr-gate-e2e-summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload Playwright PR smoke summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-pr-gate-playwright-summary
+          path: |
+            artifacts/ci/web-pr-gate-e2e-summary.json
+            artifacts/ci/web-pr-gate-e2e-summary.md
+          if-no-files-found: ignore
+
+      - name: Upload Playwright PR smoke JSON report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-pr-gate-playwright-json-report
+          path: apps/web/test-results/web-pr-gate-e2e-report.json
+          if-no-files-found: ignore
 
       - name: Upload Playwright report
         if: always()

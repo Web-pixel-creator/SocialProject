@@ -19,6 +19,7 @@ const toNumber = (value, fallback) => {
 const inputPath = readArg('--input');
 const outputPath = readArg('--output');
 const markdownPath = readArg('--markdown-output');
+const title = readArg('--title', 'Playwright E2E Summary');
 const topSlow = toNumber(readArg('--top-slow', '10'), 10);
 const slowThresholdMs = toNumber(readArg('--slow-threshold-ms', '5000'), 5000);
 
@@ -92,7 +93,7 @@ if (!fs.existsSync(inputPath)) {
     fs.writeFileSync(
       markdownPath,
       [
-        '### Web Nightly E2E Summary',
+        `### ${title}`,
         '',
         `- status: \`missing\``,
         `- reason: ${summary.reason}`,
@@ -162,7 +163,7 @@ fs.writeFileSync(outputPath, `${JSON.stringify(summary, null, 2)}\n`, 'utf8');
 
 if (markdownPath) {
   const lines = [
-    '### Web Nightly E2E Summary',
+    `### ${title}`,
     '',
     `- status: \`${summary.status}\``,
     `- total tests: \`${summary.stats.totalCollectedTests}\``,

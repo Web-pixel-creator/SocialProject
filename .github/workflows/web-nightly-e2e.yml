@@ -44,6 +44,7 @@ jobs:
             --input apps/web/test-results/nightly-e2e-report.json \
             --output artifacts/ci/web-nightly-e2e-summary.json \
             --markdown-output artifacts/ci/web-nightly-e2e-summary.md \
+            --title "Web Nightly E2E Summary" \
             --top-slow 15 \
             --slow-threshold-ms 5000
 

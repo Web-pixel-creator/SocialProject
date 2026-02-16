@@ -266,7 +266,48 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run Playwright E2E suite
-        run: npm --workspace apps/web run test:e2e
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: ci-pr-e2e-report.json
+          PLAYWRIGHT_JSON_OUTPUT_DIR: test-results
+        run: npm --workspace apps/web run test:e2e -- --reporter=html,json
+
+      - name: Generate Playwright PR smoke summary
+        if: always()
+        shell: bash
+        run: |
+          node scripts/ci/summarize-playwright-json.mjs \
+            --input apps/web/test-results/ci-pr-e2e-report.json \
+            --output artifacts/ci/ci-pr-e2e-summary.json \
+            --markdown-output artifacts/ci/ci-pr-e2e-summary.md \
+            --title "CI Playwright E2E Summary" \
+            --top-slow 15 \
+            --slow-threshold-ms 5000
+
+      - name: Append Playwright PR smoke summary to step summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -n "${GITHUB_STEP_SUMMARY:-}" ] && [ -f artifacts/ci/ci-pr-e2e-summary.md ]; then
+            cat artifacts/ci/ci-pr-e2e-summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload Playwright PR smoke summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-playwright-e2e-summary
+          path: |
+            artifacts/ci/ci-pr-e2e-summary.json
+            artifacts/ci/ci-pr-e2e-summary.md
+          if-no-files-found: ignore
+
+      - name: Upload Playwright PR smoke JSON report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-playwright-e2e-json-report
+          path: apps/web/test-results/ci-pr-e2e-report.json
+          if-no-files-found: ignore
 
       - name: Upload Playwright report
         if: always()
