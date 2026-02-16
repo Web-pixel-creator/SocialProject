@@ -81,24 +81,11 @@ jobs:
           summary_title: CI PR Visual Baseline Policy Summary
 
       - name: Run Ultracite check on changed files
+        env:
+          ULTRACITE_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          ULTRACITE_HEAD_SHA: ${{ github.sha }}
         shell: bash
-        run: |
-          BASE_SHA="${{ github.event.pull_request.base.sha }}"
-          HEAD_SHA="${{ github.sha }}"
-          mapfile -t FILES < <(
-            git -c core.quotePath=false diff --name-only "${BASE_SHA}...${HEAD_SHA}" \
-              | grep -E '^apps/(api|web)/src/.*\.(ts|tsx|js|jsx)$' \
-              || true
-          )
-
-          if [ "${#FILES[@]}" -eq 0 ]; then
-            echo "No changed source files for Ultracite changed-files gate."
-            exit 0
-          fi
-
-          echo "Ultracite changed-files scope:"
-          printf '%s\n' "${FILES[@]}"
-          npx ultracite check "${FILES[@]}"
+        run: bash scripts/ci/run-ultracite-changed-files.sh
 
   test:
     runs-on: ubuntu-latest
