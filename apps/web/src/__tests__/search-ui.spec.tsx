@@ -135,6 +135,36 @@ describe('search UI', () => {
     expect(screen.getByText(/Results for "neon"/i)).toBeInTheDocument();
   });
 
+  test('exposes aria labels for search controls and polite summary region', async () => {
+    renderSearchPage();
+    await runDebounce();
+
+    expect(
+      screen.getByRole('searchbox', { name: /search by keyword/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: /type/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('combobox', { name: /intent/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('combobox', { name: /sorted by/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('combobox', { name: /range/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /visual search/i }));
+    expect(
+      screen.getByRole('textbox', { name: /embedding/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('textbox', { name: /style tags/i }),
+    ).toBeInTheDocument();
+
+    const summaryNode = document.querySelector('[aria-live="polite"]');
+    expect(summaryNode).toBeInTheDocument();
+  });
+
   test('renders results and respects filters', async () => {
     renderSearchPage();
     await runDebounce();

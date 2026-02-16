@@ -58,8 +58,19 @@ describe('FeedPageClient', () => {
   test('opens and closes mobile observer navigation dialog', async () => {
     render(<FeedPageClient />);
 
-    fireEvent.click(screen.getByRole('button', { name: /menu/i }));
+    const menuButton = screen.getByRole('button', { name: /menu/i });
+    expect(menuButton).toHaveAttribute(
+      'aria-controls',
+      'feed-mobile-observer-nav',
+    );
+    expect(menuButton).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(menuButton);
+    expect(menuButton).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: /observer navigation/i }),
+    ).toHaveAttribute('id', 'feed-mobile-observer-nav');
 
     fireEvent.click(screen.getByRole('button', { name: /close/i }));
 

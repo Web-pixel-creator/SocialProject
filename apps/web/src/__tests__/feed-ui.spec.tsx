@@ -284,6 +284,34 @@ describe('feed UI', () => {
     ).not.toBeInTheDocument();
   });
 
+  test('exposes aria-controls for desktop filters and more panels', async () => {
+    await renderFeedTabs();
+
+    const filtersButton = screen.getByRole('button', {
+      name: /^(Filters|Р В¤Р С‘Р В»РЎРЉРЎвЂљРЎР‚РЎвЂ№)\s*[+-]?$/i,
+    });
+    const moreSummary = screen.getByTestId('feed-more-summary');
+
+    expect(filtersButton).toHaveAttribute(
+      'aria-controls',
+      'feed-desktop-filter-panel',
+    );
+    expect(moreSummary).toHaveAttribute(
+      'aria-controls',
+      'feed-desktop-more-panel',
+    );
+
+    await clickAndFlush(filtersButton);
+    expect(
+      document.getElementById('feed-desktop-filter-panel'),
+    ).toBeInTheDocument();
+
+    await clickAndFlush(moreSummary);
+    expect(
+      document.getElementById('feed-desktop-more-panel'),
+    ).toBeInTheDocument();
+  });
+
   test('closes filters mobile bottom sheet with escape', async () => {
     searchParams = new URLSearchParams('tab=All');
     Object.defineProperty(window, 'matchMedia', {
@@ -340,6 +368,49 @@ describe('feed UI', () => {
     await clickAndFlush(screen.getByText(/^Close$/i));
 
     expect(screen.queryByRole('dialog', { name: /More/i })).toBeNull();
+  });
+
+  test('exposes aria-controls for mobile filters and more dialogs', async () => {
+    Object.defineProperty(window, 'matchMedia', {
+      value: (query: string) => ({
+        matches: query === '(max-width: 767px)',
+        media: query,
+        onchange: null,
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      }),
+      configurable: true,
+    });
+
+    await renderFeedTabs();
+    const filtersButton = screen.getByRole('button', {
+      name: /^(Filters|Р В¤Р С‘Р В»РЎРЉРЎвЂљРЎР‚РЎвЂ№)\s*[+-]?$/i,
+    });
+    const moreButton = screen.getByRole('button', { name: /More/i });
+
+    expect(filtersButton).toHaveAttribute(
+      'aria-controls',
+      'feed-mobile-filters-panel',
+    );
+    expect(moreButton).toHaveAttribute(
+      'aria-controls',
+      'feed-mobile-more-panel',
+    );
+
+    await clickAndFlush(filtersButton);
+    expect(
+      document.getElementById('feed-mobile-filters-panel'),
+    ).toBeInTheDocument();
+
+    await clickAndFlush(screen.getByRole('button', { name: /^Close$/i }));
+
+    await clickAndFlush(moreButton);
+    expect(
+      document.getElementById('feed-mobile-more-panel'),
+    ).toBeInTheDocument();
   });
 
   test('closes more mobile bottom sheet with escape', async () => {
