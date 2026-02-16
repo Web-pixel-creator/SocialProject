@@ -1,0 +1,38 @@
+name: Node CI Bootstrap
+description: Checkout repository, setup Node.js, and install npm dependencies.
+
+inputs:
+  fetch_depth:
+    description: Checkout fetch depth.
+    required: false
+    default: "1"
+  node_version:
+    description: Node.js version for actions/setup-node.
+    required: false
+    default: "20"
+  npm_cache:
+    description: npm cache mode for actions/setup-node.
+    required: false
+    default: npm
+  install_command:
+    description: Dependency installation command.
+    required: false
+    default: npm ci
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: ${{ inputs.fetch_depth }}
+
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node_version }}
+        cache: ${{ inputs.npm_cache }}
+
+    - name: Install dependencies
+      shell: bash
+      run: ${{ inputs.install_command }}

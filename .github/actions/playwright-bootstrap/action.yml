@@ -1,15 +1,7 @@
 name: Playwright Bootstrap
-description: Setup Node.js, install npm dependencies, and install Playwright Chromium browser.
+description: Install Playwright browser binaries (and optional system dependencies).
 
 inputs:
-  node_version:
-    description: Node.js version for actions/setup-node.
-    required: false
-    default: "20"
-  npm_cache:
-    description: npm cache mode for actions/setup-node.
-    required: false
-    default: npm
   playwright_browser:
     description: Playwright browser channel to install.
     required: false
@@ -22,16 +14,6 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Setup Node
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ inputs.node_version }}
-        cache: ${{ inputs.npm_cache }}
-
-    - name: Install dependencies
-      shell: bash
-      run: npm ci
-
     - name: Install Playwright browser
       shell: bash
       run: |

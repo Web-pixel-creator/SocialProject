@@ -15,8 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Bootstrap Node CI tooling
+        uses: ./.github/actions/node-ci-bootstrap
 
       - name: Bootstrap Playwright tooling
         uses: ./.github/actions/playwright-bootstrap
