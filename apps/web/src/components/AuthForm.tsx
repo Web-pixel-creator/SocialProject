@@ -78,7 +78,7 @@ export const AuthForm = ({ mode, onSuccess }: AuthFormProps) => {
 
   return (
     <form
-      className="card grid gap-3 p-3 sm:gap-4 sm:p-5 md:p-7"
+      className="card grid gap-3 p-3 sm:gap-3.5 sm:p-4 md:p-5"
       onSubmit={handleSubmit}
     >
       <div>

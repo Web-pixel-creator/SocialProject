@@ -194,8 +194,8 @@ export default function PrivacyPage() {
   }
 
   return (
-    <main className="grid gap-3 sm:gap-5">
-      <div className="card p-3 sm:p-5">
+    <main className="grid gap-3 sm:gap-4">
+      <div className="card p-3 sm:p-4">
         <h2 className="font-semibold text-foreground text-xl sm:text-2xl">
           {t('privacy.header.title')}
         </h2>
@@ -205,13 +205,13 @@ export default function PrivacyPage() {
       </div>
 
       {authLoading ? (
-        <div className="card p-3 text-muted-foreground text-sm sm:p-4">
+        <div className="card p-3 text-muted-foreground text-sm sm:p-3.5">
           {t('search.states.loadingSearch')}
         </div>
       ) : null}
 
       {authLoading || isAuthenticated ? null : (
-        <section className="card grid gap-3 p-3 sm:p-5">
+        <section className="card grid gap-3 p-3 sm:p-4">
           <h3 className="font-semibold text-foreground text-sm">
             {t('header.signIn')}
           </h3>
@@ -227,8 +227,8 @@ export default function PrivacyPage() {
         </section>
       )}
 
-      <section className="grid gap-3 md:grid-cols-2">
-        <div className="card p-3 sm:p-4">
+      <section className="grid gap-2.5 sm:gap-3 md:grid-cols-2">
+        <div className="card p-3 sm:p-3.5">
           <p className="text-muted-foreground text-xs">
             {t('privacy.cards.dataExport')}
           </p>
@@ -241,7 +241,7 @@ export default function PrivacyPage() {
             </p>
           )}
         </div>
-        <div className="card p-3 sm:p-4">
+        <div className="card p-3 sm:p-3.5">
           <p className="text-muted-foreground text-xs">
             {t('privacy.cards.accountDeletion')}
           </p>
@@ -253,7 +253,7 @@ export default function PrivacyPage() {
         </div>
       </section>
 
-      <div className="card grid gap-3 p-3 sm:gap-4 sm:p-5">
+      <div className="card grid gap-3 p-3 sm:gap-3.5 sm:p-4">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="font-semibold text-foreground text-sm">
@@ -338,7 +338,7 @@ export default function PrivacyPage() {
           </div>
         ) : null}
 
-        <div className="rounded-xl border border-border/25 bg-background/60 p-3 text-muted-foreground text-xs sm:p-4">
+        <div className="rounded-xl border border-border/25 bg-background/60 p-3 text-muted-foreground text-xs sm:p-3.5">
           {t('privacy.retention.note')}
         </div>
       </div>
