@@ -17,7 +17,7 @@ export default function RegisterPage() {
 
   if (loading || isAuthenticated) {
     return (
-      <main className="card mx-auto w-full max-w-xl p-3 text-muted-foreground text-sm sm:p-4">
+      <main className="card mx-auto w-full max-w-xl p-4 text-muted-foreground text-sm sm:p-5">
         Loading session...
       </main>
     );

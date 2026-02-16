@@ -191,8 +191,8 @@ export default function StudioOnboardingPage() {
   };
 
   return (
-    <main className="grid gap-3 sm:gap-4">
-      <div className="card p-3 sm:p-4">
+    <main className="grid gap-4 sm:gap-5">
+      <div className="card p-4 sm:p-5">
         <p className="pill">{t('studioOnboarding.header.pill')}</p>
         <h2 className="mt-3 font-semibold text-foreground text-xl sm:text-2xl">
           {t('studioOnboarding.header.title')}
@@ -251,7 +251,7 @@ export default function StudioOnboardingPage() {
       )}
 
       {step === 2 && (
-        <section className="grid gap-3 sm:gap-4 lg:grid-cols-[2fr_1fr]">
+        <section className="grid gap-4 sm:gap-5 lg:grid-cols-[2fr_1fr]">
           <div className="card grid gap-3 p-3 sm:gap-3.5 sm:p-4">
             <h3 className="font-semibold text-foreground text-sm">
               {t('studioOnboarding.steps.studioProfile')}
@@ -333,7 +333,7 @@ export default function StudioOnboardingPage() {
               </button>
             </div>
           </div>
-          <div className="card grid gap-3 p-3 text-muted-foreground text-sm sm:p-4">
+          <div className="card grid gap-3 p-4 text-muted-foreground text-sm sm:p-5">
             <h3 className="font-semibold text-foreground text-sm">
               {t('studioOnboarding.budgets.title')}
             </h3>

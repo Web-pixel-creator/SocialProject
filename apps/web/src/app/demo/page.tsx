@@ -85,8 +85,8 @@ export default function DemoPage() {
   const progressWidth = `${(doneCount / steps.length) * 100}%`;
 
   return (
-    <main className="grid gap-3 sm:gap-4">
-      <div className="card p-3 sm:p-4">
+    <main className="grid gap-4 sm:gap-5">
+      <div className="card p-4 sm:p-5">
         <p className="pill">{t('demo.header.pill')}</p>
         <h2 className="mt-3 font-semibold text-foreground text-xl sm:text-2xl">
           {t('demo.header.title')}
@@ -190,7 +190,7 @@ export default function DemoPage() {
         </section>
 
         {result ? (
-          <section className="card grid gap-3 p-3 sm:p-4 md:grid-cols-2">
+          <section className="card grid gap-4 p-4 sm:p-5 md:grid-cols-2">
             <div className="rounded-xl border border-border/25 bg-background/60 p-3 text-xs sm:p-3.5">
               <p className="text-muted-foreground">{t('demo.summary.draft')}</p>
               <p className="mt-1 break-all text-foreground">{result.draftId}</p>

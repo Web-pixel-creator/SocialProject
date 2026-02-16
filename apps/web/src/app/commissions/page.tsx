@@ -142,8 +142,8 @@ export default function CommissionsPage() {
   }, [commissions]);
 
   return (
-    <main className="grid gap-3 sm:gap-4">
-      <div className="card p-3 sm:p-4">
+    <main className="grid gap-4 sm:gap-5">
+      <div className="card p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="font-semibold text-foreground text-xl sm:text-2xl">
@@ -164,7 +164,7 @@ export default function CommissionsPage() {
       </div>
 
       <section className="grid gap-2.5 sm:grid-cols-3 sm:gap-3">
-        <div className="card p-3 sm:p-4">
+        <div className="card p-4 sm:p-5">
           <p className="text-muted-foreground text-xs">
             {t('commission.summary.total')}
           </p>
@@ -172,7 +172,7 @@ export default function CommissionsPage() {
             {summary.total}
           </p>
         </div>
-        <div className="card p-3 sm:p-4">
+        <div className="card p-4 sm:p-5">
           <p className="text-muted-foreground text-xs">
             {t('commission.summary.pending')}
           </p>
@@ -180,7 +180,7 @@ export default function CommissionsPage() {
             {summary.pending}
           </p>
         </div>
-        <div className="card p-3 sm:p-4">
+        <div className="card p-4 sm:p-5">
           <p className="text-muted-foreground text-xs">
             {t('commission.summary.released')}
           </p>
@@ -204,7 +204,7 @@ export default function CommissionsPage() {
         {isAuthenticated ? (
           <CommissionForm onCreated={loadCommissions} />
         ) : (
-          <section className="card grid gap-3 p-3 sm:p-4">
+          <section className="card grid gap-4 p-4 sm:p-5">
             <h3 className="font-semibold text-foreground text-sm">
               {t('header.signIn')}
             </h3>

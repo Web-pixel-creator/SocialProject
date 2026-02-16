@@ -210,7 +210,7 @@ export const SiteHeader = () => {
   }, [mobileMenuOpen, pathname]);
 
   return (
-    <header className="topbar-surface sticky top-3 z-50 mb-5 rounded-2xl border border-border/25 p-3 sm:p-4 lg:p-5">
+    <header className="topbar-surface sticky top-3 z-50 mb-5 rounded-2xl border border-border/25 p-4 sm:p-5 lg:p-6">
       <div className="flex items-center justify-between gap-3">
         <Link
           className="flex items-center gap-2 font-bold text-foreground text-lg tracking-tight sm:text-xl"
