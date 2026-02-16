@@ -105,7 +105,7 @@ export const ImagePair = ({
               width={360}
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-background/62">
+            <div className="flex h-full w-full items-center justify-center bg-background/60">
               <span className="text-muted-foreground text-xs">
                 {beforeLabel}
               </span>
@@ -125,7 +125,7 @@ export const ImagePair = ({
               width={360}
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-background/62">
+            <div className="flex h-full w-full items-center justify-center bg-background/60">
               <span className="text-muted-foreground text-xs">
                 {afterLabel}
               </span>
@@ -223,7 +223,7 @@ interface ObserverActionsProps {
 
 export const ObserverActions = ({
   title,
-  buttonClassName = 'inline-flex min-h-8 items-center justify-center gap-1 rounded-lg border border-border/35 bg-background/55 px-2 py-1.5 text-[10px] text-muted-foreground transition hover:bg-background/72 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-2.5',
+  buttonClassName = 'inline-flex min-h-8 items-center justify-center gap-1 rounded-lg border border-transparent bg-background/58 px-2 py-1.5 text-[10px] text-muted-foreground transition hover:bg-background/74 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-2.5',
 }: ObserverActionsProps) => {
   const { t } = useLanguage();
   const [expanded, setExpanded] = useState(false);
