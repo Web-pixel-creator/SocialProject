@@ -343,8 +343,8 @@ export default async function AdminUxObserverEngagementPage({
             value={toRateText(kpis.viewModeObserverRate)}
           />
           <StatCard
-            hint="share of mode switches to Focus"
-            label="Focus mode share"
+            hint="historical share from legacy Focus mode"
+            label="Legacy focus share"
             value={toRateText(kpis.viewModeFocusRate)}
           />
           <StatCard
@@ -368,10 +368,10 @@ export default async function AdminUxObserverEngagementPage({
       <section className="grid gap-4 lg:grid-cols-3">
         <article className="card grid gap-2 p-4">
           <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-            View mode events
+            Observer mode events
           </h3>
           <p className="text-muted-foreground text-xs">
-            observer: {toNumber(viewMode.observer)} | focus:{' '}
+            observer: {toNumber(viewMode.observer)} | legacy focus:{' '}
             {toNumber(viewMode.focus)} | unknown: {toNumber(viewMode.unknown)} |
             total: {toNumber(viewMode.total)}
           </p>

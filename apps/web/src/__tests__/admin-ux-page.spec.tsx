@@ -106,7 +106,9 @@ describe('admin ux observer engagement page', () => {
     expect(screen.getAllByText('33.3%').length).toBeGreaterThan(0);
     expect(screen.getByText('66.7%')).toBeInTheDocument();
     expect(screen.getByText('75.0%')).toBeInTheDocument();
-    expect(screen.getByText(/observer: 1 \| focus: 2/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/observer: 1 \| legacy focus: 2/i),
+    ).toBeInTheDocument();
 
     expect(fetchMock).toHaveBeenCalledWith(
       'http://localhost:4000/api/admin/ux/observer-engagement?hours=24',
