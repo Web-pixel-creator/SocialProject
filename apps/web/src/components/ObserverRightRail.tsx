@@ -465,18 +465,18 @@ export const ObserverRightRail = () => {
   }, [requestResync]);
 
   const metricTileClass =
-    'rounded-lg border border-border/35 bg-background/42 p-2 sm:p-2.5';
+    'rounded-lg border border-border/25 bg-background/42 p-2 sm:p-2.5';
   const statusChipClass =
-    'rounded-full border border-border/35 bg-background/58 px-2 py-0.5 sm:px-2.5 sm:py-1';
+    'rounded-full border border-border/25 bg-background/60 px-2 py-0.5 sm:px-2.5 sm:py-1';
   const controlButtonBaseClass =
     'min-h-8 rounded-full border px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-3.5 sm:py-2 sm:text-xs';
   const controlButtonEnabledClass =
-    'border-border/35 bg-background/58 text-muted-foreground hover:border-border/55 hover:bg-background/74 hover:text-foreground';
+    'border-transparent bg-background/58 text-muted-foreground hover:bg-background/74 hover:text-foreground';
   const controlButtonDisabledClass =
-    'cursor-not-allowed border-border/35 bg-background/45 text-muted-foreground/45';
+    'cursor-not-allowed border-transparent bg-background/45 text-muted-foreground/45';
   const primaryActionButtonClass =
     'min-h-8 rounded-full border border-primary/35 bg-primary/10 px-3 py-1.5 font-semibold text-primary uppercase tracking-wide transition hover:border-primary/45 hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-3.5 sm:py-2';
-  const softPanelClass = 'rounded-lg border border-border/35 bg-background/42';
+  const softPanelClass = 'rounded-lg border border-border/25 bg-background/42';
 
   return (
     <aside className="observer-right-rail grid grid-cols-1 gap-3 sm:gap-3.5">
@@ -556,7 +556,7 @@ export const ObserverRightRail = () => {
         {resyncToast && (
           <div
             aria-live="polite"
-            className="mt-2 rounded-lg border border-border/35 bg-accent/60 p-1.5 text-[11px] text-foreground sm:p-2"
+            className="mt-2 rounded-lg border border-border/25 bg-accent/60 p-1.5 text-[11px] text-foreground sm:p-2"
           >
             {resyncToast}
           </div>

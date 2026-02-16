@@ -272,13 +272,13 @@ const AllFeedFilters = memo(function AllFeedFilters({
   onIntentChange,
 }: AllFeedFiltersProps) {
   return (
-    <div className="grid gap-3 rounded-2xl border border-border/35 bg-background/62 p-4 text-foreground/85 text-xs md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-3 rounded-2xl border border-border/25 bg-background/60 p-4 text-foreground/85 text-xs md:grid-cols-2 xl:grid-cols-4">
       <label className="grid gap-1">
         <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
           {labels.sort}
         </span>
         <select
-          className="rounded-lg border border-border/35 bg-background/64 px-3 py-2 text-foreground text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="rounded-lg border border-border/25 bg-background/70 px-3 py-2 text-foreground text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           onChange={(event) => onSortChange(event.target.value as FeedSort)}
           value={sort}
         >
@@ -294,7 +294,7 @@ const AllFeedFilters = memo(function AllFeedFilters({
           {labels.status}
         </span>
         <select
-          className="rounded-lg border border-border/35 bg-background/64 px-3 py-2 text-foreground text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="rounded-lg border border-border/25 bg-background/70 px-3 py-2 text-foreground text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           onChange={(event) => onStatusChange(event.target.value as FeedStatus)}
           value={status}
         >
@@ -310,7 +310,7 @@ const AllFeedFilters = memo(function AllFeedFilters({
           {labels.timeRange}
         </span>
         <select
-          className="rounded-lg border border-border/35 bg-background/64 px-3 py-2 text-foreground text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="rounded-lg border border-border/25 bg-background/70 px-3 py-2 text-foreground text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           onChange={(event) => onRangeChange(event.target.value as FeedRange)}
           value={range}
         >
@@ -326,7 +326,7 @@ const AllFeedFilters = memo(function AllFeedFilters({
           {labels.intent}
         </span>
         <select
-          className="rounded-lg border border-border/35 bg-background/64 px-3 py-2 text-foreground text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="rounded-lg border border-border/25 bg-background/70 px-3 py-2 text-foreground text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           onChange={(event) => onIntentChange(event.target.value as FeedIntent)}
           value={intent}
         >
@@ -355,7 +355,7 @@ const BattleFilters = memo(function BattleFilters({
   onBattleFilterChange,
 }: BattleFiltersProps) {
   return (
-    <div className="grid gap-2 rounded-2xl border border-border/35 bg-background/62 p-3 text-foreground/85 text-xs">
+    <div className="grid gap-2 rounded-2xl border border-border/25 bg-background/60 p-3 text-foreground/85 text-xs">
       <p className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
         {label}
       </p>
@@ -366,7 +366,7 @@ const BattleFilters = memo(function BattleFilters({
             className={`rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
               battleFilter === option.value
                 ? 'border border-primary/35 bg-primary/15 text-primary'
-                : 'border border-border/35 bg-background/48 text-muted-foreground hover:border-border/55 hover:bg-background/72 hover:text-foreground'
+                : 'border border-transparent bg-background/56 text-muted-foreground hover:bg-background/74 hover:text-foreground'
             }`}
             key={option.value}
             onClick={() => onBattleFilterChange(option.value)}
@@ -1787,7 +1787,7 @@ export const FeedTabs = () => {
             className={`rounded-lg px-3 py-2 text-left font-semibold text-xs uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
               active === tab
                 ? 'border border-primary/35 bg-primary/15 text-primary'
-                : 'border border-border/35 bg-background/48 text-muted-foreground hover:border-border/55 hover:bg-background/72 hover:text-foreground'
+                : 'border border-transparent bg-background/56 text-muted-foreground hover:bg-background/74 hover:text-foreground'
             }`}
             key={tab}
             onClick={() => {
@@ -1801,14 +1801,14 @@ export const FeedTabs = () => {
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
         <span
-          className="rounded-full border border-border/35 bg-background/62 px-3 py-1.5 font-semibold text-[11px] text-muted-foreground"
+          className="rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-[11px] text-muted-foreground"
           title={activeFilterPills.join(' | ')}
         >
           {activeFilterLabels.activeFilters}: {activeFilterCount}
         </span>
         {hasActiveFilters ? (
           <button
-            className="min-h-8 rounded-full border border-border/35 bg-background/62 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:border-border/55 hover:bg-background/78 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="min-h-8 rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-background/74 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             onClick={handleResetFilters}
             type="button"
           >
@@ -1886,7 +1886,7 @@ export const FeedTabs = () => {
                     }`}
                   />
                 </summary>
-                <div className="absolute right-0 z-20 mt-2 grid min-w-[16rem] gap-2 rounded-2xl border border-border/35 bg-card/95 p-2 sm:p-2.5">
+                <div className="absolute right-0 z-20 mt-2 grid min-w-[16rem] gap-2 rounded-2xl border border-border/25 bg-card/95 p-2 sm:p-2.5">
                   {morePanelContent}
                 </div>
               </details>
@@ -1895,7 +1895,7 @@ export const FeedTabs = () => {
         </div>
         <div className="grid gap-2 rounded-2xl border border-border/25 bg-card/68 p-2 sm:p-2.5 lg:p-3">
           <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-            <label className="group relative flex min-h-9 w-full min-w-0 items-center gap-2 rounded-full border border-border/25 bg-background/70 px-3 py-2 text-muted-foreground text-xs transition focus-within:border-primary/35 focus-within:bg-background hover:border-border/45 hover:bg-background/78 sm:px-3.5 sm:py-2.5">
+            <label className="group relative flex min-h-9 w-full min-w-0 items-center gap-2 rounded-full border border-border/25 bg-background/70 px-3 py-2 text-muted-foreground text-xs transition focus-within:border-primary/35 focus-within:bg-background hover:border-border/45 hover:bg-background/74 sm:px-3.5 sm:py-2.5">
               <Search aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
               <input
                 aria-keyshortcuts="/"
@@ -2003,7 +2003,7 @@ export const FeedTabs = () => {
             tabIndex={-1}
             type="button"
           />
-          <section className="relative z-10 max-h-[78vh] w-full overflow-y-auto rounded-2xl border border-border/35 bg-card p-3">
+          <section className="relative z-10 max-h-[78vh] w-full overflow-y-auto rounded-2xl border border-border/25 bg-card p-3">
             <div className="mb-3 flex items-center justify-between gap-2">
               <h3
                 className="font-semibold text-foreground text-sm"
@@ -2012,7 +2012,7 @@ export const FeedTabs = () => {
                 {showFiltersLabel}
               </h3>
               <button
-                className="rounded-full border border-border/35 bg-background/62 px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition hover:border-primary/35 hover:bg-background/78 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition hover:bg-background/74 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 onClick={() => setFiltersOpen(false)}
                 ref={mobileFiltersCloseButtonRef}
                 type="button"
@@ -2024,7 +2024,7 @@ export const FeedTabs = () => {
             {hasActiveFilters ? (
               <div className="mt-3 flex items-center justify-end">
                 <button
-                  className="rounded-full border border-border/35 bg-background/62 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:border-primary/35 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  className="rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-background/74 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   onClick={handleResetFilters}
                   type="button"
                 >
@@ -2050,7 +2050,7 @@ export const FeedTabs = () => {
             tabIndex={-1}
             type="button"
           />
-          <section className="relative z-10 max-h-[78vh] w-full overflow-y-auto rounded-2xl border border-border/35 bg-card p-3">
+          <section className="relative z-10 max-h-[78vh] w-full overflow-y-auto rounded-2xl border border-border/25 bg-card p-3">
             <div className="mb-3 flex items-center justify-between gap-2">
               <h3
                 className="font-semibold text-foreground text-sm"
@@ -2059,7 +2059,7 @@ export const FeedTabs = () => {
                 {moreLabel}
               </h3>
               <button
-                className="rounded-full border border-border/35 bg-background/62 px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition hover:border-primary/35 hover:bg-background/78 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition hover:bg-background/74 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 onClick={() => setMoreOpen(false)}
                 ref={mobileMoreCloseButtonRef}
                 type="button"
@@ -2117,7 +2117,7 @@ export const FeedTabs = () => {
                   <div className="flex flex-wrap gap-1">
                     {activeFilterPills.map((pill) => (
                       <span
-                        className="rounded-full border border-border/35 bg-background/62 px-2 py-1 text-[11px] text-muted-foreground"
+                        className="rounded-full border border-border/25 bg-background/60 px-2 py-1 text-[11px] text-muted-foreground"
                         key={pill}
                       >
                         {pill}
@@ -2127,7 +2127,7 @@ export const FeedTabs = () => {
                   <div className="flex flex-wrap justify-start gap-2">
                     {hasSearchQuery ? (
                       <button
-                        className="rounded-full border border-border/35 bg-background/62 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:border-primary/35 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                        className="rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-background/74 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                         onClick={handleClearSearchFromEmptyState}
                         type="button"
                       >
@@ -2135,7 +2135,7 @@ export const FeedTabs = () => {
                       </button>
                     ) : null}
                     <button
-                      className="rounded-full border border-border/35 bg-background/62 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:border-primary/35 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      className="rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-background/74 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                       onClick={handleResetFilters}
                       type="button"
                     >
@@ -2173,7 +2173,7 @@ export const FeedTabs = () => {
                       {t('feedTabs.emptyAction.runDemo')}
                     </Link>
                     <Link
-                      className="rounded-full border border-border/35 bg-background/52 px-4 py-2 font-semibold text-foreground text-xs transition hover:border-primary/40 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      className="rounded-full border border-transparent bg-background/58 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                       href="/search"
                     >
                       {t('feedTabs.emptyAction.openSearch')}
@@ -2193,7 +2193,7 @@ export const FeedTabs = () => {
       })()}
       {!fallbackUsed && hasMore && (
         <button
-          className="rounded-full border border-border/35 bg-background/62 px-4 py-2 font-semibold text-foreground text-xs transition hover:border-primary/35 hover:bg-background/78 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="rounded-full border border-transparent bg-background/58 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           onClick={() => setOffset((prev) => prev + PAGE_SIZE)}
           type="button"
         >
@@ -2202,7 +2202,7 @@ export const FeedTabs = () => {
       )}
       {!(loading || fallbackUsed || hasMore) && visibleItems.length > 0 ? (
         <div
-          className="inline-flex w-fit items-center rounded-full border border-border/35 bg-background/62 px-3 py-1.5 text-muted-foreground text-xs"
+          className="inline-flex w-fit items-center rounded-full border border-border/25 bg-background/60 px-3 py-1.5 text-muted-foreground text-xs"
           data-testid="feed-end-indicator"
         >
           {shownLabel}: {shownValue}
