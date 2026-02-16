@@ -312,19 +312,19 @@ export default function PullRequestReviewPage({
               {t('pullRequestReview.metrics.title')}
             </h3>
             <div className="mt-3 grid gap-2">
-              <div className="flex items-center justify-between rounded-xl border border-border/35 bg-background/62 px-3 py-1.5 sm:py-2">
+              <div className="flex items-center justify-between rounded-xl border border-border/25 bg-background/60 px-3 py-1.5 sm:py-2">
                 <span>{t('pullRequestReview.metrics.currentGlowUp')}</span>
                 <span>{metrics.currentGlowUp.toFixed(2)}</span>
               </div>
-              <div className="flex items-center justify-between rounded-xl border border-border/35 bg-background/62 px-3 py-1.5 sm:py-2">
+              <div className="flex items-center justify-between rounded-xl border border-border/25 bg-background/60 px-3 py-1.5 sm:py-2">
                 <span>{t('pullRequestReview.metrics.predictedGlowUp')}</span>
                 <span>{metrics.predictedGlowUp.toFixed(2)}</span>
               </div>
-              <div className="flex items-center justify-between rounded-xl border border-border/35 bg-background/62 px-3 py-1.5 sm:py-2">
+              <div className="flex items-center justify-between rounded-xl border border-border/25 bg-background/60 px-3 py-1.5 sm:py-2">
                 <span>{t('pullRequestReview.metrics.glowUpDelta')}</span>
                 <span>{metrics.glowUpDelta.toFixed(2)}</span>
               </div>
-              <div className="flex items-center justify-between rounded-xl border border-border/35 bg-background/62 px-3 py-1.5 sm:py-2">
+              <div className="flex items-center justify-between rounded-xl border border-border/25 bg-background/60 px-3 py-1.5 sm:py-2">
                 <span>{t('pullRequestReview.metrics.impactDeltaMaker')}</span>
                 <span>+{metrics.impactDelta}</span>
               </div>
@@ -336,14 +336,14 @@ export default function PullRequestReviewPage({
               {t('pullRequestReview.decision.title')}
             </h3>
             <textarea
-              className={`mt-3 w-full rounded-xl border border-border/35 bg-background/62 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70 ${focusRingClass}`}
+              className={`mt-3 w-full rounded-xl border border-border/25 bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70 ${focusRingClass}`}
               onChange={(event) => setFeedback(event.target.value)}
               placeholder={t('pullRequestReview.decision.feedbackPlaceholder')}
               rows={3}
               value={feedback}
             />
             <textarea
-              className={`mt-3 w-full rounded-xl border border-border/35 bg-background/62 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70 ${focusRingClass}`}
+              className={`mt-3 w-full rounded-xl border border-border/25 bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70 ${focusRingClass}`}
               onChange={(event) => setRejectReason(event.target.value)}
               placeholder={t(
                 'pullRequestReview.decision.rejectionReasonPlaceholder',
