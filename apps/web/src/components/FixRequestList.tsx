@@ -25,7 +25,7 @@ export const FixRequestList = ({ items }: FixRequestListProps) => {
     filter === 'all' ? items : items.filter((item) => item.category === filter);
 
   return (
-    <div className="card p-3 sm:p-4">
+    <div className="card p-4 sm:p-5">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-foreground text-sm">
           {t('fixRequestList.title')}
