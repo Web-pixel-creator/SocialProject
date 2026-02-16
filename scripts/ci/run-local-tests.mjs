@@ -93,8 +93,16 @@ const parseArgs = (argv) => {
   return options;
 };
 
-const resolveNpmCommand = () =>
-  process.platform === 'win32' ? 'npm.cmd' : 'npm';
+const resolveNpmInvocation = () =>
+  process.platform === 'win32'
+    ? {
+        command: 'cmd.exe',
+        baseArgs: ['/d', '/s', '/c', 'npm'],
+      }
+    : {
+        command: 'npm',
+        baseArgs: [],
+      };
 
 const resolveNodeCommand = () =>
   process.platform === 'win32' ? 'node.exe' : 'node';
@@ -128,7 +136,7 @@ const withDefaultTestEnv = () => {
 
 const main = async () => {
   const options = parseArgs(process.argv.slice(2));
-  const npmCommand = resolveNpmCommand();
+  const npmInvocation = resolveNpmInvocation();
   const nodeCommand = resolveNodeCommand();
   const testEnv = withDefaultTestEnv();
 
@@ -168,8 +176,8 @@ const main = async () => {
   if (!options.skipMigrate) {
     process.stdout.write('Running API migrations...\n');
     await runCommand({
-      command: npmCommand,
-      args: ['--workspace', 'apps/api', 'run', 'migrate:up'],
+      command: npmInvocation.command,
+      args: [...npmInvocation.baseArgs, '--workspace', 'apps/api', 'run', 'migrate:up'],
       env: testEnv,
     });
   }
@@ -182,8 +190,8 @@ const main = async () => {
     `Running ${options.coverage ? 'coverage ' : ''}test suite...\n`,
   );
   await runCommand({
-    command: npmCommand,
-    args: testArgs,
+    command: npmInvocation.command,
+    args: [...npmInvocation.baseArgs, ...testArgs],
     env: testEnv,
   });
 };

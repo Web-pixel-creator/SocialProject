@@ -19,7 +19,8 @@ Use this checklist for every production release.
 - [ ] `npm run lint` passes.
 - [ ] `npm --workspace apps/api run build` passes.
 - [ ] `npm --workspace apps/web run build` passes.
-- [ ] Local infra-backed test gate passes (preferred local command): `npm run test:local -- --runInBand`.
+- [ ] Web test suite passes: `npm run test:web`.
+- [ ] API test suite passes (infra-backed local gate): `npm run test:api -- --runInBand`.
 - [ ] `npm run test -- --runInBand` passes.
 - [ ] `npm run perf:pre-release` passes against staging API/Web.
 - [ ] `npm run security:check` passes.

@@ -9,6 +9,8 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/index.js",
     "lint": "eslint src --ext .ts",
+    "test": "npm --prefix ../.. run test:api --",
+    "test:skip-deps": "npm --prefix ../.. run test:api:skip-deps --",
     "migrate:up": "tsx src/scripts/migrate.ts up",
     "migrate:down": "tsx src/scripts/migrate.ts down",
     "migrate:create": "node-pg-migrate create --timestamp",
