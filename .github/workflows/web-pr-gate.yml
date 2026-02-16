@@ -77,17 +77,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
+      - name: Bootstrap Playwright tooling
+        uses: ./.github/actions/playwright-bootstrap
 
       - name: Run web E2E smoke tests
         env:
@@ -134,17 +125,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
+      - name: Bootstrap Playwright tooling
+        uses: ./.github/actions/playwright-bootstrap
 
       - name: Run Playwright visual smoke tests
         env:
