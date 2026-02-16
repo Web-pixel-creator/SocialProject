@@ -310,10 +310,6 @@ jobs:
 
           write_step_summary() {
             local status="$1"
-            if [ -z "${GITHUB_STEP_SUMMARY:-}" ]; then
-              return
-            fi
-
             local summary_md_path="artifacts/release/release-smoke-step-summary.md"
             node scripts/release/render-release-smoke-step-summary.mjs \
               --status "$status" \
@@ -324,10 +320,6 @@ jobs:
               --smoke-results "$SMOKE_RESULTS_PATH" \
               --env-preflight "$ENV_PREFLIGHT_SUMMARY_PATH" \
               --output "$summary_md_path"
-
-            if [ -f "$summary_md_path" ]; then
-              cat "$summary_md_path" >> "$GITHUB_STEP_SUMMARY"
-            fi
           }
 
           on_exit() {
@@ -540,6 +532,12 @@ jobs:
           artifact_3_path: artifacts/release/smoke-results.json
           artifact_4_name: release-smoke-tunnel-dispatch-retry-summary
           artifact_4_path: artifacts/release/tunnel-dispatch-retry-summary.json
+
+      - name: Append release smoke step summary
+        if: always()
+        uses: ./.github/actions/append-step-summary
+        with:
+          summary_path: artifacts/release/release-smoke-step-summary.md
 
   release_tunnel_helper_ci_rehearsal:
     name: Release Tunnel Helper Rehearsal (staging/manual)
