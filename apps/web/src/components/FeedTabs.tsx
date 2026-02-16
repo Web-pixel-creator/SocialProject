@@ -383,6 +383,7 @@ const BattleFilters = memo(function BattleFilters({
 interface ActiveFilterChipsProps {
   shownLabel: string;
   shownValue: string;
+  filtersPanelId: string;
   hasFilterPanel: boolean;
   filtersOpen: boolean;
   showFiltersLabel: string;
@@ -416,6 +417,7 @@ interface ActiveFilterChipsProps {
 const ActiveFilterChips = memo(function ActiveFilterChips({
   shownLabel,
   shownValue,
+  filtersPanelId,
   hasFilterPanel,
   filtersOpen,
   showFiltersLabel,
@@ -457,6 +459,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
         </span>
         {hasFilterPanel ? (
           <button
+            aria-controls={filtersPanelId}
             aria-expanded={filtersOpen}
             aria-keyshortcuts="Shift+F"
             className={`inline-flex min-h-8 w-fit flex-shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-3.5 sm:py-1.5 sm:text-xs ${
@@ -767,6 +770,10 @@ export const FeedTabs = () => {
   );
   const showFiltersLabel = t('feedTabs.filters.toggle');
   const moreLabel = t('feedTabs.more');
+  const desktopFilterPanelId = 'feed-desktop-filter-panel';
+  const mobileFilterPanelId = 'feed-mobile-filters-panel';
+  const desktopMorePanelId = 'feed-desktop-more-panel';
+  const mobileMorePanelId = 'feed-mobile-more-panel';
   const shownLabel = t('feedTabs.shown');
   const backToTopLabel = t('feedTabs.backToTop');
   const densityLabel = t('feedTabs.density.label');
@@ -1842,6 +1849,7 @@ export const FeedTabs = () => {
           <div className="flex justify-end">
             {isMobileViewport ? (
               <button
+                aria-controls={mobileMorePanelId}
                 aria-expanded={moreOpen}
                 className={`inline-flex min-h-8 items-center gap-1 rounded-full border px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-4 sm:py-2 sm:text-xs ${
                   MORE_TABS.includes(active)
@@ -1871,6 +1879,7 @@ export const FeedTabs = () => {
                 ref={desktopMoreDetailsRef}
               >
                 <summary
+                  aria-controls={desktopMorePanelId}
                   className={`inline-flex min-h-8 cursor-pointer list-none items-center gap-1 rounded-full border px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-4 sm:py-2 sm:text-xs [&::-webkit-details-marker]:hidden ${
                     MORE_TABS.includes(active)
                       ? 'border-primary/45 bg-primary/12 text-primary'
@@ -1886,7 +1895,10 @@ export const FeedTabs = () => {
                     }`}
                   />
                 </summary>
-                <div className="absolute right-0 z-20 mt-2 grid min-w-[16rem] gap-2 rounded-2xl border border-border/25 bg-card/95 p-2 sm:p-2.5">
+                <div
+                  className="absolute right-0 z-20 mt-2 grid min-w-[16rem] gap-2 rounded-2xl border border-border/25 bg-card/95 p-2 sm:p-2.5"
+                  id={desktopMorePanelId}
+                >
                   {morePanelContent}
                 </div>
               </details>
@@ -1959,6 +1971,9 @@ export const FeedTabs = () => {
             activeFilterPills={activeFilterPills}
             filtersButtonRef={mobileFiltersButtonRef}
             filtersOpen={filtersOpen}
+            filtersPanelId={
+              isMobileViewport ? mobileFilterPanelId : desktopFilterPanelId
+            }
             hasActiveFilters={hasActiveFilters}
             hasBattleFilterApplied={hasBattleFilterApplied}
             hasFilterPanel={hasFilterPanel}
@@ -1984,9 +1999,9 @@ export const FeedTabs = () => {
             shownValue={shownValue}
           />
         </div>
-        {hasFilterPanel && filtersOpen && !isMobileViewport
-          ? filterPanel
-          : null}
+        {hasFilterPanel && filtersOpen && !isMobileViewport ? (
+          <div id={desktopFilterPanelId}>{filterPanel}</div>
+        ) : null}
       </div>
       {hasFilterPanel && filtersOpen && isMobileViewport ? (
         <div
@@ -2003,7 +2018,10 @@ export const FeedTabs = () => {
             tabIndex={-1}
             type="button"
           />
-          <section className="relative z-10 max-h-[78vh] w-full overflow-y-auto rounded-2xl border border-border/25 bg-card p-3">
+          <section
+            className="relative z-10 max-h-[78vh] w-full overflow-y-auto rounded-2xl border border-border/25 bg-card p-3"
+            id={mobileFilterPanelId}
+          >
             <div className="mb-3 flex items-center justify-between gap-2">
               <h3
                 className="font-semibold text-foreground text-sm"
@@ -2050,7 +2068,10 @@ export const FeedTabs = () => {
             tabIndex={-1}
             type="button"
           />
-          <section className="relative z-10 max-h-[78vh] w-full overflow-y-auto rounded-2xl border border-border/25 bg-card p-3">
+          <section
+            className="relative z-10 max-h-[78vh] w-full overflow-y-auto rounded-2xl border border-border/25 bg-card p-3"
+            id={mobileMorePanelId}
+          >
             <div className="mb-3 flex items-center justify-between gap-2">
               <h3
                 className="font-semibold text-foreground text-sm"

@@ -847,7 +847,10 @@ function SearchPageContent() {
           </>
         )}
 
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/25 bg-background/58 p-2.5 text-muted-foreground text-xs leading-relaxed sm:p-3 sm:text-sm">
+        <div
+          aria-live="polite"
+          className="flex flex-wrap items-center gap-2 rounded-xl border border-border/25 bg-background/58 p-2.5 text-muted-foreground text-xs leading-relaxed sm:p-3 sm:text-sm"
+        >
           <span>{summary}</span>
           {showAbBadge && (
             <span className="rounded-full border border-transparent bg-background/56 px-2 py-0.5 text-[11px] text-muted-foreground uppercase">

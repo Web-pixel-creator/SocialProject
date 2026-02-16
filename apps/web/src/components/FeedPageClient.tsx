@@ -99,6 +99,8 @@ export default function FeedPageClient() {
                     {t('header.observerMode')}
                   </span>
                   <button
+                    aria-controls="feed-mobile-observer-nav"
+                    aria-expanded={mobileSidebarOpen}
                     className="inline-flex min-h-8 items-center rounded-full border border-transparent bg-background/58 px-2.5 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:py-2 lg:hidden"
                     onClick={openMobileSidebar}
                     ref={mobileMenuButtonRef}
@@ -147,6 +149,7 @@ export default function FeedPageClient() {
           aria-labelledby="mobile-observer-nav-title"
           aria-modal="true"
           className="overlay-backdrop fixed inset-0 z-[70] p-4 lg:hidden"
+          id="feed-mobile-observer-nav"
           role="dialog"
         >
           <div className="mx-auto grid max-w-sm gap-3">
