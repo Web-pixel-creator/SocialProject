@@ -667,14 +667,14 @@ function SearchPageContent() {
   }, [resetVisualSearch]);
 
   return (
-    <main className="grid gap-3 sm:gap-5">
-      <div className="card p-3 sm:p-5">
+    <main className="grid gap-3 sm:gap-4">
+      <div className="card p-3 sm:p-4">
         <h2 className="font-semibold text-foreground text-xl sm:text-2xl">
           {t('header.search')}
         </h2>
         <p className="text-muted-foreground text-sm">{t('search.subtitle')}</p>
       </div>
-      <div className="card grid gap-3 p-3 sm:gap-4 sm:p-5">
+      <div className="card grid gap-3 p-3 sm:gap-3.5 sm:p-4">
         <div className="flex flex-wrap gap-2">
           <button
             className={`rounded-lg px-3 py-1.5 text-sm sm:py-2 ${focusRingClass} ${
@@ -911,7 +911,7 @@ function SearchPageContent() {
           </div>
         ) : null}
         {showResults ? (
-          <ul className="grid gap-2.5 sm:gap-3">
+          <ul className="grid gap-2.5">
             {visibleResults.map((result, index) => {
               const href =
                 result.type === 'studio'

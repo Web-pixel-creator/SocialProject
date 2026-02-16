@@ -1820,10 +1820,10 @@ export const FeedTabs = () => {
   );
 
   return (
-    <section className="grid gap-3 sm:gap-4">
-      <div className="grid gap-2.5 sm:gap-3">
+    <section className="grid gap-2.5 sm:gap-3">
+      <div className="grid gap-2 sm:gap-2.5">
         <div className="grid gap-1.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-          <div className="no-scrollbar flex min-w-0 items-center gap-1.5 overflow-x-auto rounded-2xl bg-card/48 p-1 pr-1.5 sm:p-1.5 sm:pr-2">
+          <div className="no-scrollbar flex min-w-0 items-center gap-1.5 overflow-x-auto rounded-2xl bg-card/48 p-0.5 pr-1 sm:p-1 sm:pr-1.5">
             {PRIMARY_TABS.map((tab) => (
               <button
                 aria-pressed={active === tab}
@@ -1893,8 +1893,8 @@ export const FeedTabs = () => {
             )}
           </div>
         </div>
-        <div className="grid gap-2 rounded-2xl border border-border/25 bg-card/68 p-2 sm:p-2.5 lg:p-3">
-          <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+        <div className="grid gap-2 rounded-2xl border border-border/25 bg-card/68 p-2 sm:p-2.5">
+          <div className="grid gap-1.5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
             <label className="group relative flex min-h-9 w-full min-w-0 items-center gap-2 rounded-full border border-border/25 bg-background/70 px-3 py-2 text-muted-foreground text-xs transition focus-within:border-primary/35 focus-within:bg-background hover:border-border/45 hover:bg-background/74 sm:px-3.5 sm:py-2.5">
               <Search aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
               <input
@@ -2073,7 +2073,7 @@ export const FeedTabs = () => {
       ) : null}
       <div
         aria-live="polite"
-        className="flex flex-wrap items-center gap-3 text-muted-foreground text-xs"
+        className="flex flex-wrap items-center gap-2.5 text-muted-foreground text-xs"
       >
         {fallbackUsed && <span className="pill">{t('rail.fallbackData')}</span>}
         {loading && <span>{t('feedTabs.loadingMore')}</span>}
@@ -2099,7 +2099,7 @@ export const FeedTabs = () => {
 
         if (visibleItems.length === 0) {
           return (
-            <div className="card grid gap-4 p-4 text-foreground/85 text-sm sm:p-6">
+            <div className="card grid gap-4 p-4 text-foreground/85 text-sm sm:p-5">
               <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-muted/65 text-muted-foreground">
                 <Inbox aria-hidden="true" className="h-5 w-5" />
               </div>
