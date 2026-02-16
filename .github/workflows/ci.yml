@@ -148,11 +148,10 @@ jobs:
 
       - name: Upload retry schema gate JSON summary
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/artifact-upload
         with:
-          name: retry-schema-gate-summary
-          path: artifacts/release/retry-schema-gate-summary.json
-          if-no-files-found: ignore
+          artifact_name: retry-schema-gate-summary
+          artifact_path: artifacts/release/retry-schema-gate-summary.json
 
       - name: Generate release smoke preflight schema JSON summary
         shell: bash
@@ -197,11 +196,10 @@ jobs:
 
       - name: Upload release smoke preflight schema JSON summary
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/artifact-upload
         with:
-          name: release-smoke-preflight-schema-summary
-          path: artifacts/release/release-smoke-preflight-schema-summary.json
-          if-no-files-found: ignore
+          artifact_name: release-smoke-preflight-schema-summary
+          artifact_path: artifacts/release/release-smoke-preflight-schema-summary.json
 
       - name: Wait for services
         run: |
@@ -224,11 +222,10 @@ jobs:
 
       - name: Upload unit test coverage
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/artifact-upload
         with:
-          name: unit-test-coverage
-          path: coverage
-          if-no-files-found: ignore
+          artifact_name: unit-test-coverage
+          artifact_path: coverage
 
   e2e_playwright:
     name: Playwright E2E (PR smoke)
@@ -291,11 +288,10 @@ jobs:
 
       - name: Upload performance report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/artifact-upload
         with:
-          name: perf-pre-release-report
-          path: artifacts/perf/pre-release-results.json
-          if-no-files-found: ignore
+          artifact_name: perf-pre-release-report
+          artifact_path: artifacts/perf/pre-release-results.json
 
   release_smoke_staging:
     name: Release Smoke Dry-Run (staging/manual)
