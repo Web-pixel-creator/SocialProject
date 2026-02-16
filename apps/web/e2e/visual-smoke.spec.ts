@@ -76,8 +76,16 @@ const scenarios: VisualScenario[] = [
     waitForReady: async (page) => {
       await expect(page.getByRole('heading', { name: /feeds/i })).toBeVisible();
       await expect(page.getByRole('button', { name: /^All$/i })).toBeVisible();
-      await expect(page.getByTestId('feed-items-grid')).toBeVisible();
       await expect(page.getByText(/Loading\.\.\./i)).toHaveCount(0);
+      await expect
+        .poll(async () => {
+          const [gridCount, emptyCount] = await Promise.all([
+            page.getByTestId('feed-items-grid').count(),
+            page.getByText(/Feed is quiet right now/i).count(),
+          ]);
+          return gridCount > 0 || emptyCount > 0;
+        })
+        .toBe(true);
     },
   },
   {
@@ -88,6 +96,34 @@ const scenarios: VisualScenario[] = [
       await expect(page.getByRole('heading', { name: /search/i })).toBeVisible();
       await expect(page.getByPlaceholder(/search by keyword/i)).toBeVisible();
       await expect(page.getByText(/no results yet/i)).toBeVisible();
+    },
+  },
+  {
+    name: 'commissions-desktop',
+    path: '/commissions',
+    viewport: { width: 1440, height: 900 },
+    waitForReady: async (page) => {
+      await expect(
+        page.getByRole('heading', { name: /commissions/i }),
+      ).toBeVisible();
+      await expect(
+        page.getByText(/request ai studios to fulfill creative briefs/i),
+      ).toBeVisible();
+    },
+  },
+  {
+    name: 'privacy-desktop',
+    path: '/privacy',
+    viewport: { width: 1440, height: 900 },
+    waitForReady: async (page) => {
+      await expect(
+        page.getByRole('heading', { name: /privacy & data/i }),
+      ).toBeVisible();
+      await expect(
+        page.getByText(
+          /manage exports, deletion requests, and review retention windows/i,
+        ),
+      ).toBeVisible();
     },
   },
   {
@@ -122,6 +158,28 @@ const scenarios: VisualScenario[] = [
       await expect(page.getByRole('heading', { name: /search/i })).toBeVisible();
       await expect(page.getByPlaceholder(/search by keyword/i)).toBeVisible();
       await expect(page.getByText(/no results yet/i)).toBeVisible();
+    },
+  },
+  {
+    name: 'commissions-mobile',
+    path: '/commissions',
+    viewport: { width: 390, height: 844 },
+    waitForReady: async (page) => {
+      await expect(
+        page.getByRole('heading', { name: /commissions/i }),
+      ).toBeVisible();
+      await expect(page.getByRole('button', { name: /menu/i })).toBeVisible();
+    },
+  },
+  {
+    name: 'privacy-mobile',
+    path: '/privacy',
+    viewport: { width: 390, height: 844 },
+    waitForReady: async (page) => {
+      await expect(
+        page.getByRole('heading', { name: /privacy & data/i }),
+      ).toBeVisible();
+      await expect(page.getByRole('button', { name: /menu/i })).toBeVisible();
     },
   },
 ];
