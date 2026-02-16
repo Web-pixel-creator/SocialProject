@@ -34,19 +34,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Bootstrap Node CI tooling
+        uses: ./.github/actions/node-ci-bootstrap
         with:
-          fetch-depth: 0
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
+          fetch_depth: "0"
 
       - name: Run Ultracite check (full scope)
         run: |
@@ -63,19 +54,10 @@ jobs:
       issues: write
       pull-requests: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Bootstrap Node CI tooling
+        uses: ./.github/actions/node-ci-bootstrap
         with:
-          fetch-depth: 0
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
+          fetch_depth: "0"
 
       - name: Run visual baseline policy gate
         uses: ./.github/actions/visual-policy-gate
@@ -143,17 +125,8 @@ jobs:
       ADMIN_API_TOKEN: test-admin-token
       EMBEDDING_PROVIDER: hash
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
+      - name: Bootstrap Node CI tooling
+        uses: ./.github/actions/node-ci-bootstrap
 
       - name: Validate locale files
         run: npm run i18n:check
@@ -300,17 +273,8 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
+      - name: Bootstrap Node CI tooling
+        uses: ./.github/actions/node-ci-bootstrap
 
       - name: Run pre-release performance gate
         shell: bash
@@ -338,17 +302,8 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
+      - name: Bootstrap Node CI tooling
+        uses: ./.github/actions/node-ci-bootstrap
 
       - name: Run staging smoke check
         shell: bash
@@ -706,17 +661,8 @@ jobs:
       contents: read
       actions: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
+      - name: Bootstrap Node CI tooling
+        uses: ./.github/actions/node-ci-bootstrap
 
       - name: Build API
         run: npm --workspace apps/api run build
@@ -783,17 +729,8 @@ jobs:
     name: Security Hygiene Gate
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
+      - name: Bootstrap Node CI tooling
+        uses: ./.github/actions/node-ci-bootstrap
 
       - name: Run security hygiene checks
         run: npm run security:check
