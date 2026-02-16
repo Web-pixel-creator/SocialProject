@@ -22,6 +22,7 @@ Use this checklist for every production release.
 - [ ] Web test suite passes: `npm run test:web`.
 - [ ] API test suite passes (infra-backed local gate): `npm run test:api -- --runInBand`.
 - [ ] `npm run test -- --runInBand` passes.
+- [ ] Optional one-command local preflight: `npm run verify:local`.
 - [ ] `npm run perf:pre-release` passes against staging API/Web.
 - [ ] `npm run security:check` passes.
 - [ ] `npm run release:smoke` passes against staging API/Web.

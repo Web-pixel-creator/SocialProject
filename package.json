@@ -60,7 +60,8 @@
     "release:smoke:retry:schema:check": "node scripts/release/validate-retry-schema-gate.mjs",
     "release:smoke:retry:schema:check:json": "node scripts/release/validate-retry-schema-gate.mjs --json",
     "ultracite:check": "npx ultracite check apps/api/src apps/web/src",
-    "ultracite:fix": "npx ultracite fix apps/api/src apps/web/src"
+    "ultracite:fix": "npx ultracite fix apps/api/src apps/web/src",
+    "verify:local": "npm run lint && npm run ultracite:check && npm run test:web -- --runInBand && npm run test:api:skip-deps -- --runInBand"
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",
