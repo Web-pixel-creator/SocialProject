@@ -144,13 +144,6 @@ jobs:
         shell: bash
         run: mkdir -p artifacts/release && node scripts/release/validate-retry-schema-gate.mjs --json > artifacts/release/retry-schema-gate-summary.json
 
-      - name: Upload retry schema gate JSON summary
-        if: always()
-        uses: ./.github/actions/artifact-upload
-        with:
-          artifact_name: retry-schema-gate-summary
-          artifact_path: artifacts/release/retry-schema-gate-summary.json
-
       - name: Generate release smoke preflight schema JSON summary
         shell: bash
         run: mkdir -p artifacts/release && node scripts/release/validate-release-smoke-preflight-summary.mjs --json > artifacts/release/release-smoke-preflight-schema-summary.json
@@ -166,12 +159,14 @@ jobs:
         with:
           summary_path: artifacts/release/release-smoke-preflight-schema-summary.md
 
-      - name: Upload release smoke preflight schema JSON summary
+      - name: Upload release schema summary artifacts
         if: always()
-        uses: ./.github/actions/artifact-upload
+        uses: ./.github/actions/release-artifacts-upload
         with:
-          artifact_name: release-smoke-preflight-schema-summary
-          artifact_path: artifacts/release/release-smoke-preflight-schema-summary.json
+          artifact_1_name: retry-schema-gate-summary
+          artifact_1_path: artifacts/release/retry-schema-gate-summary.json
+          artifact_2_name: release-smoke-preflight-schema-summary
+          artifact_2_path: artifacts/release/release-smoke-preflight-schema-summary.json
 
       - name: Wait for services
         run: node scripts/ci/wait-for-services.mjs --ports 5432,6379
