@@ -170,40 +170,20 @@ jobs:
           mkdir -p artifacts/release
           node scripts/release/validate-release-smoke-preflight-summary.mjs --json > artifacts/release/release-smoke-preflight-schema-summary.json
 
-      - name: Append preflight schema summary to step summary
+      - name: Render preflight schema summary markdown
         if: always()
         shell: bash
         run: |
-          if [ -z "${GITHUB_STEP_SUMMARY:-}" ] || [ ! -f artifacts/release/release-smoke-preflight-schema-summary.json ]; then
-            exit 0
-          fi
+          mkdir -p artifacts/release
+          node scripts/release/render-release-smoke-preflight-schema-summary.mjs \
+            --input artifacts/release/release-smoke-preflight-schema-summary.json \
+            --output artifacts/release/release-smoke-preflight-schema-summary.md
 
-          node <<'NODE'
-          const fs = require('node:fs');
-          const summaryPath = 'artifacts/release/release-smoke-preflight-schema-summary.json';
-          const summaryOutputPath = process.env.GITHUB_STEP_SUMMARY;
-          if (!summaryOutputPath) {
-            process.exit(0);
-          }
-
-          const payload = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
-          const lines = [
-            '### Release Smoke Preflight Schema Summary',
-            '',
-            `- status: \`${String(payload.status ?? 'unknown')}\``,
-            `- validated payloads: \`${String(payload?.totals?.validatedPayloads ?? 0)}\``,
-            `- fixture payloads: \`${String(payload?.totals?.fixturePayloads ?? 0)}\``,
-            `- runtime payloads: \`${String(payload?.totals?.runtimePayloads ?? 0)}\``,
-          ];
-          if (Array.isArray(payload.failures) && payload.failures.length > 0) {
-            lines.push('', 'Failures:');
-            for (const failure of payload.failures) {
-              lines.push(`- ${String(failure)}`);
-            }
-          }
-          lines.push('');
-          fs.appendFileSync(summaryOutputPath, `${lines.join('\n')}\n`);
-          NODE
+      - name: Append preflight schema summary to step summary
+        if: always()
+        uses: ./.github/actions/append-step-summary
+        with:
+          summary_path: artifacts/release/release-smoke-preflight-schema-summary.md
 
       - name: Upload release smoke preflight schema JSON summary
         if: always()
@@ -345,27 +325,7 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
 
             if [ -f "$SMOKE_RESULTS_PATH" ]; then
-              SMOKE_VALUES="$(node - "$SMOKE_RESULTS_PATH" <<'NODE'
-          const fs = require('node:fs');
-
-          const path = process.argv[2];
-
-          let pass = 'n/a';
-          let totalSteps = 'n/a';
-          let failedSteps = 'n/a';
-
-          try {
-            const payload = JSON.parse(fs.readFileSync(path, 'utf8'));
-            pass = String(payload?.summary?.pass ?? 'n/a');
-            totalSteps = String(payload?.summary?.totalSteps ?? 'n/a');
-            failedSteps = String(payload?.summary?.failedSteps ?? 'n/a');
-          } catch (_error) {
-            // keep default n/a values when summary artifact is missing or malformed
-          }
-
-          process.stdout.write(`${pass}|${totalSteps}|${failedSteps}`);
-          NODE
-              )"
+              SMOKE_VALUES="$(node scripts/release/extract-release-summary-values.mjs --kind smoke --input "$SMOKE_RESULTS_PATH")"
               IFS='|' read -r SMOKE_PASS SMOKE_TOTAL_STEPS SMOKE_FAILED_STEPS <<<"$SMOKE_VALUES"
 
               {
@@ -376,29 +336,7 @@ jobs:
             fi
 
             if [ -f "$ENV_PREFLIGHT_SUMMARY_PATH" ]; then
-              ENV_PREFLIGHT_VALUES="$(node - "$ENV_PREFLIGHT_SUMMARY_PATH" <<'NODE'
-          const fs = require('node:fs');
-
-          const path = process.argv[2];
-
-          let status = 'n/a';
-          let missing = 'n/a';
-          let warnings = 'n/a';
-          let strict = 'n/a';
-
-          try {
-            const payload = JSON.parse(fs.readFileSync(path, 'utf8'));
-            status = String(payload?.status ?? 'n/a');
-            missing = String(Array.isArray(payload?.missing) ? payload.missing.length : 'n/a');
-            warnings = String(Array.isArray(payload?.warnings) ? payload.warnings.length : 'n/a');
-            strict = String(payload?.strict ?? 'n/a');
-          } catch (_error) {
-            // keep default n/a values when summary artifact is missing or malformed
-          }
-
-          process.stdout.write(`${status}|${missing}|${warnings}|${strict}`);
-          NODE
-              )"
+              ENV_PREFLIGHT_VALUES="$(node scripts/release/extract-release-summary-values.mjs --kind env-preflight --input "$ENV_PREFLIGHT_SUMMARY_PATH")"
               IFS='|' read -r ENV_PREFLIGHT_STATUS ENV_PREFLIGHT_MISSING ENV_PREFLIGHT_WARNINGS ENV_PREFLIGHT_STRICT <<<"$ENV_PREFLIGHT_VALUES"
 
               {
@@ -599,27 +537,7 @@ jobs:
             npm run release:smoke
           else
             mkdir -p "$(dirname "$ENV_PREFLIGHT_SUMMARY_PATH")"
-            node - "$ENV_PREFLIGHT_SUMMARY_PATH" <<'NODE'
-          const fs = require('node:fs');
-
-          const outputPath = process.argv[2];
-          const payload = {
-            checkedAtUtc: new Date().toISOString(),
-            label: 'release:preflight:env',
-            missing: [],
-            status: 'skipped',
-            strict: false,
-            warnings: [
-              {
-                key: 'release_env_preflight',
-                reason: 'skipped in local-fallback mode (no staging URL inputs)',
-                scope: 'ci',
-              },
-            ],
-          };
-
-          fs.writeFileSync(outputPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
-          NODE
+            node scripts/release/write-release-env-preflight-skipped-summary.mjs --output "$ENV_PREFLIGHT_SUMMARY_PATH"
 
             echo "Staging URLs are not configured. Running local-stack release dry-run fallback."
             RELEASE_API_BASE_URL="$EFFECTIVE_API_URL" \

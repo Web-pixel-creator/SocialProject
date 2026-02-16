@@ -43,64 +43,20 @@ jobs:
         run: |
           npm run release:health:schema:check:json -- "artifacts/release/post-release-health-run-${RELEASE_TARGET_RUN_ID}.json" > "artifacts/release/post-release-health-schema-summary-${RELEASE_TARGET_RUN_ID}.json"
 
-      - name: Append post-release health summary to step summary
+      - name: Render post-release health step summary markdown
         if: always()
         shell: bash
         run: |
-          if [ -z "${GITHUB_STEP_SUMMARY:-}" ]; then
-            exit 0
-          fi
+          mkdir -p artifacts/release
+          node scripts/release/render-post-release-health-step-summary.mjs \
+            --run-id "$RELEASE_TARGET_RUN_ID" \
+            --output "artifacts/release/post-release-health-step-summary-${RELEASE_TARGET_RUN_ID}.md"
 
-          node <<'NODE'
-          const fs = require('node:fs');
-          const runId = process.env.RELEASE_TARGET_RUN_ID;
-          const summaryOutputPath = process.env.GITHUB_STEP_SUMMARY;
-          if (!runId || !summaryOutputPath) {
-            process.exit(0);
-          }
-
-          const healthSummaryPath = `artifacts/release/post-release-health-summary-${runId}.json`;
-          const schemaSummaryPath = `artifacts/release/post-release-health-schema-summary-${runId}.json`;
-          const lines = [
-            '### Post-release Health Gate',
-            '',
-            `- target run id: \`${runId}\``,
-          ];
-
-          if (fs.existsSync(healthSummaryPath)) {
-            try {
-              const payload = JSON.parse(fs.readFileSync(healthSummaryPath, 'utf8'));
-              lines.push(
-                `- health status: \`${String(payload.status ?? 'unknown')}\``,
-                `- required jobs: \`${String(payload?.totals?.requiredJobsPassed ?? 0)}/${String(payload?.totals?.requiredJobsTotal ?? 0)}\``,
-                `- required artifacts: \`${String(payload?.totals?.requiredArtifactsPresent ?? 0)}/${String(payload?.totals?.requiredArtifactsTotal ?? 0)}\``,
-                `- failed jobs: \`${String(payload?.totals?.failedJobsTotal ?? 0)}\``,
-                `- artifacts discovered: \`${String(payload?.totals?.artifactsDiscovered ?? 0)}\``,
-              );
-            } catch (error) {
-              lines.push(`- health summary parse error: \`${String(error && error.message ? error.message : error)}\``);
-            }
-          } else {
-            lines.push('- health summary: `missing`');
-          }
-
-          if (fs.existsSync(schemaSummaryPath)) {
-            try {
-              const payload = JSON.parse(fs.readFileSync(schemaSummaryPath, 'utf8'));
-              lines.push(
-                `- schema status: \`${String(payload.status ?? 'unknown')}\``,
-                `- schema validated payloads: \`${String(payload?.totals?.validatedPayloads ?? 0)}\``,
-              );
-            } catch (error) {
-              lines.push(`- schema summary parse error: \`${String(error && error.message ? error.message : error)}\``);
-            }
-          } else {
-            lines.push('- schema summary: `missing`');
-          }
-
-          lines.push('');
-          fs.appendFileSync(summaryOutputPath, `${lines.join('\n')}\n`);
-          NODE
+      - name: Append post-release health summary to step summary
+        if: always()
+        uses: ./.github/actions/append-step-summary
+        with:
+          summary_path: artifacts/release/post-release-health-step-summary-${{ env.RELEASE_TARGET_RUN_ID }}.md
 
       - name: Upload post-release health artifacts
         if: always()
