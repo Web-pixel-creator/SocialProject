@@ -680,7 +680,7 @@ function SearchPageContent() {
             className={`rounded-lg px-3 py-1.5 text-sm sm:py-2 ${focusRingClass} ${
               mode === 'text'
                 ? 'border border-primary/35 bg-primary/10 text-primary'
-                : 'border border-border/35 bg-background/62 text-muted-foreground hover:border-primary/40 hover:bg-background/78 hover:text-foreground'
+                : 'border border-transparent bg-background/54 text-muted-foreground hover:bg-background/74 hover:text-foreground'
             }`}
             onClick={() => setMode('text')}
             type="button"
@@ -691,7 +691,7 @@ function SearchPageContent() {
             className={`rounded-lg px-3 py-1.5 text-sm sm:py-2 ${focusRingClass} ${
               mode === 'visual'
                 ? 'border border-primary/35 bg-primary/10 text-primary'
-                : 'border border-border/35 bg-background/62 text-muted-foreground hover:border-primary/40 hover:bg-background/78 hover:text-foreground'
+                : 'border border-transparent bg-background/54 text-muted-foreground hover:bg-background/74 hover:text-foreground'
             }`}
             onClick={() => setMode('visual')}
             type="button"
@@ -704,7 +704,7 @@ function SearchPageContent() {
           <>
             <input
               aria-keyshortcuts="/"
-              className={`rounded-xl border border-border/35 bg-background/62 px-3 py-2 text-foreground placeholder:text-muted-foreground/70 sm:px-4 ${focusRingClass}`}
+              className={`rounded-xl border border-border/25 bg-background/70 px-3 py-2 text-foreground placeholder:text-muted-foreground/70 sm:px-4 ${focusRingClass}`}
               onChange={(event) => setQuery(event.target.value)}
               placeholder={t('search.placeholders.keyword')}
               ref={textSearchInputRef}
@@ -732,7 +732,7 @@ function SearchPageContent() {
             </div>
             <div className="flex flex-wrap gap-2 sm:gap-3">
               <select
-                className={`w-full rounded-lg border border-border/35 bg-background/62 px-3 py-1.5 text-foreground text-sm sm:w-auto sm:py-2 ${focusRingClass}`}
+                className={`w-full rounded-lg border border-border/25 bg-background/70 px-3 py-1.5 text-foreground text-sm sm:w-auto sm:py-2 ${focusRingClass}`}
                 onChange={(event) => setType(event.target.value)}
                 value={type}
               >
@@ -742,7 +742,7 @@ function SearchPageContent() {
                 <option value="studio">{t('search.filters.studios')}</option>
               </select>
               <select
-                className={`w-full rounded-lg border border-border/35 bg-background/62 px-3 py-1.5 text-foreground text-sm sm:w-auto sm:py-2 ${focusRingClass}`}
+                className={`w-full rounded-lg border border-border/25 bg-background/70 px-3 py-1.5 text-foreground text-sm sm:w-auto sm:py-2 ${focusRingClass}`}
                 disabled={type === 'studio'}
                 onChange={(event) => setIntent(event.target.value)}
                 value={intent}
@@ -757,7 +757,7 @@ function SearchPageContent() {
                 </option>
               </select>
               <select
-                className={`w-full rounded-lg border border-border/35 bg-background/62 px-3 py-1.5 text-foreground text-sm sm:w-auto sm:py-2 ${focusRingClass}`}
+                className={`w-full rounded-lg border border-border/25 bg-background/70 px-3 py-1.5 text-foreground text-sm sm:w-auto sm:py-2 ${focusRingClass}`}
                 onChange={(event) => setSort(event.target.value)}
                 value={sort}
               >
@@ -767,7 +767,7 @@ function SearchPageContent() {
                 <option value="impact">{t('search.sort.impact')}</option>
               </select>
               <select
-                className={`w-full rounded-lg border border-border/35 bg-background/62 px-3 py-1.5 text-foreground text-sm sm:w-auto sm:py-2 ${focusRingClass}`}
+                className={`w-full rounded-lg border border-border/25 bg-background/70 px-3 py-1.5 text-foreground text-sm sm:w-auto sm:py-2 ${focusRingClass}`}
                 onChange={(event) => setRange(event.target.value)}
                 value={range}
               >
@@ -780,19 +780,19 @@ function SearchPageContent() {
         ) : (
           <>
             <input
-              className={`rounded-xl border border-border/35 bg-background/62 px-3 py-2 text-foreground placeholder:text-muted-foreground/70 sm:px-4 ${focusRingClass}`}
+              className={`rounded-xl border border-border/25 bg-background/70 px-3 py-2 text-foreground placeholder:text-muted-foreground/70 sm:px-4 ${focusRingClass}`}
               onChange={(event) => setVisualDraftId(event.target.value)}
               placeholder={t('search.placeholders.draftIdOptional')}
               value={visualDraftId}
             />
             <textarea
-              className={`min-h-[96px] rounded-xl border border-border/35 bg-background/62 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70 sm:min-h-[120px] sm:px-4 ${focusRingClass}`}
+              className={`min-h-[96px] rounded-xl border border-border/25 bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70 sm:min-h-[120px] sm:px-4 ${focusRingClass}`}
               onChange={(event) => setVisualEmbedding(event.target.value)}
               placeholder={t('search.placeholders.embedding')}
               value={visualEmbedding}
             />
             <input
-              className={`rounded-xl border border-border/35 bg-background/62 px-3 py-2 text-foreground placeholder:text-muted-foreground/70 sm:px-4 ${focusRingClass}`}
+              className={`rounded-xl border border-border/25 bg-background/70 px-3 py-2 text-foreground placeholder:text-muted-foreground/70 sm:px-4 ${focusRingClass}`}
               onChange={(event) => setVisualTags(event.target.value)}
               placeholder={t('search.placeholders.styleTags')}
               value={visualTags}
@@ -818,7 +818,7 @@ function SearchPageContent() {
             </div>
             <div className="flex flex-wrap gap-2 sm:gap-3">
               <select
-                className={`w-full rounded-lg border border-border/35 bg-background/62 px-3 py-1.5 text-foreground text-sm sm:w-auto sm:py-2 ${focusRingClass}`}
+                className={`w-full rounded-lg border border-border/25 bg-background/70 px-3 py-1.5 text-foreground text-sm sm:w-auto sm:py-2 ${focusRingClass}`}
                 onChange={(event) =>
                   setVisualType(parseVisualType(event.target.value))
                 }
@@ -843,10 +843,10 @@ function SearchPageContent() {
           </>
         )}
 
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/35 bg-background/62 p-2.5 text-muted-foreground text-xs leading-relaxed sm:p-3 sm:text-sm">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/25 bg-background/58 p-2.5 text-muted-foreground text-xs leading-relaxed sm:p-3 sm:text-sm">
           <span>{summary}</span>
           {showAbBadge && (
-            <span className="rounded-full border border-border/35 bg-background/62 px-2 py-0.5 text-[11px] text-muted-foreground uppercase">
+            <span className="rounded-full border border-transparent bg-background/56 px-2 py-0.5 text-[11px] text-muted-foreground uppercase">
               AB {profile}
             </span>
           )}
