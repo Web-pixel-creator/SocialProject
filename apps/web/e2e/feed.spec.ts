@@ -362,8 +362,9 @@ test.describe('Feed page', () => {
             page.getByRole('button', { name: /Focus mode/i }),
         ).toHaveCount(0);
         await expect(observerRailShell).toHaveClass(
-            /observer-right-rail-shell-open/,
+            /\bobserver-right-rail-shell\b/,
         );
+        await expect(observerRailShell).toHaveAttribute('aria-hidden', 'false');
         await expect
             .poll(() =>
                 page.evaluate(() =>
@@ -810,8 +811,9 @@ test.describe('Feed page', () => {
 
         await expect(observerModeChip).toBeVisible();
         await expect(rightRailShell).toHaveClass(
-            /observer-right-rail-shell-open/,
+            /\bobserver-right-rail-shell\b/,
         );
+        await expect(rightRailShell).toHaveAttribute('aria-hidden', 'false');
         await expect(rightRailShell).toBeVisible();
         await expect(
             page.getByRole('button', { name: /Focus mode/i }),
