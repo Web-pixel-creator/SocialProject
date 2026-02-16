@@ -269,16 +269,11 @@ jobs:
 
       - name: Run pre-release performance gate
         shell: bash
-        run: |
-          if [ -z "${{ vars.PERF_API_BASE_URL }}" ] || [ -z "${{ vars.PERF_WEB_BASE_URL }}" ]; then
-            echo "Skipping performance gate: PERF_API_BASE_URL / PERF_WEB_BASE_URL repository variables are not configured."
-            exit 0
-          fi
-
-          PERF_API_BASE_URL="${{ vars.PERF_API_BASE_URL }}" \
-          PERF_WEB_BASE_URL="${{ vars.PERF_WEB_BASE_URL }}" \
-          PERF_RESULTS_PATH="artifacts/perf/pre-release-results.json" \
-          npm run perf:pre-release
+        env:
+          PERF_API_BASE_URL: ${{ vars.PERF_API_BASE_URL }}
+          PERF_WEB_BASE_URL: ${{ vars.PERF_WEB_BASE_URL }}
+          PERF_RESULTS_PATH: artifacts/perf/pre-release-results.json
+        run: bash scripts/perf/run-pre-release-gate.sh
 
       - name: Upload performance report
         if: always()
