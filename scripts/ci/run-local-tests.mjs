@@ -17,10 +17,11 @@ const DEFAULT_TEST_ENV = {
   EMBEDDING_PROVIDER: 'hash',
 };
 
-const USAGE = `Usage: node scripts/ci/run-local-tests.mjs [--coverage] [--skip-migrate] [--timeout-ms <ms>] [--ports <ports>] [-- <extra-jest-args>]
+const USAGE = `Usage: node scripts/ci/run-local-tests.mjs [--coverage] [--skip-deps] [--skip-migrate] [--timeout-ms <ms>] [--ports <ports>] [-- <extra-jest-args>]
 
 Options:
   --coverage      Run \`npm run test:coverage\` instead of \`npm run test\`.
+  --skip-deps     Skip \`docker compose up -d postgres redis\`.
   --skip-migrate  Skip \`npm --workspace apps/api run migrate:up\`.
   --timeout-ms    Timeout for service wait script. Default: 60000.
   --ports         Ports for service wait script. Default: 5432,6379.
@@ -43,6 +44,7 @@ const parsePositiveInteger = (value, label) => {
 const parseArgs = (argv) => {
   const options = {
     coverage: false,
+    skipDeps: false,
     skipMigrate: false,
     timeoutMs: 60_000,
     ports: '5432,6379',
@@ -63,6 +65,10 @@ const parseArgs = (argv) => {
       options.coverage = true;
       continue;
     }
+    if (arg === '--skip-deps') {
+      options.skipDeps = true;
+      continue;
+    }
     if (arg === '--skip-migrate') {
       options.skipMigrate = true;
       continue;
@@ -80,7 +86,8 @@ const parseArgs = (argv) => {
       index += 1;
       continue;
     }
-    throw new Error(`Unknown argument: ${arg}\n\n${USAGE}`);
+    options.passthrough = argv.slice(index);
+    break;
   }
 
   return options;
@@ -125,12 +132,23 @@ const main = async () => {
   const nodeCommand = resolveNodeCommand();
   const testEnv = withDefaultTestEnv();
 
-  process.stdout.write('Starting local test dependencies (postgres, redis)...\n');
-  await runCommand({
-    command: 'docker',
-    args: ['compose', 'up', '-d', 'postgres', 'redis'],
-    env: process.env,
-  });
+  if (!options.skipDeps) {
+    process.stdout.write('Starting local test dependencies (postgres, redis)...\n');
+    try {
+      await runCommand({
+        command: 'docker',
+        args: ['compose', 'up', '-d', 'postgres', 'redis'],
+        env: process.env,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `Failed to start docker dependencies. Start Docker Desktop (or Docker Engine) and retry, or run with --skip-deps when services are already running.\n${message}`,
+      );
+    }
+  } else {
+    process.stdout.write('Skipping docker dependency startup (--skip-deps).\n');
+  }
 
   process.stdout.write(
     `Waiting for services on ports ${options.ports} (timeout ${String(options.timeoutMs)}ms)...\n`,
