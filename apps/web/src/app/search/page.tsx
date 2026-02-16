@@ -706,6 +706,7 @@ function SearchPageContent() {
           <>
             <input
               aria-keyshortcuts="/"
+              aria-label={t('search.placeholders.keyword')}
               className={`rounded-xl border border-border/25 bg-background/70 px-3 py-2 text-foreground placeholder:text-muted-foreground/70 sm:px-4 ${focusRingClass}`}
               onChange={(event) => setQuery(event.target.value)}
               placeholder={t('search.placeholders.keyword')}
@@ -735,6 +736,7 @@ function SearchPageContent() {
             </div>
             <div className="flex flex-wrap gap-2 sm:gap-3">
               <select
+                aria-label={t('search.summary.type')}
                 className={`w-full rounded-lg border border-border/25 bg-background/70 px-3 py-1.5 text-foreground text-sm sm:w-auto sm:py-2 ${focusRingClass}`}
                 onChange={(event) => setType(event.target.value)}
                 value={type}
@@ -745,6 +747,7 @@ function SearchPageContent() {
                 <option value="studio">{t('search.filters.studios')}</option>
               </select>
               <select
+                aria-label={t('search.summary.intent')}
                 className={`w-full rounded-lg border border-border/25 bg-background/70 px-3 py-1.5 text-foreground text-sm sm:w-auto sm:py-2 ${focusRingClass}`}
                 disabled={type === 'studio'}
                 onChange={(event) => setIntent(event.target.value)}
@@ -760,6 +763,7 @@ function SearchPageContent() {
                 </option>
               </select>
               <select
+                aria-label={t('search.summary.sortedBy')}
                 className={`w-full rounded-lg border border-border/25 bg-background/70 px-3 py-1.5 text-foreground text-sm sm:w-auto sm:py-2 ${focusRingClass}`}
                 onChange={(event) => setSort(event.target.value)}
                 value={sort}
@@ -770,6 +774,7 @@ function SearchPageContent() {
                 <option value="impact">{t('search.sort.impact')}</option>
               </select>
               <select
+                aria-label={t('search.summary.range')}
                 className={`w-full rounded-lg border border-border/25 bg-background/70 px-3 py-1.5 text-foreground text-sm sm:w-auto sm:py-2 ${focusRingClass}`}
                 onChange={(event) => setRange(event.target.value)}
                 value={range}
@@ -783,18 +788,21 @@ function SearchPageContent() {
         ) : (
           <>
             <input
+              aria-label={t('search.placeholders.draftIdOptional')}
               className={`rounded-xl border border-border/25 bg-background/70 px-3 py-2 text-foreground placeholder:text-muted-foreground/70 sm:px-4 ${focusRingClass}`}
               onChange={(event) => setVisualDraftId(event.target.value)}
               placeholder={t('search.placeholders.draftIdOptional')}
               value={visualDraftId}
             />
             <textarea
+              aria-label={t('search.placeholders.embedding')}
               className={`min-h-[96px] rounded-xl border border-border/25 bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70 sm:min-h-[120px] sm:px-4 ${focusRingClass}`}
               onChange={(event) => setVisualEmbedding(event.target.value)}
               placeholder={t('search.placeholders.embedding')}
               value={visualEmbedding}
             />
             <input
+              aria-label={t('search.placeholders.styleTags')}
               className={`rounded-xl border border-border/25 bg-background/70 px-3 py-2 text-foreground placeholder:text-muted-foreground/70 sm:px-4 ${focusRingClass}`}
               onChange={(event) => setVisualTags(event.target.value)}
               placeholder={t('search.placeholders.styleTags')}
@@ -822,6 +830,7 @@ function SearchPageContent() {
             </div>
             <div className="flex flex-wrap gap-2 sm:gap-3">
               <select
+                aria-label={t('search.summary.type')}
                 className={`w-full rounded-lg border border-border/25 bg-background/70 px-3 py-1.5 text-foreground text-sm sm:w-auto sm:py-2 ${focusRingClass}`}
                 onChange={(event) =>
                   setVisualType(parseVisualType(event.target.value))

@@ -454,7 +454,11 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
       }`}
     >
       <div className="flex flex-wrap items-center justify-between gap-1.5">
-        <span className="inline-flex w-fit items-center rounded-full border border-transparent bg-background/55 px-2.5 py-1 text-[11px] sm:text-xs">
+        <span
+          aria-atomic="true"
+          aria-live="polite"
+          className="inline-flex w-fit items-center rounded-full border border-transparent bg-background/55 px-2.5 py-1 text-[11px] sm:text-xs"
+        >
           {shownLabel}: {shownValue}
         </span>
         {hasFilterPanel ? (
