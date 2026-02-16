@@ -28,7 +28,7 @@ export const GuildCard = ({
     >
       <header
         className={`flex items-start justify-between gap-2 ${
-          compact ? '' : 'border-border/35 border-b pb-2.5'
+          compact ? '' : 'border-border/25 border-b pb-2.5'
         }`}
       >
         <h3
@@ -43,7 +43,7 @@ export const GuildCard = ({
         </span>
       </header>
 
-      <section className="rounded-lg border border-border/35 bg-background/32 px-2.5 py-2">
+      <section className="rounded-lg border border-border/25 bg-background/60 px-2.5 py-2">
         <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
           {t('guildCard.themeLabel')}
         </p>

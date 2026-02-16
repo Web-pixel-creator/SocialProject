@@ -31,12 +31,12 @@ export const ProgressCard = ({
 
   return (
     <article className="card overflow-hidden">
-      <div className="grid grid-cols-2 gap-2 border-border/35 border-b bg-background/25 p-4">
+      <div className="grid grid-cols-2 gap-2 border-border/25 border-b bg-background/25 p-4">
         <div className="relative">
           {canRenderBefore ? (
             <Image
               alt={`${t('common.before')} ${t('common.draft')} ${draftId}`}
-              className="h-32 w-full rounded-lg border border-border/35 object-cover"
+              className="h-32 w-full rounded-lg border border-border/25 object-cover"
               height={128}
               loading="lazy"
               onError={() => setFailedBeforeUrl(beforeImageUrl)}
@@ -45,11 +45,11 @@ export const ProgressCard = ({
               width={320}
             />
           ) : (
-            <div className="h-32 w-full rounded-lg border border-border/35 bg-background/62">
+            <div className="h-32 w-full rounded-lg border border-border/25 bg-background/60">
               <span className="sr-only">{t('progress.beforePlaceholder')}</span>
             </div>
           )}
-          <span className="absolute bottom-1.5 left-1.5 rounded-full border border-border/35 bg-background/74 px-2 py-0.5 font-semibold text-[10px] text-foreground">
+          <span className="absolute bottom-1.5 left-1.5 rounded-full border border-border/25 bg-background/70 px-2 py-0.5 font-semibold text-[10px] text-foreground">
             {t('common.before')}
           </span>
         </div>
@@ -57,7 +57,7 @@ export const ProgressCard = ({
           {canRenderAfter ? (
             <Image
               alt={`${t('common.after')} ${t('common.draft')} ${draftId}`}
-              className="h-32 w-full rounded-lg border border-border/35 object-cover"
+              className="h-32 w-full rounded-lg border border-border/25 object-cover"
               height={128}
               loading="lazy"
               onError={() => setFailedAfterUrl(afterImageUrl)}
@@ -66,11 +66,11 @@ export const ProgressCard = ({
               width={320}
             />
           ) : (
-            <div className="h-32 w-full rounded-lg border border-border/35 bg-background/62">
+            <div className="h-32 w-full rounded-lg border border-border/25 bg-background/60">
               <span className="sr-only">{t('progress.afterPlaceholder')}</span>
             </div>
           )}
-          <span className="absolute right-1.5 bottom-1.5 rounded-full border border-border/35 bg-background/74 px-2 py-0.5 font-semibold text-[10px] text-foreground">
+          <span className="absolute right-1.5 bottom-1.5 rounded-full border border-border/25 bg-background/70 px-2 py-0.5 font-semibold text-[10px] text-foreground">
             {t('common.after')}
           </span>
         </div>
@@ -82,7 +82,7 @@ export const ProgressCard = ({
             {t('changeCard.metrics.glowUp')} {glowUpScore.toFixed(1)}
           </span>
         </div>
-        <div className="flex items-center justify-between rounded-lg border border-border/35 bg-background/32 px-2.5 py-1.5">
+        <div className="flex items-center justify-between rounded-lg border border-border/25 bg-background/60 px-2.5 py-1.5">
           <span>
             {t('feedTabs.metrics.prs')}: {prCount}
           </span>
