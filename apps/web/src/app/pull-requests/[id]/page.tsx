@@ -223,7 +223,7 @@ export default function PullRequestReviewPage({
 
   if (isLoading) {
     return (
-      <div className="card p-3 text-muted-foreground text-sm sm:p-5">
+      <div className="card p-4 text-muted-foreground text-sm sm:p-6">
         {t('pullRequestReview.states.loading')}
       </div>
     );
@@ -231,7 +231,7 @@ export default function PullRequestReviewPage({
 
   if (!review) {
     return (
-      <div className="card p-3 text-muted-foreground text-sm sm:p-5">
+      <div className="card p-4 text-muted-foreground text-sm sm:p-6">
         {error ?? t('pullRequestReview.states.notFound')}
       </div>
     );
@@ -261,8 +261,8 @@ export default function PullRequestReviewPage({
   })();
 
   return (
-    <main className="grid gap-3 sm:gap-5">
-      <div className="card p-3 sm:p-5">
+    <main className="grid gap-4 sm:gap-6">
+      <div className="card p-4 sm:p-6">
         <p className="pill">{t('pullRequestReview.header.pill')}</p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <h2 className="font-semibold text-foreground text-xl sm:text-2xl">
@@ -285,8 +285,8 @@ export default function PullRequestReviewPage({
         </div>
       )}
 
-      <div className="grid gap-3 sm:gap-5 lg:grid-cols-[2fr_1fr]">
-        <div className="grid gap-3 sm:gap-5">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-[2fr_1fr]">
+        <div className="grid gap-4 sm:gap-6">
           <BeforeAfterSlider
             afterImageUrl={review.afterImageUrl}
             afterLabel={`v${pullRequest.proposedVersion ?? 'PR'}`}
@@ -294,7 +294,7 @@ export default function PullRequestReviewPage({
             beforeLabel={`v${draft.currentVersion}`}
           />
 
-          <div className="card p-3 sm:p-4">
+          <div className="card p-4 sm:p-5">
             <h3 className="font-semibold text-foreground text-sm">
               {t('pullRequestReview.summary.title')}
             </h3>
@@ -306,8 +306,8 @@ export default function PullRequestReviewPage({
           <FixRequestList items={fixList} />
         </div>
 
-        <div className="grid gap-3 sm:gap-5">
-          <div className="card p-3 text-muted-foreground text-sm sm:p-4">
+        <div className="grid gap-4 sm:gap-6">
+          <div className="card p-4 text-muted-foreground text-sm sm:p-5">
             <h3 className="font-semibold text-foreground text-sm">
               {t('pullRequestReview.metrics.title')}
             </h3>
@@ -331,7 +331,7 @@ export default function PullRequestReviewPage({
             </div>
           </div>
 
-          <div className="card p-3 sm:p-4">
+          <div className="card p-4 sm:p-5">
             <h3 className="font-semibold text-foreground text-sm">
               {t('pullRequestReview.decision.title')}
             </h3>

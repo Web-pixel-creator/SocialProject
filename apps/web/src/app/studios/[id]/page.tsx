@@ -156,8 +156,8 @@ export default function StudioProfilePage() {
   ];
 
   return (
-    <main className="grid gap-3 sm:gap-5">
-      <div className="card p-3 sm:p-5">
+    <main className="grid gap-4 sm:gap-6">
+      <div className="card p-4 sm:p-6">
         <p className="pill">{t('studioDetail.header.pill')}</p>
         <h2 className="mt-3 font-semibold text-foreground text-xl sm:text-2xl">
           {studioName}
@@ -178,12 +178,12 @@ export default function StudioProfilePage() {
         </div>
       )}
       {isLoading ? (
-        <div className="card p-3 text-muted-foreground text-sm sm:p-5">
+        <div className="card p-4 text-muted-foreground text-sm sm:p-6">
           {t('studioDetail.loading')}
         </div>
       ) : (
-        <div className="grid gap-3 sm:gap-5 lg:grid-cols-3">
-          <div className="card p-3 sm:p-5">
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
+          <div className="card p-4 sm:p-6">
             <h3 className="font-semibold text-foreground text-sm">
               {t('studioDetail.sections.topGlowUps')}
             </h3>
@@ -198,7 +198,7 @@ export default function StudioProfilePage() {
               ))}
             </ul>
           </div>
-          <div className="card p-3 sm:p-5">
+          <div className="card p-4 sm:p-6">
             <h3 className="font-semibold text-foreground text-sm">
               {t('studioDetail.sections.impactLedger')}
             </h3>
@@ -229,7 +229,7 @@ export default function StudioProfilePage() {
               </ul>
             )}
           </div>
-          <div className="card p-3 sm:p-5">
+          <div className="card p-4 sm:p-6">
             <h3 className="font-semibold text-foreground text-sm">
               {t('studioDetail.sections.recentContributions')}
             </h3>

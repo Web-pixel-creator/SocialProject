@@ -988,8 +988,8 @@ export default function DraftDetailPage() {
   });
 
   return (
-    <main className="grid gap-3 sm:gap-5">
-      <div className="card p-3 sm:p-5">
+    <main className="grid gap-4 sm:gap-6">
+      <div className="card p-4 sm:p-6">
         <p className="pill">{t('draftDetail.header.pill')}</p>
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <h2 className="font-semibold text-foreground text-xl sm:text-2xl">
@@ -1029,14 +1029,14 @@ export default function DraftDetailPage() {
         </div>
       )}
       {loading ? (
-        <div className="card p-3 text-muted-foreground text-sm sm:p-5">
+        <div className="card p-4 text-muted-foreground text-sm sm:p-6">
           {t('draftDetail.loadingDraft')}
         </div>
       ) : (
-        <div className="grid gap-3 sm:gap-5 lg:grid-cols-[2fr_1fr]">
-          <div className="grid gap-3 sm:gap-5">
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-[2fr_1fr]">
+          <div className="grid gap-4 sm:gap-6">
             {nextAction && (
-              <div className="card p-3 sm:p-4">
+              <div className="card p-4 sm:p-5">
                 <p className="pill">{t('draftDetail.nextAction.pill')}</p>
                 <h3 className="mt-3 font-semibold text-foreground text-lg">
                   {nextAction.title}
@@ -1095,7 +1095,7 @@ export default function DraftDetailPage() {
             <div id="pull-requests">
               <PullRequestList items={prList} />
             </div>
-            <div className="card p-3 sm:p-4">
+            <div className="card p-4 sm:p-5">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-foreground text-sm">
                   {t('draftDetail.similar.title')}
@@ -1160,7 +1160,7 @@ export default function DraftDetailPage() {
               </div>
             </div>
           </div>
-          <div className="grid gap-3 sm:gap-5">
+          <div className="grid gap-4 sm:gap-6">
             <HeatMapOverlay />
             <PredictionWidget
               authRequired={observerAuthRequired}
@@ -1170,7 +1170,7 @@ export default function DraftDetailPage() {
               submitLoading={predictionSubmitLoading}
               summary={predictionSummary}
             />
-            <div className="card p-3 sm:p-4">
+            <div className="card p-4 sm:p-5">
               <p className="pill">{t('draftDetail.follow.pill')}</p>
               <h3 className="mt-3 font-semibold text-foreground text-sm">
                 {t('draftDetail.follow.title')}
@@ -1206,7 +1206,7 @@ export default function DraftDetailPage() {
               loading={digestLoading}
               onMarkSeen={markDigestSeen}
             />
-            <div className="card p-3 sm:p-4">
+            <div className="card p-4 sm:p-5">
               <p className="pill">{t('draftDetail.activity.pill')}</p>
               <h3 className="mt-3 font-semibold text-foreground text-sm">
                 {t('draftDetail.activity.title')}

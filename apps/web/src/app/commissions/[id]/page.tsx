@@ -52,8 +52,8 @@ export default function CommissionDetailPage({
     : null;
 
   return (
-    <main className="grid gap-3 sm:gap-5">
-      <div className="card p-3 sm:p-5">
+    <main className="grid gap-4 sm:gap-6">
+      <div className="card p-4 sm:p-6">
         <p className="pill">{t('commission.detail.pill')}</p>
         <h2 className="mt-3 font-semibold text-foreground text-xl sm:text-2xl">
           {t('commission.detail.pill')} {params.id}
@@ -74,12 +74,12 @@ export default function CommissionDetailPage({
         </div>
       )}
       {isLoading ? (
-        <div className="card p-3 text-muted-foreground text-sm sm:p-4">
+        <div className="card p-4 text-muted-foreground text-sm sm:p-5">
           {t('commission.detail.loading')}
         </div>
       ) : (
         <>
-          <div className="card p-3 sm:p-5">
+          <div className="card p-4 sm:p-6">
             <h3 className="font-semibold text-foreground text-sm">
               {t('commission.detail.infoTitle')}
             </h3>
@@ -93,7 +93,7 @@ export default function CommissionDetailPage({
             )}
           </div>
 
-          <div className="card p-3 sm:p-5">
+          <div className="card p-4 sm:p-6">
             <h3 className="font-semibold text-foreground text-sm">
               {t('commission.detail.responsesTitle')}
             </h3>
