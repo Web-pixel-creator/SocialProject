@@ -64,6 +64,16 @@ const requirements = [
   },
 ];
 
+const visualCommands = [
+  'npm run test:web:visual',
+  'npm run test:web:visual:update',
+  'npm run test:web:visual',
+];
+
+const checklistTemplateLines = requirements.map(
+  ({ label }) => `- [ ] ${label}`,
+);
+
 const parsePrBodyFromEvent = () => {
   const eventPath = process.env.GITHUB_EVENT_PATH;
   if (!eventPath || !fs.existsSync(eventPath)) {
@@ -132,6 +142,14 @@ const summary = {
     label,
   })),
   requiredChecklistItems: requirements.map(({ id, label }) => ({ id, label })),
+  remediation:
+    status === 'failed'
+      ? {
+          checklistTemplate: checklistTemplateLines,
+          commands: visualCommands,
+          policyPath: 'apps/web/e2e/VISUAL_BASELINE_POLICY.md',
+        }
+      : null,
   status,
   title,
 };
@@ -165,6 +183,25 @@ if (markdownPath) {
       markdownLines.push(`- ${requirement.label}`);
     }
     markdownLines.push('');
+
+    markdownLines.push('How to fix:', '');
+    markdownLines.push('1. Run visual regression commands:', '');
+    for (const command of visualCommands) {
+      markdownLines.push(`   - \`${command}\``);
+    }
+    markdownLines.push('');
+    markdownLines.push('2. Update the PR description and check these items:', '');
+    markdownLines.push('');
+    markdownLines.push('```markdown');
+    for (const line of checklistTemplateLines) {
+      markdownLines.push(line);
+    }
+    markdownLines.push('```');
+    markdownLines.push('');
+    markdownLines.push(
+      '- Policy reference: `apps/web/e2e/VISUAL_BASELINE_POLICY.md`',
+      '',
+    );
   }
 
   if (status === 'skipped') {
@@ -178,8 +215,19 @@ if (markdownPath) {
 }
 
 if (status === 'failed') {
+  const missingLabels = missingChecklistItems
+    .map((item) => item.label)
+    .join(' | ');
   console.error(
-    'Visual snapshot files were changed but PR checklist items are missing. See summary output for required items.',
+    `::error title=Visual baseline checklist required::Snapshot files changed. Mark required checklist items in PR body. Missing: ${missingLabels}`,
+  );
+  console.error(
+    [
+      'Visual snapshot files were changed but PR checklist items are missing.',
+      'Fix steps:',
+      ...visualCommands.map((command) => `- ${command}`),
+      'Then mark required checklist boxes in PR description.',
+    ].join('\n'),
   );
   process.exit(1);
 }
