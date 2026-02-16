@@ -1,0 +1,69 @@
+name: Release Artifacts Upload
+description: Upload release-related artifacts with optional additional slots.
+
+inputs:
+  artifact_1_name:
+    description: Artifact 1 name.
+    required: true
+  artifact_1_path:
+    description: Artifact 1 path.
+    required: true
+  artifact_2_name:
+    description: Artifact 2 name.
+    required: false
+    default: ""
+  artifact_2_path:
+    description: Artifact 2 path.
+    required: false
+    default: ""
+  artifact_3_name:
+    description: Artifact 3 name.
+    required: false
+    default: ""
+  artifact_3_path:
+    description: Artifact 3 path.
+    required: false
+    default: ""
+  artifact_4_name:
+    description: Artifact 4 name.
+    required: false
+    default: ""
+  artifact_4_path:
+    description: Artifact 4 path.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Upload artifact 1
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact_1_name }}
+        path: ${{ inputs.artifact_1_path }}
+        if-no-files-found: ignore
+
+    - name: Upload artifact 2
+      if: always() && inputs.artifact_2_name != '' && inputs.artifact_2_path != ''
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact_2_name }}
+        path: ${{ inputs.artifact_2_path }}
+        if-no-files-found: ignore
+
+    - name: Upload artifact 3
+      if: always() && inputs.artifact_3_name != '' && inputs.artifact_3_path != ''
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact_3_name }}
+        path: ${{ inputs.artifact_3_path }}
+        if-no-files-found: ignore
+
+    - name: Upload artifact 4
+      if: always() && inputs.artifact_4_name != '' && inputs.artifact_4_path != ''
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact_4_name }}
+        path: ${{ inputs.artifact_4_path }}
+        if-no-files-found: ignore
