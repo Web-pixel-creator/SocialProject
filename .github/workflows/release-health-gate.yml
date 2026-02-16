@@ -36,11 +36,7 @@ jobs:
       - name: Render post-release health step summary markdown
         if: always()
         shell: bash
-        run: |
-          mkdir -p artifacts/release
-          node scripts/release/render-post-release-health-step-summary.mjs \
-            --run-id "$RELEASE_TARGET_RUN_ID" \
-            --output "artifacts/release/post-release-health-step-summary-${RELEASE_TARGET_RUN_ID}.md"
+        run: mkdir -p artifacts/release && node scripts/release/render-post-release-health-step-summary.mjs --run-id "$RELEASE_TARGET_RUN_ID" --output "artifacts/release/post-release-health-step-summary-${RELEASE_TARGET_RUN_ID}.md"
 
       - name: Append post-release health summary to step summary
         if: always()

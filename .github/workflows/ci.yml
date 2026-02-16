@@ -51,9 +51,7 @@ jobs:
           fetch_depth: "0"
 
       - name: Run Ultracite check (full scope)
-        run: |
-          echo "Ultracite full-source scope: apps/api/src + apps/web/src"
-          npm run ultracite:check
+        run: echo "Ultracite full-source scope: apps/api/src + apps/web/src" && npm run ultracite:check
 
   ultracite_pr:
     name: Ultracite Changed Files (PR gate)
@@ -144,9 +142,7 @@ jobs:
 
       - name: Generate retry schema gate JSON summary
         shell: bash
-        run: |
-          mkdir -p artifacts/release
-          node scripts/release/validate-retry-schema-gate.mjs --json > artifacts/release/retry-schema-gate-summary.json
+        run: mkdir -p artifacts/release && node scripts/release/validate-retry-schema-gate.mjs --json > artifacts/release/retry-schema-gate-summary.json
 
       - name: Upload retry schema gate JSON summary
         if: always()
@@ -157,18 +153,12 @@ jobs:
 
       - name: Generate release smoke preflight schema JSON summary
         shell: bash
-        run: |
-          mkdir -p artifacts/release
-          node scripts/release/validate-release-smoke-preflight-summary.mjs --json > artifacts/release/release-smoke-preflight-schema-summary.json
+        run: mkdir -p artifacts/release && node scripts/release/validate-release-smoke-preflight-summary.mjs --json > artifacts/release/release-smoke-preflight-schema-summary.json
 
       - name: Render preflight schema summary markdown
         if: always()
         shell: bash
-        run: |
-          mkdir -p artifacts/release
-          node scripts/release/render-release-smoke-preflight-schema-summary.mjs \
-            --input artifacts/release/release-smoke-preflight-schema-summary.json \
-            --output artifacts/release/release-smoke-preflight-schema-summary.md
+        run: mkdir -p artifacts/release && node scripts/release/render-release-smoke-preflight-schema-summary.mjs --input artifacts/release/release-smoke-preflight-schema-summary.json --output artifacts/release/release-smoke-preflight-schema-summary.md
 
       - name: Append preflight schema summary to step summary
         if: always()
