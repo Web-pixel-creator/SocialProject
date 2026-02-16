@@ -224,7 +224,7 @@ export const SiteHeader = () => {
         <div className="hidden flex-wrap items-center gap-2 md:flex">
           {isFeedPage ? null : (
             <form
-              className="hidden items-center rounded-full border border-border/25 bg-background/70 px-3 py-2 text-xs transition-colors hover:border-border/45 hover:bg-background/78 sm:flex"
+              className="hidden items-center rounded-full border border-border/25 bg-background/70 px-3 py-2 text-xs transition-colors hover:border-border/45 hover:bg-background/74 sm:flex"
               onSubmit={handleSearchSubmit}
             >
               <Search

@@ -310,7 +310,7 @@ export default async function AdminUxObserverEngagementPage({
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {healthSignals.map((signal) => (
             <article
-              className="rounded-xl border border-border/35 bg-background/62 p-3"
+              className="rounded-xl border border-border/25 bg-background/60 p-3"
               key={signal.id}
             >
               <div className="flex items-center justify-between gap-2">
@@ -408,7 +408,7 @@ export default async function AdminUxObserverEngagementPage({
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left text-sm">
               <thead>
-                <tr className="border-border/35 border-b text-muted-foreground text-xs uppercase tracking-wide">
+                <tr className="border-border/25 border-b text-muted-foreground text-xs uppercase tracking-wide">
                   <th className="py-2 pr-3">Mode</th>
                   <th className="px-3 py-2">Draft status</th>
                   <th className="px-3 py-2">Event</th>
@@ -418,7 +418,7 @@ export default async function AdminUxObserverEngagementPage({
               <tbody>
                 {topSegments.map((segment, index) => (
                   <tr
-                    className="border-border/35 border-b last:border-b-0"
+                    className="border-border/25 border-b last:border-b-0"
                     key={`${segment.mode ?? 'unknown'}:${segment.eventType ?? 'event'}:${index + 1}`}
                   >
                     <td className="py-2 pr-3 text-foreground">

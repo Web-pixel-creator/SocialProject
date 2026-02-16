@@ -293,7 +293,7 @@ export default function CommissionsPage() {
           <section className="grid gap-2.5 sm:gap-4 md:grid-cols-2">
             {filteredCommissions.map((commission) => (
               <Link
-                className={`card p-3 transition hover:border-border/55 sm:p-4 ${focusRingClass}`}
+                className={`card p-3 transition hover:border-border/45 sm:p-4 ${focusRingClass}`}
                 href={`/commissions/${commission.id}`}
                 key={commission.id}
               >

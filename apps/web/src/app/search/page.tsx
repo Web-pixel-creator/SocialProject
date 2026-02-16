@@ -865,7 +865,7 @@ function SearchPageContent() {
           </div>
         )}
         {visualNotice && (
-          <div className="rounded-xl border border-border/35 bg-background/62 p-3 text-muted-foreground text-xs">
+          <div className="rounded-xl border border-border/25 bg-background/60 p-3 text-muted-foreground text-xs">
             {visualNotice}
           </div>
         )}
@@ -875,7 +875,7 @@ function SearchPageContent() {
           </p>
         ) : null}
         {showEmptyState ? (
-          <div className="grid gap-3 rounded-xl border border-border/35 bg-background/62 p-2.5 text-muted-foreground text-sm sm:p-3">
+          <div className="grid gap-3 rounded-xl border border-border/25 bg-background/60 p-2.5 text-muted-foreground text-sm sm:p-3">
             <p>
               {mode === 'visual' && visualHasSearched
                 ? t('search.states.completedNoResults')
@@ -883,7 +883,7 @@ function SearchPageContent() {
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <button
-                className={`rounded-full border border-border/35 bg-background/62 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:border-primary/40 hover:text-primary ${focusRingClass}`}
+                className={`rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary ${focusRingClass}`}
                 onClick={
                   mode === 'visual' ? resetVisualFilters : resetTextFilters
                 }
@@ -902,7 +902,7 @@ function SearchPageContent() {
                 </button>
               ) : null}
               <Link
-                className={`rounded-full border border-border/35 bg-background/62 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:border-primary/40 hover:text-primary ${focusRingClass}`}
+                className={`rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary ${focusRingClass}`}
                 href="/feed"
               >
                 {t('feed.exploreFeeds')}
@@ -937,7 +937,7 @@ function SearchPageContent() {
 
               return (
                 <li
-                  className="rounded-xl border border-border/35 bg-background/62 text-sm"
+                  className="rounded-xl border border-border/25 bg-background/60 text-sm"
                   key={result.id}
                 >
                   <Link

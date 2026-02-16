@@ -20,7 +20,7 @@ export const VersionTimeline = ({ versions }: VersionTimelineProps) => {
             className={`rounded-full px-3 py-1 font-semibold text-xs transition ${
               active === version
                 ? 'bg-primary text-primary-foreground'
-                : 'border border-border/35 bg-background/62 text-foreground hover:border-border/55 hover:bg-background/78'
+                : 'border border-transparent bg-background/58 text-foreground hover:bg-background/74'
             } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background`}
             key={version}
             onClick={() => setActive(version)}

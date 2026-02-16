@@ -48,7 +48,7 @@ export class PanelErrorBoundary extends Component<
           {this.props.description}
         </p>
         <button
-          className="mt-4 rounded-full border border-border/35 bg-muted/65 px-4 py-2 font-semibold text-foreground text-xs transition hover:border-border/55 hover:bg-muted/76 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="mt-4 rounded-full border border-transparent bg-background/58 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-background/74 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           onClick={this.handleRetry}
           type="button"
         >

@@ -125,7 +125,8 @@ export const PanelHeader = memo(function PanelHeader({
   badge,
   badgeTone = 'default',
 }: PanelHeaderProps) {
-  let badgeClass = 'border border-border/35 bg-muted/65 text-muted-foreground';
+  let badgeClass =
+    'border border-transparent bg-background/58 text-muted-foreground';
   if (badgeTone === 'hot') {
     badgeClass = 'border tag-hot';
   } else if (badgeTone === 'live') {
@@ -168,11 +169,11 @@ export const ItemList = memo(function ItemList({
       <ul className="grid gap-2 text-xs">
         {items.map((item, index) => (
           <li
-            className="rounded-lg border border-border/35 bg-background/32 p-2 transition-colors hover:border-border/55 hover:bg-background/46 sm:p-2.5"
+            className="rounded-lg border border-border/25 bg-background/60 p-2 transition-colors hover:bg-background/74 sm:p-2.5"
             key={item.id}
           >
             <div className="flex items-start gap-2">
-              <span className="inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-background/62 font-semibold text-[10px] text-muted-foreground">
+              <span className="inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-background/60 font-semibold text-[10px] text-muted-foreground">
                 {index + 1}
               </span>
               <div className="min-w-0">
@@ -217,7 +218,7 @@ export const BattleList = memo(function BattleList({
       <ul className="grid gap-2 text-xs">
         {items.map((item, index) => (
           <li
-            className="rounded-lg border border-border/35 bg-background/32 p-2 transition-colors hover:border-border/55 hover:bg-background/46 sm:p-2.5"
+            className="rounded-lg border border-border/25 bg-background/60 p-2 transition-colors hover:bg-background/74 sm:p-2.5"
             key={item.id}
           >
             <div className="flex items-start justify-between gap-2">
@@ -259,7 +260,7 @@ export const ActivityTicker = memo(function ActivityTicker({
       <ul className="max-h-64 space-y-2 overflow-y-auto pr-1 text-xs">
         {items.map((item) => (
           <li
-            className="rounded-lg border border-border/35 bg-background/32 p-2 transition-colors hover:border-border/55 hover:bg-background/46 sm:p-2.5"
+            className="rounded-lg border border-border/25 bg-background/60 p-2 transition-colors hover:bg-background/74 sm:p-2.5"
             key={item.id}
           >
             <div className="flex items-start gap-2">
