@@ -10,6 +10,7 @@ const routeObserverActionsApi = async (
         watchlist?: unknown[];
         engagements?: unknown[];
         persistStatusCode?: 200 | 401 | 403;
+        persistDelayMs?: number;
         battles?: unknown[];
         persistRequestLog?: Array<{ method: string; path: string }>;
         telemetryPayloadLog?: Array<Record<string, unknown>>;
@@ -17,6 +18,7 @@ const routeObserverActionsApi = async (
 ) => {
     const watchlist = options?.watchlist ?? [];
     const engagements = options?.engagements ?? [];
+    const persistDelayMs = options?.persistDelayMs ?? 0;
     const persistStatusCode = options?.persistStatusCode ?? 403;
     const persistRequestLog = options?.persistRequestLog;
     const telemetryPayloadLog = options?.telemetryPayloadLog;
@@ -112,6 +114,11 @@ const routeObserverActionsApi = async (
             path.endsWith('/save') ||
             path.endsWith('/rate')
         ) {
+            if (persistDelayMs > 0) {
+                await new Promise((resolve) => {
+                    setTimeout(resolve, persistDelayMs);
+                });
+            }
             if (persistRequestLog) {
                 persistRequestLog.push({ method, path });
             }
@@ -361,6 +368,98 @@ test.describe('Feed observer actions persistence', () => {
         expect(telemetrySignatures).toContain(
             `feed_card_open:save_off:${DRAFT_ID}`,
         );
+    });
+
+    test('supports keyboard activation for observer actions', async ({
+        page,
+    }) => {
+        await page.addInitScript(() => {
+            window.localStorage.setItem('finishit-feed-density', 'comfort');
+        });
+        await routeObserverActionsApi(page, { persistStatusCode: 403 });
+        await openFeed(page);
+
+        const observerSection = await openObserverActionsPanel(page, {
+            expandMore: false,
+        });
+        const moreButton = observerSection.getByRole('button', {
+            name: /^More$/i,
+        });
+        await moreButton.focus();
+        await page.keyboard.press('Enter');
+
+        const followButton = observerSection.getByRole('button', {
+            name: /^Follow$/i,
+        });
+        const rateButton = observerSection.getByRole('button', {
+            name: /^Rate$/i,
+        });
+        const saveButton = observerSection.getByRole('button', {
+            name: /^Save$/i,
+        });
+        const compareButton = observerSection.getByRole('button', {
+            name: /^Compare$/i,
+        });
+
+        await expect(followButton).toBeVisible();
+        await expect(rateButton).toBeVisible();
+        await expect(saveButton).toBeVisible();
+
+        await followButton.focus();
+        await page.keyboard.press('Space');
+        await expect(followButton).toHaveAttribute('aria-pressed', 'true');
+
+        await rateButton.focus();
+        await page.keyboard.press('Enter');
+        await expect(rateButton).toHaveAttribute('aria-pressed', 'true');
+
+        await saveButton.focus();
+        await page.keyboard.press('Space');
+        await expect(saveButton).toHaveAttribute('aria-pressed', 'true');
+
+        await compareButton.focus();
+        await page.keyboard.press('Enter');
+        await expect(page).toHaveURL(
+            new RegExp(`/drafts/${DRAFT_ID}\\?view=compare$`),
+        );
+
+        await openFeed(page);
+        const observerSectionAfterReturn = await openObserverActionsPanel(page, {
+            expandMore: false,
+        });
+        const watchButton = observerSectionAfterReturn.getByRole('button', {
+            name: /^Watch$/i,
+        });
+        await watchButton.focus();
+        await page.keyboard.press('Enter');
+        await expect(page).toHaveURL(new RegExp(`/drafts/${DRAFT_ID}$`));
+    });
+
+    test('shows pending state while follow persistence request is in-flight', async ({
+        page,
+    }) => {
+        await page.addInitScript(() => {
+            window.localStorage.setItem('finishit-feed-density', 'comfort');
+            window.localStorage.setItem('finishit_token', 'e2e-token');
+        });
+        await routeObserverActionsApi(page, {
+            persistDelayMs: 500,
+            persistStatusCode: 200,
+        });
+        await openFeed(page);
+
+        const observerSection = await openObserverActionsPanel(page);
+        const followButton = observerSection.getByRole('button', {
+            name: /^Follow$/i,
+        });
+
+        await expect(followButton).toHaveAttribute('aria-busy', 'false');
+        await followButton.click();
+        await expect(followButton).toHaveAttribute('aria-busy', 'true');
+        await expect(followButton).toBeDisabled();
+        await expect(followButton).toHaveAttribute('aria-pressed', 'true');
+        await expect(followButton).toHaveAttribute('aria-busy', 'false');
+        await expect(followButton).toBeEnabled();
     });
 
     test('navigates to draft and compare views from observer actions', async ({

@@ -16,6 +16,8 @@ Last updated: 2026-02-17
     - `Compare` -> compare mode navigation
     - `More` expand/collapse for secondary actions
     - `Follow`, `Rate`, `Save` persistence and hydration
+    - keyboard activation for `More`, `Watch`, `Compare`, `Follow`, `Rate`, `Save`
+    - pending-state behavior (`aria-busy` + disabled) during async follow persistence
     - covered for both `Draft` and `Battle` cards
   - card CTA link `Open detail` -> draft page navigation
   - keyboard shortcuts: `/`, `Shift+F`, Escape flows for overlays
