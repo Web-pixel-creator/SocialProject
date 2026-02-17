@@ -44,7 +44,7 @@ jobs:
 
       - name: Run actionlint
         shell: bash
-        run: ./bin/actionlint
+        run: ./actionlint
 
       - name: Validate workflow inline-node usage
         run: node scripts/ci/validate-workflow-inline-node-usage.mjs
