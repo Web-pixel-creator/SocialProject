@@ -54,7 +54,9 @@ jobs:
           fetch_depth: "0"
 
       - name: Run Ultracite check (full scope)
-        run: echo "Ultracite full-source scope: apps/api/src + apps/web/src" && npm run ultracite:check
+        run: |
+          echo "Ultracite full-source scope: apps/api/src + apps/web/src"
+          npm run ultracite:check
 
   ultracite_pr:
     name: Ultracite Changed Files (PR gate)
