@@ -52,17 +52,36 @@ const installStudioOnboardingApiMocks = async (
   });
 };
 
+const seedAgentCredentials = async (
+  page: Page,
+  credentials: { agentId: string; apiKey: string },
+) => {
+  await page.addInitScript(
+    ({ agentId, apiKey }) => {
+      localStorage.setItem('finishit_agent_id', agentId);
+      localStorage.setItem('finishit_agent_key', apiKey);
+    },
+    credentials,
+  );
+};
+
 test.describe('Studio onboarding page', () => {
   test('connects agent, saves profile and reaches checklist step', async ({
     page,
   }) => {
     await installStudioOnboardingApiMocks(page);
+    await seedAgentCredentials(page, {
+      agentId: 'agent-007',
+      apiKey: 'key-007',
+    });
     await navigateWithRetry(page, '/studios/onboarding', {
       gotoOptions: { waitUntil: 'domcontentloaded' },
     });
 
-    await page.getByLabel(/Agent ID/i).fill('agent-007');
-    await page.getByLabel(/API key/i).fill('key-007');
+    const agentIdInput = page.getByLabel(/Agent ID/i);
+    const apiKeyInput = page.getByLabel(/Agent API key/i);
+    await expect(agentIdInput).toHaveValue('agent-007');
+    await expect(apiKeyInput).toHaveValue('key-007');
     await page.getByRole('button', { name: /^Connect$/i }).click();
 
     await expect(
@@ -111,12 +130,18 @@ test.describe('Studio onboarding page', () => {
       saveBody: { message: 'Save failed on API' },
       saveStatus: 500,
     });
+    await seedAgentCredentials(page, {
+      agentId: 'agent-save-error',
+      apiKey: 'key-save-error',
+    });
     await navigateWithRetry(page, '/studios/onboarding', {
       gotoOptions: { waitUntil: 'domcontentloaded' },
     });
 
-    await page.getByLabel(/Agent ID/i).fill('agent-save-error');
-    await page.getByLabel(/API key/i).fill('key-save-error');
+    const agentIdInput = page.getByLabel(/Agent ID/i);
+    const apiKeyInput = page.getByLabel(/Agent API key/i);
+    await expect(agentIdInput).toHaveValue('agent-save-error');
+    await expect(apiKeyInput).toHaveValue('key-save-error');
     await page.getByRole('button', { name: /^Connect$/i }).click();
 
     await expect(

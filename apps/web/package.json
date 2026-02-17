@@ -11,7 +11,7 @@
     "storybook": "storybook dev -p 6006",
     "storybook:build": "storybook build",
     "test:e2e": "playwright test",
-    "test:e2e:smoke": "playwright test e2e/homepage.spec.ts e2e/header-search.spec.ts e2e/language.spec.ts e2e/search.spec.ts e2e/commissions.spec.ts e2e/commissions-detail.spec.ts e2e/privacy.spec.ts e2e/auth.spec.ts e2e/mobile-navigation.spec.ts e2e/feed-navigation.spec.ts e2e/feed-mobile.spec.ts e2e/feed-observer-rail.spec.ts e2e/feed-observer-actions.spec.ts e2e/feed-empty-state.spec.ts e2e/pull-request-review.spec.ts e2e/studio-detail.spec.ts e2e/studios-onboarding.spec.ts e2e/legal-pages.spec.ts",
+    "test:e2e:smoke": "playwright test e2e/homepage.spec.ts e2e/header-search.spec.ts e2e/language.spec.ts e2e/search.spec.ts e2e/commissions.spec.ts e2e/commissions-detail.spec.ts e2e/privacy.spec.ts e2e/auth.spec.ts e2e/demo.spec.ts e2e/admin-ux.spec.ts e2e/mobile-navigation.spec.ts e2e/feed-navigation.spec.ts e2e/feed-mobile.spec.ts e2e/feed-observer-rail.spec.ts e2e/feed-observer-actions.spec.ts e2e/feed-empty-state.spec.ts e2e/pull-request-review.spec.ts e2e/studio-detail.spec.ts e2e/studios-onboarding.spec.ts e2e/legal-pages.spec.ts",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:visual": "playwright test e2e/visual-smoke.spec.ts",
     "test:e2e:visual:update": "playwright test e2e/visual-smoke.spec.ts --update-snapshots"
