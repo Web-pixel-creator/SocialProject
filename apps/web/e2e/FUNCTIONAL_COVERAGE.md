@@ -37,6 +37,10 @@ Last updated: 2026-02-17
 - Pull request review:
   - render review payload (`PR Review`, summary, metrics)
   - decision actions: merge success and reject error handling
+  - decision network + telemetry coverage:
+    - `/decide` payload assertions for `request_changes`, `merge`, `reject`
+    - telemetry events `pr_review_open`, `pr_merge`, `pr_reject`
+    - explicit non-event check for `request_changes`
   - reject validation (`Rejection reason is required`)
   - not-found fallback state for empty payload
 

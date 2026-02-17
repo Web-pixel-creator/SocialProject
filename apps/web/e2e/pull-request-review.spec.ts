@@ -12,9 +12,11 @@ const json = (body: unknown, status = 200) => ({
 
 interface PullRequestReviewMockOptions {
   decisionResponseBody?: unknown;
+  decisionRequestLog?: Array<Record<string, unknown>>;
   decisionStatus?: number;
   fixRequests?: unknown[];
   reviewResponseBody?: unknown;
+  telemetryPayloadLog?: Array<Record<string, unknown>>;
 }
 
 const installPullRequestReviewApiMocks = async (
@@ -23,6 +25,7 @@ const installPullRequestReviewApiMocks = async (
 ) => {
   const {
     decisionResponseBody = { ok: true },
+    decisionRequestLog,
     decisionStatus = 200,
     fixRequests = [
       {
@@ -67,6 +70,7 @@ const installPullRequestReviewApiMocks = async (
         status: 'pending',
       },
     },
+    telemetryPayloadLog,
   } = options;
 
   let decisionCalls = 0;
@@ -89,6 +93,9 @@ const installPullRequestReviewApiMocks = async (
     if (method === 'POST' && path === `/api/pull-requests/${PR_ID}/decide`) {
       decisionCalls += 1;
       const payload = (request.postDataJSON() ?? {}) as { decision?: string };
+      if (decisionRequestLog && payload && typeof payload === 'object') {
+        decisionRequestLog.push(payload as Record<string, unknown>);
+      }
 
       if (
         decisionStatus >= 200 &&
@@ -123,6 +130,12 @@ const installPullRequestReviewApiMocks = async (
     }
 
     if (method === 'POST' && path === '/api/telemetry/ux') {
+      if (telemetryPayloadLog) {
+        const payload = request.postDataJSON();
+        if (payload && typeof payload === 'object') {
+          telemetryPayloadLog.push(payload as Record<string, unknown>);
+        }
+      }
       return route.fulfill(json({ ok: true }));
     }
 
@@ -165,6 +178,79 @@ test.describe('Pull request review page', () => {
     await expect(page.getByText(/^merged$/i)).toBeVisible();
   });
 
+  test('sends decision payloads and telemetry for review actions', async ({
+    page,
+  }) => {
+    const decisionRequestLog: Array<Record<string, unknown>> = [];
+    const telemetryPayloadLog: Array<Record<string, unknown>> = [];
+
+    await installPullRequestReviewApiMocks(page, {
+      decisionRequestLog,
+      telemetryPayloadLog,
+    });
+    await navigateToPullRequestReview(page, PR_ID);
+
+    await page
+      .getByPlaceholder(/Add feedback/i)
+      .fill('Please tighten spacing and typography rhythm.');
+    await page.getByRole('button', { name: /Request changes/i }).click();
+    await expect(page.getByText(/^changes requested$/i)).toBeVisible();
+
+    await page.getByRole('button', { name: /Merge/i }).click();
+    await expect(page.getByText(/^merged$/i)).toBeVisible();
+
+    await page
+      .getByPlaceholder(/Rejection reason/i)
+      .fill('Need stronger evidence before merge.');
+    await page.getByRole('button', { name: /Reject/i }).click();
+    await expect(page.getByText(/^rejected$/i)).toBeVisible();
+
+    await expect.poll(() => decisionRequestLog.length).toBeGreaterThanOrEqual(3);
+
+    const decisionSignatures = decisionRequestLog.map((payload) => {
+      const decision = payload.decision;
+      const feedback = payload.feedback;
+      const rejectionReason = payload.rejectionReason;
+      return `${String(decision)}:${String(feedback)}:${String(rejectionReason)}`;
+    });
+    expect(decisionSignatures).toContain(
+      'request_changes:Please tighten spacing and typography rhythm.:undefined',
+    );
+    expect(decisionSignatures).toContain(
+      'merge:Please tighten spacing and typography rhythm.:undefined',
+    );
+    expect(decisionSignatures).toContain(
+      'reject:Please tighten spacing and typography rhythm.:Need stronger evidence before merge.',
+    );
+
+    await expect
+      .poll(() => {
+        return telemetryPayloadLog.map((payload) => {
+          const eventType = payload.eventType;
+          const source = payload.source;
+          const prId = payload.prId;
+          const draftId = payload.draftId;
+          return `${String(eventType)}:${String(source)}:${String(prId)}:${String(draftId)}`;
+        });
+      })
+      .toContain(`pr_review_open:review:${PR_ID}:${DRAFT_ID}`);
+
+    const telemetrySignatures = telemetryPayloadLog.map((payload) => {
+      const eventType = payload.eventType;
+      const source = payload.source;
+      const prId = payload.prId;
+      const draftId = payload.draftId;
+      return `${String(eventType)}:${String(source)}:${String(prId)}:${String(draftId)}`;
+    });
+    expect(telemetrySignatures).toContain(`pr_merge:review:${PR_ID}:${DRAFT_ID}`);
+    expect(telemetrySignatures).toContain(`pr_reject:review:${PR_ID}:${DRAFT_ID}`);
+    expect(
+      telemetryPayloadLog.some(
+        (payload) => payload.eventType === 'pr_request_changes',
+      ),
+    ).toBeFalsy();
+  });
+
   test('requires rejection reason before reject decision submit', async ({
     page,
   }) => {
@@ -201,4 +287,3 @@ test.describe('Pull request review page', () => {
     await expect(page.getByText(/Pull request not found/i)).toBeVisible();
   });
 });
-
