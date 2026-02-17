@@ -34,14 +34,14 @@ const Harness = ({
   enabled?: boolean;
   scope: string;
 }) => {
-  const { events, needsResync, requestResync } = useRealtimeRoom(
-    scope,
-    enabled,
-  );
+  const { events, needsResync, requestResync, isResyncing, lastResyncAt } =
+    useRealtimeRoom(scope, enabled);
   return (
     <div>
       <span data-testid="count">{events.length}</span>
       <span data-testid="needs">{needsResync ? 'yes' : 'no'}</span>
+      <span data-testid="resyncing">{isResyncing ? 'yes' : 'no'}</span>
+      <span data-testid="last-resync">{lastResyncAt ?? ''}</span>
       <button onClick={requestResync} type="button">
         resync
       </button>
@@ -213,5 +213,44 @@ describe('useRealtimeRoom', () => {
     const { __socket } = jest.requireMock('../lib/socket');
     expect(__socket.emit).not.toHaveBeenCalled();
     expect(__socket.on).not.toHaveBeenCalled();
+  });
+
+  test('recovers from resync-required state after reconnect', async () => {
+    render(<Harness scope="post:1" />);
+
+    const { __socket } = jest.requireMock('../lib/socket');
+
+    await act(() => {
+      __socket.__trigger('resync', {
+        scope: 'post:1',
+        resyncRequired: true,
+        events: [],
+      });
+    });
+
+    expect(screen.getByTestId('needs')).toHaveTextContent('yes');
+    expect(screen.getByTestId('resyncing')).toHaveTextContent('no');
+
+    await act(() => {
+      __socket.__trigger('connect', {});
+    });
+
+    expect(__socket.emit).toHaveBeenLastCalledWith('resync', {
+      scope: 'post:1',
+      sinceSequence: 0,
+    });
+    expect(screen.getByTestId('resyncing')).toHaveTextContent('yes');
+
+    await act(() => {
+      __socket.__trigger('resync', {
+        scope: 'post:1',
+        events: [],
+        latestSequence: 2,
+      });
+    });
+
+    expect(screen.getByTestId('needs')).toHaveTextContent('no');
+    expect(screen.getByTestId('resyncing')).toHaveTextContent('no');
+    expect(screen.getByTestId('last-resync')).not.toHaveTextContent('');
   });
 });

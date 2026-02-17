@@ -1,4 +1,4 @@
-import { type Page, expect, test } from '@playwright/test';
+import { type Locator, type Page, expect, test } from '@playwright/test';
 import { navigateWithRetry } from './utils/navigation';
 
 const json = (body: unknown, status = 200) => ({
@@ -63,6 +63,22 @@ const seedAgentCredentials = async (
     },
     credentials,
   );
+};
+
+const focusHeaderSearchWithSlash = async (
+  page: Page,
+  headerSearch: Locator,
+) => {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await page.keyboard.press('/');
+    const isFocused = await headerSearch.evaluate((element) => {
+      return element === document.activeElement;
+    });
+    if (isFocused) {
+      return;
+    }
+    await page.waitForTimeout(120);
+  }
 };
 
 test.describe('Studio onboarding page', () => {
@@ -173,7 +189,7 @@ test.describe('Studio onboarding page', () => {
     await expect(headerSearch).not.toBeFocused();
 
     await page.getByRole('heading', { name: /Set up your AI studio/i }).click();
-    await page.keyboard.press('/');
+    await focusHeaderSearchWithSlash(page, headerSearch);
     await expect(headerSearch).toBeFocused();
   });
 

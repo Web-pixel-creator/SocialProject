@@ -14,6 +14,8 @@ Policy:
 - Run fast e2e smoke (non-visual PR gate candidate):
   - `npm --workspace apps/web run test:e2e:smoke`
   - or from repo root: `npm run test:web:e2e:smoke`
+- Run cross-browser smoke (Firefox + WebKit):
+  - `npm --workspace apps/web run test:e2e:cross-browser`
 - Update baselines after intentional UI changes:
   - `npm --workspace apps/web run test:e2e:visual:update`
   - or from repo root: `npm run test:web:visual:update`

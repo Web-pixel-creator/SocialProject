@@ -68,17 +68,26 @@ Last updated: 2026-02-17
   - page-level primary interactions
   - slash shortcut behavior
   - auth success and error flows
+  - auth/session edge coverage (unit):
+    - refresh success path updates hydrated user
+    - refresh failure clears token/user and reports session expiration
+    - refresh without token clears stale local session safely
+    - malformed stored user payload recovers via `/auth/me`
+    - missing token in auth payload surfaces explicit client-side error
 
 - Global:
   - language switch and persistence
   - header search routing
   - mobile nav flows
   - visual baseline smoke (desktop + mobile routes)
+  - cross-browser smoke (Firefox + WebKit) for feed/search/login keyboard and form controls
+  - realtime reconnect recovery (unit): `resyncRequired` -> reconnect -> successful resync clears stale warning state
 
 ## Current Quality Gate
 
 - `npm --workspace apps/web run test:e2e:smoke` -> pass
 - `npm --workspace apps/web run test:e2e` -> pass
+- `npm --workspace apps/web run test:e2e:cross-browser` -> pass
 - `npm run ultracite:check` -> pass
 - `npm --workspace apps/web run build` -> pass
 
@@ -88,5 +97,5 @@ Last updated: 2026-02-17
 - Real external integrations beyond mocks:
   - websocket runtime behavior under unstable network
   - production auth token/session edge cases
-  - browser-specific rendering quirks outside Chromium project matrix
+  - browser-specific rendering quirks outside Firefox/WebKit smoke matrix
 - Copy/content review in both locales for all non-critical text blocks

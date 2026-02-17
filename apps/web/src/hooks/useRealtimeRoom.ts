@@ -73,6 +73,7 @@ export const useRealtimeRoom = (scope: string, enabled = true) => {
         return;
       }
       setIsResyncing(false);
+      setNeedsResync(false);
       setLastResyncAt(new Date().toISOString());
       if (typeof latestSequence === 'number') {
         latestSequenceRef.current = Math.max(

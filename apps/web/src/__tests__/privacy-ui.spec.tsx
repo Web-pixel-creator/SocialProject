@@ -6,9 +6,12 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import PrivacyPage from '../app/privacy/page';
 import { apiClient } from '../lib/api';
 
+const logoutMock = jest.fn();
+
 const useAuthMock = jest.fn(() => ({
   isAuthenticated: true,
   loading: false,
+  logout: logoutMock,
 }));
 
 jest.mock('../contexts/AuthContext', () => ({
@@ -43,9 +46,11 @@ jest.mock('../lib/api', () => ({
 
 describe('privacy UI', () => {
   beforeEach(() => {
+    logoutMock.mockReset();
     useAuthMock.mockReturnValue({
       isAuthenticated: true,
       loading: false,
+      logout: logoutMock,
     });
     localStorage.clear();
     (apiClient.get as jest.Mock).mockReset();
@@ -198,6 +203,7 @@ describe('privacy UI', () => {
     useAuthMock.mockReturnValue({
       isAuthenticated: false,
       loading: false,
+      logout: logoutMock,
     });
 
     render(<PrivacyPage />);
@@ -216,5 +222,20 @@ describe('privacy UI', () => {
     expect(
       screen.getByText(/Account deletion:\s*Pending/i),
     ).toBeInTheDocument();
+  });
+
+  test('logs out when export request returns unauthorized', async () => {
+    (apiClient.post as jest.Mock).mockRejectedValueOnce({
+      response: {
+        status: 401,
+        data: { message: 'Session expired' },
+      },
+    });
+
+    render(<PrivacyPage />);
+    fireEvent.click(screen.getByRole('button', { name: /Request export/i }));
+
+    expect(await screen.findByText(/Session expired/i)).toBeInTheDocument();
+    expect(logoutMock).toHaveBeenCalledTimes(1);
   });
 });

@@ -104,4 +104,68 @@ test.describe('Privacy page', () => {
       page.getByRole('link', { name: /Download export/i }),
     ).toBeVisible();
   });
+
+  test('logs out and shows sign-in recovery UI when session expires during export', async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem('finishit_token', 'expired-soon-token');
+      window.localStorage.setItem(
+        'finishit_user',
+        JSON.stringify({
+          user: {
+            email: 'observer@example.com',
+            id: 'observer-1',
+          },
+        }),
+      );
+    });
+
+    await page.route('**/api/**', async (route) => {
+      const requestUrl = new URL(route.request().url());
+      const path = requestUrl.pathname;
+      const method = route.request().method();
+
+      if (method === 'GET' && path === '/api/auth/me') {
+        return route.fulfill(
+          withJson({
+            user: {
+              email: 'observer@example.com',
+              id: 'observer-1',
+            },
+          }),
+        );
+      }
+
+      if (method === 'POST' && path === '/api/account/export') {
+        return route.fulfill({
+          body: JSON.stringify({ message: 'Session expired' }),
+          contentType: 'application/json',
+          status: 401,
+        });
+      }
+
+      if (method === 'POST' && path === '/api/account/delete') {
+        return route.fulfill(withJson({ status: 'pending' }));
+      }
+
+      return route.fulfill(withJson({}));
+    });
+
+    await page.goto('/privacy');
+
+    await page.getByRole('button', { name: /Request export/i }).click();
+
+    await expect(page.getByText('Session expired')).toBeVisible();
+    await expect(
+      page.getByRole('main').getByRole('link', { name: /^Sign in$/i }),
+    ).toBeVisible();
+
+    const sessionState = await page.evaluate(() => ({
+      token: window.localStorage.getItem('finishit_token'),
+      user: window.localStorage.getItem('finishit_user'),
+    }));
+    expect(sessionState.token).toBeNull();
+    expect(sessionState.user).toBeNull();
+  });
 });

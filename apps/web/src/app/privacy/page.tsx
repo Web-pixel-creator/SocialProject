@@ -7,7 +7,7 @@ import useSWRMutation from 'swr/mutation';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { apiClient } from '../../lib/api';
-import { getApiErrorMessage } from '../../lib/errors';
+import { getApiErrorMessage, getApiErrorStatus } from '../../lib/errors';
 import { useLastSuccessfulValue } from '../../lib/useLastSuccessfulValue';
 
 interface DataExportRecord {
@@ -33,7 +33,7 @@ const fetchExportStatus = async (
 
 export default function PrivacyPage() {
   const { t } = useLanguage();
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { isAuthenticated, loading: authLoading, logout } = useAuth();
   const [exportId, setExportId] = useState<string | null>(null);
   const [exportRequested, setExportRequested] = useState(false);
   const [deleteRequested, setDeleteRequested] = useState(false);
@@ -140,6 +140,10 @@ export default function PrivacyPage() {
         );
       }
     } catch (typedError: unknown) {
+      const status = getApiErrorStatus(typedError);
+      if (status === 401 || status === 403) {
+        logout();
+      }
       setError(
         getApiErrorMessage(typedError, t('privacy.errors.requestExport')),
       );
@@ -159,6 +163,10 @@ export default function PrivacyPage() {
           deletionPayload?.status === undefined,
       );
     } catch (typedError: unknown) {
+      const status = getApiErrorStatus(typedError);
+      if (status === 401 || status === 403) {
+        logout();
+      }
       setError(
         getApiErrorMessage(typedError, t('privacy.errors.requestDeletion')),
       );
@@ -171,6 +179,16 @@ export default function PrivacyPage() {
         t('privacy.errors.requestExport'),
       )
     : null;
+
+  useEffect(() => {
+    if (!(isAuthenticated && exportStatusLoadError)) {
+      return;
+    }
+    const status = getApiErrorStatus(exportStatusLoadError);
+    if (status === 401 || status === 403) {
+      logout();
+    }
+  }, [exportStatusLoadError, isAuthenticated, logout]);
 
   const effectiveExportStatus =
     exportStatus?.status ?? lastSuccessfulExportStatus?.status ?? null;

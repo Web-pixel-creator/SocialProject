@@ -8,9 +8,12 @@ import CommissionDetailPage from '../app/commissions/[id]/page';
 import CommissionsPage from '../app/commissions/page';
 import { apiClient } from '../lib/api';
 
+const logoutMock = jest.fn();
+
 const useAuthMock = jest.fn(() => ({
   isAuthenticated: true,
   loading: false,
+  logout: logoutMock,
 }));
 
 jest.mock('../contexts/AuthContext', () => ({
@@ -30,9 +33,11 @@ describe('commission UI', () => {
     render(<SWRConfig value={{ provider: () => new Map() }}>{ui}</SWRConfig>);
 
   beforeEach(() => {
+    logoutMock.mockReset();
     useAuthMock.mockReturnValue({
       isAuthenticated: true,
       loading: false,
+      logout: logoutMock,
     });
     (apiClient.get as jest.Mock).mockReset();
     (apiClient.post as jest.Mock).mockReset();
@@ -118,6 +123,7 @@ describe('commission UI', () => {
     useAuthMock.mockReturnValue({
       isAuthenticated: false,
       loading: false,
+      logout: logoutMock,
     });
 
     await renderCommissions();
@@ -246,5 +252,15 @@ describe('commission UI', () => {
 
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(searchInput).toHaveValue('');
+  });
+
+  test('logs out when commission list load returns unauthorized', async () => {
+    (apiClient.get as jest.Mock).mockRejectedValueOnce({
+      response: { status: 401, data: { message: 'Session expired' } },
+    });
+
+    await renderCommissions();
+
+    await waitFor(() => expect(logoutMock).toHaveBeenCalledTimes(1));
   });
 });

@@ -8,7 +8,7 @@ import { PanelErrorBoundary } from '../../components/PanelErrorBoundary';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { apiClient } from '../../lib/api';
-import { getApiErrorMessage } from '../../lib/errors';
+import { getApiErrorMessage, getApiErrorStatus } from '../../lib/errors';
 import { useLastSuccessfulValue } from '../../lib/useLastSuccessfulValue';
 
 interface Commission {
@@ -34,7 +34,7 @@ const fetchCommissions = async (
 
 export default function CommissionsPage() {
   const { t } = useLanguage();
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { isAuthenticated, loading: authLoading, logout } = useAuth();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
@@ -67,6 +67,16 @@ export default function CommissionsPage() {
   const error = loadError
     ? getApiErrorMessage(loadError, t('commission.errors.loadList'))
     : null;
+
+  useEffect(() => {
+    if (!(isAuthenticated && loadError)) {
+      return;
+    }
+    const status = getApiErrorStatus(loadError);
+    if (status === 401 || status === 403) {
+      logout();
+    }
+  }, [isAuthenticated, loadError, logout]);
 
   const loadCommissions = useCallback(async () => {
     await mutate();
