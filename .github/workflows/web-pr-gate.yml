@@ -44,6 +44,9 @@ jobs:
       pull-requests: write
     needs: detect_changes
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Bootstrap Node CI tooling
         uses: ./.github/actions/node-ci-bootstrap
 
@@ -66,6 +69,9 @@ jobs:
     timeout-minutes: 20
     needs: quality_web
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Bootstrap Node CI tooling
         uses: ./.github/actions/node-ci-bootstrap
 
@@ -78,6 +84,9 @@ jobs:
     timeout-minutes: 25
     needs: build_web
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Bootstrap Node CI tooling
         uses: ./.github/actions/node-ci-bootstrap
 
@@ -117,6 +126,9 @@ jobs:
     needs: [detect_changes, build_web]
     if: needs.detect_changes.outputs.run_visual == 'true'
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Bootstrap Node CI tooling
         uses: ./.github/actions/node-ci-bootstrap
 

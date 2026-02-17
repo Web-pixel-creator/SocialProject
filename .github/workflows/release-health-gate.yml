@@ -16,6 +16,11 @@ jobs:
     env:
       RELEASE_TARGET_RUN_ID: ${{ github.event.workflow_run.id }}
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
       - name: Bootstrap Node CI tooling
         uses: ./.github/actions/node-ci-bootstrap
         with:
