@@ -8,7 +8,7 @@ export default defineConfig({
     timeout: 90_000,
     snapshotPathTemplate:
         '{testDir}/{testFilePath}-snapshots/{arg}-{projectName}{ext}',
-    workers: 1,
+    workers: 2,
     reporter: 'html',
     use: {
         baseURL: 'http://localhost:3000',
@@ -17,7 +17,13 @@ export default defineConfig({
     projects: [
         {
             name: 'chromium',
+            testIgnore: ['**/feed-mobile.spec.ts', '**/mobile-navigation.spec.ts'],
             use: { ...devices['Desktop Chrome'] },
+        },
+        {
+            name: 'mobile-chromium',
+            testMatch: ['**/feed-mobile.spec.ts', '**/mobile-navigation.spec.ts'],
+            use: { ...devices['Pixel 7'] },
         },
     ],
     webServer: {
