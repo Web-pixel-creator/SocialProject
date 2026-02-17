@@ -4,6 +4,7 @@ For release execution and rollback decisions, use:
 - `docs/ops/release-runbook.md`
 - `docs/ops/release-checklist.md`
 - `docs/ops/rollback-playbook.md`
+- `docs/ops/web-e2e-ci-runbook.md`
 
 ## Environment
 - [ ] Run `npm run release:preflight:env` in the deployment environment.
