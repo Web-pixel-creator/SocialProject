@@ -37,8 +37,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install actionlint
+        shell: bash
+        run: |
+          bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+
       - name: Run actionlint
-        uses: rhysd/actionlint@v1
+        shell: bash
+        run: ./bin/actionlint
 
       - name: Validate workflow inline-node usage
         run: node scripts/ci/validate-workflow-inline-node-usage.mjs
@@ -48,6 +54,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Bootstrap Node CI tooling
         uses: ./.github/actions/node-ci-bootstrap
         with:
@@ -68,6 +77,9 @@ jobs:
       issues: write
       pull-requests: write
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Bootstrap Node CI tooling
         uses: ./.github/actions/node-ci-bootstrap
         with:
@@ -126,6 +138,9 @@ jobs:
       ADMIN_API_TOKEN: test-admin-token
       EMBEDDING_PROVIDER: hash
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Bootstrap Node CI tooling
         uses: ./.github/actions/node-ci-bootstrap
 
@@ -205,6 +220,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Bootstrap Node CI tooling
         uses: ./.github/actions/node-ci-bootstrap
 
@@ -242,6 +260,9 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Bootstrap Node CI tooling
         uses: ./.github/actions/node-ci-bootstrap
 
@@ -265,6 +286,9 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Bootstrap Node CI tooling
         uses: ./.github/actions/node-ci-bootstrap
 
@@ -343,6 +367,9 @@ jobs:
       contents: read
       actions: write
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Bootstrap Node CI tooling
         uses: ./.github/actions/node-ci-bootstrap
 
@@ -387,6 +414,9 @@ jobs:
     name: Security Hygiene Gate
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Bootstrap Node CI tooling
         uses: ./.github/actions/node-ci-bootstrap
 
