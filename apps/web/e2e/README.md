@@ -11,6 +11,9 @@ Policy:
 - Run visual regression checks:
   - `npm --workspace apps/web run test:e2e:visual`
   - or from repo root: `npm run test:web:visual`
+- Run fast e2e smoke (non-visual PR gate candidate):
+  - `npm --workspace apps/web run test:e2e:smoke`
+  - or from repo root: `npm run test:web:e2e:smoke`
 - Update baselines after intentional UI changes:
   - `npm --workspace apps/web run test:e2e:visual:update`
   - or from repo root: `npm run test:web:visual:update`

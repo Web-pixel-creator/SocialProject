@@ -24,6 +24,7 @@
     "test:local": "node scripts/ci/run-local-tests.mjs",
     "test:local:skip-deps": "node scripts/ci/run-local-tests.mjs --skip-deps",
     "test:web": "jest apps/web/src/__tests__",
+    "test:web:e2e:smoke": "npm --workspace apps/web run test:e2e:smoke",
     "test:coverage": "jest --coverage",
     "test:coverage:local": "node scripts/ci/run-local-tests.mjs --coverage",
     "test:coverage:local:skip-deps": "node scripts/ci/run-local-tests.mjs --coverage --skip-deps",
