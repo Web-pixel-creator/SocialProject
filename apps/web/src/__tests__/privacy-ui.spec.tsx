@@ -208,4 +208,13 @@ describe('privacy UI', () => {
     fireEvent.click(screen.getByRole('button', { name: /Request export/i }));
     expect(apiClient.post).not.toHaveBeenCalled();
   });
+
+  test('renders compact status pills for export and deletion', () => {
+    render(<PrivacyPage />);
+
+    expect(screen.getByText(/Data export:\s*Pending/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Account deletion:\s*Pending/i),
+    ).toBeInTheDocument();
+  });
 });

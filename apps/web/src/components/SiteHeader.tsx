@@ -3,7 +3,13 @@
 import { Eye, Menu, Search, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { type FormEvent, useEffect, useRef, useState } from 'react';
+import {
+  type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { LanguageSwitcher } from './LanguageSwitcher';
@@ -140,6 +146,32 @@ export const SiteHeader = () => {
     setMobileMenuOpen(false);
   };
 
+  const clearSearchQuery = () => {
+    setSearchQuery('');
+    const isMobileViewport =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(max-width: 767px)').matches;
+    if (isMobileViewport) {
+      mobileSearchInputRef.current?.focus();
+      return;
+    }
+    desktopSearchInputRef.current?.focus();
+  };
+
+  const handleSearchInputKeyDown = (
+    event: ReactKeyboardEvent<HTMLInputElement>,
+  ) => {
+    if (event.key !== 'Escape') {
+      return;
+    }
+    event.preventDefault();
+    if (searchQuery.trim().length > 0) {
+      setSearchQuery('');
+      return;
+    }
+    event.currentTarget.blur();
+  };
+
   useEffect(() => {
     if (!mobileMenuOpen) {
       document.body.style.overflow = previousBodyOverflowRef.current;
@@ -236,11 +268,22 @@ export const SiteHeader = () => {
                 aria-label={t('feed.searchAriaLabel')}
                 className="w-52 bg-transparent text-foreground outline-none placeholder:text-muted-foreground"
                 onChange={(event) => setSearchQuery(event.target.value)}
+                onKeyDown={handleSearchInputKeyDown}
                 placeholder={t('header.searchPlaceholder')}
                 ref={desktopSearchInputRef}
                 type="search"
                 value={searchQuery}
               />
+              {searchQuery.trim().length > 0 ? (
+                <button
+                  aria-label={t('feedTabs.emptyAction.clearSearch')}
+                  className={`ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-transparent bg-background/58 text-muted-foreground transition hover:border-primary/40 hover:bg-background/74 hover:text-primary ${focusRingClass}`}
+                  onClick={clearSearchQuery}
+                  type="button"
+                >
+                  <X aria-hidden="true" className="h-3.5 w-3.5" />
+                </button>
+              ) : null}
               <button
                 aria-label={t('header.search')}
                 className={`ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-transparent bg-background/58 text-muted-foreground transition hover:border-primary/40 hover:bg-background/74 hover:text-primary ${focusRingClass}`}
@@ -314,11 +357,22 @@ export const SiteHeader = () => {
                 aria-label={t('feed.searchAriaLabel')}
                 className="w-full bg-transparent text-foreground outline-none placeholder:text-muted-foreground"
                 onChange={(event) => setSearchQuery(event.target.value)}
+                onKeyDown={handleSearchInputKeyDown}
                 placeholder={t('header.searchPlaceholder')}
                 ref={mobileSearchInputRef}
                 type="search"
                 value={searchQuery}
               />
+              {searchQuery.trim().length > 0 ? (
+                <button
+                  aria-label={t('feedTabs.emptyAction.clearSearch')}
+                  className={`ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-transparent bg-background/58 text-muted-foreground transition hover:border-primary/40 hover:bg-background/74 hover:text-primary ${focusRingClass}`}
+                  onClick={clearSearchQuery}
+                  type="button"
+                >
+                  <X aria-hidden="true" className="h-3.5 w-3.5" />
+                </button>
+              ) : null}
               <button
                 aria-label={t('header.search')}
                 className={`ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-transparent bg-background/58 text-muted-foreground transition hover:border-primary/40 hover:bg-background/74 hover:text-primary ${focusRingClass}`}

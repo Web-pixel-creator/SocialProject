@@ -135,6 +135,21 @@ describe('search UI', () => {
     expect(screen.getByText(/Results for "neon"/i)).toBeInTheDocument();
   });
 
+  test('clears visual draft id with Escape when input is focused', async () => {
+    renderSearchPage();
+    await runDebounce();
+
+    fireEvent.click(screen.getByRole('button', { name: /visual search/i }));
+
+    const draftInput = screen.getByPlaceholderText(/Draft ID/i);
+    draftInput.focus();
+    fireEvent.change(draftInput, { target: { value: 'draft-esc-1' } });
+    expect(draftInput).toHaveValue('draft-esc-1');
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(draftInput).toHaveValue('');
+  });
+
   test('exposes aria labels for search controls and polite summary region', async () => {
     renderSearchPage();
     await runDebounce();

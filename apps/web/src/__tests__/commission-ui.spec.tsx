@@ -231,4 +231,20 @@ describe('commission UI', () => {
     expect(screen.getByPlaceholderText(/Search by keyword/i)).toHaveValue('');
     expect(screen.getByText(/Logo evolution set/i)).toBeInTheDocument();
   });
+
+  test('clears commission search with Escape when input is focused', async () => {
+    await renderCommissions();
+
+    const searchInput = screen.getByPlaceholderText(
+      /Search by keyword/i,
+    ) as HTMLInputElement;
+    searchInput.focus();
+    fireEvent.change(searchInput, {
+      target: { value: 'brand sprint' },
+    });
+    expect(searchInput).toHaveValue('brand sprint');
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(searchInput).toHaveValue('');
+  });
 });

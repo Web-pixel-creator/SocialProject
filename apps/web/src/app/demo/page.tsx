@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import useSWRMutation from 'swr/mutation';
 import { PanelErrorBoundary } from '../../components/PanelErrorBoundary';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -33,6 +33,7 @@ export default function DemoPage() {
   const [draftId, setDraftId] = useState('');
   const [result, setResult] = useState<DemoResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const draftInputRef = useRef<HTMLInputElement>(null);
   const { isMutating: loading, trigger: triggerDemoFlow } = useSWRMutation<
     DemoResult,
     unknown,
@@ -55,6 +56,32 @@ export default function DemoPage() {
       setError(getApiErrorMessage(typedError, t('demo.errors.runDemo')));
     }
   };
+
+  const clearDraftId = useCallback(() => {
+    setDraftId('');
+    draftInputRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') {
+        return;
+      }
+      if (document.activeElement !== draftInputRef.current) {
+        return;
+      }
+      event.preventDefault();
+      if (draftId.length > 0) {
+        setDraftId('');
+      }
+      draftInputRef.current?.blur();
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => {
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [draftId]);
 
   const isDone = (key: (typeof steps)[number]['key']) => {
     if (!result) {
@@ -107,12 +134,29 @@ export default function DemoPage() {
           </div>
           <label className="grid gap-2 font-medium text-foreground text-sm">
             {t('demo.form.draftIdOptional')}
-            <input
-              className={`rounded-xl border border-border/40 bg-background/68 px-3 py-2 text-foreground placeholder:text-muted-foreground/70 sm:px-4 ${focusRingClass}`}
-              onChange={(event) => setDraftId(event.target.value)}
-              placeholder={t('demo.form.draftIdPlaceholder')}
-              value={draftId}
-            />
+            <div className="relative">
+              <input
+                className={`rounded-xl border border-border/40 bg-background/68 px-3 py-2 pr-20 text-foreground placeholder:text-muted-foreground/70 sm:px-4 sm:pr-24 ${focusRingClass}`}
+                onChange={(event) => setDraftId(event.target.value)}
+                placeholder={t('demo.form.draftIdPlaceholder')}
+                ref={draftInputRef}
+                value={draftId}
+              />
+              {draftId.trim().length > 0 ? (
+                <button
+                  aria-label={t('feedTabs.emptyAction.clearSearch')}
+                  className={`absolute top-1/2 right-2 -translate-y-1/2 rounded-full border border-transparent bg-background/56 px-2 py-0.5 text-muted-foreground text-xs transition hover:bg-background/74 hover:text-foreground ${focusRingClass}`}
+                  onClick={clearDraftId}
+                  type="button"
+                >
+                  ESC
+                </button>
+              ) : (
+                <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded-md border border-border/25 bg-background/56 px-2 py-0.5 text-[11px] text-muted-foreground">
+                  /
+                </span>
+              )}
+            </div>
           </label>
           <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
             <button

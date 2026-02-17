@@ -79,6 +79,32 @@ describe('demo page', () => {
     );
   });
 
+  test('clears draft id via escape key when input is focused', async () => {
+    render(<DemoPage />);
+
+    const draftInput = screen.getByPlaceholderText(/Draft UUID/i);
+    fireEvent.change(draftInput, { target: { value: 'draft-escape' } });
+    expect(draftInput).toHaveValue('draft-escape');
+
+    draftInput.focus();
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    await waitFor(() => expect(draftInput).toHaveValue(''));
+    expect(document.activeElement).not.toBe(draftInput);
+  });
+
+  test('clears draft id via clear button and keeps focus on input', async () => {
+    render(<DemoPage />);
+
+    const draftInput = screen.getByPlaceholderText(/Draft UUID/i);
+    fireEvent.change(draftInput, { target: { value: 'draft-clear' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /Clear search/i }));
+
+    await waitFor(() => expect(draftInput).toHaveValue(''));
+    expect(document.activeElement).toBe(draftInput);
+  });
+
   test('shows api error message when demo flow fails', async () => {
     (apiClient.post as jest.Mock).mockRejectedValueOnce({
       response: { data: { message: 'Demo failed in API' } },

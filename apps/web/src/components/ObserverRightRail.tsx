@@ -465,9 +465,9 @@ export const ObserverRightRail = () => {
   }, [requestResync]);
 
   const metricTileClass =
-    'rounded-lg border border-border/25 bg-background/42 p-2 sm:p-2.5';
+    'rounded-lg bg-background/42 p-2 sm:border sm:border-border/25 sm:bg-background/42 sm:p-2.5';
   const statusChipClass =
-    'rounded-full border border-border/25 bg-background/60 px-2 py-0.5 sm:px-2.5 sm:py-1';
+    'rounded-full border border-transparent bg-background/55 px-2 py-0.5 sm:border-border/25 sm:bg-background/60 sm:px-2.5 sm:py-1';
   const controlButtonBaseClass =
     'min-h-8 rounded-full border px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-3.5 sm:py-2 sm:text-xs';
   const controlButtonEnabledClass =
@@ -476,7 +476,8 @@ export const ObserverRightRail = () => {
     'cursor-not-allowed border-transparent bg-background/45 text-muted-foreground/45';
   const primaryActionButtonClass =
     'min-h-8 rounded-full border border-primary/35 bg-primary/10 px-3 py-1.5 font-semibold text-primary uppercase tracking-wide transition hover:border-primary/45 hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-3.5 sm:py-2';
-  const softPanelClass = 'rounded-lg border border-border/25 bg-background/42';
+  const softPanelClass =
+    'rounded-lg bg-background/42 sm:border sm:border-border/25';
 
   return (
     <aside className="observer-right-rail grid grid-cols-1 gap-4 sm:gap-4">
@@ -532,7 +533,7 @@ export const ObserverRightRail = () => {
             <span className={statusChipClass}>{t('rail.fallbackData')}</span>
           )}
           {lastSyncLabel && !isResyncing && (
-            <span className={statusChipClass}>
+            <span className={`${statusChipClass} hidden sm:inline-flex`}>
               {t('rail.lastSync')}: {lastSyncLabel}
             </span>
           )}
@@ -609,10 +610,10 @@ export const ObserverRightRail = () => {
           </div>
         </div>
       </section>
-      <section className="card p-4 sm:p-4 lg:hidden">
+      <section className="card p-3 sm:p-4 lg:hidden">
         <PanelHeader icon={Flame} title={t('rail.pulseRadar')} />
         <div
-          className="mt-2 grid gap-2"
+          className="mt-2 grid gap-1.5"
           data-testid="observer-rail-mobile-controls"
         >
           <div className="flex flex-wrap gap-1">
@@ -644,7 +645,7 @@ export const ObserverRightRail = () => {
         </div>
         {allPanelsHidden ? (
           <div
-            className={`mt-3 p-2 text-[11px] text-muted-foreground ${softPanelClass}`}
+            className={`mt-2.5 p-2 text-[11px] text-muted-foreground ${softPanelClass}`}
           >
             <p>{t('rail.noPanelsSelected')}</p>
             <div className="mt-2 flex justify-end">
@@ -658,13 +659,13 @@ export const ObserverRightRail = () => {
             </div>
           </div>
         ) : null}
-        <div className="grid gap-2.5 sm:grid-cols-2">
+        <div className="grid gap-2 sm:grid-cols-2">
           {panelVisibility.battles ? (
             <div className={`${softPanelClass} p-2 sm:p-2.5`}>
               <p className="font-semibold text-foreground text-xs">
                 {t('rail.trendingBattles')}
               </p>
-              <ul className="mt-2 grid gap-1 text-[11px] text-muted-foreground">
+              <ul className="mt-1.5 grid gap-1 text-[11px] text-muted-foreground">
                 {battles.slice(0, 2).map((item) => (
                   <li className="line-clamp-1" key={`mobile-battle-${item.id}`}>
                     {item.title}
@@ -678,7 +679,7 @@ export const ObserverRightRail = () => {
               <p className="font-semibold text-foreground text-xs">
                 {t('rail.topGlowUps24h')}
               </p>
-              <ul className="mt-2 grid gap-1 text-[11px] text-muted-foreground">
+              <ul className="mt-1.5 grid gap-1 text-[11px] text-muted-foreground">
                 {glowUps.slice(0, 2).map((item) => (
                   <li className="line-clamp-1" key={`mobile-glow-${item.id}`}>
                     {item.title}
@@ -692,7 +693,7 @@ export const ObserverRightRail = () => {
               <p className="font-semibold text-foreground text-xs">
                 {t('rail.topStudios')}
               </p>
-              <ul className="mt-2 grid gap-1 text-[11px] text-muted-foreground">
+              <ul className="mt-1.5 grid gap-1 text-[11px] text-muted-foreground">
                 {studios.slice(0, 2).map((item) => (
                   <li className="line-clamp-1" key={`mobile-studio-${item.id}`}>
                     {item.title}
@@ -703,11 +704,11 @@ export const ObserverRightRail = () => {
           ) : null}
         </div>
         {panelVisibility.activity ? (
-          <div className={`mt-3 p-2 sm:p-2.5 ${softPanelClass}`}>
+          <div className={`mt-2.5 p-2 sm:p-2.5 ${softPanelClass}`}>
             <p className="font-semibold text-foreground text-xs">
               {t('rail.liveActivityStream')}
             </p>
-            <ul className="mt-2 grid gap-1 text-[11px] text-muted-foreground">
+            <ul className="mt-1.5 grid gap-1 text-[11px] text-muted-foreground">
               {mergedActivity.slice(0, 3).map((item) => (
                 <li className="line-clamp-1" key={`mobile-activity-${item.id}`}>
                   {item.title}

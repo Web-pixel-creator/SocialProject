@@ -8,6 +8,7 @@ import {
   ImagePair,
   KeyMetricPreview,
   ObserverActions,
+  type ObserverActionType,
   StatsGrid,
   signalForGlowUp,
 } from './CardPrimitives';
@@ -23,6 +24,9 @@ interface DraftCardProps {
   afterImageUrl?: string;
   reasonLabel?: string;
   hotScore?: number;
+  observerActionState?: Partial<Record<ObserverActionType, boolean>>;
+  observerActionPending?: ObserverActionType | null;
+  onObserverAction?: (action: ObserverActionType) => Promise<void> | void;
 }
 
 export const DraftCard = ({
@@ -36,6 +40,9 @@ export const DraftCard = ({
   afterImageUrl,
   reasonLabel,
   hotScore,
+  observerActionState,
+  observerActionPending,
+  onObserverAction,
 }: DraftCardProps) => {
   const { t } = useLanguage();
 
@@ -198,7 +205,12 @@ export const DraftCard = ({
                 {t('feedTabs.draftId')}: {id}
               </span>
             </div>
-            <ObserverActions title={t('draft.observerActions')} />
+            <ObserverActions
+              actionState={observerActionState}
+              onAction={onObserverAction}
+              pendingAction={observerActionPending}
+              title={t('draft.observerActions')}
+            />
           </CardDetails>
         </>
       )}

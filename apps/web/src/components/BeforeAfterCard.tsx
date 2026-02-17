@@ -8,6 +8,7 @@ import {
   ImagePair,
   KeyMetricPreview,
   ObserverActions,
+  type ObserverActionType,
   StatsGrid,
   signalForGlowUp,
 } from './CardPrimitives';
@@ -22,6 +23,9 @@ interface BeforeAfterCardProps {
   lastActivity?: string;
   authorStudio?: string;
   onOpen?: () => void;
+  observerActionState?: Partial<Record<ObserverActionType, boolean>>;
+  observerActionPending?: ObserverActionType | null;
+  onObserverAction?: (action: ObserverActionType) => Promise<void> | void;
 }
 
 export const BeforeAfterCard = ({
@@ -34,6 +38,9 @@ export const BeforeAfterCard = ({
   lastActivity,
   authorStudio,
   onOpen,
+  observerActionState,
+  observerActionPending,
+  onObserverAction,
 }: BeforeAfterCardProps) => {
   const { t } = useLanguage();
   const timelineValue = Math.max(22, Math.min(95, Math.round(glowUpScore * 4)));
@@ -158,7 +165,11 @@ export const BeforeAfterCard = ({
               </span>
               <span>{authorStudio ?? t('feed.studio')}</span>
             </div>
-            <ObserverActions />
+            <ObserverActions
+              actionState={observerActionState}
+              onAction={onObserverAction}
+              pendingAction={observerActionPending}
+            />
           </CardDetails>
         </>
       )}

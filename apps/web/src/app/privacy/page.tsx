@@ -253,6 +253,21 @@ export default function PrivacyPage() {
         </div>
       </section>
 
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <span className="pill normal-case tracking-normal">
+          {t('privacy.cards.dataExport')}: {exportStatusLabel}
+        </span>
+        <span className="pill normal-case tracking-normal">
+          {t('privacy.cards.accountDeletion')}:{' '}
+          {deleteRequested
+            ? t('privacy.status.done')
+            : t('privacy.status.pending')}
+        </span>
+        {exportStatusValidating && !exportStatusLoading ? (
+          <span className="text-muted-foreground">{t('rail.loadingData')}</span>
+        ) : null}
+      </div>
+
       <div className="card grid gap-3 p-3 sm:gap-3.5 sm:p-4">
         <div className="flex items-center justify-between gap-3">
           <div>

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { CommissionForm } from '../../components/CommissionForm';
 import { PanelErrorBoundary } from '../../components/PanelErrorBoundary';
@@ -38,6 +38,7 @@ export default function CommissionsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const {
     data: commissionsData,
@@ -113,6 +114,10 @@ export default function CommissionsPage() {
     search.trim().length > 0 ||
     statusFilter !== 'all' ||
     paymentFilter !== 'all';
+  const activeFiltersCount =
+    Number(search.trim().length > 0) +
+    Number(statusFilter !== 'all') +
+    Number(paymentFilter !== 'all');
 
   const resetFilters = useCallback(() => {
     setSearch('');
@@ -122,7 +127,30 @@ export default function CommissionsPage() {
 
   const clearSearch = useCallback(() => {
     setSearch('');
+    searchInputRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') {
+        return;
+      }
+      if (document.activeElement !== searchInputRef.current) {
+        return;
+      }
+      event.preventDefault();
+      if (search.length > 0) {
+        setSearch('');
+        return;
+      }
+      searchInputRef.current?.blur();
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => {
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [search]);
 
   const summary = useMemo(() => {
     let pending = 0;
@@ -230,6 +258,7 @@ export default function CommissionsPage() {
               className={`rounded-xl border border-border/25 bg-background/70 px-3 py-2 pr-20 text-foreground text-sm placeholder:text-muted-foreground/70 ${focusRingClass}`}
               onChange={(event) => setSearch(event.target.value)}
               placeholder={t('search.placeholders.keyword')}
+              ref={searchInputRef}
               value={search}
             />
             {search.trim().length > 0 ? (
@@ -241,7 +270,11 @@ export default function CommissionsPage() {
               >
                 ESC
               </button>
-            ) : null}
+            ) : (
+              <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded-md border border-border/25 bg-background/56 px-2 py-0.5 text-[11px] text-muted-foreground">
+                /
+              </span>
+            )}
           </div>
           <select
             className={`rounded-xl border border-border/25 bg-background/70 px-3 py-2 text-foreground text-sm ${focusRingClass}`}
@@ -269,10 +302,15 @@ export default function CommissionsPage() {
           </select>
         </section>
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-          <span className="pill normal-case tracking-normal">
-            {t('feedTabs.shown')}: {filteredCommissions.length}/
-            {commissions.length}
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="pill normal-case tracking-normal">
+              {t('feedTabs.shown')}: {filteredCommissions.length} /{' '}
+              {commissions.length}
+            </span>
+            <span className="pill normal-case tracking-normal">
+              {t('feedTabs.activeFilters')}: {activeFiltersCount}
+            </span>
+          </div>
           {isValidating && !isLoading ? (
             <span className="text-muted-foreground">
               {t('rail.loadingData')}

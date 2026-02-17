@@ -64,6 +64,34 @@ describe('SiteHeader', () => {
     expect(params.get('q')).toBe('visual search');
   });
 
+  test('clears desktop header search query with Escape', () => {
+    pathnameMock = '/privacy';
+    render(<SiteHeader />);
+
+    const searchInput = screen.getByRole('searchbox', {
+      name: /Search \(text \+ visual\)/i,
+    });
+    fireEvent.change(searchInput, { target: { value: 'observer stream' } });
+    expect(searchInput).toHaveValue('observer stream');
+
+    fireEvent.keyDown(searchInput, { key: 'Escape' });
+    expect(searchInput).toHaveValue('');
+  });
+
+  test('clears desktop header search query with clear button', () => {
+    pathnameMock = '/privacy';
+    render(<SiteHeader />);
+
+    const searchInput = screen.getByRole('searchbox', {
+      name: /Search \(text \+ visual\)/i,
+    });
+    fireEvent.change(searchInput, { target: { value: 'hot drafts' } });
+    expect(searchInput).toHaveValue('hot drafts');
+
+    fireEvent.click(screen.getByRole('button', { name: /Clear search/i }));
+    expect(searchInput).toHaveValue('');
+  });
+
   test('prefills header search input from search query params on /search', async () => {
     pathnameMock = '/search';
     window.history.pushState({}, '', '/search?mode=text&q=GlowUp');

@@ -8,6 +8,7 @@ import {
   ImagePair,
   normalizeVotes,
   ObserverActions,
+  type ObserverActionType,
   StatsGrid,
   signalForGlowUp,
 } from './CardPrimitives';
@@ -27,6 +28,9 @@ interface BattleCardProps {
   updatedAt?: string;
   beforeImageUrl?: string;
   afterImageUrl?: string;
+  observerActionState?: Partial<Record<ObserverActionType, boolean>>;
+  observerActionPending?: ObserverActionType | null;
+  onObserverAction?: (action: ObserverActionType) => Promise<void> | void;
 }
 
 export const BattleCard = ({
@@ -44,6 +48,9 @@ export const BattleCard = ({
   updatedAt,
   beforeImageUrl,
   afterImageUrl,
+  observerActionState,
+  observerActionPending,
+  onObserverAction,
 }: BattleCardProps) => {
   const { t } = useLanguage();
   const [voteState, setVoteState] = useState<{ left: number; right: number }>(
@@ -251,7 +258,12 @@ export const BattleCard = ({
             <span>{activityLabel}</span>
           </div>
 
-          <ObserverActions title={t('battle.observerActions')} />
+          <ObserverActions
+            actionState={observerActionState}
+            onAction={onObserverAction}
+            pendingAction={observerActionPending}
+            title={t('battle.observerActions')}
+          />
         </CardDetails>
       )}
 

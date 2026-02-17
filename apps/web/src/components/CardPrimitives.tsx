@@ -219,24 +219,69 @@ export const KeyMetricPreview = ({
 interface ObserverActionsProps {
   title?: string;
   buttonClassName?: string;
+  actionState?: Partial<Record<ObserverActionType, boolean>>;
+  pendingAction?: ObserverActionType | null;
+  onAction?: (action: ObserverActionType) => Promise<void> | void;
 }
+
+export type ObserverActionType =
+  | 'watch'
+  | 'compare'
+  | 'rate'
+  | 'follow'
+  | 'save';
+
+const isToggleObserverAction = (action: ObserverActionType): boolean =>
+  action === 'rate' || action === 'follow' || action === 'save';
 
 export const ObserverActions = ({
   title,
   buttonClassName = 'inline-flex min-h-8 items-center justify-center gap-1 rounded-lg border border-transparent bg-background/58 px-2 py-1.5 text-[10px] text-muted-foreground transition hover:bg-background/74 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-2.5',
+  actionState,
+  pendingAction = null,
+  onAction,
 }: ObserverActionsProps) => {
   const { t } = useLanguage();
   const [expanded, setExpanded] = useState(false);
   const resolvedTitle = title ?? t('draft.observerActions');
-  const actions = [
-    { icon: Eye, label: t('observerAction.watch') },
-    { icon: ArrowRightLeft, label: t('observerAction.compare') },
-    { icon: Star, label: t('observerAction.rate') },
-    { icon: UserPlus, label: t('observerAction.follow') },
-    { icon: Bookmark, label: t('observerAction.save') },
+  const actions: Array<{
+    action: ObserverActionType;
+    icon: typeof Eye;
+    label: string;
+  }> = [
+    { action: 'watch', icon: Eye, label: t('observerAction.watch') },
+    {
+      action: 'compare',
+      icon: ArrowRightLeft,
+      label: t('observerAction.compare'),
+    },
+    { action: 'rate', icon: Star, label: t('observerAction.rate') },
+    { action: 'follow', icon: UserPlus, label: t('observerAction.follow') },
+    { action: 'save', icon: Bookmark, label: t('observerAction.save') },
   ];
   const primaryActions = actions.slice(0, 2);
   const secondaryActions = actions.slice(2);
+  const getButtonClassName = (action: ObserverActionType): string => {
+    const isActive = Boolean(actionState?.[action]);
+    const isPending = pendingAction === action;
+    return `${buttonClassName} ${
+      isActive
+        ? 'border-primary/35 bg-primary/12 text-primary'
+        : 'border-transparent'
+    } ${isPending ? 'cursor-wait opacity-70' : ''}`;
+  };
+
+  const handleActionClick = async (action: ObserverActionType) => {
+    if (!onAction || pendingAction) {
+      return;
+    }
+
+    try {
+      await onAction(action);
+    } catch (_error) {
+      // keep observer controls resilient to optional side-effect failures
+    }
+  };
 
   return (
     <section className="mt-2 rounded-xl bg-background/32 p-2.5">
@@ -244,8 +289,22 @@ export const ObserverActions = ({
         {resolvedTitle}
       </p>
       <div className="grid grid-cols-3 gap-1.5">
-        {primaryActions.map(({ icon: Icon, label }) => (
-          <button className={buttonClassName} key={label} type="button">
+        {primaryActions.map(({ action, icon: Icon, label }) => (
+          <button
+            aria-busy={pendingAction === action}
+            aria-pressed={
+              isToggleObserverAction(action)
+                ? Boolean(actionState?.[action])
+                : undefined
+            }
+            className={getButtonClassName(action)}
+            disabled={pendingAction === action}
+            key={label}
+            onClick={async () => {
+              await handleActionClick(action);
+            }}
+            type="button"
+          >
             <Icon aria-hidden="true" className="h-3.5 w-3.5" />
             {label}
           </button>
@@ -262,8 +321,22 @@ export const ObserverActions = ({
       </div>
       {expanded ? (
         <div className="mt-1.5 grid grid-cols-3 gap-1.5">
-          {secondaryActions.map(({ icon: Icon, label }) => (
-            <button className={buttonClassName} key={label} type="button">
+          {secondaryActions.map(({ action, icon: Icon, label }) => (
+            <button
+              aria-busy={pendingAction === action}
+              aria-pressed={
+                isToggleObserverAction(action)
+                  ? Boolean(actionState?.[action])
+                  : undefined
+              }
+              className={getButtonClassName(action)}
+              disabled={pendingAction === action}
+              key={label}
+              onClick={async () => {
+                await handleActionClick(action);
+              }}
+              type="button"
+            >
               <Icon aria-hidden="true" className="h-3.5 w-3.5" />
               {label}
             </button>
