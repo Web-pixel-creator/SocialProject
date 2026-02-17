@@ -32,6 +32,7 @@ Last updated: 2026-02-17
   - prediction submit success + error flow
   - follow/unfollow chain toggle (`Follow chain` / `Following`)
   - observer digest action (`Mark seen`) and unseen counter update
+  - observer telemetry for follow/unfollow + digest open (`watchlist_*`, `digest_open`)
 
 - Pull request review:
   - render review payload (`PR Review`, summary, metrics)

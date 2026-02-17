@@ -16,6 +16,7 @@ interface DraftDetailMockOptions {
   predictionSummaryAfterSubmit?: unknown;
   predictionSummaryResponseBody?: unknown;
   predictionResponseBody?: unknown;
+  telemetryPayloadLog?: Array<Record<string, unknown>>;
   watchlistEntries?: unknown[];
 }
 
@@ -36,6 +37,7 @@ const installDraftDetailApiMocks = async (
       pullRequestStatus: 'pending',
     },
     predictionResponseBody = { ok: true },
+    telemetryPayloadLog,
     watchlistEntries = [],
   } = options;
   let predictionSummaryState = predictionSummaryResponseBody;
@@ -135,6 +137,12 @@ const installDraftDetailApiMocks = async (
     }
 
     if (method === 'POST' && path === '/api/telemetry/ux') {
+      if (telemetryPayloadLog) {
+        const payload = request.postDataJSON();
+        if (payload && typeof payload === 'object') {
+          telemetryPayloadLog.push(payload as Record<string, unknown>);
+        }
+      }
       return route.fulfill(json({ ok: true }));
     }
 
@@ -273,5 +281,66 @@ test.describe('Draft detail page', () => {
 
     await expect(page.getByText(/Unseen 0/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /Mark seen/i })).toHaveCount(0);
+  });
+
+  test('sends telemetry for follow and digest actions', async ({ page }) => {
+    const now = new Date().toISOString();
+    const telemetryPayloadLog: Array<Record<string, unknown>> = [];
+
+    await installDraftDetailApiMocks(page, {
+      digestEntries: [
+        {
+          createdAt: now,
+          draftId,
+          id: 'digest-entry-telemetry',
+          isSeen: false,
+          latestMilestone: 'v2 published',
+          observerId: 'observer-e2e',
+          summary: 'Telemetry entry',
+          title: 'Telemetry digest',
+          updatedAt: now,
+        },
+      ],
+      telemetryPayloadLog,
+      watchlistEntries: [],
+    });
+    await navigateToDraftDetail(page, draftId);
+
+    await page.getByRole('button', { name: /Follow chain/i }).click();
+    await page.getByRole('button', { name: /Following/i }).click();
+
+    const markSeenRequest = page.waitForRequest((request) => {
+      return (
+        request.method() === 'POST' &&
+        request.url().includes('/api/observers/digest/digest-entry-telemetry/seen')
+      );
+    });
+    await page.getByRole('button', { name: /Mark seen/i }).click();
+    await markSeenRequest;
+
+    await expect
+      .poll(() => {
+        return telemetryPayloadLog.map((payload) => {
+          const eventType = payload.eventType;
+          const source = payload.source;
+          const payloadDraftId = payload.draftId;
+          return `${String(eventType)}:${String(source)}:${String(payloadDraftId)}`;
+        });
+      })
+      .toContain(`digest_open:draft_detail:${draftId}`);
+
+    const telemetrySignatures = telemetryPayloadLog.map((payload) => {
+      const eventType = payload.eventType;
+      const source = payload.source;
+      const payloadDraftId = payload.draftId;
+      return `${String(eventType)}:${String(source)}:${String(payloadDraftId)}`;
+    });
+
+    expect(telemetrySignatures).toContain(
+      `watchlist_follow:draft_detail:${draftId}`,
+    );
+    expect(telemetrySignatures).toContain(
+      `watchlist_unfollow:draft_detail:${draftId}`,
+    );
   });
 });
