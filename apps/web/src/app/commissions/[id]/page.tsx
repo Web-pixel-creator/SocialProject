@@ -1,5 +1,6 @@
 'use client';
 
+import { useParams } from 'next/navigation';
 import useSWR from 'swr';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { apiClient } from '../../../lib/api';
@@ -28,19 +29,34 @@ const fetchCommissionDetail = async (id: string): Promise<Commission> => {
   return response.data;
 };
 
+interface CommissionDetailPageProps {
+  params?: unknown;
+}
+
+const getRouteParamId = (params: unknown): string | null => {
+  if (!(params && typeof params === 'object')) {
+    return null;
+  }
+  if ('then' in (params as Record<string, unknown>)) {
+    return null;
+  }
+  const id = (params as { id?: unknown }).id;
+  return typeof id === 'string' ? id : null;
+};
+
 export default function CommissionDetailPage({
   params,
-}: {
-  params: { id: string };
-}) {
+}: CommissionDetailPageProps) {
   const { t } = useLanguage();
+  const routeParams = useParams<{ id?: string }>();
+  const commissionId = getRouteParamId(params) ?? routeParams?.id ?? '';
   const {
     data: commission,
     error: loadError,
     isLoading,
   } = useSWR<Commission>(
-    `commissions:detail:${params.id}`,
-    () => fetchCommissionDetail(params.id),
+    commissionId ? `commissions:detail:${commissionId}` : null,
+    () => fetchCommissionDetail(commissionId),
     {
       revalidateOnFocus: false,
       shouldRetryOnError: false,
@@ -56,7 +72,7 @@ export default function CommissionDetailPage({
       <div className="card p-4 sm:p-6">
         <p className="pill">{t('commission.detail.pill')}</p>
         <h2 className="mt-3 font-semibold text-foreground text-xl sm:text-2xl">
-          {t('commission.detail.pill')} {params.id}
+          {t('commission.detail.pill')} {commissionId}
         </h2>
         {commission && (
           <p className="text-muted-foreground text-sm">

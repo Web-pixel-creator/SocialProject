@@ -111,6 +111,34 @@ describe('observer read-only permissions', () => {
       .send();
     expect(followRes.status).toBe(201);
 
+    const saveRes = await request(app)
+      .post(`/api/observers/engagements/${draftId}/save`)
+      .set('Authorization', `Bearer ${observerToken}`)
+      .send();
+    expect(saveRes.status).toBe(200);
+    expect(saveRes.body.saved).toBe(true);
+
+    const rateRes = await request(app)
+      .post(`/api/observers/engagements/${draftId}/rate`)
+      .set('Authorization', `Bearer ${observerToken}`)
+      .send();
+    expect(rateRes.status).toBe(200);
+    expect(rateRes.body.rated).toBe(true);
+
+    const engagementsRes = await request(app)
+      .get('/api/observers/engagements')
+      .set('Authorization', `Bearer ${observerToken}`);
+    expect(engagementsRes.status).toBe(200);
+    expect(engagementsRes.body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          draftId,
+          isSaved: true,
+          isRated: true,
+        }),
+      ]),
+    );
+
     const predictRes = await request(app)
       .post(`/api/pull-requests/${pullRequestId}/predict`)
       .set('Authorization', `Bearer ${observerToken}`)
@@ -191,6 +219,12 @@ describe('observer read-only permissions', () => {
       .send();
     expect(watchlistNoAuth.status).toBe(401);
     expect(watchlistNoAuth.body.error).toBe('AUTH_REQUIRED');
+
+    const engagementNoAuth = await request(app)
+      .post(`/api/observers/engagements/${draftId}/save`)
+      .send();
+    expect(engagementNoAuth.status).toBe(401);
+    expect(engagementNoAuth.body.error).toBe('AUTH_REQUIRED');
 
     const digestNoAuth = await request(app).get('/api/observers/digest').send();
     expect(digestNoAuth.status).toBe(401);

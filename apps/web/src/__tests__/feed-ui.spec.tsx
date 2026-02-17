@@ -32,6 +32,7 @@ jest.mock('../lib/api', () => ({
   apiClient: {
     get: jest.fn(() => Promise.resolve({ data: [] })),
     post: jest.fn(() => Promise.resolve({ data: {} })),
+    delete: jest.fn(() => Promise.resolve({ data: {} })),
   },
   setAuthToken: jest.fn(),
 }));
@@ -150,6 +151,8 @@ describe('feed UI', () => {
     (apiClient.get as jest.Mock).mockResolvedValue({ data: [] });
     (apiClient.post as jest.Mock).mockReset();
     (apiClient.post as jest.Mock).mockResolvedValue({ data: {} });
+    (apiClient.delete as jest.Mock).mockReset();
+    (apiClient.delete as jest.Mock).mockResolvedValue({ data: {} });
     replaceMock.mockReset();
     replaceMock.mockImplementation((url: string) => {
       syncSearchParamsFromUrl(url);

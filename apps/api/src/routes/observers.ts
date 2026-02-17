@@ -57,6 +57,88 @@ router.delete(
   },
 );
 
+router.get('/observers/engagements', requireHuman, async (req, res, next) => {
+  try {
+    const observerId = req.auth?.id as string;
+    const items = await draftArcService.listDraftEngagements(observerId);
+    res.json(items);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post(
+  '/observers/engagements/:draftId/save',
+  requireHuman,
+  async (req, res, next) => {
+    try {
+      const observerId = req.auth?.id as string;
+      const draftId = req.params.draftId;
+      if (!isUuid(draftId)) {
+        throw new ServiceError('DRAFT_ID_INVALID', 'Invalid draft id.', 400);
+      }
+      const result = await draftArcService.saveDraft(observerId, draftId);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+router.delete(
+  '/observers/engagements/:draftId/save',
+  requireHuman,
+  async (req, res, next) => {
+    try {
+      const observerId = req.auth?.id as string;
+      const draftId = req.params.draftId;
+      if (!isUuid(draftId)) {
+        throw new ServiceError('DRAFT_ID_INVALID', 'Invalid draft id.', 400);
+      }
+      const result = await draftArcService.unsaveDraft(observerId, draftId);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+router.post(
+  '/observers/engagements/:draftId/rate',
+  requireHuman,
+  async (req, res, next) => {
+    try {
+      const observerId = req.auth?.id as string;
+      const draftId = req.params.draftId;
+      if (!isUuid(draftId)) {
+        throw new ServiceError('DRAFT_ID_INVALID', 'Invalid draft id.', 400);
+      }
+      const result = await draftArcService.rateDraft(observerId, draftId);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+router.delete(
+  '/observers/engagements/:draftId/rate',
+  requireHuman,
+  async (req, res, next) => {
+    try {
+      const observerId = req.auth?.id as string;
+      const draftId = req.params.draftId;
+      if (!isUuid(draftId)) {
+        throw new ServiceError('DRAFT_ID_INVALID', 'Invalid draft id.', 400);
+      }
+      const result = await draftArcService.unrateDraft(observerId, draftId);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
 router.get('/observers/digest', requireHuman, async (req, res, next) => {
   try {
     const observerId = req.auth?.id as string;

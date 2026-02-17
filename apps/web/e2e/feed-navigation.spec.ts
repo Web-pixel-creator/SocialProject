@@ -27,6 +27,45 @@ test.describe('Feed navigation and filters', () => {
         await expect(page).toHaveURL(/tab=Battles/);
     });
 
+    test('opens draft detail page from card CTA link', async ({ page }) => {
+        const draftId = '00000000-0000-0000-0000-00000000e2e1';
+
+        await page.route('**/api/**', async (route) => {
+            const requestUrl = new URL(route.request().url());
+            const path = requestUrl.pathname;
+            const method = route.request().method();
+
+            if (method === 'GET' && path === '/api/feed') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify([
+                        {
+                            id: draftId,
+                            type: 'draft',
+                            title: 'Draft open detail e2e',
+                            glowUpScore: 9.2,
+                        },
+                    ]),
+                });
+            }
+
+            return route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify([]),
+            });
+        });
+
+        await openFeed(page);
+        const openDetailLink = page
+            .getByRole('link', { name: /Open detail/i })
+            .first();
+        await expect(openDetailLink).toBeVisible();
+        await openDetailLink.click();
+        await expect(page).toHaveURL(new RegExp(`/drafts/${draftId}$`));
+    });
+
     test('syncs all-feed filters to query params', async ({ page }) => {
         await openFiltersPanel(page);
 
@@ -233,6 +272,73 @@ test.describe('Feed navigation and filters', () => {
         await expect(page.getByText('Battle Merged E2E')).toBeVisible();
     });
 
+    test('updates battle vote controls and user vote label', async ({ page }) => {
+        await page.route('**/api/**', async (route) => {
+            const requestUrl = new URL(route.request().url());
+            const path = requestUrl.pathname;
+            const method = route.request().method();
+
+            if (method === 'GET' && path === '/api/feeds/battles') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify([
+                        {
+                            id: 'battle-vote-e2e',
+                            title: 'Battle Vote E2E',
+                            leftLabel: 'Design',
+                            rightLabel: 'Function',
+                            leftVote: 50,
+                            rightVote: 50,
+                            glowUpScore: 10.2,
+                            prCount: 4,
+                            fixCount: 2,
+                            decision: 'pending',
+                        },
+                    ]),
+                });
+            }
+
+            if (method === 'POST' && path === '/api/telemetry/ux') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ ok: true }),
+                });
+            }
+
+            return route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify([]),
+            });
+        });
+
+        await openFeed(page);
+        await page.getByRole('button', { name: /^Battles$/i }).click();
+        await expect(page).toHaveURL(/tab=Battles/);
+        await expect(page.getByText('Battle Vote E2E')).toBeVisible();
+
+        const voteDesignButton = page.getByRole('button', {
+            name: /^Vote Design$/i,
+        });
+        const voteFunctionButton = page.getByRole('button', {
+            name: /^Vote Function$/i,
+        });
+        await expect(voteDesignButton).toHaveAttribute('aria-pressed', 'false');
+        await expect(voteFunctionButton).toHaveAttribute('aria-pressed', 'false');
+
+        await voteDesignButton.click();
+        await expect(voteDesignButton).toHaveAttribute('aria-pressed', 'true');
+        await expect(voteFunctionButton).toHaveAttribute('aria-pressed', 'false');
+        await expect(page.getByText(/^Your vote:\s*Design$/i)).toBeVisible();
+
+        await voteFunctionButton.click();
+        await expect(voteDesignButton).toHaveAttribute('aria-pressed', 'false');
+        await expect(voteFunctionButton).toHaveAttribute('aria-pressed', 'true');
+        await expect(page.getByText(/^Your vote:\s*Function$/i)).toBeVisible();
+    });
+
     test('primary and more tabs switch feed and update query', async ({
         page,
     }) => {
@@ -373,4 +479,3 @@ test.describe('Feed navigation and filters', () => {
         await expect(page.locator('.settings-menu')).toHaveCount(0);
     });
 });
-

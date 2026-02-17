@@ -11,6 +11,7 @@ import type {
   DraftEventType,
   DraftRecap24h,
   ObserverDigestEntry,
+  ObserverDraftEngagement,
   ObserverPrediction,
   ObserverWatchlistItem,
   PredictionOutcome,
@@ -46,6 +47,15 @@ interface WatchlistRow {
   observer_id: string;
   draft_id: string;
   created_at: Date;
+}
+
+interface DraftEngagementRow {
+  observer_id: string;
+  draft_id: string;
+  is_saved: boolean;
+  is_rated: boolean;
+  created_at: Date;
+  updated_at: Date;
 }
 
 interface PredictionRow {
@@ -85,6 +95,17 @@ const mapWatchlistItem = (row: WatchlistRow): ObserverWatchlistItem => ({
   observerId: row.observer_id,
   draftId: row.draft_id,
   createdAt: row.created_at,
+});
+
+const mapDraftEngagement = (
+  row: DraftEngagementRow,
+): ObserverDraftEngagement => ({
+  observerId: row.observer_id,
+  draftId: row.draft_id,
+  isSaved: Boolean(row.is_saved),
+  isRated: Boolean(row.is_rated),
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
 });
 
 const mapPrediction = (row: PredictionRow): ObserverPrediction => ({
@@ -496,6 +517,130 @@ export class DraftArcServiceImpl implements DraftArcService {
       [observerId],
     );
     return result.rows.map((row) => mapWatchlistItem(row as WatchlistRow));
+  }
+
+  async listDraftEngagements(
+    observerId: string,
+    client?: DbClient,
+  ): Promise<ObserverDraftEngagement[]> {
+    const db = getDb(this.pool, client);
+    const result = await db.query(
+      `SELECT observer_id, draft_id, is_saved, is_rated, created_at, updated_at
+       FROM observer_draft_engagements
+       WHERE observer_id = $1
+       ORDER BY updated_at DESC`,
+      [observerId],
+    );
+
+    return result.rows.map((row) =>
+      mapDraftEngagement(row as DraftEngagementRow),
+    );
+  }
+
+  async saveDraft(
+    observerId: string,
+    draftId: string,
+    client?: DbClient,
+  ): Promise<{ saved: true }> {
+    const db = getDb(this.pool, client);
+    await this.ensureObserverExists(observerId, db);
+    await this.ensureDraftExists(draftId, db);
+
+    await db.query(
+      `INSERT INTO observer_draft_engagements (
+         observer_id,
+         draft_id,
+         is_saved,
+         is_rated
+       )
+       VALUES ($1, $2, true, false)
+       ON CONFLICT (observer_id, draft_id)
+       DO UPDATE SET
+         is_saved = true,
+         updated_at = NOW()`,
+      [observerId, draftId],
+    );
+
+    return { saved: true };
+  }
+
+  async unsaveDraft(
+    observerId: string,
+    draftId: string,
+    client?: DbClient,
+  ): Promise<{ saved: false }> {
+    const db = getDb(this.pool, client);
+    await db.query(
+      `DELETE FROM observer_draft_engagements
+       WHERE observer_id = $1
+         AND draft_id = $2
+         AND is_rated = false`,
+      [observerId, draftId],
+    );
+    await db.query(
+      `UPDATE observer_draft_engagements
+       SET is_saved = false,
+           updated_at = NOW()
+       WHERE observer_id = $1
+         AND draft_id = $2
+         AND is_rated = true`,
+      [observerId, draftId],
+    );
+
+    return { saved: false };
+  }
+
+  async rateDraft(
+    observerId: string,
+    draftId: string,
+    client?: DbClient,
+  ): Promise<{ rated: true }> {
+    const db = getDb(this.pool, client);
+    await this.ensureObserverExists(observerId, db);
+    await this.ensureDraftExists(draftId, db);
+
+    await db.query(
+      `INSERT INTO observer_draft_engagements (
+         observer_id,
+         draft_id,
+         is_saved,
+         is_rated
+       )
+       VALUES ($1, $2, false, true)
+       ON CONFLICT (observer_id, draft_id)
+       DO UPDATE SET
+         is_rated = true,
+         updated_at = NOW()`,
+      [observerId, draftId],
+    );
+
+    return { rated: true };
+  }
+
+  async unrateDraft(
+    observerId: string,
+    draftId: string,
+    client?: DbClient,
+  ): Promise<{ rated: false }> {
+    const db = getDb(this.pool, client);
+    await db.query(
+      `DELETE FROM observer_draft_engagements
+       WHERE observer_id = $1
+         AND draft_id = $2
+         AND is_saved = false`,
+      [observerId, draftId],
+    );
+    await db.query(
+      `UPDATE observer_draft_engagements
+       SET is_rated = false,
+           updated_at = NOW()
+       WHERE observer_id = $1
+         AND draft_id = $2
+         AND is_saved = true`,
+      [observerId, draftId],
+    );
+
+    return { rated: false };
   }
 
   async listDigest(

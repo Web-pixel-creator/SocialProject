@@ -1,5 +1,6 @@
 'use client';
 
+import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import useSWRMutation from 'swr/mutation';
@@ -60,6 +61,10 @@ interface PullRequestDecisionPayload {
   rejectionReason?: string;
 }
 
+interface PullRequestReviewPageProps {
+  params?: unknown;
+}
+
 const focusRingClass =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
 
@@ -100,20 +105,31 @@ const fetchReviewData = async (id: string): Promise<ReviewPageData> => {
   };
 };
 
+const getRouteParamId = (params: unknown): string | null => {
+  if (!(params && typeof params === 'object')) {
+    return null;
+  }
+  if ('then' in (params as Record<string, unknown>)) {
+    return null;
+  }
+  const id = (params as { id?: unknown }).id;
+  return typeof id === 'string' ? id : null;
+};
+
 export default function PullRequestReviewPage({
   params,
-}: {
-  params: { id: string };
-}) {
+}: PullRequestReviewPageProps) {
   const { t } = useLanguage();
+  const routeParams = useParams<{ id?: string }>();
+  const pullRequestId = getRouteParamId(params) ?? routeParams?.id ?? '';
   const {
     data,
     error: loadError,
     isLoading,
     mutate,
   } = useSWR<ReviewPageData>(
-    `pr:review:${params.id}`,
-    () => fetchReviewData(params.id),
+    pullRequestId ? `pr:review:${pullRequestId}` : null,
+    () => fetchReviewData(pullRequestId),
     {
       revalidateOnFocus: false,
       shouldRetryOnError: false,

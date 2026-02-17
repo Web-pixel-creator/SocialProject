@@ -11,8 +11,12 @@ const json = (body: unknown) => ({
 });
 
 interface DraftDetailMockOptions {
+  digestEntries?: unknown[];
   predictionStatus?: number;
+  predictionSummaryAfterSubmit?: unknown;
+  predictionSummaryResponseBody?: unknown;
   predictionResponseBody?: unknown;
+  watchlistEntries?: unknown[];
 }
 
 const installDraftDetailApiMocks = async (
@@ -21,9 +25,20 @@ const installDraftDetailApiMocks = async (
 ) => {
   const now = new Date().toISOString();
   const {
+    digestEntries = [],
     predictionStatus = 200,
+    predictionSummaryAfterSubmit = null,
+    predictionSummaryResponseBody = {
+      accuracy: { correct: 4, rate: 0.5, total: 8 },
+      consensus: { merge: 2, reject: 1, total: 3 },
+      observerPrediction: null,
+      pullRequestId,
+      pullRequestStatus: 'pending',
+    },
     predictionResponseBody = { ok: true },
+    watchlistEntries = [],
   } = options;
+  let predictionSummaryState = predictionSummaryResponseBody;
 
   await page.route('**/api/**', async (route) => {
     const request = route.request();
@@ -71,23 +86,23 @@ const installDraftDetailApiMocks = async (
     }
 
     if (method === 'GET' && path === '/api/observers/watchlist') {
-      return route.fulfill(json([]));
+      return route.fulfill(json(watchlistEntries));
     }
 
     if (method === 'GET' && path === '/api/observers/digest') {
-      return route.fulfill(json([]));
+      return route.fulfill(json(digestEntries));
+    }
+
+    if (
+      method === 'POST' &&
+      path.startsWith('/api/observers/digest/') &&
+      path.endsWith('/seen')
+    ) {
+      return route.fulfill(json({ ok: true }));
     }
 
     if (method === 'GET' && path === `/api/pull-requests/${pullRequestId}/predictions`) {
-      return route.fulfill(
-        json({
-          accuracy: { correct: 4, rate: 0.5, total: 8 },
-          consensus: { merge: 2, reject: 1, total: 3 },
-          observerPrediction: null,
-          pullRequestId,
-          pullRequestStatus: 'pending',
-        }),
-      );
+      return route.fulfill(json(predictionSummaryState));
     }
 
     if (method === 'GET' && path === '/api/search/similar') {
@@ -95,6 +110,23 @@ const installDraftDetailApiMocks = async (
     }
 
     if (method === 'POST' && path === `/api/pull-requests/${pullRequestId}/predict`) {
+      const payload = (request.postDataJSON() ?? {}) as { outcome?: string };
+      if (predictionSummaryAfterSubmit !== null) {
+        predictionSummaryState = predictionSummaryAfterSubmit;
+      } else if (
+        predictionSummaryState !== null &&
+        typeof predictionSummaryState === 'object'
+      ) {
+        const currentSummary = predictionSummaryState as Record<string, unknown>;
+        predictionSummaryState = {
+          ...currentSummary,
+          observerPrediction: {
+            isCorrect: null,
+            predictedOutcome: payload.outcome ?? 'merge',
+            resolvedOutcome: null,
+          },
+        };
+      }
       return route.fulfill({
         body: JSON.stringify(predictionResponseBody),
         contentType: 'application/json',
@@ -140,6 +172,7 @@ test.describe('Draft detail page', () => {
 
     await predictMergeButton.click();
     await predictionRequest;
+    await expect(page.getByText(/Your prediction:\s*merge/i)).toBeVisible();
   });
 
   test('shows prediction submit error when API fails', async ({ page }) => {
@@ -159,5 +192,86 @@ test.describe('Draft detail page', () => {
       page.getByText(/Prediction service unavailable/i),
     ).toBeVisible();
     await expect(page).toHaveURL(new RegExp(`/drafts/${draftId}`));
+  });
+
+  test('switches selected version in timeline', async ({ page }) => {
+    await installDraftDetailApiMocks(page);
+    await navigateToDraftDetail(page, draftId);
+
+    await expect(page.getByText(/Selected version:\s*v2/i)).toBeVisible();
+    await page.getByRole('button', { name: 'v1' }).click();
+    await expect(page.getByText(/Selected version:\s*v1/i)).toBeVisible();
+  });
+
+  test('toggles follow state and activity hint', async ({ page }) => {
+    await installDraftDetailApiMocks(page, {
+      watchlistEntries: [],
+    });
+    await navigateToDraftDetail(page, draftId);
+
+    await expect(
+      page.getByText(/Follow the chain to see updates here/i),
+    ).toBeVisible();
+
+    const followRequest = page.waitForRequest((request) => {
+      return (
+        request.method() === 'POST' &&
+        request.url().includes(`/api/observers/watchlist/${draftId}`)
+      );
+    });
+
+    await page.getByRole('button', { name: /Follow chain/i }).click();
+    await followRequest;
+
+    await expect(page.getByRole('button', { name: /Following/i })).toBeVisible();
+    await expect(
+      page.getByText(/Updates appear when this draft changes/i),
+    ).toBeVisible();
+
+    const unfollowRequest = page.waitForRequest((request) => {
+      return (
+        request.method() === 'DELETE' &&
+        request.url().includes(`/api/observers/watchlist/${draftId}`)
+      );
+    });
+
+    await page.getByRole('button', { name: /Following/i }).click();
+    await unfollowRequest;
+    await expect(page.getByRole('button', { name: /Follow chain/i })).toBeVisible();
+  });
+
+  test('marks observer digest entries as seen', async ({ page }) => {
+    const now = new Date().toISOString();
+    await installDraftDetailApiMocks(page, {
+      digestEntries: [
+        {
+          createdAt: now,
+          draftId,
+          id: 'digest-entry-1',
+          isSeen: false,
+          latestMilestone: 'v2 published',
+          observerId: 'observer-e2e',
+          summary: 'Preview feedback landed',
+          title: 'New draft digest',
+          updatedAt: now,
+        },
+      ],
+    });
+    await navigateToDraftDetail(page, draftId);
+
+    await expect(page.getByText(/Unseen 1/i)).toBeVisible();
+
+    const markSeenRequest = page.waitForRequest((request) => {
+      return (
+        request.method() === 'POST' &&
+        request.url().includes('/api/observers/digest/digest-entry-1/seen')
+      );
+    });
+
+    await page.getByRole('button', { name: /Mark seen/i }).click();
+    await markSeenRequest;
+
+    await expect(page.getByText(/Unseen 0/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /Mark seen/i })).toHaveCount(0);
   });
 });

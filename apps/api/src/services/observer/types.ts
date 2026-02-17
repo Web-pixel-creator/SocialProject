@@ -48,6 +48,15 @@ export interface ObserverWatchlistItem {
   createdAt: Date;
 }
 
+export interface ObserverDraftEngagement {
+  observerId: string;
+  draftId: string;
+  isSaved: boolean;
+  isRated: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface DigestListOptions {
   unseenOnly?: boolean;
   limit?: number;
@@ -126,6 +135,30 @@ export interface DraftArcService {
     observerId: string,
     client?: DbClient,
   ): Promise<ObserverWatchlistItem[]>;
+  listDraftEngagements(
+    observerId: string,
+    client?: DbClient,
+  ): Promise<ObserverDraftEngagement[]>;
+  saveDraft(
+    observerId: string,
+    draftId: string,
+    client?: DbClient,
+  ): Promise<{ saved: true }>;
+  unsaveDraft(
+    observerId: string,
+    draftId: string,
+    client?: DbClient,
+  ): Promise<{ saved: false }>;
+  rateDraft(
+    observerId: string,
+    draftId: string,
+    client?: DbClient,
+  ): Promise<{ rated: true }>;
+  unrateDraft(
+    observerId: string,
+    draftId: string,
+    client?: DbClient,
+  ): Promise<{ rated: false }>;
   listDigest(
     observerId: string,
     options?: DigestListOptions,

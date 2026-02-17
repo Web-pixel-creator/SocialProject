@@ -73,6 +73,7 @@ const FEED_DENSITY_STORAGE_KEY = 'finishit-feed-density';
 const FEED_FOLLOWED_STORAGE_KEY = 'finishit-feed-followed-draft-ids';
 const FEED_SAVED_STORAGE_KEY = 'finishit-feed-saved-draft-ids';
 const FEED_RATED_STORAGE_KEY = 'finishit-feed-rated-draft-ids';
+const AUTH_TOKEN_STORAGE_KEY = 'finishit_token';
 const MOBILE_DENSITY_MEDIA_QUERY = '(max-width: 767px)';
 
 type FeedDensity = 'comfort' | 'compact';
@@ -282,6 +283,16 @@ interface FeedPageResponse {
   replaceCurrentItems?: boolean;
   keepCurrentItems?: boolean;
   loadTimingMs?: number;
+}
+
+interface ObserverWatchlistResponseItem {
+  draftId?: string;
+}
+
+interface ObserverDraftEngagementResponseItem {
+  draftId?: string;
+  isSaved?: boolean;
+  isRated?: boolean;
 }
 
 interface AllFeedFiltersProps {
@@ -655,6 +666,12 @@ export const FeedTabs = () => {
   const [pendingFollowDraftIds, setPendingFollowDraftIds] = useState<
     Set<string>
   >(() => new Set<string>());
+  const [pendingSaveDraftIds, setPendingSaveDraftIds] = useState<Set<string>>(
+    () => new Set<string>(),
+  );
+  const [pendingRateDraftIds, setPendingRateDraftIds] = useState<Set<string>>(
+    () => new Set<string>(),
+  );
   const desktopMoreDetailsRef = useRef<HTMLDetailsElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const mobileMoreButtonRef = useRef<HTMLButtonElement>(null);
@@ -1074,6 +1091,83 @@ export const FeedTabs = () => {
   useEffect(() => {
     writeStoredIdSet(FEED_FOLLOWED_STORAGE_KEY, followedDraftIds);
   }, [followedDraftIds]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const hasStoredAuthToken = Boolean(
+      window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY),
+    );
+    const authHeader = apiClient.defaults?.headers?.common?.Authorization;
+    const hasAuthHeader =
+      typeof authHeader === 'string' && authHeader.trim().length > 0;
+
+    if (!(hasStoredAuthToken || hasAuthHeader)) {
+      return;
+    }
+
+    let active = true;
+
+    const syncObserverState = async () => {
+      try {
+        const [watchlistResponse, engagementsResponse] = await Promise.all([
+          apiClient.get('/observers/watchlist'),
+          apiClient.get('/observers/engagements'),
+        ]);
+        if (!active) {
+          return;
+        }
+
+        const nextFollowedDraftIds = new Set<string>();
+        const nextSavedDraftIds = new Set<string>();
+        const nextRatedDraftIds = new Set<string>();
+
+        const watchlistItems = Array.isArray(watchlistResponse.data)
+          ? watchlistResponse.data
+          : [];
+        for (const item of watchlistItems) {
+          const draftId = (item as ObserverWatchlistResponseItem).draftId;
+          if (typeof draftId === 'string' && draftId.trim().length > 0) {
+            nextFollowedDraftIds.add(draftId);
+          }
+        }
+
+        const engagementItems = Array.isArray(engagementsResponse.data)
+          ? engagementsResponse.data
+          : [];
+        for (const item of engagementItems) {
+          const engagement = item as ObserverDraftEngagementResponseItem;
+          const draftId = engagement.draftId;
+          if (typeof draftId !== 'string' || draftId.trim().length === 0) {
+            continue;
+          }
+          if (engagement.isSaved === true) {
+            nextSavedDraftIds.add(draftId);
+          }
+          if (engagement.isRated === true) {
+            nextRatedDraftIds.add(draftId);
+          }
+        }
+
+        setFollowedDraftIds(nextFollowedDraftIds);
+        setSavedDraftIds(nextSavedDraftIds);
+        setRatedDraftIds(nextRatedDraftIds);
+      } catch (error: unknown) {
+        const status = getApiErrorStatus(error);
+        if (status === 401 || status === 403) {
+          return;
+        }
+      }
+    };
+
+    syncObserverState().catch(() => undefined);
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const updateQuery = useCallback(
     (
@@ -1600,8 +1694,44 @@ export const FeedTabs = () => {
       }
 
       if (action === 'save') {
-        const nextSaved = !savedDraftIds.has(draftId);
+        if (pendingSaveDraftIds.has(draftId)) {
+          return;
+        }
+
+        const wasSaved = savedDraftIds.has(draftId);
+        const nextSaved = !wasSaved;
         setSavedDraftIds((current) => toggleIdInSet(current, draftId));
+        setPendingSaveDraftIds((current) => {
+          const next = new Set(current);
+          next.add(draftId);
+          return next;
+        });
+
+        let shouldPersistToggle = true;
+        try {
+          if (nextSaved) {
+            await apiClient.post(`/observers/engagements/${draftId}/save`);
+          } else {
+            await apiClient.delete(`/observers/engagements/${draftId}/save`);
+          }
+        } catch (error: unknown) {
+          const status = getApiErrorStatus(error);
+          shouldPersistToggle = status === 401 || status === 403;
+        } finally {
+          setPendingSaveDraftIds((current) => {
+            const next = new Set(current);
+            next.delete(draftId);
+            return next;
+          });
+        }
+
+        if (!shouldPersistToggle) {
+          if (wasSaved !== nextSaved) {
+            setSavedDraftIds((current) => toggleIdInSet(current, draftId));
+          }
+          return;
+        }
+
         sendTelemetry({
           eventType: 'feed_card_open',
           draftId,
@@ -1613,8 +1743,44 @@ export const FeedTabs = () => {
       }
 
       if (action === 'rate') {
-        const nextRated = !ratedDraftIds.has(draftId);
+        if (pendingRateDraftIds.has(draftId)) {
+          return;
+        }
+
+        const wasRated = ratedDraftIds.has(draftId);
+        const nextRated = !wasRated;
         setRatedDraftIds((current) => toggleIdInSet(current, draftId));
+        setPendingRateDraftIds((current) => {
+          const next = new Set(current);
+          next.add(draftId);
+          return next;
+        });
+
+        let shouldPersistToggle = true;
+        try {
+          if (nextRated) {
+            await apiClient.post(`/observers/engagements/${draftId}/rate`);
+          } else {
+            await apiClient.delete(`/observers/engagements/${draftId}/rate`);
+          }
+        } catch (error: unknown) {
+          const status = getApiErrorStatus(error);
+          shouldPersistToggle = status === 401 || status === 403;
+        } finally {
+          setPendingRateDraftIds((current) => {
+            const next = new Set(current);
+            next.delete(draftId);
+            return next;
+          });
+        }
+
+        if (!shouldPersistToggle) {
+          if (wasRated !== nextRated) {
+            setRatedDraftIds((current) => toggleIdInSet(current, draftId));
+          }
+          return;
+        }
+
         sendTelemetry({
           eventType: 'feed_card_open',
           draftId,
@@ -1672,10 +1838,29 @@ export const FeedTabs = () => {
       active,
       followedDraftIds,
       pendingFollowDraftIds,
+      pendingRateDraftIds,
+      pendingSaveDraftIds,
       ratedDraftIds,
       savedDraftIds,
     ],
   );
+
+  const pendingObserverActionForDraft = useCallback(
+    (draftId: string): ObserverActionType | null => {
+      if (pendingFollowDraftIds.has(draftId)) {
+        return 'follow';
+      }
+      if (pendingSaveDraftIds.has(draftId)) {
+        return 'save';
+      }
+      if (pendingRateDraftIds.has(draftId)) {
+        return 'rate';
+      }
+      return null;
+    },
+    [pendingFollowDraftIds, pendingRateDraftIds, pendingSaveDraftIds],
+  );
+
   const handleBackToTop = useCallback(() => {
     const reduceMotion = window.matchMedia(
       '(prefers-reduced-motion: reduce)',
@@ -1714,9 +1899,7 @@ export const FeedTabs = () => {
               hotScore={item.hotScore}
               id={item.id}
               key={item.id ?? `hot-${index}`}
-              observerActionPending={
-                pendingFollowDraftIds.has(item.id) ? 'follow' : null
-              }
+              observerActionPending={pendingObserverActionForDraft(item.id)}
               observerActionState={{
                 follow: followedDraftIds.has(item.id),
                 rate: ratedDraftIds.has(item.id),
@@ -1742,9 +1925,9 @@ export const FeedTabs = () => {
               key={String(key)}
               {...item}
               compact={isCompactDensity}
-              observerActionPending={
-                pendingFollowDraftIds.has(item.draftId) ? 'follow' : null
-              }
+              observerActionPending={pendingObserverActionForDraft(
+                item.draftId,
+              )}
               observerActionState={{
                 follow: followedDraftIds.has(item.draftId),
                 rate: ratedDraftIds.has(item.draftId),
@@ -1762,9 +1945,7 @@ export const FeedTabs = () => {
             <BattleCard
               compact={isCompactDensity}
               key={item.id ?? `battle-${index}`}
-              observerActionPending={
-                pendingFollowDraftIds.has(item.id) ? 'follow' : null
-              }
+              observerActionPending={pendingObserverActionForDraft(item.id)}
               observerActionState={{
                 follow: followedDraftIds.has(item.id),
                 rate: ratedDraftIds.has(item.id),
@@ -1799,9 +1980,7 @@ export const FeedTabs = () => {
           <DraftCard
             compact={isCompactDensity}
             key={item.id ?? `draft-${index}`}
-            observerActionPending={
-              pendingFollowDraftIds.has(item.id) ? 'follow' : null
-            }
+            observerActionPending={pendingObserverActionForDraft(item.id)}
             observerActionState={{
               follow: followedDraftIds.has(item.id),
               rate: ratedDraftIds.has(item.id),
@@ -1817,7 +1996,7 @@ export const FeedTabs = () => {
       handleObserverAction,
       handleProgressCardOpen,
       isCompactDensity,
-      pendingFollowDraftIds,
+      pendingObserverActionForDraft,
       ratedDraftIds,
       savedDraftIds,
       visibleItems,

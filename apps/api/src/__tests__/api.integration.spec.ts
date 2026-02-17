@@ -327,6 +327,34 @@ describe('API integration', () => {
     expect(followRes.status).toBe(201);
     expect(followRes.body.draftId).toBe(draftId);
 
+    const saveRes = await request(app)
+      .post(`/api/observers/engagements/${draftId}/save`)
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(saveRes.status).toBe(200);
+    expect(saveRes.body.saved).toBe(true);
+
+    const rateRes = await request(app)
+      .post(`/api/observers/engagements/${draftId}/rate`)
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(rateRes.status).toBe(200);
+    expect(rateRes.body.rated).toBe(true);
+
+    const engagementListRes = await request(app)
+      .get('/api/observers/engagements')
+      .set('Authorization', `Bearer ${token}`);
+    expect(engagementListRes.status).toBe(200);
+    expect(engagementListRes.body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          draftId,
+          isSaved: true,
+          isRated: true,
+        }),
+      ]),
+    );
+
     const fixRes = await request(app)
       .post(`/api/drafts/${draftId}/fix-requests`)
       .set('x-agent-id', agentId)
@@ -362,6 +390,24 @@ describe('API integration', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(unfollowRes.status).toBe(200);
     expect(unfollowRes.body.removed).toBe(true);
+
+    const unsaveRes = await request(app)
+      .delete(`/api/observers/engagements/${draftId}/save`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(unsaveRes.status).toBe(200);
+    expect(unsaveRes.body.saved).toBe(false);
+
+    const unrateRes = await request(app)
+      .delete(`/api/observers/engagements/${draftId}/rate`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(unrateRes.status).toBe(200);
+    expect(unrateRes.body.rated).toBe(false);
+
+    const engagementListAfterResetRes = await request(app)
+      .get('/api/observers/engagements')
+      .set('Authorization', `Bearer ${token}`);
+    expect(engagementListAfterResetRes.status).toBe(200);
+    expect(engagementListAfterResetRes.body).toHaveLength(0);
   });
 
   test('observer endpoints validate uuid params', async () => {
@@ -381,6 +427,20 @@ describe('API integration', () => {
       .send();
     expect(invalidUnfollow.status).toBe(400);
     expect(invalidUnfollow.body.error).toBe('DRAFT_ID_INVALID');
+
+    const invalidSave = await request(app)
+      .post('/api/observers/engagements/not-a-uuid/save')
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(invalidSave.status).toBe(400);
+    expect(invalidSave.body.error).toBe('DRAFT_ID_INVALID');
+
+    const invalidRate = await request(app)
+      .delete('/api/observers/engagements/not-a-uuid/rate')
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(invalidRate.status).toBe(400);
+    expect(invalidRate.body.error).toBe('DRAFT_ID_INVALID');
 
     const invalidSeen = await request(app)
       .post('/api/observers/digest/not-a-uuid/seen')
@@ -411,6 +471,15 @@ describe('API integration', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(digestRes.status).toBe(500);
     digestSpy.mockRestore();
+
+    const engagementSpy = jest
+      .spyOn(DraftArcServiceImpl.prototype, 'listDraftEngagements')
+      .mockRejectedValueOnce(new Error('engagement fail'));
+    const engagementRes = await request(app)
+      .get('/api/observers/engagements')
+      .set('Authorization', `Bearer ${token}`);
+    expect(engagementRes.status).toBe(500);
+    engagementSpy.mockRestore();
   });
 
   test('observer predict mode lifecycle', async () => {

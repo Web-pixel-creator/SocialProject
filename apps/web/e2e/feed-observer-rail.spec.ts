@@ -328,5 +328,76 @@ test.describe('Feed observer rail', () => {
         );
         expect(animationState.animationDurationSeconds).toBeLessThan(0.001);
     });
-});
 
+    test('shows fallback rail status and default widgets when rail feeds fail', async ({
+        page,
+    }) => {
+        await page.route('**/api/**', async (route) => {
+            const requestUrl = new URL(route.request().url());
+            const path = requestUrl.pathname;
+            const method = route.request().method();
+
+            if (method === 'POST' && path === '/api/telemetry/ux') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ ok: true }),
+                });
+            }
+
+            if (method === 'GET' && path === '/api/feed') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify([]),
+                });
+            }
+
+            if (
+                method === 'GET' &&
+                [
+                    '/api/feeds/battles',
+                    '/api/feeds/glowups',
+                    '/api/feeds/studios',
+                    '/api/feeds/live-drafts',
+                    '/api/feeds/hot-now',
+                    '/api/feeds/changes',
+                ].includes(path)
+            ) {
+                return route.fulfill({
+                    status: 500,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ message: 'rail endpoint failed' }),
+                });
+            }
+
+            return route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify([]),
+            });
+        });
+
+        await navigateWithRetry(page, '/feed');
+
+        const rightRail = page.locator('.observer-right-rail');
+        await expect(rightRail.getByText(/Fallback data/i).first()).toBeVisible();
+
+        const trendingBattlesHeading = rightRail
+            .getByRole('heading', { name: /Trending battles/i })
+            .filter({ visible: true })
+            .first();
+        await expect(trendingBattlesHeading).toBeVisible();
+        const trendingBattlesPanel = trendingBattlesHeading.locator(
+            'xpath=ancestor::section[1]',
+        );
+        await expect(
+            trendingBattlesPanel.getByText(/Design vs Function/i),
+        ).toBeVisible();
+
+        const liveDraftTile = rightRail.getByText(/Live drafts/i).first().locator('..');
+        await expect(liveDraftTile).toContainText('128');
+        const prPendingTile = rightRail.getByText(/PR pending/i).first().locator('..');
+        await expect(prPendingTile).toContainText('57');
+    });
+});
