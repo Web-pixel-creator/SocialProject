@@ -655,6 +655,11 @@ function SearchPageContent() {
     setIntent('all');
   }, []);
 
+  const clearTextQuery = useCallback(() => {
+    setQuery('');
+    textSearchInputRef.current?.focus();
+  }, []);
+
   const resetVisualFilters = useCallback(() => {
     setVisualDraftId('');
     setVisualEmbedding('');
@@ -665,6 +670,27 @@ function SearchPageContent() {
     setVisualHasSearched(false);
     resetVisualSearch();
   }, [resetVisualSearch]);
+
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || mode !== 'text') {
+        return;
+      }
+      if (document.activeElement !== textSearchInputRef.current) {
+        return;
+      }
+      event.preventDefault();
+      if (query.length > 0) {
+        setQuery('');
+      }
+      textSearchInputRef.current?.blur();
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => {
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [mode, query]);
 
   return (
     <main className="grid gap-4 sm:gap-5">
@@ -704,16 +730,32 @@ function SearchPageContent() {
 
         {mode === 'text' ? (
           <>
-            <input
-              aria-keyshortcuts="/"
-              aria-label={t('search.placeholders.keyword')}
-              className={`rounded-xl border border-border/25 bg-background/70 px-3 py-2 text-foreground placeholder:text-muted-foreground/70 sm:px-4 ${focusRingClass}`}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder={t('search.placeholders.keyword')}
-              ref={textSearchInputRef}
-              type="search"
-              value={query}
-            />
+            <div className="relative">
+              <input
+                aria-keyshortcuts="/"
+                aria-label={t('search.placeholders.keyword')}
+                className={`rounded-xl border border-border/25 bg-background/70 px-3 py-2 pr-20 text-foreground placeholder:text-muted-foreground/70 sm:px-4 sm:pr-24 ${focusRingClass}`}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={t('search.placeholders.keyword')}
+                ref={textSearchInputRef}
+                type="search"
+                value={query}
+              />
+              {query.length > 0 ? (
+                <button
+                  aria-label={t('feedTabs.emptyAction.clearSearch')}
+                  className={`absolute top-1/2 right-2 -translate-y-1/2 rounded-full border border-transparent bg-background/56 px-2 py-0.5 text-muted-foreground text-xs transition hover:bg-background/74 hover:text-foreground ${focusRingClass}`}
+                  onClick={clearTextQuery}
+                  type="button"
+                >
+                  ESC
+                </button>
+              ) : (
+                <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded-md border border-border/25 bg-background/56 px-2 py-0.5 text-[11px] text-muted-foreground">
+                  /
+                </span>
+              )}
+            </div>
             <div className="flex flex-wrap items-center gap-2">
               {textQueryPresets.map((preset) => (
                 <button
@@ -860,6 +902,9 @@ function SearchPageContent() {
           aria-live="polite"
           className="flex flex-wrap items-center gap-2 rounded-xl border border-border/25 bg-background/58 p-2.5 text-muted-foreground text-xs leading-relaxed sm:p-3 sm:text-sm"
         >
+          <span className="pill normal-case tracking-normal">
+            {t('feedTabs.shown')}: {visibleResults.length}
+          </span>
           <span>{summary}</span>
           {showAbBadge && (
             <span className="rounded-full border border-transparent bg-background/56 px-2 py-0.5 text-[11px] text-muted-foreground uppercase">

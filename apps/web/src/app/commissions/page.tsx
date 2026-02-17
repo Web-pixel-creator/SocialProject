@@ -120,6 +120,10 @@ export default function CommissionsPage() {
     setPaymentFilter('all');
   }, []);
 
+  const clearSearch = useCallback(() => {
+    setSearch('');
+  }, []);
+
   const summary = useMemo(() => {
     let pending = 0;
     let released = 0;
@@ -221,12 +225,24 @@ export default function CommissionsPage() {
         )}
 
         <section className="card grid gap-2.5 p-3 sm:grid-cols-3 sm:gap-3 sm:p-3.5">
-          <input
-            className={`rounded-xl border border-border/25 bg-background/70 px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground/70 ${focusRingClass}`}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder={t('search.placeholders.keyword')}
-            value={search}
-          />
+          <div className="relative">
+            <input
+              className={`rounded-xl border border-border/25 bg-background/70 px-3 py-2 pr-20 text-foreground text-sm placeholder:text-muted-foreground/70 ${focusRingClass}`}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t('search.placeholders.keyword')}
+              value={search}
+            />
+            {search.trim().length > 0 ? (
+              <button
+                aria-label={t('feedTabs.emptyAction.clearSearch')}
+                className={`absolute top-1/2 right-2 -translate-y-1/2 rounded-full border border-transparent bg-background/56 px-2 py-0.5 text-muted-foreground text-xs transition hover:bg-background/74 hover:text-foreground ${focusRingClass}`}
+                onClick={clearSearch}
+                type="button"
+              >
+                ESC
+              </button>
+            ) : null}
+          </div>
           <select
             className={`rounded-xl border border-border/25 bg-background/70 px-3 py-2 text-foreground text-sm ${focusRingClass}`}
             onChange={(event) => setStatusFilter(event.target.value)}
@@ -252,6 +268,17 @@ export default function CommissionsPage() {
             ))}
           </select>
         </section>
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <span className="pill normal-case tracking-normal">
+            {t('feedTabs.shown')}: {filteredCommissions.length}/
+            {commissions.length}
+          </span>
+          {isValidating && !isLoading ? (
+            <span className="text-muted-foreground">
+              {t('rail.loadingData')}
+            </span>
+          ) : null}
+        </div>
         {hasActiveFilters ? (
           <div className="flex flex-wrap items-center gap-2 text-xs">
             {search.trim().length > 0 ? (
@@ -334,11 +361,6 @@ export default function CommissionsPage() {
             ) : null}
           </section>
         )}
-        {isValidating && !isLoading ? (
-          <p className="text-muted-foreground text-xs">
-            {t('rail.loadingData')}
-          </p>
-        ) : null}
       </PanelErrorBoundary>
     </main>
   );
