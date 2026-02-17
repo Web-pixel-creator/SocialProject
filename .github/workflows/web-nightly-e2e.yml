@@ -3,17 +3,31 @@ name: Web Nightly E2E
 on:
   schedule:
     - cron: '30 4 * * *'
+    - cron: '0 5 * * 1'
   workflow_dispatch:
+    inputs:
+      suite:
+        description: Select E2E suite to run
+        required: true
+        default: smoke
+        type: choice
+        options:
+          - smoke
+          - full
+          - both
 
 concurrency:
   group: web-nightly-e2e-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  full_e2e:
-    name: Playwright Full E2E
+  nightly_smoke:
+    name: Playwright Nightly Smoke E2E
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
+    if: |
+      (github.event_name == 'schedule' && github.event.schedule == '30 4 * * *') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.suite == 'smoke' || inputs.suite == 'both'))
     steps:
       - name: Bootstrap Node CI tooling
         uses: ./.github/actions/node-ci-bootstrap
@@ -21,21 +35,22 @@ jobs:
       - name: Bootstrap Playwright tooling
         uses: ./.github/actions/playwright-bootstrap
 
-      - name: Run full web E2E suite
+      - name: Run nightly smoke E2E suite
         uses: ./.github/actions/playwright-test-run
         with:
-          report_json_name: nightly-e2e-report.json
+          report_json_name: nightly-smoke-e2e-report.json
+          npm_script: test:e2e:smoke
 
-      - name: Generate and upload Playwright nightly summary
+      - name: Generate and upload Playwright nightly smoke summary
         if: always()
         uses: ./.github/actions/playwright-e2e-summary
         with:
-          report_json_path: apps/web/test-results/nightly-e2e-report.json
-          summary_json_path: artifacts/ci/web-nightly-e2e-summary.json
-          summary_md_path: artifacts/ci/web-nightly-e2e-summary.md
-          summary_title: Web Nightly E2E Summary
-          artifact_summary_name: web-nightly-e2e-summary
-          artifact_json_name: web-nightly-e2e-json-report
+          report_json_path: apps/web/test-results/nightly-smoke-e2e-report.json
+          summary_json_path: artifacts/ci/web-nightly-smoke-e2e-summary.json
+          summary_md_path: artifacts/ci/web-nightly-smoke-e2e-summary.md
+          summary_title: Web Nightly Smoke E2E Summary
+          artifact_summary_name: web-nightly-smoke-e2e-summary
+          artifact_json_name: web-nightly-smoke-e2e-json-report
           top_slow: "15"
           slow_threshold_ms: "5000"
 
@@ -43,5 +58,44 @@ jobs:
         if: always()
         uses: ./.github/actions/playwright-artifacts-upload
         with:
-          report_artifact_name: web-nightly-e2e-playwright-report
-          results_artifact_name: web-nightly-e2e-test-results
+          report_artifact_name: web-nightly-smoke-e2e-playwright-report
+          results_artifact_name: web-nightly-smoke-e2e-test-results
+
+  weekly_full_e2e:
+    name: Playwright Weekly Full E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    if: |
+      (github.event_name == 'schedule' && github.event.schedule == '0 5 * * 1') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.suite == 'full' || inputs.suite == 'both'))
+    steps:
+      - name: Bootstrap Node CI tooling
+        uses: ./.github/actions/node-ci-bootstrap
+
+      - name: Bootstrap Playwright tooling
+        uses: ./.github/actions/playwright-bootstrap
+
+      - name: Run weekly full web E2E suite
+        uses: ./.github/actions/playwright-test-run
+        with:
+          report_json_name: weekly-full-e2e-report.json
+
+      - name: Generate and upload Playwright weekly full summary
+        if: always()
+        uses: ./.github/actions/playwright-e2e-summary
+        with:
+          report_json_path: apps/web/test-results/weekly-full-e2e-report.json
+          summary_json_path: artifacts/ci/web-weekly-full-e2e-summary.json
+          summary_md_path: artifacts/ci/web-weekly-full-e2e-summary.md
+          summary_title: Web Weekly Full E2E Summary
+          artifact_summary_name: web-weekly-full-e2e-summary
+          artifact_json_name: web-weekly-full-e2e-json-report
+          top_slow: "20"
+          slow_threshold_ms: "5000"
+
+      - name: Upload Playwright report and results artifacts
+        if: always()
+        uses: ./.github/actions/playwright-artifacts-upload
+        with:
+          report_artifact_name: web-weekly-full-e2e-playwright-report
+          results_artifact_name: web-weekly-full-e2e-test-results
