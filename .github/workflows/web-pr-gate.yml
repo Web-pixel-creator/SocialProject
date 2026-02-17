@@ -13,6 +13,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  detect_changes:
+    name: Detect Web Changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      run_visual: ${{ steps.filter.outputs.visual }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Detect changed paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            visual:
+              - 'apps/web/e2e/**'
+              - '.github/workflows/web-pr-gate.yml'
+
   quality_web:
     name: Web Quality (Ultracite)
     runs-on: ubuntu-latest
@@ -21,6 +42,7 @@ jobs:
       contents: read
       issues: write
       pull-requests: write
+    needs: detect_changes
     steps:
       - name: Bootstrap Node CI tooling
         uses: ./.github/actions/node-ci-bootstrap
@@ -66,15 +88,7 @@ jobs:
         uses: ./.github/actions/playwright-test-run
         with:
           report_json_name: web-pr-gate-e2e-report.json
-          spec_paths: |
-            e2e/feed.spec.ts
-            e2e/search.spec.ts
-            e2e/auth.spec.ts
-            e2e/homepage.spec.ts
-            e2e/admin-ux.spec.ts
-            e2e/header-search.spec.ts
-            e2e/demo.spec.ts
-            e2e/studios-onboarding.spec.ts
+          npm_script: test:e2e:smoke
 
       - name: Generate and upload Playwright PR smoke summary
         if: always()
@@ -100,7 +114,8 @@ jobs:
     name: Playwright Visual Smoke
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: build_web
+    needs: [detect_changes, build_web]
+    if: needs.detect_changes.outputs.run_visual == 'true'
     steps:
       - name: Bootstrap Node CI tooling
         uses: ./.github/actions/node-ci-bootstrap
