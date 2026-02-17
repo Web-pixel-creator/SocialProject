@@ -1,6 +1,7 @@
 # Release Checklist
 
 Use this checklist for every production release.
+Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/visual commands, and artifact triage.
 
 ## Release Metadata
 
