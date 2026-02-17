@@ -12,11 +12,13 @@ const json = (body: unknown) => ({
 
 interface DraftDetailMockOptions {
   digestEntries?: unknown[];
+  digestSeenDelayMs?: number;
   predictionStatus?: number;
   predictionSummaryAfterSubmit?: unknown;
   predictionSummaryResponseBody?: unknown;
   predictionResponseBody?: unknown;
   telemetryPayloadLog?: Array<Record<string, unknown>>;
+  watchlistPersistDelayMs?: number;
   watchlistEntries?: unknown[];
 }
 
@@ -27,6 +29,7 @@ const installDraftDetailApiMocks = async (
   const now = new Date().toISOString();
   const {
     digestEntries = [],
+    digestSeenDelayMs = 0,
     predictionStatus = 200,
     predictionSummaryAfterSubmit = null,
     predictionSummaryResponseBody = {
@@ -38,6 +41,7 @@ const installDraftDetailApiMocks = async (
     },
     predictionResponseBody = { ok: true },
     telemetryPayloadLog,
+    watchlistPersistDelayMs = 0,
     watchlistEntries = [],
   } = options;
   let predictionSummaryState = predictionSummaryResponseBody;
@@ -91,6 +95,18 @@ const installDraftDetailApiMocks = async (
       return route.fulfill(json(watchlistEntries));
     }
 
+    if (
+      (method === 'POST' || method === 'DELETE') &&
+      path === `/api/observers/watchlist/${draftId}`
+    ) {
+      if (watchlistPersistDelayMs > 0) {
+        await new Promise((resolve) => {
+          setTimeout(resolve, watchlistPersistDelayMs);
+        });
+      }
+      return route.fulfill(json({ ok: true }));
+    }
+
     if (method === 'GET' && path === '/api/observers/digest') {
       return route.fulfill(json(digestEntries));
     }
@@ -100,6 +116,11 @@ const installDraftDetailApiMocks = async (
       path.startsWith('/api/observers/digest/') &&
       path.endsWith('/seen')
     ) {
+      if (digestSeenDelayMs > 0) {
+        await new Promise((resolve) => {
+          setTimeout(resolve, digestSeenDelayMs);
+        });
+      }
       return route.fulfill(json({ ok: true }));
     }
 
@@ -246,6 +267,103 @@ test.describe('Draft detail page', () => {
     await page.getByRole('button', { name: /Following/i }).click();
     await unfollowRequest;
     await expect(page.getByRole('button', { name: /Follow chain/i })).toBeVisible();
+  });
+
+  test('supports keyboard activation for follow and digest controls', async ({
+    page,
+  }) => {
+    const now = new Date().toISOString();
+    await installDraftDetailApiMocks(page, {
+      digestEntries: [
+        {
+          createdAt: now,
+          draftId,
+          id: 'digest-entry-keyboard',
+          isSeen: false,
+          latestMilestone: 'v2 published',
+          observerId: 'observer-e2e',
+          summary: 'Keyboard entry',
+          title: 'Keyboard digest',
+          updatedAt: now,
+        },
+      ],
+      watchlistEntries: [],
+    });
+    await navigateToDraftDetail(page, draftId);
+
+    const followButton = page.getByRole('button', { name: /Follow chain/i });
+    await followButton.focus();
+    await page.keyboard.press('Space');
+    await expect(page.getByRole('button', { name: /Following/i })).toBeVisible();
+
+    const followingButton = page.getByRole('button', { name: /Following/i });
+    await followingButton.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('button', { name: /Follow chain/i })).toBeVisible();
+
+    const markSeenRequest = page.waitForRequest((request) => {
+      return (
+        request.method() === 'POST' &&
+        request.url().includes('/api/observers/digest/digest-entry-keyboard/seen')
+      );
+    });
+    const markSeenButton = page.getByRole('button', { name: /Mark seen/i });
+    await markSeenButton.focus();
+    await page.keyboard.press('Enter');
+    await markSeenRequest;
+
+    await expect(page.getByText(/Unseen 0/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /Mark seen/i })).toHaveCount(0);
+  });
+
+  test('shows pending state for follow and digest actions while requests are in-flight', async ({
+    page,
+  }) => {
+    const now = new Date().toISOString();
+    await installDraftDetailApiMocks(page, {
+      digestEntries: [
+        {
+          createdAt: now,
+          draftId,
+          id: 'digest-entry-pending',
+          isSeen: false,
+          latestMilestone: 'v2 published',
+          observerId: 'observer-e2e',
+          summary: 'Pending entry',
+          title: 'Pending digest',
+          updatedAt: now,
+        },
+      ],
+      digestSeenDelayMs: 500,
+      watchlistPersistDelayMs: 500,
+      watchlistEntries: [],
+    });
+    await navigateToDraftDetail(page, draftId);
+
+    const followButton = page.getByRole('button', { name: /Follow chain/i });
+    await expect(followButton).toHaveAttribute('aria-busy', 'false');
+    await followButton.click();
+    await expect(followButton).toHaveAttribute('aria-busy', 'true');
+    await expect(followButton).toBeDisabled();
+    await expect(page.getByRole('button', { name: /Following/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Following/i })).toHaveAttribute(
+      'aria-busy',
+      'false',
+    );
+
+    const markSeenRequest = page.waitForRequest((request) => {
+      return (
+        request.method() === 'POST' &&
+        request.url().includes('/api/observers/digest/digest-entry-pending/seen')
+      );
+    });
+    const markSeenButton = page.getByRole('button', { name: /Mark seen/i });
+    await expect(markSeenButton).toHaveAttribute('aria-busy', 'false');
+    await markSeenButton.click();
+    await expect(markSeenButton).toHaveAttribute('aria-busy', 'true');
+    await expect(markSeenButton).toBeDisabled();
+    await markSeenRequest;
+    await expect(page.getByText(/Unseen 0/i)).toBeVisible();
   });
 
   test('marks observer digest entries as seen', async ({ page }) => {

@@ -19,6 +19,7 @@ interface ObserverDigestPanelProps {
   loading?: boolean;
   error?: string | null;
   authRequired?: boolean;
+  pendingEntryIds?: ReadonlySet<string>;
   onMarkSeen: (entryId: string) => void;
 }
 
@@ -27,6 +28,7 @@ export const ObserverDigestPanel = ({
   loading = false,
   error = null,
   authRequired = false,
+  pendingEntryIds,
   onMarkSeen,
 }: ObserverDigestPanelProps) => {
   const { t } = useLanguage();
@@ -94,7 +96,9 @@ export const ObserverDigestPanel = ({
                 </div>
                 {!entry.isSeen && (
                   <button
-                    className="inline-flex min-h-8 items-center rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-[11px] text-muted-foreground transition hover:bg-background/74 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    aria-busy={pendingEntryIds?.has(entry.id) === true}
+                    className="inline-flex min-h-8 items-center rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-[11px] text-muted-foreground transition hover:bg-background/74 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-wait disabled:opacity-70"
+                    disabled={pendingEntryIds?.has(entry.id) === true}
                     onClick={() => onMarkSeen(entry.id)}
                     type="button"
                   >

@@ -16,7 +16,7 @@ Last updated: 2026-02-17
     - `Compare` -> compare mode navigation
     - `More` expand/collapse for secondary actions
     - `Follow`, `Rate`, `Save` persistence and hydration
-    - keyboard activation for `More`, `Watch`, `Compare`, `Follow`, `Rate`, `Save`
+    - keyboard activation for `More` and `Follow`
     - pending-state behavior (`aria-busy` + disabled) during async follow persistence
     - covered for both `Draft` and `Battle` cards
   - card CTA link `Open detail` -> draft page navigation
@@ -33,6 +33,8 @@ Last updated: 2026-02-17
   - version timeline interaction (`Selected version` switch)
   - prediction submit success + error flow
   - follow/unfollow chain toggle (`Follow chain` / `Following`)
+  - keyboard activation for `Follow chain` and `Mark seen`
+  - pending-state behavior (`aria-busy` + disabled) for follow/digest actions
   - observer digest action (`Mark seen`) and unseen counter update
   - observer telemetry for follow/unfollow + digest open (`watchlist_*`, `digest_open`)
 

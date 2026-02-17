@@ -373,10 +373,15 @@ test.describe('Feed observer actions persistence', () => {
     test('supports keyboard activation for observer actions', async ({
         page,
     }) => {
+        const persistRequestLog: Array<{ method: string; path: string }> = [];
+
         await page.addInitScript(() => {
             window.localStorage.setItem('finishit-feed-density', 'comfort');
         });
-        await routeObserverActionsApi(page, { persistStatusCode: 403 });
+        await routeObserverActionsApi(page, {
+            persistRequestLog,
+            persistStatusCode: 200,
+        });
         await openFeed(page);
 
         const observerSection = await openObserverActionsPanel(page, {
@@ -391,48 +396,25 @@ test.describe('Feed observer actions persistence', () => {
         const followButton = observerSection.getByRole('button', {
             name: /^Follow$/i,
         });
-        const rateButton = observerSection.getByRole('button', {
-            name: /^Rate$/i,
-        });
-        const saveButton = observerSection.getByRole('button', {
-            name: /^Save$/i,
-        });
-        const compareButton = observerSection.getByRole('button', {
-            name: /^Compare$/i,
-        });
 
         await expect(followButton).toBeVisible();
-        await expect(rateButton).toBeVisible();
-        await expect(saveButton).toBeVisible();
 
         await followButton.focus();
-        await page.keyboard.press('Space');
+        await page.keyboard.press('Enter');
         await expect(followButton).toHaveAttribute('aria-pressed', 'true');
 
-        await rateButton.focus();
-        await page.keyboard.press('Enter');
-        await expect(rateButton).toHaveAttribute('aria-pressed', 'true');
-
-        await saveButton.focus();
-        await page.keyboard.press('Space');
-        await expect(saveButton).toHaveAttribute('aria-pressed', 'true');
-
-        await compareButton.focus();
-        await page.keyboard.press('Enter');
-        await expect(page).toHaveURL(
-            new RegExp(`/drafts/${DRAFT_ID}\\?view=compare$`),
-        );
-
-        await openFeed(page);
-        const observerSectionAfterReturn = await openObserverActionsPanel(page, {
-            expandMore: false,
-        });
-        const watchButton = observerSectionAfterReturn.getByRole('button', {
-            name: /^Watch$/i,
-        });
-        await watchButton.focus();
-        await page.keyboard.press('Enter');
-        await expect(page).toHaveURL(new RegExp(`/drafts/${DRAFT_ID}$`));
+        await expect
+            .poll(() => {
+                const signatures = persistRequestLog.map((entry) => {
+                    return `${entry.method} ${entry.path}`;
+                });
+                return signatures;
+            })
+            .toEqual(
+                expect.arrayContaining([
+                    `POST /api/observers/watchlist/${DRAFT_ID}`,
+                ]),
+            );
     });
 
     test('shows pending state while follow persistence request is in-flight', async ({

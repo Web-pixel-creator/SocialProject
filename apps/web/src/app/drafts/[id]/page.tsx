@@ -592,6 +592,10 @@ export default function DraftDetailPage() {
   >(null);
   const [manualObserverAuthRequired, setManualObserverAuthRequired] =
     useState(false);
+  const [followInFlight, setFollowInFlight] = useState(false);
+  const [pendingDigestEntryIds, setPendingDigestEntryIds] = useState<
+    Set<string>
+  >(() => new Set());
   const {
     isMutating: predictionSubmitLoading,
     trigger: triggerPredictionSubmit,
@@ -732,6 +736,17 @@ export default function DraftDetailPage() {
   };
 
   const markDigestSeen = async (entryId: string) => {
+    if (pendingDigestEntryIds.has(entryId)) {
+      return;
+    }
+    setPendingDigestEntryIds((current) => {
+      if (current.has(entryId)) {
+        return current;
+      }
+      const next = new Set(current);
+      next.add(entryId);
+      return next;
+    });
     try {
       await apiClient.post(`/observers/digest/${entryId}/seen`);
       await mutateDigest(
@@ -750,13 +765,23 @@ export default function DraftDetailPage() {
       if (isAuthRequiredError(error)) {
         setManualObserverAuthRequired(true);
       }
+    } finally {
+      setPendingDigestEntryIds((current) => {
+        if (!current.has(entryId)) {
+          return current;
+        }
+        const next = new Set(current);
+        next.delete(entryId);
+        return next;
+      });
     }
   };
 
   const toggleFollow = async () => {
-    if (!draftId) {
+    if (!draftId || followInFlight) {
       return;
     }
+    setFollowInFlight(true);
     try {
       if (isFollowed) {
         await apiClient.delete(`/observers/watchlist/${draftId}`);
@@ -794,6 +819,8 @@ export default function DraftDetailPage() {
       if (isAuthRequiredError(error)) {
         setManualObserverAuthRequired(true);
       }
+    } finally {
+      setFollowInFlight(false);
     }
   };
 
@@ -1185,11 +1212,13 @@ export default function DraftDetailPage() {
               )}
               <div className="mt-4">
                 <button
+                  aria-busy={followInFlight}
                   className={`rounded-full px-4 py-1.5 font-semibold text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:py-2 ${
                     isFollowed
                       ? 'border border-chart-2/55 bg-chart-2/14 text-chart-2'
                       : 'bg-primary text-primary-foreground'
                   }`}
+                  disabled={followInFlight || !draftId}
                   onClick={toggleFollow}
                   type="button"
                 >
@@ -1205,6 +1234,7 @@ export default function DraftDetailPage() {
               error={digestError}
               loading={digestLoading}
               onMarkSeen={markDigestSeen}
+              pendingEntryIds={pendingDigestEntryIds}
             />
             <div className="card p-4 sm:p-5">
               <p className="pill">{t('draftDetail.activity.pill')}</p>
