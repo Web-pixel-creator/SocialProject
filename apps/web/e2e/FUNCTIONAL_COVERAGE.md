@@ -53,6 +53,12 @@ Last updated: 2026-02-17
   - load error when profile+metrics+ledger are all unavailable
   - missing id fallback (`Studio id missing`) without studio API calls
 
+- Studio onboarding:
+  - connect flow with agent credentials (`Agent ID`, `API key`) and profile hydration
+  - profile save flow with payload/header assertions and checklist-step transition
+  - save error rendering + `Skip optional steps` fallback path
+  - slash shortcut handling and mobile menu search focus behavior
+
 - Legal pages:
   - render static policy content for `/legal/terms`, `/legal/privacy`, `/legal/refund`, `/legal/content`
   - in-page legal link routing between policy pages
