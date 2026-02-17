@@ -11,11 +11,15 @@ const routeObserverActionsApi = async (
         engagements?: unknown[];
         persistStatusCode?: 200 | 401 | 403;
         battles?: unknown[];
+        persistRequestLog?: Array<{ method: string; path: string }>;
+        telemetryPayloadLog?: Array<Record<string, unknown>>;
     },
 ) => {
     const watchlist = options?.watchlist ?? [];
     const engagements = options?.engagements ?? [];
     const persistStatusCode = options?.persistStatusCode ?? 403;
+    const persistRequestLog = options?.persistRequestLog;
+    const telemetryPayloadLog = options?.telemetryPayloadLog;
     const battles =
         options?.battles ??
         [
@@ -90,6 +94,12 @@ const routeObserverActionsApi = async (
         }
 
         if (method === 'POST' && path === '/api/telemetry/ux') {
+            if (telemetryPayloadLog) {
+                const payload = route.request().postDataJSON();
+                if (payload && typeof payload === 'object') {
+                    telemetryPayloadLog.push(payload as Record<string, unknown>);
+                }
+            }
             return route.fulfill({
                 status: 200,
                 contentType: 'application/json',
@@ -102,6 +112,9 @@ const routeObserverActionsApi = async (
             path.endsWith('/save') ||
             path.endsWith('/rate')
         ) {
+            if (persistRequestLog) {
+                persistRequestLog.push({ method, path });
+            }
             return route.fulfill({
                 status: persistStatusCode,
                 contentType: 'application/json',
@@ -239,6 +252,115 @@ test.describe('Feed observer actions persistence', () => {
         await expect(
             observerSection.getByRole('button', { name: /^Save$/i }),
         ).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    test('calls persistence and telemetry endpoints for follow/rate/save toggles', async ({
+        page,
+    }) => {
+        const persistRequestLog: Array<{ method: string; path: string }> = [];
+        const telemetryPayloadLog: Array<Record<string, unknown>> = [];
+
+        await page.addInitScript(() => {
+            window.localStorage.setItem('finishit-feed-density', 'comfort');
+            window.localStorage.setItem('finishit_token', 'e2e-token');
+        });
+        await routeObserverActionsApi(page, {
+            persistStatusCode: 200,
+            persistRequestLog,
+            telemetryPayloadLog,
+        });
+        await openFeed(page);
+
+        const observerSection = await openObserverActionsPanel(page);
+        const followButton = observerSection.getByRole('button', {
+            name: /^Follow$/i,
+        });
+        const rateButton = observerSection.getByRole('button', {
+            name: /^Rate$/i,
+        });
+        const saveButton = observerSection.getByRole('button', {
+            name: /^Save$/i,
+        });
+
+        await followButton.click();
+        await rateButton.click();
+        await saveButton.click();
+        await followButton.click();
+        await rateButton.click();
+        await saveButton.click();
+
+        await expect(followButton).toHaveAttribute('aria-pressed', 'false');
+        await expect(rateButton).toHaveAttribute('aria-pressed', 'false');
+        await expect(saveButton).toHaveAttribute('aria-pressed', 'false');
+
+        await expect
+            .poll(() => persistRequestLog.length)
+            .toBeGreaterThanOrEqual(6);
+
+        const persistSignatures = persistRequestLog.map((entry) => {
+            return `${entry.method} ${entry.path}`;
+        });
+        expect(persistSignatures).toContain(
+            `POST /api/observers/watchlist/${DRAFT_ID}`,
+        );
+        expect(persistSignatures).toContain(
+            `DELETE /api/observers/watchlist/${DRAFT_ID}`,
+        );
+        expect(persistSignatures).toContain(
+            `POST /api/observers/engagements/${DRAFT_ID}/rate`,
+        );
+        expect(persistSignatures).toContain(
+            `DELETE /api/observers/engagements/${DRAFT_ID}/rate`,
+        );
+        expect(persistSignatures).toContain(
+            `POST /api/observers/engagements/${DRAFT_ID}/save`,
+        );
+        expect(persistSignatures).toContain(
+            `DELETE /api/observers/engagements/${DRAFT_ID}/save`,
+        );
+
+        await expect
+            .poll(() => {
+                const toggleEvents = telemetryPayloadLog.filter((payload) => {
+                    const eventType = payload.eventType;
+                    const action = payload.action;
+                    return (
+                        eventType === 'watchlist_follow' ||
+                        eventType === 'watchlist_unfollow' ||
+                        action === 'rate_on' ||
+                        action === 'rate_off' ||
+                        action === 'save_on' ||
+                        action === 'save_off'
+                    );
+                });
+                return toggleEvents.length;
+            })
+            .toBeGreaterThanOrEqual(6);
+
+        const telemetrySignatures = telemetryPayloadLog.map((payload) => {
+            const eventType = payload.eventType;
+            const action = payload.action;
+            const draftId = payload.draftId;
+            return `${String(eventType)}:${String(action)}:${String(draftId)}`;
+        });
+        expect(telemetrySignatures).toContain(
+            `watchlist_follow:undefined:${DRAFT_ID}`,
+        );
+        expect(telemetrySignatures).toContain(
+            `watchlist_unfollow:undefined:${DRAFT_ID}`,
+        );
+        expect(telemetrySignatures).toContain(
+            `feed_card_open:rate_on:${DRAFT_ID}`,
+        );
+        expect(telemetrySignatures).toContain(
+            `feed_card_open:rate_off:${DRAFT_ID}`,
+        );
+        expect(telemetrySignatures).toContain(
+            `feed_card_open:save_on:${DRAFT_ID}`,
+        );
+        expect(telemetrySignatures).toContain(
+            `feed_card_open:save_off:${DRAFT_ID}`,
+        );
     });
 
     test('navigates to draft and compare views from observer actions', async ({
