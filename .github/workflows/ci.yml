@@ -213,6 +213,7 @@ jobs:
         uses: ./.github/actions/playwright-test-run
         with:
           report_json_name: ci-pr-e2e-report.json
+          npm_script: test:e2e:smoke
 
       - name: Generate and upload Playwright PR smoke summary
         if: always()

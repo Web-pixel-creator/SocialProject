@@ -59,8 +59,10 @@ Policy:
 
 ## CI behavior
 
-- PR gate runs visual smoke and uploads:
+- PR gate runs fast smoke + conditional visual smoke and uploads:
   - Playwright HTML report
   - JSON report
   - visual summary (`json` + `md`)
-- Nightly workflow runs the same visual smoke and publishes the same artifacts.
+- Daily workflow runs smoke E2E.
+- Weekly workflow runs full E2E.
+- Nightly visual workflow runs visual smoke and publishes visual artifacts.
