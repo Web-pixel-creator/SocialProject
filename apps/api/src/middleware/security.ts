@@ -10,6 +10,8 @@ export const apiRateLimiter = rateLimit({
   limit: 300,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) =>
+    env.NODE_ENV === 'test' && req.headers['x-enforce-rate-limit'] !== 'true',
 });
 
 export const authRateLimiter = rateLimit({
