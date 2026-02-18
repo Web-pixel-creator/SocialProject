@@ -51,8 +51,9 @@ Related docs:
   - P1 cross-tab logout sync for auth context via `storage` events (unit).
   - P1 reduced-motion back-to-top behavior on feed (`behavior: 'auto'` under `prefers-reduced-motion`).
   - P1 reduced-motion similar-entrypoint search scroll (`/search?from=similar` uses `behavior: 'auto'`).
+  - P2 cross-browser sticky/fixed guardrails in Firefox/WebKit (feed sticky header + `Back to top` safe-area non-overlap with right rail).
   - P2 accessibility semantic smoke (`axe-core`) for `/feed`, `/search`, `/login`.
 - Remaining:
   - Reduced-motion dedicated suite expansion for non-feed flows.
-  - Cross-browser/safe-area assertions beyond current smoke depth.
+  - Cross-browser/safe-area assertions beyond current feed-focused depth.
   - Accessibility semantic smoke expansion for additional critical routes.

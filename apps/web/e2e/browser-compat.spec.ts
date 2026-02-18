@@ -26,9 +26,7 @@ test.describe('Cross-browser compatibility smoke', () => {
 
     await expect(page.getByRole('heading', { name: /^Search$/i })).toBeVisible();
 
-    const keywordInput = page.getByPlaceholder(
-      /Search by keyword|Поиск по ключевому слову/i,
-    );
+    const keywordInput = page.getByPlaceholder(/Search by keyword/i);
     await expect(keywordInput).toBeVisible();
 
     await page.getByRole('heading', { name: /^Search$/i }).click();
@@ -41,8 +39,56 @@ test.describe('Cross-browser compatibility smoke', () => {
 
     await expect(page.locator('input[type="email"]')).toBeVisible();
     await expect(page.locator('input[type="password"]')).toBeVisible();
-    await expect(
-      page.getByRole('button', { name: /Sign in|Войти/i }),
-    ).toBeVisible();
+    await expect(page.getByRole('button', { name: /Sign in/i })).toBeVisible();
+  });
+
+  test('keeps top header sticky after feed scroll', async ({ page }) => {
+    await openFeed(page);
+
+    const topHeader = page.locator('header').first();
+    await expect(topHeader).toBeVisible();
+
+    await page.evaluate(() => {
+      window.scrollTo({ top: 900 });
+      window.dispatchEvent(new Event('scroll'));
+    });
+
+    const headerTop = await topHeader.evaluate((element) =>
+      element.getBoundingClientRect().top,
+    );
+    expect(headerTop).toBeGreaterThanOrEqual(0);
+    expect(headerTop).toBeLessThan(32);
+  });
+
+  test('keeps back-to-top button clear of right rail fixed area', async ({
+    page,
+  }) => {
+    await openFeed(page);
+
+    await page.evaluate(() => {
+      document.body.style.minHeight = '3400px';
+      window.scrollTo({ top: 960 });
+      window.dispatchEvent(new Event('scroll'));
+    });
+
+    const backToTopButton = page.getByRole('button', {
+      name: /Back to top/i,
+    });
+    await expect(backToTopButton).toBeVisible();
+
+    const rightRail = page.locator('.observer-right-rail').first();
+    await expect(rightRail).toBeVisible();
+
+    const buttonBox = await backToTopButton.boundingBox();
+    const railBox = await rightRail.boundingBox();
+
+    expect(buttonBox).not.toBeNull();
+    expect(railBox).not.toBeNull();
+
+    const safeButtonBox = buttonBox!;
+    const safeRailBox = railBox!;
+    expect(safeButtonBox.x + safeButtonBox.width).toBeLessThanOrEqual(
+      safeRailBox.x,
+    );
   });
 });

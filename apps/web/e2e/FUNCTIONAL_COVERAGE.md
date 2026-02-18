@@ -104,6 +104,9 @@ Automation backlog for manual gaps:
   - accessibility semantic smoke (`axe-core`) on core routes (`/feed`, `/search`, `/login`)
   - visual baseline smoke (desktop + mobile routes)
   - cross-browser smoke (Firefox + WebKit) for feed/search/login keyboard and form controls
+  - cross-browser sticky/fixed control checks:
+    - feed header stays sticky under scroll
+    - `Back to top` fixed control does not overlap observer right rail area
   - realtime reconnect recovery:
     - E2E fault injection (`resyncRequired` -> manual resync -> reconnect/success clears stale warning state)
     - unit hook-level guard for sequence/resync merge logic
