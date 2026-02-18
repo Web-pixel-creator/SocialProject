@@ -1,0 +1,90 @@
+# Interaction Matrix (Web E2E)
+
+Last updated: 2026-02-18
+
+This matrix maps key user-facing controls and indicators to automated checks.
+Use it as a quick audit source when answering: "Does each button/indicator work?"
+
+Legend:
+- `E2E`: covered by Playwright
+- `Unit`: covered by component/page tests
+- `Manual`: not fully automated, verify in browser/staging
+
+## Feed (`/feed`)
+
+| Control / Indicator | Expected behavior | Coverage | References |
+| --- | --- | --- | --- |
+| Primary tabs (`All`, `Hot Now`, `Live Drafts`, `Battles`, `For You`) | Switches feed mode, syncs URL | E2E | `apps/web/e2e/feed-navigation.spec.ts` |
+| `More` tabs menu | Opens/closes, keyboard + Escape/outside close, selects extra tabs | E2E | `apps/web/e2e/feed-navigation.spec.ts` |
+| `Filters` panel | Opens/closes, syncs query params, hydrates from URL | E2E | `apps/web/e2e/feed-navigation.spec.ts` |
+| Battle status chips | Filters battle list by status | E2E | `apps/web/e2e/feed-navigation.spec.ts` |
+| Battle vote controls | Left/right vote, "your vote" state | E2E | `apps/web/e2e/feed-navigation.spec.ts` |
+| Observer card actions `Watch`, `Compare` | Navigates to draft/compare page | E2E | `apps/web/e2e/feed-observer-actions.spec.ts` |
+| Observer card actions `More`, `Follow`, `Rate`, `Save` | Expand/Collapse + persistence/hydration | E2E | `apps/web/e2e/feed-observer-actions.spec.ts` |
+| Observer actions pending state | `aria-busy` + disabled while follow request in-flight | E2E | `apps/web/e2e/feed-observer-actions.spec.ts` |
+| Observer actions keyboard (`More`, `Follow`) | Keyboard activation works for core toggle flow | E2E | `apps/web/e2e/feed-observer-actions.spec.ts` |
+| Observer rail `Show all` / `Hide all` | Toggles all panel visibility with persistence | E2E | `apps/web/e2e/feed-observer-rail.spec.ts` |
+| Observer rail per-panel toggles | Flat visibility model, persisted after reload | E2E | `apps/web/e2e/feed-observer-rail.spec.ts` |
+| Fallback rail status (`Fallback data`) | Fallback badge + default counters/widgets | E2E | `apps/web/e2e/feed-observer-rail.spec.ts` |
+| Back-to-top button | Appears after scroll, returns top, observer offset class | E2E | `apps/web/e2e/feed-navigation.spec.ts` |
+| Mobile feed menu and overlays | Mobile open/close + focus restore | E2E | `apps/web/e2e/feed-mobile.spec.ts` |
+
+## Draft Detail (`/drafts/:id`)
+
+| Control / Indicator | Expected behavior | Coverage | References |
+| --- | --- | --- | --- |
+| Version timeline buttons (`v1`, `v2`, ...) | Switches selected version | E2E | `apps/web/e2e/draft-detail.spec.ts` |
+| Prediction actions (`Predict merge/reject`) | Submit success and error handling | E2E | `apps/web/e2e/draft-detail.spec.ts` |
+| Follow button (`Follow chain` / `Following`) | Follow/unfollow and activity hint update | E2E | `apps/web/e2e/draft-detail.spec.ts` |
+| Follow pending state | `aria-busy` + disabled while request in-flight | E2E | `apps/web/e2e/draft-detail.spec.ts` |
+| Digest `Mark seen` | Marks entry as seen, unseen counter updates | E2E | `apps/web/e2e/draft-detail.spec.ts` |
+| Digest `Mark seen` pending state | `aria-busy` + disabled while request in-flight | E2E | `apps/web/e2e/draft-detail.spec.ts` |
+| Follow + digest keyboard | Keyboard activation for follow and mark-seen | E2E | `apps/web/e2e/draft-detail.spec.ts` |
+| Observer telemetry (`watchlist_*`, `digest_open`) | Emits expected telemetry events | E2E | `apps/web/e2e/draft-detail.spec.ts` |
+
+## Pull Request Review (`/pull-requests/:id`)
+
+| Control / Indicator | Expected behavior | Coverage | References |
+| --- | --- | --- | --- |
+| Decision buttons (`Merge`, `Request changes`, `Reject`) | Sends decision request and updates status | E2E | `apps/web/e2e/pull-request-review.spec.ts` |
+| Reject reason validation | Reject requires reason | E2E | `apps/web/e2e/pull-request-review.spec.ts` |
+| Decision error banner | Renders API failure message | E2E | `apps/web/e2e/pull-request-review.spec.ts` |
+| Review telemetry (`pr_review_open`, `pr_merge`, `pr_reject`) | Emits expected events; no event for `request_changes` | E2E | `apps/web/e2e/pull-request-review.spec.ts` |
+| Keyboard shortcuts (`M`/`R`) | Shortcut behavior + input safety | Unit | `apps/web/src/__tests__/pull-request-review.spec.tsx` |
+
+## Search (`/search`)
+
+| Control / Indicator | Expected behavior | Coverage | References |
+| --- | --- | --- | --- |
+| Text / visual mode controls | Mode switch and relevant results | E2E | `apps/web/e2e/search.spec.ts` |
+| Keyword input and result state | Search rendering + follow-up error fallback | E2E | `apps/web/e2e/search.spec.ts` |
+| Slash shortcut behavior | Focus rules, including mobile path | E2E | `apps/web/e2e/search.spec.ts` |
+
+## Privacy / Commissions / Studio / Onboarding / Auth / Legal / Home
+
+| Area | Core controls / indicators | Coverage | References |
+| --- | --- | --- | --- |
+| Privacy | Export data flow, auth-expiry recovery UI | E2E | `apps/web/e2e/privacy.spec.ts` |
+| Commissions list/detail | Search/filter, responses, empty/not-found/error states | E2E | `apps/web/e2e/commissions.spec.ts`, `apps/web/e2e/commissions-detail.spec.ts` |
+| Studio detail | Profile/metrics/ledger rendering + fallback states | E2E | `apps/web/e2e/studio-detail.spec.ts` |
+| Studio onboarding | Connect, save profile, skip flow, slash/mobile behavior | E2E | `apps/web/e2e/studios-onboarding.spec.ts` |
+| Auth pages | Login/register controls, success + error flows | E2E | `apps/web/e2e/auth.spec.ts` |
+| Legal pages | Inter-page policy links + slash behavior | E2E | `apps/web/e2e/legal-pages.spec.ts` |
+| Home | Hero/navigation/CTA routing | E2E | `apps/web/e2e/homepage.spec.ts` |
+
+## Global Shell / Cross-Cutting
+
+| Control / Indicator | Expected behavior | Coverage | References |
+| --- | --- | --- | --- |
+| Header language toggle | Language switch + persistence | E2E | `apps/web/e2e/language.spec.ts` |
+| Header search routing | Non-feed routing + mobile menu behavior | E2E | `apps/web/e2e/header-search.spec.ts` |
+| Mobile navigation drawer | Open/close/focus restore/navigation | E2E | `apps/web/e2e/mobile-navigation.spec.ts` |
+| Visual baseline | Desktop/mobile snapshot regressions | E2E | `apps/web/e2e/visual-smoke.spec.ts` |
+| Cross-browser sanity | Firefox/WebKit critical flows | E2E | `apps/web/e2e/browser-compat.spec.ts` |
+| Realtime reconnect behavior | Resync/reconnect correctness | Unit | `apps/web/src/__tests__/realtime-hook.spec.tsx` |
+
+## Remaining Manual Checks
+
+- Pixel-level visual QA (spacing/contrast aesthetics beyond snapshots).
+- Real backend behavior without mocks (network jitter, auth edge cases in production).
+- Accessibility deep pass with screen reader (announcements/semantics in long flows).

@@ -1,6 +1,9 @@
 # Functional Coverage (Web UI)
 
-Last updated: 2026-02-17
+Last updated: 2026-02-18
+
+Detailed interaction audit:
+- `apps/web/e2e/INTERACTION_MATRIX.md`
 
 ## Automated Coverage (Playwright)
 
