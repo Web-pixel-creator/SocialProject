@@ -2,7 +2,13 @@
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { useState } from 'react';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { apiClient, setAuthToken } from '../lib/api';
@@ -319,6 +325,52 @@ describe('auth context', () => {
     expect(setAuthToken).toHaveBeenCalledWith(null);
     expect(localStorage.getItem('finishit_token')).toBeNull();
     expect(localStorage.getItem('finishit_user')).toBeNull();
+  });
+
+  test('syncs auth state when token is removed in another tab', async () => {
+    localStorage.setItem('finishit_token', 'tab-token');
+    localStorage.setItem(
+      'finishit_user',
+      JSON.stringify({
+        user: { id: 'u-tab', email: 'tab@example.com' },
+      }),
+    );
+    (apiClient.get as jest.Mock).mockResolvedValueOnce({
+      data: {
+        user: { id: 'u-tab', email: 'tab@example.com' },
+      },
+    });
+
+    render(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('loading')).toHaveTextContent('no'),
+    );
+    expect(screen.getByTestId('token')).toHaveTextContent('tab-token');
+    expect(screen.getByTestId('user')).toHaveTextContent('tab@example.com');
+
+    act(() => {
+      localStorage.removeItem('finishit_token');
+      localStorage.removeItem('finishit_user');
+      window.dispatchEvent(
+        new StorageEvent('storage', {
+          key: 'finishit_token',
+          oldValue: 'tab-token',
+          newValue: null,
+          storageArea: window.localStorage,
+        }),
+      );
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('token')).toHaveTextContent('none'),
+    );
+    expect(screen.getByTestId('user')).toHaveTextContent('none');
+    expect(setAuthToken).toHaveBeenCalledWith(null);
   });
 
   test('bootstraps with malformed stored user payload and restores from /auth/me', async () => {

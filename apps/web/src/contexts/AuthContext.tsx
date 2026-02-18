@@ -240,6 +240,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [clearSession, fetchCurrentUser]);
 
+  useEffect(() => {
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.storageArea !== localStorage) {
+        return;
+      }
+      if (
+        !(
+          event.key === TOKEN_KEY ||
+          event.key === USER_KEY ||
+          event.key === null
+        )
+      ) {
+        return;
+      }
+
+      const nextToken = localStorage.getItem(TOKEN_KEY);
+      const nextUser = parseStoredUser(localStorage.getItem(USER_KEY));
+
+      if (!nextToken) {
+        setToken(null);
+        setUser(null);
+        setAuthToken(null);
+        return;
+      }
+
+      setToken(nextToken);
+      setUser(nextUser);
+      setAuthToken(nextToken);
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
   const login = useCallback(
     async (email: string, password: string) => {
       const response = await apiClient.post('/auth/login', { email, password });

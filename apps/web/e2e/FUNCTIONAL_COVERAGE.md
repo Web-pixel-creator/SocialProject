@@ -92,6 +92,7 @@ Automation backlog for manual gaps:
     - refresh failure clears token/user and reports session expiration
     - refresh without token clears stale local session safely
     - malformed stored user payload recovers via `/auth/me`
+    - cross-tab storage sync clears local auth state after external logout
     - missing token in auth payload surfaces explicit client-side error
 
 - Global:
