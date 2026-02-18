@@ -8,6 +8,7 @@ import { getApiErrorMessage } from '../../../lib/errors';
 
 const STORAGE_AGENT_ID = 'finishit_agent_id';
 const STORAGE_AGENT_KEY = 'finishit_agent_key';
+const STORAGE_CREATOR_STUDIO_ID = 'finishit_creator_studio_id';
 
 const EDIT_LIMITS = {
   pr: 7,
@@ -48,6 +49,27 @@ interface SaveProfilePayload {
   styleTags: string[];
 }
 
+type CreatorStylePreset = 'balanced' | 'bold' | 'minimal' | 'experimental';
+type CreatorModerationMode = 'strict' | 'balanced' | 'open';
+
+interface CreatorStudioPayload {
+  id: string;
+  studioName: string;
+  onboardingStep: 'profile' | 'governance' | 'billing' | 'ready';
+  status: 'draft' | 'active' | 'paused';
+}
+
+interface CreatorFunnelSummary {
+  windowDays: number;
+  created: number;
+  profileCompleted: number;
+  governanceConfigured: number;
+  billingConnected: number;
+  activated: number;
+  retentionPing: number;
+  activationRatePercent: number;
+}
+
 export default function StudioOnboardingPage() {
   const { t } = useLanguage();
   const CHECKLIST = [
@@ -66,6 +88,24 @@ export default function StudioOnboardingPage() {
   const [tagInput, setTagInput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [creatorStudioId, setCreatorStudioId] = useState('');
+  const [creatorStudioName, setCreatorStudioName] = useState('');
+  const [creatorTagline, setCreatorTagline] = useState('');
+  const [creatorStylePreset, setCreatorStylePreset] =
+    useState<CreatorStylePreset>('balanced');
+  const [creatorRevenueShare, setCreatorRevenueShare] = useState('15');
+  const [creatorThreshold, setCreatorThreshold] = useState('0.75');
+  const [creatorModerationMode, setCreatorModerationMode] =
+    useState<CreatorModerationMode>('balanced');
+  const [creatorAllowForks, setCreatorAllowForks] = useState(true);
+  const [creatorMajorPrRequiresHuman, setCreatorMajorPrRequiresHuman] =
+    useState(true);
+  const [creatorBillingAccountId, setCreatorBillingAccountId] = useState('');
+  const [creatorStep, setCreatorStep] = useState(1);
+  const [creatorError, setCreatorError] = useState<string | null>(null);
+  const [creatorSaved, setCreatorSaved] = useState<string | null>(null);
+  const [creatorFunnel, setCreatorFunnel] =
+    useState<CreatorFunnelSummary | null>(null);
 
   const { isMutating: connectingAgent, trigger: triggerConnectAgent } =
     useSWRMutation<StudioProfilePayload, unknown, string, ConnectAgentPayload>(
@@ -98,7 +138,112 @@ export default function StudioOnboardingPage() {
       },
     );
 
+  const {
+    isMutating: creatingCreatorStudio,
+    trigger: triggerCreateCreatorStudio,
+  } = useSWRMutation<
+    CreatorStudioPayload,
+    unknown,
+    string,
+    {
+      studioName: string;
+      tagline: string;
+      stylePreset: CreatorStylePreset;
+      revenueSharePercent: number;
+    }
+  >('creator:onboarding:create', async (_key, { arg }) => {
+    const response = await apiClient.post('/creator-studios', arg);
+    return (response.data ?? {}) as CreatorStudioPayload;
+  });
+
+  const {
+    isMutating: savingCreatorGovernance,
+    trigger: triggerSaveCreatorGovernance,
+  } = useSWRMutation<
+    CreatorStudioPayload,
+    unknown,
+    string,
+    {
+      studioId: string;
+      governance: {
+        autoApproveThreshold: number;
+        majorPrRequiresHuman: boolean;
+        allowForks: boolean;
+        moderationMode: CreatorModerationMode;
+      };
+      revenueSharePercent: number;
+    }
+  >('creator:onboarding:governance', async (_key, { arg }) => {
+    const response = await apiClient.patch(
+      `/creator-studios/${arg.studioId}/governance`,
+      {
+        governance: arg.governance,
+        revenueSharePercent: arg.revenueSharePercent,
+      },
+    );
+    return (response.data ?? {}) as CreatorStudioPayload;
+  });
+
+  const {
+    isMutating: activatingCreatorStudio,
+    trigger: triggerActivateCreatorStudio,
+  } = useSWRMutation<
+    CreatorStudioPayload,
+    unknown,
+    string,
+    {
+      studioId: string;
+      providerAccountId?: string;
+    }
+  >('creator:onboarding:activate', async (_key, { arg }) => {
+    const response = await apiClient.post(
+      `/creator-studios/${arg.studioId}/billing/connect`,
+      {
+        providerAccountId: arg.providerAccountId ?? undefined,
+      },
+    );
+    return (response.data ?? {}) as CreatorStudioPayload;
+  });
+
+  const {
+    isMutating: pingingCreatorRetention,
+    trigger: triggerCreatorRetention,
+  } = useSWRMutation<
+    CreatorStudioPayload,
+    unknown,
+    string,
+    {
+      studioId: string;
+    }
+  >('creator:onboarding:retention', async (_key, { arg }) => {
+    const response = await apiClient.post(
+      `/creator-studios/${arg.studioId}/retention/ping`,
+    );
+    return (response.data ?? {}) as CreatorStudioPayload;
+  });
+
+  const {
+    isMutating: loadingCreatorFunnel,
+    trigger: triggerLoadCreatorFunnel,
+  } = useSWRMutation<
+    CreatorFunnelSummary,
+    unknown,
+    string,
+    { windowDays: number }
+  >('creator:onboarding:funnel', async (_key, { arg }) => {
+    const response = await apiClient.get('/creator-studios/funnels/summary', {
+      params: { windowDays: arg.windowDays },
+    });
+    return (response.data ?? {}) as CreatorFunnelSummary;
+  });
+
   const loading = connectingAgent || savingProfile;
+  const creatorLoading =
+    creatingCreatorStudio ||
+    savingCreatorGovernance ||
+    activatingCreatorStudio ||
+    pingingCreatorRetention ||
+    loadingCreatorFunnel;
 
   useEffect(() => {
     const storedId = localStorage.getItem(STORAGE_AGENT_ID) ?? '';
@@ -107,6 +252,13 @@ export default function StudioOnboardingPage() {
       setAgentId(storedId);
       setApiKey(storedKey);
       setAgentAuth(storedId, storedKey);
+    }
+
+    const storedCreatorStudioId =
+      localStorage.getItem(STORAGE_CREATOR_STUDIO_ID) ?? '';
+    if (storedCreatorStudioId) {
+      setCreatorStudioId(storedCreatorStudioId);
+      setCreatorStep(2);
     }
   }, []);
 
@@ -190,13 +342,160 @@ export default function StudioOnboardingPage() {
     }
   };
 
+  const createCreatorProfile = async () => {
+    setCreatorError(null);
+    setCreatorSaved(null);
+    if (!creatorStudioName.trim()) {
+      setCreatorError('Creator studio name is required.');
+      return;
+    }
+
+    const parsedShare = Number(creatorRevenueShare);
+    if (!Number.isFinite(parsedShare) || parsedShare < 0 || parsedShare > 100) {
+      setCreatorError('Revenue share must be between 0 and 100.');
+      return;
+    }
+
+    try {
+      const studio = await triggerCreateCreatorStudio(
+        {
+          studioName: creatorStudioName.trim(),
+          tagline: creatorTagline.trim(),
+          stylePreset: creatorStylePreset,
+          revenueSharePercent: Number(parsedShare.toFixed(2)),
+        },
+        { throwOnError: true },
+      );
+
+      if (studio.id) {
+        setCreatorStudioId(studio.id);
+        localStorage.setItem(STORAGE_CREATOR_STUDIO_ID, studio.id);
+      }
+      setCreatorStep(2);
+      setCreatorSaved('Creator studio profile created.');
+    } catch (error: unknown) {
+      setCreatorError(
+        getApiErrorMessage(
+          error,
+          'Failed to create creator studio. Sign in as human observer first.',
+        ),
+      );
+    }
+  };
+
+  const saveCreatorGovernance = async () => {
+    setCreatorError(null);
+    setCreatorSaved(null);
+    if (!creatorStudioId) {
+      setCreatorError('Create a creator studio profile first.');
+      return;
+    }
+
+    const parsedThreshold = Number(creatorThreshold);
+    if (
+      !Number.isFinite(parsedThreshold) ||
+      parsedThreshold < 0 ||
+      parsedThreshold > 1
+    ) {
+      setCreatorError('Auto-approve threshold must be between 0 and 1.');
+      return;
+    }
+
+    const parsedShare = Number(creatorRevenueShare);
+    if (!Number.isFinite(parsedShare) || parsedShare < 0 || parsedShare > 100) {
+      setCreatorError('Revenue share must be between 0 and 100.');
+      return;
+    }
+
+    try {
+      await triggerSaveCreatorGovernance(
+        {
+          studioId: creatorStudioId,
+          governance: {
+            autoApproveThreshold: Number(parsedThreshold.toFixed(3)),
+            majorPrRequiresHuman: creatorMajorPrRequiresHuman,
+            allowForks: creatorAllowForks,
+            moderationMode: creatorModerationMode,
+          },
+          revenueSharePercent: Number(parsedShare.toFixed(2)),
+        },
+        { throwOnError: true },
+      );
+
+      setCreatorStep(3);
+      setCreatorSaved('Governance saved.');
+    } catch (error: unknown) {
+      setCreatorError(
+        getApiErrorMessage(error, 'Failed to save governance settings.'),
+      );
+    }
+  };
+
+  const activateCreatorToolkit = async () => {
+    setCreatorError(null);
+    setCreatorSaved(null);
+    if (!creatorStudioId) {
+      setCreatorError('Creator studio ID is missing.');
+      return;
+    }
+
+    try {
+      await triggerActivateCreatorStudio(
+        {
+          studioId: creatorStudioId,
+          providerAccountId: creatorBillingAccountId.trim() || undefined,
+        },
+        { throwOnError: true },
+      );
+
+      setCreatorStep(4);
+      setCreatorSaved('Creator toolkit is active.');
+      const summary = await triggerLoadCreatorFunnel(
+        { windowDays: 30 },
+        { throwOnError: true },
+      );
+      setCreatorFunnel(summary);
+    } catch (error: unknown) {
+      setCreatorError(
+        getApiErrorMessage(error, 'Failed to activate creator toolkit.'),
+      );
+    }
+  };
+
+  const pingCreatorRetention = async () => {
+    setCreatorError(null);
+    setCreatorSaved(null);
+    if (!creatorStudioId) {
+      setCreatorError('Creator studio ID is missing.');
+      return;
+    }
+
+    try {
+      await triggerCreatorRetention(
+        { studioId: creatorStudioId },
+        { throwOnError: true },
+      );
+
+      const summary = await triggerLoadCreatorFunnel(
+        { windowDays: 30 },
+        { throwOnError: true },
+      );
+      setCreatorFunnel(summary);
+      setCreatorSaved('Retention ping recorded.');
+    } catch (error: unknown) {
+      setCreatorError(
+        getApiErrorMessage(error, 'Failed to record retention ping.'),
+      );
+    }
+  };
+
   return (
     <main className="grid gap-4 sm:gap-5">
       <div className="card p-4 sm:p-5">
         <p className="pill">{t('studioOnboarding.header.pill')}</p>
-        <h2 className="mt-3 font-semibold text-foreground text-xl sm:text-2xl">
+        <h1 className="mt-3 font-semibold text-foreground text-xl sm:text-2xl">
           {t('studioOnboarding.header.title')}
-        </h2>
+        </h1>
         <p className="text-muted-foreground text-sm">
           {t('studioOnboarding.header.subtitle')}
         </p>
@@ -215,9 +514,9 @@ export default function StudioOnboardingPage() {
 
       {step === 1 && (
         <section className="card grid gap-3 p-3 sm:gap-3.5 sm:p-4">
-          <h3 className="font-semibold text-foreground text-sm">
+          <h2 className="font-semibold text-foreground text-sm">
             {t('studioOnboarding.steps.connectAgent')}
-          </h3>
+          </h2>
           <label className="grid gap-2 font-medium text-foreground text-sm">
             {t('studioOnboarding.fields.agentId')}
             <input
@@ -253,9 +552,9 @@ export default function StudioOnboardingPage() {
       {step === 2 && (
         <section className="grid gap-4 sm:gap-5 lg:grid-cols-[2fr_1fr]">
           <div className="card grid gap-3 p-3 sm:gap-3.5 sm:p-4">
-            <h3 className="font-semibold text-foreground text-sm">
+            <h2 className="font-semibold text-foreground text-sm">
               {t('studioOnboarding.steps.studioProfile')}
-            </h3>
+            </h2>
             <label className="grid gap-2 font-medium text-foreground text-sm">
               {t('studioOnboarding.fields.studioName')}
               <input
@@ -334,9 +633,9 @@ export default function StudioOnboardingPage() {
             </div>
           </div>
           <div className="card grid gap-3 p-4 text-muted-foreground text-sm sm:p-5">
-            <h3 className="font-semibold text-foreground text-sm">
+            <h2 className="font-semibold text-foreground text-sm">
               {t('studioOnboarding.budgets.title')}
-            </h3>
+            </h2>
             <div className="rounded-xl border border-border/25 bg-background/60 p-2.5 text-xs sm:p-3">
               <p className="font-semibold text-foreground">
                 {t('studioOnboarding.budgets.agentActions')}
@@ -386,9 +685,9 @@ export default function StudioOnboardingPage() {
 
       {step === 3 && (
         <section className="card grid gap-3 p-3 sm:gap-3.5 sm:p-4">
-          <h3 className="font-semibold text-foreground text-sm">
+          <h2 className="font-semibold text-foreground text-sm">
             {t('studioOnboarding.steps.firstActionsChecklist')}
-          </h3>
+          </h2>
           <ul className="grid gap-2 text-muted-foreground text-sm">
             {CHECKLIST.map((item) => (
               <li
@@ -408,6 +707,255 @@ export default function StudioOnboardingPage() {
           </button>
         </section>
       )}
+
+      <section className="card grid gap-3 p-3 sm:gap-3.5 sm:p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold text-foreground text-sm">
+            Creator toolkit onboarding
+          </h2>
+          <p className="pill">Step {creatorStep}/4</p>
+        </div>
+        <p className="text-muted-foreground text-sm">
+          Human -{'>'} Agent Studio flow: profile, governance, billing, and
+          retention tracking.
+        </p>
+
+        {creatorError ? (
+          <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-2.5 text-destructive text-sm sm:p-3.5">
+            {creatorError}
+          </div>
+        ) : null}
+        {creatorSaved ? (
+          <div className="rounded-xl border border-chart-2/30 bg-chart-2/12 p-2.5 text-chart-2 text-sm sm:p-3.5">
+            {creatorSaved}
+          </div>
+        ) : null}
+
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <span className={creatorStep >= 1 ? 'pill-primary' : 'pill'}>
+            Profile
+          </span>
+          <span className={creatorStep >= 2 ? 'pill-primary' : 'pill'}>
+            Governance
+          </span>
+          <span className={creatorStep >= 3 ? 'pill-primary' : 'pill'}>
+            Billing
+          </span>
+          <span className={creatorStep >= 4 ? 'pill-primary' : 'pill'}>
+            Ready
+          </span>
+        </div>
+
+        {creatorStep === 1 ? (
+          <div className="grid gap-3">
+            <label className="grid gap-2 font-medium text-foreground text-sm">
+              Creator studio name *
+              <input
+                className={`rounded-xl border border-border/25 bg-background/70 px-3 py-2 text-foreground placeholder:text-muted-foreground/70 sm:px-4 ${focusRingClass}`}
+                onChange={(event) => setCreatorStudioName(event.target.value)}
+                placeholder="Prompt Forge"
+                value={creatorStudioName}
+              />
+            </label>
+            <label className="grid gap-2 font-medium text-foreground text-sm">
+              Tagline
+              <input
+                className={`rounded-xl border border-border/25 bg-background/70 px-3 py-2 text-foreground placeholder:text-muted-foreground/70 sm:px-4 ${focusRingClass}`}
+                onChange={(event) => setCreatorTagline(event.target.value)}
+                placeholder="Human-led cinematic prompt systems"
+                value={creatorTagline}
+              />
+            </label>
+            <label className="grid gap-2 font-medium text-foreground text-sm">
+              Style preset
+              <select
+                className={`rounded-xl border border-border/25 bg-background/70 px-3 py-2 text-foreground sm:px-4 ${focusRingClass}`}
+                onChange={(event) =>
+                  setCreatorStylePreset(
+                    event.target.value as CreatorStylePreset,
+                  )
+                }
+                value={creatorStylePreset}
+              >
+                <option value="balanced">Balanced</option>
+                <option value="bold">Bold</option>
+                <option value="minimal">Minimal</option>
+                <option value="experimental">Experimental</option>
+              </select>
+            </label>
+            <label className="grid gap-2 font-medium text-foreground text-sm">
+              Revenue share (%)
+              <input
+                className={`rounded-xl border border-border/25 bg-background/70 px-3 py-2 text-foreground sm:px-4 ${focusRingClass}`}
+                max={100}
+                min={0}
+                onChange={(event) => setCreatorRevenueShare(event.target.value)}
+                step="0.5"
+                type="number"
+                value={creatorRevenueShare}
+              />
+            </label>
+            <button
+              className={`rounded-full bg-primary px-5 py-1.5 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90 sm:py-2 ${focusRingClass}`}
+              disabled={creatorLoading}
+              onClick={createCreatorProfile}
+              type="button"
+            >
+              {creatorLoading ? 'Creating...' : 'Create creator studio'}
+            </button>
+          </div>
+        ) : null}
+
+        {creatorStep === 2 ? (
+          <div className="grid gap-3">
+            <p className="text-muted-foreground text-xs">
+              Studio ID: {creatorStudioId || 'not created yet'}
+            </p>
+            <label className="grid gap-2 font-medium text-foreground text-sm">
+              Auto-approve threshold (0..1)
+              <input
+                className={`rounded-xl border border-border/25 bg-background/70 px-3 py-2 text-foreground sm:px-4 ${focusRingClass}`}
+                max={1}
+                min={0}
+                onChange={(event) => setCreatorThreshold(event.target.value)}
+                step="0.05"
+                type="number"
+                value={creatorThreshold}
+              />
+            </label>
+            <label className="grid gap-2 font-medium text-foreground text-sm">
+              Moderation mode
+              <select
+                className={`rounded-xl border border-border/25 bg-background/70 px-3 py-2 text-foreground sm:px-4 ${focusRingClass}`}
+                onChange={(event) =>
+                  setCreatorModerationMode(
+                    event.target.value as CreatorModerationMode,
+                  )
+                }
+                value={creatorModerationMode}
+              >
+                <option value="strict">Strict</option>
+                <option value="balanced">Balanced</option>
+                <option value="open">Open</option>
+              </select>
+            </label>
+            <label className="flex items-center gap-2 text-foreground text-sm">
+              <input
+                checked={creatorMajorPrRequiresHuman}
+                className={focusRingClass}
+                onChange={(event) =>
+                  setCreatorMajorPrRequiresHuman(event.target.checked)
+                }
+                type="checkbox"
+              />
+              Major PR requires human review
+            </label>
+            <label className="flex items-center gap-2 text-foreground text-sm">
+              <input
+                checked={creatorAllowForks}
+                className={focusRingClass}
+                onChange={(event) => setCreatorAllowForks(event.target.checked)}
+                type="checkbox"
+              />
+              Allow forks
+            </label>
+            <button
+              className={`rounded-full bg-primary px-5 py-1.5 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90 sm:py-2 ${focusRingClass}`}
+              disabled={creatorLoading}
+              onClick={saveCreatorGovernance}
+              type="button"
+            >
+              {creatorLoading ? 'Saving...' : 'Save governance'}
+            </button>
+          </div>
+        ) : null}
+
+        {creatorStep === 3 ? (
+          <div className="grid gap-3">
+            <p className="text-muted-foreground text-xs">
+              Connect billing to activate revenue-sharing and onboarding
+              funnels.
+            </p>
+            <label className="grid gap-2 font-medium text-foreground text-sm">
+              Billing provider account ID (optional)
+              <input
+                className={`rounded-xl border border-border/25 bg-background/70 px-3 py-2 text-foreground placeholder:text-muted-foreground/70 sm:px-4 ${focusRingClass}`}
+                onChange={(event) =>
+                  setCreatorBillingAccountId(event.target.value)
+                }
+                placeholder="acct_1234..."
+                value={creatorBillingAccountId}
+              />
+            </label>
+            <button
+              className={`rounded-full bg-primary px-5 py-1.5 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90 sm:py-2 ${focusRingClass}`}
+              disabled={creatorLoading}
+              onClick={activateCreatorToolkit}
+              type="button"
+            >
+              {creatorLoading ? 'Activating...' : 'Activate creator toolkit'}
+            </button>
+          </div>
+        ) : null}
+
+        {creatorStep >= 4 ? (
+          <div className="grid gap-3">
+            <p className="rounded-xl border border-chart-2/30 bg-chart-2/12 p-2.5 text-chart-2 text-sm sm:p-3.5">
+              Creator toolkit active.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                className={`rounded-full border border-transparent bg-background/58 px-5 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 sm:py-2 ${focusRingClass}`}
+                disabled={creatorLoading}
+                onClick={pingCreatorRetention}
+                type="button"
+              >
+                {creatorLoading ? 'Syncing...' : 'Retention ping'}
+              </button>
+              <button
+                className={`rounded-full border border-transparent bg-background/58 px-5 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 sm:py-2 ${focusRingClass}`}
+                disabled={creatorLoading}
+                onClick={async () => {
+                  setCreatorError(null);
+                  try {
+                    const summary = await triggerLoadCreatorFunnel(
+                      { windowDays: 30 },
+                      { throwOnError: true },
+                    );
+                    setCreatorFunnel(summary);
+                  } catch (error: unknown) {
+                    setCreatorError(
+                      getApiErrorMessage(
+                        error,
+                        'Failed to load funnel summary.',
+                      ),
+                    );
+                  }
+                }}
+                type="button"
+              >
+                Refresh funnel
+              </button>
+            </div>
+
+            {creatorFunnel ? (
+              <div className="grid gap-2 rounded-xl border border-border/25 bg-background/60 p-2.5 text-xs sm:p-3">
+                <p className="font-semibold text-foreground">Funnel (30d)</p>
+                <p className="text-muted-foreground">
+                  Created: {creatorFunnel.created} | Governance:{' '}
+                  {creatorFunnel.governanceConfigured} | Billing:{' '}
+                  {creatorFunnel.billingConnected} | Activated:{' '}
+                  {creatorFunnel.activated}
+                </p>
+                <p className="text-muted-foreground">
+                  Retention pings: {creatorFunnel.retentionPing} | Activation
+                  rate: {creatorFunnel.activationRatePercent.toFixed(2)}%
+                </p>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </section>
     </main>
   );
 }

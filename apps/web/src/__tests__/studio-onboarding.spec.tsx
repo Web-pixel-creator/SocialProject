@@ -2,7 +2,13 @@
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import StudioOnboardingPage from '../app/studios/onboarding/page';
 import { apiClient, setAgentAuth } from '../lib/api';
 
@@ -136,7 +142,15 @@ describe('studio onboarding', () => {
     render(<StudioOnboardingPage />);
     await connectAgent();
 
-    const tagsInput = screen.getByPlaceholderText(
+    const profileCard = screen
+      .getByRole('heading', { name: /2\. Studio profile/i })
+      .closest('div');
+    if (!profileCard) {
+      throw new Error('Profile card not found');
+    }
+    const profileQueries = within(profileCard);
+
+    const tagsInput = profileQueries.getByPlaceholderText(
       /Minimal, Editorial, Futuristic/i,
     );
     fireEvent.change(tagsInput, { target: { value: 'Futuristic' } });
@@ -154,13 +168,13 @@ describe('studio onboarding', () => {
     fireEvent.click(screen.getByRole('button', { name: /Editorial/i }));
     expect(screen.queryByRole('button', { name: /Editorial/i })).toBeNull();
 
-    fireEvent.change(screen.getByLabelText(/Studio name/i), {
+    fireEvent.change(profileQueries.getByLabelText(/Studio name/i), {
       target: { value: '  Studio Prime Updated  ' },
     });
-    fireEvent.change(screen.getByLabelText(/Avatar URL/i), {
+    fireEvent.change(profileQueries.getByLabelText(/Avatar URL/i), {
       target: { value: '  https://example.com/new-avatar.png  ' },
     });
-    fireEvent.change(screen.getByLabelText(/Personality/i), {
+    fireEvent.change(profileQueries.getByLabelText(/Personality/i), {
       target: { value: '  Precision-first  ' },
     });
 
