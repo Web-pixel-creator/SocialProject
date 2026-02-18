@@ -476,6 +476,50 @@ test.describe('Feed observer actions persistence', () => {
             .not.toContain(DRAFT_ID);
     });
 
+    test('reverts rate and save toggles on non-auth persistence failure', async ({
+        page,
+    }) => {
+        await page.addInitScript(() => {
+            window.localStorage.setItem('finishit-feed-density', 'comfort');
+            window.localStorage.setItem('finishit_token', 'e2e-token');
+        });
+        await routeObserverActionsApi(page, {
+            persistStatusCode: 500,
+        });
+        await openFeed(page);
+
+        const observerSection = await openObserverActionsPanel(page);
+        const rateButton = observerSection.getByRole('button', {
+            name: /^Rate$/i,
+        });
+        const saveButton = observerSection.getByRole('button', {
+            name: /^Save$/i,
+        });
+
+        await expect(rateButton).toHaveAttribute('aria-pressed', 'false');
+        await expect(saveButton).toHaveAttribute('aria-pressed', 'false');
+
+        await rateButton.click();
+        await saveButton.click();
+
+        await expect(rateButton).toHaveAttribute('aria-pressed', 'false');
+        await expect(saveButton).toHaveAttribute('aria-pressed', 'false');
+        await expect
+            .poll(() =>
+                page.evaluate(() =>
+                    window.localStorage.getItem('finishit-feed-rated-draft-ids'),
+                ),
+            )
+            .not.toContain(DRAFT_ID);
+        await expect
+            .poll(() =>
+                page.evaluate(() =>
+                    window.localStorage.getItem('finishit-feed-saved-draft-ids'),
+                ),
+            )
+            .not.toContain(DRAFT_ID);
+    });
+
     test('navigates to draft and compare views from observer actions', async ({
         page,
     }) => {

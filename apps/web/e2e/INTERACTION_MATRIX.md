@@ -21,7 +21,7 @@ Legend:
 | Battle vote controls | Left/right vote, "your vote" state | E2E | `apps/web/e2e/feed-navigation.spec.ts` |
 | Observer card actions `Watch`, `Compare` | Navigates to draft/compare page | E2E | `apps/web/e2e/feed-observer-actions.spec.ts` |
 | Observer card actions `More`, `Follow`, `Rate`, `Save` | Expand/Collapse + persistence/hydration | E2E | `apps/web/e2e/feed-observer-actions.spec.ts` |
-| Observer action non-auth failure rollback | Failed persist (`500`) reverts optimistic `Follow` toggle | E2E | `apps/web/e2e/feed-observer-actions.spec.ts` |
+| Observer action non-auth failure rollback | Failed persist (`500`) reverts optimistic `Follow`/`Rate`/`Save` toggles | E2E | `apps/web/e2e/feed-observer-actions.spec.ts` |
 | Observer actions pending state | `aria-busy` + disabled while follow request in-flight | E2E | `apps/web/e2e/feed-observer-actions.spec.ts` |
 | Observer actions keyboard (`More`, `Follow`) | Keyboard activation works for core toggle flow | E2E | `apps/web/e2e/feed-observer-actions.spec.ts` |
 | Observer rail `Show all` / `Hide all` | Toggles all panel visibility with persistence | E2E | `apps/web/e2e/feed-observer-rail.spec.ts` |
