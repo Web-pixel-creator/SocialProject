@@ -135,10 +135,10 @@ export const PanelHeader = memo(function PanelHeader({
 
   return (
     <div className="mb-2 flex items-center justify-between gap-2 sm:mb-2.5">
-      <h3 className="inline-flex items-center gap-2 font-semibold text-foreground text-sm">
+      <h2 className="inline-flex items-center gap-2 font-semibold text-foreground text-sm">
         <Icon aria-hidden="true" className="h-4 w-4 text-primary/90" />
         {title}
-      </h3>
+      </h2>
       {badge ? (
         <span
           className={`rounded-full px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide ${badgeClass}`}

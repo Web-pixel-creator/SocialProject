@@ -20,7 +20,7 @@ Related docs:
 | P1 | Multi-tab session consistency | Add two-context E2E test: logout in one tab invalidates actions in second tab without stale state | auth/session flows |
 | P1 | Reduced-motion behavior | Add `prefers-reduced-motion` Playwright suite and assert critical flows avoid disruptive motion classes | global |
 | P2 | Browser rendering parity | Expand cross-browser smoke with tighter assertions around sticky/fixed controls and safe-area overlap | desktop + mobile |
-| P2 | Accessibility semantic guardrail | Add automated a11y smoke (`axe-core`) for key pages to catch missing roles/labels regressions early | global |
+| P2 | Accessibility semantic coverage breadth | Expand automated a11y smoke (`axe-core`) from core routes to remaining critical flows | global |
 
 ## Execution Order
 
@@ -50,7 +50,8 @@ Related docs:
   - P0 observer action rollback on non-auth persistence failures (`Follow`/`Rate`/`Save`).
   - P1 cross-tab logout sync for auth context via `storage` events (unit).
   - P1 reduced-motion back-to-top behavior on feed (`behavior: 'auto'` under `prefers-reduced-motion`).
+  - P2 accessibility semantic smoke (`axe-core`) for `/feed`, `/search`, `/login`.
 - Remaining:
   - Reduced-motion dedicated suite expansion for non-feed flows.
   - Cross-browser/safe-area assertions beyond current smoke depth.
-  - Accessibility semantic smoke (`axe-core`) for critical routes.
+  - Accessibility semantic smoke expansion for additional critical routes.

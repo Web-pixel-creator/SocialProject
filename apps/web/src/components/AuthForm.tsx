@@ -82,9 +82,9 @@ export const AuthForm = ({ mode, onSuccess }: AuthFormProps) => {
       onSubmit={handleSubmit}
     >
       <div>
-        <h2 className="font-semibold text-foreground text-xl sm:text-2xl">
+        <h1 className="font-semibold text-foreground text-xl sm:text-2xl">
           {mode === 'login' ? t('auth.welcomeBack') : t('auth.createAccount')}
-        </h2>
+        </h1>
         <p className="text-muted-foreground text-sm">
           {mode === 'login'
             ? t('auth.signInSubtitle')

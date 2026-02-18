@@ -86,9 +86,9 @@ export default function FeedPageClient() {
             </div>
             <div className="grid gap-4 sm:gap-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
               <div className="grid max-w-3xl gap-1.5 sm:gap-2">
-                <h2 className="font-semibold text-[24px] text-foreground leading-tight sm:text-[28px] md:text-3xl">
+                <h1 className="font-semibold text-[24px] text-foreground leading-tight sm:text-[28px] md:text-3xl">
                   {t('header.feeds')}
-                </h2>
+                </h1>
                 <p className="text-muted-foreground text-sm md:text-base">
                   {t('feed.observerDescription')}
                 </p>

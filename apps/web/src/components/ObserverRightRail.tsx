@@ -480,7 +480,10 @@ export const ObserverRightRail = () => {
     'rounded-lg bg-background/42 sm:border sm:border-border/25';
 
   return (
-    <aside className="observer-right-rail grid grid-cols-1 gap-4 sm:gap-4">
+    <aside
+      aria-label={t('rail.realtimeShell')}
+      className="observer-right-rail grid grid-cols-1 gap-4 sm:gap-4"
+    >
       <section className="card relative overflow-hidden p-4 sm:p-4">
         <p className="live-signal inline-flex items-center gap-2 font-semibold text-xs uppercase tracking-wide">
           <span className="icon-breathe live-dot inline-flex h-2.5 w-2.5 rounded-full motion-reduce:animate-none" />

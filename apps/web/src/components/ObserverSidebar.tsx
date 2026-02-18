@@ -107,6 +107,7 @@ export const ObserverSidebar = ({
 
   return (
     <aside
+      aria-label={t('sidebar.observerNavigation')}
       className={
         mobile
           ? 'rounded-2xl bg-sidebar/70 p-3'

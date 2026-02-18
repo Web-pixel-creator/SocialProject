@@ -100,6 +100,7 @@ Automation backlog for manual gaps:
   - language switch and persistence
   - header search routing
   - mobile nav flows
+  - accessibility semantic smoke (`axe-core`) on core routes (`/feed`, `/search`, `/login`)
   - visual baseline smoke (desktop + mobile routes)
   - cross-browser smoke (Firefox + WebKit) for feed/search/login keyboard and form controls
   - realtime reconnect recovery:
