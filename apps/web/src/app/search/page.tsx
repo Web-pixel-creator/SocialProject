@@ -153,6 +153,11 @@ const isEditableTarget = (target: EventTarget | null): boolean => {
   return target.getAttribute('role') === 'textbox';
 };
 
+const shouldUseReducedMotion = () =>
+  typeof window !== 'undefined' &&
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 const focusRingClass =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
 
@@ -255,7 +260,10 @@ function SearchPageContent() {
     if (urlFrom === 'similar' && !didSmoothScroll.current) {
       didSmoothScroll.current = true;
       if (typeof window !== 'undefined') {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        window.scrollTo({
+          top: 0,
+          behavior: shouldUseReducedMotion() ? 'auto' : 'smooth',
+        });
       }
     }
 

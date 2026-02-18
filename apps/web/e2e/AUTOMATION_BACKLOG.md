@@ -50,6 +50,7 @@ Related docs:
   - P0 observer action rollback on non-auth persistence failures (`Follow`/`Rate`/`Save`).
   - P1 cross-tab logout sync for auth context via `storage` events (unit).
   - P1 reduced-motion back-to-top behavior on feed (`behavior: 'auto'` under `prefers-reduced-motion`).
+  - P1 reduced-motion similar-entrypoint search scroll (`/search?from=similar` uses `behavior: 'auto'`).
   - P2 accessibility semantic smoke (`axe-core`) for `/feed`, `/search`, `/login`.
 - Remaining:
   - Reduced-motion dedicated suite expansion for non-feed flows.

@@ -36,6 +36,7 @@ Automation backlog for manual gaps:
 - Search:
   - text/visual flows
   - slash shortcut handling + focus exceptions
+  - similar-entrypoint top scroll respects reduced-motion (`auto` under `prefers-reduced-motion`)
   - error fallback behavior
 
 - Draft detail:

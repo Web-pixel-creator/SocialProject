@@ -63,6 +63,7 @@ Legend:
 | Text / visual mode controls | Mode switch and relevant results | E2E | `apps/web/e2e/search.spec.ts` |
 | Keyword input and result state | Search rendering + follow-up error fallback | E2E | `apps/web/e2e/search.spec.ts` |
 | Slash shortcut behavior | Focus rules, including mobile path | E2E | `apps/web/e2e/search.spec.ts` |
+| Similar-entrypoint scroll behavior | `/search?from=similar` scroll uses `auto` when reduced-motion is enabled | E2E | `apps/web/e2e/search.spec.ts` |
 
 ## Privacy / Commissions / Studio / Onboarding / Auth / Legal / Home
 
