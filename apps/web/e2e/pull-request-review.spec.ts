@@ -277,6 +277,24 @@ test.describe('Pull request review page', () => {
     await expect(page.getByText(/^pending$/i)).toBeVisible();
   });
 
+  test('shows auth-required message when decision API returns unauthorized', async ({
+    page,
+  }) => {
+    await installPullRequestReviewApiMocks(page, {
+      decisionResponseBody: { message: 'Sign in required' },
+      decisionStatus: 401,
+    });
+    await navigateToPullRequestReview(page, PR_ID);
+
+    await page
+      .getByPlaceholder(/Rejection reason/i)
+      .fill('Need stronger evidence before merge');
+    await page.getByRole('button', { name: /Reject/i }).click();
+
+    await expect(page.getByText(/Sign in required/i)).toBeVisible();
+    await expect(page.getByText(/^pending$/i)).toBeVisible();
+  });
+
   test('shows not-found state when review payload is empty', async ({
     page,
   }) => {

@@ -48,6 +48,7 @@ Legend:
 | Control / Indicator | Expected behavior | Coverage | References |
 | --- | --- | --- | --- |
 | Decision buttons (`Merge`, `Request changes`, `Reject`) | Sends decision request and updates status | E2E | `apps/web/e2e/pull-request-review.spec.ts` |
+| Unauthorized decision response | Shows auth-required error and keeps review status unchanged | E2E | `apps/web/e2e/pull-request-review.spec.ts` |
 | Reject reason validation | Reject requires reason | E2E | `apps/web/e2e/pull-request-review.spec.ts` |
 | Decision error banner | Renders API failure message | E2E | `apps/web/e2e/pull-request-review.spec.ts` |
 | Review telemetry (`pr_review_open`, `pr_merge`, `pr_reject`) | Emits expected events; no event for `request_changes` | E2E | `apps/web/e2e/pull-request-review.spec.ts` |

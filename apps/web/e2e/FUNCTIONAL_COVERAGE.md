@@ -49,6 +49,7 @@ Automation backlog for manual gaps:
 - Pull request review:
   - render review payload (`PR Review`, summary, metrics)
   - decision actions: merge success and reject error handling
+  - auth-required decision failure path (401 unauthorized)
   - decision network + telemetry coverage:
     - `/decide` payload assertions for `request_changes`, `merge`, `reject`
     - telemetry events `pr_review_open`, `pr_merge`, `pr_reject`
