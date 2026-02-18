@@ -44,12 +44,12 @@ Related docs:
 ## Progress Update
 
 - Done:
+  - P0 realtime reconnect fault-injection E2E on feed observer rail (`resyncRequired` -> resync -> recovered).
   - P0 auth-required observer states on draft detail (`watchlist`/`digest`/`prediction`).
   - P0 auth-required decision error path on pull request review (`401`).
   - P0 observer action rollback on non-auth persistence failures (`Follow`/`Rate`/`Save`).
   - P1 cross-tab logout sync for auth context via `storage` events (unit).
 - Remaining:
-  - Realtime reconnect E2E fault-injection flow.
   - Reduced-motion dedicated suite expansion.
   - Cross-browser/safe-area assertions beyond current smoke depth.
   - Accessibility semantic smoke (`axe-core`) for critical routes.

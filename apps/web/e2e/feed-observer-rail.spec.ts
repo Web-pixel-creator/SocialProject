@@ -401,3 +401,141 @@ test.describe('Feed observer rail', () => {
         await expect(prPendingTile).toContainText('57');
     });
 });
+
+test.describe('Feed observer rail realtime reconnect fault injection', () => {
+    test('recovers from resync-required state after reconnect success', async ({
+        page,
+    }) => {
+        await page.addInitScript(() => {
+            type Handler = (payload: unknown) => void;
+            type SocketEmitRecord = { event: string; payload: unknown };
+            type WindowWithRealtimeHarness = Window & {
+                __finishitSocketHarness?: {
+                    emitted: SocketEmitRecord[];
+                    trigger: (event: string, payload: unknown) => void;
+                };
+                __finishitSocketMock?: {
+                    emit: (event: string, payload?: unknown) => void;
+                    off: (event: string, cb: Handler) => void;
+                    on: (event: string, cb: Handler) => void;
+                };
+            };
+
+            const handlers: Record<string, Handler[]> = {};
+            const emitted: SocketEmitRecord[] = [];
+            const socketMock = {
+                emit: (event: string, payload?: unknown) => {
+                    emitted.push({ event, payload: payload ?? null });
+                },
+                off: (event: string, cb: Handler) => {
+                    handlers[event] = (handlers[event] ?? []).filter(
+                        (handler) => handler !== cb,
+                    );
+                },
+                on: (event: string, cb: Handler) => {
+                    handlers[event] = handlers[event] ?? [];
+                    handlers[event].push(cb);
+                },
+            };
+
+            const win = window as WindowWithRealtimeHarness;
+            win.__finishitSocketMock = socketMock;
+            win.__finishitSocketHarness = {
+                emitted,
+                trigger: (event: string, payload: unknown) => {
+                    for (const handler of handlers[event] ?? []) {
+                        handler(payload);
+                    }
+                },
+            };
+        });
+
+        await openFeed(page);
+
+        const rightRail = page.locator('.observer-right-rail');
+        await expect(rightRail).toBeVisible();
+        await expect(rightRail.getByText(/Resyncing realtime stream/i)).toBeVisible();
+
+        await page.evaluate(() => {
+            const win = window as Window & {
+                __finishitSocketHarness?: {
+                    trigger: (event: string, payload: unknown) => void;
+                };
+            };
+            win.__finishitSocketHarness?.trigger('resync', {
+                scope: 'feed:live',
+                resyncRequired: true,
+                events: [],
+            });
+        });
+
+        const resyncNowButton = rightRail.getByRole('button', {
+            name: /Resync now/i,
+        });
+        await expect(rightRail.getByText(/Resync required/i)).toBeVisible();
+        await expect(resyncNowButton).toBeVisible();
+
+        await resyncNowButton.click();
+        await expect(rightRail.getByText(/Resyncing realtime stream/i)).toBeVisible();
+
+        await expect
+            .poll(async () =>
+                page.evaluate(() => {
+                    const win = window as Window & {
+                        __finishitSocketHarness?: {
+                            emitted: Array<{ event: string; payload: unknown }>;
+                        };
+                    };
+                    const emitted = win.__finishitSocketHarness?.emitted ?? [];
+                    return emitted.filter((entry) => entry.event === 'resync')
+                        .length;
+                }),
+            )
+            .toBeGreaterThanOrEqual(2);
+
+        const lastResyncPayload = await page.evaluate(() => {
+            const win = window as Window & {
+                __finishitSocketHarness?: {
+                    emitted: Array<{ event: string; payload: unknown }>;
+                };
+            };
+            const emitted = win.__finishitSocketHarness?.emitted ?? [];
+            const resyncEvents = emitted.filter((entry) => entry.event === 'resync');
+            return resyncEvents.at(-1)?.payload ?? null;
+        });
+        expect(lastResyncPayload).toEqual(
+            expect.objectContaining({ scope: 'feed:live' }),
+        );
+
+        await page.evaluate(() => {
+            const win = window as Window & {
+                __finishitSocketHarness?: {
+                    trigger: (event: string, payload: unknown) => void;
+                };
+            };
+            win.__finishitSocketHarness?.trigger('connect', {});
+            win.__finishitSocketHarness?.trigger('resync', {
+                scope: 'feed:live',
+                events: [
+                    {
+                        id: 'rt-reconnect-1',
+                        scope: 'feed:live',
+                        type: 'draft_activity',
+                        sequence: 7,
+                        payload: { draftId: '00000000-0000-0000-0000-000000000777' },
+                    },
+                ],
+                latestSequence: 7,
+            });
+        });
+
+        await expect(rightRail.getByText(/Resync required/i)).toHaveCount(0);
+        await expect(
+            rightRail.getByRole('button', { name: /Resync now/i }),
+        ).toHaveCount(0);
+        await expect(rightRail.getByText(/Resync completed/i)).toBeVisible();
+        await expect(
+            rightRail.locator('li:visible').filter({ hasText: /Draft activity:/i }),
+        ).toHaveCount(1);
+    });
+});

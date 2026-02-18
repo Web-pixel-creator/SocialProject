@@ -85,7 +85,7 @@ Legend:
 | Cross-tab auth storage sync | Logout in another tab clears token/user in current tab | Unit | `apps/web/src/__tests__/auth-context.spec.tsx` |
 | Visual baseline | Desktop/mobile snapshot regressions | E2E | `apps/web/e2e/visual-smoke.spec.ts` |
 | Cross-browser sanity | Firefox/WebKit critical flows | E2E | `apps/web/e2e/browser-compat.spec.ts` |
-| Realtime reconnect behavior | Resync/reconnect correctness | Unit | `apps/web/src/__tests__/realtime-hook.spec.tsx` |
+| Realtime reconnect behavior | Resync warning appears and clears after manual resync + reconnect success | E2E + Unit | `apps/web/e2e/feed-observer-rail.spec.ts`, `apps/web/src/__tests__/realtime-hook.spec.tsx` |
 
 ## Remaining Manual Checks
 

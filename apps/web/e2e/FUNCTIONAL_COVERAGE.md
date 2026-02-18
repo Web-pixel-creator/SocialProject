@@ -101,7 +101,9 @@ Automation backlog for manual gaps:
   - mobile nav flows
   - visual baseline smoke (desktop + mobile routes)
   - cross-browser smoke (Firefox + WebKit) for feed/search/login keyboard and form controls
-  - realtime reconnect recovery (unit): `resyncRequired` -> reconnect -> successful resync clears stale warning state
+  - realtime reconnect recovery:
+    - E2E fault injection (`resyncRequired` -> manual resync -> reconnect/success clears stale warning state)
+    - unit hook-level guard for sequence/resync merge logic
 
 ## Current Quality Gate
 

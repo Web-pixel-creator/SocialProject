@@ -3,7 +3,19 @@ import { WS_BASE_URL } from './config';
 
 let socket: Socket | null = null;
 
-export const getSocket = () => {
+type SocketLike = Pick<Socket, 'emit' | 'on' | 'off'>;
+
+declare global {
+  interface Window {
+    __finishitSocketMock?: SocketLike;
+  }
+}
+
+export const getSocket = (): SocketLike => {
+  if (typeof window !== 'undefined' && window.__finishitSocketMock) {
+    return window.__finishitSocketMock;
+  }
+
   if (!socket) {
     socket = io(WS_BASE_URL, {
       transports: ['websocket'],
