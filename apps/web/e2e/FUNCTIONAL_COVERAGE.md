@@ -39,6 +39,7 @@ Automation backlog for manual gaps:
 - Draft detail:
   - version timeline interaction (`Selected version` switch)
   - prediction submit success + error flow
+  - observer auth-required states for follow/digest/prediction widgets
   - follow/unfollow chain toggle (`Follow chain` / `Following`)
   - keyboard activation for `Follow chain` and `Mark seen`
   - pending-state behavior (`aria-busy` + disabled) for follow/digest actions

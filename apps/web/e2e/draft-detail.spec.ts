@@ -13,13 +13,17 @@ const json = (body: unknown) => ({
 interface DraftDetailMockOptions {
   digestEntries?: unknown[];
   digestSeenDelayMs?: number;
+  digestStatus?: number;
   predictionStatus?: number;
+  predictionSummaryStatus?: number;
   predictionSummaryAfterSubmit?: unknown;
   predictionSummaryResponseBody?: unknown;
   predictionResponseBody?: unknown;
   telemetryPayloadLog?: Array<Record<string, unknown>>;
   watchlistPersistDelayMs?: number;
+  watchlistPersistStatus?: number;
   watchlistEntries?: unknown[];
+  watchlistStatus?: number;
 }
 
 const installDraftDetailApiMocks = async (
@@ -30,7 +34,9 @@ const installDraftDetailApiMocks = async (
   const {
     digestEntries = [],
     digestSeenDelayMs = 0,
+    digestStatus = 200,
     predictionStatus = 200,
+    predictionSummaryStatus = 200,
     predictionSummaryAfterSubmit = null,
     predictionSummaryResponseBody = {
       accuracy: { correct: 4, rate: 0.5, total: 8 },
@@ -42,7 +48,9 @@ const installDraftDetailApiMocks = async (
     predictionResponseBody = { ok: true },
     telemetryPayloadLog,
     watchlistPersistDelayMs = 0,
+    watchlistPersistStatus = 200,
     watchlistEntries = [],
+    watchlistStatus = 200,
   } = options;
   let predictionSummaryState = predictionSummaryResponseBody;
 
@@ -92,7 +100,15 @@ const installDraftDetailApiMocks = async (
     }
 
     if (method === 'GET' && path === '/api/observers/watchlist') {
-      return route.fulfill(json(watchlistEntries));
+      return route.fulfill({
+        body: JSON.stringify(
+          watchlistStatus === 200
+            ? watchlistEntries
+            : { message: 'Sign in required' },
+        ),
+        contentType: 'application/json',
+        status: watchlistStatus,
+      });
     }
 
     if (
@@ -104,11 +120,25 @@ const installDraftDetailApiMocks = async (
           setTimeout(resolve, watchlistPersistDelayMs);
         });
       }
-      return route.fulfill(json({ ok: true }));
+      return route.fulfill({
+        body: JSON.stringify(
+          watchlistPersistStatus === 200
+            ? { ok: true }
+            : { message: 'Sign in required' },
+        ),
+        contentType: 'application/json',
+        status: watchlistPersistStatus,
+      });
     }
 
     if (method === 'GET' && path === '/api/observers/digest') {
-      return route.fulfill(json(digestEntries));
+      return route.fulfill({
+        body: JSON.stringify(
+          digestStatus === 200 ? digestEntries : { message: 'Sign in required' },
+        ),
+        contentType: 'application/json',
+        status: digestStatus,
+      });
     }
 
     if (
@@ -125,7 +155,15 @@ const installDraftDetailApiMocks = async (
     }
 
     if (method === 'GET' && path === `/api/pull-requests/${pullRequestId}/predictions`) {
-      return route.fulfill(json(predictionSummaryState));
+      return route.fulfill({
+        body: JSON.stringify(
+          predictionSummaryStatus === 200
+            ? predictionSummaryState
+            : { message: 'Sign in required' },
+        ),
+        contentType: 'application/json',
+        status: predictionSummaryStatus,
+      });
     }
 
     if (method === 'GET' && path === '/api/search/similar') {
@@ -221,6 +259,34 @@ test.describe('Draft detail page', () => {
       page.getByText(/Prediction service unavailable/i),
     ).toBeVisible();
     await expect(page).toHaveURL(new RegExp(`/drafts/${draftId}`));
+  });
+
+  test('shows auth-required observer states when protected endpoints return unauthorized', async ({
+    page,
+  }) => {
+    await installDraftDetailApiMocks(page, {
+      digestStatus: 401,
+      predictionSummaryStatus: 401,
+      watchlistStatus: 401,
+    });
+    await navigateToDraftDetail(page, draftId);
+
+    await expect(
+      page.getByText(/Sign in as observer to follow drafts/i),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/Sign in as observer to see digest updates/i),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/Sign in as observer to submit predictions/i),
+    ).toBeVisible();
+
+    await expect(
+      page.getByRole('button', { name: /Predict merge/i }),
+    ).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Mark seen/i })).toHaveCount(
+      0,
+    );
   });
 
   test('switches selected version in timeline', async ({ page }) => {

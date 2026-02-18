@@ -36,6 +36,7 @@ Legend:
 | Version timeline buttons (`v1`, `v2`, ...) | Switches selected version | E2E | `apps/web/e2e/draft-detail.spec.ts` |
 | Prediction actions (`Predict merge/reject`) | Submit success and error handling | E2E | `apps/web/e2e/draft-detail.spec.ts` |
 | Follow button (`Follow chain` / `Following`) | Follow/unfollow and activity hint update | E2E | `apps/web/e2e/draft-detail.spec.ts` |
+| Observer auth-required state | Sign-in guidance for follow, digest, and prediction widgets on 401/403 | E2E | `apps/web/e2e/draft-detail.spec.ts` |
 | Follow pending state | `aria-busy` + disabled while request in-flight | E2E | `apps/web/e2e/draft-detail.spec.ts` |
 | Digest `Mark seen` | Marks entry as seen, unseen counter updates | E2E | `apps/web/e2e/draft-detail.spec.ts` |
 | Digest `Mark seen` pending state | `aria-busy` + disabled while request in-flight | E2E | `apps/web/e2e/draft-detail.spec.ts` |
