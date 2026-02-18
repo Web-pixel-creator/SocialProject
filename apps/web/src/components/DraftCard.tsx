@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useLanguage } from '../contexts/LanguageContext';
+import type { ProvenanceIndicatorView } from '../lib/feedTypes';
 import {
   CardDetails,
   EvolutionTimeline,
@@ -18,12 +19,14 @@ interface DraftCardProps {
   title: string;
   glowUpScore: number;
   compact?: boolean;
+  fromFollowingStudio?: boolean;
   live?: boolean;
   updatedAt?: string;
   beforeImageUrl?: string;
   afterImageUrl?: string;
   reasonLabel?: string;
   hotScore?: number;
+  provenance?: ProvenanceIndicatorView;
   observerActionState?: Partial<Record<ObserverActionType, boolean>>;
   observerActionPending?: ObserverActionType | null;
   onObserverAction?: (action: ObserverActionType) => Promise<void> | void;
@@ -34,12 +37,14 @@ export const DraftCard = ({
   title,
   glowUpScore,
   compact,
+  fromFollowingStudio,
   live,
   updatedAt,
   beforeImageUrl,
   afterImageUrl,
   reasonLabel,
   hotScore,
+  provenance,
   observerActionState,
   observerActionPending,
   onObserverAction,
@@ -65,6 +70,29 @@ export const DraftCard = ({
   const decisionLabel = needsChanges
     ? t('draft.changesRequested')
     : t('draft.merged');
+  const getProvenancePresentation = (
+    status: ProvenanceIndicatorView['authenticityStatus'],
+  ) => {
+    if (status === 'verified') {
+      return {
+        label: t('feed.provenance.verified'),
+        className: 'tag-success border',
+      };
+    }
+    if (status === 'metadata_only') {
+      return {
+        label: t('feed.provenance.traceable'),
+        className: 'border border-primary/35 bg-primary/10 text-primary',
+      };
+    }
+    return {
+      label: t('feed.provenance.unverified'),
+      className: 'border border-border/35 bg-muted/55 text-muted-foreground',
+    };
+  };
+  const provenancePresentation = provenance
+    ? getProvenancePresentation(provenance.authenticityStatus)
+    : null;
 
   return (
     <article
@@ -99,6 +127,11 @@ export const DraftCard = ({
           </div>
         </div>
         <div className="flex flex-shrink-0 items-center gap-2">
+          {fromFollowingStudio && (
+            <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-1 font-semibold text-[10px] text-primary">
+              {t('draftDetail.followingStudios.pill')}
+            </span>
+          )}
           {typeof hotScore === 'number' && (
             <span className="tag-hot rounded-full border px-2 py-1 font-semibold text-[10px]">
               {t('rail.hot')} {hotScore.toFixed(2)}
@@ -112,6 +145,13 @@ export const DraftCard = ({
           {live && (
             <span className="tag-live rounded-full border px-2 py-1 font-semibold text-xs">
               {t('common.live')}
+            </span>
+          )}
+          {provenancePresentation && (
+            <span
+              className={`rounded-full px-2 py-1 font-semibold text-[10px] uppercase ${provenancePresentation.className}`}
+            >
+              {provenancePresentation.label}
             </span>
           )}
         </div>
@@ -204,6 +244,12 @@ export const DraftCard = ({
               <span>
                 {t('feedTabs.draftId')}: {id}
               </span>
+              {provenance && (
+                <span>
+                  {t('feed.provenance.spark')}:{' '}
+                  {provenance.humanSparkScore.toFixed(0)}
+                </span>
+              )}
             </div>
             <ObserverActions
               actionState={observerActionState}

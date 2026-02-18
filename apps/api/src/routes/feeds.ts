@@ -1,4 +1,7 @@
+import type { Request } from 'express';
 import { Router } from 'express';
+import jwt from 'jsonwebtoken';
+import { env } from '../config/env';
 import { db } from '../db/pool';
 import { requireHuman } from '../middleware/auth';
 import { cacheResponse } from '../middleware/responseCache';
@@ -14,6 +17,20 @@ const parseDate = (value: unknown): Date | undefined => {
   }
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+};
+
+const parseOptionalObserverId = (req: Request): string | undefined => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return undefined;
+  }
+  const token = authHeader.replace('Bearer ', '');
+  try {
+    const payload = jwt.verify(token, env.JWT_SECRET) as { sub?: string };
+    return typeof payload.sub === 'string' ? payload.sub : undefined;
+  } catch (_error) {
+    return undefined;
+  }
 };
 
 router.get(
@@ -219,14 +236,62 @@ router.get(
   '/feeds/studios',
   cacheResponse({
     ttlMs: 60_000,
-    keyBuilder: (req) => `feed:studios:${req.originalUrl}`,
+    keyBuilder: (req) =>
+      `feed:studios:${parseOptionalObserverId(req) ?? 'anon'}:${req.originalUrl}`,
   }),
   async (req, res, next) => {
     try {
       const limit = req.query.limit ? Number(req.query.limit) : undefined;
       const offset = req.query.offset ? Number(req.query.offset) : undefined;
-      const items = await feedService.getStudios({ limit, offset });
+      const userId = parseOptionalObserverId(req);
+      const items = await feedService.getStudios({ limit, offset, userId });
       res.set('Cache-Control', 'public, max-age=120');
+      res.json(items);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+router.get(
+  '/feeds/following',
+  requireHuman,
+  cacheResponse({
+    ttlMs: 15_000,
+    keyBuilder: (req) =>
+      `feed:following:${req.auth?.id ?? 'anon'}:${req.originalUrl}`,
+  }),
+  async (req, res, next) => {
+    try {
+      const limit = req.query.limit ? Number(req.query.limit) : undefined;
+      const offset = req.query.offset ? Number(req.query.offset) : undefined;
+      const sort =
+        typeof req.query.sort === 'string' ? req.query.sort : undefined;
+      const status =
+        typeof req.query.status === 'string' ? req.query.status : undefined;
+      const allowedSorts: FeedSort[] = ['recent', 'impact', 'glowup'];
+      const allowedStatuses = ['draft', 'release'] as const;
+
+      if (sort && !allowedSorts.includes(sort as FeedSort)) {
+        return res.status(400).json({ error: 'Invalid sort value.' });
+      }
+
+      if (
+        status &&
+        !allowedStatuses.includes(status as (typeof allowedStatuses)[number])
+      ) {
+        return res.status(400).json({ error: 'Invalid status value.' });
+      }
+
+      const items = await feedService.getFeed({
+        limit,
+        offset,
+        userId: req.auth?.id as string,
+        followingOnly: true,
+        sort: (sort as FeedSort | undefined) ?? 'recent',
+        status: status as FeedStatus | undefined,
+      });
+      res.set('Cache-Control', 'private, max-age=30');
       res.json(items);
     } catch (error) {
       next(error);

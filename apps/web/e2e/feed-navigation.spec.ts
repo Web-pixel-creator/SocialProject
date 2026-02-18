@@ -140,6 +140,40 @@ test.describe('Feed navigation and filters', () => {
         await expect(page).toHaveURL(/\/feed$/);
     });
 
+    test('following quick reset chips clear only status and sort', async ({
+        page,
+    }) => {
+        const readQueryParam = async (name: string) =>
+            await page.evaluate((key) => {
+                return new URL(window.location.href).searchParams.get(key);
+            }, name);
+
+        await navigateWithRetry(page, '/feed?tab=Following&sort=impact&status=release');
+
+        await expect(
+            page.getByRole('button', { name: /^All statuses$/i }),
+        ).toBeVisible();
+        await expect(
+            page.getByRole('button', { name: /^Recency$/i }),
+        ).toBeVisible();
+        await expect(
+            page.getByRole('button', { name: /^Last 30 days$/i }),
+        ).toHaveCount(0);
+        await expect(
+            page.getByRole('button', { name: /^All intents$/i }),
+        ).toHaveCount(0);
+
+        await page.getByRole('button', { name: /^All statuses$/i }).click();
+        await expect.poll(() => readQueryParam('status')).toBe(null);
+        await expect.poll(() => readQueryParam('sort')).toBe('impact');
+        await expect.poll(() => readQueryParam('tab')).toBe('Following');
+
+        await page.getByRole('button', { name: /^Recency$/i }).click();
+        await expect.poll(() => readQueryParam('sort')).toBe(null);
+        await expect.poll(() => readQueryParam('tab')).toBe('Following');
+        await expect(page).toHaveURL(/\/feed\?tab=Following$/);
+    });
+
     test('focuses feed search with slash shortcut', async ({ page }) => {
         const feedSearch = page.getByPlaceholder(FEED_SEARCH_PLACEHOLDER);
         await expect(feedSearch).not.toBeFocused();
@@ -337,6 +371,112 @@ test.describe('Feed navigation and filters', () => {
         await expect(voteDesignButton).toHaveAttribute('aria-pressed', 'false');
         await expect(voteFunctionButton).toHaveAttribute('aria-pressed', 'true');
         await expect(page.getByText(/^Your vote:\s*Function$/i)).toBeVisible();
+    });
+
+    test('submits battle prediction and shows market summary in card', async ({
+        page,
+    }) => {
+        const draftId = '11111111-2222-3333-4444-555555555555';
+        const pullRequestId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+
+        await page.route('**/api/**', async (route) => {
+            const requestUrl = new URL(route.request().url());
+            const path = requestUrl.pathname;
+            const method = route.request().method();
+
+            if (method === 'GET' && path === '/api/feeds/battles') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify([
+                        {
+                            id: draftId,
+                            title: 'Battle Prediction E2E',
+                            leftLabel: 'Design',
+                            rightLabel: 'Function',
+                            leftVote: 55,
+                            rightVote: 45,
+                            glowUpScore: 11.4,
+                            prCount: 5,
+                            fixCount: 2,
+                            decision: 'pending',
+                        },
+                    ]),
+                });
+            }
+
+            if (method === 'POST' && path === `/api/drafts/${draftId}/predict`) {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({
+                        pullRequestId,
+                        predictedOutcome: 'merge',
+                        stakePoints: 30,
+                    }),
+                });
+            }
+
+            if (
+                method === 'GET' &&
+                path === `/api/pull-requests/${pullRequestId}/predictions`
+            ) {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({
+                        pullRequestId,
+                        market: {
+                            totalStakePoints: 140,
+                            mergeOdds: 0.65,
+                            rejectOdds: 0.35,
+                            mergePayoutMultiplier: 1.54,
+                            rejectPayoutMultiplier: 2.86,
+                        },
+                    }),
+                });
+            }
+
+            if (method === 'POST' && path === '/api/telemetry/ux') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ ok: true }),
+                });
+            }
+
+            return route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify([]),
+            });
+        });
+
+        await openFeed(page);
+        await page.getByRole('button', { name: /^Battles$/i }).click();
+        await expect(page.getByText('Battle Prediction E2E')).toBeVisible();
+
+        const stakeInput = page.getByLabel(/^Stake$/i);
+        await stakeInput.fill('30');
+
+        const predictionRequest = page.waitForRequest((request) => {
+            return (
+                request.method() === 'POST' &&
+                request.url().includes(`/api/drafts/${draftId}/predict`)
+            );
+        });
+        const summaryRequest = page.waitForRequest((request) => {
+            return (
+                request.method() === 'GET' &&
+                request
+                    .url()
+                    .includes(`/api/pull-requests/${pullRequestId}/predictions`)
+            );
+        });
+
+        await page.getByRole('button', { name: /^Predict merge$/i }).click();
+        await predictionRequest;
+        await summaryRequest;
     });
 
     test('primary and more tabs switch feed and update query', async ({

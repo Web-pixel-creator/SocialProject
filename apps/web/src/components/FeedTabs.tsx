@@ -24,7 +24,7 @@ import {
 import useSWR from 'swr';
 import { useLanguage } from '../contexts/LanguageContext';
 import { apiClient } from '../lib/api';
-import { getApiErrorStatus } from '../lib/errors';
+import { getApiErrorMessage, getApiErrorStatus } from '../lib/errors';
 import {
   fallbackItemsFor,
   mapDraftItems,
@@ -53,6 +53,7 @@ const TABS = [
   'Progress',
   'Changes',
   'For You',
+  'Following',
   'Hot Now',
   'Live Drafts',
   'GlowUps',
@@ -77,6 +78,20 @@ const AUTH_TOKEN_STORAGE_KEY = 'finishit_token';
 const MOBILE_DENSITY_MEDIA_QUERY = '(max-width: 767px)';
 
 type FeedDensity = 'comfort' | 'compact';
+type BattlePredictionOutcome = 'merge' | 'reject';
+
+interface BattlePredictionEntry {
+  error: string | null;
+  pending: boolean;
+  predictedOutcome: BattlePredictionOutcome | null;
+  pullRequestId: string | null;
+  marketPoolPoints: number | null;
+  mergeOdds: number | null;
+  potentialMergePayout: number | null;
+  potentialRejectPayout: number | null;
+  rejectOdds: number | null;
+  stakePoints: number | null;
+}
 
 const parseFeedDensity = (value: string | null): FeedDensity | null => {
   if (value === 'comfort' || value === 'compact') {
@@ -141,6 +156,9 @@ const STATUS_OPTIONS: Array<{ value: FeedStatus; label: string }> = [
   { value: 'release', label: 'Releases' },
   { value: 'pr', label: 'Pending PRs' },
 ];
+const FOLLOWING_STATUS_OPTIONS = STATUS_OPTIONS.filter(
+  (option) => option.value !== 'pr',
+);
 
 const RANGE_OPTIONS: Array<{ value: FeedRange; label: string; days?: number }> =
   [
@@ -245,6 +263,84 @@ const parseQueryState = (params: { get: (key: string) => string | null }) => {
 };
 
 const normalizeQuery = (value: string): string => value.trim().toLowerCase();
+
+const asFiniteNumber = (value: unknown): number | null => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const parseBattlePredictionMarket = (
+  summary: unknown,
+  stakePoints: number,
+  fallbackPullRequestId: string | null,
+): Pick<
+  BattlePredictionEntry,
+  | 'pullRequestId'
+  | 'marketPoolPoints'
+  | 'mergeOdds'
+  | 'rejectOdds'
+  | 'potentialMergePayout'
+  | 'potentialRejectPayout'
+> => {
+  const summaryRecord =
+    typeof summary === 'object' && summary !== null
+      ? (summary as Record<string, unknown>)
+      : null;
+  const marketRecord =
+    summaryRecord && typeof summaryRecord.market === 'object'
+      ? (summaryRecord.market as Record<string, unknown>)
+      : null;
+
+  const pullRequestId =
+    typeof summaryRecord?.pullRequestId === 'string'
+      ? summaryRecord.pullRequestId
+      : fallbackPullRequestId;
+
+  const mergeStakePoints = Math.max(
+    0,
+    asFiniteNumber(marketRecord?.mergeStakePoints) ?? 0,
+  );
+  const rejectStakePoints = Math.max(
+    0,
+    asFiniteNumber(marketRecord?.rejectStakePoints) ?? 0,
+  );
+  const totalStakePoints =
+    Math.max(0, asFiniteNumber(marketRecord?.totalStakePoints) ?? 0) ||
+    mergeStakePoints + rejectStakePoints;
+
+  const mergeOddsFallback =
+    totalStakePoints > 0 ? mergeStakePoints / totalStakePoints : null;
+  const rejectOddsFallback =
+    totalStakePoints > 0 ? rejectStakePoints / totalStakePoints : null;
+
+  const mergeOdds =
+    asFiniteNumber(marketRecord?.mergeOdds) ?? mergeOddsFallback;
+  const rejectOdds =
+    asFiniteNumber(marketRecord?.rejectOdds) ?? rejectOddsFallback;
+
+  const mergePayoutMultiplier =
+    asFiniteNumber(marketRecord?.mergePayoutMultiplier) ??
+    (mergeOdds && mergeOdds > 0 ? 1 / mergeOdds : 1);
+  const rejectPayoutMultiplier =
+    asFiniteNumber(marketRecord?.rejectPayoutMultiplier) ??
+    (rejectOdds && rejectOdds > 0 ? 1 / rejectOdds : 1);
+
+  return {
+    pullRequestId,
+    marketPoolPoints:
+      totalStakePoints > 0 ? Math.round(totalStakePoints) : null,
+    mergeOdds,
+    rejectOdds,
+    potentialMergePayout: Math.max(
+      0,
+      Math.round(Math.max(0, stakePoints) * mergePayoutMultiplier),
+    ),
+    potentialRejectPayout: Math.max(
+      0,
+      Math.round(Math.max(0, stakePoints) * rejectPayoutMultiplier),
+    ),
+  };
+};
 
 const searchableTextByItemKind = (item: FeedItem): string => {
   if (item.kind === 'draft' || item.kind === 'hot') {
@@ -436,6 +532,66 @@ const BattleFilters = memo(function BattleFilters({
           </button>
         ))}
       </div>
+    </div>
+  );
+});
+
+interface FollowingFiltersProps {
+  sort: FeedSort;
+  status: FeedStatus;
+  sortOptions: Array<{ value: FeedSort; label: string }>;
+  statusOptions: Array<{ value: FeedStatus; label: string }>;
+  labels: {
+    sort: string;
+    status: string;
+  };
+  onSortChange: (value: FeedSort) => void;
+  onStatusChange: (value: FeedStatus) => void;
+}
+
+const FollowingFilters = memo(function FollowingFilters({
+  sort,
+  status,
+  sortOptions,
+  statusOptions,
+  labels,
+  onSortChange,
+  onStatusChange,
+}: FollowingFiltersProps) {
+  return (
+    <div className="grid gap-3 rounded-2xl border border-border/25 bg-background/60 p-4 text-foreground/85 text-xs md:grid-cols-2">
+      <label className="grid gap-1">
+        <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
+          {labels.sort}
+        </span>
+        <select
+          className="rounded-lg border border-border/25 bg-background/70 px-3 py-2 text-foreground text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          onChange={(event) => onSortChange(event.target.value as FeedSort)}
+          value={sort}
+        >
+          {sortOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="grid gap-1">
+        <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
+          {labels.status}
+        </span>
+        <select
+          className="rounded-lg border border-border/25 bg-background/70 px-3 py-2 text-foreground text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          onChange={(event) => onStatusChange(event.target.value as FeedStatus)}
+          value={status}
+        >
+          {statusOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
     </div>
   );
 });
@@ -672,6 +828,12 @@ export const FeedTabs = () => {
   const [pendingRateDraftIds, setPendingRateDraftIds] = useState<Set<string>>(
     () => new Set<string>(),
   );
+  const [pendingStudioFollowIds, setPendingStudioFollowIds] = useState<
+    Set<string>
+  >(() => new Set<string>());
+  const [battlePredictions, setBattlePredictions] = useState<
+    Record<string, BattlePredictionEntry>
+  >({});
   const desktopMoreDetailsRef = useRef<HTMLDetailsElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const mobileMoreButtonRef = useRef<HTMLButtonElement>(null);
@@ -714,6 +876,7 @@ export const FeedTabs = () => {
         Progress: t('feedTabs.tab.progress'),
         Changes: t('feedTabs.tab.changes'),
         'For You': t('feedTabs.tab.forYou'),
+        Following: t('feedTabs.tab.following'),
         'Hot Now': t('feedTabs.tab.hotNow'),
         'Live Drafts': t('feedTabs.tab.liveDrafts'),
         GlowUps: t('feedTabs.tab.glowUps'),
@@ -812,6 +975,14 @@ export const FeedTabs = () => {
   const localizedStatusOptions = useMemo(
     () =>
       STATUS_OPTIONS.map((option) => ({
+        value: option.value,
+        label: statusLabel(option.value),
+      })),
+    [statusLabel],
+  );
+  const localizedFollowingStatusOptions = useMemo(
+    () =>
+      FOLLOWING_STATUS_OPTIONS.map((option) => ({
         value: option.value,
         label: statusLabel(option.value),
       })),
@@ -1288,6 +1459,14 @@ export const FeedTabs = () => {
   }, [active, battleFilter]);
 
   useEffect(() => {
+    if (active !== 'Following' || status !== 'pr') {
+      return;
+    }
+    setStatus(DEFAULT_STATUS);
+    updateQuery({ status: DEFAULT_STATUS });
+  }, [active, status, updateQuery]);
+
+  useEffect(() => {
     if (active) {
       setFiltersOpen(false);
       setMoreOpen(false);
@@ -1324,14 +1503,18 @@ export const FeedTabs = () => {
     async () => {
       const endpoint = endpointForTab(active);
       const params: Record<string, unknown> = { limit: PAGE_SIZE, offset };
+      const requestStatus =
+        active === 'Following' && status === 'pr' ? DEFAULT_STATUS : status;
       if (normalizedQuery) {
         params.q = normalizedQuery;
       }
-      if (active === 'All') {
+      if (active === 'All' || active === 'Following') {
         params.sort = sort;
-        if (status !== 'all') {
-          params.status = status;
+        if (requestStatus !== DEFAULT_STATUS) {
+          params.status = requestStatus;
         }
+      }
+      if (active === 'All') {
         if (intent !== 'all') {
           params.intent = intent;
         }
@@ -1669,6 +1852,122 @@ export const FeedTabs = () => {
     });
   }, []);
 
+  const handleBattlePredict = useCallback(
+    async (
+      draftId: string,
+      outcome: BattlePredictionOutcome,
+      stakePoints: number,
+    ) => {
+      if (!draftId) {
+        return;
+      }
+
+      const roundedStake = Math.round(stakePoints);
+      setBattlePredictions((current) => ({
+        ...current,
+        [draftId]: {
+          ...current[draftId],
+          error: null,
+          pullRequestId: current[draftId]?.pullRequestId ?? null,
+          marketPoolPoints: current[draftId]?.marketPoolPoints ?? null,
+          mergeOdds: current[draftId]?.mergeOdds ?? null,
+          pending: true,
+          potentialMergePayout: current[draftId]?.potentialMergePayout ?? null,
+          potentialRejectPayout:
+            current[draftId]?.potentialRejectPayout ?? null,
+          predictedOutcome: current[draftId]?.predictedOutcome ?? null,
+          rejectOdds: current[draftId]?.rejectOdds ?? null,
+          stakePoints:
+            roundedStake > 0
+              ? roundedStake
+              : (current[draftId]?.stakePoints ?? 10),
+        },
+      }));
+
+      try {
+        const response = await apiClient.post(`/drafts/${draftId}/predict`, {
+          predictedOutcome: outcome,
+          stakePoints: roundedStake,
+        });
+        const pullRequestId =
+          typeof response.data?.pullRequestId === 'string'
+            ? response.data.pullRequestId
+            : null;
+        let marketSnapshot: ReturnType<typeof parseBattlePredictionMarket> = {
+          pullRequestId,
+          marketPoolPoints: null,
+          mergeOdds: null,
+          rejectOdds: null,
+          potentialMergePayout: null,
+          potentialRejectPayout: null,
+        };
+
+        if (pullRequestId) {
+          try {
+            const summaryResponse = await apiClient.get(
+              `/pull-requests/${pullRequestId}/predictions`,
+            );
+            marketSnapshot = parseBattlePredictionMarket(
+              summaryResponse.data,
+              roundedStake,
+              pullRequestId,
+            );
+          } catch (_summaryError) {
+            // Keep successful prediction response even if summary refresh fails.
+          }
+        }
+
+        setBattlePredictions((current) => ({
+          ...current,
+          [draftId]: {
+            error: null,
+            pending: false,
+            predictedOutcome: outcome,
+            ...marketSnapshot,
+            stakePoints: roundedStake,
+          },
+        }));
+        sendTelemetry({
+          eventType: 'pr_prediction_submit',
+          source: 'feed_battle_card',
+          sourceTab: active,
+          draftId,
+          pullRequestId,
+          predictedOutcome: outcome,
+          stakePoints: roundedStake,
+        });
+      } catch (error: unknown) {
+        const status = getApiErrorStatus(error);
+        const message =
+          status === 401 || status === 403
+            ? t('prediction.signInRequired')
+            : getApiErrorMessage(
+                error,
+                t('draftDetail.errors.submitPrediction'),
+              );
+        setBattlePredictions((current) => ({
+          ...current,
+          [draftId]: {
+            ...current[draftId],
+            error: message,
+            pending: false,
+            predictedOutcome: current[draftId]?.predictedOutcome ?? null,
+            pullRequestId: current[draftId]?.pullRequestId ?? null,
+            marketPoolPoints: current[draftId]?.marketPoolPoints ?? null,
+            mergeOdds: current[draftId]?.mergeOdds ?? null,
+            rejectOdds: current[draftId]?.rejectOdds ?? null,
+            potentialMergePayout:
+              current[draftId]?.potentialMergePayout ?? null,
+            potentialRejectPayout:
+              current[draftId]?.potentialRejectPayout ?? null,
+            stakePoints: current[draftId]?.stakePoints ?? roundedStake,
+          },
+        }));
+      }
+    },
+    [active, t],
+  );
+
   const handleObserverAction = useCallback(
     async (action: ObserverActionType, draftId: string) => {
       if (!draftId) {
@@ -1845,6 +2144,85 @@ export const FeedTabs = () => {
     ],
   );
 
+  const handleStudioFollowToggle = useCallback(
+    async (studioId: string, isFollowing: boolean) => {
+      if (!studioId || pendingStudioFollowIds.has(studioId)) {
+        return;
+      }
+
+      const nextFollowing = !isFollowing;
+      const delta = nextFollowing ? 1 : -1;
+
+      setPendingStudioFollowIds((current) => {
+        const next = new Set(current);
+        next.add(studioId);
+        return next;
+      });
+      setItems((previous) =>
+        previous.map((item) => {
+          if (item.kind !== 'studio' || item.id !== studioId) {
+            return item;
+          }
+          const nextFollowerCount = Math.max(
+            0,
+            (item.followerCount ?? 0) + delta,
+          );
+          return {
+            ...item,
+            isFollowing: nextFollowing,
+            followerCount: nextFollowerCount,
+          };
+        }),
+      );
+
+      let succeeded = true;
+      try {
+        if (nextFollowing) {
+          await apiClient.post(`/studios/${studioId}/follow`);
+        } else {
+          await apiClient.delete(`/studios/${studioId}/follow`);
+        }
+      } catch (_error) {
+        succeeded = false;
+      } finally {
+        setPendingStudioFollowIds((current) => {
+          const next = new Set(current);
+          next.delete(studioId);
+          return next;
+        });
+      }
+
+      if (!succeeded) {
+        setItems((previous) =>
+          previous.map((item) => {
+            if (item.kind !== 'studio' || item.id !== studioId) {
+              return item;
+            }
+            const revertedFollowerCount = Math.max(
+              0,
+              (item.followerCount ?? 0) - delta,
+            );
+            return {
+              ...item,
+              isFollowing,
+              followerCount: revertedFollowerCount,
+            };
+          }),
+        );
+        return;
+      }
+
+      if (active === 'Following' && !nextFollowing) {
+        setItems((previous) =>
+          previous.filter(
+            (item) => item.kind !== 'studio' || item.id !== studioId,
+          ),
+        );
+      }
+    },
+    [active, pendingStudioFollowIds],
+  );
+
   const pendingObserverActionForDraft = useCallback(
     (draftId: string): ObserverActionType | null => {
       if (pendingFollowDraftIds.has(draftId)) {
@@ -1875,7 +2253,11 @@ export const FeedTabs = () => {
           return (
             <StudioCard
               compact={isCompactDensity}
+              isFollowPending={pendingStudioFollowIds.has(item.id)}
               key={item.id ?? `studio-${index}`}
+              onToggleFollow={() =>
+                handleStudioFollowToggle(item.id, item.isFollowing ?? false)
+              }
               {...item}
             />
           );
@@ -1895,6 +2277,7 @@ export const FeedTabs = () => {
               afterImageUrl={item.afterImageUrl}
               beforeImageUrl={item.beforeImageUrl}
               compact={isCompactDensity}
+              fromFollowingStudio={active === 'Following'}
               glowUpScore={item.glowUpScore}
               hotScore={item.hotScore}
               id={item.id}
@@ -1908,6 +2291,7 @@ export const FeedTabs = () => {
               onObserverAction={(action) =>
                 handleObserverAction(action, item.id)
               }
+              provenance={item.provenance}
               reasonLabel={item.reasonLabel}
               title={item.title}
             />
@@ -1941,6 +2325,18 @@ export const FeedTabs = () => {
           );
         }
         if (item.kind === 'battle') {
+          const battlePrediction = battlePredictions[item.id] ?? {
+            error: null,
+            marketPoolPoints: null,
+            mergeOdds: null,
+            pending: false,
+            potentialMergePayout: null,
+            potentialRejectPayout: null,
+            predictedOutcome: null,
+            pullRequestId: null,
+            rejectOdds: null,
+            stakePoints: 10,
+          };
           return (
             <BattleCard
               compact={isCompactDensity}
@@ -1954,6 +2350,20 @@ export const FeedTabs = () => {
               onObserverAction={(action) =>
                 handleObserverAction(action, item.id)
               }
+              onPredict={(outcome, stakePoints) =>
+                handleBattlePredict(item.id, outcome, stakePoints)
+              }
+              predictionState={{
+                error: battlePrediction.error,
+                latestOutcome: battlePrediction.predictedOutcome,
+                marketPoolPoints: battlePrediction.marketPoolPoints,
+                mergeOdds: battlePrediction.mergeOdds,
+                latestStakePoints: battlePrediction.stakePoints,
+                pending: battlePrediction.pending,
+                potentialMergePayout: battlePrediction.potentialMergePayout,
+                potentialRejectPayout: battlePrediction.potentialRejectPayout,
+                rejectOdds: battlePrediction.rejectOdds,
+              }}
               {...item}
             />
           );
@@ -1979,6 +2389,7 @@ export const FeedTabs = () => {
         return (
           <DraftCard
             compact={isCompactDensity}
+            fromFollowingStudio={active === 'Following'}
             key={item.id ?? `draft-${index}`}
             observerActionPending={pendingObserverActionForDraft(item.id)}
             observerActionState={{
@@ -1992,11 +2403,16 @@ export const FeedTabs = () => {
         );
       }),
     [
+      active,
+      battlePredictions,
       followedDraftIds,
+      handleBattlePredict,
+      handleStudioFollowToggle,
       handleObserverAction,
       handleProgressCardOpen,
       isCompactDensity,
       pendingObserverActionForDraft,
+      pendingStudioFollowIds,
       ratedDraftIds,
       savedDraftIds,
       visibleItems,
@@ -2035,6 +2451,20 @@ export const FeedTabs = () => {
       );
     }
 
+    if (active === 'Following') {
+      return (
+        <FollowingFilters
+          labels={filterLabels}
+          onSortChange={handleSortChange}
+          onStatusChange={handleStatusChange}
+          sort={sort}
+          sortOptions={localizedSortOptions}
+          status={status}
+          statusOptions={localizedFollowingStatusOptions}
+        />
+      );
+    }
+
     return null;
   }, [
     active,
@@ -2047,6 +2477,7 @@ export const FeedTabs = () => {
     handleStatusChange,
     intent,
     localizedBattleFilterOptions,
+    localizedFollowingStatusOptions,
     localizedIntentOptions,
     localizedRangeOptions,
     localizedSortOptions,
@@ -2059,14 +2490,19 @@ export const FeedTabs = () => {
 
   const activeFilterPills = useMemo(() => {
     const pills: string[] = [];
+    const supportsSortAndStatusFilters =
+      active === 'All' || active === 'Following';
 
-    if (active === 'All') {
+    if (supportsSortAndStatusFilters) {
       if (sort !== DEFAULT_SORT) {
         pills.push(`${filterLabels.sort}: ${sortLabel(sort)}`);
       }
       if (status !== DEFAULT_STATUS) {
         pills.push(`${filterLabels.status}: ${statusLabel(status)}`);
       }
+    }
+
+    if (active === 'All') {
       if (range !== DEFAULT_RANGE) {
         pills.push(`${filterLabels.timeRange}: ${rangeLabel(range)}`);
       }
@@ -2106,11 +2542,16 @@ export const FeedTabs = () => {
     t,
   ]);
 
-  const hasFilterPanel = active === 'All' || active === 'Battles';
+  const hasFilterPanel =
+    active === 'All' || active === 'Battles' || active === 'Following';
+  const supportsSortAndStatusFilters =
+    active === 'All' || active === 'Following';
   const hasBattleFilterApplied = active === 'Battles' && battleFilter !== 'all';
   const hasIntentFilterApplied = active === 'All' && intent !== DEFAULT_INTENT;
-  const hasStatusFilterApplied = active === 'All' && status !== DEFAULT_STATUS;
-  const hasSortFilterApplied = active === 'All' && sort !== DEFAULT_SORT;
+  const hasStatusFilterApplied =
+    supportsSortAndStatusFilters && status !== DEFAULT_STATUS;
+  const hasSortFilterApplied =
+    supportsSortAndStatusFilters && sort !== DEFAULT_SORT;
   const hasRangeFilterApplied = active === 'All' && range !== DEFAULT_RANGE;
   const activeFilterCount = activeFilterPills.length;
   const hasActiveFilters = activeFilterCount > 0;

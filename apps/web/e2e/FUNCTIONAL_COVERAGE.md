@@ -14,6 +14,8 @@ Automation backlog for manual gaps:
 - Feed:
   - tab navigation (`All`, `Hot Now`, `Live Drafts`, `Battles`, `For You`, `More`)
   - filter panel open/close, query sync, hydration from URL
+  - `Following` tab filter flow (`sort` + `status`) with quick reset chips (`All statuses`, `Recency`)
+  - `Following` draft cards include context badge (`From studios you follow`)
   - battle status filtering (`All battles`, `Pending`, `Changes requested`, `Merged`)
   - battle voting controls (`Vote left/right`, `Your vote` state)
   - observer rail controls (`Show all`, `Hide all`, panel toggles, persistence)
@@ -88,6 +90,7 @@ Automation backlog for manual gaps:
 - Commissions / Privacy / Demo / Auth / Home:
   - page-level primary interactions
   - slash shortcut behavior
+  - multi-tab session consistency on `/privacy` (logout in one tab invalidates protected actions in second tab)
   - auth success and error flows
   - auth/session edge coverage (unit):
     - refresh success path updates hydrated user
@@ -101,12 +104,38 @@ Automation backlog for manual gaps:
   - language switch and persistence
   - header search routing
   - mobile nav flows
-  - accessibility semantic smoke (`axe-core`) on core routes (`/feed`, `/search`, `/login`)
+  - keyboard focus-visible guardrails on critical controls (Tab navigation + visible focus indicator):
+    - `/feed`: `All` tab, feed search input, `Filters`
+    - `/search`: `Text search`, keyword input, `Reset filters`
+    - `/drafts/:id`: `Run demo flow`, `Predict merge`, `Follow chain`
+    - `/pull-requests/:id`: feedback textarea, `Merge`, `Request changes`, `Reject`
+  - locale critical-control layout guardrails (EN/RU):
+    - `/feed`: top tab/action controls remain in viewport after locale switch
+    - `/search`: mode/filter controls remain in viewport after locale switch
+    - `/drafts/:id`: primary observer action controls remain in viewport after locale switch
+    - `/pull-requests/:id`: decision action controls remain in viewport after locale switch
+    - global no-horizontal-overflow assertion per checked route
+  - accessibility semantic smoke (`axe-core`) on core + critical routes:
+    - `/feed`, `/search`, `/login`
+    - `/drafts/:id`, `/pull-requests/:id`
+    - `/privacy`, `/commissions`, `/studios/onboarding`
+    - `/legal/terms`, `/legal/privacy`, `/legal/refund`, `/legal/content`
+    - `/register`, `/demo`, `/commissions/:id`, `/studios/:id`, `/admin/ux`
   - visual baseline smoke (desktop + mobile routes)
   - cross-browser smoke (Firefox + WebKit) for feed/search/login keyboard and form controls
   - cross-browser sticky/fixed control checks:
     - feed header stays sticky under scroll
     - `Back to top` fixed control does not overlap observer right rail area
+    - non-feed header sticky behavior remains stable under scroll (`/commissions`)
+    - detail-page header sticky behavior remains stable under scroll (`/drafts/:id`, `/pull-requests/:id`, `/commissions/:id`)
+    - mobile non-feed header menu stays within viewport bounds and avoids horizontal overflow (`/privacy`)
+    - mobile detail-page header menu stays within viewport bounds and avoids horizontal overflow (`/drafts/:id`, `/pull-requests/:id`, `/commissions/:id`)
+  - reduced-motion non-feed suite:
+    - shared shell/home icon animations disable under `prefers-reduced-motion`
+    - covered routes: `/`, `/privacy`, `/commissions`, `/studios/onboarding`, `/legal/privacy`
+  - reduced-motion feed widget suite:
+    - card hover lift animation remains in normal mode and is disabled in reduced-motion
+    - covered widgets: draft card + battle card on `/feed`
   - realtime reconnect recovery:
     - E2E fault injection (`resyncRequired` -> manual resync -> reconnect/success clears stale warning state)
     - unit hook-level guard for sequence/resync merge logic

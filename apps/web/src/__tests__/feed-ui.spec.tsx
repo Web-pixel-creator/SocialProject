@@ -498,6 +498,64 @@ describe('feed UI', () => {
     expect(screen.getByText(/Signal 5.0/i)).toBeInTheDocument();
   });
 
+  test('uses following endpoint for following tab', () => {
+    expect(endpointForTab('Following')).toBe('/feeds/following');
+  });
+
+  test('following tab renders drafts from subscribed studios feed', async () => {
+    (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'follow01-1234',
+            type: 'draft',
+            glowUpScore: 8.4,
+          },
+        ],
+      });
+
+    await renderFeedTabs();
+
+    await openTab(/Following/i);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Draft follow01/i)).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/From studios you follow/i)).toBeInTheDocument();
+  });
+
+  test('applies sort and status filters on following tab', async () => {
+    searchParams = new URLSearchParams('tab=Following');
+    (apiClient.get as jest.Mock).mockResolvedValue({ data: [] });
+
+    await renderFeedTabs();
+    await openFilters();
+
+    expect(
+      screen.queryByRole('option', { name: /Pending PRs/i }),
+    ).not.toBeInTheDocument();
+
+    const sortSelect = screen.getByLabelText(/Sort/i);
+    const statusSelect = screen.getByLabelText(/Status/i);
+
+    await changeAndFlush(sortSelect, 'impact');
+    await changeAndFlush(statusSelect, 'release');
+
+    await waitFor(() => {
+      const lastCall = (apiClient.get as jest.Mock).mock.calls.at(-1);
+      expect(lastCall?.[0]).toBe('/feeds/following');
+      expect(lastCall?.[1]).toEqual(
+        expect.objectContaining({
+          params: expect.objectContaining({
+            sort: 'impact',
+            status: 'release',
+          }),
+        }),
+      );
+    });
+  });
+
   test('falls back to glowups endpoint for unknown tab', () => {
     expect(endpointForTab('Unknown')).toBe('/feeds/glowups');
   });
@@ -553,9 +611,26 @@ describe('feed UI', () => {
       },
     ];
 
-    (apiClient.get as jest.Mock)
-      .mockResolvedValueOnce({ data: [] })
-      .mockResolvedValueOnce({ data: battlePayload });
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url === '/feeds/battles') {
+        return Promise.resolve({ data: battlePayload });
+      }
+      if (url === '/pull-requests/pr-battle-predict/predictions') {
+        return Promise.resolve({
+          data: {
+            pullRequestId: 'pr-battle-predict',
+            market: {
+              totalStakePoints: 120,
+              mergeOdds: 0.6,
+              rejectOdds: 0.4,
+              mergePayoutMultiplier: 1.7,
+              rejectPayoutMultiplier: 2.5,
+            },
+          },
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
 
     await renderFeedTabs();
 
@@ -572,6 +647,69 @@ describe('feed UI', () => {
     expect(screen.getByRole('link', { name: /Open battle/i })).toHaveAttribute(
       'href',
       '/drafts/battle-1',
+    );
+  });
+
+  test('submits battle prediction directly from battles card', async () => {
+    const draftId = '11111111-2222-3333-4444-555555555555';
+    const battlePayload = [
+      {
+        id: draftId,
+        title: 'PR Battle: Prediction Flow',
+        leftLabel: 'Apex Studio',
+        rightLabel: 'Nova Forge',
+        leftVote: 61,
+        rightVote: 39,
+        glowUpScore: 13.2,
+        prCount: 7,
+        fixCount: 4,
+        decision: 'pending',
+      },
+    ];
+
+    (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: battlePayload });
+    (apiClient.post as jest.Mock).mockImplementation((url: string) => {
+      if (url === `/drafts/${draftId}/predict`) {
+        return Promise.resolve({
+          data: {
+            pullRequestId: 'pr-battle-predict',
+            predictedOutcome: 'merge',
+            stakePoints: 25,
+          },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    await renderFeedTabs();
+    await openTab(/Battles/i);
+    await waitFor(() =>
+      expect(
+        screen.getByText(/PR Battle: Prediction Flow/i),
+      ).toBeInTheDocument(),
+    );
+
+    const stakeInput = screen.getByLabelText(/^Stake$/i);
+    await changeAndFlush(stakeInput, '25');
+    await clickAndFlush(
+      screen.getByRole('button', { name: /^Predict merge$/i }),
+    );
+
+    await waitFor(() =>
+      expect(apiClient.post).toHaveBeenCalledWith(
+        `/drafts/${draftId}/predict`,
+        expect.objectContaining({
+          predictedOutcome: 'merge',
+          stakePoints: 25,
+        }),
+      ),
+    );
+    await waitFor(() =>
+      expect(apiClient.get).toHaveBeenCalledWith(
+        '/pull-requests/pr-battle-predict/predictions',
+      ),
     );
   });
 
@@ -1567,6 +1705,56 @@ describe('feed UI', () => {
       expect.objectContaining({
         eventType: 'feed_filter_change',
         range: '30d',
+      }),
+    );
+  });
+
+  test('shows quick status and sort reset actions for following filters', async () => {
+    searchParams = new URLSearchParams(
+      'tab=Following&sort=impact&status=release',
+    );
+    await renderFeedTabs();
+
+    const allStatusesButton = await screen.findByRole('button', {
+      name: /^All statuses$/i,
+    });
+    const recencyButton = await screen.findByRole('button', {
+      name: /^Recency$/i,
+    });
+
+    expect(
+      screen.queryByRole('button', { name: /^Last 30 days$/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /^All intents$/i }),
+    ).not.toBeInTheDocument();
+
+    (apiClient.post as jest.Mock).mockClear();
+    await clickAndFlush(allStatusesButton);
+
+    let lastCall = replaceMock.mock.calls.at(-1)?.[0] as string;
+    expect(lastCall).toContain('/feed?tab=Following');
+    expect(lastCall).toContain('sort=impact');
+    expect(lastCall).not.toContain('status=');
+
+    await clickAndFlush(recencyButton);
+
+    lastCall = replaceMock.mock.calls.at(-1)?.[0] as string;
+    expect(lastCall).toBe('/feed?tab=Following');
+    expect(lastCall).not.toContain('sort=');
+
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/telemetry/ux',
+      expect.objectContaining({
+        eventType: 'feed_filter_change',
+        status: 'all',
+      }),
+    );
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/telemetry/ux',
+      expect.objectContaining({
+        eventType: 'feed_filter_change',
+        sort: 'recent',
       }),
     );
   });

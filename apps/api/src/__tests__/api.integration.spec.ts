@@ -410,6 +410,294 @@ describe('API integration', () => {
     expect(engagementListAfterResetRes.body).toHaveLength(0);
   });
 
+  test('studio follow lifecycle returns follower counts and following feed', async () => {
+    const human = await registerHuman('studio-follow@example.com');
+    const token = human.tokens.accessToken;
+    const { agentId, apiKey } = await registerAgent('Follow Studio');
+
+    const draftRes = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/following-v1.png',
+        thumbnailUrl: 'https://example.com/following-v1-thumb.png',
+        metadata: { title: 'Following Feed Draft' },
+      });
+    expect(draftRes.status).toBe(200);
+    const draftId = draftRes.body.draft.id as string;
+
+    const followRes = await request(app)
+      .post(`/api/studios/${agentId}/follow`)
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(followRes.status).toBe(201);
+    expect(followRes.body.studioId).toBe(agentId);
+    expect(followRes.body.isFollowing).toBe(true);
+    expect(followRes.body.followerCount).toBe(1);
+
+    const listFollowingRes = await request(app)
+      .get('/api/me/following')
+      .set('Authorization', `Bearer ${token}`);
+    expect(listFollowingRes.status).toBe(200);
+    expect(listFollowingRes.body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: agentId,
+          isFollowing: true,
+          followerCount: 1,
+        }),
+      ]),
+    );
+
+    const studioProfileRes = await request(app)
+      .get(`/api/studios/${agentId}`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(studioProfileRes.status).toBe(200);
+    expect(studioProfileRes.body.follower_count).toBe(1);
+    expect(studioProfileRes.body.is_following).toBe(true);
+
+    const studiosRes = await request(app)
+      .get('/api/feeds/studios?limit=10')
+      .set('Authorization', `Bearer ${token}`);
+    expect(studiosRes.status).toBe(200);
+    expect(studiosRes.body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: agentId,
+          followerCount: 1,
+          isFollowing: true,
+        }),
+      ]),
+    );
+
+    const followingFeedRes = await request(app)
+      .get('/api/feeds/following?limit=10')
+      .set('Authorization', `Bearer ${token}`);
+    expect(followingFeedRes.status).toBe(200);
+    expect(followingFeedRes.body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: draftId,
+          type: 'draft',
+        }),
+      ]),
+    );
+
+    const unfollowRes = await request(app)
+      .delete(`/api/studios/${agentId}/follow`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(unfollowRes.status).toBe(200);
+    expect(unfollowRes.body.removed).toBe(true);
+    expect(unfollowRes.body.followerCount).toBe(0);
+
+    const followingAfterUnfollow = await request(app)
+      .get('/api/me/following')
+      .set('Authorization', `Bearer ${token}`);
+    expect(followingAfterUnfollow.status).toBe(200);
+    expect(followingAfterUnfollow.body).toHaveLength(0);
+  });
+
+  test('following feed validates sort/status and filters release items', async () => {
+    const human = await registerHuman('following-filters@example.com');
+    const token = human.tokens.accessToken;
+    const { agentId, apiKey } = await registerAgent('Following Filter Studio');
+
+    const draftRes = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/following-filter-draft.png',
+        thumbnailUrl: 'https://example.com/following-filter-draft-thumb.png',
+        metadata: { title: 'Following Filter Draft' },
+      });
+    expect(draftRes.status).toBe(200);
+    const draftId = draftRes.body.draft.id as string;
+
+    const releaseRes = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/following-filter-release.png',
+        thumbnailUrl: 'https://example.com/following-filter-release-thumb.png',
+        metadata: { title: 'Following Filter Release' },
+      });
+    expect(releaseRes.status).toBe(200);
+    const releaseId = releaseRes.body.draft.id as string;
+
+    await db.query(`UPDATE drafts SET status = 'release' WHERE id = $1`, [
+      releaseId,
+    ]);
+
+    const followRes = await request(app)
+      .post(`/api/studios/${agentId}/follow`)
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(followRes.status).toBe(201);
+
+    const followingReleaseRes = await request(app)
+      .get('/api/feeds/following?status=release&sort=impact&limit=20')
+      .set('Authorization', `Bearer ${token}`);
+    expect(followingReleaseRes.status).toBe(200);
+    expect(followingReleaseRes.body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: releaseId,
+          type: 'release',
+        }),
+      ]),
+    );
+    expect(followingReleaseRes.body).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: draftId,
+        }),
+      ]),
+    );
+
+    const invalidStatusRes = await request(app)
+      .get('/api/feeds/following?status=pr')
+      .set('Authorization', `Bearer ${token}`);
+    expect(invalidStatusRes.status).toBe(400);
+    expect(invalidStatusRes.body.error).toMatch(/Invalid status/i);
+
+    const invalidSortRes = await request(app)
+      .get('/api/feeds/following?sort=unknown')
+      .set('Authorization', `Bearer ${token}`);
+    expect(invalidSortRes.status).toBe(400);
+    expect(invalidSortRes.body.error).toMatch(/Invalid sort/i);
+  });
+
+  test('observer profile summary returns follow, watchlist, digest, and prediction stats', async () => {
+    const human = await registerHuman('observer-profile@example.com');
+    const token = human.tokens.accessToken;
+    const { agentId, apiKey } = await registerAgent('Profile Studio');
+
+    const draftRes = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/profile-v1.png',
+        thumbnailUrl: 'https://example.com/profile-v1-thumb.png',
+        metadata: { title: 'Observer Profile Draft' },
+      });
+    const draftId = draftRes.body.draft.id as string;
+
+    const followStudioRes = await request(app)
+      .post(`/api/studios/${agentId}/follow`)
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(followStudioRes.status).toBe(201);
+
+    const followDraftRes = await request(app)
+      .post(`/api/observers/watchlist/${draftId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(followDraftRes.status).toBe(201);
+
+    const prRes = await request(app)
+      .post(`/api/drafts/${draftId}/pull-requests`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        description: 'Profile PR',
+        severity: 'minor',
+        imageUrl: 'https://example.com/profile-v2.png',
+        thumbnailUrl: 'https://example.com/profile-v2-thumb.png',
+      });
+    expect(prRes.status).toBe(200);
+    const pullRequestId = prRes.body.id as string;
+
+    const predictionRes = await request(app)
+      .post(`/api/pull-requests/${pullRequestId}/predict`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ predictedOutcome: 'merge', stakePoints: 20 });
+    expect(predictionRes.status).toBe(200);
+
+    const decideRes = await request(app)
+      .post(`/api/pull-requests/${pullRequestId}/decide`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({ decision: 'merge' });
+    expect(decideRes.status).toBe(200);
+
+    const profileRes = await request(app)
+      .get('/api/observers/me/profile')
+      .set('Authorization', `Bearer ${token}`);
+    expect(profileRes.status).toBe(200);
+    expect(profileRes.body.observer.id).toBe(human.userId);
+    expect(profileRes.body.counts.followingStudios).toBeGreaterThanOrEqual(1);
+    expect(profileRes.body.counts.watchlistDrafts).toBeGreaterThanOrEqual(1);
+    expect(profileRes.body.counts.digestUnseen).toBeGreaterThanOrEqual(1);
+    expect(profileRes.body.predictions.correct).toBeGreaterThanOrEqual(1);
+    expect(profileRes.body.predictions.total).toBeGreaterThanOrEqual(1);
+    expect(profileRes.body.predictions.rate).toBeGreaterThan(0);
+    expect(profileRes.body.followingStudios).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: agentId,
+          studioName: 'Profile Studio',
+        }),
+      ]),
+    );
+    expect(profileRes.body.watchlistHighlights).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          draftId,
+          draftTitle: 'Observer Profile Draft',
+          studioId: agentId,
+          studioName: 'Profile Studio',
+        }),
+      ]),
+    );
+    expect(profileRes.body.recentPredictions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          pullRequestId,
+          draftId,
+          predictedOutcome: 'merge',
+          resolvedOutcome: 'merge',
+          isCorrect: true,
+          stakePoints: 20,
+        }),
+      ]),
+    );
+  });
+
+  test('studio follow endpoints validate studio id and auth', async () => {
+    const human = await registerHuman('studio-follow-validation@example.com');
+    const token = human.tokens.accessToken;
+
+    const missingAuth = await request(app)
+      .post('/api/studios/not-a-uuid/follow')
+      .send();
+    expect(missingAuth.status).toBe(401);
+    expect(missingAuth.body.error).toBe('AUTH_REQUIRED');
+
+    const invalidFollow = await request(app)
+      .post('/api/studios/not-a-uuid/follow')
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(invalidFollow.status).toBe(400);
+    expect(invalidFollow.body.error).toBe('STUDIO_ID_INVALID');
+
+    const invalidUnfollow = await request(app)
+      .delete('/api/studios/not-a-uuid/follow')
+      .set('Authorization', `Bearer ${token}`);
+    expect(invalidUnfollow.status).toBe(400);
+    expect(invalidUnfollow.body.error).toBe('STUDIO_ID_INVALID');
+
+    const notFoundFollow = await request(app)
+      .post('/api/studios/00000000-0000-0000-0000-000000000000/follow')
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(notFoundFollow.status).toBe(404);
+    expect(notFoundFollow.body.error).toBe('STUDIO_NOT_FOUND');
+  });
+
   test('observer endpoints validate uuid params', async () => {
     const human = await registerHuman('observer-uuid@example.com');
     const token = human.tokens.accessToken;
@@ -514,13 +802,24 @@ describe('API integration', () => {
     expect(prRes.status).toBe(200);
     const pullRequestId = prRes.body.id;
 
+    const draftPredictRes = await request(app)
+      .post(`/api/drafts/${draftId}/predict`)
+      .set('Authorization', `Bearer ${observerToken}`)
+      .send({ predictedOutcome: 'merge', stakePoints: 25 });
+    expect(draftPredictRes.status).toBe(200);
+    expect(draftPredictRes.body.pullRequestId).toBe(pullRequestId);
+    expect(draftPredictRes.body.predictedOutcome).toBe('merge');
+    expect(draftPredictRes.body.stakePoints).toBe(25);
+    expect(draftPredictRes.body.draftId).toBe(draftId);
+
     const predictRes = await request(app)
       .post(`/api/pull-requests/${pullRequestId}/predict`)
       .set('Authorization', `Bearer ${observerToken}`)
-      .send({ predictedOutcome: 'merge' });
+      .send({ predictedOutcome: 'merge', stakePoints: 30 });
     expect(predictRes.status).toBe(200);
     expect(predictRes.body.pullRequestId).toBe(pullRequestId);
     expect(predictRes.body.predictedOutcome).toBe('merge');
+    expect(predictRes.body.stakePoints).toBe(30);
 
     const preDecision = await request(app)
       .get(`/api/pull-requests/${pullRequestId}/predictions`)
@@ -528,7 +827,9 @@ describe('API integration', () => {
     expect(preDecision.status).toBe(200);
     expect(preDecision.body.pullRequestStatus).toBe('pending');
     expect(preDecision.body.consensus.total).toBeGreaterThanOrEqual(1);
+    expect(preDecision.body.market.totalStakePoints).toBeGreaterThanOrEqual(30);
     expect(preDecision.body.observerPrediction.predictedOutcome).toBe('merge');
+    expect(preDecision.body.observerPrediction.stakePoints).toBe(30);
     expect(preDecision.body.observerPrediction.resolvedOutcome).toBeNull();
 
     const decideRes = await request(app)
@@ -547,7 +848,34 @@ describe('API integration', () => {
     expect(postDecision.body.observerPrediction.predictedOutcome).toBe('merge');
     expect(postDecision.body.observerPrediction.resolvedOutcome).toBe('reject');
     expect(postDecision.body.observerPrediction.isCorrect).toBe(false);
+    expect(postDecision.body.observerPrediction.payoutPoints).toBe(0);
     expect(postDecision.body.accuracy.total).toBeGreaterThanOrEqual(1);
+  });
+
+  test('draft prediction endpoint validates pending pull request state', async () => {
+    const human = await registerHuman('observer-draft-predict@example.com');
+    const observerToken = human.tokens.accessToken;
+    const { agentId: authorId, apiKey: authorKey } = await registerAgent(
+      'Predict Pending Author',
+    );
+
+    const draftRes = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', authorId)
+      .set('x-api-key', authorKey)
+      .send({
+        imageUrl: 'https://example.com/predict-pending-v1.png',
+        thumbnailUrl: 'https://example.com/predict-pending-v1-thumb.png',
+      });
+    expect(draftRes.status).toBe(200);
+
+    const draftId = draftRes.body.draft.id;
+    const noPendingRes = await request(app)
+      .post(`/api/drafts/${draftId}/predict`)
+      .set('Authorization', `Bearer ${observerToken}`)
+      .send({ predictedOutcome: 'merge', stakePoints: 25 });
+    expect(noPendingRes.status).toBe(409);
+    expect(noPendingRes.body.error).toBe('PREDICTION_NO_PENDING_PR');
   });
 
   test('budget enforcement for fix requests', async () => {

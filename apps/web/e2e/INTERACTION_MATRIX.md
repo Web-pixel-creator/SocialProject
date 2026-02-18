@@ -15,6 +15,8 @@ Legend:
 | Control / Indicator | Expected behavior | Coverage | References |
 | --- | --- | --- | --- |
 | Primary tabs (`All`, `Hot Now`, `Live Drafts`, `Battles`, `For You`) | Switches feed mode, syncs URL | E2E | `apps/web/e2e/feed-navigation.spec.ts` |
+| `Following` tab filters + quick reset chips | `sort/status` sync to query, `All statuses`/`Recency` quick resets, no `range/intent` quick chips | E2E + Unit | `apps/web/e2e/feed-navigation.spec.ts`, `apps/web/src/__tests__/feed-ui.spec.tsx` |
+| `Following` card context badge | Draft cards on Following tab show `From studios you follow` label | Unit | `apps/web/src/__tests__/feed-ui.spec.tsx` |
 | `More` tabs menu | Opens/closes, keyboard + Escape/outside close, selects extra tabs | E2E | `apps/web/e2e/feed-navigation.spec.ts` |
 | `Filters` panel | Opens/closes, syncs query params, hydrates from URL | E2E | `apps/web/e2e/feed-navigation.spec.ts` |
 | Battle status chips | Filters battle list by status | E2E | `apps/web/e2e/feed-navigation.spec.ts` |
@@ -29,6 +31,8 @@ Legend:
 | Fallback rail status (`Fallback data`) | Fallback badge + default counters/widgets | E2E | `apps/web/e2e/feed-observer-rail.spec.ts` |
 | Observer rail reduced-motion | Live indicators disable motion under `prefers-reduced-motion` | E2E | `apps/web/e2e/feed-observer-rail.spec.ts` |
 | Back-to-top button | Appears after scroll, returns top, observer offset class, uses `auto` scroll under reduced-motion | E2E | `apps/web/e2e/feed-navigation.spec.ts` |
+| Keyboard focus-visible (critical feed controls) | Tab navigation shows visible focus on `All`, feed search input, `Filters` | E2E | `apps/web/e2e/focus-visible-critical-controls.spec.ts` |
+| Feed card hover lift motion | Draft/Battle cards lift on hover in normal mode and stay static in reduced-motion mode | E2E | `apps/web/e2e/reduced-motion-feed-widgets.spec.ts` |
 | Mobile feed menu and overlays | Mobile open/close + focus restore | E2E | `apps/web/e2e/feed-mobile.spec.ts` |
 
 ## Draft Detail (`/drafts/:id`)
@@ -43,6 +47,7 @@ Legend:
 | Digest `Mark seen` | Marks entry as seen, unseen counter updates | E2E | `apps/web/e2e/draft-detail.spec.ts` |
 | Digest `Mark seen` pending state | `aria-busy` + disabled while request in-flight | E2E | `apps/web/e2e/draft-detail.spec.ts` |
 | Follow + digest keyboard | Keyboard activation for follow and mark-seen | E2E | `apps/web/e2e/draft-detail.spec.ts` |
+| Keyboard focus-visible (critical draft controls) | Tab navigation shows visible focus on `Run demo flow`, `Predict merge`, `Follow chain` | E2E | `apps/web/e2e/focus-visible-critical-controls.spec.ts` |
 | Observer telemetry (`watchlist_*`, `digest_open`) | Emits expected telemetry events | E2E | `apps/web/e2e/draft-detail.spec.ts` |
 
 ## Pull Request Review (`/pull-requests/:id`)
@@ -55,6 +60,7 @@ Legend:
 | Decision error banner | Renders API failure message | E2E | `apps/web/e2e/pull-request-review.spec.ts` |
 | Review telemetry (`pr_review_open`, `pr_merge`, `pr_reject`) | Emits expected events; no event for `request_changes` | E2E | `apps/web/e2e/pull-request-review.spec.ts` |
 | Keyboard shortcuts (`M`/`R`) | Shortcut behavior + input safety | Unit | `apps/web/src/__tests__/pull-request-review.spec.tsx` |
+| Keyboard focus-visible (critical review controls) | Tab navigation shows visible focus on feedback textarea + `Merge`/`Request changes`/`Reject` | E2E | `apps/web/e2e/focus-visible-critical-controls.spec.ts` |
 
 ## Search (`/search`)
 
@@ -63,6 +69,7 @@ Legend:
 | Text / visual mode controls | Mode switch and relevant results | E2E | `apps/web/e2e/search.spec.ts` |
 | Keyword input and result state | Search rendering + follow-up error fallback | E2E | `apps/web/e2e/search.spec.ts` |
 | Slash shortcut behavior | Focus rules, including mobile path | E2E | `apps/web/e2e/search.spec.ts` |
+| Keyboard focus-visible (critical search controls) | Tab navigation shows visible focus on `Text search`, keyword input, `Reset filters` | E2E | `apps/web/e2e/focus-visible-critical-controls.spec.ts` |
 | Similar-entrypoint scroll behavior | `/search?from=similar` scroll uses `auto` when reduced-motion is enabled | E2E | `apps/web/e2e/search.spec.ts` |
 
 ## Privacy / Commissions / Studio / Onboarding / Auth / Legal / Home
@@ -82,12 +89,15 @@ Legend:
 | Control / Indicator | Expected behavior | Coverage | References |
 | --- | --- | --- | --- |
 | Header language toggle | Language switch + persistence | E2E | `apps/web/e2e/language.spec.ts` |
+| Locale layout regression (EN/RU critical controls) | Feed/Search/Draft/PR action controls stay within viewport after locale switch; no page-level horizontal overflow | E2E | `apps/web/e2e/locale-critical-controls.spec.ts` |
 | Header search routing | Non-feed routing + mobile menu behavior | E2E | `apps/web/e2e/header-search.spec.ts` |
 | Mobile navigation drawer | Open/close/focus restore/navigation | E2E | `apps/web/e2e/mobile-navigation.spec.ts` |
-| Cross-tab auth storage sync | Logout in another tab clears token/user in current tab | Unit | `apps/web/src/__tests__/auth-context.spec.tsx` |
-| Accessibility semantic smoke | Core-route semantic guardrail via `axe-core` (`/feed`, `/search`, `/login`) | E2E | `apps/web/e2e/accessibility-smoke.spec.ts` |
+| Cross-tab auth storage sync | Logout in one tab clears token/user and invalidates protected actions in another tab | E2E + Unit | `apps/web/e2e/session-multi-tab.spec.ts`, `apps/web/src/__tests__/auth-context.spec.tsx` |
+| Accessibility semantic smoke | Semantic guardrail via `axe-core` on `/feed`, `/search`, `/login`, `/register`, `/demo`, `/drafts/:id`, `/pull-requests/:id`, `/privacy`, `/commissions`, `/commissions/:id`, `/studios/onboarding`, `/studios/:id`, `/admin/ux`, and legal routes (`/legal/terms`, `/legal/privacy`, `/legal/refund`, `/legal/content`) | E2E | `apps/web/e2e/accessibility-smoke.spec.ts` |
 | Visual baseline | Desktop/mobile snapshot regressions | E2E | `apps/web/e2e/visual-smoke.spec.ts` |
-| Cross-browser sanity | Firefox/WebKit critical flows, sticky header persistence, and fixed safe-area non-overlap checks | E2E | `apps/web/e2e/browser-compat.spec.ts` |
+| Cross-browser sanity | Firefox/WebKit critical flows, sticky header persistence (feed + non-feed + detail routes), fixed safe-area non-overlap checks, and mobile menu viewport overflow guards (non-feed + detail routes) | E2E | `apps/web/e2e/browser-compat.spec.ts` |
+| Reduced-motion non-feed animations | Shared shell/home icon animations disable under `prefers-reduced-motion` on `/`, `/privacy`, `/commissions`, `/studios/onboarding`, `/legal/privacy` | E2E | `apps/web/e2e/reduced-motion-non-feed.spec.ts` |
+| Reduced-motion feed widget animations | Feed route card hover motion (`draft` + `battle`) respects `prefers-reduced-motion` | E2E | `apps/web/e2e/reduced-motion-feed-widgets.spec.ts` |
 | Realtime reconnect behavior | Resync warning appears and clears after manual resync + reconnect success | E2E + Unit | `apps/web/e2e/feed-observer-rail.spec.ts`, `apps/web/src/__tests__/realtime-hook.spec.tsx` |
 
 ## Remaining Manual Checks
