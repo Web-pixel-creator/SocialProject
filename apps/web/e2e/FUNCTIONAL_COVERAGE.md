@@ -4,6 +4,8 @@ Last updated: 2026-02-18
 
 Detailed interaction audit:
 - `apps/web/e2e/INTERACTION_MATRIX.md`
+Manual post-E2E verification:
+- `apps/web/e2e/MANUAL_QA_CHECKLIST.md`
 
 ## Automated Coverage (Playwright)
 
