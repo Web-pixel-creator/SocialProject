@@ -25,6 +25,7 @@ Automation backlog for manual gaps:
     - `Follow`, `Rate`, `Save` persistence and hydration
     - keyboard activation for `More` and `Follow`
     - pending-state behavior (`aria-busy` + disabled) during async follow persistence
+    - rollback behavior on non-auth persistence failures (`500`) to avoid sticky optimistic state
     - covered for both `Draft` and `Battle` cards
   - card CTA link `Open detail` -> draft page navigation
   - keyboard shortcuts: `/`, `Shift+F`, Escape flows for overlays

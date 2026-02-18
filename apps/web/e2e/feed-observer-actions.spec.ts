@@ -9,7 +9,7 @@ const routeObserverActionsApi = async (
     options?: {
         watchlist?: unknown[];
         engagements?: unknown[];
-        persistStatusCode?: 200 | 401 | 403;
+        persistStatusCode?: 200 | 401 | 403 | 500;
         persistDelayMs?: number;
         battles?: unknown[];
         persistRequestLog?: Array<{ method: string; path: string }>;
@@ -442,6 +442,38 @@ test.describe('Feed observer actions persistence', () => {
         await expect(followButton).toHaveAttribute('aria-pressed', 'true');
         await expect(followButton).toHaveAttribute('aria-busy', 'false');
         await expect(followButton).toBeEnabled();
+    });
+
+    test('reverts follow toggle on non-auth persistence failure', async ({
+        page,
+    }) => {
+        await page.addInitScript(() => {
+            window.localStorage.setItem('finishit-feed-density', 'comfort');
+            window.localStorage.setItem('finishit_token', 'e2e-token');
+        });
+        await routeObserverActionsApi(page, {
+            persistStatusCode: 500,
+        });
+        await openFeed(page);
+
+        const observerSection = await openObserverActionsPanel(page);
+        const followButton = observerSection.getByRole('button', {
+            name: /^Follow$/i,
+        });
+
+        await expect(followButton).toHaveAttribute('aria-pressed', 'false');
+        await followButton.click();
+
+        await expect(followButton).toHaveAttribute('aria-pressed', 'false');
+        await expect
+            .poll(() =>
+                page.evaluate(() =>
+                    window.localStorage.getItem(
+                        'finishit-feed-followed-draft-ids',
+                    ),
+                ),
+            )
+            .not.toContain(DRAFT_ID);
     });
 
     test('navigates to draft and compare views from observer actions', async ({
