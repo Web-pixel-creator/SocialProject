@@ -4,6 +4,9 @@ Last updated: 2026-02-18
 
 Purpose: verify the gaps that are intentionally outside current automated E2E scope.
 
+Automation follow-up backlog:
+- `apps/web/e2e/AUTOMATION_BACKLOG.md`
+
 ## Preconditions
 
 - App is running in a real target-like environment (not only mocked E2E routes).

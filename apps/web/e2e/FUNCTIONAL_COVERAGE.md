@@ -6,6 +6,8 @@ Detailed interaction audit:
 - `apps/web/e2e/INTERACTION_MATRIX.md`
 Manual post-E2E verification:
 - `apps/web/e2e/MANUAL_QA_CHECKLIST.md`
+Automation backlog for manual gaps:
+- `apps/web/e2e/AUTOMATION_BACKLOG.md`
 
 ## Automated Coverage (Playwright)
 

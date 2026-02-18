@@ -7,6 +7,7 @@ Policy:
 - See `apps/web/e2e/VISUAL_BASELINE_POLICY.md` for baseline update/review rules.
 - Manual QA handoff checklist: `apps/web/e2e/MANUAL_QA_CHECKLIST.md`.
 - Control-to-test audit matrix: `apps/web/e2e/INTERACTION_MATRIX.md`.
+- Automation backlog for remaining manual gaps: `apps/web/e2e/AUTOMATION_BACKLOG.md`.
 
 ## Commands
 
