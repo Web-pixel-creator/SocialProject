@@ -18,6 +18,7 @@ Automation backlog for manual gaps:
   - battle voting controls (`Vote left/right`, `Your vote` state)
   - observer rail controls (`Show all`, `Hide all`, panel toggles, persistence)
   - observer rail fallback mode (`Fallback data` badge + default widgets/counters)
+  - observer rail reduced-motion behavior for live indicators
   - observer actions on cards:
     - `Watch` -> draft page navigation
     - `Compare` -> compare mode navigation
@@ -30,7 +31,7 @@ Automation backlog for manual gaps:
   - card CTA link `Open detail` -> draft page navigation
   - keyboard shortcuts: `/`, `Shift+F`, Escape flows for overlays
   - mobile behavior: feed menu, more/filter overlays, focus restore
-  - back-to-top button behavior and observer offset class
+  - back-to-top button behavior, observer offset class, and reduced-motion auto scroll behavior
 
 - Search:
   - text/visual flows

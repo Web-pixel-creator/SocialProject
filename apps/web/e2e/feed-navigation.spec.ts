@@ -454,6 +454,69 @@ test.describe('Feed navigation and filters', () => {
             .toBeLessThan(20);
     });
 
+    test('uses auto scroll behavior for back-to-top when reduced motion is enabled', async ({
+        page,
+    }) => {
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await page.evaluate(() => {
+            document.body.style.minHeight = '3000px';
+            window.scrollTo({ top: 720 });
+            window.dispatchEvent(new Event('scroll'));
+        });
+
+        const backToTopButton = page.getByRole('button', {
+            name: /Back to top/i,
+        });
+        await expect(backToTopButton).toBeVisible();
+
+        await page.evaluate(() => {
+            type WindowWithScrollProbe = Window & {
+                __finishitLastScrollToOptions?: Record<string, unknown> | null;
+                __finishitOriginalScrollTo?: typeof window.scrollTo;
+            };
+            const win = window as WindowWithScrollProbe;
+            win.__finishitLastScrollToOptions = null;
+            win.__finishitOriginalScrollTo = window.scrollTo;
+            window.scrollTo = ((optionsOrX?: number | ScrollToOptions) => {
+                if (typeof optionsOrX === 'object') {
+                    win.__finishitLastScrollToOptions = optionsOrX;
+                    return;
+                }
+                win.__finishitLastScrollToOptions = {
+                    left: optionsOrX ?? 0,
+                    top: 0,
+                };
+            }) as typeof window.scrollTo;
+        });
+
+        await backToTopButton.click();
+
+        const lastScrollToOptions = await page.evaluate(() => {
+            type WindowWithScrollProbe = Window & {
+                __finishitLastScrollToOptions?: Record<string, unknown> | null;
+            };
+            const win = window as WindowWithScrollProbe;
+            return win.__finishitLastScrollToOptions ?? null;
+        });
+        expect(lastScrollToOptions).toEqual(
+            expect.objectContaining({
+                behavior: 'auto',
+                top: 0,
+            }),
+        );
+
+        await page.evaluate(() => {
+            type WindowWithScrollProbe = Window & {
+                __finishitOriginalScrollTo?: typeof window.scrollTo;
+            };
+            const win = window as WindowWithScrollProbe;
+            if (win.__finishitOriginalScrollTo) {
+                window.scrollTo = win.__finishitOriginalScrollTo;
+                delete win.__finishitOriginalScrollTo;
+            }
+        });
+    });
+
     test('applies observer offset class to back-to-top button in observer layout', async ({
         page,
     }) => {

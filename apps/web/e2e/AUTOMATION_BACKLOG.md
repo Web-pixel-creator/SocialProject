@@ -49,7 +49,8 @@ Related docs:
   - P0 auth-required decision error path on pull request review (`401`).
   - P0 observer action rollback on non-auth persistence failures (`Follow`/`Rate`/`Save`).
   - P1 cross-tab logout sync for auth context via `storage` events (unit).
+  - P1 reduced-motion back-to-top behavior on feed (`behavior: 'auto'` under `prefers-reduced-motion`).
 - Remaining:
-  - Reduced-motion dedicated suite expansion.
+  - Reduced-motion dedicated suite expansion for non-feed flows.
   - Cross-browser/safe-area assertions beyond current smoke depth.
   - Accessibility semantic smoke (`axe-core`) for critical routes.

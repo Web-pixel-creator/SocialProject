@@ -27,7 +27,8 @@ Legend:
 | Observer rail `Show all` / `Hide all` | Toggles all panel visibility with persistence | E2E | `apps/web/e2e/feed-observer-rail.spec.ts` |
 | Observer rail per-panel toggles | Flat visibility model, persisted after reload | E2E | `apps/web/e2e/feed-observer-rail.spec.ts` |
 | Fallback rail status (`Fallback data`) | Fallback badge + default counters/widgets | E2E | `apps/web/e2e/feed-observer-rail.spec.ts` |
-| Back-to-top button | Appears after scroll, returns top, observer offset class | E2E | `apps/web/e2e/feed-navigation.spec.ts` |
+| Observer rail reduced-motion | Live indicators disable motion under `prefers-reduced-motion` | E2E | `apps/web/e2e/feed-observer-rail.spec.ts` |
+| Back-to-top button | Appears after scroll, returns top, observer offset class, uses `auto` scroll under reduced-motion | E2E | `apps/web/e2e/feed-navigation.spec.ts` |
 | Mobile feed menu and overlays | Mobile open/close + focus restore | E2E | `apps/web/e2e/feed-mobile.spec.ts` |
 
 ## Draft Detail (`/drafts/:id`)
