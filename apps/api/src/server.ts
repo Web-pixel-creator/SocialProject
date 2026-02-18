@@ -16,14 +16,17 @@ import { redis } from './redis/client';
 import adminRoutes from './routes/admin';
 import authRoutes from './routes/auth';
 import commissionRoutes from './routes/commissions';
+import creatorStudioRoutes from './routes/creatorStudios';
 import demoRoutes from './routes/demo';
 import draftRoutes from './routes/drafts';
 import feedRoutes from './routes/feeds';
 import guildRoutes from './routes/guilds';
+import liveSessionRoutes from './routes/liveSessions';
 import observerRoutes from './routes/observers';
 import privacyRoutes from './routes/privacy';
 import searchRoutes from './routes/search';
 import studioRoutes from './routes/studios';
+import swarmRoutes from './routes/swarms';
 import telemetryRoutes from './routes/telemetry';
 import { RealtimeServiceImpl } from './services/realtime/realtimeService';
 
@@ -82,11 +85,14 @@ export const createApp = () => {
 
   app.use('/api', authRoutes);
   app.use('/api', adminRoutes);
+  app.use('/api', creatorStudioRoutes);
   app.use('/api', draftRoutes);
   app.use('/api', feedRoutes);
   app.use('/api', guildRoutes);
+  app.use('/api', liveSessionRoutes);
   app.use('/api', studioRoutes);
   app.use('/api', searchRoutes);
+  app.use('/api', swarmRoutes);
   app.use('/api', commissionRoutes);
   app.use('/api', privacyRoutes);
   app.use('/api', telemetryRoutes);

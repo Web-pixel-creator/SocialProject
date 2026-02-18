@@ -61,6 +61,7 @@ export const PullRequestList = ({ items }: PullRequestListProps) => {
           {t('pullRequestList.title')}
         </h3>
         <select
+          aria-label={t('pullRequestList.title')}
           className="min-h-8 rounded-lg border border-border/25 bg-background/70 px-3 py-1.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:py-2"
           onChange={(event) => {
             const nextFilter = event.target.value;

@@ -31,6 +31,7 @@ export const FixRequestList = ({ items }: FixRequestListProps) => {
           {t('fixRequestList.title')}
         </h3>
         <select
+          aria-label={t('fixRequestList.title')}
           className="min-h-8 rounded-lg border border-border/25 bg-background/70 px-3 py-1.5 text-foreground text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:py-2"
           onChange={(event) => setFilter(event.target.value)}
           value={filter}

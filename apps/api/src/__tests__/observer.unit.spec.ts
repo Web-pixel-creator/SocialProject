@@ -151,6 +151,51 @@ describe('observer draft arc service', () => {
     }
   });
 
+  test('creates digest entries when observer follows the draft studio', async () => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const user = await client.query(
+        `INSERT INTO users (
+           email, password_hash, terms_version, terms_accepted_at, privacy_version, privacy_accepted_at
+         ) VALUES ('observer-studio-follow@example.com', 'hash', 'v1', NOW(), 'v1', NOW()) RETURNING id`,
+      );
+      const agent = await client.query(
+        "INSERT INTO agents (studio_name, personality, api_key_hash) VALUES ('Arc Studio Follow', 'tester', 'hash_arc_studio_follow') RETURNING id",
+      );
+      const draft = await client.query(
+        "INSERT INTO drafts (author_id, status) VALUES ($1, 'draft') RETURNING id",
+        [agent.rows[0].id],
+      );
+
+      await client.query(
+        `INSERT INTO observer_studio_follows (observer_id, studio_id)
+         VALUES ($1, $2)`,
+        [user.rows[0].id, agent.rows[0].id],
+      );
+
+      await service.recordDraftEvent(draft.rows[0].id, 'manual', client);
+
+      const digestRows = await client.query(
+        `SELECT id
+         FROM observer_digest_entries
+         WHERE observer_id = $1
+           AND draft_id = $2`,
+        [user.rows[0].id, draft.rows[0].id],
+      );
+
+      expect(digestRows.rows).toHaveLength(1);
+
+      await client.query('ROLLBACK');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  });
+
   test('submits prediction and returns summary consensus', async () => {
     const fakeClient = {
       query: jest
@@ -159,12 +204,20 @@ describe('observer draft arc service', () => {
         .mockResolvedValueOnce({ rows: [{ status: 'pending' }] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({
+          rows: [{ resolved_count: 20, correct_count: 12 }],
+        })
+        .mockResolvedValueOnce({
+          rows: [{ submission_count: 3, stake_points: 90 }],
+        })
+        .mockResolvedValueOnce({
           rows: [
             {
               id: 'pred-1',
               observer_id: 'observer-1',
               pull_request_id: 'pr-1',
               predicted_outcome: 'merge',
+              stake_points: 25,
+              payout_points: 0,
               resolved_outcome: null,
               is_correct: null,
               created_at: new Date().toISOString(),
@@ -174,7 +227,16 @@ describe('observer draft arc service', () => {
         })
         .mockResolvedValueOnce({ rows: [{ id: 'observer-1' }] })
         .mockResolvedValueOnce({ rows: [{ id: 'pr-1', status: 'pending' }] })
-        .mockResolvedValueOnce({ rows: [{ merge_count: 2, reject_count: 1 }] })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              merge_count: 2,
+              reject_count: 1,
+              merge_stake_points: 45,
+              reject_stake_points: 20,
+            },
+          ],
+        })
         .mockResolvedValueOnce({
           rows: [
             {
@@ -182,6 +244,8 @@ describe('observer draft arc service', () => {
               observer_id: 'observer-1',
               pull_request_id: 'pr-1',
               predicted_outcome: 'merge',
+              stake_points: 25,
+              payout_points: 0,
               resolved_outcome: null,
               is_correct: null,
               created_at: new Date().toISOString(),
@@ -191,6 +255,15 @@ describe('observer draft arc service', () => {
         })
         .mockResolvedValueOnce({
           rows: [{ correct_count: 3, total_count: 5 }],
+        })
+        .mockResolvedValueOnce({
+          rows: [{ observer_net_points: 18 }],
+        })
+        .mockResolvedValueOnce({
+          rows: [{ resolved_count: 20, correct_count: 12 }],
+        })
+        .mockResolvedValueOnce({
+          rows: [{ submission_count: 4, stake_points: 140 }],
         }),
     } as any;
 
@@ -199,8 +272,10 @@ describe('observer draft arc service', () => {
       'pr-1',
       'merge',
       fakeClient,
+      25,
     );
     expect(prediction.predictedOutcome).toBe('merge');
+    expect(prediction.stakePoints).toBe(25);
 
     const summary = await service.getPredictionSummary(
       'observer-1',
@@ -210,6 +285,23 @@ describe('observer draft arc service', () => {
     expect(summary.pullRequestStatus).toBe('pending');
     expect(summary.consensus).toEqual({ merge: 2, reject: 1, total: 3 });
     expect(summary.observerPrediction?.predictedOutcome).toBe('merge');
+    expect(summary.market).toEqual({
+      minStakePoints: 5,
+      maxStakePoints: 220,
+      mergeStakePoints: 45,
+      rejectStakePoints: 20,
+      totalStakePoints: 65,
+      mergeOdds: 0.69,
+      rejectOdds: 0.31,
+      mergePayoutMultiplier: 1.44,
+      rejectPayoutMultiplier: 3.25,
+      observerNetPoints: 18,
+      trustTier: 'regular',
+      dailyStakeCapPoints: 1000,
+      dailyStakeUsedPoints: 140,
+      dailySubmissionCap: 30,
+      dailySubmissionsUsed: 4,
+    });
     expect(summary.accuracy).toEqual({ correct: 3, total: 5, rate: 0.6 });
   });
 
@@ -228,6 +320,69 @@ describe('observer draft arc service', () => {
       service.submitPrediction('observer-1', 'pr-1', 'reject', fakeClient),
     ).rejects.toMatchObject({
       code: 'PREDICTION_RESOLVED',
+    });
+  });
+
+  test('enforces trust-tier stake limits for new predictors', async () => {
+    const fakeClient = {
+      query: jest
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ id: 'observer-1' }] })
+        .mockResolvedValueOnce({ rows: [{ status: 'pending' }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: [{ resolved_count: 0, correct_count: 0 }],
+        }),
+    } as any;
+
+    await expect(
+      service.submitPrediction('observer-1', 'pr-1', 'merge', fakeClient, 200),
+    ).rejects.toMatchObject({
+      code: 'PREDICTION_STAKE_LIMIT_EXCEEDED',
+    });
+  });
+
+  test('enforces daily prediction submission cap', async () => {
+    const fakeClient = {
+      query: jest
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ id: 'observer-1' }] })
+        .mockResolvedValueOnce({ rows: [{ status: 'pending' }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: [{ resolved_count: 120, correct_count: 84 }],
+        })
+        .mockResolvedValueOnce({
+          rows: [{ submission_count: 30, stake_points: 600 }],
+        }),
+    } as any;
+
+    await expect(
+      service.submitPrediction('observer-1', 'pr-1', 'merge', fakeClient, 40),
+    ).rejects.toMatchObject({
+      code: 'PREDICTION_DAILY_SUBMISSION_CAP_REACHED',
+    });
+  });
+
+  test('enforces daily stake cap', async () => {
+    const fakeClient = {
+      query: jest
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ id: 'observer-1' }] })
+        .mockResolvedValueOnce({ rows: [{ status: 'pending' }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: [{ resolved_count: 120, correct_count: 84 }],
+        })
+        .mockResolvedValueOnce({
+          rows: [{ submission_count: 5, stake_points: 990 }],
+        }),
+    } as any;
+
+    await expect(
+      service.submitPrediction('observer-1', 'pr-1', 'merge', fakeClient, 20),
+    ).rejects.toMatchObject({
+      code: 'PREDICTION_DAILY_STAKE_CAP_REACHED',
     });
   });
 });

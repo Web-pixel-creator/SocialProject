@@ -1,6 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
+import { useCallback, useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { apiClient } from '../../../lib/api';
@@ -14,6 +15,10 @@ interface StudioProfile {
   personality?: string;
   impact?: number;
   signal?: number;
+  follower_count?: number;
+  followerCount?: number;
+  is_following?: boolean;
+  isFollowing?: boolean;
 }
 
 interface ImpactLedgerEntry {
@@ -135,6 +140,9 @@ export default function StudioProfilePage() {
   const studio = stableStudio;
   const metrics = stableMetrics ?? null;
   const ledger = stableLedger;
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followerCount, setFollowerCount] = useState(0);
+  const [isFollowPending, setIsFollowPending] = useState(false);
 
   const studioName =
     studio?.studioName ??
@@ -144,6 +152,43 @@ export default function StudioProfilePage() {
       : t('studioDetail.header.defaultStudioName'));
   const impact = metrics?.impact ?? studio?.impact ?? 0;
   const signal = metrics?.signal ?? studio?.signal ?? 0;
+  const profileFollowerCount = Number(
+    studio?.followerCount ?? studio?.follower_count ?? 0,
+  );
+  const profileIsFollowing = Boolean(
+    studio?.isFollowing ?? studio?.is_following,
+  );
+
+  useEffect(() => {
+    setFollowerCount(profileFollowerCount);
+    setIsFollowing(profileIsFollowing);
+  }, [profileFollowerCount, profileIsFollowing]);
+
+  const toggleStudioFollow = useCallback(async () => {
+    if (!studioId || isFollowPending) {
+      return;
+    }
+
+    const nextFollowing = !isFollowing;
+    const delta = nextFollowing ? 1 : -1;
+    setIsFollowPending(true);
+    setIsFollowing(nextFollowing);
+    setFollowerCount((current) => Math.max(0, current + delta));
+
+    try {
+      if (nextFollowing) {
+        await apiClient.post(`/studios/${studioId}/follow`);
+      } else {
+        await apiClient.delete(`/studios/${studioId}/follow`);
+      }
+    } catch (_error) {
+      setIsFollowing(isFollowing);
+      setFollowerCount((current) => Math.max(0, current - delta));
+    } finally {
+      setIsFollowPending(false);
+    }
+  }, [isFollowPending, isFollowing, studioId]);
+
   const topGlowUps = [
     t('studioDetail.topGlowUps.editorialLanding'),
     t('studioDetail.topGlowUps.neonPoster'),
@@ -159,9 +204,30 @@ export default function StudioProfilePage() {
     <main className="grid gap-4 sm:gap-6">
       <div className="card p-4 sm:p-6">
         <p className="pill">{t('studioDetail.header.pill')}</p>
-        <h2 className="mt-3 font-semibold text-foreground text-xl sm:text-2xl">
+        <h1 className="mt-3 font-semibold text-foreground text-xl sm:text-2xl">
           {studioName}
-        </h2>
+        </h1>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <button
+            aria-busy={isFollowPending}
+            aria-pressed={isFollowing}
+            className={`rounded-full border px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+              isFollowing
+                ? 'border-primary/35 bg-primary/10 text-primary'
+                : 'border-border/35 bg-background/65 text-muted-foreground hover:bg-background/82 hover:text-foreground'
+            }`}
+            disabled={missingStudioId || isFollowPending}
+            onClick={toggleStudioFollow}
+            type="button"
+          >
+            {isFollowing
+              ? t('draftDetail.follow.following')
+              : t('observerAction.follow')}
+          </button>
+          <span className="rounded-full border border-border/25 bg-background/60 px-2.5 py-1 font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
+            {t('studioCard.followersLabel')}: {followerCount}
+          </span>
+        </div>
         <p className="text-muted-foreground text-sm">
           {t('studioDetail.metrics.impact')} {impact.toFixed(1)} |{' '}
           {t('studioDetail.metrics.signal')} {signal.toFixed(1)}
@@ -184,9 +250,9 @@ export default function StudioProfilePage() {
       ) : (
         <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
           <div className="card p-4 sm:p-6">
-            <h3 className="font-semibold text-foreground text-sm">
+            <h2 className="font-semibold text-foreground text-sm">
               {t('studioDetail.sections.topGlowUps')}
-            </h3>
+            </h2>
             <ul className="mt-3 grid gap-2.5 text-muted-foreground text-sm sm:mt-4 sm:gap-3">
               {topGlowUps.map((item) => (
                 <li
@@ -199,9 +265,9 @@ export default function StudioProfilePage() {
             </ul>
           </div>
           <div className="card p-4 sm:p-6">
-            <h3 className="font-semibold text-foreground text-sm">
+            <h2 className="font-semibold text-foreground text-sm">
               {t('studioDetail.sections.impactLedger')}
-            </h3>
+            </h2>
             {ledger.length === 0 ? (
               <p className="mt-3 text-muted-foreground text-sm sm:mt-4">
                 {t('studioDetail.states.noRecentContributions')}
@@ -230,9 +296,9 @@ export default function StudioProfilePage() {
             )}
           </div>
           <div className="card p-4 sm:p-6">
-            <h3 className="font-semibold text-foreground text-sm">
+            <h2 className="font-semibold text-foreground text-sm">
               {t('studioDetail.sections.recentContributions')}
-            </h3>
+            </h2>
             <ul className="mt-3 grid gap-2.5 text-muted-foreground text-sm sm:mt-4 sm:gap-3">
               {recentContributions.map((item) => (
                 <li

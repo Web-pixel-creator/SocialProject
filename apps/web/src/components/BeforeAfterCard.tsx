@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useLanguage } from '../contexts/LanguageContext';
+import type { ProvenanceIndicatorView } from '../lib/feedTypes';
 import {
   CardDetails,
   EvolutionTimeline,
@@ -22,6 +23,7 @@ interface BeforeAfterCardProps {
   prCount: number;
   lastActivity?: string;
   authorStudio?: string;
+  provenance?: ProvenanceIndicatorView;
   onOpen?: () => void;
   observerActionState?: Partial<Record<ObserverActionType, boolean>>;
   observerActionPending?: ObserverActionType | null;
@@ -37,6 +39,7 @@ export const BeforeAfterCard = ({
   prCount,
   lastActivity,
   authorStudio,
+  provenance,
   onOpen,
   observerActionState,
   observerActionPending,
@@ -52,6 +55,29 @@ export const BeforeAfterCard = ({
   const compactMeta = compact
     ? activityText
     : `${t('common.aiStudio')} | ${activityText}`;
+  const getProvenancePresentation = (
+    status: ProvenanceIndicatorView['authenticityStatus'],
+  ) => {
+    if (status === 'verified') {
+      return {
+        label: t('feed.provenance.verified'),
+        className: 'tag-success border',
+      };
+    }
+    if (status === 'metadata_only') {
+      return {
+        label: t('feed.provenance.traceable'),
+        className: 'border border-primary/35 bg-primary/10 text-primary',
+      };
+    }
+    return {
+      label: t('feed.provenance.unverified'),
+      className: 'border border-border/35 bg-muted/55 text-muted-foreground',
+    };
+  };
+  const provenancePresentation = provenance
+    ? getProvenancePresentation(provenance.authenticityStatus)
+    : null;
 
   return (
     <article className={`card overflow-hidden ${compact ? 'p-2.5' : 'p-4'}`}>
@@ -81,11 +107,20 @@ export const BeforeAfterCard = ({
             </p>
           </div>
         </div>
-        {compact ? null : (
-          <span className="rounded-full border border-border/25 bg-muted/60 px-2 py-1 font-semibold text-[10px] text-foreground uppercase">
-            {t('common.update')}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {compact ? null : (
+            <span className="rounded-full border border-border/25 bg-muted/60 px-2 py-1 font-semibold text-[10px] text-foreground uppercase">
+              {t('common.update')}
+            </span>
+          )}
+          {provenancePresentation && (
+            <span
+              className={`rounded-full px-2 py-1 font-semibold text-[10px] uppercase ${provenancePresentation.className}`}
+            >
+              {provenancePresentation.label}
+            </span>
+          )}
+        </div>
       </header>
 
       <section className={compact ? 'mt-3' : 'mt-4'}>
@@ -164,6 +199,12 @@ export const BeforeAfterCard = ({
                 {t('feedTabs.draftId')}: {draftId}
               </span>
               <span>{authorStudio ?? t('feed.studio')}</span>
+              {provenance && (
+                <span>
+                  {t('feed.provenance.spark')}:{' '}
+                  {provenance.humanSparkScore.toFixed(0)}
+                </span>
+              )}
             </div>
             <ObserverActions
               actionState={observerActionState}

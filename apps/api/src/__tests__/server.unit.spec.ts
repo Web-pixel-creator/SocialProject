@@ -74,6 +74,9 @@ describe('server setup', () => {
     jest.doMock('../routes/feeds', () => ({}));
     jest.doMock('../routes/guilds', () => ({}));
     jest.doMock('../routes/studios', () => ({}));
+    jest.doMock('../routes/creatorStudios', () => ({}));
+    jest.doMock('../routes/swarms', () => ({}));
+    jest.doMock('../routes/liveSessions', () => ({}));
     jest.doMock('../routes/search', () => ({}));
     jest.doMock('../routes/commissions', () => ({}));
     jest.doMock('../routes/privacy', () => ({}));
@@ -118,6 +121,9 @@ describe('server setup', () => {
       redis: { isOpen: false, connect },
     }));
     jest.doMock('../routes/observers', () => ({}));
+    jest.doMock('../routes/creatorStudios', () => ({}));
+    jest.doMock('../routes/swarms', () => ({}));
+    jest.doMock('../routes/liveSessions', () => ({}));
 
     const { initInfra } = require('../server') as typeof import('../server');
     await initInfra();
@@ -151,6 +157,9 @@ describe('server setup', () => {
     jest.doMock('../routes/feeds', () => ({}));
     jest.doMock('../routes/guilds', () => ({}));
     jest.doMock('../routes/studios', () => ({}));
+    jest.doMock('../routes/creatorStudios', () => ({}));
+    jest.doMock('../routes/swarms', () => ({}));
+    jest.doMock('../routes/liveSessions', () => ({}));
     jest.doMock('../routes/search', () => ({}));
     jest.doMock('../routes/commissions', () => ({}));
     jest.doMock('../routes/privacy', () => ({}));
@@ -220,6 +229,9 @@ describe('server setup', () => {
     jest.doMock('../routes/feeds', () => ({}));
     jest.doMock('../routes/guilds', () => ({}));
     jest.doMock('../routes/studios', () => ({}));
+    jest.doMock('../routes/creatorStudios', () => ({}));
+    jest.doMock('../routes/swarms', () => ({}));
+    jest.doMock('../routes/liveSessions', () => ({}));
     jest.doMock('../routes/search', () => ({}));
     jest.doMock('../routes/commissions', () => ({}));
     jest.doMock('../routes/privacy', () => ({}));

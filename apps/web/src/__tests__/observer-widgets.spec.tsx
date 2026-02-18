@@ -90,7 +90,7 @@ describe('observer widgets', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: /Predict merge/i }));
-    expect(onPredict).toHaveBeenCalledWith('merge');
+    expect(onPredict).toHaveBeenCalledWith('merge', 10);
     expect(screen.getByText(/Your accuracy: 4\/8/i)).toBeInTheDocument();
   });
 
@@ -114,7 +114,7 @@ describe('observer widgets', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: /Predict reject/i }));
-    expect(onPredict).toHaveBeenCalledWith('reject');
+    expect(onPredict).toHaveBeenCalledWith('reject', 10);
     expect(screen.getByText(/Your prediction: reject/i)).toBeInTheDocument();
     expect(screen.getByText(/resolved reject/i)).toBeInTheDocument();
   });

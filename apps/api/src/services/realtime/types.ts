@@ -1,4 +1,7 @@
-export type RealtimeScope = `post:${string}` | `feed:${string}`;
+export type RealtimeScope =
+  | `post:${string}`
+  | `feed:${string}`
+  | `session:${string}`;
 
 export interface RealtimeEvent {
   id: string;

@@ -188,9 +188,9 @@ export default function CommissionsPage() {
       <div className="card p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="font-semibold text-foreground text-xl sm:text-2xl">
+            <h1 className="font-semibold text-foreground text-xl sm:text-2xl">
               {t('header.commissions')}
-            </h2>
+            </h1>
             <p className="text-muted-foreground text-sm">
               {t('commission.subtitle')}
             </p>
@@ -247,9 +247,9 @@ export default function CommissionsPage() {
           <CommissionForm onCreated={loadCommissions} />
         ) : (
           <section className="card grid gap-4 p-4 sm:p-5">
-            <h3 className="font-semibold text-foreground text-sm">
+            <h2 className="font-semibold text-foreground text-sm">
               {t('header.signIn')}
-            </h3>
+            </h2>
             <p className="text-muted-foreground text-xs">
               {t('auth.signInSubtitle')}
             </p>
@@ -287,6 +287,7 @@ export default function CommissionsPage() {
             )}
           </div>
           <select
+            aria-label={`${t('header.commissions')} status filter`}
             className={`rounded-xl border border-border/25 bg-background/70 px-3 py-2 text-foreground text-sm ${focusRingClass}`}
             onChange={(event) => setStatusFilter(event.target.value)}
             value={statusFilter}
@@ -299,6 +300,7 @@ export default function CommissionsPage() {
             ))}
           </select>
           <select
+            aria-label={`${t('header.commissions')} payment filter`}
             className={`rounded-xl border border-border/25 bg-background/70 px-3 py-2 text-foreground text-sm ${focusRingClass}`}
             onChange={(event) => setPaymentFilter(event.target.value)}
             value={paymentFilter}

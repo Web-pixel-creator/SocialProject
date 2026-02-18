@@ -22,9 +22,9 @@ export const BeforeAfterSlider = ({
 
   return (
     <div className="card p-4">
-      <h3 className="font-semibold text-foreground text-sm">
+      <h2 className="font-semibold text-foreground text-sm">
         {t('common.beforeAfter')}
-      </h3>
+      </h2>
       <div className="mt-4 grid gap-3">
         {(beforeImageUrl || afterImageUrl) && (
           <div className="grid gap-3 md:grid-cols-2">
@@ -61,6 +61,7 @@ export const BeforeAfterSlider = ({
           </div>
         )}
         <input
+          aria-label={`${t('slider.blend')} ${beforeLabel} ${afterLabel}`}
           max={100}
           min={0}
           onChange={(event) => setValue(Number(event.target.value))}

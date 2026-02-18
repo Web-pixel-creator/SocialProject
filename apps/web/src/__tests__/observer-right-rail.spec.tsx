@@ -142,6 +142,65 @@ describe('ObserverRightRail', () => {
     ).toBeGreaterThan(0);
   });
 
+  test('renders live pressure meter with derived values', async () => {
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url === '/feeds/battles') {
+        return Promise.resolve({
+          data: [{ id: 'battle-1', glowUpScore: 8.4 }],
+        });
+      }
+      if (url === '/feeds/glowups') {
+        return Promise.resolve({
+          data: [{ id: 'glow-1', glowUpScore: 12.5 }],
+        });
+      }
+      if (url === '/feeds/studios') {
+        return Promise.resolve({
+          data: [{ id: 'studio-1', studioName: 'Live Studio', impact: 91 }],
+        });
+      }
+      if (url === '/feeds/live-drafts') {
+        return Promise.resolve({
+          data: [{ id: 'draft-1' }, { id: 'draft-2' }, { id: 'draft-3' }],
+        });
+      }
+      if (url === '/feeds/hot-now') {
+        return Promise.resolve({
+          data: [{ id: 'hot-1', prPendingCount: 2 }],
+        });
+      }
+      if (url === '/feeds/changes') {
+        return Promise.resolve({
+          data: [
+            {
+              id: 'change-1',
+              draftTitle: 'Pipeline Draft',
+              description: 'Merged',
+              occurredAt: new Date().toISOString(),
+            },
+          ],
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    renderObserverRail();
+
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalled());
+    const meterTitle = screen.getByText(/Live pressure meter/i);
+    const meterPanel = meterTitle.closest('div');
+
+    expect(meterPanel).not.toBeNull();
+    const panel = meterPanel as HTMLElement;
+
+    expect(within(panel).getByText(/PR pressure/i)).toBeInTheDocument();
+    expect(within(panel).getByText(/Audience/i)).toBeInTheDocument();
+    expect(within(panel).getByText(/Fuel/i)).toBeInTheDocument();
+    expect(within(panel).getByText('67%')).toBeInTheDocument();
+    expect(within(panel).getByText('18%')).toBeInTheDocument();
+    expect(within(panel).getByText('63%')).toBeInTheDocument();
+  });
+
   test('keeps available API data when one feed endpoint fails', async () => {
     (apiClient.get as jest.Mock).mockImplementation((url: string) => {
       if (url === '/feeds/battles') {
@@ -179,6 +238,18 @@ describe('ObserverRightRail', () => {
           ],
         });
       }
+      if (url === '/me/following') {
+        return Promise.resolve({
+          data: [
+            {
+              id: 'studio-followed-1',
+              studioName: 'Followed Studio',
+              impact: 88,
+              signal: 81,
+            },
+          ],
+        });
+      }
       return Promise.resolve({ data: [] });
     });
 
@@ -191,12 +262,23 @@ describe('ObserverRightRail', () => {
     expect(
       screen.getAllByText('Pipeline Draft: Merged').length,
     ).toBeGreaterThan(0);
+    expect(screen.getAllByText('Followed Studio').length).toBeGreaterThan(0);
 
     const liveDraftTile = screen.getByText(/Live drafts/i).closest('div');
     expect(liveDraftTile).toHaveTextContent('2');
 
     const pendingTile = screen.getByText(/PR pending/i).closest('div');
     expect(pendingTile).toHaveTextContent('3');
+  });
+
+  test('shows empty following studios state when no subscriptions exist', async () => {
+    renderObserverRail();
+
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalled());
+    expect(screen.getAllByText(/Following studios/i).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(/Follow studios to pin them here/i).length,
+    ).toBeGreaterThan(0);
   });
 
   test('keeps previous rail data when all feed endpoints fail on refresh', async () => {

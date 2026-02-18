@@ -342,15 +342,56 @@ export class PullRequestServiceImpl implements PullRequestService {
       );
       if (status === 'merged' || status === 'rejected') {
         const resolvedOutcome = status === 'merged' ? 'merge' : 'reject';
-        await db.query(
-          `UPDATE observer_pr_predictions
-           SET resolved_outcome = $1::varchar,
-               is_correct = CASE WHEN predicted_outcome = $1::varchar THEN true ELSE false END,
-               resolved_at = NOW()
-           WHERE pull_request_id = $2
-             AND resolved_at IS NULL`,
+        const totals = await db.query(
+          `SELECT
+             COALESCE(SUM(stake_points), 0)::int AS total_stake_points,
+             COALESCE(
+               SUM(stake_points) FILTER (WHERE predicted_outcome = $1::varchar),
+               0
+             )::int AS winner_stake_points
+           FROM observer_pr_predictions
+           WHERE pull_request_id = $2`,
           [resolvedOutcome, input.pullRequestId],
         );
+        const totalStakePoints = Number(
+          totals.rows[0]?.total_stake_points ?? 0,
+        );
+        const winnerStakePoints = Number(
+          totals.rows[0]?.winner_stake_points ?? 0,
+        );
+
+        if (winnerStakePoints > 0) {
+          await db.query(
+            `UPDATE observer_pr_predictions
+             SET resolved_outcome = $1::varchar,
+                 is_correct = CASE WHEN predicted_outcome = $1::varchar THEN true ELSE false END,
+                 payout_points = CASE
+                   WHEN predicted_outcome = $1::varchar
+                   THEN ROUND(($3::numeric * stake_points::numeric) / $4::numeric)::int
+                   ELSE 0
+                 END,
+                 resolved_at = NOW()
+             WHERE pull_request_id = $2
+               AND resolved_at IS NULL`,
+            [
+              resolvedOutcome,
+              input.pullRequestId,
+              totalStakePoints,
+              winnerStakePoints,
+            ],
+          );
+        } else {
+          await db.query(
+            `UPDATE observer_pr_predictions
+             SET resolved_outcome = $1::varchar,
+                 is_correct = CASE WHEN predicted_outcome = $1::varchar THEN true ELSE false END,
+                 payout_points = 0,
+                 resolved_at = NOW()
+             WHERE pull_request_id = $2
+               AND resolved_at IS NULL`,
+            [resolvedOutcome, input.pullRequestId],
+          );
+        }
       }
 
       return mapPullRequest(updated.rows[0] as PullRequestRow);

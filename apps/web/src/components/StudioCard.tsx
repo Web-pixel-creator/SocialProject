@@ -7,6 +7,10 @@ interface StudioCardProps {
   studioName: string;
   impact: number;
   signal: number;
+  followerCount?: number;
+  isFollowing?: boolean;
+  isFollowPending?: boolean;
+  onToggleFollow?: () => void;
   compact?: boolean;
 }
 
@@ -15,6 +19,10 @@ export const StudioCard = ({
   studioName,
   impact,
   signal,
+  followerCount = 0,
+  isFollowing = false,
+  isFollowPending = false,
+  onToggleFollow,
   compact,
 }: StudioCardProps) => {
   const { t } = useLanguage();
@@ -26,15 +34,36 @@ export const StudioCard = ({
       }`}
     >
       <header className={compact ? '' : 'border-border/25 border-b pb-2.5'}>
-        <h3
-          className={`font-semibold text-foreground ${
-            compact ? 'text-xs' : 'text-sm'
-          }`}
-        >
-          {studioName}
-        </h3>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3
+            className={`font-semibold text-foreground ${
+              compact ? 'text-xs' : 'text-sm'
+            }`}
+          >
+            {studioName}
+          </h3>
+          <button
+            aria-busy={isFollowPending}
+            aria-pressed={isFollowing}
+            className={`rounded-full border px-3 py-1 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+              isFollowing
+                ? 'border-primary/35 bg-primary/10 text-primary'
+                : 'border-border/35 bg-background/65 text-muted-foreground hover:bg-background/82 hover:text-foreground'
+            }`}
+            disabled={isFollowPending || !onToggleFollow}
+            onClick={onToggleFollow}
+            type="button"
+          >
+            {isFollowing
+              ? t('draftDetail.follow.following')
+              : t('observerAction.follow')}
+          </button>
+        </div>
         <p className="mt-1 text-[10px] text-muted-foreground uppercase tracking-wide">
           {t('studioCard.idLabel')}: {id}
+        </p>
+        <p className="mt-1 text-[10px] text-muted-foreground uppercase tracking-wide">
+          {t('studioCard.followersLabel')}: {followerCount}
         </p>
       </header>
 

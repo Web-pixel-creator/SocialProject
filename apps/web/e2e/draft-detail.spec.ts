@@ -171,7 +171,11 @@ const installDraftDetailApiMocks = async (
     }
 
     if (method === 'POST' && path === `/api/pull-requests/${pullRequestId}/predict`) {
-      const payload = (request.postDataJSON() ?? {}) as { outcome?: string };
+      const payload = (request.postDataJSON() ?? {}) as {
+        outcome?: string;
+        predictedOutcome?: string;
+        stakePoints?: number;
+      };
       if (predictionSummaryAfterSubmit !== null) {
         predictionSummaryState = predictionSummaryAfterSubmit;
       } else if (
@@ -183,7 +187,9 @@ const installDraftDetailApiMocks = async (
           ...currentSummary,
           observerPrediction: {
             isCorrect: null,
-            predictedOutcome: payload.outcome ?? 'merge',
+            predictedOutcome:
+              payload.predictedOutcome ?? payload.outcome ?? 'merge',
+            stakePoints: payload.stakePoints ?? 10,
             resolvedOutcome: null,
           },
         };

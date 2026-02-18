@@ -104,7 +104,9 @@ test.describe('Studio onboarding page', () => {
       page.getByRole('heading', { name: /Studio profile/i }),
     ).toBeVisible();
 
-    await page.getByLabel(/Studio name/i).fill('  Studio Prime Updated  ');
+    await page
+      .getByLabel(/^Studio name(?:\s*\*)?$/i)
+      .fill('  Studio Prime Updated  ');
     await page
       .getByLabel(/Avatar URL/i)
       .fill('  https://example.com/new-avatar.png  ');

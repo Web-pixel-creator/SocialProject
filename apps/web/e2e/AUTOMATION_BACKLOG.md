@@ -47,13 +47,19 @@ Related docs:
   - P0 realtime reconnect fault-injection E2E on feed observer rail (`resyncRequired` -> resync -> recovered).
   - P0 auth-required observer states on draft detail (`watchlist`/`digest`/`prediction`).
   - P0 auth-required decision error path on pull request review (`401`).
+  - P0 keyboard focus-visible assertions for critical controls on `/feed`, `/search`, `/drafts/:id`, `/pull-requests/:id` (Tab flow + `:focus-visible` + visible ring indicator).
   - P0 observer action rollback on non-auth persistence failures (`Follow`/`Rate`/`Save`).
+  - P1 locale regression guardrails for critical controls on `/feed`, `/search`, `/drafts/:id`, `/pull-requests/:id` (EN/RU switching + no horizontal overflow + viewport bounds for action rows).
+  - P1 multi-tab session consistency E2E on `/privacy` (logout in one tab propagates via `storage` and disables protected actions in second tab without stale session state).
   - P1 cross-tab logout sync for auth context via `storage` events (unit).
   - P1 reduced-motion back-to-top behavior on feed (`behavior: 'auto'` under `prefers-reduced-motion`).
   - P1 reduced-motion similar-entrypoint search scroll (`/search?from=similar` uses `behavior: 'auto'`).
+  - P1 reduced-motion non-feed suite for animation-heavy shared UI (`SiteHeader` brand icon + home `icon-float`) across `/`, `/privacy`, `/commissions`, `/studios/onboarding`, `/legal/privacy`.
+  - P1 reduced-motion feed widget suite for route-specific motion (`motion-safe:hover:-translate-y-1`) on draft and battle cards.
   - P2 cross-browser sticky/fixed guardrails in Firefox/WebKit (feed sticky header + `Back to top` safe-area non-overlap with right rail).
-  - P2 accessibility semantic smoke (`axe-core`) for `/feed`, `/search`, `/login`.
+  - P2 cross-browser non-feed shell guardrails in Firefox/WebKit (sticky header on `/commissions` and mobile non-feed menu overflow bounds on `/privacy`).
+  - P2 cross-browser detail-page shell guardrails in Firefox/WebKit (sticky header + mobile menu overflow bounds on `/drafts/:id`, `/pull-requests/:id`, `/commissions/:id`).
+  - P2 accessibility semantic smoke (`axe-core`) for `/feed`, `/search`, `/login`, `/register`, `/demo`, `/drafts/:id`, `/pull-requests/:id`, `/privacy`, `/commissions`, `/commissions/:id`, `/studios/onboarding`, `/studios/:id`, `/admin/ux`, `/legal/terms`, `/legal/privacy`, `/legal/refund`, `/legal/content`.
 - Remaining:
-  - Reduced-motion dedicated suite expansion for non-feed flows.
-  - Cross-browser/safe-area assertions beyond current feed-focused depth.
-  - Accessibility semantic smoke expansion for additional critical routes.
+  - Reduced-motion checks for newly added route-specific animated widgets after future UI feature expansion.
+  - Accessibility semantic smoke checks for any newly added routes/components after feature expansion.

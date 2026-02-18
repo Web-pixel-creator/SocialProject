@@ -9,6 +9,7 @@ import type {
   ChangeFeedItem,
   FeedFilters,
   FeedItem,
+  FeedProvenanceIndicator,
   FeedService,
   FeedSort,
   HotNowItem,
@@ -28,6 +29,10 @@ interface FeedRow {
   before_thumbnail_url?: string | null;
   after_image_url?: string | null;
   after_thumbnail_url?: string | null;
+  authenticity_status?: 'unverified' | 'metadata_only' | 'verified' | null;
+  human_spark_score?: number | string | null;
+  human_brief_present?: boolean | null;
+  agent_step_count?: number | string | null;
 }
 
 interface AutopsyRow {
@@ -42,6 +47,8 @@ interface StudioRow {
   studio_name: string;
   impact: number | string | null;
   signal: number | string | null;
+  follower_count: number | string | null;
+  is_following: boolean | null;
 }
 
 interface ProgressRow {
@@ -53,6 +60,10 @@ interface ProgressRow {
   last_activity: Date;
   studio_name: string;
   guild_id?: string | null;
+  authenticity_status?: 'unverified' | 'metadata_only' | 'verified' | null;
+  human_spark_score?: number | string | null;
+  human_brief_present?: boolean | null;
+  agent_step_count?: number | string | null;
 }
 
 interface ChangeRow {
@@ -82,7 +93,36 @@ interface HotNowRow {
   merged_major_24h: number | string | null;
   merged_minor_24h: number | string | null;
   last_activity?: Date | null;
+  authenticity_status?: 'unverified' | 'metadata_only' | 'verified' | null;
+  human_spark_score?: number | string | null;
+  human_brief_present?: boolean | null;
+  agent_step_count?: number | string | null;
 }
+
+const mapProvenance = (
+  row:
+    | FeedRow
+    | ProgressRow
+    | HotNowRow
+    | {
+        authenticity_status?: string | null;
+        human_spark_score?: number | string | null;
+        human_brief_present?: boolean | null;
+        agent_step_count?: number | string | null;
+      },
+): FeedProvenanceIndicator => {
+  const status =
+    row.authenticity_status === 'verified' ||
+    row.authenticity_status === 'metadata_only'
+      ? row.authenticity_status
+      : 'unverified';
+  return {
+    authenticityStatus: status,
+    humanSparkScore: Number(row.human_spark_score ?? 0),
+    humanBriefPresent: Boolean(row.human_brief_present),
+    agentStepCount: Number(row.agent_step_count ?? 0),
+  };
+};
 
 const mapFeedItem = (row: FeedRow): FeedItem => ({
   id: row.id,
@@ -91,6 +131,7 @@ const mapFeedItem = (row: FeedRow): FeedItem => ({
   updatedAt: row.updated_at,
   beforeImageUrl: row.before_image_url ?? row.before_thumbnail_url ?? undefined,
   afterImageUrl: row.after_image_url ?? row.after_thumbnail_url ?? undefined,
+  provenance: mapProvenance(row),
 });
 
 const mapAutopsyItem = (row: AutopsyRow): FeedItem => ({
@@ -106,6 +147,8 @@ const mapStudioItem = (row: StudioRow): StudioItem => ({
   studioName: row.studio_name,
   impact: Number(row.impact ?? 0),
   signal: Number(row.signal ?? 0),
+  followerCount: Number(row.follower_count ?? 0),
+  isFollowing: Boolean(row.is_following),
 });
 
 const mapProgressItem = (row: ProgressRow): ProgressFeedItem => ({
@@ -117,6 +160,7 @@ const mapProgressItem = (row: ProgressRow): ProgressFeedItem => ({
   lastActivity: row.last_activity,
   authorStudio: row.studio_name,
   guildId: row.guild_id ?? null,
+  provenance: mapProvenance(row),
 });
 
 const mapChangeItem = (row: ChangeRow): ChangeFeedItem => {
@@ -232,6 +276,8 @@ export class FeedServiceImpl implements FeedService {
       from,
       to,
       cursor,
+      userId,
+      followingOnly = false,
     } = filters;
 
     const safeLimit = Math.min(Math.max(limit, 1), 100);
@@ -246,6 +292,21 @@ export class FeedServiceImpl implements FeedService {
     };
 
     clauses.push('d.is_sandbox = false');
+
+    if (followingOnly) {
+      if (!userId) {
+        return [];
+      }
+      const observerIdParam = addParam(userId);
+      clauses.push(
+        `EXISTS (
+           SELECT 1
+           FROM observer_studio_follows osf
+           WHERE osf.observer_id = ${observerIdParam}::uuid
+             AND osf.studio_id = d.author_id
+         )`,
+      );
+    }
 
     if (status === 'draft') {
       clauses.push("d.status = 'draft'");
@@ -302,11 +363,16 @@ export class FeedServiceImpl implements FeedService {
     const result = await db.query(
       `SELECT d.*,
               v_first.thumbnail_url AS before_image_url,
-              v_last.thumbnail_url AS after_image_url
+              v_last.thumbnail_url AS after_image_url,
+              dp.authenticity_status,
+              dp.human_spark_score,
+              dp.human_brief_present,
+              dp.agent_step_count
        FROM drafts d
        JOIN agents a ON a.id = d.author_id
        LEFT JOIN versions v_first ON v_first.draft_id = d.id AND v_first.version_number = 1
        LEFT JOIN versions v_last ON v_last.draft_id = d.id AND v_last.version_number = d.current_version
+       LEFT JOIN draft_provenance dp ON dp.draft_id = d.id
        ${whereSql}
        ORDER BY ${orderBy}
        LIMIT $${params.length - 1} OFFSET $${params.length}`,
@@ -350,13 +416,18 @@ export class FeedServiceImpl implements FeedService {
               COALESCE(pc.pr_count, 0) AS pr_count,
               GREATEST(d.updated_at, vb.last_version_created, COALESCE(pc.last_pr_created, d.updated_at)) AS last_activity,
               a.studio_name,
-              a.guild_id
+              a.guild_id,
+              dp.authenticity_status,
+              dp.human_spark_score,
+              dp.human_brief_present,
+              dp.agent_step_count
        FROM drafts d
        JOIN agents a ON a.id = d.author_id
        JOIN version_bounds vb ON vb.draft_id = d.id
        JOIN versions v_first ON v_first.draft_id = d.id AND v_first.version_number = vb.first_version
        JOIN versions v_last ON v_last.draft_id = d.id AND v_last.version_number = vb.last_version
        LEFT JOIN pr_counts pc ON pc.draft_id = d.id
+       LEFT JOIN draft_provenance dp ON dp.draft_id = d.id
        WHERE d.updated_at >= NOW() - INTERVAL '30 days'
          AND d.is_sandbox = false
        ORDER BY d.updated_at DESC
@@ -384,13 +455,23 @@ export class FeedServiceImpl implements FeedService {
 
     if (userId) {
       const history = await db.query(
-        `SELECT d.*
-         FROM viewing_history vh
-         JOIN drafts d ON vh.draft_id = d.id
-         WHERE vh.user_id = $1
-           AND d.is_sandbox = false
-         GROUP BY d.id
-         ORDER BY COUNT(vh.id) DESC
+        `WITH history_counts AS (
+           SELECT vh.draft_id, COUNT(vh.id)::int AS views
+           FROM viewing_history vh
+           JOIN drafts d ON vh.draft_id = d.id
+           WHERE vh.user_id = $1
+             AND d.is_sandbox = false
+           GROUP BY vh.draft_id
+         )
+         SELECT d.*,
+                dp.authenticity_status,
+                dp.human_spark_score,
+                dp.human_brief_present,
+                dp.agent_step_count
+         FROM history_counts hc
+         JOIN drafts d ON hc.draft_id = d.id
+         LEFT JOIN draft_provenance dp ON dp.draft_id = d.id
+         ORDER BY hc.views DESC, d.updated_at DESC
          LIMIT $2 OFFSET $3`,
         [userId, limit, offset],
       );
@@ -401,7 +482,16 @@ export class FeedServiceImpl implements FeedService {
     }
 
     const fallback = await db.query(
-      'SELECT * FROM drafts WHERE is_sandbox = false ORDER BY glow_up_score DESC, updated_at DESC LIMIT $1 OFFSET $2',
+      `SELECT d.*,
+              dp.authenticity_status,
+              dp.human_spark_score,
+              dp.human_brief_present,
+              dp.agent_step_count
+       FROM drafts d
+       LEFT JOIN draft_provenance dp ON dp.draft_id = d.id
+       WHERE d.is_sandbox = false
+       ORDER BY d.glow_up_score DESC, d.updated_at DESC
+       LIMIT $1 OFFSET $2`,
       [limit, offset],
     );
 
@@ -415,11 +505,17 @@ export class FeedServiceImpl implements FeedService {
     const db = getDb(this.pool, client);
     const { limit = 20, offset = 0 } = filters;
     const result = await db.query(
-      `SELECT * FROM drafts
-       WHERE status = 'draft'
-         AND is_sandbox = false
-         AND updated_at > NOW() - INTERVAL '5 minutes'
-       ORDER BY updated_at DESC
+      `SELECT d.*,
+              dp.authenticity_status,
+              dp.human_spark_score,
+              dp.human_brief_present,
+              dp.agent_step_count
+       FROM drafts d
+       LEFT JOIN draft_provenance dp ON dp.draft_id = d.id
+       WHERE d.status = 'draft'
+         AND d.is_sandbox = false
+         AND d.updated_at > NOW() - INTERVAL '5 minutes'
+       ORDER BY d.updated_at DESC
        LIMIT $1 OFFSET $2`,
       [limit, offset],
     );
@@ -433,7 +529,16 @@ export class FeedServiceImpl implements FeedService {
     const db = getDb(this.pool, client);
     const { limit = 20, offset = 0 } = filters;
     const result = await db.query(
-      'SELECT * FROM drafts WHERE is_sandbox = false ORDER BY glow_up_score DESC, updated_at DESC LIMIT $1 OFFSET $2',
+      `SELECT d.*,
+              dp.authenticity_status,
+              dp.human_spark_score,
+              dp.human_brief_present,
+              dp.agent_step_count
+       FROM drafts d
+       LEFT JOIN draft_provenance dp ON dp.draft_id = d.id
+       WHERE d.is_sandbox = false
+       ORDER BY d.glow_up_score DESC, d.updated_at DESC
+       LIMIT $1 OFFSET $2`,
       [limit, offset],
     );
     return result.rows.map((row) => mapFeedItem(row as FeedRow));
@@ -444,10 +549,38 @@ export class FeedServiceImpl implements FeedService {
     client?: DbClient,
   ): Promise<StudioItem[]> {
     const db = getDb(this.pool, client);
-    const { limit = 20, offset = 0 } = filters;
+    const { limit = 20, offset = 0, userId, followingOnly = false } = filters;
     const result = await db.query(
-      'SELECT * FROM agents ORDER BY impact DESC, signal DESC LIMIT $1 OFFSET $2',
-      [limit, offset],
+      `SELECT
+         a.id,
+         a.studio_name,
+         a.impact,
+         a.signal,
+         COALESCE(fs.follower_count, 0) AS follower_count,
+         CASE
+           WHEN $3::uuid IS NULL THEN false
+           ELSE EXISTS (
+             SELECT 1
+             FROM observer_studio_follows osf
+             WHERE osf.observer_id = $3::uuid
+               AND osf.studio_id = a.id
+           )
+         END AS is_following
+       FROM agents a
+       LEFT JOIN (
+         SELECT studio_id, COUNT(*)::int AS follower_count
+         FROM observer_studio_follows
+         GROUP BY studio_id
+       ) fs ON fs.studio_id = a.id
+       WHERE ($4::boolean = false OR EXISTS (
+         SELECT 1
+         FROM observer_studio_follows osf
+         WHERE osf.observer_id = $3::uuid
+           AND osf.studio_id = a.id
+       ))
+       ORDER BY a.impact DESC, a.signal DESC
+       LIMIT $1 OFFSET $2`,
+      [limit, offset, userId ?? null, followingOnly],
     );
     return result.rows.map((row) => mapStudioItem(row as StudioRow));
   }
@@ -460,13 +593,23 @@ export class FeedServiceImpl implements FeedService {
     const { limit = 20, offset = 0 } = filters;
 
     const result = await db.query(
-      `SELECT d.*
+      `WITH pending_counts AS (
+         SELECT draft_id, COUNT(*)::int AS pending_count
+         FROM pull_requests
+         WHERE status = 'pending'
+         GROUP BY draft_id
+         HAVING COUNT(*) >= 2
+       )
+       SELECT d.*,
+              dp.authenticity_status,
+              dp.human_spark_score,
+              dp.human_brief_present,
+              dp.agent_step_count
        FROM drafts d
-       JOIN pull_requests pr ON pr.draft_id = d.id AND pr.status = 'pending'
+       JOIN pending_counts pc ON pc.draft_id = d.id
+       LEFT JOIN draft_provenance dp ON dp.draft_id = d.id
        WHERE d.is_sandbox = false
-       GROUP BY d.id
-       HAVING COUNT(pr.id) >= 2
-       ORDER BY COUNT(pr.id) DESC
+       ORDER BY pc.pending_count DESC, d.updated_at DESC
        LIMIT $1 OFFSET $2`,
       [limit, offset],
     );
@@ -481,10 +624,16 @@ export class FeedServiceImpl implements FeedService {
     const db = getDb(this.pool, client);
     const { limit = 20, offset = 0 } = filters;
     const releases = await db.query(
-      `SELECT * FROM drafts
-       WHERE status = 'release'
-         AND is_sandbox = false
-       ORDER BY created_at DESC
+      `SELECT d.*,
+              dp.authenticity_status,
+              dp.human_spark_score,
+              dp.human_brief_present,
+              dp.agent_step_count
+       FROM drafts d
+       LEFT JOIN draft_provenance dp ON dp.draft_id = d.id
+       WHERE d.status = 'release'
+         AND d.is_sandbox = false
+       ORDER BY d.created_at DESC
        LIMIT $1 OFFSET $2`,
       [limit, offset],
     );
@@ -636,6 +785,10 @@ export class FeedServiceImpl implements FeedService {
          COALESCE(ps.merged_minor_total, 0) AS merged_minor_total,
          COALESCE(ps.merged_major_24h, 0) AS merged_major_24h,
          COALESCE(ps.merged_minor_24h, 0) AS merged_minor_24h,
+         dp.authenticity_status,
+         dp.human_spark_score,
+         dp.human_brief_present,
+         dp.agent_step_count,
          GREATEST(
            d.updated_at,
            COALESCE(ps.pr_last_activity, d.updated_at),
@@ -647,6 +800,7 @@ export class FeedServiceImpl implements FeedService {
        LEFT JOIN fix_counts fc ON fc.draft_id = d.id
        LEFT JOIN pr_stats ps ON ps.draft_id = d.id
        LEFT JOIN fix_last fl ON fl.draft_id = d.id
+       LEFT JOIN draft_provenance dp ON dp.draft_id = d.id
        WHERE d.is_sandbox = false
          AND d.status = 'draft'
        ORDER BY last_activity DESC
@@ -712,6 +866,7 @@ export class FeedServiceImpl implements FeedService {
         }),
         beforeImageUrl: row.before_image_url ?? undefined,
         afterImageUrl: row.after_image_url ?? undefined,
+        provenance: mapProvenance(row),
       };
     };
 

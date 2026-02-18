@@ -19,6 +19,7 @@ import type {
   GuildFeedItem,
   HotNowFeedItem,
   ProgressFeedItem,
+  ProvenanceIndicatorView,
   StudioFeedItem,
 } from './feedTypes';
 
@@ -48,6 +49,57 @@ export const asStringArray = (value: unknown): string[] | undefined => {
 export const asNumber = (value: unknown): number => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const asProvenanceStatus = (
+  value: unknown,
+): ProvenanceIndicatorView['authenticityStatus'] => {
+  if (value === 'verified' || value === 'metadata_only') {
+    return value;
+  }
+  return 'unverified';
+};
+
+const asProvenance = (
+  item: FeedApiRow,
+): ProvenanceIndicatorView | undefined => {
+  const nested = item.provenance;
+  if (nested && typeof nested === 'object') {
+    const row = nested as Record<string, unknown>;
+    return {
+      authenticityStatus: asProvenanceStatus(
+        row.authenticityStatus ?? row.authenticity_status,
+      ),
+      humanSparkScore: asNumber(row.humanSparkScore ?? row.human_spark_score),
+      humanBriefPresent: Boolean(
+        row.humanBriefPresent ?? row.human_brief_present,
+      ),
+      agentStepCount: asNumber(row.agentStepCount ?? row.agent_step_count),
+    };
+  }
+
+  const hasFlat =
+    item.authenticityStatus !== undefined ||
+    item.authenticity_status !== undefined ||
+    item.humanSparkScore !== undefined ||
+    item.human_spark_score !== undefined ||
+    item.agentStepCount !== undefined ||
+    item.agent_step_count !== undefined;
+
+  if (!hasFlat) {
+    return undefined;
+  }
+
+  return {
+    authenticityStatus: asProvenanceStatus(
+      item.authenticityStatus ?? item.authenticity_status,
+    ),
+    humanSparkScore: asNumber(item.humanSparkScore ?? item.human_spark_score),
+    humanBriefPresent: Boolean(
+      item.humanBriefPresent ?? item.human_brief_present,
+    ),
+    agentStepCount: asNumber(item.agentStepCount ?? item.agent_step_count),
+  };
 };
 
 export const firstString = (...values: unknown[]): string | undefined => {
@@ -111,6 +163,8 @@ export const endpointForTab = (tab: string) => {
       return '/guilds';
     case 'Studios':
       return '/feeds/studios';
+    case 'Following':
+      return '/feeds/following';
     case 'Battles':
       return '/feeds/battles';
     case 'Archive':
@@ -139,6 +193,7 @@ export const mapDraftItems = (
         asString(item.beforeImageUrl) ?? asString(item.before_image_url),
       afterImageUrl:
         asString(item.afterImageUrl) ?? asString(item.after_image_url),
+      provenance: asProvenance(item),
     }));
 
 export const mapArchiveItems = (data: FeedApiRow[]): FeedItem[] =>
@@ -161,6 +216,7 @@ export const mapArchiveItems = (data: FeedApiRow[]): FeedItem[] =>
       title: `${asString(item.type) === 'release' ? 'Release' : 'Draft'} ${String(item.id ?? '').slice(0, 8)}`,
       glowUpScore: asNumber(item.glowUpScore ?? item.glow_up_score),
       updatedAt: asString(item.updatedAt) ?? asString(item.updated_at),
+      provenance: asProvenance(item),
     };
   });
 
@@ -172,6 +228,8 @@ export const mapStudios = (data: FeedApiRow[]): StudioFeedItem[] =>
       asString(item.studioName) ?? asString(item.studio_name) ?? 'Studio',
     impact: asNumber(item.impact),
     signal: asNumber(item.signal),
+    followerCount: asNumber(item.followerCount ?? item.follower_count),
+    isFollowing: Boolean(item.isFollowing ?? item.is_following),
   }));
 
 export const mapChanges = (data: FeedApiRow[]): ChangeFeedItem[] =>
@@ -300,6 +358,7 @@ export const mapProgress = (data: FeedApiRow[]): ProgressFeedItem[] =>
     lastActivity: asString(item.lastActivity) ?? asString(item.last_activity),
     authorStudio:
       asString(item.authorStudio) ?? asString(item.studio_name) ?? 'Studio',
+    provenance: asProvenance(item),
   }));
 
 export const mapHotNow = (data: FeedApiRow[]): HotNowFeedItem[] =>
@@ -322,6 +381,7 @@ export const mapHotNow = (data: FeedApiRow[]): HotNowFeedItem[] =>
       asString(item.beforeImageUrl) ?? asString(item.before_image_url),
     afterImageUrl:
       asString(item.afterImageUrl) ?? asString(item.after_image_url),
+    provenance: asProvenance(item),
   }));
 
 export const mapGuilds = (data: FeedApiRow[]): GuildFeedItem[] =>
@@ -353,6 +413,8 @@ export const mapItemsForTab = (tab: string, data: unknown): FeedItem[] => {
       return mapGuilds(rows);
     case 'Studios':
       return mapStudios(rows);
+    case 'Following':
+      return mapDraftItems(rows, false);
     case 'Archive':
       return mapArchiveItems(rows);
     default:
@@ -375,6 +437,9 @@ export const fallbackItemsFor = (tab: string): FeedItem[] => {
       ...studio,
       kind: 'studio' as const,
     }));
+  }
+  if (tab === 'Following') {
+    return demoDrafts.map((draft) => ({ ...draft, kind: 'draft' as const }));
   }
   if (tab === 'Changes') {
     return demoChanges.map((item) => ({

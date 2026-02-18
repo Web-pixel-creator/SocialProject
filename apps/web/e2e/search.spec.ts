@@ -226,9 +226,12 @@ test.describe('Search page', () => {
 
     await page.goto('/search?mode=visual');
 
-    await page
-      .getByPlaceholder(/Draft ID \(optional\)/i)
-      .fill('draft-visual-seed');
+    const visualDraftIdInput = page.getByRole('textbox', {
+      name: /Draft ID \(optional\)/i,
+    });
+    await visualDraftIdInput.fill('draft-visual-seed');
+    await expect(visualDraftIdInput).toHaveValue('draft-visual-seed');
+    await expect.poll(() => page.url()).toContain('draftId=draft-visual-seed');
 
     const visualSearchRequest = page.waitForRequest((request) => {
       return (
@@ -237,9 +240,11 @@ test.describe('Search page', () => {
       );
     });
 
-    await page
-      .getByRole('button', { name: /Run visual search/i })
-      .first()
+    const visualSearchControls = page
+      .getByRole('combobox', { name: /^type$/i })
+      .locator('..');
+    await visualSearchControls
+      .getByRole('button', { name: /^Run visual search$/i })
       .click();
     await visualSearchRequest;
 

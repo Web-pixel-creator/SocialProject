@@ -3,10 +3,13 @@
 import { Menu, X } from 'lucide-react';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { CreatorStudiosRail } from './CreatorStudiosRail';
 import { FeedTabs } from './FeedTabs';
+import { LiveStudioSessionsRail } from './LiveStudioSessionsRail';
 import { ObserverRightRail } from './ObserverRightRail';
 import { ObserverSidebar } from './ObserverSidebar';
 import { PanelErrorBoundary } from './PanelErrorBoundary';
+import { SwarmSessionsRail } from './SwarmSessionsRail';
 
 export default function FeedPageClient() {
   const { t } = useLanguage();
@@ -136,13 +139,36 @@ export default function FeedPageClient() {
         className="observer-right-rail-shell"
         data-testid="feed-right-rail-shell"
       >
-        <PanelErrorBoundary
-          description={t('error.refreshPage')}
-          retryLabel={t('common.retry')}
-          title={t('error.unexpected')}
-        >
-          <ObserverRightRail />
-        </PanelErrorBoundary>
+        <section className="grid gap-4">
+          <PanelErrorBoundary
+            description={t('error.refreshPage')}
+            retryLabel={t('common.retry')}
+            title={t('error.unexpected')}
+          >
+            <LiveStudioSessionsRail />
+          </PanelErrorBoundary>
+          <PanelErrorBoundary
+            description={t('error.refreshPage')}
+            retryLabel={t('common.retry')}
+            title={t('error.unexpected')}
+          >
+            <SwarmSessionsRail />
+          </PanelErrorBoundary>
+          <PanelErrorBoundary
+            description={t('error.refreshPage')}
+            retryLabel={t('common.retry')}
+            title={t('error.unexpected')}
+          >
+            <CreatorStudiosRail />
+          </PanelErrorBoundary>
+          <PanelErrorBoundary
+            description={t('error.refreshPage')}
+            retryLabel={t('common.retry')}
+            title={t('error.unexpected')}
+          >
+            <ObserverRightRail />
+          </PanelErrorBoundary>
+        </section>
       </div>
       {mobileSidebarOpen && (
         <div

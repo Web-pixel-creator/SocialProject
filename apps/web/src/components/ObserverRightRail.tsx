@@ -1,6 +1,6 @@
 'use client';
 
-import { Flame } from 'lucide-react';
+import { Flame, Users } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -30,6 +30,7 @@ interface ObserverRailData {
   battles: RailItem[];
   glowUps: RailItem[];
   studios: RailItem[];
+  followedStudios: RailItem[];
   activity: RailItem[];
   allFeedsFailed: boolean;
   fallbackUsed: boolean;
@@ -71,6 +72,9 @@ const HIDDEN_PANEL_VISIBILITY: RailPanelVisibility = {
   studios: false,
 };
 
+const clampPercent = (value: number): number =>
+  Math.max(0, Math.min(100, Math.round(value)));
+
 const parsePanelVisibility = (
   value: string | null,
 ): RailPanelVisibility | null => {
@@ -104,6 +108,7 @@ const fallbackRailData: ObserverRailData = {
   battles: fallbackBattles,
   glowUps: fallbackGlowUps,
   studios: fallbackStudios,
+  followedStudios: [],
   activity: fallbackActivity,
   allFeedsFailed: false,
   fallbackUsed: true,
@@ -118,6 +123,7 @@ const fetchObserverRailData = async (): Promise<ObserverRailData> => {
       liveResult,
       hotNowResult,
       changesResult,
+      followingResult,
     ] = await Promise.allSettled([
       apiClient.get('/feeds/battles', { params: { limit: 5 } }),
       apiClient.get('/feeds/glowups', { params: { limit: 5 } }),
@@ -125,6 +131,7 @@ const fetchObserverRailData = async (): Promise<ObserverRailData> => {
       apiClient.get('/feeds/live-drafts', { params: { limit: 200 } }),
       apiClient.get('/feeds/hot-now', { params: { limit: 10 } }),
       apiClient.get('/feeds/changes', { params: { limit: 8 } }),
+      apiClient.get('/me/following', { params: { limit: 5 } }),
     ]);
 
     const rowsFromResult = (
@@ -138,6 +145,7 @@ const fetchObserverRailData = async (): Promise<ObserverRailData> => {
     const liveRows = rowsFromResult(liveResult);
     const hotRows = rowsFromResult(hotNowResult);
     const activityRows = rowsFromResult(changesResult);
+    const followingRows = rowsFromResult(followingResult);
 
     const battleItems = battleRows
       .map((row, index) => {
@@ -194,6 +202,21 @@ const fetchObserverRailData = async (): Promise<ObserverRailData> => {
       })
       .slice(0, 5);
 
+    const followedStudioItems = followingRows
+      .map((row, index) => {
+        const id = asString(row.id) ?? `following-studio-${index}`;
+        const studioName =
+          asString(row.studioName) ?? asString(row.studio_name) ?? 'Studio';
+        const impact = asNumber(row.impact);
+        const signal = asNumber(row.signal);
+        return {
+          id,
+          title: studioName,
+          meta: `Impact ${impact.toFixed(1)} / Signal ${signal.toFixed(1)}`,
+        };
+      })
+      .slice(0, 4);
+
     const pendingTotal = hotRows.reduce(
       (sum, row) => sum + asNumber(row.prPendingCount ?? row.pr_pending_count),
       0,
@@ -217,6 +240,7 @@ const fetchObserverRailData = async (): Promise<ObserverRailData> => {
       battles: battleFallback ? fallbackBattles : battleItems,
       glowUps: glowUpFallback ? fallbackGlowUps : glowUpItems,
       studios: studioFallback ? fallbackStudios : studioItems,
+      followedStudios: followedStudioItems,
       activity: activityFallback ? fallbackActivity : activityItems,
       liveDraftCount:
         liveResult.status === 'fulfilled'
@@ -286,6 +310,7 @@ export const ObserverRightRail = () => {
   const battles = stableData.battles;
   const glowUps = stableData.glowUps;
   const studios = stableData.studios;
+  const followedStudios = stableData.followedStudios;
   const activity = stableData.activity;
 
   const realtimeActivity = useMemo(() => {
@@ -337,6 +362,28 @@ export const ObserverRightRail = () => {
     const base = realtimeEvents.length + mergedActivity.length;
     return Math.max(12, base * 3);
   }, [mergedActivity.length, realtimeEvents.length]);
+
+  const livePressure = useMemo(() => {
+    const activeDrafts = Math.max(1, liveDraftCount);
+    const prPressure = clampPercent((prPendingCount / activeDrafts) * 100);
+    const audience = clampPercent(
+      realtimeEvents.length * 12 + followedStudios.length * 16 + 18,
+    );
+    const fallbackPenalty = fallbackUsed ? 10 : 0;
+    const fuel = clampPercent(100 - prPressure * 0.55 - fallbackPenalty);
+
+    return {
+      prPressure,
+      audience,
+      fuel,
+    };
+  }, [
+    fallbackUsed,
+    followedStudios.length,
+    liveDraftCount,
+    prPendingCount,
+    realtimeEvents.length,
+  ]);
 
   const visiblePanelCount = useMemo(
     () => PANEL_KEYS.filter((key) => panelVisibility[key]).length,
@@ -521,6 +568,25 @@ export const ObserverRightRail = () => {
             <p className="mt-1 font-semibold text-foreground text-lg">
               {t('rail.latencyValue')}
             </p>
+          </div>
+        </div>
+        <div className="mt-2 rounded-lg border border-border/25 bg-background/42 p-2 sm:mt-3 sm:p-2.5">
+          <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">
+            {t('rail.livePressureMeter')}
+          </p>
+          <div className="mt-1.5 grid gap-1.5 sm:mt-2 sm:gap-2">
+            <PressureMeterRow
+              label={t('rail.pressurePr')}
+              value={livePressure.prPressure}
+            />
+            <PressureMeterRow
+              label={t('rail.pressureAudience')}
+              value={livePressure.audience}
+            />
+            <PressureMeterRow
+              label={t('rail.pressureFuel')}
+              value={livePressure.fuel}
+            />
           </div>
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground/70 sm:mt-3 sm:gap-2">
@@ -720,6 +786,27 @@ export const ObserverRightRail = () => {
             </ul>
           </div>
         ) : null}
+        <div className={`mt-2.5 p-2 sm:p-2.5 ${softPanelClass}`}>
+          <p className="font-semibold text-foreground text-xs">
+            {t('rail.followingStudios')}
+          </p>
+          {followedStudios.length > 0 ? (
+            <ul className="mt-1.5 grid gap-1 text-[11px] text-muted-foreground">
+              {followedStudios.slice(0, 2).map((item) => (
+                <li
+                  className="line-clamp-1"
+                  key={`mobile-following-${item.id}`}
+                >
+                  {item.title}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              {t('rail.noFollowingStudios')}
+            </p>
+          )}
+        </div>
       </section>
       <BattleList
         className={panelVisibility.battles ? 'hidden lg:block' : 'hidden'}
@@ -745,6 +832,37 @@ export const ObserverRightRail = () => {
         items={studios}
         title={t('rail.topStudios')}
       />
+      <section className="card hidden p-3 sm:p-3.5 lg:block">
+        <PanelHeader icon={Users} title={t('rail.followingStudios')} />
+        {followedStudios.length > 0 ? (
+          <ul className="grid gap-2 text-xs">
+            {followedStudios.map((item, index) => (
+              <li
+                className="rounded-lg border border-border/25 bg-background/60 p-2 transition-colors hover:bg-background/74 sm:p-2.5"
+                key={item.id}
+              >
+                <div className="flex items-start gap-2">
+                  <span className="inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-background/60 font-semibold text-[10px] text-muted-foreground">
+                    {index + 1}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="line-clamp-2 text-foreground">{item.title}</p>
+                    {item.meta ? (
+                      <p className="mt-1 text-[11px] text-muted-foreground/70">
+                        {item.meta}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-muted-foreground text-xs">
+            {t('rail.noFollowingStudios')}
+          </p>
+        )}
+      </section>
       {allPanelsHidden ? (
         <section className="card hidden p-4 text-[11px] text-muted-foreground sm:p-4 lg:block">
           <p>{t('rail.noPanelsSelected')}</p>
@@ -762,3 +880,24 @@ export const ObserverRightRail = () => {
     </aside>
   );
 };
+
+const PressureMeterRow = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: number;
+}) => (
+  <div className="grid gap-1">
+    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+      <span>{label}</span>
+      <span className="font-semibold text-foreground">{value}%</span>
+    </div>
+    <div className="h-1.5 overflow-hidden rounded-full bg-muted/50">
+      <div
+        className="h-full rounded-full bg-primary/85 transition-[width] duration-300 ease-out"
+        style={{ width: `${value}%` }}
+      />
+    </div>
+  </div>
+);

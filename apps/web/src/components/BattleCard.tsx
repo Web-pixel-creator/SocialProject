@@ -13,6 +13,20 @@ import {
   signalForGlowUp,
 } from './CardPrimitives';
 
+type BattlePredictionOutcome = 'merge' | 'reject';
+
+interface BattlePredictionState {
+  error?: string | null;
+  latestOutcome?: BattlePredictionOutcome | null;
+  latestStakePoints?: number | null;
+  marketPoolPoints?: number | null;
+  mergeOdds?: number | null;
+  potentialMergePayout?: number | null;
+  potentialRejectPayout?: number | null;
+  rejectOdds?: number | null;
+  pending?: boolean;
+}
+
 interface BattleCardProps {
   id: string;
   title: string;
@@ -31,6 +45,11 @@ interface BattleCardProps {
   observerActionState?: Partial<Record<ObserverActionType, boolean>>;
   observerActionPending?: ObserverActionType | null;
   onObserverAction?: (action: ObserverActionType) => Promise<void> | void;
+  onPredict?: (
+    outcome: BattlePredictionOutcome,
+    stakePoints: number,
+  ) => Promise<void> | void;
+  predictionState?: BattlePredictionState;
 }
 
 export const BattleCard = ({
@@ -51,17 +70,28 @@ export const BattleCard = ({
   observerActionState,
   observerActionPending,
   onObserverAction,
+  onPredict,
+  predictionState,
 }: BattleCardProps) => {
   const { t } = useLanguage();
   const [voteState, setVoteState] = useState<{ left: number; right: number }>(
     () => normalizeVotes(leftVote, rightVote),
   );
   const [userVote, setUserVote] = useState<'left' | 'right' | null>(null);
+  const [stakePoints, setStakePoints] = useState<number>(
+    Math.max(5, Math.min(500, predictionState?.latestStakePoints ?? 10)),
+  );
 
   useEffect(() => {
     setVoteState(normalizeVotes(leftVote, rightVote));
     setUserVote(null);
   }, [leftVote, rightVote]);
+
+  useEffect(() => {
+    setStakePoints(
+      Math.max(5, Math.min(500, predictionState?.latestStakePoints ?? 10)),
+    );
+  }, [predictionState?.latestStakePoints]);
 
   const voteLabel = useMemo(() => {
     if (userVote === 'left') {
@@ -105,6 +135,45 @@ export const BattleCard = ({
 
   const impact = Math.max(0.5, glowUpScore / 4.8);
   const signal = signalForGlowUp(glowUpScore, t);
+  const predictionDisabled =
+    !Number.isInteger(stakePoints) || stakePoints < 5 || stakePoints > 500;
+  const predictionSummary = predictionState?.latestOutcome
+    ? `${t('prediction.yourPrediction')} ${predictionState.latestOutcome} | ${t('prediction.stakeLabel')} ${predictionState.latestStakePoints ?? stakePoints}`
+    : null;
+  const marketPoolPoints =
+    typeof predictionState?.marketPoolPoints === 'number'
+      ? predictionState.marketPoolPoints
+      : null;
+  const mergeOddsPercent =
+    typeof predictionState?.mergeOdds === 'number'
+      ? Math.max(0, Math.min(100, Math.round(predictionState.mergeOdds * 100)))
+      : null;
+  const rejectOddsPercent =
+    typeof predictionState?.rejectOdds === 'number'
+      ? Math.max(0, Math.min(100, Math.round(predictionState.rejectOdds * 100)))
+      : null;
+  const potentialMergePayout =
+    typeof predictionState?.potentialMergePayout === 'number'
+      ? predictionState.potentialMergePayout
+      : null;
+  const potentialRejectPayout =
+    typeof predictionState?.potentialRejectPayout === 'number'
+      ? predictionState.potentialRejectPayout
+      : null;
+  const hasMarketSummary =
+    marketPoolPoints !== null ||
+    mergeOddsPercent !== null ||
+    rejectOddsPercent !== null;
+  const hasPotentialPayout =
+    potentialMergePayout !== null || potentialRejectPayout !== null;
+
+  const handlePredict = (outcome: BattlePredictionOutcome) => {
+    if (!onPredict || predictionDisabled || predictionState?.pending) {
+      return;
+    }
+    Promise.resolve(onPredict(outcome, stakePoints)).catch(() => undefined);
+  };
+
   const activityLabel = updatedAt
     ? new Date(updatedAt).toLocaleString()
     : t('common.liveNow');
@@ -211,6 +280,86 @@ export const BattleCard = ({
             {t('battle.yourVote')}: {voteLabel}
           </p>
         )}
+        {!compact && onPredict ? (
+          <div className="mt-3 rounded-lg border border-border/25 bg-background/45 p-2.5">
+            <p className="font-semibold text-[10px] text-muted-foreground uppercase tracking-wide">
+              {t('sidebar.predictMode')}
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <label className="inline-flex items-center gap-2 rounded-lg border border-border/25 bg-background/70 px-2.5 py-1.5 text-xs">
+                <span className="text-muted-foreground">
+                  {t('prediction.stakeLabel')}
+                </span>
+                <input
+                  aria-label={t('prediction.stakeLabel')}
+                  className="w-16 bg-transparent text-right text-foreground focus-visible:outline-none"
+                  max={500}
+                  min={5}
+                  onChange={(event) => {
+                    const value = Number(event.target.value);
+                    if (!Number.isFinite(value)) {
+                      setStakePoints(5);
+                      return;
+                    }
+                    setStakePoints(Math.max(1, Math.round(value)));
+                  }}
+                  step={1}
+                  type="number"
+                  value={stakePoints}
+                />
+              </label>
+              <button
+                className="rounded-full border border-primary/35 bg-primary/10 px-3 py-1.5 font-semibold text-[11px] text-primary transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-55"
+                disabled={
+                  predictionDisabled || Boolean(predictionState?.pending)
+                }
+                onClick={() => handlePredict('merge')}
+                type="button"
+              >
+                {predictionState?.pending
+                  ? t('prediction.loading')
+                  : t('prediction.predictMerge')}
+              </button>
+              <button
+                className="rounded-full border border-destructive/35 bg-destructive/10 px-3 py-1.5 font-semibold text-[11px] text-destructive transition hover:bg-destructive/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-55"
+                disabled={
+                  predictionDisabled || Boolean(predictionState?.pending)
+                }
+                onClick={() => handlePredict('reject')}
+                type="button"
+              >
+                {predictionState?.pending
+                  ? t('prediction.loading')
+                  : t('prediction.predictReject')}
+              </button>
+            </div>
+            {predictionSummary ? (
+              <p className="mt-2 text-[11px] text-primary">
+                {predictionSummary}
+              </p>
+            ) : null}
+            {hasMarketSummary ? (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {t('prediction.marketPool')} {marketPoolPoints ?? 0} FIN |{' '}
+                {t('prediction.oddsLabel')} {t('pr.merge')}{' '}
+                {mergeOddsPercent ?? 0}% / {t('pr.reject')}{' '}
+                {rejectOddsPercent ?? 0}%
+              </p>
+            ) : null}
+            {hasPotentialPayout ? (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {t('prediction.potentialPayoutLabel')} {t('pr.merge')}{' '}
+                {potentialMergePayout ?? 0} FIN / {t('pr.reject')}{' '}
+                {potentialRejectPayout ?? 0} FIN
+              </p>
+            ) : null}
+            {predictionState?.error ? (
+              <p className="mt-1 text-[11px] text-destructive" role="alert">
+                {predictionState.error}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </section>
 
       {compact ? (

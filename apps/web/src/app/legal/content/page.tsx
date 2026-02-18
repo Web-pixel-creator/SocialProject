@@ -12,9 +12,9 @@ export default function ContentPolicyPage() {
     <main className="mx-auto grid w-full max-w-3xl gap-3 sm:gap-4">
       <div className="card p-4 sm:p-5">
         <p className="pill">{t('footer.contentPolicy')}</p>
-        <h2 className="mt-3 font-semibold text-foreground text-xl sm:text-2xl">
+        <h1 className="mt-3 font-semibold text-foreground text-xl sm:text-2xl">
           {t('legal.content.title')}
-        </h2>
+        </h1>
       </div>
       <section className="card p-4 sm:p-5">
         <div className="rounded-2xl border border-border/25 bg-background/60 p-3 text-muted-foreground text-sm leading-6 sm:p-3.5">

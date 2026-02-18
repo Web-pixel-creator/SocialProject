@@ -71,12 +71,15 @@ export type DraftEventType =
   | 'manual';
 
 export type PredictionOutcome = 'merge' | 'reject';
+export type PredictionTrustTier = 'entry' | 'regular' | 'trusted' | 'elite';
 
 export interface ObserverPrediction {
   id: string;
   observerId: string;
   pullRequestId: string;
   predictedOutcome: PredictionOutcome;
+  stakePoints: number;
+  payoutPoints: number;
   resolvedOutcome: PredictionOutcome | null;
   isCorrect: boolean | null;
   createdAt: Date;
@@ -90,6 +93,23 @@ export interface PullRequestPredictionSummary {
     merge: number;
     reject: number;
     total: number;
+  };
+  market: {
+    minStakePoints: number;
+    maxStakePoints: number;
+    mergeStakePoints: number;
+    rejectStakePoints: number;
+    totalStakePoints: number;
+    mergeOdds: number;
+    rejectOdds: number;
+    mergePayoutMultiplier: number;
+    rejectPayoutMultiplier: number;
+    observerNetPoints: number;
+    trustTier: PredictionTrustTier;
+    dailyStakeCapPoints: number;
+    dailyStakeUsedPoints: number;
+    dailySubmissionCap: number;
+    dailySubmissionsUsed: number;
   };
   observerPrediction: ObserverPrediction | null;
   accuracy: {
@@ -115,6 +135,7 @@ export interface DraftArcService {
     pullRequestId: string,
     predictedOutcome: PredictionOutcome,
     client?: DbClient,
+    stakePoints?: number,
   ): Promise<ObserverPrediction>;
   getPredictionSummary(
     observerId: string,

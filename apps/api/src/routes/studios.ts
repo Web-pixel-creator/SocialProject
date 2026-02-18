@@ -1,6 +1,10 @@
+import type { Request } from 'express';
 import { Router } from 'express';
+import jwt from 'jsonwebtoken';
+import { env } from '../config/env';
 import { db } from '../db/pool';
-import { requireVerifiedAgent } from '../middleware/auth';
+import { requireHuman, requireVerifiedAgent } from '../middleware/auth';
+import { ServiceError } from '../services/common/errors';
 import { HeartbeatServiceImpl } from '../services/heartbeat/heartbeatService';
 import {
   IMPACT_MAJOR_INCREMENT,
@@ -11,6 +15,24 @@ import { MetricsServiceImpl } from '../services/metrics/metricsService';
 const router = Router();
 const metricsService = new MetricsServiceImpl(db);
 const heartbeatService = new HeartbeatServiceImpl(db);
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const isUuid = (value: string) => UUID_PATTERN.test(value);
+
+const parseOptionalObserverId = (req: Request): string | undefined => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return undefined;
+  }
+  const token = authHeader.replace('Bearer ', '');
+  try {
+    const payload = jwt.verify(token, env.JWT_SECRET) as { sub?: string };
+    return typeof payload.sub === 'string' ? payload.sub : undefined;
+  } catch (_error) {
+    return undefined;
+  }
+};
 
 interface StudioLedgerRow {
   kind: 'pr_merged' | 'fix_request';
@@ -24,15 +46,128 @@ interface StudioLedgerRow {
 
 router.get('/studios/:id', async (req, res, next) => {
   try {
+    if (!isUuid(req.params.id)) {
+      throw new ServiceError('STUDIO_ID_INVALID', 'Invalid studio id.', 400);
+    }
+    const observerId = parseOptionalObserverId(req);
     const result = await db.query(
-      'SELECT id, studio_name, personality, impact, signal, avatar_url, style_tags FROM agents WHERE id = $1',
-      [req.params.id],
+      `SELECT
+         a.id,
+         a.studio_name,
+         a.personality,
+         a.impact,
+         a.signal,
+         a.avatar_url,
+         a.style_tags,
+         COALESCE(fs.follower_count, 0) AS follower_count,
+         CASE
+           WHEN $2::uuid IS NULL THEN false
+           ELSE EXISTS (
+             SELECT 1
+             FROM observer_studio_follows osf
+             WHERE osf.observer_id = $2::uuid
+               AND osf.studio_id = a.id
+           )
+         END AS is_following
+       FROM agents a
+       LEFT JOIN (
+         SELECT studio_id, COUNT(*)::int AS follower_count
+         FROM observer_studio_follows
+         GROUP BY studio_id
+       ) fs ON fs.studio_id = a.id
+       WHERE a.id = $1`,
+      [req.params.id, observerId ?? null],
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'STUDIO_NOT_FOUND' });
     }
     const heartbeat = await heartbeatService.getHeartbeat(req.params.id);
     res.json({ ...result.rows[0], heartbeat });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/studios/:id/follow', requireHuman, async (req, res, next) => {
+  try {
+    const studioId = req.params.id;
+    if (!isUuid(studioId)) {
+      throw new ServiceError('STUDIO_ID_INVALID', 'Invalid studio id.', 400);
+    }
+
+    const observerId = req.auth?.id as string;
+    const studioExists = await db.query('SELECT 1 FROM agents WHERE id = $1', [
+      studioId,
+    ]);
+    if (studioExists.rows.length === 0) {
+      return res.status(404).json({ error: 'STUDIO_NOT_FOUND' });
+    }
+
+    const insertResult = await db.query(
+      `INSERT INTO observer_studio_follows (observer_id, studio_id)
+       VALUES ($1, $2)
+       ON CONFLICT (observer_id, studio_id) DO NOTHING
+       RETURNING created_at`,
+      [observerId, studioId],
+    );
+
+    const existingResult =
+      insertResult.rows.length > 0
+        ? insertResult
+        : await db.query(
+            `SELECT created_at
+             FROM observer_studio_follows
+             WHERE observer_id = $1 AND studio_id = $2`,
+            [observerId, studioId],
+          );
+
+    const followerCountResult = await db.query(
+      `SELECT COUNT(*)::int AS follower_count
+       FROM observer_studio_follows
+       WHERE studio_id = $1`,
+      [studioId],
+    );
+
+    return res.status(201).json({
+      studioId,
+      observerId,
+      isFollowing: true,
+      followerCount: Number(followerCountResult.rows[0]?.follower_count ?? 0),
+      followedAt: existingResult.rows[0]?.created_at ?? null,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete('/studios/:id/follow', requireHuman, async (req, res, next) => {
+  try {
+    const studioId = req.params.id;
+    if (!isUuid(studioId)) {
+      throw new ServiceError('STUDIO_ID_INVALID', 'Invalid studio id.', 400);
+    }
+    const observerId = req.auth?.id as string;
+
+    const deleteResult = await db.query(
+      `DELETE FROM observer_studio_follows
+       WHERE observer_id = $1 AND studio_id = $2`,
+      [observerId, studioId],
+    );
+
+    const followerCountResult = await db.query(
+      `SELECT COUNT(*)::int AS follower_count
+       FROM observer_studio_follows
+       WHERE studio_id = $1`,
+      [studioId],
+    );
+
+    return res.json({
+      studioId,
+      observerId,
+      removed: (deleteResult.rowCount ?? 0) > 0,
+      isFollowing: false,
+      followerCount: Number(followerCountResult.rows[0]?.follower_count ?? 0),
+    });
   } catch (error) {
     next(error);
   }

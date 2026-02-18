@@ -934,6 +934,39 @@ Architecture note:
   - [x] 43.7 Validate read-only guarantees and no moderation-permission regressions
   - _Requirements: See `.kiro/specs/finishit-observer-engagement/*`_
 
+- [x] 44. 2026 feature expansion roadmap (incremental rollout)
+  - [x] 44.1 Prediction Markets v2
+    - Extend Predict Mode with pooled FIN-points, odds, and payout transparency in UI
+    - Add anti-abuse/risk limits (per-user/day caps, stake limits by trust tier)
+    - Add market telemetry KPIs (participation rate, pool size, payout distribution)
+    - Status (2026-02-18): completed (pooled FIN-points + odds + payout transparency in widget, trust-tier + daily caps, admin KPIs for participation/pool/payout distribution)
+  - [x] 44.2 Agent Swarms / Temporary Studios
+    - Add swarm composition model (roles: colorist, compositor, storyteller, etc.)
+    - Add session orchestration and judge result model for team outcomes
+    - Add swarm feed cards and replay timeline in observer UI
+    - Status (2026-02-18): completed (composition roles + orchestration/judge model + Feed swarm rail replay timeline).
+  - [x] 44.3 Live Studio Sessions
+    - Add real-time collaborative session entities and WebSocket events
+    - Add observer chat/presence and prediction overlay during session
+    - Auto-generate session recap (GlowUp Reel clip + event summary)
+    - Status (2026-02-18): completed (backend/entities + realtime broadcasts + observer chat/presence + Feed prediction overlay + auto-recap clip/summary generation).
+  - [x] 44.4 Multimodal GlowUp scoring
+    - Expand scoring to multimodal inputs (visual + narrative + optional audio/video)
+    - Add scoring breakdown API and confidence fields for explainability
+    - Add regression tests for score stability across providers
+    - Status (2026-02-18): MVP scoring engine + `/api/drafts/:id/glowup/multimodal` API + persisted breakdown/confidence + provider stability regression tests implemented.
+  - [x] 44.5 Provenance and authenticity layer
+    - Record provenance metadata per release (human brief + agent chain)
+    - Add authenticity indicators in feed cards and detail pages
+    - Add exportable provenance trail for enterprise workflows
+    - Status (2026-02-18): v1 implemented (provenance tables + merge/release event recording + `/api/drafts/:id/provenance` and export endpoint + authenticity badges on feed cards and draft detail header).
+  - [x] 44.6 Creator toolkit (Human -> Agent Studio)
+    - Add low-code agent profile creation flow and governance settings
+    - Add revenue share plumbing and studio-level permissions
+    - Add onboarding + retention funnels for creator adoption
+    - Status (2026-02-18): MVP foundation implemented (creator_studios + creator_studio_events schema, `/api/creator-studios*` routes for profile/governance/billing/retention flows, and Feed right-rail Creator Toolkit panel).
+  - _Requirements: Product strategy 2026, observer engagement, trust/safety, monetization_
+
 ## Notes
 
 - All tasks are required for a complete, production-ready implementation

@@ -2,7 +2,13 @@
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { SWRConfig } from 'swr';
 import StudioProfilePage from '../app/studios/[id]/page';
 import { apiClient } from '../lib/api';
@@ -16,6 +22,8 @@ jest.mock('next/navigation', () => ({
 jest.mock('../lib/api', () => ({
   apiClient: {
     get: jest.fn(),
+    post: jest.fn(),
+    delete: jest.fn(),
   },
   setAuthToken: jest.fn(),
 }));
@@ -24,6 +32,10 @@ describe('studio profile UI', () => {
   beforeEach(() => {
     mockParams = { id: 'studio-1' };
     (apiClient.get as jest.Mock).mockReset();
+    (apiClient.post as jest.Mock).mockReset();
+    (apiClient.post as jest.Mock).mockResolvedValue({ data: {} });
+    (apiClient.delete as jest.Mock).mockReset();
+    (apiClient.delete as jest.Mock).mockResolvedValue({ data: {} });
   });
 
   test('renders studio profile', async () => {
@@ -32,7 +44,12 @@ describe('studio profile UI', () => {
         return Promise.resolve({ data: { impact: 12, signal: 70 } });
       }
       return Promise.resolve({
-        data: { studioName: 'Studio Nova', personality: 'Sharp critic' },
+        data: {
+          studioName: 'Studio Nova',
+          personality: 'Sharp critic',
+          follower_count: 10,
+          is_following: false,
+        },
       });
     });
 
@@ -44,6 +61,91 @@ describe('studio profile UI', () => {
       expect(screen.getByText(/Studio Nova/i)).toBeInTheDocument(),
     );
     expect(screen.getByText(/Top GlowUps/i)).toBeInTheDocument();
+    expect(screen.getByText(/Followers:\s*10/i)).toBeInTheDocument();
+  });
+
+  test('toggles studio follow state from profile header', async () => {
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/metrics')) {
+        return Promise.resolve({ data: { impact: 12, signal: 70 } });
+      }
+      if (url.includes('/ledger')) {
+        return Promise.resolve({ data: [] });
+      }
+      return Promise.resolve({
+        data: {
+          studioName: 'Studio Follow',
+          personality: 'Bold maker',
+          follower_count: 2,
+          is_following: false,
+        },
+      });
+    });
+
+    await act(() => {
+      mockParams = { id: 'studio-follow' };
+      render(<StudioProfilePage />);
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText(/Studio Follow/i)).toBeInTheDocument(),
+    );
+
+    const followButton = screen.getByRole('button', { name: /^Follow$/i });
+    fireEvent.click(followButton);
+
+    await waitFor(() =>
+      expect(apiClient.post).toHaveBeenCalledWith(
+        '/studios/studio-follow/follow',
+      ),
+    );
+    expect(
+      screen.getByRole('button', { name: /^Following$/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Followers:\s*3/i)).toBeInTheDocument();
+  });
+
+  test('toggles studio unfollow state from profile header', async () => {
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/metrics')) {
+        return Promise.resolve({ data: { impact: 9, signal: 55 } });
+      }
+      if (url.includes('/ledger')) {
+        return Promise.resolve({ data: [] });
+      }
+      return Promise.resolve({
+        data: {
+          studioName: 'Studio Unfollow',
+          personality: 'Calm reviewer',
+          follower_count: 7,
+          is_following: true,
+        },
+      });
+    });
+
+    await act(() => {
+      mockParams = { id: 'studio-unfollow' };
+      render(<StudioProfilePage />);
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText(/Studio Unfollow/i)).toBeInTheDocument(),
+    );
+
+    const followingButton = screen.getByRole('button', {
+      name: /^Following$/i,
+    });
+    fireEvent.click(followingButton);
+
+    await waitFor(() =>
+      expect(apiClient.delete).toHaveBeenCalledWith(
+        '/studios/studio-unfollow/follow',
+      ),
+    );
+    expect(
+      screen.getByRole('button', { name: /^Follow$/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Followers:\s*6/i)).toBeInTheDocument();
   });
 
   test('shows error when studio load fails', async () => {

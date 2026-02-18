@@ -766,6 +766,71 @@ router.get(
         feedPreferenceTotals.hint.totalInteractions,
       );
 
+      const predictionMarketSummary = await db.query(
+        `SELECT
+           COUNT(*)::int AS prediction_count,
+           COUNT(DISTINCT observer_id)::int AS predictor_count,
+           COUNT(DISTINCT pull_request_id)::int AS market_count,
+           COALESCE(SUM(stake_points), 0)::int AS stake_points,
+           COALESCE(SUM(payout_points), 0)::int AS payout_points,
+           COALESCE(AVG(stake_points), 0)::float AS avg_stake_points,
+           COUNT(*) FILTER (WHERE resolved_outcome IS NOT NULL)::int AS resolved_count,
+           COUNT(*) FILTER (WHERE is_correct = true)::int AS correct_count
+         FROM observer_pr_predictions
+         WHERE created_at >= NOW() - ($1 || ' hours')::interval`,
+        [hours],
+      );
+      const predictionOutcomes = await db.query(
+        `SELECT
+           predicted_outcome,
+           COUNT(*)::int AS prediction_count,
+           COALESCE(SUM(stake_points), 0)::int AS stake_points
+         FROM observer_pr_predictions
+         WHERE created_at >= NOW() - ($1 || ' hours')::interval
+         GROUP BY predicted_outcome
+         ORDER BY predicted_outcome`,
+        [hours],
+      );
+
+      const predictionCount = Number(
+        predictionMarketSummary.rows[0]?.prediction_count ?? 0,
+      );
+      const predictorCount = Number(
+        predictionMarketSummary.rows[0]?.predictor_count ?? 0,
+      );
+      const marketCount = Number(
+        predictionMarketSummary.rows[0]?.market_count ?? 0,
+      );
+      const predictionStakePoints = Number(
+        predictionMarketSummary.rows[0]?.stake_points ?? 0,
+      );
+      const predictionPayoutPoints = Number(
+        predictionMarketSummary.rows[0]?.payout_points ?? 0,
+      );
+      const averageStakePoints = Number(
+        Number(predictionMarketSummary.rows[0]?.avg_stake_points ?? 0).toFixed(
+          2,
+        ),
+      );
+      const predictionResolvedCount = Number(
+        predictionMarketSummary.rows[0]?.resolved_count ?? 0,
+      );
+      const predictionCorrectCount = Number(
+        predictionMarketSummary.rows[0]?.correct_count ?? 0,
+      );
+      const predictionParticipationRate = toRate(
+        predictorCount,
+        totals.observerUsers,
+      );
+      const predictionAccuracyRate = toRate(
+        predictionCorrectCount,
+        predictionResolvedCount,
+      );
+      const payoutToStakeRatio = toRate(
+        predictionPayoutPoints,
+        predictionStakePoints,
+      );
+
       res.json({
         windowHours: hours,
         trackedEvents,
@@ -783,6 +848,27 @@ router.get(
           densityComfortRate,
           densityCompactRate,
           hintDismissRate,
+          predictionParticipationRate,
+          predictionAccuracyRate,
+          predictionPoolPoints: predictionStakePoints,
+          payoutToStakeRatio,
+        },
+        predictionMarket: {
+          totals: {
+            predictions: predictionCount,
+            predictors: predictorCount,
+            markets: marketCount,
+            stakePoints: predictionStakePoints,
+            payoutPoints: predictionPayoutPoints,
+            averageStakePoints,
+            resolvedPredictions: predictionResolvedCount,
+            correctPredictions: predictionCorrectCount,
+          },
+          outcomes: predictionOutcomes.rows.map((row) => ({
+            predictedOutcome: row.predicted_outcome,
+            predictions: Number(row.prediction_count ?? 0),
+            stakePoints: Number(row.stake_points ?? 0),
+          })),
         },
         feedPreferences: {
           viewMode: {

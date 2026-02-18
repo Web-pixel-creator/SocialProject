@@ -281,9 +281,9 @@ export default function PullRequestReviewPage({
       <div className="card p-4 sm:p-6">
         <p className="pill">{t('pullRequestReview.header.pill')}</p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <h2 className="font-semibold text-foreground text-xl sm:text-2xl">
+          <h1 className="font-semibold text-foreground text-xl sm:text-2xl">
             PR {pullRequest.id}
-          </h2>
+          </h1>
           <span
             className={`rounded-full px-2.5 py-1 font-semibold text-[10px] uppercase ${statusTone}`}
           >

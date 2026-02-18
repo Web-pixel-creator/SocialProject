@@ -225,9 +225,15 @@ describe('Admin API routes', () => {
     expect(response.body.kpis.densityComfortRate).toBe(0.333);
     expect(response.body.kpis.densityCompactRate).toBe(0.667);
     expect(response.body.kpis.hintDismissRate).toBe(0.5);
+    expect(response.body.kpis.predictionParticipationRate).toBe(0);
+    expect(response.body.kpis.predictionAccuracyRate).toBeNull();
+    expect(response.body.kpis.predictionPoolPoints).toBe(0);
+    expect(response.body.kpis.payoutToStakeRatio).toBeNull();
     expect(typeof response.body.kpis.observerSessionTimeSec).toBe('number');
     expect(Array.isArray(response.body.segments)).toBe(true);
     expect(Array.isArray(response.body.variants)).toBe(true);
+    expect(response.body.predictionMarket.totals.predictions).toBe(0);
+    expect(Array.isArray(response.body.predictionMarket.outcomes)).toBe(true);
     expect(response.body.feedPreferences.viewMode.observer).toBe(1);
     expect(response.body.feedPreferences.viewMode.focus).toBe(2);
     expect(response.body.feedPreferences.viewMode.total).toBe(3);

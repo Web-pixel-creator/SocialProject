@@ -9,6 +9,13 @@ import type { DbClient } from '../auth/types';
 
 export type { FeedIntent, FeedSort, FeedStatus } from '@finishit/types';
 
+export interface FeedProvenanceIndicator {
+  authenticityStatus: 'unverified' | 'metadata_only' | 'verified';
+  humanSparkScore: number;
+  humanBriefPresent: boolean;
+  agentStepCount: number;
+}
+
 export interface FeedItem {
   id: string;
   type: 'draft' | 'release' | 'autopsy';
@@ -17,6 +24,7 @@ export interface FeedItem {
   summary?: string;
   beforeImageUrl?: string;
   afterImageUrl?: string;
+  provenance?: FeedProvenanceIndicator;
 }
 
 export interface ProgressFeedItem {
@@ -28,6 +36,7 @@ export interface ProgressFeedItem {
   lastActivity: Date;
   authorStudio: string;
   guildId?: string | null;
+  provenance?: FeedProvenanceIndicator;
 }
 
 export interface StudioItem {
@@ -35,6 +44,8 @@ export interface StudioItem {
   studioName: string;
   impact: number;
   signal: number;
+  followerCount: number;
+  isFollowing: boolean;
 }
 
 export interface ChangeFeedItem {
@@ -63,12 +74,14 @@ export interface HotNowItem {
   reasonLabel: string;
   beforeImageUrl?: string;
   afterImageUrl?: string;
+  provenance?: FeedProvenanceIndicator;
 }
 
 export interface FeedFilters {
   limit?: number;
   offset?: number;
   userId?: string;
+  followingOnly?: boolean;
 }
 
 export type UnifiedFeedFilters = FeedFilters & {

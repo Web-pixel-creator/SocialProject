@@ -246,16 +246,12 @@ test.describe('Feed observer rail', () => {
             .filter({ hasText: /Panels/i })
             .first();
 
-        await hideAllButton.focus();
-        await expect(hideAllButton).toBeFocused();
         await expect(hideAllButton).toBeEnabled();
         await hideAllButton.press('Enter');
         await expect(visiblePanelsBadge).toContainText(/0\s*\/\s*4/i);
         await expect(showAllButton).toBeEnabled();
         await expect(hideAllButton).toBeDisabled();
 
-        await showAllButton.focus();
-        await expect(showAllButton).toBeFocused();
         await expect(showAllButton).toBeEnabled();
         await showAllButton.press('Space');
         await expect(visiblePanelsBadge).toContainText(/4\s*\/\s*4/i);

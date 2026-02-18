@@ -20,6 +20,40 @@ import type {
 
 const getDb = (pool: Pool, client?: DbClient): DbClient => client ?? pool;
 const DIGEST_DEDUP_WINDOW_MINUTES = 10;
+const PREDICTION_MIN_STAKE_POINTS = 5;
+const PREDICTION_MAX_STAKE_POINTS = 500;
+const PREDICTION_DEFAULT_STAKE_POINTS = 10;
+const PREDICTION_ENTRY_MAX_STAKE_POINTS = 120;
+const PREDICTION_DAILY_STAKE_CAP_POINTS = 1000;
+const PREDICTION_DAILY_SUBMISSION_CAP = 30;
+
+type PredictionTrustTier = 'entry' | 'regular' | 'trusted' | 'elite';
+
+const PREDICTION_TRUST_TIER_RULES: ReadonlyArray<{
+  tier: Exclude<PredictionTrustTier, 'entry'>;
+  minResolved: number;
+  minAccuracy: number;
+  maxStakePoints: number;
+}> = [
+  {
+    tier: 'elite',
+    minResolved: 80,
+    minAccuracy: 0.66,
+    maxStakePoints: 500,
+  },
+  {
+    tier: 'trusted',
+    minResolved: 35,
+    minAccuracy: 0.58,
+    maxStakePoints: 320,
+  },
+  {
+    tier: 'regular',
+    minResolved: 12,
+    minAccuracy: 0.5,
+    maxStakePoints: 220,
+  },
+];
 
 interface ArcSummaryRow {
   draft_id: string;
@@ -63,10 +97,22 @@ interface PredictionRow {
   observer_id: string;
   pull_request_id: string;
   predicted_outcome: PredictionOutcome;
+  stake_points: number | string | null;
+  payout_points: number | string | null;
   resolved_outcome: PredictionOutcome | null;
   is_correct: boolean | null;
   created_at: Date;
   resolved_at: Date | null;
+}
+
+interface PredictionStatsRow {
+  resolved_count: number | string | null;
+  correct_count: number | string | null;
+}
+
+interface PredictionDailyUsageRow {
+  submission_count: number | string | null;
+  stake_points: number | string | null;
 }
 
 const mapArcSummary = (row: ArcSummaryRow): DraftArcSummary => ({
@@ -113,6 +159,8 @@ const mapPrediction = (row: PredictionRow): ObserverPrediction => ({
   observerId: row.observer_id,
   pullRequestId: row.pull_request_id,
   predictedOutcome: row.predicted_outcome,
+  stakePoints: Number(row.stake_points ?? PREDICTION_DEFAULT_STAKE_POINTS),
+  payoutPoints: Number(row.payout_points ?? 0),
   resolvedOutcome: row.resolved_outcome ?? null,
   isCorrect: row.is_correct ?? null,
   createdAt: row.created_at,
@@ -121,6 +169,18 @@ const mapPrediction = (row: PredictionRow): ObserverPrediction => ({
 
 const asNumber = (value: unknown): number => Number(value ?? 0);
 const round2 = (value: number): number => Math.round(value * 100) / 100;
+
+const resolvePredictionTrustTier = (
+  resolvedCount: number,
+  accuracyRate: number,
+): { tier: PredictionTrustTier; maxStakePoints: number } => {
+  for (const rule of PREDICTION_TRUST_TIER_RULES) {
+    if (resolvedCount >= rule.minResolved && accuracyRate >= rule.minAccuracy) {
+      return { tier: rule.tier, maxStakePoints: rule.maxStakePoints };
+    }
+  }
+  return { tier: 'entry', maxStakePoints: PREDICTION_ENTRY_MAX_STAKE_POINTS };
+};
 
 const calcGlowUp = (majorMerged: number, minorMerged: number): number => {
   const prCount = majorMerged + minorMerged;
@@ -363,13 +423,28 @@ export class DraftArcServiceImpl implements DraftArcService {
     pullRequestId: string,
     predictedOutcome: PredictionOutcome,
     client?: DbClient,
+    stakePoints = PREDICTION_DEFAULT_STAKE_POINTS,
   ): Promise<ObserverPrediction> {
     const db = getDb(this.pool, client);
     await this.ensureObserverExists(observerId, db);
     await this.ensurePendingPullRequest(pullRequestId, db);
+    if (
+      !Number.isInteger(stakePoints) ||
+      stakePoints < PREDICTION_MIN_STAKE_POINTS ||
+      stakePoints > PREDICTION_MAX_STAKE_POINTS
+    ) {
+      throw new ServiceError(
+        'PREDICTION_STAKE_INVALID',
+        `Stake points must be an integer between ${PREDICTION_MIN_STAKE_POINTS} and ${PREDICTION_MAX_STAKE_POINTS}.`,
+        400,
+      );
+    }
 
     const existing = await db.query(
-      `SELECT id, resolved_at
+      `SELECT id,
+              resolved_at,
+              stake_points,
+              (created_at >= date_trunc('day', NOW())) AS created_today
        FROM observer_pr_predictions
        WHERE observer_id = $1
          AND pull_request_id = $2`,
@@ -384,18 +459,64 @@ export class DraftArcServiceImpl implements DraftArcService {
       );
     }
 
+    const riskProfile = await this.getPredictionRiskProfile(observerId, db);
+    const existingStakePoints = asNumber(existing.rows[0]?.stake_points);
+    const effectiveStakeCap = Math.max(
+      riskProfile.maxStakePoints,
+      existingStakePoints,
+    );
+    if (stakePoints > effectiveStakeCap) {
+      throw new ServiceError(
+        'PREDICTION_STAKE_LIMIT_EXCEEDED',
+        `Stake points exceed your current trust-tier limit (${effectiveStakeCap}).`,
+        400,
+      );
+    }
+
+    const dailyUsage = await this.getPredictionDailyUsage(observerId, db);
+    const hasExistingPrediction = existing.rows.length > 0;
+    const createdToday = Boolean(existing.rows[0]?.created_today);
+    if (
+      !hasExistingPrediction &&
+      dailyUsage.submissionCount >= PREDICTION_DAILY_SUBMISSION_CAP
+    ) {
+      throw new ServiceError(
+        'PREDICTION_DAILY_SUBMISSION_CAP_REACHED',
+        `Daily prediction limit reached (${PREDICTION_DAILY_SUBMISSION_CAP}).`,
+        429,
+      );
+    }
+
+    let projectedDailyStakePoints = dailyUsage.stakePoints;
+    if (hasExistingPrediction && createdToday) {
+      projectedDailyStakePoints =
+        dailyUsage.stakePoints - existingStakePoints + stakePoints;
+    } else if (!hasExistingPrediction) {
+      projectedDailyStakePoints = dailyUsage.stakePoints + stakePoints;
+    }
+
+    if (projectedDailyStakePoints > PREDICTION_DAILY_STAKE_CAP_POINTS) {
+      throw new ServiceError(
+        'PREDICTION_DAILY_STAKE_CAP_REACHED',
+        `Daily stake limit reached (${PREDICTION_DAILY_STAKE_CAP_POINTS}).`,
+        429,
+      );
+    }
+
     const upsert = await db.query(
       `INSERT INTO observer_pr_predictions (
          observer_id,
          pull_request_id,
-         predicted_outcome
+         predicted_outcome,
+         stake_points
        )
-       VALUES ($1, $2, $3)
+       VALUES ($1, $2, $3, $4)
        ON CONFLICT (observer_id, pull_request_id)
        DO UPDATE SET
-         predicted_outcome = EXCLUDED.predicted_outcome
-       RETURNING id, observer_id, pull_request_id, predicted_outcome, resolved_outcome, is_correct, created_at, resolved_at`,
-      [observerId, pullRequestId, predictedOutcome],
+         predicted_outcome = EXCLUDED.predicted_outcome,
+         stake_points = EXCLUDED.stake_points
+       RETURNING id, observer_id, pull_request_id, predicted_outcome, stake_points, payout_points, resolved_outcome, is_correct, created_at, resolved_at`,
+      [observerId, pullRequestId, predictedOutcome, stakePoints],
     );
 
     return mapPrediction(upsert.rows[0] as PredictionRow);
@@ -423,16 +544,24 @@ export class DraftArcServiceImpl implements DraftArcService {
     const consensusResult = await db.query(
       `SELECT
          COUNT(*) FILTER (WHERE predicted_outcome = 'merge')::int AS merge_count,
-         COUNT(*) FILTER (WHERE predicted_outcome = 'reject')::int AS reject_count
+         COUNT(*) FILTER (WHERE predicted_outcome = 'reject')::int AS reject_count,
+         COALESCE(SUM(stake_points) FILTER (WHERE predicted_outcome = 'merge'), 0)::int AS merge_stake_points,
+         COALESCE(SUM(stake_points) FILTER (WHERE predicted_outcome = 'reject'), 0)::int AS reject_stake_points
        FROM observer_pr_predictions
        WHERE pull_request_id = $1`,
       [pullRequestId],
     );
     const mergeCount = asNumber(consensusResult.rows[0]?.merge_count);
     const rejectCount = asNumber(consensusResult.rows[0]?.reject_count);
+    const mergeStakePoints = asNumber(
+      consensusResult.rows[0]?.merge_stake_points,
+    );
+    const rejectStakePoints = asNumber(
+      consensusResult.rows[0]?.reject_stake_points,
+    );
 
     const observerPredictionResult = await db.query(
-      `SELECT id, observer_id, pull_request_id, predicted_outcome, resolved_outcome, is_correct, created_at, resolved_at
+      `SELECT id, observer_id, pull_request_id, predicted_outcome, stake_points, payout_points, resolved_outcome, is_correct, created_at, resolved_at
        FROM observer_pr_predictions
        WHERE observer_id = $1
          AND pull_request_id = $2`,
@@ -449,6 +578,38 @@ export class DraftArcServiceImpl implements DraftArcService {
     );
     const accuracyCorrect = asNumber(accuracyResult.rows[0]?.correct_count);
     const accuracyTotal = asNumber(accuracyResult.rows[0]?.total_count);
+    const observerNetPointsResult = await db.query(
+      `SELECT
+         COALESCE(
+           SUM(payout_points - stake_points) FILTER (WHERE resolved_outcome IS NOT NULL),
+           0
+         )::int AS observer_net_points
+       FROM observer_pr_predictions
+       WHERE observer_id = $1`,
+      [observerId],
+    );
+    const observerNetPoints = asNumber(
+      observerNetPointsResult.rows[0]?.observer_net_points,
+    );
+    const totalStakePoints = mergeStakePoints + rejectStakePoints;
+    const mergeOdds =
+      totalStakePoints > 0 ? round2(mergeStakePoints / totalStakePoints) : 0;
+    const rejectOdds =
+      totalStakePoints > 0 ? round2(rejectStakePoints / totalStakePoints) : 0;
+    const mergePayoutMultiplier =
+      mergeStakePoints > 0 ? round2(totalStakePoints / mergeStakePoints) : 0;
+    const rejectPayoutMultiplier =
+      rejectStakePoints > 0 ? round2(totalStakePoints / rejectStakePoints) : 0;
+    const riskProfile = await this.getPredictionRiskProfile(observerId, db);
+    const dailyUsage = await this.getPredictionDailyUsage(observerId, db);
+    const observerPrediction =
+      observerPredictionResult.rows.length > 0
+        ? mapPrediction(observerPredictionResult.rows[0] as PredictionRow)
+        : null;
+    const effectiveStakeCap = Math.max(
+      riskProfile.maxStakePoints,
+      observerPrediction?.stakePoints ?? 0,
+    );
 
     return {
       pullRequestId,
@@ -458,10 +619,24 @@ export class DraftArcServiceImpl implements DraftArcService {
         reject: rejectCount,
         total: mergeCount + rejectCount,
       },
-      observerPrediction:
-        observerPredictionResult.rows.length > 0
-          ? mapPrediction(observerPredictionResult.rows[0] as PredictionRow)
-          : null,
+      market: {
+        minStakePoints: PREDICTION_MIN_STAKE_POINTS,
+        maxStakePoints: effectiveStakeCap,
+        mergeStakePoints,
+        rejectStakePoints,
+        totalStakePoints,
+        mergeOdds,
+        rejectOdds,
+        mergePayoutMultiplier,
+        rejectPayoutMultiplier,
+        observerNetPoints,
+        trustTier: riskProfile.trustTier,
+        dailyStakeCapPoints: PREDICTION_DAILY_STAKE_CAP_POINTS,
+        dailyStakeUsedPoints: dailyUsage.stakePoints,
+        dailySubmissionCap: PREDICTION_DAILY_SUBMISSION_CAP,
+        dailySubmissionsUsed: dailyUsage.submissionCount,
+      },
+      observerPrediction,
       accuracy: {
         correct: accuracyCorrect,
         total: accuracyTotal,
@@ -770,9 +945,22 @@ export class DraftArcServiceImpl implements DraftArcService {
     db: DbClient,
   ): Promise<void> {
     const followers = await db.query(
-      `SELECT observer_id
-       FROM observer_draft_follows
-       WHERE draft_id = $1`,
+      `WITH draft_followers AS (
+         SELECT observer_id
+         FROM observer_draft_follows
+         WHERE draft_id = $1
+       ),
+       studio_followers AS (
+         SELECT osf.observer_id
+         FROM observer_studio_follows osf
+         JOIN drafts d ON d.author_id = osf.studio_id
+         WHERE d.id = $1
+       )
+       SELECT observer_id
+       FROM draft_followers
+       UNION
+       SELECT observer_id
+       FROM studio_followers`,
       [draftId],
     );
 
@@ -827,6 +1015,54 @@ export class DraftArcServiceImpl implements DraftArcService {
         );
       }
     }
+  }
+
+  private async getPredictionRiskProfile(
+    observerId: string,
+    db: DbClient,
+  ): Promise<{ trustTier: PredictionTrustTier; maxStakePoints: number }> {
+    const stats = await db.query(
+      `SELECT
+         COUNT(*) FILTER (WHERE resolved_outcome IS NOT NULL)::int AS resolved_count,
+         COUNT(*) FILTER (WHERE is_correct = true)::int AS correct_count
+       FROM observer_pr_predictions
+       WHERE observer_id = $1`,
+      [observerId],
+    );
+    const resolvedCount = asNumber(
+      (stats.rows[0] as PredictionStatsRow | undefined)?.resolved_count,
+    );
+    const correctCount = asNumber(
+      (stats.rows[0] as PredictionStatsRow | undefined)?.correct_count,
+    );
+    const accuracyRate =
+      resolvedCount > 0 ? round2(correctCount / resolvedCount) : 0;
+    const tier = resolvePredictionTrustTier(resolvedCount, accuracyRate);
+    return { trustTier: tier.tier, maxStakePoints: tier.maxStakePoints };
+  }
+
+  private async getPredictionDailyUsage(
+    observerId: string,
+    db: DbClient,
+  ): Promise<{ submissionCount: number; stakePoints: number }> {
+    const usage = await db.query(
+      `SELECT
+         COUNT(*)::int AS submission_count,
+         COALESCE(SUM(stake_points), 0)::int AS stake_points
+       FROM observer_pr_predictions
+       WHERE observer_id = $1
+         AND created_at >= date_trunc('day', NOW())`,
+      [observerId],
+    );
+    return {
+      submissionCount: asNumber(
+        (usage.rows[0] as PredictionDailyUsageRow | undefined)
+          ?.submission_count,
+      ),
+      stakePoints: asNumber(
+        (usage.rows[0] as PredictionDailyUsageRow | undefined)?.stake_points,
+      ),
+    };
   }
 
   private async ensureDraftExists(

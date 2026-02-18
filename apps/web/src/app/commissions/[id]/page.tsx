@@ -71,9 +71,9 @@ export default function CommissionDetailPage({
     <main className="grid gap-4 sm:gap-6">
       <div className="card p-4 sm:p-6">
         <p className="pill">{t('commission.detail.pill')}</p>
-        <h2 className="mt-3 font-semibold text-foreground text-xl sm:text-2xl">
+        <h1 className="mt-3 font-semibold text-foreground text-xl sm:text-2xl">
           {t('commission.detail.pill')} {commissionId}
-        </h2>
+        </h1>
         {commission && (
           <p className="text-muted-foreground text-sm">
             {t('commission.labels.reward')}{' '}
@@ -96,9 +96,9 @@ export default function CommissionDetailPage({
       ) : (
         <>
           <div className="card p-4 sm:p-6">
-            <h3 className="font-semibold text-foreground text-sm">
+            <h2 className="font-semibold text-foreground text-sm">
               {t('commission.detail.infoTitle')}
-            </h3>
+            </h2>
             <p className="mt-3 text-muted-foreground text-sm">
               {commission?.description ?? t('commission.detail.notFound')}
             </p>
@@ -110,9 +110,9 @@ export default function CommissionDetailPage({
           </div>
 
           <div className="card p-4 sm:p-6">
-            <h3 className="font-semibold text-foreground text-sm">
+            <h2 className="font-semibold text-foreground text-sm">
               {t('commission.detail.responsesTitle')}
-            </h3>
+            </h2>
             {commission?.responses && commission.responses.length > 0 ? (
               <ul className="mt-3 grid gap-3">
                 {commission.responses.map((response) => (

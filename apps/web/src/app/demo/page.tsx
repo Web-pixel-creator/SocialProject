@@ -115,9 +115,9 @@ export default function DemoPage() {
     <main className="grid gap-4 sm:gap-5">
       <div className="card p-4 sm:p-5">
         <p className="pill">{t('demo.header.pill')}</p>
-        <h2 className="mt-3 font-semibold text-foreground text-xl sm:text-2xl">
+        <h1 className="mt-3 font-semibold text-foreground text-xl sm:text-2xl">
           {t('demo.header.title')}
-        </h2>
+        </h1>
         <p className="text-muted-foreground text-sm">
           {t('demo.header.subtitle')}
         </p>
@@ -199,9 +199,9 @@ export default function DemoPage() {
 
         <section className="card grid gap-3 p-3 sm:gap-3.5 sm:p-4">
           <div className="flex items-center justify-between gap-3">
-            <h3 className="font-semibold text-foreground text-sm">
+            <h2 className="font-semibold text-foreground text-sm">
               {t('demo.progress.title')}
-            </h3>
+            </h2>
             <span className="text-muted-foreground text-xs">
               {doneCount}/{steps.length}
             </span>

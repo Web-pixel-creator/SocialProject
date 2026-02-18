@@ -14,6 +14,13 @@ export type FeedRange = '7d' | '30d' | '90d' | 'all';
 export type FeedIntent = 'all' | SharedFeedIntent;
 export type BattleFilter = 'all' | 'pending' | 'changes_requested' | 'merged';
 
+export interface ProvenanceIndicatorView {
+  authenticityStatus: 'unverified' | 'metadata_only' | 'verified';
+  humanSparkScore: number;
+  humanBriefPresent: boolean;
+  agentStepCount: number;
+}
+
 export interface DraftFeedItem {
   kind: 'draft';
   id: string;
@@ -23,6 +30,7 @@ export interface DraftFeedItem {
   updatedAt?: string;
   beforeImageUrl?: string;
   afterImageUrl?: string;
+  provenance?: ProvenanceIndicatorView;
 }
 
 export interface HotNowFeedItem {
@@ -35,6 +43,7 @@ export interface HotNowFeedItem {
   updatedAt?: string;
   beforeImageUrl?: string;
   afterImageUrl?: string;
+  provenance?: ProvenanceIndicatorView;
 }
 
 export interface ProgressFeedItem {
@@ -46,6 +55,7 @@ export interface ProgressFeedItem {
   prCount: number;
   lastActivity?: string;
   authorStudio: string;
+  provenance?: ProvenanceIndicatorView;
 }
 
 export interface GuildFeedItem {
@@ -62,6 +72,8 @@ export interface StudioFeedItem {
   studioName: string;
   impact: number;
   signal: number;
+  followerCount?: number;
+  isFollowing?: boolean;
 }
 
 export interface ChangeFeedItem {

@@ -804,6 +804,7 @@ describe('draft detail page', () => {
         '/pull-requests/pr-pending/predict',
         {
           predictedOutcome: 'merge',
+          stakePoints: 10,
         },
       ),
     );
@@ -888,6 +889,78 @@ describe('draft detail page', () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/GlowUp score updated/i)).toBeInTheDocument();
     expect(screen.getByText(/Draft released/i)).toBeInTheDocument();
+  });
+
+  test('shows followed studios section and streams updates for followed studio drafts', async () => {
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/search/similar')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/fix-requests')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/pull-requests') && !url.includes('/predictions')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/arc')) {
+        return Promise.resolve({ data: null });
+      }
+      if (url.includes('/observers/watchlist')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/observers/digest')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/me/following')) {
+        return Promise.resolve({
+          data: [
+            {
+              id: 'studio-followed',
+              studioName: 'Studio Followed',
+              impact: 88,
+              signal: 92,
+              followerCount: 14,
+            },
+          ],
+        });
+      }
+      return Promise.resolve({
+        data: {
+          draft: {
+            id: 'draft-studio-follow',
+            authorId: 'studio-followed',
+            currentVersion: 1,
+            glowUpScore: 2.4,
+            status: 'draft',
+            updatedAt: new Date().toISOString(),
+          },
+          versions: [],
+        },
+      });
+    });
+
+    await renderDraftDetailPage('draft-studio-follow');
+
+    expect(screen.getByText(/From studios you follow/i)).toBeInTheDocument();
+    expect(screen.getByText(/Studio Followed/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/You follow the studio behind this draft/i),
+    ).toBeInTheDocument();
+
+    const { __socket } = jest.requireMock('../lib/socket');
+    await act(async () => {
+      __socket.__trigger('event', {
+        id: 'evt-studio-followed',
+        scope: 'post:draft-studio-follow',
+        type: 'fix_request',
+        sequence: 1,
+        payload: {},
+      });
+      await Promise.resolve();
+    });
+    await flushAsyncState();
+
+    expect(screen.getByText(/New fix request submitted/i)).toBeInTheDocument();
   });
 
   test('keeps fix and pull request data when realtime refresh fails', async () => {

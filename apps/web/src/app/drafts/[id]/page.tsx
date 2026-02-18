@@ -69,6 +69,16 @@ interface Draft {
   glowUpScore: number;
   status: string;
   updatedAt: string;
+  authorId?: string;
+  author_id?: string;
+}
+
+interface DraftProvenance {
+  authenticityStatus: 'unverified' | 'metadata_only' | 'verified';
+  humanSparkScore: number;
+  humanBriefPresent: boolean;
+  agentStepCount: number;
+  releaseCount: number;
 }
 
 interface Version {
@@ -106,6 +116,25 @@ interface SimilarDraft {
 interface DraftPayload {
   draft: Draft | null;
   versions: Version[];
+  provenance?: DraftProvenance | null;
+}
+
+interface FollowingStudioItem {
+  id: string;
+  studioName: string;
+  impact: number;
+  signal: number;
+  followerCount: number;
+}
+
+interface FollowingStudioShape {
+  id?: unknown;
+  studioName?: unknown;
+  studio_name?: unknown;
+  impact?: unknown;
+  signal?: unknown;
+  followerCount?: unknown;
+  follower_count?: unknown;
 }
 
 interface DemoFlowPayload {
@@ -115,6 +144,7 @@ interface DemoFlowPayload {
 interface PredictionSubmitPayload {
   pullRequestId: string;
   outcome: 'merge' | 'reject';
+  stakePoints: number;
 }
 
 type NextAction =
@@ -136,6 +166,7 @@ const fetchDraftPayload = async (draftId: string): Promise<DraftPayload> => {
   return {
     draft: response.data?.draft ?? null,
     versions: response.data?.versions ?? [],
+    provenance: response.data?.provenance ?? null,
   };
 };
 
@@ -175,6 +206,45 @@ const fetchObserverDigest = async (): Promise<ObserverDigestEntryView[]> => {
     params: { unseenOnly: false, limit: 8 },
   });
   return Array.isArray(response.data) ? response.data : [];
+};
+
+const resolveFollowingStudioName = (studio: FollowingStudioShape): string => {
+  if (typeof studio.studioName === 'string') {
+    return studio.studioName;
+  }
+  if (typeof studio.studio_name === 'string') {
+    return studio.studio_name;
+  }
+  return 'Studio';
+};
+
+const fetchObserverFollowing = async (): Promise<FollowingStudioItem[]> => {
+  const response = await apiClient.get('/me/following', {
+    params: { limit: 4 },
+  });
+  if (!Array.isArray(response.data)) {
+    return [];
+  }
+  return response.data
+    .map((item) => {
+      if (typeof item !== 'object' || item === null) {
+        return null;
+      }
+      const studio = item as FollowingStudioShape;
+      if (typeof studio.id !== 'string') {
+        return null;
+      }
+      return {
+        id: studio.id,
+        studioName: resolveFollowingStudioName(studio),
+        impact: Number(studio.impact ?? 0),
+        signal: Number(studio.signal ?? 0),
+        followerCount: Number(
+          studio.followerCount ?? studio.follower_count ?? 0,
+        ),
+      };
+    })
+    .filter((item): item is FollowingStudioItem => item !== null);
 };
 
 const fetchPredictionSummary = async (
@@ -317,6 +387,31 @@ const getArcError = ({
     ? getApiErrorMessage(arcLoadError, t('draftDetail.errors.loadArc'))
     : null;
 
+const getProvenanceTone = (
+  status: DraftProvenance['authenticityStatus'],
+): string => {
+  if (status === 'verified') {
+    return 'tag-success border';
+  }
+  if (status === 'metadata_only') {
+    return 'border border-primary/35 bg-primary/12 text-primary';
+  }
+  return 'border border-border/35 bg-muted/60 text-muted-foreground';
+};
+
+const getProvenanceLabel = (
+  status: DraftProvenance['authenticityStatus'],
+  t: Translate,
+): string => {
+  if (status === 'verified') {
+    return t('feed.provenance.verified');
+  }
+  if (status === 'metadata_only') {
+    return t('feed.provenance.traceable');
+  }
+  return t('feed.provenance.unverified');
+};
+
 const getDraftStatusInfo = (
   hasFixRequests: boolean,
   hasPendingPull: boolean,
@@ -339,6 +434,75 @@ const getDraftStatusInfo = (
     tone: 'tag-alert border',
   };
 };
+
+const getActivityDescription = ({
+  isFollowed,
+  isFollowingAuthorStudio,
+  t,
+}: {
+  isFollowed: boolean;
+  isFollowingAuthorStudio: boolean;
+  t: Translate;
+}): string => {
+  if (isFollowed) {
+    return t('draftDetail.activity.descriptionFollowing');
+  }
+  if (isFollowingAuthorStudio) {
+    return t('draftDetail.activity.descriptionFollowingStudio');
+  }
+  return t('draftDetail.activity.descriptionNotFollowing');
+};
+
+const FollowingStudiosCard = ({
+  t,
+  followingStudios,
+  draftAuthorId,
+}: {
+  t: Translate;
+  followingStudios: FollowingStudioItem[];
+  draftAuthorId: string;
+}) => (
+  <div className="card p-4 sm:p-5">
+    <p className="pill">{t('draftDetail.followingStudios.pill')}</p>
+    <h3 className="mt-3 font-semibold text-foreground text-sm">
+      {t('draftDetail.followingStudios.title')}
+    </h3>
+    <p className="text-muted-foreground text-xs">
+      {t('draftDetail.followingStudios.description')}
+    </p>
+    <div className="mt-4 grid gap-2 text-xs">
+      {followingStudios.length === 0 ? (
+        <span className="text-muted-foreground">
+          {t('draftDetail.followingStudios.empty')}
+        </span>
+      ) : (
+        followingStudios.map((studio) => (
+          <Link
+            className="rounded-lg border border-border/25 bg-background/60 p-2.5 transition hover:border-border/45 hover:bg-background/74 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            href={`/studios/${studio.id}`}
+            key={studio.id}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-medium text-foreground">
+                {studio.studioName}
+              </span>
+              {studio.id === draftAuthorId && (
+                <span className="rounded-full border border-primary/35 bg-primary/12 px-2 py-0.5 font-semibold text-[10px] text-primary">
+                  {t('draftDetail.followingStudios.currentDraft')}
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Impact {studio.impact.toFixed(0)} · Signal{' '}
+              {studio.signal.toFixed(0)} · {t('studioCard.followersLabel')}{' '}
+              {studio.followerCount}
+            </p>
+          </Link>
+        ))
+      )}
+    </div>
+  </div>
+);
 
 const useTimeoutRefCleanup = (timeoutRef: { current: number | null }) => {
   useEffect(
@@ -505,6 +669,7 @@ export default function DraftDetailPage() {
   );
   const draft = draftPayload?.draft ?? null;
   const versions = draftPayload?.versions ?? [];
+  const provenance = draftPayload?.provenance ?? null;
   const fixRequests = useLastSuccessfulValue<FixRequest[]>(
     fixRequestsData,
     Array.isArray(fixRequestsData),
@@ -560,6 +725,12 @@ export default function DraftDetailPage() {
       shouldRetryOnError: false,
     },
   );
+  const { data: followingStudios = [], error: followingLoadError } = useSWR<
+    FollowingStudioItem[]
+  >(draftId ? 'observer:following:studios' : null, fetchObserverFollowing, {
+    revalidateOnFocus: false,
+    shouldRetryOnError: false,
+  });
   const {
     data: predictionSummaryData,
     error: predictionLoadError,
@@ -604,6 +775,7 @@ export default function DraftDetailPage() {
     async (_key, { arg }) => {
       await apiClient.post(`/pull-requests/${arg.pullRequestId}/predict`, {
         predictedOutcome: arg.outcome,
+        stakePoints: arg.stakePoints,
       });
     },
   );
@@ -628,18 +800,28 @@ export default function DraftDetailPage() {
   useTimeoutRefCleanup(copyStatusTimeoutRef);
   const watchlistAuthRequired = isAuthRequiredError(watchlistLoadError);
   const digestAuthRequired = isAuthRequiredError(digestLoadError);
+  const followingAuthRequired = isAuthRequiredError(followingLoadError);
   const predictionAuthRequired = isAuthRequiredError(predictionLoadError);
   const observerAuthRequired =
     manualObserverAuthRequired ||
     watchlistAuthRequired ||
     digestAuthRequired ||
+    followingAuthRequired ||
     predictionAuthRequired;
+  const draftAuthorId = draft?.authorId ?? draft?.author_id ?? '';
   const isFollowed = useMemo(
     () =>
       draftId.length > 0 &&
       watchlistEntries.some((item) => isWatchlistEntryForDraft(item, draftId)),
     [draftId, watchlistEntries],
   );
+  const isFollowingAuthorStudio = useMemo(
+    () =>
+      draftAuthorId.length > 0 &&
+      followingStudios.some((studio) => studio.id === draftAuthorId),
+    [draftAuthorId, followingStudios],
+  );
+  const receivesObserverUpdates = isFollowed || isFollowingAuthorStudio;
   const digestEntries = digestEntriesData;
   const digestLoading = digestIsLoading || digestIsValidating;
   const digestError = getDigestError({
@@ -824,7 +1006,10 @@ export default function DraftDetailPage() {
     }
   };
 
-  const submitPrediction = async (outcome: 'merge' | 'reject') => {
+  const submitPrediction = async (
+    outcome: 'merge' | 'reject',
+    stakePoints: number,
+  ) => {
     if (!pendingPullId) {
       return;
     }
@@ -834,6 +1019,7 @@ export default function DraftDetailPage() {
         {
           outcome,
           pullRequestId: pendingPullId,
+          stakePoints,
         },
         { throwOnError: true },
       );
@@ -842,7 +1028,7 @@ export default function DraftDetailPage() {
         eventType: 'pr_prediction_submit',
         draftId,
         source: 'draft_detail',
-        metadata: { outcome },
+        metadata: { outcome, stakePoints },
       });
       await mutatePredictionSummary();
     } catch (error: unknown) {
@@ -918,7 +1104,7 @@ export default function DraftDetailPage() {
       mutateFixRequests();
       mutatePullRequests();
       mutateArc();
-      if (isFollowed) {
+      if (receivesObserverUpdates) {
         mutateDigest();
       }
     }
@@ -928,7 +1114,7 @@ export default function DraftDetailPage() {
     }
   }, [
     events,
-    isFollowed,
+    receivesObserverUpdates,
     mutateDraft,
     mutateArc,
     mutateDigest,
@@ -943,7 +1129,7 @@ export default function DraftDetailPage() {
   );
 
   useEffect(() => {
-    if (!isFollowed || events.length === 0) {
+    if (!receivesObserverUpdates || events.length === 0) {
       return;
     }
     const fresh = events.filter(
@@ -962,7 +1148,7 @@ export default function DraftDetailPage() {
       };
     });
     setNotifications((prev) => [...next, ...prev].slice(0, 5));
-  }, [events, formatEventMessage, isFollowed]);
+  }, [events, formatEventMessage, receivesObserverUpdates]);
 
   const versionNumbers = useMemo(
     () => versions.map((version) => version.versionNumber),
@@ -1019,9 +1205,9 @@ export default function DraftDetailPage() {
       <div className="card p-4 sm:p-6">
         <p className="pill">{t('draftDetail.header.pill')}</p>
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <h2 className="font-semibold text-foreground text-xl sm:text-2xl">
+          <h1 className="font-semibold text-foreground text-xl sm:text-2xl">
             {draftId ? `${t('common.draft')} ${draftId}` : t('common.draft')}
-          </h2>
+          </h1>
           {draft && (
             <span
               className={`rounded-full px-3 py-1 font-semibold text-xs ${statusInfo.tone}`}
@@ -1029,10 +1215,22 @@ export default function DraftDetailPage() {
               {statusInfo.label}
             </span>
           )}
+          {provenance && (
+            <span
+              className={`rounded-full px-3 py-1 font-semibold text-xs ${getProvenanceTone(
+                provenance.authenticityStatus,
+              )}`}
+            >
+              {getProvenanceLabel(provenance.authenticityStatus, t)}
+            </span>
+          )}
         </div>
         <p className="text-muted-foreground text-sm">
           {t('draftDetail.header.subtitle')}{' '}
           {draft ? `GlowUp ${draft.glowUpScore.toFixed(1)}` : ''}
+          {provenance
+            ? ` • ${t('feed.provenance.spark')}: ${provenance.humanSparkScore.toFixed(0)}`
+            : ''}
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2.5 sm:mt-4 sm:gap-3">
           <button
@@ -1065,9 +1263,9 @@ export default function DraftDetailPage() {
             {nextAction && (
               <div className="card p-4 sm:p-5">
                 <p className="pill">{t('draftDetail.nextAction.pill')}</p>
-                <h3 className="mt-3 font-semibold text-foreground text-lg">
+                <h2 className="mt-3 font-semibold text-foreground text-lg">
                   {nextAction.title}
-                </h3>
+                </h2>
                 <p className="text-muted-foreground text-sm">
                   {nextAction.description}
                 </p>
@@ -1236,15 +1434,22 @@ export default function DraftDetailPage() {
               onMarkSeen={markDigestSeen}
               pendingEntryIds={pendingDigestEntryIds}
             />
+            <FollowingStudiosCard
+              draftAuthorId={draftAuthorId}
+              followingStudios={followingStudios}
+              t={t}
+            />
             <div className="card p-4 sm:p-5">
               <p className="pill">{t('draftDetail.activity.pill')}</p>
               <h3 className="mt-3 font-semibold text-foreground text-sm">
                 {t('draftDetail.activity.title')}
               </h3>
               <p className="text-muted-foreground text-xs">
-                {isFollowed
-                  ? t('draftDetail.activity.descriptionFollowing')
-                  : t('draftDetail.activity.descriptionNotFollowing')}
+                {getActivityDescription({
+                  isFollowed,
+                  isFollowingAuthorStudio,
+                  t,
+                })}
               </p>
               <div className="mt-4 grid gap-2 text-muted-foreground text-xs">
                 {notifications.length === 0 ? (
