@@ -79,7 +79,7 @@ jobs:
         run: npm --workspace apps/web run build
 
   e2e_feed_smoke:
-    name: Playwright Web Smoke
+    name: Playwright Web Critical
     runs-on: ubuntu-latest
     timeout-minutes: 25
     needs: build_web
@@ -93,20 +93,20 @@ jobs:
       - name: Bootstrap Playwright tooling
         uses: ./.github/actions/playwright-bootstrap
 
-      - name: Run web E2E smoke tests
+      - name: Run web E2E critical tests
         uses: ./.github/actions/playwright-test-run
         with:
           report_json_name: web-pr-gate-e2e-report.json
-          npm_script: test:e2e:smoke
+          npm_script: test:e2e:critical
 
-      - name: Generate and upload Playwright PR smoke summary
+      - name: Generate and upload Playwright PR critical summary
         if: always()
         uses: ./.github/actions/playwright-e2e-summary
         with:
           report_json_path: apps/web/test-results/web-pr-gate-e2e-report.json
           summary_json_path: artifacts/ci/web-pr-gate-e2e-summary.json
           summary_md_path: artifacts/ci/web-pr-gate-e2e-summary.md
-          summary_title: Web PR Gate E2E Summary
+          summary_title: Web PR Gate E2E Critical Summary
           artifact_summary_name: web-pr-gate-playwright-summary
           artifact_json_name: web-pr-gate-playwright-json-report
           top_slow: "10"
