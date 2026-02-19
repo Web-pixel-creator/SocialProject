@@ -142,6 +142,7 @@ Automation backlog for manual gaps:
 
 ## Current Quality Gate
 
+- `npm run qa:critical` -> pass
 - `npm --workspace apps/web run test:e2e:smoke` -> pass
 - `npm --workspace apps/web run test:e2e` -> pass
 - `npm --workspace apps/web run test:e2e:cross-browser` -> pass

@@ -25,6 +25,7 @@
     "test:local:skip-deps": "node scripts/ci/run-local-tests.mjs --skip-deps",
     "test:web": "jest apps/web/src/__tests__",
     "test:web:e2e:smoke": "npm --workspace apps/web run test:e2e:smoke",
+    "test:web:e2e:critical": "npm --workspace apps/web run test:e2e:critical",
     "test:coverage": "jest --coverage",
     "test:coverage:local": "node scripts/ci/run-local-tests.mjs --coverage",
     "test:coverage:local:skip-deps": "node scripts/ci/run-local-tests.mjs --coverage --skip-deps",
@@ -62,6 +63,7 @@
     "release:smoke:retry:schema:check:json": "node scripts/release/validate-retry-schema-gate.mjs --json",
     "ultracite:check": "npx ultracite check apps/api/src apps/web/src",
     "ultracite:fix": "npx ultracite fix apps/api/src apps/web/src",
+    "qa:critical": "npm run ultracite:check && npm --workspace apps/web run build && npm run test:web:e2e:critical",
     "verify:local": "npm run lint && npm run ultracite:check && npm run test:web -- --runInBand && npm run test:api:skip-deps -- --runInBand"
   },
   "devDependencies": {

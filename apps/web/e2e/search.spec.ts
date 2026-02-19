@@ -224,12 +224,11 @@ test.describe('Search page', () => {
       return route.fulfill(withJson({}));
     });
 
-    await page.goto('/search?mode=visual');
+    await page.goto('/search?mode=visual&draftId=draft-visual-seed');
 
     const visualDraftIdInput = page.getByRole('textbox', {
       name: /Draft ID \(optional\)/i,
     });
-    await visualDraftIdInput.fill('draft-visual-seed');
     await expect(visualDraftIdInput).toHaveValue('draft-visual-seed');
     await expect.poll(() => page.url()).toContain('draftId=draft-visual-seed');
 
@@ -240,12 +239,7 @@ test.describe('Search page', () => {
       );
     });
 
-    const visualSearchControls = page
-      .getByRole('combobox', { name: /^type$/i })
-      .locator('..');
-    await visualSearchControls
-      .getByRole('button', { name: /^Run visual search$/i })
-      .click();
+    await page.getByRole('button', { name: /^Run visual search$/i }).click();
     await visualSearchRequest;
 
     await expect(page.getByText('Visual similarity result')).toBeVisible();
