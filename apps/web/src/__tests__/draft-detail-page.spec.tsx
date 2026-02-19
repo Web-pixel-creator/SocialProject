@@ -1134,4 +1134,187 @@ describe('draft detail page', () => {
       screen.getByText(/Sign in as observer to submit predictions/i),
     ).toBeInTheDocument();
   });
+
+  test('generates style fusion from similar drafts and shows result', async () => {
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/search/similar')) {
+        return Promise.resolve({
+          data: [
+            {
+              id: 'sim-a',
+              title: 'Similar Draft A',
+              score: 0.91,
+              glowUpScore: 4.2,
+              type: 'draft',
+            },
+            {
+              id: 'sim-b',
+              title: 'Similar Draft B',
+              score: 0.87,
+              glowUpScore: 3.9,
+              type: 'draft',
+            },
+          ],
+        });
+      }
+      if (url.includes('/fix-requests')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/pull-requests') && !url.includes('/predictions')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/arc')) {
+        return Promise.resolve({ data: null });
+      }
+      if (
+        url.includes('/observers/watchlist') ||
+        url.includes('/observers/digest') ||
+        url.includes('/me/following')
+      ) {
+        return Promise.resolve({ data: [] });
+      }
+      return Promise.resolve({
+        data: {
+          draft: {
+            id: 'draft-style-fusion',
+            currentVersion: 1,
+            glowUpScore: 1.4,
+            status: 'draft',
+            updatedAt: new Date().toISOString(),
+          },
+          versions: [],
+        },
+      });
+    });
+    (apiClient.post as jest.Mock).mockImplementation(
+      (url: string, payload?: Record<string, unknown>) => {
+        if (url === '/search/style-fusion') {
+          return Promise.resolve({
+            data: {
+              draftId: 'draft-style-fusion',
+              generatedAt: new Date().toISOString(),
+              titleSuggestion: 'Fusion: Similar Draft A x Similar Draft B',
+              styleDirectives: ['Preserve composition anchors.'],
+              winningPrHints: ['Reuse merged PR sequencing.'],
+              sample: [
+                {
+                  id: 'sim-a',
+                  title: 'Similar Draft A',
+                  score: 0.91,
+                  glowUpScore: 4.2,
+                  type: 'draft',
+                },
+                {
+                  id: 'sim-b',
+                  title: 'Similar Draft B',
+                  score: 0.87,
+                  glowUpScore: 3.9,
+                  type: 'draft',
+                },
+              ],
+            },
+          });
+        }
+        if (url === '/telemetry/ux') {
+          return Promise.resolve({ data: { status: 'ok', payload } });
+        }
+        return Promise.resolve({ data: { status: 'ok' } });
+      },
+    );
+
+    await renderDraftDetailPage('draft-style-fusion');
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /Generate style fusion/i }),
+    );
+
+    await waitFor(() =>
+      expect(apiClient.post).toHaveBeenCalledWith('/search/style-fusion', {
+        draftId: 'draft-style-fusion',
+        limit: 3,
+        type: 'draft',
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Fusion: Similar Draft A x Similar Draft B/i),
+      ).toBeInTheDocument(),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Preserve composition anchors\./i),
+      ).toBeInTheDocument(),
+    );
+  });
+
+  test('shows style fusion error when generation fails', async () => {
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/search/similar')) {
+        return Promise.resolve({
+          data: [
+            {
+              id: 'sim-x',
+              title: 'Similar X',
+              score: 0.81,
+              glowUpScore: 2.6,
+              type: 'draft',
+            },
+            {
+              id: 'sim-y',
+              title: 'Similar Y',
+              score: 0.79,
+              glowUpScore: 2.4,
+              type: 'draft',
+            },
+          ],
+        });
+      }
+      if (url.includes('/fix-requests')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/pull-requests') && !url.includes('/predictions')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/arc')) {
+        return Promise.resolve({ data: null });
+      }
+      if (
+        url.includes('/observers/watchlist') ||
+        url.includes('/observers/digest') ||
+        url.includes('/me/following')
+      ) {
+        return Promise.resolve({ data: [] });
+      }
+      return Promise.resolve({
+        data: {
+          draft: {
+            id: 'draft-style-fusion-error',
+            currentVersion: 1,
+            glowUpScore: 1.1,
+            status: 'draft',
+            updatedAt: new Date().toISOString(),
+          },
+          versions: [],
+        },
+      });
+    });
+    (apiClient.post as jest.Mock).mockImplementation((url: string) => {
+      if (url === '/search/style-fusion') {
+        return Promise.reject({
+          response: { status: 500, data: { message: 'Fusion failed' } },
+        });
+      }
+      return Promise.resolve({ data: { status: 'ok' } });
+    });
+
+    await renderDraftDetailPage('draft-style-fusion-error');
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /Generate style fusion/i }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByText(/Fusion failed/i)).toBeInTheDocument(),
+    );
+  });
 });
