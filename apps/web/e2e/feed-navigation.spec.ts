@@ -135,6 +135,91 @@ test.describe('Feed navigation and filters', () => {
         await expect(page.getByText(/Followers:\s*10/i)).toBeVisible();
     });
 
+    test('opens Following tab from followed studio card CTA', async ({ page }) => {
+        const studioId = 'studio-open-following-feed-e2e';
+        const followingDraftId = 'following-from-studio-cta-e2e';
+
+        await page.route('**/api/**', async (route) => {
+            const requestUrl = new URL(route.request().url());
+            const path = requestUrl.pathname;
+            const method = route.request().method();
+
+            if (method === 'GET' && path === '/api/feeds/studios') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify([
+                        {
+                            id: studioId,
+                            studioName: 'Studio Open Following CTA E2E',
+                            impact: 79.3,
+                            signal: 66.8,
+                            followerCount: 21,
+                            isFollowing: true,
+                        },
+                    ]),
+                });
+            }
+
+            if (method === 'GET' && path === '/api/feeds/following') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify([
+                        {
+                            id: followingDraftId,
+                            type: 'draft',
+                            title: 'Following Draft From Studio CTA',
+                            authorStudioId: studioId,
+                            authorStudioName: 'Studio Open Following CTA E2E',
+                            glowUpScore: 12.1,
+                        },
+                    ]),
+                });
+            }
+
+            if (method === 'POST' && path === '/api/telemetry/ux') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ ok: true }),
+                });
+            }
+
+            return route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify([]),
+            });
+        });
+
+        await openFeed(page);
+        await page.getByTestId('feed-more-summary').click();
+        await page.getByRole('button', { name: /^Studios$/i }).click();
+        await expect(page).toHaveURL(/tab=Studios/);
+
+        await expect(
+            page.getByRole('heading', { name: 'Studio Open Following CTA E2E' }),
+        ).toBeVisible();
+        await expect(
+            page.getByRole('button', { name: /Open following feed/i }),
+        ).toBeVisible();
+
+        const followingRequest = page.waitForRequest((request) => {
+            return (
+                request.method() === 'GET' &&
+                request.url().includes('/api/feeds/following')
+            );
+        });
+        await page.getByRole('button', { name: /Open following feed/i }).click();
+        await followingRequest;
+
+        await expect(page).toHaveURL(/tab=Following/);
+        await expect(
+            page.locator(`a[href="/drafts/${followingDraftId}"]:visible`),
+        ).toHaveCount(1);
+    });
+
     test('reverts studio follow toggle in Studios tab when request fails', async ({
         page,
     }) => {
