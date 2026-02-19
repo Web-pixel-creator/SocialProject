@@ -15,6 +15,7 @@ Automation backlog for manual gaps:
   - tab navigation (`All`, `Hot Now`, `Live Drafts`, `Battles`, `For You`, `More`)
   - filter panel open/close, query sync, hydration from URL
   - `Following` tab filter flow (`sort` + `status`) with quick reset chips (`All statuses`, `Recency`)
+  - `Following` tab content flow renders subscribed-feed entries from `/feeds/following` and hides non-followed default-feed cards
   - `Following` draft cards include context badge (`From studios you follow`)
   - `Studios` tab studio-card follow lifecycle (`Follow` -> `Following` -> `Follow`) with follower count updates
   - `Studios` tab follow rollback on failed persistence (state/count restored)

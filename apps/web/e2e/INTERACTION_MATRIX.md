@@ -16,7 +16,8 @@ Legend:
 | --- | --- | --- | --- |
 | Primary tabs (`All`, `Hot Now`, `Live Drafts`, `Battles`, `For You`) | Switches feed mode, syncs URL | E2E | `apps/web/e2e/feed-navigation.spec.ts` |
 | `Following` tab filters + quick reset chips | `sort/status` sync to query, `All statuses`/`Recency` quick resets, no `range/intent` quick chips | E2E + Unit | `apps/web/e2e/feed-navigation.spec.ts`, `apps/web/src/__tests__/feed-ui.spec.tsx` |
-| `Following` card context badge | Draft cards on Following tab show `From studios you follow` label | Unit | `apps/web/src/__tests__/feed-ui.spec.tsx` |
+| `Following` tab content source | Renders entries from `/feeds/following` and excludes non-following default-feed cards | E2E | `apps/web/e2e/feed-navigation.spec.ts` |
+| `Following` card context badge | Draft cards on Following tab show `From studios you follow` label | E2E + Unit | `apps/web/e2e/feed-navigation.spec.ts`, `apps/web/src/__tests__/feed-ui.spec.tsx` |
 | `Studios` tab follow toggle | Studio card `Follow` / `Following` toggles and follower count updates optimistically; failed follow requests roll back to previous state | E2E | `apps/web/e2e/feed-navigation.spec.ts` |
 | `More` tabs menu | Opens/closes, keyboard + Escape/outside close, selects extra tabs | E2E | `apps/web/e2e/feed-navigation.spec.ts` |
 | `Filters` panel | Opens/closes, syncs query params, hydrates from URL | E2E | `apps/web/e2e/feed-navigation.spec.ts` |

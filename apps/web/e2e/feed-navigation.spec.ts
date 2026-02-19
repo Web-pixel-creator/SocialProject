@@ -27,6 +27,190 @@ test.describe('Feed navigation and filters', () => {
         await expect(page).toHaveURL(/tab=Battles/);
     });
 
+    test('toggles studio follow state from Studios tab', async ({ page }) => {
+        const studioId = 'studio-follow-feed-e2e';
+
+        await page.route('**/api/**', async (route) => {
+            const requestUrl = new URL(route.request().url());
+            const path = requestUrl.pathname;
+            const method = route.request().method();
+
+            if (method === 'GET' && path === '/api/feeds/studios') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify([
+                        {
+                            id: studioId,
+                            studioName: 'Studio Follow Feed E2E',
+                            impact: 88.4,
+                            signal: 77.2,
+                            followerCount: 10,
+                            isFollowing: false,
+                        },
+                    ]),
+                });
+            }
+
+            if (method === 'POST' && path === `/api/studios/${studioId}/follow`) {
+                return route.fulfill({
+                    status: 201,
+                    contentType: 'application/json',
+                    body: JSON.stringify({
+                        studioId,
+                        isFollowing: true,
+                        followerCount: 11,
+                    }),
+                });
+            }
+
+            if (method === 'DELETE' && path === `/api/studios/${studioId}/follow`) {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({
+                        removed: true,
+                        followerCount: 10,
+                    }),
+                });
+            }
+
+            if (method === 'POST' && path === '/api/telemetry/ux') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ ok: true }),
+                });
+            }
+
+            return route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify([]),
+            });
+        });
+
+        await openFeed(page);
+        await page.getByTestId('feed-more-summary').click();
+        await page.getByRole('button', { name: /^Studios$/i }).click();
+        await expect(page).toHaveURL(/tab=Studios/);
+
+        await expect(
+            page.getByRole('heading', { name: 'Studio Follow Feed E2E' }),
+        ).toBeVisible();
+        await expect(page.getByText(/Followers:\s*10/i)).toBeVisible();
+
+        const followButton = page.getByRole('button', { name: /^Follow$/i });
+        await expect(followButton).toHaveAttribute('aria-pressed', 'false');
+
+        const followRequest = page.waitForRequest((request) => {
+            return (
+                request.method() === 'POST' &&
+                request.url().includes(`/api/studios/${studioId}/follow`)
+            );
+        });
+
+        await followButton.click();
+        await followRequest;
+
+        const followingButton = page.getByRole('button', { name: /^Following$/i });
+        await expect(followingButton).toBeVisible();
+        await expect(followingButton).toHaveAttribute('aria-pressed', 'true');
+        await expect(page.getByText(/Followers:\s*11/i)).toBeVisible();
+
+        const unfollowRequest = page.waitForRequest((request) => {
+            return (
+                request.method() === 'DELETE' &&
+                request.url().includes(`/api/studios/${studioId}/follow`)
+            );
+        });
+
+        await followingButton.click();
+        await unfollowRequest;
+
+        await expect(page.getByRole('button', { name: /^Follow$/i })).toBeVisible();
+        await expect(
+            page.getByRole('button', { name: /^Follow$/i }),
+        ).toHaveAttribute('aria-pressed', 'false');
+        await expect(page.getByText(/Followers:\s*10/i)).toBeVisible();
+    });
+
+    test('reverts studio follow toggle in Studios tab when request fails', async ({
+        page,
+    }) => {
+        const studioId = 'studio-follow-feed-failure-e2e';
+
+        await page.route('**/api/**', async (route) => {
+            const requestUrl = new URL(route.request().url());
+            const path = requestUrl.pathname;
+            const method = route.request().method();
+
+            if (method === 'GET' && path === '/api/feeds/studios') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify([
+                        {
+                            id: studioId,
+                            studioName: 'Studio Follow Failure E2E',
+                            impact: 55.5,
+                            signal: 66.6,
+                            followerCount: 10,
+                            isFollowing: false,
+                        },
+                    ]),
+                });
+            }
+
+            if (method === 'POST' && path === `/api/studios/${studioId}/follow`) {
+                return route.fulfill({
+                    status: 500,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ error: 'AUTH_REQUIRED' }),
+                });
+            }
+
+            if (method === 'POST' && path === '/api/telemetry/ux') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ ok: true }),
+                });
+            }
+
+            return route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify([]),
+            });
+        });
+
+        await openFeed(page);
+        await page.getByTestId('feed-more-summary').click();
+        await page.getByRole('button', { name: /^Studios$/i }).click();
+        await expect(page).toHaveURL(/tab=Studios/);
+        await expect(
+            page.getByRole('heading', { name: 'Studio Follow Failure E2E' }),
+        ).toBeVisible();
+
+        const followButton = page.getByRole('button', { name: /^Follow$/i });
+        await expect(followButton).toHaveAttribute('aria-pressed', 'false');
+        await expect(page.getByText(/Followers:\s*10/i)).toBeVisible();
+
+        const followRequest = page.waitForRequest((request) => {
+            return (
+                request.method() === 'POST' &&
+                request.url().includes(`/api/studios/${studioId}/follow`)
+            );
+        });
+
+        await followButton.click();
+        await followRequest;
+
+        await expect(followButton).toHaveAttribute('aria-pressed', 'false');
+        await expect(page.getByText(/Followers:\s*10/i)).toBeVisible();
+    });
+
     test('opens draft detail page from card CTA link', async ({ page }) => {
         const draftId = '00000000-0000-0000-0000-00000000e2e1';
 
@@ -172,6 +356,88 @@ test.describe('Feed navigation and filters', () => {
         await expect.poll(() => readQueryParam('sort')).toBe(null);
         await expect.poll(() => readQueryParam('tab')).toBe('Following');
         await expect(page).toHaveURL(/\/feed\?tab=Following$/);
+    });
+
+    test('renders following feed items with subscribed-studio context badge', async ({
+        page,
+    }) => {
+        const defaultDraftId = 'feed-default-e2e-0001';
+        const followingDraftId = 'feed-following-e2e-0002';
+
+        await page.route('**/api/**', async (route) => {
+            const requestUrl = new URL(route.request().url());
+            const path = requestUrl.pathname;
+            const method = route.request().method();
+
+            if (method === 'GET' && path === '/api/feed') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify([
+                        {
+                            id: defaultDraftId,
+                            type: 'draft',
+                            glowUpScore: 7.2,
+                        },
+                    ]),
+                });
+            }
+
+            if (method === 'GET' && path === '/api/feeds/following') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify([
+                        {
+                            id: followingDraftId,
+                            type: 'release',
+                            glowUpScore: 14.8,
+                        },
+                    ]),
+                });
+            }
+
+            if (method === 'POST' && path === '/api/telemetry/ux') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ ok: true }),
+                });
+            }
+
+            return route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify([]),
+            });
+        });
+
+        await openFeed(page);
+
+        await expect(
+            page.locator(`a[href="/drafts/${defaultDraftId}"]:visible`),
+        ).toHaveCount(1);
+
+        const followingRequest = page.waitForRequest((request) => {
+            return (
+                request.method() === 'GET' &&
+                request.url().includes('/api/feeds/following')
+            );
+        });
+        await page.getByTestId('feed-more-summary').click();
+        await page.getByRole('button', { name: /^Following$/i }).click();
+        await followingRequest;
+        await expect(page).toHaveURL(/tab=Following/);
+
+        await expect(
+            page.locator(`a[href="/drafts/${followingDraftId}"]:visible`),
+        ).toHaveCount(1);
+        await expect(
+            page.getByText(/^From studios you follow$/i).first(),
+        ).toBeVisible();
+        await expect(
+            page.locator(`a[href="/drafts/${defaultDraftId}"]:visible`),
+        ).toHaveCount(0);
     });
 
     test('focuses feed search with slash shortcut', async ({ page }) => {
