@@ -63,6 +63,7 @@ Automation backlog for manual gaps:
 - Pull request review:
   - render review payload (`PR Review`, summary, metrics)
   - decision actions: merge success and reject error handling
+  - decision status persistence after hard refresh (backend truth retained)
   - auth-required decision failure path (401 unauthorized)
   - decision network + telemetry coverage:
     - `/decide` payload assertions for `request_changes`, `merge`, `reject`
@@ -102,6 +103,7 @@ Automation backlog for manual gaps:
   - page-level primary interactions
   - slash shortcut behavior
   - multi-tab session consistency on `/privacy` (logout in one tab invalidates protected actions in second tab)
+  - re-login recovery on `/privacy` after session expiration restores protected export flow
   - auth success and error flows
   - auth/session edge coverage (unit):
     - refresh success path updates hydrated user

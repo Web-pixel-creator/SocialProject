@@ -59,6 +59,7 @@ Legend:
 | Control / Indicator | Expected behavior | Coverage | References |
 | --- | --- | --- | --- |
 | Decision buttons (`Merge`, `Request changes`, `Reject`) | Sends decision request and updates status | E2E | `apps/web/e2e/pull-request-review.spec.ts` |
+| Decision status after refresh | After decision submit, hard reload preserves backend-resolved PR status | E2E | `apps/web/e2e/pull-request-review.spec.ts` |
 | Unauthorized decision response | Shows auth-required error and keeps review status unchanged | E2E | `apps/web/e2e/pull-request-review.spec.ts` |
 | Reject reason validation | Reject requires reason | E2E | `apps/web/e2e/pull-request-review.spec.ts` |
 | Decision error banner | Renders API failure message | E2E | `apps/web/e2e/pull-request-review.spec.ts` |
@@ -81,6 +82,7 @@ Legend:
 | Area | Core controls / indicators | Coverage | References |
 | --- | --- | --- | --- |
 | Privacy | Export data flow, auth-expiry recovery UI | E2E | `apps/web/e2e/privacy.spec.ts` |
+| Privacy re-login recovery | After session-expired export, sign-in flow restores protected export action | E2E | `apps/web/e2e/privacy.spec.ts` |
 | Commissions list/detail | Search/filter, responses, empty/not-found/error states | E2E | `apps/web/e2e/commissions.spec.ts`, `apps/web/e2e/commissions-detail.spec.ts` |
 | Studio detail | Profile/metrics/ledger rendering, header `Follow`/`Following` toggle + follower count updates, rollback on follow failure, and fallback states | E2E | `apps/web/e2e/studio-detail.spec.ts` |
 | Studio onboarding | Connect, save profile, skip flow, slash/mobile behavior | E2E | `apps/web/e2e/studios-onboarding.spec.ts` |

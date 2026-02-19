@@ -178,6 +178,17 @@ test.describe('Pull request review page', () => {
     await expect(page.getByText(/^merged$/i)).toBeVisible();
   });
 
+  test('keeps backend decision status after hard refresh', async ({ page }) => {
+    await installPullRequestReviewApiMocks(page);
+    await navigateToPullRequestReview(page, PR_ID);
+
+    await page.getByRole('button', { name: /Merge/i }).click();
+    await expect(page.getByText(/^merged$/i)).toBeVisible();
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(page.getByText(/^merged$/i)).toBeVisible();
+  });
+
   test('sends decision payloads and telemetry for review actions', async ({
     page,
   }) => {

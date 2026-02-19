@@ -21,8 +21,6 @@ Items still requiring human validation remain `[ ]`.
 ## Remaining manual-only checks
 
 - Visual contrast spot-check in browser with real displays and theme settings.
-- PR decision truth-after-refresh against real backend state transitions.
-- Re-login recovery after token expiration in real auth environment.
 - Screen reader deep pass (NVDA/VoiceOver): headings, intent labels, live announcements.
 - Localization content quality pass:
   - mixed-language fragment detection

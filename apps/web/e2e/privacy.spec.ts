@@ -168,4 +168,117 @@ test.describe('Privacy page', () => {
     expect(sessionState.token).toBeNull();
     expect(sessionState.user).toBeNull();
   });
+
+  test('restores protected privacy actions after re-login from expired session', async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem('finishit_token', 'expired-token');
+      window.localStorage.setItem(
+        'finishit_user',
+        JSON.stringify({
+          user: {
+            email: 'observer@example.com',
+            id: 'observer-1',
+          },
+        }),
+      );
+    });
+
+    let exportCalls = 0;
+
+    await page.route('**/api/**', async (route) => {
+      const requestUrl = new URL(route.request().url());
+      const path = requestUrl.pathname;
+      const method = route.request().method();
+
+      if (method === 'GET' && path === '/api/auth/me') {
+        const authHeader = route.request().headers()['authorization'] ?? '';
+        if (
+          authHeader.includes('expired-token') ||
+          authHeader.includes('recovered-token')
+        ) {
+          return route.fulfill(
+            withJson({
+              user: {
+                email: 'observer@example.com',
+                id: 'observer-1',
+              },
+            }),
+          );
+        }
+        return route.fulfill(withJson({}));
+      }
+
+      if (method === 'POST' && path === '/api/account/export') {
+        exportCalls += 1;
+        if (exportCalls === 1) {
+          return route.fulfill({
+            body: JSON.stringify({ message: 'Session expired' }),
+            contentType: 'application/json',
+            status: 401,
+          });
+        }
+        return route.fulfill(
+          withJson({
+            export: {
+              downloadUrl: 'https://example.com/export-recovered.zip',
+              id: 'export-recovered',
+              status: 'ready',
+            },
+          }),
+        );
+      }
+
+      if (
+        method === 'GET' &&
+        path === '/api/account/exports/export-recovered'
+      ) {
+        return route.fulfill(
+          withJson({
+            downloadUrl: 'https://example.com/export-recovered.zip',
+            id: 'export-recovered',
+            status: 'ready',
+          }),
+        );
+      }
+
+      if (method === 'POST' && path === '/api/auth/login') {
+        return route.fulfill(
+          withJson({
+            tokens: { accessToken: 'recovered-token' },
+            user: {
+              email: 'observer@example.com',
+              id: 'observer-1',
+            },
+          }),
+        );
+      }
+
+      return route.fulfill(withJson({}));
+    });
+
+    await page.goto('/privacy');
+    await page.getByRole('button', { name: /Request export/i }).click();
+
+    await expect(page.getByText('Session expired')).toBeVisible();
+    await page
+      .getByRole('main')
+      .getByRole('link', { name: /^Sign in$/i })
+      .click();
+
+    await expect(page).toHaveURL(/\/login/);
+    await page.getByLabel(/email/i).fill('observer@example.com');
+    await page.getByLabel(/password/i).fill('secret-123');
+    await page.getByRole('button', { name: /sign in/i }).click();
+
+    await expect(page).toHaveURL(/\/feed/);
+    await page.goto('/privacy');
+    await page.getByRole('button', { name: /Request export/i }).click();
+
+    await expect(page.getByText('export-recovered')).toBeVisible();
+    await expect(
+      page.getByRole('link', { name: /Download export/i }),
+    ).toBeVisible();
+  });
 });

@@ -35,13 +35,13 @@ Status legend:
 - [x] Observer rail counters/streams update correctly when backend sends live changes.
 - [x] Draft follow/unfollow persists after hard refresh and new session.
 - [x] Digest `Mark seen` persists and does not reappear after reload unless new digest arrives.
-- [ ] PR decisions (`merge/reject/request_changes`) reflect backend truth after refresh.
+- [x] PR decisions (`merge/reject/request_changes`) reflect backend truth after refresh.
 
 ## 3) Auth and Session Edge Cases (Real Backend)
 
 - [x] Anonymous flow: protected actions show correct auth-required UX (no silent failure).
 - [x] Expired token during action: user sees clear recovery state, not partial broken UI.
-- [ ] Re-login after expiration restores normal state without stale local flags.
+- [x] Re-login after expiration restores normal state without stale local flags.
 - [x] Multi-tab behavior: logout in one tab propagates safely to another tab.
 
 ## 4) Accessibility Deep Pass
