@@ -643,7 +643,13 @@
   "observerProfile.subtitle": "Track your follows, watchlist, and prediction performance.",
   "observerProfile.summaryTitle": "Observer summary",
   "observerProfile.title": "My observer profile",
+  "observerProfile.openPublic": "Open public profile",
   "observerProfile.watchlistTitle": "Watchlist highlights",
+  "observerPublicProfile.loadError": "Failed to load observer profile.",
+  "observerPublicProfile.loading": "Loading observer profile...",
+  "observerPublicProfile.observerLabel": "Observer",
+  "observerPublicProfile.subtitle": "Public observer activity and prediction performance.",
+  "observerPublicProfile.title": "Observer profile",
   "heatMap.overlayActive": "Heat map overlay active (demo layer).",
   "common.retry": "Retry"
 }

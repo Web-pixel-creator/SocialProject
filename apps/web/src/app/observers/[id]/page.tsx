@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import useSWR from 'swr';
-import { useAuth } from '../../../contexts/AuthContext';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { apiClient } from '../../../lib/api';
 import { getApiErrorMessage } from '../../../lib/errors';
@@ -39,16 +39,15 @@ interface ObserverProfilePrediction {
   resolvedAt: string | null;
 }
 
-interface ObserverProfileResponse {
+interface ObserverPublicProfileResponse {
   observer: {
     id: string;
-    email: string;
+    handle: string;
     createdAt: string;
   };
   counts: {
     followingStudios: number;
     watchlistDrafts: number;
-    digestUnseen: number;
   };
   predictions: {
     correct: number;
@@ -61,15 +60,18 @@ interface ObserverProfileResponse {
   recentPredictions: ObserverProfilePrediction[];
 }
 
-const fetchObserverProfile = async (): Promise<ObserverProfileResponse> => {
-  const response = await apiClient.get('/observers/me/profile', {
+const fetchObserverPublicProfile = async (
+  key: readonly [string, string],
+): Promise<ObserverPublicProfileResponse> => {
+  const observerId = key[1];
+  const response = await apiClient.get(`/observers/${observerId}/profile`, {
     params: {
       followingLimit: 8,
       watchlistLimit: 8,
       predictionLimit: 8,
     },
   });
-  return response.data as ObserverProfileResponse;
+  return response.data as ObserverPublicProfileResponse;
 };
 
 const formatDate = (value: string, locale: string) => {
@@ -84,11 +86,13 @@ const formatDate = (value: string, locale: string) => {
   });
 };
 
-export default function ObserverProfilePage() {
+export default function ObserverPublicProfilePage() {
   const { t, language } = useLanguage();
-  const { isAuthenticated, loading } = useAuth();
   const focusRingClass =
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
+  const params = useParams<{ id: string }>();
+  const observerIdParam = params?.id;
+  const observerId = typeof observerIdParam === 'string' ? observerIdParam : '';
 
   const {
     data: profile,
@@ -96,52 +100,44 @@ export default function ObserverProfilePage() {
     isLoading,
     isValidating,
     mutate,
-  } = useSWR<ObserverProfileResponse>(
-    isAuthenticated ? 'observer:profile' : null,
-    fetchObserverProfile,
+  } = useSWR<ObserverPublicProfileResponse>(
+    observerId ? (['observer:public-profile', observerId] as const) : null,
+    fetchObserverPublicProfile,
     {
       revalidateOnFocus: false,
       shouldRetryOnError: false,
     },
   );
 
-  if (loading) {
+  if (!observerId) {
     return (
-      <main className="card p-4 text-muted-foreground text-sm sm:p-6">
-        {t('observerProfile.loading')}
+      <main className="card grid gap-3 p-4 sm:p-6">
+        <h1 className="font-semibold text-2xl text-foreground">
+          {t('observerPublicProfile.title')}
+        </h1>
+        <p className="text-muted-foreground text-sm">
+          {t('observerPublicProfile.loadError')}
+        </p>
+        <Link
+          className={`glass-button inline-flex w-fit ${focusRingClass}`}
+          href="/feed"
+        >
+          {t('feed.exploreFeeds')}
+        </Link>
       </main>
     );
   }
 
-  if (!isAuthenticated) {
+  if (isLoading && !profile) {
     return (
-      <main className="card grid gap-3 p-4 sm:p-6">
-        <h1 className="text-balance font-semibold text-2xl text-foreground">
-          {t('observerProfile.title')}
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          {t('observerProfile.authRequired')}
-        </p>
-        <div className="flex flex-wrap items-center gap-2">
-          <Link
-            className={`glass-button inline-flex ${focusRingClass}`}
-            href="/login"
-          >
-            {t('observerProfile.signIn')}
-          </Link>
-          <Link
-            className={`rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary ${focusRingClass}`}
-            href="/feed"
-          >
-            {t('feed.exploreFeeds')}
-          </Link>
-        </div>
+      <main className="card p-4 text-muted-foreground text-sm sm:p-6">
+        {t('observerPublicProfile.loading')}
       </main>
     );
   }
 
   const loadError = error
-    ? getApiErrorMessage(error, t('observerProfile.loadError'))
+    ? getApiErrorMessage(error, t('observerPublicProfile.loadError'))
     : null;
 
   const summaryCards = [
@@ -154,10 +150,6 @@ export default function ObserverProfilePage() {
       value: profile?.counts.watchlistDrafts ?? 0,
     },
     {
-      label: t('observerProfile.cards.digestUnseen'),
-      value: profile?.counts.digestUnseen ?? 0,
-    },
-    {
       label: t('observerProfile.cards.predictionAccuracy'),
       value: `${Math.round((profile?.predictions.rate ?? 0) * 100)}%`,
       description:
@@ -165,36 +157,33 @@ export default function ObserverProfilePage() {
           ? `${profile.predictions.correct}/${profile.predictions.total}`
           : t('observerProfile.noPredictions'),
     },
+    {
+      label: t('observerProfile.netPoints'),
+      value: profile?.predictions.netPoints ?? 0,
+    },
   ];
+
+  const observerHandle =
+    profile?.observer.handle ?? t('observerPublicProfile.observerLabel');
 
   return (
     <main className="grid gap-4 pb-8 sm:gap-5">
       <section className="card grid gap-2 p-4 sm:p-6">
         <p className="pill">{t('observerProfile.pill')}</p>
         <h1 className="text-balance font-semibold text-2xl text-foreground sm:text-3xl">
-          {t('observerProfile.title')}
+          {t('observerPublicProfile.title')}
         </h1>
         <p className="text-muted-foreground text-sm sm:text-base">
-          {t('observerProfile.subtitle')}
+          {t('observerPublicProfile.subtitle')}
         </p>
         {profile?.observer ? (
           <p className="text-muted-foreground text-xs">
-            {profile.observer.email} · {t('observerProfile.memberSince')}{' '}
+            {observerHandle} - {t('observerProfile.memberSince')}{' '}
             {formatDate(
               profile.observer.createdAt,
               language === 'ru' ? 'ru' : 'en',
             )}
           </p>
-        ) : null}
-        {profile?.observer?.id ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              className={`glass-button inline-flex ${focusRingClass}`}
-              href={`/observers/${profile.observer.id}`}
-            >
-              {t('observerProfile.openPublic')}
-            </Link>
-          </div>
         ) : null}
       </section>
 
@@ -249,10 +238,6 @@ export default function ObserverProfilePage() {
             </div>
           ))}
         </div>
-        <p className="text-muted-foreground text-xs">
-          {t('observerProfile.netPoints')}:{' '}
-          {profile?.predictions.netPoints ?? 0}
-        </p>
       </section>
 
       <section className="card grid gap-2 p-4 sm:p-5">
@@ -273,7 +258,7 @@ export default function ObserverProfilePage() {
                   {studio.studioName}
                 </Link>
                 <p className="text-muted-foreground text-xs">
-                  Impact {studio.impact.toFixed(1)} · Signal{' '}
+                  Impact {studio.impact.toFixed(1)} - Signal{' '}
                   {studio.signal.toFixed(1)}
                 </p>
                 <p className="text-muted-foreground text-xs">
@@ -307,7 +292,7 @@ export default function ObserverProfilePage() {
                   {item.draftTitle}
                 </Link>
                 <p className="text-muted-foreground text-xs">
-                  {item.studioName} · GlowUp {item.glowUpScore.toFixed(1)}
+                  {item.studioName} - GlowUp {item.glowUpScore.toFixed(1)}
                 </p>
               </li>
             ))}
@@ -338,12 +323,12 @@ export default function ObserverProfilePage() {
                 </Link>
                 <p className="text-muted-foreground text-xs">
                   {t('observerProfile.predicted')}:{' '}
-                  {prediction.predictedOutcome} ·{' '}
+                  {prediction.predictedOutcome} -{' '}
                   {t('observerProfile.resolved')}:{' '}
                   {prediction.resolvedOutcome ?? t('observerProfile.pending')}
                 </p>
                 <p className="text-muted-foreground text-xs">
-                  {t('observerProfile.stake')}: {prediction.stakePoints} ·{' '}
+                  {t('observerProfile.stake')}: {prediction.stakePoints} -{' '}
                   {t('observerProfile.payout')}: {prediction.payoutPoints}
                 </p>
               </li>

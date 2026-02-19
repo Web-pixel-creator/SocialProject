@@ -667,6 +667,98 @@ describe('API integration', () => {
     );
   });
 
+  test('public observer profile returns sanitized summary without auth', async () => {
+    const human = await registerHuman('observer-public-profile@example.com');
+    const { agentId, apiKey } = await registerAgent('Public Profile Studio');
+
+    const draftRes = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/public-profile-v1.png',
+        thumbnailUrl: 'https://example.com/public-profile-v1-thumb.png',
+        metadata: { title: 'Public Observer Profile Draft' },
+      });
+    const draftId = draftRes.body.draft.id as string;
+
+    const followStudioRes = await request(app)
+      .post(`/api/studios/${agentId}/follow`)
+      .set('Authorization', `Bearer ${human.tokens.accessToken}`)
+      .send();
+    expect(followStudioRes.status).toBe(201);
+
+    const followDraftRes = await request(app)
+      .post(`/api/observers/watchlist/${draftId}`)
+      .set('Authorization', `Bearer ${human.tokens.accessToken}`)
+      .send();
+    expect(followDraftRes.status).toBe(201);
+
+    const prRes = await request(app)
+      .post(`/api/drafts/${draftId}/pull-requests`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        description: 'Public profile PR',
+        severity: 'minor',
+        imageUrl: 'https://example.com/public-profile-v2.png',
+        thumbnailUrl: 'https://example.com/public-profile-v2-thumb.png',
+      });
+    expect(prRes.status).toBe(200);
+    const pullRequestId = prRes.body.id as string;
+
+    const predictionRes = await request(app)
+      .post(`/api/pull-requests/${pullRequestId}/predict`)
+      .set('Authorization', `Bearer ${human.tokens.accessToken}`)
+      .send({ predictedOutcome: 'merge', stakePoints: 12 });
+    expect(predictionRes.status).toBe(200);
+
+    const decideRes = await request(app)
+      .post(`/api/pull-requests/${pullRequestId}/decide`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({ decision: 'merge' });
+    expect(decideRes.status).toBe(200);
+
+    const publicProfileRes = await request(app).get(
+      `/api/observers/${human.userId}/profile`,
+    );
+    expect(publicProfileRes.status).toBe(200);
+    expect(publicProfileRes.body.observer.id).toBe(human.userId);
+    expect(publicProfileRes.body.observer.email).toBeUndefined();
+    expect(publicProfileRes.body.observer.handle).toMatch(/^observer-/);
+    expect(publicProfileRes.body.counts.followingStudios).toBeGreaterThan(0);
+    expect(publicProfileRes.body.counts.watchlistDrafts).toBeGreaterThan(0);
+    expect(publicProfileRes.body.predictions.total).toBeGreaterThan(0);
+    expect(publicProfileRes.body.followingStudios).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: agentId,
+          studioName: 'Public Profile Studio',
+        }),
+      ]),
+    );
+    expect(publicProfileRes.body.watchlistHighlights).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          draftId,
+          draftTitle: 'Public Observer Profile Draft',
+        }),
+      ]),
+    );
+    expect(publicProfileRes.body.recentPredictions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          pullRequestId,
+          predictedOutcome: 'merge',
+          resolvedOutcome: 'merge',
+          isCorrect: true,
+          stakePoints: 12,
+        }),
+      ]),
+    );
+  });
+
   test('studio follow endpoints validate studio id and auth', async () => {
     const human = await registerHuman('studio-follow-validation@example.com');
     const token = human.tokens.accessToken;
@@ -736,6 +828,18 @@ describe('API integration', () => {
       .send();
     expect(invalidSeen.status).toBe(400);
     expect(invalidSeen.body.error).toBe('DIGEST_ENTRY_INVALID');
+
+    const invalidPublicProfile = await request(app).get(
+      '/api/observers/not-a-uuid/profile',
+    );
+    expect(invalidPublicProfile.status).toBe(400);
+    expect(invalidPublicProfile.body.error).toBe('OBSERVER_ID_INVALID');
+
+    const missingPublicProfile = await request(app).get(
+      '/api/observers/00000000-0000-0000-0000-000000000000/profile',
+    );
+    expect(missingPublicProfile.status).toBe(404);
+    expect(missingPublicProfile.body.error).toBe('OBSERVER_NOT_FOUND');
   });
 
   test('observer routes propagate service errors for list endpoints', async () => {

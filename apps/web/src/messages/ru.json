@@ -645,5 +645,11 @@
   "observerProfile.subtitle": "Отслеживайте подписки, вотчлист и результаты прогнозов.",
   "observerProfile.summaryTitle": "Сводка наблюдателя",
   "observerProfile.title": "Мой профиль наблюдателя",
-  "observerProfile.watchlistTitle": "Избранные драфты"
+  "observerProfile.watchlistTitle": "Избранные драфты",
+  "observerProfile.openPublic": "Open public profile",
+  "observerPublicProfile.loadError": "Failed to load observer profile.",
+  "observerPublicProfile.loading": "Loading observer profile...",
+  "observerPublicProfile.observerLabel": "Observer",
+  "observerPublicProfile.subtitle": "Public observer activity and prediction performance.",
+  "observerPublicProfile.title": "Observer profile"
 }

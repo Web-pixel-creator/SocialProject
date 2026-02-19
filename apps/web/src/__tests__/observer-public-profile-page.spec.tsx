@@ -1,0 +1,153 @@
+/**
+ * @jest-environment jsdom
+ */
+import '@testing-library/jest-dom';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { SWRConfig } from 'swr';
+import ObserverPublicProfilePage from '../app/observers/[id]/page';
+import { apiClient } from '../lib/api';
+
+let mockParams: Record<string, string | undefined> = { id: 'observer-1' };
+
+jest.mock('next/navigation', () => ({
+  useParams: () => mockParams,
+}));
+
+jest.mock('../lib/api', () => ({
+  apiClient: {
+    get: jest.fn(),
+  },
+  setAuthToken: jest.fn(),
+}));
+
+const profilePayload = {
+  observer: {
+    id: 'observer-1',
+    handle: 'observer-1',
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  counts: {
+    followingStudios: 2,
+    watchlistDrafts: 3,
+  },
+  predictions: {
+    correct: 4,
+    total: 5,
+    rate: 0.8,
+    netPoints: 22,
+  },
+  followingStudios: [
+    {
+      id: 'studio-1',
+      studioName: 'Studio One',
+      impact: 12,
+      signal: 71,
+      followerCount: 10,
+      followedAt: '2026-02-01T10:00:00.000Z',
+    },
+  ],
+  watchlistHighlights: [
+    {
+      draftId: 'draft-1',
+      draftTitle: 'Watchlist Draft',
+      updatedAt: '2026-02-01T10:00:00.000Z',
+      glowUpScore: 18.5,
+      studioId: 'studio-1',
+      studioName: 'Studio One',
+    },
+  ],
+  recentPredictions: [
+    {
+      id: 'pred-1',
+      pullRequestId: 'pr-1',
+      draftId: 'draft-1',
+      draftTitle: 'Watchlist Draft',
+      predictedOutcome: 'merge',
+      resolvedOutcome: 'merge',
+      isCorrect: true,
+      stakePoints: 20,
+      payoutPoints: 28,
+      createdAt: '2026-02-01T10:00:00.000Z',
+      resolvedAt: '2026-02-01T11:00:00.000Z',
+    },
+  ],
+};
+
+describe('observer public profile page', () => {
+  const renderPage = () =>
+    render(
+      <SWRConfig value={{ provider: () => new Map() }}>
+        <ObserverPublicProfilePage />
+      </SWRConfig>,
+    );
+
+  beforeEach(() => {
+    mockParams = { id: 'observer-1' };
+    (apiClient.get as jest.Mock).mockReset();
+  });
+
+  test('renders observer public profile data', async () => {
+    (apiClient.get as jest.Mock).mockResolvedValue({ data: profilePayload });
+
+    renderPage();
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('heading', { name: /Observer profile/i }),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/Observer summary/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /Following studios/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Watchlist highlights/i)).toBeInTheDocument();
+    expect(screen.getByText(/Recent predictions/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Studio One/i })).toHaveAttribute(
+      'href',
+      '/studios/studio-1',
+    );
+    expect(
+      screen.getAllByRole('link', { name: /Watchlist Draft/i }).length,
+    ).toBeGreaterThan(0);
+    expect(apiClient.get).toHaveBeenCalledWith(
+      '/observers/observer-1/profile',
+      {
+        params: {
+          followingLimit: 8,
+          watchlistLimit: 8,
+          predictionLimit: 8,
+        },
+      },
+    );
+  });
+
+  test('shows API error and supports retry', async () => {
+    (apiClient.get as jest.Mock)
+      .mockRejectedValueOnce({
+        response: { data: { message: 'Public profile load failed' } },
+      })
+      .mockResolvedValueOnce({ data: profilePayload });
+
+    renderPage();
+
+    expect(
+      await screen.findByText(/Public profile load failed/i),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Resync now/i }));
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalledTimes(2));
+  });
+
+  test('renders fallback state when observer id is missing', () => {
+    mockParams = {};
+
+    renderPage();
+
+    expect(
+      screen.getByRole('heading', { name: /Observer profile/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /Explore feeds/i }),
+    ).toHaveAttribute('href', '/feed');
+    expect(apiClient.get).not.toHaveBeenCalled();
+  });
+});

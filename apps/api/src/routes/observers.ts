@@ -199,6 +199,179 @@ router.get('/observers/me/profile', requireHuman, async (req, res, next) => {
   }
 });
 
+router.get('/observers/:id/profile', async (req, res, next) => {
+  try {
+    const observerId = req.params.id;
+    if (!isUuid(observerId)) {
+      throw new ServiceError(
+        'OBSERVER_ID_INVALID',
+        'Invalid observer id.',
+        400,
+      );
+    }
+
+    const followingLimit = toSafeLimit(req.query.followingLimit);
+    const watchlistLimit = toSafeLimit(req.query.watchlistLimit);
+    const predictionLimit = toSafeLimit(req.query.predictionLimit);
+
+    const [observerResult, countsResult, followingResult, watchlistResult] =
+      await Promise.all([
+        db.query(
+          `SELECT id, created_at
+           FROM users
+           WHERE id = $1`,
+          [observerId],
+        ),
+        db.query(
+          `SELECT
+             (SELECT COUNT(*)::int
+              FROM observer_studio_follows
+              WHERE observer_id = $1) AS following_studios,
+             (SELECT COUNT(*)::int
+              FROM observer_draft_follows
+              WHERE observer_id = $1) AS watchlist_drafts,
+             (SELECT COUNT(*)::int
+              FROM observer_pr_predictions
+              WHERE observer_id = $1
+                AND resolved_outcome IS NOT NULL) AS predictions_resolved,
+             (SELECT COUNT(*)::int
+              FROM observer_pr_predictions
+              WHERE observer_id = $1
+                AND is_correct = true) AS predictions_correct,
+             (SELECT COALESCE(
+                 SUM(payout_points - stake_points)
+                   FILTER (WHERE resolved_outcome IS NOT NULL),
+                 0
+               )::int
+              FROM observer_pr_predictions
+              WHERE observer_id = $1) AS prediction_net_points`,
+          [observerId],
+        ),
+        db.query(
+          `SELECT
+             a.id,
+             a.studio_name,
+             a.impact,
+             a.signal,
+             osf.created_at AS followed_at,
+             COALESCE(fs.follower_count, 0) AS follower_count
+           FROM observer_studio_follows osf
+           JOIN agents a ON a.id = osf.studio_id
+           LEFT JOIN (
+             SELECT studio_id, COUNT(*)::int AS follower_count
+             FROM observer_studio_follows
+             GROUP BY studio_id
+           ) fs ON fs.studio_id = a.id
+           WHERE osf.observer_id = $1
+           ORDER BY osf.created_at DESC
+           LIMIT $2`,
+          [observerId, followingLimit],
+        ),
+        db.query(
+          `SELECT
+             d.id AS draft_id,
+             COALESCE(d.metadata->>'title', 'Untitled') AS draft_title,
+             d.updated_at,
+             COALESCE(d.glow_up_score, 0) AS glowup_score,
+             a.id AS studio_id,
+             a.studio_name
+           FROM observer_draft_follows odf
+           JOIN drafts d ON d.id = odf.draft_id
+           JOIN agents a ON a.id = d.author_id
+           WHERE odf.observer_id = $1
+           ORDER BY odf.created_at DESC
+           LIMIT $2`,
+          [observerId, watchlistLimit],
+        ),
+      ]);
+
+    if (observerResult.rows.length === 0) {
+      throw new ServiceError('OBSERVER_NOT_FOUND', 'Observer not found.', 404);
+    }
+
+    const predictionsResult = await db.query(
+      `SELECT
+         opp.id,
+         opp.pull_request_id,
+         opp.predicted_outcome,
+         opp.resolved_outcome,
+         opp.is_correct,
+         opp.stake_points,
+         opp.payout_points,
+         opp.created_at,
+         opp.resolved_at,
+         pr.draft_id,
+         COALESCE(d.metadata->>'title', 'Untitled') AS draft_title
+       FROM observer_pr_predictions opp
+       JOIN pull_requests pr ON pr.id = opp.pull_request_id
+       JOIN drafts d ON d.id = pr.draft_id
+       WHERE opp.observer_id = $1
+       ORDER BY opp.created_at DESC
+       LIMIT $2`,
+      [observerId, predictionLimit],
+    );
+
+    const observer = observerResult.rows[0];
+    const counts = countsResult.rows[0] ?? {};
+    const predictionsCorrect = toSafeNumber(counts.predictions_correct);
+    const predictionsTotal = toSafeNumber(counts.predictions_resolved);
+
+    res.json({
+      observer: {
+        id: observer.id as string,
+        handle: `observer-${(observer.id as string).slice(0, 8)}`,
+        createdAt: observer.created_at as string,
+      },
+      counts: {
+        followingStudios: toSafeNumber(counts.following_studios),
+        watchlistDrafts: toSafeNumber(counts.watchlist_drafts),
+      },
+      predictions: {
+        correct: predictionsCorrect,
+        total: predictionsTotal,
+        rate:
+          predictionsTotal > 0
+            ? Math.round((predictionsCorrect / predictionsTotal) * 100) / 100
+            : 0,
+        netPoints: toSafeNumber(counts.prediction_net_points),
+      },
+      followingStudios: followingResult.rows.map((row) => ({
+        id: row.id as string,
+        studioName: row.studio_name as string,
+        impact: toSafeNumber(row.impact),
+        signal: toSafeNumber(row.signal),
+        followerCount: toSafeNumber(row.follower_count),
+        followedAt: row.followed_at as string,
+      })),
+      watchlistHighlights: watchlistResult.rows.map((row) => ({
+        draftId: row.draft_id as string,
+        draftTitle: row.draft_title as string,
+        updatedAt: row.updated_at as string,
+        glowUpScore: toSafeNumber(row.glowup_score),
+        studioId: row.studio_id as string,
+        studioName: row.studio_name as string,
+      })),
+      recentPredictions: predictionsResult.rows.map((row) => ({
+        id: row.id as string,
+        pullRequestId: row.pull_request_id as string,
+        draftId: row.draft_id as string,
+        draftTitle: row.draft_title as string,
+        predictedOutcome: row.predicted_outcome as 'merge' | 'reject',
+        resolvedOutcome:
+          (row.resolved_outcome as 'merge' | 'reject' | null) ?? null,
+        isCorrect:
+          row.is_correct === null ? null : (Boolean(row.is_correct) as boolean),
+        stakePoints: toSafeNumber(row.stake_points),
+        payoutPoints: toSafeNumber(row.payout_points),
+        createdAt: row.created_at as string,
+        resolvedAt: (row.resolved_at as string | null) ?? null,
+      })),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get('/me/following', requireHuman, async (req, res, next) => {
   try {
     const observerId = req.auth?.id as string;

@@ -125,6 +125,9 @@ describe('observer profile page', () => {
     expect(
       screen.getByRole('link', { name: /Studio One/i }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /Open public profile/i }),
+    ).toHaveAttribute('href', '/observers/observer-1');
     expect(screen.getAllByText(/Watchlist Draft/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Net prediction points: 22/i)).toBeInTheDocument();
   });
