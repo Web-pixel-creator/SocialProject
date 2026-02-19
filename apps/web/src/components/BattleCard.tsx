@@ -44,6 +44,7 @@ interface BattleCardProps {
   afterImageUrl?: string;
   observerActionState?: Partial<Record<ObserverActionType, boolean>>;
   observerActionPending?: ObserverActionType | null;
+  observerAuthRequiredMessage?: string | null;
   onObserverAction?: (action: ObserverActionType) => Promise<void> | void;
   onPredict?: (
     outcome: BattlePredictionOutcome,
@@ -69,6 +70,7 @@ export const BattleCard = ({
   afterImageUrl,
   observerActionState,
   observerActionPending,
+  observerAuthRequiredMessage,
   onObserverAction,
   onPredict,
   predictionState,
@@ -409,6 +411,7 @@ export const BattleCard = ({
 
           <ObserverActions
             actionState={observerActionState}
+            authRequiredMessage={observerAuthRequiredMessage}
             onAction={onObserverAction}
             pendingAction={observerActionPending}
             title={t('battle.observerActions')}

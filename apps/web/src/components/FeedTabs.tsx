@@ -831,6 +831,10 @@ export const FeedTabs = () => {
   const [pendingStudioFollowIds, setPendingStudioFollowIds] = useState<
     Set<string>
   >(() => new Set<string>());
+  const [
+    observerActionAuthRequiredByDraftId,
+    setObserverActionAuthRequiredByDraftId,
+  ] = useState<Record<string, string>>({});
   const [battlePredictions, setBattlePredictions] = useState<
     Record<string, BattlePredictionEntry>
   >({});
@@ -1974,6 +1978,16 @@ export const FeedTabs = () => {
         return;
       }
 
+      const clearObserverAuthRequiredNotice = () => {
+        setObserverActionAuthRequiredByDraftId((current) => {
+          if (!(draftId in current)) {
+            return current;
+          }
+          const { [draftId]: _removed, ...rest } = current;
+          return rest;
+        });
+      };
+
       if (action === 'watch' || action === 'compare') {
         if (typeof window !== 'undefined') {
           const targetUrl =
@@ -1997,6 +2011,7 @@ export const FeedTabs = () => {
           return;
         }
 
+        clearObserverAuthRequiredNotice();
         const wasSaved = savedDraftIds.has(draftId);
         const nextSaved = !wasSaved;
         setSavedDraftIds((current) => toggleIdInSet(current, draftId));
@@ -2007,6 +2022,7 @@ export const FeedTabs = () => {
         });
 
         let shouldPersistToggle = true;
+        let authRequired = false;
         try {
           if (nextSaved) {
             await apiClient.post(`/observers/engagements/${draftId}/save`);
@@ -2015,7 +2031,14 @@ export const FeedTabs = () => {
           }
         } catch (error: unknown) {
           const status = getApiErrorStatus(error);
-          shouldPersistToggle = status === 401 || status === 403;
+          authRequired = status === 401 || status === 403;
+          shouldPersistToggle = authRequired;
+          if (authRequired) {
+            setObserverActionAuthRequiredByDraftId((current) => ({
+              ...current,
+              [draftId]: t('observerAction.authRequired'),
+            }));
+          }
         } finally {
           setPendingSaveDraftIds((current) => {
             const next = new Set(current);
@@ -2028,7 +2051,12 @@ export const FeedTabs = () => {
           if (wasSaved !== nextSaved) {
             setSavedDraftIds((current) => toggleIdInSet(current, draftId));
           }
+          clearObserverAuthRequiredNotice();
           return;
+        }
+
+        if (!authRequired) {
+          clearObserverAuthRequiredNotice();
         }
 
         sendTelemetry({
@@ -2046,6 +2074,7 @@ export const FeedTabs = () => {
           return;
         }
 
+        clearObserverAuthRequiredNotice();
         const wasRated = ratedDraftIds.has(draftId);
         const nextRated = !wasRated;
         setRatedDraftIds((current) => toggleIdInSet(current, draftId));
@@ -2056,6 +2085,7 @@ export const FeedTabs = () => {
         });
 
         let shouldPersistToggle = true;
+        let authRequired = false;
         try {
           if (nextRated) {
             await apiClient.post(`/observers/engagements/${draftId}/rate`);
@@ -2064,7 +2094,14 @@ export const FeedTabs = () => {
           }
         } catch (error: unknown) {
           const status = getApiErrorStatus(error);
-          shouldPersistToggle = status === 401 || status === 403;
+          authRequired = status === 401 || status === 403;
+          shouldPersistToggle = authRequired;
+          if (authRequired) {
+            setObserverActionAuthRequiredByDraftId((current) => ({
+              ...current,
+              [draftId]: t('observerAction.authRequired'),
+            }));
+          }
         } finally {
           setPendingRateDraftIds((current) => {
             const next = new Set(current);
@@ -2077,7 +2114,12 @@ export const FeedTabs = () => {
           if (wasRated !== nextRated) {
             setRatedDraftIds((current) => toggleIdInSet(current, draftId));
           }
+          clearObserverAuthRequiredNotice();
           return;
+        }
+
+        if (!authRequired) {
+          clearObserverAuthRequiredNotice();
         }
 
         sendTelemetry({
@@ -2094,6 +2136,7 @@ export const FeedTabs = () => {
         return;
       }
 
+      clearObserverAuthRequiredNotice();
       const wasFollowed = followedDraftIds.has(draftId);
       const nextFollowed = !wasFollowed;
       setFollowedDraftIds((current) => toggleIdInSet(current, draftId));
@@ -2104,6 +2147,7 @@ export const FeedTabs = () => {
       });
 
       let shouldPersistToggle = true;
+      let authRequired = false;
       try {
         if (nextFollowed) {
           await apiClient.post(`/observers/watchlist/${draftId}`);
@@ -2112,7 +2156,14 @@ export const FeedTabs = () => {
         }
       } catch (error: unknown) {
         const status = getApiErrorStatus(error);
-        shouldPersistToggle = status === 401 || status === 403;
+        authRequired = status === 401 || status === 403;
+        shouldPersistToggle = authRequired;
+        if (authRequired) {
+          setObserverActionAuthRequiredByDraftId((current) => ({
+            ...current,
+            [draftId]: t('observerAction.authRequired'),
+          }));
+        }
       } finally {
         setPendingFollowDraftIds((current) => {
           const next = new Set(current);
@@ -2123,7 +2174,12 @@ export const FeedTabs = () => {
 
       if (!shouldPersistToggle) {
         setFollowedDraftIds((current) => toggleIdInSet(current, draftId));
+        clearObserverAuthRequiredNotice();
         return;
+      }
+
+      if (!authRequired) {
+        clearObserverAuthRequiredNotice();
       }
 
       sendTelemetry({
@@ -2141,6 +2197,7 @@ export const FeedTabs = () => {
       pendingSaveDraftIds,
       ratedDraftIds,
       savedDraftIds,
+      t,
     ],
   );
 
@@ -2288,6 +2345,9 @@ export const FeedTabs = () => {
                 rate: ratedDraftIds.has(item.id),
                 save: savedDraftIds.has(item.id),
               }}
+              observerAuthRequiredMessage={
+                observerActionAuthRequiredByDraftId[item.id] ?? null
+              }
               onObserverAction={(action) =>
                 handleObserverAction(action, item.id)
               }
@@ -2317,6 +2377,9 @@ export const FeedTabs = () => {
                 rate: ratedDraftIds.has(item.draftId),
                 save: savedDraftIds.has(item.draftId),
               }}
+              observerAuthRequiredMessage={
+                observerActionAuthRequiredByDraftId[item.draftId] ?? null
+              }
               onObserverAction={(action) =>
                 handleObserverAction(action, item.draftId)
               }
@@ -2347,6 +2410,9 @@ export const FeedTabs = () => {
                 rate: ratedDraftIds.has(item.id),
                 save: savedDraftIds.has(item.id),
               }}
+              observerAuthRequiredMessage={
+                observerActionAuthRequiredByDraftId[item.id] ?? null
+              }
               onObserverAction={(action) =>
                 handleObserverAction(action, item.id)
               }
@@ -2397,6 +2463,9 @@ export const FeedTabs = () => {
               rate: ratedDraftIds.has(item.id),
               save: savedDraftIds.has(item.id),
             }}
+            observerAuthRequiredMessage={
+              observerActionAuthRequiredByDraftId[item.id] ?? null
+            }
             onObserverAction={(action) => handleObserverAction(action, item.id)}
             {...item}
           />
@@ -2411,6 +2480,7 @@ export const FeedTabs = () => {
       handleObserverAction,
       handleProgressCardOpen,
       isCompactDensity,
+      observerActionAuthRequiredByDraftId,
       pendingObserverActionForDraft,
       pendingStudioFollowIds,
       ratedDraftIds,

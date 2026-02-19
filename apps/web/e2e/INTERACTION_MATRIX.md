@@ -1,6 +1,6 @@
 # Interaction Matrix (Web E2E)
 
-Last updated: 2026-02-18
+Last updated: 2026-02-19
 
 This matrix maps key user-facing controls and indicators to automated checks.
 Use it as a quick audit source when answering: "Does each button/indicator work?"
@@ -17,12 +17,14 @@ Legend:
 | Primary tabs (`All`, `Hot Now`, `Live Drafts`, `Battles`, `For You`) | Switches feed mode, syncs URL | E2E | `apps/web/e2e/feed-navigation.spec.ts` |
 | `Following` tab filters + quick reset chips | `sort/status` sync to query, `All statuses`/`Recency` quick resets, no `range/intent` quick chips | E2E + Unit | `apps/web/e2e/feed-navigation.spec.ts`, `apps/web/src/__tests__/feed-ui.spec.tsx` |
 | `Following` card context badge | Draft cards on Following tab show `From studios you follow` label | Unit | `apps/web/src/__tests__/feed-ui.spec.tsx` |
+| `Studios` tab follow toggle | Studio card `Follow` / `Following` toggles and follower count updates optimistically; failed follow requests roll back to previous state | E2E | `apps/web/e2e/feed-navigation.spec.ts` |
 | `More` tabs menu | Opens/closes, keyboard + Escape/outside close, selects extra tabs | E2E | `apps/web/e2e/feed-navigation.spec.ts` |
 | `Filters` panel | Opens/closes, syncs query params, hydrates from URL | E2E | `apps/web/e2e/feed-navigation.spec.ts` |
 | Battle status chips | Filters battle list by status | E2E | `apps/web/e2e/feed-navigation.spec.ts` |
 | Battle vote controls | Left/right vote, "your vote" state | E2E | `apps/web/e2e/feed-navigation.spec.ts` |
 | Observer card actions `Watch`, `Compare` | Navigates to draft/compare page | E2E | `apps/web/e2e/feed-observer-actions.spec.ts` |
 | Observer card actions `More`, `Follow`, `Rate`, `Save` | Expand/Collapse + persistence/hydration | E2E | `apps/web/e2e/feed-observer-actions.spec.ts` |
+| Observer actions auth-required hint | Shows explicit sign-in requirement + `Sign in` CTA on `401/403` for protected action persistence | E2E | `apps/web/e2e/feed-observer-actions.spec.ts` |
 | Observer action non-auth failure rollback | Failed persist (`500`) reverts optimistic `Follow`/`Rate`/`Save` toggles | E2E | `apps/web/e2e/feed-observer-actions.spec.ts` |
 | Observer actions pending state | `aria-busy` + disabled while follow request in-flight | E2E | `apps/web/e2e/feed-observer-actions.spec.ts` |
 | Observer actions keyboard (`More`, `Follow`) | Keyboard activation works for core toggle flow | E2E | `apps/web/e2e/feed-observer-actions.spec.ts` |
@@ -78,11 +80,12 @@ Legend:
 | --- | --- | --- | --- |
 | Privacy | Export data flow, auth-expiry recovery UI | E2E | `apps/web/e2e/privacy.spec.ts` |
 | Commissions list/detail | Search/filter, responses, empty/not-found/error states | E2E | `apps/web/e2e/commissions.spec.ts`, `apps/web/e2e/commissions-detail.spec.ts` |
-| Studio detail | Profile/metrics/ledger rendering + fallback states | E2E | `apps/web/e2e/studio-detail.spec.ts` |
+| Studio detail | Profile/metrics/ledger rendering, header `Follow`/`Following` toggle + follower count updates, rollback on follow failure, and fallback states | E2E | `apps/web/e2e/studio-detail.spec.ts` |
 | Studio onboarding | Connect, save profile, skip flow, slash/mobile behavior | E2E | `apps/web/e2e/studios-onboarding.spec.ts` |
 | Auth pages | Login/register controls, success + error flows | E2E | `apps/web/e2e/auth.spec.ts` |
 | Legal pages | Inter-page policy links + slash behavior | E2E | `apps/web/e2e/legal-pages.spec.ts` |
 | Home | Hero/navigation/CTA routing | E2E | `apps/web/e2e/homepage.spec.ts` |
+| Observer profile | Auth-required state, summary cards, and `Resync now` refresh action | E2E + Unit | `apps/web/e2e/observer-profile.spec.ts`, `apps/web/src/__tests__/observer-profile-page.spec.tsx` |
 
 ## Global Shell / Cross-Cutting
 
@@ -93,7 +96,7 @@ Legend:
 | Header search routing | Non-feed routing + mobile menu behavior | E2E | `apps/web/e2e/header-search.spec.ts` |
 | Mobile navigation drawer | Open/close/focus restore/navigation | E2E | `apps/web/e2e/mobile-navigation.spec.ts` |
 | Cross-tab auth storage sync | Logout in one tab clears token/user and invalidates protected actions in another tab | E2E + Unit | `apps/web/e2e/session-multi-tab.spec.ts`, `apps/web/src/__tests__/auth-context.spec.tsx` |
-| Accessibility semantic smoke | Semantic guardrail via `axe-core` on `/feed`, `/search`, `/login`, `/register`, `/demo`, `/drafts/:id`, `/pull-requests/:id`, `/privacy`, `/commissions`, `/commissions/:id`, `/studios/onboarding`, `/studios/:id`, `/admin/ux`, and legal routes (`/legal/terms`, `/legal/privacy`, `/legal/refund`, `/legal/content`) | E2E | `apps/web/e2e/accessibility-smoke.spec.ts` |
+| Accessibility semantic smoke | Semantic guardrail via `axe-core` on `/feed`, `/search`, `/login`, `/register`, `/demo`, `/drafts/:id`, `/pull-requests/:id`, `/privacy`, `/commissions`, `/commissions/:id`, `/studios/onboarding`, `/studios/:id`, `/admin/ux`, `/observer/profile`, and legal routes (`/legal/terms`, `/legal/privacy`, `/legal/refund`, `/legal/content`) | E2E | `apps/web/e2e/accessibility-smoke.spec.ts` |
 | Visual baseline | Desktop/mobile snapshot regressions | E2E | `apps/web/e2e/visual-smoke.spec.ts` |
 | Cross-browser sanity | Firefox/WebKit critical flows, sticky header persistence (feed + non-feed + detail routes), fixed safe-area non-overlap checks, and mobile menu viewport overflow guards (non-feed + detail routes) | E2E | `apps/web/e2e/browser-compat.spec.ts` |
 | Reduced-motion non-feed animations | Shared shell/home icon animations disable under `prefers-reduced-motion` on `/`, `/privacy`, `/commissions`, `/studios/onboarding`, `/legal/privacy` | E2E | `apps/web/e2e/reduced-motion-non-feed.spec.ts` |

@@ -476,6 +476,35 @@ test.describe('Feed observer actions persistence', () => {
             .not.toContain(DRAFT_ID);
     });
 
+    test('shows auth-required hint for observer actions when API returns unauthorized', async ({
+        page,
+    }) => {
+        await page.addInitScript(() => {
+            window.localStorage.setItem('finishit-feed-density', 'comfort');
+        });
+        await routeObserverActionsApi(page, {
+            persistStatusCode: 403,
+        });
+        await openFeed(page);
+
+        const observerSection = await openObserverActionsPanel(page);
+        const followButton = observerSection.getByRole('button', {
+            name: /^Follow$/i,
+        });
+        await followButton.click();
+
+        const authRequiredHint = observerSection.getByTestId(
+            'observer-action-auth-required',
+        );
+        await expect(authRequiredHint).toBeVisible();
+        await expect(authRequiredHint).toContainText(
+            /Sign in as observer to persist follow, rate, and save actions\./i,
+        );
+        await expect(
+            observerSection.getByRole('link', { name: /^Sign in$/i }),
+        ).toHaveAttribute('href', '/login');
+    });
+
     test('reverts rate and save toggles on non-auth persistence failure', async ({
         page,
     }) => {

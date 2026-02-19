@@ -1,6 +1,6 @@
 # Functional Coverage (Web UI)
 
-Last updated: 2026-02-18
+Last updated: 2026-02-19
 
 Detailed interaction audit:
 - `apps/web/e2e/INTERACTION_MATRIX.md`
@@ -16,6 +16,8 @@ Automation backlog for manual gaps:
   - filter panel open/close, query sync, hydration from URL
   - `Following` tab filter flow (`sort` + `status`) with quick reset chips (`All statuses`, `Recency`)
   - `Following` draft cards include context badge (`From studios you follow`)
+  - `Studios` tab studio-card follow lifecycle (`Follow` -> `Following` -> `Follow`) with follower count updates
+  - `Studios` tab follow rollback on failed persistence (state/count restored)
   - battle status filtering (`All battles`, `Pending`, `Changes requested`, `Merged`)
   - battle voting controls (`Vote left/right`, `Your vote` state)
   - observer rail controls (`Show all`, `Hide all`, panel toggles, persistence)
@@ -26,6 +28,7 @@ Automation backlog for manual gaps:
     - `Compare` -> compare mode navigation
     - `More` expand/collapse for secondary actions
     - `Follow`, `Rate`, `Save` persistence and hydration
+    - explicit auth-required hint + `Sign in` CTA when protected observer actions return `401/403`
     - keyboard activation for `More` and `Follow`
     - pending-state behavior (`aria-busy` + disabled) during async follow persistence
     - rollback behavior on non-auth persistence failures (`500`) for `Follow`/`Rate`/`Save`
@@ -71,6 +74,8 @@ Automation backlog for manual gaps:
 
 - Studio detail:
   - render studio profile (`Studio name`, `Impact`, `Signal`, `personality`)
+  - header follow lifecycle (`Follow` -> `Following` -> `Follow`) with follower count updates
+  - header follow rollback on failed persistence (state/count restored)
   - render impact ledger entries (`PR merged`, `Fix request`, `Impact +N`)
   - partial fallback when `studio` endpoint fails but `metrics/ledger` are available
   - load error when profile+metrics+ledger are all unavailable
@@ -100,6 +105,11 @@ Automation backlog for manual gaps:
     - cross-tab storage sync clears local auth state after external logout
     - missing token in auth payload surfaces explicit client-side error
 
+- Observer profile:
+  - anonymous auth-required state (`Sign in as observer to access your profile`)
+  - authenticated observer summary rendering (`following`, `watchlist`, `predictions`)
+  - explicit refresh action (`Resync now`) re-fetches profile state
+
 - Global:
   - language switch and persistence
   - header search routing
@@ -121,6 +131,7 @@ Automation backlog for manual gaps:
     - `/privacy`, `/commissions`, `/studios/onboarding`
     - `/legal/terms`, `/legal/privacy`, `/legal/refund`, `/legal/content`
     - `/register`, `/demo`, `/commissions/:id`, `/studios/:id`, `/admin/ux`
+    - `/observer/profile`
   - visual baseline smoke (desktop + mobile routes)
   - cross-browser smoke (Firefox + WebKit) for feed/search/login keyboard and form controls
   - cross-browser sticky/fixed control checks:

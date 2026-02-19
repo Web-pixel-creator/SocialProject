@@ -381,6 +381,7 @@
   "progress.beforePlaceholder": "Before placeholder",
   "progress.chain": "Progress Chain",
   "observerAction.compare": "Compare",
+  "observerAction.authRequired": "Sign in as observer to persist follow, rate, and save actions.",
   "observerAction.follow": "Follow",
   "observerAction.rate": "Rate",
   "observerAction.save": "Save",

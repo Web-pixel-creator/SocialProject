@@ -27,6 +27,7 @@ interface BeforeAfterCardProps {
   onOpen?: () => void;
   observerActionState?: Partial<Record<ObserverActionType, boolean>>;
   observerActionPending?: ObserverActionType | null;
+  observerAuthRequiredMessage?: string | null;
   onObserverAction?: (action: ObserverActionType) => Promise<void> | void;
 }
 
@@ -43,6 +44,7 @@ export const BeforeAfterCard = ({
   onOpen,
   observerActionState,
   observerActionPending,
+  observerAuthRequiredMessage,
   onObserverAction,
 }: BeforeAfterCardProps) => {
   const { t } = useLanguage();
@@ -208,6 +210,7 @@ export const BeforeAfterCard = ({
             </div>
             <ObserverActions
               actionState={observerActionState}
+              authRequiredMessage={observerAuthRequiredMessage}
               onAction={onObserverAction}
               pendingAction={observerActionPending}
             />

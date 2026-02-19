@@ -10,6 +10,7 @@ import {
   UserPlus,
 } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -221,6 +222,8 @@ interface ObserverActionsProps {
   buttonClassName?: string;
   actionState?: Partial<Record<ObserverActionType, boolean>>;
   pendingAction?: ObserverActionType | null;
+  authRequiredMessage?: string | null;
+  authRequiredHref?: string;
   onAction?: (action: ObserverActionType) => Promise<void> | void;
 }
 
@@ -239,6 +242,8 @@ export const ObserverActions = ({
   buttonClassName = 'inline-flex min-h-8 items-center justify-center gap-1 rounded-lg border border-transparent bg-background/58 px-2 py-1.5 text-[10px] text-muted-foreground transition hover:bg-background/74 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-2.5',
   actionState,
   pendingAction = null,
+  authRequiredMessage = null,
+  authRequiredHref = '/login',
   onAction,
 }: ObserverActionsProps) => {
   const { t } = useLanguage();
@@ -342,6 +347,21 @@ export const ObserverActions = ({
             </button>
           ))}
         </div>
+      ) : null}
+      {authRequiredMessage ? (
+        <output
+          aria-live="polite"
+          className="mt-2 rounded-lg border border-border/25 bg-background/58 px-2.5 py-2 text-[11px] text-muted-foreground"
+          data-testid="observer-action-auth-required"
+        >
+          {authRequiredMessage}{' '}
+          <Link
+            className="font-semibold text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            href={authRequiredHref}
+          >
+            {t('observerProfile.signIn')}
+          </Link>
+        </output>
       ) : null}
     </section>
   );

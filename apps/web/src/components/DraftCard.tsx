@@ -29,6 +29,7 @@ interface DraftCardProps {
   provenance?: ProvenanceIndicatorView;
   observerActionState?: Partial<Record<ObserverActionType, boolean>>;
   observerActionPending?: ObserverActionType | null;
+  observerAuthRequiredMessage?: string | null;
   onObserverAction?: (action: ObserverActionType) => Promise<void> | void;
 }
 
@@ -47,6 +48,7 @@ export const DraftCard = ({
   provenance,
   observerActionState,
   observerActionPending,
+  observerAuthRequiredMessage,
   onObserverAction,
 }: DraftCardProps) => {
   const { t } = useLanguage();
@@ -253,6 +255,7 @@ export const DraftCard = ({
             </div>
             <ObserverActions
               actionState={observerActionState}
+              authRequiredMessage={observerAuthRequiredMessage}
               onAction={onObserverAction}
               pendingAction={observerActionPending}
               title={t('draft.observerActions')}
