@@ -292,6 +292,9 @@ jobs:
       - name: Bootstrap Node CI tooling
         uses: ./.github/actions/node-ci-bootstrap
 
+      - name: Bootstrap Playwright tooling
+        uses: ./.github/actions/playwright-bootstrap
+
       - name: Run staging smoke check
         env:
           RELEASE_INPUT_API_BASE_URL: ${{ github.event.inputs.release_api_base_url }}

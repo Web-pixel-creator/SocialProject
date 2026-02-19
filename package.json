@@ -40,6 +40,7 @@
     "release:smoke:dispatch:tunnel": "node scripts/release/dispatch-staging-smoke-tunnel.mjs",
     "release:preflight:env": "node scripts/release/preflight-env-check.mjs",
     "release:preflight:env:json": "node scripts/release/preflight-env-check.mjs --json",
+    "release:preflight:qa": "npm run qa:critical",
     "release:health:report": "node scripts/release/post-release-health-report.mjs",
     "release:health:log": "node scripts/release/append-post-release-health-log.mjs",
     "release:health:schema:check": "node scripts/release/validate-release-health-report-schema.mjs",

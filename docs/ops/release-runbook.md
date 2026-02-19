@@ -13,11 +13,13 @@ Canonical references:
    - `npm run release:preflight:env`
    - Optional JSON output: `npm run release:preflight:env:json`
 2. Run quality + security + smoke gates from the release checklist.
+   - `npm run release:preflight:qa` (ultracite + web build + critical E2E)
    - Optional one-command local preflight: `npm run verify:local`
    - Run web test suite: `npm run test:web`
    - For API pre-release verification with Postgres/Redis bootstrap: `npm run test:api -- --runInBand`
    - If services are already running manually: `npm run test:api:skip-deps -- --runInBand`
 3. Complete staging dry-run and attach smoke artifacts.
+   - `npm run release:dry-run:local` now runs `release:preflight:qa` before smoke (skip only when needed: `RELEASE_LOCAL_SKIP_QA_CRITICAL=true`).
 
 ## 2. Rollout sequence
 

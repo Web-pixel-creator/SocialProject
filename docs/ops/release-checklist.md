@@ -16,6 +16,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
 
 - [ ] `npm run release:preflight:env` passes in the target release environment.
 - [ ] Optional machine-readable env summary: `npm run release:preflight:env:json`.
+- [ ] `npm run release:preflight:qa` passes (`qa:critical`: ultracite + web build + critical E2E).
 - [ ] `npm run ultracite:check` passes.
 - [ ] `npm run lint` passes.
 - [ ] `npm --workspace apps/api run build` passes.
@@ -44,7 +45,8 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
 ## 3. Staging Dry-Run (Required)
 
 - [ ] Optional local rehearsal before staging:
-  - [ ] `npm run release:dry-run:local` (starts local infra/services and executes smoke gate end-to-end).
+  - [ ] `npm run release:dry-run:local` (starts local infra/services, runs `release:preflight:qa`, then executes smoke gate end-to-end).
+  - [ ] Optional skip for urgent rehearsal: `RELEASE_LOCAL_SKIP_QA_CRITICAL=true npm run release:dry-run:local`.
 - [ ] Deploy API + Web to staging from release artifact.
 - [ ] Trigger staging smoke dry-run in CI (preferred evidence path):
   - [ ] Run `CI` workflow via `workflow_dispatch` and provide inputs:
@@ -85,6 +87,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
         - [ ] `RELEASE_TUNNEL_PREFLIGHT_SUCCESS_STREAK=<n>` (default `2`)
         - [ ] `RELEASE_TUNNEL_PREFLIGHT_SUMMARY_WRITE=<true|false>` (default `true`)
         - [ ] `RELEASE_TUNNEL_PREFLIGHT_SUMMARY_PATH=<path>` (default `artifacts/release/tunnel-preflight-summary.json`)
+      - [ ] Optional release dry-run QA gate toggle: `RELEASE_RUN_QA_CRITICAL=<true|false>` (default `true`).
       - [ ] `RELEASE_TUNNEL_CAPTURE_RETRY_LOGS=<true|false>` (default `true`)
       - [ ] `RELEASE_TUNNEL_RETRY_LOGS_DIR=<path>` or `RELEASE_RETRY_LOGS_DIR=<path>` (default `artifacts/release/retry-failures`)
       - [ ] Retry diagnostics retention cleanup controls:
@@ -150,7 +153,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
       - [ ] Optional hard fail on regressions: `RELEASE_SMOKE_DIFF_FAIL_ON_REGRESSION=true npm run release:smoke:diff -- <previous_run_id> <current_run_id>`
 - [ ] Run automated smoke check:
   - [ ] `RELEASE_API_BASE_URL=<staging-api-url> RELEASE_WEB_BASE_URL=<staging-web-url> npm run release:smoke`
-  - [ ] Fallback rehearsal command (when staging URLs are unavailable): `npm run release:dry-run:local`
+  - [ ] Fallback rehearsal command (when staging URLs are unavailable): `npm run release:dry-run:local` (includes `release:preflight:qa` unless skipped explicitly)
   - [ ] Save `artifacts/release/smoke-results.json` to release ticket.
 - [ ] Run API smoke tests:
   - [ ] `GET /health` returns `200` + `{ "status": "ok" }`.

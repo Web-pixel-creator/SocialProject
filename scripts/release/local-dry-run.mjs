@@ -317,6 +317,9 @@ const main = async () => {
   const shouldPrepareInfra =
     (process.env.RELEASE_LOCAL_SKIP_PREPARE ?? 'false').toLowerCase() !==
     'true';
+  const shouldRunQaCritical =
+    (process.env.RELEASE_LOCAL_SKIP_QA_CRITICAL ?? 'false').toLowerCase() !==
+    'true';
 
   if (shouldPrepareInfra) {
     await runCommand({
@@ -370,6 +373,23 @@ const main = async () => {
       name: 'web build',
       shell: webBuildInvocation.shell,
     });
+  }
+
+  if (shouldRunQaCritical) {
+    const qaPreflightInvocation = getNpmInvocation([
+      'run',
+      'release:preflight:qa',
+    ]);
+    await runCommand({
+      command: qaPreflightInvocation.command,
+      args: qaPreflightInvocation.args,
+      name: 'release:preflight:qa',
+      shell: qaPreflightInvocation.shell,
+    });
+  } else {
+    process.stdout.write(
+      'Skipping qa:critical gate (RELEASE_LOCAL_SKIP_QA_CRITICAL=true)\n',
+    );
   }
 
   const apiEnv = {

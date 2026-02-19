@@ -178,20 +178,22 @@ test.describe('Search page', () => {
     await page.goto('/search?from=similar');
     await expect(page.getByRole('heading', { name: /^Search$/i })).toBeVisible();
 
-    const lastScrollToOptions = await page.evaluate(() => {
-      type WindowWithScrollProbe = Window & {
-        __finishitLastSearchScrollTo?: Record<string, unknown> | null;
-      };
-      const win = window as WindowWithScrollProbe;
-      return win.__finishitLastSearchScrollTo ?? null;
-    });
-
-    expect(lastScrollToOptions).toEqual(
-      expect.objectContaining({
-        behavior: 'auto',
-        top: 0,
-      }),
-    );
+    await expect
+      .poll(async () => {
+        return page.evaluate(() => {
+          type WindowWithScrollProbe = Window & {
+            __finishitLastSearchScrollTo?: Record<string, unknown> | null;
+          };
+          const win = window as WindowWithScrollProbe;
+          return win.__finishitLastSearchScrollTo ?? null;
+        });
+      })
+      .toEqual(
+        expect.objectContaining({
+          behavior: 'auto',
+          top: 0,
+        }),
+      );
   });
 
   test('runs visual search and renders results', async ({ page }) => {
@@ -239,7 +241,10 @@ test.describe('Search page', () => {
       );
     });
 
-    await page.getByRole('button', { name: /^Run visual search$/i }).click();
+    await page
+      .getByRole('button', { name: /^Run visual search$/i })
+      .first()
+      .click();
     await visualSearchRequest;
 
     await expect(page.getByText('Visual similarity result')).toBeVisible();

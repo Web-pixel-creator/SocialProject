@@ -7,6 +7,7 @@ CSRF_TOKEN="${RELEASE_INPUT_CSRF_TOKEN:-}"
 PREFLIGHT_SUMMARY_PATH="artifacts/release/tunnel-preflight-summary.json"
 ENV_PREFLIGHT_SUMMARY_PATH="artifacts/release/env-preflight-summary.json"
 SMOKE_RESULTS_PATH="artifacts/release/smoke-results.json"
+RUN_QA_CRITICAL="$(echo "${RELEASE_RUN_QA_CRITICAL:-true}" | tr '[:upper:]' '[:lower:]')"
 MODE=""
 EFFECTIVE_API_URL=""
 EFFECTIVE_WEB_URL=""
@@ -81,6 +82,13 @@ RELEASE_PREFLIGHT_WEB_BASE_URL="$WEB_URL" \
 RELEASE_PREFLIGHT_OUTPUT_PATH="$PREFLIGHT_SUMMARY_PATH" \
 node scripts/release/preflight-smoke-targets.mjs --allow-skip
 
+if [ "$RUN_QA_CRITICAL" = "true" ]; then
+  echo "Running release preflight QA gate (qa:critical)."
+  npm run release:preflight:qa
+else
+  echo "Skipping release preflight QA gate (RELEASE_RUN_QA_CRITICAL=$RUN_QA_CRITICAL)."
+fi
+
 if [ "$MODE" = "staging" ]; then
   echo "Running release env preflight gate for staging smoke check."
 
@@ -106,5 +114,6 @@ else
   RELEASE_API_BASE_URL="$EFFECTIVE_API_URL" \
   RELEASE_WEB_BASE_URL="$EFFECTIVE_WEB_URL" \
   RELEASE_RESULTS_PATH="$SMOKE_RESULTS_PATH" \
+  RELEASE_LOCAL_SKIP_QA_CRITICAL=true \
   npm run release:dry-run:local
 fi
