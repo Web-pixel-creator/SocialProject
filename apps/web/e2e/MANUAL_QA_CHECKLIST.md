@@ -58,7 +58,7 @@ Status legend:
 
 - [x] No clipped text on critical controls in both locales.
 - [x] No mixed-language fragments in one view for critical controls/pages (`/feed`, `/search`, `/drafts/:id`, `/pull-requests/:id`, `/privacy`).
-- [ ] Empty/error/helper texts are translated and context-appropriate.
+- [x] Empty/error/helper texts are translated and context-appropriate for critical pages (`/feed`, `/search`, `/pull-requests/:id`, `/privacy`).
 - [x] Key domain wording is consistent across feed/search/draft/PR pages for critical controls.
 
 ## 6) Browser-Specific Rendering

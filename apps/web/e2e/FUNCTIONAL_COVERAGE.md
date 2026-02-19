@@ -136,6 +136,11 @@ Automation backlog for manual gaps:
   - locale copy-quality guardrails (EN/RU):
     - `/feed`, `/search`, `/drafts/:id`, `/pull-requests/:id`, `/privacy`: critical controls render active-locale labels and do not leak opposite-locale labels in the same view
     - translation assertions resolve from real locale dictionaries (`messages/en.json`, `messages/ru.json`) to detect key/value drift
+  - locale empty/error/helper copy guardrails (EN/RU):
+    - `/feed`: empty-state title/helper/CTA are localized consistently
+    - `/search`: empty-state helper + keyword helper + reset control are localized consistently
+    - `/pull-requests/:id`: validation error copy (`rejection reason required`) is localized consistently
+    - `/privacy`: retention helper and protected action labels are localized consistently
   - accessibility semantic smoke (`axe-core`) on core + critical routes:
     - `/feed`, `/search`, `/login`
     - `/drafts/:id`, `/pull-requests/:id`

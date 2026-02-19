@@ -6,8 +6,8 @@ This snapshot records what was verified by automation and what still requires tr
 
 ## Executed checks
 
-- `npm --workspace apps/web run test:e2e` -> pass (`207/207`)
-- `npm --workspace apps/web run test:e2e:smoke` -> pass (`165/165`)
+- `npm --workspace apps/web run test:e2e` -> pass (`211/211`)
+- `npm --workspace apps/web run test:e2e:smoke` -> pass (`169/169`)
 - `npm --workspace apps/web run build` -> pass
 - `npm run ultracite:check` -> pass
 
@@ -23,4 +23,4 @@ Items still requiring human validation remain `[ ]`.
 - Visual contrast spot-check in browser with real displays and theme settings.
 - Screen reader deep pass (NVDA/VoiceOver): headings, intent labels, live announcements.
 - Localization content quality pass:
-  - helper/error copy appropriateness
+  - helper/error copy appropriateness for non-critical/long-tail routes
