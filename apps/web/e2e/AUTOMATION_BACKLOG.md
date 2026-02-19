@@ -1,6 +1,6 @@
 # E2E Automation Backlog (From Manual QA Gaps)
 
-Last updated: 2026-02-18
+Last updated: 2026-02-19
 
 Purpose: convert manual-only checks into explicit automation tasks with a clear execution order.
 
@@ -60,6 +60,7 @@ Related docs:
   - P2 cross-browser non-feed shell guardrails in Firefox/WebKit (sticky header on `/commissions` and mobile non-feed menu overflow bounds on `/privacy`).
   - P2 cross-browser detail-page shell guardrails in Firefox/WebKit (sticky header + mobile menu overflow bounds on `/drafts/:id`, `/pull-requests/:id`, `/commissions/:id`).
   - P2 accessibility semantic smoke (`axe-core`) for `/feed`, `/search`, `/login`, `/register`, `/demo`, `/drafts/:id`, `/pull-requests/:id`, `/privacy`, `/commissions`, `/commissions/:id`, `/studios/onboarding`, `/studios/:id`, `/admin/ux`, `/legal/terms`, `/legal/privacy`, `/legal/refund`, `/legal/content`.
+  - P2 observer profile route automation (`/observer/profile`) for auth-required state + summary resync flow, plus semantic a11y smoke.
 - Remaining:
   - Reduced-motion checks for newly added route-specific animated widgets after future UI feature expansion.
   - Accessibility semantic smoke checks for any newly added routes/components after feature expansion.

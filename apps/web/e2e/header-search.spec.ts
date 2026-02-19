@@ -60,6 +60,21 @@ test.describe('Site header search routing', () => {
     await expect(headerSearch).toBeFocused();
   });
 
+  test('navigates to observer profile from desktop header navigation', async ({
+    page,
+  }) => {
+    await page.goto('/privacy');
+
+    const observerProfileLink = page
+      .locator('header')
+      .first()
+      .getByRole('link', { name: /Observer profile/i });
+
+    await expect(observerProfileLink).toBeVisible();
+    await observerProfileLink.click();
+    await expect(page).toHaveURL(/\/observer\/profile/);
+  });
+
   test('opens mobile header menu and focuses search with slash shortcut', async ({
     page,
   }) => {

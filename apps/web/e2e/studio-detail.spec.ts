@@ -10,12 +10,16 @@ const json = (body: unknown, status = 200) => ({
 });
 
 interface StudioDetailMockOptions {
+  followResponseBody?: unknown;
+  followStatus?: number;
   ledgerResponseBody?: unknown;
   ledgerStatus?: number;
   metricsResponseBody?: unknown;
   metricsStatus?: number;
   studioResponseBody?: unknown;
   studioStatus?: number;
+  unfollowResponseBody?: unknown;
+  unfollowStatus?: number;
 }
 
 const installStudioDetailApiMocks = async (
@@ -23,6 +27,8 @@ const installStudioDetailApiMocks = async (
   options: StudioDetailMockOptions = {},
 ) => {
   const {
+    followResponseBody = { ok: true },
+    followStatus = 200,
     ledgerResponseBody = [
       {
         description: 'Merged major update',
@@ -53,6 +59,8 @@ const installStudioDetailApiMocks = async (
       studioName: 'Studio Ledger',
     },
     studioStatus = 200,
+    unfollowResponseBody = { removed: true },
+    unfollowStatus = 200,
   } = options;
 
   await page.route('**/api/**', async (route) => {
@@ -71,6 +79,14 @@ const installStudioDetailApiMocks = async (
 
     if (method === 'GET' && path === `/api/studios/${STUDIO_ID}/ledger`) {
       return route.fulfill(json(ledgerResponseBody, ledgerStatus));
+    }
+
+    if (method === 'POST' && path === `/api/studios/${STUDIO_ID}/follow`) {
+      return route.fulfill(json(followResponseBody, followStatus));
+    }
+
+    if (method === 'DELETE' && path === `/api/studios/${STUDIO_ID}/follow`) {
+      return route.fulfill(json(unfollowResponseBody, unfollowStatus));
     }
 
     if (method === 'POST' && path === '/api/telemetry/ux') {
@@ -98,6 +114,102 @@ test.describe('Studio detail page', () => {
     await expect(page.getByText(/Fix request/i)).toBeVisible();
     await expect(page.getByText(/Studio PR Draft/i)).toBeVisible();
     await expect(page.getByText(/Impact \+5/i)).toBeVisible();
+  });
+
+  test('toggles studio follow state from profile header', async ({ page }) => {
+    await installStudioDetailApiMocks(page, {
+      ledgerResponseBody: [],
+      studioResponseBody: {
+        follower_count: 3,
+        id: STUDIO_ID,
+        is_following: false,
+        personality: 'Precise reviewer',
+        studioName: 'Studio Follow Header',
+      },
+    });
+
+    await navigateWithRetry(page, `/studios/${STUDIO_ID}`, {
+      gotoOptions: { waitUntil: 'domcontentloaded' },
+    });
+
+    await expect(
+      page.getByRole('heading', { name: /Studio Follow Header/i }),
+    ).toBeVisible();
+
+    const followButton = page.getByRole('button', { name: /^Follow$/i });
+    await expect(followButton).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.getByText(/Followers:\s*3/i)).toBeVisible();
+
+    const followRequest = page.waitForRequest((request) => {
+      const requestUrl = new URL(request.url());
+      return (
+        request.method() === 'POST' &&
+        requestUrl.pathname === `/api/studios/${STUDIO_ID}/follow`
+      );
+    });
+
+    await followButton.click();
+    await followRequest;
+
+    const followingButton = page.getByRole('button', { name: /^Following$/i });
+    await expect(followingButton).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByText(/Followers:\s*4/i)).toBeVisible();
+
+    const unfollowRequest = page.waitForRequest((request) => {
+      const requestUrl = new URL(request.url());
+      return (
+        request.method() === 'DELETE' &&
+        requestUrl.pathname === `/api/studios/${STUDIO_ID}/follow`
+      );
+    });
+
+    await followingButton.click();
+    await unfollowRequest;
+
+    await expect(page.getByRole('button', { name: /^Follow$/i })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    await expect(page.getByText(/Followers:\s*3/i)).toBeVisible();
+  });
+
+  test('reverts follow toggle when profile follow request fails', async ({
+    page,
+  }) => {
+    await installStudioDetailApiMocks(page, {
+      followResponseBody: { error: 'AUTH_REQUIRED' },
+      followStatus: 500,
+      ledgerResponseBody: [],
+      studioResponseBody: {
+        follower_count: 3,
+        id: STUDIO_ID,
+        is_following: false,
+        personality: 'Precise reviewer',
+        studioName: 'Studio Follow Header',
+      },
+    });
+
+    await navigateWithRetry(page, `/studios/${STUDIO_ID}`, {
+      gotoOptions: { waitUntil: 'domcontentloaded' },
+    });
+
+    const followButton = page.getByRole('button', { name: /^Follow$/i });
+    await expect(followButton).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.getByText(/Followers:\s*3/i)).toBeVisible();
+
+    const followRequest = page.waitForRequest((request) => {
+      const requestUrl = new URL(request.url());
+      return (
+        request.method() === 'POST' &&
+        requestUrl.pathname === `/api/studios/${STUDIO_ID}/follow`
+      );
+    });
+
+    await followButton.click();
+    await followRequest;
+
+    await expect(followButton).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.getByText(/Followers:\s*3/i)).toBeVisible();
   });
 
   test('keeps page available when studio endpoint fails but metrics load', async ({
@@ -161,4 +273,3 @@ test.describe('Studio detail page', () => {
     expect(studioApiCalls).toBe(0);
   });
 });
-

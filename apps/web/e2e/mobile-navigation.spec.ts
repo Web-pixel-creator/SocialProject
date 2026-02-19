@@ -33,6 +33,17 @@ test.describe('Mobile navigation', () => {
     await expect(page).toHaveURL(/\/search/);
   });
 
+  test('navigates to observer profile from mobile menu', async ({ page }) => {
+    const menuToggle = page.locator('button[aria-controls="mobile-site-menu"]');
+
+    await menuToggle.click();
+    await expect(page.locator('#mobile-site-menu')).toBeVisible();
+
+    await page.locator('#mobile-site-menu a[href="/observer/profile"]').click();
+
+    await expect(page).toHaveURL(/\/observer\/profile/);
+  });
+
   test('opens mobile menu with slash shortcut and focuses search input', async ({
     page,
   }) => {

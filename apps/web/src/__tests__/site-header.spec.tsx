@@ -121,4 +121,12 @@ describe('SiteHeader', () => {
       ).toBeNull();
     });
   });
+
+  test('renders observer profile navigation link', () => {
+    render(<SiteHeader />);
+
+    expect(
+      screen.getByRole('link', { name: /Observer profile/i }),
+    ).toHaveAttribute('href', '/observer/profile');
+  });
 });

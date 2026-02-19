@@ -6,6 +6,7 @@ const DRAFT_ID = 'draft-a11y-e2e';
 const PR_ID = 'pr-a11y-e2e';
 const COMMISSION_ID = 'commission-a11y-e2e';
 const STUDIO_ID = 'studio-a11y-e2e';
+const OBSERVER_ID = 'observer-a11y-e2e';
 const withJson = (body: unknown, status = 200) => ({
     body: JSON.stringify(body),
     contentType: 'application/json',
@@ -289,6 +290,89 @@ const installStudioDetailA11yMocks = async (page: Page) => {
     });
 };
 
+const installObserverProfileA11yMocks = async (page: Page) => {
+    await page.route('**/api/**', async (route) => {
+        const requestUrl = new URL(route.request().url());
+        const method = route.request().method();
+        const path = requestUrl.pathname;
+
+        if (method === 'GET' && path === '/api/auth/me') {
+            return route.fulfill(
+                withJson({
+                    user: {
+                        id: OBSERVER_ID,
+                        email: 'observer-a11y@example.com',
+                    },
+                }),
+            );
+        }
+
+        if (method === 'GET' && path === '/api/observers/me/profile') {
+            return route.fulfill(
+                withJson({
+                    observer: {
+                        id: OBSERVER_ID,
+                        email: 'observer-a11y@example.com',
+                        createdAt: '2026-01-01T00:00:00.000Z',
+                    },
+                    counts: {
+                        digestUnseen: 1,
+                        followingStudios: 1,
+                        watchlistDrafts: 1,
+                    },
+                    followingStudios: [
+                        {
+                            followedAt: '2026-02-01T10:00:00.000Z',
+                            followerCount: 12,
+                            id: STUDIO_ID,
+                            impact: 31,
+                            signal: 74,
+                            studioName: 'Studio A11y',
+                        },
+                    ],
+                    predictions: {
+                        correct: 3,
+                        netPoints: 14,
+                        rate: 0.75,
+                        total: 4,
+                    },
+                    recentPredictions: [
+                        {
+                            createdAt: '2026-02-01T10:00:00.000Z',
+                            draftId: DRAFT_ID,
+                            draftTitle: 'A11y observer draft',
+                            id: 'pred-a11y-1',
+                            isCorrect: true,
+                            payoutPoints: 10,
+                            predictedOutcome: 'merge',
+                            pullRequestId: PR_ID,
+                            resolvedAt: '2026-02-01T11:00:00.000Z',
+                            resolvedOutcome: 'merge',
+                            stakePoints: 8,
+                        },
+                    ],
+                    watchlistHighlights: [
+                        {
+                            draftId: DRAFT_ID,
+                            draftTitle: 'A11y observer draft',
+                            glowUpScore: 15.2,
+                            studioId: STUDIO_ID,
+                            studioName: 'Studio A11y',
+                            updatedAt: '2026-02-01T10:00:00.000Z',
+                        },
+                    ],
+                }),
+            );
+        }
+
+        if (method === 'POST' && path === '/api/telemetry/ux') {
+            return route.fulfill(withJson({ ok: true }));
+        }
+
+        return route.fulfill(withJson({}));
+    });
+};
+
 test.describe('Accessibility smoke', () => {
     test('feed page has no semantic accessibility violations', async ({
         page,
@@ -426,5 +510,28 @@ test.describe('Accessibility smoke', () => {
             page.getByRole('heading', { name: /Admin UX Metrics/i }),
         ).toBeVisible();
         await assertNoSemanticA11yViolations(page, '/admin/ux');
+    });
+
+    test('observer profile page has no semantic accessibility violations', async ({
+        page,
+    }) => {
+        await page.addInitScript(() => {
+            window.localStorage.setItem('finishit_token', 'a11y-token');
+            window.localStorage.setItem(
+                'finishit_user',
+                JSON.stringify({
+                    user: {
+                        id: 'observer-a11y-e2e',
+                        email: 'observer-a11y@example.com',
+                    },
+                }),
+            );
+        });
+        await installObserverProfileA11yMocks(page);
+        await navigateWithRetry(page, '/observer/profile');
+        await expect(
+            page.getByRole('heading', { name: /My observer profile/i }),
+        ).toBeVisible();
+        await assertNoSemanticA11yViolations(page, '/observer/profile');
     });
 });

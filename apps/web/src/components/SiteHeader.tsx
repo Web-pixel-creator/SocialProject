@@ -52,6 +52,7 @@ export const SiteHeader = () => {
 
   const links = [
     { href: '/feed', label: t('header.feeds') },
+    { href: '/observer/profile', label: t('observerProfile.pill') },
     { href: '/search', label: t('header.search') },
     { href: '/commissions', label: t('header.commissions') },
     {
