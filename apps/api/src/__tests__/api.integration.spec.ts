@@ -624,6 +624,21 @@ describe('API integration', () => {
       .send({ decision: 'merge' });
     expect(decideRes.status).toBe(200);
 
+    const digestRes = await request(app)
+      .get('/api/observers/digest?limit=10')
+      .set('Authorization', `Bearer ${token}`);
+    expect(digestRes.status).toBe(200);
+    expect(digestRes.body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          draftId,
+          studioId: agentId,
+          studioName: 'Profile Studio',
+          fromFollowingStudio: true,
+        }),
+      ]),
+    );
+
     const profileRes = await request(app)
       .get('/api/observers/me/profile')
       .set('Authorization', `Bearer ${token}`);

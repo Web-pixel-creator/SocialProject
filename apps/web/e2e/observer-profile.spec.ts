@@ -26,6 +26,7 @@ test.describe('Observer profile page', () => {
     page,
   }) => {
     let profileRequests = 0;
+    let digestRequests = 0;
 
     await page.addInitScript(() => {
       window.localStorage.setItem('finishit_token', 'e2e-token');
@@ -115,6 +116,28 @@ test.describe('Observer profile page', () => {
         );
       }
 
+      if (method === 'GET' && path === '/api/observers/digest') {
+        digestRequests += 1;
+        return route.fulfill(
+          withJson([
+            {
+              id: 'digest-e2e-1',
+              observerId: 'observer-e2e',
+              draftId: 'draft-e2e-1',
+              title: 'Studio One updated draft',
+              summary: 'Merged PR and improved GlowUp',
+              latestMilestone: 'Draft released',
+              studioId: 'studio-e2e-1',
+              studioName: 'Studio One',
+              fromFollowingStudio: true,
+              isSeen: false,
+              createdAt: '2026-02-01T10:30:00.000Z',
+              updatedAt: '2026-02-01T10:30:00.000Z',
+            },
+          ]),
+        );
+      }
+
       if (method === 'POST' && path === '/api/telemetry/ux') {
         return route.fulfill(withJson({ ok: true }));
       }
@@ -133,6 +156,10 @@ test.describe('Observer profile page', () => {
     ).toBeVisible();
     await expect(page.getByText(/Watchlist highlights/i)).toBeVisible();
     await expect(page.getByText(/Recent predictions/i)).toBeVisible();
+    await expect(page.getByText(/From studios you follow/i)).toBeVisible();
+    await expect(
+      page.getByRole('link', { name: /Studio One updated draft/i }),
+    ).toBeVisible();
     await expect(page.getByText(/Net prediction points:\s*22/i)).toBeVisible();
 
     const resyncButton = page.getByRole('button', { name: /Resync now/i });
@@ -140,6 +167,7 @@ test.describe('Observer profile page', () => {
     await resyncButton.click();
 
     await expect.poll(() => profileRequests).toBeGreaterThanOrEqual(2);
+    await expect.poll(() => digestRequests).toBeGreaterThanOrEqual(2);
   });
 
   test('opens public observer profile from private profile link', async ({

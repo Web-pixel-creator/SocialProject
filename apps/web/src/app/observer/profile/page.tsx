@@ -39,6 +39,19 @@ interface ObserverProfilePrediction {
   resolvedAt: string | null;
 }
 
+interface ObserverDigestEntry {
+  id: string;
+  draftId: string;
+  title: string;
+  summary: string;
+  latestMilestone: string;
+  studioId: string | null;
+  studioName: string | null;
+  fromFollowingStudio: boolean;
+  isSeen: boolean;
+  createdAt: string;
+}
+
 interface ObserverProfileResponse {
   observer: {
     id: string;
@@ -72,6 +85,17 @@ const fetchObserverProfile = async (): Promise<ObserverProfileResponse> => {
   return response.data as ObserverProfileResponse;
 };
 
+const fetchObserverDigest = async (): Promise<ObserverDigestEntry[]> => {
+  const response = await apiClient.get('/observers/digest', {
+    params: {
+      limit: 20,
+    },
+  });
+  return Array.isArray(response.data)
+    ? (response.data as ObserverDigestEntry[])
+    : [];
+};
+
 const formatDate = (value: string, locale: string) => {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
@@ -99,6 +123,20 @@ export default function ObserverProfilePage() {
   } = useSWR<ObserverProfileResponse>(
     isAuthenticated ? 'observer:profile' : null,
     fetchObserverProfile,
+    {
+      revalidateOnFocus: false,
+      shouldRetryOnError: false,
+    },
+  );
+  const {
+    data: digestEntries = [],
+    error: digestError,
+    isLoading: digestLoading,
+    isValidating: digestValidating,
+    mutate: mutateDigest,
+  } = useSWR<ObserverDigestEntry[]>(
+    isAuthenticated ? 'observer:digest:profile' : null,
+    fetchObserverDigest,
     {
       revalidateOnFocus: false,
       shouldRetryOnError: false,
@@ -143,6 +181,9 @@ export default function ObserverProfilePage() {
   const loadError = error
     ? getApiErrorMessage(error, t('observerProfile.loadError'))
     : null;
+  const digestLoadError = digestError
+    ? getApiErrorMessage(digestError, t('draftDetail.errors.loadDigest'))
+    : null;
 
   const summaryCards = [
     {
@@ -166,6 +207,15 @@ export default function ObserverProfilePage() {
           : t('observerProfile.noPredictions'),
     },
   ];
+  const followingStudioDigestEntries = digestEntries
+    .filter((entry) => entry.fromFollowingStudio)
+    .slice(0, 8);
+  const isResyncDisabled =
+    isLoading || isValidating || digestLoading || digestValidating;
+  const handleResync = () => {
+    mutate().catch(() => undefined);
+    mutateDigest().catch(() => undefined);
+  };
 
   return (
     <main className="grid gap-4 pb-8 sm:gap-5">
@@ -220,10 +270,8 @@ export default function ObserverProfilePage() {
           </h2>
           <button
             className={`rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary ${focusRingClass}`}
-            disabled={isLoading || isValidating}
-            onClick={() => {
-              mutate();
-            }}
+            disabled={isResyncDisabled}
+            onClick={handleResync}
             type="button"
           >
             {isValidating
@@ -253,6 +301,41 @@ export default function ObserverProfilePage() {
           {t('observerProfile.netPoints')}:{' '}
           {profile?.predictions.netPoints ?? 0}
         </p>
+      </section>
+
+      <section className="card grid gap-2 p-4 sm:p-5">
+        <h2 className="font-semibold text-foreground text-lg">
+          {t('observerProfile.followingDigestTitle')}
+        </h2>
+        {digestLoadError ? (
+          <p className="text-destructive text-sm">{digestLoadError}</p>
+        ) : null}
+        {followingStudioDigestEntries.length > 0 ? (
+          <ul className="grid gap-2">
+            {followingStudioDigestEntries.map((entry) => (
+              <li
+                className="rounded-xl border border-border/25 bg-background/58 p-3"
+                key={entry.id}
+              >
+                <Link
+                  className={`font-semibold text-foreground transition hover:text-primary ${focusRingClass}`}
+                  href={`/drafts/${entry.draftId}`}
+                >
+                  {entry.title}
+                </Link>
+                <p className="text-muted-foreground text-xs">{entry.summary}</p>
+                <p className="text-muted-foreground text-xs">
+                  {entry.studioName ?? t('common.aiStudio')} ·{' '}
+                  {entry.latestMilestone}
+                </p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-muted-foreground text-sm">
+            {t('observerProfile.emptyFollowingDigest')}
+          </p>
+        )}
       </section>
 
       <section className="card grid gap-2 p-4 sm:p-5">

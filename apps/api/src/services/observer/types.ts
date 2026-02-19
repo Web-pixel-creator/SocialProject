@@ -37,6 +37,9 @@ export interface ObserverDigestEntry {
   title: string;
   summary: string;
   latestMilestone: string;
+  studioId: string | null;
+  studioName: string | null;
+  fromFollowingStudio: boolean;
   isSeen: boolean;
   createdAt: Date;
   updatedAt: Date;

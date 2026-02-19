@@ -55,60 +55,83 @@ describe('observer profile page', () => {
   });
 
   test('renders observer summary, following, watchlist, and predictions', async () => {
-    (apiClient.get as jest.Mock).mockResolvedValue({
-      data: {
-        observer: {
-          id: 'observer-1',
-          email: 'observer@example.com',
-          createdAt: '2026-01-01T00:00:00.000Z',
-        },
-        counts: {
-          followingStudios: 2,
-          watchlistDrafts: 3,
-          digestUnseen: 1,
-        },
-        predictions: {
-          correct: 4,
-          total: 5,
-          rate: 0.8,
-          netPoints: 22,
-        },
-        followingStudios: [
-          {
-            id: 'studio-1',
-            studioName: 'Studio One',
-            impact: 12,
-            signal: 71,
-            followerCount: 10,
-            followedAt: '2026-02-01T10:00:00.000Z',
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url === '/observers/me/profile') {
+        return Promise.resolve({
+          data: {
+            observer: {
+              id: 'observer-1',
+              email: 'observer@example.com',
+              createdAt: '2026-01-01T00:00:00.000Z',
+            },
+            counts: {
+              followingStudios: 2,
+              watchlistDrafts: 3,
+              digestUnseen: 1,
+            },
+            predictions: {
+              correct: 4,
+              total: 5,
+              rate: 0.8,
+              netPoints: 22,
+            },
+            followingStudios: [
+              {
+                id: 'studio-1',
+                studioName: 'Studio One',
+                impact: 12,
+                signal: 71,
+                followerCount: 10,
+                followedAt: '2026-02-01T10:00:00.000Z',
+              },
+            ],
+            watchlistHighlights: [
+              {
+                draftId: 'draft-1',
+                draftTitle: 'Watchlist Draft',
+                updatedAt: '2026-02-01T10:00:00.000Z',
+                glowUpScore: 18.5,
+                studioId: 'studio-1',
+                studioName: 'Studio One',
+              },
+            ],
+            recentPredictions: [
+              {
+                id: 'pred-1',
+                pullRequestId: 'pr-1',
+                draftId: 'draft-1',
+                draftTitle: 'Watchlist Draft',
+                predictedOutcome: 'merge',
+                resolvedOutcome: 'merge',
+                isCorrect: true,
+                stakePoints: 20,
+                payoutPoints: 28,
+                createdAt: '2026-02-01T10:00:00.000Z',
+                resolvedAt: '2026-02-01T11:00:00.000Z',
+              },
+            ],
           },
-        ],
-        watchlistHighlights: [
-          {
-            draftId: 'draft-1',
-            draftTitle: 'Watchlist Draft',
-            updatedAt: '2026-02-01T10:00:00.000Z',
-            glowUpScore: 18.5,
-            studioId: 'studio-1',
-            studioName: 'Studio One',
-          },
-        ],
-        recentPredictions: [
-          {
-            id: 'pred-1',
-            pullRequestId: 'pr-1',
-            draftId: 'draft-1',
-            draftTitle: 'Watchlist Draft',
-            predictedOutcome: 'merge',
-            resolvedOutcome: 'merge',
-            isCorrect: true,
-            stakePoints: 20,
-            payoutPoints: 28,
-            createdAt: '2026-02-01T10:00:00.000Z',
-            resolvedAt: '2026-02-01T11:00:00.000Z',
-          },
-        ],
-      },
+        });
+      }
+      if (url === '/observers/digest') {
+        return Promise.resolve({
+          data: [
+            {
+              id: 'digest-1',
+              draftId: 'draft-1',
+              title: 'Studio One updated draft',
+              summary: 'Merged PR and improved GlowUp',
+              latestMilestone: 'Draft released',
+              studioId: 'studio-1',
+              studioName: 'Studio One',
+              fromFollowingStudio: true,
+              isSeen: false,
+              createdAt: '2026-02-01T12:00:00.000Z',
+            },
+          ],
+        });
+      }
+      return Promise.resolve({ data: [] });
     });
 
     renderPage();
@@ -122,9 +145,14 @@ describe('observer profile page', () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/Watchlist highlights/i)).toBeInTheDocument();
     expect(screen.getByText(/Recent predictions/i)).toBeInTheDocument();
+    expect(screen.getByText(/From studios you follow/i)).toBeInTheDocument();
     expect(
-      screen.getByRole('link', { name: /Studio One/i }),
-    ).toBeInTheDocument();
+      screen.getByRole('link', { name: /Studio One updated draft/i }),
+    ).toHaveAttribute('href', '/drafts/draft-1');
+    expect(screen.getByRole('link', { name: /^Studio One$/i })).toHaveAttribute(
+      'href',
+      '/studios/studio-1',
+    );
     expect(
       screen.getByRole('link', { name: /Open public profile/i }),
     ).toHaveAttribute('href', '/observers/observer-1');
@@ -133,14 +161,19 @@ describe('observer profile page', () => {
   });
 
   test('shows API error and allows resync', async () => {
-    (apiClient.get as jest.Mock).mockRejectedValueOnce({
-      response: { data: { message: 'Profile load failed' } },
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url === '/observers/me/profile') {
+        return Promise.reject({
+          response: { data: { message: 'Profile load failed' } },
+        });
+      }
+      return Promise.resolve({ data: [] });
     });
 
     renderPage();
 
     expect(await screen.findByText(/Profile load failed/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Resync now/i }));
-    await waitFor(() => expect(apiClient.get).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalledTimes(4));
   });
 });

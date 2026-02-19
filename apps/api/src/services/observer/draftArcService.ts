@@ -72,6 +72,9 @@ interface DigestEntryRow {
   title: string;
   summary: string;
   latest_milestone: string;
+  studio_id: string | null;
+  studio_name: string | null;
+  from_following_studio: boolean | null;
   is_seen: boolean;
   created_at: Date;
   updated_at: Date;
@@ -132,6 +135,9 @@ const mapDigestEntry = (row: DigestEntryRow): ObserverDigestEntry => ({
   title: row.title,
   summary: row.summary,
   latestMilestone: row.latest_milestone,
+  studioId: row.studio_id ?? null,
+  studioName: row.studio_name ?? null,
+  fromFollowingStudio: Boolean(row.from_following_studio),
   isSeen: Boolean(row.is_seen),
   createdAt: row.created_at,
   updatedAt: row.updated_at,
@@ -829,11 +835,30 @@ export class DraftArcServiceImpl implements DraftArcService {
     const offset = Math.max(options?.offset ?? 0, 0);
 
     const result = await db.query(
-      `SELECT id, observer_id, draft_id, title, summary, latest_milestone, is_seen, created_at, updated_at
-       FROM observer_digest_entries
-       WHERE observer_id = $1
-         AND ($2::boolean = false OR is_seen = false)
-       ORDER BY is_seen ASC, created_at DESC
+      `SELECT
+         ode.id,
+         ode.observer_id,
+         ode.draft_id,
+         ode.title,
+         ode.summary,
+         ode.latest_milestone,
+         a.id AS studio_id,
+         a.studio_name,
+         EXISTS (
+           SELECT 1
+           FROM observer_studio_follows osf
+           WHERE osf.observer_id = ode.observer_id
+             AND osf.studio_id = a.id
+         ) AS from_following_studio,
+         ode.is_seen,
+         ode.created_at,
+         ode.updated_at
+       FROM observer_digest_entries ode
+       JOIN drafts d ON d.id = ode.draft_id
+       JOIN agents a ON a.id = d.author_id
+       WHERE ode.observer_id = $1
+         AND ($2::boolean = false OR ode.is_seen = false)
+       ORDER BY ode.is_seen ASC, ode.created_at DESC
        LIMIT $3 OFFSET $4`,
       [observerId, unseenOnly, limit, offset],
     );
@@ -853,7 +878,7 @@ export class DraftArcServiceImpl implements DraftArcService {
            updated_at = NOW()
        WHERE id = $1
          AND observer_id = $2
-       RETURNING id, observer_id, draft_id, title, summary, latest_milestone, is_seen, created_at, updated_at`,
+       RETURNING id`,
       [entryId, observerId],
     );
 
@@ -864,8 +889,34 @@ export class DraftArcServiceImpl implements DraftArcService {
         404,
       );
     }
-
-    return mapDigestEntry(updated.rows[0] as DigestEntryRow);
+    const refreshed = await db.query(
+      `SELECT
+         ode.id,
+         ode.observer_id,
+         ode.draft_id,
+         ode.title,
+         ode.summary,
+         ode.latest_milestone,
+         a.id AS studio_id,
+         a.studio_name,
+         EXISTS (
+           SELECT 1
+           FROM observer_studio_follows osf
+           WHERE osf.observer_id = ode.observer_id
+             AND osf.studio_id = a.id
+         ) AS from_following_studio,
+         ode.is_seen,
+         ode.created_at,
+         ode.updated_at
+       FROM observer_digest_entries ode
+       JOIN drafts d ON d.id = ode.draft_id
+       JOIN agents a ON a.id = d.author_id
+       WHERE ode.id = $1
+         AND ode.observer_id = $2
+       LIMIT 1`,
+      [updated.rows[0].id, observerId],
+    );
+    return mapDigestEntry(refreshed.rows[0] as DigestEntryRow);
   }
 
   private async getRecap24h(
