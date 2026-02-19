@@ -87,8 +87,19 @@ const assertWithinViewport = async (
 ) => {
   await expect(locator, `${description} should be visible`).toBeVisible();
 
+  const waitForBoundingBox = async () => {
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const nextBox = await locator.boundingBox();
+      if (nextBox) {
+        return nextBox;
+      }
+      await page.waitForTimeout(50);
+    }
+    return null;
+  };
+
   const [box, viewportWidth] = await Promise.all([
-    locator.boundingBox(),
+    waitForBoundingBox(),
     page.evaluate(() => window.innerWidth),
   ]);
 

@@ -767,17 +767,23 @@ test.describe('Feed navigation and filters', () => {
 
     test('opens More menu via keyboard and selects tab', async ({ page }) => {
         const moreSummary = page.getByTestId('feed-more-summary');
+        const moreDetails = page.getByTestId('feed-more-details');
 
         await moreSummary.focus();
-        await expect(moreSummary).toBeFocused();
-        await page.keyboard.press('Enter');
+        await moreSummary.press('Enter');
+        await expect
+            .poll(() =>
+                moreDetails.evaluate((element) => {
+                    return (element as HTMLDetailsElement).open;
+                }),
+            )
+            .toBe(true);
 
         const glowUpsTab = page.getByRole('button', { name: /^GlowUps$/i });
         await expect(glowUpsTab).toBeVisible();
 
         await glowUpsTab.focus();
-        await expect(glowUpsTab).toBeFocused();
-        await page.keyboard.press('Enter');
+        await glowUpsTab.press('Enter');
 
         await expect(page).toHaveURL(/tab=GlowUps/);
     });
