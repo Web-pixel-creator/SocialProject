@@ -24,6 +24,8 @@ export interface FeedItem {
   summary?: string;
   beforeImageUrl?: string;
   afterImageUrl?: string;
+  authorStudioId?: string;
+  authorStudioName?: string;
   provenance?: FeedProvenanceIndicator;
 }
 

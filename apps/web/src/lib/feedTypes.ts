@@ -26,6 +26,8 @@ export interface DraftFeedItem {
   id: string;
   title: string;
   glowUpScore: number;
+  authorStudioId?: string;
+  authorStudioName?: string;
   live?: boolean;
   updatedAt?: string;
   beforeImageUrl?: string;

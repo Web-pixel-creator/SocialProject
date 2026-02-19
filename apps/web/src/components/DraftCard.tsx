@@ -18,8 +18,10 @@ interface DraftCardProps {
   id: string;
   title: string;
   glowUpScore: number;
+  authorStudioName?: string;
   compact?: boolean;
   fromFollowingStudio?: boolean;
+  isUnfollowStudioPending?: boolean;
   live?: boolean;
   updatedAt?: string;
   beforeImageUrl?: string;
@@ -31,14 +33,17 @@ interface DraftCardProps {
   observerActionPending?: ObserverActionType | null;
   observerAuthRequiredMessage?: string | null;
   onObserverAction?: (action: ObserverActionType) => Promise<void> | void;
+  onUnfollowStudio?: () => Promise<void> | void;
 }
 
 export const DraftCard = ({
   id,
   title,
   glowUpScore,
+  authorStudioName,
   compact,
   fromFollowingStudio,
+  isUnfollowStudioPending = false,
   live,
   updatedAt,
   beforeImageUrl,
@@ -50,6 +55,7 @@ export const DraftCard = ({
   observerActionPending,
   observerAuthRequiredMessage,
   onObserverAction,
+  onUnfollowStudio,
 }: DraftCardProps) => {
   const { t } = useLanguage();
 
@@ -66,7 +72,7 @@ export const DraftCard = ({
     : t('common.twoHoursAgo');
   const compactActivityMeta = compact
     ? activityLabel
-    : `${t('common.aiStudio')} | ${activityLabel}`;
+    : `${authorStudioName ?? t('common.aiStudio')} | ${activityLabel}`;
   const stageLabel = live ? t('common.draft') : t('common.update');
   const needsChanges = Boolean(hotScore && hotScore >= 2.2);
   const decisionLabel = needsChanges
@@ -129,11 +135,23 @@ export const DraftCard = ({
           </div>
         </div>
         <div className="flex flex-shrink-0 items-center gap-2">
-          {fromFollowingStudio && (
-            <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-1 font-semibold text-[10px] text-primary">
-              {t('draftDetail.followingStudios.pill')}
-            </span>
-          )}
+          {fromFollowingStudio ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-1 font-semibold text-[10px] text-primary">
+                {t('draftDetail.followingStudios.pill')}
+              </span>
+              {onUnfollowStudio ? (
+                <button
+                  className="rounded-full border border-border/35 bg-background/65 px-2.5 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wide transition hover:bg-background/82 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  disabled={isUnfollowStudioPending}
+                  onClick={onUnfollowStudio}
+                  type="button"
+                >
+                  {t('draftDetail.followingStudios.unfollowStudio')}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
           {typeof hotScore === 'number' && (
             <span className="tag-hot rounded-full border px-2 py-1 font-semibold text-[10px]">
               {t('rail.hot')} {hotScore.toFixed(2)}

@@ -160,6 +160,7 @@
   "draftDetail.followingStudios.empty": "Подпишитесь на студии, чтобы заполнить этот блок.",
   "draftDetail.followingStudios.pill": "Из подписанных студий",
   "draftDetail.followingStudios.title": "Подписки на студии",
+  "draftDetail.followingStudios.unfollowStudio": "Отписаться от студии",
   "draftDetail.header.pill": "Детали драфта",
   "draftDetail.header.subtitle": "Отслеживайте каждую критику и PR в режиме реального времени.",
   "draftDetail.loadingDraft": "Загрузка черновика...",

@@ -2271,9 +2271,15 @@ export const FeedTabs = () => {
 
       if (active === 'Following' && !nextFollowing) {
         setItems((previous) =>
-          previous.filter(
-            (item) => item.kind !== 'studio' || item.id !== studioId,
-          ),
+          previous.filter((item) => {
+            if (item.kind === 'studio' && item.id === studioId) {
+              return false;
+            }
+            if (item.kind === 'draft' && item.authorStudioId === studioId) {
+              return false;
+            }
+            return true;
+          }),
         );
       }
     },
@@ -2458,10 +2464,17 @@ export const FeedTabs = () => {
             />
           );
         }
+        const authorStudioId = item.authorStudioId;
         return (
           <DraftCard
+            authorStudioName={item.authorStudioName}
             compact={isCompactDensity}
             fromFollowingStudio={active === 'Following'}
+            isUnfollowStudioPending={
+              authorStudioId
+                ? pendingStudioFollowIds.has(authorStudioId)
+                : false
+            }
             key={item.id ?? `draft-${index}`}
             observerActionPending={pendingObserverActionForDraft(item.id)}
             observerActionState={{
@@ -2473,6 +2486,11 @@ export const FeedTabs = () => {
               observerActionAuthRequiredByDraftId[item.id] ?? null
             }
             onObserverAction={(action) => handleObserverAction(action, item.id)}
+            onUnfollowStudio={
+              active === 'Following' && authorStudioId
+                ? () => handleStudioFollowToggle(authorStudioId, true)
+                : undefined
+            }
             {...item}
           />
         );

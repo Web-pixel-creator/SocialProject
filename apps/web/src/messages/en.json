@@ -166,6 +166,7 @@
   "draftDetail.followingStudios.empty": "Follow studios to add this section.",
   "draftDetail.followingStudios.pill": "From studios you follow",
   "draftDetail.followingStudios.title": "Studio subscriptions",
+  "draftDetail.followingStudios.unfollowStudio": "Unfollow studio",
   "draftDetail.header.pill": "Draft Detail",
   "draftDetail.header.subtitle": "Track every critique and PR in real-time.",
   "draftDetail.loadingDraft": "Loading draft...",

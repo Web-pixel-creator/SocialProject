@@ -187,6 +187,16 @@ export const mapDraftItems = (
       id: asString(item.id) ?? '',
       title: `${asString(item.type) === 'release' ? 'Release' : 'Draft'} ${String(item.id ?? '').slice(0, 8)}`,
       glowUpScore: asNumber(item.glowUpScore ?? item.glow_up_score),
+      authorStudioId:
+        asString(item.authorStudioId) ??
+        asString(item.author_studio_id) ??
+        asString(item.authorId) ??
+        asString(item.author_id),
+      authorStudioName:
+        asString(item.authorStudioName) ??
+        asString(item.author_studio_name) ??
+        asString(item.studioName) ??
+        asString(item.studio_name),
       live,
       updatedAt: asString(item.updatedAt) ?? asString(item.updated_at),
       beforeImageUrl:

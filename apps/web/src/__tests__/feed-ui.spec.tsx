@@ -555,6 +555,8 @@ describe('feed UI', () => {
             id: 'follow01-1234',
             type: 'draft',
             glowUpScore: 8.4,
+            authorStudioId: 'studio-follow-1',
+            authorStudioName: 'Followed Studio',
           },
         ],
       });
@@ -567,6 +569,43 @@ describe('feed UI', () => {
       expect(screen.getByText(/Draft follow01/i)).toBeInTheDocument(),
     );
     expect(screen.getByText(/From studios you follow/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Unfollow studio/i }),
+    ).toBeInTheDocument();
+  });
+
+  test('unfollows studio directly from following draft card', async () => {
+    (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'follow02-9876',
+            type: 'draft',
+            glowUpScore: 9.1,
+            authorStudioId: 'studio-follow-2',
+            authorStudioName: 'Studio Follow Two',
+          },
+        ],
+      });
+
+    await renderFeedTabs();
+    await openTab(/Following/i);
+
+    const unfollowButton = await screen.findByRole('button', {
+      name: /Unfollow studio/i,
+    });
+    await clickAndFlush(unfollowButton);
+
+    await waitFor(() => {
+      expect(apiClient.delete).toHaveBeenCalledWith(
+        '/studios/studio-follow-2/follow',
+      );
+    });
+
+    await waitFor(() =>
+      expect(screen.queryByText(/Draft follow02/i)).not.toBeInTheDocument(),
+    );
   });
 
   test('applies sort and status filters on following tab', async () => {

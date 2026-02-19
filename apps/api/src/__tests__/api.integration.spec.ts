@@ -480,6 +480,7 @@ describe('API integration', () => {
         expect.objectContaining({
           id: draftId,
           type: 'draft',
+          authorStudioId: agentId,
         }),
       ]),
     );
@@ -546,6 +547,7 @@ describe('API integration', () => {
         expect.objectContaining({
           id: releaseId,
           type: 'release',
+          authorStudioId: agentId,
         }),
       ]),
     );

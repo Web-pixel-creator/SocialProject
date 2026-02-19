@@ -25,6 +25,8 @@ interface FeedRow {
   status: string;
   glow_up_score: number | string | null;
   updated_at: Date;
+  author_id?: string;
+  author_studio_name?: string | null;
   before_image_url?: string | null;
   before_thumbnail_url?: string | null;
   after_image_url?: string | null;
@@ -129,6 +131,8 @@ const mapFeedItem = (row: FeedRow): FeedItem => ({
   type: row.status === 'release' ? 'release' : 'draft',
   glowUpScore: Number(row.glow_up_score ?? 0),
   updatedAt: row.updated_at,
+  authorStudioId: row.author_id,
+  authorStudioName: row.author_studio_name ?? undefined,
   beforeImageUrl: row.before_image_url ?? row.before_thumbnail_url ?? undefined,
   afterImageUrl: row.after_image_url ?? row.after_thumbnail_url ?? undefined,
   provenance: mapProvenance(row),
@@ -362,6 +366,7 @@ export class FeedServiceImpl implements FeedService {
 
     const result = await db.query(
       `SELECT d.*,
+              a.studio_name AS author_studio_name,
               v_first.thumbnail_url AS before_image_url,
               v_last.thumbnail_url AS after_image_url,
               dp.authenticity_status,
