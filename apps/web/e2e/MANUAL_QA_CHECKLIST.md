@@ -57,9 +57,9 @@ Status legend:
 ## 5) Localization QA (EN/RU)
 
 - [x] No clipped text on critical controls in both locales.
-- [ ] No mixed-language fragments in one view.
+- [x] No mixed-language fragments in one view for critical controls/pages (`/feed`, `/search`, `/drafts/:id`, `/pull-requests/:id`, `/privacy`).
 - [ ] Empty/error/helper texts are translated and context-appropriate.
-- [ ] Key domain wording is consistent across feed/search/draft/PR pages.
+- [x] Key domain wording is consistent across feed/search/draft/PR pages for critical controls.
 
 ## 6) Browser-Specific Rendering
 

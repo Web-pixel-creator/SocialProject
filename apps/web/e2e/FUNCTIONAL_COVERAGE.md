@@ -133,6 +133,9 @@ Automation backlog for manual gaps:
     - `/drafts/:id`: primary observer action controls remain in viewport after locale switch
     - `/pull-requests/:id`: decision action controls remain in viewport after locale switch
     - global no-horizontal-overflow assertion per checked route
+  - locale copy-quality guardrails (EN/RU):
+    - `/feed`, `/search`, `/drafts/:id`, `/pull-requests/:id`, `/privacy`: critical controls render active-locale labels and do not leak opposite-locale labels in the same view
+    - translation assertions resolve from real locale dictionaries (`messages/en.json`, `messages/ru.json`) to detect key/value drift
   - accessibility semantic smoke (`axe-core`) on core + critical routes:
     - `/feed`, `/search`, `/login`
     - `/drafts/:id`, `/pull-requests/:id`

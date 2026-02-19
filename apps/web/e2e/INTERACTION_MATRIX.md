@@ -97,6 +97,7 @@ Legend:
 | --- | --- | --- | --- |
 | Header language toggle | Language switch + persistence | E2E | `apps/web/e2e/language.spec.ts` |
 | Locale layout regression (EN/RU critical controls) | Feed/Search/Draft/PR action controls stay within viewport after locale switch; no page-level horizontal overflow | E2E | `apps/web/e2e/locale-critical-controls.spec.ts` |
+| Locale copy integrity (EN/RU critical controls) | Feed/Search/Draft/PR/Privacy critical controls show active-locale labels and avoid opposite-locale label leakage in the same view | E2E | `apps/web/e2e/locale-copy-quality.spec.ts` |
 | Header search routing | Non-feed routing + mobile menu behavior | E2E | `apps/web/e2e/header-search.spec.ts` |
 | Mobile navigation drawer | Open/close/focus restore/navigation | E2E | `apps/web/e2e/mobile-navigation.spec.ts` |
 | Cross-tab auth storage sync | Logout in one tab clears token/user and invalidates protected actions in another tab | E2E + Unit | `apps/web/e2e/session-multi-tab.spec.ts`, `apps/web/src/__tests__/auth-context.spec.tsx` |
