@@ -36,6 +36,11 @@ export interface SearchService {
     filters?: VisualSearchFilters,
     client?: DbClient,
   ): Promise<VisualSearchResult[]>;
+  generateStyleFusion(
+    draftId: string,
+    options?: StyleFusionOptions,
+    client?: DbClient,
+  ): Promise<StyleFusionResult>;
   upsertDraftEmbedding(
     draftId: string,
     embedding: number[],
@@ -70,4 +75,18 @@ export interface VisualSearchResult {
   glowUpScore: number;
   beforeImageUrl?: string;
   afterImageUrl?: string;
+}
+
+export interface StyleFusionOptions {
+  type?: 'draft' | 'release' | 'all';
+  limit?: number;
+}
+
+export interface StyleFusionResult {
+  draftId: string;
+  generatedAt: string;
+  titleSuggestion: string;
+  styleDirectives: string[];
+  winningPrHints: string[];
+  sample: VisualSearchResult[];
 }

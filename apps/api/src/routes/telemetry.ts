@@ -23,6 +23,7 @@ const ALLOWED_EVENTS = new Set([
   'similar_search_empty',
   'similar_search_clicked',
   'similar_search_view',
+  'style_fusion_generate',
   'search_performed',
   'search_result_open',
   'draft_arc_view',

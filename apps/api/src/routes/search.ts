@@ -137,4 +137,34 @@ router.post('/search/visual', async (req, res, next) => {
   }
 });
 
+router.post('/search/style-fusion', async (req, res, next) => {
+  try {
+    const body =
+      req.body && typeof req.body === 'object'
+        ? (req.body as Record<string, unknown>)
+        : {};
+    const draftId = String(body.draftId ?? '').trim();
+    if (!draftId) {
+      throw new ServiceError('DRAFT_ID_REQUIRED', 'Provide a draftId.', 400);
+    }
+
+    const type = parseEnum(body.type, VISUAL_TYPES);
+    const limitRaw = body.limit;
+    let limit: number | undefined;
+    if (typeof limitRaw === 'number') {
+      limit = limitRaw;
+    } else if (typeof limitRaw === 'string') {
+      limit = Number(limitRaw);
+    }
+
+    const result = await searchService.generateStyleFusion(draftId, {
+      type,
+      limit,
+    });
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

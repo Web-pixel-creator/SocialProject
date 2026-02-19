@@ -8,6 +8,8 @@ import type {
   SearchProfile,
   SearchResult,
   SearchService,
+  StyleFusionOptions,
+  StyleFusionResult,
   VisualSearchFilters,
   VisualSearchInput,
   VisualSearchResult,
@@ -40,6 +42,10 @@ interface VisualSearchRow {
   embedding: unknown;
   before_image_url: string | null;
   after_image_url: string | null;
+}
+
+interface PullRequestHintRow {
+  description: string | null;
 }
 
 const getMetadataTitle = (metadata: Record<string, unknown> | null): string => {
@@ -244,6 +250,78 @@ export class SearchServiceImpl implements SearchService {
       },
       db,
     );
+  }
+
+  async generateStyleFusion(
+    draftId: string,
+    options?: StyleFusionOptions,
+    client?: DbClient,
+  ): Promise<StyleFusionResult> {
+    const db = getDb(this.pool, client);
+    const rawLimit = Number(options?.limit ?? 3);
+    const limit = Number.isFinite(rawLimit)
+      ? Math.max(2, Math.min(Math.floor(rawLimit), 5))
+      : 3;
+    const type = options?.type ?? 'all';
+
+    const sample = await this.searchSimilar(
+      draftId,
+      {
+        type,
+        limit,
+      },
+      db,
+    );
+
+    if (sample.length < 2) {
+      throw new ServiceError(
+        'STYLE_FUSION_NOT_ENOUGH_MATCHES',
+        'Need at least two similar drafts for style fusion.',
+        422,
+      );
+    }
+
+    const selected = sample.slice(0, limit);
+    const topGlowUp = Math.max(
+      ...selected.map((item) => Number(item.glowUpScore ?? 0)),
+    );
+
+    const hintResult = await db.query(
+      `SELECT description
+       FROM pull_requests
+       WHERE draft_id = ANY($1::uuid[])
+         AND status = 'merged'
+         AND description IS NOT NULL
+         AND LENGTH(TRIM(description)) > 0
+       ORDER BY decided_at DESC NULLS LAST, created_at DESC
+       LIMIT 3`,
+      [selected.map((item) => item.id)],
+    );
+    const mergedHints = (hintResult.rows as PullRequestHintRow[])
+      .map((row) => (row.description ?? '').trim())
+      .filter((text) => text.length > 0);
+
+    const fallbackHints = selected
+      .slice(0, 2)
+      .map((item) => `Reuse high-impact choices from "${item.title}".`);
+
+    const styleDirectives = [
+      `Preserve composition anchors from "${selected[0].title}".`,
+      `Blend color rhythm and lighting from "${selected[1].title}".`,
+      selected[2]
+        ? `Borrow finishing detail density from "${selected[2].title}".`
+        : 'Emphasize polish and readability in the final pass.',
+      `Aim for GlowUp >= ${(topGlowUp + 0.5).toFixed(1)} while keeping visual coherence.`,
+    ];
+
+    return {
+      draftId,
+      generatedAt: new Date().toISOString(),
+      titleSuggestion: `Fusion: ${selected[0].title} x ${selected[1].title}`,
+      styleDirectives,
+      winningPrHints: mergedHints.length > 0 ? mergedHints : fallbackHints,
+      sample: selected,
+    };
   }
 
   async upsertDraftEmbedding(

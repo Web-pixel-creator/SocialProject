@@ -113,6 +113,15 @@ interface SimilarDraft {
   type: 'draft' | 'release';
 }
 
+interface StyleFusionResult {
+  draftId: string;
+  generatedAt: string;
+  titleSuggestion: string;
+  styleDirectives: string[];
+  winningPrHints: string[];
+  sample: SimilarDraft[];
+}
+
 interface DraftPayload {
   draft: Draft | null;
   versions: Version[];
@@ -269,6 +278,17 @@ const fetchSimilarDrafts = async (draftId: string): Promise<SimilarDraft[]> => {
     params: { draftId, limit: 6 },
   });
   return response.data ?? [];
+};
+
+const generateStyleFusion = async (
+  draftId: string,
+): Promise<StyleFusionResult> => {
+  const response = await apiClient.post('/search/style-fusion', {
+    draftId,
+    type: 'draft',
+    limit: 3,
+  });
+  return response.data as StyleFusionResult;
 };
 
 const sendTelemetry = (payload: Record<string, unknown>): void => {
@@ -624,6 +644,121 @@ const getSimilarTelemetryPayload = ({
   };
 };
 
+const runStyleFusionRequest = async ({
+  draftId,
+  t,
+  generateStyleFusionResult,
+  setStyleFusion,
+  setStyleFusionError,
+}: {
+  draftId: string;
+  t: Translate;
+  generateStyleFusionResult: () => Promise<StyleFusionResult | undefined>;
+  setStyleFusion: (result: StyleFusionResult | null) => void;
+  setStyleFusionError: (message: string | null) => void;
+}): Promise<void> => {
+  if (!draftId) {
+    return;
+  }
+  setStyleFusionError(null);
+  try {
+    const result = await generateStyleFusionResult();
+    setStyleFusion(result ?? null);
+    sendTelemetry({
+      eventType: 'style_fusion_generate',
+      draftId,
+      source: 'draft_detail',
+      metadata: {
+        sampleCount: result?.sample?.length ?? 0,
+      },
+    });
+  } catch (error: unknown) {
+    setStyleFusionError(
+      getApiErrorMessage(error, t('draftDetail.errors.generateStyleFusion')),
+    );
+  }
+};
+
+const StyleFusionPanel = ({
+  draftId,
+  onGenerate,
+  styleFusion,
+  styleFusionError,
+  styleFusionLoading,
+  t,
+}: {
+  draftId: string;
+  onGenerate: () => void;
+  styleFusion: StyleFusionResult | null;
+  styleFusionError: string | null;
+  styleFusionLoading: boolean;
+  t: Translate;
+}) => {
+  return (
+    <>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <button
+          className="inline-flex items-center rounded-lg border border-border/25 bg-background/58 px-3 py-2 font-semibold text-foreground text-xs transition hover:border-border/45 hover:bg-background/74 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-55"
+          disabled={!draftId || styleFusionLoading}
+          onClick={onGenerate}
+          type="button"
+        >
+          {styleFusionLoading
+            ? t('draftDetail.similar.generatingStyleFusion')
+            : t('draftDetail.similar.generateStyleFusion')}
+        </button>
+        {styleFusionError && (
+          <p className="text-destructive text-xs">{styleFusionError}</p>
+        )}
+      </div>
+      {styleFusion && (
+        <div className="mt-3 rounded-lg border border-border/25 bg-background/58 p-3 text-xs sm:p-3.5">
+          <p className="text-[10px] text-muted-foreground uppercase">
+            {t('draftDetail.similar.styleFusionResult')}
+          </p>
+          <p className="mt-1 font-semibold text-foreground text-sm">
+            {styleFusion.titleSuggestion}
+          </p>
+          <div className="mt-2 grid gap-3 sm:grid-cols-2">
+            <div>
+              <p className="text-[10px] text-muted-foreground uppercase">
+                {t('draftDetail.similar.styleDirectives')}
+              </p>
+              {styleFusion.styleDirectives.length > 0 ? (
+                <ul className="mt-1 list-disc space-y-1 pl-4 text-muted-foreground">
+                  {styleFusion.styleDirectives.map((directive) => (
+                    <li key={directive}>{directive}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-1 text-muted-foreground">
+                  {t('draftDetail.similar.noStyleDirectives')}
+                </p>
+              )}
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground uppercase">
+                {t('draftDetail.similar.winningHints')}
+              </p>
+              {styleFusion.winningPrHints.length > 0 ? (
+                <ul className="mt-1 list-disc space-y-1 pl-4 text-muted-foreground">
+                  {styleFusion.winningPrHints.map((hint) => (
+                    <li key={hint}>{hint}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-1 text-muted-foreground">
+                  {t('draftDetail.similar.noWinningHints')}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
 export default function DraftDetailPage() {
   const { t } = useLanguage();
   const params = useParams<{ id?: string | string[] }>();
@@ -758,6 +893,10 @@ export default function DraftDetailPage() {
       shouldRetryOnError: false,
     },
   );
+  const [styleFusion, setStyleFusion] = useState<StyleFusionResult | null>(
+    null,
+  );
+  const [styleFusionError, setStyleFusionError] = useState<string | null>(null);
   const [predictionSubmitError, setPredictionSubmitError] = useState<
     string | null
   >(null);
@@ -787,6 +926,11 @@ export default function DraftDetailPage() {
   >('draft:demo:flow', async (_key, { arg }) => {
     await apiClient.post('/demo/flow', { draftId: arg.draftId });
   });
+  const { isMutating: styleFusionLoading, trigger: triggerStyleFusion } =
+    useSWRMutation<StyleFusionResult, unknown, string, { draftId: string }>(
+      'draft:style-fusion',
+      async (_key, { arg }) => generateStyleFusion(arg.draftId),
+    );
   const [demoStatus, setDemoStatus] = useState<string | null>(null);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<
@@ -892,6 +1036,17 @@ export default function DraftDetailPage() {
     triggerDemoFlow,
     t,
   ]);
+
+  const runStyleFusion = useCallback(async () => {
+    await runStyleFusionRequest({
+      draftId,
+      t,
+      generateStyleFusionResult: () =>
+        triggerStyleFusion({ draftId }, { throwOnError: true }),
+      setStyleFusion,
+      setStyleFusionError,
+    });
+  }, [draftId, t, triggerStyleFusion]);
 
   const copyDraftId = async () => {
     if (!draftId || typeof navigator === 'undefined') {
@@ -1066,6 +1221,16 @@ export default function DraftDetailPage() {
       },
     });
   }, [draftId, similarDrafts, similarDraftsError, similarLoading]);
+
+  useEffect(() => {
+    if (!draftId) {
+      setStyleFusion(null);
+      setStyleFusionError(null);
+      return;
+    }
+    setStyleFusion(null);
+    setStyleFusionError(null);
+  }, [draftId]);
 
   useEffect(() => {
     if (!(arcView?.summary && arcView?.recap24h)) {
@@ -1359,6 +1524,14 @@ export default function DraftDetailPage() {
                   ))}
                 </ul>
               )}
+              <StyleFusionPanel
+                draftId={draftId}
+                onGenerate={runStyleFusion}
+                styleFusion={styleFusion}
+                styleFusionError={styleFusionError}
+                styleFusionLoading={styleFusionLoading}
+                t={t}
+              />
               <div className="mt-3">
                 <Link
                   className="inline-flex items-center rounded-lg border border-border/25 bg-background/58 px-3 py-2 text-foreground text-xs transition hover:border-border/45 hover:bg-background/74 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"

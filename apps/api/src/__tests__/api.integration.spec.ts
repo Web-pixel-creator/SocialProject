@@ -1654,6 +1654,101 @@ describe('API integration', () => {
     expect(ids).not.toContain(sandbox.body.draft.id);
   });
 
+  test('style fusion generates directives from similar drafts', async () => {
+    const { agentId, apiKey } = await registerAgent('Style Fusion Studio');
+    const target = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/fusion-target.png',
+        thumbnailUrl: 'https://example.com/fusion-target-thumb.png',
+        metadata: { title: 'Fusion Target' },
+      });
+    const similarA = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/fusion-a.png',
+        thumbnailUrl: 'https://example.com/fusion-a-thumb.png',
+        metadata: { title: 'Fusion Similar A' },
+      });
+    const similarB = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/fusion-b.png',
+        thumbnailUrl: 'https://example.com/fusion-b-thumb.png',
+        metadata: { title: 'Fusion Similar B' },
+      });
+
+    await db.query(
+      `INSERT INTO draft_embeddings (draft_id, embedding)
+       VALUES ($1, $2)
+       ON CONFLICT (draft_id) DO UPDATE SET embedding = EXCLUDED.embedding`,
+      [target.body.draft.id, JSON.stringify([1, 0, 0])],
+    );
+    await db.query(
+      `INSERT INTO draft_embeddings (draft_id, embedding)
+       VALUES ($1, $2)
+       ON CONFLICT (draft_id) DO UPDATE SET embedding = EXCLUDED.embedding`,
+      [similarA.body.draft.id, JSON.stringify([0.92, 0.08, 0])],
+    );
+    await db.query(
+      `INSERT INTO draft_embeddings (draft_id, embedding)
+       VALUES ($1, $2)
+       ON CONFLICT (draft_id) DO UPDATE SET embedding = EXCLUDED.embedding`,
+      [similarB.body.draft.id, JSON.stringify([0.86, 0.14, 0])],
+    );
+
+    const fusion = await request(app).post('/api/search/style-fusion').send({
+      draftId: target.body.draft.id,
+      limit: 3,
+      type: 'draft',
+    });
+
+    expect(fusion.status).toBe(200);
+    expect(Array.isArray(fusion.body.sample)).toBe(true);
+    expect(fusion.body.sample.length).toBeGreaterThanOrEqual(2);
+    expect(Array.isArray(fusion.body.styleDirectives)).toBe(true);
+    expect(fusion.body.styleDirectives.length).toBeGreaterThan(0);
+    expect(Array.isArray(fusion.body.winningPrHints)).toBe(true);
+    expect(fusion.body.winningPrHints.length).toBeGreaterThan(0);
+    expect(fusion.body.titleSuggestion).toContain('Fusion:');
+  });
+
+  test('style fusion requires at least two similar drafts', async () => {
+    const { agentId, apiKey } = await registerAgent(
+      'Style Fusion Sparse Studio',
+    );
+    const target = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/fusion-sparse-target.png',
+        thumbnailUrl: 'https://example.com/fusion-sparse-target-thumb.png',
+      });
+
+    await db.query(
+      `INSERT INTO draft_embeddings (draft_id, embedding)
+       VALUES ($1, $2)
+       ON CONFLICT (draft_id) DO UPDATE SET embedding = EXCLUDED.embedding`,
+      [target.body.draft.id, JSON.stringify([1, 0, 0])],
+    );
+
+    const fusion = await request(app).post('/api/search/style-fusion').send({
+      draftId: target.body.draft.id,
+      limit: 3,
+      type: 'draft',
+    });
+
+    expect(fusion.status).toBe(422);
+    expect(fusion.body.error).toBe('STYLE_FUSION_NOT_ENOUGH_MATCHES');
+  });
+
   test('draft creation auto-embeds initial version', async () => {
     const { agentId, apiKey } = await registerAgent('Auto Embed Studio');
     const draftRes = await request(app)
