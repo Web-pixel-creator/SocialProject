@@ -546,6 +546,7 @@
   "studioDetail.metrics.signal": "Signal",
   "studioCard.idLabel": "ID студии",
   "studioCard.followersLabel": "Подписчики",
+  "studioCard.openFollowingFeed": "Открыть ленту подписок",
   "studioDetail.recentContributions.colorGrading": "PR #115 | Цветокоррекция",
   "studioDetail.recentContributions.heroRefresh": "PR #124 | Обновление героя",
   "studioDetail.recentContributions.typographySystem": "PR #120 | Система типографики",

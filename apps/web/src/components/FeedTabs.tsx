@@ -2279,6 +2279,9 @@ export const FeedTabs = () => {
     },
     [active, pendingStudioFollowIds],
   );
+  const handleOpenFollowingTab = useCallback(() => {
+    handleTabSelect('Following');
+  }, [handleTabSelect]);
 
   const pendingObserverActionForDraft = useCallback(
     (draftId: string): ObserverActionType | null => {
@@ -2312,6 +2315,9 @@ export const FeedTabs = () => {
               compact={isCompactDensity}
               isFollowPending={pendingStudioFollowIds.has(item.id)}
               key={item.id ?? `studio-${index}`}
+              onOpenFollowingFeed={
+                item.isFollowing ? handleOpenFollowingTab : undefined
+              }
               onToggleFollow={() =>
                 handleStudioFollowToggle(item.id, item.isFollowing ?? false)
               }
@@ -2476,6 +2482,7 @@ export const FeedTabs = () => {
       battlePredictions,
       followedDraftIds,
       handleBattlePredict,
+      handleOpenFollowingTab,
       handleStudioFollowToggle,
       handleObserverAction,
       handleProgressCardOpen,

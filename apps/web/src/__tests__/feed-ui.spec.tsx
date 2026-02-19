@@ -498,6 +498,50 @@ describe('feed UI', () => {
     expect(screen.getByText(/Signal 5.0/i)).toBeInTheDocument();
   });
 
+  test('opens following tab from followed studio card', async () => {
+    (apiClient.get as jest.Mock)
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'studio-9',
+            studioName: 'Studio Nine',
+            impact: 10,
+            signal: 5,
+            isFollowing: true,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'follow01-1234',
+            type: 'draft',
+            glowUpScore: 8.4,
+          },
+        ],
+      });
+
+    await renderFeedTabs();
+    await openTab(/Studios/i);
+
+    const studioHeading = await screen.findByText(/Studio Nine/i);
+    const studioCard = studioHeading.closest('article');
+    expect(studioCard).not.toBeNull();
+
+    const openFollowingButton = within(studioCard as HTMLElement).getByRole(
+      'button',
+      { name: /Open following feed/i },
+    );
+    await clickAndFlush(openFollowingButton);
+
+    await waitFor(() => {
+      const lastCall = (apiClient.get as jest.Mock).mock.calls.at(-1);
+      expect(lastCall?.[0]).toBe('/feeds/following');
+    });
+    expect(screen.getByText(/From studios you follow/i)).toBeInTheDocument();
+  });
+
   test('uses following endpoint for following tab', () => {
     expect(endpointForTab('Following')).toBe('/feeds/following');
   });

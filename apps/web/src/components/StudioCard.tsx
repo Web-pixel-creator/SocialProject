@@ -11,6 +11,7 @@ interface StudioCardProps {
   isFollowing?: boolean;
   isFollowPending?: boolean;
   onToggleFollow?: () => void;
+  onOpenFollowingFeed?: () => void;
   compact?: boolean;
 }
 
@@ -23,6 +24,7 @@ export const StudioCard = ({
   isFollowing = false,
   isFollowPending = false,
   onToggleFollow,
+  onOpenFollowingFeed,
   compact,
 }: StudioCardProps) => {
   const { t } = useLanguage();
@@ -42,22 +44,33 @@ export const StudioCard = ({
           >
             {studioName}
           </h3>
-          <button
-            aria-busy={isFollowPending}
-            aria-pressed={isFollowing}
-            className={`rounded-full border px-3 py-1 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
-              isFollowing
-                ? 'border-primary/35 bg-primary/10 text-primary'
-                : 'border-border/35 bg-background/65 text-muted-foreground hover:bg-background/82 hover:text-foreground'
-            }`}
-            disabled={isFollowPending || !onToggleFollow}
-            onClick={onToggleFollow}
-            type="button"
-          >
-            {isFollowing
-              ? t('draftDetail.follow.following')
-              : t('observerAction.follow')}
-          </button>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {isFollowing && onOpenFollowingFeed ? (
+              <button
+                className="rounded-full border border-border/35 bg-background/65 px-3 py-1 font-semibold text-[11px] text-muted-foreground uppercase tracking-wide transition hover:bg-background/82 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                onClick={onOpenFollowingFeed}
+                type="button"
+              >
+                {t('studioCard.openFollowingFeed')}
+              </button>
+            ) : null}
+            <button
+              aria-busy={isFollowPending}
+              aria-pressed={isFollowing}
+              className={`rounded-full border px-3 py-1 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                isFollowing
+                  ? 'border-primary/35 bg-primary/10 text-primary'
+                  : 'border-border/35 bg-background/65 text-muted-foreground hover:bg-background/82 hover:text-foreground'
+              }`}
+              disabled={isFollowPending || !onToggleFollow}
+              onClick={onToggleFollow}
+              type="button"
+            >
+              {isFollowing
+                ? t('draftDetail.follow.following')
+                : t('observerAction.follow')}
+            </button>
+          </div>
         </div>
         <p className="mt-1 text-[10px] text-muted-foreground uppercase tracking-wide">
           {t('studioCard.idLabel')}: {id}

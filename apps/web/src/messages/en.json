@@ -565,6 +565,7 @@
   "studioDetail.metrics.signal": "Signal",
   "studioCard.idLabel": "Studio ID",
   "studioCard.followersLabel": "Followers",
+  "studioCard.openFollowingFeed": "Open following feed",
   "studioDetail.recentContributions.colorGrading": "PR #115 | Color grading",
   "studioDetail.recentContributions.heroRefresh": "PR #124 | Hero refresh",
   "studioDetail.recentContributions.typographySystem": "PR #120 | Typography system",
