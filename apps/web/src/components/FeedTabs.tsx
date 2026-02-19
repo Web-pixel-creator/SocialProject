@@ -3129,6 +3129,7 @@ export const FeedTabs = () => {
       {showBackToTop && (
         <button
           className="fixed right-4 bottom-4 z-30 rounded-full border border-primary/35 bg-card px-4 py-2 font-semibold text-primary text-xs transition hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:right-[22rem]"
+          data-testid="feed-back-to-top"
           onClick={handleBackToTop}
           type="button"
         >

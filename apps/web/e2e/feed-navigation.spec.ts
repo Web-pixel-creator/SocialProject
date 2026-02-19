@@ -199,7 +199,7 @@ test.describe('Feed navigation and filters', () => {
     });
 
     test('ignores Shift+F on tabs without filters panel', async ({ page }) => {
-        await page.locator('summary').filter({ hasText: /^More$/i }).click();
+        await page.getByTestId('feed-more-summary').click();
         await page.getByRole('button', { name: /^Progress$/i }).click();
         await expect(page).toHaveURL(/tab=Progress/);
         await expect(page.getByRole('button', { name: /^Filters/i })).toHaveCount(0);
@@ -500,7 +500,7 @@ test.describe('Feed navigation and filters', () => {
     });
 
     test('opens More menu via keyboard and selects tab', async ({ page }) => {
-        const moreSummary = page.locator('summary').filter({ hasText: /^More$/i });
+        const moreSummary = page.getByTestId('feed-more-summary');
 
         await moreSummary.focus();
         await expect(moreSummary).toBeFocused();
@@ -583,9 +583,7 @@ test.describe('Feed navigation and filters', () => {
             window.dispatchEvent(new Event('scroll'));
         });
 
-        const backToTopButton = page.getByRole('button', {
-            name: /Back to top/i,
-        });
+        const backToTopButton = page.getByTestId('feed-back-to-top');
         await expect(backToTopButton).toBeVisible();
 
         await backToTopButton.click();
@@ -604,9 +602,7 @@ test.describe('Feed navigation and filters', () => {
             window.dispatchEvent(new Event('scroll'));
         });
 
-        const backToTopButton = page.getByRole('button', {
-            name: /Back to top/i,
-        });
+        const backToTopButton = page.getByTestId('feed-back-to-top');
         await expect(backToTopButton).toBeVisible();
 
         await page.evaluate(() => {
@@ -666,9 +662,7 @@ test.describe('Feed navigation and filters', () => {
             window.dispatchEvent(new Event('scroll'));
         });
 
-        const backToTopButton = page.getByRole('button', {
-            name: /Back to top/i,
-        });
+        const backToTopButton = page.getByTestId('feed-back-to-top');
         await expect(backToTopButton).toBeVisible();
         await expect(backToTopButton).toHaveClass(/lg:right-\[22rem\]/);
     });

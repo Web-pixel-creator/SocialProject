@@ -114,13 +114,13 @@ export const DraftCard = ({
             {title.slice(0, 1)}
           </span>
           <div className="min-w-0">
-            <h3
+            <h2
               className={`truncate font-semibold text-foreground ${
                 compact ? 'text-base' : 'text-lg'
               }`}
             >
               {title}
-            </h3>
+            </h2>
             <p className="truncate text-muted-foreground text-xs">
               {compactActivityMeta}
             </p>
