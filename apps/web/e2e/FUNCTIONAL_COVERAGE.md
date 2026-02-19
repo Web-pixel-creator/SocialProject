@@ -23,6 +23,11 @@ Automation backlog for manual gaps:
   - battle voting controls (`Vote left/right`, `Your vote` state)
   - observer rail controls (`Show all`, `Hide all`, panel toggles, persistence)
   - observer rail fallback mode (`Fallback data` badge + default widgets/counters)
+  - innovation rails:
+    - live studio sessions rail (`/live-sessions`, recap clip/summary rendering)
+    - swarm sessions rail (`/swarms`, replay timeline rendering)
+    - creator studios rail (`/creator-studios`, share/retention rendering)
+    - seeded fallback cards when innovation endpoints fail
   - observer rail reduced-motion behavior for live indicators
   - observer actions on cards:
     - `Watch` -> draft page navigation

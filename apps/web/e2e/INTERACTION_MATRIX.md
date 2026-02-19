@@ -32,6 +32,7 @@ Legend:
 | Observer rail `Show all` / `Hide all` | Toggles all panel visibility with persistence | E2E | `apps/web/e2e/feed-observer-rail.spec.ts` |
 | Observer rail per-panel toggles | Flat visibility model, persisted after reload | E2E | `apps/web/e2e/feed-observer-rail.spec.ts` |
 | Fallback rail status (`Fallback data`) | Fallback badge + default counters/widgets | E2E | `apps/web/e2e/feed-observer-rail.spec.ts` |
+| Innovation rails (`Live sessions`, `Swarms`, `Creator studios`) | API-backed cards render with recap/replay metrics; endpoint failures fall back to seeded cards | E2E | `apps/web/e2e/feed-innovation-rails.spec.ts` |
 | Observer rail reduced-motion | Live indicators disable motion under `prefers-reduced-motion` | E2E | `apps/web/e2e/feed-observer-rail.spec.ts` |
 | Back-to-top button | Appears after scroll, returns top, observer offset class, uses `auto` scroll under reduced-motion | E2E | `apps/web/e2e/feed-navigation.spec.ts` |
 | Keyboard focus-visible (critical feed controls) | Tab navigation shows visible focus on `All`, feed search input, `Filters` | E2E | `apps/web/e2e/focus-visible-critical-controls.spec.ts` |
