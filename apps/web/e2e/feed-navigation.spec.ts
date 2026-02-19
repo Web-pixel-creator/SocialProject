@@ -440,6 +440,99 @@ test.describe('Feed navigation and filters', () => {
         ).toHaveCount(0);
     });
 
+    test('removes following draft card after unfollowing its studio', async ({
+        page,
+    }) => {
+        const studioId = 'studio-following-card-e2e';
+        const followingDraftId = 'feed-following-unfollow-e2e';
+
+        await page.route('**/api/**', async (route) => {
+            const requestUrl = new URL(route.request().url());
+            const path = requestUrl.pathname;
+            const method = route.request().method();
+
+            if (method === 'GET' && path === '/api/feed') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify([]),
+                });
+            }
+
+            if (method === 'GET' && path === '/api/feeds/following') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify([
+                        {
+                            id: followingDraftId,
+                            type: 'draft',
+                            title: 'Following Draft Card E2E',
+                            authorStudioId: studioId,
+                            authorStudioName: 'Following Studio E2E',
+                            glowUpScore: 11.4,
+                        },
+                    ]),
+                });
+            }
+
+            if (method === 'DELETE' && path === `/api/studios/${studioId}/follow`) {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({
+                        removed: true,
+                        isFollowing: false,
+                        followerCount: 9,
+                    }),
+                });
+            }
+
+            if (method === 'POST' && path === '/api/telemetry/ux') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ ok: true }),
+                });
+            }
+
+            return route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify([]),
+            });
+        });
+
+        await openFeed(page);
+
+        const followingRequest = page.waitForRequest((request) => {
+            return (
+                request.method() === 'GET' &&
+                request.url().includes('/api/feeds/following')
+            );
+        });
+        await page.getByTestId('feed-more-summary').click();
+        await page.getByRole('button', { name: /^Following$/i }).click();
+        await followingRequest;
+        await expect(page).toHaveURL(/tab=Following/);
+
+        const followingDraftLink = page.locator(
+            `a[href="/drafts/${followingDraftId}"]:visible`,
+        );
+        await expect(followingDraftLink).toHaveCount(1);
+
+        const unfollowRequest = page.waitForRequest((request) => {
+            return (
+                request.method() === 'DELETE' &&
+                request.url().includes(`/api/studios/${studioId}/follow`)
+            );
+        });
+        await page.getByRole('button', { name: /Unfollow studio/i }).click();
+        await unfollowRequest;
+
+        await expect(followingDraftLink).toHaveCount(0);
+    });
+
     test('focuses feed search with slash shortcut', async ({ page }) => {
         const feedSearch = page.getByPlaceholder(FEED_SEARCH_PLACEHOLDER);
         await expect(feedSearch).not.toBeFocused();
