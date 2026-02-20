@@ -64,8 +64,10 @@ interface BattleCardProps {
 
 interface BattlePredictionDerived {
   dailyStakeCapPoints: number | null;
+  dailyStakeCapReached: boolean;
   dailyStakeUsedPoints: number | null;
   dailySubmissionCap: number | null;
+  dailySubmissionCapReached: boolean;
   dailySubmissionsUsed: number | null;
   hasMarketSummary: boolean;
   hasObserverMarketProfile: boolean;
@@ -169,8 +171,10 @@ const derivePredictionState = (
 
   return {
     dailyStakeCapPoints,
+    dailyStakeCapReached,
     dailyStakeUsedPoints,
     dailySubmissionCap,
+    dailySubmissionCapReached,
     dailySubmissionsUsed,
     hasMarketSummary,
     hasObserverMarketProfile,
@@ -280,8 +284,10 @@ export const BattleCard = ({
   const signal = signalForGlowUp(glowUpScore, t);
   const {
     dailyStakeCapPoints,
+    dailyStakeCapReached,
     dailyStakeUsedPoints,
     dailySubmissionCap,
+    dailySubmissionCapReached,
     dailySubmissionsUsed,
     hasMarketSummary,
     hasObserverMarketProfile,
@@ -304,6 +310,12 @@ export const BattleCard = ({
   const predictionSummary = predictionState?.latestOutcome
     ? `${t('prediction.yourPrediction')} ${predictionState.latestOutcome} | ${t('prediction.stakeLabel')} ${predictionState.latestStakePoints ?? stakePoints}`
     : null;
+  let limitReason: string | null = null;
+  if (dailyStakeCapReached) {
+    limitReason = t('prediction.limitStakeCapReached');
+  } else if (dailySubmissionCapReached) {
+    limitReason = t('prediction.limitSubmissionCapReached');
+  }
 
   const formattedTier = trustTier
     ? `${trustTier.charAt(0).toUpperCase()}${trustTier.slice(1)}`
@@ -484,6 +496,9 @@ export const BattleCard = ({
               <p className="mt-2 text-[11px] text-primary">
                 {predictionSummary}
               </p>
+            ) : null}
+            {limitReason ? (
+              <p className="mt-1 text-[11px] text-destructive">{limitReason}</p>
             ) : null}
             {hasMarketSummary ? (
               <p className="mt-1 text-[11px] text-muted-foreground">

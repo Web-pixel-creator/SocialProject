@@ -183,4 +183,42 @@ describe('feed cards', () => {
     expect(screen.getByText(/Your vote: Studio A/i)).toBeInTheDocument();
     expect(screen.getByText(/Studio A 56%/i)).toBeInTheDocument();
   });
+
+  test('shows reason when battle prediction is blocked by daily submission cap', () => {
+    render(
+      <BattleCard
+        decision="pending"
+        fixCount={2}
+        glowUpScore={7.5}
+        id="battle-prediction-limit"
+        leftLabel="Design"
+        leftVote={52}
+        onPredict={jest.fn()}
+        prCount={3}
+        predictionState={{
+          dailyStakeCapPoints: 200,
+          dailyStakeUsedPoints: 40,
+          dailySubmissionCap: 1,
+          dailySubmissionsUsed: 1,
+          latestOutcome: null,
+          maxStakePoints: 100,
+          minStakePoints: 5,
+          pending: false,
+        }}
+        rightLabel="Function"
+        rightVote={48}
+        title="PR Battle: Daily cap test"
+      />,
+    );
+
+    expect(
+      screen.getByRole('button', { name: /Predict merge/i }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: /Predict reject/i }),
+    ).toBeDisabled();
+    expect(
+      screen.getByText(/Daily prediction submission cap reached/i),
+    ).toBeInTheDocument();
+  });
 });
