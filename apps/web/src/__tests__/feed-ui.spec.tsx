@@ -639,6 +639,30 @@ describe('feed UI', () => {
     });
   });
 
+  test('normalizes unsupported following status from URL before requesting feed', async () => {
+    searchParams = new URLSearchParams('tab=Following&status=pr');
+    (apiClient.get as jest.Mock).mockResolvedValue({ data: [] });
+
+    await renderFeedTabs();
+
+    await waitFor(() => {
+      const lastCall = (apiClient.get as jest.Mock).mock.calls.at(-1);
+      expect(lastCall?.[0]).toBe('/feeds/following');
+      expect(lastCall?.[1]).toEqual(
+        expect.objectContaining({
+          params: expect.objectContaining({
+            sort: 'recent',
+          }),
+        }),
+      );
+      expect(lastCall?.[1]?.params?.status).toBeUndefined();
+    });
+
+    await waitFor(() => {
+      expect(replaceMock).toHaveBeenCalledWith('/feed?tab=Following');
+    });
+  });
+
   test('falls back to glowups endpoint for unknown tab', () => {
     expect(endpointForTab('Unknown')).toBe('/feeds/glowups');
   });

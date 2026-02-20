@@ -443,6 +443,17 @@ test.describe('Feed navigation and filters', () => {
         await expect(page).toHaveURL(/\/feed\?tab=Following$/);
     });
 
+    test('normalizes unsupported following status query to default', async ({
+        page,
+    }) => {
+        await navigateWithRetry(page, '/feed?tab=Following&status=pr');
+
+        await expect.poll(() => page.url()).toMatch(/\/feed\?tab=Following$/);
+        await expect(
+            page.getByRole('button', { name: /^All statuses$/i }),
+        ).toHaveCount(0);
+    });
+
     test('renders following feed items with subscribed-studio context badge', async ({
         page,
     }) => {

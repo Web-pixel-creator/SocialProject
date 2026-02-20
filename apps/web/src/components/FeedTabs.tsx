@@ -212,6 +212,19 @@ interface FeedQueryState {
   query: string;
 }
 
+const tabSupportsSortAndStatusFilters = (tab: string): boolean =>
+  tab === 'All' || tab === 'Following';
+
+const tabSupportsRangeFilter = (tab: string): boolean => tab === 'All';
+
+const tabSupportsIntentFilter = (tab: string): boolean => tab === 'All';
+
+const tabSupportsFilterPanel = (tab: string): boolean =>
+  tab === 'All' || tab === 'Battles' || tab === 'Following';
+
+const sanitizeStatusForTab = (tab: string, status: FeedStatus): FeedStatus =>
+  tab === 'Following' && status === 'pr' ? DEFAULT_STATUS : status;
+
 const isEditableTarget = (target: EventTarget | null): boolean => {
   if (!(target instanceof HTMLElement)) {
     return false;
@@ -1359,7 +1372,10 @@ export const FeedTabs = () => {
       const next = {
         tab: updates.tab ?? previous.tab,
         sort: updates.sort ?? previous.sort,
-        status: updates.status ?? previous.status,
+        status: sanitizeStatusForTab(
+          updates.tab ?? previous.tab,
+          updates.status ?? previous.status,
+        ),
         range: updates.range ?? previous.range,
         intent: updates.intent ?? previous.intent,
         query: (updates.query ?? previous.query).trim(),
@@ -1462,13 +1478,18 @@ export const FeedTabs = () => {
     }
   }, [active, battleFilter]);
 
+  const requestStatus = useMemo(
+    () => sanitizeStatusForTab(active, status),
+    [active, status],
+  );
+
   useEffect(() => {
-    if (active !== 'Following' || status !== 'pr') {
+    if (status === requestStatus) {
       return;
     }
-    setStatus(DEFAULT_STATUS);
-    updateQuery({ status: DEFAULT_STATUS });
-  }, [active, status, updateQuery]);
+    setStatus(requestStatus);
+    updateQuery({ status: requestStatus });
+  }, [status, requestStatus, updateQuery]);
 
   useEffect(() => {
     if (active) {
@@ -1498,7 +1519,7 @@ export const FeedTabs = () => {
           active,
           offset,
           sort,
-          status,
+          requestStatus,
           intent,
           range,
           rangeFrom,
@@ -1507,24 +1528,20 @@ export const FeedTabs = () => {
     async () => {
       const endpoint = endpointForTab(active);
       const params: Record<string, unknown> = { limit: PAGE_SIZE, offset };
-      const requestStatus =
-        active === 'Following' && status === 'pr' ? DEFAULT_STATUS : status;
       if (normalizedQuery) {
         params.q = normalizedQuery;
       }
-      if (active === 'All' || active === 'Following') {
+      if (tabSupportsSortAndStatusFilters(active)) {
         params.sort = sort;
         if (requestStatus !== DEFAULT_STATUS) {
           params.status = requestStatus;
         }
       }
-      if (active === 'All') {
-        if (intent !== 'all') {
-          params.intent = intent;
-        }
-        if (rangeFrom) {
-          params.from = rangeFrom;
-        }
+      if (tabSupportsIntentFilter(active) && intent !== DEFAULT_INTENT) {
+        params.intent = intent;
+      }
+      if (tabSupportsRangeFilter(active) && rangeFrom) {
+        params.from = rangeFrom;
       }
 
       const startedAt = performance.now();
@@ -1623,13 +1640,13 @@ export const FeedTabs = () => {
       sendTelemetry({
         eventType: 'feed_load_timing',
         sort,
-        status: status === 'all' ? undefined : status,
+        status: requestStatus === DEFAULT_STATUS ? undefined : requestStatus,
         intent: intent === 'all' ? undefined : intent,
         range,
         timingMs: pageData.loadTimingMs,
       });
     }
-  }, [pageData, offset, sort, status, intent, range]);
+  }, [pageData, offset, sort, requestStatus, intent, range]);
 
   const isInitialLoading = loading && visibleItems.length === 0;
 
@@ -2554,7 +2571,7 @@ export const FeedTabs = () => {
           onStatusChange={handleStatusChange}
           sort={sort}
           sortOptions={localizedSortOptions}
-          status={status}
+          status={requestStatus}
           statusOptions={localizedFollowingStatusOptions}
         />
       );
@@ -2580,30 +2597,30 @@ export const FeedTabs = () => {
     range,
     sort,
     status,
+    requestStatus,
     t,
   ]);
 
   const activeFilterPills = useMemo(() => {
     const pills: string[] = [];
     const supportsSortAndStatusFilters =
-      active === 'All' || active === 'Following';
+      tabSupportsSortAndStatusFilters(active);
 
     if (supportsSortAndStatusFilters) {
       if (sort !== DEFAULT_SORT) {
         pills.push(`${filterLabels.sort}: ${sortLabel(sort)}`);
       }
-      if (status !== DEFAULT_STATUS) {
-        pills.push(`${filterLabels.status}: ${statusLabel(status)}`);
+      if (requestStatus !== DEFAULT_STATUS) {
+        pills.push(`${filterLabels.status}: ${statusLabel(requestStatus)}`);
       }
     }
 
-    if (active === 'All') {
-      if (range !== DEFAULT_RANGE) {
-        pills.push(`${filterLabels.timeRange}: ${rangeLabel(range)}`);
-      }
-      if (intent !== DEFAULT_INTENT) {
-        pills.push(`${filterLabels.intent}: ${intentLabel(intent)}`);
-      }
+    if (tabSupportsRangeFilter(active) && range !== DEFAULT_RANGE) {
+      pills.push(`${filterLabels.timeRange}: ${rangeLabel(range)}`);
+    }
+
+    if (tabSupportsIntentFilter(active) && intent !== DEFAULT_INTENT) {
+      pills.push(`${filterLabels.intent}: ${intentLabel(intent)}`);
     }
 
     if (active === 'Battles' && battleFilter !== 'all') {
@@ -2629,25 +2646,25 @@ export const FeedTabs = () => {
     intentLabel,
     range,
     rangeLabel,
+    requestStatus,
     sort,
     sortLabel,
-    status,
     statusLabel,
     query,
     t,
   ]);
 
-  const hasFilterPanel =
-    active === 'All' || active === 'Battles' || active === 'Following';
-  const supportsSortAndStatusFilters =
-    active === 'All' || active === 'Following';
+  const hasFilterPanel = tabSupportsFilterPanel(active);
+  const supportsSortAndStatusFilters = tabSupportsSortAndStatusFilters(active);
   const hasBattleFilterApplied = active === 'Battles' && battleFilter !== 'all';
-  const hasIntentFilterApplied = active === 'All' && intent !== DEFAULT_INTENT;
+  const hasIntentFilterApplied =
+    tabSupportsIntentFilter(active) && intent !== DEFAULT_INTENT;
   const hasStatusFilterApplied =
-    supportsSortAndStatusFilters && status !== DEFAULT_STATUS;
+    supportsSortAndStatusFilters && requestStatus !== DEFAULT_STATUS;
   const hasSortFilterApplied =
     supportsSortAndStatusFilters && sort !== DEFAULT_SORT;
-  const hasRangeFilterApplied = active === 'All' && range !== DEFAULT_RANGE;
+  const hasRangeFilterApplied =
+    tabSupportsRangeFilter(active) && range !== DEFAULT_RANGE;
   const activeFilterCount = activeFilterPills.length;
   const hasActiveFilters = activeFilterCount > 0;
   const hasMobileOverlayOpen =
