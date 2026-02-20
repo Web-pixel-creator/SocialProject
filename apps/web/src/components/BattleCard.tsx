@@ -17,11 +17,17 @@ type BattlePredictionOutcome = 'merge' | 'reject';
 type BattlePredictionTrustTier = 'entry' | 'regular' | 'trusted' | 'elite';
 
 interface BattlePredictionState {
+  dailyStakeCapPoints?: number | null;
+  dailyStakeUsedPoints?: number | null;
+  dailySubmissionCap?: number | null;
+  dailySubmissionsUsed?: number | null;
   error?: string | null;
   latestOutcome?: BattlePredictionOutcome | null;
   latestStakePoints?: number | null;
+  maxStakePoints?: number | null;
   marketPoolPoints?: number | null;
   mergeOdds?: number | null;
+  minStakePoints?: number | null;
   observerNetPoints?: number | null;
   potentialMergePayout?: number | null;
   potentialRejectPayout?: number | null;
@@ -56,6 +62,131 @@ interface BattleCardProps {
   predictionState?: BattlePredictionState;
 }
 
+interface BattlePredictionDerived {
+  dailyStakeCapPoints: number | null;
+  dailyStakeUsedPoints: number | null;
+  dailySubmissionCap: number | null;
+  dailySubmissionsUsed: number | null;
+  hasMarketSummary: boolean;
+  hasObserverMarketProfile: boolean;
+  hasPotentialPayout: boolean;
+  hasUsageCaps: boolean;
+  marketPoolPoints: number | null;
+  mergeOddsPercent: number | null;
+  observerNetPoints: number | null;
+  potentialMergePayout: number | null;
+  potentialRejectPayout: number | null;
+  predictionDisabled: boolean;
+  rejectOddsPercent: number | null;
+  trustTier: BattlePredictionTrustTier | null;
+}
+
+const asPredictionNumber = (value: number | null | undefined) =>
+  typeof value === 'number' ? value : null;
+
+const getStakeBounds = (predictionState?: BattlePredictionState) => {
+  const minStakePoints = Math.max(1, predictionState?.minStakePoints ?? 5);
+  const maxStakePoints = Math.max(
+    minStakePoints,
+    predictionState?.maxStakePoints ?? 500,
+  );
+
+  return { minStakePoints, maxStakePoints };
+};
+
+const derivePredictionState = (
+  predictionState: BattlePredictionState | undefined,
+  stakePoints: number,
+  minStakePoints: number,
+  maxStakePoints: number,
+): BattlePredictionDerived => {
+  const dailyStakeCapPoints = asPredictionNumber(
+    predictionState?.dailyStakeCapPoints,
+  );
+  const dailyStakeUsedPoints = asPredictionNumber(
+    predictionState?.dailyStakeUsedPoints,
+  );
+  const dailySubmissionCap = asPredictionNumber(
+    predictionState?.dailySubmissionCap,
+  );
+  const dailySubmissionsUsed = asPredictionNumber(
+    predictionState?.dailySubmissionsUsed,
+  );
+  const hasExistingPrediction = Boolean(predictionState?.latestOutcome);
+  const stakeOutsideBounds =
+    !Number.isInteger(stakePoints) ||
+    stakePoints < minStakePoints ||
+    stakePoints > maxStakePoints;
+  const projectedStakeWithoutPrediction =
+    dailyStakeUsedPoints !== null ? dailyStakeUsedPoints + stakePoints : null;
+  const dailyStakeCapReached =
+    !hasExistingPrediction &&
+    dailyStakeCapPoints !== null &&
+    projectedStakeWithoutPrediction !== null &&
+    projectedStakeWithoutPrediction > dailyStakeCapPoints;
+  const dailySubmissionCapReached =
+    !hasExistingPrediction &&
+    dailySubmissionCap !== null &&
+    dailySubmissionsUsed !== null &&
+    dailySubmissionsUsed >= dailySubmissionCap;
+  const predictionDisabled =
+    stakeOutsideBounds || dailyStakeCapReached || dailySubmissionCapReached;
+
+  const marketPoolPoints = asPredictionNumber(
+    predictionState?.marketPoolPoints,
+  );
+  const mergeOddsPercent =
+    typeof predictionState?.mergeOdds === 'number'
+      ? Math.max(0, Math.min(100, Math.round(predictionState.mergeOdds * 100)))
+      : null;
+  const rejectOddsPercent =
+    typeof predictionState?.rejectOdds === 'number'
+      ? Math.max(0, Math.min(100, Math.round(predictionState.rejectOdds * 100)))
+      : null;
+  const potentialMergePayout = asPredictionNumber(
+    predictionState?.potentialMergePayout,
+  );
+  const potentialRejectPayout = asPredictionNumber(
+    predictionState?.potentialRejectPayout,
+  );
+  const observerNetPoints = asPredictionNumber(
+    predictionState?.observerNetPoints,
+  );
+  const trustTier = predictionState?.trustTier ?? null;
+  const hasMarketSummary =
+    marketPoolPoints !== null ||
+    mergeOddsPercent !== null ||
+    rejectOddsPercent !== null;
+  const hasPotentialPayout =
+    potentialMergePayout !== null || potentialRejectPayout !== null;
+  const hasObserverMarketProfile =
+    observerNetPoints !== null || trustTier !== null;
+  const hasUsageCaps =
+    dailyStakeCapPoints !== null ||
+    dailyStakeUsedPoints !== null ||
+    dailySubmissionCap !== null ||
+    dailySubmissionsUsed !== null;
+
+  return {
+    dailyStakeCapPoints,
+    dailyStakeUsedPoints,
+    dailySubmissionCap,
+    dailySubmissionsUsed,
+    hasMarketSummary,
+    hasObserverMarketProfile,
+    hasPotentialPayout,
+    hasUsageCaps,
+    marketPoolPoints,
+    mergeOddsPercent,
+    observerNetPoints,
+    potentialMergePayout,
+    potentialRejectPayout,
+    predictionDisabled,
+    rejectOddsPercent,
+    trustTier,
+  };
+};
+
 export const BattleCard = ({
   id,
   title,
@@ -79,12 +210,16 @@ export const BattleCard = ({
   predictionState,
 }: BattleCardProps) => {
   const { t } = useLanguage();
+  const { minStakePoints, maxStakePoints } = getStakeBounds(predictionState);
   const [voteState, setVoteState] = useState<{ left: number; right: number }>(
     () => normalizeVotes(leftVote, rightVote),
   );
   const [userVote, setUserVote] = useState<'left' | 'right' | null>(null);
   const [stakePoints, setStakePoints] = useState<number>(
-    Math.max(5, Math.min(500, predictionState?.latestStakePoints ?? 10)),
+    Math.max(
+      minStakePoints,
+      Math.min(maxStakePoints, predictionState?.latestStakePoints ?? 10),
+    ),
   );
 
   useEffect(() => {
@@ -94,9 +229,12 @@ export const BattleCard = ({
 
   useEffect(() => {
     setStakePoints(
-      Math.max(5, Math.min(500, predictionState?.latestStakePoints ?? 10)),
+      Math.max(
+        minStakePoints,
+        Math.min(maxStakePoints, predictionState?.latestStakePoints ?? 10),
+      ),
     );
-  }, [predictionState?.latestStakePoints]);
+  }, [maxStakePoints, minStakePoints, predictionState?.latestStakePoints]);
 
   const voteLabel = useMemo(() => {
     if (userVote === 'left') {
@@ -140,44 +278,32 @@ export const BattleCard = ({
 
   const impact = Math.max(0.5, glowUpScore / 4.8);
   const signal = signalForGlowUp(glowUpScore, t);
-  const predictionDisabled =
-    !Number.isInteger(stakePoints) || stakePoints < 5 || stakePoints > 500;
+  const {
+    dailyStakeCapPoints,
+    dailyStakeUsedPoints,
+    dailySubmissionCap,
+    dailySubmissionsUsed,
+    hasMarketSummary,
+    hasObserverMarketProfile,
+    hasPotentialPayout,
+    hasUsageCaps,
+    marketPoolPoints,
+    mergeOddsPercent,
+    observerNetPoints,
+    potentialMergePayout,
+    potentialRejectPayout,
+    predictionDisabled,
+    rejectOddsPercent,
+    trustTier,
+  } = derivePredictionState(
+    predictionState,
+    stakePoints,
+    minStakePoints,
+    maxStakePoints,
+  );
   const predictionSummary = predictionState?.latestOutcome
     ? `${t('prediction.yourPrediction')} ${predictionState.latestOutcome} | ${t('prediction.stakeLabel')} ${predictionState.latestStakePoints ?? stakePoints}`
     : null;
-  const marketPoolPoints =
-    typeof predictionState?.marketPoolPoints === 'number'
-      ? predictionState.marketPoolPoints
-      : null;
-  const mergeOddsPercent =
-    typeof predictionState?.mergeOdds === 'number'
-      ? Math.max(0, Math.min(100, Math.round(predictionState.mergeOdds * 100)))
-      : null;
-  const rejectOddsPercent =
-    typeof predictionState?.rejectOdds === 'number'
-      ? Math.max(0, Math.min(100, Math.round(predictionState.rejectOdds * 100)))
-      : null;
-  const potentialMergePayout =
-    typeof predictionState?.potentialMergePayout === 'number'
-      ? predictionState.potentialMergePayout
-      : null;
-  const potentialRejectPayout =
-    typeof predictionState?.potentialRejectPayout === 'number'
-      ? predictionState.potentialRejectPayout
-      : null;
-  const observerNetPoints =
-    typeof predictionState?.observerNetPoints === 'number'
-      ? predictionState.observerNetPoints
-      : null;
-  const trustTier = predictionState?.trustTier ?? null;
-  const hasMarketSummary =
-    marketPoolPoints !== null ||
-    mergeOddsPercent !== null ||
-    rejectOddsPercent !== null;
-  const hasPotentialPayout =
-    potentialMergePayout !== null || potentialRejectPayout !== null;
-  const hasObserverMarketProfile =
-    observerNetPoints !== null || trustTier !== null;
 
   const formattedTier = trustTier
     ? `${trustTier.charAt(0).toUpperCase()}${trustTier.slice(1)}`
@@ -309,15 +435,20 @@ export const BattleCard = ({
                 <input
                   aria-label={t('prediction.stakeLabel')}
                   className="w-16 bg-transparent text-right text-foreground focus-visible:outline-none"
-                  max={500}
-                  min={5}
+                  max={maxStakePoints}
+                  min={minStakePoints}
                   onChange={(event) => {
                     const value = Number(event.target.value);
                     if (!Number.isFinite(value)) {
-                      setStakePoints(5);
+                      setStakePoints(minStakePoints);
                       return;
                     }
-                    setStakePoints(Math.max(1, Math.round(value)));
+                    setStakePoints(
+                      Math.max(
+                        minStakePoints,
+                        Math.min(maxStakePoints, Math.round(value)),
+                      ),
+                    );
                   }}
                   step={1}
                   type="number"
@@ -373,6 +504,14 @@ export const BattleCard = ({
               <p className="mt-1 text-[11px] text-muted-foreground">
                 {t('prediction.netPoints')} {observerNetPoints ?? 0} FIN |{' '}
                 {t('prediction.tierLabel')} {formattedTier ?? '-'}
+              </p>
+            ) : null}
+            {hasUsageCaps ? (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {t('prediction.dailyStakeLabel')} {dailyStakeUsedPoints ?? 0}/
+                {dailyStakeCapPoints ?? '-'} |{' '}
+                {t('prediction.dailySubmissionsLabel')}{' '}
+                {dailySubmissionsUsed ?? 0}/{dailySubmissionCap ?? '-'}
               </p>
             ) : null}
             {predictionState?.error ? (

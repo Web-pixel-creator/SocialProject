@@ -793,6 +793,12 @@ describe('feed UI', () => {
               rejectPayoutMultiplier: 2.5,
               observerNetPoints: 18,
               trustTier: 'trusted',
+              minStakePoints: 5,
+              maxStakePoints: 320,
+              dailyStakeCapPoints: 1000,
+              dailyStakeUsedPoints: 120,
+              dailySubmissionCap: 30,
+              dailySubmissionsUsed: 4,
             },
           },
         });
@@ -842,6 +848,14 @@ describe('feed UI', () => {
     );
     expect(screen.getByText(/Net points:\s*18 FIN/i)).toBeInTheDocument();
     expect(screen.getByText(/Tier:\s*Trusted/i)).toBeInTheDocument();
+    expect(screen.getByText(/Daily stake:\s*120\/1000/i)).toBeInTheDocument();
+    expect(screen.getByText(/Daily submissions:\s*4\/30/i)).toBeInTheDocument();
+
+    await changeAndFlush(stakeInput, '500');
+    expect(stakeInput).toHaveValue(320);
+    expect(
+      screen.getByRole('button', { name: /^Predict merge$/i }),
+    ).toBeEnabled();
   });
 
   test('filters battles by status chip and tracks telemetry', async () => {

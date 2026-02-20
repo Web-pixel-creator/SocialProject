@@ -889,6 +889,12 @@ test.describe('Feed navigation and filters', () => {
                             rejectPayoutMultiplier: 2.86,
                             observerNetPoints: 22,
                             trustTier: 'trusted',
+                            minStakePoints: 5,
+                            maxStakePoints: 300,
+                            dailyStakeCapPoints: 1000,
+                            dailyStakeUsedPoints: 150,
+                            dailySubmissionCap: 25,
+                            dailySubmissionsUsed: 3,
                         },
                     }),
                 });
@@ -936,6 +942,16 @@ test.describe('Feed navigation and filters', () => {
         await summaryRequest;
         await expect(page.getByText(/Net points:\s*22 FIN/i)).toBeVisible();
         await expect(page.getByText(/Tier:\s*Trusted/i)).toBeVisible();
+        await expect(page.getByText(/Daily stake:\s*150\/1000/i)).toBeVisible();
+        await expect(
+            page.getByText(/Daily submissions:\s*3\/25/i),
+        ).toBeVisible();
+
+        await stakeInput.fill('500');
+        await expect(stakeInput).toHaveValue('300');
+        await expect(
+            page.getByRole('button', { name: /^Predict merge$/i }),
+        ).toBeEnabled();
     });
 
     test('primary and more tabs switch feed and update query', async ({

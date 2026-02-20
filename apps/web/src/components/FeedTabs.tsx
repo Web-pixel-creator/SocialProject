@@ -82,7 +82,13 @@ type BattlePredictionOutcome = 'merge' | 'reject';
 type BattlePredictionTrustTier = 'entry' | 'regular' | 'trusted' | 'elite';
 
 interface BattlePredictionEntry {
+  dailyStakeCapPoints: number | null;
+  dailyStakeUsedPoints: number | null;
+  dailySubmissionCap: number | null;
+  dailySubmissionsUsed: number | null;
   error: string | null;
+  maxStakePoints: number | null;
+  minStakePoints: number | null;
   pending: boolean;
   predictedOutcome: BattlePredictionOutcome | null;
   pullRequestId: string | null;
@@ -291,6 +297,12 @@ const parseBattlePredictionMarket = (
   fallbackPullRequestId: string | null,
 ): Pick<
   BattlePredictionEntry,
+  | 'dailyStakeCapPoints'
+  | 'dailyStakeUsedPoints'
+  | 'dailySubmissionCap'
+  | 'dailySubmissionsUsed'
+  | 'maxStakePoints'
+  | 'minStakePoints'
   | 'pullRequestId'
   | 'marketPoolPoints'
   | 'mergeOdds'
@@ -353,6 +365,12 @@ const parseBattlePredictionMarket = (
       : null;
 
   return {
+    dailyStakeCapPoints: asFiniteNumber(marketRecord?.dailyStakeCapPoints),
+    dailyStakeUsedPoints: asFiniteNumber(marketRecord?.dailyStakeUsedPoints),
+    dailySubmissionCap: asFiniteNumber(marketRecord?.dailySubmissionCap),
+    dailySubmissionsUsed: asFiniteNumber(marketRecord?.dailySubmissionsUsed),
+    minStakePoints: asFiniteNumber(marketRecord?.minStakePoints),
+    maxStakePoints: asFiniteNumber(marketRecord?.maxStakePoints),
     pullRequestId,
     marketPoolPoints:
       totalStakePoints > 0 ? Math.round(totalStakePoints) : null,
@@ -1904,7 +1922,13 @@ export const FeedTabs = () => {
         ...current,
         [draftId]: {
           ...current[draftId],
+          dailyStakeCapPoints: current[draftId]?.dailyStakeCapPoints ?? null,
+          dailyStakeUsedPoints: current[draftId]?.dailyStakeUsedPoints ?? null,
+          dailySubmissionCap: current[draftId]?.dailySubmissionCap ?? null,
+          dailySubmissionsUsed: current[draftId]?.dailySubmissionsUsed ?? null,
           error: null,
+          maxStakePoints: current[draftId]?.maxStakePoints ?? null,
+          minStakePoints: current[draftId]?.minStakePoints ?? null,
           pullRequestId: current[draftId]?.pullRequestId ?? null,
           marketPoolPoints: current[draftId]?.marketPoolPoints ?? null,
           mergeOdds: current[draftId]?.mergeOdds ?? null,
@@ -1933,6 +1957,12 @@ export const FeedTabs = () => {
             ? response.data.pullRequestId
             : null;
         let marketSnapshot: ReturnType<typeof parseBattlePredictionMarket> = {
+          dailyStakeCapPoints: null,
+          dailyStakeUsedPoints: null,
+          dailySubmissionCap: null,
+          dailySubmissionsUsed: null,
+          minStakePoints: null,
+          maxStakePoints: null,
           pullRequestId,
           marketPoolPoints: null,
           mergeOdds: null,
@@ -1990,7 +2020,15 @@ export const FeedTabs = () => {
           ...current,
           [draftId]: {
             ...current[draftId],
+            dailyStakeCapPoints: current[draftId]?.dailyStakeCapPoints ?? null,
+            dailyStakeUsedPoints:
+              current[draftId]?.dailyStakeUsedPoints ?? null,
+            dailySubmissionCap: current[draftId]?.dailySubmissionCap ?? null,
+            dailySubmissionsUsed:
+              current[draftId]?.dailySubmissionsUsed ?? null,
             error: message,
+            maxStakePoints: current[draftId]?.maxStakePoints ?? null,
+            minStakePoints: current[draftId]?.minStakePoints ?? null,
             pending: false,
             predictedOutcome: current[draftId]?.predictedOutcome ?? null,
             pullRequestId: current[draftId]?.pullRequestId ?? null,
@@ -2440,9 +2478,15 @@ export const FeedTabs = () => {
         }
         if (item.kind === 'battle') {
           const battlePrediction = battlePredictions[item.id] ?? {
+            dailyStakeCapPoints: null,
+            dailyStakeUsedPoints: null,
+            dailySubmissionCap: null,
+            dailySubmissionsUsed: null,
             error: null,
+            maxStakePoints: null,
             marketPoolPoints: null,
             mergeOdds: null,
+            minStakePoints: null,
             observerNetPoints: null,
             pending: false,
             potentialMergePayout: null,
@@ -2477,6 +2521,12 @@ export const FeedTabs = () => {
                 latestOutcome: battlePrediction.predictedOutcome,
                 marketPoolPoints: battlePrediction.marketPoolPoints,
                 mergeOdds: battlePrediction.mergeOdds,
+                minStakePoints: battlePrediction.minStakePoints,
+                maxStakePoints: battlePrediction.maxStakePoints,
+                dailyStakeCapPoints: battlePrediction.dailyStakeCapPoints,
+                dailyStakeUsedPoints: battlePrediction.dailyStakeUsedPoints,
+                dailySubmissionCap: battlePrediction.dailySubmissionCap,
+                dailySubmissionsUsed: battlePrediction.dailySubmissionsUsed,
                 observerNetPoints: battlePrediction.observerNetPoints,
                 latestStakePoints: battlePrediction.stakePoints,
                 pending: battlePrediction.pending,
