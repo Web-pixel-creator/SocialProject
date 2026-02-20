@@ -164,6 +164,33 @@ const openObserverActionsPanel = async (
     return observerSection;
 };
 
+const openBattleObserverActionsPanel = async (
+    page: Page,
+    options?: { expandMore?: boolean },
+) => {
+    const expandMore = options?.expandMore ?? true;
+    await page.getByRole('button', { name: /^Battles$/i }).click();
+    await expect(page).toHaveURL(/tab=Battles/);
+
+    const firstBattleCard = page.locator('article.card').first();
+    await expect(firstBattleCard).toBeVisible();
+
+    const detailsSummary = firstBattleCard.locator('details summary').first();
+    await expect(detailsSummary).toBeVisible();
+    await detailsSummary.click();
+
+    const observerSection = firstBattleCard
+        .locator('section')
+        .filter({ hasText: /Observer actions|Р”РµР№СЃС‚РІРёСЏ РЅР°Р±Р»СЋРґР°С‚РµР»СЏ/i })
+        .first();
+    await expect(observerSection).toBeVisible();
+
+    if (expandMore) {
+        await observerSection.getByRole('button', { name: /^More$/i }).click();
+    }
+    return observerSection;
+};
+
 test.describe('Feed observer actions persistence', () => {
     test('persists follow/rate/save for guest fallback after reload', async ({
         page,
@@ -368,6 +395,77 @@ test.describe('Feed observer actions persistence', () => {
         expect(telemetrySignatures).toContain(
             `feed_card_open:save_off:${DRAFT_ID}`,
         );
+    });
+
+    test('calls persistence and telemetry endpoints for battle observer actions', async ({
+        page,
+    }) => {
+        const persistRequestLog: Array<{ method: string; path: string }> = [];
+        const telemetryPayloadLog: Array<Record<string, unknown>> = [];
+
+        await page.addInitScript(() => {
+            window.localStorage.setItem('finishit-feed-density', 'comfort');
+            window.localStorage.setItem('finishit_token', 'e2e-token');
+        });
+        await routeObserverActionsApi(page, {
+            persistStatusCode: 200,
+            persistRequestLog,
+            telemetryPayloadLog,
+        });
+        await openFeed(page);
+
+        const observerSection = await openBattleObserverActionsPanel(page);
+        const followButton = observerSection.getByRole('button', {
+            name: /^Follow$/i,
+        });
+        const rateButton = observerSection.getByRole('button', {
+            name: /^Rate$/i,
+        });
+        const saveButton = observerSection.getByRole('button', {
+            name: /^Save$/i,
+        });
+
+        await followButton.click();
+        await rateButton.click();
+        await saveButton.click();
+
+        await expect(followButton).toHaveAttribute('aria-pressed', 'true');
+        await expect(rateButton).toHaveAttribute('aria-pressed', 'true');
+        await expect(saveButton).toHaveAttribute('aria-pressed', 'true');
+
+        await expect
+            .poll(() => persistRequestLog.length)
+            .toBeGreaterThanOrEqual(3);
+
+        const persistSignatures = persistRequestLog.map((entry) => {
+            return `${entry.method} ${entry.path}`;
+        });
+        expect(persistSignatures).toContain(
+            `POST /api/observers/watchlist/${BATTLE_ID}`,
+        );
+        expect(persistSignatures).toContain(
+            `POST /api/observers/engagements/${BATTLE_ID}/rate`,
+        );
+        expect(persistSignatures).toContain(
+            `POST /api/observers/engagements/${BATTLE_ID}/save`,
+        );
+
+        await expect
+            .poll(() => {
+                const toggleEvents = telemetryPayloadLog.filter((payload) => {
+                    const eventType = payload.eventType;
+                    const action = payload.action;
+                    const draftId = payload.draftId;
+                    return (
+                        draftId === BATTLE_ID &&
+                        (eventType === 'watchlist_follow' ||
+                            action === 'rate_on' ||
+                            action === 'save_on')
+                    );
+                });
+                return toggleEvents.length;
+            })
+            .toBeGreaterThanOrEqual(3);
     });
 
     test('supports keyboard activation for observer actions', async ({
