@@ -396,6 +396,80 @@ test.describe('Feed observer rail', () => {
         const prPendingTile = rightRail.getByText(/PR pending/i).first().locator('..');
         await expect(prPendingTile).toContainText('57');
     });
+
+    test('opens followed studio profile and following feed from rail links', async ({
+        page,
+    }) => {
+        const studioId = 'studio-followed-rail-e2e';
+        await page.route('**/api/**', async (route) => {
+            const requestUrl = new URL(route.request().url());
+            const path = requestUrl.pathname;
+            const method = route.request().method();
+
+            if (method === 'POST' && path === '/api/telemetry/ux') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ ok: true }),
+                });
+            }
+
+            if (method === 'GET' && path === '/api/me/following') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify([
+                        {
+                            id: studioId,
+                            studioName: 'Followed Studio Rail',
+                            impact: 90,
+                            signal: 84,
+                        },
+                    ]),
+                });
+            }
+
+            if (method === 'GET' && path === '/api/feed') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify([]),
+                });
+            }
+
+            return route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify([]),
+            });
+        });
+
+        await navigateWithRetry(page, '/feed');
+
+        const rightRail = page.locator('.observer-right-rail');
+        const studioLink = rightRail.getByRole('link', {
+            name: /Followed Studio Rail/i,
+        });
+        await expect(studioLink).toHaveAttribute(
+            'href',
+            `/studios/${studioId}`,
+        );
+
+        await studioLink.click();
+        await expect(page).toHaveURL(new RegExp(`/studios/${studioId}$`));
+
+        await navigateWithRetry(page, '/feed');
+        const openFollowingFeedLink = rightRail.getByRole('link', {
+            name: /Open following feed/i,
+        });
+        await expect(openFollowingFeedLink).toHaveAttribute(
+            'href',
+            '/feed?tab=Following',
+        );
+
+        await openFollowingFeedLink.click();
+        await expect(page).toHaveURL(/\/feed\?tab=Following/);
+    });
 });
 
 test.describe('Feed observer rail realtime reconnect fault injection', () => {
