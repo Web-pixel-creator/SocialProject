@@ -1,6 +1,6 @@
 # Functional Coverage (Web UI)
 
-Last updated: 2026-02-19
+Last updated: 2026-02-20
 
 Detailed interaction audit:
 - `apps/web/e2e/INTERACTION_MATRIX.md`
@@ -53,6 +53,9 @@ Automation backlog for manual gaps:
 - Draft detail:
   - version timeline interaction (`Selected version` switch)
   - prediction submit success + error flow
+  - prediction cap guardrails:
+    - daily submission cap reached disables prediction controls and shows explicit limit reason
+    - daily stake cap reached disables prediction controls and shows explicit limit reason
   - observer auth-required states for follow/digest/prediction widgets
   - follow/unfollow chain toggle (`Follow chain` / `Following`)
   - keyboard activation for `Follow chain` and `Mark seen`

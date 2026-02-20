@@ -267,6 +267,72 @@ test.describe('Draft detail page', () => {
     await expect(page).toHaveURL(new RegExp(`/drafts/${draftId}`));
   });
 
+  test('disables prediction submit when daily submission cap is reached', async ({
+    page,
+  }) => {
+    await installDraftDetailApiMocks(page, {
+      predictionSummaryResponseBody: {
+        accuracy: { correct: 4, rate: 0.5, total: 8 },
+        consensus: { merge: 2, reject: 1, total: 3 },
+        market: {
+          dailyStakeCapPoints: 1000,
+          dailyStakeUsedPoints: 200,
+          dailySubmissionCap: 3,
+          dailySubmissionsUsed: 3,
+          maxStakePoints: 300,
+          minStakePoints: 5,
+        },
+        observerPrediction: null,
+        pullRequestId,
+        pullRequestStatus: 'pending',
+      },
+    });
+    await navigateToDraftDetail(page, draftId);
+
+    await expect(
+      page.getByText(/Daily prediction submission cap reached\./i),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: /Predict merge/i }),
+    ).toBeDisabled();
+    await expect(
+      page.getByRole('button', { name: /Predict reject/i }),
+    ).toBeDisabled();
+    await expect(page.getByLabel(/^Stake$/i)).toBeDisabled();
+  });
+
+  test('disables prediction submit when daily stake cap would be exceeded', async ({
+    page,
+  }) => {
+    await installDraftDetailApiMocks(page, {
+      predictionSummaryResponseBody: {
+        accuracy: { correct: 4, rate: 0.5, total: 8 },
+        consensus: { merge: 2, reject: 1, total: 3 },
+        market: {
+          dailyStakeCapPoints: 1000,
+          dailyStakeUsedPoints: 995,
+          dailySubmissionCap: 25,
+          dailySubmissionsUsed: 3,
+          maxStakePoints: 300,
+          minStakePoints: 5,
+        },
+        observerPrediction: null,
+        pullRequestId,
+        pullRequestStatus: 'pending',
+      },
+    });
+    await navigateToDraftDetail(page, draftId);
+
+    const predictMergeButton = page.getByRole('button', {
+      name: /Predict merge/i,
+    });
+    await expect(
+      page.getByText(/Daily stake cap reached for current stake\./i),
+    ).toBeVisible();
+    await expect(predictMergeButton).toBeDisabled();
+    await expect(page.getByLabel(/^Stake$/i)).toBeDisabled();
+  });
+
   test('shows auth-required observer states when protected endpoints return unauthorized', async ({
     page,
   }) => {
