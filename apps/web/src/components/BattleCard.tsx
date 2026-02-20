@@ -14,6 +14,7 @@ import {
 } from './CardPrimitives';
 
 type BattlePredictionOutcome = 'merge' | 'reject';
+type BattlePredictionTrustTier = 'entry' | 'regular' | 'trusted' | 'elite';
 
 interface BattlePredictionState {
   error?: string | null;
@@ -21,10 +22,12 @@ interface BattlePredictionState {
   latestStakePoints?: number | null;
   marketPoolPoints?: number | null;
   mergeOdds?: number | null;
+  observerNetPoints?: number | null;
   potentialMergePayout?: number | null;
   potentialRejectPayout?: number | null;
   rejectOdds?: number | null;
   pending?: boolean;
+  trustTier?: BattlePredictionTrustTier | null;
 }
 
 interface BattleCardProps {
@@ -162,12 +165,23 @@ export const BattleCard = ({
     typeof predictionState?.potentialRejectPayout === 'number'
       ? predictionState.potentialRejectPayout
       : null;
+  const observerNetPoints =
+    typeof predictionState?.observerNetPoints === 'number'
+      ? predictionState.observerNetPoints
+      : null;
+  const trustTier = predictionState?.trustTier ?? null;
   const hasMarketSummary =
     marketPoolPoints !== null ||
     mergeOddsPercent !== null ||
     rejectOddsPercent !== null;
   const hasPotentialPayout =
     potentialMergePayout !== null || potentialRejectPayout !== null;
+  const hasObserverMarketProfile =
+    observerNetPoints !== null || trustTier !== null;
+
+  const formattedTier = trustTier
+    ? `${trustTier.charAt(0).toUpperCase()}${trustTier.slice(1)}`
+    : null;
 
   const handlePredict = (outcome: BattlePredictionOutcome) => {
     if (!onPredict || predictionDisabled || predictionState?.pending) {
@@ -353,6 +367,12 @@ export const BattleCard = ({
                 {t('prediction.potentialPayoutLabel')} {t('pr.merge')}{' '}
                 {potentialMergePayout ?? 0} FIN / {t('pr.reject')}{' '}
                 {potentialRejectPayout ?? 0} FIN
+              </p>
+            ) : null}
+            {hasObserverMarketProfile ? (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {t('prediction.netPoints')} {observerNetPoints ?? 0} FIN |{' '}
+                {t('prediction.tierLabel')} {formattedTier ?? '-'}
               </p>
             ) : null}
             {predictionState?.error ? (

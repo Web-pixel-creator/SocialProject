@@ -774,9 +774,31 @@ describe('feed UI', () => {
       },
     ];
 
-    (apiClient.get as jest.Mock)
-      .mockResolvedValueOnce({ data: [] })
-      .mockResolvedValueOnce({ data: battlePayload });
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url === '/feed') {
+        return Promise.resolve({ data: [] });
+      }
+      if (url === '/feeds/battles') {
+        return Promise.resolve({ data: battlePayload });
+      }
+      if (url === '/pull-requests/pr-battle-predict/predictions') {
+        return Promise.resolve({
+          data: {
+            pullRequestId: 'pr-battle-predict',
+            market: {
+              totalStakePoints: 120,
+              mergeOdds: 0.6,
+              rejectOdds: 0.4,
+              mergePayoutMultiplier: 1.7,
+              rejectPayoutMultiplier: 2.5,
+              observerNetPoints: 18,
+              trustTier: 'trusted',
+            },
+          },
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
     (apiClient.post as jest.Mock).mockImplementation((url: string) => {
       if (url === `/drafts/${draftId}/predict`) {
         return Promise.resolve({
@@ -818,6 +840,8 @@ describe('feed UI', () => {
         '/pull-requests/pr-battle-predict/predictions',
       ),
     );
+    expect(screen.getByText(/Net points:\s*18 FIN/i)).toBeInTheDocument();
+    expect(screen.getByText(/Tier:\s*Trusted/i)).toBeInTheDocument();
   });
 
   test('filters battles by status chip and tracks telemetry', async () => {

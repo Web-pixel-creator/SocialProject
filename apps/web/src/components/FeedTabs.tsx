@@ -79,6 +79,7 @@ const MOBILE_DENSITY_MEDIA_QUERY = '(max-width: 767px)';
 
 type FeedDensity = 'comfort' | 'compact';
 type BattlePredictionOutcome = 'merge' | 'reject';
+type BattlePredictionTrustTier = 'entry' | 'regular' | 'trusted' | 'elite';
 
 interface BattlePredictionEntry {
   error: string | null;
@@ -87,10 +88,12 @@ interface BattlePredictionEntry {
   pullRequestId: string | null;
   marketPoolPoints: number | null;
   mergeOdds: number | null;
+  observerNetPoints: number | null;
   potentialMergePayout: number | null;
   potentialRejectPayout: number | null;
   rejectOdds: number | null;
   stakePoints: number | null;
+  trustTier: BattlePredictionTrustTier | null;
 }
 
 const parseFeedDensity = (value: string | null): FeedDensity | null => {
@@ -291,9 +294,11 @@ const parseBattlePredictionMarket = (
   | 'pullRequestId'
   | 'marketPoolPoints'
   | 'mergeOdds'
+  | 'observerNetPoints'
   | 'rejectOdds'
   | 'potentialMergePayout'
   | 'potentialRejectPayout'
+  | 'trustTier'
 > => {
   const summaryRecord =
     typeof summary === 'object' && summary !== null
@@ -338,12 +343,22 @@ const parseBattlePredictionMarket = (
     asFiniteNumber(marketRecord?.rejectPayoutMultiplier) ??
     (rejectOdds && rejectOdds > 0 ? 1 / rejectOdds : 1);
 
+  const trustTierValue = marketRecord?.trustTier;
+  const trustTier: BattlePredictionTrustTier | null =
+    trustTierValue === 'entry' ||
+    trustTierValue === 'regular' ||
+    trustTierValue === 'trusted' ||
+    trustTierValue === 'elite'
+      ? trustTierValue
+      : null;
+
   return {
     pullRequestId,
     marketPoolPoints:
       totalStakePoints > 0 ? Math.round(totalStakePoints) : null,
     mergeOdds,
     rejectOdds,
+    observerNetPoints: asFiniteNumber(marketRecord?.observerNetPoints),
     potentialMergePayout: Math.max(
       0,
       Math.round(Math.max(0, stakePoints) * mergePayoutMultiplier),
@@ -352,6 +367,7 @@ const parseBattlePredictionMarket = (
       0,
       Math.round(Math.max(0, stakePoints) * rejectPayoutMultiplier),
     ),
+    trustTier,
   };
 };
 
@@ -1892,6 +1908,7 @@ export const FeedTabs = () => {
           pullRequestId: current[draftId]?.pullRequestId ?? null,
           marketPoolPoints: current[draftId]?.marketPoolPoints ?? null,
           mergeOdds: current[draftId]?.mergeOdds ?? null,
+          observerNetPoints: current[draftId]?.observerNetPoints ?? null,
           pending: true,
           potentialMergePayout: current[draftId]?.potentialMergePayout ?? null,
           potentialRejectPayout:
@@ -1902,6 +1919,7 @@ export const FeedTabs = () => {
             roundedStake > 0
               ? roundedStake
               : (current[draftId]?.stakePoints ?? 10),
+          trustTier: current[draftId]?.trustTier ?? null,
         },
       }));
 
@@ -1918,9 +1936,11 @@ export const FeedTabs = () => {
           pullRequestId,
           marketPoolPoints: null,
           mergeOdds: null,
+          observerNetPoints: null,
           rejectOdds: null,
           potentialMergePayout: null,
           potentialRejectPayout: null,
+          trustTier: null,
         };
 
         if (pullRequestId) {
@@ -1976,12 +1996,14 @@ export const FeedTabs = () => {
             pullRequestId: current[draftId]?.pullRequestId ?? null,
             marketPoolPoints: current[draftId]?.marketPoolPoints ?? null,
             mergeOdds: current[draftId]?.mergeOdds ?? null,
+            observerNetPoints: current[draftId]?.observerNetPoints ?? null,
             rejectOdds: current[draftId]?.rejectOdds ?? null,
             potentialMergePayout:
               current[draftId]?.potentialMergePayout ?? null,
             potentialRejectPayout:
               current[draftId]?.potentialRejectPayout ?? null,
             stakePoints: current[draftId]?.stakePoints ?? roundedStake,
+            trustTier: current[draftId]?.trustTier ?? null,
           },
         }));
       }
@@ -2421,6 +2443,7 @@ export const FeedTabs = () => {
             error: null,
             marketPoolPoints: null,
             mergeOdds: null,
+            observerNetPoints: null,
             pending: false,
             potentialMergePayout: null,
             potentialRejectPayout: null,
@@ -2428,6 +2451,7 @@ export const FeedTabs = () => {
             pullRequestId: null,
             rejectOdds: null,
             stakePoints: 10,
+            trustTier: null,
           };
           return (
             <BattleCard
@@ -2453,11 +2477,13 @@ export const FeedTabs = () => {
                 latestOutcome: battlePrediction.predictedOutcome,
                 marketPoolPoints: battlePrediction.marketPoolPoints,
                 mergeOdds: battlePrediction.mergeOdds,
+                observerNetPoints: battlePrediction.observerNetPoints,
                 latestStakePoints: battlePrediction.stakePoints,
                 pending: battlePrediction.pending,
                 potentialMergePayout: battlePrediction.potentialMergePayout,
                 potentialRejectPayout: battlePrediction.potentialRejectPayout,
                 rejectOdds: battlePrediction.rejectOdds,
+                trustTier: battlePrediction.trustTier,
               }}
               {...item}
             />

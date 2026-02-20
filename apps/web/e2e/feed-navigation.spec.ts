@@ -887,6 +887,8 @@ test.describe('Feed navigation and filters', () => {
                             rejectOdds: 0.35,
                             mergePayoutMultiplier: 1.54,
                             rejectPayoutMultiplier: 2.86,
+                            observerNetPoints: 22,
+                            trustTier: 'trusted',
                         },
                     }),
                 });
@@ -932,6 +934,8 @@ test.describe('Feed navigation and filters', () => {
         await page.getByRole('button', { name: /^Predict merge$/i }).click();
         await predictionRequest;
         await summaryRequest;
+        await expect(page.getByText(/Net points:\s*22 FIN/i)).toBeVisible();
+        await expect(page.getByText(/Tier:\s*Trusted/i)).toBeVisible();
     });
 
     test('primary and more tabs switch feed and update query', async ({
