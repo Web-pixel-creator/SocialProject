@@ -373,6 +373,8 @@
   "prediction.tierLabel": "Tier:",
   "prediction.dailyStakeLabel": "Daily stake:",
   "prediction.dailySubmissionsLabel": "Daily submissions:",
+  "prediction.limitStakeCapReached": "Daily stake cap reached for current stake.",
+  "prediction.limitSubmissionCapReached": "Daily prediction submission cap reached.",
   "prediction.stakeLabel": "Stake",
   "prediction.payoutLabel": "Payout",
   "prediction.netPoints": "Net points:",

@@ -156,6 +156,26 @@ export const PredictionWidget = ({
   const dailyStakeCap = summary.market?.dailyStakeCapPoints ?? 0;
   const dailySubmissionsUsed = summary.market?.dailySubmissionsUsed ?? 0;
   const dailySubmissionCap = summary.market?.dailySubmissionCap ?? 0;
+  const hasExistingPrediction = Boolean(
+    summary.observerPrediction?.predictedOutcome,
+  );
+  const dailyStakeCapReached =
+    !hasExistingPrediction &&
+    dailyStakeCap > 0 &&
+    dailyStakeUsed + normalizedStake > dailyStakeCap;
+  const dailySubmissionCapReached =
+    !hasExistingPrediction &&
+    dailySubmissionCap > 0 &&
+    dailySubmissionsUsed >= dailySubmissionCap;
+  const limitsReached = dailyStakeCapReached || dailySubmissionCapReached;
+  const predictionDisabled =
+    submitLoading || summary.pullRequestStatus !== 'pending' || limitsReached;
+  let limitReason: string | null = null;
+  if (dailyStakeCapReached) {
+    limitReason = t('prediction.limitStakeCapReached');
+  } else if (dailySubmissionCapReached) {
+    limitReason = t('prediction.limitSubmissionCapReached');
+  }
 
   return (
     <div className="card p-4">
@@ -199,7 +219,7 @@ export const PredictionWidget = ({
         </label>
         <input
           className="rounded-full border border-border/35 bg-background/70 px-3 py-1.5 text-foreground text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          disabled={submitLoading || summary.pullRequestStatus !== 'pending'}
+          disabled={predictionDisabled}
           id="stake"
           inputMode="numeric"
           max={maxStake}
@@ -216,7 +236,7 @@ export const PredictionWidget = ({
               ? 'border border-chart-2/55 bg-chart-2/14 text-chart-2'
               : 'bg-muted/60 text-foreground'
           }`}
-          disabled={submitLoading || summary.pullRequestStatus !== 'pending'}
+          disabled={predictionDisabled}
           onClick={() => onPredict('merge', normalizedStake)}
           type="button"
         >
@@ -228,13 +248,16 @@ export const PredictionWidget = ({
               ? 'border border-destructive/55 bg-destructive/12 text-destructive'
               : 'bg-muted/60 text-foreground'
           }`}
-          disabled={submitLoading || summary.pullRequestStatus !== 'pending'}
+          disabled={predictionDisabled}
           onClick={() => onPredict('reject', normalizedStake)}
           type="button"
         >
           {t('prediction.predictReject')}
         </button>
       </div>
+      {limitReason ? (
+        <p className="mt-2 text-[11px] text-destructive">{limitReason}</p>
+      ) : null}
       {summary.observerPrediction && (
         <p className="mt-2 text-[11px] text-muted-foreground">
           {t('prediction.yourPrediction')}{' '}

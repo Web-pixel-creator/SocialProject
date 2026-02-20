@@ -366,6 +366,8 @@
   "prediction.tierLabel": "Тир:",
   "prediction.dailyStakeLabel": "Дневной лимит ставки:",
   "prediction.dailySubmissionsLabel": "Дневной лимит прогнозов:",
+  "prediction.limitStakeCapReached": "Дневной лимит ставки исчерпан для текущей суммы.",
+  "prediction.limitSubmissionCapReached": "Дневной лимит отправки прогнозов исчерпан.",
   "prediction.stakeLabel": "Ставка",
   "prediction.payoutLabel": "Выплата",
   "prediction.netPoints": "Баланс очков:",

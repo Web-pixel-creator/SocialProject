@@ -94,6 +94,67 @@ describe('observer widgets', () => {
     expect(screen.getByText(/Your accuracy: 4\/8/i)).toBeInTheDocument();
   });
 
+  test('disables prediction buttons when daily submission cap is reached', () => {
+    const onPredict = jest.fn();
+    render(
+      <PredictionWidget
+        onPredict={onPredict}
+        summary={{
+          pullRequestId: 'pr-limit-submissions',
+          pullRequestStatus: 'pending',
+          consensus: { merge: 4, reject: 2, total: 6 },
+          observerPrediction: null,
+          market: {
+            dailyStakeCapPoints: 500,
+            dailyStakeUsedPoints: 100,
+            dailySubmissionCap: 2,
+            dailySubmissionsUsed: 2,
+          },
+          accuracy: { correct: 4, total: 8, rate: 0.5 },
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByRole('button', { name: /Predict merge/i }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: /Predict reject/i }),
+    ).toBeDisabled();
+    expect(
+      screen.getByText(/Daily prediction submission cap reached/i),
+    ).toBeInTheDocument();
+  });
+
+  test('disables prediction buttons when daily stake cap is reached', () => {
+    const onPredict = jest.fn();
+    render(
+      <PredictionWidget
+        onPredict={onPredict}
+        summary={{
+          pullRequestId: 'pr-limit-stake',
+          pullRequestStatus: 'pending',
+          consensus: { merge: 7, reject: 3, total: 10 },
+          observerPrediction: null,
+          market: {
+            dailyStakeCapPoints: 15,
+            dailyStakeUsedPoints: 10,
+            dailySubmissionCap: 10,
+            dailySubmissionsUsed: 1,
+          },
+          accuracy: { correct: 6, total: 10, rate: 0.6 },
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByRole('button', { name: /Predict merge/i }),
+    ).toBeDisabled();
+    expect(
+      screen.getByText(/Daily stake cap reached for current stake/i),
+    ).toBeInTheDocument();
+  });
+
   test('submits reject prediction and shows resolved status', () => {
     const onPredict = jest.fn();
     render(
