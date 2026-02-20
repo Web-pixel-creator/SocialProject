@@ -938,6 +938,21 @@ describe('draft detail page', () => {
           data: {
             role: 'maker',
             failed: false,
+            selectedProvider: 'gpt-4.1',
+            attempts: [
+              {
+                provider: 'claude-4',
+                status: 'failed',
+                latencyMs: 920,
+                errorCode: 'AI_PROVIDER_TIMEOUT',
+              },
+              {
+                provider: 'gpt-4.1',
+                status: 'success',
+                latencyMs: 340,
+                errorCode: null,
+              },
+            ],
           },
         },
       });
@@ -957,11 +972,19 @@ describe('draft detail page', () => {
     await flushAsyncState();
 
     expect(
-      screen.getByText(/Orchestration step \(maker\)/i),
-    ).toBeInTheDocument();
+      screen.getAllByText(/Orchestration step \(maker\)/i).length,
+    ).toBeGreaterThanOrEqual(1);
     expect(
-      screen.getByText(/Orchestration cycle completed \(3\)/i),
+      screen.getAllByText(/Orchestration cycle completed \(3\)/i).length,
+    ).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Orchestration timeline/i)).toBeInTheDocument();
+    expect(screen.getByText(/Provider:\s+gpt-4.1/i)).toBeInTheDocument();
+    expect(screen.getByText(/Attempts:\s+2/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/claude-4 • failed • 920ms • AI_PROVIDER_TIMEOUT/i),
     ).toBeInTheDocument();
+    expect(screen.getByText(/gpt-4.1 • success • 340ms/i)).toBeInTheDocument();
+    expect(screen.getByText(/Steps:\s+3/i)).toBeInTheDocument();
   });
 
   test('shows followed studios section and streams updates for followed studio drafts', async () => {

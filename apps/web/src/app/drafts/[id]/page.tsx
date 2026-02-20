@@ -27,7 +27,10 @@ import {
 import { PullRequestList } from '../../../components/PullRequestList';
 import { VersionTimeline } from '../../../components/VersionTimeline';
 import { useLanguage } from '../../../contexts/LanguageContext';
-import { useRealtimeRoom } from '../../../hooks/useRealtimeRoom';
+import {
+  type RealtimeEvent,
+  useRealtimeRoom,
+} from '../../../hooks/useRealtimeRoom';
 import { apiClient } from '../../../lib/api';
 import { SEARCH_DEFAULT_PROFILE } from '../../../lib/config';
 import {
@@ -154,6 +157,25 @@ interface PredictionSubmitPayload {
   pullRequestId: string;
   outcome: 'merge' | 'reject';
   stakePoints: number;
+}
+
+interface OrchestrationAttemptView {
+  provider: string;
+  status: string;
+  latencyMs: number | null;
+  errorCode: string | null;
+}
+
+interface OrchestrationTimelineEntry {
+  id: string;
+  type: 'step' | 'completed';
+  sequence: number;
+  role: string | null;
+  failed: boolean;
+  completed: boolean | null;
+  provider: string | null;
+  attempts: OrchestrationAttemptView[];
+  stepCount: number | null;
 }
 
 type NextAction =
@@ -311,6 +333,102 @@ const isWatchlistEntryForDraft = (item: unknown, draftId: string): boolean => {
 };
 
 type Translate = (key: string) => string;
+
+const toNestedRealtimePayload = (payload: Record<string, unknown>) =>
+  payload.data && typeof payload.data === 'object'
+    ? (payload.data as Record<string, unknown>)
+    : payload;
+
+const toOrchestrationAttempts = (
+  value: unknown,
+): OrchestrationAttemptView[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .map((item) => {
+      if (typeof item !== 'object' || item === null) {
+        return null;
+      }
+      const body = item as Record<string, unknown>;
+      const provider =
+        typeof body.provider === 'string' && body.provider.trim().length > 0
+          ? body.provider
+          : 'unknown';
+      const status =
+        typeof body.status === 'string' && body.status.trim().length > 0
+          ? body.status
+          : 'unknown';
+      const latency = Number(body.latencyMs);
+      const errorCode =
+        typeof body.errorCode === 'string' && body.errorCode.trim().length > 0
+          ? body.errorCode
+          : null;
+      return {
+        provider,
+        status,
+        latencyMs: Number.isFinite(latency) && latency >= 0 ? latency : null,
+        errorCode,
+      };
+    })
+    .filter((attempt): attempt is OrchestrationAttemptView => attempt !== null);
+};
+
+const buildOrchestrationTimelineEntries = (
+  events: RealtimeEvent[],
+): OrchestrationTimelineEntry[] => {
+  const timeline: OrchestrationTimelineEntry[] = [];
+  for (const event of events) {
+    if (
+      event.type !== 'agent_gateway_orchestration_step' &&
+      event.type !== 'agent_gateway_orchestration_completed'
+    ) {
+      continue;
+    }
+    const payload = toNestedRealtimePayload(event.payload);
+    if (event.type === 'agent_gateway_orchestration_step') {
+      const role =
+        typeof payload.role === 'string' && payload.role.trim().length > 0
+          ? payload.role
+          : null;
+      const provider =
+        typeof payload.selectedProvider === 'string' &&
+        payload.selectedProvider.trim().length > 0
+          ? payload.selectedProvider
+          : null;
+      timeline.push({
+        id: event.id,
+        type: 'step',
+        sequence: event.sequence,
+        role,
+        failed: payload.failed === true,
+        completed: null,
+        provider,
+        attempts: toOrchestrationAttempts(payload.attempts),
+        stepCount: null,
+      });
+      continue;
+    }
+
+    const stepCount = Number(payload.stepCount);
+    timeline.push({
+      id: event.id,
+      type: 'completed',
+      sequence: event.sequence,
+      role: null,
+      failed: false,
+      completed:
+        typeof payload.completed === 'boolean' ? payload.completed : null,
+      provider: null,
+      attempts: [],
+      stepCount: Number.isFinite(stepCount) ? stepCount : null,
+    });
+  }
+
+  return timeline
+    .sort((left, right) => right.sequence - left.sequence)
+    .slice(0, 8);
+};
 
 const getPrimaryDraftError = (
   draftLoadError: unknown,
@@ -542,10 +660,7 @@ const formatDraftEventMessage = (
   payload: Record<string, unknown>,
   t: Translate,
 ): string => {
-  const resolvedPayload =
-    payload.data && typeof payload.data === 'object'
-      ? (payload.data as Record<string, unknown>)
-      : payload;
+  const resolvedPayload = toNestedRealtimePayload(payload);
 
   if (eventType === 'fix_request') {
     return t('draftDetail.events.newFixRequest');
@@ -1022,6 +1137,10 @@ export default function DraftDetailPage() {
 
   const { events } = useRealtimeRoom(
     draftId ? `post:${draftId}` : 'post:unknown',
+  );
+  const orchestrationTimeline = useMemo(
+    () => buildOrchestrationTimelineEntries(events),
+    [events],
   );
 
   const runDemoFlow = useCallback(async () => {
@@ -1634,6 +1753,93 @@ export default function DraftDetailPage() {
               followingStudios={followingStudios}
               t={t}
             />
+            <div className="card p-4 sm:p-5">
+              <p className="pill">{t('draftDetail.orchestration.pill')}</p>
+              <h3 className="mt-3 font-semibold text-foreground text-sm">
+                {t('draftDetail.orchestration.title')}
+              </h3>
+              <div className="mt-4 grid gap-2 text-muted-foreground text-xs">
+                {orchestrationTimeline.length === 0 ? (
+                  <span>{t('draftDetail.orchestration.empty')}</span>
+                ) : (
+                  orchestrationTimeline.map((entry) => {
+                    const roleLabel = (
+                      entry.role ?? t('draftDetail.orchestration.unknownRole')
+                    ).replace(/_/g, ' ');
+                    let title = t('draftDetail.events.orchestrationCompleted');
+                    if (entry.type === 'step') {
+                      title = entry.failed
+                        ? t('draftDetail.events.orchestrationStepFailed')
+                        : t('draftDetail.events.orchestrationStep');
+                      title = `${title} (${roleLabel})`;
+                    } else if (entry.completed === false) {
+                      title = t('draftDetail.orchestration.completedFailed');
+                    }
+
+                    return (
+                      <div
+                        className="rounded-lg border border-border/25 bg-background/60 p-2.5"
+                        key={entry.id}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span
+                            className={`font-medium ${
+                              entry.type === 'step' && entry.failed
+                                ? 'text-destructive'
+                                : 'text-foreground'
+                            }`}
+                          >
+                            {title}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">
+                            #{entry.sequence}
+                          </span>
+                        </div>
+                        {entry.type === 'step' && (
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            {t('draftDetail.orchestration.provider')}:&nbsp;
+                            {entry.provider ??
+                              t('draftDetail.orchestration.unknownProvider')}
+                          </p>
+                        )}
+                        {entry.type === 'completed' &&
+                          entry.stepCount !== null &&
+                          entry.stepCount >= 0 && (
+                            <p className="mt-1 text-[11px] text-muted-foreground">
+                              {t('draftDetail.orchestration.steps')}:&nbsp;
+                              {entry.stepCount}
+                            </p>
+                          )}
+                        {entry.type === 'step' && entry.attempts.length > 0 && (
+                          <>
+                            <p className="mt-2 text-[11px] text-muted-foreground">
+                              {t('draftDetail.orchestration.attempts')}:&nbsp;
+                              {entry.attempts.length}
+                            </p>
+                            <ul className="mt-1 grid gap-1">
+                              {entry.attempts.map((attempt, index) => (
+                                <li
+                                  className="text-[11px] text-muted-foreground"
+                                  key={`${entry.id}-${attempt.provider}-${index}`}
+                                >
+                                  {attempt.provider} • {attempt.status}
+                                  {attempt.latencyMs !== null
+                                    ? ` • ${attempt.latencyMs}ms`
+                                    : ''}
+                                  {attempt.errorCode
+                                    ? ` • ${attempt.errorCode}`
+                                    : ''}
+                                </li>
+                              ))}
+                            </ul>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
             <div className="card p-4 sm:p-5">
               <p className="pill">{t('draftDetail.activity.pill')}</p>
               <h3 className="mt-3 font-semibold text-foreground text-sm">
