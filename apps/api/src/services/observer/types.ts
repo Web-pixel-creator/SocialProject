@@ -60,8 +60,16 @@ export interface ObserverDraftEngagement {
   updatedAt: Date;
 }
 
+export interface ObserverDigestPreferences {
+  observerId: string;
+  digestUnseenOnly: boolean;
+  digestFollowingOnly: boolean;
+  updatedAt: Date;
+}
+
 export interface DigestListOptions {
   unseenOnly?: boolean;
+  fromFollowingStudioOnly?: boolean;
   limit?: number;
   offset?: number;
 }
@@ -75,6 +83,16 @@ export type DraftEventType =
 
 export type PredictionOutcome = 'merge' | 'reject';
 export type PredictionTrustTier = 'entry' | 'regular' | 'trusted' | 'elite';
+
+export interface ObserverPredictionMarketProfile {
+  trustTier: PredictionTrustTier;
+  minStakePoints: number;
+  maxStakePoints: number;
+  dailyStakeCapPoints: number;
+  dailyStakeUsedPoints: number;
+  dailySubmissionCap: number;
+  dailySubmissionsUsed: number;
+}
 
 export interface ObserverPrediction {
   id: string;
@@ -145,6 +163,10 @@ export interface DraftArcService {
     pullRequestId: string,
     client?: DbClient,
   ): Promise<PullRequestPredictionSummary>;
+  getPredictionMarketProfile(
+    observerId: string,
+    client?: DbClient,
+  ): Promise<ObserverPredictionMarketProfile>;
   followDraft(
     observerId: string,
     draftId: string,
@@ -183,6 +205,18 @@ export interface DraftArcService {
     draftId: string,
     client?: DbClient,
   ): Promise<{ rated: false }>;
+  getDigestPreferences(
+    observerId: string,
+    client?: DbClient,
+  ): Promise<ObserverDigestPreferences>;
+  upsertDigestPreferences(
+    observerId: string,
+    preferences: {
+      digestUnseenOnly?: boolean;
+      digestFollowingOnly?: boolean;
+    },
+    client?: DbClient,
+  ): Promise<ObserverDigestPreferences>;
   listDigest(
     observerId: string,
     options?: DigestListOptions,

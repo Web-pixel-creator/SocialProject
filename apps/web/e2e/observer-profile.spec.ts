@@ -27,6 +27,9 @@ test.describe('Observer profile page', () => {
   }) => {
     let profileRequests = 0;
     let digestRequests = 0;
+    let digestPreferencesUpdates = 0;
+    let studioUnfollowRequests = 0;
+    let isFollowingStudio = true;
 
     await page.addInitScript(() => {
       window.localStorage.setItem('finishit_token', 'e2e-token');
@@ -59,25 +62,8 @@ test.describe('Observer profile page', () => {
 
       if (method === 'GET' && path === '/api/observers/me/profile') {
         profileRequests += 1;
-        return route.fulfill(
-          withJson({
-            observer: {
-              id: 'observer-e2e',
-              email: 'observer@example.com',
-              createdAt: '2026-01-01T00:00:00.000Z',
-            },
-            counts: {
-              followingStudios: 2,
-              watchlistDrafts: 3,
-              digestUnseen: 1,
-            },
-            predictions: {
-              correct: 4,
-              total: 5,
-              rate: 0.8,
-              netPoints: 22,
-            },
-            followingStudios: [
+        const followingStudios = isFollowingStudio
+          ? [
               {
                 id: 'studio-e2e-1',
                 studioName: 'Studio One',
@@ -86,7 +72,38 @@ test.describe('Observer profile page', () => {
                 followerCount: 10,
                 followedAt: '2026-02-01T10:00:00.000Z',
               },
-            ],
+            ]
+          : [];
+        return route.fulfill(
+          withJson({
+            observer: {
+              id: 'observer-e2e',
+              email: 'observer@example.com',
+              createdAt: '2026-01-01T00:00:00.000Z',
+            },
+            counts: {
+              followingStudios: isFollowingStudio ? 1 : 0,
+              watchlistDrafts: 3,
+              digestUnseen: 1,
+            },
+            predictions: {
+              correct: 4,
+              total: 5,
+              rate: 0.8,
+              netPoints: 22,
+              market: {
+                trustTier: 'trusted',
+                minStakePoints: 20,
+                maxStakePoints: 400,
+                dailyStakeCapPoints: 1000,
+                dailyStakeUsedPoints: 180,
+                dailyStakeRemainingPoints: 820,
+                dailySubmissionCap: 8,
+                dailySubmissionsUsed: 3,
+                dailySubmissionsRemaining: 5,
+              },
+            },
+            followingStudios,
             watchlistHighlights: [
               {
                 draftId: 'draft-e2e-1',
@@ -138,6 +155,40 @@ test.describe('Observer profile page', () => {
         );
       }
 
+      if (method === 'GET' && path === '/api/observers/me/preferences') {
+        return route.fulfill(
+          withJson({
+            digest: {
+              unseenOnly: false,
+              followingOnly: false,
+              updatedAt: '2026-02-01T10:00:00.000Z',
+            },
+          }),
+        );
+      }
+
+      if (method === 'PUT' && path === '/api/observers/me/preferences') {
+        digestPreferencesUpdates += 1;
+        const payload = route.request().postDataJSON() as {
+          digest?: { unseenOnly?: boolean; followingOnly?: boolean };
+        };
+        return route.fulfill(
+          withJson({
+            digest: {
+              unseenOnly: Boolean(payload?.digest?.unseenOnly),
+              followingOnly: Boolean(payload?.digest?.followingOnly),
+              updatedAt: '2026-02-01T10:40:00.000Z',
+            },
+          }),
+        );
+      }
+
+      if (method === 'DELETE' && path === '/api/studios/studio-e2e-1/follow') {
+        studioUnfollowRequests += 1;
+        isFollowingStudio = false;
+        return route.fulfill(withJson({ following: false }));
+      }
+
       if (method === 'POST' && path === '/api/telemetry/ux') {
         return route.fulfill(withJson({ ok: true }));
       }
@@ -164,6 +215,15 @@ test.describe('Observer profile page', () => {
       page.getByRole('link', { name: /Studio One updated draft/i }),
     ).toBeVisible();
     await expect(page.getByText(/Net prediction points:\s*22/i)).toBeVisible();
+    await expect(page.getByText(/Prediction tier:\s*Trusted/i)).toBeVisible();
+    await expect(page.getByText(/Max stake:\s*400/i)).toBeVisible();
+    await expect(
+      page.getByText(/Daily stake:\s*180\/1000/i),
+    ).toBeVisible();
+    await page.getByRole('button', { name: /Unseen only/i }).click();
+    await expect.poll(() => digestPreferencesUpdates).toBeGreaterThan(0);
+    await page.getByRole('button', { name: /Unfollow studio/i }).click();
+    await expect.poll(() => studioUnfollowRequests).toBe(1);
 
     const resyncButton = page.getByRole('button', { name: /Resync now/i });
     await expect(resyncButton).toBeVisible();
@@ -223,6 +283,17 @@ test.describe('Observer profile page', () => {
               total: 1,
               rate: 1,
               netPoints: 8,
+              market: {
+                trustTier: 'proven',
+                minStakePoints: 30,
+                maxStakePoints: 500,
+                dailyStakeCapPoints: 1300,
+                dailyStakeUsedPoints: 200,
+                dailyStakeRemainingPoints: 1100,
+                dailySubmissionCap: 10,
+                dailySubmissionsUsed: 4,
+                dailySubmissionsRemaining: 6,
+              },
             },
             followingStudios: [],
             watchlistHighlights: [],
@@ -248,6 +319,17 @@ test.describe('Observer profile page', () => {
               total: 1,
               rate: 1,
               netPoints: 8,
+              market: {
+                trustTier: 'proven',
+                minStakePoints: 30,
+                maxStakePoints: 500,
+                dailyStakeCapPoints: 1300,
+                dailyStakeUsedPoints: 200,
+                dailyStakeRemainingPoints: 1100,
+                dailySubmissionCap: 10,
+                dailySubmissionsUsed: 4,
+                dailySubmissionsRemaining: 6,
+              },
             },
             followingStudios: [],
             watchlistHighlights: [],
@@ -303,6 +385,17 @@ test.describe('Observer profile page', () => {
               total: 5,
               rate: 0.8,
               netPoints: 22,
+              market: {
+                trustTier: 'trusted',
+                minStakePoints: 20,
+                maxStakePoints: 400,
+                dailyStakeCapPoints: 1000,
+                dailyStakeUsedPoints: 180,
+                dailyStakeRemainingPoints: 820,
+                dailySubmissionCap: 8,
+                dailySubmissionsUsed: 3,
+                dailySubmissionsRemaining: 5,
+              },
             },
             followingStudios: [
               {
@@ -361,6 +454,8 @@ test.describe('Observer profile page', () => {
     ).toBeVisible();
     await expect(page.getByText(/Watchlist highlights/i)).toBeVisible();
     await expect(page.getByText(/Recent predictions/i)).toBeVisible();
+    await expect(page.getByText(/Prediction tier/i)).toBeVisible();
+    await expect(page.getByText(/Max stake:\s*400/i)).toBeVisible();
     await expect(
       page.getByRole('link', { name: /^Studio One$/i }),
     ).toBeVisible();

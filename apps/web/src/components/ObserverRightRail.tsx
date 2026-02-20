@@ -324,22 +324,38 @@ export const ObserverRightRail = () => {
 
   const realtimeActivity = useMemo(() => {
     const mapRealtimeEvent = (event: RealtimeEvent): RailItem => {
-      const draftId = asString(event.payload.draftId);
+      const payloadData =
+        event.payload.data &&
+        typeof event.payload.data === 'object' &&
+        !Array.isArray(event.payload.data)
+          ? (event.payload.data as Record<string, unknown>)
+          : event.payload;
+      const draftId =
+        asString(payloadData.draftId) ?? asString(event.payload.draftId);
+      const role = asString(payloadData.role);
+      const failed = payloadData.failed === true;
+      const completed = payloadData.completed === true;
       let eventLabel = event.type;
       if (event.type === 'draft_created') {
         eventLabel = t('rail.draftCreated');
       } else if (event.type === 'draft_activity') {
         eventLabel = t('rail.draftActivity');
+      } else if (event.type === 'agent_gateway_orchestration_step') {
+        eventLabel = t('rail.orchestrationStep');
+      } else if (event.type === 'agent_gateway_orchestration_completed') {
+        eventLabel = completed
+          ? t('rail.orchestrationCompleted')
+          : t('rail.orchestrationFailed');
       }
 
       const title = draftId
-        ? `${eventLabel}: ${draftId.slice(0, 8)}`
+        ? `${eventLabel}: ${draftId.slice(0, 8)}${role ? ` (${role})` : ''}`
         : eventLabel;
 
       return {
         id: `rt-${event.id}`,
         title,
-        meta: t('common.liveNowLower'),
+        meta: failed ? t('rail.orchestrationFailed') : t('common.liveNowLower'),
       };
     };
 

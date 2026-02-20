@@ -14,6 +14,12 @@ env.ADMIN_API_TOKEN = env.ADMIN_API_TOKEN || 'test-admin-token';
 const app = createApp();
 
 const resetDb = async () => {
+  await db.query(
+    'TRUNCATE TABLE agent_gateway_events RESTART IDENTITY CASCADE',
+  );
+  await db.query(
+    'TRUNCATE TABLE agent_gateway_sessions RESTART IDENTITY CASCADE',
+  );
   await db.query('TRUNCATE TABLE draft_embeddings RESTART IDENTITY CASCADE');
   await db.query('DELETE FROM embedding_events');
   await db.query('TRUNCATE TABLE ux_events RESTART IDENTITY CASCADE');
@@ -71,6 +77,297 @@ describe('Admin API routes', () => {
     expect(response.body).toHaveProperty('db');
     expect(response.body).toHaveProperty('redis');
     expect(response.body).toHaveProperty('memory');
+  });
+
+  test('ai runtime profiles endpoint returns configured role chains', async () => {
+    const response = await request(app)
+      .get('/api/admin/ai-runtime/profiles')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(response.status).toBe(200);
+    expect(Array.isArray(response.body.profiles)).toBe(true);
+    expect(response.body.profiles.length).toBeGreaterThan(0);
+    const criticProfile = response.body.profiles.find(
+      (profile: { role: string }) => profile.role === 'critic',
+    );
+    expect(criticProfile).toBeTruthy();
+    expect(Array.isArray(criticProfile.providers)).toBe(true);
+    expect(criticProfile.providers.length).toBeGreaterThan(1);
+    expect(Array.isArray(response.body.providers)).toBe(true);
+  });
+
+  test('ai runtime dry-run applies failover chain', async () => {
+    const response = await request(app)
+      .post('/api/admin/ai-runtime/dry-run')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        role: 'critic',
+        prompt: 'Review draft coherence and suggest next action',
+        providersOverride: ['claude-4', 'gpt-4.1'],
+        simulateFailures: ['claude-4'],
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.result.failed).toBe(false);
+    expect(response.body.result.selectedProvider).toBe('gpt-4.1');
+    expect(response.body.result.attempts[0]).toMatchObject({
+      provider: 'claude-4',
+      status: 'failed',
+      errorCode: 'AI_PROVIDER_UNAVAILABLE',
+    });
+    expect(response.body.result.attempts[1]).toMatchObject({
+      provider: 'gpt-4.1',
+      status: 'success',
+      errorCode: null,
+    });
+  });
+
+  test('agent gateway orchestration endpoint is guarded by feature flag', async () => {
+    const previous = env.AGENT_ORCHESTRATION_ENABLED;
+    env.AGENT_ORCHESTRATION_ENABLED = 'false';
+    try {
+      const response = await request(app)
+        .post('/api/admin/agent-gateway/orchestrate')
+        .set('x-admin-token', env.ADMIN_API_TOKEN)
+        .send({
+          draftId: '00000000-0000-0000-0000-000000000000',
+        });
+
+      expect(response.status).toBe(503);
+      expect(response.body.error).toBe('AGENT_ORCHESTRATION_DISABLED');
+    } finally {
+      env.AGENT_ORCHESTRATION_ENABLED = previous;
+    }
+  });
+
+  test('agent gateway orchestration endpoint runs critic-maker-judge cycle', async () => {
+    const { agentId } = await registerAgent('Orchestration Persona Studio');
+    await db.query(
+      `UPDATE agents
+       SET personality = $2,
+           style_tags = $3::jsonb,
+           skill_profile = $4::jsonb
+       WHERE id = $1`,
+      [
+        agentId,
+        'Bold cinematic neon storytelling',
+        '["neon","cinematic"]',
+        JSON.stringify({
+          tone: 'cinematic',
+          forbiddenTerms: ['flat', 'generic'],
+          preferredPatterns: ['strong contrast', 'depth layering'],
+        }),
+      ],
+    );
+    const postService = new PostServiceImpl(db);
+    const createdDraft = await postService.createDraft({
+      authorId: agentId,
+      imageUrl: 'https://example.com/orchestration-v1.png',
+      thumbnailUrl: 'https://example.com/orchestration-v1-thumb.png',
+      metadata: { title: 'Orchestration Draft' },
+    });
+
+    const response = await request(app)
+      .post('/api/admin/agent-gateway/orchestrate')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        draftId: createdDraft.draft.id,
+        promptSeed: 'Focus on narrative coherence and style consistency.',
+        metadata: { source: 'integration-test' },
+      });
+
+    expect(response.status).toBe(201);
+    expect(response.body.completed).toBe(true);
+    expect(response.body.steps).toHaveLength(3);
+    expect(
+      response.body.steps.map((step: { role: string }) => step.role),
+    ).toEqual(['critic', 'maker', 'judge']);
+    expect(response.body.studioContext).toMatchObject({
+      studioId: agentId,
+      studioName: 'Orchestration Persona Studio',
+      personality: 'Bold cinematic neon storytelling',
+      styleTags: ['neon', 'cinematic'],
+      skillProfile: {
+        tone: 'cinematic',
+        forbiddenTerms: ['flat', 'generic'],
+        preferredPatterns: ['strong contrast', 'depth layering'],
+      },
+    });
+    expect(String(response.body.steps[0]?.prompt ?? '')).toContain(
+      'Bold cinematic neon storytelling',
+    );
+    expect(String(response.body.steps[0]?.prompt ?? '')).toContain(
+      'Studio style tags: neon, cinematic.',
+    );
+    expect(String(response.body.steps[0]?.prompt ?? '')).toContain(
+      'Skill profile tone: cinematic.',
+    );
+    expect(String(response.body.steps[0]?.prompt ?? '')).toContain(
+      'Skill forbidden terms: flat, generic.',
+    );
+
+    const sessionId = response.body.sessionId as string;
+    expect(typeof sessionId).toBe('string');
+
+    const detail = await request(app)
+      .get(`/api/admin/agent-gateway/sessions/${sessionId}`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(detail.status).toBe(200);
+    expect(detail.body.session.status).toBe('closed');
+    expect(Array.isArray(detail.body.events)).toBe(true);
+    expect(
+      detail.body.events.some(
+        (event: { type: string }) => event.type === 'draft_cycle_completed',
+      ),
+    ).toBe(true);
+  });
+
+  test('agent gateway orchestration broadcasts step/completed events to session, post, and feed scopes', async () => {
+    const mockRealtime = {
+      broadcast: jest.fn(),
+      getEvents: jest.fn(() => []),
+      getResyncPayload: jest.fn(() => ({
+        events: [],
+        latestSequence: 0,
+        oldestSequence: null,
+        resyncRequired: false,
+      })),
+    };
+    app.set('realtime', mockRealtime);
+
+    const { agentId } = await registerAgent('Orchestration Broadcast Studio');
+    const postService = new PostServiceImpl(db);
+    const createdDraft = await postService.createDraft({
+      authorId: agentId,
+      imageUrl: 'https://example.com/orchestration-broadcast-v1.png',
+      thumbnailUrl: 'https://example.com/orchestration-broadcast-v1-thumb.png',
+      metadata: { title: 'Orchestration Broadcast Draft' },
+    });
+
+    const response = await request(app)
+      .post('/api/admin/agent-gateway/orchestrate')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        draftId: createdDraft.draft.id,
+      });
+
+    expect(response.status).toBe(201);
+
+    const sessionId = response.body.sessionId as string;
+    const draftId = response.body.draftId as string;
+    const broadcastCalls = mockRealtime.broadcast.mock.calls as [
+      string,
+      string,
+      Record<string, unknown>,
+    ][];
+
+    expect(
+      broadcastCalls.some(
+        (call) =>
+          call[0] === `session:${sessionId}` &&
+          call[1] === 'agent_gateway_orchestration_step',
+      ),
+    ).toBe(true);
+    expect(
+      broadcastCalls.some(
+        (call) =>
+          call[0] === `post:${draftId}` &&
+          call[1] === 'agent_gateway_orchestration_step',
+      ),
+    ).toBe(true);
+    expect(
+      broadcastCalls.some(
+        (call) =>
+          call[0] === 'feed:live' &&
+          call[1] === 'agent_gateway_orchestration_step',
+      ),
+    ).toBe(true);
+
+    expect(
+      broadcastCalls.some(
+        (call) =>
+          call[0] === `session:${sessionId}` &&
+          call[1] === 'agent_gateway_orchestration_completed',
+      ),
+    ).toBe(true);
+    expect(
+      broadcastCalls.some(
+        (call) =>
+          call[0] === `post:${draftId}` &&
+          call[1] === 'agent_gateway_orchestration_completed',
+      ),
+    ).toBe(true);
+    expect(
+      broadcastCalls.some(
+        (call) =>
+          call[0] === 'feed:live' &&
+          call[1] === 'agent_gateway_orchestration_completed',
+      ),
+    ).toBe(true);
+
+    app.set('realtime', undefined);
+  });
+
+  test('agent gateway admin endpoints support session lifecycle', async () => {
+    const created = await request(app)
+      .post('/api/admin/agent-gateway/sessions')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        channel: 'ws-control-plane',
+        draftId: 'draft-sim-1',
+        roles: ['critic', 'maker'],
+        metadata: { source: 'integration-test' },
+      });
+
+    expect(created.status).toBe(201);
+    expect(created.body.session.status).toBe('active');
+    expect(created.body.session.channel).toBe('ws-control-plane');
+    expect(created.body.session.roles).toEqual(['critic', 'maker']);
+
+    const sessionId = created.body.session.id as string;
+
+    const eventCreated = await request(app)
+      .post(`/api/admin/agent-gateway/sessions/${sessionId}/events`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        fromRole: 'critic',
+        toRole: 'maker',
+        type: 'fix_request_created',
+        payload: { severity: 'medium' },
+      });
+
+    expect(eventCreated.status).toBe(201);
+    expect(eventCreated.body.event.sessionId).toBe(sessionId);
+    expect(eventCreated.body.event.type).toBe('fix_request_created');
+
+    const detail = await request(app)
+      .get(`/api/admin/agent-gateway/sessions/${sessionId}`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(detail.status).toBe(200);
+    expect(detail.body.session.id).toBe(sessionId);
+    expect(Array.isArray(detail.body.events)).toBe(true);
+    expect(detail.body.events).toHaveLength(1);
+
+    const closed = await request(app)
+      .post(`/api/admin/agent-gateway/sessions/${sessionId}/close`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send();
+
+    expect(closed.status).toBe(200);
+    expect(closed.body.session.status).toBe('closed');
+
+    const appendAfterClose = await request(app)
+      .post(`/api/admin/agent-gateway/sessions/${sessionId}/events`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        fromRole: 'maker',
+        type: 'pull_request_submitted',
+      });
+
+    expect(appendAfterClose.status).toBe(409);
+    expect(appendAfterClose.body.error).toBe('AGENT_GATEWAY_SESSION_CLOSED');
   });
 
   test('embedding backfill and metrics endpoints return data', async () => {

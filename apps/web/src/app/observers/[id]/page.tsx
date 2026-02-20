@@ -54,6 +54,17 @@ interface ObserverPublicProfileResponse {
     total: number;
     rate: number;
     netPoints: number;
+    market?: {
+      trustTier: 'entry' | 'regular' | 'trusted' | 'elite';
+      minStakePoints: number;
+      maxStakePoints: number;
+      dailyStakeCapPoints: number;
+      dailyStakeUsedPoints: number;
+      dailyStakeRemainingPoints: number;
+      dailySubmissionCap: number;
+      dailySubmissionsUsed: number;
+      dailySubmissionsRemaining: number;
+    };
   };
   followingStudios: ObserverProfileStudio[];
   watchlistHighlights: ObserverProfileWatchlist[];
@@ -161,6 +172,18 @@ export default function ObserverPublicProfilePage() {
       label: t('observerProfile.netPoints'),
       value: profile?.predictions.netPoints ?? 0,
     },
+    {
+      label: t('observerProfile.marketTier'),
+      value: profile?.predictions.market
+        ? `${
+            profile.predictions.market.trustTier.charAt(0).toUpperCase() +
+            profile.predictions.market.trustTier.slice(1)
+          }`
+        : '-',
+      description: profile?.predictions.market
+        ? `${t('observerProfile.maxStake')}: ${profile.predictions.market.maxStakePoints}`
+        : undefined,
+    },
   ];
 
   const observerHandle =
@@ -220,7 +243,7 @@ export default function ObserverPublicProfilePage() {
               : t('observerProfile.resync')}
           </button>
         </div>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
           {summaryCards.map((card) => (
             <div
               className="rounded-xl border border-border/25 bg-background/58 p-3"

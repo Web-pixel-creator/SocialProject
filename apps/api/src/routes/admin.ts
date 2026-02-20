@@ -1,8 +1,12 @@
+import type { Request } from 'express';
 import { Router } from 'express';
 import { env } from '../config/env';
 import { db } from '../db/pool';
 import { requireAdmin } from '../middleware/admin';
 import { redis } from '../redis/client';
+import { agentGatewayService } from '../services/agentGateway/agentGatewayService';
+import { aiRuntimeService } from '../services/aiRuntime/aiRuntimeService';
+import type { AIRuntimeRole } from '../services/aiRuntime/types';
 import {
   ACTION_LIMITS,
   BudgetServiceImpl,
@@ -10,7 +14,9 @@ import {
   getUtcDateKey,
 } from '../services/budget/budgetService';
 import { ServiceError } from '../services/common/errors';
+import { draftOrchestrationService } from '../services/orchestration/draftOrchestrationService';
 import { PrivacyServiceImpl } from '../services/privacy/privacyService';
+import type { RealtimeService } from '../services/realtime/types';
 import { EmbeddingBackfillServiceImpl } from '../services/search/embeddingBackfillService';
 
 const router = Router();
@@ -26,6 +32,29 @@ const toNumber = (value: string | number | undefined, fallback = 0) =>
     : Number.parseInt(value ?? `${fallback}`, 10);
 const toRate = (numerator: number, denominator: number) =>
   denominator > 0 ? Number((numerator / denominator).toFixed(3)) : null;
+
+const RUNTIME_ROLES: AIRuntimeRole[] = ['author', 'critic', 'maker', 'judge'];
+
+const parseOptionalPositiveNumber = (value: unknown): number | undefined => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) && value > 0 ? value : undefined;
+  }
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+  }
+  return undefined;
+};
+
+const getRealtime = (req: Request) =>
+  req.app.get('realtime') as RealtimeService | undefined;
+
+const parseOptionalStringArray = (value: unknown): string[] | undefined => {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  return value.filter((item): item is string => typeof item === 'string');
+};
 
 interface BudgetRemainingPayload {
   date: string;
@@ -163,6 +192,337 @@ router.get(
       );
 
       res.json({ windowHours: hours, rows: summary.rows });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+router.get('/admin/ai-runtime/profiles', requireAdmin, (_req, res) => {
+  res.json({
+    profiles: aiRuntimeService.getProfiles(),
+    providers: aiRuntimeService.getProviderStates(),
+  });
+});
+
+router.post(
+  '/admin/ai-runtime/dry-run',
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      const body =
+        typeof req.body === 'object' && req.body !== null
+          ? (req.body as Record<string, unknown>)
+          : {};
+      const roleRaw = body.role;
+      const promptRaw = body.prompt;
+      const providersOverrideRaw = body.providersOverride;
+      const simulateFailuresRaw = body.simulateFailures;
+      const timeoutMsRaw = body.timeoutMs;
+
+      if (
+        typeof roleRaw !== 'string' ||
+        !RUNTIME_ROLES.includes(roleRaw as AIRuntimeRole)
+      ) {
+        throw new ServiceError(
+          'AI_RUNTIME_INVALID_ROLE',
+          'role must be one of author, critic, maker, judge.',
+          400,
+        );
+      }
+      if (typeof promptRaw !== 'string' || promptRaw.trim().length === 0) {
+        throw new ServiceError(
+          'AI_RUNTIME_INVALID_PROMPT',
+          'prompt is required.',
+          400,
+        );
+      }
+
+      const providersOverride = Array.isArray(providersOverrideRaw)
+        ? providersOverrideRaw
+            .filter((value): value is string => typeof value === 'string')
+            .map((value) => value.trim())
+            .filter((value) => value.length > 0)
+        : undefined;
+      const simulateFailures = Array.isArray(simulateFailuresRaw)
+        ? simulateFailuresRaw
+            .filter((value): value is string => typeof value === 'string')
+            .map((value) => value.trim())
+            .filter((value) => value.length > 0)
+        : undefined;
+      const timeoutMs = parseOptionalPositiveNumber(timeoutMsRaw);
+
+      const result = await aiRuntimeService.runWithFailover({
+        role: roleRaw as AIRuntimeRole,
+        prompt: promptRaw,
+        timeoutMs,
+        providersOverride,
+        simulateFailures,
+      });
+
+      res.json({
+        result,
+        providers: aiRuntimeService.getProviderStates(),
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+router.post(
+  '/admin/agent-gateway/orchestrate',
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      if (env.AGENT_ORCHESTRATION_ENABLED !== 'true') {
+        throw new ServiceError(
+          'AGENT_ORCHESTRATION_DISABLED',
+          'Agent orchestration is disabled by feature flag.',
+          503,
+        );
+      }
+
+      const body =
+        typeof req.body === 'object' && req.body !== null
+          ? (req.body as Record<string, unknown>)
+          : {};
+      const draftId = typeof body.draftId === 'string' ? body.draftId : '';
+      const channel =
+        typeof body.channel === 'string' ? body.channel : undefined;
+      const externalSessionId =
+        typeof body.externalSessionId === 'string'
+          ? body.externalSessionId
+          : undefined;
+      const promptSeed =
+        typeof body.promptSeed === 'string' ? body.promptSeed : undefined;
+      const hostAgentId =
+        typeof body.hostAgentId === 'string' ? body.hostAgentId : undefined;
+      const metadata =
+        body.metadata && typeof body.metadata === 'object'
+          ? (body.metadata as Record<string, unknown>)
+          : undefined;
+
+      const realtime = getRealtime(req);
+      const result = await draftOrchestrationService.run({
+        draftId,
+        channel,
+        externalSessionId,
+        promptSeed,
+        hostAgentId,
+        metadata,
+        onStep: realtime
+          ? (signal) => {
+              const payload = {
+                source: 'agent_gateway',
+                data: {
+                  sessionId: signal.sessionId,
+                  draftId: signal.draftId,
+                  role: signal.role,
+                  failed: signal.result.failed,
+                  selectedProvider: signal.result.selectedProvider,
+                  attempts: signal.result.attempts,
+                  output: signal.result.output,
+                },
+              };
+              realtime.broadcast(
+                `session:${signal.sessionId}`,
+                'agent_gateway_orchestration_step',
+                payload,
+              );
+              realtime.broadcast(
+                `post:${signal.draftId}`,
+                'agent_gateway_orchestration_step',
+                payload,
+              );
+              realtime.broadcast(
+                'feed:live',
+                'agent_gateway_orchestration_step',
+                payload,
+              );
+            }
+          : undefined,
+        onCompleted: realtime
+          ? (signal) => {
+              const payload = {
+                source: 'agent_gateway',
+                data: {
+                  sessionId: signal.sessionId,
+                  draftId: signal.draftId,
+                  completed: signal.completed,
+                  stepCount: signal.stepCount,
+                },
+              };
+              realtime.broadcast(
+                `session:${signal.sessionId}`,
+                'agent_gateway_orchestration_completed',
+                payload,
+              );
+              realtime.broadcast(
+                `post:${signal.draftId}`,
+                'agent_gateway_orchestration_completed',
+                payload,
+              );
+              realtime.broadcast(
+                'feed:live',
+                'agent_gateway_orchestration_completed',
+                payload,
+              );
+            }
+          : undefined,
+      });
+
+      res.status(201).json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+router.get(
+  '/admin/agent-gateway/sessions',
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      const limit = parseOptionalPositiveNumber(req.query.limit);
+      const source = req.query.source === 'memory' ? 'memory' : 'db';
+      const sessions =
+        source === 'memory'
+          ? agentGatewayService.listSessions(limit)
+          : await agentGatewayService.listPersistedSessions(limit);
+      res.json({ source, sessions });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+router.post(
+  '/admin/agent-gateway/sessions',
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      const body =
+        typeof req.body === 'object' && req.body !== null
+          ? (req.body as Record<string, unknown>)
+          : {};
+      const channel = typeof body.channel === 'string' ? body.channel : '';
+      const draftId =
+        typeof body.draftId === 'string' && body.draftId.trim().length > 0
+          ? body.draftId
+          : null;
+      const roles = parseOptionalStringArray(body.roles);
+      const metadata =
+        body.metadata && typeof body.metadata === 'object'
+          ? (body.metadata as Record<string, unknown>)
+          : undefined;
+
+      const session = agentGatewayService.createSession({
+        channel,
+        draftId,
+        roles,
+        metadata,
+      });
+      await agentGatewayService.persistSession(session);
+      res.status(201).json({ session });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+router.get(
+  '/admin/agent-gateway/sessions/:sessionId',
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      const source = req.query.source === 'memory' ? 'memory' : 'db';
+      const detail =
+        source === 'memory'
+          ? agentGatewayService.getSession(req.params.sessionId)
+          : await agentGatewayService.getPersistedSession(req.params.sessionId);
+      if (!detail) {
+        throw new ServiceError(
+          'AGENT_GATEWAY_SESSION_NOT_FOUND',
+          'Agent gateway session not found.',
+          404,
+        );
+      }
+      res.json(detail);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+router.post(
+  '/admin/agent-gateway/sessions/:sessionId/events',
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      const body =
+        typeof req.body === 'object' && req.body !== null
+          ? (req.body as Record<string, unknown>)
+          : {};
+      const fromRole = typeof body.fromRole === 'string' ? body.fromRole : '';
+      const eventType = typeof body.type === 'string' ? body.type : '';
+      const toRole =
+        typeof body.toRole === 'string' && body.toRole.trim().length > 0
+          ? body.toRole
+          : undefined;
+      const payload =
+        body.payload && typeof body.payload === 'object'
+          ? (body.payload as Record<string, unknown>)
+          : undefined;
+
+      const event = agentGatewayService.appendEvent(req.params.sessionId, {
+        fromRole,
+        toRole,
+        type: eventType,
+        payload,
+      });
+      await agentGatewayService.persistEvent(event);
+      const detail = agentGatewayService.getSession(req.params.sessionId);
+      await agentGatewayService.persistSession(detail.session);
+
+      getRealtime(req)?.broadcast(
+        `session:${req.params.sessionId}`,
+        'agent_gateway_event',
+        {
+          source: 'agent_gateway',
+          data: event,
+        },
+      );
+
+      res.status(201).json({ event });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+router.post(
+  '/admin/agent-gateway/sessions/:sessionId/close',
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      const session = agentGatewayService.closeSession(req.params.sessionId);
+      await agentGatewayService.persistSession(session);
+
+      getRealtime(req)?.broadcast(
+        `session:${req.params.sessionId}`,
+        'agent_gateway_session',
+        {
+          source: 'agent_gateway',
+          data: {
+            sessionId: session.id,
+            status: session.status,
+            updatedAt: session.updatedAt,
+          },
+        },
+      );
+
+      res.json({ session });
     } catch (error) {
       next(error);
     }

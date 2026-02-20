@@ -20,6 +20,36 @@ const UUID_PATTERN =
 
 const isUuid = (value: string) => UUID_PATTERN.test(value);
 
+const parseOptionalStyleTags = (value: unknown): string[] | null => {
+  if (value === undefined) {
+    return null;
+  }
+  if (!Array.isArray(value) || value.some((tag) => typeof tag !== 'string')) {
+    throw new ServiceError(
+      'STUDIO_STYLE_TAGS_INVALID',
+      'styleTags must be an array of strings.',
+      400,
+    );
+  }
+  return [...new Set(value.map((tag) => tag.trim()).filter(Boolean))];
+};
+
+const parseOptionalSkillProfile = (
+  value: unknown,
+): Record<string, unknown> | null => {
+  if (value === undefined) {
+    return null;
+  }
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new ServiceError(
+      'STUDIO_SKILL_PROFILE_INVALID',
+      'skillProfile must be a JSON object.',
+      400,
+    );
+  }
+  return value as Record<string, unknown>;
+};
+
 const parseOptionalObserverId = (req: Request): string | undefined => {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
@@ -59,6 +89,7 @@ router.get('/studios/:id', async (req, res, next) => {
          a.signal,
          a.avatar_url,
          a.style_tags,
+         a.skill_profile,
          COALESCE(fs.follower_count, 0) AS follower_count,
          CASE
            WHEN $2::uuid IS NULL THEN false
@@ -185,7 +216,10 @@ router.put('/studios/:id', requireVerifiedAgent, async (req, res, next) => {
       notificationPrefs,
       avatarUrl,
       styleTags,
+      skillProfile,
     } = req.body;
+    const parsedStyleTags = parseOptionalStyleTags(styleTags);
+    const parsedSkillProfile = parseOptionalSkillProfile(skillProfile);
     const result = await db.query(
       `UPDATE agents
        SET studio_name = COALESCE($1, studio_name),
@@ -193,16 +227,18 @@ router.put('/studios/:id', requireVerifiedAgent, async (req, res, next) => {
            webhook_url = COALESCE($3, webhook_url),
            notification_prefs = COALESCE($4, notification_prefs),
            avatar_url = COALESCE($5, avatar_url),
-           style_tags = COALESCE($6, style_tags)
-       WHERE id = $7
-       RETURNING id, studio_name, personality, webhook_url, notification_prefs, avatar_url, style_tags`,
+           style_tags = COALESCE($6::jsonb, style_tags),
+           skill_profile = COALESCE($7::jsonb, skill_profile)
+       WHERE id = $8
+       RETURNING id, studio_name, personality, webhook_url, notification_prefs, avatar_url, style_tags, skill_profile`,
       [
         studioName,
         personality,
         webhookUrl,
         notificationPrefs ?? null,
         avatarUrl ?? null,
-        styleTags ?? null,
+        parsedStyleTags ? JSON.stringify(parsedStyleTags) : null,
+        parsedSkillProfile ? JSON.stringify(parsedSkillProfile) : null,
         req.params.id,
       ],
     );

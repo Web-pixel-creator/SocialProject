@@ -11,8 +11,10 @@ import type {
   DraftEventType,
   DraftRecap24h,
   ObserverDigestEntry,
+  ObserverDigestPreferences,
   ObserverDraftEngagement,
   ObserverPrediction,
+  ObserverPredictionMarketProfile,
   ObserverWatchlistItem,
   PredictionOutcome,
   PullRequestPredictionSummary,
@@ -95,6 +97,13 @@ interface DraftEngagementRow {
   updated_at: Date;
 }
 
+interface DigestPreferencesRow {
+  observer_id: string;
+  digest_unseen_only: boolean | null;
+  digest_following_only: boolean | null;
+  updated_at: Date;
+}
+
 interface PredictionRow {
   id: string;
   observer_id: string;
@@ -157,6 +166,15 @@ const mapDraftEngagement = (
   isSaved: Boolean(row.is_saved),
   isRated: Boolean(row.is_rated),
   createdAt: row.created_at,
+  updatedAt: row.updated_at,
+});
+
+const mapDigestPreferences = (
+  row: DigestPreferencesRow,
+): ObserverDigestPreferences => ({
+  observerId: row.observer_id,
+  digestUnseenOnly: Boolean(row.digest_unseen_only),
+  digestFollowingOnly: Boolean(row.digest_following_only),
   updatedAt: row.updated_at,
 });
 
@@ -651,6 +669,27 @@ export class DraftArcServiceImpl implements DraftArcService {
     };
   }
 
+  async getPredictionMarketProfile(
+    observerId: string,
+    client?: DbClient,
+  ): Promise<ObserverPredictionMarketProfile> {
+    const db = getDb(this.pool, client);
+    await this.ensureObserverExists(observerId, db);
+
+    const riskProfile = await this.getPredictionRiskProfile(observerId, db);
+    const dailyUsage = await this.getPredictionDailyUsage(observerId, db);
+
+    return {
+      trustTier: riskProfile.trustTier,
+      minStakePoints: PREDICTION_MIN_STAKE_POINTS,
+      maxStakePoints: riskProfile.maxStakePoints,
+      dailyStakeCapPoints: PREDICTION_DAILY_STAKE_CAP_POINTS,
+      dailyStakeUsedPoints: dailyUsage.stakePoints,
+      dailySubmissionCap: PREDICTION_DAILY_SUBMISSION_CAP,
+      dailySubmissionsUsed: dailyUsage.submissionCount,
+    };
+  }
+
   async followDraft(
     observerId: string,
     draftId: string,
@@ -824,6 +863,83 @@ export class DraftArcServiceImpl implements DraftArcService {
     return { rated: false };
   }
 
+  async getDigestPreferences(
+    observerId: string,
+    client?: DbClient,
+  ): Promise<ObserverDigestPreferences> {
+    const db = getDb(this.pool, client);
+    await db.query(
+      `INSERT INTO observer_preferences (observer_id)
+       VALUES ($1)
+       ON CONFLICT (observer_id) DO NOTHING`,
+      [observerId],
+    );
+
+    const result = await db.query(
+      `SELECT
+         observer_id,
+         digest_unseen_only,
+         digest_following_only,
+         updated_at
+       FROM observer_preferences
+       WHERE observer_id = $1
+       LIMIT 1`,
+      [observerId],
+    );
+
+    if (result.rows.length === 0) {
+      throw new ServiceError('OBSERVER_NOT_FOUND', 'Observer not found.', 404);
+    }
+    return mapDigestPreferences(result.rows[0] as DigestPreferencesRow);
+  }
+
+  async upsertDigestPreferences(
+    observerId: string,
+    preferences: {
+      digestUnseenOnly?: boolean;
+      digestFollowingOnly?: boolean;
+    },
+    client?: DbClient,
+  ): Promise<ObserverDigestPreferences> {
+    const db = getDb(this.pool, client);
+    const result = await db.query(
+      `INSERT INTO observer_preferences (
+         observer_id,
+         digest_unseen_only,
+         digest_following_only,
+         updated_at
+       )
+       VALUES (
+         $1,
+         COALESCE($2::boolean, false),
+         COALESCE($3::boolean, false),
+         NOW()
+       )
+       ON CONFLICT (observer_id)
+       DO UPDATE SET
+         digest_unseen_only = COALESCE(
+           $2::boolean,
+           observer_preferences.digest_unseen_only
+         ),
+         digest_following_only = COALESCE(
+           $3::boolean,
+           observer_preferences.digest_following_only
+         ),
+         updated_at = NOW()
+       RETURNING
+         observer_id,
+         digest_unseen_only,
+         digest_following_only,
+         updated_at`,
+      [
+        observerId,
+        preferences.digestUnseenOnly ?? null,
+        preferences.digestFollowingOnly ?? null,
+      ],
+    );
+    return mapDigestPreferences(result.rows[0] as DigestPreferencesRow);
+  }
+
   async listDigest(
     observerId: string,
     options?: DigestListOptions,
@@ -831,6 +947,7 @@ export class DraftArcServiceImpl implements DraftArcService {
   ): Promise<ObserverDigestEntry[]> {
     const db = getDb(this.pool, client);
     const unseenOnly = Boolean(options?.unseenOnly);
+    const fromFollowingStudioOnly = Boolean(options?.fromFollowingStudioOnly);
     const limit = Math.min(Math.max(options?.limit ?? 20, 1), 100);
     const offset = Math.max(options?.offset ?? 0, 0);
 
@@ -858,9 +975,18 @@ export class DraftArcServiceImpl implements DraftArcService {
        JOIN agents a ON a.id = d.author_id
        WHERE ode.observer_id = $1
          AND ($2::boolean = false OR ode.is_seen = false)
+         AND (
+           $3::boolean = false
+           OR EXISTS (
+             SELECT 1
+             FROM observer_studio_follows osf
+             WHERE osf.observer_id = ode.observer_id
+               AND osf.studio_id = a.id
+           )
+         )
        ORDER BY ode.is_seen ASC, ode.created_at DESC
-       LIMIT $3 OFFSET $4`,
-      [observerId, unseenOnly, limit, offset],
+       LIMIT $4 OFFSET $5`,
+      [observerId, unseenOnly, fromFollowingStudioOnly, limit, offset],
     );
 
     return result.rows.map((row) => mapDigestEntry(row as DigestEntryRow));

@@ -35,6 +35,17 @@ const profilePayload = {
     total: 5,
     rate: 0.8,
     netPoints: 22,
+    market: {
+      trustTier: 'trusted',
+      minStakePoints: 5,
+      maxStakePoints: 320,
+      dailyStakeCapPoints: 1000,
+      dailyStakeUsedPoints: 180,
+      dailyStakeRemainingPoints: 820,
+      dailySubmissionCap: 30,
+      dailySubmissionsUsed: 4,
+      dailySubmissionsRemaining: 26,
+    },
   },
   followingStudios: [
     {
@@ -109,6 +120,8 @@ describe('observer public profile page', () => {
     expect(
       screen.getAllByRole('link', { name: /Watchlist Draft/i }).length,
     ).toBeGreaterThan(0);
+    expect(screen.getByText(/Prediction tier/i)).toBeInTheDocument();
+    expect(screen.getByText(/Trusted/i)).toBeInTheDocument();
     expect(apiClient.get).toHaveBeenCalledWith(
       '/observers/observer-1/profile',
       {

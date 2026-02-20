@@ -410,6 +410,85 @@ describe('API integration', () => {
     expect(engagementListAfterResetRes.body).toHaveLength(0);
   });
 
+  test('observer digest preferences apply as default digest filters', async () => {
+    const human = await registerHuman('observer-preferences@example.com');
+    const token = human.tokens.accessToken;
+    const { agentId, apiKey } = await registerAgent('Digest Prefs Studio');
+
+    const draftRes = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/digest-prefs-v1.png',
+        thumbnailUrl: 'https://example.com/digest-prefs-v1-thumb.png',
+      });
+    const draftId = draftRes.body.draft.id as string;
+
+    const followStudioRes = await request(app)
+      .post(`/api/studios/${agentId}/follow`)
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(followStudioRes.status).toBe(201);
+
+    const defaultPrefsRes = await request(app)
+      .get('/api/observers/me/preferences')
+      .set('Authorization', `Bearer ${token}`);
+    expect(defaultPrefsRes.status).toBe(200);
+    expect(defaultPrefsRes.body.digest.unseenOnly).toBe(false);
+    expect(defaultPrefsRes.body.digest.followingOnly).toBe(false);
+
+    const fixRes = await request(app)
+      .post(`/api/drafts/${draftId}/fix-requests`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        category: 'Focus',
+        description: 'Trigger digest with preferences',
+      });
+    expect(fixRes.status).toBe(200);
+
+    const updatePrefsRes = await request(app)
+      .put('/api/observers/me/preferences')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        digest: {
+          unseenOnly: true,
+          followingOnly: true,
+        },
+      });
+    expect(updatePrefsRes.status).toBe(200);
+    expect(updatePrefsRes.body.digest.unseenOnly).toBe(true);
+    expect(updatePrefsRes.body.digest.followingOnly).toBe(true);
+
+    const digestWithDefaultsRes = await request(app)
+      .get('/api/observers/digest')
+      .set('Authorization', `Bearer ${token}`);
+    expect(digestWithDefaultsRes.status).toBe(200);
+    expect(digestWithDefaultsRes.body.length).toBeGreaterThan(0);
+    expect(digestWithDefaultsRes.body[0].fromFollowingStudio).toBe(true);
+    expect(digestWithDefaultsRes.body[0].isSeen).toBe(false);
+
+    const seenRes = await request(app)
+      .post(`/api/observers/digest/${digestWithDefaultsRes.body[0].id}/seen`)
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(seenRes.status).toBe(200);
+    expect(seenRes.body.isSeen).toBe(true);
+
+    const digestAfterSeenRes = await request(app)
+      .get('/api/observers/digest')
+      .set('Authorization', `Bearer ${token}`);
+    expect(digestAfterSeenRes.status).toBe(200);
+    expect(digestAfterSeenRes.body).toHaveLength(0);
+
+    const digestWithQueryOverrideRes = await request(app)
+      .get('/api/observers/digest?unseenOnly=false')
+      .set('Authorization', `Bearer ${token}`);
+    expect(digestWithQueryOverrideRes.status).toBe(200);
+    expect(digestWithQueryOverrideRes.body.length).toBeGreaterThan(0);
+  });
+
   test('studio follow lifecycle returns follower counts and following feed', async () => {
     const human = await registerHuman('studio-follow@example.com');
     const token = human.tokens.accessToken;
@@ -652,6 +731,19 @@ describe('API integration', () => {
     expect(profileRes.body.predictions.correct).toBeGreaterThanOrEqual(1);
     expect(profileRes.body.predictions.total).toBeGreaterThanOrEqual(1);
     expect(profileRes.body.predictions.rate).toBeGreaterThan(0);
+    expect(profileRes.body.predictions.market).toEqual(
+      expect.objectContaining({
+        trustTier: expect.any(String),
+        minStakePoints: 5,
+        maxStakePoints: expect.any(Number),
+        dailyStakeCapPoints: expect.any(Number),
+        dailyStakeUsedPoints: expect.any(Number),
+        dailyStakeRemainingPoints: expect.any(Number),
+        dailySubmissionCap: expect.any(Number),
+        dailySubmissionsUsed: expect.any(Number),
+        dailySubmissionsRemaining: expect.any(Number),
+      }),
+    );
     expect(profileRes.body.followingStudios).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -747,6 +839,14 @@ describe('API integration', () => {
     expect(publicProfileRes.body.counts.followingStudios).toBeGreaterThan(0);
     expect(publicProfileRes.body.counts.watchlistDrafts).toBeGreaterThan(0);
     expect(publicProfileRes.body.predictions.total).toBeGreaterThan(0);
+    expect(publicProfileRes.body.predictions.market).toEqual(
+      expect.objectContaining({
+        trustTier: expect.any(String),
+        minStakePoints: 5,
+        maxStakePoints: expect.any(Number),
+        dailyStakeCapPoints: expect.any(Number),
+      }),
+    );
     expect(publicProfileRes.body.followingStudios).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -1952,9 +2052,29 @@ describe('API integration', () => {
       .put(`/api/studios/${agentId}`)
       .set('x-agent-id', agentId)
       .set('x-api-key', apiKey)
-      .send({ studioName: 'Updated Studio' });
+      .send({
+        studioName: 'Updated Studio',
+        styleTags: [' neon ', 'cinematic', 'neon'],
+        skillProfile: {
+          tone: 'cinematic',
+          preferredPatterns: ['high contrast'],
+        },
+      });
     expect(updated.status).toBe(200);
     expect(updated.body.studio_name).toBe('Updated Studio');
+    expect(updated.body.style_tags).toEqual(['neon', 'cinematic']);
+    expect(updated.body.skill_profile).toEqual({
+      tone: 'cinematic',
+      preferredPatterns: ['high contrast'],
+    });
+
+    const invalidSkillProfile = await request(app)
+      .put(`/api/studios/${agentId}`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({ skillProfile: ['not-an-object'] });
+    expect(invalidSkillProfile.status).toBe(400);
+    expect(invalidSkillProfile.body.error).toBe('STUDIO_SKILL_PROFILE_INVALID');
 
     const metrics = await request(app).get(`/api/studios/${agentId}/metrics`);
     expect(metrics.status).toBe(200);

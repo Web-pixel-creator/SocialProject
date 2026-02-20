@@ -16,6 +16,8 @@ jest.mock('../contexts/AuthContext', () => ({
 jest.mock('../lib/api', () => ({
   apiClient: {
     get: jest.fn(),
+    put: jest.fn(),
+    delete: jest.fn(),
   },
   setAuthToken: jest.fn(),
 }));
@@ -34,6 +36,8 @@ describe('observer profile page', () => {
       loading: false,
     });
     (apiClient.get as jest.Mock).mockReset();
+    (apiClient.put as jest.Mock).mockReset();
+    (apiClient.delete as jest.Mock).mockReset();
   });
 
   test('shows sign-in prompt when user is not authenticated', () => {
@@ -74,6 +78,17 @@ describe('observer profile page', () => {
               total: 5,
               rate: 0.8,
               netPoints: 22,
+              market: {
+                trustTier: 'trusted',
+                minStakePoints: 5,
+                maxStakePoints: 320,
+                dailyStakeCapPoints: 1000,
+                dailyStakeUsedPoints: 180,
+                dailyStakeRemainingPoints: 820,
+                dailySubmissionCap: 30,
+                dailySubmissionsUsed: 4,
+                dailySubmissionsRemaining: 26,
+              },
             },
             followingStudios: [
               {
@@ -131,8 +146,29 @@ describe('observer profile page', () => {
           ],
         });
       }
+      if (url === '/observers/me/preferences') {
+        return Promise.resolve({
+          data: {
+            digest: {
+              unseenOnly: false,
+              followingOnly: false,
+              updatedAt: '2026-02-01T12:00:00.000Z',
+            },
+          },
+        });
+      }
       return Promise.resolve({ data: [] });
     });
+    (apiClient.put as jest.Mock).mockResolvedValue({
+      data: {
+        digest: {
+          unseenOnly: true,
+          followingOnly: false,
+          updatedAt: '2026-02-01T12:05:00.000Z',
+        },
+      },
+    });
+    (apiClient.delete as jest.Mock).mockResolvedValue({ data: { ok: true } });
 
     renderPage();
 
@@ -161,6 +197,22 @@ describe('observer profile page', () => {
     ).toHaveAttribute('href', '/observers/observer-1');
     expect(screen.getAllByText(/Watchlist Draft/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Net prediction points: 22/i)).toBeInTheDocument();
+    expect(screen.getByText(/Prediction tier: Trusted/i)).toBeInTheDocument();
+    expect(screen.getByText(/Daily stake:\s*180\/1000/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Unseen only/i }));
+    await waitFor(() =>
+      expect(apiClient.put).toHaveBeenCalledWith('/observers/me/preferences', {
+        digest: {
+          unseenOnly: true,
+        },
+      }),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Unfollow studio/i }));
+    await waitFor(() =>
+      expect(apiClient.delete).toHaveBeenCalledWith('/studios/studio-1/follow'),
+    );
   });
 
   test('shows API error and allows resync', async () => {
@@ -170,6 +222,17 @@ describe('observer profile page', () => {
           response: { data: { message: 'Profile load failed' } },
         });
       }
+      if (url === '/observers/me/preferences') {
+        return Promise.resolve({
+          data: {
+            digest: {
+              unseenOnly: false,
+              followingOnly: false,
+              updatedAt: '2026-02-01T12:00:00.000Z',
+            },
+          },
+        });
+      }
       return Promise.resolve({ data: [] });
     });
 
@@ -177,6 +240,6 @@ describe('observer profile page', () => {
 
     expect(await screen.findByText(/Profile load failed/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Resync now/i }));
-    await waitFor(() => expect(apiClient.get).toHaveBeenCalledTimes(4));
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalledTimes(6));
   });
 });

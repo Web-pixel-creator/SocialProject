@@ -1,11 +1,13 @@
 import { Router } from 'express';
 import { db } from '../db/pool';
 import { requireVerifiedAgent } from '../middleware/auth';
+import { agentGatewayService } from '../services/agentGateway/agentGatewayService';
 import { SwarmServiceImpl } from '../services/swarm/swarmService';
 import type {
   AddSwarmJudgeEventInput,
   CompleteSwarmSessionInput,
   CreateSwarmSessionInput,
+  SwarmRole,
   SwarmStatus,
 } from '../services/swarm/types';
 
@@ -18,6 +20,53 @@ const SWARM_STATUSES: SwarmStatus[] = [
   'completed',
   'cancelled',
 ];
+
+const mapSwarmRoleToGatewayRole = (role: SwarmRole): string => {
+  if (role === 'critic') {
+    return 'critic';
+  }
+  if (role === 'strategist') {
+    return 'judge';
+  }
+  return 'maker';
+};
+
+const inferGatewayRoles = (memberRoles: SwarmRole[]) => {
+  const resolvedRoles = memberRoles.map((role) =>
+    mapSwarmRoleToGatewayRole(role),
+  );
+  return Array.from(new Set(['author', ...resolvedRoles]));
+};
+
+const recordSwarmGatewayEvent = (params: {
+  sessionId: string;
+  draftId?: string | null;
+  hostAgentId: string;
+  eventType: string;
+  fromRole: string;
+  payload?: Record<string, unknown>;
+  roles?: string[];
+}) => {
+  try {
+    const gatewaySession = agentGatewayService.ensureExternalSession({
+      channel: 'swarm',
+      externalSessionId: params.sessionId,
+      draftId: params.draftId,
+      roles: params.roles,
+      metadata: {
+        hostAgentId: params.hostAgentId,
+        source: 'swarm',
+      },
+    });
+    agentGatewayService.appendEvent(gatewaySession.id, {
+      fromRole: params.fromRole,
+      type: params.eventType,
+      payload: params.payload ?? {},
+    });
+  } catch (error) {
+    console.error('swarm gateway event failed', error);
+  }
+};
 
 router.get('/swarms', async (req, res, next) => {
   try {
@@ -70,6 +119,21 @@ router.post('/swarms', requireVerifiedAgent, async (req, res, next) => {
       objective: payload.objective,
       members: payload.members ?? [],
     });
+    const memberRoles = details.members.map((member) => member.role);
+    recordSwarmGatewayEvent({
+      sessionId: details.session.id,
+      draftId: details.session.draftId,
+      hostAgentId: req.auth?.id as string,
+      eventType: 'swarm_session_created',
+      fromRole: 'author',
+      roles: inferGatewayRoles(memberRoles),
+      payload: {
+        status: details.session.status,
+        title: details.session.title,
+        objective: details.session.objective,
+        memberCount: details.session.memberCount,
+      },
+    });
     res.status(201).json(details);
   } catch (error) {
     next(error);
@@ -85,6 +149,20 @@ router.post(
         req.params.id,
         req.auth?.id as string,
       );
+      const memberRoles = details.members.map((member) => member.role);
+      recordSwarmGatewayEvent({
+        sessionId: details.session.id,
+        draftId: details.session.draftId,
+        hostAgentId: req.auth?.id as string,
+        eventType: 'swarm_session_started',
+        fromRole: 'judge',
+        roles: inferGatewayRoles(memberRoles),
+        payload: {
+          status: details.session.status,
+          startedAt: details.session.startedAt,
+          memberCount: details.session.memberCount,
+        },
+      });
       res.json(details);
     } catch (error) {
       next(error);
@@ -103,6 +181,17 @@ router.post(
         req.auth?.id as string,
         payload,
       );
+      recordSwarmGatewayEvent({
+        sessionId: req.params.id,
+        hostAgentId: req.auth?.id as string,
+        eventType: `swarm_judge_${event.eventType}`,
+        fromRole: 'judge',
+        payload: {
+          judgeEventId: event.id,
+          score: event.score,
+          notes: event.notes,
+        },
+      });
       res.status(201).json(event);
     } catch (error) {
       next(error);
@@ -121,6 +210,29 @@ router.post(
         req.auth?.id as string,
         payload,
       );
+      recordSwarmGatewayEvent({
+        sessionId: details.session.id,
+        draftId: details.session.draftId,
+        hostAgentId: req.auth?.id as string,
+        eventType: 'swarm_session_completed',
+        fromRole: 'judge',
+        payload: {
+          status: details.session.status,
+          endedAt: details.session.endedAt,
+          judgeScore: details.session.judgeScore,
+        },
+      });
+      try {
+        const gatewaySession = agentGatewayService.ensureExternalSession({
+          channel: 'swarm',
+          externalSessionId: details.session.id,
+          draftId: details.session.draftId,
+          metadata: { source: 'swarm', hostAgentId: req.auth?.id as string },
+        });
+        agentGatewayService.closeSession(gatewaySession.id);
+      } catch (error) {
+        console.error('swarm gateway close failed', error);
+      }
       res.json(details);
     } catch (error) {
       next(error);

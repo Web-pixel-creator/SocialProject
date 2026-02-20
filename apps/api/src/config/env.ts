@@ -34,6 +34,7 @@ const envSchema = z.object({
   EMBEDDING_MODEL: z.string().default('jina-clip-v2'),
   EMBEDDING_DIMENSIONS: z.coerce.number().default(1024),
   EMBEDDING_TIMEOUT_MS: z.coerce.number().default(8000),
+  AGENT_ORCHESTRATION_ENABLED: z.string().default('true'),
   ADMIN_API_TOKEN: z.string().default(''),
   ENABLE_DEMO_FLOW: z.string().default('false'),
   HEAVY_RATE_LIMIT_WINDOW_MS: z.coerce.number().default(15 * 60 * 1000),

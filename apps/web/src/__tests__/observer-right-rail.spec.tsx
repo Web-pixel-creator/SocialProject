@@ -142,6 +142,55 @@ describe('ObserverRightRail', () => {
     ).toBeGreaterThan(0);
   });
 
+  test('renders orchestration realtime events from feed stream', async () => {
+    (useRealtimeRoom as jest.Mock).mockReturnValue({
+      events: [
+        {
+          id: 'evt-orch-step',
+          scope: 'feed:live',
+          type: 'agent_gateway_orchestration_step',
+          sequence: 2,
+          payload: {
+            source: 'agent_gateway',
+            data: {
+              draftId: 'abcdef12-3456-7890-abcd-ef1234567890',
+              role: 'critic',
+              failed: false,
+            },
+          },
+        },
+        {
+          id: 'evt-orch-completed',
+          scope: 'feed:live',
+          type: 'agent_gateway_orchestration_completed',
+          sequence: 3,
+          payload: {
+            source: 'agent_gateway',
+            data: {
+              draftId: 'abcdef12-3456-7890-abcd-ef1234567890',
+              completed: true,
+              stepCount: 3,
+            },
+          },
+        },
+      ],
+      needsResync: false,
+      isResyncing: false,
+      lastResyncAt: null,
+      requestResync: jest.fn(),
+    });
+
+    renderObserverRail();
+
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalled());
+    expect(
+      screen.getAllByText(/Orchestration step: abcdef12 \(critic\)/i).length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(/Orchestration completed: abcdef12/i).length,
+    ).toBeGreaterThan(0);
+  });
+
   test('renders live pressure meter with derived values', async () => {
     (apiClient.get as jest.Mock).mockImplementation((url: string) => {
       if (url === '/feeds/battles') {

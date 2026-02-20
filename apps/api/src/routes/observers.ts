@@ -28,6 +28,31 @@ const toSafeLimit = (
 };
 
 const toSafeNumber = (value: unknown) => Number(value ?? 0);
+const parseOptionalBoolean = (
+  value: unknown,
+  fieldName: string,
+): boolean | null => {
+  if (value === undefined || value === null) {
+    return null;
+  }
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true') {
+      return true;
+    }
+    if (normalized === 'false') {
+      return false;
+    }
+  }
+  throw new ServiceError(
+    'OBSERVER_PREFERENCES_INVALID',
+    `Invalid boolean for ${fieldName}.`,
+    400,
+  );
+};
 
 router.get('/observers/me/profile', requireHuman, async (req, res, next) => {
   try {
@@ -137,10 +162,22 @@ router.get('/observers/me/profile', requireHuman, async (req, res, next) => {
       [observerId, predictionLimit],
     );
 
+    const predictionMarketProfile =
+      await draftArcService.getPredictionMarketProfile(observerId);
     const observer = observerResult.rows[0];
     const counts = countsResult.rows[0] ?? {};
     const predictionsCorrect = toSafeNumber(counts.predictions_correct);
     const predictionsTotal = toSafeNumber(counts.predictions_resolved);
+    const dailyStakeRemainingPoints = Math.max(
+      0,
+      predictionMarketProfile.dailyStakeCapPoints -
+        predictionMarketProfile.dailyStakeUsedPoints,
+    );
+    const dailySubmissionsRemaining = Math.max(
+      0,
+      predictionMarketProfile.dailySubmissionCap -
+        predictionMarketProfile.dailySubmissionsUsed,
+    );
 
     res.json({
       observer: {
@@ -161,6 +198,17 @@ router.get('/observers/me/profile', requireHuman, async (req, res, next) => {
             ? Math.round((predictionsCorrect / predictionsTotal) * 100) / 100
             : 0,
         netPoints: toSafeNumber(counts.prediction_net_points),
+        market: {
+          trustTier: predictionMarketProfile.trustTier,
+          minStakePoints: predictionMarketProfile.minStakePoints,
+          maxStakePoints: predictionMarketProfile.maxStakePoints,
+          dailyStakeCapPoints: predictionMarketProfile.dailyStakeCapPoints,
+          dailyStakeUsedPoints: predictionMarketProfile.dailyStakeUsedPoints,
+          dailyStakeRemainingPoints,
+          dailySubmissionCap: predictionMarketProfile.dailySubmissionCap,
+          dailySubmissionsUsed: predictionMarketProfile.dailySubmissionsUsed,
+          dailySubmissionsRemaining,
+        },
       },
       followingStudios: followingResult.rows.map((row) => ({
         id: row.id as string,
@@ -311,10 +359,22 @@ router.get('/observers/:id/profile', async (req, res, next) => {
       [observerId, predictionLimit],
     );
 
+    const predictionMarketProfile =
+      await draftArcService.getPredictionMarketProfile(observerId);
     const observer = observerResult.rows[0];
     const counts = countsResult.rows[0] ?? {};
     const predictionsCorrect = toSafeNumber(counts.predictions_correct);
     const predictionsTotal = toSafeNumber(counts.predictions_resolved);
+    const dailyStakeRemainingPoints = Math.max(
+      0,
+      predictionMarketProfile.dailyStakeCapPoints -
+        predictionMarketProfile.dailyStakeUsedPoints,
+    );
+    const dailySubmissionsRemaining = Math.max(
+      0,
+      predictionMarketProfile.dailySubmissionCap -
+        predictionMarketProfile.dailySubmissionsUsed,
+    );
 
     res.json({
       observer: {
@@ -334,6 +394,17 @@ router.get('/observers/:id/profile', async (req, res, next) => {
             ? Math.round((predictionsCorrect / predictionsTotal) * 100) / 100
             : 0,
         netPoints: toSafeNumber(counts.prediction_net_points),
+        market: {
+          trustTier: predictionMarketProfile.trustTier,
+          minStakePoints: predictionMarketProfile.minStakePoints,
+          maxStakePoints: predictionMarketProfile.maxStakePoints,
+          dailyStakeCapPoints: predictionMarketProfile.dailyStakeCapPoints,
+          dailyStakeUsedPoints: predictionMarketProfile.dailyStakeUsedPoints,
+          dailyStakeRemainingPoints,
+          dailySubmissionCap: predictionMarketProfile.dailySubmissionCap,
+          dailySubmissionsUsed: predictionMarketProfile.dailySubmissionsUsed,
+          dailySubmissionsRemaining,
+        },
       },
       followingStudios: followingResult.rows.map((row) => ({
         id: row.id as string,
@@ -371,6 +442,70 @@ router.get('/observers/:id/profile', async (req, res, next) => {
     next(error);
   }
 });
+
+router.get(
+  '/observers/me/preferences',
+  requireHuman,
+  async (req, res, next) => {
+    try {
+      const observerId = req.auth?.id as string;
+      const preferences =
+        await draftArcService.getDigestPreferences(observerId);
+      res.json({
+        digest: {
+          unseenOnly: preferences.digestUnseenOnly,
+          followingOnly: preferences.digestFollowingOnly,
+          updatedAt: preferences.updatedAt,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+router.put(
+  '/observers/me/preferences',
+  requireHuman,
+  async (req, res, next) => {
+    try {
+      const observerId = req.auth?.id as string;
+      const body =
+        typeof req.body === 'object' && req.body !== null
+          ? (req.body as {
+              digest?: { unseenOnly?: unknown; followingOnly?: unknown };
+            })
+          : {};
+      const digest = body.digest ?? {};
+      const unseenOnly = parseOptionalBoolean(
+        digest.unseenOnly,
+        'digest.unseenOnly',
+      );
+      const followingOnly = parseOptionalBoolean(
+        digest.followingOnly,
+        'digest.followingOnly',
+      );
+
+      const preferences =
+        unseenOnly === null && followingOnly === null
+          ? await draftArcService.getDigestPreferences(observerId)
+          : await draftArcService.upsertDigestPreferences(observerId, {
+              digestUnseenOnly: unseenOnly ?? undefined,
+              digestFollowingOnly: followingOnly ?? undefined,
+            });
+
+      res.json({
+        digest: {
+          unseenOnly: preferences.digestUnseenOnly,
+          followingOnly: preferences.digestFollowingOnly,
+          updatedAt: preferences.updatedAt,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 router.get('/me/following', requireHuman, async (req, res, next) => {
   try {
@@ -550,12 +685,21 @@ router.delete(
 router.get('/observers/digest', requireHuman, async (req, res, next) => {
   try {
     const observerId = req.auth?.id as string;
-    const unseenOnly =
-      `${req.query.unseenOnly ?? 'false'}`.toLowerCase() === 'true';
+    const unseenOnlyQuery = parseOptionalBoolean(
+      req.query.unseenOnly,
+      'unseenOnly',
+    );
+    const fromFollowingStudioOnlyQuery = parseOptionalBoolean(
+      req.query.fromFollowingStudioOnly,
+      'fromFollowingStudioOnly',
+    );
     const limit = req.query.limit ? Number(req.query.limit) : undefined;
     const offset = req.query.offset ? Number(req.query.offset) : undefined;
+    const preferences = await draftArcService.getDigestPreferences(observerId);
     const entries = await draftArcService.listDigest(observerId, {
-      unseenOnly,
+      unseenOnly: unseenOnlyQuery ?? preferences.digestUnseenOnly,
+      fromFollowingStudioOnly:
+        fromFollowingStudioOnlyQuery ?? preferences.digestFollowingOnly,
       limit,
       offset,
     });

@@ -2,6 +2,7 @@ import type { Request } from 'express';
 import { Router } from 'express';
 import { db } from '../db/pool';
 import { requireHuman, requireVerifiedAgent } from '../middleware/auth';
+import { agentGatewayService } from '../services/agentGateway/agentGatewayService';
 import { LiveSessionServiceImpl } from '../services/liveSession/liveSessionService';
 import type {
   AddLiveMessageInput,
@@ -30,6 +31,37 @@ const PRESENCE_STATUSES: LiveSessionPresenceStatus[] = [
 
 const getRealtime = (req: Request): RealtimeService | undefined => {
   return req.app.get('realtime');
+};
+
+const recordLiveGatewayEvent = (params: {
+  sessionId: string;
+  draftId?: string | null;
+  hostAgentId: string;
+  eventType: string;
+  fromRole: string;
+  toRole?: string;
+  payload?: Record<string, unknown>;
+}) => {
+  try {
+    const gatewaySession = agentGatewayService.ensureExternalSession({
+      channel: 'live_session',
+      externalSessionId: params.sessionId,
+      draftId: params.draftId,
+      roles: ['author', 'critic', 'maker', 'judge'],
+      metadata: {
+        hostAgentId: params.hostAgentId,
+        source: 'live_session',
+      },
+    });
+    agentGatewayService.appendEvent(gatewaySession.id, {
+      fromRole: params.fromRole,
+      toRole: params.toRole,
+      type: params.eventType,
+      payload: params.payload ?? {},
+    });
+  } catch (error) {
+    console.error('live session gateway event failed', error);
+  }
 };
 
 router.get('/live-sessions', async (req, res, next) => {
@@ -87,6 +119,18 @@ router.post('/live-sessions', requireVerifiedAgent, async (req, res, next) => {
       status: detail.session.status,
       draftId: detail.session.draftId,
     });
+    recordLiveGatewayEvent({
+      sessionId: detail.session.id,
+      draftId: detail.session.draftId,
+      hostAgentId: req.auth?.id as string,
+      eventType: 'live_session_created',
+      fromRole: 'author',
+      payload: {
+        status: detail.session.status,
+        title: detail.session.title,
+        objective: detail.session.objective,
+      },
+    });
     res.status(201).json(detail);
   } catch (error) {
     next(error);
@@ -119,6 +163,17 @@ router.post(
           status: detail.session.status,
         },
       );
+      recordLiveGatewayEvent({
+        sessionId: detail.session.id,
+        draftId: detail.session.draftId,
+        hostAgentId: req.auth?.id as string,
+        eventType: 'live_session_started',
+        fromRole: 'author',
+        payload: {
+          status: detail.session.status,
+          startedAt: detail.session.startedAt,
+        },
+      });
       res.json(detail);
     } catch (error) {
       next(error);
@@ -156,6 +211,33 @@ router.post(
           recapClipUrl: detail.session.recapClipUrl,
         },
       );
+      recordLiveGatewayEvent({
+        sessionId: detail.session.id,
+        draftId: detail.session.draftId,
+        hostAgentId: req.auth?.id as string,
+        eventType: 'live_session_completed',
+        fromRole: 'judge',
+        payload: {
+          status: detail.session.status,
+          endedAt: detail.session.endedAt,
+          recapSummary: detail.session.recapSummary,
+          recapClipUrl: detail.session.recapClipUrl,
+        },
+      });
+      try {
+        const gatewaySession = agentGatewayService.ensureExternalSession({
+          channel: 'live_session',
+          externalSessionId: detail.session.id,
+          draftId: detail.session.draftId,
+          metadata: {
+            source: 'live_session',
+            hostAgentId: req.auth?.id as string,
+          },
+        });
+        agentGatewayService.closeSession(gatewaySession.id);
+      } catch (error) {
+        console.error('live session gateway close failed', error);
+      }
       res.json(detail);
     } catch (error) {
       next(error);
@@ -191,6 +273,19 @@ router.post(
           lastSeenAt: presence.lastSeenAt,
         },
       );
+      recordLiveGatewayEvent({
+        sessionId: req.params.id,
+        hostAgentId: req.auth?.id as string,
+        eventType: 'live_presence_updated',
+        fromRole: 'observer',
+        toRole: 'author',
+        payload: {
+          participantType: presence.participantType,
+          participantId: presence.participantId,
+          status: presence.status,
+          lastSeenAt: presence.lastSeenAt,
+        },
+      });
       res.json(presence);
     } catch (error) {
       next(error);
@@ -226,6 +321,19 @@ router.post(
           lastSeenAt: presence.lastSeenAt,
         },
       );
+      recordLiveGatewayEvent({
+        sessionId: req.params.id,
+        hostAgentId: req.auth?.id as string,
+        eventType: 'live_presence_updated',
+        fromRole: 'maker',
+        toRole: 'author',
+        payload: {
+          participantType: presence.participantType,
+          participantId: presence.participantId,
+          status: presence.status,
+          lastSeenAt: presence.lastSeenAt,
+        },
+      });
       res.json(presence);
     } catch (error) {
       next(error);
@@ -258,6 +366,18 @@ router.post(
           createdAt: message.createdAt,
         },
       );
+      recordLiveGatewayEvent({
+        sessionId: req.params.id,
+        hostAgentId: req.auth?.id as string,
+        eventType: 'live_chat_message',
+        fromRole: 'observer',
+        toRole: 'author',
+        payload: {
+          messageId: message.id,
+          authorType: message.authorType,
+          authorLabel: message.authorLabel,
+        },
+      });
       res.status(201).json(message);
     } catch (error) {
       next(error);
@@ -295,6 +415,18 @@ router.post(
           createdAt: message.createdAt,
         },
       );
+      recordLiveGatewayEvent({
+        sessionId: req.params.id,
+        hostAgentId: req.auth?.id as string,
+        eventType: 'live_chat_message',
+        fromRole: 'maker',
+        toRole: 'author',
+        payload: {
+          messageId: message.id,
+          authorType: message.authorType,
+          authorLabel: message.authorLabel,
+        },
+      });
       res.status(201).json(message);
     } catch (error) {
       next(error);
