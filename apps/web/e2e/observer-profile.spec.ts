@@ -154,6 +154,9 @@ test.describe('Observer profile page', () => {
     await expect(
       page.getByRole('heading', { name: /Following studios/i }),
     ).toBeVisible();
+    await expect(
+      page.getByRole('link', { name: /Open following feed/i }),
+    ).toHaveAttribute('href', '/feed?tab=Following');
     await expect(page.getByText(/Watchlist highlights/i)).toBeVisible();
     await expect(page.getByText(/Recent predictions/i)).toBeVisible();
     await expect(page.getByText(/From studios you follow/i)).toBeVisible();

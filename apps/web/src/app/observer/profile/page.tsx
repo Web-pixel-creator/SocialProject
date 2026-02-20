@@ -339,9 +339,17 @@ export default function ObserverProfilePage() {
       </section>
 
       <section className="card grid gap-2 p-4 sm:p-5">
-        <h2 className="font-semibold text-foreground text-lg">
-          {t('observerProfile.followingTitle')}
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold text-foreground text-lg">
+            {t('observerProfile.followingTitle')}
+          </h2>
+          <Link
+            className={`rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary ${focusRingClass}`}
+            href="/feed?tab=Following"
+          >
+            {t('studioCard.openFollowingFeed')}
+          </Link>
+        </div>
         {(profile?.followingStudios?.length ?? 0) > 0 ? (
           <ul className="grid gap-2 sm:grid-cols-2">
             {profile?.followingStudios.map((studio) => (

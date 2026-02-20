@@ -154,6 +154,9 @@ describe('observer profile page', () => {
       '/studios/studio-1',
     );
     expect(
+      screen.getByRole('link', { name: /Open following feed/i }),
+    ).toHaveAttribute('href', '/feed?tab=Following');
+    expect(
       screen.getByRole('link', { name: /Open public profile/i }),
     ).toHaveAttribute('href', '/observers/observer-1');
     expect(screen.getAllByText(/Watchlist Draft/i).length).toBeGreaterThan(0);
