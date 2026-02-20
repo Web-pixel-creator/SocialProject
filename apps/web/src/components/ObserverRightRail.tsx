@@ -1,6 +1,7 @@
 'use client';
 
 import { Flame, Users } from 'lucide-react';
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -204,7 +205,12 @@ const fetchObserverRailData = async (): Promise<ObserverRailData> => {
 
     const followedStudioItems = followingRows
       .map((row, index) => {
-        const id = asString(row.id) ?? `following-studio-${index}`;
+        const rawStudioId = row.studioId ?? row.studio_id ?? row.id;
+        const studioId =
+          typeof rawStudioId === 'string' || typeof rawStudioId === 'number'
+            ? String(rawStudioId)
+            : undefined;
+        const id = studioId ?? `following-studio-${index}`;
         const studioName =
           asString(row.studioName) ?? asString(row.studio_name) ?? 'Studio';
         const impact = asNumber(row.impact);
@@ -213,6 +219,9 @@ const fetchObserverRailData = async (): Promise<ObserverRailData> => {
           id,
           title: studioName,
           meta: `Impact ${impact.toFixed(1)} / Signal ${signal.toFixed(1)}`,
+          href: studioId
+            ? `/studios/${encodeURIComponent(studioId)}`
+            : undefined,
         };
       })
       .slice(0, 4);
@@ -522,7 +531,7 @@ export const ObserverRightRail = () => {
   const controlButtonDisabledClass =
     'cursor-not-allowed border-transparent bg-background/45 text-muted-foreground/45';
   const primaryActionButtonClass =
-    'min-h-8 rounded-full border border-primary/35 bg-primary/10 px-3 py-1.5 font-semibold text-primary uppercase tracking-wide transition hover:border-primary/45 hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-3.5 sm:py-2';
+    'inline-flex min-h-8 items-center justify-center rounded-full border border-primary/35 bg-primary/10 px-3 py-1.5 font-semibold text-primary uppercase tracking-wide transition hover:border-primary/45 hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-3.5 sm:py-2';
   const softPanelClass =
     'rounded-lg bg-background/42 sm:border sm:border-border/25';
 
@@ -797,7 +806,16 @@ export const ObserverRightRail = () => {
                   className="line-clamp-1"
                   key={`mobile-following-${item.id}`}
                 >
-                  {item.title}
+                  {item.href ? (
+                    <Link
+                      className="transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      href={item.href}
+                    >
+                      {item.title}
+                    </Link>
+                  ) : (
+                    item.title
+                  )}
                 </li>
               ))}
             </ul>
@@ -806,6 +824,14 @@ export const ObserverRightRail = () => {
               {t('rail.noFollowingStudios')}
             </p>
           )}
+          <div className="mt-2">
+            <Link
+              className={primaryActionButtonClass}
+              href="/feed?tab=Following"
+            >
+              {t('studioCard.openFollowingFeed')}
+            </Link>
+          </div>
         </div>
       </section>
       <BattleList
@@ -846,7 +872,18 @@ export const ObserverRightRail = () => {
                     {index + 1}
                   </span>
                   <div className="min-w-0">
-                    <p className="line-clamp-2 text-foreground">{item.title}</p>
+                    {item.href ? (
+                      <Link
+                        className="line-clamp-2 text-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                        href={item.href}
+                      >
+                        {item.title}
+                      </Link>
+                    ) : (
+                      <p className="line-clamp-2 text-foreground">
+                        {item.title}
+                      </p>
+                    )}
                     {item.meta ? (
                       <p className="mt-1 text-[11px] text-muted-foreground/70">
                         {item.meta}
@@ -862,6 +899,11 @@ export const ObserverRightRail = () => {
             {t('rail.noFollowingStudios')}
           </p>
         )}
+        <div className="mt-2">
+          <Link className={primaryActionButtonClass} href="/feed?tab=Following">
+            {t('studioCard.openFollowingFeed')}
+          </Link>
+        </div>
       </section>
       {allPanelsHidden ? (
         <section className="card hidden p-4 text-[11px] text-muted-foreground sm:p-4 lg:block">

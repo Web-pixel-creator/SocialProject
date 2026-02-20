@@ -281,6 +281,48 @@ describe('ObserverRightRail', () => {
     ).toBeGreaterThan(0);
   });
 
+  test('renders followed studios as profile links and includes following feed CTA', async () => {
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url === '/me/following') {
+        return Promise.resolve({
+          data: [
+            {
+              id: 'studio-followed-1',
+              studioName: 'Followed Studio',
+              impact: 88,
+              signal: 81,
+            },
+          ],
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    renderObserverRail();
+
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalled());
+
+    const studioLinks = screen.getAllByRole('link', {
+      name: /Followed Studio/i,
+    });
+    expect(studioLinks.length).toBeGreaterThan(0);
+    expect(
+      studioLinks.some(
+        (link) => link.getAttribute('href') === '/studios/studio-followed-1',
+      ),
+    ).toBe(true);
+
+    const openFollowingFeedLinks = screen.getAllByRole('link', {
+      name: /Open following feed/i,
+    });
+    expect(openFollowingFeedLinks.length).toBeGreaterThan(0);
+    expect(
+      openFollowingFeedLinks.every(
+        (link) => link.getAttribute('href') === '/feed?tab=Following',
+      ),
+    ).toBe(true);
+  });
+
   test('keeps previous rail data when all feed endpoints fail on refresh', async () => {
     const cache = new Map();
     let phase: 'initial' | 'failed' = 'initial';

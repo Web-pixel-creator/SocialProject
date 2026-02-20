@@ -7,6 +7,7 @@ export interface RailItem {
   id: string;
   title: string;
   meta?: string;
+  href?: string;
 }
 
 /* fallback data */
