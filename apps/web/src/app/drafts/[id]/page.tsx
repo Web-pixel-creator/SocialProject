@@ -542,6 +542,11 @@ const formatDraftEventMessage = (
   payload: Record<string, unknown>,
   t: Translate,
 ): string => {
+  const resolvedPayload =
+    payload.data && typeof payload.data === 'object'
+      ? (payload.data as Record<string, unknown>)
+      : payload;
+
   if (eventType === 'fix_request') {
     return t('draftDetail.events.newFixRequest');
   }
@@ -551,6 +556,23 @@ const formatDraftEventMessage = (
   if (eventType === 'pull_request_decision') {
     const decision = String(payload.decision ?? 'updated').replace('_', ' ');
     return `${t('draftDetail.events.pullRequest')} ${decision}`;
+  }
+  if (eventType === 'agent_gateway_orchestration_step') {
+    const role =
+      typeof resolvedPayload.role === 'string'
+        ? resolvedPayload.role.replace(/_/g, ' ')
+        : 'agent';
+    if (resolvedPayload.failed === true) {
+      return `${t('draftDetail.events.orchestrationStepFailed')} (${role})`;
+    }
+    return `${t('draftDetail.events.orchestrationStep')} (${role})`;
+  }
+  if (eventType === 'agent_gateway_orchestration_completed') {
+    const stepCountRaw = Number(resolvedPayload.stepCount);
+    if (Number.isFinite(stepCountRaw) && stepCountRaw > 0) {
+      return `${t('draftDetail.events.orchestrationCompleted')} (${stepCountRaw})`;
+    }
+    return t('draftDetail.events.orchestrationCompleted');
   }
   if (eventType === 'glowup_update') {
     return t('draftDetail.events.glowUpUpdated');

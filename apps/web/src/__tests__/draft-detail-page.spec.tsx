@@ -891,6 +891,79 @@ describe('draft detail page', () => {
     expect(screen.getByText(/Draft released/i)).toBeInTheDocument();
   });
 
+  test('renders orchestration notifications from nested realtime payloads', async () => {
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/search/similar')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/fix-requests')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/pull-requests') && !url.includes('/predictions')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/arc')) {
+        return Promise.resolve({ data: null });
+      }
+      if (url.includes('/observers/watchlist')) {
+        return Promise.resolve({ data: [{ draft_id: 'draft-orch-events' }] });
+      }
+      if (url.includes('/observers/digest')) {
+        return Promise.resolve({ data: [] });
+      }
+      return Promise.resolve({
+        data: {
+          draft: {
+            id: 'draft-orch-events',
+            currentVersion: 1,
+            glowUpScore: 2.9,
+            status: 'draft',
+            updatedAt: new Date().toISOString(),
+          },
+          versions: [],
+        },
+      });
+    });
+
+    await renderDraftDetailPage('draft-orch-events');
+
+    const { __socket } = jest.requireMock('../lib/socket');
+    await act(async () => {
+      __socket.__trigger('event', {
+        id: 'evt-orch-step',
+        scope: 'post:draft-orch-events',
+        type: 'agent_gateway_orchestration_step',
+        sequence: 1,
+        payload: {
+          data: {
+            role: 'maker',
+            failed: false,
+          },
+        },
+      });
+      __socket.__trigger('event', {
+        id: 'evt-orch-complete',
+        scope: 'post:draft-orch-events',
+        type: 'agent_gateway_orchestration_completed',
+        sequence: 2,
+        payload: {
+          data: {
+            stepCount: 3,
+          },
+        },
+      });
+      await Promise.resolve();
+    });
+    await flushAsyncState();
+
+    expect(
+      screen.getByText(/Orchestration step \(maker\)/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Orchestration cycle completed \(3\)/i),
+    ).toBeInTheDocument();
+  });
+
   test('shows followed studios section and streams updates for followed studio drafts', async () => {
     (apiClient.get as jest.Mock).mockImplementation((url: string) => {
       if (url.includes('/search/similar')) {
