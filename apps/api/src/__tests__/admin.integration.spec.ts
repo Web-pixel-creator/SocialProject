@@ -36,8 +36,9 @@ const registerAgent = async (studioName = 'Admin Test Studio') => {
     studioName,
     personality: 'Tester',
   });
-  const { agentId } = response.body;
-  return { agentId };
+  const { agentId, apiKey } = response.body;
+  await db.query('UPDATE agents SET trust_tier = 1 WHERE id = $1', [agentId]);
+  return { agentId, apiKey };
 };
 
 describe('Admin API routes', () => {
@@ -96,6 +97,45 @@ describe('Admin API routes', () => {
     expect(Array.isArray(response.body.providers)).toBe(true);
   });
 
+  test('ai runtime health endpoint returns snapshot with cooldown state', async () => {
+    const dryRunFailure = await request(app)
+      .post('/api/admin/ai-runtime/dry-run')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        role: 'author',
+        prompt: 'Force cooldown on primary provider',
+        providersOverride: ['gpt-4.1'],
+        simulateFailures: ['gpt-4.1'],
+      });
+
+    expect(dryRunFailure.status).toBe(200);
+    expect(dryRunFailure.body.result.failed).toBe(true);
+
+    const response = await request(app)
+      .get('/api/admin/ai-runtime/health')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(response.status).toBe(200);
+    expect(typeof response.body.generatedAt).toBe('string');
+    expect(Array.isArray(response.body.roleStates)).toBe(true);
+    expect(Array.isArray(response.body.providers)).toBe(true);
+    expect(response.body.summary).toMatchObject({
+      health: expect.any(String),
+      providerCount: expect.any(Number),
+      providersCoolingDown: expect.any(Number),
+      providersReady: expect.any(Number),
+      roleCount: expect.any(Number),
+      rolesBlocked: expect.any(Number),
+    });
+
+    const gptProvider = response.body.providers.find(
+      (provider: { provider: string }) => provider.provider === 'gpt-4.1',
+    );
+    expect(gptProvider).toBeTruthy();
+    expect(gptProvider.coolingDown).toBe(true);
+    expect(typeof gptProvider.cooldownUntil).toBe('string');
+  });
+
   test('ai runtime dry-run applies failover chain', async () => {
     const response = await request(app)
       .post('/api/admin/ai-runtime/dry-run')
@@ -103,23 +143,63 @@ describe('Admin API routes', () => {
       .send({
         role: 'critic',
         prompt: 'Review draft coherence and suggest next action',
-        providersOverride: ['claude-4', 'gpt-4.1'],
+        providersOverride: ['claude-4', 'gemini-2'],
         simulateFailures: ['claude-4'],
       });
 
     expect(response.status).toBe(200);
     expect(response.body.result.failed).toBe(false);
-    expect(response.body.result.selectedProvider).toBe('gpt-4.1');
+    expect(response.body.result.selectedProvider).toBe('gemini-2');
     expect(response.body.result.attempts[0]).toMatchObject({
       provider: 'claude-4',
       status: 'failed',
       errorCode: 'AI_PROVIDER_UNAVAILABLE',
     });
     expect(response.body.result.attempts[1]).toMatchObject({
-      provider: 'gpt-4.1',
+      provider: 'gemini-2',
       status: 'success',
       errorCode: null,
     });
+  });
+
+  test('ai runtime dry-run rejects unsupported fields and invalid payload values', async () => {
+    const unknownFieldRes = await request(app)
+      .post('/api/admin/ai-runtime/dry-run')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        role: 'critic',
+        prompt: 'Validate runtime payload',
+        extra: 'unsupported',
+      });
+
+    expect(unknownFieldRes.status).toBe(400);
+    expect(unknownFieldRes.body.error).toBe(
+      'AI_RUNTIME_DRY_RUN_INVALID_FIELDS',
+    );
+
+    const invalidProvidersRes = await request(app)
+      .post('/api/admin/ai-runtime/dry-run')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        role: 'critic',
+        prompt: 'Validate providersOverride',
+        providersOverride: 'gpt-4.1',
+      });
+
+    expect(invalidProvidersRes.status).toBe(400);
+    expect(invalidProvidersRes.body.error).toBe('AI_RUNTIME_INVALID_INPUT');
+
+    const invalidTimeoutRes = await request(app)
+      .post('/api/admin/ai-runtime/dry-run')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        role: 'critic',
+        prompt: 'Validate timeout',
+        timeoutMs: 999_999,
+      });
+
+    expect(invalidTimeoutRes.status).toBe(400);
+    expect(invalidTimeoutRes.body.error).toBe('AI_RUNTIME_INVALID_TIMEOUT');
   });
 
   test('agent gateway orchestration endpoint is guarded by feature flag', async () => {
@@ -341,6 +421,19 @@ describe('Admin API routes', () => {
     expect(eventCreated.body.event.sessionId).toBe(sessionId);
     expect(eventCreated.body.event.type).toBe('fix_request_created');
 
+    const secondEvent = await request(app)
+      .post(`/api/admin/agent-gateway/sessions/${sessionId}/events`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        fromRole: 'maker',
+        toRole: 'judge',
+        type: 'pull_request_submitted',
+        payload: { severity: 'major' },
+      });
+
+    expect(secondEvent.status).toBe(201);
+    expect(secondEvent.body.event.type).toBe('pull_request_submitted');
+
     const detail = await request(app)
       .get(`/api/admin/agent-gateway/sessions/${sessionId}`)
       .set('x-admin-token', env.ADMIN_API_TOKEN);
@@ -348,7 +441,85 @@ describe('Admin API routes', () => {
     expect(detail.status).toBe(200);
     expect(detail.body.session.id).toBe(sessionId);
     expect(Array.isArray(detail.body.events)).toBe(true);
-    expect(detail.body.events).toHaveLength(1);
+    expect(detail.body.events).toHaveLength(2);
+
+    const latestEventsBeforeCompact = await request(app)
+      .get(`/api/admin/agent-gateway/sessions/${sessionId}/events?limit=1`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(latestEventsBeforeCompact.status).toBe(200);
+    expect(latestEventsBeforeCompact.body.source).toBe('db');
+    expect(latestEventsBeforeCompact.body.total).toBe(2);
+    expect(latestEventsBeforeCompact.body.events).toHaveLength(1);
+    expect(latestEventsBeforeCompact.body.events[0].type).toBe(
+      'pull_request_submitted',
+    );
+
+    const compacted = await request(app)
+      .post(`/api/admin/agent-gateway/sessions/${sessionId}/compact`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({ keepRecent: 1 });
+
+    expect(compacted.status).toBe(200);
+    expect(compacted.body.keepRecent).toBe(1);
+    expect(compacted.body.prunedCount).toBe(1);
+    expect(compacted.body.totalBefore).toBe(2);
+    expect(compacted.body.totalAfter).toBe(2);
+    expect(compacted.body.event.type).toBe('session_compacted');
+    expect(compacted.body.eventTypeCounts.fix_request_created).toBe(1);
+
+    const compactedDetail = await request(app)
+      .get(`/api/admin/agent-gateway/sessions/${sessionId}`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(compactedDetail.status).toBe(200);
+    expect(compactedDetail.body.events).toHaveLength(2);
+    expect(
+      compactedDetail.body.events.some(
+        (event: { type: string }) => event.type === 'session_compacted',
+      ),
+    ).toBe(true);
+
+    const latestEventsAfterCompact = await request(app)
+      .get(`/api/admin/agent-gateway/sessions/${sessionId}/events?limit=2`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(latestEventsAfterCompact.status).toBe(200);
+    expect(latestEventsAfterCompact.body.total).toBe(2);
+    expect(latestEventsAfterCompact.body.events).toHaveLength(2);
+    expect(latestEventsAfterCompact.body.events[0].type).toBe(
+      'session_compacted',
+    );
+
+    const summary = await request(app)
+      .get(`/api/admin/agent-gateway/sessions/${sessionId}/summary`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(summary.status).toBe(200);
+    expect(summary.body.source).toBe('db');
+    expect(summary.body.summary.session.id).toBe(sessionId);
+    expect(summary.body.summary.totals.eventCount).toBe(2);
+    expect(summary.body.summary.byType.pull_request_submitted).toBe(1);
+    expect(summary.body.summary.byType.session_compacted).toBe(1);
+    expect(summary.body.summary.byRole.system).toBe(1);
+    expect(summary.body.summary.compaction.compactCount).toBe(1);
+    expect(summary.body.summary.compaction.prunedCountTotal).toBe(1);
+    expect(summary.body.summary.lastEvent.type).toBe('session_compacted');
+
+    const statusBeforeClose = await request(app)
+      .get(`/api/admin/agent-gateway/sessions/${sessionId}/status`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(statusBeforeClose.status).toBe(200);
+    expect(statusBeforeClose.body.source).toBe('db');
+    expect(statusBeforeClose.body.status.sessionId).toBe(sessionId);
+    expect(statusBeforeClose.body.status.status).toBe('active');
+    expect(statusBeforeClose.body.status.lastEventType).toBe(
+      'session_compacted',
+    );
+    expect(statusBeforeClose.body.status.eventCount).toBe(2);
+    expect(statusBeforeClose.body.status.health).toBe('ok');
+    expect(statusBeforeClose.body.status.needsAttention).toBe(false);
 
     const closed = await request(app)
       .post(`/api/admin/agent-gateway/sessions/${sessionId}/close`)
@@ -357,6 +528,13 @@ describe('Admin API routes', () => {
 
     expect(closed.status).toBe(200);
     expect(closed.body.session.status).toBe('closed');
+
+    const statusAfterClose = await request(app)
+      .get(`/api/admin/agent-gateway/sessions/${sessionId}/status`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(statusAfterClose.status).toBe(200);
+    expect(statusAfterClose.body.status.status).toBe('closed');
 
     const appendAfterClose = await request(app)
       .post(`/api/admin/agent-gateway/sessions/${sessionId}/events`)
@@ -430,6 +608,12 @@ describe('Admin API routes', () => {
               ('search_performed', 'anonymous', '{"profile":"quality","mode":"text"}'),
               ('search_result_open', 'anonymous', '{"profile":"quality","mode":"text"}')`,
     );
+    await db.query(
+      `INSERT INTO ux_events (event_type, user_type, status, metadata)
+       VALUES ('style_fusion_generate', 'anonymous', 'success', '{"sampleCount":3}'),
+              ('style_fusion_generate', 'anonymous', 'success', '{"sampleCount":2}'),
+              ('style_fusion_generate', 'anonymous', 'error', '{"errorCode":"STYLE_FUSION_NOT_ENOUGH_MATCHES"}')`,
+    );
 
     const response = await request(app)
       .get('/api/admin/ux/similar-search?hours=24')
@@ -462,6 +646,19 @@ describe('Admin API routes', () => {
     expect(qualityText.performed).toBe(2);
     expect(qualityText.resultOpen).toBe(1);
     expect(qualityText.openRate).toBe(0.5);
+    expect(response.body.styleFusion.total).toBe(3);
+    expect(response.body.styleFusion.success).toBe(2);
+    expect(response.body.styleFusion.errors).toBe(1);
+    expect(response.body.styleFusion.successRate).toBe(0.667);
+    expect(response.body.styleFusion.avgSampleCount).toBe(2.5);
+    expect(response.body.styleFusion.errorBreakdown).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          errorCode: 'STYLE_FUSION_NOT_ENOUGH_MATCHES',
+          count: 1,
+        }),
+      ]),
+    );
   });
 
   test('observer engagement metrics endpoint returns KPI aggregates and segments', async () => {
@@ -485,7 +682,10 @@ describe('Admin API routes', () => {
          ('digest_open', 'observer', $1, 'draft', '{"mode":"digest","digestVariant":"daily"}', NOW() - INTERVAL '40 minutes'),
          ('hot_now_open', 'observer', $1, 'draft', '{"mode":"hot_now","rankingVariant":"rank_v1"}', NOW() - INTERVAL '35 minutes'),
          ('pr_prediction_submit', 'observer', $1, 'draft', '{"mode":"hot_now","abVariant":"A"}', NOW() - INTERVAL '20 minutes'),
+         ('draft_multimodal_glowup_view', 'observer', $1, 'draft', '{"mode":"hot_now","provider":"gpt-4.1"}', NOW() - INTERVAL '19 minutes'),
          ('draft_arc_view', 'observer', $2, 'draft', '{"mode":"hot_now","abVariant":"B"}', NOW() - INTERVAL '10 minutes'),
+         ('draft_multimodal_glowup_empty', 'observer', $2, 'draft', '{"mode":"hot_now","reason":"not_available"}', NOW() - INTERVAL '9 minutes'),
+         ('draft_multimodal_glowup_error', 'observer', $2, 'draft', '{"mode":"hot_now","reason":"network"}', NOW() - INTERVAL '8 minutes'),
          ('draft_arc_view', 'observer', $1, 'draft', '{"mode":"hot_now","abVariant":"A"}', NOW() - INTERVAL '30 hours'),
          ('hot_now_open', 'observer', $1, 'draft', '{"mode":"hot_now","rankingVariant":"rank_v1"}', NOW() - INTERVAL '3 days')`,
       [observerA, observerB],
@@ -526,11 +726,71 @@ describe('Admin API routes', () => {
     expect(response.body.kpis.predictionAccuracyRate).toBeNull();
     expect(response.body.kpis.predictionPoolPoints).toBe(0);
     expect(response.body.kpis.payoutToStakeRatio).toBeNull();
+    expect(response.body.kpis.multimodalCoverageRate).toBe(0.5);
+    expect(response.body.kpis.multimodalErrorRate).toBe(0.333);
     expect(typeof response.body.kpis.observerSessionTimeSec).toBe('number');
+    expect(response.body.multimodal.views).toBe(1);
+    expect(response.body.multimodal.emptyStates).toBe(1);
+    expect(response.body.multimodal.errors).toBe(1);
+    expect(response.body.multimodal.attempts).toBe(2);
+    expect(response.body.multimodal.totalEvents).toBe(3);
+    expect(response.body.multimodal.coverageRate).toBe(0.5);
+    expect(response.body.multimodal.errorRate).toBe(0.333);
+    expect(response.body.multimodal.providerBreakdown).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ provider: 'gpt-4.1', count: 1 }),
+      ]),
+    );
+    expect(response.body.multimodal.emptyReasonBreakdown).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ reason: 'not_available', count: 1 }),
+      ]),
+    );
+    expect(response.body.multimodal.errorReasonBreakdown).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ reason: 'network', count: 1 }),
+      ]),
+    );
+    const multimodalHourlyTrend = Array.isArray(
+      response.body.multimodal.hourlyTrend,
+    )
+      ? response.body.multimodal.hourlyTrend
+      : [];
+    expect(multimodalHourlyTrend.length).toBeGreaterThan(0);
+    const hourlyTrendTotals = multimodalHourlyTrend.reduce(
+      (
+        acc: {
+          emptyStates: number;
+          errors: number;
+          totalEvents: number;
+          views: number;
+        },
+        bucket: any,
+      ) => ({
+        views: acc.views + Number(bucket?.views ?? 0),
+        emptyStates: acc.emptyStates + Number(bucket?.emptyStates ?? 0),
+        errors: acc.errors + Number(bucket?.errors ?? 0),
+        totalEvents: acc.totalEvents + Number(bucket?.totalEvents ?? 0),
+      }),
+      { views: 0, emptyStates: 0, errors: 0, totalEvents: 0 },
+    );
+    expect(hourlyTrendTotals).toEqual({
+      views: 1,
+      emptyStates: 1,
+      errors: 1,
+      totalEvents: 3,
+    });
+    for (const bucket of multimodalHourlyTrend) {
+      expect(typeof bucket.hour).toBe('string');
+    }
     expect(Array.isArray(response.body.segments)).toBe(true);
     expect(Array.isArray(response.body.variants)).toBe(true);
     expect(response.body.predictionMarket.totals.predictions).toBe(0);
     expect(Array.isArray(response.body.predictionMarket.outcomes)).toBe(true);
+    expect(Array.isArray(response.body.predictionMarket.hourlyTrend)).toBe(
+      true,
+    );
+    expect(response.body.predictionMarket.hourlyTrend).toHaveLength(0);
     expect(response.body.feedPreferences.viewMode.observer).toBe(1);
     expect(response.body.feedPreferences.viewMode.focus).toBe(2);
     expect(response.body.feedPreferences.viewMode.total).toBe(3);
@@ -561,6 +821,143 @@ describe('Admin API routes', () => {
     );
     expect(variantA).toBeTruthy();
     expect(variantB).toBeTruthy();
+  });
+
+  test('observer engagement metrics endpoint includes prediction hourly trend', async () => {
+    const { agentId, apiKey } = await registerAgent(
+      'Prediction Hourly Trend Studio',
+    );
+
+    const draftRes = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/prediction-hourly-v1.png',
+        thumbnailUrl: 'https://example.com/prediction-hourly-v1-thumb.png',
+      });
+    expect(draftRes.status).toBe(200);
+    const draftId = draftRes.body.draft.id as string;
+
+    const pullRequestRes = await request(app)
+      .post(`/api/drafts/${draftId}/pull-requests`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        description: 'Prediction trend PR',
+        severity: 'minor',
+        imageUrl: 'https://example.com/prediction-hourly-v2.png',
+        thumbnailUrl: 'https://example.com/prediction-hourly-v2-thumb.png',
+      });
+    expect(pullRequestRes.status).toBe(200);
+    const pullRequestId = pullRequestRes.body.id as string;
+
+    const observers = await db.query(
+      `INSERT INTO users (
+         email, password_hash, terms_version, terms_accepted_at, privacy_version, privacy_accepted_at
+       )
+       VALUES
+         ('prediction-hourly-a@example.com', 'hash', 'v1', NOW(), 'v1', NOW()),
+         ('prediction-hourly-b@example.com', 'hash', 'v1', NOW(), 'v1', NOW()),
+         ('prediction-hourly-c@example.com', 'hash', 'v1', NOW(), 'v1', NOW())
+       RETURNING id`,
+    );
+    const observerA = observers.rows[0].id;
+    const observerB = observers.rows[1].id;
+    const observerC = observers.rows[2].id;
+
+    await db.query(
+      `INSERT INTO observer_pr_predictions (
+         observer_id,
+         pull_request_id,
+         predicted_outcome,
+         stake_points,
+         payout_points,
+         resolved_outcome,
+         is_correct,
+         created_at,
+         resolved_at
+       )
+       VALUES
+         ($1, $4, 'merge', 40, 80, 'merge', true, NOW() - INTERVAL '70 minutes', NOW() - INTERVAL '65 minutes'),
+         ($2, $4, 'reject', 20, 0, 'merge', false, NOW() - INTERVAL '66 minutes', NOW() - INTERVAL '60 minutes'),
+         ($3, $4, 'merge', 30, 0, NULL, NULL, NOW() - INTERVAL '10 minutes', NULL)`,
+      [observerA, observerB, observerC, pullRequestId],
+    );
+
+    const response = await request(app)
+      .get('/api/admin/ux/observer-engagement?hours=24')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(response.status).toBe(200);
+    expect(response.body.predictionMarket.totals.predictions).toBe(3);
+    expect(response.body.predictionMarket.totals.predictors).toBe(3);
+    expect(response.body.predictionMarket.totals.markets).toBe(1);
+    expect(response.body.predictionMarket.totals.stakePoints).toBe(90);
+    expect(response.body.predictionMarket.totals.payoutPoints).toBe(80);
+    expect(response.body.predictionMarket.totals.averageStakePoints).toBe(30);
+    expect(response.body.predictionMarket.totals.resolvedPredictions).toBe(2);
+    expect(response.body.predictionMarket.totals.correctPredictions).toBe(1);
+    expect(response.body.kpis.predictionAccuracyRate).toBe(0.5);
+    expect(response.body.kpis.payoutToStakeRatio).toBe(0.889);
+    expect(response.body.predictionMarket.outcomes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          predictedOutcome: 'merge',
+          predictions: 2,
+          stakePoints: 70,
+        }),
+        expect.objectContaining({
+          predictedOutcome: 'reject',
+          predictions: 1,
+          stakePoints: 20,
+        }),
+      ]),
+    );
+
+    const hourlyTrend = Array.isArray(
+      response.body.predictionMarket.hourlyTrend,
+    )
+      ? response.body.predictionMarket.hourlyTrend
+      : [];
+    expect(hourlyTrend.length).toBeGreaterThan(0);
+    const hourlyTotals = hourlyTrend.reduce(
+      (
+        acc: {
+          correctPredictions: number;
+          payoutPoints: number;
+          predictions: number;
+          resolvedPredictions: number;
+          stakePoints: number;
+        },
+        bucket: any,
+      ) => ({
+        predictions: acc.predictions + Number(bucket?.predictions ?? 0),
+        stakePoints: acc.stakePoints + Number(bucket?.stakePoints ?? 0),
+        payoutPoints: acc.payoutPoints + Number(bucket?.payoutPoints ?? 0),
+        resolvedPredictions:
+          acc.resolvedPredictions + Number(bucket?.resolvedPredictions ?? 0),
+        correctPredictions:
+          acc.correctPredictions + Number(bucket?.correctPredictions ?? 0),
+      }),
+      {
+        predictions: 0,
+        stakePoints: 0,
+        payoutPoints: 0,
+        resolvedPredictions: 0,
+        correctPredictions: 0,
+      },
+    );
+    expect(hourlyTotals).toEqual({
+      predictions: 3,
+      stakePoints: 90,
+      payoutPoints: 80,
+      resolvedPredictions: 2,
+      correctPredictions: 1,
+    });
+    for (const bucket of hourlyTrend) {
+      expect(typeof bucket.hour).toBe('string');
+    }
   });
 
   test('job metrics endpoint returns aggregated runs', async () => {

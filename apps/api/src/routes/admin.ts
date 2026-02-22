@@ -5,6 +5,7 @@ import { db } from '../db/pool';
 import { requireAdmin } from '../middleware/admin';
 import { redis } from '../redis/client';
 import { agentGatewayService } from '../services/agentGateway/agentGatewayService';
+import type { AgentGatewaySessionDetail } from '../services/agentGateway/types';
 import { aiRuntimeService } from '../services/aiRuntime/aiRuntimeService';
 import type { AIRuntimeRole } from '../services/aiRuntime/types';
 import {
@@ -34,6 +35,15 @@ const toRate = (numerator: number, denominator: number) =>
   denominator > 0 ? Number((numerator / denominator).toFixed(3)) : null;
 
 const RUNTIME_ROLES: AIRuntimeRole[] = ['author', 'critic', 'maker', 'judge'];
+const AI_RUNTIME_DRY_RUN_ALLOWED_FIELDS = new Set([
+  'role',
+  'prompt',
+  'providersOverride',
+  'simulateFailures',
+  'timeoutMs',
+]);
+const AI_RUNTIME_DRY_RUN_MAX_ARRAY_ITEMS = 10;
+const AI_RUNTIME_DRY_RUN_MAX_TIMEOUT_MS = 120_000;
 
 const parseOptionalPositiveNumber = (value: unknown): number | undefined => {
   if (typeof value === 'number') {
@@ -46,6 +56,71 @@ const parseOptionalPositiveNumber = (value: unknown): number | undefined => {
   return undefined;
 };
 
+const parseOptionalStringArrayStrict = (
+  value: unknown,
+  {
+    fieldName,
+    maxItems = AI_RUNTIME_DRY_RUN_MAX_ARRAY_ITEMS,
+  }: { fieldName: string; maxItems?: number },
+): string[] | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!Array.isArray(value)) {
+    throw new ServiceError(
+      'AI_RUNTIME_INVALID_INPUT',
+      `${fieldName} must be an array of strings.`,
+      400,
+    );
+  }
+  if (value.length > maxItems) {
+    throw new ServiceError(
+      'AI_RUNTIME_INVALID_INPUT',
+      `${fieldName} supports up to ${maxItems} items.`,
+      400,
+    );
+  }
+  const normalized: string[] = [];
+  for (const item of value) {
+    if (typeof item !== 'string') {
+      throw new ServiceError(
+        'AI_RUNTIME_INVALID_INPUT',
+        `${fieldName} must contain strings only.`,
+        400,
+      );
+    }
+    const trimmed = item.trim();
+    if (trimmed.length === 0) {
+      continue;
+    }
+    normalized.push(trimmed);
+  }
+  return normalized.length > 0 ? Array.from(new Set(normalized)) : undefined;
+};
+
+const parseOptionalRuntimeTimeout = (value: unknown): number | undefined => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new ServiceError(
+      'AI_RUNTIME_INVALID_TIMEOUT',
+      'timeoutMs must be a positive number.',
+      400,
+    );
+  }
+  const normalized = Math.floor(parsed);
+  if (normalized > AI_RUNTIME_DRY_RUN_MAX_TIMEOUT_MS) {
+    throw new ServiceError(
+      'AI_RUNTIME_INVALID_TIMEOUT',
+      `timeoutMs must be <= ${AI_RUNTIME_DRY_RUN_MAX_TIMEOUT_MS}.`,
+      400,
+    );
+  }
+  return normalized;
+};
+
 const getRealtime = (req: Request) =>
   req.app.get('realtime') as RealtimeService | undefined;
 
@@ -54,6 +129,171 @@ const parseOptionalStringArray = (value: unknown): string[] | undefined => {
     return undefined;
   }
   return value.filter((item): item is string => typeof item === 'string');
+};
+
+const toObject = (value: unknown): Record<string, unknown> =>
+  value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+
+const toInteger = (value: unknown): number => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Math.max(0, Math.floor(value));
+  }
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return Math.max(0, Math.floor(parsed));
+    }
+  }
+  return 0;
+};
+
+const toStringOrNull = (value: unknown): string | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const bump = (bucket: Record<string, number>, key: string, amount = 1) => {
+  bucket[key] = (bucket[key] ?? 0) + amount;
+};
+
+const isDraftCycleStepEvent = (eventType: string) =>
+  eventType.startsWith('draft_cycle_') && eventType.endsWith('_completed');
+
+const buildAgentGatewaySessionSummary = (detail: AgentGatewaySessionDetail) => {
+  const byType: Record<string, number> = {};
+  const byRole: Record<string, number> = {};
+  const providerUsage: Record<string, number> = {};
+  const attemptStatus: Record<string, number> = {};
+
+  let draftCycleStepCount = 0;
+  let failedStepCount = 0;
+  let cycleCompletedCount = 0;
+  let cycleFailedCount = 0;
+  let compactCount = 0;
+  let prunedCountTotal = 0;
+  let lastCompactedAt: string | null = null;
+
+  for (const event of detail.events) {
+    bump(byType, event.type);
+    bump(byRole, event.fromRole);
+    if (event.type === 'draft_cycle_completed') {
+      cycleCompletedCount += 1;
+    }
+    if (event.type === 'draft_cycle_failed') {
+      cycleFailedCount += 1;
+    }
+    if (isDraftCycleStepEvent(event.type)) {
+      draftCycleStepCount += 1;
+    }
+
+    const payload = toObject(event.payload);
+    if (payload.failed === true) {
+      failedStepCount += 1;
+    }
+
+    const selectedProvider = toStringOrNull(payload.selectedProvider);
+    if (selectedProvider) {
+      bump(providerUsage, selectedProvider);
+    }
+
+    const attemptsRaw = payload.attempts;
+    if (Array.isArray(attemptsRaw)) {
+      for (const attempt of attemptsRaw) {
+        if (!attempt || typeof attempt !== 'object') {
+          continue;
+        }
+        const status = toStringOrNull(
+          (attempt as Record<string, unknown>).status,
+        );
+        if (status) {
+          bump(attemptStatus, status);
+        }
+      }
+    }
+
+    if (event.type === 'session_compacted') {
+      compactCount += 1;
+      prunedCountTotal += toInteger(payload.prunedCount);
+      lastCompactedAt = event.createdAt;
+    }
+  }
+
+  const lastEvent = detail.events.at(-1) ?? null;
+  const startedAtMs = Date.parse(detail.session.createdAt);
+  const endedAtMs = Date.parse(
+    lastEvent?.createdAt ?? detail.session.updatedAt,
+  );
+  const durationMs =
+    Number.isFinite(startedAtMs) && Number.isFinite(endedAtMs)
+      ? Math.max(0, endedAtMs - startedAtMs)
+      : null;
+
+  return {
+    session: {
+      id: detail.session.id,
+      channel: detail.session.channel,
+      draftId: detail.session.draftId,
+      externalSessionId: detail.session.externalSessionId,
+      status: detail.session.status,
+      createdAt: detail.session.createdAt,
+      updatedAt: detail.session.updatedAt,
+    },
+    totals: {
+      eventCount: detail.events.length,
+      uniqueEventTypes: Object.keys(byType).length,
+      uniqueRoles: Object.keys(byRole).length,
+      draftCycleStepCount,
+      failedStepCount,
+      cycleCompletedCount,
+      cycleFailedCount,
+      durationMs,
+    },
+    byType,
+    byRole,
+    providerUsage,
+    attemptStatus,
+    compaction: {
+      compactCount,
+      prunedCountTotal,
+      lastCompactedAt,
+    },
+    lastEvent: lastEvent
+      ? {
+          id: lastEvent.id,
+          type: lastEvent.type,
+          fromRole: lastEvent.fromRole,
+          toRole: lastEvent.toRole,
+          createdAt: lastEvent.createdAt,
+        }
+      : null,
+  };
+};
+
+const buildAgentGatewaySessionStatus = (detail: AgentGatewaySessionDetail) => {
+  const summary = buildAgentGatewaySessionSummary(detail);
+  const failedStepCount = summary.totals.failedStepCount;
+  const cycleFailedCount = summary.totals.cycleFailedCount;
+  const needsAttention = failedStepCount > 0 || cycleFailedCount > 0;
+
+  return {
+    sessionId: summary.session.id,
+    channel: summary.session.channel,
+    draftId: summary.session.draftId,
+    status: summary.session.status,
+    updatedAt: summary.session.updatedAt,
+    lastEventType: summary.lastEvent?.type ?? null,
+    eventCount: summary.totals.eventCount,
+    durationMs: summary.totals.durationMs,
+    cycleCompletedCount: summary.totals.cycleCompletedCount,
+    cycleFailedCount,
+    failedStepCount,
+    compactCount: summary.compaction.compactCount,
+    needsAttention,
+    health: needsAttention ? 'attention' : 'ok',
+  };
 };
 
 interface BudgetRemainingPayload {
@@ -205,6 +445,10 @@ router.get('/admin/ai-runtime/profiles', requireAdmin, (_req, res) => {
   });
 });
 
+router.get('/admin/ai-runtime/health', requireAdmin, (_req, res) => {
+  res.json(aiRuntimeService.getHealthSnapshot());
+});
+
 router.post(
   '/admin/ai-runtime/dry-run',
   requireAdmin,
@@ -214,6 +458,16 @@ router.post(
         typeof req.body === 'object' && req.body !== null
           ? (req.body as Record<string, unknown>)
           : {};
+      const unknownFields = Object.keys(body).filter(
+        (field) => !AI_RUNTIME_DRY_RUN_ALLOWED_FIELDS.has(field),
+      );
+      if (unknownFields.length > 0) {
+        throw new ServiceError(
+          'AI_RUNTIME_DRY_RUN_INVALID_FIELDS',
+          `Unsupported fields: ${unknownFields.join(', ')}.`,
+          400,
+        );
+      }
       const roleRaw = body.role;
       const promptRaw = body.prompt;
       const providersOverrideRaw = body.providersOverride;
@@ -238,19 +492,15 @@ router.post(
         );
       }
 
-      const providersOverride = Array.isArray(providersOverrideRaw)
-        ? providersOverrideRaw
-            .filter((value): value is string => typeof value === 'string')
-            .map((value) => value.trim())
-            .filter((value) => value.length > 0)
-        : undefined;
-      const simulateFailures = Array.isArray(simulateFailuresRaw)
-        ? simulateFailuresRaw
-            .filter((value): value is string => typeof value === 'string')
-            .map((value) => value.trim())
-            .filter((value) => value.length > 0)
-        : undefined;
-      const timeoutMs = parseOptionalPositiveNumber(timeoutMsRaw);
+      const providersOverride = parseOptionalStringArrayStrict(
+        providersOverrideRaw,
+        { fieldName: 'providersOverride' },
+      );
+      const simulateFailures = parseOptionalStringArrayStrict(
+        simulateFailuresRaw,
+        { fieldName: 'simulateFailures' },
+      );
+      const timeoutMs = parseOptionalRuntimeTimeout(timeoutMsRaw);
 
       const result = await aiRuntimeService.runWithFailover({
         role: roleRaw as AIRuntimeRole,
@@ -455,6 +705,113 @@ router.get(
   },
 );
 
+router.get(
+  '/admin/agent-gateway/sessions/:sessionId/events',
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      const source = req.query.source === 'memory' ? 'memory' : 'db';
+      const detail =
+        source === 'memory'
+          ? agentGatewayService.getSession(req.params.sessionId)
+          : await agentGatewayService.getPersistedSession(req.params.sessionId);
+      if (!detail) {
+        throw new ServiceError(
+          'AGENT_GATEWAY_SESSION_NOT_FOUND',
+          'Agent gateway session not found.',
+          404,
+        );
+      }
+
+      const limit = clamp(
+        parseOptionalPositiveNumber(req.query.limit) ?? 10,
+        1,
+        200,
+      );
+      const events = [...detail.events]
+        .sort((left, right) => {
+          const leftTime = Date.parse(left.createdAt);
+          const rightTime = Date.parse(right.createdAt);
+          if (!(Number.isFinite(leftTime) && Number.isFinite(rightTime))) {
+            return right.createdAt.localeCompare(left.createdAt);
+          }
+          return rightTime - leftTime;
+        })
+        .slice(0, limit);
+
+      res.json({
+        source,
+        session: {
+          id: detail.session.id,
+          channel: detail.session.channel,
+          draftId: detail.session.draftId,
+          status: detail.session.status,
+          updatedAt: detail.session.updatedAt,
+        },
+        total: detail.events.length,
+        limit,
+        events,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+router.get(
+  '/admin/agent-gateway/sessions/:sessionId/summary',
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      const source = req.query.source === 'memory' ? 'memory' : 'db';
+      const detail =
+        source === 'memory'
+          ? agentGatewayService.getSession(req.params.sessionId)
+          : await agentGatewayService.getPersistedSession(req.params.sessionId);
+      if (!detail) {
+        throw new ServiceError(
+          'AGENT_GATEWAY_SESSION_NOT_FOUND',
+          'Agent gateway session not found.',
+          404,
+        );
+      }
+      res.json({
+        source,
+        summary: buildAgentGatewaySessionSummary(detail),
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+router.get(
+  '/admin/agent-gateway/sessions/:sessionId/status',
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      const source = req.query.source === 'memory' ? 'memory' : 'db';
+      const detail =
+        source === 'memory'
+          ? agentGatewayService.getSession(req.params.sessionId)
+          : await agentGatewayService.getPersistedSession(req.params.sessionId);
+      if (!detail) {
+        throw new ServiceError(
+          'AGENT_GATEWAY_SESSION_NOT_FOUND',
+          'Agent gateway session not found.',
+          404,
+        );
+      }
+      res.json({
+        source,
+        status: buildAgentGatewaySessionStatus(detail),
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
 router.post(
   '/admin/agent-gateway/sessions/:sessionId/events',
   requireAdmin,
@@ -495,6 +852,71 @@ router.post(
       );
 
       res.status(201).json({ event });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+router.post(
+  '/admin/agent-gateway/sessions/:sessionId/compact',
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      const body =
+        typeof req.body === 'object' && req.body !== null
+          ? (req.body as Record<string, unknown>)
+          : {};
+      const keepRecent = parseOptionalPositiveNumber(body.keepRecent);
+
+      const result = await agentGatewayService.compactSession(
+        req.params.sessionId,
+        keepRecent,
+      );
+
+      const realtime = getRealtime(req);
+      realtime?.broadcast(
+        `session:${req.params.sessionId}`,
+        'agent_gateway_session_compacted',
+        {
+          source: 'agent_gateway',
+          data: result,
+        },
+      );
+      const draftId = result.session.draftId;
+      if (draftId) {
+        const compactPayload = {
+          source: 'agent_gateway',
+          data: {
+            sessionId: result.session.id,
+            draftId,
+            keepRecent: result.keepRecent,
+            prunedCount: result.prunedCount,
+            totalBefore: result.totalBefore,
+            totalAfter: result.totalAfter,
+          },
+        };
+        realtime?.broadcast(
+          `post:${draftId}`,
+          'agent_gateway_session_compacted',
+          compactPayload,
+        );
+        realtime?.broadcast(
+          'feed:live',
+          'agent_gateway_session_compacted',
+          compactPayload,
+        );
+      }
+      realtime?.broadcast(
+        `session:${req.params.sessionId}`,
+        'agent_gateway_event',
+        {
+          source: 'agent_gateway',
+          data: result.event,
+        },
+      );
+
+      res.json(result);
     } catch (error) {
       next(error);
     }
@@ -799,7 +1221,64 @@ router.get('/admin/ux/similar-search', requireAdmin, async (req, res, next) => {
       return a.mode.localeCompare(b.mode);
     });
 
-    res.json({ windowHours: hours, rows: summary.rows, profiles });
+    const styleFusionTotalsResult = await db.query(
+      `SELECT
+         COUNT(*)::int AS total_count,
+         COUNT(*) FILTER (WHERE status = 'success')::int AS success_count,
+         COUNT(*) FILTER (WHERE status = 'error')::int AS error_count,
+         AVG(
+           CASE
+             WHEN status = 'success'
+               AND COALESCE(metadata->>'sampleCount', '') ~ '^[0-9]+(\\.[0-9]+)?$'
+             THEN (metadata->>'sampleCount')::float
+             ELSE NULL
+           END
+         )::float AS avg_sample_count
+       FROM ux_events
+       WHERE created_at >= NOW() - ($1 || ' hours')::interval
+         AND event_type = 'style_fusion_generate'`,
+      [hours],
+    );
+    const styleFusionErrorsResult = await db.query(
+      `SELECT
+         COALESCE(metadata->>'errorCode', 'unknown') AS error_code,
+         COUNT(*)::int AS count
+       FROM ux_events
+       WHERE created_at >= NOW() - ($1 || ' hours')::interval
+         AND event_type = 'style_fusion_generate'
+         AND status = 'error'
+       GROUP BY error_code
+       ORDER BY count DESC, error_code ASC`,
+      [hours],
+    );
+    const styleFusionTotals = styleFusionTotalsResult.rows[0] ?? {};
+    const totalCount = Number(styleFusionTotals.total_count ?? 0);
+    const successCount = Number(styleFusionTotals.success_count ?? 0);
+    const errorCount = Number(styleFusionTotals.error_count ?? 0);
+    const avgSampleCountRaw = Number(styleFusionTotals.avg_sample_count ?? 0);
+    const avgSampleCount =
+      Number.isFinite(avgSampleCountRaw) && avgSampleCountRaw > 0
+        ? Number(avgSampleCountRaw.toFixed(2))
+        : null;
+    const successRate =
+      totalCount > 0 ? Number((successCount / totalCount).toFixed(3)) : null;
+
+    res.json({
+      windowHours: hours,
+      rows: summary.rows,
+      profiles,
+      styleFusion: {
+        total: totalCount,
+        success: successCount,
+        errors: errorCount,
+        successRate,
+        avgSampleCount,
+        errorBreakdown: styleFusionErrorsResult.rows.map((row) => ({
+          errorCode: row.error_code as string,
+          count: Number(row.count ?? 0),
+        })),
+      },
+    });
   } catch (error) {
     next(error);
   }
@@ -814,6 +1293,9 @@ router.get(
       const trackedEvents = [
         'draft_arc_view',
         'draft_recap_view',
+        'draft_multimodal_glowup_view',
+        'draft_multimodal_glowup_empty',
+        'draft_multimodal_glowup_error',
         'watchlist_follow',
         'watchlist_unfollow',
         'digest_open',
@@ -848,6 +1330,9 @@ router.get(
         hotNowOpens: 0,
         predictionSubmits: 0,
         predictionResultViews: 0,
+        multimodalViews: 0,
+        multimodalEmptyStates: 0,
+        multimodalErrors: 0,
       };
 
       for (const row of totalsResult.rows) {
@@ -878,10 +1363,137 @@ router.get(
           case 'pr_prediction_result_view':
             totals.predictionResultViews += count;
             break;
+          case 'draft_multimodal_glowup_view':
+            totals.multimodalViews += count;
+            break;
+          case 'draft_multimodal_glowup_empty':
+            totals.multimodalEmptyStates += count;
+            break;
+          case 'draft_multimodal_glowup_error':
+            totals.multimodalErrors += count;
+            break;
           default:
             break;
         }
       }
+
+      const multimodalProviderRows = await db.query(
+        `SELECT COALESCE(metadata->>'provider', 'unknown') AS provider,
+                COUNT(*)::int AS count
+         FROM ux_events
+         WHERE created_at >= NOW() - ($1 || ' hours')::interval
+           AND user_type = 'observer'
+           AND event_type = 'draft_multimodal_glowup_view'
+         GROUP BY provider
+         ORDER BY count DESC, provider`,
+        [hours],
+      );
+
+      const multimodalReasonRows = await db.query(
+        `SELECT event_type,
+                COALESCE(metadata->>'reason', 'unknown') AS reason,
+                COUNT(*)::int AS count
+         FROM ux_events
+         WHERE created_at >= NOW() - ($1 || ' hours')::interval
+           AND user_type = 'observer'
+           AND event_type = ANY($2)
+         GROUP BY event_type, reason
+         ORDER BY event_type, count DESC, reason`,
+        [
+          hours,
+          ['draft_multimodal_glowup_empty', 'draft_multimodal_glowup_error'],
+        ],
+      );
+      const multimodalHourlyRows = await db.query(
+        `SELECT
+           TO_CHAR(
+             DATE_TRUNC('hour', created_at AT TIME ZONE 'UTC'),
+             'YYYY-MM-DD"T"HH24:00:00"Z"'
+           ) AS hour_bucket,
+           event_type,
+           COUNT(*)::int AS count
+         FROM ux_events
+         WHERE created_at >= NOW() - ($1 || ' hours')::interval
+           AND user_type = 'observer'
+           AND event_type = ANY($2)
+         GROUP BY hour_bucket, event_type
+         ORDER BY hour_bucket ASC, event_type`,
+        [
+          hours,
+          [
+            'draft_multimodal_glowup_view',
+            'draft_multimodal_glowup_empty',
+            'draft_multimodal_glowup_error',
+          ],
+        ],
+      );
+
+      const multimodalProviderBreakdown = multimodalProviderRows.rows.map(
+        (row) => ({
+          provider: String(row.provider ?? 'unknown'),
+          count: Number(row.count ?? 0),
+        }),
+      );
+      const multimodalEmptyReasonBreakdown = multimodalReasonRows.rows
+        .filter((row) => row.event_type === 'draft_multimodal_glowup_empty')
+        .map((row) => ({
+          reason: String(row.reason ?? 'unknown'),
+          count: Number(row.count ?? 0),
+        }));
+      const multimodalErrorReasonBreakdown = multimodalReasonRows.rows
+        .filter((row) => row.event_type === 'draft_multimodal_glowup_error')
+        .map((row) => ({
+          reason: String(row.reason ?? 'unknown'),
+          count: Number(row.count ?? 0),
+        }));
+      const multimodalHourlyTrendMap = new Map<
+        string,
+        {
+          hour: string;
+          views: number;
+          emptyStates: number;
+          errors: number;
+        }
+      >();
+      for (const row of multimodalHourlyRows.rows) {
+        const hour = String(row.hour_bucket ?? '').trim();
+        if (hour.length === 0) {
+          continue;
+        }
+        const count = Number(row.count ?? 0);
+        const current = multimodalHourlyTrendMap.get(hour) ?? {
+          hour,
+          views: 0,
+          emptyStates: 0,
+          errors: 0,
+        };
+        if (row.event_type === 'draft_multimodal_glowup_view') {
+          current.views += count;
+        } else if (row.event_type === 'draft_multimodal_glowup_empty') {
+          current.emptyStates += count;
+        } else if (row.event_type === 'draft_multimodal_glowup_error') {
+          current.errors += count;
+        }
+        multimodalHourlyTrendMap.set(hour, current);
+      }
+      const multimodalHourlyTrend = Array.from(
+        multimodalHourlyTrendMap.values(),
+      )
+        .sort((left, right) => left.hour.localeCompare(right.hour))
+        .map((bucket) => {
+          const attempts = bucket.views + bucket.emptyStates;
+          const totalEvents = attempts + bucket.errors;
+          return {
+            hour: bucket.hour,
+            views: bucket.views,
+            emptyStates: bucket.emptyStates,
+            errors: bucket.errors,
+            attempts,
+            totalEvents,
+            coverageRate: toRate(bucket.views, attempts),
+            errorRate: toRate(bucket.errors, totalEvents),
+          };
+        });
 
       const observerUsersResult = await db.query(
         `SELECT COUNT(DISTINCT user_id)::int AS observer_users
@@ -1151,6 +1763,26 @@ router.get(
          ORDER BY predicted_outcome`,
         [hours],
       );
+      const predictionHourlyRows = await db.query(
+        `SELECT
+           TO_CHAR(
+             DATE_TRUNC('hour', created_at AT TIME ZONE 'UTC'),
+             'YYYY-MM-DD"T"HH24:00:00"Z"'
+           ) AS hour_bucket,
+           COUNT(*)::int AS prediction_count,
+           COUNT(DISTINCT observer_id)::int AS predictor_count,
+           COUNT(DISTINCT pull_request_id)::int AS market_count,
+           COALESCE(SUM(stake_points), 0)::int AS stake_points,
+           COALESCE(SUM(payout_points), 0)::int AS payout_points,
+           COALESCE(AVG(stake_points), 0)::float AS avg_stake_points,
+           COUNT(*) FILTER (WHERE resolved_outcome IS NOT NULL)::int AS resolved_count,
+           COUNT(*) FILTER (WHERE is_correct = true)::int AS correct_count
+         FROM observer_pr_predictions
+         WHERE created_at >= NOW() - ($1 || ' hours')::interval
+         GROUP BY hour_bucket
+         ORDER BY hour_bucket ASC`,
+        [hours],
+      );
 
       const predictionCount = Number(
         predictionMarketSummary.rows[0]?.prediction_count ?? 0,
@@ -1190,6 +1822,46 @@ router.get(
         predictionPayoutPoints,
         predictionStakePoints,
       );
+      const predictionHourlyTrend = predictionHourlyRows.rows
+        .map((row) => {
+          const hour = String(row.hour_bucket ?? '').trim();
+          const predictions = Number(row.prediction_count ?? 0);
+          const predictors = Number(row.predictor_count ?? 0);
+          const markets = Number(row.market_count ?? 0);
+          const stakePoints = Number(row.stake_points ?? 0);
+          const payoutPoints = Number(row.payout_points ?? 0);
+          const resolvedPredictions = Number(row.resolved_count ?? 0);
+          const correctPredictions = Number(row.correct_count ?? 0);
+          const avgStakePoints = Number(
+            Number(row.avg_stake_points ?? 0).toFixed(2),
+          );
+          return {
+            hour,
+            predictions,
+            predictors,
+            markets,
+            stakePoints,
+            payoutPoints,
+            avgStakePoints,
+            resolvedPredictions,
+            correctPredictions,
+            accuracyRate: toRate(correctPredictions, resolvedPredictions),
+            payoutToStakeRatio: toRate(payoutPoints, stakePoints),
+          };
+        })
+        .filter((row) => row.hour.length > 0);
+      const multimodalAttempts =
+        totals.multimodalViews + totals.multimodalEmptyStates;
+      const multimodalTotalEvents =
+        multimodalAttempts + totals.multimodalErrors;
+      const multimodalCoverageRate = toRate(
+        totals.multimodalViews,
+        multimodalAttempts,
+      );
+      const multimodalErrorRate = toRate(
+        totals.multimodalErrors,
+        multimodalTotalEvents,
+      );
 
       res.json({
         windowHours: hours,
@@ -1212,6 +1884,21 @@ router.get(
           predictionAccuracyRate,
           predictionPoolPoints: predictionStakePoints,
           payoutToStakeRatio,
+          multimodalCoverageRate,
+          multimodalErrorRate,
+        },
+        multimodal: {
+          views: totals.multimodalViews,
+          emptyStates: totals.multimodalEmptyStates,
+          errors: totals.multimodalErrors,
+          attempts: multimodalAttempts,
+          totalEvents: multimodalTotalEvents,
+          coverageRate: multimodalCoverageRate,
+          errorRate: multimodalErrorRate,
+          providerBreakdown: multimodalProviderBreakdown,
+          emptyReasonBreakdown: multimodalEmptyReasonBreakdown,
+          errorReasonBreakdown: multimodalErrorReasonBreakdown,
+          hourlyTrend: multimodalHourlyTrend,
         },
         predictionMarket: {
           totals: {
@@ -1229,6 +1916,7 @@ router.get(
             predictions: Number(row.prediction_count ?? 0),
             stakePoints: Number(row.stake_points ?? 0),
           })),
+          hourlyTrend: predictionHourlyTrend,
         },
         feedPreferences: {
           viewMode: {
