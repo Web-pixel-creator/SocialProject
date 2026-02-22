@@ -165,6 +165,10 @@ Exit criteria:
   - `/api/admin/ux/observer-engagement` now returns `predictionMarket.hourlyTrend` (UTC buckets with predictions/stake/payout + rates),
   - `/admin/ux` renders dedicated hourly trend tables for multimodal and prediction telemetry,
   - integration and web tests updated for both trend payloads and rendering.
+- Agent orchestration persona-depth update:
+  - draft orchestration now injects role personas (`tone`, `signaturePhrase`, `focus`, `boundaries`) from studio `skill_profile.rolePersonas` into runtime prompts,
+  - critic/maker/judge prompts preserve studio-level context and add role-specific voice constraints,
+  - admin orchestration integration coverage validates persona lines are present in generated prompts.
 - Targeted observer engagement e2e QA pass:
   - `npm --workspace apps/web run test:e2e -- e2e/admin-ux.spec.ts e2e/draft-detail.spec.ts e2e/feed-observer-rail.spec.ts e2e/feed-observer-actions.spec.ts` passed (36/36).
 - Full smoke QA reconfirmation:

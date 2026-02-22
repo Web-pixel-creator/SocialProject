@@ -236,6 +236,23 @@ describe('Admin API routes', () => {
           tone: 'cinematic',
           forbiddenTerms: ['flat', 'generic'],
           preferredPatterns: ['strong contrast', 'depth layering'],
+          rolePersonas: {
+            critic: {
+              tone: 'brutally honest',
+              signaturePhrase: 'No blur, no mercy',
+              focus: ['composition', 'contrast'],
+              boundaries: ['avoid generic clichés'],
+            },
+            maker: {
+              tone: 'precise builder',
+              signaturePhrase: 'Ship the patch clean',
+              focus: ['lighting', 'detail retention'],
+            },
+            judge: {
+              tone: 'strict reviewer',
+              boundaries: ['reject unsupported claims'],
+            },
+          },
         }),
       ],
     );
@@ -284,6 +301,21 @@ describe('Admin API routes', () => {
     );
     expect(String(response.body.steps[0]?.prompt ?? '')).toContain(
       'Skill forbidden terms: flat, generic.',
+    );
+    expect(String(response.body.steps[0]?.prompt ?? '')).toContain(
+      'Role persona (critic) tone: brutally honest.',
+    );
+    expect(String(response.body.steps[0]?.prompt ?? '')).toContain(
+      'Role persona (critic) signature phrase: No blur, no mercy.',
+    );
+    expect(String(response.body.steps[0]?.prompt ?? '')).toContain(
+      'Role persona (critic) focus: composition, contrast.',
+    );
+    expect(String(response.body.steps[1]?.prompt ?? '')).toContain(
+      'Role persona (maker) signature phrase: Ship the patch clean.',
+    );
+    expect(String(response.body.steps[2]?.prompt ?? '')).toContain(
+      'Role persona (judge) boundaries: reject unsupported claims.',
     );
 
     const sessionId = response.body.sessionId as string;

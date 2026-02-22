@@ -15,12 +15,22 @@ interface DraftOrchestrationStep {
   result: AIRuntimeResult;
 }
 
+interface RolePersonaConfig {
+  tone?: string;
+  signaturePhrase?: string;
+  focus?: string[];
+  boundaries?: string[];
+}
+
+type RolePersonas = Partial<Record<AIRuntimeRole, RolePersonaConfig>>;
+
 interface StudioSkillContext {
   studioId: string;
   studioName: string;
   personality: string;
   styleTags: string[];
   skillProfile: Record<string, unknown>;
+  rolePersonas: RolePersonas;
 }
 
 interface Queryable {
@@ -136,6 +146,61 @@ const resolveSkillList = (profile: Record<string, unknown>, key: string) => {
     .filter(Boolean);
 };
 
+const parseRolePersona = (value: unknown): RolePersonaConfig | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+  const personaRecord = value as Record<string, unknown>;
+  const tone = toTrimmedString(personaRecord.tone) ?? undefined;
+  const signaturePhrase =
+    toTrimmedString(personaRecord.signaturePhrase) ?? undefined;
+  const focus = toStringArray(personaRecord.focus)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const boundaries = toStringArray(personaRecord.boundaries)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const parsed: RolePersonaConfig = {};
+  if (tone) {
+    parsed.tone = tone;
+  }
+  if (signaturePhrase) {
+    parsed.signaturePhrase = signaturePhrase;
+  }
+  if (focus.length > 0) {
+    parsed.focus = focus;
+  }
+  if (boundaries.length > 0) {
+    parsed.boundaries = boundaries;
+  }
+  return Object.keys(parsed).length > 0 ? parsed : null;
+};
+
+const parseRolePersonas = (profile: Record<string, unknown>): RolePersonas => {
+  const rolePersonasRaw = profile.rolePersonas;
+  if (
+    !rolePersonasRaw ||
+    typeof rolePersonasRaw !== 'object' ||
+    Array.isArray(rolePersonasRaw)
+  ) {
+    return {};
+  }
+  const rolePersonasRecord = rolePersonasRaw as Record<string, unknown>;
+  const parsed: RolePersonas = {};
+  for (const role of [
+    'author',
+    'critic',
+    'maker',
+    'judge',
+  ] as AIRuntimeRole[]) {
+    const persona = parseRolePersona(rolePersonasRecord[role]);
+    if (persona) {
+      parsed[role] = persona;
+    }
+  }
+  return parsed;
+};
+
 const buildStudioContextLines = (studioContext: StudioSkillContext | null) => {
   if (!studioContext) {
     return [];
@@ -184,6 +249,36 @@ const buildStudioContextLines = (studioContext: StudioSkillContext | null) => {
   ].filter((part): part is string => Boolean(part));
 };
 
+const buildRolePersonaLines = (
+  role: AIRuntimeRole,
+  studioContext: StudioSkillContext | null,
+) => {
+  const rolePersona = studioContext?.rolePersonas?.[role];
+  if (!rolePersona) {
+    return [];
+  }
+  const focus =
+    rolePersona.focus && rolePersona.focus.length > 0
+      ? rolePersona.focus.join(', ')
+      : null;
+  const boundaries =
+    rolePersona.boundaries && rolePersona.boundaries.length > 0
+      ? rolePersona.boundaries.join(', ')
+      : null;
+
+  return [
+    rolePersona.tone
+      ? `Role persona (${role}) tone: ${rolePersona.tone}.`
+      : null,
+    rolePersona.signaturePhrase
+      ? `Role persona (${role}) signature phrase: ${rolePersona.signaturePhrase}.`
+      : null,
+    focus ? `Role persona (${role}) focus: ${focus}.` : null,
+    boundaries ? `Role persona (${role}) boundaries: ${boundaries}.` : null,
+    'Stay consistent with this role persona in wording and recommendations.',
+  ].filter((part): part is string => Boolean(part));
+};
+
 const buildPrompt = (
   role: AIRuntimeRole,
   input: DraftOrchestrationRunInput,
@@ -192,11 +287,13 @@ const buildPrompt = (
 ) => {
   const seed = input.promptSeed?.trim();
   const contextLines = buildStudioContextLines(studioContext);
+  const rolePersonaLines = buildRolePersonaLines(role, studioContext);
   if (role === 'critic') {
     return [
       `You are role=${role}.`,
       `Analyze draftId=${input.draftId}.`,
       ...contextLines,
+      ...rolePersonaLines,
       seed ? `Scenario seed: ${seed}` : null,
       'Return a concise fix request and severity.',
     ]
@@ -209,6 +306,7 @@ const buildPrompt = (
       `You are role=${role}.`,
       `Implement update plan for draftId=${input.draftId}.`,
       ...contextLines,
+      ...rolePersonaLines,
       `Critic output: ${toPromptExcerpt(previousOutputs.critic ?? null)}`,
       'Return proposed PR summary and expected improvement.',
     ].join('\n');
@@ -218,6 +316,7 @@ const buildPrompt = (
     `You are role=${role}.`,
     `Review the cycle for draftId=${input.draftId}.`,
     ...contextLines,
+    ...rolePersonaLines,
     `Critic output: ${toPromptExcerpt(previousOutputs.critic ?? null)}`,
     `Maker output: ${toPromptExcerpt(previousOutputs.maker ?? null)}`,
     'Return merge/reject recommendation with confidence score 0..1.',
@@ -439,12 +538,14 @@ export class DraftOrchestrationServiceImpl {
     if (!(studioId && studioName && personality)) {
       return null;
     }
+    const skillProfile = toRecord(row.skill_profile);
     return {
       studioId,
       studioName,
       personality,
       styleTags: toStringArray(row.style_tags),
-      skillProfile: toRecord(row.skill_profile),
+      skillProfile,
+      rolePersonas: parseRolePersonas(skillProfile),
     };
   }
 }
