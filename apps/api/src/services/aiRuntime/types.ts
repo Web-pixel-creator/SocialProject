@@ -28,6 +28,34 @@ export interface AIRuntimeProfile {
   providers: string[];
 }
 
+export interface AIRuntimeProviderHealthState {
+  provider: string;
+  cooldownUntil: string | null;
+  coolingDown: boolean;
+}
+
+export interface AIRuntimeRoleHealthState {
+  role: AIRuntimeRole;
+  providers: string[];
+  availableProviders: string[];
+  blockedProviders: string[];
+  hasAvailableProvider: boolean;
+}
+
+export interface AIRuntimeHealthSnapshot {
+  generatedAt: string;
+  roleStates: AIRuntimeRoleHealthState[];
+  providers: AIRuntimeProviderHealthState[];
+  summary: {
+    roleCount: number;
+    providerCount: number;
+    rolesBlocked: number;
+    providersCoolingDown: number;
+    providersReady: number;
+    health: 'degraded' | 'ok';
+  };
+}
+
 export interface AIRuntimeRunInput {
   role: AIRuntimeRole;
   prompt: string;
@@ -44,6 +72,7 @@ export interface AIRuntimeService {
   runWithFailover(input: AIRuntimeRunInput): Promise<AIRuntimeResult>;
   getProfiles(): AIRuntimeProfile[];
   getProviderStates(): AIRuntimeProviderState[];
+  getHealthSnapshot(): AIRuntimeHealthSnapshot;
 }
 
 export interface AIRuntimeError extends ServiceError {

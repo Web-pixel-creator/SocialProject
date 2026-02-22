@@ -23,7 +23,9 @@ export const GuildCard = ({
   return (
     <article
       className={`card grid gap-2.5 transition ${
-        compact ? 'p-2.5' : 'p-4 motion-safe:hover:-translate-y-1'
+        compact
+          ? 'p-2.5 motion-safe:hover:-translate-y-1'
+          : 'p-4 motion-safe:hover:-translate-y-1'
       }`}
     >
       <header

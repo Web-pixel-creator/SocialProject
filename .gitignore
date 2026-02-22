@@ -20,3 +20,6 @@ apps/web/*.tsbuildinfo
 test-results/
 .logs/
 .tmp/
+.external/
+.tmp-web-dev.log
+.tmp-web-dev.err.log

@@ -2,6 +2,9 @@
 
 Use this runbook for release-time health checks and incident response.
 
+Related runtime incident runbook:
+- `docs/ops/agent-gateway-ai-runtime-runbook.md`
+
 ## Owners
 
 - Primary owner: Platform/Operations.
@@ -19,6 +22,8 @@ Replace `<OBS_BASE_URL>` with your monitoring base URL.
 - Admin metrics fallback:
   - `GET /api/admin/system/metrics` (`x-admin-token` required)
   - `GET /api/admin/embeddings/metrics` (`x-admin-token` required)
+  - `GET /api/admin/ai-runtime/health` (`x-admin-token` required)
+  - `GET /api/admin/agent-gateway/sessions?source=db&limit=20` (`x-admin-token` required)
 
 ## Core SLI/SLO and Alert Thresholds
 
@@ -31,6 +36,9 @@ Replace `<OBS_BASE_URL>` with your monitoring base URL.
 | DB query latency p95 | < 200ms (10m rolling) | > 300ms for 10m | > 500ms for 10m | DB metrics |
 | Redis availability | >= 99.95% (30d) | 1 minute degraded | > 3 minutes unavailable | Redis metrics |
 | Scheduled job success rate | >= 99% (24h) | < 98% (24h) | < 95% (24h) | Job logs/metrics |
+| AI runtime blocked roles | 0 blocked roles | >= 1 blocked role for 5m | >= 1 blocked role for 10m | `GET /api/admin/ai-runtime/health` |
+| AI runtime cooling providers | < 50% pool cooling | >= 50% pool cooling for 5m | >= 80% pool cooling for 10m | `GET /api/admin/ai-runtime/health` |
+| Agent gateway stale active sessions | < 10 stale sessions (15m idle) | >= 10 stale sessions | >= 30 stale sessions | `GET /api/admin/agent-gateway/sessions` + status/summary endpoints |
 
 ## Alert Severity and Escalation
 

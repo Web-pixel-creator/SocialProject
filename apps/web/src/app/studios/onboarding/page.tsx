@@ -24,11 +24,48 @@ const ACTION_LIMITS = {
 
 const focusRingClass =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
+const PERSONA_ROLES = ['author', 'critic', 'maker', 'judge'] as const;
+
+type PersonaRole = (typeof PERSONA_ROLES)[number];
+
+interface PersonaValues {
+  tone: string;
+  signaturePhrase: string;
+}
+
+interface RolePersonaPayload {
+  tone?: string;
+  signaturePhrase?: string;
+}
+
+type RolePersonasPayload = Partial<Record<PersonaRole, RolePersonaPayload>>;
+
+const createEmptyPersonaValues = (): Record<PersonaRole, PersonaValues> => ({
+  author: { tone: '', signaturePhrase: '' },
+  critic: { tone: '', signaturePhrase: '' },
+  maker: { tone: '', signaturePhrase: '' },
+  judge: { tone: '', signaturePhrase: '' },
+});
+
+const PERSONA_ROLE_LABELS: Record<PersonaRole, string> = {
+  author: 'Author',
+  critic: 'Critic',
+  maker: 'Maker',
+  judge: 'Judge',
+};
 
 interface StudioProfilePayload {
   avatar_url?: string | null;
   avatarUrl?: string | null;
   personality?: string | null;
+  skill_profile?: {
+    rolePersonas?: RolePersonasPayload | null;
+    [key: string]: unknown;
+  } | null;
+  skillProfile?: {
+    rolePersonas?: RolePersonasPayload | null;
+    [key: string]: unknown;
+  } | null;
   studio_name?: string | null;
   studioName?: string | null;
   style_tags?: string[] | null;
@@ -47,6 +84,12 @@ interface SaveProfilePayload {
   personality: string | null;
   avatarUrl: string;
   styleTags: string[];
+}
+
+interface SaveRolePersonasPayload {
+  agentId: string;
+  apiKey: string;
+  rolePersonas: RolePersonasPayload;
 }
 
 type CreatorStylePreset = 'balanced' | 'bold' | 'minimal' | 'experimental';
@@ -84,6 +127,9 @@ export default function StudioOnboardingPage() {
   const [studioName, setStudioName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [personality, setPersonality] = useState('');
+  const [rolePersonas, setRolePersonas] = useState<
+    Record<PersonaRole, PersonaValues>
+  >(createEmptyPersonaValues);
   const [styleTags, setStyleTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -127,6 +173,25 @@ export default function StudioOnboardingPage() {
             personality: arg.personality,
             avatarUrl: arg.avatarUrl,
             styleTags: arg.styleTags,
+          },
+          {
+            headers: {
+              'x-agent-id': arg.agentId,
+              'x-api-key': arg.apiKey,
+            },
+          },
+        );
+      },
+    );
+
+  const { isMutating: savingRolePersonas, trigger: triggerSaveRolePersonas } =
+    useSWRMutation<void, unknown, string, SaveRolePersonasPayload>(
+      'studio:onboarding:save-role-personas',
+      async (_key, { arg }) => {
+        await apiClient.put(
+          `/studios/${arg.agentId}/personas`,
+          {
+            rolePersonas: arg.rolePersonas,
           },
           {
             headers: {
@@ -237,7 +302,7 @@ export default function StudioOnboardingPage() {
     return (response.data ?? {}) as CreatorFunnelSummary;
   });
 
-  const loading = connectingAgent || savingProfile;
+  const loading = connectingAgent || savingProfile || savingRolePersonas;
   const creatorLoading =
     creatingCreatorStudio ||
     savingCreatorGovernance ||
@@ -268,6 +333,59 @@ export default function StudioOnboardingPage() {
     );
   }, [studioName, avatarUrl, styleTags.length]);
 
+  const applyRolePersonasFromProfile = (profile: StudioProfilePayload) => {
+    let skillProfile = profile.skillProfile;
+    if (!(skillProfile && typeof skillProfile === 'object')) {
+      skillProfile =
+        profile.skill_profile && typeof profile.skill_profile === 'object'
+          ? profile.skill_profile
+          : null;
+    }
+    const rolePersonasRaw = skillProfile?.rolePersonas;
+    const rolePersonasPayload =
+      rolePersonasRaw && typeof rolePersonasRaw === 'object'
+        ? rolePersonasRaw
+        : null;
+
+    if (!rolePersonasPayload) {
+      setRolePersonas(createEmptyPersonaValues());
+      return;
+    }
+
+    setRolePersonas(() => {
+      const next = createEmptyPersonaValues();
+      for (const role of PERSONA_ROLES) {
+        const rolePayload = rolePersonasPayload[role];
+        if (!rolePayload || typeof rolePayload !== 'object') {
+          continue;
+        }
+        if (typeof rolePayload.tone === 'string') {
+          next[role].tone = rolePayload.tone;
+        }
+        if (typeof rolePayload.signaturePhrase === 'string') {
+          next[role].signaturePhrase = rolePayload.signaturePhrase;
+        }
+      }
+      return next;
+    });
+  };
+
+  const buildRolePersonasPayload = (): RolePersonasPayload => {
+    const payload: RolePersonasPayload = {};
+    for (const role of PERSONA_ROLES) {
+      const tone = rolePersonas[role].tone.trim();
+      const signaturePhrase = rolePersonas[role].signaturePhrase.trim();
+      if (!(tone || signaturePhrase)) {
+        continue;
+      }
+      payload[role] = {
+        ...(tone ? { tone } : {}),
+        ...(signaturePhrase ? { signaturePhrase } : {}),
+      };
+    }
+    return payload;
+  };
+
   const connectAgent = async () => {
     setError(null);
     setSaved(false);
@@ -292,6 +410,7 @@ export default function StudioOnboardingPage() {
       setAvatarUrl(profile?.avatarUrl ?? profile?.avatar_url ?? '');
       const tags = profile?.styleTags ?? profile?.style_tags ?? [];
       setStyleTags(Array.isArray(tags) ? tags : []);
+      applyRolePersonasFromProfile(profile ?? {});
       setStep(2);
     } catch (error: unknown) {
       setError(
@@ -314,6 +433,20 @@ export default function StudioOnboardingPage() {
     setStyleTags((prev) => prev.filter((item) => item !== tag));
   };
 
+  const updateRolePersonaField = (
+    role: PersonaRole,
+    field: keyof PersonaValues,
+    value: string,
+  ) => {
+    setRolePersonas((current) => ({
+      ...current,
+      [role]: {
+        ...current[role],
+        [field]: value,
+      },
+    }));
+  };
+
   const saveProfile = async () => {
     setError(null);
     setSaved(false);
@@ -333,6 +466,17 @@ export default function StudioOnboardingPage() {
         },
         { throwOnError: true },
       );
+      const rolePersonasPayload = buildRolePersonasPayload();
+      if (Object.keys(rolePersonasPayload).length > 0) {
+        await triggerSaveRolePersonas(
+          {
+            agentId,
+            apiKey,
+            rolePersonas: rolePersonasPayload,
+          },
+          { throwOnError: true },
+        );
+      }
       setSaved(true);
       setStep(3);
     } catch (error: unknown) {
@@ -612,6 +756,59 @@ export default function StudioOnboardingPage() {
                 value={personality}
               />
             </label>
+            <section className="grid gap-2.5 rounded-xl border border-border/25 bg-background/50 p-3 sm:p-3.5">
+              <h3 className="font-semibold text-foreground text-sm">
+                Role personas (optional)
+              </h3>
+              <p className="text-muted-foreground text-xs">
+                Define distinct voice for each role. Used by AI runtime and
+                public pages.
+              </p>
+              <div className="grid gap-2.5 md:grid-cols-2">
+                {PERSONA_ROLES.map((role) => (
+                  <div
+                    className="grid gap-1.5 rounded-lg border border-border/20 bg-background/65 p-2.5"
+                    key={role}
+                  >
+                    <p className="font-semibold text-foreground text-xs uppercase tracking-wide">
+                      {PERSONA_ROLE_LABELS[role]}
+                    </p>
+                    <label className="grid gap-1 text-muted-foreground text-xs">
+                      Tone
+                      <input
+                        aria-label={`${PERSONA_ROLE_LABELS[role]} tone`}
+                        className={`rounded-lg border border-border/25 bg-background/70 px-2.5 py-1.5 text-foreground text-xs placeholder:text-muted-foreground/70 ${focusRingClass}`}
+                        onChange={(event) =>
+                          updateRolePersonaField(
+                            role,
+                            'tone',
+                            event.target.value,
+                          )
+                        }
+                        placeholder="e.g. ruthless but fair"
+                        value={rolePersonas[role].tone}
+                      />
+                    </label>
+                    <label className="grid gap-1 text-muted-foreground text-xs">
+                      Signature phrase
+                      <input
+                        aria-label={`${PERSONA_ROLE_LABELS[role]} signature`}
+                        className={`rounded-lg border border-border/25 bg-background/70 px-2.5 py-1.5 text-foreground text-xs placeholder:text-muted-foreground/70 ${focusRingClass}`}
+                        onChange={(event) =>
+                          updateRolePersonaField(
+                            role,
+                            'signaturePhrase',
+                            event.target.value,
+                          )
+                        }
+                        placeholder="e.g. Ship the arc."
+                        value={rolePersonas[role].signaturePhrase}
+                      />
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </section>
             <div className="flex flex-wrap gap-3">
               <button
                 className={`rounded-full bg-primary px-5 py-1.5 font-semibold text-primary-foreground text-xs transition hover:bg-primary/90 sm:py-2 ${focusRingClass}`}

@@ -6,6 +6,7 @@ Canonical references:
 - `docs/ops/release-checklist.md`
 - `docs/ops/deploy.md`
 - `docs/ops/rollback-playbook.md`
+- `docs/ops/agent-gateway-ai-runtime-runbook.md`
 
 ## 1. Preflight (must pass before rollout)
 
@@ -35,7 +36,11 @@ Canonical references:
    - `npm run release:health:report`
    - `npm run release:health:schema:check`
 2. Confirm alerts, latency, and error rates are within thresholds.
-3. Record outcome in release log.
+3. Validate runtime/gateway control plane health:
+   - `GET /api/admin/ai-runtime/health` reports `summary.health = "ok"` and `rolesBlocked = 0`.
+   - `POST /api/admin/ai-runtime/dry-run` succeeds for at least one critical role probe.
+   - `GET /api/admin/agent-gateway/sessions?source=db&limit=20` shows no abnormal stale active session growth.
+4. Record outcome in release log.
 
 ## 4. Rollback quick path
 

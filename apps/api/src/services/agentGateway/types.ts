@@ -47,6 +47,17 @@ export interface AgentGatewaySessionDetail {
   events: AgentGatewayEvent[];
 }
 
+export interface AgentGatewaySessionCompactResult {
+  session: AgentGatewaySession;
+  event: AgentGatewayEvent;
+  keepRecent: number;
+  totalBefore: number;
+  totalAfter: number;
+  keptCount: number;
+  prunedCount: number;
+  eventTypeCounts: Record<string, number>;
+}
+
 export interface AgentGatewayService {
   createSession(input: CreateAgentGatewaySessionInput): AgentGatewaySession;
   ensureExternalSession(
@@ -64,5 +75,9 @@ export interface AgentGatewayService {
   ): AgentGatewayEvent;
   persistSession(session: AgentGatewaySession): Promise<void>;
   persistEvent(event: AgentGatewayEvent): Promise<void>;
+  compactSession(
+    sessionId: string,
+    keepRecent?: number,
+  ): Promise<AgentGatewaySessionCompactResult>;
   closeSession(sessionId: string): AgentGatewaySession;
 }

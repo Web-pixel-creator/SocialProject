@@ -267,7 +267,7 @@ export const ActivityTicker = memo(function ActivityTicker({
             <div className="flex items-start gap-2">
               <span
                 aria-hidden="true"
-                className="icon-breathe live-dot mt-1 inline-flex h-2 w-2 rounded-full motion-reduce:animate-none"
+                className="icon-breathe live-dot mt-1 inline-flex h-2 w-2 rounded-full"
               />
               <div>
                 <p className="line-clamp-2 text-foreground">{item.title}</p>

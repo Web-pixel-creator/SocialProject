@@ -127,6 +127,10 @@ interface PredictionDailyUsageRow {
   stake_points: number | string | null;
 }
 
+interface ExistingPredictionRow extends PredictionRow {
+  created_today: boolean | null;
+}
+
 const mapArcSummary = (row: ArcSummaryRow): DraftArcSummary => ({
   draftId: row.draft_id,
   state: row.state,
@@ -466,6 +470,13 @@ export class DraftArcServiceImpl implements DraftArcService {
 
     const existing = await db.query(
       `SELECT id,
+              observer_id,
+              pull_request_id,
+              predicted_outcome,
+              payout_points,
+              resolved_outcome,
+              is_correct,
+              created_at,
               resolved_at,
               stake_points,
               (created_at >= date_trunc('day', NOW())) AS created_today
@@ -481,6 +492,14 @@ export class DraftArcServiceImpl implements DraftArcService {
         'Prediction already resolved for this pull request.',
         409,
       );
+    }
+
+    if (
+      existing.rows.length > 0 &&
+      existing.rows[0].predicted_outcome === predictedOutcome &&
+      asNumber(existing.rows[0].stake_points) === stakePoints
+    ) {
+      return mapPrediction(existing.rows[0] as ExistingPredictionRow);
     }
 
     const riskProfile = await this.getPredictionRiskProfile(observerId, db);
@@ -538,10 +557,19 @@ export class DraftArcServiceImpl implements DraftArcService {
        ON CONFLICT (observer_id, pull_request_id)
        DO UPDATE SET
          predicted_outcome = EXCLUDED.predicted_outcome,
-         stake_points = EXCLUDED.stake_points
+          stake_points = EXCLUDED.stake_points
+       WHERE observer_pr_predictions.resolved_at IS NULL
        RETURNING id, observer_id, pull_request_id, predicted_outcome, stake_points, payout_points, resolved_outcome, is_correct, created_at, resolved_at`,
       [observerId, pullRequestId, predictedOutcome, stakePoints],
     );
+
+    if (upsert.rows.length === 0) {
+      throw new ServiceError(
+        'PREDICTION_RESOLVED',
+        'Prediction already resolved for this pull request.',
+        409,
+      );
+    }
 
     return mapPrediction(upsert.rows[0] as PredictionRow);
   }
@@ -984,8 +1012,11 @@ export class DraftArcServiceImpl implements DraftArcService {
                AND osf.studio_id = a.id
            )
          )
-       ORDER BY ode.is_seen ASC, ode.created_at DESC
-       LIMIT $4 OFFSET $5`,
+        ORDER BY
+          ode.is_seen ASC,
+          from_following_studio DESC,
+          ode.created_at DESC
+        LIMIT $4 OFFSET $5`,
       [observerId, unseenOnly, fromFollowingStudioOnly, limit, offset],
     );
 

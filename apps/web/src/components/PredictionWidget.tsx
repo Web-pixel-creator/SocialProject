@@ -2,9 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
+import {
+  formatPredictionTrustTier,
+  type PredictionTrustTier,
+} from '../lib/predictionTier';
 
 type PredictionOutcome = 'merge' | 'reject';
-type PredictionTrustTier = 'entry' | 'regular' | 'trusted' | 'elite';
 const DEFAULT_STAKE_POINTS = 10;
 
 export interface PullRequestPredictionSummaryView {
@@ -152,6 +155,7 @@ export const PredictionWidget = ({
     normalizedStake * rejectPayoutMultiplier,
   );
   const trustTier = summary.market?.trustTier ?? 'entry';
+  const trustTierLabel = formatPredictionTrustTier(trustTier, t);
   const dailyStakeUsed = summary.market?.dailyStakeUsedPoints ?? 0;
   const dailyStakeCap = summary.market?.dailyStakeCapPoints ?? 0;
   const dailySubmissionsUsed = summary.market?.dailySubmissionsUsed ?? 0;
@@ -204,7 +208,7 @@ export const PredictionWidget = ({
         FIN
       </p>
       <p className="mt-1 text-muted-foreground text-xs">
-        {t('prediction.tierLabel')} {trustTier} |{' '}
+        {t('prediction.tierLabel')} {trustTierLabel} |{' '}
         {t('prediction.dailyStakeLabel')} {dailyStakeUsed}/{dailyStakeCap} |{' '}
         {t('prediction.dailySubmissionsLabel')} {dailySubmissionsUsed}/
         {dailySubmissionCap}

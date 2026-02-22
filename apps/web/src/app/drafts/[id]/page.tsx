@@ -3,7 +3,14 @@
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import useSWR from 'swr';
 import useSWRMutation from 'swr/mutation';
 import { BeforeAfterSlider } from '../../../components/BeforeAfterSlider';
@@ -125,6 +132,17 @@ interface StyleFusionResult {
   sample: SimilarDraft[];
 }
 
+interface MultimodalGlowUpScoreView {
+  provider: string;
+  score: number;
+  confidence: number;
+  visualScore: number | null;
+  narrativeScore: number | null;
+  audioScore: number | null;
+  videoScore: number | null;
+  updatedAt: string | null;
+}
+
 interface DraftPayload {
   draft: Draft | null;
   versions: Version[];
@@ -168,7 +186,7 @@ interface OrchestrationAttemptView {
 
 interface OrchestrationTimelineEntry {
   id: string;
-  type: 'step' | 'completed';
+  type: 'step' | 'completed' | 'compacted';
   sequence: number;
   role: string | null;
   failed: boolean;
@@ -176,7 +194,13 @@ interface OrchestrationTimelineEntry {
   provider: string | null;
   attempts: OrchestrationAttemptView[];
   stepCount: number | null;
+  keepRecent: number | null;
+  prunedCount: number | null;
+  totalBefore: number | null;
+  totalAfter: number | null;
 }
+
+type OrchestrationFilterType = 'all' | 'step' | 'completed' | 'compacted';
 
 type NextAction =
   | {
@@ -302,6 +326,59 @@ const fetchSimilarDrafts = async (draftId: string): Promise<SimilarDraft[]> => {
   return response.data ?? [];
 };
 
+const toNullableNumber = (value: unknown): number | null => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const fetchMultimodalGlowUpScore = async (
+  draftId: string,
+): Promise<MultimodalGlowUpScoreView | null> => {
+  try {
+    const response = await apiClient.get(
+      `/drafts/${draftId}/glowup/multimodal`,
+    );
+    const payload = response.data;
+    if (!payload || typeof payload !== 'object') {
+      return null;
+    }
+    const raw = payload as Record<string, unknown>;
+    if (typeof raw.provider !== 'string') {
+      return null;
+    }
+    const score = toNullableNumber(raw.score);
+    const confidence = toNullableNumber(raw.confidence);
+    if (score === null || confidence === null) {
+      return null;
+    }
+    let updatedAtRaw: string | null = null;
+    if (typeof raw.updatedAt === 'string') {
+      updatedAtRaw = raw.updatedAt;
+    } else if (typeof raw.updated_at === 'string') {
+      updatedAtRaw = raw.updated_at;
+    }
+    return {
+      provider: raw.provider,
+      score,
+      confidence,
+      visualScore: toNullableNumber(raw.visualScore ?? raw.visual_score),
+      narrativeScore: toNullableNumber(
+        raw.narrativeScore ?? raw.narrative_score,
+      ),
+      audioScore: toNullableNumber(raw.audioScore ?? raw.audio_score),
+      videoScore: toNullableNumber(raw.videoScore ?? raw.video_score),
+      updatedAt: updatedAtRaw,
+    };
+  } catch (error: unknown) {
+    const status = getApiErrorStatus(error);
+    const code = getApiErrorCode(error);
+    if (status === 404 || code === 'MULTIMODAL_GLOWUP_NOT_FOUND') {
+      return null;
+    }
+    throw error;
+  }
+};
+
 const generateStyleFusion = async (
   draftId: string,
 ): Promise<StyleFusionResult> => {
@@ -381,7 +458,8 @@ const buildOrchestrationTimelineEntries = (
   for (const event of events) {
     if (
       event.type !== 'agent_gateway_orchestration_step' &&
-      event.type !== 'agent_gateway_orchestration_completed'
+      event.type !== 'agent_gateway_orchestration_completed' &&
+      event.type !== 'agent_gateway_session_compacted'
     ) {
       continue;
     }
@@ -406,28 +484,221 @@ const buildOrchestrationTimelineEntries = (
         provider,
         attempts: toOrchestrationAttempts(payload.attempts),
         stepCount: null,
+        keepRecent: null,
+        prunedCount: null,
+        totalBefore: null,
+        totalAfter: null,
       });
       continue;
     }
 
-    const stepCount = Number(payload.stepCount);
+    if (event.type === 'agent_gateway_orchestration_completed') {
+      const stepCount = Number(payload.stepCount);
+      timeline.push({
+        id: event.id,
+        type: 'completed',
+        sequence: event.sequence,
+        role: null,
+        failed: false,
+        completed:
+          typeof payload.completed === 'boolean' ? payload.completed : null,
+        provider: null,
+        attempts: [],
+        stepCount: Number.isFinite(stepCount) ? stepCount : null,
+        keepRecent: null,
+        prunedCount: null,
+        totalBefore: null,
+        totalAfter: null,
+      });
+      continue;
+    }
+
+    const keepRecentRaw = Number(payload.keepRecent);
+    const prunedCountRaw = Number(payload.prunedCount);
+    const totalBeforeRaw = Number(payload.totalBefore);
+    const totalAfterRaw = Number(payload.totalAfter);
     timeline.push({
       id: event.id,
-      type: 'completed',
+      type: 'compacted',
       sequence: event.sequence,
       role: null,
       failed: false,
-      completed:
-        typeof payload.completed === 'boolean' ? payload.completed : null,
+      completed: null,
       provider: null,
       attempts: [],
-      stepCount: Number.isFinite(stepCount) ? stepCount : null,
+      stepCount: null,
+      keepRecent: Number.isFinite(keepRecentRaw) ? keepRecentRaw : null,
+      prunedCount: Number.isFinite(prunedCountRaw) ? prunedCountRaw : null,
+      totalBefore: Number.isFinite(totalBeforeRaw) ? totalBeforeRaw : null,
+      totalAfter: Number.isFinite(totalAfterRaw) ? totalAfterRaw : null,
     });
   }
 
   return timeline
     .sort((left, right) => right.sequence - left.sequence)
-    .slice(0, 8);
+    .slice(0, 24);
+};
+
+const buildOrchestrationSearchText = (
+  entry: OrchestrationTimelineEntry,
+): string => {
+  const attemptsText = entry.attempts
+    .map((attempt) =>
+      [attempt.provider, attempt.status, attempt.errorCode ?? '']
+        .join(' ')
+        .trim(),
+    )
+    .join(' ');
+  return [
+    entry.type,
+    entry.role ?? '',
+    entry.provider ?? '',
+    attemptsText,
+    entry.completed === false ? 'failed' : '',
+    entry.keepRecent !== null ? String(entry.keepRecent) : '',
+    entry.prunedCount !== null ? String(entry.prunedCount) : '',
+  ]
+    .join(' ')
+    .trim()
+    .toLowerCase();
+};
+
+const filterOrchestrationTimelineEntries = ({
+  timeline,
+  typeFilter,
+  query,
+  limit,
+}: {
+  timeline: OrchestrationTimelineEntry[];
+  typeFilter: OrchestrationFilterType;
+  query: string;
+  limit: number;
+}): OrchestrationTimelineEntry[] => {
+  const normalizedQuery = query.trim().toLowerCase();
+  const filtered = timeline.filter((entry) => {
+    const matchesType = typeFilter === 'all' || entry.type === typeFilter;
+    if (!matchesType) {
+      return false;
+    }
+    if (normalizedQuery.length === 0) {
+      return true;
+    }
+    return buildOrchestrationSearchText(entry).includes(normalizedQuery);
+  });
+  return filtered.slice(0, limit);
+};
+
+const renderOrchestrationTimelineEntry = (
+  entry: OrchestrationTimelineEntry,
+  t: (key: string) => string,
+) => {
+  const roleLabel = (
+    entry.role ?? t('draftDetail.orchestration.unknownRole')
+  ).replace(/_/g, ' ');
+  let title = t('draftDetail.events.orchestrationCompleted');
+  if (entry.type === 'step') {
+    title = entry.failed
+      ? t('draftDetail.events.orchestrationStepFailed')
+      : t('draftDetail.events.orchestrationStep');
+    title = `${title} (${roleLabel})`;
+  } else if (entry.type === 'compacted') {
+    title = t('draftDetail.events.orchestrationCompacted');
+  } else if (entry.completed === false) {
+    title = t('draftDetail.orchestration.completedFailed');
+  }
+
+  return (
+    <div
+      className="rounded-lg border border-border/25 bg-background/60 p-2.5"
+      key={entry.id}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span
+          className={`font-medium ${
+            entry.type === 'step' && entry.failed
+              ? 'text-destructive'
+              : 'text-foreground'
+          }`}
+        >
+          {title}
+        </span>
+        <span className="text-[10px] text-muted-foreground">
+          #{entry.sequence}
+        </span>
+      </div>
+      {entry.type === 'step' && (
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          {t('draftDetail.orchestration.provider')}:&nbsp;
+          {entry.provider ?? t('draftDetail.orchestration.unknownProvider')}
+        </p>
+      )}
+      {entry.type === 'completed' &&
+        entry.stepCount !== null &&
+        entry.stepCount >= 0 && (
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {t('draftDetail.orchestration.steps')}:&nbsp;
+            {entry.stepCount}
+          </p>
+        )}
+      {entry.type === 'step' && entry.attempts.length > 0 && (
+        <>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            {t('draftDetail.orchestration.attempts')}:&nbsp;
+            {entry.attempts.length}
+          </p>
+          <ul className="mt-1 grid gap-1">
+            {entry.attempts.map((attempt, index) => (
+              <li
+                className="text-[11px] text-muted-foreground"
+                key={`${entry.id}-${attempt.provider}-${index}`}
+              >
+                {attempt.provider} • {attempt.status}
+                {attempt.latencyMs !== null ? ` • ${attempt.latencyMs}ms` : ''}
+                {attempt.errorCode ? ` • ${attempt.errorCode}` : ''}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {entry.type === 'compacted' && (
+        <div className="mt-1 grid gap-1 text-[11px] text-muted-foreground">
+          {entry.prunedCount !== null && (
+            <p>
+              {t('draftDetail.orchestration.pruned')}:&nbsp;
+              {entry.prunedCount}
+            </p>
+          )}
+          {entry.keepRecent !== null && (
+            <p>
+              {t('draftDetail.orchestration.keepRecent')}
+              :&nbsp;
+              {entry.keepRecent}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const getOrchestrationTimelineContent = ({
+  timeline,
+  filteredTimeline,
+  t,
+}: {
+  timeline: OrchestrationTimelineEntry[];
+  filteredTimeline: OrchestrationTimelineEntry[];
+  t: Translate;
+}): ReactNode => {
+  if (timeline.length === 0) {
+    return <span>{t('draftDetail.orchestration.empty')}</span>;
+  }
+  if (filteredTimeline.length === 0) {
+    return <span>{t('draftDetail.orchestration.noMatch')}</span>;
+  }
+  return filteredTimeline.map((entry) =>
+    renderOrchestrationTimelineEntry(entry, t),
+  );
 };
 
 const getPrimaryDraftError = (
@@ -525,6 +796,34 @@ const getArcError = ({
     ? getApiErrorMessage(arcLoadError, t('draftDetail.errors.loadArc'))
     : null;
 
+const getMultimodalError = ({
+  multimodalLoadError,
+  t,
+}: {
+  multimodalLoadError: unknown;
+  t: Translate;
+}): string | null =>
+  multimodalLoadError
+    ? getApiErrorMessage(
+        multimodalLoadError,
+        t('draftDetail.errors.loadMultimodal'),
+      )
+    : null;
+
+const formatOptionalMetric = (value: number | null): string =>
+  value === null ? '-' : value.toFixed(1);
+
+const formatMultimodalTimestamp = (value: string | null): string => {
+  if (!value) {
+    return '-';
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '-';
+  }
+  return date.toLocaleString();
+};
+
 const getProvenanceTone = (
   status: DraftProvenance['authenticityStatus'],
 ): string => {
@@ -589,6 +888,135 @@ const getActivityDescription = ({
     return t('draftDetail.activity.descriptionFollowingStudio');
   }
   return t('draftDetail.activity.descriptionNotFollowing');
+};
+
+const MultimodalGlowUpCard = ({
+  t,
+  loading,
+  error,
+  score,
+}: {
+  t: Translate;
+  loading: boolean;
+  error: string | null;
+  score: MultimodalGlowUpScoreView | null;
+}) => {
+  let content: ReactNode;
+
+  if (loading) {
+    content = (
+      <p className="mt-2 text-muted-foreground text-xs">
+        {t('draftDetail.multimodal.loading')}
+      </p>
+    );
+  } else if (error) {
+    content = <p className="mt-2 text-destructive text-xs">{error}</p>;
+  } else if (score) {
+    content = (
+      <>
+        <p className="mt-2 text-muted-foreground text-xs">
+          {t('draftDetail.multimodal.provider')}: {score.provider} |{' '}
+          {t('draftDetail.multimodal.updatedAt')}:{' '}
+          {formatMultimodalTimestamp(score.updatedAt)}
+        </p>
+        <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+          <div className="rounded-lg border border-border/25 bg-background/60 p-2.5">
+            <p className="text-[10px] text-muted-foreground uppercase">
+              {t('draftDetail.multimodal.score')}
+            </p>
+            <p className="mt-1 font-semibold text-foreground">
+              {score.score.toFixed(1)}
+            </p>
+          </div>
+          <div className="rounded-lg border border-border/25 bg-background/60 p-2.5">
+            <p className="text-[10px] text-muted-foreground uppercase">
+              {t('draftDetail.multimodal.confidence')}
+            </p>
+            <p className="mt-1 font-semibold text-foreground">
+              {(score.confidence * 100).toFixed(1)}%
+            </p>
+          </div>
+          <div className="rounded-lg border border-border/25 bg-background/60 p-2.5">
+            <p className="text-[10px] text-muted-foreground uppercase">
+              {t('draftDetail.multimodal.visual')}
+            </p>
+            <p className="mt-1 font-medium text-foreground">
+              {formatOptionalMetric(score.visualScore)}
+            </p>
+          </div>
+          <div className="rounded-lg border border-border/25 bg-background/60 p-2.5">
+            <p className="text-[10px] text-muted-foreground uppercase">
+              {t('draftDetail.multimodal.narrative')}
+            </p>
+            <p className="mt-1 font-medium text-foreground">
+              {formatOptionalMetric(score.narrativeScore)}
+            </p>
+          </div>
+          <div className="rounded-lg border border-border/25 bg-background/60 p-2.5">
+            <p className="text-[10px] text-muted-foreground uppercase">
+              {t('draftDetail.multimodal.audio')}
+            </p>
+            <p className="mt-1 font-medium text-foreground">
+              {formatOptionalMetric(score.audioScore)}
+            </p>
+          </div>
+          <div className="rounded-lg border border-border/25 bg-background/60 p-2.5">
+            <p className="text-[10px] text-muted-foreground uppercase">
+              {t('draftDetail.multimodal.video')}
+            </p>
+            <p className="mt-1 font-medium text-foreground">
+              {formatOptionalMetric(score.videoScore)}
+            </p>
+          </div>
+        </div>
+      </>
+    );
+  } else {
+    content = (
+      <p className="mt-2 text-muted-foreground text-xs">
+        {t('draftDetail.multimodal.empty')}
+      </p>
+    );
+  }
+
+  return (
+    <div className="card p-4 sm:p-5" data-testid="multimodal-glowup-card">
+      <p className="pill">{t('draftDetail.multimodal.pill')}</p>
+      <h3 className="mt-3 font-semibold text-foreground text-sm">
+        {t('draftDetail.multimodal.title')}
+      </h3>
+      {content}
+    </div>
+  );
+};
+
+const useMultimodalGlowUpState = ({
+  draftId,
+  t,
+}: {
+  draftId: string;
+  t: Translate;
+}) => {
+  const {
+    data,
+    error: loadError,
+    isLoading,
+    isValidating,
+  } = useSWR<MultimodalGlowUpScoreView | null>(
+    draftId ? `draft:multimodal-glowup:${draftId}` : null,
+    () => fetchMultimodalGlowUpScore(draftId),
+    {
+      revalidateOnFocus: false,
+      shouldRetryOnError: false,
+    },
+  );
+
+  return {
+    score: data ?? null,
+    loading: isLoading || isValidating,
+    error: getMultimodalError({ multimodalLoadError: loadError, t }),
+    errorCode: loadError ? (getApiErrorCode(loadError) ?? null) : null,
+  };
 };
 
 const FollowingStudiosCard = ({
@@ -688,6 +1116,13 @@ const formatDraftEventMessage = (
       return `${t('draftDetail.events.orchestrationCompleted')} (${stepCountRaw})`;
     }
     return t('draftDetail.events.orchestrationCompleted');
+  }
+  if (eventType === 'agent_gateway_session_compacted') {
+    const prunedCountRaw = Number(resolvedPayload.prunedCount);
+    if (Number.isFinite(prunedCountRaw) && prunedCountRaw >= 0) {
+      return `${t('draftDetail.events.orchestrationCompacted')} (${prunedCountRaw})`;
+    }
+    return t('draftDetail.events.orchestrationCompacted');
   }
   if (eventType === 'glowup_update') {
     return t('draftDetail.events.glowUpUpdated');
@@ -816,6 +1251,42 @@ const runStyleFusionRequest = async ({
   }
 };
 
+const buildStyleFusionBrief = ({
+  styleFusion,
+  t,
+}: {
+  styleFusion: StyleFusionResult;
+  t: Translate;
+}): string => {
+  const directives =
+    styleFusion.styleDirectives.length > 0
+      ? styleFusion.styleDirectives
+      : [t('draftDetail.similar.noStyleDirectives')];
+  const hints =
+    styleFusion.winningPrHints.length > 0
+      ? styleFusion.winningPrHints
+      : [t('draftDetail.similar.noWinningHints')];
+  const samples =
+    styleFusion.sample.length > 0
+      ? styleFusion.sample.map(
+          (item) =>
+            `${item.title} (${t('draftDetail.similar.similarity')} ${Number(item.score ?? 0).toFixed(2)})`,
+        )
+      : [t('draftDetail.similar.noSampleDrafts')];
+  return [
+    styleFusion.titleSuggestion,
+    '',
+    `${t('draftDetail.similar.styleDirectives')}:`,
+    ...directives.map((directive) => `- ${directive}`),
+    '',
+    `${t('draftDetail.similar.winningHints')}:`,
+    ...hints.map((hint) => `- ${hint}`),
+    '',
+    `${t('draftDetail.similar.sampleDrafts')}:`,
+    ...samples.map((sample) => `- ${sample}`),
+  ].join('\n');
+};
+
 const StyleFusionPanel = ({
   draftId,
   onGenerate,
@@ -831,6 +1302,39 @@ const StyleFusionPanel = ({
   styleFusionLoading: boolean;
   t: Translate;
 }) => {
+  const [copyStatus, setCopyStatus] = useState<string | null>(null);
+  const copyStatusTimeoutRef = useRef<number | null>(null);
+  useTimeoutRefCleanup(copyStatusTimeoutRef);
+
+  const copyFusionBrief = useCallback(async () => {
+    if (!styleFusion) {
+      return;
+    }
+    if (copyStatusTimeoutRef.current !== null) {
+      window.clearTimeout(copyStatusTimeoutRef.current);
+      copyStatusTimeoutRef.current = null;
+    }
+    try {
+      await navigator.clipboard.writeText(
+        buildStyleFusionBrief({
+          styleFusion,
+          t,
+        }),
+      );
+      setCopyStatus(t('draftDetail.similar.copyFusionBriefSuccess'));
+      copyStatusTimeoutRef.current = window.setTimeout(() => {
+        setCopyStatus(null);
+        copyStatusTimeoutRef.current = null;
+      }, 1600);
+    } catch (_error: unknown) {
+      setCopyStatus(t('draftDetail.similar.copyFusionBriefFailed'));
+      copyStatusTimeoutRef.current = window.setTimeout(() => {
+        setCopyStatus(null);
+        copyStatusTimeoutRef.current = null;
+      }, 1800);
+    }
+  }, [styleFusion, t]);
+
   return (
     <>
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -850,12 +1354,23 @@ const StyleFusionPanel = ({
       </div>
       {styleFusion && (
         <div className="mt-3 rounded-lg border border-border/25 bg-background/58 p-3 text-xs sm:p-3.5">
-          <p className="text-[10px] text-muted-foreground uppercase">
-            {t('draftDetail.similar.styleFusionResult')}
-          </p>
-          <p className="mt-1 font-semibold text-foreground text-sm">
-            {styleFusion.titleSuggestion}
-          </p>
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <p className="text-[10px] text-muted-foreground uppercase">
+                {t('draftDetail.similar.styleFusionResult')}
+              </p>
+              <p className="mt-1 font-semibold text-foreground text-sm">
+                {styleFusion.titleSuggestion}
+              </p>
+            </div>
+            <button
+              className="inline-flex items-center rounded-lg border border-border/25 bg-background/58 px-2.5 py-1.5 font-medium text-[11px] text-foreground transition hover:border-border/45 hover:bg-background/74 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              onClick={copyFusionBrief}
+              type="button"
+            >
+              {copyStatus ?? t('draftDetail.similar.copyFusionBrief')}
+            </button>
+          </div>
           <div className="mt-2 grid gap-3 sm:grid-cols-2">
             <div>
               <p className="text-[10px] text-muted-foreground uppercase">
@@ -889,6 +1404,33 @@ const StyleFusionPanel = ({
                 </p>
               )}
             </div>
+          </div>
+          <div className="mt-3">
+            <p className="text-[10px] text-muted-foreground uppercase">
+              {t('draftDetail.similar.sampleDrafts')}
+            </p>
+            {styleFusion.sample.length > 0 ? (
+              <ul className="mt-1 grid gap-1.5">
+                {styleFusion.sample.map((sample) => (
+                  <li
+                    className="flex items-center justify-between gap-2 rounded-lg border border-border/20 bg-background/45 px-2.5 py-1.5"
+                    key={sample.id}
+                  >
+                    <span className="truncate text-foreground">
+                      {sample.title}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">
+                      {t('draftDetail.similar.similarity')}{' '}
+                      {Number(sample.score ?? 0).toFixed(2)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-1 text-muted-foreground">
+                {t('draftDetail.similar.noSampleDrafts')}
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -1030,6 +1572,7 @@ export default function DraftDetailPage() {
       shouldRetryOnError: false,
     },
   );
+  const multimodalGlowUpState = useMultimodalGlowUpState({ draftId, t });
   const [styleFusion, setStyleFusion] = useState<StyleFusionResult | null>(
     null,
   );
@@ -1073,8 +1616,13 @@ export default function DraftDetailPage() {
   const [notifications, setNotifications] = useState<
     Array<{ id: string; message: string; time: string }>
   >([]);
+  const [orchestrationTypeFilter, setOrchestrationTypeFilter] =
+    useState<OrchestrationFilterType>('all');
+  const [orchestrationQuery, setOrchestrationQuery] = useState('');
+  const [orchestrationLimit, setOrchestrationLimit] = useState(8);
   const seenEventsRef = useRef<Set<string>>(new Set());
   const similarTelemetryRef = useRef<string | null>(null);
+  const multimodalTelemetryRef = useRef<string | null>(null);
   const arcTelemetryRef = useRef<string | null>(null);
   const lastRealtimeMutationEventIdRef = useRef<string | null>(null);
   const copyStatusTimeoutRef = useRef<number | null>(null);
@@ -1142,6 +1690,19 @@ export default function DraftDetailPage() {
     () => buildOrchestrationTimelineEntries(events),
     [events],
   );
+  const orchestrationFilteredTimeline = useMemo(() => {
+    return filterOrchestrationTimelineEntries({
+      timeline: orchestrationTimeline,
+      typeFilter: orchestrationTypeFilter,
+      query: orchestrationQuery,
+      limit: orchestrationLimit,
+    });
+  }, [
+    orchestrationLimit,
+    orchestrationQuery,
+    orchestrationTimeline,
+    orchestrationTypeFilter,
+  ]);
 
   const runDemoFlow = useCallback(async () => {
     if (!draftId) {
@@ -1364,6 +1925,62 @@ export default function DraftDetailPage() {
   }, [draftId, similarDrafts, similarDraftsError, similarLoading]);
 
   useEffect(() => {
+    if (!draftId || multimodalGlowUpState.loading) {
+      return;
+    }
+    if (multimodalGlowUpState.error) {
+      const reason = multimodalGlowUpState.errorCode ?? 'unknown';
+      const signature = `${draftId}:error:${reason}`;
+      if (multimodalTelemetryRef.current === signature) {
+        return;
+      }
+      multimodalTelemetryRef.current = signature;
+      sendTelemetry({
+        eventType: 'draft_multimodal_glowup_error',
+        draftId,
+        source: 'draft_detail',
+        metadata: { reason },
+      });
+      return;
+    }
+    if (!multimodalGlowUpState.score) {
+      const signature = `${draftId}:empty`;
+      if (multimodalTelemetryRef.current === signature) {
+        return;
+      }
+      multimodalTelemetryRef.current = signature;
+      sendTelemetry({
+        eventType: 'draft_multimodal_glowup_empty',
+        draftId,
+        source: 'draft_detail',
+        metadata: { reason: 'not_available' },
+      });
+      return;
+    }
+    const signature = `${draftId}:view:${multimodalGlowUpState.score.provider}:${multimodalGlowUpState.score.score.toFixed(1)}:${multimodalGlowUpState.score.confidence.toFixed(3)}`;
+    if (multimodalTelemetryRef.current === signature) {
+      return;
+    }
+    multimodalTelemetryRef.current = signature;
+    sendTelemetry({
+      eventType: 'draft_multimodal_glowup_view',
+      draftId,
+      source: 'draft_detail',
+      metadata: {
+        provider: multimodalGlowUpState.score.provider,
+        score: Number(multimodalGlowUpState.score.score.toFixed(1)),
+        confidence: Number(multimodalGlowUpState.score.confidence.toFixed(3)),
+      },
+    });
+  }, [
+    draftId,
+    multimodalGlowUpState.error,
+    multimodalGlowUpState.errorCode,
+    multimodalGlowUpState.loading,
+    multimodalGlowUpState.score,
+  ]);
+
+  useEffect(() => {
     if (!draftId) {
       setStyleFusion(null);
       setStyleFusionError(null);
@@ -1503,6 +2120,11 @@ export default function DraftDetailPage() {
     demoLoading,
     copyDraftId,
     runDemoFlow,
+    t,
+  });
+  const orchestrationTimelineContent = getOrchestrationTimelineContent({
+    timeline: orchestrationTimeline,
+    filteredTimeline: orchestrationFilteredTimeline,
     t,
   });
 
@@ -1701,6 +2323,12 @@ export default function DraftDetailPage() {
           </div>
           <div className="grid gap-4 sm:gap-6">
             <HeatMapOverlay />
+            <MultimodalGlowUpCard
+              error={multimodalGlowUpState.error}
+              loading={multimodalGlowUpState.loading}
+              score={multimodalGlowUpState.score}
+              t={t}
+            />
             <PredictionWidget
               authRequired={observerAuthRequired}
               error={predictionError}
@@ -1753,91 +2381,77 @@ export default function DraftDetailPage() {
               followingStudios={followingStudios}
               t={t}
             />
-            <div className="card p-4 sm:p-5">
+            <div className="card p-4 sm:p-5" data-testid="orchestration-card">
               <p className="pill">{t('draftDetail.orchestration.pill')}</p>
               <h3 className="mt-3 font-semibold text-foreground text-sm">
                 {t('draftDetail.orchestration.title')}
               </h3>
-              <div className="mt-4 grid gap-2 text-muted-foreground text-xs">
-                {orchestrationTimeline.length === 0 ? (
-                  <span>{t('draftDetail.orchestration.empty')}</span>
-                ) : (
-                  orchestrationTimeline.map((entry) => {
-                    const roleLabel = (
-                      entry.role ?? t('draftDetail.orchestration.unknownRole')
-                    ).replace(/_/g, ' ');
-                    let title = t('draftDetail.events.orchestrationCompleted');
-                    if (entry.type === 'step') {
-                      title = entry.failed
-                        ? t('draftDetail.events.orchestrationStepFailed')
-                        : t('draftDetail.events.orchestrationStep');
-                      title = `${title} (${roleLabel})`;
-                    } else if (entry.completed === false) {
-                      title = t('draftDetail.orchestration.completedFailed');
+              <div className="mt-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                <label className="grid gap-1 text-[11px] text-muted-foreground">
+                  <span>{t('draftDetail.orchestration.filterType')}</span>
+                  <select
+                    className="rounded-lg border border-border/25 bg-background/60 px-2.5 py-2 text-foreground text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    data-testid="orchestration-type-filter"
+                    onChange={(event) =>
+                      setOrchestrationTypeFilter(
+                        event.target.value as OrchestrationFilterType,
+                      )
                     }
-
-                    return (
-                      <div
-                        className="rounded-lg border border-border/25 bg-background/60 p-2.5"
-                        key={entry.id}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span
-                            className={`font-medium ${
-                              entry.type === 'step' && entry.failed
-                                ? 'text-destructive'
-                                : 'text-foreground'
-                            }`}
-                          >
-                            {title}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground">
-                            #{entry.sequence}
-                          </span>
-                        </div>
-                        {entry.type === 'step' && (
-                          <p className="mt-1 text-[11px] text-muted-foreground">
-                            {t('draftDetail.orchestration.provider')}:&nbsp;
-                            {entry.provider ??
-                              t('draftDetail.orchestration.unknownProvider')}
-                          </p>
-                        )}
-                        {entry.type === 'completed' &&
-                          entry.stepCount !== null &&
-                          entry.stepCount >= 0 && (
-                            <p className="mt-1 text-[11px] text-muted-foreground">
-                              {t('draftDetail.orchestration.steps')}:&nbsp;
-                              {entry.stepCount}
-                            </p>
-                          )}
-                        {entry.type === 'step' && entry.attempts.length > 0 && (
-                          <>
-                            <p className="mt-2 text-[11px] text-muted-foreground">
-                              {t('draftDetail.orchestration.attempts')}:&nbsp;
-                              {entry.attempts.length}
-                            </p>
-                            <ul className="mt-1 grid gap-1">
-                              {entry.attempts.map((attempt, index) => (
-                                <li
-                                  className="text-[11px] text-muted-foreground"
-                                  key={`${entry.id}-${attempt.provider}-${index}`}
-                                >
-                                  {attempt.provider} • {attempt.status}
-                                  {attempt.latencyMs !== null
-                                    ? ` • ${attempt.latencyMs}ms`
-                                    : ''}
-                                  {attempt.errorCode
-                                    ? ` • ${attempt.errorCode}`
-                                    : ''}
-                                </li>
-                              ))}
-                            </ul>
-                          </>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
+                    value={orchestrationTypeFilter}
+                  >
+                    <option value="all">
+                      {t('draftDetail.orchestration.filterTypeAll')}
+                    </option>
+                    <option value="step">
+                      {t('draftDetail.orchestration.filterTypeStep')}
+                    </option>
+                    <option value="completed">
+                      {t('draftDetail.orchestration.filterTypeCompleted')}
+                    </option>
+                    <option value="compacted">
+                      {t('draftDetail.orchestration.filterTypeCompacted')}
+                    </option>
+                  </select>
+                </label>
+                <label className="grid gap-1 text-[11px] text-muted-foreground">
+                  <span>{t('draftDetail.orchestration.filterQuery')}</span>
+                  <input
+                    className="rounded-lg border border-border/25 bg-background/60 px-2.5 py-2 text-foreground text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    data-testid="orchestration-query-filter"
+                    onChange={(event) =>
+                      setOrchestrationQuery(event.target.value)
+                    }
+                    placeholder={t(
+                      'draftDetail.orchestration.filterQueryPlaceholder',
+                    )}
+                    type="text"
+                    value={orchestrationQuery}
+                  />
+                </label>
+                <label className="grid gap-1 text-[11px] text-muted-foreground">
+                  <span>{t('draftDetail.orchestration.filterLimit')}</span>
+                  <select
+                    className="rounded-lg border border-border/25 bg-background/60 px-2.5 py-2 text-foreground text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    data-testid="orchestration-limit-filter"
+                    onChange={(event) => {
+                      const nextValue = Number(event.target.value);
+                      if (
+                        Number.isFinite(nextValue) &&
+                        [4, 8, 12].includes(nextValue)
+                      ) {
+                        setOrchestrationLimit(nextValue);
+                      }
+                    }}
+                    value={orchestrationLimit}
+                  >
+                    <option value={4}>4</option>
+                    <option value={8}>8</option>
+                    <option value={12}>12</option>
+                  </select>
+                </label>
+              </div>
+              <div className="mt-4 grid gap-2 text-muted-foreground text-xs">
+                {orchestrationTimelineContent}
               </div>
             </div>
             <div className="card p-4 sm:p-5">

@@ -323,6 +323,91 @@ describe('observer draft arc service', () => {
     });
   });
 
+  test('returns existing prediction for idempotent submit payload', async () => {
+    const now = new Date().toISOString();
+    const fakeClient = {
+      query: jest
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ id: 'observer-1' }] })
+        .mockResolvedValueOnce({ rows: [{ status: 'pending' }] })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              id: 'pred-1',
+              observer_id: 'observer-1',
+              pull_request_id: 'pr-1',
+              predicted_outcome: 'merge',
+              stake_points: 20,
+              payout_points: 0,
+              resolved_outcome: null,
+              is_correct: null,
+              created_at: now,
+              resolved_at: null,
+              created_today: true,
+            },
+          ],
+        }),
+    } as any;
+
+    const prediction = await service.submitPrediction(
+      'observer-1',
+      'pr-1',
+      'merge',
+      fakeClient,
+      20,
+    );
+
+    expect(prediction).toEqual(
+      expect.objectContaining({
+        id: 'pred-1',
+        observerId: 'observer-1',
+        pullRequestId: 'pr-1',
+        predictedOutcome: 'merge',
+        stakePoints: 20,
+      }),
+    );
+    expect(fakeClient.query).toHaveBeenCalledTimes(3);
+  });
+
+  test('treats conflict update on resolved prediction as resolved', async () => {
+    const fakeClient = {
+      query: jest
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ id: 'observer-1' }] })
+        .mockResolvedValueOnce({ rows: [{ status: 'pending' }] })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              id: 'pred-1',
+              observer_id: 'observer-1',
+              pull_request_id: 'pr-1',
+              predicted_outcome: 'merge',
+              stake_points: 20,
+              payout_points: 0,
+              resolved_outcome: null,
+              is_correct: null,
+              created_at: new Date().toISOString(),
+              resolved_at: null,
+              created_today: true,
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          rows: [{ resolved_count: 20, correct_count: 12 }],
+        })
+        .mockResolvedValueOnce({
+          rows: [{ submission_count: 3, stake_points: 90 }],
+        })
+        .mockResolvedValueOnce({ rows: [] }),
+    } as any;
+
+    await expect(
+      service.submitPrediction('observer-1', 'pr-1', 'reject', fakeClient, 30),
+    ).rejects.toMatchObject({
+      code: 'PREDICTION_RESOLVED',
+    });
+  });
+
   test('enforces trust-tier stake limits for new predictors', async () => {
     const fakeClient = {
       query: jest

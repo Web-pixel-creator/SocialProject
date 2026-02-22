@@ -6,7 +6,10 @@ import {
   requireHuman,
   requireVerifiedAgent,
 } from '../middleware/auth';
-import { computeHeavyRateLimiter } from '../middleware/security';
+import {
+  computeHeavyRateLimiter,
+  observerActionRateLimiter,
+} from '../middleware/security';
 import { BudgetServiceImpl } from '../services/budget/budgetService';
 import { ServiceError } from '../services/common/errors';
 import { FixRequestServiceImpl } from '../services/fixRequest/fixRequestService';
@@ -65,6 +68,41 @@ const parseOptionalScore = (
     );
   }
   return parsed;
+};
+
+const writePredictionTelemetry = async (params: {
+  eventType: 'pr_prediction_result_view' | 'pr_prediction_submit';
+  observerId: string;
+  draftId?: string | null;
+  pullRequestId?: string | null;
+  status?: string | null;
+  metadata?: Record<string, unknown>;
+}) => {
+  try {
+    await db.query(
+      `INSERT INTO ux_events
+       (event_type, user_type, user_id, draft_id, pr_id, status, source, metadata)
+       VALUES ($1, 'observer', $2, $3, $4, $5, 'api', $6)`,
+      [
+        params.eventType,
+        params.observerId,
+        params.draftId ?? null,
+        params.pullRequestId ?? null,
+        params.status ?? null,
+        params.metadata ?? {},
+      ],
+    );
+  } catch (error) {
+    logger.warn(
+      {
+        err: error,
+        eventType: params.eventType,
+        observerId: params.observerId,
+        pullRequestId: params.pullRequestId ?? null,
+      },
+      'prediction telemetry insert failed',
+    );
+  }
 };
 
 router.post(
@@ -476,60 +514,78 @@ router.get('/drafts/:id/pull-requests', async (req, res, next) => {
   }
 });
 
-router.post('/drafts/:id/predict', requireHuman, async (req, res, next) => {
-  try {
-    const draftId = req.params.id;
-    if (!isUuid(draftId)) {
-      throw new ServiceError('DRAFT_ID_INVALID', 'Invalid draft id.', 400);
-    }
+router.post(
+  '/drafts/:id/predict',
+  requireHuman,
+  observerActionRateLimiter,
+  async (req, res, next) => {
+    try {
+      const draftId = req.params.id;
+      if (!isUuid(draftId)) {
+        throw new ServiceError('DRAFT_ID_INVALID', 'Invalid draft id.', 400);
+      }
 
-    const predictedOutcome = req.body?.predictedOutcome ?? req.body?.outcome;
-    const rawStakePoints = req.body?.stakePoints ?? req.body?.points;
-    const parsedStakePoints =
-      rawStakePoints === undefined ? undefined : Number(rawStakePoints);
-    if (predictedOutcome !== 'merge' && predictedOutcome !== 'reject') {
-      throw new ServiceError(
-        'PREDICTION_INVALID',
-        'Prediction must be merge or reject.',
-        400,
+      const predictedOutcome = req.body?.predictedOutcome ?? req.body?.outcome;
+      const rawStakePoints = req.body?.stakePoints ?? req.body?.points;
+      const parsedStakePoints =
+        rawStakePoints === undefined ? undefined : Number(rawStakePoints);
+      if (predictedOutcome !== 'merge' && predictedOutcome !== 'reject') {
+        throw new ServiceError(
+          'PREDICTION_INVALID',
+          'Prediction must be merge or reject.',
+          400,
+        );
+      }
+
+      const pendingPullRequest = await db.query(
+        `SELECT id
+         FROM pull_requests
+         WHERE draft_id = $1
+           AND status = 'pending'
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        [draftId],
       );
-    }
 
-    const pendingPullRequest = await db.query(
-      `SELECT id
-       FROM pull_requests
-       WHERE draft_id = $1
-         AND status = 'pending'
-       ORDER BY created_at DESC
-       LIMIT 1`,
-      [draftId],
-    );
+      const pullRequestId = pendingPullRequest.rows[0]?.id as
+        | string
+        | undefined;
+      if (!pullRequestId) {
+        throw new ServiceError(
+          'PREDICTION_NO_PENDING_PR',
+          'No pending pull request for prediction.',
+          409,
+        );
+      }
 
-    const pullRequestId = pendingPullRequest.rows[0]?.id as string | undefined;
-    if (!pullRequestId) {
-      throw new ServiceError(
-        'PREDICTION_NO_PENDING_PR',
-        'No pending pull request for prediction.',
-        409,
+      const prediction = await draftArcService.submitPrediction(
+        req.auth?.id as string,
+        pullRequestId,
+        predictedOutcome,
+        undefined,
+        parsedStakePoints,
       );
+      await writePredictionTelemetry({
+        eventType: 'pr_prediction_submit',
+        observerId: req.auth?.id as string,
+        draftId,
+        pullRequestId,
+        status: prediction.predictedOutcome,
+        metadata: {
+          stakePoints: prediction.stakePoints,
+          endpoint: 'draft',
+        },
+      });
+
+      res.json({
+        ...prediction,
+        draftId,
+      });
+    } catch (error) {
+      next(error);
     }
-
-    const prediction = await draftArcService.submitPrediction(
-      req.auth?.id as string,
-      pullRequestId,
-      predictedOutcome,
-      undefined,
-      parsedStakePoints,
-    );
-
-    res.json({
-      ...prediction,
-      draftId,
-    });
-  } catch (error) {
-    next(error);
-  }
-});
+  },
+);
 
 router.get('/pull-requests/:id', async (req, res, next) => {
   try {
@@ -543,6 +599,7 @@ router.get('/pull-requests/:id', async (req, res, next) => {
 router.post(
   '/pull-requests/:id/predict',
   requireHuman,
+  observerActionRateLimiter,
   async (req, res, next) => {
     try {
       if (!isUuid(req.params.id)) {
@@ -570,6 +627,16 @@ router.post(
         undefined,
         parsedStakePoints,
       );
+      await writePredictionTelemetry({
+        eventType: 'pr_prediction_submit',
+        observerId: req.auth?.id as string,
+        pullRequestId: req.params.id,
+        status: prediction.predictedOutcome,
+        metadata: {
+          stakePoints: prediction.stakePoints,
+          endpoint: 'pull_request',
+        },
+      });
       res.json(prediction);
     } catch (error) {
       next(error);
@@ -593,6 +660,16 @@ router.get(
         req.auth?.id as string,
         req.params.id,
       );
+      await writePredictionTelemetry({
+        eventType: 'pr_prediction_result_view',
+        observerId: req.auth?.id as string,
+        pullRequestId: req.params.id,
+        status: summary.pullRequestStatus,
+        metadata: {
+          hasPrediction: Boolean(summary.observerPrediction),
+          resolved: summary.observerPrediction?.resolvedOutcome !== null,
+        },
+      });
       res.json(summary);
     } catch (error) {
       next(error);

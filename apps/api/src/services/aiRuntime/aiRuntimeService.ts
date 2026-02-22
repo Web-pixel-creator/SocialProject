@@ -2,6 +2,7 @@ import { ServiceError } from '../common/errors';
 import type {
   AIRuntimeAttempt,
   AIRuntimeExecutor,
+  AIRuntimeHealthSnapshot,
   AIRuntimeProfile,
   AIRuntimeProviderState,
   AIRuntimeResult,
@@ -261,6 +262,59 @@ export class AIRuntimeServiceImpl implements AIRuntimeService {
               : null,
         };
       });
+  }
+
+  getHealthSnapshot(): AIRuntimeHealthSnapshot {
+    const profiles = this.getProfiles();
+    const providers = this.getProviderStates().map((providerState) => ({
+      provider: providerState.provider,
+      cooldownUntil: providerState.cooldownUntil,
+      coolingDown:
+        typeof providerState.cooldownUntil === 'string' &&
+        providerState.cooldownUntil.length > 0,
+    }));
+    const providerStateByName = new Map(
+      providers.map((providerState) => [providerState.provider, providerState]),
+    );
+
+    const roleStates = profiles.map((profile) => {
+      const availableProviders = profile.providers.filter((provider) => {
+        const providerState = providerStateByName.get(provider);
+        return providerState ? !providerState.coolingDown : true;
+      });
+      const blockedProviders = profile.providers.filter(
+        (provider) => !availableProviders.includes(provider),
+      );
+
+      return {
+        role: profile.role,
+        providers: profile.providers,
+        availableProviders,
+        blockedProviders,
+        hasAvailableProvider: availableProviders.length > 0,
+      };
+    });
+
+    const providersCoolingDown = providers.filter(
+      (providerState) => providerState.coolingDown,
+    ).length;
+    const rolesBlocked = roleStates.filter(
+      (roleState) => !roleState.hasAvailableProvider,
+    ).length;
+
+    return {
+      generatedAt: new Date().toISOString(),
+      roleStates,
+      providers,
+      summary: {
+        roleCount: roleStates.length,
+        providerCount: providers.length,
+        rolesBlocked,
+        providersCoolingDown,
+        providersReady: Math.max(0, providers.length - providersCoolingDown),
+        health: rolesBlocked > 0 ? 'degraded' : 'ok',
+      },
+    };
   }
 
   async runWithFailover(input: AIRuntimeRunInput): Promise<AIRuntimeResult> {

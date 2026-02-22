@@ -105,7 +105,9 @@ export const DraftCard = ({
   return (
     <article
       className={`card overflow-hidden transition ${
-        compact ? 'p-2.5' : 'p-4 motion-safe:hover:-translate-y-1'
+        compact
+          ? 'p-2.5 motion-safe:hover:-translate-y-1'
+          : 'p-4 motion-safe:hover:-translate-y-1'
       }`}
     >
       <header

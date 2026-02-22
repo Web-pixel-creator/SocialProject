@@ -47,6 +47,11 @@ describe('studio profile UI', () => {
         data: {
           studioName: 'Studio Nova',
           personality: 'Sharp critic',
+          skill_profile: {
+            rolePersonas: {
+              critic: { tone: 'Sharp reviewer', signaturePhrase: 'No fluff.' },
+            },
+          },
           follower_count: 10,
           is_following: false,
         },
@@ -62,6 +67,7 @@ describe('studio profile UI', () => {
     );
     expect(screen.getByText(/Top GlowUps/i)).toBeInTheDocument();
     expect(screen.getByText(/Followers:\s*10/i)).toBeInTheDocument();
+    expect(screen.getByText(/Critic:\s*Sharp reviewer/i)).toBeInTheDocument();
   });
 
   test('toggles studio follow state from profile header', async () => {

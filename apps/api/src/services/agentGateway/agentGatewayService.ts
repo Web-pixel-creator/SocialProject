@@ -5,6 +5,7 @@ import type {
   AgentGatewayEvent,
   AgentGatewayService,
   AgentGatewaySession,
+  AgentGatewaySessionCompactResult,
   AgentGatewaySessionDetail,
   AppendAgentGatewayEventInput,
   CreateAgentGatewaySessionInput,
@@ -14,6 +15,7 @@ import type {
 const DEFAULT_LIST_LIMIT = 50;
 const MAX_LIST_LIMIT = 200;
 const MAX_EVENT_BUFFER = 300;
+const DEFAULT_COMPACT_KEEP_RECENT = 40;
 const TELEMETRY_SOURCE = 'agent_gateway';
 
 interface SessionState {
@@ -501,6 +503,115 @@ export class AgentGatewayServiceImpl implements AgentGatewayService {
         event.createdAt,
       ],
     );
+  }
+
+  async compactSession(
+    sessionId: string,
+    keepRecent = DEFAULT_COMPACT_KEEP_RECENT,
+  ): Promise<AgentGatewaySessionCompactResult> {
+    const key = sessionId.trim();
+    if (key.length === 0) {
+      throw new ServiceError(
+        'AGENT_GATEWAY_SESSION_NOT_FOUND',
+        'Agent gateway session not found.',
+        404,
+      );
+    }
+
+    let state = this.sessions.get(key);
+    if (!state) {
+      const persisted = await this.getPersistedSession(key);
+      if (!persisted) {
+        throw new ServiceError(
+          'AGENT_GATEWAY_SESSION_NOT_FOUND',
+          'Agent gateway session not found.',
+          404,
+        );
+      }
+      state = {
+        session: persisted.session,
+        events: persisted.events,
+      };
+      this.sessions.set(key, state);
+      if (persisted.session.externalSessionId) {
+        this.externalSessions.set(
+          this.getExternalKey(
+            persisted.session.channel,
+            persisted.session.externalSessionId,
+          ),
+          key,
+        );
+      }
+    }
+
+    const normalizedKeepRecent = Number.isFinite(keepRecent)
+      ? Math.max(1, Math.min(Math.floor(keepRecent), MAX_EVENT_BUFFER - 1))
+      : DEFAULT_COMPACT_KEEP_RECENT;
+
+    const totalBefore = state.events.length;
+    const splitIndex = Math.max(0, totalBefore - normalizedKeepRecent);
+    const prunedEvents = state.events.slice(0, splitIndex);
+    const keptEvents = state.events.slice(splitIndex);
+
+    const eventTypeCounts = prunedEvents.reduce<Record<string, number>>(
+      (acc, event) => {
+        acc[event.type] = (acc[event.type] ?? 0) + 1;
+        return acc;
+      },
+      {},
+    );
+
+    const compactEvent: AgentGatewayEvent = {
+      id: createId('age'),
+      sessionId: state.session.id,
+      fromRole: 'system',
+      toRole: null,
+      type: 'session_compacted',
+      payload: {
+        keepRecent: normalizedKeepRecent,
+        totalBefore,
+        prunedCount: prunedEvents.length,
+        keptCount: keptEvents.length,
+        firstPrunedAt: prunedEvents[0]?.createdAt ?? null,
+        lastPrunedAt: prunedEvents.at(-1)?.createdAt ?? null,
+        eventTypeCounts,
+      },
+      createdAt: new Date().toISOString(),
+    };
+
+    state.events = [...keptEvents, compactEvent];
+    if (state.events.length > MAX_EVENT_BUFFER) {
+      state.events = state.events.slice(-MAX_EVENT_BUFFER);
+    }
+    state.session.updatedAt = compactEvent.createdAt;
+
+    await db.query('DELETE FROM agent_gateway_events WHERE session_id = $1', [
+      state.session.id,
+    ]);
+    for (const event of state.events) {
+      await this.persistEvent(event);
+    }
+    await this.persistSession(state.session);
+    await this.recordTelemetry('agent_gateway_session_compact', {
+      sessionId: state.session.id,
+      channel: state.session.channel,
+      externalSessionId: state.session.externalSessionId,
+      keepRecent: normalizedKeepRecent,
+      totalBefore,
+      totalAfter: state.events.length,
+      prunedCount: prunedEvents.length,
+    });
+
+    return {
+      session: cloneSession(state.session),
+      event: cloneEvent(compactEvent),
+      keepRecent: normalizedKeepRecent,
+      totalBefore,
+      totalAfter: state.events.length,
+      keptCount: keptEvents.length,
+      prunedCount: prunedEvents.length,
+      eventTypeCounts,
+    };
   }
 
   private getExternalKey(channel: string, externalSessionId: string) {

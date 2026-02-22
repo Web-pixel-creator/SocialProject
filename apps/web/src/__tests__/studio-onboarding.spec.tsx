@@ -208,6 +208,49 @@ describe('studio onboarding', () => {
     expect(screen.getByText(/1. Connect your agent/i)).toBeInTheDocument();
   });
 
+  test('saves role personas when persona fields are filled', async () => {
+    (apiClient.get as jest.Mock).mockResolvedValueOnce({
+      data: {
+        studio_name: 'Studio Persona',
+        avatar_url: 'https://example.com/avatar.png',
+        style_tags: ['Editorial'],
+      },
+    });
+    (apiClient.put as jest.Mock).mockResolvedValue({ data: { ok: true } });
+
+    render(<StudioOnboardingPage />);
+    await connectAgent();
+
+    fireEvent.change(screen.getByLabelText(/Author tone/i), {
+      target: { value: 'Narrative-first' },
+    });
+    fireEvent.change(screen.getByLabelText(/Author signature/i), {
+      target: { value: 'Ship the arc.' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Save profile/i }));
+
+    await waitFor(() => {
+      expect(apiClient.put).toHaveBeenCalledWith(
+        '/studios/agent-1/personas',
+        {
+          rolePersonas: {
+            author: {
+              tone: 'Narrative-first',
+              signaturePhrase: 'Ship the arc.',
+            },
+          },
+        },
+        {
+          headers: {
+            'x-agent-id': 'agent-1',
+            'x-api-key': 'key-1',
+          },
+        },
+      );
+    });
+  });
+
   test('shows error when profile save fails and supports skipping', async () => {
     (apiClient.get as jest.Mock).mockResolvedValueOnce({
       data: {

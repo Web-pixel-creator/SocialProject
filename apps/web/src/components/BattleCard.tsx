@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { formatPredictionTrustTier } from '../lib/predictionTier';
 import {
   CardDetails,
   ImagePair,
@@ -317,9 +318,22 @@ export const BattleCard = ({
     limitReason = t('prediction.limitSubmissionCapReached');
   }
 
-  const formattedTier = trustTier
-    ? `${trustTier.charAt(0).toUpperCase()}${trustTier.slice(1)}`
-    : null;
+  const formattedTier = formatPredictionTrustTier(trustTier, t);
+  const quickStakePoints = Array.from(
+    new Set([
+      minStakePoints,
+      Math.round((minStakePoints + maxStakePoints) / 2),
+      maxStakePoints,
+    ]),
+  ).sort((left, right) => left - right);
+  const dailyStakeRemainingPoints =
+    dailyStakeCapPoints !== null && dailyStakeUsedPoints !== null
+      ? Math.max(0, dailyStakeCapPoints - dailyStakeUsedPoints)
+      : null;
+  const dailySubmissionsRemaining =
+    dailySubmissionCap !== null && dailySubmissionsUsed !== null
+      ? Math.max(0, dailySubmissionCap - dailySubmissionsUsed)
+      : null;
 
   const handlePredict = (outcome: BattlePredictionOutcome) => {
     if (!onPredict || predictionDisabled || predictionState?.pending) {
@@ -335,7 +349,9 @@ export const BattleCard = ({
   return (
     <article
       className={`card overflow-hidden transition ${
-        compact ? 'p-2.5' : 'p-4 motion-safe:hover:-translate-y-1'
+        compact
+          ? 'p-2.5 motion-safe:hover:-translate-y-1'
+          : 'p-4 motion-safe:hover:-translate-y-1'
       }`}
     >
       <header
@@ -467,6 +483,24 @@ export const BattleCard = ({
                   value={stakePoints}
                 />
               </label>
+              <div className="flex flex-wrap items-center gap-1">
+                {quickStakePoints.map((quickStakePoint) => (
+                  <button
+                    aria-label={`${t('prediction.stakeLabel')} ${quickStakePoint}`}
+                    aria-pressed={stakePoints === quickStakePoint}
+                    className={`rounded-full border px-2 py-1 font-semibold text-[10px] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                      stakePoints === quickStakePoint
+                        ? 'border-primary/35 bg-primary/10 text-primary'
+                        : 'border-border/25 bg-background/65 text-muted-foreground hover:bg-background/78 hover:text-foreground'
+                    }`}
+                    key={quickStakePoint}
+                    onClick={() => setStakePoints(quickStakePoint)}
+                    type="button"
+                  >
+                    {quickStakePoint}
+                  </button>
+                ))}
+              </div>
               <button
                 className="rounded-full border border-primary/35 bg-primary/10 px-3 py-1.5 font-semibold text-[11px] text-primary transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-55"
                 disabled={
@@ -492,6 +526,9 @@ export const BattleCard = ({
                   : t('prediction.predictReject')}
               </button>
             </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {t('prediction.stakeLabel')} {minStakePoints}-{maxStakePoints} FIN
+            </p>
             {predictionSummary ? (
               <p className="mt-2 text-[11px] text-primary">
                 {predictionSummary}
@@ -518,15 +555,18 @@ export const BattleCard = ({
             {hasObserverMarketProfile ? (
               <p className="mt-1 text-[11px] text-muted-foreground">
                 {t('prediction.netPoints')} {observerNetPoints ?? 0} FIN |{' '}
-                {t('prediction.tierLabel')} {formattedTier ?? '-'}
+                {t('prediction.tierLabel')} {formattedTier}
               </p>
             ) : null}
             {hasUsageCaps ? (
               <p className="mt-1 text-[11px] text-muted-foreground">
                 {t('prediction.dailyStakeLabel')} {dailyStakeUsedPoints ?? 0}/
-                {dailyStakeCapPoints ?? '-'} |{' '}
+                {dailyStakeCapPoints ?? '-'} ({t('observerProfile.remaining')}{' '}
+                {dailyStakeRemainingPoints ?? '-'}) |{' '}
                 {t('prediction.dailySubmissionsLabel')}{' '}
-                {dailySubmissionsUsed ?? 0}/{dailySubmissionCap ?? '-'}
+                {dailySubmissionsUsed ?? 0}/{dailySubmissionCap ?? '-'} (
+                {t('observerProfile.remaining')}{' '}
+                {dailySubmissionsRemaining ?? '-'})
               </p>
             ) : null}
             {predictionState?.error ? (

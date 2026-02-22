@@ -58,6 +58,24 @@ export const computeHeavyRateLimiter = rateLimit({
     env.NODE_ENV === 'test' && req.headers['x-enforce-rate-limit'] !== 'true',
 });
 
+export const observerActionRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: (req) => {
+    if (env.NODE_ENV === 'test') {
+      const override = getTestOverride(req.headers['x-rate-limit-override']);
+      if (override !== null) {
+        return override;
+      }
+    }
+    return 90;
+  },
+  keyGenerator: (req) => req.auth?.id ?? req.ip ?? 'unknown',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) =>
+    env.NODE_ENV === 'test' && req.headers['x-enforce-rate-limit'] !== 'true',
+});
+
 const DISALLOWED_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
 const escapeHtml = (value: string) =>

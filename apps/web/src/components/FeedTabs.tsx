@@ -1627,7 +1627,12 @@ export const FeedTabs = () => {
 
   useEffect(() => {
     const onScroll = () => {
-      setShowBackToTop(window.scrollY > 520);
+      const scrollTop = Math.max(
+        window.scrollY,
+        document.documentElement.scrollTop,
+        document.body.scrollTop,
+      );
+      setShowBackToTop(scrollTop > 520);
       if (loading || !hasMore || fallbackUsed) {
         return;
       }
@@ -1637,10 +1642,7 @@ export const FeedTabs = () => {
       if (document.body.offsetHeight <= window.innerHeight + 200) {
         return;
       }
-      if (
-        window.innerHeight + window.scrollY >=
-        document.body.offsetHeight - 200
-      ) {
+      if (window.innerHeight + scrollTop >= document.body.offsetHeight - 200) {
         setOffset((prev) => prev + PAGE_SIZE);
       }
     };

@@ -5,7 +5,8 @@ import { useParams } from 'next/navigation';
 import useSWR from 'swr';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { apiClient } from '../../../lib/api';
-import { getApiErrorMessage } from '../../../lib/errors';
+import { getApiErrorMessage, getApiErrorStatus } from '../../../lib/errors';
+import { formatPredictionTrustTier } from '../../../lib/predictionTier';
 
 interface ObserverProfileStudio {
   id: string;
@@ -127,7 +128,7 @@ export default function ObserverPublicProfilePage() {
           {t('observerPublicProfile.title')}
         </h1>
         <p className="text-muted-foreground text-sm">
-          {t('observerPublicProfile.loadError')}
+          {t('observerPublicProfile.invalidObserverId')}
         </p>
         <Link
           className={`glass-button inline-flex w-fit ${focusRingClass}`}
@@ -150,6 +151,35 @@ export default function ObserverPublicProfilePage() {
   const loadError = error
     ? getApiErrorMessage(error, t('observerPublicProfile.loadError'))
     : null;
+  const loadErrorStatus = getApiErrorStatus(error);
+  const observerNotFound = loadErrorStatus === 404;
+
+  if (observerNotFound && !profile) {
+    return (
+      <main className="card grid gap-3 p-4 sm:p-6">
+        <h1 className="font-semibold text-2xl text-foreground">
+          {t('observerPublicProfile.title')}
+        </h1>
+        <p className="text-muted-foreground text-sm">
+          {t('observerPublicProfile.notFound')}
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            className={`glass-button inline-flex w-fit ${focusRingClass}`}
+            href="/feed"
+          >
+            {t('feed.exploreFeeds')}
+          </Link>
+          <Link
+            className={`rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary ${focusRingClass}`}
+            href="/observer/profile"
+          >
+            {t('observerProfile.title')}
+          </Link>
+        </div>
+      </main>
+    );
+  }
 
   const summaryCards = [
     {
@@ -174,12 +204,10 @@ export default function ObserverPublicProfilePage() {
     },
     {
       label: t('observerProfile.marketTier'),
-      value: profile?.predictions.market
-        ? `${
-            profile.predictions.market.trustTier.charAt(0).toUpperCase() +
-            profile.predictions.market.trustTier.slice(1)
-          }`
-        : '-',
+      value: formatPredictionTrustTier(
+        profile?.predictions.market?.trustTier,
+        t,
+      ),
       description: profile?.predictions.market
         ? `${t('observerProfile.maxStake')}: ${profile.predictions.market.maxStakePoints}`
         : undefined,
@@ -201,7 +229,7 @@ export default function ObserverPublicProfilePage() {
         </p>
         {profile?.observer ? (
           <p className="text-muted-foreground text-xs">
-            {observerHandle} - {t('observerProfile.memberSince')}{' '}
+            {observerHandle} | {t('observerProfile.memberSince')}{' '}
             {formatDate(
               profile.observer.createdAt,
               language === 'ru' ? 'ru' : 'en',
@@ -281,11 +309,19 @@ export default function ObserverPublicProfilePage() {
                   {studio.studioName}
                 </Link>
                 <p className="text-muted-foreground text-xs">
-                  Impact {studio.impact.toFixed(1)} - Signal{' '}
+                  {t('studioDetail.metrics.impact')} {studio.impact.toFixed(1)}{' '}
+                  | {t('studioDetail.metrics.signal')}{' '}
                   {studio.signal.toFixed(1)}
                 </p>
                 <p className="text-muted-foreground text-xs">
                   {t('studioCard.followersLabel')}: {studio.followerCount}
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  {t('observerProfile.followedAt')}:{' '}
+                  {formatDate(
+                    studio.followedAt,
+                    language === 'ru' ? 'ru' : 'en',
+                  )}
                 </p>
               </li>
             ))}
@@ -315,7 +351,7 @@ export default function ObserverPublicProfilePage() {
                   {item.draftTitle}
                 </Link>
                 <p className="text-muted-foreground text-xs">
-                  {item.studioName} - GlowUp {item.glowUpScore.toFixed(1)}
+                  {item.studioName} | GlowUp {item.glowUpScore.toFixed(1)}
                 </p>
               </li>
             ))}
@@ -346,12 +382,12 @@ export default function ObserverPublicProfilePage() {
                 </Link>
                 <p className="text-muted-foreground text-xs">
                   {t('observerProfile.predicted')}:{' '}
-                  {prediction.predictedOutcome} -{' '}
+                  {prediction.predictedOutcome} |{' '}
                   {t('observerProfile.resolved')}:{' '}
                   {prediction.resolvedOutcome ?? t('observerProfile.pending')}
                 </p>
                 <p className="text-muted-foreground text-xs">
-                  {t('observerProfile.stake')}: {prediction.stakePoints} -{' '}
+                  {t('observerProfile.stake')}: {prediction.stakePoints} |{' '}
                   {t('observerProfile.payout')}: {prediction.payoutPoints}
                 </p>
               </li>

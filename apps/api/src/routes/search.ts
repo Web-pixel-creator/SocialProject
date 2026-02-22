@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { db } from '../db/pool';
+import { logger } from '../logging/logger';
 import { cacheResponse } from '../middleware/responseCache';
+import { computeHeavyRateLimiter } from '../middleware/security';
 import { ServiceError } from '../services/common/errors';
 import { SearchServiceImpl } from '../services/search/searchService';
 import type {
@@ -28,6 +30,17 @@ const VISUAL_TYPES: NonNullable<VisualSearchFilters['type']>[] = [
   'release',
   'all',
 ];
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const VISUAL_ALLOWED_FIELDS = new Set([
+  'embedding',
+  'draftId',
+  'type',
+  'tags',
+  'limit',
+  'offset',
+]);
+const STYLE_FUSION_ALLOWED_FIELDS = new Set(['draftId', 'type', 'limit']);
 
 const parseEnum = <T extends string>(
   value: unknown,
@@ -37,6 +50,87 @@ const parseEnum = <T extends string>(
     return undefined;
   }
   return value as T;
+};
+
+const isUuid = (value: string) => UUID_PATTERN.test(value);
+
+const parseLimit = (
+  value: unknown,
+  { field, max }: { field: string; max: number },
+): number | undefined => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+  const parsed = Number(value);
+  if (!(Number.isFinite(parsed) && Number.isInteger(parsed))) {
+    throw new ServiceError(
+      'SEARCH_PAGINATION_INVALID',
+      `${field} must be an integer.`,
+      400,
+    );
+  }
+  if (parsed < 1 || parsed > max) {
+    throw new ServiceError(
+      'SEARCH_PAGINATION_INVALID',
+      `${field} must be between 1 and ${max}.`,
+      400,
+    );
+  }
+  return parsed;
+};
+
+const parseOffset = (value: unknown, field = 'offset'): number | undefined => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+  const parsed = Number(value);
+  if (!(Number.isFinite(parsed) && Number.isInteger(parsed)) || parsed < 0) {
+    throw new ServiceError(
+      'SEARCH_PAGINATION_INVALID',
+      `${field} must be an integer >= 0.`,
+      400,
+    );
+  }
+  return parsed;
+};
+
+const assertAllowedFields = (
+  payload: Record<string, unknown>,
+  allowed: Set<string>,
+  errorCode: string,
+) => {
+  const unknown = Object.keys(payload).filter((key) => !allowed.has(key));
+  if (unknown.length > 0) {
+    throw new ServiceError(
+      errorCode,
+      `Unsupported fields: ${unknown.join(', ')}.`,
+      400,
+    );
+  }
+};
+
+const writeStyleFusionTelemetry = async (params: {
+  draftId: string;
+  status: string;
+  metadata?: Record<string, unknown>;
+}) => {
+  try {
+    await db.query(
+      `INSERT INTO ux_events
+       (event_type, user_type, user_id, draft_id, status, source, metadata)
+       VALUES ('style_fusion_generate', 'anonymous', NULL, $1, $2, 'api', $3)`,
+      [params.draftId, params.status, params.metadata ?? {}],
+    );
+  } catch (error) {
+    logger.warn(
+      {
+        err: error,
+        draftId: params.draftId,
+        status: params.status,
+      },
+      'style fusion telemetry insert failed',
+    );
+  }
 };
 
 router.get(
@@ -53,8 +147,8 @@ router.get(
       const range = parseEnum(req.query.range, SEARCH_RANGES);
       const profile = parseEnum(req.query.profile, SEARCH_PROFILES);
       const intent = parseEnum(req.query.intent, SEARCH_INTENTS);
-      const limit = req.query.limit ? Number(req.query.limit) : undefined;
-      const offset = req.query.offset ? Number(req.query.offset) : undefined;
+      const limit = parseLimit(req.query.limit, { field: 'limit', max: 100 });
+      const offset = parseOffset(req.query.offset);
       const results = await searchService.search(q, {
         type,
         sort,
@@ -84,12 +178,22 @@ router.get(
       if (!draftId) {
         throw new ServiceError('DRAFT_ID_REQUIRED', 'Provide a draftId.', 400);
       }
+      if (!isUuid(draftId)) {
+        throw new ServiceError('DRAFT_ID_INVALID', 'Invalid draft id.', 400);
+      }
       const type = parseEnum(req.query.type, VISUAL_TYPES);
-      const limit = req.query.limit ? Number(req.query.limit) : undefined;
-      const offset = req.query.offset ? Number(req.query.offset) : undefined;
+      const limit = parseLimit(req.query.limit, { field: 'limit', max: 50 });
+      const offset = parseOffset(req.query.offset);
       const excludeDraftId = req.query.exclude
         ? String(req.query.exclude)
         : undefined;
+      if (excludeDraftId && !isUuid(excludeDraftId)) {
+        throw new ServiceError(
+          'DRAFT_ID_INVALID',
+          'Invalid exclude draft id.',
+          400,
+        );
+      }
 
       const results = await searchService.searchSimilar(draftId, {
         type,
@@ -105,66 +209,149 @@ router.get(
   },
 );
 
-router.post('/search/visual', async (req, res, next) => {
-  try {
-    const { embedding, draftId, type, tags, limit, offset } = req.body ?? {};
-    if (!(embedding || draftId)) {
-      throw new ServiceError(
-        'EMBEDDING_REQUIRED',
-        'Provide embedding or draftId.',
-        400,
+router.post(
+  '/search/visual',
+  computeHeavyRateLimiter,
+  async (req, res, next) => {
+    try {
+      const body =
+        req.body && typeof req.body === 'object'
+          ? (req.body as Record<string, unknown>)
+          : {};
+      assertAllowedFields(
+        body,
+        VISUAL_ALLOWED_FIELDS,
+        'SEARCH_VISUAL_INVALID_FIELDS',
       );
+      const { embedding, draftId, tags, limit, offset } = body;
+      const normalizedDraftId =
+        typeof draftId === 'string' ? draftId.trim() : undefined;
+      if (normalizedDraftId && !isUuid(normalizedDraftId)) {
+        throw new ServiceError('DRAFT_ID_INVALID', 'Invalid draft id.', 400);
+      }
+      let parsedEmbedding: number[] | undefined;
+      if (embedding !== undefined) {
+        if (!Array.isArray(embedding)) {
+          throw new ServiceError(
+            'EMBEDDING_INVALID',
+            'embedding must be a numeric array.',
+            400,
+          );
+        }
+        parsedEmbedding = embedding.map((value) => Number(value));
+        if (!parsedEmbedding.every((value) => Number.isFinite(value))) {
+          throw new ServiceError(
+            'EMBEDDING_INVALID',
+            'embedding must contain only numbers.',
+            400,
+          );
+        }
+      }
+      if (!(parsedEmbedding || normalizedDraftId)) {
+        throw new ServiceError(
+          'EMBEDDING_REQUIRED',
+          'Provide embedding or draftId.',
+          400,
+        );
+      }
+      let tagList: string[] | undefined;
+      if (Array.isArray(tags)) {
+        if (tags.some((tag) => typeof tag !== 'string')) {
+          throw new ServiceError(
+            'SEARCH_VISUAL_TAGS_INVALID',
+            'tags must contain strings only.',
+            400,
+          );
+        }
+        tagList = tags.map((tag) => tag.trim()).filter(Boolean);
+      } else if (typeof tags === 'string') {
+        tagList = [tags.trim()].filter(Boolean);
+      } else if (tags !== undefined) {
+        throw new ServiceError(
+          'SEARCH_VISUAL_TAGS_INVALID',
+          'tags must be a string or string array.',
+          400,
+        );
+      }
+      const parsedType = parseEnum(body.type, VISUAL_TYPES);
+      const results = await searchService.searchVisual({
+        embedding: parsedEmbedding,
+        draftId: normalizedDraftId,
+        filters: {
+          type: parsedType,
+          tags: tagList,
+          limit: parseLimit(limit, { field: 'limit', max: 100 }),
+          offset: parseOffset(offset),
+        },
+      });
+      res.json(results);
+    } catch (error) {
+      next(error);
     }
-    let tagList: string[] | undefined;
-    if (Array.isArray(tags)) {
-      tagList = tags;
-    } else if (typeof tags === 'string') {
-      tagList = [tags];
-    }
-    const results = await searchService.searchVisual({
-      embedding,
-      draftId,
-      filters: {
-        type,
-        tags: tagList,
-        limit: typeof limit === 'number' ? limit : undefined,
-        offset: typeof offset === 'number' ? offset : undefined,
-      },
-    });
-    res.json(results);
-  } catch (error) {
-    next(error);
-  }
-});
+  },
+);
 
-router.post('/search/style-fusion', async (req, res, next) => {
-  try {
-    const body =
-      req.body && typeof req.body === 'object'
-        ? (req.body as Record<string, unknown>)
-        : {};
-    const draftId = String(body.draftId ?? '').trim();
-    if (!draftId) {
-      throw new ServiceError('DRAFT_ID_REQUIRED', 'Provide a draftId.', 400);
-    }
-
-    const type = parseEnum(body.type, VISUAL_TYPES);
-    const limitRaw = body.limit;
+router.post(
+  '/search/style-fusion',
+  computeHeavyRateLimiter,
+  async (req, res, next) => {
+    let draftId = '';
+    let type: VisualSearchFilters['type'] | undefined;
     let limit: number | undefined;
-    if (typeof limitRaw === 'number') {
-      limit = limitRaw;
-    } else if (typeof limitRaw === 'string') {
-      limit = Number(limitRaw);
-    }
+    try {
+      const body =
+        req.body && typeof req.body === 'object'
+          ? (req.body as Record<string, unknown>)
+          : {};
+      assertAllowedFields(
+        body,
+        STYLE_FUSION_ALLOWED_FIELDS,
+        'STYLE_FUSION_INVALID_FIELDS',
+      );
+      draftId = String(body.draftId ?? '').trim();
+      if (!draftId) {
+        throw new ServiceError('DRAFT_ID_REQUIRED', 'Provide a draftId.', 400);
+      }
+      if (!isUuid(draftId)) {
+        throw new ServiceError('DRAFT_ID_INVALID', 'Invalid draft id.', 400);
+      }
 
-    const result = await searchService.generateStyleFusion(draftId, {
-      type,
-      limit,
-    });
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
-});
+      type = parseEnum(body.type, VISUAL_TYPES);
+      limit = parseLimit(body.limit, { field: 'limit', max: 5 });
+
+      const result = await searchService.generateStyleFusion(draftId, {
+        type,
+        limit,
+      });
+      await writeStyleFusionTelemetry({
+        draftId,
+        status: 'success',
+        metadata: {
+          sampleCount: result.sample.length,
+          type: type ?? 'all',
+          limit: limit ?? 3,
+        },
+      });
+      res.json(result);
+    } catch (error) {
+      if (draftId && isUuid(draftId)) {
+        const errorCode =
+          error instanceof ServiceError
+            ? error.code
+            : 'STYLE_FUSION_INTERNAL_ERROR';
+        await writeStyleFusionTelemetry({
+          draftId,
+          status: 'error',
+          metadata: {
+            errorCode,
+            type: type ?? 'all',
+            limit: limit ?? 3,
+          },
+        });
+      }
+      next(error);
+    }
+  },
+);
 
 export default router;

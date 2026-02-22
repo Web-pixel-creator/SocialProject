@@ -150,6 +150,24 @@ describe('observer public profile page', () => {
     await waitFor(() => expect(apiClient.get).toHaveBeenCalledTimes(2));
   });
 
+  test('renders not found fallback when observer profile does not exist', async () => {
+    (apiClient.get as jest.Mock).mockRejectedValueOnce({
+      response: { status: 404, data: { message: 'Observer not found.' } },
+    });
+
+    renderPage();
+
+    expect(
+      await screen.findByText(/Observer profile not found/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /Explore feeds/i }),
+    ).toHaveAttribute('href', '/feed');
+    expect(
+      screen.getByRole('link', { name: /My observer profile/i }),
+    ).toHaveAttribute('href', '/observer/profile');
+  });
+
   test('renders fallback state when observer id is missing', () => {
     mockParams = {};
 

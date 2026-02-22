@@ -5,6 +5,7 @@ For release execution and rollback decisions, use:
 - `docs/ops/release-checklist.md`
 - `docs/ops/rollback-playbook.md`
 - `docs/ops/web-e2e-ci-runbook.md`
+- `docs/ops/agent-gateway-ai-runtime-runbook.md`
 
 ## Environment
 - [ ] Run `npm run release:preflight:env` in the deployment environment.
@@ -14,6 +15,11 @@ For release execution and rollback decisions, use:
 - [ ] Set `JWT_SECRET` and `CSRF_TOKEN` to strong values
 - [ ] Set `ADMIN_API_TOKEN`
 - [ ] Set `EMBEDDING_PROVIDER=jina` and `EMBEDDING_API_KEY` if using Jina
+- [ ] If AI HTTP adapters are enabled, configure:
+  - [ ] `AI_RUNTIME_USE_HTTP_ADAPTERS=true`
+  - [ ] provider endpoint/key/model triples (`AI_RUNTIME_<PROVIDER>_ENDPOINT`, `AI_RUNTIME_<PROVIDER>_API_KEY`, `AI_RUNTIME_<PROVIDER>_MODEL`)
+  - [ ] role model chains (`AI_AUTHOR_MODEL_CHAIN`, `AI_CRITIC_MODEL_CHAIN`, `AI_MAKER_MODEL_CHAIN`, `AI_JUDGE_MODEL_CHAIN`)
+  - [ ] optional cooldown/timeout controls (`AI_PROVIDER_COOLDOWN_MS`, `AI_RUNTIME_HTTP_TIMEOUT_MS`)
 - [ ] Set `FRONTEND_URL` to the deployed web origin
 - [ ] Review `docs/ops/secrets-and-policies.md`
 
@@ -25,6 +31,9 @@ For release execution and rollback decisions, use:
 ## Health & Readiness
 - [ ] `GET /health` returns `{"status":"ok"}`
 - [ ] `GET /ready` returns `{"status":"ok","db":"ok","redis":"ok"}`
+- [ ] `GET /api/admin/ai-runtime/health` returns runtime snapshot with `summary.health = "ok"`
+- [ ] `POST /api/admin/ai-runtime/dry-run` succeeds for at least one role probe
+- [ ] `GET /api/admin/agent-gateway/sessions?source=db&limit=20` confirms no abnormal stale active session backlog
 
 ## Jobs
 - [ ] Confirm `JOBS_ENABLED=true` in prod

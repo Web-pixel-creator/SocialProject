@@ -110,4 +110,33 @@ describe('ai runtime http adapters', () => {
     expect(secondRun.attempts[1].status).toBe('success');
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
+
+  test('builds health snapshot with blocked roles when provider chain is cooling down', async () => {
+    process.env.AI_PROVIDER_COOLDOWN_MS = '60000';
+
+    const runtime = new AIRuntimeServiceImpl();
+    const failureRun = await runtime.runWithFailover({
+      role: 'author',
+      prompt: 'Force every provider in author chain to fail',
+      providersOverride: ['gpt-4.1', 'gemini-2'],
+      simulateFailures: ['gpt-4.1', 'gemini-2'],
+    });
+
+    expect(failureRun.failed).toBe(true);
+    expect(failureRun.selectedProvider).toBeNull();
+
+    const healthSnapshot = runtime.getHealthSnapshot();
+    expect(healthSnapshot.summary.providersCoolingDown).toBeGreaterThanOrEqual(
+      2,
+    );
+    expect(healthSnapshot.summary.rolesBlocked).toBeGreaterThanOrEqual(1);
+    expect(healthSnapshot.summary.health).toBe('degraded');
+
+    const authorRole = healthSnapshot.roleStates.find(
+      (roleState) => roleState.role === 'author',
+    );
+    expect(authorRole).toBeTruthy();
+    expect(authorRole?.hasAvailableProvider).toBe(false);
+    expect((authorRole?.blockedProviders.length ?? 0) > 0).toBe(true);
+  });
 });

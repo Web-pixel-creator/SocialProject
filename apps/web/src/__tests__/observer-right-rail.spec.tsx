@@ -173,6 +173,19 @@ describe('ObserverRightRail', () => {
             },
           },
         },
+        {
+          id: 'evt-orch-compacted',
+          scope: 'feed:live',
+          type: 'agent_gateway_session_compacted',
+          sequence: 4,
+          payload: {
+            source: 'agent_gateway',
+            data: {
+              draftId: 'abcdef12-3456-7890-abcd-ef1234567890',
+              prunedCount: 7,
+            },
+          },
+        },
       ],
       needsResync: false,
       isResyncing: false,
@@ -189,6 +202,10 @@ describe('ObserverRightRail', () => {
     expect(
       screen.getAllByText(/Orchestration completed: abcdef12/i).length,
     ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(/Context compacted: abcdef12/i).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getByText(/Pruned:\s+7/i)).toBeInTheDocument();
   });
 
   test('renders live pressure meter with derived values', async () => {

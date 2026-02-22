@@ -395,6 +395,11 @@
 }
 
 .live-dot {
+  display: inline-flex;
+  width: 0.625rem;
+  height: 0.625rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
   background: oklch(var(--chart-2));
 }
 

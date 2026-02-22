@@ -249,7 +249,7 @@ export const SiteHeader = () => {
           className="flex items-center gap-2 font-bold text-foreground text-lg tracking-tight sm:text-xl"
           href="/"
         >
-          <span className="icon-breathe inline-flex h-6 w-6 items-center justify-center rounded-lg bg-primary text-primary-foreground motion-reduce:animate-none sm:h-7 sm:w-7">
+          <span className="icon-breathe inline-flex h-6 w-6 items-center justify-center rounded-lg bg-primary text-primary-foreground sm:h-7 sm:w-7">
             F
           </span>
           FinishIt

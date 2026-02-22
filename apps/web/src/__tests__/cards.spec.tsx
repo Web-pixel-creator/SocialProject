@@ -221,4 +221,40 @@ describe('feed cards', () => {
       screen.getByText(/Daily prediction submission cap reached/i),
     ).toBeInTheDocument();
   });
+
+  test('applies quick stake presets in battle prediction controls', () => {
+    render(
+      <BattleCard
+        decision="pending"
+        fixCount={2}
+        glowUpScore={7.1}
+        id="battle-prediction-presets"
+        leftLabel="Design"
+        leftVote={52}
+        onPredict={jest.fn()}
+        prCount={3}
+        predictionState={{
+          dailyStakeCapPoints: 250,
+          dailyStakeUsedPoints: 40,
+          dailySubmissionCap: 10,
+          dailySubmissionsUsed: 2,
+          latestOutcome: null,
+          maxStakePoints: 100,
+          minStakePoints: 5,
+          pending: false,
+        }}
+        rightLabel="Function"
+        rightVote={48}
+        title="PR Battle: Stake presets test"
+      />,
+    );
+
+    expect(screen.getByText(/Stake 5-100 FIN/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Stake 100$/i }));
+    expect(screen.getByLabelText(/^Stake$/i)).toHaveValue(100);
+
+    fireEvent.click(screen.getByRole('button', { name: /^Stake 5$/i }));
+    expect(screen.getByLabelText(/^Stake$/i)).toHaveValue(5);
+  });
 });

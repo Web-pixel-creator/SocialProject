@@ -8,6 +8,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { SWRConfig } from 'swr';
 import DraftDetailPage from '../app/drafts/[id]/page';
@@ -440,6 +441,64 @@ describe('draft detail page', () => {
 
     expect(screen.getByText(/Similar drafts/i)).toBeInTheDocument();
     expect(screen.getByText('Similar Draft')).toBeInTheDocument();
+  });
+
+  test('renders multimodal glowup panel when score is available', async () => {
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/search/similar')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/glowup/multimodal')) {
+        return Promise.resolve({
+          data: {
+            provider: 'gemini-2',
+            score: 84.6,
+            confidence: 0.92,
+            visualScore: 88.1,
+            narrativeScore: 81.4,
+            audioScore: null,
+            videoScore: 79.8,
+            updatedAt: '2026-02-22T11:02:00.000Z',
+          },
+        });
+      }
+      if (url.includes('/fix-requests')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/pull-requests')) {
+        return Promise.resolve({ data: [] });
+      }
+      return Promise.resolve({
+        data: {
+          draft: {
+            id: 'draft-mm',
+            currentVersion: 1,
+            glowUpScore: 5.2,
+            status: 'draft',
+            updatedAt: new Date().toISOString(),
+          },
+          versions: [],
+        },
+      });
+    });
+
+    await renderDraftDetailPage('draft-mm');
+
+    expect(screen.getByTestId('multimodal-glowup-card')).toBeInTheDocument();
+    expect(screen.getByText(/Multimodal GlowUp/i)).toBeInTheDocument();
+    expect(screen.getByText(/gemini-2/i)).toBeInTheDocument();
+    expect(screen.getByText('84.6')).toBeInTheDocument();
+    expect(screen.getByText('92.0%')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        (apiClient.post as jest.Mock).mock.calls.some(
+          (call: unknown[]) =>
+            call[0] === '/telemetry/ux' &&
+            (call[1] as { eventType?: string })?.eventType ===
+              'draft_multimodal_glowup_view',
+        ),
+      ).toBe(true),
+    );
   });
 
   test('handles missing draft id and shows similar fallback status', async () => {
@@ -967,6 +1026,20 @@ describe('draft detail page', () => {
           },
         },
       });
+      __socket.__trigger('event', {
+        id: 'evt-orch-compact',
+        scope: 'post:draft-orch-events',
+        type: 'agent_gateway_session_compacted',
+        sequence: 3,
+        payload: {
+          data: {
+            keepRecent: 2,
+            prunedCount: 4,
+            totalBefore: 6,
+            totalAfter: 3,
+          },
+        },
+      });
       await Promise.resolve();
     });
     await flushAsyncState();
@@ -977,6 +1050,9 @@ describe('draft detail page', () => {
     expect(
       screen.getAllByText(/Orchestration cycle completed \(3\)/i).length,
     ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText(/Orchestration context compacted \(4\)/i).length,
+    ).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/Orchestration timeline/i)).toBeInTheDocument();
     expect(screen.getByText(/Provider:\s+gpt-4.1/i)).toBeInTheDocument();
     expect(screen.getByText(/Attempts:\s+2/i)).toBeInTheDocument();
@@ -985,6 +1061,107 @@ describe('draft detail page', () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/gpt-4.1 • success • 340ms/i)).toBeInTheDocument();
     expect(screen.getByText(/Steps:\s+3/i)).toBeInTheDocument();
+    expect(screen.getByText(/Pruned events:\s+4/i)).toBeInTheDocument();
+    expect(screen.getByText(/Kept recent:\s+2/i)).toBeInTheDocument();
+  });
+
+  test('filters orchestration timeline by type, query, and limit', async () => {
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/search/similar')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/fix-requests')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/pull-requests') && !url.includes('/predictions')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/arc')) {
+        return Promise.resolve({ data: null });
+      }
+      if (url.includes('/observers/watchlist')) {
+        return Promise.resolve({ data: [{ draft_id: 'draft-orch-filters' }] });
+      }
+      if (url.includes('/observers/digest')) {
+        return Promise.resolve({ data: [] });
+      }
+      return Promise.resolve({
+        data: {
+          draft: {
+            id: 'draft-orch-filters',
+            currentVersion: 1,
+            glowUpScore: 2.1,
+            status: 'draft',
+            updatedAt: new Date().toISOString(),
+          },
+          versions: [],
+        },
+      });
+    });
+
+    await renderDraftDetailPage('draft-orch-filters');
+
+    const { __socket } = jest.requireMock('../lib/socket');
+    await act(async () => {
+      const stepRoles = ['critic', 'maker', 'author', 'judge', 'planner'];
+      for (const [index, role] of stepRoles.entries()) {
+        __socket.__trigger('event', {
+          id: `evt-orch-filter-step-${index + 1}`,
+          scope: 'post:draft-orch-filters',
+          type: 'agent_gateway_orchestration_step',
+          sequence: index + 1,
+          payload: {
+            data: {
+              role,
+              failed: false,
+              selectedProvider: `provider-${role}`,
+              attempts: [],
+            },
+          },
+        });
+      }
+      __socket.__trigger('event', {
+        id: 'evt-orch-filter-completed',
+        scope: 'post:draft-orch-filters',
+        type: 'agent_gateway_orchestration_completed',
+        sequence: 6,
+        payload: { data: { stepCount: 5 } },
+      });
+      await Promise.resolve();
+    });
+    await flushAsyncState();
+
+    const orchestrationCard = screen.getByTestId('orchestration-card');
+    const card = within(orchestrationCard);
+
+    expect(
+      card.getByText(/Orchestration cycle completed/i),
+    ).toBeInTheDocument();
+    expect(
+      card.getByText(/Orchestration step \(critic\)/i),
+    ).toBeInTheDocument();
+
+    fireEvent.change(card.getByTestId('orchestration-type-filter'), {
+      target: { value: 'step' },
+    });
+    expect(
+      card.queryByText(/Orchestration cycle completed/i),
+    ).not.toBeInTheDocument();
+
+    fireEvent.change(card.getByTestId('orchestration-query-filter'), {
+      target: { value: 'judge' },
+    });
+    expect(card.getByText(/Orchestration step \(judge\)/i)).toBeInTheDocument();
+    expect(card.queryByText(/Orchestration step \(maker\)/i)).toBeNull();
+
+    fireEvent.change(card.getByTestId('orchestration-query-filter'), {
+      target: { value: '' },
+    });
+    fireEvent.change(card.getByTestId('orchestration-limit-filter'), {
+      target: { value: '4' },
+    });
+    expect(card.queryByText(/Orchestration step \(critic\)/i)).toBeNull();
+    expect(card.getByText(/Orchestration step \(maker\)/i)).toBeInTheDocument();
   });
 
   test('shows followed studios section and streams updates for followed studio drafts', async () => {
@@ -1232,6 +1409,13 @@ describe('draft detail page', () => {
   });
 
   test('generates style fusion from similar drafts and shows result', async () => {
+    const writeTextMock = jest.fn(() => Promise.resolve());
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: writeTextMock,
+      },
+    });
+
     (apiClient.get as jest.Mock).mockImplementation((url: string) => {
       if (url.includes('/search/similar')) {
         return Promise.resolve({
@@ -1339,6 +1523,21 @@ describe('draft detail page', () => {
     await waitFor(() =>
       expect(
         screen.getByText(/Preserve composition anchors\./i),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/Sample drafts/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Similar Draft A/i).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole('button', { name: /Copy fusion brief/i }));
+    await waitFor(() => expect(writeTextMock).toHaveBeenCalledTimes(1));
+    expect(writeTextMock.mock.calls[0]?.[0]).toContain(
+      'Fusion: Similar Draft A x Similar Draft B',
+    );
+    expect(writeTextMock.mock.calls[0]?.[0]).toContain('Style directives');
+    expect(writeTextMock.mock.calls[0]?.[0]).toContain('Sample drafts');
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: /Fusion brief copied/i }),
       ).toBeInTheDocument(),
     );
   });

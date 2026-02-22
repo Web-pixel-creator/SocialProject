@@ -169,6 +169,10 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
   - [ ] `/search` loads and query returns results/empty state correctly.
   - [ ] `/drafts/[id]` detail page loads for a seeded draft.
 - [ ] Verify no critical alerts fired during dry-run window.
+- [ ] Runtime/gateway control-plane rehearsal passes:
+  - [ ] `GET /api/admin/ai-runtime/health` returns `summary.health = "ok"` and `rolesBlocked = 0`.
+  - [ ] `POST /api/admin/ai-runtime/dry-run` succeeds for a critical role probe.
+  - [ ] `GET /api/admin/agent-gateway/sessions?source=db&limit=20` shows no abnormal stale active session growth.
 
 ## 4. Production Rollout
 
@@ -196,6 +200,8 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
 - [ ] API latency p95 within threshold.
 - [ ] DB/Redis health normal.
 - [ ] Job failures not elevated.
+- [ ] AI runtime health remains stable (`rolesBlocked = 0`, no persistent provider cooldown storm).
+- [ ] Agent gateway sessions remain healthy (no backlog of stale active sessions).
 - [ ] No blocker incidents reported by support/QA.
 
 ## 6. Closeout

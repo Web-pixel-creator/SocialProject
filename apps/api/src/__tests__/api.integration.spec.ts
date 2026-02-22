@@ -489,6 +489,93 @@ describe('API integration', () => {
     expect(digestWithQueryOverrideRes.body.length).toBeGreaterThan(0);
   });
 
+  test('observer digest prioritizes followed studios before other watchlist entries', async () => {
+    const human = await registerHuman('observer-digest-priority@example.com');
+    const token = human.tokens.accessToken;
+    const followedStudio = await registerAgent('Digest Priority Followed');
+    const otherStudio = await registerAgent('Digest Priority Other');
+
+    const followedDraftRes = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', followedStudio.agentId)
+      .set('x-api-key', followedStudio.apiKey)
+      .send({
+        imageUrl: 'https://example.com/digest-priority-followed-v1.png',
+        thumbnailUrl:
+          'https://example.com/digest-priority-followed-v1-thumb.png',
+      });
+    expect(followedDraftRes.status).toBe(200);
+    const followedDraftId = followedDraftRes.body.draft.id as string;
+
+    const otherDraftRes = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', otherStudio.agentId)
+      .set('x-api-key', otherStudio.apiKey)
+      .send({
+        imageUrl: 'https://example.com/digest-priority-other-v1.png',
+        thumbnailUrl: 'https://example.com/digest-priority-other-v1-thumb.png',
+      });
+    expect(otherDraftRes.status).toBe(200);
+    const otherDraftId = otherDraftRes.body.draft.id as string;
+
+    const watchlistFollowedRes = await request(app)
+      .post(`/api/observers/watchlist/${followedDraftId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(watchlistFollowedRes.status).toBe(201);
+
+    const watchlistOtherRes = await request(app)
+      .post(`/api/observers/watchlist/${otherDraftId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(watchlistOtherRes.status).toBe(201);
+
+    const followStudioRes = await request(app)
+      .post(`/api/studios/${followedStudio.agentId}/follow`)
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(followStudioRes.status).toBe(201);
+
+    const followedFixRes = await request(app)
+      .post(`/api/drafts/${followedDraftId}/fix-requests`)
+      .set('x-agent-id', followedStudio.agentId)
+      .set('x-api-key', followedStudio.apiKey)
+      .send({
+        category: 'Focus',
+        description: 'Followed studio digest signal',
+      });
+    expect(followedFixRes.status).toBe(200);
+
+    await new Promise((resolve) => setTimeout(resolve, 25));
+
+    const otherFixRes = await request(app)
+      .post(`/api/drafts/${otherDraftId}/fix-requests`)
+      .set('x-agent-id', otherStudio.agentId)
+      .set('x-api-key', otherStudio.apiKey)
+      .send({
+        category: 'Focus',
+        description: 'Other studio digest signal',
+      });
+    expect(otherFixRes.status).toBe(200);
+
+    const digestRes = await request(app)
+      .get('/api/observers/digest?unseenOnly=true&limit=10')
+      .set('Authorization', `Bearer ${token}`);
+    expect(digestRes.status).toBe(200);
+
+    const followedIndex = digestRes.body.findIndex(
+      (entry: { draftId: string }) => entry.draftId === followedDraftId,
+    );
+    const otherIndex = digestRes.body.findIndex(
+      (entry: { draftId: string }) => entry.draftId === otherDraftId,
+    );
+
+    expect(followedIndex).toBeGreaterThanOrEqual(0);
+    expect(otherIndex).toBeGreaterThanOrEqual(0);
+    expect(followedIndex).toBeLessThan(otherIndex);
+    expect(digestRes.body[0].fromFollowingStudio).toBe(true);
+  });
+
   test('studio follow lifecycle returns follower counts and following feed', async () => {
     const human = await registerHuman('studio-follow@example.com');
     const token = human.tokens.accessToken;
@@ -570,6 +657,17 @@ describe('API integration', () => {
     expect(unfollowRes.status).toBe(200);
     expect(unfollowRes.body.removed).toBe(true);
     expect(unfollowRes.body.followerCount).toBe(0);
+
+    const followTelemetry = await db.query(
+      `SELECT
+         COUNT(*) FILTER (WHERE event_type = 'studio_follow')::int AS follow_count,
+         COUNT(*) FILTER (WHERE event_type = 'studio_unfollow')::int AS unfollow_count
+       FROM ux_events
+       WHERE user_id = $1`,
+      [human.userId],
+    );
+    expect(followTelemetry.rows[0].follow_count).toBeGreaterThanOrEqual(1);
+    expect(followTelemetry.rows[0].unfollow_count).toBeGreaterThanOrEqual(1);
 
     const followingAfterUnfollow = await request(app)
       .get('/api/me/following')
@@ -1071,6 +1169,19 @@ describe('API integration', () => {
     expect(postDecision.body.observerPrediction.isCorrect).toBe(false);
     expect(postDecision.body.observerPrediction.payoutPoints).toBe(0);
     expect(postDecision.body.accuracy.total).toBeGreaterThanOrEqual(1);
+
+    const predictionTelemetry = await db.query(
+      `SELECT
+         COUNT(*) FILTER (WHERE event_type = 'pr_prediction_submit')::int AS submit_count,
+         COUNT(*) FILTER (WHERE event_type = 'pr_prediction_result_view')::int AS result_view_count
+       FROM ux_events
+       WHERE user_id = $1`,
+      [human.userId],
+    );
+    expect(predictionTelemetry.rows[0].submit_count).toBeGreaterThanOrEqual(2);
+    expect(
+      predictionTelemetry.rows[0].result_view_count,
+    ).toBeGreaterThanOrEqual(2);
   });
 
   test('draft prediction endpoint validates pending pull request state', async () => {
@@ -1636,6 +1747,9 @@ describe('API integration', () => {
       'feed_view_mode_change',
       'feed_view_mode_hint_dismiss',
       'demo_flow_refresh_partial_failure',
+      'draft_multimodal_glowup_view',
+      'draft_multimodal_glowup_empty',
+      'draft_multimodal_glowup_error',
     ];
 
     for (const eventType of eventTypes) {
@@ -1938,6 +2052,20 @@ describe('API integration', () => {
     expect(Array.isArray(fusion.body.winningPrHints)).toBe(true);
     expect(fusion.body.winningPrHints.length).toBeGreaterThan(0);
     expect(fusion.body.titleSuggestion).toContain('Fusion:');
+    const styleFusionTelemetry = await db.query(
+      `SELECT status, metadata
+       FROM ux_events
+       WHERE event_type = 'style_fusion_generate'
+         AND draft_id = $1
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [target.body.draft.id],
+    );
+    expect(styleFusionTelemetry.rows).toHaveLength(1);
+    expect(styleFusionTelemetry.rows[0].status).toBe('success');
+    expect(
+      Number((styleFusionTelemetry.rows[0].metadata as any).sampleCount),
+    ).toBeGreaterThanOrEqual(2);
   });
 
   test('style fusion requires at least two similar drafts', async () => {
@@ -1968,6 +2096,83 @@ describe('API integration', () => {
 
     expect(fusion.status).toBe(422);
     expect(fusion.body.error).toBe('STYLE_FUSION_NOT_ENOUGH_MATCHES');
+    const styleFusionTelemetry = await db.query(
+      `SELECT status, metadata
+       FROM ux_events
+       WHERE event_type = 'style_fusion_generate'
+         AND draft_id = $1
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [target.body.draft.id],
+    );
+    expect(styleFusionTelemetry.rows).toHaveLength(1);
+    expect(styleFusionTelemetry.rows[0].status).toBe('error');
+    expect((styleFusionTelemetry.rows[0].metadata as any).errorCode).toBe(
+      'STYLE_FUSION_NOT_ENOUGH_MATCHES',
+    );
+  });
+
+  test('search endpoints validate pagination, ids, and payload fields', async () => {
+    const invalidSimilarId = await request(app).get(
+      '/api/search/similar?draftId=not-a-uuid',
+    );
+    expect(invalidSimilarId.status).toBe(400);
+    expect(invalidSimilarId.body.error).toBe('DRAFT_ID_INVALID');
+
+    const invalidSimilarLimit = await request(app).get(
+      '/api/search/similar?draftId=00000000-0000-0000-0000-000000000001&limit=oops',
+    );
+    expect(invalidSimilarLimit.status).toBe(400);
+    expect(invalidSimilarLimit.body.error).toBe('SEARCH_PAGINATION_INVALID');
+
+    const invalidSearchLimit = await request(app).get(
+      '/api/search?q=test&limit=abc',
+    );
+    expect(invalidSearchLimit.status).toBe(400);
+    expect(invalidSearchLimit.body.error).toBe('SEARCH_PAGINATION_INVALID');
+
+    const invalidVisualFields = await request(app)
+      .post('/api/search/visual')
+      .send({
+        draftId: '00000000-0000-0000-0000-000000000001',
+        unknownField: true,
+      });
+    expect(invalidVisualFields.status).toBe(400);
+    expect(invalidVisualFields.body.error).toBe('SEARCH_VISUAL_INVALID_FIELDS');
+
+    const invalidStyleFusionFields = await request(app)
+      .post('/api/search/style-fusion')
+      .send({
+        draftId: '00000000-0000-0000-0000-000000000001',
+        extra: 'unsupported',
+      });
+    expect(invalidStyleFusionFields.status).toBe(400);
+    expect(invalidStyleFusionFields.body.error).toBe(
+      'STYLE_FUSION_INVALID_FIELDS',
+    );
+  });
+
+  test('search compute-heavy endpoints enforce rate limiting', async () => {
+    const headers = {
+      'x-enforce-rate-limit': 'true',
+      'x-rate-limit-override': '1',
+      'x-agent-id': 'search-heavy-rate-test',
+    };
+    const payload = {
+      draftId: '00000000-0000-0000-0000-000000000001',
+    };
+
+    const first = await request(app)
+      .post('/api/search/style-fusion')
+      .set(headers)
+      .send(payload);
+    expect(first.status).toBe(404);
+
+    const second = await request(app)
+      .post('/api/search/style-fusion')
+      .set(headers)
+      .send(payload);
+    expect(second.status).toBe(429);
   });
 
   test('draft creation auto-embeds initial version', async () => {
@@ -2075,6 +2280,102 @@ describe('API integration', () => {
       .send({ skillProfile: ['not-an-object'] });
     expect(invalidSkillProfile.status).toBe(400);
     expect(invalidSkillProfile.body.error).toBe('STUDIO_SKILL_PROFILE_INVALID');
+
+    const invalidRolePersonasViaSkillProfile = await request(app)
+      .put(`/api/studios/${agentId}`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        skillProfile: {
+          rolePersonas: {
+            critic: { focus: 'should-be-array' },
+          },
+        },
+      });
+    expect(invalidRolePersonasViaSkillProfile.status).toBe(400);
+    expect(invalidRolePersonasViaSkillProfile.body.error).toBe(
+      'STUDIO_ROLE_PERSONAS_INVALID',
+    );
+
+    const forbiddenPersonasUpdate = await request(app)
+      .put(`/api/studios/${agentId}/personas`)
+      .set('x-agent-id', otherAgentId)
+      .set('x-api-key', otherApiKey)
+      .send({
+        rolePersonas: {
+          critic: { tone: 'Strict reviewer' },
+        },
+      });
+    expect(forbiddenPersonasUpdate.status).toBe(403);
+
+    const personasUpdated = await request(app)
+      .put(`/api/studios/${agentId}/personas`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        rolePersonas: {
+          author: {
+            tone: 'Narrative-first',
+            focus: ['coherence', 'arc'],
+            signaturePhrase: 'Ship the arc.',
+          },
+          critic: {
+            tone: 'Ruthless but fair',
+            boundaries: ['No personal attacks'],
+          },
+        },
+      });
+    expect(personasUpdated.status).toBe(200);
+    expect(personasUpdated.body.rolePersonas.author).toEqual({
+      tone: 'Narrative-first',
+      focus: ['coherence', 'arc'],
+      signaturePhrase: 'Ship the arc.',
+    });
+    expect(personasUpdated.body.rolePersonas.critic).toEqual({
+      tone: 'Ruthless but fair',
+      boundaries: ['No personal attacks'],
+    });
+
+    const personasFetched = await request(app).get(
+      `/api/studios/${agentId}/personas`,
+    );
+    expect(personasFetched.status).toBe(200);
+    expect(personasFetched.body.rolePersonas.author.tone).toBe(
+      'Narrative-first',
+    );
+
+    const personasTelemetry = await db.query(
+      `SELECT COUNT(*)::int AS count
+       FROM ux_events
+       WHERE event_type = 'studio_personas_update'
+         AND user_id = $1`,
+      [agentId],
+    );
+    expect(personasTelemetry.rows[0].count).toBeGreaterThanOrEqual(1);
+
+    const invalidPersonasPayload = await request(app)
+      .put(`/api/studios/${agentId}/personas`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        rolePersonas: {
+          hacker: { tone: 'malicious' },
+        },
+      });
+    expect(invalidPersonasPayload.status).toBe(400);
+    expect(invalidPersonasPayload.body.error).toBe(
+      'STUDIO_ROLE_PERSONAS_INVALID',
+    );
+
+    const missingPersonasPayload = await request(app)
+      .put(`/api/studios/${agentId}/personas`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({});
+    expect(missingPersonasPayload.status).toBe(400);
+    expect(missingPersonasPayload.body.error).toBe(
+      'STUDIO_ROLE_PERSONAS_REQUIRED',
+    );
 
     const metrics = await request(app).get(`/api/studios/${agentId}/metrics`);
     expect(metrics.status).toBe(200);
@@ -2748,5 +3049,204 @@ describe('API integration', () => {
       thumbnailUrl: 'https://example.com/heavy-thumb-2.png',
     });
     expect(second.status).toBe(429);
+  });
+
+  test('observer engagement endpoints enforce rate limiting', async () => {
+    const { agentId, apiKey } = await registerAgent('Observer Rate Studio');
+    const humanFollow = await registerHuman(
+      'observer-follow-limit@example.com',
+    );
+    const followHeaders = {
+      Authorization: `Bearer ${humanFollow.tokens.accessToken}`,
+      'x-enforce-rate-limit': 'true',
+      'x-rate-limit-override': '1',
+    };
+
+    const followFirst = await request(app)
+      .post(`/api/studios/${agentId}/follow`)
+      .set(followHeaders)
+      .send();
+    expect(followFirst.status).toBe(201);
+
+    const followSecond = await request(app)
+      .post(`/api/studios/${agentId}/follow`)
+      .set(followHeaders)
+      .send();
+    expect(followSecond.status).toBe(429);
+
+    const draftRes = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/observer-limit-v1.png',
+        thumbnailUrl: 'https://example.com/observer-limit-v1-thumb.png',
+      });
+    expect(draftRes.status).toBe(200);
+
+    const draftId = draftRes.body.draft.id as string;
+    const prRes = await request(app)
+      .post(`/api/drafts/${draftId}/pull-requests`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        description: 'Pending PR for observer rate limit',
+        severity: 'minor',
+        imageUrl: 'https://example.com/observer-limit-v2.png',
+        thumbnailUrl: 'https://example.com/observer-limit-v2-thumb.png',
+      });
+    expect(prRes.status).toBe(200);
+
+    const humanPredict = await registerHuman(
+      'observer-predict-limit@example.com',
+    );
+    const predictHeaders = {
+      Authorization: `Bearer ${humanPredict.tokens.accessToken}`,
+      'x-enforce-rate-limit': 'true',
+      'x-rate-limit-override': '1',
+    };
+
+    const predictFirst = await request(app)
+      .post(`/api/drafts/${draftId}/predict`)
+      .set(predictHeaders)
+      .send({ predictedOutcome: 'merge', stakePoints: 12 });
+    expect(predictFirst.status).toBe(200);
+
+    const predictSecond = await request(app)
+      .post(`/api/drafts/${draftId}/predict`)
+      .set(predictHeaders)
+      .send({ predictedOutcome: 'reject', stakePoints: 12 });
+    expect(predictSecond.status).toBe(429);
+  });
+
+  test('prediction, personas, and observer write endpoints enforce observer-action throttling', async () => {
+    const { agentId, apiKey } = await registerAgent(
+      'Observer Action Throttle Studio',
+    );
+    const draftRes = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/throttle-v1.png',
+        thumbnailUrl: 'https://example.com/throttle-v1-thumb.png',
+      });
+    expect(draftRes.status).toBe(200);
+    const draftId = draftRes.body.draft.id as string;
+
+    const prRes = await request(app)
+      .post(`/api/drafts/${draftId}/pull-requests`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        description: 'Throttle pending PR',
+        severity: 'minor',
+        imageUrl: 'https://example.com/throttle-v2.png',
+        thumbnailUrl: 'https://example.com/throttle-v2-thumb.png',
+      });
+    expect(prRes.status).toBe(200);
+    const pullRequestId = prRes.body.id as string;
+
+    const human = await registerHuman('observer-pr-throttle@example.com');
+    const predictHeaders = {
+      Authorization: `Bearer ${human.tokens.accessToken}`,
+      'x-enforce-rate-limit': 'true',
+      'x-rate-limit-override': '1',
+    };
+
+    const prPredictFirst = await request(app)
+      .post(`/api/pull-requests/${pullRequestId}/predict`)
+      .set(predictHeaders)
+      .send({ predictedOutcome: 'merge', stakePoints: 10 });
+    expect(prPredictFirst.status).toBe(200);
+
+    const prPredictSecond = await request(app)
+      .post(`/api/pull-requests/${pullRequestId}/predict`)
+      .set(predictHeaders)
+      .send({ predictedOutcome: 'reject', stakePoints: 10 });
+    expect(prPredictSecond.status).toBe(429);
+
+    const personasHeaders = {
+      'x-agent-id': agentId,
+      'x-api-key': apiKey,
+      'x-enforce-rate-limit': 'true',
+      'x-rate-limit-override': '1',
+    };
+
+    const personasFirst = await request(app)
+      .put(`/api/studios/${agentId}/personas`)
+      .set(personasHeaders)
+      .send({
+        rolePersonas: {
+          author: {
+            tone: 'Precise and calm',
+            focus: ['clarity'],
+          },
+        },
+      });
+    expect(personasFirst.status).toBe(200);
+
+    const personasSecond = await request(app)
+      .put(`/api/studios/${agentId}/personas`)
+      .set(personasHeaders)
+      .send({
+        rolePersonas: {
+          author: {
+            tone: 'Still precise',
+            focus: ['clarity'],
+          },
+        },
+      });
+    expect(personasSecond.status).toBe(429);
+
+    const watchlistHuman = await registerHuman(
+      'observer-watchlist-throttle@example.com',
+    );
+    const watchlistHeaders = {
+      Authorization: `Bearer ${watchlistHuman.tokens.accessToken}`,
+      'x-enforce-rate-limit': 'true',
+      'x-rate-limit-override': '1',
+    };
+
+    const watchlistFirst = await request(app)
+      .post(`/api/observers/watchlist/${draftId}`)
+      .set(watchlistHeaders)
+      .send();
+    expect(watchlistFirst.status).toBe(201);
+
+    const watchlistSecond = await request(app)
+      .post(`/api/observers/watchlist/${draftId}`)
+      .set(watchlistHeaders)
+      .send();
+    expect(watchlistSecond.status).toBe(429);
+
+    const preferencesHuman = await registerHuman(
+      'observer-preferences-throttle@example.com',
+    );
+    const preferencesHeaders = {
+      Authorization: `Bearer ${preferencesHuman.tokens.accessToken}`,
+      'x-enforce-rate-limit': 'true',
+      'x-rate-limit-override': '1',
+    };
+
+    const preferencesFirst = await request(app)
+      .put('/api/observers/me/preferences')
+      .set(preferencesHeaders)
+      .send({
+        digest: {
+          unseenOnly: true,
+        },
+      });
+    expect(preferencesFirst.status).toBe(200);
+
+    const preferencesSecond = await request(app)
+      .put('/api/observers/me/preferences')
+      .set(preferencesHeaders)
+      .send({
+        digest: {
+          unseenOnly: false,
+        },
+      });
+    expect(preferencesSecond.status).toBe(429);
   });
 });

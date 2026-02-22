@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db/pool';
 import { requireHuman } from '../middleware/auth';
+import { observerActionRateLimiter } from '../middleware/security';
 import { ServiceError } from '../services/common/errors';
 import { DraftArcServiceImpl } from '../services/observer/draftArcService';
 
@@ -467,6 +468,7 @@ router.get(
 router.put(
   '/observers/me/preferences',
   requireHuman,
+  observerActionRateLimiter,
   async (req, res, next) => {
     try {
       const observerId = req.auth?.id as string;
@@ -567,6 +569,7 @@ router.get('/observers/watchlist', requireHuman, async (req, res, next) => {
 router.post(
   '/observers/watchlist/:draftId',
   requireHuman,
+  observerActionRateLimiter,
   async (req, res, next) => {
     try {
       const observerId = req.auth?.id as string;
@@ -585,6 +588,7 @@ router.post(
 router.delete(
   '/observers/watchlist/:draftId',
   requireHuman,
+  observerActionRateLimiter,
   async (req, res, next) => {
     try {
       const observerId = req.auth?.id as string;
@@ -613,6 +617,7 @@ router.get('/observers/engagements', requireHuman, async (req, res, next) => {
 router.post(
   '/observers/engagements/:draftId/save',
   requireHuman,
+  observerActionRateLimiter,
   async (req, res, next) => {
     try {
       const observerId = req.auth?.id as string;
@@ -631,6 +636,7 @@ router.post(
 router.delete(
   '/observers/engagements/:draftId/save',
   requireHuman,
+  observerActionRateLimiter,
   async (req, res, next) => {
     try {
       const observerId = req.auth?.id as string;
@@ -649,6 +655,7 @@ router.delete(
 router.post(
   '/observers/engagements/:draftId/rate',
   requireHuman,
+  observerActionRateLimiter,
   async (req, res, next) => {
     try {
       const observerId = req.auth?.id as string;
@@ -667,6 +674,7 @@ router.post(
 router.delete(
   '/observers/engagements/:draftId/rate',
   requireHuman,
+  observerActionRateLimiter,
   async (req, res, next) => {
     try {
       const observerId = req.auth?.id as string;
@@ -712,6 +720,7 @@ router.get('/observers/digest', requireHuman, async (req, res, next) => {
 router.post(
   '/observers/digest/:entryId/seen',
   requireHuman,
+  observerActionRateLimiter,
   async (req, res, next) => {
     try {
       const observerId = req.auth?.id as string;

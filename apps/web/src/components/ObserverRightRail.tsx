@@ -335,6 +335,8 @@ export const ObserverRightRail = () => {
       const role = asString(payloadData.role);
       const failed = payloadData.failed === true;
       const completed = payloadData.completed === true;
+      const compacted = event.type === 'agent_gateway_session_compacted';
+      const prunedCount = asNumber(payloadData.prunedCount);
       let eventLabel = event.type;
       if (event.type === 'draft_created') {
         eventLabel = t('rail.draftCreated');
@@ -346,16 +348,24 @@ export const ObserverRightRail = () => {
         eventLabel = completed
           ? t('rail.orchestrationCompleted')
           : t('rail.orchestrationFailed');
+      } else if (event.type === 'agent_gateway_session_compacted') {
+        eventLabel = t('rail.orchestrationCompacted');
       }
 
       const title = draftId
         ? `${eventLabel}: ${draftId.slice(0, 8)}${role ? ` (${role})` : ''}`
         : eventLabel;
+      let meta = t('common.liveNowLower');
+      if (compacted) {
+        meta = `${t('rail.compactionPruned')} ${Math.max(0, Math.round(prunedCount))}`;
+      } else if (failed) {
+        meta = t('rail.orchestrationFailed');
+      }
 
       return {
         id: `rt-${event.id}`,
         title,
-        meta: failed ? t('rail.orchestrationFailed') : t('common.liveNowLower'),
+        meta,
       };
     };
 
@@ -366,13 +376,14 @@ export const ObserverRightRail = () => {
   }, [realtimeEvents, t]);
 
   const mergedActivity = useMemo(() => {
-    const byId = new Set<string>();
+    const bySignature = new Set<string>();
     const result: RailItem[] = [];
     const combined = [...realtimeActivity, ...activity];
 
     for (const item of combined) {
-      if (!byId.has(item.id)) {
-        byId.add(item.id);
+      const signature = `${item.title}|${item.meta ?? ''}`;
+      if (!bySignature.has(signature)) {
+        bySignature.add(signature);
         result.push(item);
       }
       if (result.length >= 6) {
@@ -558,7 +569,7 @@ export const ObserverRightRail = () => {
     >
       <section className="card relative overflow-hidden p-4 sm:p-4">
         <p className="live-signal inline-flex items-center gap-2 font-semibold text-xs uppercase tracking-wide">
-          <span className="icon-breathe live-dot inline-flex h-2.5 w-2.5 rounded-full motion-reduce:animate-none" />
+          <span className="icon-breathe live-dot inline-flex h-2.5 w-2.5 rounded-full" />
           {t('rail.liveWsConnected')}
         </p>
         <div className="mt-2 grid grid-cols-2 gap-1.5 text-xs sm:mt-3 sm:gap-2">
@@ -822,16 +833,7 @@ export const ObserverRightRail = () => {
                   className="line-clamp-1"
                   key={`mobile-following-${item.id}`}
                 >
-                  {item.href ? (
-                    <Link
-                      className="transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                      href={item.href}
-                    >
-                      {item.title}
-                    </Link>
-                  ) : (
-                    item.title
-                  )}
+                  {item.title}
                 </li>
               ))}
             </ul>

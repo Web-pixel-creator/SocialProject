@@ -7,6 +7,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { apiClient } from '../../../lib/api';
 import { getApiErrorMessage } from '../../../lib/errors';
+import { formatPredictionTrustTier } from '../../../lib/predictionTier';
 
 interface ObserverProfileStudio {
   id: string;
@@ -277,12 +278,10 @@ export default function ObserverProfilePage() {
     },
   ];
   const predictionMarket = profile?.predictions.market;
-  const formattedPredictionTier = predictionMarket
-    ? `${
-        predictionMarket.trustTier.charAt(0).toUpperCase() +
-        predictionMarket.trustTier.slice(1)
-      }`
-    : '-';
+  const formattedPredictionTier = formatPredictionTrustTier(
+    predictionMarket?.trustTier,
+    t,
+  );
   const followingStudioDigestEntries = digestEntries
     .filter((entry) => entry.fromFollowingStudio)
     .slice(0, 8);
@@ -387,7 +386,7 @@ export default function ObserverProfilePage() {
         </p>
         {profile?.observer ? (
           <p className="text-muted-foreground text-xs">
-            {profile.observer.email} · {t('observerProfile.memberSince')}{' '}
+            {profile.observer.email} | {t('observerProfile.memberSince')}{' '}
             {formatDate(
               profile.observer.createdAt,
               language === 'ru' ? 'ru' : 'en',
@@ -462,7 +461,7 @@ export default function ObserverProfilePage() {
         {predictionMarket ? (
           <>
             <p className="text-muted-foreground text-xs">
-              {t('observerProfile.marketTier')}: {formattedPredictionTier} ·{' '}
+              {t('observerProfile.marketTier')}: {formattedPredictionTier} |{' '}
               {t('observerProfile.maxStake')}: {predictionMarket.maxStakePoints}
             </p>
             <p className="text-muted-foreground text-xs">
@@ -470,7 +469,7 @@ export default function ObserverProfilePage() {
               {predictionMarket.dailyStakeUsedPoints}/
               {predictionMarket.dailyStakeCapPoints} (
               {t('observerProfile.remaining')}{' '}
-              {predictionMarket.dailyStakeRemainingPoints}) ·{' '}
+              {predictionMarket.dailyStakeRemainingPoints}) |{' '}
               {t('observerProfile.dailySubmissions')}:{' '}
               {predictionMarket.dailySubmissionsUsed}/
               {predictionMarket.dailySubmissionCap} (
@@ -612,11 +611,19 @@ export default function ObserverProfilePage() {
                   </button>
                 </div>
                 <p className="text-muted-foreground text-xs">
-                  Impact {studio.impact.toFixed(1)} · Signal{' '}
+                  {t('studioDetail.metrics.impact')} {studio.impact.toFixed(1)}{' '}
+                  | {t('studioDetail.metrics.signal')}{' '}
                   {studio.signal.toFixed(1)}
                 </p>
                 <p className="text-muted-foreground text-xs">
                   {t('studioCard.followersLabel')}: {studio.followerCount}
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  {t('observerProfile.followedAt')}:{' '}
+                  {formatDate(
+                    studio.followedAt,
+                    language === 'ru' ? 'ru' : 'en',
+                  )}
                 </p>
               </li>
             ))}
@@ -646,7 +653,7 @@ export default function ObserverProfilePage() {
                   {item.draftTitle}
                 </Link>
                 <p className="text-muted-foreground text-xs">
-                  {item.studioName} · GlowUp {item.glowUpScore.toFixed(1)}
+                  {item.studioName} | GlowUp {item.glowUpScore.toFixed(1)}
                 </p>
               </li>
             ))}
@@ -677,12 +684,12 @@ export default function ObserverProfilePage() {
                 </Link>
                 <p className="text-muted-foreground text-xs">
                   {t('observerProfile.predicted')}:{' '}
-                  {prediction.predictedOutcome} ·{' '}
+                  {prediction.predictedOutcome} |{' '}
                   {t('observerProfile.resolved')}:{' '}
                   {prediction.resolvedOutcome ?? t('observerProfile.pending')}
                 </p>
                 <p className="text-muted-foreground text-xs">
-                  {t('observerProfile.stake')}: {prediction.stakePoints} ·{' '}
+                  {t('observerProfile.stake')}: {prediction.stakePoints} |{' '}
                   {t('observerProfile.payout')}: {prediction.payoutPoints}
                 </p>
               </li>

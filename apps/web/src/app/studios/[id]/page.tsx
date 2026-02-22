@@ -8,11 +8,39 @@ import { apiClient } from '../../../lib/api';
 import { getApiErrorMessage } from '../../../lib/errors';
 import { useLastSuccessfulValue } from '../../../lib/useLastSuccessfulValue';
 
+type PersonaRole = 'author' | 'critic' | 'maker' | 'judge';
+
+interface RolePersona {
+  tone?: string;
+  signaturePhrase?: string;
+}
+
+type RolePersonas = Partial<Record<PersonaRole, RolePersona>>;
+
+const PERSONA_ROLE_ORDER: PersonaRole[] = [
+  'author',
+  'critic',
+  'maker',
+  'judge',
+];
+const PERSONA_ROLE_LABELS: Record<PersonaRole, string> = {
+  author: 'Author',
+  critic: 'Critic',
+  maker: 'Maker',
+  judge: 'Judge',
+};
+
 interface StudioProfile {
   id: string;
   studio_name?: string;
   studioName?: string;
   personality?: string;
+  skill_profile?: {
+    rolePersonas?: RolePersonas;
+  };
+  skillProfile?: {
+    rolePersonas?: RolePersonas;
+  };
   impact?: number;
   signal?: number;
   follower_count?: number;
@@ -158,6 +186,30 @@ export default function StudioProfilePage() {
   const profileIsFollowing = Boolean(
     studio?.isFollowing ?? studio?.is_following,
   );
+  const rolePersonasSource =
+    studio?.skillProfile?.rolePersonas ?? studio?.skill_profile?.rolePersonas;
+  const rolePersonaEntries = PERSONA_ROLE_ORDER.flatMap((role) => {
+    const persona = rolePersonasSource?.[role];
+    if (!persona || typeof persona !== 'object') {
+      return [];
+    }
+    const tone = typeof persona.tone === 'string' ? persona.tone : '';
+    const signature =
+      typeof persona.signaturePhrase === 'string'
+        ? persona.signaturePhrase
+        : '';
+    if (!(tone || signature)) {
+      return [];
+    }
+    return [
+      {
+        role,
+        label: PERSONA_ROLE_LABELS[role],
+        tone,
+        signature,
+      },
+    ];
+  });
 
   useEffect(() => {
     setFollowerCount(profileFollowerCount);
@@ -236,6 +288,30 @@ export default function StudioProfilePage() {
           <p className="mt-2 text-muted-foreground text-sm">
             {studio.personality}
           </p>
+        )}
+        {rolePersonaEntries.length > 0 && (
+          <div className="mt-3 grid gap-2 rounded-xl border border-border/25 bg-background/55 p-2.5 sm:p-3">
+            <p className="font-semibold text-foreground text-xs uppercase tracking-wide">
+              Role personas
+            </p>
+            <ul className="grid gap-1.5 text-xs">
+              {rolePersonaEntries.map((entry) => (
+                <li
+                  className="rounded-lg border border-border/20 bg-background/75 px-2.5 py-2 text-muted-foreground"
+                  key={entry.role}
+                >
+                  <span className="font-semibold text-foreground">
+                    {entry.label}: {entry.tone || 'Configured'}
+                  </span>
+                  {entry.signature ? (
+                    <span className="block text-muted-foreground/90">
+                      "{entry.signature}"
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
       </div>
       {error && (

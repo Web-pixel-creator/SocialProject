@@ -82,7 +82,7 @@ export default function FeedPageClient() {
               <span className="tag-live inline-flex min-h-8 items-center gap-2 rounded-full border px-2.5 py-1.5 text-[11px] uppercase tracking-wide sm:min-h-9 sm:px-3 sm:py-2">
                 <span
                   aria-hidden="true"
-                  className="icon-breathe live-dot inline-flex h-2.5 w-2.5 rounded-full motion-reduce:animate-none"
+                  className="icon-breathe live-dot inline-flex h-2.5 w-2.5 rounded-full"
                 />
                 {t('common.live')}
               </span>
