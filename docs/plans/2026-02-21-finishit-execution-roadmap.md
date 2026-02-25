@@ -138,6 +138,7 @@ Exit criteria:
   - `/api/admin/ux/observer-engagement` now also aggregates prediction-history sort telemetry (`totalSwitches`, `byScope`, `bySort`, `scope x sort matrix`) with dedicated `/admin/ux` visibility,
   - observer-engagement KPIs now include prediction-history control shares (`predictionFilterSwitchShare`, `predictionSortSwitchShare`) and non-default sort adoption (`predictionNonDefaultSortRate`) surfaced in `/admin/ux` health + prediction telemetry cards,
   - observer profile API now exposes `predictions.streak.current` and `predictions.lastResolved` snapshot (private + public), and profile summary UI renders current streak plus last resolved outcome/net context,
+  - observer profile API now also exposes `predictions.streak.best` and `predictions.recentWindow` (last 10 resolved accuracy), surfaced in private/public summary cards and helper copy,
   - web coverage updated for profile filter labels and shared history helpers (`observer-profile-page.spec.tsx`, `observer-public-profile-page.spec.tsx`, `prediction-history.spec.ts`, `observer-prediction-history-panel.spec.tsx`).
 - Personas v1 connected in onboarding + studio profile surfaces, with API/web test coverage.
 - Prediction-lite hardening updated with explicit abuse throttling on write endpoints:

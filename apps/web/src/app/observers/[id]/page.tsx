@@ -73,6 +73,13 @@ interface ObserverPublicProfileResponse {
     netPoints: number;
     streak: {
       current: number;
+      best: number;
+    };
+    recentWindow: {
+      size: number;
+      resolved: number;
+      correct: number;
+      rate: number;
     };
     lastResolved: ObserverProfileResolvedPredictionSnapshot | null;
     market?: {
@@ -235,6 +242,7 @@ export default function ObserverPublicProfilePage() {
     {
       label: t('observerProfile.cards.predictionStreak'),
       value: profile?.predictions.streak?.current ?? 0,
+      description: `${t('observerProfile.streakBest')}: ${profile?.predictions.streak?.best ?? 0}`,
     },
   ];
 
@@ -242,6 +250,12 @@ export default function ObserverPublicProfilePage() {
     profile?.observer.handle ?? t('observerPublicProfile.observerLabel');
   const recentPredictions = profile?.recentPredictions ?? [];
   const lastResolvedPrediction = profile?.predictions.lastResolved ?? null;
+  const recentWindow = profile?.predictions.recentWindow ?? {
+    size: 10,
+    resolved: 0,
+    correct: 0,
+    rate: 0,
+  };
 
   return (
     <main className="grid gap-4 pb-8 sm:gap-5">
@@ -331,6 +345,11 @@ export default function ObserverPublicProfilePage() {
             {t('observerProfile.lastResolvedNone')}
           </p>
         )}
+        <p className="text-muted-foreground text-xs">
+          {t('observerProfile.recentWindowAccuracy')} ({recentWindow.size}):{' '}
+          {Math.round(recentWindow.rate * 100)}% ({recentWindow.correct}/
+          {recentWindow.resolved})
+        </p>
       </section>
 
       <section className="card grid gap-2 p-4 sm:p-5">

@@ -952,6 +952,15 @@ describe('API integration', () => {
     expect(profileRes.body.predictions.streak).toEqual(
       expect.objectContaining({
         current: 1,
+        best: 1,
+      }),
+    );
+    expect(profileRes.body.predictions.recentWindow).toEqual(
+      expect.objectContaining({
+        size: 10,
+        resolved: 1,
+        correct: 1,
+        rate: 1,
       }),
     );
     expect(profileRes.body.predictions.lastResolved).toEqual(
@@ -1073,6 +1082,15 @@ describe('API integration', () => {
     expect(publicProfileRes.body.predictions.streak).toEqual(
       expect.objectContaining({
         current: 1,
+        best: 1,
+      }),
+    );
+    expect(publicProfileRes.body.predictions.recentWindow).toEqual(
+      expect.objectContaining({
+        size: 10,
+        resolved: 1,
+        correct: 1,
+        rate: 1,
       }),
     );
     expect(publicProfileRes.body.predictions.lastResolved).toEqual(

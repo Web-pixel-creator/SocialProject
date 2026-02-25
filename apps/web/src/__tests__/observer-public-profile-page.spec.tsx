@@ -37,6 +37,13 @@ const profilePayload = {
     netPoints: 22,
     streak: {
       current: 2,
+      best: 5,
+    },
+    recentWindow: {
+      size: 10,
+      resolved: 4,
+      correct: 3,
+      rate: 0.75,
     },
     lastResolved: {
       id: 'pred-1',
@@ -140,6 +147,10 @@ describe('observer public profile page', () => {
     expect(screen.getByText(/Prediction tier/i)).toBeInTheDocument();
     expect(screen.getByText(/Trusted/i)).toBeInTheDocument();
     expect(screen.getByText(/Current streak/i)).toBeInTheDocument();
+    expect(screen.getByText(/Best:\s*5/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Recent resolved accuracy \(10\):\s*75% \(3\/4\)/i),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(
         /Last resolved:\s*Correct \|\s*Net:\s*\+8 \|\s*Watchlist Draft/i,

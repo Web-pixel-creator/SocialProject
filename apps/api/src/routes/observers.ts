@@ -188,7 +188,12 @@ const mapObserverPrediction = (row: Record<string, unknown>) => ({
 });
 
 const fetchObserverPredictionSignals = async (observerId: string) => {
-  const [currentStreakResult, lastResolvedResult] = await Promise.all([
+  const [
+    currentStreakResult,
+    bestStreakResult,
+    recentWindowResult,
+    lastResolvedResult,
+  ] = await Promise.all([
     db.query(
       `WITH resolved AS (
          SELECT
@@ -207,6 +212,49 @@ const fetchObserverPredictionSignals = async (observerId: string) => {
        FROM resolved
        WHERE incorrect_seen = 0
          AND is_correct = true`,
+      [observerId],
+    ),
+    db.query(
+      `WITH resolved AS (
+         SELECT
+           is_correct,
+           ROW_NUMBER() OVER (
+             ORDER BY resolved_at ASC NULLS LAST, created_at ASC, id ASC
+           ) AS rn_all,
+           ROW_NUMBER() OVER (
+             PARTITION BY is_correct
+             ORDER BY resolved_at ASC NULLS LAST, created_at ASC, id ASC
+           ) AS rn_by_outcome
+         FROM observer_pr_predictions
+         WHERE observer_id = $1
+           AND resolved_outcome IS NOT NULL
+           AND is_correct IS NOT NULL
+       ),
+       streaks AS (
+         SELECT
+           (rn_all - rn_by_outcome) AS streak_group,
+           COUNT(*)::int AS streak_length
+         FROM resolved
+         WHERE is_correct = true
+         GROUP BY (rn_all - rn_by_outcome)
+       )
+       SELECT COALESCE(MAX(streak_length), 0)::int AS best_streak
+       FROM streaks`,
+      [observerId],
+    ),
+    db.query(
+      `SELECT
+         COUNT(*)::int AS resolved_total,
+         COUNT(*) FILTER (WHERE is_correct = true)::int AS resolved_correct
+       FROM (
+         SELECT is_correct
+         FROM observer_pr_predictions
+         WHERE observer_id = $1
+           AND resolved_outcome IS NOT NULL
+           AND is_correct IS NOT NULL
+         ORDER BY resolved_at DESC NULLS LAST, created_at DESC, id DESC
+         LIMIT 10
+       ) recent_resolved`,
       [observerId],
     ),
     db.query(
@@ -236,6 +284,13 @@ const fetchObserverPredictionSignals = async (observerId: string) => {
   const currentStreak = toSafeNumber(
     currentStreakResult.rows[0]?.current_streak,
   );
+  const bestStreak = toSafeNumber(bestStreakResult.rows[0]?.best_streak);
+  const recentResolvedTotal = toSafeNumber(
+    recentWindowResult.rows[0]?.resolved_total,
+  );
+  const recentResolvedCorrect = toSafeNumber(
+    recentWindowResult.rows[0]?.resolved_correct,
+  );
   const lastResolvedRow = lastResolvedResult.rows[0] as
     | Record<string, unknown>
     | undefined;
@@ -257,6 +312,17 @@ const fetchObserverPredictionSignals = async (observerId: string) => {
 
   return {
     currentStreak,
+    bestStreak,
+    recentWindow: {
+      size: 10,
+      resolved: recentResolvedTotal,
+      correct: recentResolvedCorrect,
+      rate:
+        recentResolvedTotal > 0
+          ? Math.round((recentResolvedCorrect / recentResolvedTotal) * 100) /
+            100
+          : 0,
+    },
     lastResolved,
   };
 };
@@ -429,7 +495,9 @@ router.get('/observers/me/profile', requireHuman, async (req, res, next) => {
         netPoints: toSafeNumber(counts.prediction_net_points),
         streak: {
           current: predictionSignals.currentStreak,
+          best: predictionSignals.bestStreak,
         },
+        recentWindow: predictionSignals.recentWindow,
         lastResolved: predictionSignals.lastResolved,
         market: {
           trustTier: predictionMarketProfile.trustTier,
@@ -639,7 +707,9 @@ router.get('/observers/:id/profile', async (req, res, next) => {
         netPoints: toSafeNumber(counts.prediction_net_points),
         streak: {
           current: predictionSignals.currentStreak,
+          best: predictionSignals.bestStreak,
         },
+        recentWindow: predictionSignals.recentWindow,
         lastResolved: predictionSignals.lastResolved,
         market: {
           trustTier: predictionMarketProfile.trustTier,

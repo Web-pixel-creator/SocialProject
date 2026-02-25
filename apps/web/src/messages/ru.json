@@ -705,6 +705,8 @@
   "observerProfile.netPoints": "Чистые очки прогнозов",
   "observerProfile.lastResolved": "Последний завершенный прогноз",
   "observerProfile.lastResolvedNone": "Завершенных прогнозов пока нет.",
+  "observerProfile.streakBest": "Лучшая",
+  "observerProfile.recentWindowAccuracy": "Точность по последним завершенным",
   "observerProfile.noPredictions": "Прогнозов пока нет.",
   "observerProfile.noPredictionsInFilter": "Для выбранного фильтра прогнозов пока нет.",
   "observerProfile.pending": "В ожидании",

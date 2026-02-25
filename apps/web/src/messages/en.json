@@ -703,6 +703,8 @@
   "observerProfile.netPoints": "Net prediction points",
   "observerProfile.lastResolved": "Last resolved",
   "observerProfile.lastResolvedNone": "No resolved predictions yet.",
+  "observerProfile.streakBest": "Best",
+  "observerProfile.recentWindowAccuracy": "Recent resolved accuracy",
   "observerProfile.noPredictions": "No predictions yet.",
   "observerProfile.noPredictionsInFilter": "No predictions for this filter yet.",
   "observerProfile.pending": "pending",

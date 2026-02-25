@@ -88,6 +88,13 @@ interface ObserverProfileResponse {
     netPoints: number;
     streak: {
       current: number;
+      best: number;
+    };
+    recentWindow: {
+      size: number;
+      resolved: number;
+      correct: number;
+      rate: number;
     };
     lastResolved: ObserverProfileResolvedPredictionSnapshot | null;
     market?: {
@@ -299,10 +306,17 @@ export default function ObserverProfilePage() {
     {
       label: t('observerProfile.cards.predictionStreak'),
       value: profile?.predictions.streak?.current ?? 0,
+      description: `${t('observerProfile.streakBest')}: ${profile?.predictions.streak?.best ?? 0}`,
     },
   ];
   const predictionMarket = profile?.predictions.market;
   const lastResolvedPrediction = profile?.predictions.lastResolved ?? null;
+  const recentWindow = profile?.predictions.recentWindow ?? {
+    size: 10,
+    resolved: 0,
+    correct: 0,
+    rate: 0,
+  };
   const formattedPredictionTier = formatPredictionTrustTier(
     predictionMarket?.trustTier,
     t,
@@ -462,7 +476,7 @@ export default function ObserverProfilePage() {
               : t('observerProfile.resync')}
           </button>
         </div>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
           {summaryCards.map((card) => (
             <div
               className="rounded-xl border border-border/25 bg-background/58 p-3"
@@ -483,6 +497,11 @@ export default function ObserverProfilePage() {
         <p className="text-muted-foreground text-xs">
           {t('observerProfile.netPoints')}:{' '}
           {profile?.predictions.netPoints ?? 0}
+        </p>
+        <p className="text-muted-foreground text-xs">
+          {t('observerProfile.recentWindowAccuracy')} ({recentWindow.size}):{' '}
+          {Math.round(recentWindow.rate * 100)}% ({recentWindow.correct}/
+          {recentWindow.resolved})
         </p>
         {lastResolvedPrediction ? (
           <p className="text-muted-foreground text-xs">

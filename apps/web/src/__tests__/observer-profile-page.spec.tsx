@@ -80,6 +80,13 @@ describe('observer profile page', () => {
               netPoints: 22,
               streak: {
                 current: 3,
+                best: 7,
+              },
+              recentWindow: {
+                size: 10,
+                resolved: 5,
+                correct: 4,
+                rate: 0.8,
               },
               lastResolved: {
                 id: 'pred-1',
@@ -215,8 +222,12 @@ describe('observer profile page', () => {
     expect(screen.getAllByText(/Watchlist Draft/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Net prediction points: 22/i)).toBeInTheDocument();
     expect(screen.getByText(/Current streak/i)).toBeInTheDocument();
+    expect(screen.getByText(/Best:\s*7/i)).toBeInTheDocument();
     expect(screen.getByText(/Prediction tier: Trusted/i)).toBeInTheDocument();
     expect(screen.getByText(/Daily stake:\s*180\/1000/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Recent resolved accuracy \(10\):\s*80% \(4\/5\)/i),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(
         /Last resolved:\s*Correct \|\s*Net:\s*\+8 \|\s*Watchlist Draft/i,
@@ -288,6 +299,13 @@ describe('observer profile page', () => {
               netPoints: 6,
               streak: {
                 current: 1,
+                best: 3,
+              },
+              recentWindow: {
+                size: 10,
+                resolved: 1,
+                correct: 1,
+                rate: 1,
               },
               lastResolved: {
                 id: 'pred-resolved',
