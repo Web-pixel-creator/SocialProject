@@ -487,4 +487,5 @@ Exit criteria:
   - repeated `callId` with mismatched arguments now fails fast with `LIVE_SESSION_REALTIME_TOOL_CALL_CONFLICT` (`409`) instead of silently reusing stale output,
   - repeated `callId` with a different tool name now also fails with `LIVE_SESSION_REALTIME_TOOL_CALL_CONFLICT` (`409`) to prevent cross-tool replay,
   - cache lookup is now strictly observer-scoped (`observerId` required in payload) so one observer's `callId` cannot dedupe another observer's tool execution,
-  - API integration coverage updated to verify duplicate follow-tool execution returns deduplicated cached output, conflict on mismatched-arguments/tool-name reuse, and follow-row singularity.
+  - realtime tool boundary now enforces strict `callId` identifier format (`[A-Za-z0-9][A-Za-z0-9_.:-]*`) before execution,
+  - API integration coverage updated to verify duplicate follow-tool execution returns deduplicated cached output, conflict on mismatched-arguments/tool-name reuse, invalid-callId rejection, and follow-row singularity.

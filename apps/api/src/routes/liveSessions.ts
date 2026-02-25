@@ -86,6 +86,8 @@ const LIVE_SESSION_REALTIME_METADATA_KEY_MAX_LENGTH = 48;
 const LIVE_SESSION_REALTIME_METADATA_VALUE_MAX_LENGTH = 160;
 const LIVE_SESSION_REALTIME_TOOL_CALL_ID_MAX_LENGTH = 120;
 const LIVE_SESSION_REALTIME_TOOL_ARGUMENTS_MAX_LENGTH = 10_000;
+const LIVE_SESSION_REALTIME_TOOL_CALL_ID_PATTERN =
+  /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,119}$/;
 const PRESENCE_STATUSES: LiveSessionPresenceStatus[] = [
   'watching',
   'active',
@@ -720,6 +722,28 @@ const parseRealtimeToolFollowStudioArguments = (argumentsValue: unknown) => {
   return { studioId: args.studioId.trim() };
 };
 
+const parseRealtimeToolCallId = (
+  body: Record<string, unknown>,
+): string | null =>
+  parseOptionalBoundedText(body.callId, {
+    field: 'callId',
+    maxLength: LIVE_SESSION_REALTIME_TOOL_CALL_ID_MAX_LENGTH,
+    errorCode: 'LIVE_SESSION_REALTIME_TOOL_INVALID_INPUT',
+  }) ?? null;
+
+const assertRealtimeToolCallIdFormat = (callId: string | null) => {
+  if (!callId) {
+    return;
+  }
+  if (!LIVE_SESSION_REALTIME_TOOL_CALL_ID_PATTERN.test(callId)) {
+    throw new ServiceError(
+      'LIVE_SESSION_REALTIME_TOOL_INVALID_INPUT',
+      'callId must be a valid identifier (alphanumeric, _, -, ., :).',
+      400,
+    );
+  }
+};
+
 const toPayloadRecord = (value: unknown): Record<string, unknown> | null => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return null;
@@ -1063,12 +1087,8 @@ router.post(
       }
 
       const toolName = parseRealtimeToolName(body);
-      const callId =
-        parseOptionalBoundedText(body.callId, {
-          field: 'callId',
-          maxLength: LIVE_SESSION_REALTIME_TOOL_CALL_ID_MAX_LENGTH,
-          errorCode: 'LIVE_SESSION_REALTIME_TOOL_INVALID_INPUT',
-        }) ?? null;
+      const callId = parseRealtimeToolCallId(body);
+      assertRealtimeToolCallIdFormat(callId);
       const observerId = req.auth?.id as string;
       let output: Record<string, unknown>;
       let argumentsHash: string | null = null;

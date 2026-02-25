@@ -4448,6 +4448,21 @@ describe('API integration', () => {
     expect(invalidToolArgs.body.error).toBe(
       'LIVE_SESSION_REALTIME_TOOL_INVALID_INPUT',
     );
+
+    const invalidCallId = await request(app)
+      .post(`/api/live-sessions/${sessionId}/realtime/tool`)
+      .set('Authorization', `Bearer ${human.tokens.accessToken}`)
+      .send({
+        callId: 'call id with spaces',
+        name: 'follow_studio',
+        arguments: {
+          studioId: agentId,
+        },
+      });
+    expect(invalidCallId.status).toBe(400);
+    expect(invalidCallId.body.error).toBe(
+      'LIVE_SESSION_REALTIME_TOOL_INVALID_INPUT',
+    );
   });
 
   test('live session realtime tool endpoint executes follow and prediction tools', async () => {
