@@ -24,6 +24,45 @@ interface ObserverPredictionHistoryPanelProps {
   t: (key: string) => string;
 }
 
+const PREDICTION_FILTER_STORAGE_PREFIX = 'finishit:observer-prediction-filter';
+
+const isPredictionHistoryFilter = (
+  value: unknown,
+): value is PredictionHistoryFilter =>
+  value === 'all' || value === 'resolved' || value === 'pending';
+
+const predictionFilterStorageKey = (
+  scope: ObserverPredictionHistoryPanelProps['telemetryScope'],
+): string => `${PREDICTION_FILTER_STORAGE_PREFIX}:${scope}`;
+
+const readStoredPredictionFilter = (
+  scope: ObserverPredictionHistoryPanelProps['telemetryScope'],
+): PredictionHistoryFilter => {
+  if (typeof window === 'undefined') {
+    return 'all';
+  }
+  try {
+    const raw = window.localStorage.getItem(predictionFilterStorageKey(scope));
+    return isPredictionHistoryFilter(raw) ? raw : 'all';
+  } catch {
+    return 'all';
+  }
+};
+
+const writeStoredPredictionFilter = (
+  scope: ObserverPredictionHistoryPanelProps['telemetryScope'],
+  filter: PredictionHistoryFilter,
+): void => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  try {
+    window.localStorage.setItem(predictionFilterStorageKey(scope), filter);
+  } catch {
+    // ignore localStorage failures
+  }
+};
+
 const getPredictionResultLabel = (
   prediction: ObserverPredictionHistoryEntry,
   t: (key: string) => string,
@@ -63,7 +102,9 @@ export const ObserverPredictionHistoryPanel = ({
   t,
 }: ObserverPredictionHistoryPanelProps) => {
   const [predictionFilter, setPredictionFilter] =
-    useState<PredictionHistoryFilter>('all');
+    useState<PredictionHistoryFilter>(() =>
+      readStoredPredictionFilter(telemetryScope),
+    );
 
   const sendTelemetry = (payload: Record<string, unknown>): void => {
     if (typeof apiClient.post !== 'function') {
@@ -95,6 +136,7 @@ export const ObserverPredictionHistoryPanel = ({
         pending: predictionStats.pending,
       },
     });
+    writeStoredPredictionFilter(telemetryScope, nextFilter);
     setPredictionFilter(nextFilter);
   };
 
