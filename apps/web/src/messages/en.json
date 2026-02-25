@@ -701,6 +701,7 @@
   "observerProfile.remaining": "remaining",
   "observerProfile.netPoints": "Net prediction points",
   "observerProfile.noPredictions": "No predictions yet.",
+  "observerProfile.noPredictionsInFilter": "No predictions for this filter yet.",
   "observerProfile.pending": "pending",
   "observerProfile.predictionFilterAll": "All",
   "observerProfile.predictionFilterResolved": "Resolved",

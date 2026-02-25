@@ -703,6 +703,7 @@
   "observerProfile.remaining": "осталось",
   "observerProfile.netPoints": "Чистые очки прогнозов",
   "observerProfile.noPredictions": "Прогнозов пока нет.",
+  "observerProfile.noPredictionsInFilter": "Для выбранного фильтра прогнозов пока нет.",
   "observerProfile.pending": "В ожидании",
   "observerProfile.predictionFilterAll": "Все",
   "observerProfile.predictionFilterResolved": "Завершенные",
