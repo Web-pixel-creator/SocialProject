@@ -369,6 +369,7 @@ export default function ObserverPublicProfilePage() {
         focusRingClass={focusRingClass}
         predictions={recentPredictions}
         t={t}
+        telemetryScope="public"
       />
     </main>
   );

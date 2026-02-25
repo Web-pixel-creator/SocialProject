@@ -131,6 +131,7 @@ Exit criteria:
   - prediction history headers now show resolved/pending counts, accuracy, and net points in one line for faster scanability,
   - private/public profile pages now render prediction history through a shared panel component (`apps/web/src/components/ObserverPredictionHistoryPanel.tsx`) to keep behavior parity across observer surfaces,
   - added filter-specific empty state (`observerProfile.noPredictionsInFilter`) so empty `Pending/Resolved` views are explicit without masking existing history,
+  - prediction history filter toggles now emit server-side UX telemetry (`observer_prediction_filter_change`) with scope (`self`/`public`) and filter stats metadata for observer-engagement analysis,
   - web coverage updated for profile filter labels and shared history helpers (`observer-profile-page.spec.tsx`, `observer-public-profile-page.spec.tsx`, `prediction-history.spec.ts`, `observer-prediction-history-panel.spec.tsx`).
 - Personas v1 connected in onboarding + studio profile surfaces, with API/web test coverage.
 - Prediction-lite hardening updated with explicit abuse throttling on write endpoints:

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { apiClient } from '../lib/api';
 import {
   derivePredictionHistoryStats,
   filterAndSortPredictionHistory,
@@ -19,6 +20,7 @@ export interface ObserverPredictionHistoryEntry extends PredictionHistoryItem {
 interface ObserverPredictionHistoryPanelProps {
   focusRingClass: string;
   predictions: ObserverPredictionHistoryEntry[];
+  telemetryScope: 'self' | 'public';
   t: (key: string) => string;
 }
 
@@ -57,10 +59,44 @@ const formatPredictionNetPoints = (
 export const ObserverPredictionHistoryPanel = ({
   focusRingClass,
   predictions,
+  telemetryScope,
   t,
 }: ObserverPredictionHistoryPanelProps) => {
   const [predictionFilter, setPredictionFilter] =
     useState<PredictionHistoryFilter>('all');
+
+  const sendTelemetry = (payload: Record<string, unknown>): void => {
+    if (typeof apiClient.post !== 'function') {
+      return;
+    }
+    try {
+      Promise.resolve(apiClient.post('/telemetry/ux', payload)).catch(() => {
+        // ignore telemetry failures
+      });
+    } catch {
+      // ignore telemetry failures
+    }
+  };
+
+  const handlePredictionFilterChange = (
+    nextFilter: PredictionHistoryFilter,
+  ) => {
+    if (nextFilter === predictionFilter) {
+      return;
+    }
+    sendTelemetry({
+      eventType: 'observer_prediction_filter_change',
+      metadata: {
+        filter: nextFilter,
+        previousFilter: predictionFilter,
+        scope: telemetryScope,
+        total: predictionStats.total,
+        resolved: predictionStats.resolved,
+        pending: predictionStats.pending,
+      },
+    });
+    setPredictionFilter(nextFilter);
+  };
 
   const predictionStats = derivePredictionHistoryStats(predictions);
   const filteredPredictions = filterAndSortPredictionHistory(
@@ -87,7 +123,7 @@ export const ObserverPredictionHistoryPanel = ({
                 : 'border-border/35 bg-background/58 text-foreground hover:bg-background/74'
             } ${focusRingClass}`}
             onClick={() => {
-              setPredictionFilter('all');
+              handlePredictionFilterChange('all');
             }}
             type="button"
           >
@@ -101,7 +137,7 @@ export const ObserverPredictionHistoryPanel = ({
                 : 'border-border/35 bg-background/58 text-foreground hover:bg-background/74'
             } ${focusRingClass}`}
             onClick={() => {
-              setPredictionFilter('resolved');
+              handlePredictionFilterChange('resolved');
             }}
             type="button"
           >
@@ -116,7 +152,7 @@ export const ObserverPredictionHistoryPanel = ({
                 : 'border-border/35 bg-background/58 text-foreground hover:bg-background/74'
             } ${focusRingClass}`}
             onClick={() => {
-              setPredictionFilter('pending');
+              handlePredictionFilterChange('pending');
             }}
             type="button"
           >

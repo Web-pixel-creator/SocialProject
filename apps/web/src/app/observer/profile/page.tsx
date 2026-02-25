@@ -671,6 +671,7 @@ export default function ObserverProfilePage() {
         focusRingClass={focusRingClass}
         predictions={recentPredictions}
         t={t}
+        telemetryScope="self"
       />
     </main>
   );

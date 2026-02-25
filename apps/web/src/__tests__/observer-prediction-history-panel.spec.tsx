@@ -4,6 +4,13 @@
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { ObserverPredictionHistoryPanel } from '../components/ObserverPredictionHistoryPanel';
+import { apiClient } from '../lib/api';
+
+jest.mock('../lib/api', () => ({
+  apiClient: {
+    post: jest.fn(),
+  },
+}));
 
 const messages: Record<string, string> = {
   'observerProfile.cards.predictionAccuracy': 'Prediction accuracy',
@@ -27,6 +34,11 @@ const messages: Record<string, string> = {
 const t = (key: string) => messages[key] ?? key;
 
 describe('ObserverPredictionHistoryPanel', () => {
+  beforeEach(() => {
+    (apiClient.post as jest.Mock).mockReset();
+    (apiClient.post as jest.Mock).mockResolvedValue({ data: { status: 'ok' } });
+  });
+
   test('shows filter-specific empty state when selected filter has no items', () => {
     render(
       <ObserverPredictionHistoryPanel
@@ -46,6 +58,7 @@ describe('ObserverPredictionHistoryPanel', () => {
           },
         ]}
         t={t}
+        telemetryScope="self"
       />,
     );
 
@@ -57,5 +70,16 @@ describe('ObserverPredictionHistoryPanel', () => {
     expect(
       screen.getByText(/No predictions for this filter yet\./i),
     ).toBeInTheDocument();
+    expect(apiClient.post).toHaveBeenCalledWith('/telemetry/ux', {
+      eventType: 'observer_prediction_filter_change',
+      metadata: {
+        filter: 'pending',
+        previousFilter: 'all',
+        scope: 'self',
+        total: 1,
+        resolved: 1,
+        pending: 0,
+      },
+    });
   });
 });

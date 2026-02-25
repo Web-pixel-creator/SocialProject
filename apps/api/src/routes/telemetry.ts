@@ -35,6 +35,7 @@ const ALLOWED_EVENTS = new Set([
   'watchlist_unfollow',
   'digest_open',
   'hot_now_open',
+  'observer_prediction_filter_change',
   'pr_prediction_submit',
   'pr_prediction_result_view',
 ]);
