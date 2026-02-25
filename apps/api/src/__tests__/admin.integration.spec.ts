@@ -1596,7 +1596,11 @@ describe('Admin API routes', () => {
          ('pr_prediction_submit', 'observer', $1, 'draft', '{"mode":"hot_now","abVariant":"A"}', NOW() - INTERVAL '20 minutes'),
          ('pr_prediction_settle', 'observer', $1, 'reject', '{"mode":"hot_now","abVariant":"A","isCorrect":false}', NOW() - INTERVAL '18 minutes'),
          ('draft_multimodal_glowup_view', 'observer', $1, 'draft', '{"mode":"hot_now","provider":"gpt-4.1"}', NOW() - INTERVAL '19 minutes'),
+         ('observer_prediction_filter_change', 'observer', $1, 'draft', '{"scope":"self","filter":"all"}', NOW() - INTERVAL '11 minutes'),
+         ('observer_prediction_filter_change', 'observer', $1, 'draft', '{"scope":"self","filter":"resolved"}', NOW() - INTERVAL '10 minutes'),
          ('draft_arc_view', 'observer', $2, 'draft', '{"mode":"hot_now","abVariant":"B"}', NOW() - INTERVAL '10 minutes'),
+         ('observer_prediction_filter_change', 'observer', $2, 'draft', '{"scope":"public","filter":"pending"}', NOW() - INTERVAL '9 minutes'),
+         ('observer_prediction_filter_change', 'observer', $2, 'draft', '{}', NOW() - INTERVAL '8 minutes'),
          ('draft_multimodal_glowup_empty', 'observer', $2, 'draft', '{"mode":"hot_now","reason":"not_available"}', NOW() - INTERVAL '9 minutes'),
          ('draft_multimodal_glowup_error', 'observer', $2, 'draft', '{"mode":"hot_now","reason":"network"}', NOW() - INTERVAL '8 minutes'),
          ('draft_arc_view', 'observer', $1, 'draft', '{"mode":"hot_now","abVariant":"A"}', NOW() - INTERVAL '30 hours'),
@@ -1716,6 +1720,42 @@ describe('Admin API routes', () => {
       true,
     );
     expect(response.body.predictionMarket.hourlyTrend).toHaveLength(0);
+    expect(response.body.predictionFilterTelemetry.totalSwitches).toBe(4);
+    expect(response.body.predictionFilterTelemetry.byScope).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ scope: 'self', count: 2 }),
+        expect.objectContaining({ scope: 'public', count: 1 }),
+        expect.objectContaining({ scope: 'unknown', count: 1 }),
+      ]),
+    );
+    expect(response.body.predictionFilterTelemetry.byFilter).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ filter: 'all', count: 1 }),
+        expect.objectContaining({ filter: 'resolved', count: 1 }),
+        expect.objectContaining({ filter: 'pending', count: 1 }),
+        expect.objectContaining({ filter: 'unknown', count: 1 }),
+      ]),
+    );
+    expect(response.body.predictionFilterTelemetry.byScopeAndFilter).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ scope: 'self', filter: 'all', count: 1 }),
+        expect.objectContaining({
+          scope: 'self',
+          filter: 'resolved',
+          count: 1,
+        }),
+        expect.objectContaining({
+          scope: 'public',
+          filter: 'pending',
+          count: 1,
+        }),
+        expect.objectContaining({
+          scope: 'unknown',
+          filter: 'unknown',
+          count: 1,
+        }),
+      ]),
+    );
     expect(response.body.totals.predictionSettles).toBe(1);
     expect(response.body.feedPreferences.viewMode.observer).toBe(1);
     expect(response.body.feedPreferences.viewMode.focus).toBe(2);
@@ -1903,6 +1943,14 @@ describe('Admin API routes', () => {
     for (const bucket of hourlyTrend) {
       expect(typeof bucket.hour).toBe('string');
     }
+    expect(response.body.predictionFilterTelemetry).toEqual(
+      expect.objectContaining({
+        totalSwitches: 0,
+        byScope: [],
+        byFilter: [],
+        byScopeAndFilter: [],
+      }),
+    );
   });
 
   test('job metrics endpoint returns aggregated runs', async () => {

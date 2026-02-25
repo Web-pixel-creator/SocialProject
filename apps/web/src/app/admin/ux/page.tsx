@@ -50,6 +50,24 @@ interface ObserverEngagementResponse {
       payoutToStakeRatio?: number | null;
     }>;
   };
+  predictionFilterTelemetry?: {
+    totalSwitches?: number;
+    byScope?: Array<{
+      scope?: string;
+      count?: number;
+      rate?: number | null;
+    }>;
+    byFilter?: Array<{
+      filter?: string;
+      count?: number;
+      rate?: number | null;
+    }>;
+    byScopeAndFilter?: Array<{
+      scope?: string;
+      filter?: string;
+      count?: number;
+    }>;
+  };
   multimodal?: {
     views?: number;
     emptyStates?: number;
@@ -436,6 +454,11 @@ interface PredictionHourlyTrendItem {
   resolvedPredictions: number;
   stakePoints: number;
 }
+interface PredictionFilterScopeFilterItem {
+  count: number;
+  filter: string;
+  scope: string;
+}
 interface GatewayCompactionHourlyTrendItem {
   autoCompactionShare: number | null;
   autoCompactionRiskLevel: HealthLevel;
@@ -724,6 +747,34 @@ const normalizePredictionHourlyTrendItems = (
       };
     })
     .sort((left, right) => left.hour.localeCompare(right.hour));
+};
+
+const normalizePredictionFilterScopeFilterItems = (
+  items: unknown,
+): PredictionFilterScopeFilterItem[] => {
+  if (!Array.isArray(items)) {
+    return [];
+  }
+  return items
+    .map((item) => {
+      const row = item && typeof item === 'object' ? item : {};
+      return {
+        scope: toStringValue(
+          (row as Record<string, unknown>).scope,
+          'unknown-scope',
+        ),
+        filter: toStringValue(
+          (row as Record<string, unknown>).filter,
+          'unknown-filter',
+        ),
+        count: toNumber((row as Record<string, unknown>).count),
+      };
+    })
+    .sort(
+      (left, right) =>
+        left.scope.localeCompare(right.scope) ||
+        left.filter.localeCompare(right.filter),
+    );
 };
 
 const normalizeGatewayCompactionHourlyTrendItems = (
@@ -2718,6 +2769,19 @@ export default async function AdminUxObserverEngagementPage({
   const predictionHourlyTrend = normalizePredictionHourlyTrendItems(
     predictionMarket.hourlyTrend,
   );
+  const predictionFilterTelemetry = data?.predictionFilterTelemetry ?? {};
+  const predictionFilterByScopeBreakdown = normalizeBreakdownItems({
+    items: predictionFilterTelemetry.byScope,
+    keyName: 'scope',
+  });
+  const predictionFilterByFilterBreakdown = normalizeBreakdownItems({
+    items: predictionFilterTelemetry.byFilter,
+    keyName: 'filter',
+  });
+  const predictionFilterByScopeAndFilter =
+    normalizePredictionFilterScopeFilterItems(
+      predictionFilterTelemetry.byScopeAndFilter,
+    );
   const multimodal = data?.multimodal ?? {};
   const multimodalCoverageRate = pickFirstFiniteRate(
     multimodal.coverageRate,
@@ -4074,6 +4138,63 @@ export default async function AdminUxObserverEngagementPage({
             </p>
           </article>
         </div>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <StatCard
+            hint="observer prediction-history filter changes"
+            label="Filter switches"
+            value={`${toNumber(predictionFilterTelemetry.totalSwitches)}`}
+          />
+          <BreakdownListCard
+            emptyLabel="No scope-switch data in current window."
+            items={predictionFilterByScopeBreakdown}
+            title="Filter scope mix"
+          />
+          <BreakdownListCard
+            emptyLabel="No filter-value data in current window."
+            items={predictionFilterByFilterBreakdown}
+            title="Filter value mix"
+          />
+        </div>
+        <article className="card grid gap-2 p-4">
+          <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+            Scope x filter matrix
+          </h3>
+          {predictionFilterByScopeAndFilter.length === 0 ? (
+            <p className="text-muted-foreground text-xs">
+              No scope/filter matrix data in current window.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-left text-xs">
+                <thead>
+                  <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
+                    <th className="py-2 pr-3">Scope</th>
+                    <th className="px-3 py-2">Filter</th>
+                    <th className="px-3 py-2 text-right">Count</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {predictionFilterByScopeAndFilter.map((entry, index) => (
+                    <tr
+                      className="border-border/25 border-b last:border-b-0"
+                      key={`${entry.scope}:${entry.filter}:${index + 1}`}
+                    >
+                      <td className="py-2 pr-3 text-muted-foreground">
+                        {entry.scope}
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        {entry.filter}
+                      </td>
+                      <td className="px-3 py-2 text-right font-semibold text-foreground">
+                        {entry.count}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </article>
         <PredictionHourlyTrendCard
           emptyLabel="No hourly prediction trend data in current window."
           items={predictionHourlyTrend}

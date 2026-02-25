@@ -127,6 +127,26 @@ describe('admin ux observer engagement page', () => {
                 },
               ],
             },
+            predictionFilterTelemetry: {
+              totalSwitches: 4,
+              byScope: [
+                { scope: 'self', count: 2, rate: 0.5 },
+                { scope: 'public', count: 1, rate: 0.25 },
+                { scope: 'unknown', count: 1, rate: 0.25 },
+              ],
+              byFilter: [
+                { filter: 'all', count: 1, rate: 0.25 },
+                { filter: 'resolved', count: 1, rate: 0.25 },
+                { filter: 'pending', count: 1, rate: 0.25 },
+                { filter: 'unknown', count: 1, rate: 0.25 },
+              ],
+              byScopeAndFilter: [
+                { scope: 'self', filter: 'all', count: 1 },
+                { scope: 'self', filter: 'resolved', count: 1 },
+                { scope: 'public', filter: 'pending', count: 1 },
+                { scope: 'unknown', filter: 'unknown', count: 1 },
+              ],
+            },
             multimodal: {
               views: 3,
               emptyStates: 1,
@@ -406,6 +426,10 @@ describe('admin ux observer engagement page', () => {
     expect(
       screen.getByText(/Prediction market telemetry/i),
     ).toBeInTheDocument();
+    expect(screen.getByText(/Filter switches/i)).toBeInTheDocument();
+    expect(screen.getByText(/Filter scope mix/i)).toBeInTheDocument();
+    expect(screen.getByText(/Filter value mix/i)).toBeInTheDocument();
+    expect(screen.getByText(/Scope x filter matrix/i)).toBeInTheDocument();
     expect(screen.getByText(/Settlement rate/i)).toBeInTheDocument();
     expect(
       screen.getByText(/^Prediction hourly trend \(UTC\)$/i),

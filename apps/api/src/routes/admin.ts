@@ -3760,6 +3760,19 @@ router.get(
          ORDER BY hour_bucket ASC`,
         [hours],
       );
+      const predictionFilterRows = await db.query(
+        `SELECT
+           COALESCE(metadata->>'scope', 'unknown') AS scope,
+           COALESCE(metadata->>'filter', 'unknown') AS filter_value,
+           COUNT(*)::int AS count
+         FROM ux_events
+         WHERE created_at >= NOW() - ($1 || ' hours')::interval
+           AND user_type = 'observer'
+           AND event_type = 'observer_prediction_filter_change'
+         GROUP BY scope, filter_value
+         ORDER BY scope, filter_value`,
+        [hours],
+      );
 
       const predictionCount = Number(
         predictionMarketSummary.rows[0]?.prediction_count ?? 0,
@@ -3799,6 +3812,55 @@ router.get(
         predictionPayoutPoints,
         predictionStakePoints,
       );
+      const predictionFilterByScopeMap = new Map<string, number>();
+      const predictionFilterByFilterMap = new Map<string, number>();
+      const predictionFilterByScopeAndFilter = predictionFilterRows.rows.map(
+        (row) => {
+          const scope = String(row.scope ?? 'unknown');
+          const filter = String(row.filter_value ?? 'unknown');
+          const count = Number(row.count ?? 0);
+          predictionFilterByScopeMap.set(
+            scope,
+            (predictionFilterByScopeMap.get(scope) ?? 0) + count,
+          );
+          predictionFilterByFilterMap.set(
+            filter,
+            (predictionFilterByFilterMap.get(filter) ?? 0) + count,
+          );
+          return {
+            scope,
+            filter,
+            count,
+          };
+        },
+      );
+      const predictionFilterTotalSwitches = predictionFilterByScopeAndFilter
+        .map((row) => row.count)
+        .reduce((sum, count) => sum + count, 0);
+      const predictionFilterByScope = Array.from(
+        predictionFilterByScopeMap.entries(),
+      )
+        .map(([scope, count]) => ({
+          scope,
+          count,
+          rate: toRate(count, predictionFilterTotalSwitches),
+        }))
+        .sort(
+          (left, right) =>
+            right.count - left.count || left.scope.localeCompare(right.scope),
+        );
+      const predictionFilterByFilter = Array.from(
+        predictionFilterByFilterMap.entries(),
+      )
+        .map(([filter, count]) => ({
+          filter,
+          count,
+          rate: toRate(count, predictionFilterTotalSwitches),
+        }))
+        .sort(
+          (left, right) =>
+            right.count - left.count || left.filter.localeCompare(right.filter),
+        );
       const predictionHourlyTrend = predictionHourlyRows.rows
         .map((row) => {
           const hour = String(row.hour_bucket ?? '').trim();
@@ -3908,6 +3970,12 @@ router.get(
             stakePoints: Number(row.stake_points ?? 0),
           })),
           hourlyTrend: predictionHourlyTrend,
+        },
+        predictionFilterTelemetry: {
+          totalSwitches: predictionFilterTotalSwitches,
+          byScope: predictionFilterByScope,
+          byFilter: predictionFilterByFilter,
+          byScopeAndFilter: predictionFilterByScopeAndFilter,
         },
         feedPreferences: {
           viewMode: {
