@@ -65,7 +65,9 @@
     "ultracite:check": "npx ultracite check apps/api/src apps/web/src",
     "ultracite:fix": "npx ultracite fix apps/api/src apps/web/src",
     "qa:critical": "npm run ultracite:check && npm --workspace apps/web run build && npm run test:web:e2e:critical",
-    "verify:local": "npm run lint && npm run ultracite:check && npm run test:web -- --runInBand && npm run test:api:skip-deps -- --runInBand"
+    "verify:local": "npm run lint && npm run ultracite:check && npm run test:web -- --runInBand && npm run test:api:skip-deps -- --runInBand",
+    "build": "npm --workspace apps/web run build",
+    "start": "npm --workspace apps/web run start"
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",
