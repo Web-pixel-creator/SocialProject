@@ -485,4 +485,6 @@ Exit criteria:
   - duplicate tool calls with the same `callId` now short-circuit with cached output (`deduplicated: true`) instead of re-running side effects,
   - successful realtime tool gateway events now persist normalized execution payload (`observerId`, `toolName`, `callId`, `argumentsHash`, `output`) to back idempotent replay,
   - repeated `callId` with mismatched arguments now fails fast with `LIVE_SESSION_REALTIME_TOOL_CALL_CONFLICT` (`409`) instead of silently reusing stale output,
-  - API integration coverage updated to verify duplicate follow-tool execution returns deduplicated cached output, conflict on mismatched-arguments reuse, and follow-row singularity.
+  - repeated `callId` with a different tool name now also fails with `LIVE_SESSION_REALTIME_TOOL_CALL_CONFLICT` (`409`) to prevent cross-tool replay,
+  - cache lookup is now strictly observer-scoped (`observerId` required in payload) so one observer's `callId` cannot dedupe another observer's tool execution,
+  - API integration coverage updated to verify duplicate follow-tool execution returns deduplicated cached output, conflict on mismatched-arguments/tool-name reuse, and follow-row singularity.

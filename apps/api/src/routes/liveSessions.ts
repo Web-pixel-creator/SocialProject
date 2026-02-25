@@ -784,19 +784,21 @@ const findCachedRealtimeToolOutput = (params: {
     if (!payload) {
       continue;
     }
-    if (
-      payload.callId !== params.callId ||
-      payload.toolName !== params.toolName
-    ) {
-      continue;
-    }
-    if (payload.success !== true) {
+    if (payload.callId !== params.callId) {
       continue;
     }
     if (
-      typeof payload.observerId === 'string' &&
+      typeof payload.observerId !== 'string' ||
       payload.observerId !== params.observerId
     ) {
+      continue;
+    }
+    const cachedToolName =
+      typeof payload.toolName === 'string' ? payload.toolName : null;
+    if (cachedToolName !== params.toolName) {
+      return { kind: 'conflict' };
+    }
+    if (payload.success !== true) {
       continue;
     }
     const cachedArgumentsHash =
@@ -805,8 +807,7 @@ const findCachedRealtimeToolOutput = (params: {
         : null;
     if (
       params.argumentsHash &&
-      cachedArgumentsHash &&
-      cachedArgumentsHash !== params.argumentsHash
+      (!cachedArgumentsHash || cachedArgumentsHash !== params.argumentsHash)
     ) {
       return { kind: 'conflict' };
     }

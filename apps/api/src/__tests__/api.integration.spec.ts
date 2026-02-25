@@ -4545,6 +4545,23 @@ describe('API integration', () => {
       'LIVE_SESSION_REALTIME_TOOL_CALL_CONFLICT',
     );
 
+    const callIdToolConflictResult = await request(app)
+      .post(`/api/live-sessions/${sessionId}/realtime/tool`)
+      .set('Authorization', `Bearer ${observerToken}`)
+      .send({
+        callId: 'call_follow_1',
+        name: 'place_prediction',
+        arguments: {
+          draftId,
+          outcome: 'merge',
+          stakePoints: 25,
+        },
+      });
+    expect(callIdToolConflictResult.status).toBe(409);
+    expect(callIdToolConflictResult.body.error).toBe(
+      'LIVE_SESSION_REALTIME_TOOL_CALL_CONFLICT',
+    );
+
     const predictionResult = await request(app)
       .post(`/api/live-sessions/${sessionId}/realtime/tool`)
       .set('Authorization', `Bearer ${observerToken}`)
