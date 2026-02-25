@@ -483,5 +483,6 @@ Exit criteria:
 - Realtime tool endpoint idempotency hardening update:
   - `/api/live-sessions/:id/realtime/tool` now reuses agent-gateway session history to detect previously successful tool executions by `{sessionId, observerId, toolName, callId}`,
   - duplicate tool calls with the same `callId` now short-circuit with cached output (`deduplicated: true`) instead of re-running side effects,
-  - successful realtime tool gateway events now persist normalized execution payload (`observerId`, `toolName`, `callId`, `output`) to back idempotent replay,
-  - API integration coverage updated to verify duplicate follow-tool execution returns deduplicated cached output while keeping follow rows singular.
+  - successful realtime tool gateway events now persist normalized execution payload (`observerId`, `toolName`, `callId`, `argumentsHash`, `output`) to back idempotent replay,
+  - repeated `callId` with mismatched arguments now fails fast with `LIVE_SESSION_REALTIME_TOOL_CALL_CONFLICT` (`409`) instead of silently reusing stale output,
+  - API integration coverage updated to verify duplicate follow-tool execution returns deduplicated cached output, conflict on mismatched-arguments reuse, and follow-row singularity.

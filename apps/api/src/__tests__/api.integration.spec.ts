@@ -4530,6 +4530,21 @@ describe('API integration', () => {
     expect(followDuplicateResult.body.deduplicated).toBe(true);
     expect(followDuplicateResult.body.output).toEqual(followResult.body.output);
 
+    const followConflictResult = await request(app)
+      .post(`/api/live-sessions/${sessionId}/realtime/tool`)
+      .set('Authorization', `Bearer ${observerToken}`)
+      .send({
+        callId: 'call_follow_1',
+        name: 'follow_studio',
+        arguments: {
+          studioId: authorId,
+        },
+      });
+    expect(followConflictResult.status).toBe(409);
+    expect(followConflictResult.body.error).toBe(
+      'LIVE_SESSION_REALTIME_TOOL_CALL_CONFLICT',
+    );
+
     const predictionResult = await request(app)
       .post(`/api/live-sessions/${sessionId}/realtime/tool`)
       .set('Authorization', `Bearer ${observerToken}`)

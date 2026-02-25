@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { Request } from 'express';
 import { Router } from 'express';
 import { db } from '../db/pool';
@@ -726,6 +727,34 @@ const toPayloadRecord = (value: unknown): Record<string, unknown> | null => {
   return value as Record<string, unknown>;
 };
 
+const canonicalizeForHash = (value: unknown): unknown => {
+  if (Array.isArray(value)) {
+    return value.map((entry) => canonicalizeForHash(entry));
+  }
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    const normalized: Record<string, unknown> = {};
+    const keys = Object.keys(record).sort((left, right) =>
+      left.localeCompare(right),
+    );
+    for (const key of keys) {
+      normalized[key] = canonicalizeForHash(record[key]);
+    }
+    return normalized;
+  }
+  return value;
+};
+
+const hashRealtimeToolArguments = (value: unknown): string =>
+  createHash('sha256')
+    .update(JSON.stringify(canonicalizeForHash(value)))
+    .digest('hex');
+
+type RealtimeToolCacheLookupResult =
+  | { kind: 'hit'; output: Record<string, unknown> }
+  | { kind: 'conflict' }
+  | null;
+
 const findCachedRealtimeToolOutput = (params: {
   sessionId: string;
   draftId?: string | null;
@@ -733,7 +762,8 @@ const findCachedRealtimeToolOutput = (params: {
   observerId: string;
   toolName: LiveSessionRealtimeTool;
   callId: string;
-}): Record<string, unknown> | null => {
+  argumentsHash?: string | null;
+}): RealtimeToolCacheLookupResult => {
   const gatewaySession = agentGatewayService.ensureExternalSession({
     channel: 'live_session',
     externalSessionId: params.sessionId,
@@ -769,8 +799,22 @@ const findCachedRealtimeToolOutput = (params: {
     ) {
       continue;
     }
+    const cachedArgumentsHash =
+      typeof payload.argumentsHash === 'string'
+        ? payload.argumentsHash.trim()
+        : null;
+    if (
+      params.argumentsHash &&
+      cachedArgumentsHash &&
+      cachedArgumentsHash !== params.argumentsHash
+    ) {
+      return { kind: 'conflict' };
+    }
     const output = toPayloadRecord(payload.output);
-    return output ?? {};
+    return {
+      kind: 'hit',
+      output: output ?? {},
+    };
   }
   return null;
 };
@@ -1025,29 +1069,40 @@ router.post(
           errorCode: 'LIVE_SESSION_REALTIME_TOOL_INVALID_INPUT',
         }) ?? null;
       const observerId = req.auth?.id as string;
-      if (callId) {
-        const cachedOutput = findCachedRealtimeToolOutput({
-          sessionId: detail.session.id,
-          draftId: detail.session.draftId,
-          hostAgentId: detail.session.hostAgentId,
-          observerId,
-          toolName,
-          callId,
-        });
-        if (cachedOutput !== null) {
-          return res.json({
-            callId,
-            toolName,
-            output: cachedOutput,
-            deduplicated: true,
-          });
-        }
-      }
-
       let output: Record<string, unknown>;
+      let argumentsHash: string | null = null;
       if (toolName === 'place_prediction') {
-        const { draftId, predictedOutcome, stakePoints } =
-          parseRealtimeToolPredictionArguments(body.arguments);
+        const predictionArgs = parseRealtimeToolPredictionArguments(
+          body.arguments,
+        );
+        argumentsHash = hashRealtimeToolArguments(predictionArgs);
+        if (callId) {
+          const cachedResult = findCachedRealtimeToolOutput({
+            sessionId: detail.session.id,
+            draftId: detail.session.draftId,
+            hostAgentId: detail.session.hostAgentId,
+            observerId,
+            toolName,
+            callId,
+            argumentsHash,
+          });
+          if (cachedResult?.kind === 'conflict') {
+            throw new ServiceError(
+              'LIVE_SESSION_REALTIME_TOOL_CALL_CONFLICT',
+              'callId has already been used with different arguments.',
+              409,
+            );
+          }
+          if (cachedResult?.kind === 'hit') {
+            return res.json({
+              callId,
+              toolName,
+              output: cachedResult.output,
+              deduplicated: true,
+            });
+          }
+        }
+        const { draftId, predictedOutcome, stakePoints } = predictionArgs;
         if (detail.session.draftId && detail.session.draftId !== draftId) {
           throw new ServiceError(
             'LIVE_SESSION_REALTIME_TOOL_SCOPE_MISMATCH',
@@ -1092,9 +1147,37 @@ router.post(
           summary,
         };
       } else {
-        const { studioId } = parseRealtimeToolFollowStudioArguments(
+        const followStudioArgs = parseRealtimeToolFollowStudioArguments(
           body.arguments,
         );
+        argumentsHash = hashRealtimeToolArguments(followStudioArgs);
+        if (callId) {
+          const cachedResult = findCachedRealtimeToolOutput({
+            sessionId: detail.session.id,
+            draftId: detail.session.draftId,
+            hostAgentId: detail.session.hostAgentId,
+            observerId,
+            toolName,
+            callId,
+            argumentsHash,
+          });
+          if (cachedResult?.kind === 'conflict') {
+            throw new ServiceError(
+              'LIVE_SESSION_REALTIME_TOOL_CALL_CONFLICT',
+              'callId has already been used with different arguments.',
+              409,
+            );
+          }
+          if (cachedResult?.kind === 'hit') {
+            return res.json({
+              callId,
+              toolName,
+              output: cachedResult.output,
+              deduplicated: true,
+            });
+          }
+        }
+        const { studioId } = followStudioArgs;
         const studioExists = await db.query(
           'SELECT studio_name FROM agents WHERE id = $1',
           [studioId],
@@ -1159,6 +1242,7 @@ router.post(
         payload: {
           toolName,
           callId,
+          argumentsHash,
           observerId,
           success: true,
           output,
