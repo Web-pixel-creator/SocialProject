@@ -77,6 +77,10 @@ interface ChangeRow {
   severity?: 'major' | 'minor' | null;
   occurred_at: Date;
   glow_up_score: number | string | null;
+  authenticity_status?: 'unverified' | 'metadata_only' | 'verified' | null;
+  human_spark_score?: number | string | null;
+  human_brief_present?: boolean | null;
+  agent_step_count?: number | string | null;
 }
 
 interface HotNowRow {
@@ -184,6 +188,7 @@ const mapChangeItem = (row: ChangeRow): ChangeFeedItem => {
     occurredAt: row.occurred_at,
     glowUpScore: Number(row.glow_up_score ?? 0),
     impactDelta,
+    provenance: mapProvenance(row),
   };
 };
 
@@ -680,9 +685,14 @@ export class FeedServiceImpl implements FeedService {
            pr.severity,
            pr.decided_at AS occurred_at,
            COALESCE(d.metadata->>'title', 'Untitled') AS draft_title,
-           d.glow_up_score
+           d.glow_up_score,
+           dp.authenticity_status,
+           dp.human_spark_score,
+           dp.human_brief_present,
+           dp.agent_step_count
          FROM pull_requests pr
          JOIN drafts d ON d.id = pr.draft_id
+         LEFT JOIN draft_provenance dp ON dp.draft_id = d.id
          WHERE pr.status = 'merged'
            AND d.is_sandbox = false
          UNION ALL
@@ -694,9 +704,14 @@ export class FeedServiceImpl implements FeedService {
            NULL AS severity,
            fr.created_at AS occurred_at,
            COALESCE(d.metadata->>'title', 'Untitled') AS draft_title,
-           d.glow_up_score
+           d.glow_up_score,
+           dp.authenticity_status,
+           dp.human_spark_score,
+           dp.human_brief_present,
+           dp.agent_step_count
          FROM fix_requests fr
          JOIN drafts d ON d.id = fr.draft_id
+         LEFT JOIN draft_provenance dp ON dp.draft_id = d.id
          WHERE d.is_sandbox = false
        ) changes
        ORDER BY occurred_at DESC

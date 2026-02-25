@@ -28,6 +28,26 @@ const ROLE_PERSONA_FIELD_KEYS = [
 ] as const;
 const ROLE_PERSONA_KEY_SET = new Set<string>(ROLE_PERSONA_KEYS);
 const ROLE_PERSONA_FIELD_KEY_SET = new Set<string>(ROLE_PERSONA_FIELD_KEYS);
+const STUDIO_DETAIL_QUERY_FIELDS = [] as const;
+const STUDIO_FOLLOW_QUERY_FIELDS = [] as const;
+const STUDIO_FOLLOW_BODY_FIELDS = [] as const;
+const STUDIO_UPDATE_QUERY_FIELDS = [] as const;
+const STUDIO_UPDATE_BODY_FIELDS = [
+  'studioName',
+  'personality',
+  'webhookUrl',
+  'notificationPrefs',
+  'avatarUrl',
+  'styleTags',
+  'skillProfile',
+] as const;
+const STUDIO_PERSONAS_QUERY_FIELDS = [] as const;
+const STUDIO_PERSONAS_BODY_FIELDS = ['rolePersonas'] as const;
+const STUDIO_METRICS_QUERY_FIELDS = [] as const;
+const STUDIO_LEDGER_QUERY_FIELDS = ['limit'] as const;
+const STUDIO_LEDGER_DEFAULT_LIMIT = 8;
+const STUDIO_LEDGER_MIN_LIMIT = 1;
+const STUDIO_LEDGER_MAX_LIMIT = 50;
 
 const isUuid = (value: string) => UUID_PATTERN.test(value);
 
@@ -289,6 +309,71 @@ const parseOptionalObserverId = (req: Request): string | undefined => {
   }
 };
 
+const assertAllowedQueryFields = (
+  query: unknown,
+  allowed: readonly string[],
+  errorCode: string,
+) => {
+  const queryRecord =
+    query && typeof query === 'object'
+      ? (query as Record<string, unknown>)
+      : {};
+  const unknown = Object.keys(queryRecord).filter(
+    (key) => !allowed.includes(key),
+  );
+  if (unknown.length > 0) {
+    throw new ServiceError(
+      errorCode,
+      `Unsupported query fields: ${unknown.join(', ')}`,
+      400,
+    );
+  }
+  return queryRecord;
+};
+
+const assertAllowedBodyFields = (
+  body: unknown,
+  allowed: readonly string[],
+  errorCode: string,
+) => {
+  if (body === undefined) {
+    return {};
+  }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    throw new ServiceError(errorCode, 'Request body must be an object.', 400);
+  }
+  const bodyRecord = body as Record<string, unknown>;
+  const unknown = Object.keys(bodyRecord).filter(
+    (key) => !allowed.includes(key),
+  );
+  if (unknown.length > 0) {
+    throw new ServiceError(
+      errorCode,
+      `Unsupported body fields: ${unknown.join(', ')}`,
+      400,
+    );
+  }
+  return bodyRecord;
+};
+
+const parseStudioLedgerLimit = (value: unknown): number => {
+  if (value === undefined) {
+    return STUDIO_LEDGER_DEFAULT_LIMIT;
+  }
+  const parsed = Number(value);
+  if (!(Number.isFinite(parsed) && Number.isInteger(parsed))) {
+    throw new ServiceError(
+      'STUDIO_LEDGER_LIMIT_INVALID',
+      'Invalid limit query parameter.',
+      400,
+    );
+  }
+  return Math.max(
+    STUDIO_LEDGER_MIN_LIMIT,
+    Math.min(parsed, STUDIO_LEDGER_MAX_LIMIT),
+  );
+};
+
 const writeStudioTelemetry = async (params: {
   eventType:
     | 'studio_follow'
@@ -343,6 +428,11 @@ interface StudioLedgerRow {
 
 router.get('/studios/:id', async (req, res, next) => {
   try {
+    assertAllowedQueryFields(
+      req.query,
+      STUDIO_DETAIL_QUERY_FIELDS,
+      'STUDIO_INVALID_QUERY_FIELDS',
+    );
     if (!isUuid(req.params.id)) {
       throw new ServiceError('STUDIO_ID_INVALID', 'Invalid studio id.', 400);
     }
@@ -392,6 +482,16 @@ router.post(
   observerActionRateLimiter,
   async (req, res, next) => {
     try {
+      assertAllowedQueryFields(
+        req.query,
+        STUDIO_FOLLOW_QUERY_FIELDS,
+        'STUDIO_FOLLOW_INVALID_QUERY_FIELDS',
+      );
+      assertAllowedBodyFields(
+        req.body,
+        STUDIO_FOLLOW_BODY_FIELDS,
+        'STUDIO_FOLLOW_INVALID_FIELDS',
+      );
       const studioId = req.params.id;
       if (!isUuid(studioId)) {
         throw new ServiceError('STUDIO_ID_INVALID', 'Invalid studio id.', 400);
@@ -466,6 +566,16 @@ router.delete(
   observerActionRateLimiter,
   async (req, res, next) => {
     try {
+      assertAllowedQueryFields(
+        req.query,
+        STUDIO_FOLLOW_QUERY_FIELDS,
+        'STUDIO_FOLLOW_INVALID_QUERY_FIELDS',
+      );
+      assertAllowedBodyFields(
+        req.body,
+        STUDIO_FOLLOW_BODY_FIELDS,
+        'STUDIO_FOLLOW_INVALID_FIELDS',
+      );
       const studioId = req.params.id;
       if (!isUuid(studioId)) {
         throw new ServiceError('STUDIO_ID_INVALID', 'Invalid studio id.', 400);
@@ -514,6 +624,16 @@ router.delete(
 
 router.put('/studios/:id', requireVerifiedAgent, async (req, res, next) => {
   try {
+    assertAllowedQueryFields(
+      req.query,
+      STUDIO_UPDATE_QUERY_FIELDS,
+      'STUDIO_UPDATE_INVALID_QUERY_FIELDS',
+    );
+    const body = assertAllowedBodyFields(
+      req.body,
+      STUDIO_UPDATE_BODY_FIELDS,
+      'STUDIO_UPDATE_INVALID_FIELDS',
+    );
     if (req.auth?.id !== req.params.id) {
       return res.status(403).json({ error: 'NOT_OWNER' });
     }
@@ -525,7 +645,7 @@ router.put('/studios/:id', requireVerifiedAgent, async (req, res, next) => {
       avatarUrl,
       styleTags,
       skillProfile,
-    } = req.body;
+    } = body;
     const parsedStyleTags = parseOptionalStyleTags(styleTags);
     const parsedSkillProfile = parseOptionalSkillProfile(skillProfile);
     const result = await db.query(
@@ -559,6 +679,11 @@ router.put('/studios/:id', requireVerifiedAgent, async (req, res, next) => {
 
 router.get('/studios/:id/personas', async (req, res, next) => {
   try {
+    assertAllowedQueryFields(
+      req.query,
+      STUDIO_PERSONAS_QUERY_FIELDS,
+      'STUDIO_ROLE_PERSONAS_INVALID_QUERY_FIELDS',
+    );
     if (!isUuid(req.params.id)) {
       throw new ServiceError('STUDIO_ID_INVALID', 'Invalid studio id.', 400);
     }
@@ -587,6 +712,16 @@ router.put(
   observerActionRateLimiter,
   async (req, res, next) => {
     try {
+      assertAllowedQueryFields(
+        req.query,
+        STUDIO_PERSONAS_QUERY_FIELDS,
+        'STUDIO_ROLE_PERSONAS_INVALID_QUERY_FIELDS',
+      );
+      const body = assertAllowedBodyFields(
+        req.body,
+        STUDIO_PERSONAS_BODY_FIELDS,
+        'STUDIO_ROLE_PERSONAS_INVALID_FIELDS',
+      );
       if (!isUuid(req.params.id)) {
         throw new ServiceError('STUDIO_ID_INVALID', 'Invalid studio id.', 400);
       }
@@ -594,7 +729,7 @@ router.put(
         return res.status(403).json({ error: 'NOT_OWNER' });
       }
 
-      const parsedRolePersonas = parseRolePersonas(req.body?.rolePersonas, {
+      const parsedRolePersonas = parseRolePersonas(body.rolePersonas, {
         required: true,
       });
       const result = await db.query(
@@ -636,6 +771,14 @@ router.put(
 
 router.get('/studios/:id/metrics', async (req, res, next) => {
   try {
+    assertAllowedQueryFields(
+      req.query,
+      STUDIO_METRICS_QUERY_FIELDS,
+      'STUDIO_METRICS_INVALID_QUERY_FIELDS',
+    );
+    if (!isUuid(req.params.id)) {
+      throw new ServiceError('STUDIO_ID_INVALID', 'Invalid studio id.', 400);
+    }
     const metrics = await metricsService.getAgentMetrics(req.params.id);
     res.json(metrics);
   } catch (error) {
@@ -645,10 +788,15 @@ router.get('/studios/:id/metrics', async (req, res, next) => {
 
 router.get('/studios/:id/ledger', async (req, res, next) => {
   try {
-    const limit = req.query.limit ? Number(req.query.limit) : 8;
-    const safeLimit = Number.isFinite(limit)
-      ? Math.max(1, Math.min(limit, 50))
-      : 8;
+    if (!isUuid(req.params.id)) {
+      throw new ServiceError('STUDIO_ID_INVALID', 'Invalid studio id.', 400);
+    }
+    const query = assertAllowedQueryFields(
+      req.query,
+      STUDIO_LEDGER_QUERY_FIELDS,
+      'STUDIO_LEDGER_INVALID_QUERY_FIELDS',
+    );
+    const safeLimit = parseStudioLedgerLimit(query.limit);
 
     const result = await db.query(
       `SELECT *

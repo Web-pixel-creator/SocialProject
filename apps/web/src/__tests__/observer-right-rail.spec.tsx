@@ -267,6 +267,70 @@ describe('ObserverRightRail', () => {
     expect(within(panel).getByText('63%')).toBeInTheDocument();
   });
 
+  test('boosts live pressure meter using hot-now workload signals', async () => {
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url === '/feeds/battles') {
+        return Promise.resolve({
+          data: [{ id: 'battle-1', glowUpScore: 8.4 }],
+        });
+      }
+      if (url === '/feeds/glowups') {
+        return Promise.resolve({
+          data: [{ id: 'glow-1', glowUpScore: 12.5 }],
+        });
+      }
+      if (url === '/feeds/studios') {
+        return Promise.resolve({
+          data: [{ id: 'studio-1', studioName: 'Live Studio', impact: 91 }],
+        });
+      }
+      if (url === '/feeds/live-drafts') {
+        return Promise.resolve({
+          data: [{ id: 'draft-1' }, { id: 'draft-2' }, { id: 'draft-3' }],
+        });
+      }
+      if (url === '/feeds/hot-now') {
+        return Promise.resolve({
+          data: [
+            {
+              id: 'hot-1',
+              prPendingCount: 2,
+              fixOpenCount: 4,
+              decisions24h: 5,
+              merges24h: 3,
+              hotScore: 10,
+            },
+          ],
+        });
+      }
+      if (url === '/feeds/changes') {
+        return Promise.resolve({
+          data: [
+            {
+              id: 'change-1',
+              draftTitle: 'Pipeline Draft',
+              description: 'Merged',
+              occurredAt: new Date().toISOString(),
+            },
+          ],
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    renderObserverRail();
+
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalled());
+    const meterTitle = screen.getByText(/Live pressure meter/i);
+    const meterPanel = meterTitle.closest('div');
+
+    expect(meterPanel).not.toBeNull();
+    const panel = meterPanel as HTMLElement;
+    expect(within(panel).getByText('82%')).toBeInTheDocument();
+    expect(within(panel).getByText('28%')).toBeInTheDocument();
+    expect(within(panel).getByText('66%')).toBeInTheDocument();
+  });
+
   test('keeps available API data when one feed endpoint fails', async () => {
     (apiClient.get as jest.Mock).mockImplementation((url: string) => {
       if (url === '/feeds/battles') {

@@ -14,6 +14,7 @@ interface ObserverEngagementResponse {
     hintDismissRate?: number | null;
     predictionParticipationRate?: number | null;
     predictionAccuracyRate?: number | null;
+    predictionSettlementRate?: number | null;
     predictionPoolPoints?: number | null;
     payoutToStakeRatio?: number | null;
     multimodalCoverageRate?: number | null;
@@ -69,6 +70,10 @@ interface ObserverEngagementResponse {
       reason?: string;
       count?: number;
     }>;
+    guardrails?: {
+      invalidQueryErrors?: number;
+      invalidQueryRate?: number | null;
+    };
     hourlyTrend?: Array<{
       hour?: string;
       views?: number;
@@ -153,7 +158,76 @@ interface AgentGatewaySessionListItem {
 
 interface AgentGatewaySessionListResponse {
   source?: unknown;
+  filters?: {
+    channel?: unknown;
+    provider?: unknown;
+    status?: unknown;
+  };
   sessions?: AgentGatewaySessionListItem[];
+}
+
+interface AgentGatewayTelemetryResponse {
+  windowHours?: unknown;
+  sampleLimit?: unknown;
+  generatedAt?: unknown;
+  filters?: {
+    channel?: unknown;
+    provider?: unknown;
+  };
+  sessions?: {
+    total?: unknown;
+    active?: unknown;
+    closed?: unknown;
+    attention?: unknown;
+    compacted?: unknown;
+    autoCompacted?: unknown;
+    attentionRate?: unknown;
+    compactionRate?: unknown;
+    autoCompactedRate?: unknown;
+  };
+  events?: {
+    total?: unknown;
+    draftCycleStepEvents?: unknown;
+    failedStepEvents?: unknown;
+    compactionEvents?: unknown;
+    autoCompactionEvents?: unknown;
+    manualCompactionEvents?: unknown;
+    autoCompactionShare?: unknown;
+    autoCompactionRiskLevel?: unknown;
+    prunedEventCount?: unknown;
+    compactionHourlyTrend?: unknown;
+    failedStepRate?: unknown;
+  };
+  attempts?: {
+    total?: unknown;
+    success?: unknown;
+    failed?: unknown;
+    skippedCooldown?: unknown;
+    successRate?: unknown;
+    failureRate?: unknown;
+    skippedRate?: unknown;
+  };
+  health?: {
+    level?: unknown;
+    failedStepLevel?: unknown;
+    runtimeSuccessLevel?: unknown;
+    cooldownSkipLevel?: unknown;
+    autoCompactionLevel?: unknown;
+  };
+  thresholds?: {
+    autoCompactionShare?: unknown;
+    failedStepRate?: unknown;
+    runtimeSuccessRate?: unknown;
+    cooldownSkipRate?: unknown;
+  };
+  providerUsage?: Array<{
+    provider?: unknown;
+    count?: unknown;
+  }>;
+  channelUsage?: Array<{
+    channel?: unknown;
+    count?: unknown;
+  }>;
 }
 
 interface AgentGatewayCompactResponse {
@@ -325,6 +399,20 @@ interface AgentGatewayRecentEvent {
 }
 
 type HealthLevel = 'critical' | 'healthy' | 'unknown' | 'watch';
+interface GatewayRiskAboveThresholds {
+  criticalAbove: number;
+  watchAbove: number;
+}
+interface GatewayRiskBelowThresholds {
+  criticalBelow: number;
+  watchBelow: number;
+}
+interface GatewayTelemetryThresholds {
+  autoCompactionShare: GatewayRiskAboveThresholds;
+  failedStepRate: GatewayRiskAboveThresholds;
+  runtimeSuccessRate: GatewayRiskBelowThresholds;
+  cooldownSkipRate: GatewayRiskAboveThresholds;
+}
 interface MultimodalHourlyTrendItem {
   attempts: number;
   coverageRate: number | null;
@@ -348,12 +436,46 @@ interface PredictionHourlyTrendItem {
   resolvedPredictions: number;
   stakePoints: number;
 }
+interface GatewayCompactionHourlyTrendItem {
+  autoCompactionShare: number | null;
+  autoCompactionRiskLevel: HealthLevel;
+  autoCompactions: number;
+  compactions: number;
+  hour: string;
+  manualCompactions: number;
+  prunedEventCount: number;
+}
 
 const DEFAULT_API_BASE = 'http://localhost:4000/api';
 const TRAILING_SLASH_REGEX = /\/$/;
 const HOUR_BUCKET_REGEX = /^(\d{4}-\d{2}-\d{2})T(\d{2}):00:00Z$/;
+const GATEWAY_CHANNEL_QUERY_PATTERN = /^[a-z0-9][a-z0-9._:-]{1,63}$/;
+const GATEWAY_PROVIDER_QUERY_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+const GATEWAY_SOURCE_QUERY_PATTERN = /^[a-z]+$/;
+const GATEWAY_SESSION_STATUS_QUERY_PATTERN = /^[a-z]+$/;
+const GATEWAY_EVENT_TYPE_QUERY_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,119}$/;
+const GATEWAY_SOURCE_VALUES = new Set(['db', 'memory']);
+const GATEWAY_SESSION_STATUS_VALUES = new Set(['active', 'closed']);
 const AI_RUNTIME_ROLES = ['author', 'critic', 'maker', 'judge'] as const;
 type AIRuntimeRoleOption = (typeof AI_RUNTIME_ROLES)[number];
+const DEFAULT_GATEWAY_TELEMETRY_THRESHOLDS: GatewayTelemetryThresholds = {
+  autoCompactionShare: {
+    criticalAbove: 0.8,
+    watchAbove: 0.5,
+  },
+  failedStepRate: {
+    criticalAbove: 0.5,
+    watchAbove: 0.25,
+  },
+  runtimeSuccessRate: {
+    criticalBelow: 0.5,
+    watchBelow: 0.75,
+  },
+  cooldownSkipRate: {
+    criticalAbove: 0.4,
+    watchAbove: 0.2,
+  },
+};
 
 const toNumber = (value: unknown, fallback = 0): number =>
   typeof value === 'number' && Number.isFinite(value) ? value : fallback;
@@ -366,6 +488,18 @@ const toRateText = (value: unknown): string => {
     return 'n/a';
   }
   return `${(value * 100).toFixed(1)}%`;
+};
+
+const toHealthLevelValue = (value: unknown): HealthLevel | null => {
+  if (
+    value === 'healthy' ||
+    value === 'watch' ||
+    value === 'critical' ||
+    value === 'unknown'
+  ) {
+    return value;
+  }
+  return null;
 };
 
 const toFixedText = (value: unknown, digits = 2): string => {
@@ -382,6 +516,124 @@ const pickFirstFiniteRate = (...values: unknown[]): number | null => {
     }
   }
   return null;
+};
+
+const normalizeAboveThresholds = (
+  value: unknown,
+  fallback: GatewayRiskAboveThresholds,
+): GatewayRiskAboveThresholds => {
+  const row = value && typeof value === 'object' ? value : {};
+  const criticalAbove = pickFirstFiniteRate(
+    (row as Record<string, unknown>).criticalAbove,
+    fallback.criticalAbove,
+  );
+  const watchAbove = pickFirstFiniteRate(
+    (row as Record<string, unknown>).watchAbove,
+    fallback.watchAbove,
+  );
+  return {
+    criticalAbove: criticalAbove ?? fallback.criticalAbove,
+    watchAbove: watchAbove ?? fallback.watchAbove,
+  };
+};
+
+const normalizeBelowThresholds = (
+  value: unknown,
+  fallback: GatewayRiskBelowThresholds,
+): GatewayRiskBelowThresholds => {
+  const row = value && typeof value === 'object' ? value : {};
+  const criticalBelow = pickFirstFiniteRate(
+    (row as Record<string, unknown>).criticalBelow,
+    fallback.criticalBelow,
+  );
+  const watchBelow = pickFirstFiniteRate(
+    (row as Record<string, unknown>).watchBelow,
+    fallback.watchBelow,
+  );
+  return {
+    criticalBelow: criticalBelow ?? fallback.criticalBelow,
+    watchBelow: watchBelow ?? fallback.watchBelow,
+  };
+};
+
+const normalizeGatewayTelemetryThresholds = (
+  value: unknown,
+): GatewayTelemetryThresholds => {
+  const row = value && typeof value === 'object' ? value : {};
+  return {
+    autoCompactionShare: normalizeAboveThresholds(
+      (row as Record<string, unknown>).autoCompactionShare,
+      DEFAULT_GATEWAY_TELEMETRY_THRESHOLDS.autoCompactionShare,
+    ),
+    failedStepRate: normalizeAboveThresholds(
+      (row as Record<string, unknown>).failedStepRate,
+      DEFAULT_GATEWAY_TELEMETRY_THRESHOLDS.failedStepRate,
+    ),
+    runtimeSuccessRate: normalizeBelowThresholds(
+      (row as Record<string, unknown>).runtimeSuccessRate,
+      DEFAULT_GATEWAY_TELEMETRY_THRESHOLDS.runtimeSuccessRate,
+    ),
+    cooldownSkipRate: normalizeAboveThresholds(
+      (row as Record<string, unknown>).cooldownSkipRate,
+      DEFAULT_GATEWAY_TELEMETRY_THRESHOLDS.cooldownSkipRate,
+    ),
+  };
+};
+
+const normalizeGatewayTelemetryFilters = (
+  value: unknown,
+): { channel: string | null; provider: string | null } => {
+  const row = value && typeof value === 'object' ? value : {};
+  return {
+    channel: parseOptionalFilteredQueryString(
+      (row as Record<string, unknown>).channel,
+      {
+        maxLength: 64,
+        pattern: GATEWAY_CHANNEL_QUERY_PATTERN,
+      },
+    ),
+    provider: parseOptionalFilteredQueryString(
+      (row as Record<string, unknown>).provider,
+      {
+        maxLength: 64,
+        pattern: GATEWAY_PROVIDER_QUERY_PATTERN,
+      },
+    ),
+  };
+};
+
+const normalizeGatewaySessionFilters = (
+  value: unknown,
+): {
+  channel: string | null;
+  provider: string | null;
+  status: string | null;
+} => {
+  const row = value && typeof value === 'object' ? value : {};
+  const status = parseOptionalFilteredQueryString(
+    (row as Record<string, unknown>).status,
+    {
+      maxLength: 16,
+      pattern: GATEWAY_SESSION_STATUS_QUERY_PATTERN,
+    },
+  );
+  return {
+    channel: parseOptionalFilteredQueryString(
+      (row as Record<string, unknown>).channel,
+      {
+        maxLength: 64,
+        pattern: GATEWAY_CHANNEL_QUERY_PATTERN,
+      },
+    ),
+    provider: parseOptionalFilteredQueryString(
+      (row as Record<string, unknown>).provider,
+      {
+        maxLength: 64,
+        pattern: GATEWAY_PROVIDER_QUERY_PATTERN,
+      },
+    ),
+    status: status && GATEWAY_SESSION_STATUS_VALUES.has(status) ? status : null,
+  };
 };
 
 const normalizeBreakdownItems = ({
@@ -474,6 +726,45 @@ const normalizePredictionHourlyTrendItems = (
     .sort((left, right) => left.hour.localeCompare(right.hour));
 };
 
+const normalizeGatewayCompactionHourlyTrendItems = (
+  items: unknown,
+  thresholds: GatewayRiskAboveThresholds,
+): GatewayCompactionHourlyTrendItem[] => {
+  if (!Array.isArray(items)) {
+    return [];
+  }
+  return items
+    .map((item) => {
+      const row = item && typeof item === 'object' ? item : {};
+      const autoCompactionShare = pickFirstFiniteRate(
+        (row as Record<string, unknown>).autoCompactionShare,
+      );
+      const autoCompactionRiskLevel =
+        toHealthLevelValue(
+          (row as Record<string, unknown>).autoCompactionRiskLevel,
+        ) ?? resolveRiskHealthLevel(autoCompactionShare, thresholds);
+      return {
+        hour: toStringValue(
+          (row as Record<string, unknown>).hour,
+          'unknown-hour',
+        ),
+        compactions: toNumber((row as Record<string, unknown>).compactions),
+        autoCompactions: toNumber(
+          (row as Record<string, unknown>).autoCompactions,
+        ),
+        manualCompactions: toNumber(
+          (row as Record<string, unknown>).manualCompactions,
+        ),
+        prunedEventCount: toNumber(
+          (row as Record<string, unknown>).prunedEventCount,
+        ),
+        autoCompactionShare,
+        autoCompactionRiskLevel,
+      };
+    })
+    .sort((left, right) => left.hour.localeCompare(right.hour));
+};
+
 const formatHourBucket = (value: string): string => {
   const match = HOUR_BUCKET_REGEX.exec(value);
   if (!match) {
@@ -500,6 +791,250 @@ const parseCsvQuery = (value: unknown): string[] => {
     .split(',')
     .map((item) => item.trim())
     .filter((item) => item.length > 0);
+};
+
+const parseOptionalFilteredQueryString = (
+  value: unknown,
+  {
+    maxLength,
+    pattern,
+  }: {
+    maxLength: number;
+    pattern: RegExp;
+  },
+): string | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const normalized = value.trim().toLowerCase();
+  if (normalized.length === 0 || normalized.length > maxLength) {
+    return null;
+  }
+  return pattern.test(normalized) ? normalized : null;
+};
+
+const parseOptionalGatewayStatusScope = (value: unknown): string | null => {
+  const parsed = parseOptionalFilteredQueryString(value, {
+    maxLength: 16,
+    pattern: GATEWAY_SESSION_STATUS_QUERY_PATTERN,
+  });
+  if (!(parsed && GATEWAY_SESSION_STATUS_VALUES.has(parsed))) {
+    return null;
+  }
+  return parsed;
+};
+
+const parseOptionalGatewaySourceScope = (value: unknown): string | null => {
+  const parsed = parseOptionalFilteredQueryString(value, {
+    maxLength: 16,
+    pattern: GATEWAY_SOURCE_QUERY_PATTERN,
+  });
+  if (!(parsed && GATEWAY_SOURCE_VALUES.has(parsed))) {
+    return null;
+  }
+  return parsed;
+};
+
+const formatGatewayScopeLabel = ({
+  channel,
+  provider,
+  status,
+}: {
+  channel: string | null;
+  provider: string | null;
+  status: string | null;
+}): string | null => {
+  const parts = [
+    channel ? `channel ${channel}` : null,
+    provider ? `provider ${provider}` : null,
+    status ? `status ${status}` : null,
+  ].filter((item): item is string => item !== null);
+  if (parts.length === 0) {
+    return null;
+  }
+  return parts.join(' | ');
+};
+
+const resolveGatewaySessionScope = ({
+  queryChannel,
+  queryProvider,
+  queryStatus,
+  sessionFilters,
+}: {
+  queryChannel: string | null;
+  queryProvider: string | null;
+  queryStatus: string | null;
+  sessionFilters: {
+    channel: string | null;
+    provider: string | null;
+    status: string | null;
+  };
+}): {
+  channel: string | null;
+  provider: string | null;
+  status: string | null;
+  statusInputValue: string;
+  statusLabel: string;
+  label: string;
+} => {
+  const channel = sessionFilters.channel ?? queryChannel;
+  const provider = sessionFilters.provider ?? queryProvider;
+  const status = sessionFilters.status ?? queryStatus;
+  return {
+    channel,
+    provider,
+    status,
+    statusInputValue: status ?? '',
+    statusLabel: status ?? 'all',
+    label: formatGatewayScopeLabel({ channel, provider, status }) ?? 'all',
+  };
+};
+
+const resolveGatewayEventsRequestFilters = ({
+  eventType,
+  sessionFilters,
+  queryProvider,
+}: {
+  eventType: string;
+  sessionFilters: {
+    provider: string | null;
+  };
+  queryProvider: string | null;
+}): {
+  eventType: string | null;
+  provider: string | null;
+} => ({
+  eventType: eventType === 'all' ? null : eventType,
+  provider: sessionFilters.provider ?? queryProvider,
+});
+
+type AdminUxPageSearchParams =
+  | Record<string, string | string[] | undefined>
+  | undefined;
+
+const resolveGatewayQueryState = (
+  resolvedSearchParams: AdminUxPageSearchParams,
+) => {
+  const gatewayChannelFilter = parseOptionalFilteredQueryString(
+    resolvedSearchParams?.gatewayChannel,
+    {
+      maxLength: 64,
+      pattern: GATEWAY_CHANNEL_QUERY_PATTERN,
+    },
+  );
+  const gatewayProviderFilter = parseOptionalFilteredQueryString(
+    resolvedSearchParams?.gatewayProvider,
+    {
+      maxLength: 64,
+      pattern: GATEWAY_PROVIDER_QUERY_PATTERN,
+    },
+  );
+  const gatewaySourceFilter = parseOptionalGatewaySourceScope(
+    resolvedSearchParams?.gatewaySource,
+  );
+  const gatewayStatusFilter = parseOptionalGatewayStatusScope(
+    resolvedSearchParams?.gatewayStatus,
+  );
+
+  const rawSessionId = resolvedSearchParams?.session;
+  const sessionIdFromQuery =
+    typeof rawSessionId === 'string' && rawSessionId.trim().length > 0
+      ? rawSessionId.trim()
+      : null;
+  const compactRequested = isTruthyQueryFlag(resolvedSearchParams?.compact);
+  const closeRequested = isTruthyQueryFlag(resolvedSearchParams?.close);
+
+  const rawKeepRecent = resolvedSearchParams?.keepRecent;
+  const keepRecentFromQuery =
+    typeof rawKeepRecent === 'string'
+      ? Number.parseInt(rawKeepRecent, 10)
+      : Number.NaN;
+  const keepRecent =
+    Number.isFinite(keepRecentFromQuery) && keepRecentFromQuery > 0
+      ? Math.min(Math.max(keepRecentFromQuery, 5), 500)
+      : undefined;
+
+  const rawEventsLimit = resolvedSearchParams?.eventsLimit;
+  const eventsLimitFromQuery =
+    typeof rawEventsLimit === 'string'
+      ? Number.parseInt(rawEventsLimit, 10)
+      : Number.NaN;
+  const eventsLimit =
+    Number.isFinite(eventsLimitFromQuery) &&
+    [8, 20, 50].includes(eventsLimitFromQuery)
+      ? eventsLimitFromQuery
+      : 8;
+
+  const rawEventType = resolvedSearchParams?.eventType;
+  const eventTypeFilter =
+    parseOptionalFilteredQueryString(rawEventType, {
+      maxLength: 120,
+      pattern: GATEWAY_EVENT_TYPE_QUERY_PATTERN,
+    }) ?? 'all';
+  const rawEventQuery = resolvedSearchParams?.eventQuery;
+  const eventQuery =
+    typeof rawEventQuery === 'string' ? rawEventQuery.trim() : '';
+
+  return {
+    gatewayChannelFilter,
+    gatewayProviderFilter,
+    gatewaySourceFilter,
+    gatewayStatusFilter,
+    sessionIdFromQuery,
+    compactRequested,
+    closeRequested,
+    keepRecent,
+    eventsLimit,
+    eventTypeFilter,
+    eventQuery,
+  };
+};
+
+const resolveAiRuntimeQueryState = (
+  resolvedSearchParams: AdminUxPageSearchParams,
+) => {
+  const rawAiRole = resolvedSearchParams?.aiRole;
+  const aiRole = AI_RUNTIME_ROLES.includes(rawAiRole as AIRuntimeRoleOption)
+    ? (rawAiRole as AIRuntimeRoleOption)
+    : 'critic';
+
+  const rawAiPrompt = resolvedSearchParams?.aiPrompt;
+  const aiPrompt =
+    typeof rawAiPrompt === 'string' && rawAiPrompt.trim().length > 0
+      ? rawAiPrompt.trim()
+      : 'Summarize runtime health for current failover chain.';
+
+  const rawAiProviders = resolvedSearchParams?.aiProviders;
+  const aiProvidersCsv =
+    typeof rawAiProviders === 'string' ? rawAiProviders.trim() : '';
+  const aiProvidersOverride = parseCsvQuery(rawAiProviders);
+
+  const rawAiFailures = resolvedSearchParams?.aiFailures;
+  const aiFailuresCsv =
+    typeof rawAiFailures === 'string' ? rawAiFailures.trim() : '';
+  const aiSimulateFailures = parseCsvQuery(rawAiFailures);
+
+  const rawAiTimeoutMs = resolvedSearchParams?.aiTimeoutMs;
+  const aiTimeoutParsed =
+    typeof rawAiTimeoutMs === 'string'
+      ? Number.parseInt(rawAiTimeoutMs, 10)
+      : Number.NaN;
+  const aiTimeoutMs =
+    Number.isFinite(aiTimeoutParsed) && aiTimeoutParsed > 0
+      ? Math.min(Math.max(aiTimeoutParsed, 250), 120_000)
+      : undefined;
+  const aiDryRunRequested = isTruthyQueryFlag(resolvedSearchParams?.aiDryRun);
+
+  return {
+    aiRole,
+    aiPrompt,
+    aiProvidersCsv,
+    aiProvidersOverride,
+    aiFailuresCsv,
+    aiSimulateFailures,
+    aiTimeoutMs,
+    aiDryRunRequested,
+  };
 };
 
 const isTruthyQueryFlag = (value: unknown): boolean =>
@@ -540,6 +1075,68 @@ const resolveHealthLevel = (
   return 'healthy';
 };
 
+const resolveRiskHealthLevel = (
+  value: unknown,
+  thresholds: {
+    criticalAbove: number;
+    watchAbove: number;
+  },
+): HealthLevel => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return 'unknown';
+  }
+  if (value >= thresholds.criticalAbove) {
+    return 'critical';
+  }
+  if (value >= thresholds.watchAbove) {
+    return 'watch';
+  }
+  return 'healthy';
+};
+
+const resolveGatewayTelemetryHealthLevel = ({
+  autoCompactionRiskLevel,
+  failedStepRate,
+  runtimeSuccessRate,
+  skippedRate,
+  thresholds,
+}: {
+  autoCompactionRiskLevel: HealthLevel;
+  failedStepRate: unknown;
+  runtimeSuccessRate: unknown;
+  skippedRate: unknown;
+  thresholds: GatewayTelemetryThresholds;
+}): HealthLevel => {
+  const failedStepRisk = resolveRiskHealthLevel(
+    failedStepRate,
+    thresholds.failedStepRate,
+  );
+  const runtimeSuccessHealth = resolveHealthLevel(
+    runtimeSuccessRate,
+    thresholds.runtimeSuccessRate,
+  );
+  const cooldownSkipRisk = resolveRiskHealthLevel(
+    skippedRate,
+    thresholds.cooldownSkipRate,
+  );
+  const levels: HealthLevel[] = [
+    autoCompactionRiskLevel,
+    failedStepRisk,
+    runtimeSuccessHealth,
+    cooldownSkipRisk,
+  ];
+  if (levels.includes('critical')) {
+    return 'critical';
+  }
+  if (levels.includes('watch')) {
+    return 'watch';
+  }
+  if (levels.includes('healthy')) {
+    return 'healthy';
+  }
+  return 'unknown';
+};
+
 const healthLabel = (level: HealthLevel): string => {
   if (level === 'healthy') {
     return 'Healthy';
@@ -564,6 +1161,75 @@ const healthBadgeClass = (level: HealthLevel): string => {
     return 'tag-alert';
   }
   return 'pill';
+};
+
+const deriveAiRuntimeHealthLevel = (
+  summary: ReturnType<typeof recomputeAiRuntimeSummary>,
+): HealthLevel => {
+  if (summary.roleCount === 0 && summary.providerCount === 0) {
+    return 'unknown';
+  }
+  if (summary.rolesBlocked > 0) {
+    return 'critical';
+  }
+  if (summary.providersCoolingDown > 0) {
+    return 'watch';
+  }
+  return summary.health === 'ok' ? 'healthy' : 'watch';
+};
+
+const deriveGatewayHealthLevel = (
+  overview: AgentGatewayOverview | null,
+): HealthLevel => {
+  if (!overview) {
+    return 'unknown';
+  }
+  return overview.status.needsAttention ? 'watch' : 'healthy';
+};
+
+const resolveGatewaySessionMutations = async ({
+  closeRequested,
+  compactRequested,
+  selectedSessionClosed,
+  selectedSessionId,
+  keepRecent,
+}: {
+  closeRequested: boolean;
+  compactRequested: boolean;
+  selectedSessionClosed: boolean;
+  selectedSessionId: string | null;
+  keepRecent?: number;
+}) => {
+  let compactInfoMessage: string | null = null;
+  let compactErrorMessage: string | null = null;
+  let closeInfoMessage: string | null = null;
+  let closeErrorMessage: string | null = null;
+
+  if (closeRequested && selectedSessionId && selectedSessionClosed) {
+    closeInfoMessage = 'Session already closed.';
+  } else if (closeRequested && selectedSessionId) {
+    const closeResult = await closeAgentGatewaySession(selectedSessionId);
+    closeInfoMessage = closeResult.message;
+    closeErrorMessage = closeResult.error;
+  }
+
+  if (compactRequested && selectedSessionId && selectedSessionClosed) {
+    compactErrorMessage = 'Compaction is disabled for closed sessions.';
+  } else if (compactRequested && selectedSessionId && !closeRequested) {
+    const compactResult = await compactAgentGatewaySession(
+      selectedSessionId,
+      keepRecent,
+    );
+    compactInfoMessage = compactResult.message;
+    compactErrorMessage = compactResult.error;
+  }
+
+  return {
+    compactInfoMessage,
+    compactErrorMessage,
+    closeInfoMessage,
+    closeErrorMessage,
+  };
 };
 
 const apiBaseUrl = (): string =>
@@ -660,9 +1326,25 @@ const fetchSimilarSearchMetrics = async (
 
 const fetchAgentGatewaySessions = async (
   limit: number,
+  {
+    source,
+    channel,
+    provider,
+    status,
+  }: {
+    source: string | null;
+    channel: string | null;
+    provider: string | null;
+    status: string | null;
+  },
 ): Promise<{
   data: AgentGatewaySessionListItem[];
   error: string | null;
+  filters: {
+    channel: string | null;
+    provider: string | null;
+    status: string | null;
+  };
   source: string;
 }> => {
   const token = adminToken();
@@ -671,6 +1353,11 @@ const fetchAgentGatewaySessions = async (
       data: [],
       error:
         'Missing admin token. Set ADMIN_API_TOKEN (or NEXT_ADMIN_API_TOKEN) in apps/web environment.',
+      filters: {
+        channel: null,
+        provider: null,
+        status: null,
+      },
       source: 'db',
     };
   }
@@ -684,14 +1371,34 @@ const fetchAgentGatewaySessions = async (
   };
 
   try {
+    const queryParams = new URLSearchParams({
+      limit: `${Math.max(1, Math.floor(limit))}`,
+    });
+    if (source) {
+      queryParams.set('source', source);
+    }
+    if (channel) {
+      queryParams.set('channel', channel);
+    }
+    if (provider) {
+      queryParams.set('provider', provider);
+    }
+    if (status) {
+      queryParams.set('status', status);
+    }
     const sessionsResponse = await fetch(
-      `${base}/admin/agent-gateway/sessions?limit=${Math.max(1, Math.floor(limit))}`,
+      `${base}/admin/agent-gateway/sessions?${queryParams.toString()}`,
       requestInit,
     );
     if (!sessionsResponse.ok) {
       return {
         data: [],
         error: `Agent gateway sessions request failed with ${sessionsResponse.status}.`,
+        filters: {
+          channel: null,
+          provider: null,
+          status: null,
+        },
         source: 'db',
       };
     }
@@ -703,13 +1410,80 @@ const fetchAgentGatewaySessions = async (
     return {
       data: sessions,
       error: null,
+      filters: normalizeGatewaySessionFilters(sessionsPayload.filters),
       source: toStringValue(sessionsPayload.source, 'db'),
     };
   } catch {
     return {
       data: [],
       error: 'Unable to load agent gateway sessions from admin API.',
+      filters: {
+        channel: null,
+        provider: null,
+        status: null,
+      },
       source: 'db',
+    };
+  }
+};
+
+const fetchAgentGatewayTelemetry = async (
+  hours: number,
+  {
+    channel,
+    provider,
+  }: {
+    channel: string | null;
+    provider: string | null;
+  },
+): Promise<{
+  data: AgentGatewayTelemetryResponse | null;
+  error: string | null;
+}> => {
+  const token = adminToken();
+  if (!token) {
+    return {
+      data: null,
+      error:
+        'Missing admin token. Set ADMIN_API_TOKEN (or NEXT_ADMIN_API_TOKEN) in apps/web environment.',
+    };
+  }
+
+  try {
+    const queryParams = new URLSearchParams({
+      hours: `${Math.max(1, Math.floor(hours))}`,
+      limit: '200',
+    });
+    if (channel) {
+      queryParams.set('channel', channel);
+    }
+    if (provider) {
+      queryParams.set('provider', provider);
+    }
+    const response = await fetch(
+      `${apiBaseUrl()}/admin/agent-gateway/telemetry?${queryParams.toString()}`,
+      {
+        cache: 'no-store',
+        headers: {
+          'x-admin-token': token,
+        },
+      },
+    );
+    if (!response.ok) {
+      return {
+        data: null,
+        error: `Agent gateway telemetry request failed with ${response.status}.`,
+      };
+    }
+    const payload = (await response.json()) as AgentGatewayTelemetryResponse;
+    return {
+      data: payload,
+      error: null,
+    };
+  } catch {
+    return {
+      data: null,
+      error: 'Unable to load agent gateway telemetry from admin API.',
     };
   }
 };
@@ -826,6 +1600,17 @@ const closeAgentGatewaySession = async (
 const fetchAgentGatewayRecentEvents = async (
   sessionId: string,
   limit: number,
+  {
+    source,
+    eventType,
+    eventQuery,
+    provider,
+  }: {
+    source: string | null;
+    eventType: string | null;
+    eventQuery: string | null;
+    provider: string | null;
+  },
 ): Promise<{
   data: AgentGatewayRecentEvent[] | null;
   error: string | null;
@@ -840,8 +1625,23 @@ const fetchAgentGatewayRecentEvents = async (
   }
 
   try {
+    const params = new URLSearchParams({
+      limit: `${Math.max(1, Math.floor(limit))}`,
+    });
+    if (eventType && eventType !== 'all') {
+      params.set('eventType', eventType);
+    }
+    if (eventQuery) {
+      params.set('eventQuery', eventQuery);
+    }
+    if (provider) {
+      params.set('provider', provider);
+    }
+    if (source) {
+      params.set('source', source);
+    }
     const response = await fetch(
-      `${apiBaseUrl()}/admin/agent-gateway/sessions/${encodeURIComponent(sessionId)}/events?limit=${Math.max(1, Math.floor(limit))}`,
+      `${apiBaseUrl()}/admin/agent-gateway/sessions/${encodeURIComponent(sessionId)}/events?${params.toString()}`,
       {
         cache: 'no-store',
         headers: {
@@ -881,6 +1681,7 @@ const fetchAgentGatewayRecentEvents = async (
 
 const fetchAgentGatewayOverview = async (
   sessionId: string,
+  source: string | null,
 ): Promise<{
   data: AgentGatewayOverview | null;
   error: string | null;
@@ -904,8 +1705,14 @@ const fetchAgentGatewayOverview = async (
 
   try {
     const encodedSessionId = encodeURIComponent(sessionId);
+    const queryParams = new URLSearchParams();
+    if (source) {
+      queryParams.set('source', source);
+    }
+    const querySuffix =
+      queryParams.size > 0 ? `?${queryParams.toString()}` : '';
     const summaryResponse = await fetch(
-      `${base}/admin/agent-gateway/sessions/${encodedSessionId}/summary`,
+      `${base}/admin/agent-gateway/sessions/${encodedSessionId}/summary${querySuffix}`,
       requestInit,
     );
     if (!summaryResponse.ok) {
@@ -918,7 +1725,7 @@ const fetchAgentGatewayOverview = async (
       (await summaryResponse.json()) as AgentGatewaySummaryResponse;
 
     const statusResponse = await fetch(
-      `${base}/admin/agent-gateway/sessions/${encodedSessionId}/status`,
+      `${base}/admin/agent-gateway/sessions/${encodedSessionId}/status${querySuffix}`,
       requestInit,
     );
     if (!statusResponse.ok) {
@@ -1657,6 +2464,117 @@ const PredictionHourlyTrendCard = ({
   </article>
 );
 
+const GatewayCompactionHourlyTrendCard = ({
+  emptyLabel,
+  items,
+  title,
+}: {
+  emptyLabel: string;
+  items: GatewayCompactionHourlyTrendItem[];
+  title: string;
+}) => (
+  <article className="card grid gap-2 p-4">
+    <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+      {title}
+    </h3>
+    {items.length === 0 ? (
+      <p className="text-muted-foreground text-xs">{emptyLabel}</p>
+    ) : (
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-left text-xs">
+          <thead>
+            <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
+              <th className="py-2 pr-3">Hour</th>
+              <th className="px-3 py-2 text-right">Compactions</th>
+              <th className="px-3 py-2 text-right">Auto</th>
+              <th className="px-3 py-2 text-right">Manual</th>
+              <th className="px-3 py-2 text-right">Auto share</th>
+              <th className="px-3 py-2 text-right">Pruned</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((entry) => {
+              return (
+                <tr
+                  className="border-border/25 border-b last:border-b-0"
+                  key={entry.hour}
+                >
+                  <td className="py-2 pr-3 text-muted-foreground">
+                    {formatHourBucket(entry.hour)}
+                  </td>
+                  <td className="px-3 py-2 text-right text-foreground">
+                    {entry.compactions}
+                  </td>
+                  <td className="px-3 py-2 text-right text-foreground">
+                    {entry.autoCompactions}
+                  </td>
+                  <td className="px-3 py-2 text-right text-foreground">
+                    {entry.manualCompactions}
+                  </td>
+                  <td className="px-3 py-2 text-right text-foreground">
+                    <span
+                      className={`${healthBadgeClass(entry.autoCompactionRiskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide`}
+                    >
+                      {toRateText(entry.autoCompactionShare)}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-right text-foreground">
+                    {entry.prunedEventCount}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </article>
+);
+
+const GatewayTelemetryThresholdsCard = ({
+  thresholds,
+}: {
+  thresholds: GatewayTelemetryThresholds;
+}) => (
+  <article className="card grid gap-2 p-4">
+    <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+      Telemetry thresholds
+    </h3>
+    <ul className="grid gap-1 text-xs">
+      <li className="flex items-center justify-between gap-2">
+        <span className="text-muted-foreground">Failed step rate</span>
+        <span className="text-foreground">
+          Watch &gt;= {toRateText(thresholds.failedStepRate.watchAbove)} |
+          Critical &gt;= {toRateText(thresholds.failedStepRate.criticalAbove)}
+        </span>
+      </li>
+      <li className="flex items-center justify-between gap-2">
+        <span className="text-muted-foreground">Runtime success rate</span>
+        <span className="text-foreground">
+          Watch &lt; {toRateText(thresholds.runtimeSuccessRate.watchBelow)} |
+          Critical &lt;{' '}
+          {toRateText(thresholds.runtimeSuccessRate.criticalBelow)}
+        </span>
+      </li>
+      <li className="flex items-center justify-between gap-2">
+        <span className="text-muted-foreground">Cooldown skip rate</span>
+        <span className="text-foreground">
+          Watch &gt;= {toRateText(thresholds.cooldownSkipRate.watchAbove)} |
+          Critical &gt;= {toRateText(thresholds.cooldownSkipRate.criticalAbove)}
+        </span>
+      </li>
+      <li className="flex items-center justify-between gap-2">
+        <span className="text-muted-foreground">Auto compaction share</span>
+        <span className="text-foreground">
+          Watch &gt;= {toRateText(thresholds.autoCompactionShare.watchAbove)} |
+          Critical &gt;={' '}
+          {toRateText(thresholds.autoCompactionShare.criticalAbove)}
+        </span>
+      </li>
+    </ul>
+  </article>
+);
+
 export default async function AdminUxObserverEngagementPage({
   searchParams,
 }: {
@@ -1669,70 +2587,29 @@ export default async function AdminUxObserverEngagementPage({
   const hours = Number.isFinite(parsedHours)
     ? Math.min(Math.max(parsedHours, 1), 720)
     : 24;
-  const rawSessionId = resolvedSearchParams?.session;
-  const sessionIdFromQuery =
-    typeof rawSessionId === 'string' && rawSessionId.trim().length > 0
-      ? rawSessionId.trim()
-      : null;
-  const rawCompact = resolvedSearchParams?.compact;
-  const compactRequested = isTruthyQueryFlag(rawCompact);
-  const rawClose = resolvedSearchParams?.close;
-  const closeRequested = isTruthyQueryFlag(rawClose);
-  const rawKeepRecent = resolvedSearchParams?.keepRecent;
-  const keepRecentFromQuery =
-    typeof rawKeepRecent === 'string'
-      ? Number.parseInt(rawKeepRecent, 10)
-      : Number.NaN;
-  const keepRecent =
-    Number.isFinite(keepRecentFromQuery) && keepRecentFromQuery > 0
-      ? Math.min(Math.max(keepRecentFromQuery, 5), 500)
-      : undefined;
-  const rawEventsLimit = resolvedSearchParams?.eventsLimit;
-  const eventsLimitFromQuery =
-    typeof rawEventsLimit === 'string'
-      ? Number.parseInt(rawEventsLimit, 10)
-      : Number.NaN;
-  const eventsLimit =
-    Number.isFinite(eventsLimitFromQuery) &&
-    [8, 20, 50].includes(eventsLimitFromQuery)
-      ? eventsLimitFromQuery
-      : 8;
-  const rawEventType = resolvedSearchParams?.eventType;
-  const eventTypeFilter =
-    typeof rawEventType === 'string' && rawEventType.trim().length > 0
-      ? rawEventType.trim()
-      : 'all';
-  const rawEventQuery = resolvedSearchParams?.eventQuery;
-  const eventQuery =
-    typeof rawEventQuery === 'string' ? rawEventQuery.trim() : '';
-  const rawAiRole = resolvedSearchParams?.aiRole;
-  const aiRole = AI_RUNTIME_ROLES.includes(rawAiRole as AIRuntimeRoleOption)
-    ? (rawAiRole as AIRuntimeRoleOption)
-    : 'critic';
-  const rawAiPrompt = resolvedSearchParams?.aiPrompt;
-  const aiPrompt =
-    typeof rawAiPrompt === 'string' && rawAiPrompt.trim().length > 0
-      ? rawAiPrompt.trim()
-      : 'Summarize runtime health for current failover chain.';
-  const rawAiProviders = resolvedSearchParams?.aiProviders;
-  const aiProvidersCsv =
-    typeof rawAiProviders === 'string' ? rawAiProviders.trim() : '';
-  const aiProvidersOverride = parseCsvQuery(rawAiProviders);
-  const rawAiFailures = resolvedSearchParams?.aiFailures;
-  const aiFailuresCsv =
-    typeof rawAiFailures === 'string' ? rawAiFailures.trim() : '';
-  const aiSimulateFailures = parseCsvQuery(rawAiFailures);
-  const rawAiTimeoutMs = resolvedSearchParams?.aiTimeoutMs;
-  const aiTimeoutParsed =
-    typeof rawAiTimeoutMs === 'string'
-      ? Number.parseInt(rawAiTimeoutMs, 10)
-      : Number.NaN;
-  const aiTimeoutMs =
-    Number.isFinite(aiTimeoutParsed) && aiTimeoutParsed > 0
-      ? Math.min(Math.max(aiTimeoutParsed, 250), 120_000)
-      : undefined;
-  const rawAiDryRun = resolvedSearchParams?.aiDryRun;
-  const aiDryRunRequested = isTruthyQueryFlag(rawAiDryRun);
+  const {
+    gatewayChannelFilter,
+    gatewayProviderFilter,
+    gatewaySourceFilter,
+    gatewayStatusFilter,
+    sessionIdFromQuery,
+    compactRequested,
+    closeRequested,
+    keepRecent,
+    eventsLimit,
+    eventTypeFilter,
+    eventQuery,
+  } = resolveGatewayQueryState(resolvedSearchParams);
+  const {
+    aiRole,
+    aiPrompt,
+    aiProvidersCsv,
+    aiProvidersOverride,
+    aiFailuresCsv,
+    aiSimulateFailures,
+    aiTimeoutMs,
+    aiDryRunRequested,
+  } = resolveAiRuntimeQueryState(resolvedSearchParams);
 
   const { data, error } = await fetchObserverEngagement(hours);
   const { data: similarSearchMetrics } = await fetchSimilarSearchMetrics(hours);
@@ -1753,8 +2630,19 @@ export default async function AdminUxObserverEngagementPage({
   const {
     data: gatewaySessions,
     error: gatewaySessionsError,
+    filters: gatewaySessionFilters,
     source: gatewaySessionsSource,
-  } = await fetchAgentGatewaySessions(25);
+  } = await fetchAgentGatewaySessions(25, {
+    source: gatewaySourceFilter,
+    channel: gatewayChannelFilter,
+    provider: gatewayProviderFilter,
+    status: gatewayStatusFilter,
+  });
+  const { data: gatewayTelemetry, error: gatewayTelemetryError } =
+    await fetchAgentGatewayTelemetry(hours, {
+      channel: gatewayChannelFilter,
+      provider: gatewayProviderFilter,
+    });
   const {
     generatedAt: aiRuntimeHealthGeneratedAt,
     roleStates: aiRuntimeRoleStatesBase,
@@ -1779,36 +2667,39 @@ export default async function AdminUxObserverEngagementPage({
     .trim();
   const selectedSessionClosed = selectedSessionStatus === 'closed';
   const keepRecentValue = keepRecent ?? 40;
+  const gatewaySessionSource =
+    gatewaySessionsSource === 'memory' ? 'memory' : 'db';
+  const gatewayEventsRequestFilters = resolveGatewayEventsRequestFilters({
+    eventType: eventTypeFilter,
+    sessionFilters: gatewaySessionFilters,
+    queryProvider: gatewayProviderFilter,
+  });
 
-  let compactInfoMessage: string | null = null;
-  let compactErrorMessage: string | null = null;
-  let closeInfoMessage: string | null = null;
-  let closeErrorMessage: string | null = null;
-  if (closeRequested && selectedSessionId && selectedSessionClosed) {
-    closeInfoMessage = 'Session already closed.';
-  } else if (closeRequested && selectedSessionId) {
-    const closeResult = await closeAgentGatewaySession(selectedSessionId);
-    closeInfoMessage = closeResult.message;
-    closeErrorMessage = closeResult.error;
-  }
-  if (compactRequested && selectedSessionId && selectedSessionClosed) {
-    compactErrorMessage = 'Compaction is disabled for closed sessions.';
-  } else if (compactRequested && selectedSessionId && !closeRequested) {
-    const compactResult = await compactAgentGatewaySession(
-      selectedSessionId,
-      keepRecent,
-    );
-    compactInfoMessage = compactResult.message;
-    compactErrorMessage = compactResult.error;
-  }
+  const {
+    compactInfoMessage,
+    compactErrorMessage,
+    closeInfoMessage,
+    closeErrorMessage,
+  } = await resolveGatewaySessionMutations({
+    closeRequested,
+    compactRequested,
+    selectedSessionClosed,
+    selectedSessionId,
+    keepRecent,
+  });
 
   const { data: gatewayOverview, error: gatewayOverviewError } =
     selectedSessionId !== null
-      ? await fetchAgentGatewayOverview(selectedSessionId)
+      ? await fetchAgentGatewayOverview(selectedSessionId, gatewaySessionSource)
       : { data: null, error: null };
   const { data: gatewayRecentEvents, error: gatewayEventsError } =
     selectedSessionId !== null
-      ? await fetchAgentGatewayRecentEvents(selectedSessionId, eventsLimit)
+      ? await fetchAgentGatewayRecentEvents(selectedSessionId, eventsLimit, {
+          source: gatewaySessionSource,
+          eventType: gatewayEventsRequestFilters.eventType,
+          eventQuery: eventQuery.length > 0 ? eventQuery : null,
+          provider: gatewayEventsRequestFilters.provider,
+        })
       : { data: null, error: null };
   const gatewayError =
     closeErrorMessage ??
@@ -1848,6 +2739,7 @@ export default async function AdminUxObserverEngagementPage({
     items: multimodal.errorReasonBreakdown,
     keyName: 'reason',
   });
+  const multimodalGuardrails = multimodal.guardrails ?? {};
   const multimodalHourlyTrend = normalizeHourlyTrendItems(
     multimodal.hourlyTrend,
   );
@@ -1865,6 +2757,45 @@ export default async function AdminUxObserverEngagementPage({
         (left, right) => right[1] - left[1],
       )
     : [];
+  const gatewayTelemetrySessions = gatewayTelemetry?.sessions ?? {};
+  const gatewayTelemetryEvents = gatewayTelemetry?.events ?? {};
+  const gatewayTelemetryAttempts = gatewayTelemetry?.attempts ?? {};
+  const gatewayTelemetryHealth = gatewayTelemetry?.health ?? {};
+  const gatewayTelemetryThresholds = normalizeGatewayTelemetryThresholds(
+    gatewayTelemetry?.thresholds,
+  );
+  const gatewayTelemetryFilters = normalizeGatewayTelemetryFilters(
+    gatewayTelemetry?.filters,
+  );
+  const appliedGatewayChannelFilter =
+    gatewayTelemetryFilters.channel ?? gatewayChannelFilter;
+  const appliedGatewayProviderFilter =
+    gatewayTelemetryFilters.provider ?? gatewayProviderFilter;
+  const {
+    channel: appliedGatewaySessionChannelFilter,
+    provider: appliedGatewaySessionProviderFilter,
+    statusInputValue: appliedGatewaySessionStatusInputValue,
+    statusLabel: appliedGatewaySessionStatusLabel,
+    label: gatewaySessionScopeLabel,
+  } = resolveGatewaySessionScope({
+    queryChannel: gatewayChannelFilter,
+    queryProvider: gatewayProviderFilter,
+    queryStatus: gatewayStatusFilter,
+    sessionFilters: gatewaySessionFilters,
+  });
+  const gatewayCompactionHourlyTrend =
+    normalizeGatewayCompactionHourlyTrendItems(
+      gatewayTelemetryEvents.compactionHourlyTrend,
+      gatewayTelemetryThresholds.autoCompactionShare,
+    );
+  const gatewayTelemetryProviderUsage = normalizeBreakdownItems({
+    items: gatewayTelemetry?.providerUsage,
+    keyName: 'provider',
+  });
+  const gatewayTelemetryChannelUsage = normalizeBreakdownItems({
+    items: gatewayTelemetry?.channelUsage,
+    keyName: 'channel',
+  });
   const aiRuntimeDryRunState = await resolveAiRuntimeDryRunState({
     requested: aiDryRunRequested,
     role: aiRole,
@@ -1882,25 +2813,47 @@ export default async function AdminUxObserverEngagementPage({
     roleStates: aiRuntimeRoleStatesBase,
     providers: aiRuntimeProviders,
   });
-  let aiRuntimeHealthLevel: HealthLevel = 'unknown';
-  if (aiRuntimeSummary.roleCount > 0 || aiRuntimeSummary.providerCount > 0) {
-    if (aiRuntimeSummary.rolesBlocked > 0) {
-      aiRuntimeHealthLevel = 'critical';
-    } else if (aiRuntimeSummary.providersCoolingDown > 0) {
-      aiRuntimeHealthLevel = 'watch';
-    } else if (aiRuntimeSummary.health === 'ok') {
-      aiRuntimeHealthLevel = 'healthy';
-    } else {
-      aiRuntimeHealthLevel = 'watch';
-    }
-  }
+  const aiRuntimeHealthLevel = deriveAiRuntimeHealthLevel(aiRuntimeSummary);
   const topGatewayProvider = gatewayProviders[0] ?? null;
-  let gatewayHealthLevel: HealthLevel = 'unknown';
-  if (gatewayOverview) {
-    gatewayHealthLevel = gatewayOverview.status.needsAttention
-      ? 'watch'
-      : 'healthy';
-  }
+  const gatewayHealthLevel = deriveGatewayHealthLevel(gatewayOverview);
+  const gatewayAutoCompactionShareLevel =
+    toHealthLevelValue(gatewayTelemetryEvents.autoCompactionRiskLevel) ??
+    resolveRiskHealthLevel(
+      gatewayTelemetryEvents.autoCompactionShare,
+      gatewayTelemetryThresholds.autoCompactionShare,
+    );
+  const gatewayFailedStepLevel =
+    toHealthLevelValue(gatewayTelemetryHealth.failedStepLevel) ??
+    resolveRiskHealthLevel(
+      gatewayTelemetryEvents.failedStepRate,
+      gatewayTelemetryThresholds.failedStepRate,
+    );
+  const gatewayRuntimeSuccessLevel =
+    toHealthLevelValue(gatewayTelemetryHealth.runtimeSuccessLevel) ??
+    resolveHealthLevel(
+      gatewayTelemetryAttempts.successRate,
+      gatewayTelemetryThresholds.runtimeSuccessRate,
+    );
+  const gatewayCooldownSkipLevel =
+    toHealthLevelValue(gatewayTelemetryHealth.cooldownSkipLevel) ??
+    resolveRiskHealthLevel(
+      gatewayTelemetryAttempts.skippedRate,
+      gatewayTelemetryThresholds.cooldownSkipRate,
+    );
+  const gatewayTelemetryHealthLevel = resolveGatewayTelemetryHealthLevel({
+    autoCompactionRiskLevel:
+      toHealthLevelValue(gatewayTelemetryHealth.autoCompactionLevel) ??
+      gatewayAutoCompactionShareLevel,
+    failedStepRate: gatewayTelemetryEvents.failedStepRate,
+    runtimeSuccessRate: gatewayTelemetryAttempts.successRate,
+    skippedRate: gatewayTelemetryAttempts.skippedRate,
+    thresholds: gatewayTelemetryThresholds,
+  });
+  const gatewayTelemetryHealthLevelFromApi = toHealthLevelValue(
+    gatewayTelemetryHealth.level,
+  );
+  const resolvedGatewayTelemetryHealthLevel =
+    gatewayTelemetryHealthLevelFromApi ?? gatewayTelemetryHealthLevel;
   const renderGatewaySectionBody = () => {
     if (gatewaySessions.length > 0 && selectedSessionId === null) {
       return (
@@ -2018,6 +2971,30 @@ export default async function AdminUxObserverEngagementPage({
           <>
             <form className="flex flex-wrap items-center gap-2" method="get">
               <input name="hours" type="hidden" value={`${hours}`} />
+              <input
+                name="gatewaySource"
+                type="hidden"
+                value={gatewaySourceFilter ?? ''}
+              />
+              {appliedGatewaySessionChannelFilter ? (
+                <input
+                  name="gatewayChannel"
+                  type="hidden"
+                  value={appliedGatewaySessionChannelFilter}
+                />
+              ) : null}
+              {appliedGatewaySessionProviderFilter ? (
+                <input
+                  name="gatewayProvider"
+                  type="hidden"
+                  value={appliedGatewaySessionProviderFilter}
+                />
+              ) : null}
+              <input
+                name="gatewayStatus"
+                type="hidden"
+                value={appliedGatewaySessionStatusInputValue}
+              />
               <label
                 className="text-muted-foreground text-xs uppercase tracking-wide"
                 htmlFor="gateway-session-select"
@@ -2140,6 +3117,7 @@ export default async function AdminUxObserverEngagementPage({
             <p className="text-muted-foreground text-xs">
               Source: {gatewaySessionsSource} | Selected: {selectedSessionId} |
               Status: {currentSessionStatus} | Draft: {currentDraftId}
+              {` | Scope: ${gatewaySessionScopeLabel}`}
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-muted-foreground text-xs uppercase tracking-wide">
@@ -2312,6 +3290,30 @@ export default async function AdminUxObserverEngagementPage({
         </div>
         <form className="grid gap-2" method="get">
           <input name="hours" type="hidden" value={`${hours}`} />
+          <input
+            name="gatewaySource"
+            type="hidden"
+            value={gatewaySourceFilter ?? ''}
+          />
+          {appliedGatewaySessionChannelFilter ? (
+            <input
+              name="gatewayChannel"
+              type="hidden"
+              value={appliedGatewaySessionChannelFilter}
+            />
+          ) : null}
+          {appliedGatewaySessionProviderFilter ? (
+            <input
+              name="gatewayProvider"
+              type="hidden"
+              value={appliedGatewaySessionProviderFilter}
+            />
+          ) : null}
+          <input
+            name="gatewayStatus"
+            type="hidden"
+            value={appliedGatewaySessionStatusInputValue}
+          />
           {selectedSessionId ? (
             <input name="session" type="hidden" value={selectedSessionId} />
           ) : null}
@@ -2614,6 +3616,220 @@ export default async function AdminUxObserverEngagementPage({
         {renderGatewaySectionBody()}
       </section>
 
+      <section className="card grid gap-4 p-4 sm:p-5">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-semibold text-foreground text-lg">
+            Agent gateway control-plane telemetry
+          </h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={`${healthBadgeClass(resolvedGatewayTelemetryHealthLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide`}
+            >
+              Telemetry health:{' '}
+              {healthLabel(resolvedGatewayTelemetryHealthLevel)}
+            </span>
+            <span
+              className={`${healthBadgeClass(gatewayAutoCompactionShareLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide`}
+            >
+              Auto compaction risk:{' '}
+              {healthLabel(gatewayAutoCompactionShareLevel)}
+            </span>
+            <span
+              className={`${healthBadgeClass(gatewayFailedStepLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide`}
+            >
+              Failed-step risk: {healthLabel(gatewayFailedStepLevel)}
+            </span>
+            <span
+              className={`${healthBadgeClass(gatewayRuntimeSuccessLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide`}
+            >
+              Runtime success: {healthLabel(gatewayRuntimeSuccessLevel)}
+            </span>
+            <span
+              className={`${healthBadgeClass(gatewayCooldownSkipLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide`}
+            >
+              Cooldown skip risk: {healthLabel(gatewayCooldownSkipLevel)}
+            </span>
+          </div>
+        </div>
+        {gatewayTelemetryError ? (
+          <p className="text-muted-foreground text-sm">
+            {gatewayTelemetryError}
+          </p>
+        ) : (
+          <>
+            <form className="flex flex-wrap items-end gap-2" method="get">
+              <input name="hours" type="hidden" value={`${hours}`} />
+              <label
+                className="grid gap-1 text-muted-foreground text-xs uppercase tracking-wide"
+                htmlFor="gateway-source-scope-select"
+              >
+                Source
+                <select
+                  className="w-32 rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm normal-case tracking-normal"
+                  defaultValue={gatewaySourceFilter ?? ''}
+                  id="gateway-source-scope-select"
+                  name="gatewaySource"
+                >
+                  <option value="">db</option>
+                  <option value="memory">memory</option>
+                </select>
+              </label>
+              {selectedSessionId ? (
+                <input name="session" type="hidden" value={selectedSessionId} />
+              ) : null}
+              <input
+                name="eventsLimit"
+                type="hidden"
+                value={`${eventsLimit}`}
+              />
+              <input name="eventType" type="hidden" value={eventTypeFilter} />
+              <input name="eventQuery" type="hidden" value={eventQuery} />
+              <label
+                className="grid gap-1 text-muted-foreground text-xs uppercase tracking-wide"
+                htmlFor="gateway-channel-scope-input"
+              >
+                Channel scope
+                <input
+                  className="w-48 rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm normal-case tracking-normal"
+                  defaultValue={appliedGatewayChannelFilter ?? ''}
+                  id="gateway-channel-scope-input"
+                  name="gatewayChannel"
+                  placeholder="all channels"
+                  type="text"
+                />
+              </label>
+              <label
+                className="grid gap-1 text-muted-foreground text-xs uppercase tracking-wide"
+                htmlFor="gateway-provider-scope-input"
+              >
+                Provider scope
+                <input
+                  className="w-44 rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm normal-case tracking-normal"
+                  defaultValue={appliedGatewayProviderFilter ?? ''}
+                  id="gateway-provider-scope-input"
+                  name="gatewayProvider"
+                  placeholder="all providers"
+                  type="text"
+                />
+              </label>
+              <label
+                className="grid gap-1 text-muted-foreground text-xs uppercase tracking-wide"
+                htmlFor="gateway-status-scope-select"
+              >
+                Session status
+                <select
+                  className="w-36 rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm normal-case tracking-normal"
+                  defaultValue={appliedGatewaySessionStatusInputValue}
+                  id="gateway-status-scope-select"
+                  name="gatewayStatus"
+                >
+                  <option value="">all statuses</option>
+                  <option value="active">active</option>
+                  <option value="closed">closed</option>
+                </select>
+              </label>
+              <button
+                className="rounded-md border border-border bg-background px-3 py-1 text-foreground text-sm hover:bg-accent"
+                type="submit"
+              >
+                Apply scope
+              </button>
+              <a
+                className="rounded-md border border-border bg-background px-3 py-1 text-foreground text-sm hover:bg-accent"
+                href={`/admin/ux?hours=${hours}`}
+              >
+                Reset scope
+              </a>
+            </form>
+            <p className="text-muted-foreground text-xs">
+              Scope: channel{' '}
+              <span className="text-foreground">
+                {appliedGatewayChannelFilter ?? 'all'}
+              </span>{' '}
+              | provider{' '}
+              <span className="text-foreground">
+                {appliedGatewayProviderFilter ?? 'all'}
+              </span>
+              {' | '}status{' '}
+              <span className="text-foreground">
+                {appliedGatewaySessionStatusLabel}
+              </span>
+            </p>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-8">
+              <StatCard
+                hint="sessions sampled in current window"
+                label="Sessions"
+                value={`${toNumber(gatewayTelemetrySessions.total)}`}
+              />
+              <StatCard
+                hint="sessions with failed steps or failed cycles"
+                label="Attention sessions"
+                value={`${toNumber(gatewayTelemetrySessions.attention)}`}
+              />
+              <StatCard
+                hint="sessions with at least one compaction event"
+                label="Compacted sessions"
+                value={`${toNumber(gatewayTelemetrySessions.compacted)}`}
+              />
+              <StatCard
+                hint="sessions compacted by auto buffer guardrail"
+                label="Auto compacted sessions"
+                value={`${toNumber(gatewayTelemetrySessions.autoCompacted)}`}
+              />
+              <StatCard
+                hint="auto compactions / total compactions"
+                label="Auto compaction share"
+                value={toRateText(gatewayTelemetryEvents.autoCompactionShare)}
+              />
+              <StatCard
+                hint="failed steps / cycle step events"
+                label="Failed step rate"
+                value={toRateText(gatewayTelemetryEvents.failedStepRate)}
+              />
+              <StatCard
+                hint="successful provider attempts / total attempts"
+                label="Runtime success rate"
+                value={toRateText(gatewayTelemetryAttempts.successRate)}
+              />
+              <StatCard
+                hint="cooldown-skipped attempts / total attempts"
+                label="Cooldown skip rate"
+                value={toRateText(gatewayTelemetryAttempts.skippedRate)}
+              />
+            </div>
+            <p className="text-muted-foreground text-xs">
+              Events: total {toNumber(gatewayTelemetryEvents.total)} | cycle
+              steps {toNumber(gatewayTelemetryEvents.draftCycleStepEvents)} |
+              failed steps {toNumber(gatewayTelemetryEvents.failedStepEvents)} |
+              compactions {toNumber(gatewayTelemetryEvents.compactionEvents)} |
+              auto {toNumber(gatewayTelemetryEvents.autoCompactionEvents)} |
+              manual {toNumber(gatewayTelemetryEvents.manualCompactionEvents)} |
+              pruned {toNumber(gatewayTelemetryEvents.prunedEventCount)}
+            </p>
+            <GatewayCompactionHourlyTrendCard
+              emptyLabel="No compaction events in current sample."
+              items={gatewayCompactionHourlyTrend}
+              title="Gateway compaction trend (UTC)"
+            />
+            <div className="grid gap-3 lg:grid-cols-3">
+              <GatewayTelemetryThresholdsCard
+                thresholds={gatewayTelemetryThresholds}
+              />
+              <BreakdownListCard
+                emptyLabel="No provider usage in current sample."
+                items={gatewayTelemetryProviderUsage}
+                title="Provider usage (sample)"
+              />
+              <BreakdownListCard
+                emptyLabel="No channel usage in current sample."
+                items={gatewayTelemetryChannelUsage}
+                title="Channel usage (sample)"
+              />
+            </div>
+          </>
+        )}
+      </section>
+
       <section className="card grid gap-3 p-4 sm:p-5">
         <div className="flex items-center justify-between gap-3">
           <h2 className="font-semibold text-foreground text-lg">
@@ -2722,7 +3938,7 @@ export default async function AdminUxObserverEngagementPage({
         <h2 className="font-semibold text-foreground text-lg">
           Multimodal GlowUp telemetry
         </h2>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-7">
           <StatCard
             hint="draft detail panels with multimodal score loaded"
             label="Views"
@@ -2747,6 +3963,16 @@ export default async function AdminUxObserverEngagementPage({
             hint="error / (view + empty + error)"
             label="Error rate"
             value={toRateText(multimodalErrorRate)}
+          />
+          <StatCard
+            hint="query validation rejects for multimodal read requests"
+            label="Invalid query errors"
+            value={`${toNumber(multimodalGuardrails.invalidQueryErrors)}`}
+          />
+          <StatCard
+            hint="invalid-query errors / all multimodal error signals"
+            label="Invalid query share"
+            value={toRateText(multimodalGuardrails.invalidQueryRate)}
           />
         </div>
         <div className="grid gap-4 lg:grid-cols-3">
@@ -2777,7 +4003,7 @@ export default async function AdminUxObserverEngagementPage({
         <h2 className="font-semibold text-foreground text-lg">
           Prediction market telemetry
         </h2>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-7">
           <StatCard
             hint="submitted predictions in current window"
             label="Predictions"
@@ -2807,6 +4033,11 @@ export default async function AdminUxObserverEngagementPage({
             hint="payout points / stake points"
             label="Payout ratio"
             value={toRateText(kpis.payoutToStakeRatio)}
+          />
+          <StatCard
+            hint="resolved prediction settlements / submitted predictions"
+            label="Settlement rate"
+            value={toRateText(kpis.predictionSettlementRate)}
           />
         </div>
         <div className="grid gap-4 lg:grid-cols-2">

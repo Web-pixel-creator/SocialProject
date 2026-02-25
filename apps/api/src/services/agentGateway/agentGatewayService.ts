@@ -7,6 +7,8 @@ import type {
   AgentGatewaySession,
   AgentGatewaySessionCompactResult,
   AgentGatewaySessionDetail,
+  AgentGatewaySessionListFilters,
+  AgentGatewaySessionStatus,
   AppendAgentGatewayEventInput,
   CreateAgentGatewaySessionInput,
   EnsureAgentGatewaySessionInput,
@@ -16,11 +18,19 @@ const DEFAULT_LIST_LIMIT = 50;
 const MAX_LIST_LIMIT = 200;
 const MAX_EVENT_BUFFER = 300;
 const DEFAULT_COMPACT_KEEP_RECENT = 40;
+const DEFAULT_AUTO_COMPACT_TRIGGER = MAX_EVENT_BUFFER;
+const MIN_AUTO_COMPACT_TRIGGER = 2;
 const TELEMETRY_SOURCE = 'agent_gateway';
 
 interface SessionState {
   session: AgentGatewaySession;
   events: AgentGatewayEvent[];
+}
+
+interface AgentGatewayServiceOptions {
+  enableBackgroundPersistence?: boolean;
+  autoCompactTrigger?: number;
+  autoCompactKeepRecent?: number;
 }
 
 const toNormalizedString = (value: string) => value.trim().toLowerCase();
@@ -96,6 +106,54 @@ const toStringArray = (value: unknown): string[] => {
   return [];
 };
 
+const toOptionalNormalizedString = (value: unknown): string | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const normalized = value.trim().toLowerCase();
+  return normalized.length > 0 ? normalized : null;
+};
+
+const toOptionalGatewaySessionStatus = (
+  value: unknown,
+): AgentGatewaySessionStatus | null => {
+  const normalized = toOptionalNormalizedString(value);
+  if (normalized === 'active' || normalized === 'closed') {
+    return normalized;
+  }
+  return null;
+};
+
+const extractProviderIdentifier = (
+  payload: Record<string, unknown>,
+): string | null =>
+  toOptionalNormalizedString(payload.selectedProvider) ??
+  toOptionalNormalizedString(payload.provider);
+
+const hasProviderInState = (state: SessionState, provider: string): boolean => {
+  const metadataProvider = extractProviderIdentifier(
+    toRecord(state.session.metadata),
+  );
+  if (metadataProvider === provider) {
+    return true;
+  }
+  return state.events.some(
+    (event) => extractProviderIdentifier(toRecord(event.payload)) === provider,
+  );
+};
+
+const normalizeSessionListFilters = (
+  filters?: AgentGatewaySessionListFilters,
+): {
+  channel: string | null;
+  provider: string | null;
+  status: AgentGatewaySessionStatus | null;
+} => ({
+  channel: toOptionalNormalizedString(filters?.channel),
+  provider: toOptionalNormalizedString(filters?.provider),
+  status: toOptionalGatewaySessionStatus(filters?.status),
+});
+
 const mapSessionRow = (row: Record<string, unknown>): AgentGatewaySession => ({
   id: String(row.id ?? ''),
   channel: String(row.channel ?? ''),
@@ -142,14 +200,59 @@ const toJsonString = (value: unknown, fallback: '{}' | '[]' = '{}') => {
   }
 };
 
+const toBoundedInteger = (
+  value: number,
+  fallback: number,
+  min: number,
+  max: number,
+) => {
+  if (!Number.isFinite(value)) {
+    return fallback;
+  }
+  const normalized = Math.floor(value);
+  if (normalized < min) {
+    return min;
+  }
+  if (normalized > max) {
+    return max;
+  }
+  return normalized;
+};
+
 export class AgentGatewayServiceImpl implements AgentGatewayService {
   private readonly sessions = new Map<string, SessionState>();
   private readonly externalSessions = new Map<string, string>();
   private readonly enableBackgroundPersistence: boolean;
+  private readonly autoCompactTrigger: number;
+  private readonly autoCompactKeepRecent: number;
 
-  constructor(options?: { enableBackgroundPersistence?: boolean }) {
+  constructor(options?: AgentGatewayServiceOptions) {
     this.enableBackgroundPersistence =
       options?.enableBackgroundPersistence ?? process.env.NODE_ENV !== 'test';
+    const autoCompactTriggerRaw =
+      options?.autoCompactTrigger ??
+      Number(
+        process.env.AGENT_GATEWAY_AUTO_COMPACT_TRIGGER ??
+          DEFAULT_AUTO_COMPACT_TRIGGER,
+      );
+    this.autoCompactTrigger = toBoundedInteger(
+      autoCompactTriggerRaw,
+      DEFAULT_AUTO_COMPACT_TRIGGER,
+      MIN_AUTO_COMPACT_TRIGGER,
+      MAX_EVENT_BUFFER,
+    );
+    const autoCompactKeepRecentRaw =
+      options?.autoCompactKeepRecent ??
+      Number(
+        process.env.AGENT_GATEWAY_AUTO_COMPACT_KEEP_RECENT ??
+          DEFAULT_COMPACT_KEEP_RECENT,
+      );
+    this.autoCompactKeepRecent = toBoundedInteger(
+      autoCompactKeepRecentRaw,
+      Math.min(DEFAULT_COMPACT_KEEP_RECENT, this.autoCompactTrigger - 1),
+      1,
+      Math.max(1, this.autoCompactTrigger - 1),
+    );
   }
 
   createSession(input: CreateAgentGatewaySessionInput): AgentGatewaySession {
@@ -260,22 +363,54 @@ export class AgentGatewayServiceImpl implements AgentGatewayService {
     });
   }
 
-  listSessions(limit = DEFAULT_LIST_LIMIT): AgentGatewaySession[] {
+  listSessions(
+    limit = DEFAULT_LIST_LIMIT,
+    filters?: AgentGatewaySessionListFilters,
+  ): AgentGatewaySession[] {
     const safeLimit = Number.isFinite(limit)
       ? Math.max(1, Math.min(Math.floor(limit), MAX_LIST_LIMIT))
       : DEFAULT_LIST_LIMIT;
+    const normalizedFilters = normalizeSessionListFilters(filters);
 
     return Array.from(this.sessions.values())
-      .map((state) => state.session)
-      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+      .filter((state) => {
+        if (
+          normalizedFilters.channel &&
+          toOptionalNormalizedString(state.session.channel) !==
+            normalizedFilters.channel
+        ) {
+          return false;
+        }
+        if (
+          normalizedFilters.status &&
+          state.session.status !== normalizedFilters.status
+        ) {
+          return false;
+        }
+        if (
+          normalizedFilters.provider &&
+          !hasProviderInState(state, normalizedFilters.provider)
+        ) {
+          return false;
+        }
+        return true;
+      })
+      .sort((left, right) =>
+        right.session.updatedAt.localeCompare(left.session.updatedAt),
+      )
       .slice(0, safeLimit)
+      .map((state) => state.session)
       .map((session) => cloneSession(session));
   }
 
-  async listPersistedSessions(limit = DEFAULT_LIST_LIMIT) {
+  async listPersistedSessions(
+    limit = DEFAULT_LIST_LIMIT,
+    filters?: AgentGatewaySessionListFilters,
+  ) {
     const safeLimit = Number.isFinite(limit)
       ? Math.max(1, Math.min(Math.floor(limit), MAX_LIST_LIMIT))
       : DEFAULT_LIST_LIMIT;
+    const normalizedFilters = normalizeSessionListFilters(filters);
     const result = await db.query(
       `SELECT
          id,
@@ -288,9 +423,31 @@ export class AgentGatewayServiceImpl implements AgentGatewayService {
          created_at,
          updated_at
        FROM agent_gateway_sessions
+       WHERE
+         ($2::text IS NULL OR LOWER(channel) = $2)
+         AND ($3::text IS NULL OR LOWER(status) = $3)
+         AND (
+           $4::text IS NULL OR EXISTS (
+             SELECT 1
+             FROM agent_gateway_events event_rows
+             WHERE event_rows.session_id = agent_gateway_sessions.id
+               AND LOWER(
+                 COALESCE(
+                   event_rows.payload->>'selectedProvider',
+                   event_rows.payload->>'provider',
+                   ''
+                 )
+               ) = $4
+           )
+         )
        ORDER BY updated_at DESC
        LIMIT $1`,
-      [safeLimit],
+      [
+        safeLimit,
+        normalizedFilters.channel,
+        normalizedFilters.status,
+        normalizedFilters.provider,
+      ],
     );
     return result.rows.map((row) => mapSessionRow(toRecord(row)));
   }
@@ -387,15 +544,45 @@ export class AgentGatewayServiceImpl implements AgentGatewayService {
       createdAt: new Date().toISOString(),
     };
     state.events.push(event);
-    if (state.events.length > MAX_EVENT_BUFFER) {
-      state.events.splice(0, state.events.length - MAX_EVENT_BUFFER);
+    let autoCompactResult: AgentGatewaySessionCompactResult | null = null;
+    if (state.events.length > this.autoCompactTrigger) {
+      autoCompactResult = this.compactSessionState(
+        state,
+        this.autoCompactKeepRecent,
+        'auto_buffer_limit',
+      );
+    } else {
+      state.session.updatedAt = event.createdAt;
     }
-    state.session.updatedAt = event.createdAt;
-    this.runBackgroundTask(
-      () => this.persistEvent(event),
-      'persistEvent:append',
-      state.session.id,
-    );
+
+    if (autoCompactResult) {
+      this.runBackgroundTask(
+        () => this.rewritePersistedEvents(state.session.id, state.events),
+        'persistEvent:auto_compact_rewrite',
+        state.session.id,
+      );
+      this.runBackgroundTask(
+        () =>
+          this.recordTelemetry('agent_gateway_session_compact_auto', {
+            sessionId: state.session.id,
+            channel: state.session.channel,
+            externalSessionId: state.session.externalSessionId,
+            keepRecent: autoCompactResult.keepRecent,
+            totalBefore: autoCompactResult.totalBefore,
+            totalAfter: autoCompactResult.totalAfter,
+            prunedCount: autoCompactResult.prunedCount,
+            eventTypeCounts: autoCompactResult.eventTypeCounts,
+          }),
+        'recordTelemetry:session_compact_auto',
+        state.session.id,
+      );
+    } else {
+      this.runBackgroundTask(
+        () => this.persistEvent(event),
+        'persistEvent:append',
+        state.session.id,
+      );
+    }
     this.runBackgroundTask(
       () => this.persistSession(state.session),
       'persistSession:append',
@@ -545,8 +732,40 @@ export class AgentGatewayServiceImpl implements AgentGatewayService {
     }
 
     const normalizedKeepRecent = Number.isFinite(keepRecent)
-      ? Math.max(1, Math.min(Math.floor(keepRecent), MAX_EVENT_BUFFER - 1))
+      ? keepRecent
       : DEFAULT_COMPACT_KEEP_RECENT;
+    const compactResult = this.compactSessionState(
+      state,
+      normalizedKeepRecent,
+      'manual',
+    );
+
+    await this.rewritePersistedEvents(state.session.id, state.events);
+    await this.persistSession(state.session);
+    await this.recordTelemetry('agent_gateway_session_compact', {
+      sessionId: state.session.id,
+      channel: state.session.channel,
+      externalSessionId: state.session.externalSessionId,
+      keepRecent: compactResult.keepRecent,
+      totalBefore: compactResult.totalBefore,
+      totalAfter: state.events.length,
+      prunedCount: compactResult.prunedCount,
+    });
+
+    return compactResult;
+  }
+
+  private compactSessionState(
+    state: SessionState,
+    keepRecent: number,
+    reason: 'manual' | 'auto_buffer_limit',
+  ): AgentGatewaySessionCompactResult {
+    const normalizedKeepRecent = toBoundedInteger(
+      keepRecent,
+      Math.min(DEFAULT_COMPACT_KEEP_RECENT, MAX_EVENT_BUFFER - 1),
+      1,
+      MAX_EVENT_BUFFER - 1,
+    );
 
     const totalBefore = state.events.length;
     const splitIndex = Math.max(0, totalBefore - normalizedKeepRecent);
@@ -568,6 +787,7 @@ export class AgentGatewayServiceImpl implements AgentGatewayService {
       toRole: null,
       type: 'session_compacted',
       payload: {
+        reason,
         keepRecent: normalizedKeepRecent,
         totalBefore,
         prunedCount: prunedEvents.length,
@@ -585,23 +805,6 @@ export class AgentGatewayServiceImpl implements AgentGatewayService {
     }
     state.session.updatedAt = compactEvent.createdAt;
 
-    await db.query('DELETE FROM agent_gateway_events WHERE session_id = $1', [
-      state.session.id,
-    ]);
-    for (const event of state.events) {
-      await this.persistEvent(event);
-    }
-    await this.persistSession(state.session);
-    await this.recordTelemetry('agent_gateway_session_compact', {
-      sessionId: state.session.id,
-      channel: state.session.channel,
-      externalSessionId: state.session.externalSessionId,
-      keepRecent: normalizedKeepRecent,
-      totalBefore,
-      totalAfter: state.events.length,
-      prunedCount: prunedEvents.length,
-    });
-
     return {
       session: cloneSession(state.session),
       event: cloneEvent(compactEvent),
@@ -612,6 +815,18 @@ export class AgentGatewayServiceImpl implements AgentGatewayService {
       prunedCount: prunedEvents.length,
       eventTypeCounts,
     };
+  }
+
+  private async rewritePersistedEvents(
+    sessionId: string,
+    events: AgentGatewayEvent[],
+  ): Promise<void> {
+    await db.query('DELETE FROM agent_gateway_events WHERE session_id = $1', [
+      sessionId,
+    ]);
+    for (const event of events) {
+      await this.persistEvent(event);
+    }
   }
 
   private getExternalKey(channel: string, externalSessionId: string) {

@@ -3,7 +3,28 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { formatPredictionTrustTier } from '../lib/predictionTier';
+import type { ProvenanceIndicatorView } from '../lib/feedTypes';
+import {
+  buildPredictionMarketSnapshot,
+  type PredictionMarketSnapshot,
+} from '../lib/predictionMarket';
+import {
+  formatPredictionMarketPoolLine,
+  formatPredictionNetPointsLine,
+  formatPredictionOddsLine,
+  formatPredictionPayoutLine,
+  formatPredictionUsageLine,
+} from '../lib/predictionMarketText';
+import {
+  derivePredictionUsageLimitState,
+  isPredictionStakeWithinBounds,
+  normalizePredictionStakeBounds,
+  resolvePredictionStakeInput,
+} from '../lib/predictionStake';
+import {
+  formatPredictionTrustTier,
+  type PredictionTrustTier,
+} from '../lib/predictionTier';
 import {
   CardDetails,
   ImagePair,
@@ -15,9 +36,9 @@ import {
 } from './CardPrimitives';
 
 type BattlePredictionOutcome = 'merge' | 'reject';
-type BattlePredictionTrustTier = 'entry' | 'regular' | 'trusted' | 'elite';
 
 interface BattlePredictionState {
+  authRequired?: boolean;
   dailyStakeCapPoints?: number | null;
   dailyStakeUsedPoints?: number | null;
   dailySubmissionCap?: number | null;
@@ -34,7 +55,7 @@ interface BattlePredictionState {
   potentialRejectPayout?: number | null;
   rejectOdds?: number | null;
   pending?: boolean;
-  trustTier?: BattlePredictionTrustTier | null;
+  trustTier?: PredictionTrustTier | null;
 }
 
 interface BattleCardProps {
@@ -52,6 +73,7 @@ interface BattleCardProps {
   updatedAt?: string;
   beforeImageUrl?: string;
   afterImageUrl?: string;
+  provenance?: ProvenanceIndicatorView;
   observerActionState?: Partial<Record<ObserverActionType, boolean>>;
   observerActionPending?: ObserverActionType | null;
   observerAuthRequiredMessage?: string | null;
@@ -63,39 +85,34 @@ interface BattleCardProps {
   predictionState?: BattlePredictionState;
 }
 
-interface BattlePredictionDerived {
-  dailyStakeCapPoints: number | null;
+interface BattlePredictionDerived extends PredictionMarketSnapshot {
   dailyStakeCapReached: boolean;
-  dailyStakeUsedPoints: number | null;
-  dailySubmissionCap: number | null;
   dailySubmissionCapReached: boolean;
-  dailySubmissionsUsed: number | null;
-  hasMarketSummary: boolean;
-  hasObserverMarketProfile: boolean;
-  hasPotentialPayout: boolean;
-  hasUsageCaps: boolean;
-  marketPoolPoints: number | null;
-  mergeOddsPercent: number | null;
-  observerNetPoints: number | null;
-  potentialMergePayout: number | null;
-  potentialRejectPayout: number | null;
   predictionDisabled: boolean;
-  rejectOddsPercent: number | null;
-  trustTier: BattlePredictionTrustTier | null;
+  stakeOutsideBounds: boolean;
 }
 
-const asPredictionNumber = (value: number | null | undefined) =>
-  typeof value === 'number' ? value : null;
+interface StakeInputResolution {
+  adjustmentHint: string | null;
+  stakePoints: number;
+}
 
-const getStakeBounds = (predictionState?: BattlePredictionState) => {
-  const minStakePoints = Math.max(1, predictionState?.minStakePoints ?? 5);
-  const maxStakePoints = Math.max(
-    minStakePoints,
-    predictionState?.maxStakePoints ?? 500,
-  );
-
-  return { minStakePoints, maxStakePoints };
-};
+interface BattleCardFooterProps {
+  activityLabel: string;
+  compact?: boolean;
+  fixCount: number;
+  glowUpScore: number;
+  id: string;
+  impact: number;
+  observerActionPending?: ObserverActionType | null;
+  observerActionState?: Partial<Record<ObserverActionType, boolean>>;
+  observerAuthRequiredMessage?: string | null;
+  onObserverAction?: (action: ObserverActionType) => Promise<void> | void;
+  prCount: number;
+  provenance?: ProvenanceIndicatorView;
+  signal: string;
+  t: (key: string) => string;
+}
 
 const derivePredictionState = (
   predictionState: BattlePredictionState | undefined,
@@ -103,93 +120,229 @@ const derivePredictionState = (
   minStakePoints: number,
   maxStakePoints: number,
 ): BattlePredictionDerived => {
-  const dailyStakeCapPoints = asPredictionNumber(
-    predictionState?.dailyStakeCapPoints,
-  );
-  const dailyStakeUsedPoints = asPredictionNumber(
-    predictionState?.dailyStakeUsedPoints,
-  );
-  const dailySubmissionCap = asPredictionNumber(
-    predictionState?.dailySubmissionCap,
-  );
-  const dailySubmissionsUsed = asPredictionNumber(
-    predictionState?.dailySubmissionsUsed,
-  );
+  const marketSnapshot = buildPredictionMarketSnapshot({
+    dailyStakeCapPoints: predictionState?.dailyStakeCapPoints,
+    dailyStakeUsedPoints: predictionState?.dailyStakeUsedPoints,
+    dailySubmissionCap: predictionState?.dailySubmissionCap,
+    dailySubmissionsUsed: predictionState?.dailySubmissionsUsed,
+    marketPoolPoints: predictionState?.marketPoolPoints,
+    mergeOdds: predictionState?.mergeOdds,
+    observerNetPoints: predictionState?.observerNetPoints,
+    potentialMergePayout: predictionState?.potentialMergePayout,
+    potentialRejectPayout: predictionState?.potentialRejectPayout,
+    rejectOdds: predictionState?.rejectOdds,
+    trustTier: predictionState?.trustTier,
+  });
   const hasExistingPrediction = Boolean(predictionState?.latestOutcome);
-  const stakeOutsideBounds =
-    !Number.isInteger(stakePoints) ||
-    stakePoints < minStakePoints ||
-    stakePoints > maxStakePoints;
-  const projectedStakeWithoutPrediction =
-    dailyStakeUsedPoints !== null ? dailyStakeUsedPoints + stakePoints : null;
-  const dailyStakeCapReached =
-    !hasExistingPrediction &&
-    dailyStakeCapPoints !== null &&
-    projectedStakeWithoutPrediction !== null &&
-    projectedStakeWithoutPrediction > dailyStakeCapPoints;
-  const dailySubmissionCapReached =
-    !hasExistingPrediction &&
-    dailySubmissionCap !== null &&
-    dailySubmissionsUsed !== null &&
-    dailySubmissionsUsed >= dailySubmissionCap;
+  const stakeOutsideBounds = !isPredictionStakeWithinBounds(stakePoints, {
+    minStakePoints,
+    maxStakePoints,
+  });
+  const { dailyStakeCapReached, dailySubmissionCapReached } =
+    derivePredictionUsageLimitState({
+      hasExistingPrediction,
+      stakePoints,
+      dailyStakeCapPoints: marketSnapshot.dailyStakeCapPoints,
+      dailyStakeUsedPoints: marketSnapshot.dailyStakeUsedPoints,
+      dailySubmissionCap: marketSnapshot.dailySubmissionCap,
+      dailySubmissionsUsed: marketSnapshot.dailySubmissionsUsed,
+    });
   const predictionDisabled =
     stakeOutsideBounds || dailyStakeCapReached || dailySubmissionCapReached;
 
-  const marketPoolPoints = asPredictionNumber(
-    predictionState?.marketPoolPoints,
-  );
-  const mergeOddsPercent =
-    typeof predictionState?.mergeOdds === 'number'
-      ? Math.max(0, Math.min(100, Math.round(predictionState.mergeOdds * 100)))
-      : null;
-  const rejectOddsPercent =
-    typeof predictionState?.rejectOdds === 'number'
-      ? Math.max(0, Math.min(100, Math.round(predictionState.rejectOdds * 100)))
-      : null;
-  const potentialMergePayout = asPredictionNumber(
-    predictionState?.potentialMergePayout,
-  );
-  const potentialRejectPayout = asPredictionNumber(
-    predictionState?.potentialRejectPayout,
-  );
-  const observerNetPoints = asPredictionNumber(
-    predictionState?.observerNetPoints,
-  );
-  const trustTier = predictionState?.trustTier ?? null;
-  const hasMarketSummary =
-    marketPoolPoints !== null ||
-    mergeOddsPercent !== null ||
-    rejectOddsPercent !== null;
-  const hasPotentialPayout =
-    potentialMergePayout !== null || potentialRejectPayout !== null;
-  const hasObserverMarketProfile =
-    observerNetPoints !== null || trustTier !== null;
-  const hasUsageCaps =
-    dailyStakeCapPoints !== null ||
-    dailyStakeUsedPoints !== null ||
-    dailySubmissionCap !== null ||
-    dailySubmissionsUsed !== null;
-
   return {
-    dailyStakeCapPoints,
+    ...marketSnapshot,
     dailyStakeCapReached,
-    dailyStakeUsedPoints,
-    dailySubmissionCap,
     dailySubmissionCapReached,
-    dailySubmissionsUsed,
-    hasMarketSummary,
-    hasObserverMarketProfile,
-    hasPotentialPayout,
-    hasUsageCaps,
-    marketPoolPoints,
-    mergeOddsPercent,
-    observerNetPoints,
-    potentialMergePayout,
-    potentialRejectPayout,
     predictionDisabled,
-    rejectOddsPercent,
-    trustTier,
+    stakeOutsideBounds,
   };
+};
+
+const getPredictionLimitReason = (
+  dailyStakeCapReached: boolean,
+  dailySubmissionCapReached: boolean,
+  t: (key: string) => string,
+) => {
+  if (dailyStakeCapReached) {
+    return t('prediction.limitStakeCapReached');
+  }
+  if (dailySubmissionCapReached) {
+    return t('prediction.limitSubmissionCapReached');
+  }
+  return null;
+};
+
+const buildStakeRangeMessage = (
+  t: (key: string) => string,
+  minStakePoints: number,
+  maxStakePoints: number,
+) =>
+  `${t('prediction.stakeAutoAdjusted')} ${minStakePoints}-${maxStakePoints} FIN.`;
+
+const resolveStakeInput = (
+  rawValue: string,
+  minStakePoints: number,
+  maxStakePoints: number,
+  t: (key: string) => string,
+): StakeInputResolution => {
+  const { adjusted, stakePoints } = resolvePredictionStakeInput({
+    rawValue,
+    bounds: { minStakePoints, maxStakePoints },
+    fallbackStakePoints: minStakePoints,
+  });
+  return {
+    adjustmentHint: adjusted
+      ? buildStakeRangeMessage(t, minStakePoints, maxStakePoints)
+      : null,
+    stakePoints,
+  };
+};
+
+const getDecisionPresentation = (
+  decision: BattleCardProps['decision'],
+  t: (key: string) => string,
+) => {
+  if (decision === 'merged') {
+    return {
+      className: 'border tag-success',
+      label: t('battle.merged'),
+    };
+  }
+  if (decision === 'changes_requested') {
+    return {
+      className: 'border tag-alert',
+      label: t('battle.changesRequested'),
+    };
+  }
+  return {
+    className: 'border border-border/25 bg-muted/60 text-foreground',
+    label: t('battle.pending'),
+  };
+};
+
+const getProvenancePresentation = (
+  provenance: ProvenanceIndicatorView | undefined,
+  t: (key: string) => string,
+) => {
+  if (!provenance) {
+    return null;
+  }
+  if (provenance.authenticityStatus === 'verified') {
+    return {
+      className: 'tag-success border',
+      label: t('feed.provenance.verified'),
+    };
+  }
+  if (provenance.authenticityStatus === 'metadata_only') {
+    return {
+      className: 'tag-hot border',
+      label: t('feed.provenance.traceable'),
+    };
+  }
+  return {
+    className: 'border border-border/25 bg-muted/60 text-foreground',
+    label: t('feed.provenance.unverified'),
+  };
+};
+
+const BattleCardFooter = ({
+  activityLabel,
+  compact,
+  fixCount,
+  glowUpScore,
+  id,
+  impact,
+  observerActionPending,
+  observerActionState,
+  observerAuthRequiredMessage,
+  onObserverAction,
+  prCount,
+  provenance,
+  signal,
+  t,
+}: BattleCardFooterProps) => {
+  if (compact) {
+    return (
+      <section className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-primary/35 bg-primary/12 px-2 py-0.5 font-semibold text-primary">
+            +{glowUpScore.toFixed(1)}%
+          </span>
+          <span className="text-muted-foreground">
+            {t('battle.metrics.prsFix')}: {prCount} / {fixCount}
+          </span>
+          {provenance && (
+            <span className="text-muted-foreground">
+              {t('feed.provenance.spark')}{' '}
+              {provenance.humanSparkScore.toFixed(0)}
+            </span>
+          )}
+        </div>
+        <Link
+          className="inline-flex min-h-8 items-center rounded-full border border-primary/35 bg-primary/10 px-3 py-1.5 font-semibold text-[11px] text-primary transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          href={`/drafts/${id}`}
+        >
+          {t('battle.openBattle')}
+        </Link>
+      </section>
+    );
+  }
+
+  return (
+    <>
+      <CardDetails summaryLabel={t('card.viewDetails')}>
+        <StatsGrid
+          tiles={[
+            {
+              label: t('changeCard.metrics.glowUp'),
+              value: `+${glowUpScore.toFixed(1)}%`,
+              colorClass: 'text-primary',
+            },
+            {
+              label: t('changeCard.metrics.impact'),
+              value: `+${impact.toFixed(1)}`,
+              colorClass: 'text-primary',
+            },
+            { label: t('studioDetail.metrics.signal'), value: signal },
+            {
+              label: t('battle.metrics.prsFix'),
+              value: `${prCount} / ${fixCount}`,
+            },
+          ]}
+        />
+        <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
+          <span>
+            {t('battle.idLabel')}: {id}
+          </span>
+          <span>{activityLabel}</span>
+          {provenance && (
+            <span>
+              {t('feed.provenance.spark')}{' '}
+              {provenance.humanSparkScore.toFixed(0)}
+            </span>
+          )}
+        </div>
+
+        <ObserverActions
+          actionState={observerActionState}
+          authRequiredMessage={observerAuthRequiredMessage}
+          onAction={onObserverAction}
+          pendingAction={observerActionPending}
+          title={t('battle.observerActions')}
+        />
+      </CardDetails>
+
+      <div className="mt-2 flex items-center justify-end text-muted-foreground text-xs">
+        <Link
+          className="font-semibold text-[11px] text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          href={`/drafts/${id}`}
+        >
+          {t('battle.openBattle')}
+        </Link>
+      </div>
+    </>
+  );
 };
 
 export const BattleCard = ({
@@ -207,6 +360,7 @@ export const BattleCard = ({
   updatedAt,
   beforeImageUrl,
   afterImageUrl,
+  provenance,
   observerActionState,
   observerActionPending,
   observerAuthRequiredMessage,
@@ -215,16 +369,23 @@ export const BattleCard = ({
   predictionState,
 }: BattleCardProps) => {
   const { t } = useLanguage();
-  const { minStakePoints, maxStakePoints } = getStakeBounds(predictionState);
+  const { minStakePoints, maxStakePoints } = normalizePredictionStakeBounds({
+    minStakePoints: predictionState?.minStakePoints,
+    maxStakePoints: predictionState?.maxStakePoints,
+  });
   const [voteState, setVoteState] = useState<{ left: number; right: number }>(
     () => normalizeVotes(leftVote, rightVote),
   );
   const [userVote, setUserVote] = useState<'left' | 'right' | null>(null);
   const [stakePoints, setStakePoints] = useState<number>(
-    Math.max(
-      minStakePoints,
-      Math.min(maxStakePoints, predictionState?.latestStakePoints ?? 10),
-    ),
+    resolvePredictionStakeInput({
+      rawValue: predictionState?.latestStakePoints ?? 10,
+      bounds: { minStakePoints, maxStakePoints },
+      fallbackStakePoints: 10,
+    }).stakePoints,
+  );
+  const [stakeAdjustmentHint, setStakeAdjustmentHint] = useState<string | null>(
+    null,
   );
 
   useEffect(() => {
@@ -234,11 +395,13 @@ export const BattleCard = ({
 
   useEffect(() => {
     setStakePoints(
-      Math.max(
-        minStakePoints,
-        Math.min(maxStakePoints, predictionState?.latestStakePoints ?? 10),
-      ),
+      resolvePredictionStakeInput({
+        rawValue: predictionState?.latestStakePoints ?? 10,
+        bounds: { minStakePoints, maxStakePoints },
+        fallbackStakePoints: 10,
+      }).stakePoints,
     );
+    setStakeAdjustmentHint(null);
   }, [maxStakePoints, minStakePoints, predictionState?.latestStakePoints]);
 
   const voteLabel = useMemo(() => {
@@ -262,61 +425,50 @@ export const BattleCard = ({
     setUserVote(side);
   };
 
-  const decisionUi = useMemo(() => {
-    if (decision === 'merged') {
-      return {
-        className: 'border tag-success',
-        label: t('battle.merged'),
-      };
-    }
-    if (decision === 'changes_requested') {
-      return {
-        className: 'border tag-alert',
-        label: t('battle.changesRequested'),
-      };
-    }
-    return {
-      className: 'border border-border/25 bg-muted/60 text-foreground',
-      label: t('battle.pending'),
-    };
-  }, [decision, t]);
+  const decisionUi = useMemo(
+    () => getDecisionPresentation(decision, t),
+    [decision, t],
+  );
+  const provenancePresentation = useMemo(
+    () => getProvenancePresentation(provenance, t),
+    [provenance, t],
+  );
 
   const impact = Math.max(0.5, glowUpScore / 4.8);
   const signal = signalForGlowUp(glowUpScore, t);
-  const {
-    dailyStakeCapPoints,
-    dailyStakeCapReached,
-    dailyStakeUsedPoints,
-    dailySubmissionCap,
-    dailySubmissionCapReached,
-    dailySubmissionsUsed,
-    hasMarketSummary,
-    hasObserverMarketProfile,
-    hasPotentialPayout,
-    hasUsageCaps,
-    marketPoolPoints,
-    mergeOddsPercent,
-    observerNetPoints,
-    potentialMergePayout,
-    potentialRejectPayout,
-    predictionDisabled,
-    rejectOddsPercent,
-    trustTier,
-  } = derivePredictionState(
+  const predictionDerived = derivePredictionState(
     predictionState,
     stakePoints,
     minStakePoints,
     maxStakePoints,
   );
+  const {
+    dailyStakeCapReached,
+    dailySubmissionCapReached,
+    hasMarketSummary,
+    hasObserverMarketProfile,
+    hasPotentialPayout,
+    hasUsageCaps,
+    observerNetPoints,
+    predictionDisabled,
+    stakeOutsideBounds,
+    trustTier,
+  } = predictionDerived;
   const predictionSummary = predictionState?.latestOutcome
     ? `${t('prediction.yourPrediction')} ${predictionState.latestOutcome} | ${t('prediction.stakeLabel')} ${predictionState.latestStakePoints ?? stakePoints}`
     : null;
-  let limitReason: string | null = null;
-  if (dailyStakeCapReached) {
-    limitReason = t('prediction.limitStakeCapReached');
-  } else if (dailySubmissionCapReached) {
-    limitReason = t('prediction.limitSubmissionCapReached');
-  }
+  const showPredictionSignInCta = Boolean(
+    predictionState?.authRequired && predictionState?.error,
+  );
+  const limitReason = getPredictionLimitReason(
+    dailyStakeCapReached,
+    dailySubmissionCapReached,
+    t,
+  );
+  const stakeRangeReason = stakeOutsideBounds
+    ? `${t('prediction.invalidStakeRange')} ${minStakePoints}-${maxStakePoints} FIN.`
+    : null;
+  const predictionDisabledReason = limitReason ?? stakeRangeReason;
 
   const formattedTier = formatPredictionTrustTier(trustTier, t);
   const quickStakePoints = Array.from(
@@ -326,14 +478,6 @@ export const BattleCard = ({
       maxStakePoints,
     ]),
   ).sort((left, right) => left - right);
-  const dailyStakeRemainingPoints =
-    dailyStakeCapPoints !== null && dailyStakeUsedPoints !== null
-      ? Math.max(0, dailyStakeCapPoints - dailyStakeUsedPoints)
-      : null;
-  const dailySubmissionsRemaining =
-    dailySubmissionCap !== null && dailySubmissionsUsed !== null
-      ? Math.max(0, dailySubmissionCap - dailySubmissionsUsed)
-      : null;
 
   const handlePredict = (outcome: BattlePredictionOutcome) => {
     if (!onPredict || predictionDisabled || predictionState?.pending) {
@@ -371,11 +515,20 @@ export const BattleCard = ({
             {activityLabel}
           </p>
         </div>
-        <span
-          className={`rounded-full px-2 py-1 font-semibold text-[10px] uppercase tracking-wide ${decisionUi.className}`}
-        >
-          {decisionUi.label}
-        </span>
+        <div className="flex flex-col items-end gap-1">
+          <span
+            className={`rounded-full px-2 py-1 font-semibold text-[10px] uppercase tracking-wide ${decisionUi.className}`}
+          >
+            {decisionUi.label}
+          </span>
+          {provenancePresentation && (
+            <span
+              className={`rounded-full px-2 py-1 font-semibold text-[10px] uppercase tracking-wide ${provenancePresentation.className}`}
+            >
+              {provenancePresentation.label}
+            </span>
+          )}
+        </div>
       </header>
 
       <section className={compact ? 'mt-3' : 'mt-4'}>
@@ -466,17 +619,15 @@ export const BattleCard = ({
                   max={maxStakePoints}
                   min={minStakePoints}
                   onChange={(event) => {
-                    const value = Number(event.target.value);
-                    if (!Number.isFinite(value)) {
-                      setStakePoints(minStakePoints);
-                      return;
-                    }
-                    setStakePoints(
-                      Math.max(
+                    const { adjustmentHint, stakePoints: resolvedStakePoints } =
+                      resolveStakeInput(
+                        event.target.value,
                         minStakePoints,
-                        Math.min(maxStakePoints, Math.round(value)),
-                      ),
-                    );
+                        maxStakePoints,
+                        t,
+                      );
+                    setStakePoints(resolvedStakePoints);
+                    setStakeAdjustmentHint(adjustmentHint);
                   }}
                   step={1}
                   type="number"
@@ -494,7 +645,10 @@ export const BattleCard = ({
                         : 'border-border/25 bg-background/65 text-muted-foreground hover:bg-background/78 hover:text-foreground'
                     }`}
                     key={quickStakePoint}
-                    onClick={() => setStakePoints(quickStakePoint)}
+                    onClick={() => {
+                      setStakePoints(quickStakePoint);
+                      setStakeAdjustmentHint(null);
+                    }}
                     type="button"
                   >
                     {quickStakePoint}
@@ -534,115 +688,82 @@ export const BattleCard = ({
                 {predictionSummary}
               </p>
             ) : null}
-            {limitReason ? (
-              <p className="mt-1 text-[11px] text-destructive">{limitReason}</p>
+            {predictionDisabledReason ? (
+              <p className="mt-1 text-[11px] text-destructive">
+                {predictionDisabledReason}
+              </p>
+            ) : null}
+            {stakeAdjustmentHint ? (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {stakeAdjustmentHint}
+              </p>
             ) : null}
             {hasMarketSummary ? (
               <p className="mt-1 text-[11px] text-muted-foreground">
-                {t('prediction.marketPool')} {marketPoolPoints ?? 0} FIN |{' '}
-                {t('prediction.oddsLabel')} {t('pr.merge')}{' '}
-                {mergeOddsPercent ?? 0}% / {t('pr.reject')}{' '}
-                {rejectOddsPercent ?? 0}%
+                {formatPredictionMarketPoolLine(t, predictionDerived)}
+              </p>
+            ) : null}
+            {hasMarketSummary ? (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {formatPredictionOddsLine(t, predictionDerived)}
               </p>
             ) : null}
             {hasPotentialPayout ? (
               <p className="mt-1 text-[11px] text-muted-foreground">
-                {t('prediction.potentialPayoutLabel')} {t('pr.merge')}{' '}
-                {potentialMergePayout ?? 0} FIN / {t('pr.reject')}{' '}
-                {potentialRejectPayout ?? 0} FIN
+                {formatPredictionPayoutLine(t, predictionDerived)}
               </p>
             ) : null}
             {hasObserverMarketProfile ? (
               <p className="mt-1 text-[11px] text-muted-foreground">
-                {t('prediction.netPoints')} {observerNetPoints ?? 0} FIN |{' '}
+                {formatPredictionNetPointsLine(t, observerNetPoints)} |{' '}
                 {t('prediction.tierLabel')} {formattedTier}
               </p>
             ) : null}
             {hasUsageCaps ? (
               <p className="mt-1 text-[11px] text-muted-foreground">
-                {t('prediction.dailyStakeLabel')} {dailyStakeUsedPoints ?? 0}/
-                {dailyStakeCapPoints ?? '-'} ({t('observerProfile.remaining')}{' '}
-                {dailyStakeRemainingPoints ?? '-'}) |{' '}
-                {t('prediction.dailySubmissionsLabel')}{' '}
-                {dailySubmissionsUsed ?? 0}/{dailySubmissionCap ?? '-'} (
-                {t('observerProfile.remaining')}{' '}
-                {dailySubmissionsRemaining ?? '-'})
+                {formatPredictionUsageLine(t, predictionDerived, {
+                  includeRemaining: true,
+                  unknownCapLabel: '-',
+                })}
               </p>
             ) : null}
             {predictionState?.error ? (
               <p className="mt-1 text-[11px] text-destructive" role="alert">
-                {predictionState.error}
+                {showPredictionSignInCta ? (
+                  <>
+                    {t('prediction.signInRequired')}{' '}
+                    <Link
+                      className="font-semibold underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      href="/login"
+                    >
+                      {t('observerProfile.signIn')}
+                    </Link>
+                  </>
+                ) : (
+                  predictionState.error
+                )}
               </p>
             ) : null}
           </div>
         ) : null}
       </section>
 
-      {compact ? (
-        <section className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-primary/35 bg-primary/12 px-2 py-0.5 font-semibold text-primary">
-              +{glowUpScore.toFixed(1)}%
-            </span>
-            <span className="text-muted-foreground">
-              {t('battle.metrics.prsFix')}: {prCount} / {fixCount}
-            </span>
-          </div>
-          <Link
-            className="inline-flex min-h-8 items-center rounded-full border border-primary/35 bg-primary/10 px-3 py-1.5 font-semibold text-[11px] text-primary transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            href={`/drafts/${id}`}
-          >
-            {t('battle.openBattle')}
-          </Link>
-        </section>
-      ) : (
-        <CardDetails summaryLabel={t('card.viewDetails')}>
-          <StatsGrid
-            tiles={[
-              {
-                label: t('changeCard.metrics.glowUp'),
-                value: `+${glowUpScore.toFixed(1)}%`,
-                colorClass: 'text-primary',
-              },
-              {
-                label: t('changeCard.metrics.impact'),
-                value: `+${impact.toFixed(1)}`,
-                colorClass: 'text-primary',
-              },
-              { label: t('studioDetail.metrics.signal'), value: signal },
-              {
-                label: t('battle.metrics.prsFix'),
-                value: `${prCount} / ${fixCount}`,
-              },
-            ]}
-          />
-          <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
-            <span>
-              {t('battle.idLabel')}: {id}
-            </span>
-            <span>{activityLabel}</span>
-          </div>
-
-          <ObserverActions
-            actionState={observerActionState}
-            authRequiredMessage={observerAuthRequiredMessage}
-            onAction={onObserverAction}
-            pendingAction={observerActionPending}
-            title={t('battle.observerActions')}
-          />
-        </CardDetails>
-      )}
-
-      {compact ? null : (
-        <div className="mt-2 flex items-center justify-end text-muted-foreground text-xs">
-          <Link
-            className="font-semibold text-[11px] text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            href={`/drafts/${id}`}
-          >
-            {t('battle.openBattle')}
-          </Link>
-        </div>
-      )}
+      <BattleCardFooter
+        activityLabel={activityLabel}
+        compact={compact}
+        fixCount={fixCount}
+        glowUpScore={glowUpScore}
+        id={id}
+        impact={impact}
+        observerActionPending={observerActionPending}
+        observerActionState={observerActionState}
+        observerAuthRequiredMessage={observerAuthRequiredMessage}
+        onObserverAction={onObserverAction}
+        prCount={prCount}
+        provenance={provenance}
+        signal={signal}
+        t={t}
+      />
     </article>
   );
 };

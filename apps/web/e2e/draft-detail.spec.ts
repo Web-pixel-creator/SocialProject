@@ -15,7 +15,9 @@ interface DraftDetailMockOptions {
   digestSeenDelayMs?: number;
   digestStatus?: number;
   predictionStatus?: number;
+  predictionSummaryErrorBody?: unknown;
   predictionSummaryStatus?: number;
+  predictionSummaryStatuses?: number[];
   predictionSummaryAfterSubmit?: unknown;
   predictionSummaryResponseBody?: unknown;
   predictionResponseBody?: unknown;
@@ -36,7 +38,9 @@ const installDraftDetailApiMocks = async (
     digestSeenDelayMs = 0,
     digestStatus = 200,
     predictionStatus = 200,
+    predictionSummaryErrorBody = { message: 'Sign in required' },
     predictionSummaryStatus = 200,
+    predictionSummaryStatuses,
     predictionSummaryAfterSubmit = null,
     predictionSummaryResponseBody = {
       accuracy: { correct: 4, rate: 0.5, total: 8 },
@@ -53,6 +57,7 @@ const installDraftDetailApiMocks = async (
     watchlistStatus = 200,
   } = options;
   let predictionSummaryState = predictionSummaryResponseBody;
+  let predictionSummaryRequestCount = 0;
 
   await page.route('**/api/**', async (route) => {
     const request = route.request();
@@ -155,14 +160,25 @@ const installDraftDetailApiMocks = async (
     }
 
     if (method === 'GET' && path === `/api/pull-requests/${pullRequestId}/predictions`) {
+      const effectivePredictionSummaryStatus = Array.isArray(
+        predictionSummaryStatuses,
+      )
+        ? (predictionSummaryStatuses[
+            Math.min(
+              predictionSummaryRequestCount,
+              predictionSummaryStatuses.length - 1,
+            )
+          ] ?? predictionSummaryStatus)
+        : predictionSummaryStatus;
+      predictionSummaryRequestCount += 1;
       return route.fulfill({
         body: JSON.stringify(
-          predictionSummaryStatus === 200
+          effectivePredictionSummaryStatus === 200
             ? predictionSummaryState
-            : { message: 'Sign in required' },
+            : predictionSummaryErrorBody,
         ),
         contentType: 'application/json',
-        status: predictionSummaryStatus,
+        status: effectivePredictionSummaryStatus,
       });
     }
 
@@ -246,6 +262,67 @@ test.describe('Draft detail page', () => {
     await predictMergeButton.click();
     await predictionRequest;
     await expect(page.getByText(/Your prediction:\s*merge/i)).toBeVisible();
+  });
+
+  test('shows localized throttling hint and applies summary cooldown after submit', async ({
+    page,
+  }) => {
+    let predictionSummaryRequestCount = 0;
+    page.on('request', (request) => {
+      if (
+        request.method() === 'GET' &&
+        request.url().includes(`/api/pull-requests/${pullRequestId}/predictions`)
+      ) {
+        predictionSummaryRequestCount += 1;
+      }
+    });
+
+    await installDraftDetailApiMocks(page, {
+      predictionSummaryErrorBody: {
+        message: 'raw summary throttled message',
+      },
+      predictionSummaryStatuses: [200, 429, 429],
+    });
+    await navigateToDraftDetail(page, draftId);
+
+    const predictMergeButton = page.getByRole('button', {
+      name: /Predict merge/i,
+    });
+    await expect(predictMergeButton).toBeVisible();
+
+    const mergePredictionRequest = page.waitForRequest((request) => {
+      return (
+        request.method() === 'POST' &&
+        request.url().includes(`/api/pull-requests/${pullRequestId}/predict`)
+      );
+    });
+    await predictMergeButton.click();
+    await mergePredictionRequest;
+
+    await expect(
+      page.getByText(/Too many prediction requests\. Please try again shortly\./i),
+    ).toBeVisible();
+    await expect(page.getByText(/raw summary throttled message/i)).toHaveCount(
+      0,
+    );
+
+    const predictRejectButton = page.getByRole('button', {
+      name: /Predict reject/i,
+    });
+    await expect(predictRejectButton).toBeVisible();
+    const rejectPredictionRequest = page.waitForRequest((request) => {
+      return (
+        request.method() === 'POST' &&
+        request.url().includes(`/api/pull-requests/${pullRequestId}/predict`)
+      );
+    });
+    await predictRejectButton.click();
+    await rejectPredictionRequest;
+
+    await expect
+      .poll(() => predictionSummaryRequestCount)
+      .toBeLessThanOrEqual(2);
+    expect(predictionSummaryRequestCount).toBe(2);
   });
 
   test('shows prediction submit error when API fails', async ({ page }) => {

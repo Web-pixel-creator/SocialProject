@@ -854,8 +854,574 @@ describe('feed UI', () => {
     await changeAndFlush(stakeInput, '500');
     expect(stakeInput).toHaveValue(320);
     expect(
+      screen.getByText(/Stake was adjusted to allowed range:\s*5-320 FIN\./i),
+    ).toBeInTheDocument();
+    expect(
       screen.getByRole('button', { name: /^Predict merge$/i }),
     ).toBeEnabled();
+  });
+
+  test('shows localized summary-throttled message after successful battle prediction submit', async () => {
+    const draftId = '11111111-2222-3333-4444-555555555556';
+    const battlePayload = [
+      {
+        id: draftId,
+        title: 'PR Battle: Summary throttle',
+        leftLabel: 'Apex Studio',
+        rightLabel: 'Nova Forge',
+        leftVote: 61,
+        rightVote: 39,
+        glowUpScore: 13.2,
+        prCount: 7,
+        fixCount: 4,
+        decision: 'pending',
+      },
+    ];
+
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url === '/feed') {
+        return Promise.resolve({ data: [] });
+      }
+      if (url === '/feeds/battles') {
+        return Promise.resolve({ data: battlePayload });
+      }
+      if (url === '/pull-requests/pr-battle-throttle/predictions') {
+        return Promise.reject({
+          response: {
+            status: 429,
+            data: {
+              error: 'RATE_LIMITED',
+              message: 'raw summary throttled message',
+            },
+          },
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+    (apiClient.post as jest.Mock).mockImplementation((url: string) => {
+      if (url === `/drafts/${draftId}/predict`) {
+        return Promise.resolve({
+          data: {
+            pullRequestId: 'pr-battle-throttle',
+            predictedOutcome: 'merge',
+            stakePoints: 25,
+          },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    await renderFeedTabs();
+    await openTab(/Battles/i);
+    await waitFor(() =>
+      expect(
+        screen.getByText(/PR Battle: Summary throttle/i),
+      ).toBeInTheDocument(),
+    );
+
+    await clickAndFlush(
+      screen.getByRole('button', { name: /^Predict merge$/i }),
+    );
+
+    await waitFor(() =>
+      expect(apiClient.post).toHaveBeenCalledWith(
+        `/drafts/${draftId}/predict`,
+        expect.objectContaining({
+          predictedOutcome: 'merge',
+          stakePoints: 10,
+        }),
+      ),
+    );
+    await waitFor(() =>
+      expect(apiClient.get).toHaveBeenCalledWith(
+        '/pull-requests/pr-battle-throttle/predictions',
+      ),
+    );
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(
+      /Too many prediction requests\. Please try again shortly\./i,
+    );
+    expect(alert).not.toHaveTextContent(/raw summary throttled message/i);
+    expect(alert).not.toHaveTextContent(/Failed to load prediction summary/i);
+
+    expect(screen.getByText(/Your prediction:\s*merge/i)).toBeInTheDocument();
+  });
+
+  test('preserves previous battle market snapshot when summary refresh is throttled', async () => {
+    const draftId = '11111111-2222-3333-4444-555555555557';
+    const pullRequestId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeff';
+    let summaryRequests = 0;
+
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url === '/feed') {
+        return Promise.resolve({ data: [] });
+      }
+      if (url === '/feeds/battles') {
+        return Promise.resolve({
+          data: [
+            {
+              id: draftId,
+              title: 'PR Battle: Preserve summary snapshot',
+              leftLabel: 'Apex Studio',
+              rightLabel: 'Nova Forge',
+              leftVote: 52,
+              rightVote: 48,
+              glowUpScore: 8.4,
+              prCount: 4,
+              fixCount: 2,
+              decision: 'pending',
+            },
+          ],
+        });
+      }
+      if (url === `/pull-requests/${pullRequestId}/predictions`) {
+        summaryRequests += 1;
+        if (summaryRequests === 1) {
+          return Promise.resolve({
+            data: {
+              pullRequestId,
+              market: {
+                totalStakePoints: 140,
+                mergeOdds: 0.65,
+                rejectOdds: 0.35,
+                mergePayoutMultiplier: 1.54,
+                rejectPayoutMultiplier: 2.86,
+                observerNetPoints: 22,
+                trustTier: 'trusted',
+                minStakePoints: 5,
+                maxStakePoints: 300,
+                dailyStakeCapPoints: 1000,
+                dailyStakeUsedPoints: 150,
+                dailySubmissionCap: 25,
+                dailySubmissionsUsed: 3,
+              },
+            },
+          });
+        }
+        return Promise.reject({
+          response: {
+            status: 429,
+            data: { error: 'RATE_LIMITED', message: 'raw message' },
+          },
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+    (apiClient.post as jest.Mock).mockImplementation((url: string) => {
+      if (url === `/drafts/${draftId}/predict`) {
+        return Promise.resolve({
+          data: {
+            pullRequestId,
+            predictedOutcome: 'merge',
+            stakePoints: 10,
+          },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    await renderFeedTabs();
+    await openTab(/Battles/i);
+    await waitFor(() =>
+      expect(
+        screen.getByText(/PR Battle: Preserve summary snapshot/i),
+      ).toBeInTheDocument(),
+    );
+
+    await clickAndFlush(
+      screen.getByRole('button', { name: /^Predict merge$/i }),
+    );
+    await waitFor(() =>
+      expect(screen.getByText(/Net points:\s*22 FIN/i)).toBeInTheDocument(),
+    );
+
+    await clickAndFlush(
+      screen.getByRole('button', { name: /^Predict reject$/i }),
+    );
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(
+      /Too many prediction requests\. Please try again shortly\./i,
+    );
+    expect(screen.getByText(/Net points:\s*22 FIN/i)).toBeInTheDocument();
+
+    await clickAndFlush(
+      screen.getByRole('button', { name: /^Predict merge$/i }),
+    );
+    await waitFor(() => {
+      const summaryCalls = (apiClient.get as jest.Mock).mock.calls.filter(
+        ([url]) => url === `/pull-requests/${pullRequestId}/predictions`,
+      );
+      expect(summaryCalls).toHaveLength(2);
+    });
+    expect(
+      screen.getByText(
+        /Too many prediction requests\. Please try again shortly\./i,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  test('shows sign-in CTA when battle prediction returns auth error', async () => {
+    const draftId = 'aaaa1111-2222-3333-4444-cccccccccccc';
+    const battlePayload = [
+      {
+        id: draftId,
+        title: 'PR Battle: Auth required',
+        leftLabel: 'Apex Studio',
+        rightLabel: 'Nova Forge',
+        leftVote: 54,
+        rightVote: 46,
+        glowUpScore: 9.4,
+        prCount: 4,
+        fixCount: 2,
+        decision: 'pending',
+      },
+    ];
+
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url === '/feed') {
+        return Promise.resolve({ data: [] });
+      }
+      if (url === '/feeds/battles') {
+        return Promise.resolve({ data: battlePayload });
+      }
+      return Promise.resolve({ data: [] });
+    });
+    (apiClient.post as jest.Mock).mockImplementation((url: string) => {
+      if (url === `/drafts/${draftId}/predict`) {
+        return Promise.reject({
+          response: {
+            status: 401,
+            data: {
+              error: 'UNAUTHORIZED',
+              message: 'Unauthorized',
+            },
+          },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    await renderFeedTabs();
+    await openTab(/Battles/i);
+    await waitFor(() =>
+      expect(screen.getByText(/PR Battle: Auth required/i)).toBeInTheDocument(),
+    );
+
+    await clickAndFlush(
+      screen.getByRole('button', { name: /^Predict merge$/i }),
+    );
+
+    await waitFor(() =>
+      expect(apiClient.post).toHaveBeenCalledWith(
+        `/drafts/${draftId}/predict`,
+        expect.objectContaining({
+          predictedOutcome: 'merge',
+          stakePoints: 10,
+        }),
+      ),
+    );
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(
+      /Sign in as observer to submit predictions/i,
+    );
+    expect(
+      within(alert).getByRole('link', { name: /Sign in/i }),
+    ).toHaveAttribute('href', '/login');
+  });
+
+  test('maps prediction stake validation code to localized range message', async () => {
+    const draftId = 'dddd1111-2222-3333-4444-eeeeeeeeeeee';
+    const battlePayload = [
+      {
+        id: draftId,
+        title: 'PR Battle: Stake validation',
+        leftLabel: 'Apex Studio',
+        rightLabel: 'Nova Forge',
+        leftVote: 50,
+        rightVote: 50,
+        glowUpScore: 8.6,
+        prCount: 3,
+        fixCount: 2,
+        decision: 'pending',
+      },
+    ];
+
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url === '/feed') {
+        return Promise.resolve({ data: [] });
+      }
+      if (url === '/feeds/battles') {
+        return Promise.resolve({ data: battlePayload });
+      }
+      return Promise.resolve({ data: [] });
+    });
+    (apiClient.post as jest.Mock).mockImplementation((url: string) => {
+      if (url === `/drafts/${draftId}/predict`) {
+        return Promise.reject({
+          response: {
+            status: 400,
+            data: {
+              error: 'PREDICTION_STAKE_INVALID',
+              message: 'backend raw stake validation error',
+            },
+          },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    await renderFeedTabs();
+    await openTab(/Battles/i);
+    await waitFor(() =>
+      expect(
+        screen.getByText(/PR Battle: Stake validation/i),
+      ).toBeInTheDocument(),
+    );
+
+    await clickAndFlush(
+      screen.getByRole('button', { name: /^Predict merge$/i }),
+    );
+
+    await waitFor(() =>
+      expect(apiClient.post).toHaveBeenCalledWith(
+        `/drafts/${draftId}/predict`,
+        expect.objectContaining({
+          predictedOutcome: 'merge',
+          stakePoints: 10,
+        }),
+      ),
+    );
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/Stake must be in range:\s*5-500 FIN\./i);
+    expect(alert).not.toHaveTextContent(/backend raw stake validation error/i);
+  });
+
+  test('maps prediction daily submission cap code to localized message', async () => {
+    const draftId = 'dddd1111-2222-3333-4444-ffffffffff00';
+    const battlePayload = [
+      {
+        id: draftId,
+        title: 'PR Battle: Daily cap code mapping',
+        leftLabel: 'Apex Studio',
+        rightLabel: 'Nova Forge',
+        leftVote: 50,
+        rightVote: 50,
+        glowUpScore: 8.6,
+        prCount: 3,
+        fixCount: 2,
+        decision: 'pending',
+      },
+    ];
+
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url === '/feed') {
+        return Promise.resolve({ data: [] });
+      }
+      if (url === '/feeds/battles') {
+        return Promise.resolve({ data: battlePayload });
+      }
+      return Promise.resolve({ data: [] });
+    });
+    (apiClient.post as jest.Mock).mockImplementation((url: string) => {
+      if (url === `/drafts/${draftId}/predict`) {
+        return Promise.reject({
+          response: {
+            status: 409,
+            data: {
+              error: 'PREDICTION_DAILY_SUBMISSION_CAP_REACHED',
+              message: 'backend raw submission cap message',
+            },
+          },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    await renderFeedTabs();
+    await openTab(/Battles/i);
+    await waitFor(() =>
+      expect(
+        screen.getByText(/PR Battle: Daily cap code mapping/i),
+      ).toBeInTheDocument(),
+    );
+
+    await clickAndFlush(
+      screen.getByRole('button', { name: /^Predict merge$/i }),
+    );
+
+    await waitFor(() =>
+      expect(apiClient.post).toHaveBeenCalledWith(
+        `/drafts/${draftId}/predict`,
+        expect.objectContaining({
+          predictedOutcome: 'merge',
+          stakePoints: 10,
+        }),
+      ),
+    );
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/Daily prediction submission cap reached/i);
+    expect(alert).not.toHaveTextContent(/backend raw submission cap message/i);
+  });
+
+  test('maps prediction submit throttling to localized observer-safe message', async () => {
+    const draftId = 'dddd1111-2222-3333-4444-rate-limit-0001';
+    const battlePayload = [
+      {
+        id: draftId,
+        title: 'PR Battle: Rate limit mapping',
+        leftLabel: 'Apex Studio',
+        rightLabel: 'Nova Forge',
+        leftVote: 50,
+        rightVote: 50,
+        glowUpScore: 8.6,
+        prCount: 3,
+        fixCount: 2,
+        decision: 'pending',
+      },
+    ];
+
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url === '/feed') {
+        return Promise.resolve({ data: [] });
+      }
+      if (url === '/feeds/battles') {
+        return Promise.resolve({ data: battlePayload });
+      }
+      return Promise.resolve({ data: [] });
+    });
+    (apiClient.post as jest.Mock).mockImplementation((url: string) => {
+      if (url === `/drafts/${draftId}/predict`) {
+        return Promise.reject({
+          response: {
+            status: 429,
+            data: {
+              error: 'RATE_LIMITED',
+              message: 'backend raw rate-limit message',
+            },
+          },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    await renderFeedTabs();
+    await openTab(/Battles/i);
+    await waitFor(() =>
+      expect(
+        screen.getByText(/PR Battle: Rate limit mapping/i),
+      ).toBeInTheDocument(),
+    );
+
+    await clickAndFlush(
+      screen.getByRole('button', { name: /^Predict merge$/i }),
+    );
+
+    await waitFor(() =>
+      expect(apiClient.post).toHaveBeenCalledWith(
+        `/drafts/${draftId}/predict`,
+        expect.objectContaining({
+          predictedOutcome: 'merge',
+          stakePoints: 10,
+        }),
+      ),
+    );
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(
+      /Too many prediction requests\. Please try again shortly\./i,
+    );
+    expect(alert).not.toHaveTextContent(/backend raw rate-limit message/i);
+  });
+
+  test('deduplicates rapid prediction submits while battle request is in flight', async () => {
+    const draftId = 'aaaa1111-2222-3333-4444-bbbbbbbbbbbb';
+    const battlePayload = [
+      {
+        id: draftId,
+        title: 'PR Battle: Double click guard',
+        leftLabel: 'Apex Studio',
+        rightLabel: 'Nova Forge',
+        leftVote: 58,
+        rightVote: 42,
+        glowUpScore: 10.6,
+        prCount: 5,
+        fixCount: 3,
+        decision: 'pending',
+      },
+    ];
+
+    let resolvePredictionRequest: ((value: unknown) => void) | null = null;
+    const predictionRequestPromise = new Promise((resolve) => {
+      resolvePredictionRequest = resolve;
+    });
+
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url === '/feed') {
+        return Promise.resolve({ data: [] });
+      }
+      if (url === '/feeds/battles') {
+        return Promise.resolve({ data: battlePayload });
+      }
+      if (url === '/pull-requests/pr-battle-dedupe/predictions') {
+        return Promise.resolve({
+          data: {
+            pullRequestId: 'pr-battle-dedupe',
+            market: {
+              totalStakePoints: 80,
+              mergeOdds: 0.55,
+              rejectOdds: 0.45,
+              mergePayoutMultiplier: 1.8,
+              rejectPayoutMultiplier: 2.3,
+            },
+          },
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+    (apiClient.post as jest.Mock).mockImplementation((url: string) => {
+      if (url === `/drafts/${draftId}/predict`) {
+        return predictionRequestPromise;
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    await renderFeedTabs();
+    await openTab(/Battles/i);
+    await waitFor(() =>
+      expect(
+        screen.getByText(/PR Battle: Double click guard/i),
+      ).toBeInTheDocument(),
+    );
+
+    const mergeButton = screen.getByRole('button', {
+      name: /^Predict merge$/i,
+    });
+    await act(async () => {
+      fireEvent.click(mergeButton);
+      fireEvent.click(mergeButton);
+      await flushAsync();
+    });
+
+    const predictionCalls = (apiClient.post as jest.Mock).mock.calls.filter(
+      ([url]) => url === `/drafts/${draftId}/predict`,
+    );
+    expect(predictionCalls).toHaveLength(1);
+
+    await act(async () => {
+      resolvePredictionRequest?.({
+        data: {
+          pullRequestId: 'pr-battle-dedupe',
+          predictedOutcome: 'merge',
+          stakePoints: 10,
+        },
+      });
+      await flushAsync();
+    });
   });
 
   test('filters battles by status chip and tracks telemetry', async () => {

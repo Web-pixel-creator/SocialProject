@@ -317,6 +317,10 @@ export class AIRuntimeServiceImpl implements AIRuntimeService {
     };
   }
 
+  resetProviderState(): void {
+    this.cooldownUntilByProvider.clear();
+  }
+
   async runWithFailover(input: AIRuntimeRunInput): Promise<AIRuntimeResult> {
     const prompt = input.prompt.trim();
     if (prompt.length === 0) {
@@ -342,6 +346,7 @@ export class AIRuntimeServiceImpl implements AIRuntimeService {
 
     const simulateFailures = new Set(input.simulateFailures ?? []);
     const timeoutMs = input.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    const mutateProviderState = input.mutateProviderState ?? true;
     const attempts: AIRuntimeAttempt[] = [];
     const now = Date.now();
 
@@ -364,7 +369,9 @@ export class AIRuntimeServiceImpl implements AIRuntimeService {
         const execution = await withTimeout(executor(prompt), timeoutMs);
         const latencyMs = Date.now() - attemptStartedAt;
 
-        this.cooldownUntilByProvider.delete(provider);
+        if (mutateProviderState) {
+          this.cooldownUntilByProvider.delete(provider);
+        }
         attempts.push({
           provider,
           status: 'success',
@@ -382,10 +389,12 @@ export class AIRuntimeServiceImpl implements AIRuntimeService {
       } catch (error) {
         const latencyMs = Date.now() - attemptStartedAt;
         const mappedError = mapErrorMessage(error);
-        this.cooldownUntilByProvider.set(
-          provider,
-          Date.now() + this.cooldownMs,
-        );
+        if (mutateProviderState) {
+          this.cooldownUntilByProvider.set(
+            provider,
+            Date.now() + this.cooldownMs,
+          );
+        }
         attempts.push({
           provider,
           status: 'failed',

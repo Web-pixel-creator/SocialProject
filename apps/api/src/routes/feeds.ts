@@ -5,11 +5,100 @@ import { env } from '../config/env';
 import { db } from '../db/pool';
 import { requireHuman } from '../middleware/auth';
 import { cacheResponse } from '../middleware/responseCache';
+import { ServiceError } from '../services/common/errors';
 import { FeedServiceImpl } from '../services/feed/feedService';
 import type { FeedIntent, FeedSort, FeedStatus } from '../services/feed/types';
 
 const router = Router();
 const feedService = new FeedServiceImpl(db);
+const FEED_UNIFIED_QUERY_FIELDS = [
+  'limit',
+  'offset',
+  'sort',
+  'status',
+  'intent',
+  'from',
+  'to',
+  'cursor',
+] as const;
+const FEED_LIST_QUERY_FIELDS = ['limit', 'offset'] as const;
+const FEED_FOLLOWING_QUERY_FIELDS = [
+  'limit',
+  'offset',
+  'sort',
+  'status',
+] as const;
+const FEED_MAX_LIMIT = 100;
+const FEED_MAX_OFFSET = 10_000;
+
+const assertAllowedQueryFields = (
+  query: unknown,
+  allowed: readonly string[],
+  errorCode: string,
+) => {
+  const queryRecord =
+    query && typeof query === 'object'
+      ? (query as Record<string, unknown>)
+      : {};
+  const unknown = Object.keys(queryRecord).filter(
+    (key) => !allowed.includes(key),
+  );
+  if (unknown.length > 0) {
+    throw new ServiceError(
+      errorCode,
+      `Unsupported query fields: ${unknown.join(', ')}`,
+      400,
+    );
+  }
+  return queryRecord;
+};
+
+const parsePaginationQuery = (query: Record<string, unknown>) => {
+  const parseBoundedInteger = (
+    value: unknown,
+    {
+      field,
+      min,
+      max,
+    }: {
+      field: string;
+      min: number;
+      max: number;
+    },
+  ): number | undefined => {
+    if (value === undefined) {
+      return undefined;
+    }
+    const parsed = Number(value);
+    if (!(Number.isFinite(parsed) && Number.isInteger(parsed))) {
+      throw new ServiceError(
+        'FEED_PAGINATION_INVALID',
+        `${field} must be an integer.`,
+        400,
+      );
+    }
+    if (parsed < min || parsed > max) {
+      throw new ServiceError(
+        'FEED_PAGINATION_INVALID',
+        `${field} must be between ${min} and ${max}.`,
+        400,
+      );
+    }
+    return parsed;
+  };
+
+  const limit = parseBoundedInteger(query.limit, {
+    field: 'limit',
+    min: 1,
+    max: FEED_MAX_LIMIT,
+  });
+  const offset = parseBoundedInteger(query.offset, {
+    field: 'offset',
+    min: 0,
+    max: FEED_MAX_OFFSET,
+  });
+  return { limit, offset };
+};
 
 const parseDate = (value: unknown): Date | undefined => {
   if (typeof value !== 'string') {
@@ -41,27 +130,30 @@ router.get(
   }),
   async (req, res, next) => {
     try {
-      const limit = req.query.limit ? Number(req.query.limit) : undefined;
-      const offset = req.query.offset ? Number(req.query.offset) : undefined;
-      const sort =
-        typeof req.query.sort === 'string' ? req.query.sort : undefined;
+      const query = assertAllowedQueryFields(
+        req.query,
+        FEED_UNIFIED_QUERY_FIELDS,
+        'FEED_INVALID_QUERY_FIELDS',
+      );
+      const { limit, offset } = parsePaginationQuery(query);
+      const sort = typeof query.sort === 'string' ? query.sort : undefined;
       const status =
-        typeof req.query.status === 'string' ? req.query.status : undefined;
+        typeof query.status === 'string' ? query.status : undefined;
       const intent =
-        typeof req.query.intent === 'string' ? req.query.intent : undefined;
-      const from = parseDate(req.query.from);
-      const to = parseDate(req.query.to);
-      const cursor = parseDate(req.query.cursor);
+        typeof query.intent === 'string' ? query.intent : undefined;
+      const from = parseDate(query.from);
+      const to = parseDate(query.to);
+      const cursor = parseDate(query.cursor);
 
-      if (req.query.from && !from) {
+      if (query.from && !from) {
         return res.status(400).json({ error: 'Invalid from date.' });
       }
 
-      if (req.query.to && !to) {
+      if (query.to && !to) {
         return res.status(400).json({ error: 'Invalid to date.' });
       }
 
-      if (req.query.cursor && !cursor) {
+      if (query.cursor && !cursor) {
         return res.status(400).json({ error: 'Invalid cursor date.' });
       }
 
@@ -111,16 +203,12 @@ router.get(
   }),
   async (req, res, next) => {
     try {
-      const limit = req.query.limit ? Number(req.query.limit) : undefined;
-      const offset = req.query.offset ? Number(req.query.offset) : undefined;
-
-      if (req.query.limit && Number.isNaN(limit)) {
-        return res.status(400).json({ error: 'Invalid limit value.' });
-      }
-
-      if (req.query.offset && Number.isNaN(offset)) {
-        return res.status(400).json({ error: 'Invalid offset value.' });
-      }
+      const query = assertAllowedQueryFields(
+        req.query,
+        FEED_LIST_QUERY_FIELDS,
+        'FEED_INVALID_QUERY_FIELDS',
+      );
+      const { limit, offset } = parsePaginationQuery(query);
 
       const items = await feedService.getHotNow({ limit, offset });
       res.set('Cache-Control', 'public, max-age=15');
@@ -139,8 +227,12 @@ router.get(
   }),
   async (req, res, next) => {
     try {
-      const limit = req.query.limit ? Number(req.query.limit) : undefined;
-      const offset = req.query.offset ? Number(req.query.offset) : undefined;
+      const query = assertAllowedQueryFields(
+        req.query,
+        FEED_LIST_QUERY_FIELDS,
+        'FEED_INVALID_QUERY_FIELDS',
+      );
+      const { limit, offset } = parsePaginationQuery(query);
       const items = await feedService.getProgress({ limit, offset });
       res.set('Cache-Control', 'public, max-age=30');
       res.json(items);
@@ -160,8 +252,12 @@ router.get(
   }),
   async (req, res, next) => {
     try {
-      const limit = req.query.limit ? Number(req.query.limit) : undefined;
-      const offset = req.query.offset ? Number(req.query.offset) : undefined;
+      const query = assertAllowedQueryFields(
+        req.query,
+        FEED_LIST_QUERY_FIELDS,
+        'FEED_INVALID_QUERY_FIELDS',
+      );
+      const { limit, offset } = parsePaginationQuery(query);
       const items = await feedService.getForYou({
         userId: req.auth?.id as string,
         limit,
@@ -183,8 +279,12 @@ router.get(
   }),
   async (req, res, next) => {
     try {
-      const limit = req.query.limit ? Number(req.query.limit) : undefined;
-      const offset = req.query.offset ? Number(req.query.offset) : undefined;
+      const query = assertAllowedQueryFields(
+        req.query,
+        FEED_LIST_QUERY_FIELDS,
+        'FEED_INVALID_QUERY_FIELDS',
+      );
+      const { limit, offset } = parsePaginationQuery(query);
       const items = await feedService.getLiveDrafts({ limit, offset });
       res.set('Cache-Control', 'public, max-age=15');
       res.json(items);
@@ -202,8 +302,12 @@ router.get(
   }),
   async (req, res, next) => {
     try {
-      const limit = req.query.limit ? Number(req.query.limit) : undefined;
-      const offset = req.query.offset ? Number(req.query.offset) : undefined;
+      const query = assertAllowedQueryFields(
+        req.query,
+        FEED_LIST_QUERY_FIELDS,
+        'FEED_INVALID_QUERY_FIELDS',
+      );
+      const { limit, offset } = parsePaginationQuery(query);
       const items = await feedService.getGlowUps({ limit, offset });
       res.set('Cache-Control', 'public, max-age=60');
       res.json(items);
@@ -221,8 +325,12 @@ router.get(
   }),
   async (req, res, next) => {
     try {
-      const limit = req.query.limit ? Number(req.query.limit) : undefined;
-      const offset = req.query.offset ? Number(req.query.offset) : undefined;
+      const query = assertAllowedQueryFields(
+        req.query,
+        FEED_LIST_QUERY_FIELDS,
+        'FEED_INVALID_QUERY_FIELDS',
+      );
+      const { limit, offset } = parsePaginationQuery(query);
       const items = await feedService.getChanges({ limit, offset });
       res.set('Cache-Control', 'public, max-age=30');
       res.json(items);
@@ -241,8 +349,12 @@ router.get(
   }),
   async (req, res, next) => {
     try {
-      const limit = req.query.limit ? Number(req.query.limit) : undefined;
-      const offset = req.query.offset ? Number(req.query.offset) : undefined;
+      const query = assertAllowedQueryFields(
+        req.query,
+        FEED_LIST_QUERY_FIELDS,
+        'FEED_INVALID_QUERY_FIELDS',
+      );
+      const { limit, offset } = parsePaginationQuery(query);
       const userId = parseOptionalObserverId(req);
       const items = await feedService.getStudios({ limit, offset, userId });
       res.set('Cache-Control', 'public, max-age=120');
@@ -263,12 +375,15 @@ router.get(
   }),
   async (req, res, next) => {
     try {
-      const limit = req.query.limit ? Number(req.query.limit) : undefined;
-      const offset = req.query.offset ? Number(req.query.offset) : undefined;
-      const sort =
-        typeof req.query.sort === 'string' ? req.query.sort : undefined;
+      const query = assertAllowedQueryFields(
+        req.query,
+        FEED_FOLLOWING_QUERY_FIELDS,
+        'FEED_INVALID_QUERY_FIELDS',
+      );
+      const { limit, offset } = parsePaginationQuery(query);
+      const sort = typeof query.sort === 'string' ? query.sort : undefined;
       const status =
-        typeof req.query.status === 'string' ? req.query.status : undefined;
+        typeof query.status === 'string' ? query.status : undefined;
       const allowedSorts: FeedSort[] = ['recent', 'impact', 'glowup'];
       const allowedStatuses = ['draft', 'release'] as const;
 
@@ -307,8 +422,12 @@ router.get(
   }),
   async (req, res, next) => {
     try {
-      const limit = req.query.limit ? Number(req.query.limit) : undefined;
-      const offset = req.query.offset ? Number(req.query.offset) : undefined;
+      const query = assertAllowedQueryFields(
+        req.query,
+        FEED_LIST_QUERY_FIELDS,
+        'FEED_INVALID_QUERY_FIELDS',
+      );
+      const { limit, offset } = parsePaginationQuery(query);
       const items = await feedService.getBattles({ limit, offset });
       res.set('Cache-Control', 'public, max-age=30');
       res.json(items);
@@ -326,8 +445,12 @@ router.get(
   }),
   async (req, res, next) => {
     try {
-      const limit = req.query.limit ? Number(req.query.limit) : undefined;
-      const offset = req.query.offset ? Number(req.query.offset) : undefined;
+      const query = assertAllowedQueryFields(
+        req.query,
+        FEED_LIST_QUERY_FIELDS,
+        'FEED_INVALID_QUERY_FIELDS',
+      );
+      const { limit, offset } = parsePaginationQuery(query);
       const items = await feedService.getArchive({ limit, offset });
       res.set('Cache-Control', 'public, max-age=120');
       res.json(items);

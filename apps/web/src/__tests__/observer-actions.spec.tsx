@@ -44,4 +44,36 @@ describe('ObserverActions', () => {
     fireEvent.click(followButton);
     expect(onAction).not.toHaveBeenCalledWith('follow');
   });
+
+  test('allows watch while follow toggle is pending', () => {
+    const onAction = jest.fn();
+
+    render(<ObserverActions onAction={onAction} pendingAction="follow" />);
+
+    fireEvent.click(screen.getByRole('button', { name: /watch/i }));
+    expect(onAction).toHaveBeenCalledWith('watch');
+  });
+
+  test('closes expanded actions on escape and outside click', () => {
+    const onAction = jest.fn();
+
+    render(
+      <div>
+        <ObserverActions onAction={onAction} />
+        <button type="button">Outside</button>
+      </div>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /more/i }));
+    expect(screen.getByRole('button', { name: /follow/i })).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('button', { name: /follow/i })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /more/i }));
+    expect(screen.getByRole('button', { name: /follow/i })).toBeInTheDocument();
+
+    fireEvent.mouseDown(screen.getByRole('button', { name: /outside/i }));
+    expect(screen.queryByRole('button', { name: /follow/i })).toBeNull();
+  });
 });

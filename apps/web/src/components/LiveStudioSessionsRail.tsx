@@ -1,7 +1,14 @@
 'use client';
 
+import Link from 'next/link';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { apiClient } from '../lib/api';
+import {
+  connectOpenAIRealtimeConnection,
+  type OpenAIRealtimeConnection,
+} from '../lib/openaiRealtimeWebRtc';
+import { handleRealtimeToolCallsFromResponseDone } from '../lib/realtimeToolBridge';
 
 type LiveSessionStatus = 'forming' | 'live' | 'completed' | 'cancelled';
 
@@ -25,6 +32,346 @@ interface LiveSessionOverlay {
   recapSummary: string | null;
   recapClipUrl: string | null;
 }
+
+type RealtimeCopilotStatus =
+  | 'idle'
+  | 'loading'
+  | 'connecting'
+  | 'ready'
+  | 'error';
+
+interface RealtimeCopilotBootstrap {
+  provider: string;
+  sessionId: string;
+  clientSecret: string;
+  clientSecretExpiresAt?: string | null;
+  expiresAt?: string | null;
+  model?: string;
+  voice?: string;
+  transportHints?: {
+    recommended?: string;
+    websocketSupported?: boolean;
+    pushToTalk?: boolean;
+  };
+  outputModalities?: Array<'text' | 'audio'>;
+}
+
+interface RealtimeCopilotState {
+  status: RealtimeCopilotStatus;
+  bootstrap?: RealtimeCopilotBootstrap;
+  error?: string;
+  pushToTalkEnabled?: boolean;
+}
+
+interface RealtimeToolBridgeState {
+  processedCount: number;
+  lastProcessedAt: string | null;
+  error: string | null;
+}
+
+interface RealtimeVoiceControlState {
+  isHolding: boolean;
+  interruptions: number;
+  lastCommitAt: string | null;
+  error: string | null;
+}
+
+interface RealtimeTranscriptState {
+  liveText: string;
+  finalText: string | null;
+  lastEventAt: string | null;
+  persistedAt: string | null;
+  persistError: string | null;
+}
+
+type RealtimeVoiceRuntimeStatus =
+  | 'idle'
+  | 'listening'
+  | 'thinking'
+  | 'speaking';
+
+interface RealtimeVoiceRuntimeState {
+  status: RealtimeVoiceRuntimeStatus;
+  lastEventAt: string | null;
+}
+
+interface LiveSessionRealtimeServerEventDetail {
+  liveSessionId: string;
+  serverEvent: unknown;
+}
+
+interface LiveSessionRealtimeClientEventDetail {
+  liveSessionId: string;
+  clientEvent: Record<string, unknown>;
+}
+
+export const LIVE_SESSION_REALTIME_SERVER_EVENT =
+  'finishit:live-session-realtime-server-event';
+export const LIVE_SESSION_REALTIME_CLIENT_EVENT =
+  'finishit:live-session-realtime-client-event';
+
+const getEmptyRealtimeToolBridgeState = (): RealtimeToolBridgeState => ({
+  processedCount: 0,
+  lastProcessedAt: null,
+  error: null,
+});
+
+const getEmptyRealtimeVoiceControlState = (): RealtimeVoiceControlState => ({
+  isHolding: false,
+  interruptions: 0,
+  lastCommitAt: null,
+  error: null,
+});
+
+const getEmptyRealtimeTranscriptState = (): RealtimeTranscriptState => ({
+  liveText: '',
+  finalText: null,
+  lastEventAt: null,
+  persistedAt: null,
+  persistError: null,
+});
+
+const getEmptyRealtimeVoiceRuntimeState = (): RealtimeVoiceRuntimeState => ({
+  status: 'idle',
+  lastEventAt: null,
+});
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === 'object';
+
+const MAX_TRANSCRIPT_LENGTH = 500;
+const TRANSCRIPT_MESSAGE_PREFIX = '[Voice recap] ';
+const MAX_TRANSCRIPT_MESSAGE_CONTENT_LENGTH = 500;
+const TRANSCRIPT_PERSIST_COOLDOWN_MS = 12_000;
+
+const trimTranscript = (value: string): string => {
+  if (value.length <= MAX_TRANSCRIPT_LENGTH) {
+    return value;
+  }
+  return value.slice(value.length - MAX_TRANSCRIPT_LENGTH);
+};
+
+const readTranscriptString = (
+  source: Record<string, unknown>,
+  keys: string[],
+): string | null => {
+  for (const key of keys) {
+    const value = source[key];
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value;
+    }
+  }
+  return null;
+};
+
+const extractTranscriptFromResponseOutput = (value: unknown): string | null => {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const nestedResponse = isRecord(value.response) ? value.response : null;
+  const output = Array.isArray(nestedResponse?.output)
+    ? nestedResponse.output
+    : [];
+  if (output.length < 1) {
+    return null;
+  }
+  const segments: string[] = [];
+  for (const item of output) {
+    if (!isRecord(item)) {
+      continue;
+    }
+    const directText = readTranscriptString(item, ['text', 'transcript']);
+    if (directText) {
+      segments.push(directText);
+    }
+    const content = Array.isArray(item.content) ? item.content : [];
+    for (const part of content) {
+      if (!isRecord(part)) {
+        continue;
+      }
+      const partText = readTranscriptString(part, [
+        'text',
+        'transcript',
+        'delta',
+      ]);
+      if (partText) {
+        segments.push(partText);
+      }
+    }
+  }
+  if (segments.length < 1) {
+    return null;
+  }
+  return segments.join(' ').trim();
+};
+
+const extractRealtimeTranscriptUpdate = (
+  serverEvent: unknown,
+): { kind: 'delta' | 'done'; text: string } | null => {
+  if (!isRecord(serverEvent)) {
+    return null;
+  }
+  const eventType = serverEvent.type;
+  if (typeof eventType !== 'string' || eventType.length < 1) {
+    return null;
+  }
+
+  if (
+    eventType === 'response.output_audio_transcript.delta' ||
+    eventType === 'response.output_text.delta'
+  ) {
+    const delta = readTranscriptString(serverEvent, ['delta']);
+    if (!delta) {
+      return null;
+    }
+    return {
+      kind: 'delta',
+      text: delta,
+    };
+  }
+
+  if (
+    eventType === 'response.output_audio_transcript.done' ||
+    eventType === 'response.output_text.done'
+  ) {
+    const doneText = readTranscriptString(serverEvent, [
+      'transcript',
+      'text',
+      'delta',
+    ]);
+    if (!doneText) {
+      return null;
+    }
+    return {
+      kind: 'done',
+      text: doneText,
+    };
+  }
+
+  if (eventType === 'response.done') {
+    const doneText = extractTranscriptFromResponseOutput(serverEvent);
+    if (!doneText) {
+      return null;
+    }
+    return {
+      kind: 'done',
+      text: doneText,
+    };
+  }
+
+  return null;
+};
+
+const extractVoiceRuntimeStatusUpdate = (
+  serverEvent: unknown,
+): RealtimeVoiceRuntimeStatus | null => {
+  if (!isRecord(serverEvent)) {
+    return null;
+  }
+  const eventType = serverEvent.type;
+  if (typeof eventType !== 'string' || eventType.length < 1) {
+    return null;
+  }
+
+  if (eventType === 'input_audio_buffer.speech_started') {
+    return 'listening';
+  }
+  if (
+    eventType === 'input_audio_buffer.speech_stopped' ||
+    eventType === 'input_audio_buffer.committed' ||
+    eventType === 'response.created'
+  ) {
+    return 'thinking';
+  }
+  if (eventType === 'response.output_audio.delta') {
+    return 'speaking';
+  }
+  if (
+    eventType === 'response.output_audio.done' ||
+    eventType === 'response.done' ||
+    eventType === 'response.cancelled' ||
+    eventType === 'error'
+  ) {
+    return 'idle';
+  }
+
+  return null;
+};
+
+const toRealtimeStatusLabel = (status: RealtimeVoiceRuntimeStatus): string => {
+  if (status === 'listening') {
+    return 'Listening';
+  }
+  if (status === 'thinking') {
+    return 'Thinking';
+  }
+  if (status === 'speaking') {
+    return 'Speaking';
+  }
+  return 'Idle';
+};
+
+const getRealtimeStatusClassName = (status: RealtimeVoiceRuntimeStatus) => {
+  if (status === 'listening') {
+    return 'border border-chart-2/40 bg-chart-2/12 text-chart-2';
+  }
+  if (status === 'thinking') {
+    return 'border border-primary/35 bg-primary/10 text-primary';
+  }
+  if (status === 'speaking') {
+    return 'border border-chart-3/35 bg-chart-3/12 text-chart-3';
+  }
+  return 'border border-border/35 bg-background/60 text-muted-foreground';
+};
+
+const isLiveSessionRealtimeServerEventDetail = (
+  value: unknown,
+): value is LiveSessionRealtimeServerEventDetail => {
+  if (!isRecord(value)) {
+    return false;
+  }
+  if (
+    typeof value.liveSessionId !== 'string' ||
+    value.liveSessionId.length < 1
+  ) {
+    return false;
+  }
+  return 'serverEvent' in value;
+};
+
+const isLiveSessionRealtimeClientEventDetail = (
+  value: unknown,
+): value is LiveSessionRealtimeClientEventDetail => {
+  if (!isRecord(value)) {
+    return false;
+  }
+  if (
+    typeof value.liveSessionId !== 'string' ||
+    value.liveSessionId.length < 1
+  ) {
+    return false;
+  }
+  if (!isRecord(value.clientEvent)) {
+    return false;
+  }
+  return true;
+};
+
+export const emitLiveSessionRealtimeServerEvent = (
+  detail: LiveSessionRealtimeServerEventDetail,
+) => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  window.dispatchEvent(
+    new CustomEvent<LiveSessionRealtimeServerEventDetail>(
+      LIVE_SESSION_REALTIME_SERVER_EVENT,
+      {
+        detail,
+      },
+    ),
+  );
+};
 
 const fallbackSessions: LiveSessionSummary[] = [
   {
@@ -88,6 +435,43 @@ const formatRelativeMinutes = (value: string | Date): string => {
   }
   const hours = Math.floor(minutes / 60);
   return `${hours}h ago`;
+};
+
+const resolveRealtimeBootstrapError = (error: unknown): string => {
+  const fallback = 'Failed to start realtime copilot.';
+  if (!error || typeof error !== 'object') {
+    return fallback;
+  }
+  const maybeResponse = (
+    error as {
+      response?: {
+        status?: number;
+        data?: { error?: string; message?: string };
+      };
+      message?: string;
+    }
+  ).response;
+  const status = maybeResponse?.status;
+  const responseError = maybeResponse?.data?.error;
+  const responseMessage = maybeResponse?.data?.message;
+
+  if (status === 401 || status === 403) {
+    return 'Sign in as observer to start realtime copilot.';
+  }
+  if (status === 429) {
+    return 'Too many attempts. Please wait and retry.';
+  }
+  if (responseError === 'OPENAI_REALTIME_NOT_CONFIGURED') {
+    return 'Realtime copilot is not configured in API environment.';
+  }
+  if (responseMessage && responseMessage.trim().length > 0) {
+    return responseMessage;
+  }
+  const genericMessage = (error as { message?: string }).message?.trim() ?? '';
+  if (genericMessage.length > 0) {
+    return genericMessage;
+  }
+  return fallback;
 };
 
 const fetchLiveSessions = async (): Promise<LiveSessionSummary[]> => {
@@ -215,6 +599,290 @@ const fetchLiveSessions = async (): Promise<LiveSessionSummary[]> => {
 };
 
 export const LiveStudioSessionsRail = () => {
+  const [copilotStateBySession, setCopilotStateBySession] = useState<
+    Record<string, RealtimeCopilotState>
+  >({});
+  const [toolBridgeStateBySession, setToolBridgeStateBySession] = useState<
+    Record<string, RealtimeToolBridgeState>
+  >({});
+  const [voiceControlStateBySession, setVoiceControlStateBySession] = useState<
+    Record<string, RealtimeVoiceControlState>
+  >({});
+  const [transcriptStateBySession, setTranscriptStateBySession] = useState<
+    Record<string, RealtimeTranscriptState>
+  >({});
+  const [voiceRuntimeStateBySession, setVoiceRuntimeStateBySession] = useState<
+    Record<string, RealtimeVoiceRuntimeState>
+  >({});
+  const [voiceFocusSessionId, setVoiceFocusSessionId] = useState<string | null>(
+    null,
+  );
+  const copilotStateBySessionRef = useRef<Record<string, RealtimeCopilotState>>(
+    {},
+  );
+  const realtimeConnectionsRef = useRef<
+    Record<string, OpenAIRealtimeConnection>
+  >({});
+  const transcriptPersistenceRef = useRef<
+    Record<
+      string,
+      {
+        lastText: string;
+        lastPersistedAt: string | null;
+        pending: boolean;
+      }
+    >
+  >({});
+  useEffect(() => {
+    copilotStateBySessionRef.current = copilotStateBySession;
+  }, [copilotStateBySession]);
+
+  useEffect(() => {
+    const persistTranscriptMessage = async (
+      sessionId: string,
+      transcript: string,
+    ) => {
+      const normalized = transcript.replace(/\s+/g, ' ').trim();
+      if (normalized.length < 3) {
+        return;
+      }
+      const hasAuthHeader =
+        typeof apiClient.defaults?.headers?.common?.Authorization ===
+          'string' &&
+        apiClient.defaults.headers.common.Authorization.trim().length > 0;
+      if (!hasAuthHeader) {
+        return;
+      }
+
+      const entry = transcriptPersistenceRef.current[sessionId] ?? {
+        lastText: '',
+        lastPersistedAt: null,
+        pending: false,
+      };
+      if (entry.pending || entry.lastText === normalized) {
+        return;
+      }
+
+      if (entry.lastPersistedAt) {
+        const elapsedMs =
+          Date.now() - new Date(entry.lastPersistedAt).getTime();
+        if (
+          Number.isFinite(elapsedMs) &&
+          elapsedMs >= 0 &&
+          elapsedMs < TRANSCRIPT_PERSIST_COOLDOWN_MS
+        ) {
+          return;
+        }
+      }
+
+      entry.pending = true;
+      transcriptPersistenceRef.current[sessionId] = entry;
+
+      const prefixed = `${TRANSCRIPT_MESSAGE_PREFIX}${normalized}`;
+      const content =
+        prefixed.length > MAX_TRANSCRIPT_MESSAGE_CONTENT_LENGTH
+          ? `${prefixed.slice(0, MAX_TRANSCRIPT_MESSAGE_CONTENT_LENGTH - 1)}…`
+          : prefixed;
+
+      try {
+        await apiClient.post(`/live-sessions/${sessionId}/messages/observer`, {
+          content,
+        });
+        const persistedAt = new Date().toISOString();
+        transcriptPersistenceRef.current[sessionId] = {
+          lastText: normalized,
+          lastPersistedAt: persistedAt,
+          pending: false,
+        };
+        setTranscriptStateBySession((current) => ({
+          ...current,
+          [sessionId]: {
+            ...(current[sessionId] ?? getEmptyRealtimeTranscriptState()),
+            persistedAt,
+            persistError: null,
+          },
+        }));
+      } catch (error) {
+        transcriptPersistenceRef.current[sessionId] = {
+          ...entry,
+          pending: false,
+        };
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'Failed to persist transcript.';
+        setTranscriptStateBySession((current) => ({
+          ...current,
+          [sessionId]: {
+            ...(current[sessionId] ?? getEmptyRealtimeTranscriptState()),
+            persistError: message,
+          },
+        }));
+      }
+    };
+
+    const handleServerEvent = async (event: Event) => {
+      const customEvent = event as CustomEvent<unknown>;
+      const detail = customEvent.detail;
+      if (!isLiveSessionRealtimeServerEventDetail(detail)) {
+        return;
+      }
+
+      const sessionState =
+        copilotStateBySessionRef.current[detail.liveSessionId] ?? null;
+      if (sessionState?.status !== 'ready') {
+        return;
+      }
+
+      const runtimeStatus = extractVoiceRuntimeStatusUpdate(detail.serverEvent);
+      if (runtimeStatus) {
+        setVoiceRuntimeStateBySession((current) => ({
+          ...current,
+          [detail.liveSessionId]: {
+            status: runtimeStatus,
+            lastEventAt: new Date().toISOString(),
+          },
+        }));
+        if (runtimeStatus === 'idle') {
+          setVoiceControlStateBySession((current) => ({
+            ...current,
+            [detail.liveSessionId]: {
+              ...(current[detail.liveSessionId] ??
+                getEmptyRealtimeVoiceControlState()),
+              isHolding: false,
+            },
+          }));
+        }
+      }
+
+      const transcriptUpdate = extractRealtimeTranscriptUpdate(
+        detail.serverEvent,
+      );
+      if (transcriptUpdate) {
+        setTranscriptStateBySession((current) => {
+          const previous =
+            current[detail.liveSessionId] ?? getEmptyRealtimeTranscriptState();
+          if (transcriptUpdate.kind === 'delta') {
+            return {
+              ...current,
+              [detail.liveSessionId]: {
+                liveText: trimTranscript(
+                  `${previous.liveText}${transcriptUpdate.text}`,
+                ),
+                finalText: previous.finalText,
+                lastEventAt: new Date().toISOString(),
+                persistedAt: previous.persistedAt,
+                persistError: previous.persistError,
+              },
+            };
+          }
+          const fallbackFinal = trimTranscript(previous.liveText);
+          const finalText = trimTranscript(
+            transcriptUpdate.text || fallbackFinal,
+          );
+          persistTranscriptMessage(detail.liveSessionId, finalText);
+          return {
+            ...current,
+            [detail.liveSessionId]: {
+              liveText: '',
+              finalText,
+              lastEventAt: new Date().toISOString(),
+              persistedAt: previous.persistedAt,
+              persistError: null,
+            },
+          };
+        });
+      }
+
+      try {
+        const result = await handleRealtimeToolCallsFromResponseDone({
+          liveSessionId: detail.liveSessionId,
+          serverEvent: detail.serverEvent,
+          sendClientEvent: (clientEvent) => {
+            window.dispatchEvent(
+              new CustomEvent<LiveSessionRealtimeClientEventDetail>(
+                LIVE_SESSION_REALTIME_CLIENT_EVENT,
+                {
+                  detail: {
+                    liveSessionId: detail.liveSessionId,
+                    clientEvent,
+                  },
+                },
+              ),
+            );
+          },
+        });
+
+        if (result.processed > 0) {
+          setToolBridgeStateBySession((current) => {
+            const previous =
+              current[detail.liveSessionId] ??
+              getEmptyRealtimeToolBridgeState();
+            return {
+              ...current,
+              [detail.liveSessionId]: {
+                processedCount: previous.processedCount + result.processed,
+                lastProcessedAt: new Date().toISOString(),
+                error: null,
+              },
+            };
+          });
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'Realtime tool bridge execution failed.';
+        setToolBridgeStateBySession((current) => ({
+          ...current,
+          [detail.liveSessionId]: {
+            ...(current[detail.liveSessionId] ??
+              getEmptyRealtimeToolBridgeState()),
+            error: message,
+          },
+        }));
+      }
+    };
+
+    window.addEventListener(
+      LIVE_SESSION_REALTIME_SERVER_EVENT,
+      handleServerEvent as EventListener,
+    );
+
+    return () => {
+      window.removeEventListener(
+        LIVE_SESSION_REALTIME_SERVER_EVENT,
+        handleServerEvent as EventListener,
+      );
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleClientEvent = (event: Event) => {
+      const customEvent = event as CustomEvent<unknown>;
+      const detail = customEvent.detail;
+      if (!isLiveSessionRealtimeClientEventDetail(detail)) {
+        return;
+      }
+      const connection = realtimeConnectionsRef.current[detail.liveSessionId];
+      if (!connection) {
+        return;
+      }
+      connection.sendClientEvent(detail.clientEvent);
+    };
+
+    window.addEventListener(
+      LIVE_SESSION_REALTIME_CLIENT_EVENT,
+      handleClientEvent as EventListener,
+    );
+    return () => {
+      window.removeEventListener(
+        LIVE_SESSION_REALTIME_CLIENT_EVENT,
+        handleClientEvent as EventListener,
+      );
+    };
+  }, []);
+
   const { data, isLoading } = useSWR<LiveSessionSummary[]>(
     'feed-live-studio-sessions',
     fetchLiveSessions,
@@ -227,6 +895,376 @@ export const LiveStudioSessionsRail = () => {
   );
 
   const sessions = data ?? fallbackSessions;
+
+  useEffect(() => {
+    const activeSessionIds = new Set(sessions.map((session) => session.id));
+    for (const [sessionId, connection] of Object.entries(
+      realtimeConnectionsRef.current,
+    )) {
+      const session = sessions.find((item) => item.id === sessionId);
+      if (
+        !activeSessionIds.has(sessionId) ||
+        session?.status === 'completed' ||
+        session?.status === 'cancelled'
+      ) {
+        connection.close();
+        delete realtimeConnectionsRef.current[sessionId];
+        delete transcriptPersistenceRef.current[sessionId];
+        if (voiceFocusSessionId === sessionId) {
+          setVoiceFocusSessionId(null);
+        }
+      }
+    }
+  }, [sessions, voiceFocusSessionId]);
+
+  useEffect(
+    () => () => {
+      for (const connection of Object.values(realtimeConnectionsRef.current)) {
+        connection.close();
+      }
+      realtimeConnectionsRef.current = {};
+      transcriptPersistenceRef.current = {};
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const resolveVoiceFocusSessionId = (): string | null => {
+      if (
+        voiceFocusSessionId &&
+        realtimeConnectionsRef.current[voiceFocusSessionId]?.pushToTalkEnabled
+      ) {
+        return voiceFocusSessionId;
+      }
+
+      const next = Object.entries(copilotStateBySessionRef.current).find(
+        ([sessionId, sessionState]) =>
+          sessionState.status === 'ready' &&
+          sessionState.pushToTalkEnabled === true &&
+          Boolean(realtimeConnectionsRef.current[sessionId]),
+      );
+      return next?.[0] ?? null;
+    };
+
+    const isTypingTarget = (target: EventTarget | null): boolean => {
+      if (!(target instanceof HTMLElement)) {
+        return false;
+      }
+      const tagName = target.tagName.toLowerCase();
+      if (
+        tagName === 'input' ||
+        tagName === 'textarea' ||
+        tagName === 'select'
+      ) {
+        return true;
+      }
+      return target.isContentEditable;
+    };
+
+    const startVoiceForSession = (sessionId: string) => {
+      const connection = realtimeConnectionsRef.current[sessionId];
+      if (!connection?.pushToTalkEnabled) {
+        return;
+      }
+      setVoiceFocusSessionId(sessionId);
+      connection.startPushToTalk();
+      setVoiceControlStateBySession((current) => ({
+        ...current,
+        [sessionId]: {
+          ...(current[sessionId] ?? getEmptyRealtimeVoiceControlState()),
+          isHolding: true,
+          error: null,
+        },
+      }));
+      setVoiceRuntimeStateBySession((current) => ({
+        ...current,
+        [sessionId]: {
+          status: 'listening',
+          lastEventAt: new Date().toISOString(),
+        },
+      }));
+    };
+
+    const stopVoiceForSession = (sessionId: string) => {
+      const connection = realtimeConnectionsRef.current[sessionId];
+      if (!connection?.pushToTalkEnabled) {
+        return;
+      }
+      connection.stopPushToTalk();
+      setVoiceControlStateBySession((current) => {
+        const previous =
+          current[sessionId] ?? getEmptyRealtimeVoiceControlState();
+        return {
+          ...current,
+          [sessionId]: {
+            ...previous,
+            isHolding: false,
+            lastCommitAt: previous.isHolding
+              ? new Date().toISOString()
+              : previous.lastCommitAt,
+            error: null,
+          },
+        };
+      });
+      setVoiceRuntimeStateBySession((current) => ({
+        ...current,
+        [sessionId]: {
+          status: 'thinking',
+          lastEventAt: new Date().toISOString(),
+        },
+      }));
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.code !== 'Space') {
+        return;
+      }
+      if (event.repeat || isTypingTarget(event.target)) {
+        return;
+      }
+      const sessionId = resolveVoiceFocusSessionId();
+      if (!sessionId) {
+        return;
+      }
+      event.preventDefault();
+      startVoiceForSession(sessionId);
+    };
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.code !== 'Space') {
+        return;
+      }
+      const sessionId = resolveVoiceFocusSessionId();
+      if (!sessionId) {
+        return;
+      }
+      event.preventDefault();
+      stopVoiceForSession(sessionId);
+    };
+
+    const handleWindowBlur = () => {
+      const sessionId = resolveVoiceFocusSessionId();
+      if (!sessionId) {
+        return;
+      }
+      stopVoiceForSession(sessionId);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', handleWindowBlur);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', handleWindowBlur);
+    };
+  }, [voiceFocusSessionId]);
+
+  const hasObserverToken = useMemo(() => {
+    const authHeader = apiClient.defaults?.headers?.common?.Authorization;
+    return typeof authHeader === 'string' && authHeader.trim().length > 0;
+  }, []);
+
+  const handleRealtimeBootstrap = async (session: LiveSessionSummary) => {
+    const existingConnection = realtimeConnectionsRef.current[session.id];
+    if (existingConnection) {
+      existingConnection.close();
+      delete realtimeConnectionsRef.current[session.id];
+    }
+    setCopilotStateBySession((current) => ({
+      ...current,
+      [session.id]: { status: 'loading' },
+    }));
+    try {
+      const response = await apiClient.post(
+        `/live-sessions/${session.id}/realtime/session`,
+        {
+          outputModalities: ['audio'],
+          voice: 'marin',
+          pushToTalk: true,
+          topicHint: `Live objective: ${session.objective}`,
+        },
+      );
+      const payload =
+        response && typeof response.data === 'object' && response.data
+          ? (response.data as RealtimeCopilotBootstrap)
+          : null;
+      if (!(payload?.provider && payload?.sessionId && payload?.clientSecret)) {
+        throw new Error('Realtime bootstrap payload is incomplete.');
+      }
+      setCopilotStateBySession((current) => ({
+        ...current,
+        [session.id]: {
+          status: 'connecting',
+          bootstrap: payload,
+        },
+      }));
+      const connection = await connectOpenAIRealtimeConnection({
+        liveSessionId: session.id,
+        bootstrap: {
+          provider: 'openai',
+          sessionId: payload.sessionId,
+          clientSecret: payload.clientSecret,
+          model: payload.model,
+          outputModalities: payload.outputModalities ?? ['audio'],
+          pushToTalk: payload.transportHints?.pushToTalk ?? true,
+        },
+        onServerEvent: (serverEvent) => {
+          emitLiveSessionRealtimeServerEvent({
+            liveSessionId: session.id,
+            serverEvent,
+          });
+        },
+        onError: (message) => {
+          setToolBridgeStateBySession((current) => ({
+            ...current,
+            [session.id]: {
+              ...(current[session.id] ?? getEmptyRealtimeToolBridgeState()),
+              error: message,
+            },
+          }));
+          setVoiceControlStateBySession((current) => ({
+            ...current,
+            [session.id]: {
+              ...(current[session.id] ?? getEmptyRealtimeVoiceControlState()),
+              error: message,
+            },
+          }));
+          setVoiceRuntimeStateBySession((current) => ({
+            ...current,
+            [session.id]: {
+              status: 'idle',
+              lastEventAt: new Date().toISOString(),
+            },
+          }));
+        },
+      });
+      realtimeConnectionsRef.current[session.id] = connection;
+      transcriptPersistenceRef.current[session.id] = {
+        lastText: '',
+        lastPersistedAt: null,
+        pending: false,
+      };
+      setCopilotStateBySession((current) => ({
+        ...current,
+        [session.id]: {
+          status: 'ready',
+          bootstrap: payload,
+          pushToTalkEnabled: connection.pushToTalkEnabled,
+        },
+      }));
+      setToolBridgeStateBySession((current) => ({
+        ...current,
+        [session.id]: getEmptyRealtimeToolBridgeState(),
+      }));
+      setVoiceControlStateBySession((current) => ({
+        ...current,
+        [session.id]: getEmptyRealtimeVoiceControlState(),
+      }));
+      setTranscriptStateBySession((current) => ({
+        ...current,
+        [session.id]: getEmptyRealtimeTranscriptState(),
+      }));
+      setVoiceRuntimeStateBySession((current) => ({
+        ...current,
+        [session.id]: getEmptyRealtimeVoiceRuntimeState(),
+      }));
+      if (connection.pushToTalkEnabled) {
+        setVoiceFocusSessionId(session.id);
+      }
+    } catch (error) {
+      setCopilotStateBySession((current) => ({
+        ...current,
+        [session.id]: {
+          status: 'error',
+          error: resolveRealtimeBootstrapError(error),
+        },
+      }));
+    }
+  };
+
+  const handlePushToTalkStart = (sessionId: string) => {
+    const connection = realtimeConnectionsRef.current[sessionId];
+    if (!connection?.pushToTalkEnabled) {
+      return;
+    }
+    setVoiceFocusSessionId(sessionId);
+    connection.startPushToTalk();
+    setVoiceControlStateBySession((current) => ({
+      ...current,
+      [sessionId]: {
+        ...(current[sessionId] ?? getEmptyRealtimeVoiceControlState()),
+        isHolding: true,
+        error: null,
+      },
+    }));
+    setVoiceRuntimeStateBySession((current) => ({
+      ...current,
+      [sessionId]: {
+        status: 'listening',
+        lastEventAt: new Date().toISOString(),
+      },
+    }));
+  };
+
+  const handlePushToTalkStop = (sessionId: string) => {
+    const connection = realtimeConnectionsRef.current[sessionId];
+    if (!connection?.pushToTalkEnabled) {
+      return;
+    }
+    connection.stopPushToTalk();
+    setVoiceControlStateBySession((current) => {
+      const previous =
+        current[sessionId] ?? getEmptyRealtimeVoiceControlState();
+      return {
+        ...current,
+        [sessionId]: {
+          ...previous,
+          isHolding: false,
+          lastCommitAt: previous.isHolding
+            ? new Date().toISOString()
+            : previous.lastCommitAt,
+          error: null,
+        },
+      };
+    });
+    setVoiceRuntimeStateBySession((current) => ({
+      ...current,
+      [sessionId]: {
+        status: 'thinking',
+        lastEventAt: new Date().toISOString(),
+      },
+    }));
+  };
+
+  const handlePushToTalkInterrupt = (sessionId: string) => {
+    const connection = realtimeConnectionsRef.current[sessionId];
+    if (!connection) {
+      return;
+    }
+    setVoiceFocusSessionId(sessionId);
+    connection.interrupt();
+    setVoiceControlStateBySession((current) => {
+      const previous =
+        current[sessionId] ?? getEmptyRealtimeVoiceControlState();
+      return {
+        ...current,
+        [sessionId]: {
+          ...previous,
+          isHolding: false,
+          interruptions: previous.interruptions + 1,
+          error: null,
+        },
+      };
+    });
+    setVoiceRuntimeStateBySession((current) => ({
+      ...current,
+      [sessionId]: {
+        status: 'idle',
+        lastEventAt: new Date().toISOString(),
+      },
+    }));
+  };
 
   return (
     <section className="card p-4" data-testid="live-studio-sessions-rail">
@@ -312,6 +1350,179 @@ export const LiveStudioSessionsRail = () => {
                     </a>
                   ) : null}
                 </div>
+              ) : null}
+
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <button
+                  className="rounded-md border border-border/35 bg-background/60 px-2 py-1 font-semibold text-[10px] text-foreground transition hover:bg-background/75 disabled:cursor-not-allowed disabled:opacity-65"
+                  disabled={
+                    session.status === 'completed' ||
+                    session.status === 'cancelled' ||
+                    copilotStateBySession[session.id]?.status === 'loading' ||
+                    copilotStateBySession[session.id]?.status === 'connecting'
+                  }
+                  onClick={() => handleRealtimeBootstrap(session)}
+                  type="button"
+                >
+                  {copilotStateBySession[session.id]?.status === 'loading' ||
+                  copilotStateBySession[session.id]?.status === 'connecting'
+                    ? 'Starting copilot...'
+                    : 'Start realtime copilot'}
+                </button>
+                {hasObserverToken ? null : (
+                  <Link
+                    className="text-[10px] text-primary underline-offset-2 hover:underline"
+                    href="/login"
+                  >
+                    Sign in required
+                  </Link>
+                )}
+              </div>
+              {copilotStateBySession[session.id]?.status === 'ready' &&
+              copilotStateBySession[session.id]?.bootstrap ? (
+                <div className="space-y-1">
+                  <p className="text-[10px] text-chart-2">
+                    Copilot ready: session{' '}
+                    {copilotStateBySession[session.id]?.bootstrap?.sessionId}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    Tool bridge:{' '}
+                    {toolBridgeStateBySession[session.id]?.processedCount ?? 0}{' '}
+                    processed
+                  </p>
+                  {toolBridgeStateBySession[session.id]?.lastProcessedAt ? (
+                    <p className="text-[10px] text-muted-foreground">
+                      Last sync:{' '}
+                      {formatRelativeMinutes(
+                        toolBridgeStateBySession[session.id]
+                          ?.lastProcessedAt as string,
+                      )}
+                    </p>
+                  ) : null}
+                  {copilotStateBySession[session.id]?.pushToTalkEnabled ? (
+                    <div className="mt-1 space-y-1 rounded-md border border-border/25 bg-background/52 px-2 py-1.5">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                        Voice controls
+                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`rounded-full px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide ${getRealtimeStatusClassName(
+                            voiceRuntimeStateBySession[session.id]?.status ??
+                              'idle',
+                          )}`}
+                        >
+                          {toRealtimeStatusLabel(
+                            voiceRuntimeStateBySession[session.id]?.status ??
+                              'idle',
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                          className="rounded-md border border-border/35 bg-background/65 px-2 py-1 font-semibold text-[10px] text-foreground transition hover:bg-background/80"
+                          onPointerCancel={() =>
+                            handlePushToTalkStop(session.id)
+                          }
+                          onPointerDown={() =>
+                            handlePushToTalkStart(session.id)
+                          }
+                          onPointerLeave={() =>
+                            handlePushToTalkStop(session.id)
+                          }
+                          onPointerUp={() => handlePushToTalkStop(session.id)}
+                          type="button"
+                        >
+                          {voiceControlStateBySession[session.id]?.isHolding
+                            ? 'Listening... release to send'
+                            : 'Hold to talk'}
+                        </button>
+                        <button
+                          className="rounded-md border border-border/35 bg-background/65 px-2 py-1 font-semibold text-[10px] text-foreground transition hover:bg-background/80"
+                          onClick={() => handlePushToTalkInterrupt(session.id)}
+                          type="button"
+                        >
+                          Interrupt response
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        Interruptions:{' '}
+                        {voiceControlStateBySession[session.id]
+                          ?.interruptions ?? 0}
+                      </p>
+                      {voiceControlStateBySession[session.id]?.lastCommitAt ? (
+                        <p className="text-[10px] text-muted-foreground">
+                          Last voice send:{' '}
+                          {formatRelativeMinutes(
+                            voiceControlStateBySession[session.id]
+                              ?.lastCommitAt as string,
+                          )}
+                        </p>
+                      ) : null}
+                      <p className="text-[10px] text-muted-foreground">
+                        Keyboard: hold{' '}
+                        <kbd className="rounded border border-border/45 px-1 py-0.5 text-[10px]">
+                          Space
+                        </kbd>{' '}
+                        to talk
+                        {voiceFocusSessionId === session.id ? ' (active)' : ''}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-[10px] text-muted-foreground">
+                      Push-to-talk unavailable for this session.
+                    </p>
+                  )}
+                  {(transcriptStateBySession[session.id]?.liveText ||
+                    transcriptStateBySession[session.id]?.finalText) && (
+                    <div className="mt-1 space-y-1 rounded-md border border-border/25 bg-background/52 px-2 py-1.5">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                        Live transcript
+                      </p>
+                      <p className="line-clamp-3 text-[10px] text-muted-foreground">
+                        {transcriptStateBySession[session.id]?.liveText ||
+                          transcriptStateBySession[session.id]?.finalText}
+                      </p>
+                      {transcriptStateBySession[session.id]?.lastEventAt ? (
+                        <p className="text-[10px] text-muted-foreground">
+                          Updated:{' '}
+                          {formatRelativeMinutes(
+                            transcriptStateBySession[session.id]
+                              ?.lastEventAt as string,
+                          )}
+                        </p>
+                      ) : null}
+                      {transcriptStateBySession[session.id]?.persistedAt ? (
+                        <p className="text-[10px] text-muted-foreground">
+                          Saved to chat:{' '}
+                          {formatRelativeMinutes(
+                            transcriptStateBySession[session.id]
+                              ?.persistedAt as string,
+                          )}
+                        </p>
+                      ) : null}
+                      {transcriptStateBySession[session.id]?.persistError ? (
+                        <p className="text-[10px] text-destructive">
+                          {transcriptStateBySession[session.id]?.persistError}
+                        </p>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+              {voiceControlStateBySession[session.id]?.error ? (
+                <p className="text-[10px] text-destructive">
+                  {voiceControlStateBySession[session.id]?.error}
+                </p>
+              ) : null}
+              {toolBridgeStateBySession[session.id]?.error ? (
+                <p className="text-[10px] text-destructive">
+                  {toolBridgeStateBySession[session.id]?.error}
+                </p>
+              ) : null}
+              {copilotStateBySession[session.id]?.status === 'error' ? (
+                <p className="text-[10px] text-destructive">
+                  {copilotStateBySession[session.id]?.error}
+                </p>
               ) : null}
             </div>
           </article>

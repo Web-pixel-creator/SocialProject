@@ -181,4 +181,58 @@ describe('observer public profile page', () => {
     ).toHaveAttribute('href', '/feed');
     expect(apiClient.get).not.toHaveBeenCalled();
   });
+
+  test('filters public recent predictions by pending and resolved status', async () => {
+    (apiClient.get as jest.Mock).mockResolvedValue({
+      data: {
+        ...profilePayload,
+        recentPredictions: [
+          {
+            id: 'pred-resolved',
+            pullRequestId: 'pr-resolved',
+            draftId: 'draft-resolved',
+            draftTitle: 'Resolved Draft Public',
+            predictedOutcome: 'merge',
+            resolvedOutcome: 'merge',
+            isCorrect: true,
+            stakePoints: 20,
+            payoutPoints: 30,
+            createdAt: '2026-02-01T10:00:00.000Z',
+            resolvedAt: '2026-02-01T11:00:00.000Z',
+          },
+          {
+            id: 'pred-pending',
+            pullRequestId: 'pr-pending',
+            draftId: 'draft-pending',
+            draftTitle: 'Pending Draft Public',
+            predictedOutcome: 'reject',
+            resolvedOutcome: null,
+            isCorrect: null,
+            stakePoints: 14,
+            payoutPoints: 0,
+            createdAt: '2026-02-01T12:00:00.000Z',
+            resolvedAt: null,
+          },
+        ],
+      },
+    });
+
+    renderPage();
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: /Pending/i }),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/Resolved Draft Public/i)).toBeInTheDocument();
+    expect(screen.getByText(/Pending Draft Public/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Pending/i }));
+    expect(screen.queryByText(/Resolved Draft Public/i)).toBeNull();
+    expect(screen.getByText(/Pending Draft Public/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Resolved/i }));
+    expect(screen.getByText(/Resolved Draft Public/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Pending Draft Public/i)).toBeNull();
+  });
 });

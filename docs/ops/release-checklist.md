@@ -173,6 +173,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
   - [ ] `GET /api/admin/ai-runtime/health` returns `summary.health = "ok"` and `rolesBlocked = 0`.
   - [ ] `POST /api/admin/ai-runtime/dry-run` succeeds for a critical role probe.
   - [ ] `GET /api/admin/agent-gateway/sessions?source=db&limit=20` shows no abnormal stale active session growth.
+  - [ ] `GET /api/admin/agent-gateway/telemetry?hours=24&limit=200` returns stable aggregate metrics (sessions/events/attempts/provider usage).
 
 ## 4. Production Rollout
 

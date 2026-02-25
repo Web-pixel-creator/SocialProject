@@ -28,6 +28,12 @@ import {
 interface ObserverRailData {
   liveDraftCount: number;
   prPendingCount: number;
+  hotNowStats: {
+    fixOpenCount: number;
+    decisions24h: number;
+    merges24h: number;
+    averageHotScore: number;
+  };
   battles: RailItem[];
   glowUps: RailItem[];
   studios: RailItem[];
@@ -106,6 +112,12 @@ const parsePanelVisibility = (
 const fallbackRailData: ObserverRailData = {
   liveDraftCount: 128,
   prPendingCount: 57,
+  hotNowStats: {
+    fixOpenCount: 0,
+    decisions24h: 0,
+    merges24h: 0,
+    averageHotScore: 0,
+  },
   battles: fallbackBattles,
   glowUps: fallbackGlowUps,
   studios: fallbackStudios,
@@ -113,6 +125,40 @@ const fallbackRailData: ObserverRailData = {
   activity: fallbackActivity,
   allFeedsFailed: false,
   fallbackUsed: true,
+};
+
+const computeHotNowStats = (
+  rows: Record<string, unknown>[],
+): ObserverRailData['hotNowStats'] => {
+  if (rows.length === 0) {
+    return {
+      fixOpenCount: 0,
+      decisions24h: 0,
+      merges24h: 0,
+      averageHotScore: 0,
+    };
+  }
+
+  let fixOpenCount = 0;
+  let decisions24h = 0;
+  let merges24h = 0;
+  let totalHotScore = 0;
+
+  for (const row of rows) {
+    fixOpenCount += asNumber(row.fixOpenCount ?? row.fix_open_count ?? 0);
+    decisions24h += asNumber(row.decisions24h ?? row.decisions_24h ?? 0);
+    merges24h += asNumber(row.merges24h ?? row.merges_24h ?? 0);
+    totalHotScore += asNumber(row.hotScore ?? row.hot_score ?? 0);
+  }
+
+  const averageHotScore = rows.length > 0 ? totalHotScore / rows.length : 0;
+
+  return {
+    fixOpenCount,
+    decisions24h,
+    merges24h,
+    averageHotScore,
+  };
 };
 
 const fetchObserverRailData = async (): Promise<ObserverRailData> => {
@@ -145,6 +191,7 @@ const fetchObserverRailData = async (): Promise<ObserverRailData> => {
     const studioRows = rowsFromResult(studioResult);
     const liveRows = rowsFromResult(liveResult);
     const hotRows = rowsFromResult(hotNowResult);
+    const hotNowStats = computeHotNowStats(hotRows);
     const activityRows = rowsFromResult(changesResult);
     const followingRows = rowsFromResult(followingResult);
 
@@ -259,6 +306,7 @@ const fetchObserverRailData = async (): Promise<ObserverRailData> => {
         hotNowResult.status === 'fulfilled'
           ? pendingTotal
           : fallbackRailData.prPendingCount,
+      hotNowStats,
       allFeedsFailed,
       fallbackUsed:
         battleFallback ||
@@ -316,6 +364,7 @@ export const ObserverRightRail = () => {
     data?.allFeedsFailed === true ? true : stableData.fallbackUsed;
   const liveDraftCount = stableData.liveDraftCount;
   const prPendingCount = stableData.prPendingCount;
+  const hotNowStats = stableData.hotNowStats;
   const battles = stableData.battles;
   const glowUps = stableData.glowUps;
   const studios = stableData.studios;
@@ -401,12 +450,24 @@ export const ObserverRightRail = () => {
 
   const livePressure = useMemo(() => {
     const activeDrafts = Math.max(1, liveDraftCount);
-    const prPressure = clampPercent((prPendingCount / activeDrafts) * 100);
+    const structuralPressure = (prPendingCount / activeDrafts) * 100;
+    const fixPressureBoost = Math.min(20, hotNowStats.fixOpenCount * 2);
+    const decisionPressureBoost = Math.min(12, hotNowStats.decisions24h * 1.5);
+    const prPressure = clampPercent(
+      structuralPressure + fixPressureBoost + decisionPressureBoost,
+    );
     const audience = clampPercent(
-      realtimeEvents.length * 12 + followedStudios.length * 16 + 18,
+      realtimeEvents.length * 12 +
+        followedStudios.length * 16 +
+        18 +
+        hotNowStats.decisions24h * 2,
     );
     const fallbackPenalty = fallbackUsed ? 10 : 0;
-    const fuel = clampPercent(100 - prPressure * 0.55 - fallbackPenalty);
+    const mergeBoost = Math.min(15, hotNowStats.merges24h * 2);
+    const hotScoreBoost = Math.min(10, hotNowStats.averageHotScore * 0.5);
+    const fuel = clampPercent(
+      100 - prPressure * 0.55 - fallbackPenalty + mergeBoost + hotScoreBoost,
+    );
 
     return {
       prPressure,
@@ -415,6 +476,10 @@ export const ObserverRightRail = () => {
     };
   }, [
     fallbackUsed,
+    hotNowStats.averageHotScore,
+    hotNowStats.decisions24h,
+    hotNowStats.fixOpenCount,
+    hotNowStats.merges24h,
     followedStudios.length,
     liveDraftCount,
     prPendingCount,

@@ -31,6 +31,15 @@ interface PullRequestRow {
   decided_at: Date | null;
 }
 
+interface SettledPredictionRow {
+  observer_id: string;
+  predicted_outcome: 'merge' | 'reject';
+  stake_points: number | string | null;
+  payout_points: number | string | null;
+  is_correct: boolean | null;
+  resolved_at: Date | null;
+}
+
 const normalizeFixRequests = (value: unknown): string[] => {
   if (Array.isArray(value)) {
     return value.filter((item): item is string => typeof item === 'string');
@@ -81,6 +90,67 @@ export class PullRequestServiceImpl implements PullRequestService {
 
   constructor(pool: Pool) {
     this.pool = pool;
+  }
+
+  private async writePredictionSettlementAuditEvents(
+    db: DbClient,
+    input: {
+      draftId: string;
+      pullRequestId: string;
+      resolvedOutcome: 'merge' | 'reject';
+      settledRows: SettledPredictionRow[];
+    },
+  ): Promise<void> {
+    if (input.settledRows.length === 0) {
+      return;
+    }
+
+    const payload = input.settledRows.map((row) => ({
+      observer_id: row.observer_id,
+      predicted_outcome: row.predicted_outcome,
+      stake_points: Number(row.stake_points ?? 0),
+      payout_points: Number(row.payout_points ?? 0),
+      is_correct: Boolean(row.is_correct),
+      resolved_at: row.resolved_at
+        ? new Date(row.resolved_at).toISOString()
+        : null,
+    }));
+
+    await db.query(
+      `INSERT INTO ux_events
+         (event_type, user_type, user_id, draft_id, pr_id, status, source, metadata)
+       SELECT
+         'pr_prediction_settle',
+         'observer',
+         row_data.observer_id,
+         $1::uuid,
+         $2::uuid,
+         $3::varchar,
+         'api',
+         jsonb_build_object(
+           'predictedOutcome', row_data.predicted_outcome,
+           'resolvedOutcome', $3::varchar,
+           'stakePoints', row_data.stake_points,
+           'payoutPoints', row_data.payout_points,
+           'netPoints', row_data.payout_points - row_data.stake_points,
+           'isCorrect', row_data.is_correct,
+           'resolvedAt', row_data.resolved_at
+         )
+       FROM jsonb_to_recordset($4::jsonb) AS row_data(
+         observer_id uuid,
+         predicted_outcome varchar,
+         stake_points int,
+         payout_points int,
+         is_correct boolean,
+         resolved_at timestamptz
+       )`,
+      [
+        input.draftId,
+        input.pullRequestId,
+        input.resolvedOutcome,
+        JSON.stringify(payload),
+      ],
+    );
   }
 
   private async applyTierPromotion(db: DbClient, makerId: string) {
@@ -350,7 +420,8 @@ export class PullRequestServiceImpl implements PullRequestService {
                0
              )::int AS winner_stake_points
            FROM observer_pr_predictions
-           WHERE pull_request_id = $2`,
+           WHERE pull_request_id = $2
+             AND resolved_at IS NULL`,
           [resolvedOutcome, input.pullRequestId],
         );
         const totalStakePoints = Number(
@@ -360,8 +431,9 @@ export class PullRequestServiceImpl implements PullRequestService {
           totals.rows[0]?.winner_stake_points ?? 0,
         );
 
+        let settledRows: SettledPredictionRow[] = [];
         if (winnerStakePoints > 0) {
-          await db.query(
+          const settled = await db.query(
             `UPDATE observer_pr_predictions
              SET resolved_outcome = $1::varchar,
                  is_correct = CASE WHEN predicted_outcome = $1::varchar THEN true ELSE false END,
@@ -372,7 +444,13 @@ export class PullRequestServiceImpl implements PullRequestService {
                  END,
                  resolved_at = NOW()
              WHERE pull_request_id = $2
-               AND resolved_at IS NULL`,
+               AND resolved_at IS NULL
+             RETURNING observer_id,
+                       predicted_outcome,
+                       stake_points,
+                       payout_points,
+                       is_correct,
+                       resolved_at`,
             [
               resolvedOutcome,
               input.pullRequestId,
@@ -380,18 +458,33 @@ export class PullRequestServiceImpl implements PullRequestService {
               winnerStakePoints,
             ],
           );
+          settledRows = settled.rows as SettledPredictionRow[];
         } else {
-          await db.query(
+          const settled = await db.query(
             `UPDATE observer_pr_predictions
              SET resolved_outcome = $1::varchar,
                  is_correct = CASE WHEN predicted_outcome = $1::varchar THEN true ELSE false END,
                  payout_points = 0,
                  resolved_at = NOW()
              WHERE pull_request_id = $2
-               AND resolved_at IS NULL`,
+               AND resolved_at IS NULL
+             RETURNING observer_id,
+                       predicted_outcome,
+                       stake_points,
+                       payout_points,
+                       is_correct,
+                       resolved_at`,
             [resolvedOutcome, input.pullRequestId],
           );
+          settledRows = settled.rows as SettledPredictionRow[];
         }
+
+        await this.writePredictionSettlementAuditEvents(db, {
+          draftId: pr.draft_id,
+          pullRequestId: input.pullRequestId,
+          resolvedOutcome,
+          settledRows,
+        });
       }
 
       return mapPullRequest(updated.rows[0] as PullRequestRow);

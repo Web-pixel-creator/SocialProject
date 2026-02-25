@@ -37,6 +37,24 @@ const envSchema = z.object({
   AGENT_ORCHESTRATION_ENABLED: z.string().default('true'),
   ADMIN_API_TOKEN: z.string().default(''),
   ENABLE_DEMO_FLOW: z.string().default('false'),
+  OPENAI_API_KEY: z.string().default(''),
+  OPENAI_REALTIME_BASE_URL: z.string().default('https://api.openai.com/v1'),
+  OPENAI_REALTIME_MODEL: z.string().default('gpt-realtime'),
+  OPENAI_REALTIME_VOICE: z
+    .enum([
+      'alloy',
+      'ash',
+      'ballad',
+      'coral',
+      'echo',
+      'sage',
+      'shimmer',
+      'verse',
+      'marin',
+      'cedar',
+    ])
+    .default('marin'),
+  OPENAI_REALTIME_TIMEOUT_MS: z.coerce.number().default(12_000),
   HEAVY_RATE_LIMIT_WINDOW_MS: z.coerce.number().default(15 * 60 * 1000),
   HEAVY_RATE_LIMIT_MAX: z.coerce.number().default(30),
   SEARCH_RELEVANCE_WEIGHT_KEYWORD: z.coerce.number().default(0.6),
@@ -80,7 +98,6 @@ const assertProductionSecrets = () => {
   if (env.EMBEDDING_PROVIDER === 'jina' && !env.EMBEDDING_API_KEY) {
     errors.push('EMBEDDING_API_KEY must be set when EMBEDDING_PROVIDER=jina.');
   }
-
   if (errors.length > 0) {
     throw new Error(
       `Invalid production configuration:\n- ${errors.join('\n- ')}`,

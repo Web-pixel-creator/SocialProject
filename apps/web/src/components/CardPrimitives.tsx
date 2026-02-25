@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 
 /* helpers */
@@ -248,6 +248,8 @@ export const ObserverActions = ({
 }: ObserverActionsProps) => {
   const { t } = useLanguage();
   const [expanded, setExpanded] = useState(false);
+  const containerRef = useRef<HTMLElement | null>(null);
+  const morePanelId = useId();
   const resolvedTitle = title ?? t('draft.observerActions');
   const actions: Array<{
     action: ObserverActionType;
@@ -277,7 +279,13 @@ export const ObserverActions = ({
   };
 
   const handleActionClick = async (action: ObserverActionType) => {
-    if (!onAction || pendingAction) {
+    const isAnyTogglePending =
+      pendingAction !== null && isToggleObserverAction(pendingAction);
+    const shouldBlockAction =
+      pendingAction === action ||
+      (isAnyTogglePending && isToggleObserverAction(action));
+
+    if (!onAction || shouldBlockAction) {
       return;
     }
 
@@ -288,8 +296,40 @@ export const ObserverActions = ({
     }
   };
 
+  useEffect(() => {
+    if (!expanded) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (
+        containerRef.current &&
+        event.target instanceof Node &&
+        !containerRef.current.contains(event.target)
+      ) {
+        setExpanded(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setExpanded(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [expanded]);
+
   return (
-    <section className="mt-2 rounded-xl bg-background/32 p-2.5">
+    <section
+      className="mt-2 rounded-xl bg-background/32 p-2.5"
+      ref={containerRef}
+    >
       <p className="mb-2 text-[10px] text-muted-foreground uppercase tracking-wide">
         {resolvedTitle}
       </p>
@@ -315,6 +355,7 @@ export const ObserverActions = ({
           </button>
         ))}
         <button
+          aria-controls={morePanelId}
           aria-expanded={expanded}
           className={buttonClassName}
           onClick={() => setExpanded((previous) => !previous)}
@@ -325,7 +366,7 @@ export const ObserverActions = ({
         </button>
       </div>
       {expanded ? (
-        <div className="mt-1.5 grid grid-cols-3 gap-1.5">
+        <div className="mt-1.5 grid grid-cols-3 gap-1.5" id={morePanelId}>
           {secondaryActions.map(({ action, icon: Icon, label }) => (
             <button
               aria-busy={pendingAction === action}

@@ -34,6 +34,7 @@ For release execution and rollback decisions, use:
 - [ ] `GET /api/admin/ai-runtime/health` returns runtime snapshot with `summary.health = "ok"`
 - [ ] `POST /api/admin/ai-runtime/dry-run` succeeds for at least one role probe
 - [ ] `GET /api/admin/agent-gateway/sessions?source=db&limit=20` confirms no abnormal stale active session backlog
+- [ ] `GET /api/admin/agent-gateway/telemetry?hours=24&limit=200` returns non-empty control-plane snapshot for active environments
 
 ## Jobs
 - [ ] Confirm `JOBS_ENABLED=true` in prod

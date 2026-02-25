@@ -575,6 +575,15 @@ describe('draft detail page', () => {
     expect(
       screen.getByText(/Sign in as observer to submit predictions/i),
     ).toBeInTheDocument();
+    const predictionAuthCard = screen
+      .getByText(/Sign in as observer to submit predictions/i)
+      .closest('.card');
+    expect(predictionAuthCard).not.toBeNull();
+    expect(
+      within(predictionAuthCard as HTMLElement).getByRole('link', {
+        name: /Sign in/i,
+      }),
+    ).toHaveAttribute('href', '/login');
   });
 
   test('runs demo flow from CTA and shows completion status', async () => {
@@ -948,6 +957,190 @@ describe('draft detail page', () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/GlowUp score updated/i)).toBeInTheDocument();
     expect(screen.getByText(/Draft released/i)).toBeInTheDocument();
+  });
+
+  test('uses cooldown after summary refresh throttling on prediction submit', async () => {
+    let predictionSummaryRequestCount = 0;
+
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/search/similar')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/fix-requests')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/pull-requests') && !url.includes('/predictions')) {
+        return Promise.resolve({
+          data: [
+            {
+              id: 'pr-cooldown',
+              status: 'pending',
+              description: 'Pending PR for cooldown',
+              makerId: 'maker-cooldown',
+            },
+          ],
+        });
+      }
+      if (url.includes('/predictions')) {
+        predictionSummaryRequestCount += 1;
+        if (predictionSummaryRequestCount === 1) {
+          return Promise.resolve({
+            data: {
+              pullRequestId: 'pr-cooldown',
+              pullRequestStatus: 'pending',
+              consensus: { merge: 4, reject: 2, total: 6 },
+              observerPrediction: null,
+              accuracy: { correct: 2, total: 5, rate: 0.4 },
+              market: { minStakePoints: 5, maxStakePoints: 500 },
+            },
+          });
+        }
+        return Promise.reject({
+          response: { status: 429, data: { message: 'Too many requests' } },
+        });
+      }
+      if (url.includes('/arc')) {
+        return Promise.resolve({ data: null });
+      }
+      if (
+        url.includes('/observers/watchlist') ||
+        url.includes('/observers/digest') ||
+        url.includes('/me/following')
+      ) {
+        return Promise.resolve({ data: [] });
+      }
+      return Promise.resolve({
+        data: {
+          draft: {
+            id: 'draft-prediction-cooldown',
+            currentVersion: 1,
+            glowUpScore: 0.9,
+            status: 'draft',
+            updatedAt: new Date().toISOString(),
+          },
+          versions: [],
+        },
+      });
+    });
+
+    await renderDraftDetailPage('draft-prediction-cooldown');
+
+    fireEvent.click(screen.getByRole('button', { name: /Predict merge/i }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          /Too many prediction requests\. Please try again shortly\./i,
+        ),
+      ).toBeInTheDocument(),
+    );
+    expect(predictionSummaryRequestCount).toBe(2);
+
+    fireEvent.click(screen.getByRole('button', { name: /Predict reject/i }));
+
+    await waitFor(() => {
+      const predictionSubmitCalls = (apiClient.post as jest.Mock).mock.calls
+        .map((call) => call[0])
+        .filter(
+          (url) =>
+            typeof url === 'string' &&
+            url.includes('/pull-requests/pr-cooldown/predict'),
+        );
+      expect(predictionSubmitCalls).toHaveLength(2);
+    });
+    expect(predictionSummaryRequestCount).toBe(2);
+  });
+
+  test('maps prediction submit stake validation code to localized range message', async () => {
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/search/similar')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/fix-requests')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/pull-requests') && !url.includes('/predictions')) {
+        return Promise.resolve({
+          data: [
+            {
+              id: 'pr-pending',
+              status: 'pending',
+              description: 'Pending PR for prediction',
+              makerId: 'maker-predict',
+            },
+          ],
+        });
+      }
+      if (url.includes('/predictions')) {
+        return Promise.resolve({
+          data: {
+            pullRequestId: 'pr-pending',
+            pullRequestStatus: 'pending',
+            consensus: { merge: 2, reject: 1, total: 3 },
+            observerPrediction: null,
+            market: {
+              minStakePoints: 5,
+              maxStakePoints: 120,
+            },
+            accuracy: { correct: 4, total: 8, rate: 0.5 },
+          },
+        });
+      }
+      if (url.includes('/arc')) {
+        return Promise.resolve({ data: null });
+      }
+      if (
+        url.includes('/observers/watchlist') ||
+        url.includes('/observers/digest')
+      ) {
+        return Promise.resolve({ data: [] });
+      }
+      return Promise.resolve({
+        data: {
+          draft: {
+            id: 'draft-prediction-error',
+            currentVersion: 1,
+            glowUpScore: 2.1,
+            status: 'draft',
+            updatedAt: new Date().toISOString(),
+          },
+          versions: [],
+        },
+      });
+    });
+    (apiClient.post as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/pull-requests/pr-pending/predict')) {
+        return Promise.reject({
+          response: {
+            status: 400,
+            data: {
+              error: 'PREDICTION_STAKE_INVALID',
+              message: 'raw backend stake error',
+            },
+          },
+        });
+      }
+      return Promise.resolve({ data: { status: 'ok' } });
+    });
+
+    await renderDraftDetailPage('draft-prediction-error');
+
+    fireEvent.click(screen.getByRole('button', { name: /Predict merge/i }));
+
+    await waitFor(() =>
+      expect(apiClient.post).toHaveBeenCalledWith(
+        '/pull-requests/pr-pending/predict',
+        {
+          predictedOutcome: 'merge',
+          stakePoints: 10,
+        },
+      ),
+    );
+
+    expect(
+      await screen.findByText(/Stake must be in range:\s*5-120 FIN\./i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/raw backend stake error/i)).toBeNull();
   });
 
   test('renders orchestration notifications from nested realtime payloads', async () => {
@@ -1405,6 +1598,63 @@ describe('draft detail page', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(/Sign in as observer to submit predictions/i),
+    ).toBeInTheDocument();
+  });
+
+  test('shows localized rate-limit hint when prediction summary is throttled', async () => {
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/search/similar')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/fix-requests')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/pull-requests') && !url.includes('/predictions')) {
+        return Promise.resolve({
+          data: [
+            {
+              id: 'pr-rate-limit',
+              status: 'pending',
+              description: 'Pending PR',
+              makerId: 'maker-rate-limit',
+            },
+          ],
+        });
+      }
+      if (url.includes('/predictions')) {
+        return Promise.reject({
+          response: { status: 429, data: { message: 'Too many requests' } },
+        });
+      }
+      if (url.includes('/arc')) {
+        return Promise.resolve({ data: null });
+      }
+      if (
+        url.includes('/observers/watchlist') ||
+        url.includes('/observers/digest')
+      ) {
+        return Promise.resolve({ data: [] });
+      }
+      return Promise.resolve({
+        data: {
+          draft: {
+            id: 'draft-prediction-summary-rate-limit',
+            currentVersion: 1,
+            glowUpScore: 0.5,
+            status: 'draft',
+            updatedAt: new Date().toISOString(),
+          },
+          versions: [],
+        },
+      });
+    });
+
+    await renderDraftDetailPage('draft-prediction-summary-rate-limit');
+
+    expect(
+      screen.getByText(
+        /Too many prediction requests\. Please try again shortly\./i,
+      ),
     ).toBeInTheDocument();
   });
 

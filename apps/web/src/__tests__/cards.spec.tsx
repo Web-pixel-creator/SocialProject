@@ -39,6 +39,12 @@ describe('feed cards', () => {
         id="change-42"
         impactDelta={3}
         occurredAt="2026-02-08T12:00:00.000Z"
+        provenance={{
+          authenticityStatus: 'verified',
+          humanSparkScore: 88,
+          humanBriefPresent: true,
+          agentStepCount: 3,
+        }}
         severity="major"
       />,
     );
@@ -49,6 +55,8 @@ describe('feed cards', () => {
     expect(screen.getByText(/Draft ID:\s*draft-123/i)).toBeInTheDocument();
     expect(screen.getByText(/Impact \+3/i)).toBeInTheDocument();
     expect(screen.getByText(/GlowUp 8.1/i)).toBeInTheDocument();
+    expect(screen.getByText(/Verified/i)).toBeInTheDocument();
+    expect(screen.getByText(/Human spark 88/i)).toBeInTheDocument();
     expect(screen.getByText(/Mini-thread/i)).toBeInTheDocument();
     expect(screen.getByText(/Author decision: Merged/i)).toBeInTheDocument();
 
@@ -172,6 +180,12 @@ describe('feed cards', () => {
         leftLabel="Studio A"
         leftVote={55}
         prCount={4}
+        provenance={{
+          authenticityStatus: 'metadata_only',
+          humanSparkScore: 21,
+          humanBriefPresent: false,
+          agentStepCount: 2,
+        }}
         rightLabel="Studio B"
         rightVote={45}
         title="PR Battle: Studio A vs Studio B"
@@ -179,9 +193,37 @@ describe('feed cards', () => {
     );
 
     expect(screen.getByText(/Studio A 55%/i)).toBeInTheDocument();
+    expect(screen.getByText(/Traceable/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Vote Studio A/i }));
     expect(screen.getByText(/Your vote: Studio A/i)).toBeInTheDocument();
     expect(screen.getByText(/Studio A 56%/i)).toBeInTheDocument();
+  });
+
+  test('shows provenance spark in compact battle card', () => {
+    render(
+      <BattleCard
+        compact
+        decision="pending"
+        fixCount={4}
+        glowUpScore={6.2}
+        id="battle-compact-spark"
+        leftLabel="Studio Left"
+        leftVote={51}
+        prCount={3}
+        provenance={{
+          authenticityStatus: 'unverified',
+          humanSparkScore: 13,
+          humanBriefPresent: false,
+          agentStepCount: 1,
+        }}
+        rightLabel="Studio Right"
+        rightVote={49}
+        title="Compact battle"
+      />,
+    );
+
+    expect(screen.getByText(/Human spark 13/i)).toBeInTheDocument();
+    expect(screen.getByText(/Unverified/i)).toBeInTheDocument();
   });
 
   test('shows reason when battle prediction is blocked by daily submission cap', () => {
@@ -256,5 +298,46 @@ describe('feed cards', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /^Stake 5$/i }));
     expect(screen.getByLabelText(/^Stake$/i)).toHaveValue(5);
+  });
+
+  test('clamps out-of-range stake input and shows adjustment hint', () => {
+    render(
+      <BattleCard
+        decision="pending"
+        fixCount={2}
+        glowUpScore={7.1}
+        id="battle-prediction-clamp"
+        leftLabel="Design"
+        leftVote={52}
+        onPredict={jest.fn()}
+        prCount={3}
+        predictionState={{
+          dailyStakeCapPoints: 250,
+          dailyStakeUsedPoints: 40,
+          dailySubmissionCap: 10,
+          dailySubmissionsUsed: 2,
+          latestOutcome: null,
+          maxStakePoints: 100,
+          minStakePoints: 5,
+          pending: false,
+        }}
+        rightLabel="Function"
+        rightVote={48}
+        title="PR Battle: Stake clamp test"
+      />,
+    );
+
+    const stakeInput = screen.getByLabelText(/^Stake$/i);
+    fireEvent.change(stakeInput, { target: { value: '500' } });
+
+    expect(stakeInput).toHaveValue(100);
+    expect(
+      screen.getByText(/Stake was adjusted to allowed range:\s*5-100 FIN\./i),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Stake 5$/i }));
+    expect(
+      screen.queryByText(/Stake was adjusted to allowed range:\s*5-100 FIN\./i),
+    ).not.toBeInTheDocument();
   });
 });

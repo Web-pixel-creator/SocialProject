@@ -273,6 +273,7 @@ export const mapChanges = (data: FeedApiRow[]): ChangeFeedItem[] =>
       item.author_decision,
       item.status,
     ),
+    provenance: asProvenance(item),
   }));
 
 export const mapBattles = (data: FeedApiRow[]): BattleFeedItem[] =>
@@ -352,6 +353,7 @@ export const mapBattles = (data: FeedApiRow[]): BattleFeedItem[] =>
         asString(item.beforeImageUrl) ?? asString(item.before_image_url),
       afterImageUrl:
         asString(item.afterImageUrl) ?? asString(item.after_image_url),
+      provenance: asProvenance(item),
     };
   });
 

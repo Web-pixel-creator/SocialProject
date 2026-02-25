@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
+import type { ProvenanceIndicatorView } from '../lib/feedTypes';
 
 interface ChangeCardProps {
   id: string;
@@ -18,6 +19,7 @@ interface ChangeCardProps {
   miniThread?: string[];
   makerPrRef?: string;
   decisionLabel?: string;
+  provenance?: ProvenanceIndicatorView;
 }
 
 export const ChangeCard = ({
@@ -34,8 +36,30 @@ export const ChangeCard = ({
   miniThread,
   makerPrRef,
   decisionLabel,
+  provenance,
 }: ChangeCardProps) => {
   const { t } = useLanguage();
+
+  const getProvenancePresentation = (
+    status: ProvenanceIndicatorView['authenticityStatus'],
+  ) => {
+    if (status === 'verified') {
+      return {
+        className: 'tag-success border',
+        label: t('feed.provenance.verified'),
+      };
+    }
+    if (status === 'metadata_only') {
+      return {
+        className: 'tag-hot border',
+        label: t('feed.provenance.traceable'),
+      };
+    }
+    return {
+      className: 'border border-border/25 bg-muted/60 text-foreground',
+      label: t('feed.provenance.unverified'),
+    };
+  };
 
   const formatTime = (value?: string) => {
     if (!value) {
@@ -96,6 +120,9 @@ export const ChangeCard = ({
     miniThread,
     t,
   ]);
+  const provenancePresentation = provenance
+    ? getProvenancePresentation(provenance.authenticityStatus)
+    : null;
 
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
 
@@ -132,13 +159,22 @@ export const ChangeCard = ({
         >
           {badge}
         </span>
-        {severityLabel && (
-          <span
-            className={`rounded-full px-2 py-1 font-semibold text-[10px] uppercase ${severityTone}`}
-          >
-            {severityLabel}
-          </span>
-        )}
+        <div className="flex items-center gap-1.5">
+          {severityLabel && (
+            <span
+              className={`rounded-full px-2 py-1 font-semibold text-[10px] uppercase ${severityTone}`}
+            >
+              {severityLabel}
+            </span>
+          )}
+          {provenancePresentation && (
+            <span
+              className={`rounded-full px-2 py-1 font-semibold text-[10px] uppercase ${provenancePresentation.className}`}
+            >
+              {provenancePresentation.label}
+            </span>
+          )}
+        </div>
       </div>
       <div>
         <p className="font-semibold text-foreground text-sm">{draftTitle}</p>
@@ -182,6 +218,12 @@ export const ChangeCard = ({
           {typeof impactDelta === 'number' && impactDelta > 0 && (
             <span>
               {t('changeCard.metrics.impact')} +{impactDelta}
+            </span>
+          )}
+          {provenance && (
+            <span>
+              {t('feed.provenance.spark')}{' '}
+              {provenance.humanSparkScore.toFixed(0)}
             </span>
           )}
           <span>

@@ -51,4 +51,34 @@ describe('agent gateway service', () => {
       }),
     ).toThrow('Session is closed.');
   });
+
+  test('auto compacts long sessions and keeps recent context window', () => {
+    const service = new AgentGatewayServiceImpl({
+      autoCompactTrigger: 5,
+      autoCompactKeepRecent: 2,
+    });
+    const session = service.createSession({
+      channel: 'swarm',
+      externalSessionId: 'swarm-compact-1',
+      roles: ['author', 'critic', 'maker'],
+    });
+
+    for (let index = 0; index < 6; index += 1) {
+      service.appendEvent(session.id, {
+        fromRole: 'critic',
+        toRole: 'maker',
+        type: `fix_request_${index + 1}`,
+        payload: { order: index + 1 },
+      });
+    }
+
+    const detail = service.getSession(session.id);
+    expect(detail.events).toHaveLength(3);
+    expect(detail.events[0].type).toBe('fix_request_5');
+    expect(detail.events[1].type).toBe('fix_request_6');
+    expect(detail.events[2].type).toBe('session_compacted');
+    expect(detail.events[2].payload.reason).toBe('auto_buffer_limit');
+    expect(detail.events[2].payload.prunedCount).toBe(4);
+    expect(detail.events[2].payload.keptCount).toBe(2);
+  });
 });

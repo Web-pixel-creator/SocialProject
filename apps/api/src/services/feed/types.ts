@@ -60,6 +60,7 @@ export interface ChangeFeedItem {
   occurredAt: Date;
   glowUpScore?: number;
   impactDelta?: number;
+  provenance?: FeedProvenanceIndicator;
 }
 
 export interface HotNowItem {

@@ -41,6 +41,7 @@ const VISUAL_ALLOWED_FIELDS = new Set([
   'offset',
 ]);
 const STYLE_FUSION_ALLOWED_FIELDS = new Set(['draftId', 'type', 'limit']);
+const SEARCH_MAX_OFFSET = 10_000;
 
 const parseEnum = <T extends string>(
   value: unknown,
@@ -79,7 +80,13 @@ const parseLimit = (
   return parsed;
 };
 
-const parseOffset = (value: unknown, field = 'offset'): number | undefined => {
+const parseOffset = (
+  value: unknown,
+  {
+    field = 'offset',
+    max = SEARCH_MAX_OFFSET,
+  }: { field?: string; max?: number } = {},
+): number | undefined => {
   if (value === undefined || value === null || value === '') {
     return undefined;
   }
@@ -88,6 +95,13 @@ const parseOffset = (value: unknown, field = 'offset'): number | undefined => {
     throw new ServiceError(
       'SEARCH_PAGINATION_INVALID',
       `${field} must be an integer >= 0.`,
+      400,
+    );
+  }
+  if (parsed > max) {
+    throw new ServiceError(
+      'SEARCH_PAGINATION_INVALID',
+      `${field} must be between 0 and ${max}.`,
       400,
     );
   }
@@ -107,6 +121,34 @@ const assertAllowedFields = (
       400,
     );
   }
+};
+
+const assertAllowedQueryFields = (
+  query: unknown,
+  {
+    allowed,
+    errorCode,
+  }: {
+    allowed: readonly string[];
+    errorCode: string;
+  },
+): Record<string, unknown> => {
+  const queryRecord =
+    typeof query === 'object' && query !== null
+      ? (query as Record<string, unknown>)
+      : {};
+  const allowedSet = new Set(allowed);
+  const unknown = Object.keys(queryRecord).filter(
+    (key) => !allowedSet.has(key),
+  );
+  if (unknown.length > 0) {
+    throw new ServiceError(
+      errorCode,
+      `Unsupported query fields: ${unknown.join(', ')}.`,
+      400,
+    );
+  }
+  return queryRecord;
 };
 
 const writeStyleFusionTelemetry = async (params: {
@@ -141,14 +183,27 @@ router.get(
   }),
   async (req, res, next) => {
     try {
-      const q = String(req.query.q ?? '');
-      const type = parseEnum(req.query.type, SEARCH_TYPES);
-      const sort = parseEnum(req.query.sort, SEARCH_SORTS);
-      const range = parseEnum(req.query.range, SEARCH_RANGES);
-      const profile = parseEnum(req.query.profile, SEARCH_PROFILES);
-      const intent = parseEnum(req.query.intent, SEARCH_INTENTS);
-      const limit = parseLimit(req.query.limit, { field: 'limit', max: 100 });
-      const offset = parseOffset(req.query.offset);
+      const query = assertAllowedQueryFields(req.query, {
+        allowed: [
+          'q',
+          'type',
+          'sort',
+          'range',
+          'profile',
+          'intent',
+          'limit',
+          'offset',
+        ],
+        errorCode: 'SEARCH_INVALID_QUERY_FIELDS',
+      });
+      const q = String(query.q ?? '');
+      const type = parseEnum(query.type, SEARCH_TYPES);
+      const sort = parseEnum(query.sort, SEARCH_SORTS);
+      const range = parseEnum(query.range, SEARCH_RANGES);
+      const profile = parseEnum(query.profile, SEARCH_PROFILES);
+      const intent = parseEnum(query.intent, SEARCH_INTENTS);
+      const limit = parseLimit(query.limit, { field: 'limit', max: 100 });
+      const offset = parseOffset(query.offset);
       const results = await searchService.search(q, {
         type,
         sort,
@@ -174,19 +229,21 @@ router.get(
   }),
   async (req, res, next) => {
     try {
-      const draftId = String(req.query.draftId ?? '');
+      const query = assertAllowedQueryFields(req.query, {
+        allowed: ['draftId', 'type', 'limit', 'offset', 'exclude'],
+        errorCode: 'SEARCH_INVALID_QUERY_FIELDS',
+      });
+      const draftId = String(query.draftId ?? '');
       if (!draftId) {
         throw new ServiceError('DRAFT_ID_REQUIRED', 'Provide a draftId.', 400);
       }
       if (!isUuid(draftId)) {
         throw new ServiceError('DRAFT_ID_INVALID', 'Invalid draft id.', 400);
       }
-      const type = parseEnum(req.query.type, VISUAL_TYPES);
-      const limit = parseLimit(req.query.limit, { field: 'limit', max: 50 });
-      const offset = parseOffset(req.query.offset);
-      const excludeDraftId = req.query.exclude
-        ? String(req.query.exclude)
-        : undefined;
+      const type = parseEnum(query.type, VISUAL_TYPES);
+      const limit = parseLimit(query.limit, { field: 'limit', max: 50 });
+      const offset = parseOffset(query.offset);
+      const excludeDraftId = query.exclude ? String(query.exclude) : undefined;
       if (excludeDraftId && !isUuid(excludeDraftId)) {
         throw new ServiceError(
           'DRAFT_ID_INVALID',
@@ -214,6 +271,10 @@ router.post(
   computeHeavyRateLimiter,
   async (req, res, next) => {
     try {
+      assertAllowedQueryFields(req.query, {
+        allowed: [],
+        errorCode: 'SEARCH_INVALID_QUERY_FIELDS',
+      });
       const body =
         req.body && typeof req.body === 'object'
           ? (req.body as Record<string, unknown>)
@@ -299,6 +360,10 @@ router.post(
     let type: VisualSearchFilters['type'] | undefined;
     let limit: number | undefined;
     try {
+      assertAllowedQueryFields(req.query, {
+        allowed: [],
+        errorCode: 'SEARCH_INVALID_QUERY_FIELDS',
+      });
       const body =
         req.body && typeof req.body === 'object'
           ? (req.body as Record<string, unknown>)

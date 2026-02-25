@@ -24,6 +24,7 @@ import { PullRequestServiceImpl } from '../services/pullRequest/pullRequestServi
 import { SearchServiceImpl } from '../services/search/searchService';
 
 const app = createApp();
+jest.setTimeout(30_000);
 
 const resetDb = async () => {
   if (redis.isOpen) {
@@ -207,6 +208,67 @@ describe('API integration', () => {
     await redis.del(sandboxKey);
   });
 
+  test('draft create validates query and payload boundaries', async () => {
+    const { agentId, apiKey } = await registerAgent('Draft Boundary Studio');
+
+    const invalidQuery = await request(app)
+      .post('/api/drafts?extra=true')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/draft-boundary-v1.png',
+        thumbnailUrl: 'https://example.com/draft-boundary-v1-thumb.png',
+      });
+    expect(invalidQuery.status).toBe(400);
+    expect(invalidQuery.body.error).toBe('DRAFT_CREATE_INVALID_QUERY_FIELDS');
+
+    const invalidFields = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/draft-boundary-v1.png',
+        thumbnailUrl: 'https://example.com/draft-boundary-v1-thumb.png',
+        extra: true,
+      });
+    expect(invalidFields.status).toBe(400);
+    expect(invalidFields.body.error).toBe('DRAFT_CREATE_INVALID_FIELDS');
+
+    const invalidImageType = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 42,
+        thumbnailUrl: 'https://example.com/draft-boundary-v1-thumb.png',
+      });
+    expect(invalidImageType.status).toBe(400);
+    expect(invalidImageType.body.error).toBe('DRAFT_CREATE_INVALID');
+
+    const invalidThumbnailUrl = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/draft-boundary-v1.png',
+        thumbnailUrl: 'ftp://example.com/draft-boundary-v1-thumb.png',
+      });
+    expect(invalidThumbnailUrl.status).toBe(400);
+    expect(invalidThumbnailUrl.body.error).toBe('DRAFT_CREATE_INVALID');
+
+    const invalidMetadata = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/draft-boundary-v1.png',
+        thumbnailUrl: 'https://example.com/draft-boundary-v1-thumb.png',
+        metadata: ['invalid'],
+      });
+    expect(invalidMetadata.status).toBe(400);
+    expect(invalidMetadata.body.error).toBe('DRAFT_CREATE_INVALID');
+  });
+
   test('draft workflow: create -> fix -> PR -> merge', async () => {
     const { agentId, apiKey } = await registerAgent();
 
@@ -303,6 +365,51 @@ describe('API integration', () => {
     expect(arcRes.body.recap24h.fixRequests).toBeGreaterThanOrEqual(1);
     expect(arcRes.body.recap24h.prSubmitted).toBeGreaterThanOrEqual(1);
     expect(typeof arcRes.body.recap24h.hasChanges).toBe('boolean');
+  });
+
+  test('draft read endpoints validate query boundaries', async () => {
+    const { agentId, apiKey } = await registerAgent('Draft Read Boundary');
+
+    const draftRes = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/draft-read-v1.png',
+        thumbnailUrl: 'https://example.com/draft-read-v1-thumb.png',
+      });
+    expect(draftRes.status).toBe(200);
+    const draftId = draftRes.body.draft.id as string;
+
+    const invalidDetailQuery = await request(app).get(
+      `/api/drafts/${draftId}?extra=true`,
+    );
+    expect(invalidDetailQuery.status).toBe(400);
+    expect(invalidDetailQuery.body.error).toBe(
+      'DRAFT_DETAIL_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidProvenanceQuery = await request(app).get(
+      `/api/drafts/${draftId}/provenance?extra=true`,
+    );
+    expect(invalidProvenanceQuery.status).toBe(400);
+    expect(invalidProvenanceQuery.body.error).toBe(
+      'DRAFT_PROVENANCE_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidProvenanceExportQuery = await request(app).get(
+      `/api/drafts/${draftId}/provenance/export?extra=true`,
+    );
+    expect(invalidProvenanceExportQuery.status).toBe(400);
+    expect(invalidProvenanceExportQuery.body.error).toBe(
+      'DRAFT_PROVENANCE_EXPORT_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidArcQuery = await request(app).get(
+      `/api/drafts/${draftId}/arc?extra=true`,
+    );
+    expect(invalidArcQuery.status).toBe(400);
+    expect(invalidArcQuery.body.error).toBe('DRAFT_ARC_INVALID_QUERY_FIELDS');
   });
 
   test('observer watchlist and digest lifecycle', async () => {
@@ -991,11 +1098,46 @@ describe('API integration', () => {
     expect(invalidFollow.status).toBe(400);
     expect(invalidFollow.body.error).toBe('STUDIO_ID_INVALID');
 
+    const invalidFollowQuery = await request(app)
+      .post(
+        '/api/studios/00000000-0000-0000-0000-000000000001/follow?extra=true',
+      )
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(invalidFollowQuery.status).toBe(400);
+    expect(invalidFollowQuery.body.error).toBe(
+      'STUDIO_FOLLOW_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidFollowBody = await request(app)
+      .post('/api/studios/00000000-0000-0000-0000-000000000001/follow')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ note: 'unexpected' });
+    expect(invalidFollowBody.status).toBe(400);
+    expect(invalidFollowBody.body.error).toBe('STUDIO_FOLLOW_INVALID_FIELDS');
+
     const invalidUnfollow = await request(app)
       .delete('/api/studios/not-a-uuid/follow')
       .set('Authorization', `Bearer ${token}`);
     expect(invalidUnfollow.status).toBe(400);
     expect(invalidUnfollow.body.error).toBe('STUDIO_ID_INVALID');
+
+    const invalidUnfollowQuery = await request(app)
+      .delete(
+        '/api/studios/00000000-0000-0000-0000-000000000001/follow?extra=true',
+      )
+      .set('Authorization', `Bearer ${token}`);
+    expect(invalidUnfollowQuery.status).toBe(400);
+    expect(invalidUnfollowQuery.body.error).toBe(
+      'STUDIO_FOLLOW_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidUnfollowBody = await request(app)
+      .delete('/api/studios/00000000-0000-0000-0000-000000000001/follow')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ note: 'unexpected' });
+    expect(invalidUnfollowBody.status).toBe(400);
+    expect(invalidUnfollowBody.body.error).toBe('STUDIO_FOLLOW_INVALID_FIELDS');
 
     const notFoundFollow = await request(app)
       .post('/api/studios/00000000-0000-0000-0000-000000000000/follow')
@@ -1055,6 +1197,240 @@ describe('API integration', () => {
     );
     expect(missingPublicProfile.status).toBe(404);
     expect(missingPublicProfile.body.error).toBe('OBSERVER_NOT_FOUND');
+  });
+
+  test('observer read endpoints validate query fields and pagination', async () => {
+    const human = await registerHuman('observer-query-validation@example.com');
+    const token = human.tokens.accessToken;
+    const validObserverId = '00000000-0000-0000-0000-000000000001';
+
+    const invalidMeProfileQueryField = await request(app)
+      .get('/api/observers/me/profile?extra=true')
+      .set('Authorization', `Bearer ${token}`);
+    expect(invalidMeProfileQueryField.status).toBe(400);
+    expect(invalidMeProfileQueryField.body.error).toBe(
+      'OBSERVER_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidMeProfileLimit = await request(app)
+      .get('/api/observers/me/profile?followingLimit=oops')
+      .set('Authorization', `Bearer ${token}`);
+    expect(invalidMeProfileLimit.status).toBe(400);
+    expect(invalidMeProfileLimit.body.error).toBe(
+      'OBSERVER_PAGINATION_INVALID',
+    );
+
+    const invalidMeProfileLimitFloat = await request(app)
+      .get('/api/observers/me/profile?followingLimit=1.5')
+      .set('Authorization', `Bearer ${token}`);
+    expect(invalidMeProfileLimitFloat.status).toBe(400);
+    expect(invalidMeProfileLimitFloat.body.error).toBe(
+      'OBSERVER_PAGINATION_INVALID',
+    );
+
+    const invalidMeProfileLimitRange = await request(app)
+      .get('/api/observers/me/profile?followingLimit=0')
+      .set('Authorization', `Bearer ${token}`);
+    expect(invalidMeProfileLimitRange.status).toBe(400);
+    expect(invalidMeProfileLimitRange.body.error).toBe(
+      'OBSERVER_PAGINATION_INVALID',
+    );
+
+    const invalidMeProfileLimitMulti = await request(app)
+      .get('/api/observers/me/profile?followingLimit=1&followingLimit=2')
+      .set('Authorization', `Bearer ${token}`);
+    expect(invalidMeProfileLimitMulti.status).toBe(400);
+    expect(invalidMeProfileLimitMulti.body.error).toBe(
+      'OBSERVER_PAGINATION_INVALID',
+    );
+
+    const invalidPublicProfileQueryField = await request(app).get(
+      `/api/observers/${validObserverId}/profile?extra=true`,
+    );
+    expect(invalidPublicProfileQueryField.status).toBe(400);
+    expect(invalidPublicProfileQueryField.body.error).toBe(
+      'OBSERVER_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidFollowingQueryField = await request(app)
+      .get('/api/me/following?extra=true')
+      .set('Authorization', `Bearer ${token}`);
+    expect(invalidFollowingQueryField.status).toBe(400);
+    expect(invalidFollowingQueryField.body.error).toBe(
+      'OBSERVER_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidFollowingLimit = await request(app)
+      .get('/api/me/following?limit=oops')
+      .set('Authorization', `Bearer ${token}`);
+    expect(invalidFollowingLimit.status).toBe(400);
+    expect(invalidFollowingLimit.body.error).toBe(
+      'OBSERVER_PAGINATION_INVALID',
+    );
+
+    const invalidFollowingOffset = await request(app)
+      .get('/api/me/following?offset=-1')
+      .set('Authorization', `Bearer ${token}`);
+    expect(invalidFollowingOffset.status).toBe(400);
+    expect(invalidFollowingOffset.body.error).toBe(
+      'OBSERVER_PAGINATION_INVALID',
+    );
+
+    const invalidFollowingLimitMulti = await request(app)
+      .get('/api/me/following?limit=1&limit=2')
+      .set('Authorization', `Bearer ${token}`);
+    expect(invalidFollowingLimitMulti.status).toBe(400);
+    expect(invalidFollowingLimitMulti.body.error).toBe(
+      'OBSERVER_PAGINATION_INVALID',
+    );
+
+    const invalidPreferencesQueryField = await request(app)
+      .get('/api/observers/me/preferences?extra=true')
+      .set('Authorization', `Bearer ${token}`);
+    expect(invalidPreferencesQueryField.status).toBe(400);
+    expect(invalidPreferencesQueryField.body.error).toBe(
+      'OBSERVER_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidWatchlistQueryField = await request(app)
+      .get('/api/observers/watchlist?extra=true')
+      .set('Authorization', `Bearer ${token}`);
+    expect(invalidWatchlistQueryField.status).toBe(400);
+    expect(invalidWatchlistQueryField.body.error).toBe(
+      'OBSERVER_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidEngagementsQueryField = await request(app)
+      .get('/api/observers/engagements?extra=true')
+      .set('Authorization', `Bearer ${token}`);
+    expect(invalidEngagementsQueryField.status).toBe(400);
+    expect(invalidEngagementsQueryField.body.error).toBe(
+      'OBSERVER_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidDigestQueryField = await request(app)
+      .get('/api/observers/digest?extra=true')
+      .set('Authorization', `Bearer ${token}`);
+    expect(invalidDigestQueryField.status).toBe(400);
+    expect(invalidDigestQueryField.body.error).toBe(
+      'OBSERVER_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidDigestLimit = await request(app)
+      .get('/api/observers/digest?limit=oops')
+      .set('Authorization', `Bearer ${token}`);
+    expect(invalidDigestLimit.status).toBe(400);
+    expect(invalidDigestLimit.body.error).toBe('OBSERVER_PAGINATION_INVALID');
+
+    const invalidDigestOffset = await request(app)
+      .get('/api/observers/digest?offset=-1')
+      .set('Authorization', `Bearer ${token}`);
+    expect(invalidDigestOffset.status).toBe(400);
+    expect(invalidDigestOffset.body.error).toBe('OBSERVER_PAGINATION_INVALID');
+
+    const invalidDigestLimitMulti = await request(app)
+      .get('/api/observers/digest?limit=1&limit=2')
+      .set('Authorization', `Bearer ${token}`);
+    expect(invalidDigestLimitMulti.status).toBe(400);
+    expect(invalidDigestLimitMulti.body.error).toBe(
+      'OBSERVER_PAGINATION_INVALID',
+    );
+
+    const invalidDigestBooleanMulti = await request(app)
+      .get('/api/observers/digest?unseenOnly=true&unseenOnly=false')
+      .set('Authorization', `Bearer ${token}`);
+    expect(invalidDigestBooleanMulti.status).toBe(400);
+    expect(invalidDigestBooleanMulti.body.error).toBe(
+      'OBSERVER_PREFERENCES_INVALID',
+    );
+  });
+
+  test('observer mutation endpoints validate query and body fields', async () => {
+    const human = await registerHuman('observer-mutation-guards@example.com');
+    const token = human.tokens.accessToken;
+    const validDraftId = '00000000-0000-0000-0000-000000000001';
+    const validDigestEntryId = '00000000-0000-0000-0000-000000000002';
+
+    const invalidPreferencesQuery = await request(app)
+      .put('/api/observers/me/preferences?extra=true')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ digest: { unseenOnly: true } });
+    expect(invalidPreferencesQuery.status).toBe(400);
+    expect(invalidPreferencesQuery.body.error).toBe(
+      'OBSERVER_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidPreferencesBody = await request(app)
+      .put('/api/observers/me/preferences')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ unknown: true });
+    expect(invalidPreferencesBody.status).toBe(400);
+    expect(invalidPreferencesBody.body.error).toBe(
+      'OBSERVER_PREFERENCES_INVALID',
+    );
+
+    const invalidPreferencesDigestBody = await request(app)
+      .put('/api/observers/me/preferences')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ digest: { unknown: true } });
+    expect(invalidPreferencesDigestBody.status).toBe(400);
+    expect(invalidPreferencesDigestBody.body.error).toBe(
+      'OBSERVER_PREFERENCES_INVALID',
+    );
+
+    const invalidWatchlistMutationQuery = await request(app)
+      .post(`/api/observers/watchlist/${validDraftId}?extra=true`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({});
+    expect(invalidWatchlistMutationQuery.status).toBe(400);
+    expect(invalidWatchlistMutationQuery.body.error).toBe(
+      'OBSERVER_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidWatchlistMutationBody = await request(app)
+      .post(`/api/observers/watchlist/${validDraftId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ note: 'unexpected' });
+    expect(invalidWatchlistMutationBody.status).toBe(400);
+    expect(invalidWatchlistMutationBody.body.error).toBe(
+      'OBSERVER_INVALID_BODY_FIELDS',
+    );
+
+    const invalidEngagementMutationQuery = await request(app)
+      .post(`/api/observers/engagements/${validDraftId}/save?extra=true`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({});
+    expect(invalidEngagementMutationQuery.status).toBe(400);
+    expect(invalidEngagementMutationQuery.body.error).toBe(
+      'OBSERVER_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidEngagementMutationBody = await request(app)
+      .post(`/api/observers/engagements/${validDraftId}/save`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ note: 'unexpected' });
+    expect(invalidEngagementMutationBody.status).toBe(400);
+    expect(invalidEngagementMutationBody.body.error).toBe(
+      'OBSERVER_INVALID_BODY_FIELDS',
+    );
+
+    const invalidDigestSeenQuery = await request(app)
+      .post(`/api/observers/digest/${validDigestEntryId}/seen?extra=true`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({});
+    expect(invalidDigestSeenQuery.status).toBe(400);
+    expect(invalidDigestSeenQuery.body.error).toBe(
+      'OBSERVER_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidDigestSeenBody = await request(app)
+      .post(`/api/observers/digest/${validDigestEntryId}/seen`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ note: 'unexpected' });
+    expect(invalidDigestSeenBody.status).toBe(400);
+    expect(invalidDigestSeenBody.body.error).toBe(
+      'OBSERVER_INVALID_BODY_FIELDS',
+    );
   });
 
   test('observer routes propagate service errors for list endpoints', async () => {
@@ -1173,7 +1549,8 @@ describe('API integration', () => {
     const predictionTelemetry = await db.query(
       `SELECT
          COUNT(*) FILTER (WHERE event_type = 'pr_prediction_submit')::int AS submit_count,
-         COUNT(*) FILTER (WHERE event_type = 'pr_prediction_result_view')::int AS result_view_count
+         COUNT(*) FILTER (WHERE event_type = 'pr_prediction_result_view')::int AS result_view_count,
+         COUNT(*) FILTER (WHERE event_type = 'pr_prediction_settle')::int AS settle_count
        FROM ux_events
        WHERE user_id = $1`,
       [human.userId],
@@ -1182,6 +1559,27 @@ describe('API integration', () => {
     expect(
       predictionTelemetry.rows[0].result_view_count,
     ).toBeGreaterThanOrEqual(2);
+    expect(predictionTelemetry.rows[0].settle_count).toBeGreaterThanOrEqual(1);
+
+    const settlementEvent = await db.query(
+      `SELECT status, metadata
+       FROM ux_events
+       WHERE event_type = 'pr_prediction_settle'
+         AND user_id = $1
+         AND pr_id = $2
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [human.userId, pullRequestId],
+    );
+    expect(settlementEvent.rows).toHaveLength(1);
+    expect(settlementEvent.rows[0].status).toBe('reject');
+    expect((settlementEvent.rows[0].metadata as any).predictedOutcome).toBe(
+      'merge',
+    );
+    expect((settlementEvent.rows[0].metadata as any).resolvedOutcome).toBe(
+      'reject',
+    );
+    expect((settlementEvent.rows[0].metadata as any).isCorrect).toBe(false);
   });
 
   test('draft prediction endpoint validates pending pull request state', async () => {
@@ -1208,6 +1606,321 @@ describe('API integration', () => {
       .send({ predictedOutcome: 'merge', stakePoints: 25 });
     expect(noPendingRes.status).toBe(409);
     expect(noPendingRes.body.error).toBe('PREDICTION_NO_PENDING_PR');
+  });
+
+  test('prediction endpoints reject unsupported fields and conflicting aliases', async () => {
+    const human = await registerHuman('observer-predict-payload@example.com');
+    const observerToken = human.tokens.accessToken;
+    const { agentId: authorId, apiKey: authorKey } = await registerAgent(
+      'Predict Payload Author',
+    );
+    const { agentId: makerId, apiKey: makerKey } = await registerAgent(
+      'Predict Payload Maker',
+    );
+
+    const draftRes = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', authorId)
+      .set('x-api-key', authorKey)
+      .send({
+        imageUrl: 'https://example.com/predict-payload-v1.png',
+        thumbnailUrl: 'https://example.com/predict-payload-v1-thumb.png',
+      });
+    expect(draftRes.status).toBe(200);
+
+    const draftId = draftRes.body.draft.id;
+    const pullRequestRes = await request(app)
+      .post(`/api/drafts/${draftId}/pull-requests`)
+      .set('x-agent-id', makerId)
+      .set('x-api-key', makerKey)
+      .send({
+        description: 'Payload validation PR',
+        severity: 'minor',
+        imageUrl: 'https://example.com/predict-payload-v2.png',
+        thumbnailUrl: 'https://example.com/predict-payload-v2-thumb.png',
+      });
+    expect(pullRequestRes.status).toBe(200);
+    const pullRequestId = pullRequestRes.body.id as string;
+
+    const invalidDraftStakeRes = await request(app)
+      .post(`/api/drafts/${draftId}/predict`)
+      .set('Authorization', `Bearer ${observerToken}`)
+      .send({
+        predictedOutcome: 'merge',
+        stakePoints: 2,
+      });
+    expect(invalidDraftStakeRes.status).toBe(400);
+    expect(invalidDraftStakeRes.body.error).toBe('PREDICTION_STAKE_INVALID');
+
+    const invalidDraftPayloadRes = await request(app)
+      .post(`/api/drafts/${draftId}/predict`)
+      .set('Authorization', `Bearer ${observerToken}`)
+      .send({
+        predictedOutcome: 'merge',
+        stakePoints: 25,
+        unsupported: true,
+      });
+    expect(invalidDraftPayloadRes.status).toBe(400);
+    expect(invalidDraftPayloadRes.body.error).toBe('PREDICTION_INVALID_FIELDS');
+
+    const invalidDraftShapeRes = await request(app)
+      .post(`/api/drafts/${draftId}/predict`)
+      .set('Authorization', `Bearer ${observerToken}`)
+      .send([]);
+    expect(invalidDraftShapeRes.status).toBe(400);
+    expect(invalidDraftShapeRes.body.error).toBe('PREDICTION_INVALID_FIELDS');
+
+    const invalidPrPayloadRes = await request(app)
+      .post(`/api/pull-requests/${pullRequestId}/predict`)
+      .set('Authorization', `Bearer ${observerToken}`)
+      .send({
+        predictedOutcome: 'merge',
+        stakePoints: 25,
+        extra: 'noise',
+      });
+    expect(invalidPrPayloadRes.status).toBe(400);
+    expect(invalidPrPayloadRes.body.error).toBe('PREDICTION_INVALID_FIELDS');
+
+    const conflictingOutcomeRes = await request(app)
+      .post(`/api/pull-requests/${pullRequestId}/predict`)
+      .set('Authorization', `Bearer ${observerToken}`)
+      .send({
+        predictedOutcome: 'merge',
+        outcome: 'reject',
+        stakePoints: 25,
+      });
+    expect(conflictingOutcomeRes.status).toBe(400);
+    expect(conflictingOutcomeRes.body.error).toBe(
+      'PREDICTION_PAYLOAD_CONFLICT',
+    );
+
+    const conflictingStakeRes = await request(app)
+      .post(`/api/pull-requests/${pullRequestId}/predict`)
+      .set('Authorization', `Bearer ${observerToken}`)
+      .send({
+        predictedOutcome: 'merge',
+        stakePoints: 25,
+        points: 30,
+      });
+    expect(conflictingStakeRes.status).toBe(400);
+    expect(conflictingStakeRes.body.error).toBe('PREDICTION_PAYLOAD_CONFLICT');
+
+    const missingOutcomeRes = await request(app)
+      .post(`/api/pull-requests/${pullRequestId}/predict`)
+      .set('Authorization', `Bearer ${observerToken}`)
+      .send({
+        stakePoints: 25,
+      });
+    expect(missingOutcomeRes.status).toBe(400);
+    expect(missingOutcomeRes.body.error).toBe('PREDICTION_INVALID');
+
+    const invalidStakeTypeRes = await request(app)
+      .post(`/api/pull-requests/${pullRequestId}/predict`)
+      .set('Authorization', `Bearer ${observerToken}`)
+      .send({
+        predictedOutcome: 'merge',
+        stakePoints: '25',
+      });
+    expect(invalidStakeTypeRes.status).toBe(400);
+    expect(invalidStakeTypeRes.body.error).toBe('PREDICTION_STAKE_INVALID');
+
+    const invalidStakeFractionRes = await request(app)
+      .post(`/api/pull-requests/${pullRequestId}/predict`)
+      .set('Authorization', `Bearer ${observerToken}`)
+      .send({
+        predictedOutcome: 'merge',
+        points: 25.5,
+      });
+    expect(invalidStakeFractionRes.status).toBe(400);
+    expect(invalidStakeFractionRes.body.error).toBe('PREDICTION_STAKE_INVALID');
+
+    const invalidStakeLowRes = await request(app)
+      .post(`/api/pull-requests/${pullRequestId}/predict`)
+      .set('Authorization', `Bearer ${observerToken}`)
+      .send({
+        predictedOutcome: 'merge',
+        stakePoints: 4,
+      });
+    expect(invalidStakeLowRes.status).toBe(400);
+    expect(invalidStakeLowRes.body.error).toBe('PREDICTION_STAKE_INVALID');
+
+    const invalidStakeHighRes = await request(app)
+      .post(`/api/pull-requests/${pullRequestId}/predict`)
+      .set('Authorization', `Bearer ${observerToken}`)
+      .send({
+        predictedOutcome: 'merge',
+        stakePoints: 501,
+      });
+    expect(invalidStakeHighRes.status).toBe(400);
+    expect(invalidStakeHighRes.body.error).toBe('PREDICTION_STAKE_INVALID');
+  });
+
+  test('multimodal glowup endpoint rejects unsupported fields and invalid provider', async () => {
+    const { agentId, apiKey } = await registerAgent('Multimodal Validation');
+
+    const draftRes = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/multimodal-validation-v1.png',
+        thumbnailUrl: 'https://example.com/multimodal-validation-v1-thumb.png',
+      });
+    expect(draftRes.status).toBe(200);
+    const draftId = draftRes.body.draft.id as string;
+
+    const invalidFieldsRes = await request(app)
+      .post(`/api/drafts/${draftId}/glowup/multimodal`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        provider: 'gpt-4.1',
+        visualScore: 50,
+        unknown: 'noise',
+      });
+    expect(invalidFieldsRes.status).toBe(400);
+    expect(invalidFieldsRes.body.error).toBe(
+      'MULTIMODAL_GLOWUP_INVALID_FIELDS',
+    );
+
+    const invalidProviderRes = await request(app)
+      .post(`/api/drafts/${draftId}/glowup/multimodal`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        provider: 'bad provider!',
+        visualScore: 50,
+      });
+    expect(invalidProviderRes.status).toBe(400);
+    expect(invalidProviderRes.body.error).toBe(
+      'MULTIMODAL_GLOWUP_INVALID_INPUT',
+    );
+
+    const invalidWriteQueryRes = await request(app)
+      .post(`/api/drafts/${draftId}/glowup/multimodal?extra=true`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        provider: 'gemini-2',
+        visualScore: 50,
+      });
+    expect(invalidWriteQueryRes.status).toBe(400);
+    expect(invalidWriteQueryRes.body.error).toBe(
+      'MULTIMODAL_GLOWUP_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidScoreTypeRes = await request(app)
+      .post(`/api/drafts/${draftId}/glowup/multimodal`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        provider: 'gemini-2',
+        visualScore: '50',
+      });
+    expect(invalidScoreTypeRes.status).toBe(400);
+    expect(invalidScoreTypeRes.body.error).toBe(
+      'MULTIMODAL_GLOWUP_INVALID_INPUT',
+    );
+
+    const invalidScoreRangeRes = await request(app)
+      .post(`/api/drafts/${draftId}/glowup/multimodal`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        provider: 'gemini-2',
+        visualScore: 120,
+      });
+    expect(invalidScoreRangeRes.status).toBe(400);
+    expect(invalidScoreRangeRes.body.error).toBe(
+      'MULTIMODAL_GLOWUP_INVALID_INPUT',
+    );
+
+    const missingModalitiesRes = await request(app)
+      .post(`/api/drafts/${draftId}/glowup/multimodal`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        provider: 'gemini-2',
+      });
+    expect(missingModalitiesRes.status).toBe(400);
+    expect(missingModalitiesRes.body.error).toBe(
+      'MULTIMODAL_GLOWUP_INVALID_INPUT',
+    );
+
+    const validRes = await request(app)
+      .post(`/api/drafts/${draftId}/glowup/multimodal`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        provider: 'GEMINI-2',
+        visualScore: 62,
+        narrativeScore: 57,
+      });
+    expect(validRes.status).toBe(200);
+    expect(validRes.body.provider).toBe('gemini-2');
+  });
+
+  test('multimodal glowup read endpoint validates query fields and records invalid-query telemetry', async () => {
+    const { agentId, apiKey } = await registerAgent('Multimodal Query Guard');
+
+    const draftRes = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/multimodal-query-v1.png',
+        thumbnailUrl: 'https://example.com/multimodal-query-v1-thumb.png',
+      });
+    expect(draftRes.status).toBe(200);
+    const draftId = draftRes.body.draft.id as string;
+
+    const seedScoreRes = await request(app)
+      .post(`/api/drafts/${draftId}/glowup/multimodal`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        provider: 'gpt-4.1',
+        visualScore: 63,
+        narrativeScore: 58,
+      });
+    expect(seedScoreRes.status).toBe(200);
+
+    const invalidProviderRes = await request(app).get(
+      `/api/drafts/${draftId}/glowup/multimodal?provider=bad%20provider`,
+    );
+    expect(invalidProviderRes.status).toBe(400);
+    expect(invalidProviderRes.body.error).toBe(
+      'MULTIMODAL_GLOWUP_INVALID_INPUT',
+    );
+
+    const invalidQueryFieldRes = await request(app).get(
+      `/api/drafts/${draftId}/glowup/multimodal?provider=gpt-4.1&extra=1`,
+    );
+    expect(invalidQueryFieldRes.status).toBe(400);
+    expect(invalidQueryFieldRes.body.error).toBe(
+      'MULTIMODAL_GLOWUP_INVALID_QUERY_FIELDS',
+    );
+
+    const validReadRes = await request(app).get(
+      `/api/drafts/${draftId}/glowup/multimodal?provider=gpt-4.1`,
+    );
+    expect(validReadRes.status).toBe(200);
+    expect(validReadRes.body.provider).toBe('gpt-4.1');
+
+    const invalidTelemetry = await db.query(
+      `SELECT metadata
+       FROM ux_events
+       WHERE event_type = 'draft_multimodal_glowup_error'
+         AND user_type = 'system'
+         AND draft_id = $1
+         AND metadata->>'reason' = 'invalid_query'
+       ORDER BY created_at DESC`,
+      [draftId],
+    );
+    expect(invalidTelemetry.rows.length).toBeGreaterThanOrEqual(2);
+    expect((invalidTelemetry.rows[0].metadata as any).errorCode).toMatch(
+      /MULTIMODAL_GLOWUP_INVALID_(INPUT|QUERY_FIELDS)/,
+    );
   });
 
   test('budget enforcement for fix requests', async () => {
@@ -1299,6 +2012,12 @@ describe('API integration', () => {
     expect(missingExport.status).toBe(404);
     expect(missingExport.body.error).toBe('EXPORT_NOT_FOUND');
 
+    const invalidExportId = await request(app)
+      .get('/api/account/exports/not-a-uuid')
+      .set('Authorization', `Bearer ${token}`);
+    expect(invalidExportId.status).toBe(400);
+    expect(invalidExportId.body.error).toBe('EXPORT_ID_INVALID');
+
     await db.query(
       "INSERT INTO deletion_requests (user_id, status) VALUES ($1, 'pending')",
       [human.userId],
@@ -1349,6 +2068,32 @@ describe('API integration', () => {
       .send();
     expect(released.status).toBe(200);
 
+    const invalidReleaseQuery = await request(app)
+      .post(`/api/drafts/${draftTwo.body.draft.id}/release?extra=true`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send();
+    expect(invalidReleaseQuery.status).toBe(400);
+    expect(invalidReleaseQuery.body.error).toBe(
+      'DRAFT_RELEASE_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidReleaseId = await request(app)
+      .post('/api/drafts/not-a-uuid/release')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send();
+    expect(invalidReleaseId.status).toBe(400);
+    expect(invalidReleaseId.body.error).toBe('DRAFT_ID_INVALID');
+
+    const invalidReleaseBody = await request(app)
+      .post(`/api/drafts/${draftTwo.body.draft.id}/release`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({ reason: 'force release' });
+    expect(invalidReleaseBody.status).toBe(400);
+    expect(invalidReleaseBody.body.error).toBe('DRAFT_RELEASE_INVALID_FIELDS');
+
     const listAll = await request(app).get(`/api/drafts?authorId=${agentId}`);
     expect(listAll.status).toBe(200);
     expect(listAll.body.length).toBe(2);
@@ -1364,6 +2109,32 @@ describe('API integration', () => {
     const paged = await request(app).get('/api/drafts?limit=1&offset=1');
     expect(paged.status).toBe(200);
     expect(paged.body.length).toBe(1);
+
+    const invalidQueryField = await request(app).get('/api/drafts?extra=true');
+    expect(invalidQueryField.status).toBe(400);
+    expect(invalidQueryField.body.error).toBe(
+      'DRAFT_LIST_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidStatus = await request(app).get('/api/drafts?status=invalid');
+    expect(invalidStatus.status).toBe(400);
+    expect(invalidStatus.body.error).toBe('DRAFT_LIST_INVALID_STATUS');
+
+    const invalidLimit = await request(app).get('/api/drafts?limit=oops');
+    expect(invalidLimit.status).toBe(400);
+    expect(invalidLimit.body.error).toBe('DRAFT_LIST_PAGINATION_INVALID');
+
+    const invalidAuthorId = await request(app).get('/api/drafts?authorId=oops');
+    expect(invalidAuthorId.status).toBe(400);
+    expect(invalidAuthorId.body.error).toBe('DRAFT_LIST_AUTHOR_ID_INVALID');
+
+    const invalidOffset = await request(app).get('/api/drafts?offset=-1');
+    expect(invalidOffset.status).toBe(400);
+    expect(invalidOffset.body.error).toBe('DRAFT_LIST_PAGINATION_INVALID');
+
+    const invalidFloatLimit = await request(app).get('/api/drafts?limit=1.5');
+    expect(invalidFloatLimit.status).toBe(400);
+    expect(invalidFloatLimit.body.error).toBe('DRAFT_LIST_PAGINATION_INVALID');
 
     expect(draftTwo.status).toBe(200);
   });
@@ -1385,6 +2156,17 @@ describe('API integration', () => {
 
     const draftId = draftRes.body.draft.id;
 
+    const invalidFixCreateId = await request(app)
+      .post('/api/drafts/not-a-uuid/fix-requests')
+      .set('x-agent-id', authorId)
+      .set('x-api-key', authorKey)
+      .send({
+        category: 'Focus',
+        description: 'Fix details',
+      });
+    expect(invalidFixCreateId.status).toBe(400);
+    expect(invalidFixCreateId.body.error).toBe('DRAFT_ID_INVALID');
+
     const fixRes = await request(app)
       .post(`/api/drafts/${draftId}/fix-requests`)
       .set('x-agent-id', authorId)
@@ -1395,11 +2177,71 @@ describe('API integration', () => {
       });
     expect(fixRes.status).toBe(200);
 
+    const invalidFixCreateQuery = await request(app)
+      .post(`/api/drafts/${draftId}/fix-requests?extra=true`)
+      .set('x-agent-id', authorId)
+      .set('x-api-key', authorKey)
+      .send({
+        category: 'Focus',
+        description: 'Fix details',
+      });
+    expect(invalidFixCreateQuery.status).toBe(400);
+    expect(invalidFixCreateQuery.body.error).toBe(
+      'FIX_REQUEST_CREATE_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidFixCreateFields = await request(app)
+      .post(`/api/drafts/${draftId}/fix-requests`)
+      .set('x-agent-id', authorId)
+      .set('x-api-key', authorKey)
+      .send({
+        category: 'Focus',
+        description: 'Fix details',
+        extra: true,
+      });
+    expect(invalidFixCreateFields.status).toBe(400);
+    expect(invalidFixCreateFields.body.error).toBe(
+      'FIX_REQUEST_CREATE_INVALID_FIELDS',
+    );
+
+    const invalidFixCreatePayload = await request(app)
+      .post(`/api/drafts/${draftId}/fix-requests`)
+      .set('x-agent-id', authorId)
+      .set('x-api-key', authorKey)
+      .send({
+        category: 'Unknown',
+        description: 123,
+      });
+    expect(invalidFixCreatePayload.status).toBe(400);
+    expect(invalidFixCreatePayload.body.error).toBe(
+      'FIX_REQUEST_CREATE_INVALID',
+    );
+
+    const invalidFixCoordinates = await request(app)
+      .post(`/api/drafts/${draftId}/fix-requests`)
+      .set('x-agent-id', authorId)
+      .set('x-api-key', authorKey)
+      .send({
+        category: 'Focus',
+        description: 'Fix details',
+        coordinates: ['x', 'y'],
+      });
+    expect(invalidFixCoordinates.status).toBe(400);
+    expect(invalidFixCoordinates.body.error).toBe('FIX_REQUEST_CREATE_INVALID');
+
     const fixList = await request(app).get(
       `/api/drafts/${draftId}/fix-requests`,
     );
     expect(fixList.status).toBe(200);
     expect(fixList.body.length).toBe(1);
+
+    const invalidFixListQuery = await request(app).get(
+      `/api/drafts/${draftId}/fix-requests?extra=true`,
+    );
+    expect(invalidFixListQuery.status).toBe(400);
+    expect(invalidFixListQuery.body.error).toBe(
+      'FIX_REQUEST_LIST_INVALID_QUERY_FIELDS',
+    );
 
     const prOne = await request(app)
       .post(`/api/drafts/${draftId}/pull-requests`)
@@ -1412,6 +2254,81 @@ describe('API integration', () => {
         thumbnailUrl: 'https://example.com/pr1-thumb.png',
       });
     expect(prOne.status).toBe(200);
+
+    const invalidPrCreateId = await request(app)
+      .post('/api/drafts/not-a-uuid/pull-requests')
+      .set('x-agent-id', makerId)
+      .set('x-api-key', makerKey)
+      .send({
+        description: 'Invalid PR',
+        severity: 'minor',
+        imageUrl: 'https://example.com/pr-invalid.png',
+        thumbnailUrl: 'https://example.com/pr-invalid-thumb.png',
+      });
+    expect(invalidPrCreateId.status).toBe(400);
+    expect(invalidPrCreateId.body.error).toBe('DRAFT_ID_INVALID');
+
+    const invalidPrCreateQuery = await request(app)
+      .post(`/api/drafts/${draftId}/pull-requests?extra=true`)
+      .set('x-agent-id', makerId)
+      .set('x-api-key', makerKey)
+      .send({
+        description: 'Query PR',
+        severity: 'minor',
+        imageUrl: 'https://example.com/pr-query.png',
+        thumbnailUrl: 'https://example.com/pr-query-thumb.png',
+      });
+    expect(invalidPrCreateQuery.status).toBe(400);
+    expect(invalidPrCreateQuery.body.error).toBe(
+      'PULL_REQUEST_CREATE_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidPrCreateFields = await request(app)
+      .post(`/api/drafts/${draftId}/pull-requests`)
+      .set('x-agent-id', makerId)
+      .set('x-api-key', makerKey)
+      .send({
+        description: 'Invalid fields',
+        severity: 'minor',
+        imageUrl: 'https://example.com/pr-fields.png',
+        thumbnailUrl: 'https://example.com/pr-fields-thumb.png',
+        extra: true,
+      });
+    expect(invalidPrCreateFields.status).toBe(400);
+    expect(invalidPrCreateFields.body.error).toBe(
+      'PULL_REQUEST_CREATE_INVALID_FIELDS',
+    );
+
+    const invalidPrCreatePayload = await request(app)
+      .post(`/api/drafts/${draftId}/pull-requests`)
+      .set('x-agent-id', makerId)
+      .set('x-api-key', makerKey)
+      .send({
+        description: 123,
+        severity: 'critical',
+        imageUrl: 'invalid-url',
+        thumbnailUrl: 'https://example.com/pr-invalid-thumb.png',
+      });
+    expect(invalidPrCreatePayload.status).toBe(400);
+    expect(invalidPrCreatePayload.body.error).toBe(
+      'PULL_REQUEST_CREATE_INVALID',
+    );
+
+    const invalidAddressedFixRequests = await request(app)
+      .post(`/api/drafts/${draftId}/pull-requests`)
+      .set('x-agent-id', makerId)
+      .set('x-api-key', makerKey)
+      .send({
+        description: 'Invalid addressed fix requests',
+        severity: 'minor',
+        addressedFixRequests: ['not-a-uuid'],
+        imageUrl: 'https://example.com/pr-addressed.png',
+        thumbnailUrl: 'https://example.com/pr-addressed-thumb.png',
+      });
+    expect(invalidAddressedFixRequests.status).toBe(400);
+    expect(invalidAddressedFixRequests.body.error).toBe(
+      'PULL_REQUEST_CREATE_INVALID',
+    );
 
     const requestChanges = await request(app)
       .post(`/api/pull-requests/${prOne.body.id}/decide`)
@@ -1464,6 +2381,14 @@ describe('API integration', () => {
     );
     expect(listPrs.status).toBe(200);
     expect(listPrs.body.length).toBe(3);
+
+    const invalidPrListQuery = await request(app).get(
+      `/api/drafts/${draftId}/pull-requests?extra=true`,
+    );
+    expect(invalidPrListQuery.status).toBe(400);
+    expect(invalidPrListQuery.body.error).toBe(
+      'PULL_REQUEST_LIST_INVALID_QUERY_FIELDS',
+    );
 
     const fork = await request(app)
       .post(`/api/pull-requests/${prTwo.body.id}/fork`)
@@ -1541,6 +2466,15 @@ describe('API integration', () => {
         thumbnailUrl: 'https://example.com/v2-pr2-thumb.png',
       });
 
+    await request(app)
+      .post(`/api/drafts/${draftTwoId}/fix-requests`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        category: 'Focus',
+        description: 'Increase hero contrast',
+      });
+
     const forYou = await request(app)
       .get('/api/feeds/for-you?limit=5')
       .set('Authorization', `Bearer ${token}`);
@@ -1570,6 +2504,20 @@ describe('API integration', () => {
     const battles = await request(app).get('/api/feeds/battles?limit=5');
     expect(battles.status).toBe(200);
     expect(Array.isArray(battles.body)).toBe(true);
+    if (battles.body.length > 0) {
+      expect(battles.body[0]).toHaveProperty('provenance');
+      expect(battles.body[0].provenance).toHaveProperty('authenticityStatus');
+      expect(battles.body[0].provenance).toHaveProperty('humanSparkScore');
+    }
+
+    const changes = await request(app).get('/api/feeds/changes?limit=5');
+    expect(changes.status).toBe(200);
+    expect(Array.isArray(changes.body)).toBe(true);
+    if (changes.body.length > 0) {
+      expect(changes.body[0]).toHaveProperty('provenance');
+      expect(changes.body[0].provenance).toHaveProperty('authenticityStatus');
+      expect(changes.body[0].provenance).toHaveProperty('humanSparkScore');
+    }
 
     const archive = await request(app).get('/api/feeds/archive?limit=5');
     expect(archive.status).toBe(200);
@@ -1693,6 +2641,146 @@ describe('API integration', () => {
       .send({ decision: 'reject', rejectionReason: 'Not aligned' });
     expect(rejectRes.status).toBe(200);
     expect(rejectRes.body.status).toBe('rejected');
+  });
+
+  test('pull request routes validate ids and decision boundary payloads', async () => {
+    const { agentId, apiKey } = await registerAgent('PR Boundary Studio');
+    const human = await registerHuman('pr-boundary-observer@example.com');
+
+    const draftRes = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        imageUrl: 'https://example.com/pr-boundary-v1.png',
+        thumbnailUrl: 'https://example.com/pr-boundary-v1-thumb.png',
+      });
+
+    const prRes = await request(app)
+      .post(`/api/drafts/${draftRes.body.draft.id}/pull-requests`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        description: 'Boundary PR',
+        severity: 'minor',
+        imageUrl: 'https://example.com/pr-boundary-v2.png',
+        thumbnailUrl: 'https://example.com/pr-boundary-v2-thumb.png',
+      });
+    expect(prRes.status).toBe(200);
+
+    const invalidReviewId = await request(app).get(
+      '/api/pull-requests/not-a-uuid',
+    );
+    expect(invalidReviewId.status).toBe(400);
+    expect(invalidReviewId.body.error).toBe('PR_ID_INVALID');
+
+    const invalidReviewQuery = await request(app).get(
+      `/api/pull-requests/${prRes.body.id}?extra=true`,
+    );
+    expect(invalidReviewQuery.status).toBe(400);
+    expect(invalidReviewQuery.body.error).toBe(
+      'PR_REVIEW_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidDraftPredictQuery = await request(app)
+      .post(`/api/drafts/${draftRes.body.draft.id}/predict?extra=true`)
+      .set('Authorization', `Bearer ${human.tokens.accessToken}`)
+      .send({ predictedOutcome: 'merge', stakePoints: 10 });
+    expect(invalidDraftPredictQuery.status).toBe(400);
+    expect(invalidDraftPredictQuery.body.error).toBe(
+      'PREDICTION_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidPrPredictQuery = await request(app)
+      .post(`/api/pull-requests/${prRes.body.id}/predict?extra=true`)
+      .set('Authorization', `Bearer ${human.tokens.accessToken}`)
+      .send({ predictedOutcome: 'merge', stakePoints: 10 });
+    expect(invalidPrPredictQuery.status).toBe(400);
+    expect(invalidPrPredictQuery.body.error).toBe(
+      'PREDICTION_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidPredictionSummaryId = await request(app)
+      .get('/api/pull-requests/not-a-uuid/predictions')
+      .set('Authorization', `Bearer ${human.tokens.accessToken}`);
+    expect(invalidPredictionSummaryId.status).toBe(400);
+    expect(invalidPredictionSummaryId.body.error).toBe('PR_ID_INVALID');
+
+    const invalidPredictionSummaryQuery = await request(app)
+      .get(`/api/pull-requests/${prRes.body.id}/predictions?extra=true`)
+      .set('Authorization', `Bearer ${human.tokens.accessToken}`);
+    expect(invalidPredictionSummaryQuery.status).toBe(400);
+    expect(invalidPredictionSummaryQuery.body.error).toBe(
+      'PREDICTION_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidDecideId = await request(app)
+      .post('/api/pull-requests/not-a-uuid/decide')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({ decision: 'merge' });
+    expect(invalidDecideId.status).toBe(400);
+    expect(invalidDecideId.body.error).toBe('PR_ID_INVALID');
+
+    const invalidDecideUnknownField = await request(app)
+      .post(`/api/pull-requests/${prRes.body.id}/decide`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({ decision: 'merge', extra: true });
+    expect(invalidDecideUnknownField.status).toBe(400);
+    expect(invalidDecideUnknownField.body.error).toBe(
+      'PR_DECISION_INVALID_FIELDS',
+    );
+
+    const invalidDecideQuery = await request(app)
+      .post(`/api/pull-requests/${prRes.body.id}/decide?extra=true`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({ decision: 'merge' });
+    expect(invalidDecideQuery.status).toBe(400);
+    expect(invalidDecideQuery.body.error).toBe(
+      'PR_DECISION_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidDecideDecision = await request(app)
+      .post(`/api/pull-requests/${prRes.body.id}/decide`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({ decision: 'approve' });
+    expect(invalidDecideDecision.status).toBe(400);
+    expect(invalidDecideDecision.body.error).toBe('PR_DECISION_INVALID');
+
+    const invalidDecideFeedback = await request(app)
+      .post(`/api/pull-requests/${prRes.body.id}/decide`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({ decision: 'merge', feedback: 42 });
+    expect(invalidDecideFeedback.status).toBe(400);
+    expect(invalidDecideFeedback.body.error).toBe('PR_DECISION_INVALID');
+
+    const invalidForkId = await request(app)
+      .post('/api/pull-requests/not-a-uuid/fork')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send();
+    expect(invalidForkId.status).toBe(400);
+    expect(invalidForkId.body.error).toBe('PR_ID_INVALID');
+
+    const invalidForkQuery = await request(app)
+      .post(`/api/pull-requests/${prRes.body.id}/fork?extra=true`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send();
+    expect(invalidForkQuery.status).toBe(400);
+    expect(invalidForkQuery.body.error).toBe('PR_FORK_INVALID_QUERY_FIELDS');
+
+    const invalidForkBody = await request(app)
+      .post(`/api/pull-requests/${prRes.body.id}/fork`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({ source: 'manual' });
+    expect(invalidForkBody.status).toBe(400);
+    expect(invalidForkBody.body.error).toBe('PR_FORK_INVALID_FIELDS');
   });
 
   test('telemetry endpoint stores ux events', async () => {
@@ -1831,6 +2919,34 @@ describe('API integration', () => {
     expect(detail.body.guild.name).toBe('Guild Arc');
   });
 
+  test('guild endpoints validate query fields and pagination', async () => {
+    const invalidQueryField = await request(app).get('/api/guilds?extra=true');
+    expect(invalidQueryField.status).toBe(400);
+    expect(invalidQueryField.body.error).toBe('GUILD_INVALID_QUERY_FIELDS');
+
+    const invalidLimit = await request(app).get('/api/guilds?limit=oops');
+    expect(invalidLimit.status).toBe(400);
+    expect(invalidLimit.body.error).toBe('GUILD_PAGINATION_INVALID');
+
+    const invalidOffset = await request(app).get('/api/guilds?offset=oops');
+    expect(invalidOffset.status).toBe(400);
+    expect(invalidOffset.body.error).toBe('GUILD_PAGINATION_INVALID');
+
+    const invalidLimitFloat = await request(app).get('/api/guilds?limit=1.5');
+    expect(invalidLimitFloat.status).toBe(400);
+    expect(invalidLimitFloat.body.error).toBe('GUILD_PAGINATION_INVALID');
+
+    const invalidOffsetNegative = await request(app).get(
+      '/api/guilds?offset=-1',
+    );
+    expect(invalidOffsetNegative.status).toBe(400);
+    expect(invalidOffsetNegative.body.error).toBe('GUILD_PAGINATION_INVALID');
+
+    const invalidLimitRange = await request(app).get('/api/guilds?limit=101');
+    expect(invalidLimitRange.status).toBe(400);
+    expect(invalidLimitRange.body.error).toBe('GUILD_PAGINATION_INVALID');
+  });
+
   test('feeds endpoints accept offset without limit', async () => {
     const human = await registerHuman('offset-viewer@example.com');
     const token = human.tokens.accessToken;
@@ -1854,6 +2970,64 @@ describe('API integration', () => {
 
     const archive = await request(app).get('/api/feeds/archive?offset=1');
     expect(archive.status).toBe(200);
+  });
+
+  test('feed endpoints validate query fields and pagination', async () => {
+    const invalidFeedListQueryField = await request(app).get(
+      '/api/feeds/live-drafts?extra=true',
+    );
+    expect(invalidFeedListQueryField.status).toBe(400);
+    expect(invalidFeedListQueryField.body.error).toBe(
+      'FEED_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidFeedListPagination = await request(app).get(
+      '/api/feeds/live-drafts?limit=oops',
+    );
+    expect(invalidFeedListPagination.status).toBe(400);
+    expect(invalidFeedListPagination.body.error).toBe(
+      'FEED_PAGINATION_INVALID',
+    );
+
+    const invalidFeedListPaginationFloat = await request(app).get(
+      '/api/feeds/live-drafts?limit=1.5',
+    );
+    expect(invalidFeedListPaginationFloat.status).toBe(400);
+    expect(invalidFeedListPaginationFloat.body.error).toBe(
+      'FEED_PAGINATION_INVALID',
+    );
+
+    const invalidUnifiedFeedQueryField = await request(app).get(
+      '/api/feed?extra=true',
+    );
+    expect(invalidUnifiedFeedQueryField.status).toBe(400);
+    expect(invalidUnifiedFeedQueryField.body.error).toBe(
+      'FEED_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidUnifiedFeedPagination = await request(app).get(
+      '/api/feed?offset=oops',
+    );
+    expect(invalidUnifiedFeedPagination.status).toBe(400);
+    expect(invalidUnifiedFeedPagination.body.error).toBe(
+      'FEED_PAGINATION_INVALID',
+    );
+
+    const invalidUnifiedFeedOffsetNegative = await request(app).get(
+      '/api/feed?offset=-1',
+    );
+    expect(invalidUnifiedFeedOffsetNegative.status).toBe(400);
+    expect(invalidUnifiedFeedOffsetNegative.body.error).toBe(
+      'FEED_PAGINATION_INVALID',
+    );
+
+    const invalidUnifiedFeedLimitRange = await request(app).get(
+      '/api/feed?limit=101',
+    );
+    expect(invalidUnifiedFeedLimitRange.status).toBe(400);
+    expect(invalidUnifiedFeedLimitRange.body.error).toBe(
+      'FEED_PAGINATION_INVALID',
+    );
   });
 
   test('search endpoint returns drafts and studios', async () => {
@@ -2113,11 +3287,27 @@ describe('API integration', () => {
   });
 
   test('search endpoints validate pagination, ids, and payload fields', async () => {
+    const invalidSearchQueryField = await request(app).get(
+      '/api/search?q=test&extra=true',
+    );
+    expect(invalidSearchQueryField.status).toBe(400);
+    expect(invalidSearchQueryField.body.error).toBe(
+      'SEARCH_INVALID_QUERY_FIELDS',
+    );
+
     const invalidSimilarId = await request(app).get(
       '/api/search/similar?draftId=not-a-uuid',
     );
     expect(invalidSimilarId.status).toBe(400);
     expect(invalidSimilarId.body.error).toBe('DRAFT_ID_INVALID');
+
+    const invalidSimilarQueryField = await request(app).get(
+      '/api/search/similar?draftId=00000000-0000-0000-0000-000000000001&extra=true',
+    );
+    expect(invalidSimilarQueryField.status).toBe(400);
+    expect(invalidSimilarQueryField.body.error).toBe(
+      'SEARCH_INVALID_QUERY_FIELDS',
+    );
 
     const invalidSimilarLimit = await request(app).get(
       '/api/search/similar?draftId=00000000-0000-0000-0000-000000000001&limit=oops',
@@ -2131,6 +3321,18 @@ describe('API integration', () => {
     expect(invalidSearchLimit.status).toBe(400);
     expect(invalidSearchLimit.body.error).toBe('SEARCH_PAGINATION_INVALID');
 
+    const invalidSearchOffset = await request(app).get(
+      '/api/search?q=test&offset=10001',
+    );
+    expect(invalidSearchOffset.status).toBe(400);
+    expect(invalidSearchOffset.body.error).toBe('SEARCH_PAGINATION_INVALID');
+
+    const invalidSimilarOffset = await request(app).get(
+      '/api/search/similar?draftId=00000000-0000-0000-0000-000000000001&offset=10001',
+    );
+    expect(invalidSimilarOffset.status).toBe(400);
+    expect(invalidSimilarOffset.body.error).toBe('SEARCH_PAGINATION_INVALID');
+
     const invalidVisualFields = await request(app)
       .post('/api/search/visual')
       .send({
@@ -2139,6 +3341,25 @@ describe('API integration', () => {
       });
     expect(invalidVisualFields.status).toBe(400);
     expect(invalidVisualFields.body.error).toBe('SEARCH_VISUAL_INVALID_FIELDS');
+
+    const invalidVisualQueryField = await request(app)
+      .post('/api/search/visual?extra=true')
+      .send({
+        draftId: '00000000-0000-0000-0000-000000000001',
+      });
+    expect(invalidVisualQueryField.status).toBe(400);
+    expect(invalidVisualQueryField.body.error).toBe(
+      'SEARCH_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidVisualOffset = await request(app)
+      .post('/api/search/visual')
+      .send({
+        draftId: '00000000-0000-0000-0000-000000000001',
+        offset: 10_001,
+      });
+    expect(invalidVisualOffset.status).toBe(400);
+    expect(invalidVisualOffset.body.error).toBe('SEARCH_PAGINATION_INVALID');
 
     const invalidStyleFusionFields = await request(app)
       .post('/api/search/style-fusion')
@@ -2150,6 +3371,1183 @@ describe('API integration', () => {
     expect(invalidStyleFusionFields.body.error).toBe(
       'STYLE_FUSION_INVALID_FIELDS',
     );
+
+    const invalidStyleFusionQueryField = await request(app)
+      .post('/api/search/style-fusion?extra=true')
+      .send({
+        draftId: '00000000-0000-0000-0000-000000000001',
+      });
+    expect(invalidStyleFusionQueryField.status).toBe(400);
+    expect(invalidStyleFusionQueryField.body.error).toBe(
+      'SEARCH_INVALID_QUERY_FIELDS',
+    );
+  });
+
+  test('collaboration list endpoints reject unsupported query fields', async () => {
+    const funnelHuman = await registerHuman('creator-funnel-guard@example.com');
+    const funnelToken = funnelHuman.tokens.accessToken;
+
+    const invalidCreatorStudiosQueryField = await request(app).get(
+      '/api/creator-studios?extra=true',
+    );
+    expect(invalidCreatorStudiosQueryField.status).toBe(400);
+    expect(invalidCreatorStudiosQueryField.body.error).toBe(
+      'CREATOR_STUDIO_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidSwarmsQueryField = await request(app).get(
+      '/api/swarms?extra=true',
+    );
+    expect(invalidSwarmsQueryField.status).toBe(400);
+    expect(invalidSwarmsQueryField.body.error).toBe(
+      'SWARM_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidLiveSessionsQueryField = await request(app).get(
+      '/api/live-sessions?extra=true',
+    );
+    expect(invalidLiveSessionsQueryField.status).toBe(400);
+    expect(invalidLiveSessionsQueryField.body.error).toBe(
+      'LIVE_SESSION_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidCreatorStudiosLimit = await request(app).get(
+      '/api/creator-studios?limit=1.5',
+    );
+    expect(invalidCreatorStudiosLimit.status).toBe(400);
+    expect(invalidCreatorStudiosLimit.body.error).toBe('INVALID_LIMIT');
+
+    const invalidCreatorStudiosOffset = await request(app).get(
+      '/api/creator-studios?offset=-1',
+    );
+    expect(invalidCreatorStudiosOffset.status).toBe(400);
+    expect(invalidCreatorStudiosOffset.body.error).toBe('INVALID_OFFSET');
+
+    const invalidCreatorStudiosWindowDays = await request(app)
+      .get('/api/creator-studios/funnels/summary?windowDays=0')
+      .set('Authorization', `Bearer ${funnelToken}`);
+    expect(invalidCreatorStudiosWindowDays.status).toBe(400);
+    expect(invalidCreatorStudiosWindowDays.body.error).toBe(
+      'INVALID_WINDOW_DAYS',
+    );
+
+    const invalidSwarmsLimit = await request(app).get('/api/swarms?limit=1.5');
+    expect(invalidSwarmsLimit.status).toBe(400);
+    expect(invalidSwarmsLimit.body.error).toBe('INVALID_LIMIT');
+
+    const invalidLiveSessionsOffset = await request(app).get(
+      '/api/live-sessions?offset=-1',
+    );
+    expect(invalidLiveSessionsOffset.status).toBe(400);
+    expect(invalidLiveSessionsOffset.body.error).toBe('INVALID_OFFSET');
+  });
+
+  test('collaboration detail/mutation endpoints validate id params', async () => {
+    const human = await registerHuman('collab-id-guard@example.com');
+    const token = human.tokens.accessToken;
+    const { agentId, apiKey } = await registerAgent('Collab ID Guard Agent');
+
+    const invalidCreatorStudioDetail = await request(app).get(
+      '/api/creator-studios/not-a-uuid',
+    );
+    expect(invalidCreatorStudioDetail.status).toBe(400);
+    expect(invalidCreatorStudioDetail.body.error).toBe(
+      'CREATOR_STUDIO_ID_INVALID',
+    );
+
+    const invalidGuildDetail = await request(app).get('/api/guilds/not-a-uuid');
+    expect(invalidGuildDetail.status).toBe(400);
+    expect(invalidGuildDetail.body.error).toBe('GUILD_ID_INVALID');
+
+    const invalidSwarmDetail = await request(app).get('/api/swarms/not-a-uuid');
+    expect(invalidSwarmDetail.status).toBe(400);
+    expect(invalidSwarmDetail.body.error).toBe('SWARM_ID_INVALID');
+
+    const invalidLiveSessionDetail = await request(app).get(
+      '/api/live-sessions/not-a-uuid',
+    );
+    expect(invalidLiveSessionDetail.status).toBe(400);
+    expect(invalidLiveSessionDetail.body.error).toBe('LIVE_SESSION_ID_INVALID');
+
+    const invalidCreatorStudioGovernance = await request(app)
+      .patch('/api/creator-studios/not-a-uuid/governance')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        autoApproveThreshold: 0.8,
+      });
+    expect(invalidCreatorStudioGovernance.status).toBe(400);
+    expect(invalidCreatorStudioGovernance.body.error).toBe(
+      'CREATOR_STUDIO_ID_INVALID',
+    );
+
+    const invalidSwarmStart = await request(app)
+      .post('/api/swarms/not-a-uuid/start')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send();
+    expect(invalidSwarmStart.status).toBe(400);
+    expect(invalidSwarmStart.body.error).toBe('SWARM_ID_INVALID');
+
+    const invalidLiveSessionStart = await request(app)
+      .post('/api/live-sessions/not-a-uuid/start')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send();
+    expect(invalidLiveSessionStart.status).toBe(400);
+    expect(invalidLiveSessionStart.body.error).toBe('LIVE_SESSION_ID_INVALID');
+  });
+
+  test('creator studio mutation endpoints enforce query/body allowlists', async () => {
+    const human = await registerHuman('creator-studio-boundary@example.com');
+    const token = human.tokens.accessToken;
+
+    const invalidDetailQuery = await request(app).get(
+      '/api/creator-studios/00000000-0000-0000-0000-000000000001?extra=true',
+    );
+    expect(invalidDetailQuery.status).toBe(400);
+    expect(invalidDetailQuery.body.error).toBe(
+      'CREATOR_STUDIO_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidCreateQuery = await request(app)
+      .post('/api/creator-studios?extra=true')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        studioName: 'Creator Boundary',
+      });
+    expect(invalidCreateQuery.status).toBe(400);
+    expect(invalidCreateQuery.body.error).toBe(
+      'CREATOR_STUDIO_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidCreateFields = await request(app)
+      .post('/api/creator-studios')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        studioName: 'Creator Boundary',
+        extra: true,
+      });
+    expect(invalidCreateFields.status).toBe(400);
+    expect(invalidCreateFields.body.error).toBe(
+      'CREATOR_STUDIO_INVALID_FIELDS',
+    );
+
+    const createdStudio = await request(app)
+      .post('/api/creator-studios')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        studioName: 'Creator Boundary',
+      });
+    expect(createdStudio.status).toBe(201);
+    const studioId = createdStudio.body.id as string;
+
+    const invalidGovernanceQuery = await request(app)
+      .patch(`/api/creator-studios/${studioId}/governance?extra=true`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        governance: {
+          allowForks: true,
+        },
+      });
+    expect(invalidGovernanceQuery.status).toBe(400);
+    expect(invalidGovernanceQuery.body.error).toBe(
+      'CREATOR_STUDIO_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidGovernanceFields = await request(app)
+      .patch(`/api/creator-studios/${studioId}/governance`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        governance: {
+          allowForks: true,
+        },
+        extra: true,
+      });
+    expect(invalidGovernanceFields.status).toBe(400);
+    expect(invalidGovernanceFields.body.error).toBe(
+      'CREATOR_STUDIO_GOVERNANCE_INVALID_FIELDS',
+    );
+
+    const invalidBillingQuery = await request(app)
+      .post(`/api/creator-studios/${studioId}/billing/connect?extra=true`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        providerAccountId: 'acct_123',
+      });
+    expect(invalidBillingQuery.status).toBe(400);
+    expect(invalidBillingQuery.body.error).toBe(
+      'CREATOR_STUDIO_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidBillingFields = await request(app)
+      .post(`/api/creator-studios/${studioId}/billing/connect`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        providerAccountId: 'acct_123',
+        extra: true,
+      });
+    expect(invalidBillingFields.status).toBe(400);
+    expect(invalidBillingFields.body.error).toBe(
+      'CREATOR_STUDIO_BILLING_INVALID_FIELDS',
+    );
+
+    const invalidRetentionQuery = await request(app)
+      .post(`/api/creator-studios/${studioId}/retention/ping?extra=true`)
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(invalidRetentionQuery.status).toBe(400);
+    expect(invalidRetentionQuery.body.error).toBe(
+      'CREATOR_STUDIO_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidRetentionFields = await request(app)
+      .post(`/api/creator-studios/${studioId}/retention/ping`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ extra: true });
+    expect(invalidRetentionFields.status).toBe(400);
+    expect(invalidRetentionFields.body.error).toBe(
+      'CREATOR_STUDIO_RETENTION_INVALID_FIELDS',
+    );
+  });
+
+  test('creator studio mutation endpoints validate payload boundaries', async () => {
+    const human = await registerHuman('creator-studio-payload@example.com');
+    const token = human.tokens.accessToken;
+
+    const invalidNameType = await request(app)
+      .post('/api/creator-studios')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        studioName: 42,
+      });
+    expect(invalidNameType.status).toBe(400);
+    expect(invalidNameType.body.error).toBe('CREATOR_STUDIO_INVALID_INPUT');
+
+    const invalidStylePreset = await request(app)
+      .post('/api/creator-studios')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        studioName: 'Creator Payload',
+        stylePreset: 'retro',
+      });
+    expect(invalidStylePreset.status).toBe(400);
+    expect(invalidStylePreset.body.error).toBe(
+      'CREATOR_STUDIO_INVALID_STYLE_PRESET',
+    );
+
+    const invalidRevenueShareType = await request(app)
+      .post('/api/creator-studios')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        studioName: 'Creator Payload',
+        revenueSharePercent: '25',
+      });
+    expect(invalidRevenueShareType.status).toBe(400);
+    expect(invalidRevenueShareType.body.error).toBe(
+      'CREATOR_STUDIO_INVALID_REVENUE_SHARE',
+    );
+
+    const createdStudio = await request(app)
+      .post('/api/creator-studios')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        studioName: 'Creator Payload',
+      });
+    expect(createdStudio.status).toBe(201);
+    const studioId = createdStudio.body.id as string;
+
+    const invalidGovernanceThreshold = await request(app)
+      .patch(`/api/creator-studios/${studioId}/governance`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        governance: {
+          autoApproveThreshold: '0.7',
+        },
+      });
+    expect(invalidGovernanceThreshold.status).toBe(400);
+    expect(invalidGovernanceThreshold.body.error).toBe(
+      'CREATOR_STUDIO_INVALID_THRESHOLD',
+    );
+
+    const invalidGovernanceFlagType = await request(app)
+      .patch(`/api/creator-studios/${studioId}/governance`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        governance: {
+          majorPrRequiresHuman: 'yes',
+        },
+      });
+    expect(invalidGovernanceFlagType.status).toBe(400);
+    expect(invalidGovernanceFlagType.body.error).toBe(
+      'CREATOR_STUDIO_INVALID_INPUT',
+    );
+
+    const invalidGovernanceMode = await request(app)
+      .patch(`/api/creator-studios/${studioId}/governance`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        governance: {
+          moderationMode: 'wild',
+        },
+      });
+    expect(invalidGovernanceMode.status).toBe(400);
+    expect(invalidGovernanceMode.body.error).toBe(
+      'CREATOR_STUDIO_INVALID_MODERATION_MODE',
+    );
+
+    const invalidGovernanceRevenueShare = await request(app)
+      .patch(`/api/creator-studios/${studioId}/governance`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        revenueSharePercent: 101,
+      });
+    expect(invalidGovernanceRevenueShare.status).toBe(400);
+    expect(invalidGovernanceRevenueShare.body.error).toBe(
+      'CREATOR_STUDIO_INVALID_REVENUE_SHARE',
+    );
+
+    const invalidBillingAccountType = await request(app)
+      .post(`/api/creator-studios/${studioId}/billing/connect`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        providerAccountId: 123,
+      });
+    expect(invalidBillingAccountType.status).toBe(400);
+    expect(invalidBillingAccountType.body.error).toBe(
+      'CREATOR_STUDIO_INVALID_INPUT',
+    );
+  });
+
+  test('swarm endpoints enforce query/body allowlists', async () => {
+    const { agentId, apiKey } = await registerAgent('Swarm Boundary Agent');
+
+    const invalidDetailQuery = await request(app).get(
+      '/api/swarms/00000000-0000-0000-0000-000000000001?extra=true',
+    );
+    expect(invalidDetailQuery.status).toBe(400);
+    expect(invalidDetailQuery.body.error).toBe('SWARM_INVALID_QUERY_FIELDS');
+
+    const invalidCreateQuery = await request(app)
+      .post('/api/swarms?extra=true')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        title: 'Boundary swarm',
+        objective: 'Validate query fields',
+        members: [],
+      });
+    expect(invalidCreateQuery.status).toBe(400);
+    expect(invalidCreateQuery.body.error).toBe('SWARM_INVALID_QUERY_FIELDS');
+
+    const invalidCreateFields = await request(app)
+      .post('/api/swarms')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        title: 'Boundary swarm',
+        objective: 'Validate body fields',
+        members: [],
+        extra: true,
+      });
+    expect(invalidCreateFields.status).toBe(400);
+    expect(invalidCreateFields.body.error).toBe('SWARM_INVALID_FIELDS');
+
+    const invalidStartQuery = await request(app)
+      .post('/api/swarms/00000000-0000-0000-0000-000000000001/start?extra=true')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send();
+    expect(invalidStartQuery.status).toBe(400);
+    expect(invalidStartQuery.body.error).toBe('SWARM_INVALID_QUERY_FIELDS');
+
+    const invalidStartBody = await request(app)
+      .post('/api/swarms/00000000-0000-0000-0000-000000000001/start')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({ extra: true });
+    expect(invalidStartBody.status).toBe(400);
+    expect(invalidStartBody.body.error).toBe('SWARM_START_INVALID_FIELDS');
+
+    const invalidJudgeQuery = await request(app)
+      .post(
+        '/api/swarms/00000000-0000-0000-0000-000000000001/judge-events?extra=true',
+      )
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        eventType: 'checkpoint',
+        notes: 'Boundary check',
+      });
+    expect(invalidJudgeQuery.status).toBe(400);
+    expect(invalidJudgeQuery.body.error).toBe('SWARM_INVALID_QUERY_FIELDS');
+
+    const invalidJudgeFields = await request(app)
+      .post('/api/swarms/00000000-0000-0000-0000-000000000001/judge-events')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        eventType: 'checkpoint',
+        notes: 'Boundary check',
+        extra: true,
+      });
+    expect(invalidJudgeFields.status).toBe(400);
+    expect(invalidJudgeFields.body.error).toBe(
+      'SWARM_JUDGE_EVENT_INVALID_FIELDS',
+    );
+
+    const invalidCompleteQuery = await request(app)
+      .post(
+        '/api/swarms/00000000-0000-0000-0000-000000000001/complete?extra=true',
+      )
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        judgeSummary: 'Done',
+      });
+    expect(invalidCompleteQuery.status).toBe(400);
+    expect(invalidCompleteQuery.body.error).toBe('SWARM_INVALID_QUERY_FIELDS');
+
+    const invalidCompleteFields = await request(app)
+      .post('/api/swarms/00000000-0000-0000-0000-000000000001/complete')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        judgeSummary: 'Done',
+        extra: true,
+      });
+    expect(invalidCompleteFields.status).toBe(400);
+    expect(invalidCompleteFields.body.error).toBe(
+      'SWARM_COMPLETE_INVALID_FIELDS',
+    );
+  });
+
+  test('swarm endpoints validate payload boundaries', async () => {
+    const { agentId, apiKey } = await registerAgent('Swarm Payload Agent');
+    const { agentId: peerAgentId } = await registerAgent('Swarm Payload Peer');
+
+    const invalidDraftIdCreate = await request(app)
+      .post('/api/swarms')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        draftId: 'not-a-uuid',
+        title: 'Payload swarm',
+        objective: 'Validate route-level payload boundaries',
+        members: [{ agentId: peerAgentId, role: 'critic' }],
+      });
+    expect(invalidDraftIdCreate.status).toBe(400);
+    expect(invalidDraftIdCreate.body.error).toBe('DRAFT_ID_INVALID');
+
+    const invalidMembersType = await request(app)
+      .post('/api/swarms')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        title: 'Payload swarm',
+        objective: 'Validate route-level payload boundaries',
+        members: { agentId: peerAgentId, role: 'critic' },
+      });
+    expect(invalidMembersType.status).toBe(400);
+    expect(invalidMembersType.body.error).toBe('SWARM_INVALID_MEMBER');
+
+    const invalidMemberAgentId = await request(app)
+      .post('/api/swarms')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        title: 'Payload swarm',
+        objective: 'Validate route-level payload boundaries',
+        members: [{ agentId: 'not-a-uuid', role: 'critic' }],
+      });
+    expect(invalidMemberAgentId.status).toBe(400);
+    expect(invalidMemberAgentId.body.error).toBe('SWARM_INVALID_MEMBER');
+
+    const invalidMemberRole = await request(app)
+      .post('/api/swarms')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        title: 'Payload swarm',
+        objective: 'Validate route-level payload boundaries',
+        members: [{ agentId: peerAgentId, role: 'invalid-role' }],
+      });
+    expect(invalidMemberRole.status).toBe(400);
+    expect(invalidMemberRole.body.error).toBe('SWARM_INVALID_MEMBER');
+
+    const invalidMemberIsLeadType = await request(app)
+      .post('/api/swarms')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        title: 'Payload swarm',
+        objective: 'Validate route-level payload boundaries',
+        members: [{ agentId: peerAgentId, role: 'critic', isLead: 'yes' }],
+      });
+    expect(invalidMemberIsLeadType.status).toBe(400);
+    expect(invalidMemberIsLeadType.body.error).toBe('SWARM_INVALID_MEMBER');
+
+    const invalidJudgeEventType = await request(app)
+      .post('/api/swarms/00000000-0000-0000-0000-000000000001/judge-events')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        eventType: 'invalid',
+        notes: 'Boundary check',
+      });
+    expect(invalidJudgeEventType.status).toBe(400);
+    expect(invalidJudgeEventType.body.error).toBe('SWARM_INVALID_EVENT');
+
+    const invalidJudgeScoreType = await request(app)
+      .post('/api/swarms/00000000-0000-0000-0000-000000000001/judge-events')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        eventType: 'checkpoint',
+        score: '10',
+        notes: 'Boundary check',
+      });
+    expect(invalidJudgeScoreType.status).toBe(400);
+    expect(invalidJudgeScoreType.body.error).toBe('SWARM_INVALID_SCORE');
+
+    const invalidJudgeScoreRange = await request(app)
+      .post('/api/swarms/00000000-0000-0000-0000-000000000001/judge-events')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        eventType: 'checkpoint',
+        score: 101,
+        notes: 'Boundary check',
+      });
+    expect(invalidJudgeScoreRange.status).toBe(400);
+    expect(invalidJudgeScoreRange.body.error).toBe('SWARM_INVALID_SCORE');
+
+    const invalidJudgeNotesLength = await request(app)
+      .post('/api/swarms/00000000-0000-0000-0000-000000000001/judge-events')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        eventType: 'checkpoint',
+        notes: 'x'.repeat(2001),
+      });
+    expect(invalidJudgeNotesLength.status).toBe(400);
+    expect(invalidJudgeNotesLength.body.error).toBe('SWARM_INVALID_EVENT');
+
+    const invalidCompleteSummaryType = await request(app)
+      .post('/api/swarms/00000000-0000-0000-0000-000000000001/complete')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        judgeSummary: 42,
+      });
+    expect(invalidCompleteSummaryType.status).toBe(400);
+    expect(invalidCompleteSummaryType.body.error).toBe('SWARM_INVALID_INPUT');
+
+    const invalidCompleteSummaryLength = await request(app)
+      .post('/api/swarms/00000000-0000-0000-0000-000000000001/complete')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        judgeSummary: 'x'.repeat(2001),
+      });
+    expect(invalidCompleteSummaryLength.status).toBe(400);
+    expect(invalidCompleteSummaryLength.body.error).toBe('SWARM_INVALID_INPUT');
+
+    const invalidCompleteScoreType = await request(app)
+      .post('/api/swarms/00000000-0000-0000-0000-000000000001/complete')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        judgeSummary: 'done',
+        judgeScore: '90',
+      });
+    expect(invalidCompleteScoreType.status).toBe(400);
+    expect(invalidCompleteScoreType.body.error).toBe('SWARM_INVALID_SCORE');
+  });
+
+  test('live session endpoints enforce query/body allowlists', async () => {
+    const { agentId, apiKey } = await registerAgent('Live Boundary Agent');
+    const human = await registerHuman('live-boundary-human@example.com');
+    const humanToken = human.tokens.accessToken;
+
+    const invalidCreateQuery = await request(app)
+      .post('/api/live-sessions?extra=true')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        title: 'Boundary live session',
+        objective: 'Validate query fields',
+      });
+    expect(invalidCreateQuery.status).toBe(400);
+    expect(invalidCreateQuery.body.error).toBe(
+      'LIVE_SESSION_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidCreateFields = await request(app)
+      .post('/api/live-sessions')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        title: 'Boundary live session',
+        objective: 'Validate body fields',
+        extra: true,
+      });
+    expect(invalidCreateFields.status).toBe(400);
+    expect(invalidCreateFields.body.error).toBe('LIVE_SESSION_INVALID_FIELDS');
+
+    const created = await request(app)
+      .post('/api/live-sessions')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        title: 'Boundary live session',
+        objective: 'Validate mutation boundaries',
+      });
+    expect(created.status).toBe(201);
+    const sessionId = created.body.session.id as string;
+
+    const invalidDetailQuery = await request(app).get(
+      `/api/live-sessions/${sessionId}?extra=true`,
+    );
+    expect(invalidDetailQuery.status).toBe(400);
+    expect(invalidDetailQuery.body.error).toBe(
+      'LIVE_SESSION_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidStartQuery = await request(app)
+      .post(`/api/live-sessions/${sessionId}/start?extra=true`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send();
+    expect(invalidStartQuery.status).toBe(400);
+    expect(invalidStartQuery.body.error).toBe(
+      'LIVE_SESSION_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidStartBody = await request(app)
+      .post(`/api/live-sessions/${sessionId}/start`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({ extra: true });
+    expect(invalidStartBody.status).toBe(400);
+    expect(invalidStartBody.body.error).toBe(
+      'LIVE_SESSION_START_INVALID_FIELDS',
+    );
+
+    const invalidCompleteQuery = await request(app)
+      .post(`/api/live-sessions/${sessionId}/complete?extra=true`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({ recapSummary: 'done' });
+    expect(invalidCompleteQuery.status).toBe(400);
+    expect(invalidCompleteQuery.body.error).toBe(
+      'LIVE_SESSION_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidCompleteFields = await request(app)
+      .post(`/api/live-sessions/${sessionId}/complete`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({ recapSummary: 'done', extra: true });
+    expect(invalidCompleteFields.status).toBe(400);
+    expect(invalidCompleteFields.body.error).toBe(
+      'LIVE_SESSION_COMPLETE_INVALID_FIELDS',
+    );
+
+    const invalidPresenceQuery = await request(app)
+      .post(`/api/live-sessions/${sessionId}/presence/observer?extra=true`)
+      .set('Authorization', `Bearer ${humanToken}`)
+      .send({ status: 'watching' });
+    expect(invalidPresenceQuery.status).toBe(400);
+    expect(invalidPresenceQuery.body.error).toBe(
+      'LIVE_SESSION_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidPresenceFields = await request(app)
+      .post(`/api/live-sessions/${sessionId}/presence/observer`)
+      .set('Authorization', `Bearer ${humanToken}`)
+      .send({ status: 'watching', extra: true });
+    expect(invalidPresenceFields.status).toBe(400);
+    expect(invalidPresenceFields.body.error).toBe(
+      'LIVE_SESSION_PRESENCE_INVALID_FIELDS',
+    );
+
+    const invalidPresenceAgentFields = await request(app)
+      .post(`/api/live-sessions/${sessionId}/presence/agent`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({ status: 'active', extra: true });
+    expect(invalidPresenceAgentFields.status).toBe(400);
+    expect(invalidPresenceAgentFields.body.error).toBe(
+      'LIVE_SESSION_PRESENCE_INVALID_FIELDS',
+    );
+
+    const invalidObserverMessageQuery = await request(app)
+      .post(`/api/live-sessions/${sessionId}/messages/observer?extra=true`)
+      .set('Authorization', `Bearer ${humanToken}`)
+      .send({ content: 'hello' });
+    expect(invalidObserverMessageQuery.status).toBe(400);
+    expect(invalidObserverMessageQuery.body.error).toBe(
+      'LIVE_SESSION_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidObserverMessageFields = await request(app)
+      .post(`/api/live-sessions/${sessionId}/messages/observer`)
+      .set('Authorization', `Bearer ${humanToken}`)
+      .send({ content: 'hello', extra: true });
+    expect(invalidObserverMessageFields.status).toBe(400);
+    expect(invalidObserverMessageFields.body.error).toBe(
+      'LIVE_SESSION_MESSAGE_INVALID_FIELDS',
+    );
+
+    const invalidAgentMessageFields = await request(app)
+      .post(`/api/live-sessions/${sessionId}/messages/agent`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({ content: 'hello', authorLabel: 'Agent', extra: true });
+    expect(invalidAgentMessageFields.status).toBe(400);
+    expect(invalidAgentMessageFields.body.error).toBe(
+      'LIVE_SESSION_MESSAGE_INVALID_FIELDS',
+    );
+  });
+
+  test('live session endpoints validate payload boundaries', async () => {
+    const { agentId, apiKey } = await registerAgent('Live Payload Agent');
+    const human = await registerHuman('live-payload-human@example.com');
+    const humanToken = human.tokens.accessToken;
+
+    const invalidDraftIdCreate = await request(app)
+      .post('/api/live-sessions')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        draftId: 'not-a-uuid',
+        title: 'Boundary live session',
+        objective: 'Validate payload',
+      });
+    expect(invalidDraftIdCreate.status).toBe(400);
+    expect(invalidDraftIdCreate.body.error).toBe('DRAFT_ID_INVALID');
+
+    const invalidIsPublic = await request(app)
+      .post('/api/live-sessions')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        title: 'Boundary live session',
+        objective: 'Validate payload',
+        isPublic: 'yes',
+      });
+    expect(invalidIsPublic.status).toBe(400);
+    expect(invalidIsPublic.body.error).toBe('LIVE_SESSION_INVALID_INPUT');
+
+    const invalidTitleLength = await request(app)
+      .post('/api/live-sessions')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        title: 'x'.repeat(161),
+        objective: 'Validate payload',
+      });
+    expect(invalidTitleLength.status).toBe(400);
+    expect(invalidTitleLength.body.error).toBe('LIVE_SESSION_INVALID_INPUT');
+
+    const created = await request(app)
+      .post('/api/live-sessions')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        title: 'Live payload session',
+        objective: 'Validate route-level payload boundaries',
+      });
+    expect(created.status).toBe(201);
+    const sessionId = created.body.session.id as string;
+
+    const invalidCompleteRecapUrl = await request(app)
+      .post(`/api/live-sessions/${sessionId}/complete`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        recapClipUrl: 'ftp://example.com/clip.mp4',
+      });
+    expect(invalidCompleteRecapUrl.status).toBe(400);
+    expect(invalidCompleteRecapUrl.body.error).toBe(
+      'LIVE_SESSION_INVALID_INPUT',
+    );
+
+    const invalidPresenceType = await request(app)
+      .post(`/api/live-sessions/${sessionId}/presence/observer`)
+      .set('Authorization', `Bearer ${humanToken}`)
+      .send({
+        status: 1,
+      });
+    expect(invalidPresenceType.status).toBe(400);
+    expect(invalidPresenceType.body.error).toBe('INVALID_PRESENCE_STATUS');
+
+    const invalidMessageType = await request(app)
+      .post(`/api/live-sessions/${sessionId}/messages/observer`)
+      .set('Authorization', `Bearer ${humanToken}`)
+      .send({
+        content: 42,
+      });
+    expect(invalidMessageType.status).toBe(400);
+    expect(invalidMessageType.body.error).toBe('LIVE_SESSION_INVALID_MESSAGE');
+
+    const invalidMessageLength = await request(app)
+      .post(`/api/live-sessions/${sessionId}/messages/observer`)
+      .set('Authorization', `Bearer ${humanToken}`)
+      .send({
+        content: 'x'.repeat(501),
+      });
+    expect(invalidMessageLength.status).toBe(400);
+    expect(invalidMessageLength.body.error).toBe(
+      'LIVE_SESSION_INVALID_MESSAGE',
+    );
+
+    const invalidAgentLabelLength = await request(app)
+      .post(`/api/live-sessions/${sessionId}/messages/agent`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        content: 'hello',
+        authorLabel: 'x'.repeat(81),
+      });
+    expect(invalidAgentLabelLength.status).toBe(400);
+    expect(invalidAgentLabelLength.body.error).toBe(
+      'LIVE_SESSION_INVALID_MESSAGE',
+    );
+  });
+
+  test('live session realtime bootstrap endpoint validates payload boundaries', async () => {
+    const { agentId, apiKey } = await registerAgent(
+      'Live Realtime Boundary Agent',
+    );
+    const human = await registerHuman(
+      'live-realtime-boundary-human@example.com',
+    );
+
+    const created = await request(app)
+      .post('/api/live-sessions')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        title: 'Live realtime boundary',
+        objective: 'Validate realtime endpoint boundaries',
+      });
+    expect(created.status).toBe(201);
+    const sessionId = created.body.session.id as string;
+
+    const invalidQuery = await request(app)
+      .post(`/api/live-sessions/${sessionId}/realtime/session?extra=true`)
+      .set('Authorization', `Bearer ${human.tokens.accessToken}`)
+      .send({
+        outputModalities: ['audio'],
+      });
+    expect(invalidQuery.status).toBe(400);
+    expect(invalidQuery.body.error).toBe('LIVE_SESSION_INVALID_QUERY_FIELDS');
+
+    const invalidBodyFields = await request(app)
+      .post(`/api/live-sessions/${sessionId}/realtime/session`)
+      .set('Authorization', `Bearer ${human.tokens.accessToken}`)
+      .send({
+        outputModalities: ['audio'],
+        extra: true,
+      });
+    expect(invalidBodyFields.status).toBe(400);
+    expect(invalidBodyFields.body.error).toBe(
+      'LIVE_SESSION_REALTIME_INVALID_FIELDS',
+    );
+
+    const invalidVoice = await request(app)
+      .post(`/api/live-sessions/${sessionId}/realtime/session`)
+      .set('Authorization', `Bearer ${human.tokens.accessToken}`)
+      .send({
+        outputModalities: ['audio'],
+        voice: 'not-a-voice',
+      });
+    expect(invalidVoice.status).toBe(400);
+    expect(invalidVoice.body.error).toBe('LIVE_SESSION_REALTIME_INVALID_INPUT');
+
+    const previousOpenAiKey = process.env.OPENAI_API_KEY;
+    process.env.OPENAI_API_KEY = '';
+    try {
+      const notConfigured = await request(app)
+        .post(`/api/live-sessions/${sessionId}/realtime/session`)
+        .set('Authorization', `Bearer ${human.tokens.accessToken}`)
+        .send({
+          outputModalities: ['audio'],
+        });
+      expect(notConfigured.status).toBe(503);
+      expect(notConfigured.body.error).toBe('OPENAI_REALTIME_NOT_CONFIGURED');
+    } finally {
+      if (previousOpenAiKey === undefined) {
+        process.env.OPENAI_API_KEY = undefined;
+      } else {
+        process.env.OPENAI_API_KEY = previousOpenAiKey;
+      }
+    }
+  });
+
+  test('live session realtime bootstrap endpoint creates OpenAI realtime session', async () => {
+    const { agentId, apiKey } = await registerAgent('Live Realtime Agent');
+    const human = await registerHuman('live-realtime-human@example.com');
+
+    const created = await request(app)
+      .post('/api/live-sessions')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        title: 'Live realtime session',
+        objective: 'Bootstrap realtime observer copilot',
+      });
+    expect(created.status).toBe(201);
+    const sessionId = created.body.session.id as string;
+
+    const previousOpenAiKey = process.env.OPENAI_API_KEY;
+    const previousFetch = globalThis.fetch;
+    process.env.OPENAI_API_KEY = 'test-openai-key';
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        id: 'rt_session_123',
+        expires_at: '2026-02-25T12:00:00.000Z',
+        client_secret: {
+          value: 'rt_secret_123',
+          expires_at: '2026-02-25T11:30:00.000Z',
+        },
+      }),
+      text: async () => '',
+    } as Response);
+    globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
+
+    try {
+      const bootstrap = await request(app)
+        .post(`/api/live-sessions/${sessionId}/realtime/session`)
+        .set('Authorization', `Bearer ${human.tokens.accessToken}`)
+        .send({
+          outputModalities: ['audio'],
+          voice: 'marin',
+          pushToTalk: true,
+          topicHint: 'Keep answers short',
+          metadata: {
+            source: 'integration-test',
+          },
+        });
+
+      expect(bootstrap.status).toBe(201);
+      expect(bootstrap.body).toEqual(
+        expect.objectContaining({
+          provider: 'openai',
+          sessionId: 'rt_session_123',
+          clientSecret: 'rt_secret_123',
+          model: 'gpt-realtime',
+          outputModalities: ['audio'],
+          voice: 'marin',
+          transportHints: {
+            recommended: 'webrtc',
+            websocketSupported: true,
+            pushToTalk: true,
+          },
+        }),
+      );
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const [calledUrl, calledInit] = fetchMock.mock.calls[0] as [
+        string,
+        RequestInit,
+      ];
+      expect(calledUrl).toBe('https://api.openai.com/v1/realtime/sessions');
+      expect(calledInit.method).toBe('POST');
+      expect(calledInit.headers).toEqual(
+        expect.objectContaining({
+          Authorization: 'Bearer test-openai-key',
+          'Content-Type': 'application/json',
+        }),
+      );
+      const parsedBody = JSON.parse(String(calledInit.body)) as {
+        audio?: { input?: { turn_detection?: unknown } };
+        output_modalities?: string[];
+      };
+      expect(parsedBody.output_modalities).toEqual(['audio']);
+      expect(parsedBody.audio?.input?.turn_detection).toBeNull();
+    } finally {
+      globalThis.fetch = previousFetch;
+      if (previousOpenAiKey === undefined) {
+        process.env.OPENAI_API_KEY = undefined;
+      } else {
+        process.env.OPENAI_API_KEY = previousOpenAiKey;
+      }
+    }
+  });
+
+  test('live session realtime tool endpoint validates payload boundaries', async () => {
+    const { agentId, apiKey } = await registerAgent(
+      'Live Realtime Tool Boundary Agent',
+    );
+    const human = await registerHuman(
+      'live-realtime-tool-boundary-human@example.com',
+    );
+
+    const created = await request(app)
+      .post('/api/live-sessions')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        title: 'Live realtime tool boundary',
+        objective: 'Validate realtime tool endpoint boundaries',
+      });
+    expect(created.status).toBe(201);
+    const sessionId = created.body.session.id as string;
+
+    const invalidQuery = await request(app)
+      .post(`/api/live-sessions/${sessionId}/realtime/tool?extra=true`)
+      .set('Authorization', `Bearer ${human.tokens.accessToken}`)
+      .send({
+        name: 'follow_studio',
+        arguments: {
+          studioId: agentId,
+        },
+      });
+    expect(invalidQuery.status).toBe(400);
+    expect(invalidQuery.body.error).toBe('LIVE_SESSION_INVALID_QUERY_FIELDS');
+
+    const invalidBodyFields = await request(app)
+      .post(`/api/live-sessions/${sessionId}/realtime/tool`)
+      .set('Authorization', `Bearer ${human.tokens.accessToken}`)
+      .send({
+        name: 'follow_studio',
+        arguments: {
+          studioId: agentId,
+        },
+        extra: true,
+      });
+    expect(invalidBodyFields.status).toBe(400);
+    expect(invalidBodyFields.body.error).toBe(
+      'LIVE_SESSION_REALTIME_TOOL_INVALID_FIELDS',
+    );
+
+    const invalidToolName = await request(app)
+      .post(`/api/live-sessions/${sessionId}/realtime/tool`)
+      .set('Authorization', `Bearer ${human.tokens.accessToken}`)
+      .send({
+        name: 'unsupported_tool',
+        arguments: {},
+      });
+    expect(invalidToolName.status).toBe(400);
+    expect(invalidToolName.body.error).toBe(
+      'LIVE_SESSION_REALTIME_TOOL_INVALID_INPUT',
+    );
+
+    const invalidToolArgs = await request(app)
+      .post(`/api/live-sessions/${sessionId}/realtime/tool`)
+      .set('Authorization', `Bearer ${human.tokens.accessToken}`)
+      .send({
+        name: 'place_prediction',
+        arguments: '{"draftId":"invalid"}',
+      });
+    expect(invalidToolArgs.status).toBe(400);
+    expect(invalidToolArgs.body.error).toBe(
+      'LIVE_SESSION_REALTIME_TOOL_INVALID_INPUT',
+    );
+  });
+
+  test('live session realtime tool endpoint executes follow and prediction tools', async () => {
+    const { agentId: authorId, apiKey: authorKey } = await registerAgent(
+      'Live Realtime Tool Author',
+    );
+    const { agentId: makerId, apiKey: makerKey } = await registerAgent(
+      'Live Realtime Tool Maker',
+    );
+    const human = await registerHuman('live-realtime-tool-human@example.com');
+    const observerToken = human.tokens.accessToken;
+
+    const draftRes = await request(app)
+      .post('/api/drafts')
+      .set('x-agent-id', authorId)
+      .set('x-api-key', authorKey)
+      .send({
+        imageUrl: 'https://example.com/realtime-tool-v1.png',
+        thumbnailUrl: 'https://example.com/realtime-tool-v1-thumb.png',
+      });
+    expect(draftRes.status).toBe(200);
+    const draftId = draftRes.body.draft.id as string;
+
+    const pullRequestRes = await request(app)
+      .post(`/api/drafts/${draftId}/pull-requests`)
+      .set('x-agent-id', makerId)
+      .set('x-api-key', makerKey)
+      .send({
+        description: 'Realtime tool pending PR',
+        severity: 'minor',
+        imageUrl: 'https://example.com/realtime-tool-v2.png',
+        thumbnailUrl: 'https://example.com/realtime-tool-v2-thumb.png',
+      });
+    expect(pullRequestRes.status).toBe(200);
+    const pullRequestId = pullRequestRes.body.id as string;
+
+    const created = await request(app)
+      .post('/api/live-sessions')
+      .set('x-agent-id', authorId)
+      .set('x-api-key', authorKey)
+      .send({
+        draftId,
+        title: 'Live realtime tool execution',
+        objective: 'Execute realtime tools against active draft session',
+      });
+    expect(created.status).toBe(201);
+    const sessionId = created.body.session.id as string;
+
+    const followResult = await request(app)
+      .post(`/api/live-sessions/${sessionId}/realtime/tool`)
+      .set('Authorization', `Bearer ${observerToken}`)
+      .send({
+        callId: 'call_follow_1',
+        name: 'follow_studio',
+        arguments: {
+          studioId: makerId,
+        },
+      });
+    expect(followResult.status).toBe(200);
+    expect(followResult.body.toolName).toBe('follow_studio');
+    expect(followResult.body.callId).toBe('call_follow_1');
+    expect(followResult.body.output.studioId).toBe(makerId);
+    expect(followResult.body.output.isFollowing).toBe(true);
+    expect(followResult.body.output.followerCount).toBe(1);
+
+    const predictionResult = await request(app)
+      .post(`/api/live-sessions/${sessionId}/realtime/tool`)
+      .set('Authorization', `Bearer ${observerToken}`)
+      .send({
+        callId: 'call_prediction_1',
+        name: 'place_prediction',
+        arguments: {
+          draftId,
+          outcome: 'merge',
+          stakePoints: 25,
+        },
+      });
+    expect(predictionResult.status).toBe(200);
+    expect(predictionResult.body.toolName).toBe('place_prediction');
+    expect(predictionResult.body.callId).toBe('call_prediction_1');
+    expect(predictionResult.body.output.draftId).toBe(draftId);
+    expect(predictionResult.body.output.pullRequestId).toBe(pullRequestId);
+    expect(predictionResult.body.output.prediction.predictedOutcome).toBe(
+      'merge',
+    );
+    expect(predictionResult.body.output.prediction.stakePoints).toBe(25);
+    expect(predictionResult.body.output.summary.pullRequestId).toBe(
+      pullRequestId,
+    );
+
+    const storedPrediction = await db.query(
+      `SELECT predicted_outcome, stake_points
+       FROM observer_pr_predictions
+       WHERE observer_id = $1
+         AND pull_request_id = $2`,
+      [human.userId, pullRequestId],
+    );
+    expect(storedPrediction.rows).toHaveLength(1);
+    expect(storedPrediction.rows[0].predicted_outcome).toBe('merge');
+    expect(Number(storedPrediction.rows[0].stake_points)).toBe(25);
   });
 
   test('search compute-heavy endpoints enforce rate limiting', async () => {
@@ -2221,6 +4619,60 @@ describe('API integration', () => {
       [draftRes.body.draft.id],
     );
     expect(stored.rows.length).toBe(1);
+
+    const invalidEmbeddingQuery = await request(app)
+      .post(`/api/drafts/${draftRes.body.draft.id}/embedding?extra=true`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({ embedding: [0.25, 0.5, 0.75], source: 'test' });
+    expect(invalidEmbeddingQuery.status).toBe(400);
+    expect(invalidEmbeddingQuery.body.error).toBe(
+      'DRAFT_EMBEDDING_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidEmbeddingId = await request(app)
+      .post('/api/drafts/not-a-uuid/embedding')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({ embedding: [0.25, 0.5, 0.75], source: 'test' });
+    expect(invalidEmbeddingId.status).toBe(400);
+    expect(invalidEmbeddingId.body.error).toBe('DRAFT_ID_INVALID');
+
+    const invalidEmbeddingFields = await request(app)
+      .post(`/api/drafts/${draftRes.body.draft.id}/embedding`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        embedding: [0.25, 0.5, 0.75],
+        source: 'test',
+        extra: true,
+      });
+    expect(invalidEmbeddingFields.status).toBe(400);
+    expect(invalidEmbeddingFields.body.error).toBe(
+      'DRAFT_EMBEDDING_INVALID_FIELDS',
+    );
+
+    const invalidEmbeddingType = await request(app)
+      .post(`/api/drafts/${draftRes.body.draft.id}/embedding`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        embedding: ['a', 'b'],
+        source: 'test',
+      });
+    expect(invalidEmbeddingType.status).toBe(400);
+    expect(invalidEmbeddingType.body.error).toBe('DRAFT_EMBEDDING_INVALID');
+
+    const invalidEmbeddingSource = await request(app)
+      .post(`/api/drafts/${draftRes.body.draft.id}/embedding`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        embedding: [0.25, 0.5, 0.75],
+        source: 42,
+      });
+    expect(invalidEmbeddingSource.status).toBe(400);
+    expect(invalidEmbeddingSource.body.error).toBe('DRAFT_EMBEDDING_INVALID');
   });
 
   test('search endpoint supports pagination and empty query', async () => {
@@ -2245,6 +4697,12 @@ describe('API integration', () => {
     const studio = await request(app).get(`/api/studios/${agentId}`);
     expect(studio.status).toBe(200);
     expect(studio.body.id).toBe(agentId);
+
+    const invalidStudioQuery = await request(app).get(
+      `/api/studios/${agentId}?extra=true`,
+    );
+    expect(invalidStudioQuery.status).toBe(400);
+    expect(invalidStudioQuery.body.error).toBe('STUDIO_INVALID_QUERY_FIELDS');
 
     const forbidden = await request(app)
       .put(`/api/studios/${agentId}`)
@@ -2272,6 +4730,26 @@ describe('API integration', () => {
       tone: 'cinematic',
       preferredPatterns: ['high contrast'],
     });
+
+    const invalidStudioUpdateQuery = await request(app)
+      .put(`/api/studios/${agentId}?extra=true`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({});
+    expect(invalidStudioUpdateQuery.status).toBe(400);
+    expect(invalidStudioUpdateQuery.body.error).toBe(
+      'STUDIO_UPDATE_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidStudioUpdateFields = await request(app)
+      .put(`/api/studios/${agentId}`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({ unknownField: true });
+    expect(invalidStudioUpdateFields.status).toBe(400);
+    expect(invalidStudioUpdateFields.body.error).toBe(
+      'STUDIO_UPDATE_INVALID_FIELDS',
+    );
 
     const invalidSkillProfile = await request(app)
       .put(`/api/studios/${agentId}`)
@@ -2344,6 +4822,43 @@ describe('API integration', () => {
       'Narrative-first',
     );
 
+    const invalidPersonasReadQuery = await request(app).get(
+      `/api/studios/${agentId}/personas?extra=true`,
+    );
+    expect(invalidPersonasReadQuery.status).toBe(400);
+    expect(invalidPersonasReadQuery.body.error).toBe(
+      'STUDIO_ROLE_PERSONAS_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidPersonasUpdateQuery = await request(app)
+      .put(`/api/studios/${agentId}/personas?extra=true`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        rolePersonas: {
+          author: { tone: 'Only query should fail first' },
+        },
+      });
+    expect(invalidPersonasUpdateQuery.status).toBe(400);
+    expect(invalidPersonasUpdateQuery.body.error).toBe(
+      'STUDIO_ROLE_PERSONAS_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidPersonasUpdateFields = await request(app)
+      .put(`/api/studios/${agentId}/personas`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        rolePersonas: {
+          author: { tone: 'strict' },
+        },
+        extra: true,
+      });
+    expect(invalidPersonasUpdateFields.status).toBe(400);
+    expect(invalidPersonasUpdateFields.body.error).toBe(
+      'STUDIO_ROLE_PERSONAS_INVALID_FIELDS',
+    );
+
     const personasTelemetry = await db.query(
       `SELECT COUNT(*)::int AS count
        FROM ux_events
@@ -2381,6 +4896,20 @@ describe('API integration', () => {
     expect(metrics.status).toBe(200);
     expect(metrics.body).toHaveProperty('impact');
     expect(metrics.body).toHaveProperty('signal');
+
+    const invalidMetricsQuery = await request(app).get(
+      `/api/studios/${agentId}/metrics?extra=true`,
+    );
+    expect(invalidMetricsQuery.status).toBe(400);
+    expect(invalidMetricsQuery.body.error).toBe(
+      'STUDIO_METRICS_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidMetricsId = await request(app).get(
+      '/api/studios/not-a-uuid/metrics',
+    );
+    expect(invalidMetricsId.status).toBe(400);
+    expect(invalidMetricsId.body.error).toBe('STUDIO_ID_INVALID');
   });
 
   test('studio ledger maps impact delta for merged and fix entries', async () => {
@@ -2485,11 +5014,28 @@ describe('API integration', () => {
     const fallback = await request(app).get(
       `/api/studios/${studioId}/ledger?limit=abc`,
     );
-    expect(fallback.status).toBe(200);
-    expect(querySpy).toHaveBeenLastCalledWith(expect.any(String), [
-      studioId,
-      8,
-    ]);
+    expect(fallback.status).toBe(400);
+    expect(fallback.body.error).toBe('STUDIO_LEDGER_LIMIT_INVALID');
+
+    const invalidFloatLimit = await request(app).get(
+      `/api/studios/${studioId}/ledger?limit=1.5`,
+    );
+    expect(invalidFloatLimit.status).toBe(400);
+    expect(invalidFloatLimit.body.error).toBe('STUDIO_LEDGER_LIMIT_INVALID');
+
+    const invalidQueryField = await request(app).get(
+      `/api/studios/${studioId}/ledger?extra=true`,
+    );
+    expect(invalidQueryField.status).toBe(400);
+    expect(invalidQueryField.body.error).toBe(
+      'STUDIO_LEDGER_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidStudioId = await request(app).get(
+      '/api/studios/not-a-uuid/ledger',
+    );
+    expect(invalidStudioId.status).toBe(400);
+    expect(invalidStudioId.body.error).toBe('STUDIO_ID_INVALID');
 
     querySpy.mockRestore();
   });
@@ -2606,6 +5152,49 @@ describe('API integration', () => {
     expect(missingDetail.body.error).toBe('COMMISSION_NOT_FOUND');
   });
 
+  test('commission endpoints validate commission id params', async () => {
+    const human = await registerHuman('commission-id-guard@example.com');
+    const token = human.tokens.accessToken;
+    const { agentId, apiKey } = await registerAgent('Commission Guard Agent');
+
+    const invalidDetail = await request(app).get('/api/commissions/not-a-uuid');
+    expect(invalidDetail.status).toBe(400);
+    expect(invalidDetail.body.error).toBe('COMMISSION_ID_INVALID');
+
+    const invalidResponse = await request(app)
+      .post('/api/commissions/not-a-uuid/responses')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        draftId: '00000000-0000-0000-0000-000000000001',
+      });
+    expect(invalidResponse.status).toBe(400);
+    expect(invalidResponse.body.error).toBe('COMMISSION_ID_INVALID');
+
+    const invalidWinner = await request(app)
+      .post('/api/commissions/not-a-uuid/select-winner')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        winnerDraftId: '00000000-0000-0000-0000-000000000001',
+      });
+    expect(invalidWinner.status).toBe(400);
+    expect(invalidWinner.body.error).toBe('COMMISSION_ID_INVALID');
+
+    const invalidPayIntent = await request(app)
+      .post('/api/commissions/not-a-uuid/pay-intent')
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(invalidPayIntent.status).toBe(400);
+    expect(invalidPayIntent.body.error).toBe('COMMISSION_ID_INVALID');
+
+    const invalidCancel = await request(app)
+      .post('/api/commissions/not-a-uuid/cancel')
+      .set('Authorization', `Bearer ${token}`)
+      .send();
+    expect(invalidCancel.status).toBe(400);
+    expect(invalidCancel.body.error).toBe('COMMISSION_ID_INVALID');
+  });
+
   test('commission validation errors surface as service errors', async () => {
     const human = await registerHuman('commission-errors@example.com');
     const token = human.tokens.accessToken;
@@ -2617,6 +5206,26 @@ describe('API integration', () => {
 
     expect(missingDescription.status).toBe(400);
     expect(missingDescription.body.error).toBe('COMMISSION_REQUIRED_FIELDS');
+
+    const invalidQueryField = await request(app).get(
+      '/api/commissions?extra=true',
+    );
+    expect(invalidQueryField.status).toBe(400);
+    expect(invalidQueryField.body.error).toBe(
+      'COMMISSION_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidStatus = await request(app).get(
+      '/api/commissions?status=invalid',
+    );
+    expect(invalidStatus.status).toBe(400);
+    expect(invalidStatus.body.error).toBe('INVALID_COMMISSION_STATUS');
+
+    const invalidForAgents = await request(app).get(
+      '/api/commissions?forAgents=maybe',
+    );
+    expect(invalidForAgents.status).toBe(400);
+    expect(invalidForAgents.body.error).toBe('INVALID_FOR_AGENTS_FLAG');
   });
 
   test('commission routes propagate handler errors', async () => {
@@ -2907,7 +5516,7 @@ describe('API integration', () => {
       .spyOn(FeedServiceImpl.prototype, 'getForYou')
       .mockRejectedValueOnce(new Error('for you fail'));
     const forYouRes = await request(app)
-      .get('/api/feeds/for-you?limit=1&fail=1')
+      .get('/api/feeds/for-you?limit=1')
       .set('Authorization', `Bearer ${token}`);
     expect(forYouRes.status).toBe(500);
     forYouSpy.mockRestore();
@@ -2915,50 +5524,42 @@ describe('API integration', () => {
     const liveSpy = jest
       .spyOn(FeedServiceImpl.prototype, 'getLiveDrafts')
       .mockRejectedValueOnce(new Error('live fail'));
-    const liveRes = await request(app).get(
-      '/api/feeds/live-drafts?limit=1&fail=1',
-    );
+    const liveRes = await request(app).get('/api/feeds/live-drafts?limit=1');
     expect(liveRes.status).toBe(500);
     liveSpy.mockRestore();
 
     const glowSpy = jest
       .spyOn(FeedServiceImpl.prototype, 'getGlowUps')
       .mockRejectedValueOnce(new Error('glow fail'));
-    const glowRes = await request(app).get('/api/feeds/glowups?limit=1&fail=1');
+    const glowRes = await request(app).get('/api/feeds/glowups?limit=1');
     expect(glowRes.status).toBe(500);
     glowSpy.mockRestore();
 
     const studiosSpy = jest
       .spyOn(FeedServiceImpl.prototype, 'getStudios')
       .mockRejectedValueOnce(new Error('studios feed fail'));
-    const studiosRes = await request(app).get(
-      '/api/feeds/studios?limit=1&fail=1',
-    );
+    const studiosRes = await request(app).get('/api/feeds/studios?limit=1');
     expect(studiosRes.status).toBe(500);
     studiosSpy.mockRestore();
 
     const battlesSpy = jest
       .spyOn(FeedServiceImpl.prototype, 'getBattles')
       .mockRejectedValueOnce(new Error('battles fail'));
-    const battlesRes = await request(app).get(
-      '/api/feeds/battles?limit=1&fail=1',
-    );
+    const battlesRes = await request(app).get('/api/feeds/battles?limit=1');
     expect(battlesRes.status).toBe(500);
     battlesSpy.mockRestore();
 
     const archiveSpy = jest
       .spyOn(FeedServiceImpl.prototype, 'getArchive')
       .mockRejectedValueOnce(new Error('archive fail'));
-    const archiveRes = await request(app).get(
-      '/api/feeds/archive?limit=1&fail=1',
-    );
+    const archiveRes = await request(app).get('/api/feeds/archive?limit=1');
     expect(archiveRes.status).toBe(500);
     archiveSpy.mockRestore();
 
     const searchSpy = jest
       .spyOn(SearchServiceImpl.prototype, 'search')
       .mockRejectedValueOnce(new Error('search fail'));
-    const searchRes = await request(app).get('/api/search?q=fail&fail=1');
+    const searchRes = await request(app).get('/api/search?q=fail');
     expect(searchRes.status).toBe(500);
     searchSpy.mockRestore();
 
@@ -3165,6 +5766,25 @@ describe('API integration', () => {
       .set(predictHeaders)
       .send({ predictedOutcome: 'reject', stakePoints: 10 });
     expect(prPredictSecond.status).toBe(429);
+
+    const summaryHuman = await registerHuman(
+      'observer-prediction-summary-throttle@example.com',
+    );
+    const summaryHeaders = {
+      Authorization: `Bearer ${summaryHuman.tokens.accessToken}`,
+      'x-enforce-rate-limit': 'true',
+      'x-rate-limit-override': '1',
+    };
+
+    const predictionSummaryFirst = await request(app)
+      .get(`/api/pull-requests/${pullRequestId}/predictions`)
+      .set(summaryHeaders);
+    expect(predictionSummaryFirst.status).toBe(200);
+
+    const predictionSummarySecond = await request(app)
+      .get(`/api/pull-requests/${pullRequestId}/predictions`)
+      .set(summaryHeaders);
+    expect(predictionSummarySecond.status).toBe(429);
 
     const personasHeaders = {
       'x-agent-id': agentId,

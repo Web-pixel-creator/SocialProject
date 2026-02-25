@@ -92,6 +92,7 @@ export interface ChangeFeedItem {
   miniThread?: string[];
   makerPrRef?: string;
   decisionLabel?: string;
+  provenance?: ProvenanceIndicatorView;
 }
 
 export interface BattleFeedItem {
@@ -109,6 +110,7 @@ export interface BattleFeedItem {
   updatedAt?: string;
   beforeImageUrl?: string;
   afterImageUrl?: string;
+  provenance?: ProvenanceIndicatorView;
 }
 
 export interface AutopsyFeedItem {

@@ -45,6 +45,10 @@ import {
   getApiErrorMessage,
   getApiErrorStatus,
 } from '../../../lib/errors';
+import {
+  resolvePredictionLoadErrorMessage,
+  resolvePredictionSubmitErrorMessage,
+} from '../../../lib/predictionErrors';
 import { useLastSuccessfulValue } from '../../../lib/useLastSuccessfulValue';
 
 const HeatMapOverlay = dynamic(
@@ -72,6 +76,8 @@ const LivePanel = dynamic(
     ),
   },
 );
+
+const PREDICTION_SUMMARY_RETRY_COOLDOWN_MS = 30_000;
 
 interface Draft {
   id: string;
@@ -764,10 +770,11 @@ const getPredictionError = ({
     return predictionSubmitError;
   }
   if (predictionLoadError && !predictionAuthRequired) {
-    return getApiErrorMessage(
-      predictionLoadError,
-      t('draftDetail.errors.loadPredictionSummary'),
-    );
+    return resolvePredictionLoadErrorMessage({
+      error: predictionLoadError,
+      fallback: t('draftDetail.errors.loadPredictionSummary'),
+      t,
+    });
   }
   return null;
 };
@@ -1625,6 +1632,9 @@ export default function DraftDetailPage() {
   const multimodalTelemetryRef = useRef<string | null>(null);
   const arcTelemetryRef = useRef<string | null>(null);
   const lastRealtimeMutationEventIdRef = useRef<string | null>(null);
+  const predictionSummaryCooldownByPullRequestIdRef = useRef<
+    Map<string, number>
+  >(new Map());
   const copyStatusTimeoutRef = useRef<number | null>(null);
   useTimeoutRefCleanup(copyStatusTimeoutRef);
   const watchlistAuthRequired = isAuthRequiredError(watchlistLoadError);
@@ -1870,12 +1880,13 @@ export default function DraftDetailPage() {
     if (!pendingPullId) {
       return;
     }
+    const pullRequestId = pendingPullId;
     setPredictionSubmitError(null);
     try {
       await triggerPredictionSubmit(
         {
           outcome,
-          pullRequestId: pendingPullId,
+          pullRequestId,
           stakePoints,
         },
         { throwOnError: true },
@@ -1887,13 +1898,59 @@ export default function DraftDetailPage() {
         source: 'draft_detail',
         metadata: { outcome, stakePoints },
       });
-      await mutatePredictionSummary();
+
+      const summaryCooldownUntil =
+        predictionSummaryCooldownByPullRequestIdRef.current.get(
+          pullRequestId,
+        ) ?? 0;
+      if (Date.now() < summaryCooldownUntil) {
+        setPredictionSubmitError(t('prediction.rateLimited'));
+        return;
+      }
+
+      try {
+        const refreshedSummary = await fetchPredictionSummary(pullRequestId);
+        await mutatePredictionSummary(refreshedSummary, { revalidate: false });
+        predictionSummaryCooldownByPullRequestIdRef.current.delete(
+          pullRequestId,
+        );
+      } catch (summaryError: unknown) {
+        const summaryErrorStatus = getApiErrorStatus(summaryError);
+        if (summaryErrorStatus === 429) {
+          predictionSummaryCooldownByPullRequestIdRef.current.set(
+            pullRequestId,
+            Date.now() + PREDICTION_SUMMARY_RETRY_COOLDOWN_MS,
+          );
+        }
+        if (summaryErrorStatus === 401 || summaryErrorStatus === 403) {
+          setManualObserverAuthRequired(true);
+        }
+        if (
+          summaryErrorStatus === 401 ||
+          summaryErrorStatus === 403 ||
+          summaryErrorStatus === 409 ||
+          summaryErrorStatus === 429
+        ) {
+          setPredictionSubmitError(
+            resolvePredictionLoadErrorMessage({
+              error: summaryError,
+              fallback: t('draftDetail.errors.loadPredictionSummary'),
+              t,
+            }),
+          );
+        }
+      }
     } catch (error: unknown) {
       if (isAuthRequiredError(error)) {
         setManualObserverAuthRequired(true);
       } else {
         setPredictionSubmitError(
-          getApiErrorMessage(error, t('draftDetail.errors.submitPrediction')),
+          resolvePredictionSubmitErrorMessage({
+            error,
+            fallback: t('draftDetail.errors.submitPrediction'),
+            stakeBounds: predictionSummary?.market ?? null,
+            t,
+          }),
         );
       }
     }

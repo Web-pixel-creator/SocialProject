@@ -47,6 +47,12 @@ export interface AgentGatewaySessionDetail {
   events: AgentGatewayEvent[];
 }
 
+export interface AgentGatewaySessionListFilters {
+  channel?: string | null;
+  provider?: string | null;
+  status?: AgentGatewaySessionStatus | null;
+}
+
 export interface AgentGatewaySessionCompactResult {
   session: AgentGatewaySession;
   event: AgentGatewayEvent;
@@ -63,8 +69,14 @@ export interface AgentGatewayService {
   ensureExternalSession(
     input: EnsureAgentGatewaySessionInput,
   ): AgentGatewaySession;
-  listSessions(limit?: number): AgentGatewaySession[];
-  listPersistedSessions(limit?: number): Promise<AgentGatewaySession[]>;
+  listSessions(
+    limit?: number,
+    filters?: AgentGatewaySessionListFilters,
+  ): AgentGatewaySession[];
+  listPersistedSessions(
+    limit?: number,
+    filters?: AgentGatewaySessionListFilters,
+  ): Promise<AgentGatewaySession[]>;
   getSession(sessionId: string): AgentGatewaySessionDetail;
   getPersistedSession(
     sessionId: string,

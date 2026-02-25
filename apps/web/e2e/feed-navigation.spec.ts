@@ -954,6 +954,98 @@ test.describe('Feed navigation and filters', () => {
         ).toBeEnabled();
     });
 
+    test('shows localized throttling hint when battle summary refresh is rate-limited', async ({
+        page,
+    }) => {
+        const draftId = '11111111-2222-3333-4444-555555555556';
+        const pullRequestId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeef';
+
+        await page.route('**/api/**', async (route) => {
+            const requestUrl = new URL(route.request().url());
+            const path = requestUrl.pathname;
+            const method = route.request().method();
+
+            if (method === 'GET' && path === '/api/feeds/battles') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify([
+                        {
+                            id: draftId,
+                            title: 'Battle Prediction Summary Throttle E2E',
+                            leftLabel: 'Design',
+                            rightLabel: 'Function',
+                            leftVote: 55,
+                            rightVote: 45,
+                            glowUpScore: 11.4,
+                            prCount: 5,
+                            fixCount: 2,
+                            decision: 'pending',
+                        },
+                    ]),
+                });
+            }
+
+            if (method === 'POST' && path === `/api/drafts/${draftId}/predict`) {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({
+                        pullRequestId,
+                        predictedOutcome: 'merge',
+                        stakePoints: 10,
+                    }),
+                });
+            }
+
+            if (
+                method === 'GET' &&
+                path === `/api/pull-requests/${pullRequestId}/predictions`
+            ) {
+                return route.fulfill({
+                    status: 429,
+                    contentType: 'application/json',
+                    body: JSON.stringify({
+                        error: 'RATE_LIMITED',
+                        message: 'raw summary throttled message',
+                    }),
+                });
+            }
+
+            if (method === 'POST' && path === '/api/telemetry/ux') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ ok: true }),
+                });
+            }
+
+            return route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify([]),
+            });
+        });
+
+        await openFeed(page);
+        await page.getByRole('button', { name: /^Battles$/i }).click();
+        await expect(
+            page.getByText('Battle Prediction Summary Throttle E2E'),
+        ).toBeVisible();
+
+        await page.getByRole('button', { name: /^Predict merge$/i }).click();
+
+        await expect(
+            page.getByText(
+                /Too many prediction requests\. Please try again shortly\./i,
+            ),
+        ).toBeVisible();
+        await expect(page.getByText(/Your prediction:\s*merge/i)).toBeVisible();
+        await expect(page.getByText(/raw summary throttled message/i)).toHaveCount(
+            0,
+        );
+    });
+
     test('primary and more tabs switch feed and update query', async ({
         page,
     }) => {

@@ -3,6 +3,7 @@ import { env } from '../config/env';
 import { db } from '../db/pool';
 import { redis } from '../redis/client';
 import { createApp, initInfra } from '../server';
+import { aiRuntimeService } from '../services/aiRuntime/aiRuntimeService';
 import {
   BudgetServiceImpl,
   getUtcDateKey,
@@ -42,12 +43,16 @@ const registerAgent = async (studioName = 'Admin Test Studio') => {
 };
 
 describe('Admin API routes', () => {
+  const TEST_DRAFT_ID_A = '00000000-0000-0000-0000-000000000001';
+  const TEST_DRAFT_ID_B = '00000000-0000-0000-0000-000000000002';
+  const TEST_DRAFT_ID_C = '00000000-0000-0000-0000-000000000003';
   beforeAll(async () => {
     await initInfra();
   });
 
   beforeEach(async () => {
     await resetDb();
+    aiRuntimeService.resetProviderState();
   });
 
   afterAll(async () => {
@@ -80,6 +85,15 @@ describe('Admin API routes', () => {
     expect(response.body).toHaveProperty('memory');
   });
 
+  test('system metrics rejects unsupported query fields', async () => {
+    const response = await request(app)
+      .get('/api/admin/system/metrics?extra=true')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('ADMIN_INVALID_QUERY');
+  });
+
   test('ai runtime profiles endpoint returns configured role chains', async () => {
     const response = await request(app)
       .get('/api/admin/ai-runtime/profiles')
@@ -98,18 +112,13 @@ describe('Admin API routes', () => {
   });
 
   test('ai runtime health endpoint returns snapshot with cooldown state', async () => {
-    const dryRunFailure = await request(app)
-      .post('/api/admin/ai-runtime/dry-run')
-      .set('x-admin-token', env.ADMIN_API_TOKEN)
-      .send({
-        role: 'author',
-        prompt: 'Force cooldown on primary provider',
-        providersOverride: ['gpt-4.1'],
-        simulateFailures: ['gpt-4.1'],
-      });
-
-    expect(dryRunFailure.status).toBe(200);
-    expect(dryRunFailure.body.result.failed).toBe(true);
+    const runtimeFailure = await aiRuntimeService.runWithFailover({
+      role: 'author',
+      prompt: 'Force cooldown on primary provider',
+      providersOverride: ['gpt-4.1'],
+      simulateFailures: ['gpt-4.1'],
+    });
+    expect(runtimeFailure.failed).toBe(true);
 
     const response = await request(app)
       .get('/api/admin/ai-runtime/health')
@@ -134,6 +143,20 @@ describe('Admin API routes', () => {
     expect(gptProvider).toBeTruthy();
     expect(gptProvider.coolingDown).toBe(true);
     expect(typeof gptProvider.cooldownUntil).toBe('string');
+  });
+
+  test('ai runtime read endpoints reject unsupported query fields', async () => {
+    const invalidProfilesQuery = await request(app)
+      .get('/api/admin/ai-runtime/profiles?extra=true')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+    expect(invalidProfilesQuery.status).toBe(400);
+    expect(invalidProfilesQuery.body.error).toBe('ADMIN_INVALID_QUERY');
+
+    const invalidHealthQuery = await request(app)
+      .get('/api/admin/ai-runtime/health?extra=true')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+    expect(invalidHealthQuery.status).toBe(400);
+    expect(invalidHealthQuery.body.error).toBe('ADMIN_INVALID_QUERY');
   });
 
   test('ai runtime dry-run applies failover chain', async () => {
@@ -163,6 +186,17 @@ describe('Admin API routes', () => {
   });
 
   test('ai runtime dry-run rejects unsupported fields and invalid payload values', async () => {
+    const invalidDryRunQuery = await request(app)
+      .post('/api/admin/ai-runtime/dry-run?extra=true')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        role: 'critic',
+        prompt: 'Validate runtime payload',
+      });
+
+    expect(invalidDryRunQuery.status).toBe(400);
+    expect(invalidDryRunQuery.body.error).toBe('ADMIN_INVALID_QUERY');
+
     const unknownFieldRes = await request(app)
       .post('/api/admin/ai-runtime/dry-run')
       .set('x-admin-token', env.ADMIN_API_TOKEN)
@@ -177,6 +211,17 @@ describe('Admin API routes', () => {
       'AI_RUNTIME_DRY_RUN_INVALID_FIELDS',
     );
 
+    const promptTooLongRes = await request(app)
+      .post('/api/admin/ai-runtime/dry-run')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        role: 'critic',
+        prompt: 'p'.repeat(4001),
+      });
+
+    expect(promptTooLongRes.status).toBe(400);
+    expect(promptTooLongRes.body.error).toBe('AI_RUNTIME_INVALID_PROMPT');
+
     const invalidProvidersRes = await request(app)
       .post('/api/admin/ai-runtime/dry-run')
       .set('x-admin-token', env.ADMIN_API_TOKEN)
@@ -189,6 +234,34 @@ describe('Admin API routes', () => {
     expect(invalidProvidersRes.status).toBe(400);
     expect(invalidProvidersRes.body.error).toBe('AI_RUNTIME_INVALID_INPUT');
 
+    const invalidProviderIdentifierRes = await request(app)
+      .post('/api/admin/ai-runtime/dry-run')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        role: 'critic',
+        prompt: 'Validate providersOverride item identifier',
+        providersOverride: ['invalid provider'],
+      });
+
+    expect(invalidProviderIdentifierRes.status).toBe(400);
+    expect(invalidProviderIdentifierRes.body.error).toBe(
+      'AI_RUNTIME_INVALID_INPUT',
+    );
+
+    const invalidSimulateFailureItemLengthRes = await request(app)
+      .post('/api/admin/ai-runtime/dry-run')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        role: 'critic',
+        prompt: 'Validate simulateFailures item length',
+        simulateFailures: ['x'.repeat(65)],
+      });
+
+    expect(invalidSimulateFailureItemLengthRes.status).toBe(400);
+    expect(invalidSimulateFailureItemLengthRes.body.error).toBe(
+      'AI_RUNTIME_INVALID_INPUT',
+    );
+
     const invalidTimeoutRes = await request(app)
       .post('/api/admin/ai-runtime/dry-run')
       .set('x-admin-token', env.ADMIN_API_TOKEN)
@@ -200,6 +273,14 @@ describe('Admin API routes', () => {
 
     expect(invalidTimeoutRes.status).toBe(400);
     expect(invalidTimeoutRes.body.error).toBe('AI_RUNTIME_INVALID_TIMEOUT');
+
+    const invalidBodyShapeRes = await request(app)
+      .post('/api/admin/ai-runtime/dry-run')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send(['invalid-body-shape']);
+
+    expect(invalidBodyShapeRes.status).toBe(400);
+    expect(invalidBodyShapeRes.body.error).toBe('AI_RUNTIME_INVALID_INPUT');
   });
 
   test('agent gateway orchestration endpoint is guarded by feature flag', async () => {
@@ -427,7 +508,7 @@ describe('Admin API routes', () => {
       .set('x-admin-token', env.ADMIN_API_TOKEN)
       .send({
         channel: 'ws-control-plane',
-        draftId: 'draft-sim-1',
+        draftId: TEST_DRAFT_ID_A,
         roles: ['critic', 'maker'],
         metadata: { source: 'integration-test' },
       });
@@ -580,6 +661,713 @@ describe('Admin API routes', () => {
     expect(appendAfterClose.body.error).toBe('AGENT_GATEWAY_SESSION_CLOSED');
   });
 
+  test('agent gateway telemetry endpoint returns aggregated session and attempt signals', async () => {
+    const createFirst = await request(app)
+      .post('/api/admin/agent-gateway/sessions')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        channel: 'ws-control-plane',
+      });
+    expect(createFirst.status).toBe(201);
+    const firstSessionId = createFirst.body.session.id as string;
+
+    const firstStepEvent = await request(app)
+      .post(`/api/admin/agent-gateway/sessions/${firstSessionId}/events`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        fromRole: 'critic',
+        toRole: 'maker',
+        type: 'draft_cycle_critic_completed',
+        payload: {
+          failed: false,
+          selectedProvider: 'gpt-4.1',
+          attempts: [{ status: 'failed' }, { status: 'success' }],
+        },
+      });
+    expect(firstStepEvent.status).toBe(201);
+
+    const firstCompactEvent = await request(app)
+      .post(`/api/admin/agent-gateway/sessions/${firstSessionId}/events`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        fromRole: 'system',
+        type: 'session_compacted',
+        payload: {
+          prunedCount: 5,
+        },
+      });
+    expect(firstCompactEvent.status).toBe(201);
+
+    const closeFirst = await request(app)
+      .post(`/api/admin/agent-gateway/sessions/${firstSessionId}/close`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({});
+    expect(closeFirst.status).toBe(200);
+
+    const createSecond = await request(app)
+      .post('/api/admin/agent-gateway/sessions')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        channel: 'ws-control-plane',
+      });
+    expect(createSecond.status).toBe(201);
+    const secondSessionId = createSecond.body.session.id as string;
+
+    const secondStepEvent = await request(app)
+      .post(`/api/admin/agent-gateway/sessions/${secondSessionId}/events`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        fromRole: 'maker',
+        toRole: 'judge',
+        type: 'draft_cycle_maker_completed',
+        payload: {
+          failed: true,
+          selectedProvider: 'gemini-2',
+          attempts: [{ status: 'skipped_cooldown' }],
+        },
+      });
+    expect(secondStepEvent.status).toBe(201);
+
+    const secondFailedEvent = await request(app)
+      .post(`/api/admin/agent-gateway/sessions/${secondSessionId}/events`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        fromRole: 'author',
+        toRole: 'author',
+        type: 'draft_cycle_failed',
+        payload: {
+          reason: 'provider chain exhausted',
+        },
+      });
+    expect(secondFailedEvent.status).toBe(201);
+
+    const response = await request(app)
+      .get('/api/admin/agent-gateway/telemetry?hours=24&limit=10')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(response.status).toBe(200);
+    expect(response.body.windowHours).toBe(24);
+    expect(response.body.sampleLimit).toBe(10);
+    expect(response.body.sessions).toEqual(
+      expect.objectContaining({
+        total: 2,
+        active: 1,
+        closed: 1,
+        attention: 1,
+        compacted: 1,
+        autoCompacted: 0,
+        attentionRate: 0.5,
+        compactionRate: 0.5,
+        autoCompactedRate: 0,
+      }),
+    );
+    expect(response.body.events).toEqual(
+      expect.objectContaining({
+        total: 4,
+        draftCycleStepEvents: 2,
+        failedStepEvents: 1,
+        compactionEvents: 1,
+        autoCompactionEvents: 0,
+        manualCompactionEvents: 1,
+        autoCompactionShare: 0,
+        autoCompactionRiskLevel: 'healthy',
+        prunedEventCount: 5,
+        failedStepRate: 0.5,
+      }),
+    );
+    expect(response.body.health).toEqual(
+      expect.objectContaining({
+        level: 'critical',
+        failedStepLevel: 'critical',
+        runtimeSuccessLevel: 'critical',
+        cooldownSkipLevel: 'watch',
+        autoCompactionLevel: 'healthy',
+      }),
+    );
+    expect(response.body.filters).toEqual({
+      channel: null,
+      provider: null,
+    });
+    expect(response.body.thresholds).toEqual(
+      expect.objectContaining({
+        autoCompactionShare: expect.objectContaining({
+          watchAbove: 0.5,
+          criticalAbove: 0.8,
+        }),
+        failedStepRate: expect.objectContaining({
+          watchAbove: 0.25,
+          criticalAbove: 0.5,
+        }),
+        runtimeSuccessRate: expect.objectContaining({
+          watchBelow: 0.75,
+          criticalBelow: 0.5,
+        }),
+        cooldownSkipRate: expect.objectContaining({
+          watchAbove: 0.2,
+          criticalAbove: 0.4,
+        }),
+      }),
+    );
+    expect(response.body.events.compactionHourlyTrend).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          compactions: 1,
+          autoCompactions: 0,
+          manualCompactions: 1,
+          prunedEventCount: 5,
+          autoCompactionShare: 0,
+          autoCompactionRiskLevel: 'healthy',
+        }),
+      ]),
+    );
+    expect(response.body.events.compactionHourlyTrend[0]?.hour).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:00:00Z$/,
+    );
+    expect(response.body.attempts).toEqual(
+      expect.objectContaining({
+        total: 3,
+        success: 1,
+        failed: 1,
+        skippedCooldown: 1,
+        successRate: 0.333,
+        failureRate: 0.333,
+        skippedRate: 0.333,
+      }),
+    );
+    expect(response.body.providerUsage).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          provider: 'gpt-4.1',
+          count: 1,
+        }),
+        expect.objectContaining({
+          provider: 'gemini-2',
+          count: 1,
+        }),
+      ]),
+    );
+    expect(response.body.channelUsage).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          channel: 'ws-control-plane',
+          count: 2,
+        }),
+      ]),
+    );
+  });
+
+  test('agent gateway telemetry endpoint applies channel and provider filters', async () => {
+    const wsSession = await request(app)
+      .post('/api/admin/agent-gateway/sessions')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        channel: 'ws-control-plane',
+      });
+    expect(wsSession.status).toBe(201);
+    const wsSessionId = wsSession.body.session.id as string;
+
+    const wsEvent = await request(app)
+      .post(`/api/admin/agent-gateway/sessions/${wsSessionId}/events`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        fromRole: 'critic',
+        toRole: 'maker',
+        type: 'draft_cycle_critic_completed',
+        payload: {
+          failed: false,
+          selectedProvider: 'gpt-4.1',
+          attempts: [{ status: 'success' }],
+        },
+      });
+    expect(wsEvent.status).toBe(201);
+
+    const draftSession = await request(app)
+      .post('/api/admin/agent-gateway/sessions')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        channel: 'draft_cycle',
+      });
+    expect(draftSession.status).toBe(201);
+    const draftSessionId = draftSession.body.session.id as string;
+
+    const draftEvent = await request(app)
+      .post(`/api/admin/agent-gateway/sessions/${draftSessionId}/events`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        fromRole: 'maker',
+        toRole: 'judge',
+        type: 'draft_cycle_maker_completed',
+        payload: {
+          failed: false,
+          selectedProvider: 'gemini-2',
+          attempts: [{ status: 'success' }],
+        },
+      });
+    expect(draftEvent.status).toBe(201);
+
+    const response = await request(app)
+      .get(
+        '/api/admin/agent-gateway/telemetry?hours=24&limit=10&channel=draft_cycle&provider=gemini-2',
+      )
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(response.status).toBe(200);
+    expect(response.body.filters).toEqual({
+      channel: 'draft_cycle',
+      provider: 'gemini-2',
+    });
+    expect(response.body.sessions).toEqual(
+      expect.objectContaining({
+        total: 1,
+        active: 1,
+        closed: 0,
+      }),
+    );
+    expect(response.body.events).toEqual(
+      expect.objectContaining({
+        total: 1,
+        draftCycleStepEvents: 1,
+        failedStepEvents: 0,
+      }),
+    );
+    expect(response.body.providerUsage).toEqual([
+      expect.objectContaining({
+        provider: 'gemini-2',
+        count: 1,
+      }),
+    ]);
+    expect(response.body.channelUsage).toEqual([
+      expect.objectContaining({
+        channel: 'draft_cycle',
+        count: 1,
+      }),
+    ]);
+  });
+
+  test('agent gateway telemetry endpoint validates hours and limit query params', async () => {
+    const invalidQueries = [
+      '/api/admin/agent-gateway/telemetry?hours=0',
+      '/api/admin/agent-gateway/telemetry?hours=721',
+      '/api/admin/agent-gateway/telemetry?hours=1.5',
+      '/api/admin/agent-gateway/telemetry?hours=abc',
+      '/api/admin/agent-gateway/telemetry?limit=0',
+      '/api/admin/agent-gateway/telemetry?limit=1001',
+      '/api/admin/agent-gateway/telemetry?limit=2.5',
+      '/api/admin/agent-gateway/telemetry?limit=oops',
+      '/api/admin/agent-gateway/telemetry?channel=bad%20channel',
+      '/api/admin/agent-gateway/telemetry?channel=x',
+      '/api/admin/agent-gateway/telemetry?provider=bad%20provider',
+      `/api/admin/agent-gateway/telemetry?provider=${'x'.repeat(65)}`,
+    ];
+
+    for (const url of invalidQueries) {
+      const response = await request(app)
+        .get(url)
+        .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('ADMIN_INVALID_QUERY');
+    }
+  });
+
+  test('agent gateway session read endpoints validate query params', async () => {
+    const created = await request(app)
+      .post('/api/admin/agent-gateway/sessions')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        channel: 'ws-control-plane',
+        draftId: TEST_DRAFT_ID_B,
+        roles: ['critic', 'maker'],
+      });
+
+    expect(created.status).toBe(201);
+    const sessionId = created.body.session.id as string;
+
+    const invalidQueries = [
+      '/api/admin/agent-gateway/sessions?source=cache',
+      '/api/admin/agent-gateway/sessions?limit=0',
+      '/api/admin/agent-gateway/sessions?limit=201',
+      '/api/admin/agent-gateway/sessions?limit=2.5',
+      '/api/admin/agent-gateway/sessions?channel=bad%20channel',
+      '/api/admin/agent-gateway/sessions?channel=x',
+      '/api/admin/agent-gateway/sessions?provider=bad%20provider',
+      `/api/admin/agent-gateway/sessions?provider=${'x'.repeat(65)}`,
+      '/api/admin/agent-gateway/sessions?status=pending',
+      '/api/admin/agent-gateway/sessions?extra=true',
+      `/api/admin/agent-gateway/sessions/${sessionId}?source=cache`,
+      `/api/admin/agent-gateway/sessions/${sessionId}?extra=true`,
+      `/api/admin/agent-gateway/sessions/${sessionId}/events?source=cache`,
+      `/api/admin/agent-gateway/sessions/${sessionId}/events?limit=0`,
+      `/api/admin/agent-gateway/sessions/${sessionId}/events?limit=201`,
+      `/api/admin/agent-gateway/sessions/${sessionId}/events?limit=2.5`,
+      `/api/admin/agent-gateway/sessions/${sessionId}/events?eventType=invalid%20type`,
+      `/api/admin/agent-gateway/sessions/${sessionId}/events?eventQuery=${'x'.repeat(161)}`,
+      `/api/admin/agent-gateway/sessions/${sessionId}/events?fromRole=bad%20role`,
+      `/api/admin/agent-gateway/sessions/${sessionId}/events?toRole=bad%20role`,
+      `/api/admin/agent-gateway/sessions/${sessionId}/events?provider=bad%20provider`,
+      `/api/admin/agent-gateway/sessions/${sessionId}/events?provider=${'x'.repeat(65)}`,
+      `/api/admin/agent-gateway/sessions/${sessionId}/events?extra=true`,
+      `/api/admin/agent-gateway/sessions/${sessionId}/summary?source=cache`,
+      `/api/admin/agent-gateway/sessions/${sessionId}/summary?extra=true`,
+      `/api/admin/agent-gateway/sessions/${sessionId}/status?source=cache`,
+      `/api/admin/agent-gateway/sessions/${sessionId}/status?extra=true`,
+    ];
+
+    for (const url of invalidQueries) {
+      const response = await request(app)
+        .get(url)
+        .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('ADMIN_INVALID_QUERY');
+    }
+  });
+
+  test('agent gateway sessions endpoint applies channel/provider/status filters', async () => {
+    const firstSession = await request(app)
+      .post('/api/admin/agent-gateway/sessions')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        channel: 'ws-control-plane',
+        draftId: TEST_DRAFT_ID_B,
+        roles: ['critic'],
+      });
+    expect(firstSession.status).toBe(201);
+    const firstSessionId = firstSession.body.session.id as string;
+
+    const firstEvent = await request(app)
+      .post(`/api/admin/agent-gateway/sessions/${firstSessionId}/events`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        fromRole: 'critic',
+        type: 'draft_cycle_step',
+        payload: {
+          selectedProvider: 'gemini-2',
+        },
+      });
+    expect(firstEvent.status).toBe(201);
+
+    const secondSession = await request(app)
+      .post('/api/admin/agent-gateway/sessions')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        channel: 'draft_cycle',
+        draftId: TEST_DRAFT_ID_C,
+        roles: ['judge'],
+      });
+    expect(secondSession.status).toBe(201);
+    const secondSessionId = secondSession.body.session.id as string;
+
+    const secondEvent = await request(app)
+      .post(`/api/admin/agent-gateway/sessions/${secondSessionId}/events`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        fromRole: 'judge',
+        type: 'draft_cycle_step',
+        payload: {
+          selectedProvider: 'gpt-4.1',
+        },
+      });
+    expect(secondEvent.status).toBe(201);
+
+    const closeSecond = await request(app)
+      .post(`/api/admin/agent-gateway/sessions/${secondSessionId}/close`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({});
+    expect(closeSecond.status).toBe(200);
+
+    const response = await request(app)
+      .get(
+        '/api/admin/agent-gateway/sessions?source=db&channel=draft_cycle&provider=gpt-4.1&status=closed&limit=20',
+      )
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(response.status).toBe(200);
+    expect(response.body.filters).toEqual({
+      channel: 'draft_cycle',
+      provider: 'gpt-4.1',
+      status: 'closed',
+    });
+    expect(response.body.sessions).toEqual([
+      expect.objectContaining({
+        id: secondSessionId,
+        channel: 'draft_cycle',
+        status: 'closed',
+      }),
+    ]);
+  });
+
+  test('agent gateway session events endpoint applies eventType/role/provider filters', async () => {
+    const created = await request(app)
+      .post('/api/admin/agent-gateway/sessions')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        channel: 'draft_cycle',
+        draftId: TEST_DRAFT_ID_B,
+        roles: ['critic', 'maker', 'judge'],
+      });
+    expect(created.status).toBe(201);
+    const sessionId = created.body.session.id as string;
+
+    const criticEvent = await request(app)
+      .post(`/api/admin/agent-gateway/sessions/${sessionId}/events`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        fromRole: 'critic',
+        toRole: 'maker',
+        type: 'draft_cycle_critic_completed',
+        payload: {
+          selectedProvider: 'gemini-2',
+        },
+      });
+    expect(criticEvent.status).toBe(201);
+
+    const makerEvent = await request(app)
+      .post(`/api/admin/agent-gateway/sessions/${sessionId}/events`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        fromRole: 'maker',
+        toRole: 'judge',
+        type: 'draft_cycle_maker_completed',
+        payload: {
+          selectedProvider: 'gpt-4.1',
+        },
+      });
+    expect(makerEvent.status).toBe(201);
+    const makerEventId = makerEvent.body.event.id as string;
+
+    const judgeEvent = await request(app)
+      .post(`/api/admin/agent-gateway/sessions/${sessionId}/events`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        fromRole: 'judge',
+        toRole: 'system',
+        type: 'draft_cycle_completed',
+        payload: {
+          selectedProvider: 'gpt-4.1',
+        },
+      });
+    expect(judgeEvent.status).toBe(201);
+
+    const response = await request(app)
+      .get(
+        `/api/admin/agent-gateway/sessions/${sessionId}/events?source=db&eventType=draft_cycle_maker_completed&eventQuery=maker&fromRole=maker&toRole=judge&provider=gpt-4.1&limit=20`,
+      )
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(response.status).toBe(200);
+    expect(response.body.filters).toEqual({
+      eventType: 'draft_cycle_maker_completed',
+      eventQuery: 'maker',
+      fromRole: 'maker',
+      toRole: 'judge',
+      provider: 'gpt-4.1',
+    });
+    expect(response.body.total).toBe(1);
+    expect(response.body.events).toEqual([
+      expect.objectContaining({
+        id: makerEventId,
+        fromRole: 'maker',
+        toRole: 'judge',
+        type: 'draft_cycle_maker_completed',
+      }),
+    ]);
+  });
+
+  test('agent gateway session endpoints validate sessionId route params', async () => {
+    const invalidSessionId = 'ags-invalid_session';
+    const readUrls = [
+      `/api/admin/agent-gateway/sessions/${invalidSessionId}`,
+      `/api/admin/agent-gateway/sessions/${invalidSessionId}/events`,
+      `/api/admin/agent-gateway/sessions/${invalidSessionId}/summary`,
+      `/api/admin/agent-gateway/sessions/${invalidSessionId}/status`,
+    ];
+
+    for (const url of readUrls) {
+      const response = await request(app)
+        .get(url)
+        .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('ADMIN_INVALID_SESSION_ID');
+    }
+
+    const eventMutation = await request(app)
+      .post(`/api/admin/agent-gateway/sessions/${invalidSessionId}/events`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        fromRole: 'critic',
+        type: 'fix_request_created',
+      });
+    expect(eventMutation.status).toBe(400);
+    expect(eventMutation.body.error).toBe('ADMIN_INVALID_SESSION_ID');
+
+    const compactMutation = await request(app)
+      .post(`/api/admin/agent-gateway/sessions/${invalidSessionId}/compact`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({});
+    expect(compactMutation.status).toBe(400);
+    expect(compactMutation.body.error).toBe('ADMIN_INVALID_SESSION_ID');
+
+    const closeMutation = await request(app)
+      .post(`/api/admin/agent-gateway/sessions/${invalidSessionId}/close`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({});
+    expect(closeMutation.status).toBe(400);
+    expect(closeMutation.body.error).toBe('ADMIN_INVALID_SESSION_ID');
+  });
+
+  test('agent gateway mutation endpoints validate query and body payloads', async () => {
+    const invalidCreateQuery = await request(app)
+      .post('/api/admin/agent-gateway/sessions?extra=true')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({ channel: 'ws-control-plane' });
+    expect(invalidCreateQuery.status).toBe(400);
+    expect(invalidCreateQuery.body.error).toBe('ADMIN_INVALID_QUERY');
+
+    const invalidCreateBodies = [
+      { channel: 'ws-control-plane', unknown: true },
+      { channel: 'ws-control-plane', roles: 'critic' },
+      { channel: 'ws-control-plane', roles: ['bad role'] },
+      { channel: 'ws-control-plane', metadata: ['invalid'] },
+      { channel: 'ws-control-plane', metadata: { blob: 'x'.repeat(12_001) } },
+      { channel: 'invalid channel format' },
+      { channel: 'x'.repeat(121) },
+      { channel: 'ws-control-plane', externalSessionId: 'bad session id' },
+      { channel: 'ws-control-plane', draftId: 'not-a-uuid' },
+      { channel: 'ws-control-plane', draftId: 'd'.repeat(129) },
+    ];
+
+    for (const body of invalidCreateBodies) {
+      const response = await request(app)
+        .post('/api/admin/agent-gateway/sessions')
+        .set('x-admin-token', env.ADMIN_API_TOKEN)
+        .send(body);
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('ADMIN_INVALID_BODY');
+    }
+
+    const created = await request(app)
+      .post('/api/admin/agent-gateway/sessions')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        channel: 'ws-control-plane',
+        draftId: TEST_DRAFT_ID_C,
+        roles: ['critic', 'maker'],
+      });
+    expect(created.status).toBe(201);
+    const sessionId = created.body.session.id as string;
+
+    const invalidEventsQuery = await request(app)
+      .post(`/api/admin/agent-gateway/sessions/${sessionId}/events?extra=true`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        fromRole: 'critic',
+        type: 'fix_request_created',
+      });
+    expect(invalidEventsQuery.status).toBe(400);
+    expect(invalidEventsQuery.body.error).toBe('ADMIN_INVALID_QUERY');
+
+    const invalidEventBodies = [
+      { fromRole: 'critic', type: 'fix_request_created', unknown: true },
+      { fromRole: 42, type: 'fix_request_created' },
+      { fromRole: 'bad role', type: 'fix_request_created' },
+      { fromRole: 'critic', type: 7 },
+      { fromRole: 'critic', type: 'invalid type with spaces' },
+      { fromRole: 'critic', type: 'fix_request_created', payload: ['bad'] },
+      {
+        fromRole: 'critic',
+        type: 'fix_request_created',
+        payload: { blob: 'x'.repeat(12_001) },
+      },
+    ];
+
+    for (const body of invalidEventBodies) {
+      const response = await request(app)
+        .post(`/api/admin/agent-gateway/sessions/${sessionId}/events`)
+        .set('x-admin-token', env.ADMIN_API_TOKEN)
+        .send(body);
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('ADMIN_INVALID_BODY');
+    }
+
+    const invalidCompactQuery = await request(app)
+      .post(`/api/admin/agent-gateway/sessions/${sessionId}/compact?extra=true`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({});
+    expect(invalidCompactQuery.status).toBe(400);
+    expect(invalidCompactQuery.body.error).toBe('ADMIN_INVALID_QUERY');
+
+    const invalidCompactBodies = [
+      { keepRecent: 0 },
+      { keepRecent: 300 },
+      { keepRecent: 1.5 },
+      { keepRecent: 'bad' },
+      { keepRecent: [5, 6] },
+      { unknown: true },
+    ];
+
+    for (const body of invalidCompactBodies) {
+      const response = await request(app)
+        .post(`/api/admin/agent-gateway/sessions/${sessionId}/compact`)
+        .set('x-admin-token', env.ADMIN_API_TOKEN)
+        .send(body);
+      expect(response.status).toBe(400);
+    }
+
+    const invalidCloseQuery = await request(app)
+      .post(`/api/admin/agent-gateway/sessions/${sessionId}/close?extra=true`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({});
+    expect(invalidCloseQuery.status).toBe(400);
+    expect(invalidCloseQuery.body.error).toBe('ADMIN_INVALID_QUERY');
+
+    const invalidCloseBody = await request(app)
+      .post(`/api/admin/agent-gateway/sessions/${sessionId}/close`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({ unknown: true });
+    expect(invalidCloseBody.status).toBe(400);
+    expect(invalidCloseBody.body.error).toBe('ADMIN_INVALID_BODY');
+
+    const invalidOrchestrateQuery = await request(app)
+      .post('/api/admin/agent-gateway/orchestrate?extra=true')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({ draftId: 'draft-mutation-guards' });
+    expect(invalidOrchestrateQuery.status).toBe(400);
+    expect(invalidOrchestrateQuery.body.error).toBe('ADMIN_INVALID_QUERY');
+
+    const invalidOrchestrateBodies = [
+      {},
+      { draftId: 'draft-mutation-guards', unknown: true },
+      { draftId: 'not-a-uuid' },
+      { draftId: 'd'.repeat(129) },
+      { draftId: 'draft-mutation-guards', channel: 'invalid channel format' },
+      { draftId: 'draft-mutation-guards', channel: 'x'.repeat(121) },
+      {
+        draftId: 'draft-mutation-guards',
+        externalSessionId: 'bad session id',
+      },
+      { draftId: 'draft-mutation-guards', externalSessionId: 'e'.repeat(129) },
+      { draftId: 'draft-mutation-guards', promptSeed: 'p'.repeat(4001) },
+      { draftId: 'draft-mutation-guards', hostAgentId: 'not-a-uuid' },
+      { draftId: 'draft-mutation-guards', hostAgentId: 'h'.repeat(129) },
+      { draftId: 'draft-mutation-guards', metadata: ['invalid'] },
+      {
+        draftId: 'draft-mutation-guards',
+        metadata: { blob: 'x'.repeat(12_001) },
+      },
+    ];
+
+    for (const body of invalidOrchestrateBodies) {
+      const response = await request(app)
+        .post('/api/admin/agent-gateway/orchestrate')
+        .set('x-admin-token', env.ADMIN_API_TOKEN)
+        .send(body);
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('ADMIN_INVALID_BODY');
+    }
+  });
+
   test('embedding backfill and metrics endpoints return data', async () => {
     const { agentId } = await registerAgent('Backfill Studio');
     const postService = new PostServiceImpl(db);
@@ -612,6 +1400,60 @@ describe('Admin API routes', () => {
     expect(metrics.status).toBe(200);
     expect(Array.isArray(metrics.body.rows)).toBe(true);
     expect(metrics.body.rows.length).toBeGreaterThan(0);
+  });
+
+  test('embedding backfill endpoint validates query/body controls', async () => {
+    const invalidQueryCases = [
+      '/api/admin/embeddings/backfill?batchSize=0',
+      '/api/admin/embeddings/backfill?batchSize=1001',
+      '/api/admin/embeddings/backfill?batchSize=2.5',
+      '/api/admin/embeddings/backfill?batchSize=oops',
+      '/api/admin/embeddings/backfill?batchSize=10&batchSize=11',
+      '/api/admin/embeddings/backfill?maxBatches=0',
+      '/api/admin/embeddings/backfill?maxBatches=21',
+      '/api/admin/embeddings/backfill?maxBatches=1.5',
+      '/api/admin/embeddings/backfill?maxBatches=nope',
+      '/api/admin/embeddings/backfill?extra=true',
+      '/api/admin/embeddings/backfill?batchSize=10&maxBatches=2&extra=true',
+    ];
+
+    for (const url of invalidQueryCases) {
+      const response = await request(app)
+        .post(url)
+        .set('x-admin-token', env.ADMIN_API_TOKEN)
+        .send({});
+
+      expect(response.status).toBe(400);
+    }
+
+    const invalidBodyCases = [
+      { batchSize: 0 },
+      { batchSize: 1001 },
+      { batchSize: 1.5 },
+      { batchSize: 'bad' },
+      { maxBatches: 0 },
+      { maxBatches: 21 },
+      { maxBatches: 1.5 },
+      { maxBatches: 'bad' },
+      { unknown: true },
+    ];
+
+    for (const body of invalidBodyCases) {
+      const response = await request(app)
+        .post('/api/admin/embeddings/backfill')
+        .set('x-admin-token', env.ADMIN_API_TOKEN)
+        .send(body);
+
+      expect(response.status).toBe(400);
+    }
+
+    const conflict = await request(app)
+      .post('/api/admin/embeddings/backfill?batchSize=10')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({ batchSize: 11 });
+
+    expect(conflict.status).toBe(400);
+    expect(conflict.body.error).toBe('ADMIN_INPUT_CONFLICT');
   });
 
   test('ux metrics endpoint returns aggregated events', async () => {
@@ -693,6 +1535,44 @@ describe('Admin API routes', () => {
     );
   });
 
+  test('admin metrics endpoints validate query params', async () => {
+    const tooLongEventType = 'e'.repeat(121);
+    const invalidQueries = [
+      '/api/admin/embeddings/metrics?hours=0',
+      '/api/admin/embeddings/metrics?hours=721',
+      '/api/admin/embeddings/metrics?hours=2.5',
+      '/api/admin/embeddings/metrics?hours=oops',
+      '/api/admin/embeddings/metrics?extra=true',
+      '/api/admin/ux/metrics?hours=0',
+      '/api/admin/ux/metrics?hours=721',
+      '/api/admin/ux/metrics?hours=1.5',
+      '/api/admin/ux/metrics?hours=oops',
+      '/api/admin/ux/metrics?eventType=invalid event',
+      `/api/admin/ux/metrics?eventType=${tooLongEventType}`,
+      '/api/admin/ux/metrics?eventType=a&eventType=b',
+      '/api/admin/ux/metrics?extra=true',
+      '/api/admin/ux/similar-search?hours=0',
+      '/api/admin/ux/similar-search?hours=721',
+      '/api/admin/ux/similar-search?hours=1.5',
+      '/api/admin/ux/similar-search?hours=oops',
+      '/api/admin/ux/similar-search?extra=true',
+      '/api/admin/jobs/metrics?hours=0',
+      '/api/admin/jobs/metrics?hours=721',
+      '/api/admin/jobs/metrics?hours=1.5',
+      '/api/admin/jobs/metrics?hours=oops',
+      '/api/admin/jobs/metrics?extra=true',
+    ];
+
+    for (const url of invalidQueries) {
+      const response = await request(app)
+        .get(url)
+        .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('ADMIN_INVALID_QUERY');
+    }
+  });
+
   test('observer engagement metrics endpoint returns KPI aggregates and segments', async () => {
     const users = await db.query(
       `INSERT INTO users (
@@ -714,6 +1594,7 @@ describe('Admin API routes', () => {
          ('digest_open', 'observer', $1, 'draft', '{"mode":"digest","digestVariant":"daily"}', NOW() - INTERVAL '40 minutes'),
          ('hot_now_open', 'observer', $1, 'draft', '{"mode":"hot_now","rankingVariant":"rank_v1"}', NOW() - INTERVAL '35 minutes'),
          ('pr_prediction_submit', 'observer', $1, 'draft', '{"mode":"hot_now","abVariant":"A"}', NOW() - INTERVAL '20 minutes'),
+         ('pr_prediction_settle', 'observer', $1, 'reject', '{"mode":"hot_now","abVariant":"A","isCorrect":false}', NOW() - INTERVAL '18 minutes'),
          ('draft_multimodal_glowup_view', 'observer', $1, 'draft', '{"mode":"hot_now","provider":"gpt-4.1"}', NOW() - INTERVAL '19 minutes'),
          ('draft_arc_view', 'observer', $2, 'draft', '{"mode":"hot_now","abVariant":"B"}', NOW() - INTERVAL '10 minutes'),
          ('draft_multimodal_glowup_empty', 'observer', $2, 'draft', '{"mode":"hot_now","reason":"not_available"}', NOW() - INTERVAL '9 minutes'),
@@ -733,6 +1614,11 @@ describe('Admin API routes', () => {
          ('feed_density_change', 'observer', $2, 'draft', 'web', '{"density":"comfort","previousDensity":"compact"}', NOW() - INTERVAL '13 minutes'),
          ('feed_density_change', 'observer', $2, 'draft', 'web', '{"density":"compact","previousDensity":"comfort"}', NOW() - INTERVAL '12 minutes')`,
       [observerA, observerB],
+    );
+    await db.query(
+      `INSERT INTO ux_events (event_type, user_type, status, source, metadata, created_at)
+       VALUES
+         ('draft_multimodal_glowup_error', 'system', 'invalid_query', 'api', '{"reason":"invalid_query","errorCode":"MULTIMODAL_GLOWUP_INVALID_QUERY_FIELDS"}', NOW() - INTERVAL '7 minutes')`,
     );
 
     const response = await request(app)
@@ -756,6 +1642,7 @@ describe('Admin API routes', () => {
     expect(response.body.kpis.hintDismissRate).toBe(0.5);
     expect(response.body.kpis.predictionParticipationRate).toBe(0);
     expect(response.body.kpis.predictionAccuracyRate).toBeNull();
+    expect(response.body.kpis.predictionSettlementRate).toBe(1);
     expect(response.body.kpis.predictionPoolPoints).toBe(0);
     expect(response.body.kpis.payoutToStakeRatio).toBeNull();
     expect(response.body.kpis.multimodalCoverageRate).toBe(0.5);
@@ -782,6 +1669,12 @@ describe('Admin API routes', () => {
       expect.arrayContaining([
         expect.objectContaining({ reason: 'network', count: 1 }),
       ]),
+    );
+    expect(response.body.multimodal.guardrails).toEqual(
+      expect.objectContaining({
+        invalidQueryErrors: 1,
+        invalidQueryRate: 0.5,
+      }),
     );
     const multimodalHourlyTrend = Array.isArray(
       response.body.multimodal.hourlyTrend,
@@ -823,6 +1716,7 @@ describe('Admin API routes', () => {
       true,
     );
     expect(response.body.predictionMarket.hourlyTrend).toHaveLength(0);
+    expect(response.body.totals.predictionSettles).toBe(1);
     expect(response.body.feedPreferences.viewMode.observer).toBe(1);
     expect(response.body.feedPreferences.viewMode.focus).toBe(2);
     expect(response.body.feedPreferences.viewMode.total).toBe(3);
@@ -853,6 +1747,25 @@ describe('Admin API routes', () => {
     );
     expect(variantA).toBeTruthy();
     expect(variantB).toBeTruthy();
+  });
+
+  test('observer engagement metrics endpoint validates hours query param', async () => {
+    const invalidQueries = [
+      '/api/admin/ux/observer-engagement?hours=0',
+      '/api/admin/ux/observer-engagement?hours=721',
+      '/api/admin/ux/observer-engagement?hours=3.14',
+      '/api/admin/ux/observer-engagement?hours=invalid',
+      '/api/admin/ux/observer-engagement?extra=true',
+    ];
+
+    for (const url of invalidQueries) {
+      const response = await request(app)
+        .get(url)
+        .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('ADMIN_INVALID_QUERY');
+    }
   });
 
   test('observer engagement metrics endpoint includes prediction hourly trend', async () => {
@@ -1084,6 +1997,68 @@ describe('Admin API routes', () => {
     expect(after.body.counts.dataExports).toBe(0);
   });
 
+  test('cleanup endpoints validate query/body controls', async () => {
+    const invalidPreview = await request(app)
+      .get('/api/admin/cleanup/preview?extra=true')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+    expect(invalidPreview.status).toBe(400);
+    expect(invalidPreview.body.error).toBe('ADMIN_INVALID_QUERY');
+
+    const invalidRunCases: Array<{
+      url: string;
+      body: Record<string, unknown>;
+      expectedError?: string;
+    }> = [
+      {
+        url: '/api/admin/cleanup/run?extra=true',
+        body: { confirm: true },
+        expectedError: 'ADMIN_INVALID_QUERY',
+      },
+      {
+        url: '/api/admin/cleanup/run?confirm=maybe',
+        body: {},
+        expectedError: 'ADMIN_INVALID_QUERY',
+      },
+      {
+        url: '/api/admin/cleanup/run?confirm=true',
+        body: { confirm: 'maybe' },
+        expectedError: 'ADMIN_INVALID_BODY',
+      },
+      {
+        url: '/api/admin/cleanup/run?confirm=true',
+        body: { confirm: false },
+        expectedError: 'ADMIN_INPUT_CONFLICT',
+      },
+      {
+        url: '/api/admin/cleanup/run?confirm=false',
+        body: {},
+        expectedError: 'CONFIRM_REQUIRED',
+      },
+      {
+        url: '/api/admin/cleanup/run',
+        body: { unknown: true, confirm: true },
+        expectedError: 'ADMIN_INVALID_BODY',
+      },
+      {
+        url: '/api/admin/cleanup/run',
+        body: {},
+        expectedError: 'CONFIRM_REQUIRED',
+      },
+    ];
+
+    for (const testCase of invalidRunCases) {
+      const response = await request(app)
+        .post(testCase.url)
+        .set('x-admin-token', env.ADMIN_API_TOKEN)
+        .send(testCase.body);
+
+      expect(response.status).toBe(400);
+      if (testCase.expectedError) {
+        expect(response.body.error).toBe(testCase.expectedError);
+      }
+    }
+  });
+
   test('error metrics endpoint returns recorded errors', async () => {
     await db.query(
       `INSERT INTO error_events (error_code, message, status, route, method, user_type)
@@ -1099,6 +2074,38 @@ describe('Admin API routes', () => {
       (row: any) => row.error_code === 'VERSION_MEDIA_REQUIRED',
     );
     expect(entry).toBeTruthy();
+  });
+
+  test('error metrics endpoint validates query params', async () => {
+    const tooLongCode = 'x'.repeat(121);
+    const tooLongRoute = 'y'.repeat(241);
+
+    const invalidQueries = [
+      '/api/admin/errors/metrics?hours=0',
+      '/api/admin/errors/metrics?hours=721',
+      '/api/admin/errors/metrics?hours=1.5',
+      '/api/admin/errors/metrics?hours=abc',
+      '/api/admin/errors/metrics?limit=0',
+      '/api/admin/errors/metrics?limit=201',
+      '/api/admin/errors/metrics?limit=2.5',
+      '/api/admin/errors/metrics?limit=oops',
+      `/api/admin/errors/metrics?code=${tooLongCode}`,
+      `/api/admin/errors/metrics?route=${tooLongRoute}`,
+      '/api/admin/errors/metrics?code=invalid code',
+      '/api/admin/errors/metrics?route=api/no-leading-slash',
+      '/api/admin/errors/metrics?route=/api/drafts?raw=true',
+      '/api/admin/errors/metrics?code=a&code=b',
+      '/api/admin/errors/metrics?unknown=true',
+    ];
+
+    for (const url of invalidQueries) {
+      const response = await request(app)
+        .get(url)
+        .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('ADMIN_INVALID_QUERY');
+    }
   });
 
   test('budget metrics and remaining endpoints return usage', async () => {
@@ -1134,5 +2141,28 @@ describe('Admin API routes', () => {
     expect(metrics.body.date).toBe(dateKey);
     expect(metrics.body.totals?.agent?.fix_request).toBeGreaterThanOrEqual(1);
     expect(metrics.body.totals?.draft?.pr).toBeGreaterThanOrEqual(1);
+  });
+
+  test('budget metrics and remaining endpoints validate query params', async () => {
+    const invalidQueryCases = [
+      '/api/admin/budgets/remaining?extra=true',
+      '/api/admin/budgets/remaining?agentId=a&agentId=b',
+      '/api/admin/budgets/remaining?agentId=not-a-uuid',
+      '/api/admin/budgets/remaining?draftId=not-a-uuid',
+      `/api/admin/budgets/remaining?agentId=${'a'.repeat(129)}`,
+      `/api/admin/budgets/remaining?date=${'2'.repeat(41)}`,
+      '/api/admin/budgets/metrics?extra=true',
+      '/api/admin/budgets/metrics?date=2026-01-01&date=2026-01-02',
+      `/api/admin/budgets/metrics?date=${'9'.repeat(41)}`,
+    ];
+
+    for (const url of invalidQueryCases) {
+      const response = await request(app)
+        .get(url)
+        .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('ADMIN_INVALID_QUERY');
+    }
   });
 });

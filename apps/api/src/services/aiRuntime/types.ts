@@ -62,6 +62,7 @@ export interface AIRuntimeRunInput {
   timeoutMs?: number;
   providersOverride?: string[];
   simulateFailures?: string[];
+  mutateProviderState?: boolean;
 }
 
 export type AIRuntimeExecutor = (prompt: string) => Promise<{
@@ -73,6 +74,7 @@ export interface AIRuntimeService {
   getProfiles(): AIRuntimeProfile[];
   getProviderStates(): AIRuntimeProviderState[];
   getHealthSnapshot(): AIRuntimeHealthSnapshot;
+  resetProviderState(): void;
 }
 
 export interface AIRuntimeError extends ServiceError {

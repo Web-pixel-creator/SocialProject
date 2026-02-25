@@ -24,7 +24,7 @@ import {
 import useSWR from 'swr';
 import { useLanguage } from '../contexts/LanguageContext';
 import { apiClient } from '../lib/api';
-import { getApiErrorMessage, getApiErrorStatus } from '../lib/errors';
+import { getApiErrorStatus } from '../lib/errors';
 import {
   fallbackItemsFor,
   mapDraftItems,
@@ -39,6 +39,11 @@ import type {
   FeedSort,
   FeedStatus,
 } from '../lib/feedTypes';
+import {
+  resolvePredictionLoadErrorMessage,
+  resolvePredictionSubmitErrorMessage,
+} from '../lib/predictionErrors';
+import { buildPredictionMarketSnapshot } from '../lib/predictionMarket';
 import { AutopsyCard } from './AutopsyCard';
 import { BattleCard } from './BattleCard';
 import { BeforeAfterCard } from './BeforeAfterCard';
@@ -76,12 +81,14 @@ const FEED_SAVED_STORAGE_KEY = 'finishit-feed-saved-draft-ids';
 const FEED_RATED_STORAGE_KEY = 'finishit-feed-rated-draft-ids';
 const AUTH_TOKEN_STORAGE_KEY = 'finishit_token';
 const MOBILE_DENSITY_MEDIA_QUERY = '(max-width: 767px)';
+const PREDICTION_SUMMARY_RETRY_COOLDOWN_MS = 30_000;
 
 type FeedDensity = 'comfort' | 'compact';
 type BattlePredictionOutcome = 'merge' | 'reject';
 type BattlePredictionTrustTier = 'entry' | 'regular' | 'trusted' | 'elite';
 
 interface BattlePredictionEntry {
+  authRequired: boolean;
   dailyStakeCapPoints: number | null;
   dailyStakeUsedPoints: number | null;
   dailySubmissionCap: number | null;
@@ -334,58 +341,38 @@ const parseBattlePredictionMarket = (
     0,
     asFiniteNumber(marketRecord?.rejectStakePoints) ?? 0,
   );
-  const totalStakePoints =
-    Math.max(0, asFiniteNumber(marketRecord?.totalStakePoints) ?? 0) ||
-    mergeStakePoints + rejectStakePoints;
-
-  const mergeOddsFallback =
-    totalStakePoints > 0 ? mergeStakePoints / totalStakePoints : null;
-  const rejectOddsFallback =
-    totalStakePoints > 0 ? rejectStakePoints / totalStakePoints : null;
-
-  const mergeOdds =
-    asFiniteNumber(marketRecord?.mergeOdds) ?? mergeOddsFallback;
-  const rejectOdds =
-    asFiniteNumber(marketRecord?.rejectOdds) ?? rejectOddsFallback;
-
-  const mergePayoutMultiplier =
-    asFiniteNumber(marketRecord?.mergePayoutMultiplier) ??
-    (mergeOdds && mergeOdds > 0 ? 1 / mergeOdds : 1);
-  const rejectPayoutMultiplier =
-    asFiniteNumber(marketRecord?.rejectPayoutMultiplier) ??
-    (rejectOdds && rejectOdds > 0 ? 1 / rejectOdds : 1);
-
-  const trustTierValue = marketRecord?.trustTier;
-  const trustTier: BattlePredictionTrustTier | null =
-    trustTierValue === 'entry' ||
-    trustTierValue === 'regular' ||
-    trustTierValue === 'trusted' ||
-    trustTierValue === 'elite'
-      ? trustTierValue
-      : null;
+  const marketSnapshot = buildPredictionMarketSnapshot({
+    dailyStakeCapPoints: marketRecord?.dailyStakeCapPoints,
+    dailyStakeUsedPoints: marketRecord?.dailyStakeUsedPoints,
+    dailySubmissionCap: marketRecord?.dailySubmissionCap,
+    dailySubmissionsUsed: marketRecord?.dailySubmissionsUsed,
+    mergeOdds: marketRecord?.mergeOdds,
+    mergePayoutMultiplier: marketRecord?.mergePayoutMultiplier,
+    mergeStakePoints,
+    observerNetPoints: marketRecord?.observerNetPoints,
+    rejectOdds: marketRecord?.rejectOdds,
+    rejectPayoutMultiplier: marketRecord?.rejectPayoutMultiplier,
+    rejectStakePoints,
+    stakePointsForPotential: Math.max(0, stakePoints),
+    totalStakePoints: marketRecord?.totalStakePoints,
+    trustTier: marketRecord?.trustTier,
+  });
 
   return {
-    dailyStakeCapPoints: asFiniteNumber(marketRecord?.dailyStakeCapPoints),
-    dailyStakeUsedPoints: asFiniteNumber(marketRecord?.dailyStakeUsedPoints),
-    dailySubmissionCap: asFiniteNumber(marketRecord?.dailySubmissionCap),
-    dailySubmissionsUsed: asFiniteNumber(marketRecord?.dailySubmissionsUsed),
+    dailyStakeCapPoints: marketSnapshot.dailyStakeCapPoints,
+    dailyStakeUsedPoints: marketSnapshot.dailyStakeUsedPoints,
+    dailySubmissionCap: marketSnapshot.dailySubmissionCap,
+    dailySubmissionsUsed: marketSnapshot.dailySubmissionsUsed,
     minStakePoints: asFiniteNumber(marketRecord?.minStakePoints),
     maxStakePoints: asFiniteNumber(marketRecord?.maxStakePoints),
     pullRequestId,
-    marketPoolPoints:
-      totalStakePoints > 0 ? Math.round(totalStakePoints) : null,
-    mergeOdds,
-    rejectOdds,
-    observerNetPoints: asFiniteNumber(marketRecord?.observerNetPoints),
-    potentialMergePayout: Math.max(
-      0,
-      Math.round(Math.max(0, stakePoints) * mergePayoutMultiplier),
-    ),
-    potentialRejectPayout: Math.max(
-      0,
-      Math.round(Math.max(0, stakePoints) * rejectPayoutMultiplier),
-    ),
-    trustTier,
+    marketPoolPoints: marketSnapshot.marketPoolPoints,
+    mergeOdds: marketSnapshot.mergeOddsRatio,
+    rejectOdds: marketSnapshot.rejectOddsRatio,
+    observerNetPoints: marketSnapshot.observerNetPoints,
+    potentialMergePayout: marketSnapshot.potentialMergePayout,
+    potentialRejectPayout: marketSnapshot.potentialRejectPayout,
+    trustTier: marketSnapshot.trustTier as BattlePredictionTrustTier | null,
   };
 };
 
@@ -885,6 +872,10 @@ export const FeedTabs = () => {
   const [battlePredictions, setBattlePredictions] = useState<
     Record<string, BattlePredictionEntry>
   >({});
+  const pendingBattlePredictionDraftIdsRef = useRef<Set<string>>(new Set());
+  const predictionSummaryCooldownByDraftIdRef = useRef<Map<string, number>>(
+    new Map(),
+  );
   const desktopMoreDetailsRef = useRef<HTMLDetailsElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const mobileMoreButtonRef = useRef<HTMLButtonElement>(null);
@@ -1918,6 +1909,10 @@ export const FeedTabs = () => {
       if (!draftId) {
         return;
       }
+      if (pendingBattlePredictionDraftIdsRef.current.has(draftId)) {
+        return;
+      }
+      pendingBattlePredictionDraftIdsRef.current.add(draftId);
 
       const roundedStake = Math.round(stakePoints);
       setBattlePredictions((current) => ({
@@ -1946,6 +1941,7 @@ export const FeedTabs = () => {
               ? roundedStake
               : (current[draftId]?.stakePoints ?? 10),
           trustTier: current[draftId]?.trustTier ?? null,
+          authRequired: false,
         },
       }));
 
@@ -1974,30 +1970,101 @@ export const FeedTabs = () => {
           potentialRejectPayout: null,
           trustTier: null,
         };
+        let summaryRefreshSucceeded = false;
+        let summaryRefreshError: string | null = null;
+        let summaryAuthRequired = false;
 
         if (pullRequestId) {
-          try {
-            const summaryResponse = await apiClient.get(
-              `/pull-requests/${pullRequestId}/predictions`,
-            );
-            marketSnapshot = parseBattlePredictionMarket(
-              summaryResponse.data,
-              roundedStake,
-              pullRequestId,
-            );
-          } catch (_summaryError) {
-            // Keep successful prediction response even if summary refresh fails.
+          const summaryCooldownUntil =
+            predictionSummaryCooldownByDraftIdRef.current.get(draftId) ?? 0;
+          if (Date.now() < summaryCooldownUntil) {
+            summaryRefreshError = t('prediction.rateLimited');
+          } else {
+            try {
+              const summaryResponse = await apiClient.get(
+                `/pull-requests/${pullRequestId}/predictions`,
+              );
+              marketSnapshot = parseBattlePredictionMarket(
+                summaryResponse.data,
+                roundedStake,
+                pullRequestId,
+              );
+              summaryRefreshSucceeded = true;
+              predictionSummaryCooldownByDraftIdRef.current.delete(draftId);
+            } catch (summaryError: unknown) {
+              const summaryErrorStatus = getApiErrorStatus(summaryError);
+              summaryAuthRequired =
+                summaryErrorStatus === 401 || summaryErrorStatus === 403;
+              if (summaryErrorStatus === 429) {
+                predictionSummaryCooldownByDraftIdRef.current.set(
+                  draftId,
+                  Date.now() + PREDICTION_SUMMARY_RETRY_COOLDOWN_MS,
+                );
+              }
+              if (
+                summaryAuthRequired ||
+                summaryErrorStatus === 429 ||
+                summaryErrorStatus === 409
+              ) {
+                summaryRefreshError = resolvePredictionLoadErrorMessage({
+                  error: summaryError,
+                  fallback: t('draftDetail.errors.loadPredictionSummary'),
+                  t,
+                });
+              }
+            }
           }
         }
 
         setBattlePredictions((current) => ({
           ...current,
           [draftId]: {
-            error: null,
+            dailyStakeCapPoints: summaryRefreshSucceeded
+              ? marketSnapshot.dailyStakeCapPoints
+              : (current[draftId]?.dailyStakeCapPoints ?? null),
+            dailyStakeUsedPoints: summaryRefreshSucceeded
+              ? marketSnapshot.dailyStakeUsedPoints
+              : (current[draftId]?.dailyStakeUsedPoints ?? null),
+            dailySubmissionCap: summaryRefreshSucceeded
+              ? marketSnapshot.dailySubmissionCap
+              : (current[draftId]?.dailySubmissionCap ?? null),
+            dailySubmissionsUsed: summaryRefreshSucceeded
+              ? marketSnapshot.dailySubmissionsUsed
+              : (current[draftId]?.dailySubmissionsUsed ?? null),
+            authRequired: summaryAuthRequired,
+            error: summaryRefreshError,
+            maxStakePoints: summaryRefreshSucceeded
+              ? marketSnapshot.maxStakePoints
+              : (current[draftId]?.maxStakePoints ?? null),
+            minStakePoints: summaryRefreshSucceeded
+              ? marketSnapshot.minStakePoints
+              : (current[draftId]?.minStakePoints ?? null),
             pending: false,
             predictedOutcome: outcome,
-            ...marketSnapshot,
+            pullRequestId:
+              pullRequestId ?? current[draftId]?.pullRequestId ?? null,
+            marketPoolPoints: summaryRefreshSucceeded
+              ? marketSnapshot.marketPoolPoints
+              : (current[draftId]?.marketPoolPoints ?? null),
+            mergeOdds: summaryRefreshSucceeded
+              ? marketSnapshot.mergeOdds
+              : (current[draftId]?.mergeOdds ?? null),
+            observerNetPoints: summaryRefreshSucceeded
+              ? marketSnapshot.observerNetPoints
+              : (current[draftId]?.observerNetPoints ?? null),
+            potentialMergePayout: summaryRefreshSucceeded
+              ? marketSnapshot.potentialMergePayout
+              : (current[draftId]?.potentialMergePayout ?? null),
+            potentialRejectPayout: summaryRefreshSucceeded
+              ? marketSnapshot.potentialRejectPayout
+              : (current[draftId]?.potentialRejectPayout ?? null),
+            rejectOdds: summaryRefreshSucceeded
+              ? marketSnapshot.rejectOdds
+              : (current[draftId]?.rejectOdds ?? null),
             stakePoints: roundedStake,
+            trustTier: summaryRefreshSucceeded
+              ? marketSnapshot.trustTier
+              : (current[draftId]?.trustTier ?? null),
           },
         }));
         sendTelemetry({
@@ -2011,24 +2078,24 @@ export const FeedTabs = () => {
         });
       } catch (error: unknown) {
         const status = getApiErrorStatus(error);
-        const message =
-          status === 401 || status === 403
-            ? t('prediction.signInRequired')
-            : getApiErrorMessage(
-                error,
-                t('draftDetail.errors.submitPrediction'),
-              );
+        const authRequired = status === 401 || status === 403;
         setBattlePredictions((current) => ({
           ...current,
           [draftId]: {
             ...current[draftId],
+            authRequired,
             dailyStakeCapPoints: current[draftId]?.dailyStakeCapPoints ?? null,
             dailyStakeUsedPoints:
               current[draftId]?.dailyStakeUsedPoints ?? null,
             dailySubmissionCap: current[draftId]?.dailySubmissionCap ?? null,
             dailySubmissionsUsed:
               current[draftId]?.dailySubmissionsUsed ?? null,
-            error: message,
+            error: resolvePredictionSubmitErrorMessage({
+              error,
+              fallback: t('draftDetail.errors.submitPrediction'),
+              stakeBounds: current[draftId],
+              t,
+            }),
             maxStakePoints: current[draftId]?.maxStakePoints ?? null,
             minStakePoints: current[draftId]?.minStakePoints ?? null,
             pending: false,
@@ -2046,6 +2113,8 @@ export const FeedTabs = () => {
             trustTier: current[draftId]?.trustTier ?? null,
           },
         }));
+      } finally {
+        pendingBattlePredictionDraftIdsRef.current.delete(draftId);
       }
     },
     [active, t],
@@ -2480,6 +2549,7 @@ export const FeedTabs = () => {
         }
         if (item.kind === 'battle') {
           const battlePrediction = battlePredictions[item.id] ?? {
+            authRequired: false,
             dailyStakeCapPoints: null,
             dailyStakeUsedPoints: null,
             dailySubmissionCap: null,
@@ -2519,6 +2589,7 @@ export const FeedTabs = () => {
                 handleBattlePredict(item.id, outcome, stakePoints)
               }
               predictionState={{
+                authRequired: battlePrediction.authRequired,
                 error: battlePrediction.error,
                 latestOutcome: battlePrediction.predictedOutcome,
                 marketPoolPoints: battlePrediction.marketPoolPoints,

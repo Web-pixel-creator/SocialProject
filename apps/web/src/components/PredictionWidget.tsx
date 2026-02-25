@@ -1,7 +1,21 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { buildPredictionMarketSnapshot } from '../lib/predictionMarket';
+import {
+  formatPredictionMarketPoolLine,
+  formatPredictionNetPointsLine,
+  formatPredictionOddsLine,
+  formatPredictionPayoutLine,
+  formatPredictionUsageLine,
+} from '../lib/predictionMarketText';
+import {
+  derivePredictionUsageLimitState,
+  normalizePredictionStakeBounds,
+  resolvePredictionStakeInput,
+} from '../lib/predictionStake';
 import {
   formatPredictionTrustTier,
   type PredictionTrustTier,
@@ -71,15 +85,23 @@ export const PredictionWidget = ({
     String(DEFAULT_STAKE_POINTS),
   );
 
-  const minStake = summary?.market?.minStakePoints ?? 5;
-  const maxStake = summary?.market?.maxStakePoints ?? 500;
-  const normalizedStake = useMemo(() => {
-    const parsed = Number.parseInt(stakeInput, 10);
-    if (!Number.isFinite(parsed)) {
-      return DEFAULT_STAKE_POINTS;
-    }
-    return Math.max(minStake, Math.min(maxStake, parsed));
-  }, [maxStake, minStake, stakeInput]);
+  const { minStakePoints: minStake, maxStakePoints: maxStake } =
+    normalizePredictionStakeBounds({
+      minStakePoints: summary?.market?.minStakePoints,
+      maxStakePoints: summary?.market?.maxStakePoints,
+    });
+  const { adjusted: stakeWasAdjusted, stakePoints: normalizedStake } = useMemo(
+    () =>
+      resolvePredictionStakeInput({
+        rawValue: stakeInput,
+        bounds: { minStakePoints: minStake, maxStakePoints: maxStake },
+        fallbackStakePoints: DEFAULT_STAKE_POINTS,
+      }),
+    [maxStake, minStake, stakeInput],
+  );
+  const stakeAdjustmentHint = stakeWasAdjusted
+    ? `${t('prediction.stakeAutoAdjusted')} ${minStake}-${maxStake} FIN.`
+    : null;
 
   useEffect(() => {
     const pullRequestId = summary?.pullRequestId;
@@ -106,15 +128,14 @@ export const PredictionWidget = ({
         <p className="mt-3 text-muted-foreground text-xs">
           {t('prediction.signInRequired')}
         </p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="card p-4">
-        <p className="pill">{t('sidebar.predictMode')}</p>
-        <p className="mt-3 text-destructive text-xs">{error}</p>
+        <div className="mt-3">
+          <Link
+            className="inline-flex min-h-8 items-center rounded-full border border-primary/35 bg-primary/10 px-3 py-1.5 font-semibold text-[11px] text-primary transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            href="/login"
+          >
+            {t('header.signIn')}
+          </Link>
+        </div>
       </div>
     );
   }
@@ -123,8 +144,12 @@ export const PredictionWidget = ({
     return (
       <div className="card p-4">
         <p className="pill">{t('sidebar.predictMode')}</p>
-        <p className="mt-3 text-muted-foreground text-xs">
-          {t('prediction.noPendingPr')}
+        <p
+          className={`mt-3 text-xs ${
+            error ? 'text-destructive' : 'text-muted-foreground'
+          }`}
+        >
+          {error ?? t('prediction.noPendingPr')}
         </p>
       </div>
     );
@@ -132,45 +157,36 @@ export const PredictionWidget = ({
 
   const selected = summary.observerPrediction?.predictedOutcome ?? null;
   const accuracyPct = Math.round((summary.accuracy.rate ?? 0) * 100);
-  const mergeStakePoints = summary.market?.mergeStakePoints ?? 0;
-  const rejectStakePoints = summary.market?.rejectStakePoints ?? 0;
-  const totalStakePoints =
-    summary.market?.totalStakePoints ?? mergeStakePoints + rejectStakePoints;
-  const mergeOdds =
-    summary.market?.mergeOdds ??
-    (totalStakePoints > 0 ? mergeStakePoints / totalStakePoints : 0);
-  const rejectOdds =
-    summary.market?.rejectOdds ??
-    (totalStakePoints > 0 ? rejectStakePoints / totalStakePoints : 0);
-  const mergePayoutMultiplier =
-    summary.market?.mergePayoutMultiplier ??
-    (mergeStakePoints > 0 ? totalStakePoints / mergeStakePoints : 0);
-  const rejectPayoutMultiplier =
-    summary.market?.rejectPayoutMultiplier ??
-    (rejectStakePoints > 0 ? totalStakePoints / rejectStakePoints : 0);
-  const potentialMergePayout = Math.round(
-    normalizedStake * mergePayoutMultiplier,
-  );
-  const potentialRejectPayout = Math.round(
-    normalizedStake * rejectPayoutMultiplier,
-  );
-  const trustTier = summary.market?.trustTier ?? 'entry';
+  const marketSnapshot = buildPredictionMarketSnapshot({
+    dailyStakeCapPoints: summary.market?.dailyStakeCapPoints,
+    dailyStakeUsedPoints: summary.market?.dailyStakeUsedPoints,
+    dailySubmissionCap: summary.market?.dailySubmissionCap,
+    dailySubmissionsUsed: summary.market?.dailySubmissionsUsed,
+    mergeOdds: summary.market?.mergeOdds,
+    mergePayoutMultiplier: summary.market?.mergePayoutMultiplier,
+    mergeStakePoints: summary.market?.mergeStakePoints,
+    observerNetPoints: summary.market?.observerNetPoints,
+    rejectOdds: summary.market?.rejectOdds,
+    rejectPayoutMultiplier: summary.market?.rejectPayoutMultiplier,
+    rejectStakePoints: summary.market?.rejectStakePoints,
+    stakePointsForPotential: normalizedStake,
+    totalStakePoints: summary.market?.totalStakePoints,
+    trustTier: summary.market?.trustTier,
+  });
+  const trustTier = marketSnapshot.trustTier ?? 'entry';
   const trustTierLabel = formatPredictionTrustTier(trustTier, t);
-  const dailyStakeUsed = summary.market?.dailyStakeUsedPoints ?? 0;
-  const dailyStakeCap = summary.market?.dailyStakeCapPoints ?? 0;
-  const dailySubmissionsUsed = summary.market?.dailySubmissionsUsed ?? 0;
-  const dailySubmissionCap = summary.market?.dailySubmissionCap ?? 0;
   const hasExistingPrediction = Boolean(
     summary.observerPrediction?.predictedOutcome,
   );
-  const dailyStakeCapReached =
-    !hasExistingPrediction &&
-    dailyStakeCap > 0 &&
-    dailyStakeUsed + normalizedStake > dailyStakeCap;
-  const dailySubmissionCapReached =
-    !hasExistingPrediction &&
-    dailySubmissionCap > 0 &&
-    dailySubmissionsUsed >= dailySubmissionCap;
+  const { dailyStakeCapReached, dailySubmissionCapReached } =
+    derivePredictionUsageLimitState({
+      hasExistingPrediction,
+      stakePoints: normalizedStake,
+      dailyStakeCapPoints: marketSnapshot.dailyStakeCapPoints,
+      dailyStakeUsedPoints: marketSnapshot.dailyStakeUsedPoints,
+      dailySubmissionCap: marketSnapshot.dailySubmissionCap,
+      dailySubmissionsUsed: marketSnapshot.dailySubmissionsUsed,
+    });
   const limitsReached = dailyStakeCapReached || dailySubmissionCapReached;
   const predictionDisabled =
     submitLoading || summary.pullRequestStatus !== 'pending' || limitsReached;
@@ -192,26 +208,22 @@ export const PredictionWidget = ({
         {t('pr.reject')} {summary.consensus.reject} | {t('pr.total')}{' '}
         {summary.consensus.total}
       </p>
+      {error ? <p className="mt-2 text-destructive text-xs">{error}</p> : null}
       <p className="mt-2 text-muted-foreground text-xs">
-        {t('prediction.marketPool')} {totalStakePoints} FIN | {t('pr.merge')}{' '}
-        {mergeStakePoints} | {t('pr.reject')} {rejectStakePoints}
+        {formatPredictionMarketPoolLine(t, marketSnapshot)}
       </p>
       <p className="mt-1 text-muted-foreground text-xs">
-        {t('prediction.oddsLabel')} {t('pr.merge')}{' '}
-        {Math.round(mergeOdds * 100)}% (x{mergePayoutMultiplier.toFixed(2)}) |{' '}
-        {t('pr.reject')} {Math.round(rejectOdds * 100)}% (x
-        {rejectPayoutMultiplier.toFixed(2)})
+        {formatPredictionOddsLine(t, marketSnapshot)}
       </p>
       <p className="mt-1 text-muted-foreground text-xs">
-        {t('prediction.potentialPayoutLabel')} {t('pr.merge')}{' '}
-        {potentialMergePayout} FIN | {t('pr.reject')} {potentialRejectPayout}{' '}
-        FIN
+        {formatPredictionPayoutLine(t, marketSnapshot)}
       </p>
       <p className="mt-1 text-muted-foreground text-xs">
         {t('prediction.tierLabel')} {trustTierLabel} |{' '}
-        {t('prediction.dailyStakeLabel')} {dailyStakeUsed}/{dailyStakeCap} |{' '}
-        {t('prediction.dailySubmissionsLabel')} {dailySubmissionsUsed}/
-        {dailySubmissionCap}
+        {formatPredictionUsageLine(t, marketSnapshot, {
+          includeRemaining: false,
+          unknownCapLabel: '-',
+        })}
       </p>
       <p className="mt-2 text-muted-foreground text-xs">
         {t('prediction.yourAccuracy')} {summary.accuracy.correct}/
@@ -232,6 +244,11 @@ export const PredictionWidget = ({
           type="number"
           value={stakeInput}
         />
+        {stakeAdjustmentHint ? (
+          <p className="text-[11px] text-muted-foreground">
+            {stakeAdjustmentHint}
+          </p>
+        ) : null}
       </div>
       <div className="mt-3 flex items-center gap-2">
         <button
@@ -278,7 +295,7 @@ export const PredictionWidget = ({
         </p>
       )}
       <p className="mt-2 text-[11px] text-muted-foreground">
-        {t('prediction.netPoints')} {summary.market?.observerNetPoints ?? 0} FIN
+        {formatPredictionNetPointsLine(t, marketSnapshot.observerNetPoints)}
       </p>
     </div>
   );

@@ -77,6 +77,7 @@ describe('admin ux observer engagement page', () => {
               hintDismissRate: 0.5,
               predictionParticipationRate: 0.5,
               predictionAccuracyRate: 0.5,
+              predictionSettlementRate: 0.5,
               predictionPoolPoints: 65,
               payoutToStakeRatio: 0.677,
               multimodalCoverageRate: 0.75,
@@ -137,6 +138,10 @@ describe('admin ux observer engagement page', () => {
               providerBreakdown: [{ provider: 'gemini-2', count: 3 }],
               emptyReasonBreakdown: [{ reason: 'not_available', count: 1 }],
               errorReasonBreakdown: [{ reason: 'network', count: 1 }],
+              guardrails: {
+                invalidQueryErrors: 2,
+                invalidQueryRate: 0.667,
+              },
               hourlyTrend: [
                 {
                   hour: '2026-02-22T10:00:00Z',
@@ -215,6 +220,86 @@ describe('admin ux observer engagement page', () => {
           }),
         } as Response);
       }
+      if (url.includes('/admin/agent-gateway/telemetry')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            windowHours: 24,
+            sampleLimit: 200,
+            sessions: {
+              total: 2,
+              active: 1,
+              closed: 1,
+              attention: 1,
+              compacted: 1,
+              autoCompacted: 1,
+              attentionRate: 0.5,
+              compactionRate: 0.5,
+              autoCompactedRate: 0.5,
+            },
+            events: {
+              total: 4,
+              draftCycleStepEvents: 2,
+              failedStepEvents: 1,
+              compactionEvents: 1,
+              autoCompactionEvents: 1,
+              manualCompactionEvents: 0,
+              autoCompactionShare: 1,
+              autoCompactionRiskLevel: 'critical',
+              prunedEventCount: 3,
+              compactionHourlyTrend: [
+                {
+                  hour: '2026-02-22T12:00:00Z',
+                  compactions: 1,
+                  autoCompactions: 1,
+                  manualCompactions: 0,
+                  autoCompactionShare: 1,
+                  autoCompactionRiskLevel: 'critical',
+                  prunedEventCount: 3,
+                },
+              ],
+              failedStepRate: 0.5,
+            },
+            attempts: {
+              total: 3,
+              success: 1,
+              failed: 1,
+              skippedCooldown: 1,
+              successRate: 0.333,
+              failureRate: 0.333,
+              skippedRate: 0.333,
+            },
+            health: {
+              level: 'critical',
+              failedStepLevel: 'critical',
+              runtimeSuccessLevel: 'critical',
+              cooldownSkipLevel: 'watch',
+              autoCompactionLevel: 'critical',
+            },
+            thresholds: {
+              autoCompactionShare: {
+                watchAbove: 0.45,
+                criticalAbove: 0.75,
+              },
+              failedStepRate: {
+                watchAbove: 0.3,
+                criticalAbove: 0.6,
+              },
+              runtimeSuccessRate: {
+                watchBelow: 0.8,
+                criticalBelow: 0.55,
+              },
+              cooldownSkipRate: {
+                watchAbove: 0.15,
+                criticalAbove: 0.35,
+              },
+            },
+            providerUsage: [{ provider: 'gpt-4.1', count: 2 }],
+            channelUsage: [{ channel: 'draft_cycle', count: 2 }],
+          }),
+        } as Response);
+      }
       if (url.includes('/admin/agent-gateway/sessions/ags-summary-1/summary')) {
         return Promise.resolve({
           ok: true,
@@ -288,7 +373,12 @@ describe('admin ux observer engagement page', () => {
 
     render(
       await AdminUxObserverEngagementPage({
-        searchParams: Promise.resolve({ hours: '24' }),
+        searchParams: Promise.resolve({
+          hours: '24',
+          gatewayChannel: 'ws-control-plane',
+          gatewayProvider: 'gpt-4.1',
+          gatewayStatus: 'active',
+        }),
       }),
     );
 
@@ -298,12 +388,14 @@ describe('admin ux observer engagement page', () => {
     expect(
       screen.getByText(/Multimodal GlowUp telemetry/i),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Provider usage/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Provider usage$/i)).toBeInTheDocument();
     expect(screen.getByText(/gemini-2/i)).toBeInTheDocument();
     expect(screen.getByText(/Empty-state reasons/i)).toBeInTheDocument();
     expect(screen.getByText(/not_available/i)).toBeInTheDocument();
     expect(screen.getByText(/Error reasons/i)).toBeInTheDocument();
     expect(screen.getByText(/network/i)).toBeInTheDocument();
+    expect(screen.getByText(/Invalid query errors/i)).toBeInTheDocument();
+    expect(screen.getByText(/Invalid query share/i)).toBeInTheDocument();
     expect(screen.getByText(/^Hourly trend \(UTC\)$/i)).toBeInTheDocument();
     expect(screen.getAllByText(/2026-02-22 10:00 UTC/i).length).toBeGreaterThan(
       0,
@@ -314,6 +406,7 @@ describe('admin ux observer engagement page', () => {
     expect(
       screen.getByText(/Prediction market telemetry/i),
     ).toBeInTheDocument();
+    expect(screen.getByText(/Settlement rate/i)).toBeInTheDocument();
     expect(
       screen.getByText(/^Prediction hourly trend \(UTC\)$/i),
     ).toBeInTheDocument();
@@ -323,8 +416,48 @@ describe('admin ux observer engagement page', () => {
     expect(screen.getByText(/Fusion attempts/i)).toBeInTheDocument();
     expect(screen.getByText(/Fusion errors/i)).toBeInTheDocument();
     expect(screen.getByText(/Agent gateway live session/i)).toBeInTheDocument();
-    expect(screen.getByText(/Session status/i)).toBeInTheDocument();
-    expect(screen.getByText(/Compactions/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Agent gateway control-plane telemetry/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Gateway compaction trend \(UTC\)/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/2026-02-22 12:00 UTC/i)).toBeInTheDocument();
+    expect(screen.getByText(/Auto compacted sessions/i)).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/Auto compaction share/i).length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/Auto compaction risk:\s*Critical/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Failed-step risk:\s*Critical/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Runtime success:\s*Critical/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Cooldown skip risk:\s*Watch/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Telemetry health:\s*Critical/i),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(/Scope:/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/ws-control-plane/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/gpt-4\.1/i).length).toBeGreaterThan(0);
+    expect(
+      screen.getByRole('button', { name: /Apply scope/i }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(/Runtime success rate/i).length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.getByText(/Provider usage \(sample\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Telemetry thresholds$/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Watch >= 30\.0% \| Critical >= 60\.0%/i),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(/Session status/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/^Compactions$/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/gpt-4.1 \(2\)/i)).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: /Close session/i }),
@@ -365,7 +498,7 @@ describe('admin ux observer engagement page', () => {
       }),
     );
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:4000/api/admin/agent-gateway/sessions?limit=25',
+      'http://localhost:4000/api/admin/agent-gateway/sessions?limit=25&channel=ws-control-plane&provider=gpt-4.1&status=active',
       expect.objectContaining({
         cache: 'no-store',
         headers: expect.objectContaining({
@@ -375,6 +508,15 @@ describe('admin ux observer engagement page', () => {
     );
     expect(fetchMock).toHaveBeenCalledWith(
       'http://localhost:4000/api/admin/ux/similar-search?hours=24',
+      expect.objectContaining({
+        cache: 'no-store',
+        headers: expect.objectContaining({
+          'x-admin-token': 'test-admin-token',
+        }),
+      }),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:4000/api/admin/agent-gateway/telemetry?hours=24&limit=200&channel=ws-control-plane&provider=gpt-4.1',
       expect.objectContaining({
         cache: 'no-store',
         headers: expect.objectContaining({
@@ -966,7 +1108,7 @@ describe('admin ux observer engagement page', () => {
       }),
     ).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:4000/api/admin/agent-gateway/sessions/ags-filter-1/events?limit=20',
+      'http://localhost:4000/api/admin/agent-gateway/sessions/ags-filter-1/events?limit=20&eventType=draft_cycle_critic_completed&eventQuery=critic&source=db',
       expect.objectContaining({
         cache: 'no-store',
         headers: expect.objectContaining({

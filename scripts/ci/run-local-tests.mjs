@@ -27,6 +27,10 @@ Options:
   --ports         Ports for service wait script. Default: 5432,6379.
   --help          Show help.
 
+Environment:
+  LOCAL_TEST_MIGRATE_RETRIES         Retry count for migrate:up. Default: 3.
+  LOCAL_TEST_MIGRATE_RETRY_DELAY_MS  Delay between migrate retries. Default: 2000.
+
 Examples:
   npm run test:local
   npm run test:coverage:local
@@ -107,6 +111,11 @@ const resolveNpmInvocation = () =>
 const resolveNodeCommand = () =>
   process.platform === 'win32' ? 'node.exe' : 'node';
 
+const sleep = (ms) =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
 const runCommand = ({ command, args, env }) =>
   new Promise((resolve, reject) => {
     const child = spawn(command, args, {
@@ -123,6 +132,37 @@ const runCommand = ({ command, args, env }) =>
       reject(new Error(`${command} ${args.join(' ')} exited with code ${String(code)}`));
     });
   });
+
+const runCommandWithRetry = async ({
+  args,
+  attempts,
+  command,
+  delayMs,
+  env,
+  label,
+}) => {
+  let lastError = null;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      await runCommand({
+        command,
+        args,
+        env,
+      });
+      return;
+    } catch (error) {
+      lastError = error;
+      if (attempt >= attempts) {
+        break;
+      }
+      process.stdout.write(
+        `${label} failed (attempt ${String(attempt)}/${String(attempts)}). Retrying in ${String(delayMs)}ms...\n`,
+      );
+      await sleep(delayMs);
+    }
+  }
+  throw lastError;
+};
 
 const withDefaultTestEnv = () => {
   const env = { ...process.env };
@@ -175,10 +215,27 @@ const main = async () => {
 
   if (!options.skipMigrate) {
     process.stdout.write('Running API migrations...\n');
-    await runCommand({
+    const migrateRetryAttemptsRaw =
+      process.env.LOCAL_TEST_MIGRATE_RETRIES ?? '3';
+    const migrateRetryDelayRaw =
+      process.env.LOCAL_TEST_MIGRATE_RETRY_DELAY_MS ?? '2000';
+    const migrateRetryAttempts =
+      Number.isInteger(Number(migrateRetryAttemptsRaw)) &&
+      Number(migrateRetryAttemptsRaw) > 0
+        ? Math.min(Number(migrateRetryAttemptsRaw), 10)
+        : 3;
+    const migrateRetryDelayMs =
+      Number.isInteger(Number(migrateRetryDelayRaw)) &&
+      Number(migrateRetryDelayRaw) > 0
+        ? Math.min(Number(migrateRetryDelayRaw), 60_000)
+        : 2_000;
+    await runCommandWithRetry({
+      attempts: migrateRetryAttempts,
       command: npmInvocation.command,
       args: [...npmInvocation.baseArgs, '--workspace', 'apps/api', 'run', 'migrate:up'],
+      delayMs: migrateRetryDelayMs,
       env: testEnv,
+      label: 'API migrations',
     });
   }
 

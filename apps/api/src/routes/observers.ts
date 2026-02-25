@@ -13,19 +13,120 @@ const UUID_PATTERN =
 const isUuid = (value: string) => UUID_PATTERN.test(value);
 const DEFAULT_PROFILE_LIST_LIMIT = 6;
 const MAX_PROFILE_LIST_LIMIT = 20;
+const OBSERVER_MAX_OFFSET = 10_000;
+const OBSERVER_ME_PROFILE_QUERY_FIELDS = [
+  'followingLimit',
+  'watchlistLimit',
+  'predictionLimit',
+] as const;
+const OBSERVER_PUBLIC_PROFILE_QUERY_FIELDS = [
+  'followingLimit',
+  'watchlistLimit',
+  'predictionLimit',
+] as const;
+const OBSERVER_FOLLOWING_QUERY_FIELDS = ['limit', 'offset'] as const;
+const OBSERVER_DIGEST_QUERY_FIELDS = [
+  'unseenOnly',
+  'fromFollowingStudioOnly',
+  'limit',
+  'offset',
+] as const;
+const OBSERVER_EMPTY_QUERY_FIELDS: readonly string[] = [];
+const OBSERVER_PREFERENCES_ALLOWED_FIELDS = ['digest'] as const;
+const OBSERVER_PREFERENCES_DIGEST_ALLOWED_FIELDS = [
+  'unseenOnly',
+  'followingOnly',
+] as const;
+const OBSERVER_INVALID_BODY_FIELDS = 'OBSERVER_INVALID_BODY_FIELDS';
 
-const toSafeLimit = (
+const assertAllowedQueryFields = (
+  query: unknown,
+  allowed: readonly string[],
+  errorCode: string,
+) => {
+  const queryRecord =
+    query && typeof query === 'object'
+      ? (query as Record<string, unknown>)
+      : {};
+  const unknown = Object.keys(queryRecord).filter(
+    (key) => !allowed.includes(key),
+  );
+  if (unknown.length > 0) {
+    throw new ServiceError(
+      errorCode,
+      `Unsupported query fields: ${unknown.join(', ')}`,
+      400,
+    );
+  }
+  return queryRecord;
+};
+
+const assertAllowedBodyFields = (
+  body: unknown,
+  allowed: readonly string[],
+  errorCode: string,
+) => {
+  if (body === undefined || body === null) {
+    return {};
+  }
+  if (typeof body !== 'object' || Array.isArray(body)) {
+    throw new ServiceError(errorCode, 'Body must be a JSON object.', 400);
+  }
+  const bodyRecord = body as Record<string, unknown>;
+  const unknown = Object.keys(bodyRecord).filter(
+    (key) => !allowed.includes(key),
+  );
+  if (unknown.length > 0) {
+    throw new ServiceError(
+      errorCode,
+      `Unsupported body fields: ${unknown.join(', ')}`,
+      400,
+    );
+  }
+  return bodyRecord;
+};
+
+const parseBoundedLimit = (
   value: unknown,
-  fallback: number = DEFAULT_PROFILE_LIST_LIMIT,
+  {
+    fallback,
+    min,
+    max,
+    field,
+  }: { fallback: number; min: number; max: number; field: string },
 ) => {
   if (value === undefined) {
     return fallback;
   }
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) {
-    return fallback;
+
+  let normalized: unknown = value;
+  if (Array.isArray(normalized)) {
+    if (normalized.length !== 1) {
+      throw new ServiceError(
+        'OBSERVER_PAGINATION_INVALID',
+        `${field} must be a single integer.`,
+        400,
+      );
+    }
+    [normalized] = normalized;
   }
-  return Math.max(1, Math.min(Math.floor(parsed), MAX_PROFILE_LIST_LIMIT));
+
+  const parsed = Number(normalized);
+  if (!(Number.isFinite(parsed) && Number.isInteger(parsed))) {
+    throw new ServiceError(
+      'OBSERVER_PAGINATION_INVALID',
+      `${field} must be an integer.`,
+      400,
+    );
+  }
+  if (parsed < min || parsed > max) {
+    throw new ServiceError(
+      'OBSERVER_PAGINATION_INVALID',
+      `${field} must be between ${min} and ${max}.`,
+      400,
+    );
+  }
+  return parsed;
 };
 
 const toSafeNumber = (value: unknown) => Number(value ?? 0);
@@ -36,11 +137,24 @@ const parseOptionalBoolean = (
   if (value === undefined || value === null) {
     return null;
   }
-  if (typeof value === 'boolean') {
-    return value;
+
+  let normalizedValue: unknown = value;
+  if (Array.isArray(normalizedValue)) {
+    if (normalizedValue.length !== 1) {
+      throw new ServiceError(
+        'OBSERVER_PREFERENCES_INVALID',
+        `Invalid boolean for ${fieldName}.`,
+        400,
+      );
+    }
+    [normalizedValue] = normalizedValue;
   }
-  if (typeof value === 'string') {
-    const normalized = value.trim().toLowerCase();
+
+  if (typeof normalizedValue === 'boolean') {
+    return normalizedValue;
+  }
+  if (typeof normalizedValue === 'string') {
+    const normalized = normalizedValue.trim().toLowerCase();
     if (normalized === 'true') {
       return true;
     }
@@ -57,10 +171,30 @@ const parseOptionalBoolean = (
 
 router.get('/observers/me/profile', requireHuman, async (req, res, next) => {
   try {
+    const query = assertAllowedQueryFields(
+      req.query,
+      OBSERVER_ME_PROFILE_QUERY_FIELDS,
+      'OBSERVER_INVALID_QUERY_FIELDS',
+    );
     const observerId = req.auth?.id as string;
-    const followingLimit = toSafeLimit(req.query.followingLimit);
-    const watchlistLimit = toSafeLimit(req.query.watchlistLimit);
-    const predictionLimit = toSafeLimit(req.query.predictionLimit);
+    const followingLimit = parseBoundedLimit(query.followingLimit, {
+      fallback: DEFAULT_PROFILE_LIST_LIMIT,
+      min: 1,
+      max: MAX_PROFILE_LIST_LIMIT,
+      field: 'followingLimit',
+    });
+    const watchlistLimit = parseBoundedLimit(query.watchlistLimit, {
+      fallback: DEFAULT_PROFILE_LIST_LIMIT,
+      min: 1,
+      max: MAX_PROFILE_LIST_LIMIT,
+      field: 'watchlistLimit',
+    });
+    const predictionLimit = parseBoundedLimit(query.predictionLimit, {
+      fallback: DEFAULT_PROFILE_LIST_LIMIT,
+      min: 1,
+      max: MAX_PROFILE_LIST_LIMIT,
+      field: 'predictionLimit',
+    });
 
     const [observerResult, countsResult, followingResult, watchlistResult] =
       await Promise.all([
@@ -250,6 +384,11 @@ router.get('/observers/me/profile', requireHuman, async (req, res, next) => {
 
 router.get('/observers/:id/profile', async (req, res, next) => {
   try {
+    const query = assertAllowedQueryFields(
+      req.query,
+      OBSERVER_PUBLIC_PROFILE_QUERY_FIELDS,
+      'OBSERVER_INVALID_QUERY_FIELDS',
+    );
     const observerId = req.params.id;
     if (!isUuid(observerId)) {
       throw new ServiceError(
@@ -259,9 +398,24 @@ router.get('/observers/:id/profile', async (req, res, next) => {
       );
     }
 
-    const followingLimit = toSafeLimit(req.query.followingLimit);
-    const watchlistLimit = toSafeLimit(req.query.watchlistLimit);
-    const predictionLimit = toSafeLimit(req.query.predictionLimit);
+    const followingLimit = parseBoundedLimit(query.followingLimit, {
+      fallback: DEFAULT_PROFILE_LIST_LIMIT,
+      min: 1,
+      max: MAX_PROFILE_LIST_LIMIT,
+      field: 'followingLimit',
+    });
+    const watchlistLimit = parseBoundedLimit(query.watchlistLimit, {
+      fallback: DEFAULT_PROFILE_LIST_LIMIT,
+      min: 1,
+      max: MAX_PROFILE_LIST_LIMIT,
+      field: 'watchlistLimit',
+    });
+    const predictionLimit = parseBoundedLimit(query.predictionLimit, {
+      fallback: DEFAULT_PROFILE_LIST_LIMIT,
+      min: 1,
+      max: MAX_PROFILE_LIST_LIMIT,
+      field: 'predictionLimit',
+    });
 
     const [observerResult, countsResult, followingResult, watchlistResult] =
       await Promise.all([
@@ -449,6 +603,11 @@ router.get(
   requireHuman,
   async (req, res, next) => {
     try {
+      assertAllowedQueryFields(
+        req.query,
+        OBSERVER_EMPTY_QUERY_FIELDS,
+        'OBSERVER_INVALID_QUERY_FIELDS',
+      );
       const observerId = req.auth?.id as string;
       const preferences =
         await draftArcService.getDigestPreferences(observerId);
@@ -471,14 +630,27 @@ router.put(
   observerActionRateLimiter,
   async (req, res, next) => {
     try {
+      assertAllowedQueryFields(
+        req.query,
+        OBSERVER_EMPTY_QUERY_FIELDS,
+        'OBSERVER_INVALID_QUERY_FIELDS',
+      );
       const observerId = req.auth?.id as string;
-      const body =
-        typeof req.body === 'object' && req.body !== null
-          ? (req.body as {
-              digest?: { unseenOnly?: unknown; followingOnly?: unknown };
-            })
-          : {};
-      const digest = body.digest ?? {};
+      const body = assertAllowedBodyFields(
+        req.body,
+        OBSERVER_PREFERENCES_ALLOWED_FIELDS,
+        'OBSERVER_PREFERENCES_INVALID',
+      ) as {
+        digest?: unknown;
+      };
+      const digest = assertAllowedBodyFields(
+        body.digest,
+        OBSERVER_PREFERENCES_DIGEST_ALLOWED_FIELDS,
+        'OBSERVER_PREFERENCES_INVALID',
+      ) as {
+        unseenOnly?: unknown;
+        followingOnly?: unknown;
+      };
       const unseenOnly = parseOptionalBoolean(
         digest.unseenOnly,
         'digest.unseenOnly',
@@ -511,13 +683,24 @@ router.put(
 
 router.get('/me/following', requireHuman, async (req, res, next) => {
   try {
+    const query = assertAllowedQueryFields(
+      req.query,
+      OBSERVER_FOLLOWING_QUERY_FIELDS,
+      'OBSERVER_INVALID_QUERY_FIELDS',
+    );
     const observerId = req.auth?.id as string;
-    const limit = req.query.limit ? Number(req.query.limit) : 50;
-    const offset = req.query.offset ? Number(req.query.offset) : 0;
-    const safeLimit = Number.isFinite(limit)
-      ? Math.max(1, Math.min(limit, 100))
-      : 50;
-    const safeOffset = Number.isFinite(offset) ? Math.max(0, offset) : 0;
+    const safeLimit = parseBoundedLimit(query.limit, {
+      fallback: 50,
+      min: 1,
+      max: 100,
+      field: 'limit',
+    });
+    const safeOffset = parseBoundedLimit(query.offset, {
+      fallback: 0,
+      min: 0,
+      max: OBSERVER_MAX_OFFSET,
+      field: 'offset',
+    });
 
     const result = await db.query(
       `SELECT
@@ -558,6 +741,11 @@ router.get('/me/following', requireHuman, async (req, res, next) => {
 
 router.get('/observers/watchlist', requireHuman, async (req, res, next) => {
   try {
+    assertAllowedQueryFields(
+      req.query,
+      OBSERVER_EMPTY_QUERY_FIELDS,
+      'OBSERVER_INVALID_QUERY_FIELDS',
+    );
     const observerId = req.auth?.id as string;
     const items = await draftArcService.listWatchlist(observerId);
     res.json(items);
@@ -572,6 +760,16 @@ router.post(
   observerActionRateLimiter,
   async (req, res, next) => {
     try {
+      assertAllowedQueryFields(
+        req.query,
+        OBSERVER_EMPTY_QUERY_FIELDS,
+        'OBSERVER_INVALID_QUERY_FIELDS',
+      );
+      assertAllowedBodyFields(
+        req.body,
+        OBSERVER_EMPTY_QUERY_FIELDS,
+        OBSERVER_INVALID_BODY_FIELDS,
+      );
       const observerId = req.auth?.id as string;
       const draftId = req.params.draftId;
       if (!isUuid(draftId)) {
@@ -591,6 +789,16 @@ router.delete(
   observerActionRateLimiter,
   async (req, res, next) => {
     try {
+      assertAllowedQueryFields(
+        req.query,
+        OBSERVER_EMPTY_QUERY_FIELDS,
+        'OBSERVER_INVALID_QUERY_FIELDS',
+      );
+      assertAllowedBodyFields(
+        req.body,
+        OBSERVER_EMPTY_QUERY_FIELDS,
+        OBSERVER_INVALID_BODY_FIELDS,
+      );
       const observerId = req.auth?.id as string;
       const draftId = req.params.draftId;
       if (!isUuid(draftId)) {
@@ -606,6 +814,11 @@ router.delete(
 
 router.get('/observers/engagements', requireHuman, async (req, res, next) => {
   try {
+    assertAllowedQueryFields(
+      req.query,
+      OBSERVER_EMPTY_QUERY_FIELDS,
+      'OBSERVER_INVALID_QUERY_FIELDS',
+    );
     const observerId = req.auth?.id as string;
     const items = await draftArcService.listDraftEngagements(observerId);
     res.json(items);
@@ -620,6 +833,16 @@ router.post(
   observerActionRateLimiter,
   async (req, res, next) => {
     try {
+      assertAllowedQueryFields(
+        req.query,
+        OBSERVER_EMPTY_QUERY_FIELDS,
+        'OBSERVER_INVALID_QUERY_FIELDS',
+      );
+      assertAllowedBodyFields(
+        req.body,
+        OBSERVER_EMPTY_QUERY_FIELDS,
+        OBSERVER_INVALID_BODY_FIELDS,
+      );
       const observerId = req.auth?.id as string;
       const draftId = req.params.draftId;
       if (!isUuid(draftId)) {
@@ -639,6 +862,16 @@ router.delete(
   observerActionRateLimiter,
   async (req, res, next) => {
     try {
+      assertAllowedQueryFields(
+        req.query,
+        OBSERVER_EMPTY_QUERY_FIELDS,
+        'OBSERVER_INVALID_QUERY_FIELDS',
+      );
+      assertAllowedBodyFields(
+        req.body,
+        OBSERVER_EMPTY_QUERY_FIELDS,
+        OBSERVER_INVALID_BODY_FIELDS,
+      );
       const observerId = req.auth?.id as string;
       const draftId = req.params.draftId;
       if (!isUuid(draftId)) {
@@ -658,6 +891,16 @@ router.post(
   observerActionRateLimiter,
   async (req, res, next) => {
     try {
+      assertAllowedQueryFields(
+        req.query,
+        OBSERVER_EMPTY_QUERY_FIELDS,
+        'OBSERVER_INVALID_QUERY_FIELDS',
+      );
+      assertAllowedBodyFields(
+        req.body,
+        OBSERVER_EMPTY_QUERY_FIELDS,
+        OBSERVER_INVALID_BODY_FIELDS,
+      );
       const observerId = req.auth?.id as string;
       const draftId = req.params.draftId;
       if (!isUuid(draftId)) {
@@ -677,6 +920,16 @@ router.delete(
   observerActionRateLimiter,
   async (req, res, next) => {
     try {
+      assertAllowedQueryFields(
+        req.query,
+        OBSERVER_EMPTY_QUERY_FIELDS,
+        'OBSERVER_INVALID_QUERY_FIELDS',
+      );
+      assertAllowedBodyFields(
+        req.body,
+        OBSERVER_EMPTY_QUERY_FIELDS,
+        OBSERVER_INVALID_BODY_FIELDS,
+      );
       const observerId = req.auth?.id as string;
       const draftId = req.params.draftId;
       if (!isUuid(draftId)) {
@@ -692,17 +945,38 @@ router.delete(
 
 router.get('/observers/digest', requireHuman, async (req, res, next) => {
   try {
+    const query = assertAllowedQueryFields(
+      req.query,
+      OBSERVER_DIGEST_QUERY_FIELDS,
+      'OBSERVER_INVALID_QUERY_FIELDS',
+    );
     const observerId = req.auth?.id as string;
     const unseenOnlyQuery = parseOptionalBoolean(
-      req.query.unseenOnly,
+      query.unseenOnly,
       'unseenOnly',
     );
     const fromFollowingStudioOnlyQuery = parseOptionalBoolean(
-      req.query.fromFollowingStudioOnly,
+      query.fromFollowingStudioOnly,
       'fromFollowingStudioOnly',
     );
-    const limit = req.query.limit ? Number(req.query.limit) : undefined;
-    const offset = req.query.offset ? Number(req.query.offset) : undefined;
+    const limit =
+      query.limit === undefined
+        ? undefined
+        : parseBoundedLimit(query.limit, {
+            fallback: 20,
+            min: 1,
+            max: 100,
+            field: 'limit',
+          });
+    const offset =
+      query.offset === undefined
+        ? undefined
+        : parseBoundedLimit(query.offset, {
+            fallback: 0,
+            min: 0,
+            max: OBSERVER_MAX_OFFSET,
+            field: 'offset',
+          });
     const preferences = await draftArcService.getDigestPreferences(observerId);
     const entries = await draftArcService.listDigest(observerId, {
       unseenOnly: unseenOnlyQuery ?? preferences.digestUnseenOnly,
@@ -723,6 +997,16 @@ router.post(
   observerActionRateLimiter,
   async (req, res, next) => {
     try {
+      assertAllowedQueryFields(
+        req.query,
+        OBSERVER_EMPTY_QUERY_FIELDS,
+        'OBSERVER_INVALID_QUERY_FIELDS',
+      );
+      assertAllowedBodyFields(
+        req.body,
+        OBSERVER_EMPTY_QUERY_FIELDS,
+        OBSERVER_INVALID_BODY_FIELDS,
+      );
       const observerId = req.auth?.id as string;
       const entryId = req.params.entryId;
       if (!isUuid(entryId)) {

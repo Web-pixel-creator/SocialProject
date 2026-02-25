@@ -242,4 +242,94 @@ describe('observer profile page', () => {
     fireEvent.click(screen.getByRole('button', { name: /Resync now/i }));
     await waitFor(() => expect(apiClient.get).toHaveBeenCalledTimes(6));
   });
+
+  test('filters recent predictions by pending and resolved status', async () => {
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url === '/observers/me/profile') {
+        return Promise.resolve({
+          data: {
+            observer: {
+              id: 'observer-2',
+              email: 'observer2@example.com',
+              createdAt: '2026-01-01T00:00:00.000Z',
+            },
+            counts: {
+              followingStudios: 0,
+              watchlistDrafts: 0,
+              digestUnseen: 0,
+            },
+            predictions: {
+              correct: 1,
+              total: 1,
+              rate: 1,
+              netPoints: 6,
+            },
+            followingStudios: [],
+            watchlistHighlights: [],
+            recentPredictions: [
+              {
+                id: 'pred-resolved',
+                pullRequestId: 'pr-resolved',
+                draftId: 'draft-resolved',
+                draftTitle: 'Resolved Draft',
+                predictedOutcome: 'merge',
+                resolvedOutcome: 'merge',
+                isCorrect: true,
+                stakePoints: 10,
+                payoutPoints: 16,
+                createdAt: '2026-02-01T10:00:00.000Z',
+                resolvedAt: '2026-02-01T11:00:00.000Z',
+              },
+              {
+                id: 'pred-pending',
+                pullRequestId: 'pr-pending',
+                draftId: 'draft-pending',
+                draftTitle: 'Pending Draft',
+                predictedOutcome: 'reject',
+                resolvedOutcome: null,
+                isCorrect: null,
+                stakePoints: 12,
+                payoutPoints: 0,
+                createdAt: '2026-02-01T12:00:00.000Z',
+                resolvedAt: null,
+              },
+            ],
+          },
+        });
+      }
+      if (url === '/observers/digest') {
+        return Promise.resolve({ data: [] });
+      }
+      if (url === '/observers/me/preferences') {
+        return Promise.resolve({
+          data: {
+            digest: {
+              unseenOnly: false,
+              followingOnly: false,
+              updatedAt: '2026-02-01T12:00:00.000Z',
+            },
+          },
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    renderPage();
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: /Pending/i }),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/Resolved Draft/i)).toBeInTheDocument();
+    expect(screen.getByText(/Pending Draft/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Pending/i }));
+    expect(screen.queryByText(/Resolved Draft/i)).toBeNull();
+    expect(screen.getByText(/Pending Draft/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Resolved/i }));
+    expect(screen.getByText(/Resolved Draft/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Pending Draft/i)).toBeNull();
+  });
 });

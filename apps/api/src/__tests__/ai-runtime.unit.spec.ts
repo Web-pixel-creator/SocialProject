@@ -139,4 +139,31 @@ describe('ai runtime http adapters', () => {
     expect(authorRole?.hasAvailableProvider).toBe(false);
     expect((authorRole?.blockedProviders.length ?? 0) > 0).toBe(true);
   });
+
+  test('supports dry-run mode without mutating provider cooldown state', async () => {
+    process.env.AI_PROVIDER_COOLDOWN_MS = '60000';
+
+    const runtime = new AIRuntimeServiceImpl();
+    const dryRunFailure = await runtime.runWithFailover({
+      role: 'author',
+      prompt: 'Dry-run provider validation',
+      providersOverride: ['gpt-4.1'],
+      simulateFailures: ['gpt-4.1'],
+      mutateProviderState: false,
+    });
+
+    expect(dryRunFailure.failed).toBe(true);
+    expect(dryRunFailure.attempts).toHaveLength(1);
+    expect(dryRunFailure.attempts[0]?.status).toBe('failed');
+
+    const runAfterDryRun = await runtime.runWithFailover({
+      role: 'author',
+      prompt: 'Runtime should still execute primary provider',
+      providersOverride: ['gpt-4.1'],
+    });
+
+    expect(runAfterDryRun.failed).toBe(false);
+    expect(runAfterDryRun.selectedProvider).toBe('gpt-4.1');
+    expect(runAfterDryRun.attempts[0]?.status).toBe('success');
+  });
 });

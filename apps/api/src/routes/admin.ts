@@ -5,7 +5,10 @@ import { db } from '../db/pool';
 import { requireAdmin } from '../middleware/admin';
 import { redis } from '../redis/client';
 import { agentGatewayService } from '../services/agentGateway/agentGatewayService';
-import type { AgentGatewaySessionDetail } from '../services/agentGateway/types';
+import type {
+  AgentGatewaySessionDetail,
+  AgentGatewaySessionStatus,
+} from '../services/agentGateway/types';
 import { aiRuntimeService } from '../services/aiRuntime/aiRuntimeService';
 import type { AIRuntimeRole } from '../services/aiRuntime/types';
 import {
@@ -25,8 +28,6 @@ const embeddingBackfillService = new EmbeddingBackfillServiceImpl(db);
 const budgetService = new BudgetServiceImpl();
 const privacyService = new PrivacyServiceImpl(db);
 
-const clamp = (value: number, min: number, max: number) =>
-  Math.min(Math.max(value, min), max);
 const toNumber = (value: string | number | undefined, fallback = 0) =>
   typeof value === 'number'
     ? value
@@ -43,17 +44,1019 @@ const AI_RUNTIME_DRY_RUN_ALLOWED_FIELDS = new Set([
   'timeoutMs',
 ]);
 const AI_RUNTIME_DRY_RUN_MAX_ARRAY_ITEMS = 10;
+const AI_RUNTIME_DRY_RUN_MAX_ARRAY_ITEM_LENGTH = 64;
+const AI_RUNTIME_DRY_RUN_MAX_PROMPT_LENGTH = 4000;
 const AI_RUNTIME_DRY_RUN_MAX_TIMEOUT_MS = 120_000;
+const AI_RUNTIME_PROVIDER_IDENTIFIER_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+const AGENT_GATEWAY_MAX_KEEP_RECENT = 299;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const AGENT_GATEWAY_SESSION_ID_PATTERN = /^ags-[a-z0-9][a-z0-9-]{7,95}$/;
+const AGENT_GATEWAY_CHANNEL_PATTERN = /^[a-z0-9][a-z0-9._:-]{1,63}$/;
+const AGENT_GATEWAY_EXTERNAL_SESSION_ID_PATTERN =
+  /^[a-z0-9][a-z0-9._:-]{0,127}$/i;
+const AGENT_GATEWAY_ROLE_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/;
+const AGENT_GATEWAY_EVENT_TYPE_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,119}$/;
+const ADMIN_UX_EVENT_TYPE_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,119}$/;
+const ADMIN_ERROR_CODE_PATTERN = /^[a-z0-9][a-z0-9_.-]{0,119}$/i;
+const ADMIN_ERROR_ROUTE_PATTERN = /^\/[a-z0-9/_:.-]{0,239}$/i;
 
-const parseOptionalPositiveNumber = (value: unknown): number | undefined => {
-  if (typeof value === 'number') {
-    return Number.isFinite(value) && value > 0 ? value : undefined;
+const parseBoundedQueryInt = (
+  value: unknown,
+  {
+    fieldName,
+    defaultValue,
+    min,
+    max,
+  }: {
+    fieldName: string;
+    defaultValue: number;
+    min: number;
+    max: number;
+  },
+): number => {
+  if (value === undefined || value === null || value === '') {
+    return defaultValue;
   }
-  if (typeof value === 'string') {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+
+  let normalized: unknown = value;
+  if (Array.isArray(normalized)) {
+    if (normalized.length !== 1) {
+      throw new ServiceError(
+        'ADMIN_INVALID_QUERY',
+        `${fieldName} must be a single integer between ${min} and ${max}.`,
+        400,
+      );
+    }
+    [normalized] = normalized;
   }
-  return undefined;
+
+  let parsed = Number.NaN;
+  if (typeof normalized === 'number') {
+    parsed = normalized;
+  } else if (typeof normalized === 'string') {
+    parsed = Number(normalized.trim());
+  }
+
+  if (!(Number.isFinite(parsed) && Number.isInteger(parsed))) {
+    throw new ServiceError(
+      'ADMIN_INVALID_QUERY',
+      `${fieldName} must be an integer between ${min} and ${max}.`,
+      400,
+    );
+  }
+
+  if (parsed < min || parsed > max) {
+    throw new ServiceError(
+      'ADMIN_INVALID_QUERY',
+      `${fieldName} must be between ${min} and ${max}.`,
+      400,
+    );
+  }
+
+  return parsed;
+};
+
+const assertAllowedQueryFields = (
+  query: unknown,
+  {
+    allowed,
+    endpoint,
+  }: {
+    allowed: readonly string[];
+    endpoint: string;
+  },
+): Record<string, unknown> => {
+  const queryRecord =
+    typeof query === 'object' && query !== null
+      ? (query as Record<string, unknown>)
+      : {};
+  const allowedSet = new Set(allowed);
+  const unsupported = Object.keys(queryRecord).filter(
+    (key) => !allowedSet.has(key),
+  );
+  if (unsupported.length > 0) {
+    throw new ServiceError(
+      'ADMIN_INVALID_QUERY',
+      `Unsupported query fields for ${endpoint}: ${unsupported.join(', ')}.`,
+      400,
+    );
+  }
+  return queryRecord;
+};
+
+const assertAllowedBodyFields = (
+  body: unknown,
+  {
+    allowed,
+    endpoint,
+  }: {
+    allowed: readonly string[];
+    endpoint: string;
+  },
+): Record<string, unknown> => {
+  if (body === undefined || body === null) {
+    return {};
+  }
+  if (typeof body !== 'object' || Array.isArray(body)) {
+    throw new ServiceError(
+      'ADMIN_INVALID_BODY',
+      `Body for ${endpoint} must be a JSON object.`,
+      400,
+    );
+  }
+
+  const bodyRecord = body as Record<string, unknown>;
+  const allowedSet = new Set(allowed);
+  const unsupported = Object.keys(bodyRecord).filter(
+    (key) => !allowedSet.has(key),
+  );
+  if (unsupported.length > 0) {
+    throw new ServiceError(
+      'ADMIN_INVALID_BODY',
+      `Unsupported body fields for ${endpoint}: ${unsupported.join(', ')}.`,
+      400,
+    );
+  }
+  return bodyRecord;
+};
+
+const parseBoundedOptionalInt = (
+  value: unknown,
+  {
+    fieldName,
+    min,
+    max,
+    invalidCode = 'ADMIN_INVALID_QUERY',
+  }: {
+    fieldName: string;
+    min: number;
+    max: number;
+    invalidCode?: string;
+  },
+): number | undefined => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+
+  let normalized: unknown = value;
+  if (Array.isArray(normalized)) {
+    if (normalized.length !== 1) {
+      throw new ServiceError(
+        invalidCode,
+        `${fieldName} must be a single integer between ${min} and ${max}.`,
+        400,
+      );
+    }
+    [normalized] = normalized;
+  }
+
+  let parsed = Number.NaN;
+  if (typeof normalized === 'number') {
+    parsed = normalized;
+  } else if (typeof normalized === 'string') {
+    parsed = Number(normalized.trim());
+  }
+
+  if (!(Number.isFinite(parsed) && Number.isInteger(parsed))) {
+    throw new ServiceError(
+      invalidCode,
+      `${fieldName} must be an integer between ${min} and ${max}.`,
+      400,
+    );
+  }
+  if (parsed < min || parsed > max) {
+    throw new ServiceError(
+      invalidCode,
+      `${fieldName} must be between ${min} and ${max}.`,
+      400,
+    );
+  }
+
+  return parsed;
+};
+
+const parseOptionalBooleanFlag = (
+  value: unknown,
+  {
+    fieldName,
+    invalidCode,
+  }: {
+    fieldName: string;
+    invalidCode: string;
+  },
+): boolean | undefined => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+
+  let normalized: unknown = value;
+  if (Array.isArray(normalized)) {
+    if (normalized.length !== 1) {
+      throw new ServiceError(
+        invalidCode,
+        `${fieldName} must be a single boolean value.`,
+        400,
+      );
+    }
+    [normalized] = normalized;
+  }
+
+  if (typeof normalized === 'boolean') {
+    return normalized;
+  }
+  if (typeof normalized !== 'string') {
+    throw new ServiceError(
+      invalidCode,
+      `${fieldName} must be a boolean value.`,
+      400,
+    );
+  }
+
+  const lowered = normalized.trim().toLowerCase();
+  if (lowered === 'true') {
+    return true;
+  }
+  if (lowered === 'false') {
+    return false;
+  }
+
+  throw new ServiceError(
+    invalidCode,
+    `${fieldName} must be true or false.`,
+    400,
+  );
+};
+
+const parseAgentGatewaySourceQuery = (value: unknown): 'db' | 'memory' => {
+  if (value === undefined || value === null || value === '') {
+    return 'db';
+  }
+
+  let normalized: unknown = value;
+  if (Array.isArray(normalized)) {
+    if (normalized.length !== 1) {
+      throw new ServiceError(
+        'ADMIN_INVALID_QUERY',
+        "source must be either 'db' or 'memory'.",
+        400,
+      );
+    }
+    [normalized] = normalized;
+  }
+
+  if (typeof normalized !== 'string') {
+    throw new ServiceError(
+      'ADMIN_INVALID_QUERY',
+      "source must be either 'db' or 'memory'.",
+      400,
+    );
+  }
+
+  const source = normalized.trim().toLowerCase();
+  if (source === '' || source === 'db') {
+    return 'db';
+  }
+  if (source === 'memory') {
+    return 'memory';
+  }
+
+  throw new ServiceError(
+    'ADMIN_INVALID_QUERY',
+    "source must be either 'db' or 'memory'.",
+    400,
+  );
+};
+
+const parseAgentGatewaySessionIdParam = (value: unknown): string => {
+  if (typeof value !== 'string') {
+    throw new ServiceError(
+      'ADMIN_INVALID_SESSION_ID',
+      'sessionId must be a valid agent gateway session id.',
+      400,
+    );
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (!AGENT_GATEWAY_SESSION_ID_PATTERN.test(normalized)) {
+    throw new ServiceError(
+      'ADMIN_INVALID_SESSION_ID',
+      'sessionId must be a valid agent gateway session id.',
+      400,
+    );
+  }
+
+  return normalized;
+};
+
+const parseOptionalBoundedQueryString = (
+  value: unknown,
+  {
+    fieldName,
+    maxLength,
+  }: {
+    fieldName: string;
+    maxLength: number;
+  },
+): string | null => {
+  if (value === undefined || value === null || value === '') {
+    return null;
+  }
+
+  let normalized: unknown = value;
+  if (Array.isArray(normalized)) {
+    if (normalized.length !== 1) {
+      throw new ServiceError(
+        'ADMIN_INVALID_QUERY',
+        `${fieldName} must be a single string value.`,
+        400,
+      );
+    }
+    [normalized] = normalized;
+  }
+
+  if (typeof normalized !== 'string') {
+    throw new ServiceError(
+      'ADMIN_INVALID_QUERY',
+      `${fieldName} must be a string value.`,
+      400,
+    );
+  }
+
+  const trimmed = normalized.trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+  if (trimmed.length > maxLength) {
+    throw new ServiceError(
+      'ADMIN_INVALID_QUERY',
+      `${fieldName} must be at most ${maxLength} characters.`,
+      400,
+    );
+  }
+
+  return trimmed;
+};
+
+const parseOptionalUuidQueryString = (
+  value: unknown,
+  {
+    fieldName,
+    invalidCode = 'ADMIN_INVALID_QUERY',
+  }: {
+    fieldName: string;
+    invalidCode?: string;
+  },
+): string | null => {
+  const parsed = parseOptionalBoundedQueryString(value, {
+    fieldName,
+    maxLength: 64,
+  });
+  if (!parsed) {
+    return null;
+  }
+  if (!UUID_PATTERN.test(parsed)) {
+    throw new ServiceError(invalidCode, `${fieldName} must be a UUID.`, 400);
+  }
+  return parsed.toLowerCase();
+};
+
+const parseOptionalUxEventTypeQueryString = (
+  value: unknown,
+  {
+    fieldName,
+  }: {
+    fieldName: string;
+  },
+): string | null => {
+  const parsed = parseOptionalBoundedQueryString(value, {
+    fieldName,
+    maxLength: 120,
+  });
+  if (!parsed) {
+    return null;
+  }
+  const normalized = parsed.toLowerCase();
+  if (!ADMIN_UX_EVENT_TYPE_PATTERN.test(normalized)) {
+    throw new ServiceError(
+      'ADMIN_INVALID_QUERY',
+      `${fieldName} must use a valid event type format.`,
+      400,
+    );
+  }
+  return normalized;
+};
+
+const parseOptionalErrorCodeQueryString = (
+  value: unknown,
+  {
+    fieldName,
+    maxLength,
+  }: {
+    fieldName: string;
+    maxLength: number;
+  },
+): string | null => {
+  const parsed = parseOptionalBoundedQueryString(value, {
+    fieldName,
+    maxLength,
+  });
+  if (!parsed) {
+    return null;
+  }
+  if (!ADMIN_ERROR_CODE_PATTERN.test(parsed)) {
+    throw new ServiceError(
+      'ADMIN_INVALID_QUERY',
+      `${fieldName} must use a valid error-code format.`,
+      400,
+    );
+  }
+  return parsed;
+};
+
+const parseOptionalErrorRouteQueryString = (
+  value: unknown,
+  {
+    fieldName,
+    maxLength,
+  }: {
+    fieldName: string;
+    maxLength: number;
+  },
+): string | null => {
+  const parsed = parseOptionalBoundedQueryString(value, {
+    fieldName,
+    maxLength,
+  });
+  if (!parsed) {
+    return null;
+  }
+  if (!ADMIN_ERROR_ROUTE_PATTERN.test(parsed)) {
+    throw new ServiceError(
+      'ADMIN_INVALID_QUERY',
+      `${fieldName} must use a valid route format.`,
+      400,
+    );
+  }
+  return parsed;
+};
+
+const parseOptionalGatewayChannelQueryString = (
+  value: unknown,
+  {
+    fieldName,
+  }: {
+    fieldName: string;
+  },
+): string | null => {
+  const parsed = parseOptionalBoundedQueryString(value, {
+    fieldName,
+    maxLength: 64,
+  });
+  if (!parsed) {
+    return null;
+  }
+  const normalized = parsed.toLowerCase();
+  if (!AGENT_GATEWAY_CHANNEL_PATTERN.test(normalized)) {
+    throw new ServiceError(
+      'ADMIN_INVALID_QUERY',
+      `${fieldName} must use a valid channel format.`,
+      400,
+    );
+  }
+  return normalized;
+};
+
+const parseOptionalProviderIdentifierQueryString = (
+  value: unknown,
+  {
+    fieldName,
+  }: {
+    fieldName: string;
+  },
+): string | null => {
+  const parsed = parseOptionalBoundedQueryString(value, {
+    fieldName,
+    maxLength: 64,
+  });
+  if (!parsed) {
+    return null;
+  }
+  const normalized = parsed.toLowerCase();
+  if (!AI_RUNTIME_PROVIDER_IDENTIFIER_PATTERN.test(normalized)) {
+    throw new ServiceError(
+      'ADMIN_INVALID_QUERY',
+      `${fieldName} must use provider identifier format.`,
+      400,
+    );
+  }
+  return normalized;
+};
+
+const parseOptionalGatewaySessionStatusQuery = (
+  value: unknown,
+  {
+    fieldName,
+  }: {
+    fieldName: string;
+  },
+): AgentGatewaySessionStatus | null => {
+  const parsed = parseOptionalBoundedQueryString(value, {
+    fieldName,
+    maxLength: 16,
+  });
+  if (!parsed) {
+    return null;
+  }
+  const normalized = parsed.toLowerCase();
+  if (normalized === 'active' || normalized === 'closed') {
+    return normalized;
+  }
+  throw new ServiceError(
+    'ADMIN_INVALID_QUERY',
+    `${fieldName} must be either "active" or "closed".`,
+    400,
+  );
+};
+
+const parseOptionalGatewayRoleQueryString = (
+  value: unknown,
+  {
+    fieldName,
+  }: {
+    fieldName: string;
+  },
+): string | null => {
+  const parsed = parseOptionalBoundedQueryString(value, {
+    fieldName,
+    maxLength: 64,
+  });
+  if (!parsed) {
+    return null;
+  }
+  const normalized = parsed.toLowerCase();
+  if (!AGENT_GATEWAY_ROLE_PATTERN.test(normalized)) {
+    throw new ServiceError(
+      'ADMIN_INVALID_QUERY',
+      `${fieldName} must use a valid role format.`,
+      400,
+    );
+  }
+  return normalized;
+};
+
+const parseOptionalGatewayEventTypeQueryString = (
+  value: unknown,
+  {
+    fieldName,
+  }: {
+    fieldName: string;
+  },
+): string | null => {
+  const parsed = parseOptionalBoundedQueryString(value, {
+    fieldName,
+    maxLength: 120,
+  });
+  if (!parsed) {
+    return null;
+  }
+  const normalized = parsed.toLowerCase();
+  if (!AGENT_GATEWAY_EVENT_TYPE_PATTERN.test(normalized)) {
+    throw new ServiceError(
+      'ADMIN_INVALID_QUERY',
+      `${fieldName} must use a valid event type format.`,
+      400,
+    );
+  }
+  return normalized;
+};
+
+const parseOptionalGatewayEventQueryString = (
+  value: unknown,
+  {
+    fieldName,
+  }: {
+    fieldName: string;
+  },
+): string | null => {
+  const parsed = parseOptionalBoundedQueryString(value, {
+    fieldName,
+    maxLength: 160,
+  });
+  if (!parsed) {
+    return null;
+  }
+  return parsed.toLowerCase();
+};
+
+const parseOptionalBoundedBodyString = (
+  value: unknown,
+  {
+    fieldName,
+    maxLength,
+  }: {
+    fieldName: string;
+    maxLength: number;
+  },
+): string | undefined => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+
+  let normalized: unknown = value;
+  if (Array.isArray(normalized)) {
+    if (normalized.length !== 1) {
+      throw new ServiceError(
+        'ADMIN_INVALID_BODY',
+        `${fieldName} must be a single string value.`,
+        400,
+      );
+    }
+    [normalized] = normalized;
+  }
+
+  if (typeof normalized !== 'string') {
+    throw new ServiceError(
+      'ADMIN_INVALID_BODY',
+      `${fieldName} must be a string value.`,
+      400,
+    );
+  }
+
+  const trimmed = normalized.trim();
+  if (trimmed.length === 0) {
+    return undefined;
+  }
+  if (trimmed.length > maxLength) {
+    throw new ServiceError(
+      'ADMIN_INVALID_BODY',
+      `${fieldName} must be at most ${maxLength} characters.`,
+      400,
+    );
+  }
+
+  return trimmed;
+};
+
+const parseRequiredBoundedBodyString = (
+  value: unknown,
+  {
+    fieldName,
+    maxLength,
+  }: {
+    fieldName: string;
+    maxLength: number;
+  },
+): string => {
+  const parsed = parseOptionalBoundedBodyString(value, {
+    fieldName,
+    maxLength,
+  });
+  if (!parsed) {
+    throw new ServiceError(
+      'ADMIN_INVALID_BODY',
+      `${fieldName} is required.`,
+      400,
+    );
+  }
+  return parsed;
+};
+
+const parseRequiredUuidBodyString = (
+  value: unknown,
+  {
+    fieldName,
+    invalidCode = 'ADMIN_INVALID_BODY',
+  }: {
+    fieldName: string;
+    invalidCode?: string;
+  },
+): string => {
+  const parsed = parseRequiredBoundedBodyString(value, {
+    fieldName,
+    maxLength: 64,
+  });
+  if (!UUID_PATTERN.test(parsed)) {
+    throw new ServiceError(invalidCode, `${fieldName} must be a UUID.`, 400);
+  }
+  return parsed.toLowerCase();
+};
+
+const parseOptionalUuidBodyString = (
+  value: unknown,
+  {
+    fieldName,
+    invalidCode = 'ADMIN_INVALID_BODY',
+  }: {
+    fieldName: string;
+    invalidCode?: string;
+  },
+): string | undefined => {
+  const parsed = parseOptionalBoundedBodyString(value, {
+    fieldName,
+    maxLength: 64,
+  });
+  if (!parsed) {
+    return undefined;
+  }
+  if (!UUID_PATTERN.test(parsed)) {
+    throw new ServiceError(invalidCode, `${fieldName} must be a UUID.`, 400);
+  }
+  return parsed.toLowerCase();
+};
+
+const parseRequiredGatewayChannelBodyString = (
+  value: unknown,
+  {
+    fieldName,
+  }: {
+    fieldName: string;
+  },
+): string => {
+  const parsed = parseRequiredBoundedBodyString(value, {
+    fieldName,
+    maxLength: 64,
+  });
+  const normalized = parsed.toLowerCase();
+  if (!AGENT_GATEWAY_CHANNEL_PATTERN.test(normalized)) {
+    throw new ServiceError(
+      'ADMIN_INVALID_BODY',
+      `${fieldName} must use a valid channel format.`,
+      400,
+    );
+  }
+  return normalized;
+};
+
+const parseOptionalGatewayChannelBodyString = (
+  value: unknown,
+  {
+    fieldName,
+  }: {
+    fieldName: string;
+  },
+): string | undefined => {
+  const parsed = parseOptionalBoundedBodyString(value, {
+    fieldName,
+    maxLength: 64,
+  });
+  if (!parsed) {
+    return undefined;
+  }
+  const normalized = parsed.toLowerCase();
+  if (!AGENT_GATEWAY_CHANNEL_PATTERN.test(normalized)) {
+    throw new ServiceError(
+      'ADMIN_INVALID_BODY',
+      `${fieldName} must use a valid channel format.`,
+      400,
+    );
+  }
+  return normalized;
+};
+
+const parseOptionalGatewayExternalSessionIdBodyString = (
+  value: unknown,
+  {
+    fieldName,
+  }: {
+    fieldName: string;
+  },
+): string | undefined => {
+  const parsed = parseOptionalBoundedBodyString(value, {
+    fieldName,
+    maxLength: 128,
+  });
+  if (!parsed) {
+    return undefined;
+  }
+  if (!AGENT_GATEWAY_EXTERNAL_SESSION_ID_PATTERN.test(parsed)) {
+    throw new ServiceError(
+      'ADMIN_INVALID_BODY',
+      `${fieldName} must use a valid external session id format.`,
+      400,
+    );
+  }
+  return parsed;
+};
+
+const parseRequiredGatewayRoleBodyString = (
+  value: unknown,
+  {
+    fieldName,
+  }: {
+    fieldName: string;
+  },
+): string => {
+  const parsed = parseRequiredBoundedBodyString(value, {
+    fieldName,
+    maxLength: 64,
+  });
+  const normalized = parsed.toLowerCase();
+  if (!AGENT_GATEWAY_ROLE_PATTERN.test(normalized)) {
+    throw new ServiceError(
+      'ADMIN_INVALID_BODY',
+      `${fieldName} must use a valid role format.`,
+      400,
+    );
+  }
+  return normalized;
+};
+
+const parseOptionalGatewayRoleBodyString = (
+  value: unknown,
+  {
+    fieldName,
+  }: {
+    fieldName: string;
+  },
+): string | undefined => {
+  const parsed = parseOptionalBoundedBodyString(value, {
+    fieldName,
+    maxLength: 64,
+  });
+  if (!parsed) {
+    return undefined;
+  }
+  const normalized = parsed.toLowerCase();
+  if (!AGENT_GATEWAY_ROLE_PATTERN.test(normalized)) {
+    throw new ServiceError(
+      'ADMIN_INVALID_BODY',
+      `${fieldName} must use a valid role format.`,
+      400,
+    );
+  }
+  return normalized;
+};
+
+const parseRequiredGatewayEventTypeBodyString = (
+  value: unknown,
+  {
+    fieldName,
+  }: {
+    fieldName: string;
+  },
+): string => {
+  const parsed = parseRequiredBoundedBodyString(value, {
+    fieldName,
+    maxLength: 120,
+  });
+  const normalized = parsed.toLowerCase();
+  if (!AGENT_GATEWAY_EVENT_TYPE_PATTERN.test(normalized)) {
+    throw new ServiceError(
+      'ADMIN_INVALID_BODY',
+      `${fieldName} must use a valid event type format.`,
+      400,
+    );
+  }
+  return normalized;
+};
+
+const parseOptionalStringArrayBody = (
+  value: unknown,
+  {
+    fieldName,
+    maxItems = 20,
+    maxItemLength = 64,
+  }: {
+    fieldName: string;
+    maxItems?: number;
+    maxItemLength?: number;
+  },
+): string[] | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!Array.isArray(value)) {
+    throw new ServiceError(
+      'ADMIN_INVALID_BODY',
+      `${fieldName} must be an array of strings.`,
+      400,
+    );
+  }
+  if (value.length > maxItems) {
+    throw new ServiceError(
+      'ADMIN_INVALID_BODY',
+      `${fieldName} supports up to ${maxItems} items.`,
+      400,
+    );
+  }
+
+  const normalized: string[] = [];
+  for (const item of value) {
+    if (typeof item !== 'string') {
+      throw new ServiceError(
+        'ADMIN_INVALID_BODY',
+        `${fieldName} must contain strings only.`,
+        400,
+      );
+    }
+    const trimmed = item.trim();
+    if (trimmed.length === 0) {
+      continue;
+    }
+    if (trimmed.length > maxItemLength) {
+      throw new ServiceError(
+        'ADMIN_INVALID_BODY',
+        `${fieldName} items must be at most ${maxItemLength} characters.`,
+        400,
+      );
+    }
+    normalized.push(trimmed);
+  }
+
+  return normalized.length > 0 ? Array.from(new Set(normalized)) : undefined;
+};
+
+const parseOptionalGatewayRolesBody = (
+  value: unknown,
+  {
+    fieldName,
+    maxItems = 20,
+    maxItemLength = 64,
+  }: {
+    fieldName: string;
+    maxItems?: number;
+    maxItemLength?: number;
+  },
+): string[] | undefined => {
+  const parsed = parseOptionalStringArrayBody(value, {
+    fieldName,
+    maxItems,
+    maxItemLength,
+  });
+  if (!parsed) {
+    return undefined;
+  }
+
+  const normalized: string[] = [];
+  for (const role of parsed) {
+    const normalizedRole = role.toLowerCase();
+    if (!AGENT_GATEWAY_ROLE_PATTERN.test(normalizedRole)) {
+      throw new ServiceError(
+        'ADMIN_INVALID_BODY',
+        `${fieldName} items must use a valid role format.`,
+        400,
+      );
+    }
+    normalized.push(normalizedRole);
+  }
+
+  return Array.from(new Set(normalized));
+};
+
+const parseOptionalObjectBody = (
+  value: unknown,
+  {
+    fieldName,
+    maxKeys = 50,
+    maxJsonLength = 12_000,
+  }: {
+    fieldName: string;
+    maxKeys?: number;
+    maxJsonLength?: number;
+  },
+): Record<string, unknown> | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!(value && typeof value === 'object') || Array.isArray(value)) {
+    throw new ServiceError(
+      'ADMIN_INVALID_BODY',
+      `${fieldName} must be an object.`,
+      400,
+    );
+  }
+
+  const record = value as Record<string, unknown>;
+  const keyCount = Object.keys(record).length;
+  if (keyCount > maxKeys) {
+    throw new ServiceError(
+      'ADMIN_INVALID_BODY',
+      `${fieldName} supports up to ${maxKeys} keys.`,
+      400,
+    );
+  }
+
+  let serialized = '';
+  try {
+    serialized = JSON.stringify(record);
+  } catch {
+    throw new ServiceError(
+      'ADMIN_INVALID_BODY',
+      `${fieldName} must be JSON-serializable.`,
+      400,
+    );
+  }
+
+  if (serialized.length > maxJsonLength) {
+    throw new ServiceError(
+      'ADMIN_INVALID_BODY',
+      `${fieldName} exceeds max payload size (${maxJsonLength} chars).`,
+      400,
+    );
+  }
+
+  return record;
 };
 
 const parseOptionalStringArrayStrict = (
@@ -61,7 +1064,8 @@ const parseOptionalStringArrayStrict = (
   {
     fieldName,
     maxItems = AI_RUNTIME_DRY_RUN_MAX_ARRAY_ITEMS,
-  }: { fieldName: string; maxItems?: number },
+    maxItemLength = AI_RUNTIME_DRY_RUN_MAX_ARRAY_ITEM_LENGTH,
+  }: { fieldName: string; maxItems?: number; maxItemLength?: number },
 ): string[] | undefined => {
   if (value === undefined) {
     return undefined;
@@ -93,7 +1097,22 @@ const parseOptionalStringArrayStrict = (
     if (trimmed.length === 0) {
       continue;
     }
-    normalized.push(trimmed);
+    if (trimmed.length > maxItemLength) {
+      throw new ServiceError(
+        'AI_RUNTIME_INVALID_INPUT',
+        `${fieldName} items must be at most ${maxItemLength} characters.`,
+        400,
+      );
+    }
+    const identifier = trimmed.toLowerCase();
+    if (!AI_RUNTIME_PROVIDER_IDENTIFIER_PATTERN.test(identifier)) {
+      throw new ServiceError(
+        'AI_RUNTIME_INVALID_INPUT',
+        `${fieldName} items must use provider identifier format.`,
+        400,
+      );
+    }
+    normalized.push(identifier);
   }
   return normalized.length > 0 ? Array.from(new Set(normalized)) : undefined;
 };
@@ -124,13 +1143,6 @@ const parseOptionalRuntimeTimeout = (value: unknown): number | undefined => {
 const getRealtime = (req: Request) =>
   req.app.get('realtime') as RealtimeService | undefined;
 
-const parseOptionalStringArray = (value: unknown): string[] | undefined => {
-  if (!Array.isArray(value)) {
-    return undefined;
-  }
-  return value.filter((item): item is string => typeof item === 'string');
-};
-
 const toObject = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
 
@@ -153,6 +1165,18 @@ const toStringOrNull = (value: unknown): string | null => {
   }
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+};
+
+const toUtcHourBucket = (value: string): string | null => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.valueOf())) {
+    return null;
+  }
+  const year = parsed.getUTCFullYear();
+  const month = `${parsed.getUTCMonth() + 1}`.padStart(2, '0');
+  const day = `${parsed.getUTCDate()}`.padStart(2, '0');
+  const hour = `${parsed.getUTCHours()}`.padStart(2, '0');
+  return `${year}-${month}-${day}T${hour}:00:00Z`;
 };
 
 const bump = (bucket: Record<string, number>, key: string, amount = 1) => {
@@ -296,6 +1320,467 @@ const buildAgentGatewaySessionStatus = (detail: AgentGatewaySessionDetail) => {
   };
 };
 
+const toGatewayEventPayload = (value: unknown): Record<string, unknown> =>
+  value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+
+interface AgentGatewayTelemetrySessionRow {
+  id: string;
+  status: string;
+  channel: string;
+  updatedAt: string;
+}
+
+interface AgentGatewayTelemetryEventRow {
+  sessionId: string;
+  type: string;
+  payload: Record<string, unknown>;
+  createdAt: string;
+}
+
+interface AgentGatewayCompactionHourlyBucket {
+  hour: string;
+  compactions: number;
+  autoCompactions: number;
+  manualCompactions: number;
+  prunedEventCount: number;
+}
+
+type AgentGatewayRiskLevel = 'critical' | 'healthy' | 'unknown' | 'watch';
+
+interface AgentGatewayTelemetryAccumulator {
+  providerUsage: Record<string, number>;
+  channelUsage: Record<string, number>;
+  compactionHourlyBuckets: Map<string, AgentGatewayCompactionHourlyBucket>;
+  activeSessions: number;
+  closedSessions: number;
+  attentionSessions: number;
+  compactedSessions: number;
+  autoCompactedSessions: number;
+  totalEvents: number;
+  draftCycleStepEvents: number;
+  failedStepEvents: number;
+  compactionEvents: number;
+  autoCompactionEvents: number;
+  manualCompactionEvents: number;
+  prunedEventCount: number;
+  attemptSuccess: number;
+  attemptFailed: number;
+  attemptSkippedCooldown: number;
+}
+
+interface AgentGatewaySessionFlags {
+  hasAttention: boolean;
+  hasCompaction: boolean;
+  hasAutoCompaction: boolean;
+}
+
+interface AgentGatewayAboveRiskThresholds {
+  criticalAbove: number;
+  watchAbove: number;
+}
+
+interface AgentGatewayBelowRiskThresholds {
+  criticalBelow: number;
+  watchBelow: number;
+}
+
+interface AgentGatewayTelemetryThresholds {
+  autoCompactionShare: AgentGatewayAboveRiskThresholds;
+  failedStepRate: AgentGatewayAboveRiskThresholds;
+  runtimeSuccessRate: AgentGatewayBelowRiskThresholds;
+  cooldownSkipRate: AgentGatewayAboveRiskThresholds;
+}
+
+const AGENT_GATEWAY_TELEMETRY_THRESHOLDS: AgentGatewayTelemetryThresholds = {
+  autoCompactionShare: {
+    criticalAbove: 0.8,
+    watchAbove: 0.5,
+  },
+  failedStepRate: {
+    criticalAbove: 0.5,
+    watchAbove: 0.25,
+  },
+  runtimeSuccessRate: {
+    criticalBelow: 0.5,
+    watchBelow: 0.75,
+  },
+  cooldownSkipRate: {
+    criticalAbove: 0.4,
+    watchAbove: 0.2,
+  },
+};
+
+const createAgentGatewayTelemetryAccumulator =
+  (): AgentGatewayTelemetryAccumulator => ({
+    providerUsage: {},
+    channelUsage: {},
+    compactionHourlyBuckets: new Map<
+      string,
+      AgentGatewayCompactionHourlyBucket
+    >(),
+    activeSessions: 0,
+    closedSessions: 0,
+    attentionSessions: 0,
+    compactedSessions: 0,
+    autoCompactedSessions: 0,
+    totalEvents: 0,
+    draftCycleStepEvents: 0,
+    failedStepEvents: 0,
+    compactionEvents: 0,
+    autoCompactionEvents: 0,
+    manualCompactionEvents: 0,
+    prunedEventCount: 0,
+    attemptSuccess: 0,
+    attemptFailed: 0,
+    attemptSkippedCooldown: 0,
+  });
+
+const isAutoCompactionReason = (reason: string) =>
+  reason === 'auto_buffer_limit' || reason.startsWith('auto');
+
+const resolveAutoCompactionRiskLevel = (
+  share: number | null,
+): AgentGatewayRiskLevel => {
+  if (typeof share !== 'number' || !Number.isFinite(share)) {
+    return 'unknown';
+  }
+  if (
+    share >=
+    AGENT_GATEWAY_TELEMETRY_THRESHOLDS.autoCompactionShare.criticalAbove
+  ) {
+    return 'critical';
+  }
+  if (
+    share >= AGENT_GATEWAY_TELEMETRY_THRESHOLDS.autoCompactionShare.watchAbove
+  ) {
+    return 'watch';
+  }
+  return 'healthy';
+};
+
+const resolveAboveRiskLevel = (
+  value: number | null,
+  {
+    criticalAbove,
+    watchAbove,
+  }: {
+    criticalAbove: number;
+    watchAbove: number;
+  },
+): AgentGatewayRiskLevel => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return 'unknown';
+  }
+  if (value >= criticalAbove) {
+    return 'critical';
+  }
+  if (value >= watchAbove) {
+    return 'watch';
+  }
+  return 'healthy';
+};
+
+const resolveBelowRiskLevel = (
+  value: number | null,
+  {
+    criticalBelow,
+    watchBelow,
+  }: {
+    criticalBelow: number;
+    watchBelow: number;
+  },
+): AgentGatewayRiskLevel => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return 'unknown';
+  }
+  if (value < criticalBelow) {
+    return 'critical';
+  }
+  if (value < watchBelow) {
+    return 'watch';
+  }
+  return 'healthy';
+};
+
+const mergeRiskLevels = (
+  levels: AgentGatewayRiskLevel[],
+): AgentGatewayRiskLevel => {
+  if (levels.includes('critical')) {
+    return 'critical';
+  }
+  if (levels.includes('watch')) {
+    return 'watch';
+  }
+  if (levels.includes('healthy')) {
+    return 'healthy';
+  }
+  return 'unknown';
+};
+
+const accumulateAgentGatewayAttemptMetrics = (
+  accumulator: AgentGatewayTelemetryAccumulator,
+  payload: Record<string, unknown>,
+) => {
+  const attemptsRaw = payload.attempts;
+  if (!Array.isArray(attemptsRaw)) {
+    return;
+  }
+  for (const attempt of attemptsRaw) {
+    if (!attempt || typeof attempt !== 'object') {
+      continue;
+    }
+    const status = toStringOrNull((attempt as Record<string, unknown>).status);
+    if (status === 'success') {
+      accumulator.attemptSuccess += 1;
+      continue;
+    }
+    if (status === 'failed') {
+      accumulator.attemptFailed += 1;
+      continue;
+    }
+    if (status === 'skipped_cooldown') {
+      accumulator.attemptSkippedCooldown += 1;
+    }
+  }
+};
+
+const accumulateAgentGatewayCompactionMetrics = (
+  accumulator: AgentGatewayTelemetryAccumulator,
+  event: AgentGatewayTelemetryEventRow,
+  payload: Record<string, unknown>,
+  flags: AgentGatewaySessionFlags,
+) => {
+  if (event.type !== 'session_compacted') {
+    return;
+  }
+  accumulator.compactionEvents += 1;
+  flags.hasCompaction = true;
+
+  const compactionReason =
+    toStringOrNull(payload.reason)?.toLowerCase() ?? 'manual';
+  const isAuto = isAutoCompactionReason(compactionReason);
+  if (isAuto) {
+    accumulator.autoCompactionEvents += 1;
+    flags.hasAutoCompaction = true;
+  } else {
+    accumulator.manualCompactionEvents += 1;
+  }
+
+  const prunedCount = Math.max(
+    0,
+    Number(payload.prunedCount ?? payload.pruned_count ?? 0),
+  );
+  accumulator.prunedEventCount += prunedCount;
+
+  const bucketHour = toUtcHourBucket(event.createdAt);
+  if (!bucketHour) {
+    return;
+  }
+  const bucket = accumulator.compactionHourlyBuckets.get(bucketHour) ?? {
+    hour: bucketHour,
+    compactions: 0,
+    autoCompactions: 0,
+    manualCompactions: 0,
+    prunedEventCount: 0,
+  };
+  bucket.compactions += 1;
+  if (isAuto) {
+    bucket.autoCompactions += 1;
+  } else {
+    bucket.manualCompactions += 1;
+  }
+  bucket.prunedEventCount += prunedCount;
+  accumulator.compactionHourlyBuckets.set(bucketHour, bucket);
+};
+
+const accumulateAgentGatewayEventMetrics = (
+  accumulator: AgentGatewayTelemetryAccumulator,
+  event: AgentGatewayTelemetryEventRow,
+  flags: AgentGatewaySessionFlags,
+) => {
+  const selectedProvider = toStringOrNull(event.payload.selectedProvider);
+  if (selectedProvider) {
+    bump(accumulator.providerUsage, selectedProvider);
+  }
+
+  if (event.type === 'draft_cycle_failed') {
+    flags.hasAttention = true;
+  }
+  if (isDraftCycleStepEvent(event.type)) {
+    accumulator.draftCycleStepEvents += 1;
+    if (event.payload.failed === true) {
+      accumulator.failedStepEvents += 1;
+      flags.hasAttention = true;
+    }
+  }
+
+  const payload = toObject(event.payload);
+  accumulateAgentGatewayCompactionMetrics(accumulator, event, payload, flags);
+  accumulateAgentGatewayAttemptMetrics(accumulator, payload);
+};
+
+const finalizeAgentGatewaySessionFlags = (
+  accumulator: AgentGatewayTelemetryAccumulator,
+  flags: AgentGatewaySessionFlags,
+) => {
+  if (flags.hasCompaction) {
+    accumulator.compactedSessions += 1;
+  }
+  if (flags.hasAutoCompaction) {
+    accumulator.autoCompactedSessions += 1;
+  }
+  if (flags.hasAttention) {
+    accumulator.attentionSessions += 1;
+  }
+};
+
+const buildAgentGatewayTelemetrySnapshot = (
+  sessionRows: AgentGatewayTelemetrySessionRow[],
+  eventRows: AgentGatewayTelemetryEventRow[],
+) => {
+  const eventsBySession = new Map<string, AgentGatewayTelemetryEventRow[]>();
+  for (const eventRow of eventRows) {
+    if (!eventRow.sessionId) {
+      continue;
+    }
+    const bucket = eventsBySession.get(eventRow.sessionId) ?? [];
+    bucket.push(eventRow);
+    eventsBySession.set(eventRow.sessionId, bucket);
+  }
+
+  const accumulator = createAgentGatewayTelemetryAccumulator();
+
+  for (const sessionRow of sessionRows) {
+    const sessionEvents = eventsBySession.get(sessionRow.id) ?? [];
+    accumulator.totalEvents += sessionEvents.length;
+    bump(accumulator.channelUsage, sessionRow.channel);
+
+    if (sessionRow.status === 'active') {
+      accumulator.activeSessions += 1;
+    } else if (sessionRow.status === 'closed') {
+      accumulator.closedSessions += 1;
+    }
+
+    const flags: AgentGatewaySessionFlags = {
+      hasAttention: false,
+      hasCompaction: false,
+      hasAutoCompaction: false,
+    };
+
+    for (const event of sessionEvents) {
+      accumulateAgentGatewayEventMetrics(accumulator, event, flags);
+    }
+    finalizeAgentGatewaySessionFlags(accumulator, flags);
+  }
+
+  const totalSessions = sessionRows.length;
+  const totalAttempts =
+    accumulator.attemptSuccess +
+    accumulator.attemptFailed +
+    accumulator.attemptSkippedCooldown;
+  const providerUsageItems = Object.entries(accumulator.providerUsage)
+    .map(([provider, count]) => ({ provider, count }))
+    .sort((left, right) => right.count - left.count);
+  const channelUsageItems = Object.entries(accumulator.channelUsage)
+    .map(([channel, count]) => ({ channel, count }))
+    .sort((left, right) => right.count - left.count);
+  const compactionHourlyTrend = [
+    ...accumulator.compactionHourlyBuckets.values(),
+  ]
+    .sort((left, right) => left.hour.localeCompare(right.hour))
+    .map((bucket) => {
+      const autoCompactionShare = toRate(
+        bucket.autoCompactions,
+        bucket.compactions,
+      );
+      return {
+        ...bucket,
+        autoCompactionShare,
+        autoCompactionRiskLevel:
+          resolveAutoCompactionRiskLevel(autoCompactionShare),
+      };
+    });
+  const autoCompactionShare = toRate(
+    accumulator.autoCompactionEvents,
+    accumulator.compactionEvents,
+  );
+  const failedStepRate = toRate(
+    accumulator.failedStepEvents,
+    accumulator.draftCycleStepEvents,
+  );
+  const successRate = toRate(accumulator.attemptSuccess, totalAttempts);
+  const skippedRate = toRate(accumulator.attemptSkippedCooldown, totalAttempts);
+  const autoCompactionRiskLevel =
+    resolveAutoCompactionRiskLevel(autoCompactionShare);
+  const failedStepRiskLevel = resolveAboveRiskLevel(
+    failedStepRate,
+    AGENT_GATEWAY_TELEMETRY_THRESHOLDS.failedStepRate,
+  );
+  const runtimeSuccessRiskLevel = resolveBelowRiskLevel(
+    successRate,
+    AGENT_GATEWAY_TELEMETRY_THRESHOLDS.runtimeSuccessRate,
+  );
+  const cooldownSkipRiskLevel = resolveAboveRiskLevel(
+    skippedRate,
+    AGENT_GATEWAY_TELEMETRY_THRESHOLDS.cooldownSkipRate,
+  );
+  const telemetryHealthLevel = mergeRiskLevels([
+    autoCompactionRiskLevel,
+    failedStepRiskLevel,
+    runtimeSuccessRiskLevel,
+    cooldownSkipRiskLevel,
+  ]);
+
+  return {
+    sessions: {
+      total: totalSessions,
+      active: accumulator.activeSessions,
+      closed: accumulator.closedSessions,
+      attention: accumulator.attentionSessions,
+      compacted: accumulator.compactedSessions,
+      autoCompacted: accumulator.autoCompactedSessions,
+      attentionRate: toRate(accumulator.attentionSessions, totalSessions),
+      compactionRate: toRate(accumulator.compactedSessions, totalSessions),
+      autoCompactedRate: toRate(
+        accumulator.autoCompactedSessions,
+        totalSessions,
+      ),
+    },
+    events: {
+      total: accumulator.totalEvents,
+      draftCycleStepEvents: accumulator.draftCycleStepEvents,
+      failedStepEvents: accumulator.failedStepEvents,
+      compactionEvents: accumulator.compactionEvents,
+      autoCompactionEvents: accumulator.autoCompactionEvents,
+      manualCompactionEvents: accumulator.manualCompactionEvents,
+      autoCompactionShare,
+      autoCompactionRiskLevel,
+      prunedEventCount: accumulator.prunedEventCount,
+      compactionHourlyTrend,
+      failedStepRate,
+    },
+    health: {
+      level: telemetryHealthLevel,
+      failedStepLevel: failedStepRiskLevel,
+      runtimeSuccessLevel: runtimeSuccessRiskLevel,
+      cooldownSkipLevel: cooldownSkipRiskLevel,
+      autoCompactionLevel: autoCompactionRiskLevel,
+    },
+    thresholds: AGENT_GATEWAY_TELEMETRY_THRESHOLDS,
+    attempts: {
+      total: totalAttempts,
+      success: accumulator.attemptSuccess,
+      failed: accumulator.attemptFailed,
+      skippedCooldown: accumulator.attemptSkippedCooldown,
+      successRate,
+      failureRate: toRate(accumulator.attemptFailed, totalAttempts),
+      skippedRate,
+    },
+    providerUsage: providerUsageItems,
+    channelUsage: channelUsageItems,
+  };
+};
+
 interface BudgetRemainingPayload {
   date: string;
   agent?: {
@@ -375,16 +1860,62 @@ router.post(
   requireAdmin,
   async (req, res, next) => {
     try {
-      const batchSize = clamp(
-        Number(req.body?.batchSize ?? req.query.batchSize ?? 200),
-        1,
-        1000,
-      );
-      const maxBatches = clamp(
-        Number(req.body?.maxBatches ?? req.query.maxBatches ?? 1),
-        1,
-        20,
-      );
+      const query = assertAllowedQueryFields(req.query, {
+        allowed: ['batchSize', 'maxBatches'],
+        endpoint: '/api/admin/embeddings/backfill',
+      });
+      const body = assertAllowedBodyFields(req.body, {
+        allowed: ['batchSize', 'maxBatches'],
+        endpoint: '/api/admin/embeddings/backfill',
+      });
+
+      const queryBatchSize = parseBoundedOptionalInt(query.batchSize, {
+        fieldName: 'batchSize',
+        min: 1,
+        max: 1000,
+      });
+      const bodyBatchSize = parseBoundedOptionalInt(body.batchSize, {
+        fieldName: 'batchSize',
+        min: 1,
+        max: 1000,
+        invalidCode: 'ADMIN_INVALID_BODY',
+      });
+      if (
+        queryBatchSize !== undefined &&
+        bodyBatchSize !== undefined &&
+        queryBatchSize !== bodyBatchSize
+      ) {
+        throw new ServiceError(
+          'ADMIN_INPUT_CONFLICT',
+          'batchSize in query and body must match when both are provided.',
+          400,
+        );
+      }
+      const batchSize = bodyBatchSize ?? queryBatchSize ?? 200;
+
+      const queryMaxBatches = parseBoundedOptionalInt(query.maxBatches, {
+        fieldName: 'maxBatches',
+        min: 1,
+        max: 20,
+      });
+      const bodyMaxBatches = parseBoundedOptionalInt(body.maxBatches, {
+        fieldName: 'maxBatches',
+        min: 1,
+        max: 20,
+        invalidCode: 'ADMIN_INVALID_BODY',
+      });
+      if (
+        queryMaxBatches !== undefined &&
+        bodyMaxBatches !== undefined &&
+        queryMaxBatches !== bodyMaxBatches
+      ) {
+        throw new ServiceError(
+          'ADMIN_INPUT_CONFLICT',
+          'maxBatches in query and body must match when both are provided.',
+          400,
+        );
+      }
+      const maxBatches = bodyMaxBatches ?? queryMaxBatches ?? 1;
 
       let processed = 0;
       let inserted = 0;
@@ -416,7 +1947,16 @@ router.get(
   requireAdmin,
   async (req, res, next) => {
     try {
-      const hours = clamp(Number(req.query.hours ?? 24), 1, 720);
+      const query = assertAllowedQueryFields(req.query, {
+        allowed: ['hours'],
+        endpoint: '/api/admin/embeddings/metrics',
+      });
+      const hours = parseBoundedQueryInt(query.hours, {
+        fieldName: 'hours',
+        defaultValue: 24,
+        min: 1,
+        max: 720,
+      });
       const summary = await db.query(
         `SELECT provider,
               success,
@@ -438,14 +1978,22 @@ router.get(
   },
 );
 
-router.get('/admin/ai-runtime/profiles', requireAdmin, (_req, res) => {
+router.get('/admin/ai-runtime/profiles', requireAdmin, (req, res) => {
+  assertAllowedQueryFields(req.query, {
+    allowed: [],
+    endpoint: '/api/admin/ai-runtime/profiles',
+  });
   res.json({
     profiles: aiRuntimeService.getProfiles(),
     providers: aiRuntimeService.getProviderStates(),
   });
 });
 
-router.get('/admin/ai-runtime/health', requireAdmin, (_req, res) => {
+router.get('/admin/ai-runtime/health', requireAdmin, (req, res) => {
+  assertAllowedQueryFields(req.query, {
+    allowed: [],
+    endpoint: '/api/admin/ai-runtime/health',
+  });
   res.json(aiRuntimeService.getHealthSnapshot());
 });
 
@@ -454,10 +2002,23 @@ router.post(
   requireAdmin,
   async (req, res, next) => {
     try {
-      const body =
-        typeof req.body === 'object' && req.body !== null
-          ? (req.body as Record<string, unknown>)
-          : {};
+      assertAllowedQueryFields(req.query, {
+        allowed: [],
+        endpoint: '/api/admin/ai-runtime/dry-run',
+      });
+      if (
+        req.body === undefined ||
+        req.body === null ||
+        typeof req.body !== 'object' ||
+        Array.isArray(req.body)
+      ) {
+        throw new ServiceError(
+          'AI_RUNTIME_INVALID_INPUT',
+          'Body must be a JSON object.',
+          400,
+        );
+      }
+      const body = req.body as Record<string, unknown>;
       const unknownFields = Object.keys(body).filter(
         (field) => !AI_RUNTIME_DRY_RUN_ALLOWED_FIELDS.has(field),
       );
@@ -484,10 +2045,25 @@ router.post(
           400,
         );
       }
-      if (typeof promptRaw !== 'string' || promptRaw.trim().length === 0) {
+      if (typeof promptRaw !== 'string') {
         throw new ServiceError(
           'AI_RUNTIME_INVALID_PROMPT',
           'prompt is required.',
+          400,
+        );
+      }
+      const prompt = promptRaw.trim();
+      if (prompt.length === 0) {
+        throw new ServiceError(
+          'AI_RUNTIME_INVALID_PROMPT',
+          'prompt is required.',
+          400,
+        );
+      }
+      if (prompt.length > AI_RUNTIME_DRY_RUN_MAX_PROMPT_LENGTH) {
+        throw new ServiceError(
+          'AI_RUNTIME_INVALID_PROMPT',
+          `prompt must be at most ${AI_RUNTIME_DRY_RUN_MAX_PROMPT_LENGTH} characters.`,
           400,
         );
       }
@@ -504,10 +2080,11 @@ router.post(
 
       const result = await aiRuntimeService.runWithFailover({
         role: roleRaw as AIRuntimeRole,
-        prompt: promptRaw,
+        prompt,
         timeoutMs,
         providersOverride,
         simulateFailures,
+        mutateProviderState: false,
       });
 
       res.json({
@@ -533,25 +2110,43 @@ router.post(
         );
       }
 
-      const body =
-        typeof req.body === 'object' && req.body !== null
-          ? (req.body as Record<string, unknown>)
-          : {};
-      const draftId = typeof body.draftId === 'string' ? body.draftId : '';
-      const channel =
-        typeof body.channel === 'string' ? body.channel : undefined;
-      const externalSessionId =
-        typeof body.externalSessionId === 'string'
-          ? body.externalSessionId
-          : undefined;
-      const promptSeed =
-        typeof body.promptSeed === 'string' ? body.promptSeed : undefined;
-      const hostAgentId =
-        typeof body.hostAgentId === 'string' ? body.hostAgentId : undefined;
-      const metadata =
-        body.metadata && typeof body.metadata === 'object'
-          ? (body.metadata as Record<string, unknown>)
-          : undefined;
+      assertAllowedQueryFields(req.query, {
+        allowed: [],
+        endpoint: '/api/admin/agent-gateway/orchestrate',
+      });
+      const body = assertAllowedBodyFields(req.body, {
+        allowed: [
+          'draftId',
+          'channel',
+          'externalSessionId',
+          'promptSeed',
+          'hostAgentId',
+          'metadata',
+        ],
+        endpoint: '/api/admin/agent-gateway/orchestrate',
+      });
+      const draftId = parseRequiredUuidBodyString(body.draftId, {
+        fieldName: 'draftId',
+      });
+      const channel = parseOptionalGatewayChannelBodyString(body.channel, {
+        fieldName: 'channel',
+      });
+      const externalSessionId = parseOptionalGatewayExternalSessionIdBodyString(
+        body.externalSessionId,
+        {
+          fieldName: 'externalSessionId',
+        },
+      );
+      const promptSeed = parseOptionalBoundedBodyString(body.promptSeed, {
+        fieldName: 'promptSeed',
+        maxLength: 4000,
+      });
+      const hostAgentId = parseOptionalUuidBodyString(body.hostAgentId, {
+        fieldName: 'hostAgentId',
+      });
+      const metadata = parseOptionalObjectBody(body.metadata, {
+        fieldName: 'metadata',
+      });
 
       const realtime = getRealtime(req);
       const result = await draftOrchestrationService.run({
@@ -634,13 +2229,176 @@ router.get(
   requireAdmin,
   async (req, res, next) => {
     try {
-      const limit = parseOptionalPositiveNumber(req.query.limit);
-      const source = req.query.source === 'memory' ? 'memory' : 'db';
+      const query = assertAllowedQueryFields(req.query, {
+        allowed: ['source', 'limit', 'channel', 'provider', 'status'],
+        endpoint: '/api/admin/agent-gateway/sessions',
+      });
+      const source = parseAgentGatewaySourceQuery(query.source);
+      const limit = parseBoundedQueryInt(query.limit, {
+        fieldName: 'limit',
+        defaultValue: 50,
+        min: 1,
+        max: 200,
+      });
+      const channelFilter = parseOptionalGatewayChannelQueryString(
+        query.channel,
+        {
+          fieldName: 'channel',
+        },
+      );
+      const providerFilter = parseOptionalProviderIdentifierQueryString(
+        query.provider,
+        {
+          fieldName: 'provider',
+        },
+      );
+      const statusFilter = parseOptionalGatewaySessionStatusQuery(
+        query.status,
+        {
+          fieldName: 'status',
+        },
+      );
       const sessions =
         source === 'memory'
-          ? agentGatewayService.listSessions(limit)
-          : await agentGatewayService.listPersistedSessions(limit);
-      res.json({ source, sessions });
+          ? agentGatewayService.listSessions(limit, {
+              channel: channelFilter,
+              provider: providerFilter,
+              status: statusFilter,
+            })
+          : await agentGatewayService.listPersistedSessions(limit, {
+              channel: channelFilter,
+              provider: providerFilter,
+              status: statusFilter,
+            });
+      res.json({
+        source,
+        filters: {
+          channel: channelFilter,
+          provider: providerFilter,
+          status: statusFilter,
+        },
+        sessions,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+router.get(
+  '/admin/agent-gateway/telemetry',
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      const query = assertAllowedQueryFields(req.query, {
+        allowed: ['hours', 'limit', 'channel', 'provider'],
+        endpoint: '/api/admin/agent-gateway/telemetry',
+      });
+
+      const hours = parseBoundedQueryInt(query.hours, {
+        fieldName: 'hours',
+        defaultValue: 24,
+        min: 1,
+        max: 720,
+      });
+      const limit = parseBoundedQueryInt(query.limit, {
+        fieldName: 'limit',
+        defaultValue: 200,
+        min: 1,
+        max: 1000,
+      });
+      const channelFilter = parseOptionalGatewayChannelQueryString(
+        query.channel,
+        {
+          fieldName: 'channel',
+        },
+      );
+      const providerFilter = parseOptionalProviderIdentifierQueryString(
+        query.provider,
+        {
+          fieldName: 'provider',
+        },
+      );
+
+      const sessionsResult = await db.query(
+        `SELECT
+           id,
+           status,
+           channel,
+           updated_at
+         FROM agent_gateway_sessions
+         WHERE
+           updated_at >= NOW() - ($1 || ' hours')::interval
+           AND ($3::text IS NULL OR LOWER(channel) = $3)
+         ORDER BY updated_at DESC
+         LIMIT $2`,
+        [hours, limit, channelFilter],
+      );
+      let sessionRows: AgentGatewayTelemetrySessionRow[] =
+        sessionsResult.rows.map((row) => ({
+          id: String(row.id ?? ''),
+          status: String(row.status ?? 'unknown'),
+          channel: String(row.channel ?? 'unknown'),
+          updatedAt: String(row.updated_at ?? ''),
+        }));
+      const sessionIds = sessionRows
+        .map((row) => row.id)
+        .filter((id) => id.length > 0);
+
+      const eventRows: AgentGatewayTelemetryEventRow[] =
+        sessionIds.length > 0
+          ? (
+              await db.query(
+                `SELECT
+                   session_id,
+                   event_type,
+                  payload,
+                   created_at
+                 FROM agent_gateway_events
+                 WHERE session_id = ANY($1::text[])
+                   AND (
+                     $2::text IS NULL OR
+                     LOWER(COALESCE(payload->>'selectedProvider', '')) = $2
+                   )
+                 ORDER BY created_at DESC`,
+                [sessionIds, providerFilter],
+              )
+            ).rows.map((row) => ({
+              sessionId: String(row.session_id ?? ''),
+              type: String(row.event_type ?? ''),
+              payload: toGatewayEventPayload(row.payload),
+              createdAt: String(row.created_at ?? ''),
+            }))
+          : [];
+      if (providerFilter) {
+        const sessionIdsWithProviderEvents = new Set(
+          eventRows.map((row) => row.sessionId),
+        );
+        sessionRows = sessionRows.filter((row) =>
+          sessionIdsWithProviderEvents.has(row.id),
+        );
+      }
+      const snapshot = buildAgentGatewayTelemetrySnapshot(
+        sessionRows,
+        eventRows,
+      );
+
+      res.json({
+        windowHours: hours,
+        sampleLimit: limit,
+        generatedAt: new Date().toISOString(),
+        sessions: snapshot.sessions,
+        events: snapshot.events,
+        health: snapshot.health,
+        thresholds: snapshot.thresholds,
+        filters: {
+          channel: channelFilter,
+          provider: providerFilter,
+        },
+        attempts: snapshot.attempts,
+        providerUsage: snapshot.providerUsage,
+        channelUsage: snapshot.channelUsage,
+      });
     } catch (error) {
       next(error);
     }
@@ -652,23 +2410,47 @@ router.post(
   requireAdmin,
   async (req, res, next) => {
     try {
-      const body =
-        typeof req.body === 'object' && req.body !== null
-          ? (req.body as Record<string, unknown>)
-          : {};
-      const channel = typeof body.channel === 'string' ? body.channel : '';
+      assertAllowedQueryFields(req.query, {
+        allowed: [],
+        endpoint: '/api/admin/agent-gateway/sessions',
+      });
+      const body = assertAllowedBodyFields(req.body, {
+        allowed: [
+          'channel',
+          'draftId',
+          'externalSessionId',
+          'roles',
+          'metadata',
+        ],
+        endpoint: '/api/admin/agent-gateway/sessions',
+      });
+
+      const channel = parseRequiredGatewayChannelBodyString(body.channel, {
+        fieldName: 'channel',
+      });
       const draftId =
-        typeof body.draftId === 'string' && body.draftId.trim().length > 0
-          ? body.draftId
-          : null;
-      const roles = parseOptionalStringArray(body.roles);
-      const metadata =
-        body.metadata && typeof body.metadata === 'object'
-          ? (body.metadata as Record<string, unknown>)
-          : undefined;
+        parseOptionalUuidBodyString(body.draftId, {
+          fieldName: 'draftId',
+        }) ?? null;
+      const externalSessionId =
+        parseOptionalGatewayExternalSessionIdBodyString(
+          body.externalSessionId,
+          {
+            fieldName: 'externalSessionId',
+          },
+        ) ?? null;
+      const roles = parseOptionalGatewayRolesBody(body.roles, {
+        fieldName: 'roles',
+        maxItems: 12,
+        maxItemLength: 64,
+      });
+      const metadata = parseOptionalObjectBody(body.metadata, {
+        fieldName: 'metadata',
+      });
 
       const session = agentGatewayService.createSession({
         channel,
+        externalSessionId,
         draftId,
         roles,
         metadata,
@@ -686,11 +2468,16 @@ router.get(
   requireAdmin,
   async (req, res, next) => {
     try {
-      const source = req.query.source === 'memory' ? 'memory' : 'db';
+      const sessionId = parseAgentGatewaySessionIdParam(req.params.sessionId);
+      const query = assertAllowedQueryFields(req.query, {
+        allowed: ['source'],
+        endpoint: '/api/admin/agent-gateway/sessions/:sessionId',
+      });
+      const source = parseAgentGatewaySourceQuery(query.source);
       const detail =
         source === 'memory'
-          ? agentGatewayService.getSession(req.params.sessionId)
-          : await agentGatewayService.getPersistedSession(req.params.sessionId);
+          ? agentGatewayService.getSession(sessionId)
+          : await agentGatewayService.getPersistedSession(sessionId);
       if (!detail) {
         throw new ServiceError(
           'AGENT_GATEWAY_SESSION_NOT_FOUND',
@@ -710,11 +2497,51 @@ router.get(
   requireAdmin,
   async (req, res, next) => {
     try {
-      const source = req.query.source === 'memory' ? 'memory' : 'db';
+      const sessionId = parseAgentGatewaySessionIdParam(req.params.sessionId);
+      const query = assertAllowedQueryFields(req.query, {
+        allowed: [
+          'source',
+          'limit',
+          'eventType',
+          'eventQuery',
+          'fromRole',
+          'toRole',
+          'provider',
+        ],
+        endpoint: '/api/admin/agent-gateway/sessions/:sessionId/events',
+      });
+      const source = parseAgentGatewaySourceQuery(query.source);
+      const eventTypeFilter = parseOptionalGatewayEventTypeQueryString(
+        query.eventType,
+        {
+          fieldName: 'eventType',
+        },
+      );
+      const eventQueryFilter = parseOptionalGatewayEventQueryString(
+        query.eventQuery,
+        {
+          fieldName: 'eventQuery',
+        },
+      );
+      const fromRoleFilter = parseOptionalGatewayRoleQueryString(
+        query.fromRole,
+        {
+          fieldName: 'fromRole',
+        },
+      );
+      const toRoleFilter = parseOptionalGatewayRoleQueryString(query.toRole, {
+        fieldName: 'toRole',
+      });
+      const providerFilter = parseOptionalProviderIdentifierQueryString(
+        query.provider,
+        {
+          fieldName: 'provider',
+        },
+      );
       const detail =
         source === 'memory'
-          ? agentGatewayService.getSession(req.params.sessionId)
-          : await agentGatewayService.getPersistedSession(req.params.sessionId);
+          ? agentGatewayService.getSession(sessionId)
+          : await agentGatewayService.getPersistedSession(sessionId);
       if (!detail) {
         throw new ServiceError(
           'AGENT_GATEWAY_SESSION_NOT_FOUND',
@@ -723,12 +2550,48 @@ router.get(
         );
       }
 
-      const limit = clamp(
-        parseOptionalPositiveNumber(req.query.limit) ?? 10,
-        1,
-        200,
-      );
-      const events = [...detail.events]
+      const limit = parseBoundedQueryInt(query.limit, {
+        fieldName: 'limit',
+        defaultValue: 10,
+        min: 1,
+        max: 200,
+      });
+      const filteredEvents = detail.events.filter((event) => {
+        if (eventTypeFilter && event.type !== eventTypeFilter) {
+          return false;
+        }
+        if (fromRoleFilter && event.fromRole !== fromRoleFilter) {
+          return false;
+        }
+        if (toRoleFilter && (event.toRole ?? '') !== toRoleFilter) {
+          return false;
+        }
+        if (providerFilter) {
+          const eventProviderRaw =
+            event.payload.selectedProvider ?? event.payload.provider;
+          const eventProvider =
+            typeof eventProviderRaw === 'string'
+              ? eventProviderRaw.trim().toLowerCase()
+              : '';
+          if (eventProvider !== providerFilter) {
+            return false;
+          }
+        }
+        if (eventQueryFilter) {
+          const normalizedType = event.type.toLowerCase();
+          const normalizedFromRole = event.fromRole.toLowerCase();
+          const normalizedToRole = (event.toRole ?? '').toLowerCase();
+          const matchesQuery =
+            normalizedType.includes(eventQueryFilter) ||
+            normalizedFromRole.includes(eventQueryFilter) ||
+            normalizedToRole.includes(eventQueryFilter);
+          if (!matchesQuery) {
+            return false;
+          }
+        }
+        return true;
+      });
+      const events = [...filteredEvents]
         .sort((left, right) => {
           const leftTime = Date.parse(left.createdAt);
           const rightTime = Date.parse(right.createdAt);
@@ -748,7 +2611,14 @@ router.get(
           status: detail.session.status,
           updatedAt: detail.session.updatedAt,
         },
-        total: detail.events.length,
+        filters: {
+          eventType: eventTypeFilter,
+          eventQuery: eventQueryFilter,
+          fromRole: fromRoleFilter,
+          toRole: toRoleFilter,
+          provider: providerFilter,
+        },
+        total: filteredEvents.length,
         limit,
         events,
       });
@@ -763,11 +2633,16 @@ router.get(
   requireAdmin,
   async (req, res, next) => {
     try {
-      const source = req.query.source === 'memory' ? 'memory' : 'db';
+      const sessionId = parseAgentGatewaySessionIdParam(req.params.sessionId);
+      const query = assertAllowedQueryFields(req.query, {
+        allowed: ['source'],
+        endpoint: '/api/admin/agent-gateway/sessions/:sessionId/summary',
+      });
+      const source = parseAgentGatewaySourceQuery(query.source);
       const detail =
         source === 'memory'
-          ? agentGatewayService.getSession(req.params.sessionId)
-          : await agentGatewayService.getPersistedSession(req.params.sessionId);
+          ? agentGatewayService.getSession(sessionId)
+          : await agentGatewayService.getPersistedSession(sessionId);
       if (!detail) {
         throw new ServiceError(
           'AGENT_GATEWAY_SESSION_NOT_FOUND',
@@ -790,11 +2665,16 @@ router.get(
   requireAdmin,
   async (req, res, next) => {
     try {
-      const source = req.query.source === 'memory' ? 'memory' : 'db';
+      const sessionId = parseAgentGatewaySessionIdParam(req.params.sessionId);
+      const query = assertAllowedQueryFields(req.query, {
+        allowed: ['source'],
+        endpoint: '/api/admin/agent-gateway/sessions/:sessionId/status',
+      });
+      const source = parseAgentGatewaySourceQuery(query.source);
       const detail =
         source === 'memory'
-          ? agentGatewayService.getSession(req.params.sessionId)
-          : await agentGatewayService.getPersistedSession(req.params.sessionId);
+          ? agentGatewayService.getSession(sessionId)
+          : await agentGatewayService.getPersistedSession(sessionId);
       if (!detail) {
         throw new ServiceError(
           'AGENT_GATEWAY_SESSION_NOT_FOUND',
@@ -817,33 +2697,41 @@ router.post(
   requireAdmin,
   async (req, res, next) => {
     try {
-      const body =
-        typeof req.body === 'object' && req.body !== null
-          ? (req.body as Record<string, unknown>)
-          : {};
-      const fromRole = typeof body.fromRole === 'string' ? body.fromRole : '';
-      const eventType = typeof body.type === 'string' ? body.type : '';
-      const toRole =
-        typeof body.toRole === 'string' && body.toRole.trim().length > 0
-          ? body.toRole
-          : undefined;
-      const payload =
-        body.payload && typeof body.payload === 'object'
-          ? (body.payload as Record<string, unknown>)
-          : undefined;
+      const sessionId = parseAgentGatewaySessionIdParam(req.params.sessionId);
+      assertAllowedQueryFields(req.query, {
+        allowed: [],
+        endpoint: '/api/admin/agent-gateway/sessions/:sessionId/events',
+      });
+      const body = assertAllowedBodyFields(req.body, {
+        allowed: ['fromRole', 'toRole', 'type', 'payload'],
+        endpoint: '/api/admin/agent-gateway/sessions/:sessionId/events',
+      });
 
-      const event = agentGatewayService.appendEvent(req.params.sessionId, {
+      const fromRole = parseRequiredGatewayRoleBodyString(body.fromRole, {
+        fieldName: 'fromRole',
+      });
+      const eventType = parseRequiredGatewayEventTypeBodyString(body.type, {
+        fieldName: 'type',
+      });
+      const toRole = parseOptionalGatewayRoleBodyString(body.toRole, {
+        fieldName: 'toRole',
+      });
+      const payload = parseOptionalObjectBody(body.payload, {
+        fieldName: 'payload',
+      });
+
+      const event = agentGatewayService.appendEvent(sessionId, {
         fromRole,
         toRole,
         type: eventType,
         payload,
       });
       await agentGatewayService.persistEvent(event);
-      const detail = agentGatewayService.getSession(req.params.sessionId);
+      const detail = agentGatewayService.getSession(sessionId);
       await agentGatewayService.persistSession(detail.session);
 
       getRealtime(req)?.broadcast(
-        `session:${req.params.sessionId}`,
+        `session:${sessionId}`,
         'agent_gateway_event',
         {
           source: 'agent_gateway',
@@ -863,20 +2751,30 @@ router.post(
   requireAdmin,
   async (req, res, next) => {
     try {
-      const body =
-        typeof req.body === 'object' && req.body !== null
-          ? (req.body as Record<string, unknown>)
-          : {};
-      const keepRecent = parseOptionalPositiveNumber(body.keepRecent);
+      const sessionId = parseAgentGatewaySessionIdParam(req.params.sessionId);
+      assertAllowedQueryFields(req.query, {
+        allowed: [],
+        endpoint: '/api/admin/agent-gateway/sessions/:sessionId/compact',
+      });
+      const body = assertAllowedBodyFields(req.body, {
+        allowed: ['keepRecent'],
+        endpoint: '/api/admin/agent-gateway/sessions/:sessionId/compact',
+      });
+      const keepRecent = parseBoundedOptionalInt(body.keepRecent, {
+        fieldName: 'keepRecent',
+        min: 1,
+        max: AGENT_GATEWAY_MAX_KEEP_RECENT,
+        invalidCode: 'ADMIN_INVALID_BODY',
+      });
 
       const result = await agentGatewayService.compactSession(
-        req.params.sessionId,
+        sessionId,
         keepRecent,
       );
 
       const realtime = getRealtime(req);
       realtime?.broadcast(
-        `session:${req.params.sessionId}`,
+        `session:${sessionId}`,
         'agent_gateway_session_compacted',
         {
           source: 'agent_gateway',
@@ -907,14 +2805,10 @@ router.post(
           compactPayload,
         );
       }
-      realtime?.broadcast(
-        `session:${req.params.sessionId}`,
-        'agent_gateway_event',
-        {
-          source: 'agent_gateway',
-          data: result.event,
-        },
-      );
+      realtime?.broadcast(`session:${sessionId}`, 'agent_gateway_event', {
+        source: 'agent_gateway',
+        data: result.event,
+      });
 
       res.json(result);
     } catch (error) {
@@ -928,11 +2822,20 @@ router.post(
   requireAdmin,
   async (req, res, next) => {
     try {
-      const session = agentGatewayService.closeSession(req.params.sessionId);
+      const sessionId = parseAgentGatewaySessionIdParam(req.params.sessionId);
+      assertAllowedQueryFields(req.query, {
+        allowed: [],
+        endpoint: '/api/admin/agent-gateway/sessions/:sessionId/close',
+      });
+      assertAllowedBodyFields(req.body, {
+        allowed: [],
+        endpoint: '/api/admin/agent-gateway/sessions/:sessionId/close',
+      });
+      const session = agentGatewayService.closeSession(sessionId);
       await agentGatewayService.persistSession(session);
 
       getRealtime(req)?.broadcast(
-        `session:${req.params.sessionId}`,
+        `session:${sessionId}`,
         'agent_gateway_session',
         {
           source: 'agent_gateway',
@@ -953,11 +2856,21 @@ router.post(
 
 router.get('/admin/budgets/remaining', requireAdmin, async (req, res, next) => {
   try {
-    const agentId = req.query.agentId ? String(req.query.agentId) : null;
-    const draftId = req.query.draftId ? String(req.query.draftId) : null;
-    const date = parseDateParam(
-      req.query.date ? String(req.query.date) : undefined,
-    );
+    const query = assertAllowedQueryFields(req.query, {
+      allowed: ['agentId', 'draftId', 'date'],
+      endpoint: '/api/admin/budgets/remaining',
+    });
+    const agentId = parseOptionalUuidQueryString(query.agentId, {
+      fieldName: 'agentId',
+    });
+    const draftId = parseOptionalUuidQueryString(query.draftId, {
+      fieldName: 'draftId',
+    });
+    const dateValue = parseOptionalBoundedQueryString(query.date, {
+      fieldName: 'date',
+      maxLength: 40,
+    });
+    const date = parseDateParam(dateValue ?? undefined);
     const dateKey = getUtcDateKey(date);
 
     if (!(agentId || draftId)) {
@@ -1000,9 +2913,15 @@ router.get('/admin/budgets/remaining', requireAdmin, async (req, res, next) => {
 
 router.get('/admin/budgets/metrics', requireAdmin, async (req, res, next) => {
   try {
-    const date = parseDateParam(
-      req.query.date ? String(req.query.date) : undefined,
-    );
+    const query = assertAllowedQueryFields(req.query, {
+      allowed: ['date'],
+      endpoint: '/api/admin/budgets/metrics',
+    });
+    const dateValue = parseOptionalBoundedQueryString(query.date, {
+      fieldName: 'date',
+      maxLength: 40,
+    });
+    const date = parseDateParam(dateValue ?? undefined);
     const dateKey = getUtcDateKey(date);
     const keys = await redis.keys(`budget:*:${dateKey}`);
 
@@ -1049,8 +2968,13 @@ router.get('/admin/budgets/metrics', requireAdmin, async (req, res, next) => {
   }
 });
 
-router.get('/admin/system/metrics', requireAdmin, async (_req, res, next) => {
+router.get('/admin/system/metrics', requireAdmin, async (req, res, next) => {
   try {
+    assertAllowedQueryFields(req.query, {
+      allowed: [],
+      endpoint: '/api/admin/system/metrics',
+    });
+
     const startedAt = Date.now();
     let dbOk = false;
     let dbLatencyMs: number | null = null;
@@ -1083,8 +3007,19 @@ router.get('/admin/system/metrics', requireAdmin, async (_req, res, next) => {
 
 router.get('/admin/ux/metrics', requireAdmin, async (req, res, next) => {
   try {
-    const hours = clamp(Number(req.query.hours ?? 24), 1, 720);
-    const eventType = req.query.eventType ? String(req.query.eventType) : null;
+    const query = assertAllowedQueryFields(req.query, {
+      allowed: ['hours', 'eventType'],
+      endpoint: '/api/admin/ux/metrics',
+    });
+    const hours = parseBoundedQueryInt(query.hours, {
+      fieldName: 'hours',
+      defaultValue: 24,
+      min: 1,
+      max: 720,
+    });
+    const eventType = parseOptionalUxEventTypeQueryString(query.eventType, {
+      fieldName: 'eventType',
+    });
     const filters: string[] = [
       "created_at >= NOW() - ($1 || ' hours')::interval",
     ];
@@ -1115,7 +3050,16 @@ router.get('/admin/ux/metrics', requireAdmin, async (req, res, next) => {
 
 router.get('/admin/ux/similar-search', requireAdmin, async (req, res, next) => {
   try {
-    const hours = clamp(Number(req.query.hours ?? 24), 1, 720);
+    const query = assertAllowedQueryFields(req.query, {
+      allowed: ['hours'],
+      endpoint: '/api/admin/ux/similar-search',
+    });
+    const hours = parseBoundedQueryInt(query.hours, {
+      fieldName: 'hours',
+      defaultValue: 24,
+      min: 1,
+      max: 720,
+    });
     const trackedEvents = [
       'similar_search_shown',
       'similar_search_empty',
@@ -1289,7 +3233,16 @@ router.get(
   requireAdmin,
   async (req, res, next) => {
     try {
-      const hours = clamp(Number(req.query.hours ?? 24), 1, 720);
+      const query = assertAllowedQueryFields(req.query, {
+        allowed: ['hours'],
+        endpoint: '/api/admin/ux/observer-engagement',
+      });
+      const hours = parseBoundedQueryInt(query.hours, {
+        fieldName: 'hours',
+        defaultValue: 24,
+        min: 1,
+        max: 720,
+      });
       const trackedEvents = [
         'draft_arc_view',
         'draft_recap_view',
@@ -1301,6 +3254,7 @@ router.get(
         'digest_open',
         'hot_now_open',
         'pr_prediction_submit',
+        'pr_prediction_settle',
         'pr_prediction_result_view',
       ];
       const feedPreferenceEvents = [
@@ -1329,6 +3283,7 @@ router.get(
         digestOpens: 0,
         hotNowOpens: 0,
         predictionSubmits: 0,
+        predictionSettles: 0,
         predictionResultViews: 0,
         multimodalViews: 0,
         multimodalEmptyStates: 0,
@@ -1359,6 +3314,9 @@ router.get(
             break;
           case 'pr_prediction_submit':
             totals.predictionSubmits += count;
+            break;
+          case 'pr_prediction_settle':
+            totals.predictionSettles += count;
             break;
           case 'pr_prediction_result_view':
             totals.predictionResultViews += count;
@@ -1404,6 +3362,18 @@ router.get(
           ['draft_multimodal_glowup_empty', 'draft_multimodal_glowup_error'],
         ],
       );
+      const multimodalGuardrailRows = await db.query(
+        `SELECT COALESCE(metadata->>'reason', 'unknown') AS reason,
+                COUNT(*)::int AS count
+         FROM ux_events
+         WHERE created_at >= NOW() - ($1 || ' hours')::interval
+           AND user_type = 'system'
+           AND source = 'api'
+           AND event_type = 'draft_multimodal_glowup_error'
+         GROUP BY reason
+         ORDER BY count DESC, reason`,
+        [hours],
+      );
       const multimodalHourlyRows = await db.query(
         `SELECT
            TO_CHAR(
@@ -1446,6 +3416,13 @@ router.get(
           reason: String(row.reason ?? 'unknown'),
           count: Number(row.count ?? 0),
         }));
+      const multimodalInvalidQueryErrors = multimodalGuardrailRows.rows.reduce(
+        (sum, row) =>
+          String(row.reason ?? 'unknown') === 'invalid_query'
+            ? sum + Number(row.count ?? 0)
+            : sum,
+        0,
+      );
       const multimodalHourlyTrendMap = new Map<
         string,
         {
@@ -1862,6 +3839,12 @@ router.get(
         totals.multimodalErrors,
         multimodalTotalEvents,
       );
+      const multimodalErrorSignalsTotal =
+        totals.multimodalErrors + multimodalInvalidQueryErrors;
+      const multimodalInvalidQueryRate = toRate(
+        multimodalInvalidQueryErrors,
+        multimodalErrorSignalsTotal,
+      );
 
       res.json({
         windowHours: hours,
@@ -1882,6 +3865,10 @@ router.get(
           hintDismissRate,
           predictionParticipationRate,
           predictionAccuracyRate,
+          predictionSettlementRate: toRate(
+            totals.predictionSettles,
+            totals.predictionSubmits,
+          ),
           predictionPoolPoints: predictionStakePoints,
           payoutToStakeRatio,
           multimodalCoverageRate,
@@ -1898,6 +3885,10 @@ router.get(
           providerBreakdown: multimodalProviderBreakdown,
           emptyReasonBreakdown: multimodalEmptyReasonBreakdown,
           errorReasonBreakdown: multimodalErrorReasonBreakdown,
+          guardrails: {
+            invalidQueryErrors: multimodalInvalidQueryErrors,
+            invalidQueryRate: multimodalInvalidQueryRate,
+          },
           hourlyTrend: multimodalHourlyTrend,
         },
         predictionMarket: {
@@ -1960,8 +3951,12 @@ router.get(
   },
 );
 
-router.get('/admin/cleanup/preview', requireAdmin, async (_req, res, next) => {
+router.get('/admin/cleanup/preview', requireAdmin, async (req, res, next) => {
   try {
+    assertAllowedQueryFields(req.query, {
+      allowed: [],
+      endpoint: '/api/admin/cleanup/preview',
+    });
     const counts = await privacyService.previewExpiredData();
     res.json({ counts });
   } catch (error) {
@@ -1970,37 +3965,77 @@ router.get('/admin/cleanup/preview', requireAdmin, async (_req, res, next) => {
 });
 
 router.post('/admin/cleanup/run', requireAdmin, async (req, res, next) => {
-  const confirm = req.body?.confirm ?? req.query.confirm;
-  if (confirm !== true && confirm !== 'true') {
-    return next(
-      new ServiceError(
+  let startedAt: Date | null = null;
+  try {
+    const query = assertAllowedQueryFields(req.query, {
+      allowed: ['confirm'],
+      endpoint: '/api/admin/cleanup/run',
+    });
+    const body = assertAllowedBodyFields(req.body, {
+      allowed: ['confirm'],
+      endpoint: '/api/admin/cleanup/run',
+    });
+
+    const queryConfirm = parseOptionalBooleanFlag(query.confirm, {
+      fieldName: 'confirm',
+      invalidCode: 'ADMIN_INVALID_QUERY',
+    });
+    const bodyConfirm = parseOptionalBooleanFlag(body.confirm, {
+      fieldName: 'confirm',
+      invalidCode: 'ADMIN_INVALID_BODY',
+    });
+
+    if (
+      queryConfirm !== undefined &&
+      bodyConfirm !== undefined &&
+      queryConfirm !== bodyConfirm
+    ) {
+      throw new ServiceError(
+        'ADMIN_INPUT_CONFLICT',
+        'confirm in query and body must match when both are provided.',
+        400,
+      );
+    }
+
+    const confirm = bodyConfirm ?? queryConfirm ?? false;
+    if (!confirm) {
+      throw new ServiceError(
         'CONFIRM_REQUIRED',
         'confirm=true is required to run cleanup.',
         400,
-      ),
-    );
-  }
+      );
+    }
 
-  const startedAt = new Date();
-  try {
+    startedAt = new Date();
     const counts = await privacyService.purgeExpiredData();
     await recordCleanupRun('manual_cleanup', 'success', startedAt, counts);
     res.json({ counts });
   } catch (error) {
-    await recordCleanupRun(
-      'manual_cleanup',
-      'failed',
-      startedAt,
-      undefined,
-      error instanceof Error ? error.message : String(error),
-    );
+    if (startedAt) {
+      await recordCleanupRun(
+        'manual_cleanup',
+        'failed',
+        startedAt,
+        undefined,
+        error instanceof Error ? error.message : String(error),
+      );
+    }
     next(error);
   }
 });
 
 router.get('/admin/jobs/metrics', requireAdmin, async (req, res, next) => {
   try {
-    const hours = clamp(Number(req.query.hours ?? 24), 1, 720);
+    const query = assertAllowedQueryFields(req.query, {
+      allowed: ['hours'],
+      endpoint: '/api/admin/jobs/metrics',
+    });
+    const hours = parseBoundedQueryInt(query.hours, {
+      fieldName: 'hours',
+      defaultValue: 24,
+      min: 1,
+      max: 720,
+    });
     const summary = await db.query(
       `SELECT job_name,
               COUNT(*)::int AS total_runs,
@@ -2025,10 +4060,31 @@ router.get('/admin/jobs/metrics', requireAdmin, async (req, res, next) => {
 
 router.get('/admin/errors/metrics', requireAdmin, async (req, res, next) => {
   try {
-    const hours = clamp(Number(req.query.hours ?? 24), 1, 720);
-    const limit = clamp(Number(req.query.limit ?? 50), 1, 200);
-    const errorCode = req.query.code ? String(req.query.code) : null;
-    const route = req.query.route ? String(req.query.route) : null;
+    const query = assertAllowedQueryFields(req.query, {
+      allowed: ['hours', 'limit', 'code', 'route'],
+      endpoint: '/api/admin/errors/metrics',
+    });
+
+    const hours = parseBoundedQueryInt(query.hours, {
+      fieldName: 'hours',
+      defaultValue: 24,
+      min: 1,
+      max: 720,
+    });
+    const limit = parseBoundedQueryInt(query.limit, {
+      fieldName: 'limit',
+      defaultValue: 50,
+      min: 1,
+      max: 200,
+    });
+    const errorCode = parseOptionalErrorCodeQueryString(query.code, {
+      fieldName: 'code',
+      maxLength: 120,
+    });
+    const route = parseOptionalErrorRouteQueryString(query.route, {
+      fieldName: 'route',
+      maxLength: 240,
+    });
 
     const filters: string[] = [
       "created_at >= NOW() - ($1 || ' hours')::interval",
