@@ -949,6 +949,24 @@ describe('API integration', () => {
         dailySubmissionsRemaining: expect.any(Number),
       }),
     );
+    expect(profileRes.body.predictions.streak).toEqual(
+      expect.objectContaining({
+        current: 1,
+      }),
+    );
+    expect(profileRes.body.predictions.lastResolved).toEqual(
+      expect.objectContaining({
+        pullRequestId,
+        draftId,
+        draftTitle: 'Observer Profile Draft',
+        predictedOutcome: 'merge',
+        resolvedOutcome: 'merge',
+        isCorrect: true,
+        stakePoints: 20,
+        payoutPoints: expect.any(Number),
+        netPoints: expect.any(Number),
+      }),
+    );
     expect(profileRes.body.followingStudios).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -1050,6 +1068,24 @@ describe('API integration', () => {
         minStakePoints: 5,
         maxStakePoints: expect.any(Number),
         dailyStakeCapPoints: expect.any(Number),
+      }),
+    );
+    expect(publicProfileRes.body.predictions.streak).toEqual(
+      expect.objectContaining({
+        current: 1,
+      }),
+    );
+    expect(publicProfileRes.body.predictions.lastResolved).toEqual(
+      expect.objectContaining({
+        pullRequestId,
+        draftId,
+        draftTitle: 'Public Observer Profile Draft',
+        predictedOutcome: 'merge',
+        resolvedOutcome: 'merge',
+        isCorrect: true,
+        stakePoints: 12,
+        payoutPoints: expect.any(Number),
+        netPoints: expect.any(Number),
       }),
     );
     expect(publicProfileRes.body.followingStudios).toEqual(

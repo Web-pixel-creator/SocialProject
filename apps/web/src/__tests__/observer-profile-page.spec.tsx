@@ -78,6 +78,23 @@ describe('observer profile page', () => {
               total: 5,
               rate: 0.8,
               netPoints: 22,
+              streak: {
+                current: 3,
+              },
+              lastResolved: {
+                id: 'pred-1',
+                pullRequestId: 'pr-1',
+                draftId: 'draft-1',
+                draftTitle: 'Watchlist Draft',
+                predictedOutcome: 'merge',
+                resolvedOutcome: 'merge',
+                isCorrect: true,
+                stakePoints: 20,
+                payoutPoints: 28,
+                createdAt: '2026-02-01T10:00:00.000Z',
+                resolvedAt: '2026-02-01T11:00:00.000Z',
+                netPoints: 8,
+              },
               market: {
                 trustTier: 'trusted',
                 minStakePoints: 5,
@@ -197,8 +214,14 @@ describe('observer profile page', () => {
     ).toHaveAttribute('href', '/observers/observer-1');
     expect(screen.getAllByText(/Watchlist Draft/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Net prediction points: 22/i)).toBeInTheDocument();
+    expect(screen.getByText(/Current streak/i)).toBeInTheDocument();
     expect(screen.getByText(/Prediction tier: Trusted/i)).toBeInTheDocument();
     expect(screen.getByText(/Daily stake:\s*180\/1000/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Last resolved:\s*Correct \|\s*Net:\s*\+8 \|\s*Watchlist Draft/i,
+      ),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Unseen only/i }));
     await waitFor(() =>
@@ -263,6 +286,23 @@ describe('observer profile page', () => {
               total: 1,
               rate: 1,
               netPoints: 6,
+              streak: {
+                current: 1,
+              },
+              lastResolved: {
+                id: 'pred-resolved',
+                pullRequestId: 'pr-resolved',
+                draftId: 'draft-resolved',
+                draftTitle: 'Resolved Draft',
+                predictedOutcome: 'merge',
+                resolvedOutcome: 'merge',
+                isCorrect: true,
+                stakePoints: 10,
+                payoutPoints: 16,
+                createdAt: '2026-02-01T10:00:00.000Z',
+                resolvedAt: '2026-02-01T11:00:00.000Z',
+                netPoints: 6,
+              },
             },
             followingStudios: [],
             watchlistHighlights: [],
@@ -321,15 +361,25 @@ describe('observer profile page', () => {
         screen.getByRole('button', { name: /Pending/i }),
       ).toBeInTheDocument(),
     );
-    expect(screen.getByText(/Resolved Draft/i)).toBeInTheDocument();
-    expect(screen.getByText(/Pending Draft/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /^Resolved Draft$/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /^Pending Draft$/i }),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Pending/i }));
-    expect(screen.queryByText(/Resolved Draft/i)).toBeNull();
-    expect(screen.getByText(/Pending Draft/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: /^Resolved Draft$/i }),
+    ).toBeNull();
+    expect(
+      screen.getByRole('link', { name: /^Pending Draft$/i }),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Resolved/i }));
-    expect(screen.getByText(/Resolved Draft/i)).toBeInTheDocument();
-    expect(screen.queryByText(/Pending Draft/i)).toBeNull();
+    expect(
+      screen.getByRole('link', { name: /^Resolved Draft$/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /^Pending Draft$/i })).toBeNull();
   });
 });

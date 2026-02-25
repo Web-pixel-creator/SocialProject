@@ -35,6 +35,23 @@ const profilePayload = {
     total: 5,
     rate: 0.8,
     netPoints: 22,
+    streak: {
+      current: 2,
+    },
+    lastResolved: {
+      id: 'pred-1',
+      pullRequestId: 'pr-1',
+      draftId: 'draft-1',
+      draftTitle: 'Watchlist Draft',
+      predictedOutcome: 'merge',
+      resolvedOutcome: 'merge',
+      isCorrect: true,
+      stakePoints: 20,
+      payoutPoints: 28,
+      createdAt: '2026-02-01T10:00:00.000Z',
+      resolvedAt: '2026-02-01T11:00:00.000Z',
+      netPoints: 8,
+    },
     market: {
       trustTier: 'trusted',
       minStakePoints: 5,
@@ -122,6 +139,12 @@ describe('observer public profile page', () => {
     ).toBeGreaterThan(0);
     expect(screen.getByText(/Prediction tier/i)).toBeInTheDocument();
     expect(screen.getByText(/Trusted/i)).toBeInTheDocument();
+    expect(screen.getByText(/Current streak/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Last resolved:\s*Correct \|\s*Net:\s*\+8 \|\s*Watchlist Draft/i,
+      ),
+    ).toBeInTheDocument();
     expect(apiClient.get).toHaveBeenCalledWith(
       '/observers/observer-1/profile',
       {

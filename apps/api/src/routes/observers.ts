@@ -169,6 +169,98 @@ const parseOptionalBoolean = (
   );
 };
 
+type ObserverPredictionOutcome = 'merge' | 'reject';
+
+const mapObserverPrediction = (row: Record<string, unknown>) => ({
+  id: row.id as string,
+  pullRequestId: row.pull_request_id as string,
+  draftId: row.draft_id as string,
+  draftTitle: row.draft_title as string,
+  predictedOutcome: row.predicted_outcome as ObserverPredictionOutcome,
+  resolvedOutcome:
+    (row.resolved_outcome as ObserverPredictionOutcome | null) ?? null,
+  isCorrect:
+    row.is_correct === null ? null : (Boolean(row.is_correct) as boolean),
+  stakePoints: toSafeNumber(row.stake_points),
+  payoutPoints: toSafeNumber(row.payout_points),
+  createdAt: row.created_at as string,
+  resolvedAt: (row.resolved_at as string | null) ?? null,
+});
+
+const fetchObserverPredictionSignals = async (observerId: string) => {
+  const [currentStreakResult, lastResolvedResult] = await Promise.all([
+    db.query(
+      `WITH resolved AS (
+         SELECT
+           is_correct,
+           SUM(
+             CASE WHEN is_correct = false THEN 1 ELSE 0 END
+           ) OVER (
+             ORDER BY resolved_at DESC NULLS LAST, created_at DESC, id DESC
+           ) AS incorrect_seen
+         FROM observer_pr_predictions
+         WHERE observer_id = $1
+           AND resolved_outcome IS NOT NULL
+           AND is_correct IS NOT NULL
+       )
+       SELECT COUNT(*)::int AS current_streak
+       FROM resolved
+       WHERE incorrect_seen = 0
+         AND is_correct = true`,
+      [observerId],
+    ),
+    db.query(
+      `SELECT
+         opp.id,
+         opp.pull_request_id,
+         opp.predicted_outcome,
+         opp.resolved_outcome,
+         opp.is_correct,
+         opp.stake_points,
+         opp.payout_points,
+         opp.created_at,
+         opp.resolved_at,
+         pr.draft_id,
+         COALESCE(d.metadata->>'title', 'Untitled') AS draft_title
+       FROM observer_pr_predictions opp
+       JOIN pull_requests pr ON pr.id = opp.pull_request_id
+       JOIN drafts d ON d.id = pr.draft_id
+       WHERE opp.observer_id = $1
+         AND opp.resolved_outcome IS NOT NULL
+       ORDER BY opp.resolved_at DESC NULLS LAST, opp.created_at DESC, opp.id DESC
+       LIMIT 1`,
+      [observerId],
+    ),
+  ]);
+
+  const currentStreak = toSafeNumber(
+    currentStreakResult.rows[0]?.current_streak,
+  );
+  const lastResolvedRow = lastResolvedResult.rows[0] as
+    | Record<string, unknown>
+    | undefined;
+  const lastResolved =
+    lastResolvedRow === undefined
+      ? null
+      : {
+          ...mapObserverPrediction(lastResolvedRow),
+          resolvedOutcome:
+            lastResolvedRow.resolved_outcome as ObserverPredictionOutcome,
+          isCorrect: Boolean(lastResolvedRow.is_correct),
+          resolvedAt:
+            (lastResolvedRow.resolved_at as string | null) ??
+            (lastResolvedRow.created_at as string),
+          netPoints:
+            toSafeNumber(lastResolvedRow.payout_points) -
+            toSafeNumber(lastResolvedRow.stake_points),
+        };
+
+  return {
+    currentStreak,
+    lastResolved,
+  };
+};
+
 router.get('/observers/me/profile', requireHuman, async (req, res, next) => {
   try {
     const query = assertAllowedQueryFields(
@@ -275,30 +367,32 @@ router.get('/observers/me/profile', requireHuman, async (req, res, next) => {
       throw new ServiceError('OBSERVER_NOT_FOUND', 'Observer not found.', 404);
     }
 
-    const predictionsResult = await db.query(
-      `SELECT
-         opp.id,
-         opp.pull_request_id,
-         opp.predicted_outcome,
-         opp.resolved_outcome,
-         opp.is_correct,
-         opp.stake_points,
-         opp.payout_points,
-         opp.created_at,
-         opp.resolved_at,
-         pr.draft_id,
-         COALESCE(d.metadata->>'title', 'Untitled') AS draft_title
-       FROM observer_pr_predictions opp
-       JOIN pull_requests pr ON pr.id = opp.pull_request_id
-       JOIN drafts d ON d.id = pr.draft_id
-       WHERE opp.observer_id = $1
-       ORDER BY opp.created_at DESC
-       LIMIT $2`,
-      [observerId, predictionLimit],
-    );
-
-    const predictionMarketProfile =
-      await draftArcService.getPredictionMarketProfile(observerId);
+    const [predictionsResult, predictionMarketProfile, predictionSignals] =
+      await Promise.all([
+        db.query(
+          `SELECT
+             opp.id,
+             opp.pull_request_id,
+             opp.predicted_outcome,
+             opp.resolved_outcome,
+             opp.is_correct,
+             opp.stake_points,
+             opp.payout_points,
+             opp.created_at,
+             opp.resolved_at,
+             pr.draft_id,
+             COALESCE(d.metadata->>'title', 'Untitled') AS draft_title
+           FROM observer_pr_predictions opp
+           JOIN pull_requests pr ON pr.id = opp.pull_request_id
+           JOIN drafts d ON d.id = pr.draft_id
+           WHERE opp.observer_id = $1
+           ORDER BY opp.created_at DESC
+           LIMIT $2`,
+          [observerId, predictionLimit],
+        ),
+        draftArcService.getPredictionMarketProfile(observerId),
+        fetchObserverPredictionSignals(observerId),
+      ]);
     const observer = observerResult.rows[0];
     const counts = countsResult.rows[0] ?? {};
     const predictionsCorrect = toSafeNumber(counts.predictions_correct);
@@ -333,6 +427,10 @@ router.get('/observers/me/profile', requireHuman, async (req, res, next) => {
             ? Math.round((predictionsCorrect / predictionsTotal) * 100) / 100
             : 0,
         netPoints: toSafeNumber(counts.prediction_net_points),
+        streak: {
+          current: predictionSignals.currentStreak,
+        },
+        lastResolved: predictionSignals.lastResolved,
         market: {
           trustTier: predictionMarketProfile.trustTier,
           minStakePoints: predictionMarketProfile.minStakePoints,
@@ -361,21 +459,9 @@ router.get('/observers/me/profile', requireHuman, async (req, res, next) => {
         studioId: row.studio_id as string,
         studioName: row.studio_name as string,
       })),
-      recentPredictions: predictionsResult.rows.map((row) => ({
-        id: row.id as string,
-        pullRequestId: row.pull_request_id as string,
-        draftId: row.draft_id as string,
-        draftTitle: row.draft_title as string,
-        predictedOutcome: row.predicted_outcome as 'merge' | 'reject',
-        resolvedOutcome:
-          (row.resolved_outcome as 'merge' | 'reject' | null) ?? null,
-        isCorrect:
-          row.is_correct === null ? null : (Boolean(row.is_correct) as boolean),
-        stakePoints: toSafeNumber(row.stake_points),
-        payoutPoints: toSafeNumber(row.payout_points),
-        createdAt: row.created_at as string,
-        resolvedAt: (row.resolved_at as string | null) ?? null,
-      })),
+      recentPredictions: predictionsResult.rows.map((row) =>
+        mapObserverPrediction(row as Record<string, unknown>),
+      ),
     });
   } catch (error) {
     next(error);
@@ -492,30 +578,32 @@ router.get('/observers/:id/profile', async (req, res, next) => {
       throw new ServiceError('OBSERVER_NOT_FOUND', 'Observer not found.', 404);
     }
 
-    const predictionsResult = await db.query(
-      `SELECT
-         opp.id,
-         opp.pull_request_id,
-         opp.predicted_outcome,
-         opp.resolved_outcome,
-         opp.is_correct,
-         opp.stake_points,
-         opp.payout_points,
-         opp.created_at,
-         opp.resolved_at,
-         pr.draft_id,
-         COALESCE(d.metadata->>'title', 'Untitled') AS draft_title
-       FROM observer_pr_predictions opp
-       JOIN pull_requests pr ON pr.id = opp.pull_request_id
-       JOIN drafts d ON d.id = pr.draft_id
-       WHERE opp.observer_id = $1
-       ORDER BY opp.created_at DESC
-       LIMIT $2`,
-      [observerId, predictionLimit],
-    );
-
-    const predictionMarketProfile =
-      await draftArcService.getPredictionMarketProfile(observerId);
+    const [predictionsResult, predictionMarketProfile, predictionSignals] =
+      await Promise.all([
+        db.query(
+          `SELECT
+             opp.id,
+             opp.pull_request_id,
+             opp.predicted_outcome,
+             opp.resolved_outcome,
+             opp.is_correct,
+             opp.stake_points,
+             opp.payout_points,
+             opp.created_at,
+             opp.resolved_at,
+             pr.draft_id,
+             COALESCE(d.metadata->>'title', 'Untitled') AS draft_title
+           FROM observer_pr_predictions opp
+           JOIN pull_requests pr ON pr.id = opp.pull_request_id
+           JOIN drafts d ON d.id = pr.draft_id
+           WHERE opp.observer_id = $1
+           ORDER BY opp.created_at DESC
+           LIMIT $2`,
+          [observerId, predictionLimit],
+        ),
+        draftArcService.getPredictionMarketProfile(observerId),
+        fetchObserverPredictionSignals(observerId),
+      ]);
     const observer = observerResult.rows[0];
     const counts = countsResult.rows[0] ?? {};
     const predictionsCorrect = toSafeNumber(counts.predictions_correct);
@@ -549,6 +637,10 @@ router.get('/observers/:id/profile', async (req, res, next) => {
             ? Math.round((predictionsCorrect / predictionsTotal) * 100) / 100
             : 0,
         netPoints: toSafeNumber(counts.prediction_net_points),
+        streak: {
+          current: predictionSignals.currentStreak,
+        },
+        lastResolved: predictionSignals.lastResolved,
         market: {
           trustTier: predictionMarketProfile.trustTier,
           minStakePoints: predictionMarketProfile.minStakePoints,
@@ -577,21 +669,9 @@ router.get('/observers/:id/profile', async (req, res, next) => {
         studioId: row.studio_id as string,
         studioName: row.studio_name as string,
       })),
-      recentPredictions: predictionsResult.rows.map((row) => ({
-        id: row.id as string,
-        pullRequestId: row.pull_request_id as string,
-        draftId: row.draft_id as string,
-        draftTitle: row.draft_title as string,
-        predictedOutcome: row.predicted_outcome as 'merge' | 'reject',
-        resolvedOutcome:
-          (row.resolved_outcome as 'merge' | 'reject' | null) ?? null,
-        isCorrect:
-          row.is_correct === null ? null : (Boolean(row.is_correct) as boolean),
-        stakePoints: toSafeNumber(row.stake_points),
-        payoutPoints: toSafeNumber(row.payout_points),
-        createdAt: row.created_at as string,
-        resolvedAt: (row.resolved_at as string | null) ?? null,
-      })),
+      recentPredictions: predictionsResult.rows.map((row) =>
+        mapObserverPrediction(row as Record<string, unknown>),
+      ),
     });
   } catch (error) {
     next(error);

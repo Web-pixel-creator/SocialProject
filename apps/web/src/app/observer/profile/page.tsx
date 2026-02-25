@@ -42,6 +42,21 @@ interface ObserverProfilePrediction {
   resolvedAt: string | null;
 }
 
+interface ObserverProfileResolvedPredictionSnapshot {
+  id: string;
+  pullRequestId: string;
+  draftId: string;
+  draftTitle: string;
+  predictedOutcome: 'merge' | 'reject';
+  resolvedOutcome: 'merge' | 'reject';
+  isCorrect: boolean;
+  stakePoints: number;
+  payoutPoints: number;
+  createdAt: string;
+  resolvedAt: string;
+  netPoints: number;
+}
+
 interface ObserverDigestEntry {
   id: string;
   draftId: string;
@@ -71,6 +86,10 @@ interface ObserverProfileResponse {
     total: number;
     rate: number;
     netPoints: number;
+    streak: {
+      current: number;
+    };
+    lastResolved: ObserverProfileResolvedPredictionSnapshot | null;
     market?: {
       trustTier: 'entry' | 'regular' | 'trusted' | 'elite';
       minStakePoints: number;
@@ -277,8 +296,13 @@ export default function ObserverProfilePage() {
           ? `${profile.predictions.correct}/${profile.predictions.total}`
           : t('observerProfile.noPredictions'),
     },
+    {
+      label: t('observerProfile.cards.predictionStreak'),
+      value: profile?.predictions.streak?.current ?? 0,
+    },
   ];
   const predictionMarket = profile?.predictions.market;
+  const lastResolvedPrediction = profile?.predictions.lastResolved ?? null;
   const formattedPredictionTier = formatPredictionTrustTier(
     predictionMarket?.trustTier,
     t,
@@ -460,6 +484,22 @@ export default function ObserverProfilePage() {
           {t('observerProfile.netPoints')}:{' '}
           {profile?.predictions.netPoints ?? 0}
         </p>
+        {lastResolvedPrediction ? (
+          <p className="text-muted-foreground text-xs">
+            {t('observerProfile.lastResolved')}:{' '}
+            {lastResolvedPrediction.isCorrect
+              ? t('observerProfile.predictionResultCorrect')
+              : t('observerProfile.predictionResultIncorrect')}{' '}
+            | {t('observerProfile.predictionNet')}:{' '}
+            {lastResolvedPrediction.netPoints >= 0 ? '+' : ''}
+            {lastResolvedPrediction.netPoints} |{' '}
+            {lastResolvedPrediction.draftTitle}
+          </p>
+        ) : (
+          <p className="text-muted-foreground text-xs">
+            {t('observerProfile.lastResolvedNone')}
+          </p>
+        )}
         {predictionMarket ? (
           <>
             <p className="text-muted-foreground text-xs">

@@ -41,6 +41,21 @@ interface ObserverProfilePrediction {
   resolvedAt: string | null;
 }
 
+interface ObserverProfileResolvedPredictionSnapshot {
+  id: string;
+  pullRequestId: string;
+  draftId: string;
+  draftTitle: string;
+  predictedOutcome: 'merge' | 'reject';
+  resolvedOutcome: 'merge' | 'reject';
+  isCorrect: boolean;
+  stakePoints: number;
+  payoutPoints: number;
+  createdAt: string;
+  resolvedAt: string;
+  netPoints: number;
+}
+
 interface ObserverPublicProfileResponse {
   observer: {
     id: string;
@@ -56,6 +71,10 @@ interface ObserverPublicProfileResponse {
     total: number;
     rate: number;
     netPoints: number;
+    streak: {
+      current: number;
+    };
+    lastResolved: ObserverProfileResolvedPredictionSnapshot | null;
     market?: {
       trustTier: 'entry' | 'regular' | 'trusted' | 'elite';
       minStakePoints: number;
@@ -213,11 +232,16 @@ export default function ObserverPublicProfilePage() {
         ? `${t('observerProfile.maxStake')}: ${profile.predictions.market.maxStakePoints}`
         : undefined,
     },
+    {
+      label: t('observerProfile.cards.predictionStreak'),
+      value: profile?.predictions.streak?.current ?? 0,
+    },
   ];
 
   const observerHandle =
     profile?.observer.handle ?? t('observerPublicProfile.observerLabel');
   const recentPredictions = profile?.recentPredictions ?? [];
+  const lastResolvedPrediction = profile?.predictions.lastResolved ?? null;
 
   return (
     <main className="grid gap-4 pb-8 sm:gap-5">
@@ -273,7 +297,7 @@ export default function ObserverPublicProfilePage() {
               : t('observerProfile.resync')}
           </button>
         </div>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
           {summaryCards.map((card) => (
             <div
               className="rounded-xl border border-border/25 bg-background/58 p-3"
@@ -291,6 +315,22 @@ export default function ObserverPublicProfilePage() {
             </div>
           ))}
         </div>
+        {lastResolvedPrediction ? (
+          <p className="text-muted-foreground text-xs">
+            {t('observerProfile.lastResolved')}:{' '}
+            {lastResolvedPrediction.isCorrect
+              ? t('observerProfile.predictionResultCorrect')
+              : t('observerProfile.predictionResultIncorrect')}{' '}
+            | {t('observerProfile.predictionNet')}:{' '}
+            {lastResolvedPrediction.netPoints >= 0 ? '+' : ''}
+            {lastResolvedPrediction.netPoints} |{' '}
+            {lastResolvedPrediction.draftTitle}
+          </p>
+        ) : (
+          <p className="text-muted-foreground text-xs">
+            {t('observerProfile.lastResolvedNone')}
+          </p>
+        )}
       </section>
 
       <section className="card grid gap-2 p-4 sm:p-5">
