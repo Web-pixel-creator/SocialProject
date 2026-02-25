@@ -78,6 +78,9 @@ describe('admin ux observer engagement page', () => {
               predictionParticipationRate: 0.5,
               predictionAccuracyRate: 0.5,
               predictionSettlementRate: 0.5,
+              predictionFilterSwitchShare: 0.571,
+              predictionSortSwitchShare: 0.429,
+              predictionNonDefaultSortRate: 0.667,
               predictionPoolPoints: 65,
               payoutToStakeRatio: 0.677,
               multimodalCoverageRate: 0.75,
@@ -444,14 +447,20 @@ describe('admin ux observer engagement page', () => {
     expect(
       screen.getByText(/Prediction market telemetry/i),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Filter switches/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Filter switches$/i)).toBeInTheDocument();
     expect(screen.getByText(/Filter scope mix/i)).toBeInTheDocument();
     expect(screen.getByText(/Filter value mix/i)).toBeInTheDocument();
     expect(screen.getByText(/Scope x filter matrix/i)).toBeInTheDocument();
-    expect(screen.getByText(/Sort switches/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Sort switches$/i)).toBeInTheDocument();
     expect(screen.getByText(/Sort scope mix/i)).toBeInTheDocument();
     expect(screen.getByText(/Sort value mix/i)).toBeInTheDocument();
     expect(screen.getByText(/Scope x sort matrix/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Filter switch share$/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Sort switch share/i).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(/Non-default sort share/i).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getByText(/Prediction sort share/i)).toBeInTheDocument();
     expect(screen.getByText(/Settlement rate/i)).toBeInTheDocument();
     expect(
       screen.getByText(/^Prediction hourly trend \(UTC\)$/i),

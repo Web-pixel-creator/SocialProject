@@ -3921,6 +3921,24 @@ router.get(
           (left, right) =>
             right.count - left.count || left.sort.localeCompare(right.sort),
         );
+      const predictionHistoryControlSwitches =
+        predictionFilterTotalSwitches + predictionSortTotalSwitches;
+      const predictionSortSwitchShare = toRate(
+        predictionSortTotalSwitches,
+        predictionHistoryControlSwitches,
+      );
+      const predictionFilterSwitchShare = toRate(
+        predictionFilterTotalSwitches,
+        predictionHistoryControlSwitches,
+      );
+      const predictionSortNonDefaultSwitches = predictionSortByScopeAndSort
+        .filter((row) => row.sort !== 'recent')
+        .map((row) => row.count)
+        .reduce((sum, count) => sum + count, 0);
+      const predictionNonDefaultSortRate = toRate(
+        predictionSortNonDefaultSwitches,
+        predictionSortTotalSwitches,
+      );
       const predictionHourlyTrend = predictionHourlyRows.rows
         .map((row) => {
           const hour = String(row.hour_bucket ?? '').trim();
@@ -3991,6 +4009,9 @@ router.get(
             totals.predictionSettles,
             totals.predictionSubmits,
           ),
+          predictionFilterSwitchShare,
+          predictionSortSwitchShare,
+          predictionNonDefaultSortRate,
           predictionPoolPoints: predictionStakePoints,
           payoutToStakeRatio,
           multimodalCoverageRate,

@@ -15,6 +15,9 @@ interface ObserverEngagementResponse {
     predictionParticipationRate?: number | null;
     predictionAccuracyRate?: number | null;
     predictionSettlementRate?: number | null;
+    predictionFilterSwitchShare?: number | null;
+    predictionSortSwitchShare?: number | null;
+    predictionNonDefaultSortRate?: number | null;
     predictionPoolPoints?: number | null;
     payoutToStakeRatio?: number | null;
     multimodalCoverageRate?: number | null;
@@ -3710,6 +3713,26 @@ export default async function AdminUxObserverEngagementPage({
         watchBelow: 0.4,
       },
     },
+    {
+      id: 'predictionSortSwitchShare',
+      label: 'Prediction sort share',
+      note: 'sort switches among prediction-history controls',
+      value: kpis.predictionSortSwitchShare,
+      thresholds: {
+        criticalBelow: 0.25,
+        watchBelow: 0.4,
+      },
+    },
+    {
+      id: 'predictionNonDefaultSortRate',
+      label: 'Non-default sort share',
+      note: 'share of sort switches away from recency',
+      value: kpis.predictionNonDefaultSortRate,
+      thresholds: {
+        criticalBelow: 0.15,
+        watchBelow: 0.3,
+      },
+    },
   ].map((signal) => ({
     ...signal,
     level: resolveHealthLevel(signal.value, signal.thresholds),
@@ -4003,7 +4026,7 @@ export default async function AdminUxObserverEngagementPage({
         <h2 className="font-semibold text-foreground text-lg">
           Engagement health
         </h2>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
           {healthSignals.map((signal) => (
             <article
               className="rounded-xl border border-border/25 bg-background/60 p-3"
@@ -4315,6 +4338,23 @@ export default async function AdminUxObserverEngagementPage({
             </div>
           )}
         </article>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <StatCard
+            hint="filter switches / (filter + sort switches)"
+            label="Filter switch share"
+            value={toRateText(kpis.predictionFilterSwitchShare)}
+          />
+          <StatCard
+            hint="sort switches / (filter + sort switches)"
+            label="Sort switch share"
+            value={toRateText(kpis.predictionSortSwitchShare)}
+          />
+          <StatCard
+            hint="non-recency sort switches / all sort switches"
+            label="Non-default sort share"
+            value={toRateText(kpis.predictionNonDefaultSortRate)}
+          />
+        </div>
         <PredictionHourlyTrendCard
           emptyLabel="No hourly prediction trend data in current window."
           items={predictionHourlyTrend}

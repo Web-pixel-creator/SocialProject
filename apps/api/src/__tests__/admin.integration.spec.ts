@@ -1650,6 +1650,9 @@ describe('Admin API routes', () => {
     expect(response.body.kpis.predictionParticipationRate).toBe(0);
     expect(response.body.kpis.predictionAccuracyRate).toBeNull();
     expect(response.body.kpis.predictionSettlementRate).toBe(1);
+    expect(response.body.kpis.predictionFilterSwitchShare).toBe(0.571);
+    expect(response.body.kpis.predictionSortSwitchShare).toBe(0.429);
+    expect(response.body.kpis.predictionNonDefaultSortRate).toBe(0.667);
     expect(response.body.kpis.predictionPoolPoints).toBe(0);
     expect(response.body.kpis.payoutToStakeRatio).toBeNull();
     expect(response.body.kpis.multimodalCoverageRate).toBe(0.5);
@@ -1984,6 +1987,17 @@ describe('Admin API routes', () => {
         byScopeAndFilter: [],
       }),
     );
+    expect(response.body.predictionSortTelemetry).toEqual(
+      expect.objectContaining({
+        totalSwitches: 0,
+        byScope: [],
+        bySort: [],
+        byScopeAndSort: [],
+      }),
+    );
+    expect(response.body.kpis.predictionFilterSwitchShare).toBeNull();
+    expect(response.body.kpis.predictionSortSwitchShare).toBeNull();
+    expect(response.body.kpis.predictionNonDefaultSortRate).toBeNull();
   });
 
   test('job metrics endpoint returns aggregated runs', async () => {
