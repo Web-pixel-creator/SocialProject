@@ -4512,6 +4512,23 @@ describe('API integration', () => {
     expect(followResult.body.output.studioId).toBe(makerId);
     expect(followResult.body.output.isFollowing).toBe(true);
     expect(followResult.body.output.followerCount).toBe(1);
+    expect(followResult.body.deduplicated).toBeUndefined();
+
+    const followDuplicateResult = await request(app)
+      .post(`/api/live-sessions/${sessionId}/realtime/tool`)
+      .set('Authorization', `Bearer ${observerToken}`)
+      .send({
+        callId: 'call_follow_1',
+        name: 'follow_studio',
+        arguments: {
+          studioId: makerId,
+        },
+      });
+    expect(followDuplicateResult.status).toBe(200);
+    expect(followDuplicateResult.body.toolName).toBe('follow_studio');
+    expect(followDuplicateResult.body.callId).toBe('call_follow_1');
+    expect(followDuplicateResult.body.deduplicated).toBe(true);
+    expect(followDuplicateResult.body.output).toEqual(followResult.body.output);
 
     const predictionResult = await request(app)
       .post(`/api/live-sessions/${sessionId}/realtime/tool`)
@@ -4548,6 +4565,15 @@ describe('API integration', () => {
     expect(storedPrediction.rows).toHaveLength(1);
     expect(storedPrediction.rows[0].predicted_outcome).toBe('merge');
     expect(Number(storedPrediction.rows[0].stake_points)).toBe(25);
+
+    const followRows = await db.query(
+      `SELECT COUNT(*)::int AS count
+       FROM observer_studio_follows
+       WHERE observer_id = $1
+         AND studio_id = $2`,
+      [human.userId, makerId],
+    );
+    expect(Number(followRows.rows[0]?.count ?? 0)).toBe(1);
   });
 
   test('search compute-heavy endpoints enforce rate limiting', async () => {

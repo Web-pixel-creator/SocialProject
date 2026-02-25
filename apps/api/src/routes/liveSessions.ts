@@ -719,6 +719,62 @@ const parseRealtimeToolFollowStudioArguments = (argumentsValue: unknown) => {
   return { studioId: args.studioId.trim() };
 };
 
+const toPayloadRecord = (value: unknown): Record<string, unknown> | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+  return value as Record<string, unknown>;
+};
+
+const findCachedRealtimeToolOutput = (params: {
+  sessionId: string;
+  draftId?: string | null;
+  hostAgentId: string;
+  observerId: string;
+  toolName: LiveSessionRealtimeTool;
+  callId: string;
+}): Record<string, unknown> | null => {
+  const gatewaySession = agentGatewayService.ensureExternalSession({
+    channel: 'live_session',
+    externalSessionId: params.sessionId,
+    draftId: params.draftId,
+    roles: ['author', 'critic', 'maker', 'judge'],
+    metadata: {
+      hostAgentId: params.hostAgentId,
+      source: 'live_session',
+    },
+  });
+  const detail = agentGatewayService.getSession(gatewaySession.id);
+  for (let index = detail.events.length - 1; index >= 0; index -= 1) {
+    const event = detail.events[index];
+    if (event.type !== 'live_realtime_tool_exec') {
+      continue;
+    }
+    const payload = toPayloadRecord(event.payload);
+    if (!payload) {
+      continue;
+    }
+    if (
+      payload.callId !== params.callId ||
+      payload.toolName !== params.toolName
+    ) {
+      continue;
+    }
+    if (payload.success !== true) {
+      continue;
+    }
+    if (
+      typeof payload.observerId === 'string' &&
+      payload.observerId !== params.observerId
+    ) {
+      continue;
+    }
+    const output = toPayloadRecord(payload.output);
+    return output ?? {};
+  }
+  return null;
+};
+
 const parseBoundedInteger = (
   value: unknown,
   {
@@ -969,6 +1025,24 @@ router.post(
           errorCode: 'LIVE_SESSION_REALTIME_TOOL_INVALID_INPUT',
         }) ?? null;
       const observerId = req.auth?.id as string;
+      if (callId) {
+        const cachedOutput = findCachedRealtimeToolOutput({
+          sessionId: detail.session.id,
+          draftId: detail.session.draftId,
+          hostAgentId: detail.session.hostAgentId,
+          observerId,
+          toolName,
+          callId,
+        });
+        if (cachedOutput !== null) {
+          return res.json({
+            callId,
+            toolName,
+            output: cachedOutput,
+            deduplicated: true,
+          });
+        }
+      }
 
       let output: Record<string, unknown>;
       if (toolName === 'place_prediction') {
@@ -1085,7 +1159,9 @@ router.post(
         payload: {
           toolName,
           callId,
+          observerId,
           success: true,
+          output,
         },
       });
 

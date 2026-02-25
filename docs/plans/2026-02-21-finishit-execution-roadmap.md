@@ -480,3 +480,8 @@ Exit criteria:
   - `handleRealtimeToolCallsFromResponseDone(...)` now accepts optional per-session `processedCallIds` and skips duplicate `call_id` executions across repeated server events,
   - `LiveStudioSessionsRail` now keeps session-scoped processed call-id sets and clears them on reconnect/session cleanup to prevent duplicate `/realtime/tool` calls while preserving clean session restarts,
   - regression coverage added in `apps/web/src/__tests__/realtime-tool-bridge.spec.ts` for `response.output_item.done` extraction and duplicate call-id suppression.
+- Realtime tool endpoint idempotency hardening update:
+  - `/api/live-sessions/:id/realtime/tool` now reuses agent-gateway session history to detect previously successful tool executions by `{sessionId, observerId, toolName, callId}`,
+  - duplicate tool calls with the same `callId` now short-circuit with cached output (`deduplicated: true`) instead of re-running side effects,
+  - successful realtime tool gateway events now persist normalized execution payload (`observerId`, `toolName`, `callId`, `output`) to back idempotent replay,
+  - API integration coverage updated to verify duplicate follow-tool execution returns deduplicated cached output while keeping follow rows singular.
