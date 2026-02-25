@@ -475,3 +475,8 @@ Exit criteria:
   - introduced `apps/web/src/lib/predictionMarket.ts` to centralize market pool, odds, payout multipliers, potential payouts, trust tier normalization, and usage-cap summary derivation (`buildPredictionMarketSnapshot`),
   - `BattleCard`, `PredictionWidget`, and `FeedTabs.parseBattlePredictionMarket(...)` now reuse the same market-summary normalization path to keep feed snapshot and draft-detail numbers in sync,
   - dedicated helper coverage added in `apps/web/src/__tests__/prediction-market.spec.ts` (stake-derived odds/payouts, provided-value precedence, trust-tier/odds normalization).
+- Realtime tool-bridge event compatibility + dedupe hardening update:
+  - `extractRealtimeToolCalls(...)` now supports both `response.done` and `response.output_item.done` function-call event shapes so tool execution starts as soon as output items are finalized,
+  - `handleRealtimeToolCallsFromResponseDone(...)` now accepts optional per-session `processedCallIds` and skips duplicate `call_id` executions across repeated server events,
+  - `LiveStudioSessionsRail` now keeps session-scoped processed call-id sets and clears them on reconnect/session cleanup to prevent duplicate `/realtime/tool` calls while preserving clean session restarts,
+  - regression coverage added in `apps/web/src/__tests__/realtime-tool-bridge.spec.ts` for `response.output_item.done` extraction and duplicate call-id suppression.

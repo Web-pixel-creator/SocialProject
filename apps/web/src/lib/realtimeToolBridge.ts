@@ -3,13 +3,6 @@ import { apiClient } from './api';
 
 type RealtimeToolName = 'place_prediction' | 'follow_studio';
 
-interface RealtimeResponseDoneEvent {
-  type: string;
-  response?: {
-    output?: unknown[];
-  };
-}
-
 interface RealtimeToolCall {
   name: RealtimeToolName;
   callId: string;
@@ -32,6 +25,7 @@ interface HandleRealtimeToolCallsInput {
   liveSessionId: string;
   serverEvent: unknown;
   sendClientEvent: (event: Record<string, unknown>) => void;
+  processedCallIds?: Set<string>;
   client?: Pick<AxiosInstance, 'post'>;
 }
 
@@ -115,15 +109,23 @@ const mapFunctionCallItem = (item: unknown): RealtimeToolCall | null => {
 export const extractRealtimeToolCalls = (
   event: unknown,
 ): RealtimeToolCall[] => {
-  const record = asRecord(event) as RealtimeResponseDoneEvent | null;
-  if (!(record && record.type === 'response.done')) {
+  const record = asRecord(event);
+  if (!record || typeof record.type !== 'string') {
     return [];
   }
-  const output = Array.isArray(record.response?.output)
-    ? record.response?.output
-    : [];
-  const parsed = output.map((item) => mapFunctionCallItem(item));
-  return parsed.filter((item): item is RealtimeToolCall => item !== null);
+  if (record.type === 'response.done') {
+    const responseRecord = asRecord(record.response);
+    const output = Array.isArray(responseRecord?.output)
+      ? responseRecord.output
+      : [];
+    const parsed = output.map((item) => mapFunctionCallItem(item));
+    return parsed.filter((item): item is RealtimeToolCall => item !== null);
+  }
+  if (record.type === 'response.output_item.done') {
+    const parsed = mapFunctionCallItem(record.item ?? record.output_item);
+    return parsed ? [parsed] : [];
+  }
+  return [];
 };
 
 export const executeRealtimeToolCall = async (
@@ -197,7 +199,13 @@ export const handleRealtimeToolCallsFromResponseDone = async (
     };
   }
 
+  const processedCallIds = input.processedCallIds;
+  let processed = 0;
   for (const toolCall of toolCalls) {
+    if (processedCallIds?.has(toolCall.callId)) {
+      continue;
+    }
+    processedCallIds?.add(toolCall.callId);
     try {
       const execution = await executeRealtimeToolCall({
         liveSessionId: input.liveSessionId,
@@ -218,9 +226,10 @@ export const handleRealtimeToolCallsFromResponseDone = async (
       );
       input.sendClientEvent(buildFollowupResponseEvent());
     }
+    processed += 1;
   }
 
   return {
-    processed: toolCalls.length,
+    processed,
   };
 };

@@ -623,6 +623,9 @@ export const LiveStudioSessionsRail = () => {
   const realtimeConnectionsRef = useRef<
     Record<string, OpenAIRealtimeConnection>
   >({});
+  const processedToolCallIdsBySessionRef = useRef<Record<string, Set<string>>>(
+    {},
+  );
   const transcriptPersistenceRef = useRef<
     Record<
       string,
@@ -795,9 +798,15 @@ export const LiveStudioSessionsRail = () => {
       }
 
       try {
+        const processedCallIds =
+          processedToolCallIdsBySessionRef.current[detail.liveSessionId] ??
+          new Set<string>();
+        processedToolCallIdsBySessionRef.current[detail.liveSessionId] =
+          processedCallIds;
         const result = await handleRealtimeToolCallsFromResponseDone({
           liveSessionId: detail.liveSessionId,
           serverEvent: detail.serverEvent,
+          processedCallIds,
           sendClientEvent: (clientEvent) => {
             window.dispatchEvent(
               new CustomEvent<LiveSessionRealtimeClientEventDetail>(
@@ -909,6 +918,7 @@ export const LiveStudioSessionsRail = () => {
       ) {
         connection.close();
         delete realtimeConnectionsRef.current[sessionId];
+        delete processedToolCallIdsBySessionRef.current[sessionId];
         delete transcriptPersistenceRef.current[sessionId];
         if (voiceFocusSessionId === sessionId) {
           setVoiceFocusSessionId(null);
@@ -923,6 +933,7 @@ export const LiveStudioSessionsRail = () => {
         connection.close();
       }
       realtimeConnectionsRef.current = {};
+      processedToolCallIdsBySessionRef.current = {};
       transcriptPersistenceRef.current = {};
     },
     [],
@@ -1071,6 +1082,7 @@ export const LiveStudioSessionsRail = () => {
       existingConnection.close();
       delete realtimeConnectionsRef.current[session.id];
     }
+    delete processedToolCallIdsBySessionRef.current[session.id];
     setCopilotStateBySession((current) => ({
       ...current,
       [session.id]: { status: 'loading' },

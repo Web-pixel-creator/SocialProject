@@ -58,6 +58,26 @@ describe('realtimeToolBridge', () => {
     ]);
   });
 
+  test('extractRealtimeToolCalls parses allowlisted function call from response.output_item.done', () => {
+    const calls = extractRealtimeToolCalls({
+      type: 'response.output_item.done',
+      item: {
+        type: 'function_call',
+        name: 'follow_studio',
+        call_id: 'call_7',
+        arguments: '{"studioId":"00000000-0000-0000-0000-000000000007"}',
+      },
+    });
+
+    expect(calls).toEqual([
+      {
+        name: 'follow_studio',
+        callId: 'call_7',
+        argumentsJson: '{"studioId":"00000000-0000-0000-0000-000000000007"}',
+      },
+    ]);
+  });
+
   test('executeRealtimeToolCall posts to realtime tool endpoint', async () => {
     const post = jest.fn().mockResolvedValue({
       data: {
@@ -195,5 +215,61 @@ describe('realtimeToolBridge', () => {
     expect(sendClientEvent.mock.calls[1][0]).toEqual({
       type: 'response.create',
     });
+  });
+
+  test('handleRealtimeToolCallsFromResponseDone deduplicates repeated call ids', async () => {
+    const post = jest.fn().mockResolvedValue({
+      data: {
+        callId: 'call_9',
+        toolName: 'follow_studio',
+        output: {
+          studioId: '00000000-0000-0000-0000-000000000009',
+          isFollowing: true,
+        },
+      },
+    });
+    const sendClientEvent = jest.fn();
+    const processedCallIds = new Set<string>();
+
+    const first = await handleRealtimeToolCallsFromResponseDone({
+      liveSessionId: 'session_1',
+      serverEvent: {
+        type: 'response.output_item.done',
+        item: {
+          type: 'function_call',
+          name: 'follow_studio',
+          call_id: 'call_9',
+          arguments: '{"studioId":"00000000-0000-0000-0000-000000000009"}',
+        },
+      },
+      sendClientEvent,
+      processedCallIds,
+      client: { post },
+    });
+
+    const second = await handleRealtimeToolCallsFromResponseDone({
+      liveSessionId: 'session_1',
+      serverEvent: {
+        type: 'response.done',
+        response: {
+          output: [
+            {
+              type: 'function_call',
+              name: 'follow_studio',
+              call_id: 'call_9',
+              arguments: '{"studioId":"00000000-0000-0000-0000-000000000009"}',
+            },
+          ],
+        },
+      },
+      sendClientEvent,
+      processedCallIds,
+      client: { post },
+    });
+
+    expect(first).toEqual({ processed: 1 });
+    expect(second).toEqual({ processed: 0 });
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(sendClientEvent).toHaveBeenCalledTimes(2);
   });
 });
