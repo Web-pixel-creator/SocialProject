@@ -3773,6 +3773,19 @@ router.get(
          ORDER BY scope, filter_value`,
         [hours],
       );
+      const predictionSortRows = await db.query(
+        `SELECT
+           COALESCE(metadata->>'scope', 'unknown') AS scope,
+           COALESCE(metadata->>'sort', 'unknown') AS sort_value,
+           COUNT(*)::int AS count
+         FROM ux_events
+         WHERE created_at >= NOW() - ($1 || ' hours')::interval
+           AND user_type = 'observer'
+           AND event_type = 'observer_prediction_sort_change'
+         GROUP BY scope, sort_value
+         ORDER BY scope, sort_value`,
+        [hours],
+      );
 
       const predictionCount = Number(
         predictionMarketSummary.rows[0]?.prediction_count ?? 0,
@@ -3860,6 +3873,53 @@ router.get(
         .sort(
           (left, right) =>
             right.count - left.count || left.filter.localeCompare(right.filter),
+        );
+      const predictionSortByScopeMap = new Map<string, number>();
+      const predictionSortBySortMap = new Map<string, number>();
+      const predictionSortByScopeAndSort = predictionSortRows.rows.map(
+        (row) => {
+          const scope = String(row.scope ?? 'unknown');
+          const sort = String(row.sort_value ?? 'unknown');
+          const count = Number(row.count ?? 0);
+          predictionSortByScopeMap.set(
+            scope,
+            (predictionSortByScopeMap.get(scope) ?? 0) + count,
+          );
+          predictionSortBySortMap.set(
+            sort,
+            (predictionSortBySortMap.get(sort) ?? 0) + count,
+          );
+          return {
+            scope,
+            sort,
+            count,
+          };
+        },
+      );
+      const predictionSortTotalSwitches = predictionSortByScopeAndSort
+        .map((row) => row.count)
+        .reduce((sum, count) => sum + count, 0);
+      const predictionSortByScope = Array.from(
+        predictionSortByScopeMap.entries(),
+      )
+        .map(([scope, count]) => ({
+          scope,
+          count,
+          rate: toRate(count, predictionSortTotalSwitches),
+        }))
+        .sort(
+          (left, right) =>
+            right.count - left.count || left.scope.localeCompare(right.scope),
+        );
+      const predictionSortBySort = Array.from(predictionSortBySortMap.entries())
+        .map(([sort, count]) => ({
+          sort,
+          count,
+          rate: toRate(count, predictionSortTotalSwitches),
+        }))
+        .sort(
+          (left, right) =>
+            right.count - left.count || left.sort.localeCompare(right.sort),
         );
       const predictionHourlyTrend = predictionHourlyRows.rows
         .map((row) => {
@@ -3976,6 +4036,12 @@ router.get(
           byScope: predictionFilterByScope,
           byFilter: predictionFilterByFilter,
           byScopeAndFilter: predictionFilterByScopeAndFilter,
+        },
+        predictionSortTelemetry: {
+          totalSwitches: predictionSortTotalSwitches,
+          byScope: predictionSortByScope,
+          bySort: predictionSortBySort,
+          byScopeAndSort: predictionSortByScopeAndSort,
         },
         feedPreferences: {
           viewMode: {

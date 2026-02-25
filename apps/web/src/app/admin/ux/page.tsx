@@ -68,6 +68,24 @@ interface ObserverEngagementResponse {
       count?: number;
     }>;
   };
+  predictionSortTelemetry?: {
+    totalSwitches?: number;
+    byScope?: Array<{
+      scope?: string;
+      count?: number;
+      rate?: number | null;
+    }>;
+    bySort?: Array<{
+      sort?: string;
+      count?: number;
+      rate?: number | null;
+    }>;
+    byScopeAndSort?: Array<{
+      scope?: string;
+      sort?: string;
+      count?: number;
+    }>;
+  };
   multimodal?: {
     views?: number;
     emptyStates?: number;
@@ -459,6 +477,11 @@ interface PredictionFilterScopeFilterItem {
   filter: string;
   scope: string;
 }
+interface PredictionSortScopeSortItem {
+  count: number;
+  scope: string;
+  sort: string;
+}
 interface GatewayCompactionHourlyTrendItem {
   autoCompactionShare: number | null;
   autoCompactionRiskLevel: HealthLevel;
@@ -774,6 +797,34 @@ const normalizePredictionFilterScopeFilterItems = (
       (left, right) =>
         left.scope.localeCompare(right.scope) ||
         left.filter.localeCompare(right.filter),
+    );
+};
+
+const normalizePredictionSortScopeSortItems = (
+  items: unknown,
+): PredictionSortScopeSortItem[] => {
+  if (!Array.isArray(items)) {
+    return [];
+  }
+  return items
+    .map((item) => {
+      const row = item && typeof item === 'object' ? item : {};
+      return {
+        scope: toStringValue(
+          (row as Record<string, unknown>).scope,
+          'unknown-scope',
+        ),
+        sort: toStringValue(
+          (row as Record<string, unknown>).sort,
+          'unknown-sort',
+        ),
+        count: toNumber((row as Record<string, unknown>).count),
+      };
+    })
+    .sort(
+      (left, right) =>
+        left.scope.localeCompare(right.scope) ||
+        left.sort.localeCompare(right.sort),
     );
 };
 
@@ -2782,6 +2833,18 @@ export default async function AdminUxObserverEngagementPage({
     normalizePredictionFilterScopeFilterItems(
       predictionFilterTelemetry.byScopeAndFilter,
     );
+  const predictionSortTelemetry = data?.predictionSortTelemetry ?? {};
+  const predictionSortByScopeBreakdown = normalizeBreakdownItems({
+    items: predictionSortTelemetry.byScope,
+    keyName: 'scope',
+  });
+  const predictionSortBySortBreakdown = normalizeBreakdownItems({
+    items: predictionSortTelemetry.bySort,
+    keyName: 'sort',
+  });
+  const predictionSortByScopeAndSort = normalizePredictionSortScopeSortItems(
+    predictionSortTelemetry.byScopeAndSort,
+  );
   const multimodal = data?.multimodal ?? {};
   const multimodalCoverageRate = pickFirstFiniteRate(
     multimodal.coverageRate,
@@ -4184,6 +4247,63 @@ export default async function AdminUxObserverEngagementPage({
                       </td>
                       <td className="px-3 py-2 text-muted-foreground">
                         {entry.filter}
+                      </td>
+                      <td className="px-3 py-2 text-right font-semibold text-foreground">
+                        {entry.count}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </article>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <StatCard
+            hint="observer prediction-history sort changes"
+            label="Sort switches"
+            value={`${toNumber(predictionSortTelemetry.totalSwitches)}`}
+          />
+          <BreakdownListCard
+            emptyLabel="No sort scope data in current window."
+            items={predictionSortByScopeBreakdown}
+            title="Sort scope mix"
+          />
+          <BreakdownListCard
+            emptyLabel="No sort-value data in current window."
+            items={predictionSortBySortBreakdown}
+            title="Sort value mix"
+          />
+        </div>
+        <article className="card grid gap-2 p-4">
+          <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+            Scope x sort matrix
+          </h3>
+          {predictionSortByScopeAndSort.length === 0 ? (
+            <p className="text-muted-foreground text-xs">
+              No scope/sort matrix data in current window.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-left text-xs">
+                <thead>
+                  <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
+                    <th className="py-2 pr-3">Scope</th>
+                    <th className="px-3 py-2">Sort</th>
+                    <th className="px-3 py-2 text-right">Count</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {predictionSortByScopeAndSort.map((entry, index) => (
+                    <tr
+                      className="border-border/25 border-b last:border-b-0"
+                      key={`${entry.scope}:${entry.sort}:${index + 1}`}
+                    >
+                      <td className="py-2 pr-3 text-muted-foreground">
+                        {entry.scope}
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        {entry.sort}
                       </td>
                       <td className="px-3 py-2 text-right font-semibold text-foreground">
                         {entry.count}

@@ -147,6 +147,24 @@ describe('admin ux observer engagement page', () => {
                 { scope: 'unknown', filter: 'unknown', count: 1 },
               ],
             },
+            predictionSortTelemetry: {
+              totalSwitches: 3,
+              byScope: [
+                { scope: 'self', count: 1, rate: 0.333 },
+                { scope: 'public', count: 1, rate: 0.333 },
+                { scope: 'unknown', count: 1, rate: 0.333 },
+              ],
+              bySort: [
+                { sort: 'recent', count: 1, rate: 0.333 },
+                { sort: 'stake_desc', count: 1, rate: 0.333 },
+                { sort: 'unknown', count: 1, rate: 0.333 },
+              ],
+              byScopeAndSort: [
+                { scope: 'self', sort: 'recent', count: 1 },
+                { scope: 'public', sort: 'stake_desc', count: 1 },
+                { scope: 'unknown', sort: 'unknown', count: 1 },
+              ],
+            },
             multimodal: {
               views: 3,
               emptyStates: 1,
@@ -430,6 +448,10 @@ describe('admin ux observer engagement page', () => {
     expect(screen.getByText(/Filter scope mix/i)).toBeInTheDocument();
     expect(screen.getByText(/Filter value mix/i)).toBeInTheDocument();
     expect(screen.getByText(/Scope x filter matrix/i)).toBeInTheDocument();
+    expect(screen.getByText(/Sort switches/i)).toBeInTheDocument();
+    expect(screen.getByText(/Sort scope mix/i)).toBeInTheDocument();
+    expect(screen.getByText(/Sort value mix/i)).toBeInTheDocument();
+    expect(screen.getByText(/Scope x sort matrix/i)).toBeInTheDocument();
     expect(screen.getByText(/Settlement rate/i)).toBeInTheDocument();
     expect(
       screen.getByText(/^Prediction hourly trend \(UTC\)$/i),

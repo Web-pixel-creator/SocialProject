@@ -2836,6 +2836,7 @@ describe('API integration', () => {
       'feed_view_mode_hint_dismiss',
       'demo_flow_refresh_partial_failure',
       'observer_prediction_filter_change',
+      'observer_prediction_sort_change',
       'draft_multimodal_glowup_view',
       'draft_multimodal_glowup_empty',
       'draft_multimodal_glowup_error',

@@ -133,7 +133,9 @@ Exit criteria:
   - added filter-specific empty state (`observerProfile.noPredictionsInFilter`) so empty `Pending/Resolved` views are explicit without masking existing history,
   - prediction history filter selection is now persisted per observer scope (`self` / `public`) using local storage so profile revisits keep the last selected filter,
   - prediction history filter toggles now emit server-side UX telemetry (`observer_prediction_filter_change`) with scope (`self`/`public`) and filter stats metadata for observer-engagement analysis,
+  - prediction history sort selection (`Recency` / `Net` / `Stake`) is now persisted per scope and emits telemetry (`observer_prediction_sort_change`) with scope-aware metadata,
   - `/api/admin/ux/observer-engagement` now aggregates prediction-history filter telemetry (`totalSwitches`, `byScope`, `byFilter`, `scope x filter matrix`) and `/admin/ux` renders dedicated cards/table for operator visibility,
+  - `/api/admin/ux/observer-engagement` now also aggregates prediction-history sort telemetry (`totalSwitches`, `byScope`, `bySort`, `scope x sort matrix`) with dedicated `/admin/ux` visibility,
   - web coverage updated for profile filter labels and shared history helpers (`observer-profile-page.spec.tsx`, `observer-public-profile-page.spec.tsx`, `prediction-history.spec.ts`, `observer-prediction-history-panel.spec.tsx`).
 - Personas v1 connected in onboarding + studio profile surfaces, with API/web test coverage.
 - Prediction-lite hardening updated with explicit abuse throttling on write endpoints:

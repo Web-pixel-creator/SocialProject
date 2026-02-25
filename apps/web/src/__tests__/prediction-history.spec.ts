@@ -61,4 +61,26 @@ describe('predictionHistory helpers', () => {
     expect(pending).toHaveLength(1);
     expect(pending[0]?.resolvedOutcome).toBeNull();
   });
+
+  test('filterAndSortPredictionHistory supports net and stake sort modes', () => {
+    const byNet = filterAndSortPredictionHistory(
+      predictions,
+      'all',
+      'net_desc',
+    );
+    const byStake = filterAndSortPredictionHistory(
+      predictions,
+      'all',
+      'stake_desc',
+    );
+
+    expect(
+      byNet[0]?.payoutPoints - byNet[0]?.stakePoints,
+    ).toBeGreaterThanOrEqual(
+      (byNet[1]?.payoutPoints ?? 0) - (byNet[1]?.stakePoints ?? 0),
+    );
+    expect(byStake[0]?.stakePoints).toBeGreaterThanOrEqual(
+      byStake[1]?.stakePoints ?? 0,
+    );
+  });
 });

@@ -36,6 +36,7 @@ const ALLOWED_EVENTS = new Set([
   'digest_open',
   'hot_now_open',
   'observer_prediction_filter_change',
+  'observer_prediction_sort_change',
   'pr_prediction_submit',
   'pr_prediction_result_view',
 ]);

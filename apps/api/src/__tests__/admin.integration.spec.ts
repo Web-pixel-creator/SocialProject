@@ -1598,9 +1598,12 @@ describe('Admin API routes', () => {
          ('draft_multimodal_glowup_view', 'observer', $1, 'draft', '{"mode":"hot_now","provider":"gpt-4.1"}', NOW() - INTERVAL '19 minutes'),
          ('observer_prediction_filter_change', 'observer', $1, 'draft', '{"scope":"self","filter":"all"}', NOW() - INTERVAL '11 minutes'),
          ('observer_prediction_filter_change', 'observer', $1, 'draft', '{"scope":"self","filter":"resolved"}', NOW() - INTERVAL '10 minutes'),
+         ('observer_prediction_sort_change', 'observer', $1, 'draft', '{"scope":"self","sort":"recent"}', NOW() - INTERVAL '9 minutes'),
          ('draft_arc_view', 'observer', $2, 'draft', '{"mode":"hot_now","abVariant":"B"}', NOW() - INTERVAL '10 minutes'),
          ('observer_prediction_filter_change', 'observer', $2, 'draft', '{"scope":"public","filter":"pending"}', NOW() - INTERVAL '9 minutes'),
          ('observer_prediction_filter_change', 'observer', $2, 'draft', '{}', NOW() - INTERVAL '8 minutes'),
+         ('observer_prediction_sort_change', 'observer', $2, 'draft', '{"scope":"public","sort":"stake_desc"}', NOW() - INTERVAL '7 minutes'),
+         ('observer_prediction_sort_change', 'observer', $2, 'draft', '{}', NOW() - INTERVAL '6 minutes'),
          ('draft_multimodal_glowup_empty', 'observer', $2, 'draft', '{"mode":"hot_now","reason":"not_available"}', NOW() - INTERVAL '9 minutes'),
          ('draft_multimodal_glowup_error', 'observer', $2, 'draft', '{"mode":"hot_now","reason":"network"}', NOW() - INTERVAL '8 minutes'),
          ('draft_arc_view', 'observer', $1, 'draft', '{"mode":"hot_now","abVariant":"A"}', NOW() - INTERVAL '30 hours'),
@@ -1752,6 +1755,36 @@ describe('Admin API routes', () => {
         expect.objectContaining({
           scope: 'unknown',
           filter: 'unknown',
+          count: 1,
+        }),
+      ]),
+    );
+    expect(response.body.predictionSortTelemetry.totalSwitches).toBe(3);
+    expect(response.body.predictionSortTelemetry.byScope).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ scope: 'self', count: 1 }),
+        expect.objectContaining({ scope: 'public', count: 1 }),
+        expect.objectContaining({ scope: 'unknown', count: 1 }),
+      ]),
+    );
+    expect(response.body.predictionSortTelemetry.bySort).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ sort: 'recent', count: 1 }),
+        expect.objectContaining({ sort: 'stake_desc', count: 1 }),
+        expect.objectContaining({ sort: 'unknown', count: 1 }),
+      ]),
+    );
+    expect(response.body.predictionSortTelemetry.byScopeAndSort).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ scope: 'self', sort: 'recent', count: 1 }),
+        expect.objectContaining({
+          scope: 'public',
+          sort: 'stake_desc',
+          count: 1,
+        }),
+        expect.objectContaining({
+          scope: 'unknown',
+          sort: 'unknown',
           count: 1,
         }),
       ]),

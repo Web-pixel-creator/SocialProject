@@ -1,4 +1,5 @@
 export type PredictionHistoryFilter = 'all' | 'resolved' | 'pending';
+export type PredictionHistorySort = 'net_desc' | 'recent' | 'stake_desc';
 
 export interface PredictionHistoryItem {
   resolvedOutcome: 'merge' | 'reject' | null;
@@ -60,6 +61,7 @@ export const derivePredictionHistoryStats = (
 export const filterAndSortPredictionHistory = <T extends PredictionHistoryItem>(
   predictions: T[],
   filter: PredictionHistoryFilter,
+  sort: PredictionHistorySort = 'recent',
 ): T[] => {
   const filtered = predictions.filter((prediction) => {
     if (filter === 'resolved') {
@@ -72,14 +74,6 @@ export const filterAndSortPredictionHistory = <T extends PredictionHistoryItem>(
   });
 
   return [...filtered].sort((left, right) => {
-    if (filter === 'all') {
-      const leftPending = left.resolvedOutcome === null;
-      const rightPending = right.resolvedOutcome === null;
-      if (leftPending !== rightPending) {
-        return leftPending ? -1 : 1;
-      }
-    }
-
     const leftTimestamp =
       left.resolvedOutcome === null
         ? toTimestamp(left.createdAt)
@@ -88,6 +82,31 @@ export const filterAndSortPredictionHistory = <T extends PredictionHistoryItem>(
       right.resolvedOutcome === null
         ? toTimestamp(right.createdAt)
         : Math.max(toTimestamp(right.resolvedAt), toTimestamp(right.createdAt));
+
+    const leftNetPoints = left.payoutPoints - left.stakePoints;
+    const rightNetPoints = right.payoutPoints - right.stakePoints;
+
+    if (sort === 'net_desc') {
+      if (rightNetPoints !== leftNetPoints) {
+        return rightNetPoints - leftNetPoints;
+      }
+      return rightTimestamp - leftTimestamp;
+    }
+
+    if (sort === 'stake_desc') {
+      if (right.stakePoints !== left.stakePoints) {
+        return right.stakePoints - left.stakePoints;
+      }
+      return rightTimestamp - leftTimestamp;
+    }
+
+    if (filter === 'all') {
+      const leftPending = left.resolvedOutcome === null;
+      const rightPending = right.resolvedOutcome === null;
+      if (leftPending !== rightPending) {
+        return leftPending ? -1 : 1;
+      }
+    }
 
     return rightTimestamp - leftTimestamp;
   });

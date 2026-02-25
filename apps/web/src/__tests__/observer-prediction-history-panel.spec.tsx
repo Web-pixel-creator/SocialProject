@@ -29,10 +29,12 @@ const messages: Record<string, string> = {
   'observerProfile.payout': 'Payout',
   'observerProfile.resolved': 'Resolved',
   'observerProfile.stake': 'Stake',
+  'search.sort.recency': 'Recency',
 };
 
 const t = (key: string) => messages[key] ?? key;
 const STORAGE_KEY_SELF = 'finishit:observer-prediction-filter:self';
+const SORT_STORAGE_KEY_SELF = 'finishit:observer-prediction-sort:self';
 
 describe('ObserverPredictionHistoryPanel', () => {
   beforeEach(() => {
@@ -84,10 +86,26 @@ describe('ObserverPredictionHistoryPanel', () => {
       },
     });
     expect(window.localStorage.getItem(STORAGE_KEY_SELF)).toBe('pending');
+
+    fireEvent.click(screen.getByRole('button', { name: /Net/i }));
+
+    expect(apiClient.post).toHaveBeenCalledWith('/telemetry/ux', {
+      eventType: 'observer_prediction_sort_change',
+      metadata: {
+        sort: 'net_desc',
+        previousSort: 'recent',
+        scope: 'self',
+        total: 1,
+        resolved: 1,
+        pending: 0,
+      },
+    });
+    expect(window.localStorage.getItem(SORT_STORAGE_KEY_SELF)).toBe('net_desc');
   });
 
   test('restores previously selected filter from localStorage', () => {
     window.localStorage.setItem(STORAGE_KEY_SELF, 'resolved');
+    window.localStorage.setItem(SORT_STORAGE_KEY_SELF, 'stake_desc');
 
     render(
       <ObserverPredictionHistoryPanel
@@ -125,5 +143,9 @@ describe('ObserverPredictionHistoryPanel', () => {
 
     expect(screen.getByText(/Resolved Draft/i)).toBeInTheDocument();
     expect(screen.queryByText(/Pending Draft/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Stake/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
   });
 });

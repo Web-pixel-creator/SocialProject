@@ -8,6 +8,7 @@ import {
   filterAndSortPredictionHistory,
   type PredictionHistoryFilter,
   type PredictionHistoryItem,
+  type PredictionHistorySort,
 } from '../lib/predictionHistory';
 
 export interface ObserverPredictionHistoryEntry extends PredictionHistoryItem {
@@ -25,15 +26,25 @@ interface ObserverPredictionHistoryPanelProps {
 }
 
 const PREDICTION_FILTER_STORAGE_PREFIX = 'finishit:observer-prediction-filter';
+const PREDICTION_SORT_STORAGE_PREFIX = 'finishit:observer-prediction-sort';
 
 const isPredictionHistoryFilter = (
   value: unknown,
 ): value is PredictionHistoryFilter =>
   value === 'all' || value === 'resolved' || value === 'pending';
 
+const isPredictionHistorySort = (
+  value: unknown,
+): value is PredictionHistorySort =>
+  value === 'recent' || value === 'net_desc' || value === 'stake_desc';
+
 const predictionFilterStorageKey = (
   scope: ObserverPredictionHistoryPanelProps['telemetryScope'],
 ): string => `${PREDICTION_FILTER_STORAGE_PREFIX}:${scope}`;
+
+const predictionSortStorageKey = (
+  scope: ObserverPredictionHistoryPanelProps['telemetryScope'],
+): string => `${PREDICTION_SORT_STORAGE_PREFIX}:${scope}`;
 
 const readStoredPredictionFilter = (
   scope: ObserverPredictionHistoryPanelProps['telemetryScope'],
@@ -58,6 +69,34 @@ const writeStoredPredictionFilter = (
   }
   try {
     window.localStorage.setItem(predictionFilterStorageKey(scope), filter);
+  } catch {
+    // ignore localStorage failures
+  }
+};
+
+const readStoredPredictionSort = (
+  scope: ObserverPredictionHistoryPanelProps['telemetryScope'],
+): PredictionHistorySort => {
+  if (typeof window === 'undefined') {
+    return 'recent';
+  }
+  try {
+    const raw = window.localStorage.getItem(predictionSortStorageKey(scope));
+    return isPredictionHistorySort(raw) ? raw : 'recent';
+  } catch {
+    return 'recent';
+  }
+};
+
+const writeStoredPredictionSort = (
+  scope: ObserverPredictionHistoryPanelProps['telemetryScope'],
+  sort: PredictionHistorySort,
+): void => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  try {
+    window.localStorage.setItem(predictionSortStorageKey(scope), sort);
   } catch {
     // ignore localStorage failures
   }
@@ -105,6 +144,9 @@ export const ObserverPredictionHistoryPanel = ({
     useState<PredictionHistoryFilter>(() =>
       readStoredPredictionFilter(telemetryScope),
     );
+  const [predictionSort, setPredictionSort] = useState<PredictionHistorySort>(
+    () => readStoredPredictionSort(telemetryScope),
+  );
 
   const sendTelemetry = (payload: Record<string, unknown>): void => {
     if (typeof apiClient.post !== 'function') {
@@ -140,10 +182,30 @@ export const ObserverPredictionHistoryPanel = ({
     setPredictionFilter(nextFilter);
   };
 
+  const handlePredictionSortChange = (nextSort: PredictionHistorySort) => {
+    if (nextSort === predictionSort) {
+      return;
+    }
+    sendTelemetry({
+      eventType: 'observer_prediction_sort_change',
+      metadata: {
+        sort: nextSort,
+        previousSort: predictionSort,
+        scope: telemetryScope,
+        total: predictionStats.total,
+        resolved: predictionStats.resolved,
+        pending: predictionStats.pending,
+      },
+    });
+    writeStoredPredictionSort(telemetryScope, nextSort);
+    setPredictionSort(nextSort);
+  };
+
   const predictionStats = derivePredictionHistoryStats(predictions);
   const filteredPredictions = filterAndSortPredictionHistory(
     predictions,
     predictionFilter,
+    predictionSort,
   );
   const hasPredictions = predictions.length > 0;
   const emptyStateMessage = hasPredictions
@@ -202,6 +264,50 @@ export const ObserverPredictionHistoryPanel = ({
             {predictionStats.pending})
           </button>
         </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          aria-pressed={predictionSort === 'recent'}
+          className={`rounded-full border px-3 py-1.5 font-semibold text-xs transition ${
+            predictionSort === 'recent'
+              ? 'border-primary/40 bg-primary/15 text-primary'
+              : 'border-border/35 bg-background/58 text-foreground hover:bg-background/74'
+          } ${focusRingClass}`}
+          onClick={() => {
+            handlePredictionSortChange('recent');
+          }}
+          type="button"
+        >
+          {t('search.sort.recency')}
+        </button>
+        <button
+          aria-pressed={predictionSort === 'net_desc'}
+          className={`rounded-full border px-3 py-1.5 font-semibold text-xs transition ${
+            predictionSort === 'net_desc'
+              ? 'border-primary/40 bg-primary/15 text-primary'
+              : 'border-border/35 bg-background/58 text-foreground hover:bg-background/74'
+          } ${focusRingClass}`}
+          onClick={() => {
+            handlePredictionSortChange('net_desc');
+          }}
+          type="button"
+        >
+          {t('observerProfile.predictionNet')}
+        </button>
+        <button
+          aria-pressed={predictionSort === 'stake_desc'}
+          className={`rounded-full border px-3 py-1.5 font-semibold text-xs transition ${
+            predictionSort === 'stake_desc'
+              ? 'border-primary/40 bg-primary/15 text-primary'
+              : 'border-border/35 bg-background/58 text-foreground hover:bg-background/74'
+          } ${focusRingClass}`}
+          onClick={() => {
+            handlePredictionSortChange('stake_desc');
+          }}
+          type="button"
+        >
+          {t('observerProfile.stake')}
+        </button>
       </div>
       {hasPredictions ? (
         <p className="text-muted-foreground text-xs">
