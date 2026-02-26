@@ -276,6 +276,10 @@ Exit criteria:
 - Agent gateway source-parity regression coverage update:
   - connector-scoped session-list and session-events filters are now covered for both `source=db` and `source=memory`,
   - parity assertions ensure identical `filters` echo and stable event/session targeting across storage sources.
+- Agent gateway session-events DB query hardening update:
+  - `/api/admin/agent-gateway/sessions/:sessionId/events` now pushes filter evaluation + `limit` into SQL when `source=db`,
+  - DB path now executes explicit `COUNT` + filtered `ORDER BY created_at DESC LIMIT n` queries instead of loading full event history into memory,
+  - endpoint contract remains unchanged (`filters`, `total`, `limit`, `events`) while reducing read amplification for long session timelines.
 - Agent orchestration persona-depth update:
   - draft orchestration now injects role personas (`tone`, `signaturePhrase`, `focus`, `boundaries`) from studio `skill_profile.rolePersonas` into runtime prompts,
   - critic/maker/judge prompts preserve studio-level context and add role-specific voice constraints,

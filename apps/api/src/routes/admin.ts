@@ -3243,24 +3243,148 @@ router.get(
           fieldName: 'connector',
         },
       );
-      const detail =
-        source === 'memory'
-          ? agentGatewayService.getSession(sessionId)
-          : await agentGatewayService.getPersistedSession(sessionId);
-      if (!detail) {
-        throw new ServiceError(
-          'AGENT_GATEWAY_SESSION_NOT_FOUND',
-          'Agent gateway session not found.',
-          404,
-        );
-      }
-
       const limit = parseBoundedQueryInt(query.limit, {
         fieldName: 'limit',
         defaultValue: 10,
         min: 1,
         max: 200,
       });
+
+      if (source === 'db') {
+        const sessionResult = await db.query(
+          `SELECT id, channel, draft_id, status, updated_at
+           FROM agent_gateway_sessions
+           WHERE id = $1
+           LIMIT 1`,
+          [sessionId],
+        );
+        if (sessionResult.rows.length === 0) {
+          throw new ServiceError(
+            'AGENT_GATEWAY_SESSION_NOT_FOUND',
+            'Agent gateway session not found.',
+            404,
+          );
+        }
+
+        const eventFilterClauses: string[] = ['session_id = $1'];
+        const eventFilterParams: unknown[] = [sessionId];
+
+        if (eventTypeFilter) {
+          eventFilterParams.push(eventTypeFilter);
+          eventFilterClauses.push(
+            `LOWER(event_type) = $${eventFilterParams.length}`,
+          );
+        }
+        if (fromRoleFilter) {
+          eventFilterParams.push(fromRoleFilter);
+          eventFilterClauses.push(
+            `LOWER(from_role) = $${eventFilterParams.length}`,
+          );
+        }
+        if (toRoleFilter) {
+          eventFilterParams.push(toRoleFilter);
+          eventFilterClauses.push(
+            `LOWER(COALESCE(to_role, '')) = $${eventFilterParams.length}`,
+          );
+        }
+        if (providerFilter) {
+          eventFilterParams.push(providerFilter);
+          eventFilterClauses.push(
+            `LOWER(COALESCE(payload->>'selectedProvider', payload->>'provider', '')) = $${eventFilterParams.length}`,
+          );
+        }
+        if (connectorFilter) {
+          eventFilterParams.push(connectorFilter);
+          eventFilterClauses.push(
+            `LOWER(COALESCE(payload->>'connectorId', '')) = $${eventFilterParams.length}`,
+          );
+        }
+        if (eventQueryFilter) {
+          eventFilterParams.push(eventQueryFilter);
+          const eventQueryParamIndex = eventFilterParams.length;
+          eventFilterClauses.push(
+            `(
+              POSITION($${eventQueryParamIndex} IN LOWER(event_type)) > 0
+              OR POSITION($${eventQueryParamIndex} IN LOWER(from_role)) > 0
+              OR POSITION($${eventQueryParamIndex} IN LOWER(COALESCE(to_role, ''))) > 0
+            )`,
+          );
+        }
+
+        const eventWhereClause = eventFilterClauses.join('\n             AND ');
+        const totalResult = await db.query(
+          `SELECT COUNT(*)::int AS total
+           FROM agent_gateway_events
+           WHERE ${eventWhereClause}`,
+          eventFilterParams,
+        );
+        const eventQueryParams = [...eventFilterParams];
+        eventQueryParams.push(limit);
+        const limitParamIndex = eventQueryParams.length;
+        const eventsResult = await db.query(
+          `SELECT id,
+                  session_id,
+                  from_role,
+                  to_role,
+                  event_type,
+                  payload,
+                  created_at
+           FROM agent_gateway_events
+           WHERE ${eventWhereClause}
+           ORDER BY created_at DESC
+           LIMIT $${limitParamIndex}`,
+          eventQueryParams,
+        );
+        const events = eventsResult.rows.map((row) => ({
+          id: String(row.id ?? ''),
+          sessionId: String(row.session_id ?? ''),
+          fromRole: String(row.from_role ?? ''),
+          toRole:
+            typeof row.to_role === 'string' && row.to_role.trim().length > 0
+              ? row.to_role
+              : null,
+          type: String(row.event_type ?? ''),
+          payload: toGatewayEventPayload(row.payload),
+          createdAt:
+            toNullableIsoTimestamp(row.created_at) ?? new Date().toISOString(),
+        }));
+        const sessionRow = sessionResult.rows[0] as Record<string, unknown>;
+
+        res.json({
+          source,
+          session: {
+            id: String(sessionRow.id ?? sessionId),
+            channel: String(sessionRow.channel ?? ''),
+            draftId:
+              typeof sessionRow.draft_id === 'string' &&
+              sessionRow.draft_id.length > 0
+                ? sessionRow.draft_id
+                : null,
+            status:
+              typeof sessionRow.status === 'string' &&
+              sessionRow.status.toLowerCase() === 'closed'
+                ? 'closed'
+                : 'active',
+            updatedAt:
+              toNullableIsoTimestamp(sessionRow.updated_at) ??
+              new Date().toISOString(),
+          },
+          filters: {
+            eventType: eventTypeFilter,
+            eventQuery: eventQueryFilter,
+            fromRole: fromRoleFilter,
+            toRole: toRoleFilter,
+            provider: providerFilter,
+            connector: connectorFilter,
+          },
+          total: toNumber(totalResult.rows[0]?.total),
+          limit,
+          events,
+        });
+        return;
+      }
+
+      const detail = agentGatewayService.getSession(sessionId);
       const filteredEvents = detail.events.filter((event) => {
         if (eventTypeFilter && event.type !== eventTypeFilter) {
           return false;
