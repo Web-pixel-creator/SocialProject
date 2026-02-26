@@ -1539,6 +1539,85 @@ describe('Admin API routes', () => {
     ]);
   });
 
+  test('agent gateway session events endpoint preserves total before limit and stable descending order', async () => {
+    const created = await request(app)
+      .post('/api/admin/agent-gateway/sessions')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        channel: 'draft_cycle',
+        draftId: TEST_DRAFT_ID_C,
+        roles: ['maker', 'judge'],
+      });
+    expect(created.status).toBe(201);
+    const sessionId = created.body.session.id as string;
+
+    const eventOne = await request(app)
+      .post(`/api/admin/agent-gateway/sessions/${sessionId}/events`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        fromRole: 'maker',
+        toRole: 'judge',
+        type: 'draft_cycle_maker_completed',
+        payload: {
+          selectedProvider: 'gpt-4.1',
+          connectorId: 'partner-beta',
+        },
+      });
+    expect(eventOne.status).toBe(201);
+    const eventOneId = eventOne.body.event.id as string;
+
+    await new Promise((resolve) => setTimeout(resolve, 5));
+
+    const eventTwo = await request(app)
+      .post(`/api/admin/agent-gateway/sessions/${sessionId}/events`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        fromRole: 'maker',
+        toRole: 'judge',
+        type: 'draft_cycle_maker_completed',
+        payload: {
+          selectedProvider: 'gpt-4.1',
+          connectorId: 'partner-beta',
+        },
+      });
+    expect(eventTwo.status).toBe(201);
+    const eventTwoId = eventTwo.body.event.id as string;
+
+    await new Promise((resolve) => setTimeout(resolve, 5));
+
+    const eventThree = await request(app)
+      .post(`/api/admin/agent-gateway/sessions/${sessionId}/events`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        fromRole: 'maker',
+        toRole: 'judge',
+        type: 'draft_cycle_maker_completed',
+        payload: {
+          selectedProvider: 'gpt-4.1',
+          connectorId: 'partner-beta',
+        },
+      });
+    expect(eventThree.status).toBe(201);
+    const eventThreeId = eventThree.body.event.id as string;
+
+    const response = await request(app)
+      .get(
+        `/api/admin/agent-gateway/sessions/${sessionId}/events?source=db&eventType=draft_cycle_maker_completed&fromRole=maker&toRole=judge&provider=gpt-4.1&connector=partner-beta&limit=2`,
+      )
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(response.status).toBe(200);
+    expect(response.body.total).toBe(3);
+    expect(response.body.limit).toBe(2);
+    expect(response.body.events).toHaveLength(2);
+    expect(
+      response.body.events.map((event: { id: string }) => event.id),
+    ).toEqual([eventThreeId, eventTwoId]);
+    expect(
+      response.body.events.map((event: { id: string }) => event.id),
+    ).not.toContain(eventOneId);
+  });
+
   test('agent gateway session endpoints validate sessionId route params', async () => {
     const invalidSessionId = 'ags-invalid_session';
     const readUrls = [

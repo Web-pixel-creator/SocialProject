@@ -3331,7 +3331,7 @@ router.get(
                   created_at
            FROM agent_gateway_events
            WHERE ${eventWhereClause}
-           ORDER BY created_at DESC
+           ORDER BY created_at DESC, id DESC
            LIMIT $${limitParamIndex}`,
           eventQueryParams,
         );
@@ -3434,10 +3434,17 @@ router.get(
         .sort((left, right) => {
           const leftTime = Date.parse(left.createdAt);
           const rightTime = Date.parse(right.createdAt);
-          if (!(Number.isFinite(leftTime) && Number.isFinite(rightTime))) {
-            return right.createdAt.localeCompare(left.createdAt);
+          if (Number.isFinite(leftTime) && Number.isFinite(rightTime)) {
+            if (rightTime !== leftTime) {
+              return rightTime - leftTime;
+            }
+            return right.id.localeCompare(left.id);
           }
-          return rightTime - leftTime;
+          const byCreatedAt = right.createdAt.localeCompare(left.createdAt);
+          if (byCreatedAt !== 0) {
+            return byCreatedAt;
+          }
+          return right.id.localeCompare(left.id);
         })
         .slice(0, limit);
 

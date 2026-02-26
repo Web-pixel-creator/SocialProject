@@ -279,7 +279,11 @@ Exit criteria:
 - Agent gateway session-events DB query hardening update:
   - `/api/admin/agent-gateway/sessions/:sessionId/events` now pushes filter evaluation + `limit` into SQL when `source=db`,
   - DB path now executes explicit `COUNT` + filtered `ORDER BY created_at DESC LIMIT n` queries instead of loading full event history into memory,
+  - DB + memory event sorting now uses stable descending order (`createdAt`, then `id`) to keep deterministic event ordering on ties,
   - endpoint contract remains unchanged (`filters`, `total`, `limit`, `events`) while reducing read amplification for long session timelines.
+- Agent gateway session-events limit contract regression update:
+  - admin integration coverage now asserts `total` is computed pre-limit and remains accurate when `limit` truncates event output,
+  - coverage also pins descending event order for filtered DB reads to prevent regressions in timeline pagination UX.
 - Agent orchestration persona-depth update:
   - draft orchestration now injects role personas (`tone`, `signaturePhrase`, `focus`, `boundaries`) from studio `skill_profile.rolePersonas` into runtime prompts,
   - critic/maker/judge prompts preserve studio-level context and add role-specific voice constraints,
