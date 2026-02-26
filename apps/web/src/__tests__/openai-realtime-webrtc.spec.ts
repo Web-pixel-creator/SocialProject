@@ -12,6 +12,7 @@ describe('openaiRealtimeWebRtc', () => {
     sessionId: 'rt-session-1',
     clientSecret: 'secret-1',
     model: 'gpt-realtime',
+    voice: 'marin',
     outputModalities: ['audio'],
     pushToTalk: true,
   };
@@ -129,7 +130,25 @@ describe('openaiRealtimeWebRtc', () => {
 
     channel.readyState = 'open';
     channel.onopen?.();
-    expect(sendMock).toHaveBeenCalledWith(
+    expect(sendMock.mock.calls[0][0]).toEqual(
+      JSON.stringify({
+        type: 'session.update',
+        session: {
+          type: 'realtime',
+          model: 'gpt-realtime',
+          output_modalities: ['audio'],
+          audio: {
+            output: {
+              voice: 'marin',
+            },
+            input: {
+              turn_detection: null,
+            },
+          },
+        },
+      }),
+    );
+    expect(sendMock.mock.calls[1][0]).toEqual(
       JSON.stringify({
         type: 'response.create',
       }),

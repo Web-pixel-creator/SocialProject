@@ -5,6 +5,7 @@ export interface RealtimeCopilotBootstrapPayload {
   sessionId: string;
   clientSecret: string;
   model?: string;
+  voice?: string;
   outputModalities?: RealtimeOutputModality[];
   pushToTalk?: boolean;
 }
@@ -87,6 +88,53 @@ const resolveErrorMessage = (error: unknown, fallback: string): string => {
   return fallback;
 };
 
+const buildSessionUpdateEvent = (
+  bootstrap: RealtimeCopilotBootstrapPayload,
+  pushToTalkEnabled: boolean,
+): Record<string, unknown> => {
+  const session: Record<string, unknown> = {
+    type: 'realtime',
+    model:
+      typeof bootstrap.model === 'string' && bootstrap.model.trim().length > 0
+        ? bootstrap.model
+        : FALLBACK_MODEL,
+  };
+
+  if (
+    Array.isArray(bootstrap.outputModalities) &&
+    bootstrap.outputModalities.length > 0
+  ) {
+    session.output_modalities = bootstrap.outputModalities;
+  }
+
+  if (
+    typeof bootstrap.voice === 'string' &&
+    bootstrap.voice.trim().length > 0
+  ) {
+    session.audio = {
+      output: {
+        voice: bootstrap.voice,
+      },
+    };
+  }
+
+  if (pushToTalkEnabled) {
+    const currentAudio =
+      (session.audio as Record<string, unknown> | undefined) ?? {};
+    session.audio = {
+      ...currentAudio,
+      input: {
+        turn_detection: null,
+      },
+    };
+  }
+
+  return {
+    type: 'session.update',
+    session,
+  };
+};
+
 export const connectOpenAIRealtimeConnection = async (
   input: ConnectOpenAIRealtimeInput,
 ): Promise<OpenAIRealtimeConnection> => {
@@ -157,6 +205,11 @@ export const connectOpenAIRealtimeConnection = async (
   };
   channel.onopen = () => {
     channelOpen = true;
+    channel.send(
+      JSON.stringify(
+        buildSessionUpdateEvent(input.bootstrap, pushToTalkEnabled),
+      ),
+    );
     while (pendingEvents.length > 0) {
       const next = pendingEvents.shift();
       if (next) {
