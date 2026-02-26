@@ -7,6 +7,7 @@ import { agentGatewayAdapterService } from '../services/agentGatewayAdapter/agen
 import type { AgentGatewayAdapterName } from '../services/agentGatewayAdapter/types';
 import {
   parseConnectorPolicyMap,
+  resolveConnectorIngestBudgetLimits,
   resolveConnectorPolicy,
 } from '../services/agentGatewayIngest/connectorPolicy';
 import {
@@ -468,22 +469,6 @@ router.post(
         'draftId',
         'AGENT_GATEWAY_INGEST_INVALID_INPUT',
       );
-      const roles = parseOptionalRoles(
-        body.roles,
-        'AGENT_GATEWAY_INGEST_INVALID_INPUT',
-      );
-      const payload = parseOptionalObject(body.payload, {
-        fieldName: 'payload',
-        maxKeys: INGEST_MAX_PAYLOAD_KEYS,
-        maxBytes: INGEST_MAX_PAYLOAD_BYTES,
-        errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
-      });
-      const metadata = parseOptionalObject(body.metadata, {
-        fieldName: 'metadata',
-        maxKeys: INGEST_MAX_METADATA_KEYS,
-        maxBytes: INGEST_MAX_PAYLOAD_BYTES,
-        errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
-      });
 
       const connectorId = parseRequiredString(
         body.connectorId ??
@@ -510,8 +495,32 @@ router.post(
         connectorId,
       );
       telemetryConnectorRiskLevel = connectorPolicy.riskLevel;
+      const connectorBudgetLimits = resolveConnectorIngestBudgetLimits(
+        connectorPolicy,
+        {
+          maxPayloadKeys: INGEST_MAX_PAYLOAD_KEYS,
+          maxMetadataKeys: INGEST_MAX_METADATA_KEYS,
+          maxPayloadBytes: INGEST_MAX_PAYLOAD_BYTES,
+        },
+      );
       const requireConnectorSecret =
         REQUIRE_CONNECTOR_SECRET || connectorPolicy.requireConnectorSecret;
+      const roles = parseOptionalRoles(
+        body.roles,
+        'AGENT_GATEWAY_INGEST_INVALID_INPUT',
+      );
+      const payload = parseOptionalObject(body.payload, {
+        fieldName: 'payload',
+        maxKeys: connectorBudgetLimits.maxPayloadKeys,
+        maxBytes: connectorBudgetLimits.maxPayloadBytes,
+        errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
+      });
+      const metadata = parseOptionalObject(body.metadata, {
+        fieldName: 'metadata',
+        maxKeys: connectorBudgetLimits.maxMetadataKeys,
+        maxBytes: connectorBudgetLimits.maxPayloadBytes,
+        errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
+      });
 
       const eventId = parseRequiredString(
         body.eventId ?? parseHeaderValue(req.headers['x-idempotency-key']),
@@ -637,6 +646,9 @@ router.post(
           matchedSignatureKeyId: matchedSignature.keyId,
           connectorPolicyRequireConnectorSecret: requireConnectorSecret,
           connectorPolicyRateLimitMax: connectorPolicy.rateLimitMax,
+          connectorPolicyMaxPayloadKeys: connectorBudgetLimits.maxPayloadKeys,
+          connectorPolicyMaxMetadataKeys: connectorBudgetLimits.maxMetadataKeys,
+          connectorPolicyMaxPayloadBytes: connectorBudgetLimits.maxPayloadBytes,
           ingestReceivedAt: new Date().toISOString(),
         },
         fromRole,

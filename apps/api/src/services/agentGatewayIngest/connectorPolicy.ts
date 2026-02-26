@@ -8,6 +8,9 @@ export interface AgentGatewayIngestConnectorPolicy {
   riskLevel: AgentGatewayIngestConnectorRisk;
   rateLimitMax: number | null;
   requireConnectorSecret: boolean;
+  maxPayloadKeys: number | null;
+  maxMetadataKeys: number | null;
+  maxPayloadBytes: number | null;
 }
 
 type ConnectorPolicyMap = Map<string, AgentGatewayIngestConnectorPolicy>;
@@ -93,6 +96,9 @@ export const parseConnectorPolicyMap = (
         riskLevel,
         rateLimitMax: null,
         requireConnectorSecret: false,
+        maxPayloadKeys: null,
+        maxMetadataKeys: null,
+        maxPayloadBytes: null,
       });
       continue;
     }
@@ -137,12 +143,45 @@ export const parseConnectorPolicyMap = (
         `${failPrefix}: connector "${connectorId}" has invalid requireConnectorSecret.`,
       );
     }
+    const maxPayloadKeysRaw = policyRecord.maxPayloadKeys;
+    const maxPayloadKeys =
+      maxPayloadKeysRaw === undefined
+        ? null
+        : parsePositiveInt(maxPayloadKeysRaw);
+    if (maxPayloadKeysRaw !== undefined && maxPayloadKeys === null) {
+      throw new Error(
+        `${failPrefix}: connector "${connectorId}" has invalid maxPayloadKeys.`,
+      );
+    }
+    const maxMetadataKeysRaw = policyRecord.maxMetadataKeys;
+    const maxMetadataKeys =
+      maxMetadataKeysRaw === undefined
+        ? null
+        : parsePositiveInt(maxMetadataKeysRaw);
+    if (maxMetadataKeysRaw !== undefined && maxMetadataKeys === null) {
+      throw new Error(
+        `${failPrefix}: connector "${connectorId}" has invalid maxMetadataKeys.`,
+      );
+    }
+    const maxPayloadBytesRaw = policyRecord.maxPayloadBytes;
+    const maxPayloadBytes =
+      maxPayloadBytesRaw === undefined
+        ? null
+        : parsePositiveInt(maxPayloadBytesRaw);
+    if (maxPayloadBytesRaw !== undefined && maxPayloadBytes === null) {
+      throw new Error(
+        `${failPrefix}: connector "${connectorId}" has invalid maxPayloadBytes.`,
+      );
+    }
 
     result.set(connectorId, {
       connectorId,
       riskLevel,
       rateLimitMax,
       requireConnectorSecret: requireConnectorSecret ?? false,
+      maxPayloadKeys,
+      maxMetadataKeys,
+      maxPayloadBytes,
     });
   }
 
@@ -163,5 +202,41 @@ export const resolveConnectorPolicy = (
     riskLevel: 'standard',
     rateLimitMax: null,
     requireConnectorSecret: false,
+    maxPayloadKeys: null,
+    maxMetadataKeys: null,
+    maxPayloadBytes: null,
   };
 };
+
+const resolveBoundedOverride = (
+  value: number | null,
+  defaultLimit: number,
+): number => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return defaultLimit;
+  }
+  const normalized = Math.max(1, Math.trunc(value));
+  return Math.min(normalized, defaultLimit);
+};
+
+export const resolveConnectorIngestBudgetLimits = (
+  policy: AgentGatewayIngestConnectorPolicy,
+  defaults: {
+    maxPayloadKeys: number;
+    maxMetadataKeys: number;
+    maxPayloadBytes: number;
+  },
+) => ({
+  maxPayloadKeys: resolveBoundedOverride(
+    policy.maxPayloadKeys,
+    defaults.maxPayloadKeys,
+  ),
+  maxMetadataKeys: resolveBoundedOverride(
+    policy.maxMetadataKeys,
+    defaults.maxMetadataKeys,
+  ),
+  maxPayloadBytes: resolveBoundedOverride(
+    policy.maxPayloadBytes,
+    defaults.maxPayloadBytes,
+  ),
+});
