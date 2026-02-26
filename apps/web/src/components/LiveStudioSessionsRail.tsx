@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
+import { useLanguage } from '../contexts/LanguageContext';
 import { apiClient } from '../lib/api';
 import {
   connectOpenAIRealtimeConnection,
@@ -104,6 +105,8 @@ interface LiveSessionRealtimeClientEventDetail {
   liveSessionId: string;
   clientEvent: Record<string, unknown>;
 }
+
+type Translate = (key: string) => string;
 
 export const LIVE_SESSION_REALTIME_SERVER_EVENT =
   'finishit:live-session-realtime-server-event';
@@ -298,17 +301,20 @@ const extractVoiceRuntimeStatusUpdate = (
   return null;
 };
 
-const toRealtimeStatusLabel = (status: RealtimeVoiceRuntimeStatus): string => {
+const toRealtimeStatusLabel = (
+  status: RealtimeVoiceRuntimeStatus,
+  t: Translate,
+): string => {
   if (status === 'listening') {
-    return 'Listening';
+    return t('liveSessionsRail.voice.status.listening');
   }
   if (status === 'thinking') {
-    return 'Thinking';
+    return t('liveSessionsRail.voice.status.thinking');
   }
   if (status === 'speaking') {
-    return 'Speaking';
+    return t('liveSessionsRail.voice.status.speaking');
   }
-  return 'Idle';
+  return t('liveSessionsRail.voice.status.idle');
 };
 
 const getRealtimeStatusClassName = (status: RealtimeVoiceRuntimeStatus) => {
@@ -419,28 +425,46 @@ const statusClassByValue: Record<LiveSessionStatus, string> = {
   cancelled: 'border border-destructive/45 bg-destructive/12 text-destructive',
 };
 
-const formatRelativeMinutes = (value: string | Date): string => {
+const toLiveSessionStatusLabel = (
+  status: LiveSessionStatus,
+  t: Translate,
+): string => {
+  if (status === 'forming') {
+    return t('liveSessionsRail.status.forming');
+  }
+  if (status === 'live') {
+    return t('liveSessionsRail.status.live');
+  }
+  if (status === 'completed') {
+    return t('liveSessionsRail.status.completed');
+  }
+  return t('liveSessionsRail.status.cancelled');
+};
+
+const formatRelativeMinutes = (value: string | Date, t: Translate): string => {
   const timestamp =
     value instanceof Date ? value.getTime() : new Date(value).getTime();
   if (!Number.isFinite(timestamp)) {
-    return 'just now';
+    return t('changeCard.labels.justNow');
   }
   const diffMs = Date.now() - timestamp;
   const minutes = Math.max(0, Math.floor(diffMs / (1000 * 60)));
   if (minutes < 1) {
-    return 'just now';
+    return t('changeCard.labels.justNow');
   }
   if (minutes < 60) {
-    return `${minutes}m ago`;
+    return `${minutes}${t('time.minuteAgoSuffix')}`;
   }
   const hours = Math.floor(minutes / 60);
-  return `${hours}h ago`;
+  return `${hours}${t('time.hourAgoSuffix')}`;
 };
 
-const resolveRealtimeBootstrapError = (error: unknown): string => {
-  const fallback = 'Failed to start realtime copilot.';
+const resolveRealtimeBootstrapError = (
+  error: unknown,
+): { key: string; message?: string } => {
+  const fallbackKey = 'liveSessionsRail.errors.bootstrapFailed';
   if (!error || typeof error !== 'object') {
-    return fallback;
+    return { key: fallbackKey };
   }
   const maybeResponse = (
     error as {
@@ -456,22 +480,26 @@ const resolveRealtimeBootstrapError = (error: unknown): string => {
   const responseMessage = maybeResponse?.data?.message;
 
   if (status === 401 || status === 403) {
-    return 'Sign in as observer to start realtime copilot.';
+    return { key: 'liveSessionsRail.errors.authRequired' };
   }
   if (status === 429) {
-    return 'Too many attempts. Please wait and retry.';
+    return { key: 'liveSessionsRail.errors.rateLimited' };
   }
   if (responseError === 'OPENAI_REALTIME_NOT_CONFIGURED') {
-    return 'Realtime copilot is not configured in API environment.';
+    return { key: 'liveSessionsRail.errors.notConfigured' };
+  }
+  const errorMessage = (error as { message?: string }).message;
+  if (errorMessage === 'LIVE_SESSION_REALTIME_BOOTSTRAP_INCOMPLETE') {
+    return { key: 'liveSessionsRail.errors.bootstrapPayloadIncomplete' };
   }
   if (responseMessage && responseMessage.trim().length > 0) {
-    return responseMessage;
+    return { key: fallbackKey, message: responseMessage };
   }
-  const genericMessage = (error as { message?: string }).message?.trim() ?? '';
+  const genericMessage = errorMessage?.trim() ?? '';
   if (genericMessage.length > 0) {
-    return genericMessage;
+    return { key: fallbackKey, message: genericMessage };
   }
-  return fallback;
+  return { key: fallbackKey };
 };
 
 const fetchLiveSessions = async (): Promise<LiveSessionSummary[]> => {
@@ -599,6 +627,7 @@ const fetchLiveSessions = async (): Promise<LiveSessionSummary[]> => {
 };
 
 export const LiveStudioSessionsRail = () => {
+  const { t } = useLanguage();
   const [copilotStateBySession, setCopilotStateBySession] = useState<
     Record<string, RealtimeCopilotState>
   >({});
@@ -713,7 +742,7 @@ export const LiveStudioSessionsRail = () => {
         const message =
           error instanceof Error
             ? error.message
-            : 'Failed to persist transcript.';
+            : t('liveSessionsRail.errors.persistTranscript');
         setTranscriptStateBySession((current) => ({
           ...current,
           [sessionId]: {
@@ -841,7 +870,7 @@ export const LiveStudioSessionsRail = () => {
         const message =
           error instanceof Error
             ? error.message
-            : 'Realtime tool bridge execution failed.';
+            : t('liveSessionsRail.errors.toolBridgeFailed');
         setToolBridgeStateBySession((current) => ({
           ...current,
           [detail.liveSessionId]: {
@@ -864,7 +893,7 @@ export const LiveStudioSessionsRail = () => {
         handleServerEvent as EventListener,
       );
     };
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const handleClientEvent = (event: Event) => {
@@ -1102,7 +1131,7 @@ export const LiveStudioSessionsRail = () => {
           ? (response.data as RealtimeCopilotBootstrap)
           : null;
       if (!(payload?.provider && payload?.sessionId && payload?.clientSecret)) {
-        throw new Error('Realtime bootstrap payload is incomplete.');
+        throw new Error('LIVE_SESSION_REALTIME_BOOTSTRAP_INCOMPLETE');
       }
       setCopilotStateBySession((current) => ({
         ...current,
@@ -1185,11 +1214,12 @@ export const LiveStudioSessionsRail = () => {
         setVoiceFocusSessionId(session.id);
       }
     } catch (error) {
+      const resolvedError = resolveRealtimeBootstrapError(error);
       setCopilotStateBySession((current) => ({
         ...current,
         [session.id]: {
           status: 'error',
-          error: resolveRealtimeBootstrapError(error),
+          error: resolvedError.message ?? t(resolvedError.key),
         },
       }));
     }
@@ -1282,18 +1312,18 @@ export const LiveStudioSessionsRail = () => {
     <section className="card p-4" data-testid="live-studio-sessions-rail">
       <header className="flex items-center justify-between gap-2">
         <h2 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-          Live studio sessions
+          {t('liveSessionsRail.title')}
         </h2>
         <span className="pill">{sessions.length}</span>
       </header>
       <p className="mt-2 text-muted-foreground text-xs">
-        Realtime collaborative studio battles with observer chat and host recap.
+        {t('liveSessionsRail.description')}
       </p>
 
       <div className="mt-3 grid gap-2">
         {sessions.length === 0 && !isLoading ? (
           <p className="rounded-lg border border-border/30 bg-background/45 px-3 py-2 text-muted-foreground text-xs">
-            No live sessions right now.
+            {t('liveSessionsRail.empty')}
           </p>
         ) : null}
         {sessions.map((session) => (
@@ -1308,33 +1338,42 @@ export const LiveStudioSessionsRail = () => {
               <span
                 className={`rounded-full px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide ${statusClassByValue[session.status] ?? statusClassByValue.forming}`}
               >
-                {session.status}
+                {toLiveSessionStatusLabel(session.status, t)}
               </span>
             </div>
             <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">
               {session.objective}
             </p>
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
-              <span className="pill">{session.participantCount} joined</span>
-              <span className="pill">{session.messageCount} messages</span>
               <span className="pill">
-                {formatRelativeMinutes(session.lastActivityAt)}
+                {session.participantCount} {t('liveSessionsRail.joined')}
+              </span>
+              <span className="pill">
+                {session.messageCount} {t('liveSessionsRail.messages')}
+              </span>
+              <span className="pill">
+                {formatRelativeMinutes(session.lastActivityAt, t)}
               </span>
             </div>
             <div className="mt-2 space-y-1.5 border-border/25 border-t pt-2">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                Session overlay
+                {t('liveSessionsRail.overlay.title')}
               </p>
               <p className="text-[10px] text-muted-foreground">
-                Observers {session.overlay.humanCount} | Agents{' '}
+                {t('liveSessionsRail.overlay.observers')}{' '}
+                {session.overlay.humanCount} |{' '}
+                {t('liveSessionsRail.overlay.agents')}{' '}
                 {session.overlay.agentCount}
               </p>
               {session.overlay.mergeSignalPct +
                 session.overlay.rejectSignalPct >
               0 ? (
                 <p className="text-[10px] text-muted-foreground">
-                  Prediction signal: Merge {session.overlay.mergeSignalPct}% /
-                  Reject {session.overlay.rejectSignalPct}%
+                  {t('liveSessionsRail.overlay.predictionSignal')}:{' '}
+                  {t('observerProfile.predictionOutcomeMerge')}{' '}
+                  {session.overlay.mergeSignalPct}% /{' '}
+                  {t('observerProfile.predictionOutcomeReject')}{' '}
+                  {session.overlay.rejectSignalPct}%
                 </p>
               ) : null}
               {session.overlay.latestMessage ? (
@@ -1346,7 +1385,7 @@ export const LiveStudioSessionsRail = () => {
               session.overlay.recapSummary ? (
                 <div className="space-y-1 rounded-md border border-border/25 bg-background/52 px-2 py-1.5">
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                    Auto recap
+                    {t('liveSessionsRail.overlay.autoRecap')}
                   </p>
                   <p className="line-clamp-3 text-[10px] text-muted-foreground">
                     {session.overlay.recapSummary}
@@ -1358,7 +1397,7 @@ export const LiveStudioSessionsRail = () => {
                       rel="noreferrer"
                       target="_blank"
                     >
-                      Open recap clip
+                      {t('liveSessionsRail.overlay.openRecapClip')}
                     </a>
                   ) : null}
                 </div>
@@ -1378,15 +1417,15 @@ export const LiveStudioSessionsRail = () => {
                 >
                   {copilotStateBySession[session.id]?.status === 'loading' ||
                   copilotStateBySession[session.id]?.status === 'connecting'
-                    ? 'Starting copilot...'
-                    : 'Start realtime copilot'}
+                    ? t('liveSessionsRail.controls.startingCopilot')
+                    : t('liveSessionsRail.controls.startCopilot')}
                 </button>
                 {hasObserverToken ? null : (
                   <Link
                     className="text-[10px] text-primary underline-offset-2 hover:underline"
                     href="/login"
                   >
-                    Sign in required
+                    {t('liveSessionsRail.controls.signInRequired')}
                   </Link>
                 )}
               </div>
@@ -1394,27 +1433,28 @@ export const LiveStudioSessionsRail = () => {
               copilotStateBySession[session.id]?.bootstrap ? (
                 <div className="space-y-1">
                   <p className="text-[10px] text-chart-2">
-                    Copilot ready: session{' '}
+                    {t('liveSessionsRail.ready.copilotReady')}{' '}
                     {copilotStateBySession[session.id]?.bootstrap?.sessionId}
                   </p>
                   <p className="text-[10px] text-muted-foreground">
-                    Tool bridge:{' '}
+                    {t('liveSessionsRail.ready.toolBridge')}:{' '}
                     {toolBridgeStateBySession[session.id]?.processedCount ?? 0}{' '}
-                    processed
+                    {t('liveSessionsRail.ready.processed')}
                   </p>
                   {toolBridgeStateBySession[session.id]?.lastProcessedAt ? (
                     <p className="text-[10px] text-muted-foreground">
-                      Last sync:{' '}
+                      {t('liveSessionsRail.ready.lastSync')}:{' '}
                       {formatRelativeMinutes(
                         toolBridgeStateBySession[session.id]
                           ?.lastProcessedAt as string,
+                        t,
                       )}
                     </p>
                   ) : null}
                   {copilotStateBySession[session.id]?.pushToTalkEnabled ? (
                     <div className="mt-1 space-y-1 rounded-md border border-border/25 bg-background/52 px-2 py-1.5">
                       <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                        Voice controls
+                        {t('liveSessionsRail.voice.title')}
                       </p>
                       <div className="flex items-center gap-1.5">
                         <span
@@ -1426,6 +1466,7 @@ export const LiveStudioSessionsRail = () => {
                           {toRealtimeStatusLabel(
                             voiceRuntimeStateBySession[session.id]?.status ??
                               'idle',
+                            t,
                           )}
                         </span>
                       </div>
@@ -1445,50 +1486,53 @@ export const LiveStudioSessionsRail = () => {
                           type="button"
                         >
                           {voiceControlStateBySession[session.id]?.isHolding
-                            ? 'Listening... release to send'
-                            : 'Hold to talk'}
+                            ? t('liveSessionsRail.voice.listeningReleaseToSend')
+                            : t('liveSessionsRail.voice.holdToTalk')}
                         </button>
                         <button
                           className="rounded-md border border-border/35 bg-background/65 px-2 py-1 font-semibold text-[10px] text-foreground transition hover:bg-background/80"
                           onClick={() => handlePushToTalkInterrupt(session.id)}
                           type="button"
                         >
-                          Interrupt response
+                          {t('liveSessionsRail.voice.interruptResponse')}
                         </button>
                       </div>
                       <p className="text-[10px] text-muted-foreground">
-                        Interruptions:{' '}
+                        {t('liveSessionsRail.voice.interruptions')}:{' '}
                         {voiceControlStateBySession[session.id]
                           ?.interruptions ?? 0}
                       </p>
                       {voiceControlStateBySession[session.id]?.lastCommitAt ? (
                         <p className="text-[10px] text-muted-foreground">
-                          Last voice send:{' '}
+                          {t('liveSessionsRail.voice.lastVoiceSend')}:{' '}
                           {formatRelativeMinutes(
                             voiceControlStateBySession[session.id]
                               ?.lastCommitAt as string,
+                            t,
                           )}
                         </p>
                       ) : null}
                       <p className="text-[10px] text-muted-foreground">
-                        Keyboard: hold{' '}
+                        {t('liveSessionsRail.voice.keyboardHold')}{' '}
                         <kbd className="rounded border border-border/45 px-1 py-0.5 text-[10px]">
                           Space
                         </kbd>{' '}
-                        to talk
-                        {voiceFocusSessionId === session.id ? ' (active)' : ''}
+                        {t('liveSessionsRail.voice.toTalk')}
+                        {voiceFocusSessionId === session.id
+                          ? ` (${t('liveSessionsRail.voice.active')})`
+                          : ''}
                       </p>
                     </div>
                   ) : (
                     <p className="text-[10px] text-muted-foreground">
-                      Push-to-talk unavailable for this session.
+                      {t('liveSessionsRail.voice.unavailable')}
                     </p>
                   )}
                   {(transcriptStateBySession[session.id]?.liveText ||
                     transcriptStateBySession[session.id]?.finalText) && (
                     <div className="mt-1 space-y-1 rounded-md border border-border/25 bg-background/52 px-2 py-1.5">
                       <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                        Live transcript
+                        {t('liveSessionsRail.transcript.title')}
                       </p>
                       <p className="line-clamp-3 text-[10px] text-muted-foreground">
                         {transcriptStateBySession[session.id]?.liveText ||
@@ -1496,19 +1540,21 @@ export const LiveStudioSessionsRail = () => {
                       </p>
                       {transcriptStateBySession[session.id]?.lastEventAt ? (
                         <p className="text-[10px] text-muted-foreground">
-                          Updated:{' '}
+                          {t('liveSessionsRail.transcript.updated')}:{' '}
                           {formatRelativeMinutes(
                             transcriptStateBySession[session.id]
                               ?.lastEventAt as string,
+                            t,
                           )}
                         </p>
                       ) : null}
                       {transcriptStateBySession[session.id]?.persistedAt ? (
                         <p className="text-[10px] text-muted-foreground">
-                          Saved to chat:{' '}
+                          {t('liveSessionsRail.transcript.savedToChat')}:{' '}
                           {formatRelativeMinutes(
                             transcriptStateBySession[session.id]
                               ?.persistedAt as string,
+                            t,
                           )}
                         </p>
                       ) : null}

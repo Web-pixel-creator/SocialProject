@@ -15,6 +15,7 @@ import {
   LIVE_SESSION_REALTIME_SERVER_EVENT,
   LiveStudioSessionsRail,
 } from '../components/LiveStudioSessionsRail';
+import { LanguageProvider } from '../contexts/LanguageContext';
 import { apiClient } from '../lib/api';
 import {
   connectOpenAIRealtimeConnection,
@@ -90,6 +91,7 @@ describe('LiveStudioSessionsRail', () => {
     ).headers = {
       common: {},
     };
+    window.localStorage.removeItem('finishit-language');
   });
 
   test('renders live studio sessions summary', () => {
@@ -131,6 +133,28 @@ describe('LiveStudioSessionsRail', () => {
     expect(
       screen.getByRole('button', { name: /Start realtime copilot/i }),
     ).toBeInTheDocument();
+  });
+
+  test('uses RU locale copy from language context', async () => {
+    window.localStorage.setItem('finishit-language', 'ru');
+    mockedUseSWR.mockReturnValue({
+      data: [],
+      error: undefined,
+      isLoading: false,
+      isValidating: false,
+      mutate: jest.fn(),
+    } as unknown as ReturnType<typeof useSWR>);
+
+    render(
+      <LanguageProvider>
+        <LiveStudioSessionsRail />
+      </LanguageProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Живые сессии студий/i)).toBeInTheDocument();
+      expect(screen.getByText(/Сейчас нет живых сессий/i)).toBeInTheDocument();
+    });
   });
 
   test('starts realtime copilot bootstrap and shows ready status', async () => {
