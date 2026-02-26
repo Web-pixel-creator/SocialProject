@@ -14,6 +14,7 @@ import {
 } from './middleware/security';
 import { redis } from './redis/client';
 import adminRoutes from './routes/admin';
+import agentGatewayRoutes from './routes/agentGateway';
 import authRoutes from './routes/auth';
 import commissionRoutes from './routes/commissions';
 import creatorStudioRoutes from './routes/creatorStudios';
@@ -85,6 +86,7 @@ export const createApp = () => {
 
   app.use('/api', authRoutes);
   app.use('/api', adminRoutes);
+  app.use('/api', agentGatewayRoutes);
   app.use('/api', creatorStudioRoutes);
   app.use('/api', draftRoutes);
   app.use('/api', feedRoutes);

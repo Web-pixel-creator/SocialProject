@@ -55,6 +55,10 @@ const envSchema = z.object({
     ])
     .default('marin'),
   OPENAI_REALTIME_TIMEOUT_MS: z.coerce.number().default(12_000),
+  AGENT_GATEWAY_WEBHOOK_SECRET: z.string().default('dev-agent-gateway-secret'),
+  AGENT_GATEWAY_INGEST_MAX_TIMESTAMP_SKEW_SEC: z.coerce.number().default(300),
+  AGENT_GATEWAY_INGEST_IDEMPOTENCY_TTL_SEC: z.coerce.number().default(86_400),
+  AGENT_GATEWAY_INGEST_ALLOWED_CONNECTORS: z.string().default(''),
   HEAVY_RATE_LIMIT_WINDOW_MS: z.coerce.number().default(15 * 60 * 1000),
   HEAVY_RATE_LIMIT_MAX: z.coerce.number().default(30),
   SEARCH_RELEVANCE_WEIGHT_KEYWORD: z.coerce.number().default(0.6),
@@ -94,6 +98,15 @@ const assertProductionSecrets = () => {
   }
   if (!env.ADMIN_API_TOKEN || env.ADMIN_API_TOKEN === 'change-me') {
     errors.push('ADMIN_API_TOKEN must be set in production.');
+  }
+  if (
+    !env.AGENT_GATEWAY_WEBHOOK_SECRET ||
+    env.AGENT_GATEWAY_WEBHOOK_SECRET === 'dev-agent-gateway-secret' ||
+    env.AGENT_GATEWAY_WEBHOOK_SECRET.length < 16
+  ) {
+    errors.push(
+      'AGENT_GATEWAY_WEBHOOK_SECRET must be set to a strong value in production.',
+    );
   }
   if (env.EMBEDDING_PROVIDER === 'jina' && !env.EMBEDDING_API_KEY) {
     errors.push('EMBEDDING_API_KEY must be set when EMBEDDING_PROVIDER=jina.');

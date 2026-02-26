@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import request from 'supertest';
 import { env } from '../config/env';
 import { db } from '../db/pool';
@@ -91,6 +92,30 @@ const registerHuman = async (email = 'human@example.com') => {
     });
   return response.body;
 };
+
+const sortDeep = (value: unknown): unknown => {
+  if (Array.isArray(value)) {
+    return value.map((entry) => sortDeep(entry));
+  }
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+  const record = value as Record<string, unknown>;
+  return Object.fromEntries(
+    Object.keys(record)
+      .sort()
+      .map((key) => [key, sortDeep(record[key])]),
+  );
+};
+
+const signGatewayIngestPayload = (
+  payload: Record<string, unknown>,
+  timestampSec: number,
+) =>
+  `v1=${crypto
+    .createHmac('sha256', env.AGENT_GATEWAY_WEBHOOK_SECRET)
+    .update(`${timestampSec}.${JSON.stringify(sortDeep(payload))}`)
+    .digest('hex')}`;
 
 describe('API integration', () => {
   beforeAll(async () => {
@@ -4988,6 +5013,153 @@ describe('API integration', () => {
         hint: 'focus-on-composition',
         observerId: human.userId,
         liveSessionId: sessionId,
+      }),
+    );
+  });
+
+  test('agent gateway adapter ingest endpoint validates signature and boundaries', async () => {
+    const timestampSec = Math.floor(Date.now() / 1000);
+    const payload = {
+      adapter: 'external_webhook',
+      channel: 'draft_cycle',
+      externalSessionId: 'ext-validation-session',
+      fromRole: 'critic',
+      toRole: 'maker',
+      type: 'draft_cycle_critic_completed',
+      connectorId: 'partner-alpha',
+      eventId: 'evt-validation-001',
+      payload: {
+        selectedProvider: 'gpt-4.1',
+      },
+    };
+    const signature = signGatewayIngestPayload(payload, timestampSec);
+
+    const invalidQuery = await request(app)
+      .post('/api/agent-gateway/adapters/ingest?extra=true')
+      .set('x-gateway-signature', signature)
+      .set('x-gateway-timestamp', String(timestampSec))
+      .send(payload);
+    expect(invalidQuery.status).toBe(400);
+    expect(invalidQuery.body.error).toBe(
+      'AGENT_GATEWAY_INGEST_INVALID_QUERY_FIELDS',
+    );
+
+    const invalidBodyFields = await request(app)
+      .post('/api/agent-gateway/adapters/ingest')
+      .set('x-gateway-signature', signature)
+      .set('x-gateway-timestamp', String(timestampSec))
+      .send({
+        ...payload,
+        extra: true,
+      });
+    expect(invalidBodyFields.status).toBe(400);
+    expect(invalidBodyFields.body.error).toBe(
+      'AGENT_GATEWAY_INGEST_INVALID_FIELDS',
+    );
+
+    const missingSignature = await request(app)
+      .post('/api/agent-gateway/adapters/ingest')
+      .set('x-gateway-timestamp', String(timestampSec))
+      .send(payload);
+    expect(missingSignature.status).toBe(401);
+    expect(missingSignature.body.error).toBe(
+      'AGENT_GATEWAY_INGEST_SIGNATURE_INVALID',
+    );
+
+    const staleTimestamp = timestampSec - 10_000;
+    const staleSignature = signGatewayIngestPayload(payload, staleTimestamp);
+    const expiredSignature = await request(app)
+      .post('/api/agent-gateway/adapters/ingest')
+      .set('x-gateway-signature', staleSignature)
+      .set('x-gateway-timestamp', String(staleTimestamp))
+      .send(payload);
+    expect(expiredSignature.status).toBe(401);
+    expect(expiredSignature.body.error).toBe(
+      'AGENT_GATEWAY_INGEST_SIGNATURE_EXPIRED',
+    );
+
+    const invalidConnector = await request(app)
+      .post('/api/agent-gateway/adapters/ingest')
+      .set('x-gateway-signature', signature)
+      .set('x-gateway-timestamp', String(timestampSec))
+      .send({
+        ...payload,
+        connectorId: 'bad connector',
+      });
+    expect(invalidConnector.status).toBe(400);
+    expect(invalidConnector.body.error).toBe(
+      'AGENT_GATEWAY_INGEST_INVALID_INPUT',
+    );
+  });
+
+  test('agent gateway adapter ingest endpoint persists routed event and deduplicates by event id', async () => {
+    const uniqueSuffix = Date.now().toString();
+    const externalSessionId = `ext-ingest-${uniqueSuffix}`;
+    const eventId = `evt-ingest-${uniqueSuffix}`;
+    const payload = {
+      adapter: 'external_webhook',
+      channel: 'draft_cycle',
+      externalSessionId,
+      fromRole: 'critic',
+      toRole: 'maker',
+      type: 'draft_cycle_critic_completed',
+      connectorId: 'partner-alpha',
+      eventId,
+      payload: {
+        selectedProvider: 'gpt-4.1',
+        attempts: [{ status: 'success' }],
+      },
+    };
+    const timestampSec = Math.floor(Date.now() / 1000);
+    const signature = signGatewayIngestPayload(payload, timestampSec);
+
+    const first = await request(app)
+      .post('/api/agent-gateway/adapters/ingest')
+      .set('x-gateway-signature', signature)
+      .set('x-gateway-timestamp', String(timestampSec))
+      .send(payload);
+    expect(first.status).toBe(201);
+    expect(first.body.applied).toBe(true);
+    expect(first.body.deduplicated).toBe(false);
+    expect(first.body.adapter).toBe('external_webhook');
+    expect(first.body.channel).toBe('draft_cycle');
+    expect(first.body.connectorId).toBe('partner-alpha');
+    expect(first.body.eventId).toBe(eventId);
+    expect(first.body.event.type).toBe('draft_cycle_critic_completed');
+
+    const duplicate = await request(app)
+      .post('/api/agent-gateway/adapters/ingest')
+      .set('x-gateway-signature', signature)
+      .set('x-gateway-timestamp', String(timestampSec))
+      .send(payload);
+    expect(duplicate.status).toBe(200);
+    expect(duplicate.body.applied).toBe(false);
+    expect(duplicate.body.deduplicated).toBe(true);
+    expect(duplicate.body.eventId).toBe(eventId);
+
+    const persisted = await db.query(
+      `SELECT
+         e.event_type,
+         e.payload
+       FROM agent_gateway_events e
+       JOIN agent_gateway_sessions s
+         ON s.id = e.session_id
+       WHERE s.external_session_id = $1
+         AND s.channel = 'draft_cycle'
+         AND e.event_type = $2
+         AND e.payload->>'eventId' = $3
+       ORDER BY e.created_at DESC`,
+      [externalSessionId, 'draft_cycle_critic_completed', eventId],
+    );
+    expect(persisted.rows).toHaveLength(1);
+    expect(persisted.rows[0].payload).toEqual(
+      expect.objectContaining({
+        eventId,
+        connectorId: 'partner-alpha',
+        gatewayAdapter: expect.objectContaining({
+          name: 'external_webhook',
+          channel: 'draft_cycle',
+        }),
       }),
     );
   });

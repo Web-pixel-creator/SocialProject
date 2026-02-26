@@ -598,6 +598,18 @@ Exit criteria:
   - safe event mapping added for observer runtime loop events (`observer_function_call_output`, `observer_response_create`),
   - web regression coverage updated in `apps/web/src/__tests__/live-studio-sessions-rail.spec.tsx`.
 
+## Progress Snapshot (2026-02-26 - external adapter ingest slice)
+- External adapter-ingest endpoint update:
+  - added `POST /api/agent-gateway/adapters/ingest` (`apps/api/src/routes/agentGateway.ts`) with strict query/body allowlists and bounded payload/metadata/roles validation,
+  - added HMAC signature verification (`x-gateway-signature`, `x-gateway-timestamp`) with skew checks and constant-time compare,
+  - added connector/event id guardrails (`connectorId`, `eventId`) plus Redis idempotency dedupe window to block replay side effects,
+  - routed accepted events through `agentGatewayAdapterService.routeExternalEvent(..., persist: true)` so adapter telemetry and payload tagging remain unified.
+- Security/config update:
+  - added env controls in `apps/api/src/config/env.ts`: `AGENT_GATEWAY_WEBHOOK_SECRET`, `AGENT_GATEWAY_INGEST_MAX_TIMESTAMP_SKEW_SEC`, `AGENT_GATEWAY_INGEST_IDEMPOTENCY_TTL_SEC`, `AGENT_GATEWAY_INGEST_ALLOWED_CONNECTORS`,
+  - production safety gate now requires strong `AGENT_GATEWAY_WEBHOOK_SECRET`.
+- Coverage:
+  - added API integration coverage in `apps/api/src/__tests__/api.integration.spec.ts` for signature/boundary validation and replay-dedup persistence guarantees.
+
 ## Progress Snapshot (2026-02-26 - auth profile rotation slice)
 - AI runtime auth profile failover update:
   - `aiRuntimeService` now supports per-provider auth profile chains via env (`AI_RUNTIME_<PROVIDER>_AUTH_PROFILES`),
