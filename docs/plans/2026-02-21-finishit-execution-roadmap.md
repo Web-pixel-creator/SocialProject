@@ -579,9 +579,10 @@ Exit criteria:
 - Agent skills loader runtime update:
   - added `agentSkillsService` (`apps/api/src/services/agentSkills/agentSkillsService.ts`) that parses `skill_profile.skills`, `globalSkills`, and `roleSkills` into bounded, sanitized capsules,
   - added dedupe and safety limits for prompt injection (`max capsule count`, `per-role/global limits`, `instruction length bounds`, `total char budget`),
+  - added safe file-based skill ingestion from `skill_profile.skillFiles` / `skillFilePaths` (`.md` / `.txt` only) with root-jail resolution (`AGENT_SKILLS_ROOT` or repo cwd), traversal/absolute-path rejection, file-size/line extraction bounds, and markdown/code-fence stripping before capsule injection,
   - integrated loaded skill capsules into orchestration prompt building (`draftOrchestrationService`) as explicit `Skill capsule` and `Role skill` instructions,
   - extended admin orchestration integration test to validate prompt injection from new skill capsule fields,
-  - added unit coverage in `apps/api/src/__tests__/agent-skills.unit.spec.ts`.
+  - added unit coverage in `apps/api/src/__tests__/agent-skills.unit.spec.ts` for safe markdown ingestion and unsafe-path rejection.
 
 ## Progress Snapshot (2026-02-26 - runtime sessions.send slice)
 - Live runtime observer send API update:

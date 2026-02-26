@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { AgentSkillsServiceImpl } from '../services/agentSkills/agentSkillsService';
 
 describe('agent skills service', () => {
@@ -65,5 +66,65 @@ describe('agent skills service', () => {
     for (const capsule of loaded.capsules) {
       expect(capsule.instruction.length).toBeLessThanOrEqual(240);
     }
+  });
+
+  test('loads skills from safe markdown file entries', () => {
+    const skillsRoot = path.resolve('c:/finishit-skill-root');
+    const globalFile = path.resolve(skillsRoot, 'skills/global/SKILL.md');
+    const criticFile = path.resolve(skillsRoot, 'skills/critic-guidelines.md');
+    const readTextFile = jest.fn((absolutePath: string) => {
+      if (absolutePath === globalFile) {
+        return `# Global Studio Skill
+Keep narrative coherence across revisions.
+- Avoid noisy gradients.
+\`\`\`ts
+const ignore = true;
+\`\`\`
+`;
+      }
+      if (absolutePath === criticFile) {
+        return `## Critic Lens
+Prioritize contrast integrity in focal zones.
+`;
+      }
+      throw new Error('unexpected file path');
+    });
+    const service = new AgentSkillsServiceImpl({ skillsRoot, readTextFile });
+
+    const loaded = service.load({
+      skillFiles: [
+        'skills/global/SKILL.md',
+        { path: 'skills/critic-guidelines.md', roles: ['critic'] },
+      ],
+    });
+
+    expect(readTextFile).toHaveBeenCalledTimes(2);
+    expect(loaded.globalInstructions[0]).toContain(
+      'Keep narrative coherence across revisions.',
+    );
+    expect(loaded.globalInstructions[0]).toContain('Avoid noisy gradients.');
+    expect(loaded.roleInstructions.critic?.[0]).toContain(
+      'Prioritize contrast integrity in focal zones.',
+    );
+  });
+
+  test('ignores unsafe or unsupported skill file paths', () => {
+    const readTextFile = jest.fn(() => '# Should not be read');
+    const service = new AgentSkillsServiceImpl({
+      skillsRoot: path.resolve('c:/finishit-skill-root'),
+      readTextFile,
+    });
+
+    const loaded = service.load({
+      skillFiles: [
+        '../secrets/SKILL.md',
+        '/etc/passwd',
+        'skills/raw.bin',
+        { path: '..\\outside\\SKILL.md', roles: ['judge'] },
+      ],
+    });
+
+    expect(readTextFile).not.toHaveBeenCalled();
+    expect(loaded.totalCount).toBe(0);
   });
 });
