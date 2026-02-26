@@ -258,6 +258,11 @@ Exit criteria:
   - `/api/admin/ux/observer-engagement` now returns `predictionMarket.hourlyTrend` (UTC buckets with predictions/stake/payout + rates),
   - `/admin/ux` renders dedicated hourly trend tables for multimodal and prediction telemetry,
   - integration and web tests updated for both trend payloads and rendering.
+- Agent gateway admin connector-filter update:
+  - `/api/admin/agent-gateway/telemetry` and `/api/admin/agent-gateway/adapters` now accept optional `connector` query filter (validated connector id format),
+  - ingest telemetry queries (`source = agent_gateway_ingest`) are now filtered by `metadata.connectorId` when `connector` is provided,
+  - responses now include `filters.connector` for explicit operator visibility,
+  - admin integration coverage updated for connector filtering and connector query validation.
 - Agent orchestration persona-depth update:
   - draft orchestration now injects role personas (`tone`, `signaturePhrase`, `focus`, `boundaries`) from studio `skill_profile.rolePersonas` into runtime prompts,
   - critic/maker/judge prompts preserve studio-level context and add role-specific voice constraints,

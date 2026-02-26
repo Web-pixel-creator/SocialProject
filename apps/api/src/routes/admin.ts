@@ -100,6 +100,7 @@ const AGENT_GATEWAY_EXTERNAL_SESSION_ID_PATTERN =
   /^[a-z0-9][a-z0-9._:-]{0,127}$/i;
 const AGENT_GATEWAY_ROLE_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 const AGENT_GATEWAY_EVENT_TYPE_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,119}$/;
+const AGENT_GATEWAY_CONNECTOR_ID_PATTERN = /^[a-z0-9][a-z0-9._:-]{1,63}$/;
 const ADMIN_UX_EVENT_TYPE_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,119}$/;
 const ADMIN_ERROR_CODE_PATTERN = /^[a-z0-9][a-z0-9_.-]{0,119}$/i;
 const ADMIN_ERROR_ROUTE_PATTERN = /^\/[a-z0-9/_:.-]{0,239}$/i;
@@ -690,6 +691,32 @@ const parseOptionalGatewayEventQueryString = (
     return null;
   }
   return parsed.toLowerCase();
+};
+
+const parseOptionalGatewayConnectorIdQueryString = (
+  value: unknown,
+  {
+    fieldName,
+  }: {
+    fieldName: string;
+  },
+): string | null => {
+  const parsed = parseOptionalBoundedQueryString(value, {
+    fieldName,
+    maxLength: 64,
+  });
+  if (!parsed) {
+    return null;
+  }
+  const normalized = parsed.toLowerCase();
+  if (!AGENT_GATEWAY_CONNECTOR_ID_PATTERN.test(normalized)) {
+    throw new ServiceError(
+      'ADMIN_INVALID_QUERY',
+      `${fieldName} must use a valid connector id format.`,
+      400,
+    );
+  }
+  return normalized;
 };
 
 const parseOptionalBoundedBodyString = (
@@ -2704,7 +2731,7 @@ router.get(
   async (req, res, next) => {
     try {
       const query = assertAllowedQueryFields(req.query, {
-        allowed: ['hours', 'limit', 'channel', 'provider'],
+        allowed: ['hours', 'limit', 'channel', 'provider', 'connector'],
         endpoint: '/api/admin/agent-gateway/telemetry',
       });
 
@@ -2730,6 +2757,12 @@ router.get(
         query.provider,
         {
           fieldName: 'provider',
+        },
+      );
+      const connectorFilter = parseOptionalGatewayConnectorIdQueryString(
+        query.connector,
+        {
+          fieldName: 'connector',
         },
       );
 
@@ -2829,13 +2862,17 @@ router.get(
              MAX(created_at) AS last_seen_at
            FROM ux_events
            WHERE source = 'agent_gateway_ingest'
-             AND event_type IN ($4::text, $5::text, $6::text)
+             AND event_type IN ($5::text, $6::text, $7::text)
              AND created_at >= NOW() - ($1 || ' hours')::interval
              AND ($2::text IS NULL OR LOWER(COALESCE(metadata->>'channel', '')) = $2)
              AND (
                $3::text IS NULL OR
                LOWER(COALESCE(metadata->>'provider', '')) = $3 OR
                LOWER(COALESCE(metadata->>'selectedProvider', '')) = $3
+             )
+             AND (
+               $4::text IS NULL OR
+               LOWER(COALESCE(metadata->>'connectorId', '')) = $4
              )
            GROUP BY
              LOWER(COALESCE(metadata->>'connectorId', 'unknown')),
@@ -2846,6 +2883,7 @@ router.get(
             hours,
             channelFilter,
             providerFilter,
+            connectorFilter,
             AGENT_GATEWAY_INGEST_ACCEPT_EVENT,
             AGENT_GATEWAY_INGEST_REPLAY_EVENT,
             AGENT_GATEWAY_INGEST_REJECT_EVENT,
@@ -2891,12 +2929,14 @@ router.get(
         filters: {
           channel: channelFilter,
           provider: providerFilter,
+          connector: connectorFilter,
         },
         attempts: snapshot.attempts,
         providerUsage: snapshot.providerUsage,
         channelUsage: snapshot.channelUsage,
         adapters: snapshot.adapters,
         ingestConnectors: snapshot.ingestConnectors,
+        connectorPolicies: buildAgentGatewayConnectorPolicySnapshot(),
       });
     } catch (error) {
       next(error);
@@ -2910,7 +2950,7 @@ router.get(
   async (req, res, next) => {
     try {
       const query = assertAllowedQueryFields(req.query, {
-        allowed: ['hours', 'channel', 'provider'],
+        allowed: ['hours', 'channel', 'provider', 'connector'],
         endpoint: '/api/admin/agent-gateway/adapters',
       });
       const hours = parseBoundedQueryInt(query.hours, {
@@ -2929,6 +2969,12 @@ router.get(
         query.provider,
         {
           fieldName: 'provider',
+        },
+      );
+      const connectorFilter = parseOptionalGatewayConnectorIdQueryString(
+        query.connector,
+        {
+          fieldName: 'connector',
         },
       );
 
@@ -2975,13 +3021,17 @@ router.get(
              MAX(created_at) AS last_seen_at
            FROM ux_events
            WHERE source = 'agent_gateway_ingest'
-             AND event_type IN ($4::text, $5::text, $6::text)
+             AND event_type IN ($5::text, $6::text, $7::text)
              AND created_at >= NOW() - ($1 || ' hours')::interval
              AND ($2::text IS NULL OR LOWER(COALESCE(metadata->>'channel', '')) = $2)
              AND (
                $3::text IS NULL OR
                LOWER(COALESCE(metadata->>'provider', '')) = $3 OR
                LOWER(COALESCE(metadata->>'selectedProvider', '')) = $3
+             )
+             AND (
+               $4::text IS NULL OR
+               LOWER(COALESCE(metadata->>'connectorId', '')) = $4
              )
            GROUP BY
              LOWER(COALESCE(metadata->>'connectorId', 'unknown')),
@@ -2992,6 +3042,7 @@ router.get(
             hours,
             channelFilter,
             providerFilter,
+            connectorFilter,
             AGENT_GATEWAY_INGEST_ACCEPT_EVENT,
             AGENT_GATEWAY_INGEST_REPLAY_EVENT,
             AGENT_GATEWAY_INGEST_REJECT_EVENT,
@@ -3024,6 +3075,7 @@ router.get(
         filters: {
           channel: channelFilter,
           provider: providerFilter,
+          connector: connectorFilter,
         },
         adapters,
         ingestConnectors,

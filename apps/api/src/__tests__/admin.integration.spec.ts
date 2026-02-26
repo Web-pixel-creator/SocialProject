@@ -830,6 +830,7 @@ describe('Admin API routes', () => {
     expect(response.body.filters).toEqual({
       channel: null,
       provider: null,
+      connector: null,
     });
     expect(response.body.thresholds).toEqual(
       expect.objectContaining({
@@ -1027,6 +1028,7 @@ describe('Admin API routes', () => {
     expect(response.body.filters).toEqual({
       channel: 'draft_cycle',
       provider: 'gemini-2',
+      connector: null,
     });
     expect(response.body.sessions).toEqual(
       expect.objectContaining({
@@ -1056,6 +1058,43 @@ describe('Admin API routes', () => {
     ]);
   });
 
+  test('agent gateway telemetry endpoint applies connector filter to ingest metrics', async () => {
+    await db.query(
+      `INSERT INTO ux_events (event_type, user_type, status, source, metadata)
+       VALUES
+         ('agent_gateway_ingest_accept', 'system', 'ok', 'agent_gateway_ingest', '{"connectorId":"partner-alpha","connectorRiskLevel":"trusted","channel":"draft_cycle"}'::jsonb),
+         ('agent_gateway_ingest_reject', 'system', 'failed', 'agent_gateway_ingest', '{"connectorId":"partner-alpha","connectorRiskLevel":"trusted","channel":"draft_cycle","code":"AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMITED"}'::jsonb),
+         ('agent_gateway_ingest_accept', 'system', 'ok', 'agent_gateway_ingest', '{"connectorId":"partner-beta","connectorRiskLevel":"standard","channel":"draft_cycle"}'::jsonb)`,
+    );
+
+    const response = await request(app)
+      .get(
+        '/api/admin/agent-gateway/telemetry?hours=24&limit=10&connector=partner-alpha',
+      )
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(response.status).toBe(200);
+    expect(response.body.filters).toEqual({
+      channel: null,
+      provider: null,
+      connector: 'partner-alpha',
+    });
+    expect(response.body.ingestConnectors).toEqual(
+      expect.objectContaining({
+        total: 2,
+        accepted: 1,
+        replayed: 0,
+        rejected: 1,
+      }),
+    );
+    expect(response.body.ingestConnectors.usage).toEqual([
+      expect.objectContaining({
+        connectorId: 'partner-alpha',
+        total: 2,
+      }),
+    ]);
+  });
+
   test('agent gateway telemetry endpoint validates hours and limit query params', async () => {
     const invalidQueries = [
       '/api/admin/agent-gateway/telemetry?hours=0',
@@ -1070,6 +1109,8 @@ describe('Admin API routes', () => {
       '/api/admin/agent-gateway/telemetry?channel=x',
       '/api/admin/agent-gateway/telemetry?provider=bad%20provider',
       `/api/admin/agent-gateway/telemetry?provider=${'x'.repeat(65)}`,
+      '/api/admin/agent-gateway/telemetry?connector=bad%20connector',
+      '/api/admin/agent-gateway/telemetry?connector=x',
     ];
 
     for (const url of invalidQueries) {
@@ -1102,6 +1143,7 @@ describe('Admin API routes', () => {
     expect(response.body.filters).toEqual({
       channel: null,
       provider: null,
+      connector: null,
     });
     expect(response.body.adapters).toEqual(
       expect.objectContaining({
@@ -1174,6 +1216,41 @@ describe('Admin API routes', () => {
     );
   });
 
+  test('agent gateway adapters endpoint applies connector filter to ingest metrics', async () => {
+    await db.query(
+      `INSERT INTO ux_events (event_type, user_type, status, source, metadata)
+       VALUES
+         ('agent_gateway_ingest_accept', 'system', 'ok', 'agent_gateway_ingest', '{"connectorId":"partner-alpha","connectorRiskLevel":"trusted","channel":"draft_cycle"}'::jsonb),
+         ('agent_gateway_ingest_accept', 'system', 'ok', 'agent_gateway_ingest', '{"connectorId":"partner-beta","connectorRiskLevel":"standard","channel":"draft_cycle"}'::jsonb),
+         ('agent_gateway_ingest_reject', 'system', 'failed', 'agent_gateway_ingest', '{"connectorId":"partner-beta","connectorRiskLevel":"standard","channel":"draft_cycle","code":"AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMITED"}'::jsonb)`,
+    );
+
+    const response = await request(app)
+      .get('/api/admin/agent-gateway/adapters?hours=24&connector=partner-beta')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(response.status).toBe(200);
+    expect(response.body.filters).toEqual({
+      channel: null,
+      provider: null,
+      connector: 'partner-beta',
+    });
+    expect(response.body.ingestConnectors).toEqual(
+      expect.objectContaining({
+        total: 2,
+        accepted: 1,
+        replayed: 0,
+        rejected: 1,
+      }),
+    );
+    expect(response.body.ingestConnectors.usage).toEqual([
+      expect.objectContaining({
+        connectorId: 'partner-beta',
+        total: 2,
+      }),
+    ]);
+  });
+
   test('agent gateway adapters endpoint validates query params', async () => {
     const invalidQueries = [
       '/api/admin/agent-gateway/adapters?hours=0',
@@ -1184,6 +1261,8 @@ describe('Admin API routes', () => {
       '/api/admin/agent-gateway/adapters?channel=x',
       '/api/admin/agent-gateway/adapters?provider=bad%20provider',
       `/api/admin/agent-gateway/adapters?provider=${'x'.repeat(65)}`,
+      '/api/admin/agent-gateway/adapters?connector=bad%20connector',
+      '/api/admin/agent-gateway/adapters?connector=x',
       '/api/admin/agent-gateway/adapters?limit=10',
     ];
 
