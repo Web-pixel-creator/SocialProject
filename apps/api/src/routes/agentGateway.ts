@@ -60,6 +60,10 @@ const CONNECTOR_SECRET_MAP = parseConnectorSecretMap(
 );
 const REQUIRE_CONNECTOR_SECRET =
   env.AGENT_GATEWAY_INGEST_REQUIRE_CONNECTOR_SECRET === 'true';
+const CONNECTOR_RATE_LIMIT_WINDOW_SEC =
+  env.AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMIT_WINDOW_SEC;
+const CONNECTOR_RATE_LIMIT_MAX =
+  env.AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMIT_MAX;
 
 const assertAllowedQueryFields = (
   query: unknown,
@@ -106,6 +110,14 @@ const assertAllowedBodyFields = (
 
 const parseHeaderValue = (value: string | string[] | undefined) =>
   (Array.isArray(value) ? value[0] : value)?.trim() ?? null;
+
+const parsePositiveInteger = (value: string | null): number | null => {
+  if (!value) {
+    return null;
+  }
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+};
 
 const parseRequiredString = (
   value: unknown,
@@ -301,6 +313,49 @@ const parseSignatureKeyId = (value: string | null) => {
   return value;
 };
 
+const resolveConnectorRateLimitMax = (overrideRaw: string | null) => {
+  if (env.NODE_ENV !== 'test') {
+    return CONNECTOR_RATE_LIMIT_MAX;
+  }
+  const override = parsePositiveInteger(overrideRaw);
+  return override ?? CONNECTOR_RATE_LIMIT_MAX;
+};
+
+const enforceConnectorRateLimit = async (
+  connectorId: string,
+  maxPerWindow: number,
+) => {
+  const bucket = Math.floor(
+    Date.now() / 1000 / CONNECTOR_RATE_LIMIT_WINDOW_SEC,
+  );
+  const redisKey = [
+    'agent_gateway',
+    'adapter_ingest',
+    'connector_rate',
+    connectorId,
+    String(bucket),
+  ].join(':');
+  const currentCount = await redis.incr(redisKey);
+  if (currentCount === 1) {
+    await redis.expire(redisKey, CONNECTOR_RATE_LIMIT_WINDOW_SEC + 1);
+  }
+  if (currentCount <= maxPerWindow) {
+    return {
+      limited: false as const,
+      currentCount,
+      limit: maxPerWindow,
+      retryAfterSec: 0,
+    };
+  }
+  const ttlSec = await redis.ttl(redisKey);
+  return {
+    limited: true as const,
+    currentCount,
+    limit: maxPerWindow,
+    retryAfterSec: ttlSec > 0 ? ttlSec : CONNECTOR_RATE_LIMIT_WINDOW_SEC,
+  };
+};
+
 const writeIngestTelemetry = async (
   eventType:
     | 'agent_gateway_ingest_accept'
@@ -325,6 +380,11 @@ router.post(
   computeHeavyRateLimiter,
   async (req, res, next) => {
     let idempotencyRedisKey: string | null = null;
+    let retryAfterSec: number | null = null;
+    let telemetryConnectorId: string | null = null;
+    let telemetryEventId: string | null = null;
+    let telemetryAdapter: string | null = null;
+    let telemetryChannel: string | null = null;
 
     try {
       const body = assertAllowedBodyFields(
@@ -360,12 +420,14 @@ router.post(
           400,
         );
       }
+      telemetryAdapter = adapter;
 
       const channel = parseRequiredString(body.channel, {
         fieldName: 'channel',
         pattern: CHANNEL_PATTERN,
         errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
       });
+      telemetryChannel = channel;
       const externalSessionId = parseRequiredString(body.externalSessionId, {
         fieldName: 'externalSessionId',
         pattern: EXTERNAL_SESSION_ID_PATTERN,
@@ -427,6 +489,7 @@ router.post(
           403,
         );
       }
+      telemetryConnectorId = connectorId;
 
       const eventId = parseRequiredString(
         body.eventId ?? parseHeaderValue(req.headers['x-idempotency-key']),
@@ -436,6 +499,7 @@ router.post(
           errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
         },
       );
+      telemetryEventId = eventId;
 
       const signature = parseSignature(
         parseHeaderValue(req.headers['x-gateway-signature']),
@@ -475,6 +539,21 @@ router.post(
           'AGENT_GATEWAY_INGEST_SIGNATURE_INVALID',
           'Signature verification failed.',
           401,
+        );
+      }
+      const connectorRateLimitMax = resolveConnectorRateLimitMax(
+        parseHeaderValue(req.headers['x-gateway-rate-limit-override']),
+      );
+      const connectorRateLimit = await enforceConnectorRateLimit(
+        connectorId,
+        connectorRateLimitMax,
+      );
+      if (connectorRateLimit.limited) {
+        retryAfterSec = connectorRateLimit.retryAfterSec;
+        throw new ServiceError(
+          'AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMITED',
+          'Connector ingest rate limit exceeded.',
+          429,
         );
       }
 
@@ -559,11 +638,22 @@ router.post(
       if (idempotencyRedisKey) {
         await redis.del(idempotencyRedisKey);
       }
+      if (retryAfterSec && retryAfterSec > 0) {
+        res.set('Retry-After', String(retryAfterSec));
+      }
       if (error instanceof ServiceError) {
         await writeIngestTelemetry('agent_gateway_ingest_reject', 'failed', {
           code: error.code,
           message: error.message,
           statusCode: error.status,
+          adapter: telemetryAdapter,
+          channel: telemetryChannel,
+          connectorId: telemetryConnectorId,
+          eventId: telemetryEventId,
+          retryAfterSec:
+            error.code === 'AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMITED'
+              ? retryAfterSec
+              : undefined,
         });
       }
       next(error);

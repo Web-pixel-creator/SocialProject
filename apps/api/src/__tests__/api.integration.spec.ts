@@ -5092,6 +5092,58 @@ describe('API integration', () => {
     );
   });
 
+  test('agent gateway adapter ingest endpoint enforces connector rate limit', async () => {
+    const uniqueSuffix = Date.now().toString();
+    const timestampSec = Math.floor(Date.now() / 1000);
+    const basePayload = {
+      adapter: 'external_webhook',
+      channel: 'draft_cycle',
+      fromRole: 'critic',
+      toRole: 'maker',
+      type: 'draft_cycle_critic_completed',
+      connectorId: 'partner-alpha',
+      payload: {
+        selectedProvider: 'gpt-4.1',
+      },
+    };
+    const firstPayload = {
+      ...basePayload,
+      externalSessionId: `ext-rate-limit-${uniqueSuffix}-1`,
+      eventId: `evt-rate-limit-${uniqueSuffix}-1`,
+    };
+    const firstSignature = signGatewayIngestPayload(firstPayload, timestampSec);
+
+    const first = await request(app)
+      .post('/api/agent-gateway/adapters/ingest')
+      .set('x-gateway-signature', firstSignature)
+      .set('x-gateway-timestamp', String(timestampSec))
+      .set('x-gateway-rate-limit-override', '1')
+      .send(firstPayload);
+    expect(first.status).toBe(201);
+
+    const secondPayload = {
+      ...basePayload,
+      externalSessionId: `ext-rate-limit-${uniqueSuffix}-2`,
+      eventId: `evt-rate-limit-${uniqueSuffix}-2`,
+    };
+    const secondSignature = signGatewayIngestPayload(
+      secondPayload,
+      timestampSec,
+    );
+
+    const second = await request(app)
+      .post('/api/agent-gateway/adapters/ingest')
+      .set('x-gateway-signature', secondSignature)
+      .set('x-gateway-timestamp', String(timestampSec))
+      .set('x-gateway-rate-limit-override', '1')
+      .send(secondPayload);
+    expect(second.status).toBe(429);
+    expect(second.body.error).toBe(
+      'AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMITED',
+    );
+    expect(second.headers['retry-after']).toBeTruthy();
+  });
+
   test('agent gateway adapter ingest endpoint persists routed event and deduplicates by event id', async () => {
     const uniqueSuffix = Date.now().toString();
     const externalSessionId = `ext-ingest-${uniqueSuffix}`;

@@ -59,6 +59,16 @@ const envSchema = z.object({
   AGENT_GATEWAY_WEBHOOK_SECRET_PREVIOUS: z.string().default(''),
   AGENT_GATEWAY_INGEST_MAX_TIMESTAMP_SKEW_SEC: z.coerce.number().default(300),
   AGENT_GATEWAY_INGEST_IDEMPOTENCY_TTL_SEC: z.coerce.number().default(86_400),
+  AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMIT_WINDOW_SEC: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(60),
+  AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMIT_MAX: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(120),
   AGENT_GATEWAY_INGEST_ALLOWED_CONNECTORS: z.string().default(''),
   AGENT_GATEWAY_INGEST_CONNECTOR_SECRETS: z.string().default(''),
   AGENT_GATEWAY_INGEST_REQUIRE_CONNECTOR_SECRET: z

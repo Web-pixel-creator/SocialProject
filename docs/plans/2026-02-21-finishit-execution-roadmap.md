@@ -606,10 +606,12 @@ Exit criteria:
   - added connector/event id guardrails (`connectorId`, `eventId`) plus Redis idempotency dedupe window to block replay side effects,
   - routed accepted events through `agentGatewayAdapterService.routeExternalEvent(..., persist: true)` so adapter telemetry and payload tagging remain unified.
 - Security/config update:
-  - added env controls in `apps/api/src/config/env.ts`: `AGENT_GATEWAY_WEBHOOK_SECRET`, `AGENT_GATEWAY_WEBHOOK_SECRET_PREVIOUS`, `AGENT_GATEWAY_INGEST_MAX_TIMESTAMP_SKEW_SEC`, `AGENT_GATEWAY_INGEST_IDEMPOTENCY_TTL_SEC`, `AGENT_GATEWAY_INGEST_ALLOWED_CONNECTORS`, `AGENT_GATEWAY_INGEST_CONNECTOR_SECRETS`, `AGENT_GATEWAY_INGEST_REQUIRE_CONNECTOR_SECRET`,
+  - added env controls in `apps/api/src/config/env.ts`: `AGENT_GATEWAY_WEBHOOK_SECRET`, `AGENT_GATEWAY_WEBHOOK_SECRET_PREVIOUS`, `AGENT_GATEWAY_INGEST_MAX_TIMESTAMP_SKEW_SEC`, `AGENT_GATEWAY_INGEST_IDEMPOTENCY_TTL_SEC`, `AGENT_GATEWAY_INGEST_ALLOWED_CONNECTORS`, `AGENT_GATEWAY_INGEST_CONNECTOR_SECRETS`, `AGENT_GATEWAY_INGEST_REQUIRE_CONNECTOR_SECRET`, `AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMIT_WINDOW_SEC`, `AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMIT_MAX`,
   - production safety gate now requires strong `AGENT_GATEWAY_WEBHOOK_SECRET`.
+  - ingest route now enforces per-connector Redis window limiter (`AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMIT_*`) after signature verification, returns `429 AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMITED`, and sets `Retry-After`.
 - Coverage:
   - added API integration coverage in `apps/api/src/__tests__/api.integration.spec.ts` for signature/boundary validation and replay-dedup persistence guarantees.
+  - extended API integration coverage for connector limiter behavior (`x-gateway-rate-limit-override` in test mode, `Retry-After` assertion).
   - added unit coverage for connector/global signature policy + rotation matching in `apps/api/src/__tests__/agent-gateway-ingest-signature-policy.unit.spec.ts`.
 
 ## Progress Snapshot (2026-02-26 - auth profile rotation slice)
