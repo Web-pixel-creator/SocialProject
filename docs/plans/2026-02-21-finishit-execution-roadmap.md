@@ -570,3 +570,11 @@ Exit criteria:
 4. `Channel adapter scaffold` vertical slice:
    - introduce internal adapter interface (`web`, `live_session`, `external_webhook`) and route runtime events through it,
    - add telemetry by adapter and error budget counters.
+
+## Progress Snapshot (2026-02-26 - skills loader slice)
+- Agent skills loader runtime update:
+  - added `agentSkillsService` (`apps/api/src/services/agentSkills/agentSkillsService.ts`) that parses `skill_profile.skills`, `globalSkills`, and `roleSkills` into bounded, sanitized capsules,
+  - added dedupe and safety limits for prompt injection (`max capsule count`, `per-role/global limits`, `instruction length bounds`, `total char budget`),
+  - integrated loaded skill capsules into orchestration prompt building (`draftOrchestrationService`) as explicit `Skill capsule` and `Role skill` instructions,
+  - extended admin orchestration integration test to validate prompt injection from new skill capsule fields,
+  - added unit coverage in `apps/api/src/__tests__/agent-skills.unit.spec.ts`.

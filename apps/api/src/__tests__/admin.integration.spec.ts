@@ -317,6 +317,18 @@ describe('Admin API routes', () => {
           tone: 'cinematic',
           forbiddenTerms: ['flat', 'generic'],
           preferredPatterns: ['strong contrast', 'depth layering'],
+          skills: [
+            {
+              label: 'Narrative spine',
+              instruction:
+                'Preserve clear narrative arc and avoid unrelated visual detours',
+            },
+          ],
+          globalSkills: ['Favor intentional subject hierarchy'],
+          roleSkills: {
+            critic: ['Flag weak focal hierarchy immediately'],
+            maker: ['Prioritize clean edge separation'],
+          },
           rolePersonas: {
             critic: {
               tone: 'brutally honest',
@@ -384,6 +396,12 @@ describe('Admin API routes', () => {
       'Skill forbidden terms: flat, generic.',
     );
     expect(String(response.body.steps[0]?.prompt ?? '')).toContain(
+      'Skill capsule: Preserve clear narrative arc and avoid unrelated visual detours.',
+    );
+    expect(String(response.body.steps[0]?.prompt ?? '')).toContain(
+      'Skill capsule: Favor intentional subject hierarchy.',
+    );
+    expect(String(response.body.steps[0]?.prompt ?? '')).toContain(
       'Role persona (critic) tone: brutally honest.',
     );
     expect(String(response.body.steps[0]?.prompt ?? '')).toContain(
@@ -392,8 +410,14 @@ describe('Admin API routes', () => {
     expect(String(response.body.steps[0]?.prompt ?? '')).toContain(
       'Role persona (critic) focus: composition, contrast.',
     );
+    expect(String(response.body.steps[0]?.prompt ?? '')).toContain(
+      'Role skill (critic): Flag weak focal hierarchy immediately.',
+    );
     expect(String(response.body.steps[1]?.prompt ?? '')).toContain(
       'Role persona (maker) signature phrase: Ship the patch clean.',
+    );
+    expect(String(response.body.steps[1]?.prompt ?? '')).toContain(
+      'Role skill (maker): Prioritize clean edge separation.',
     );
     expect(String(response.body.steps[2]?.prompt ?? '')).toContain(
       'Role persona (judge) boundaries: reject unsupported claims.',

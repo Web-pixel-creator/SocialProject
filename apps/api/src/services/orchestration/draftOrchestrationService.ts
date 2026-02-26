@@ -1,6 +1,8 @@
 import { db } from '../../db/pool';
 import { agentGatewayService } from '../agentGateway/agentGatewayService';
 import type { AgentGatewayService } from '../agentGateway/types';
+import type { LoadedAgentSkillProfile } from '../agentSkills/agentSkillsService';
+import { agentSkillsService } from '../agentSkills/agentSkillsService';
 import { aiRuntimeService } from '../aiRuntime/aiRuntimeService';
 import type {
   AIRuntimeResult,
@@ -31,6 +33,7 @@ interface StudioSkillContext {
   styleTags: string[];
   skillProfile: Record<string, unknown>;
   rolePersonas: RolePersonas;
+  loadedSkills: LoadedAgentSkillProfile;
 }
 
 interface Queryable {
@@ -222,6 +225,12 @@ const buildStudioContextLines = (studioContext: StudioSkillContext | null) => {
     Object.keys(studioContext.skillProfile).length > 0
       ? toJsonPreview(studioContext.skillProfile)
       : null;
+  const loadedGlobalSkillLines =
+    studioContext.loadedSkills.globalInstructions.length > 0
+      ? studioContext.loadedSkills.globalInstructions.map(
+          (instruction) => `Skill capsule: ${instruction}.`,
+        )
+      : [];
 
   return [
     `Studio context: ${studioContext.studioName}.`,
@@ -245,6 +254,7 @@ const buildStudioContextLines = (studioContext: StudioSkillContext | null) => {
     ) && skillProfileFallback
       ? `Skill profile JSON: ${skillProfileFallback}.`
       : null,
+    ...loadedGlobalSkillLines,
     'Keep output aligned with studio voice and style.',
   ].filter((part): part is string => Boolean(part));
 };
@@ -254,8 +264,12 @@ const buildRolePersonaLines = (
   studioContext: StudioSkillContext | null,
 ) => {
   const rolePersona = studioContext?.rolePersonas?.[role];
+  const roleSkillLines =
+    studioContext?.loadedSkills.roleInstructions[role]?.map(
+      (instruction) => `Role skill (${role}): ${instruction}.`,
+    ) ?? [];
   if (!rolePersona) {
-    return [];
+    return roleSkillLines;
   }
   const focus =
     rolePersona.focus && rolePersona.focus.length > 0
@@ -275,6 +289,7 @@ const buildRolePersonaLines = (
       : null,
     focus ? `Role persona (${role}) focus: ${focus}.` : null,
     boundaries ? `Role persona (${role}) boundaries: ${boundaries}.` : null,
+    ...roleSkillLines,
     'Stay consistent with this role persona in wording and recommendations.',
   ].filter((part): part is string => Boolean(part));
 };
@@ -539,6 +554,7 @@ export class DraftOrchestrationServiceImpl {
       return null;
     }
     const skillProfile = toRecord(row.skill_profile);
+    const loadedSkills = agentSkillsService.load(skillProfile);
     return {
       studioId,
       studioName,
@@ -546,6 +562,7 @@ export class DraftOrchestrationServiceImpl {
       styleTags: toStringArray(row.style_tags),
       skillProfile,
       rolePersonas: parseRolePersonas(skillProfile),
+      loadedSkills,
     };
   }
 }
