@@ -38,6 +38,13 @@ const OBSERVER_PREFERENCES_DIGEST_ALLOWED_FIELDS = [
   'followingOnly',
 ] as const;
 const OBSERVER_INVALID_BODY_FIELDS = 'OBSERVER_INVALID_BODY_FIELDS';
+const PREDICTION_RESOLUTION_WINDOW_THRESHOLDS = {
+  accuracyRate: {
+    criticalBelow: 0.45,
+    watchBelow: 0.6,
+  },
+  minResolvedPredictions: 3,
+} as const;
 
 const assertAllowedQueryFields = (
   query: unknown,
@@ -130,6 +137,27 @@ const parseBoundedLimit = (
 };
 
 const toSafeNumber = (value: unknown) => Number(value ?? 0);
+const resolvePredictionResolutionWindowRiskLevel = (
+  rate: number,
+  resolvedPredictions: number,
+): 'healthy' | 'watch' | 'critical' | 'unknown' => {
+  if (
+    !Number.isFinite(rate) ||
+    resolvedPredictions <
+      PREDICTION_RESOLUTION_WINDOW_THRESHOLDS.minResolvedPredictions
+  ) {
+    return 'unknown';
+  }
+  if (
+    rate < PREDICTION_RESOLUTION_WINDOW_THRESHOLDS.accuracyRate.criticalBelow
+  ) {
+    return 'critical';
+  }
+  if (rate < PREDICTION_RESOLUTION_WINDOW_THRESHOLDS.accuracyRate.watchBelow) {
+    return 'watch';
+  }
+  return 'healthy';
+};
 const parseOptionalBoolean = (
   value: unknown,
   fieldName: string,
@@ -332,6 +360,10 @@ const fetchObserverPredictionSignals = async (observerId: string) => {
   const resolved30d = toSafeNumber(timeWindowsResult.rows[0]?.resolved_30d);
   const correct30d = toSafeNumber(timeWindowsResult.rows[0]?.correct_30d);
   const net30d = toSafeNumber(timeWindowsResult.rows[0]?.net_30d);
+  const rate7d =
+    resolved7d > 0 ? Math.round((correct7d / resolved7d) * 100) / 100 : 0;
+  const rate30d =
+    resolved30d > 0 ? Math.round((correct30d / resolved30d) * 100) / 100 : 0;
   const lastResolvedRow = lastResolvedResult.rows[0] as
     | Record<string, unknown>
     | undefined;
@@ -369,20 +401,27 @@ const fetchObserverPredictionSignals = async (observerId: string) => {
         days: 7,
         resolved: resolved7d,
         correct: correct7d,
-        rate:
-          resolved7d > 0 ? Math.round((correct7d / resolved7d) * 100) / 100 : 0,
+        rate: rate7d,
         netPoints: net7d,
+        riskLevel: resolvePredictionResolutionWindowRiskLevel(
+          rate7d,
+          resolved7d,
+        ),
       },
       d30: {
         days: 30,
         resolved: resolved30d,
         correct: correct30d,
-        rate:
-          resolved30d > 0
-            ? Math.round((correct30d / resolved30d) * 100) / 100
-            : 0,
+        rate: rate30d,
         netPoints: net30d,
+        riskLevel: resolvePredictionResolutionWindowRiskLevel(
+          rate30d,
+          resolved30d,
+        ),
       },
+    },
+    thresholds: {
+      resolutionWindows: PREDICTION_RESOLUTION_WINDOW_THRESHOLDS,
     },
     lastResolved,
   };
@@ -560,6 +599,7 @@ router.get('/observers/me/profile', requireHuman, async (req, res, next) => {
         },
         recentWindow: predictionSignals.recentWindow,
         timeWindows: predictionSignals.timeWindows,
+        thresholds: predictionSignals.thresholds,
         lastResolved: predictionSignals.lastResolved,
         market: {
           trustTier: predictionMarketProfile.trustTier,
@@ -773,6 +813,7 @@ router.get('/observers/:id/profile', async (req, res, next) => {
         },
         recentWindow: predictionSignals.recentWindow,
         timeWindows: predictionSignals.timeWindows,
+        thresholds: predictionSignals.thresholds,
         lastResolved: predictionSignals.lastResolved,
         market: {
           trustTier: predictionMarketProfile.trustTier,

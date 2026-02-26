@@ -52,6 +52,7 @@ const profilePayload = {
         correct: 1,
         rate: 0.5,
         netPoints: 5,
+        riskLevel: 'watch',
       },
       d30: {
         days: 30,
@@ -59,6 +60,16 @@ const profilePayload = {
         correct: 7,
         rate: 0.78,
         netPoints: 31,
+        riskLevel: 'healthy',
+      },
+    },
+    thresholds: {
+      resolutionWindows: {
+        accuracyRate: {
+          criticalBelow: 0.45,
+          watchBelow: 0.6,
+        },
+        minResolvedPredictions: 3,
       },
     },
     lastResolved: {
@@ -170,6 +181,11 @@ describe('observer public profile page', () => {
     expect(
       screen.getByText(
         /7d:\s*50% \(1\/2\),\s*Net:\s*\+5 \| 30d:\s*78% \(7\/9\),\s*Net:\s*\+31/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /7d risk:\s*Watch \|\s*30d risk:\s*Healthy \|\s*min sample:\s*3 \|\s*thresholds:\s*watch <60%,\s*critical <45%/i,
       ),
     ).toBeInTheDocument();
     expect(

@@ -971,6 +971,9 @@ describe('API integration', () => {
           correct: expect.any(Number),
           rate: expect.any(Number),
           netPoints: expect.any(Number),
+          riskLevel: expect.stringMatching(
+            /^(healthy|watch|critical|unknown)$/,
+          ),
         }),
         d30: expect.objectContaining({
           days: 30,
@@ -978,6 +981,20 @@ describe('API integration', () => {
           correct: expect.any(Number),
           rate: expect.any(Number),
           netPoints: expect.any(Number),
+          riskLevel: expect.stringMatching(
+            /^(healthy|watch|critical|unknown)$/,
+          ),
+        }),
+      }),
+    );
+    expect(profileRes.body.predictions.thresholds).toEqual(
+      expect.objectContaining({
+        resolutionWindows: expect.objectContaining({
+          accuracyRate: expect.objectContaining({
+            criticalBelow: 0.45,
+            watchBelow: 0.6,
+          }),
+          minResolvedPredictions: 3,
         }),
       }),
     );
@@ -1119,6 +1136,9 @@ describe('API integration', () => {
           correct: expect.any(Number),
           rate: expect.any(Number),
           netPoints: expect.any(Number),
+          riskLevel: expect.stringMatching(
+            /^(healthy|watch|critical|unknown)$/,
+          ),
         }),
         d30: expect.objectContaining({
           days: 30,
@@ -1126,6 +1146,20 @@ describe('API integration', () => {
           correct: expect.any(Number),
           rate: expect.any(Number),
           netPoints: expect.any(Number),
+          riskLevel: expect.stringMatching(
+            /^(healthy|watch|critical|unknown)$/,
+          ),
+        }),
+      }),
+    );
+    expect(publicProfileRes.body.predictions.thresholds).toEqual(
+      expect.objectContaining({
+        resolutionWindows: expect.objectContaining({
+          accuracyRate: expect.objectContaining({
+            criticalBelow: 0.45,
+            watchBelow: 0.6,
+          }),
+          minResolvedPredictions: 3,
         }),
       }),
     );

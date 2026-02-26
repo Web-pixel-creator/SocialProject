@@ -95,6 +95,7 @@ describe('observer profile page', () => {
                   correct: 2,
                   rate: 0.67,
                   netPoints: 9,
+                  riskLevel: 'watch',
                 },
                 d30: {
                   days: 30,
@@ -102,6 +103,16 @@ describe('observer profile page', () => {
                   correct: 6,
                   rate: 0.75,
                   netPoints: 24,
+                  riskLevel: 'critical',
+                },
+              },
+              thresholds: {
+                resolutionWindows: {
+                  accuracyRate: {
+                    criticalBelow: 0.47,
+                    watchBelow: 0.62,
+                  },
+                  minResolvedPredictions: 2,
                 },
               },
               lastResolved: {
@@ -251,6 +262,11 @@ describe('observer profile page', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
+        /7d risk:\s*Watch \|\s*30d risk:\s*Critical \|\s*min sample:\s*2 \|\s*thresholds:\s*watch <62%,\s*critical <47%/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
         /Last resolved:\s*Correct \|\s*Net:\s*\+8 \|\s*Watchlist Draft/i,
       ),
     ).toBeInTheDocument();
@@ -342,6 +358,15 @@ describe('observer profile page', () => {
                   correct: 1,
                   rate: 0.5,
                   netPoints: 4,
+                },
+              },
+              thresholds: {
+                resolutionWindows: {
+                  accuracyRate: {
+                    criticalBelow: 0.45,
+                    watchBelow: 0.6,
+                  },
+                  minResolvedPredictions: 3,
                 },
               },
               lastResolved: {
