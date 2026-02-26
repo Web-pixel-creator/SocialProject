@@ -1790,6 +1790,133 @@ describe('draft detail page', () => {
         screen.getByRole('button', { name: /Fusion brief copied/i }),
       ).toBeInTheDocument(),
     );
+    await waitFor(() =>
+      expect(apiClient.post).toHaveBeenCalledWith(
+        '/telemetry/ux',
+        expect.objectContaining({
+          draftId: 'draft-style-fusion',
+          eventType: 'style_fusion_copy_brief',
+          metadata: expect.objectContaining({
+            sampleCount: 2,
+            status: 'success',
+          }),
+          source: 'draft_detail',
+        }),
+      ),
+    );
+  });
+
+  test('shows copy error and emits failed style fusion copy telemetry', async () => {
+    const writeTextMock = jest.fn(() => Promise.reject(new Error('denied')));
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: writeTextMock,
+      },
+    });
+
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/search/similar')) {
+        return Promise.resolve({
+          data: [
+            {
+              id: 'sim-a',
+              title: 'Similar Draft A',
+              score: 0.91,
+              glowUpScore: 4.2,
+              type: 'draft',
+            },
+          ],
+        });
+      }
+      if (url.includes('/fix-requests')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/pull-requests') && !url.includes('/predictions')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/arc')) {
+        return Promise.resolve({ data: null });
+      }
+      if (
+        url.includes('/observers/watchlist') ||
+        url.includes('/observers/digest') ||
+        url.includes('/me/following')
+      ) {
+        return Promise.resolve({ data: [] });
+      }
+      return Promise.resolve({
+        data: {
+          draft: {
+            id: 'draft-style-fusion-copy-failed',
+            currentVersion: 1,
+            glowUpScore: 1.4,
+            status: 'draft',
+            updatedAt: new Date().toISOString(),
+          },
+          versions: [],
+        },
+      });
+    });
+    (apiClient.post as jest.Mock).mockImplementation(
+      (url: string, payload?: Record<string, unknown>) => {
+        if (url === '/search/style-fusion') {
+          return Promise.resolve({
+            data: {
+              draftId: 'draft-style-fusion-copy-failed',
+              generatedAt: new Date().toISOString(),
+              titleSuggestion: 'Fusion: Similar Draft A',
+              styleDirectives: ['Preserve composition anchors.'],
+              winningPrHints: ['Reuse merged PR sequencing.'],
+              sample: [
+                {
+                  id: 'sim-a',
+                  title: 'Similar Draft A',
+                  score: 0.91,
+                  glowUpScore: 4.2,
+                  type: 'draft',
+                },
+              ],
+            },
+          });
+        }
+        if (url === '/telemetry/ux') {
+          return Promise.resolve({ data: { status: 'ok', payload } });
+        }
+        return Promise.resolve({ data: { status: 'ok' } });
+      },
+    );
+
+    await renderDraftDetailPage('draft-style-fusion-copy-failed');
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /Generate style fusion/i }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByText(/Fusion: Similar Draft A/i)).toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Copy fusion brief/i }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: /Copy failed/i }),
+      ).toBeInTheDocument(),
+    );
+    await waitFor(() =>
+      expect(apiClient.post).toHaveBeenCalledWith(
+        '/telemetry/ux',
+        expect.objectContaining({
+          draftId: 'draft-style-fusion-copy-failed',
+          eventType: 'style_fusion_copy_brief',
+          metadata: expect.objectContaining({
+            sampleCount: 1,
+            status: 'failed',
+          }),
+          source: 'draft_detail',
+        }),
+      ),
+    );
   });
 
   test('shows style fusion error when generation fails', async () => {

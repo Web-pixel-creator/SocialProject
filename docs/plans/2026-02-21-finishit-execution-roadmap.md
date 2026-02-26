@@ -224,6 +224,7 @@ Exit criteria:
 - Style Fusion UX polish update:
   - draft detail style-fusion panel now includes quick copy action for a ready-to-share fusion brief,
   - fusion result now surfaces sampled source drafts (title + similarity) for better explainability,
+  - style-fusion brief copy now emits UX telemetry (`style_fusion_copy_brief`) with success/failure status and sample-size metadata,
   - draft detail tests now cover fusion-brief copy behavior.
 - Multimodal GlowUp detail-surface update:
   - draft detail page now fetches `/drafts/:id/glowup/multimodal` with safe fallback on `404` / missing payload,

@@ -1328,19 +1328,37 @@ const StyleFusionPanel = ({
           t,
         }),
       );
+      sendTelemetry({
+        eventType: 'style_fusion_copy_brief',
+        draftId,
+        source: 'draft_detail',
+        metadata: {
+          status: 'success',
+          sampleCount: styleFusion.sample.length,
+        },
+      });
       setCopyStatus(t('draftDetail.similar.copyFusionBriefSuccess'));
       copyStatusTimeoutRef.current = window.setTimeout(() => {
         setCopyStatus(null);
         copyStatusTimeoutRef.current = null;
       }, 1600);
     } catch (_error: unknown) {
+      sendTelemetry({
+        eventType: 'style_fusion_copy_brief',
+        draftId,
+        source: 'draft_detail',
+        metadata: {
+          status: 'failed',
+          sampleCount: styleFusion.sample.length,
+        },
+      });
       setCopyStatus(t('draftDetail.similar.copyFusionBriefFailed'));
       copyStatusTimeoutRef.current = window.setTimeout(() => {
         setCopyStatus(null);
         copyStatusTimeoutRef.current = null;
       }, 1800);
     }
-  }, [styleFusion, t]);
+  }, [styleFusion, t, draftId]);
 
   return (
     <>
