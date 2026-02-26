@@ -75,6 +75,12 @@ const LIVE_SESSION_REALTIME_TOOL_BODY_FIELDS = [
   'toolName',
   'arguments',
 ] as const;
+const LIVE_SESSION_REALTIME_SEND_QUERY_FIELDS = [] as const;
+const LIVE_SESSION_REALTIME_SEND_BODY_FIELDS = [
+  'toRole',
+  'type',
+  'payload',
+] as const;
 const LIVE_SESSION_TITLE_MAX_LENGTH = 160;
 const LIVE_SESSION_OBJECTIVE_MAX_LENGTH = 1000;
 const LIVE_SESSION_RECAP_SUMMARY_MAX_LENGTH = 2000;
@@ -88,6 +94,10 @@ const LIVE_SESSION_REALTIME_TOOL_CALL_ID_MAX_LENGTH = 120;
 const LIVE_SESSION_REALTIME_TOOL_ARGUMENTS_MAX_LENGTH = 10_000;
 const LIVE_SESSION_REALTIME_TOOL_CALL_ID_PATTERN =
   /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,119}$/;
+const LIVE_SESSION_REALTIME_SEND_EVENT_TYPE_PATTERN =
+  /^[a-z0-9][a-z0-9._:-]{0,119}$/;
+const LIVE_SESSION_REALTIME_SEND_PAYLOAD_MAX_KEYS = 20;
+const LIVE_SESSION_REALTIME_SEND_PAYLOAD_MAX_LENGTH = 6000;
 const PRESENCE_STATUSES: LiveSessionPresenceStatus[] = [
   'watching',
   'active',
@@ -112,6 +122,12 @@ const LIVE_SESSION_REALTIME_TOOLS = [
   'place_prediction',
   'follow_studio',
 ] as const;
+const LIVE_SESSION_REALTIME_SEND_TO_ROLES = [
+  'author',
+  'critic',
+  'maker',
+  'judge',
+] as const;
 const PREDICTION_MIN_STAKE_POINTS = 5;
 const PREDICTION_MAX_STAKE_POINTS = 500;
 const DEFAULT_REALTIME_TOOL_REPEAT_WINDOW_MS = 4000;
@@ -127,6 +143,8 @@ const realtimeToolRepeatState = new Map<string, number>();
 const isUuid = (value: string) => UUID_PATTERN.test(value);
 
 type LiveSessionRealtimeTool = (typeof LIVE_SESSION_REALTIME_TOOLS)[number];
+type LiveSessionRealtimeSendToRole =
+  (typeof LIVE_SESSION_REALTIME_SEND_TO_ROLES)[number];
 
 const assertLiveSessionIdParam = (value: string) => {
   if (!isUuid(value)) {
@@ -752,6 +770,89 @@ const assertRealtimeToolCallIdFormat = (callId: string | null) => {
       400,
     );
   }
+};
+
+const parseRealtimeSendToRole = (
+  body: Record<string, unknown>,
+): LiveSessionRealtimeSendToRole => {
+  if (typeof body.toRole !== 'string') {
+    throw new ServiceError(
+      'LIVE_SESSION_REALTIME_SEND_INVALID_INPUT',
+      'toRole is required.',
+      400,
+    );
+  }
+  const normalized = body.toRole.trim() as LiveSessionRealtimeSendToRole;
+  if (
+    !LIVE_SESSION_REALTIME_SEND_TO_ROLES.includes(
+      normalized as (typeof LIVE_SESSION_REALTIME_SEND_TO_ROLES)[number],
+    )
+  ) {
+    throw new ServiceError(
+      'LIVE_SESSION_REALTIME_SEND_INVALID_INPUT',
+      `Unsupported toRole: ${body.toRole}.`,
+      400,
+    );
+  }
+  return normalized;
+};
+
+const parseRealtimeSendEventType = (body: Record<string, unknown>) => {
+  const normalized = parseRequiredBoundedText(body.type, {
+    field: 'type',
+    maxLength: 120,
+    errorCode: 'LIVE_SESSION_REALTIME_SEND_INVALID_INPUT',
+  }).toLowerCase();
+  if (!LIVE_SESSION_REALTIME_SEND_EVENT_TYPE_PATTERN.test(normalized)) {
+    throw new ServiceError(
+      'LIVE_SESSION_REALTIME_SEND_INVALID_INPUT',
+      'type has invalid format.',
+      400,
+    );
+  }
+  if (!normalized.startsWith('observer_')) {
+    throw new ServiceError(
+      'LIVE_SESSION_REALTIME_SEND_INVALID_INPUT',
+      'type must start with observer_.',
+      400,
+    );
+  }
+  return normalized;
+};
+
+const parseRealtimeSendPayload = (body: Record<string, unknown>) => {
+  if (body.payload === undefined) {
+    return {};
+  }
+  if (
+    !body.payload ||
+    typeof body.payload !== 'object' ||
+    Array.isArray(body.payload)
+  ) {
+    throw new ServiceError(
+      'LIVE_SESSION_REALTIME_SEND_INVALID_INPUT',
+      'payload must be an object.',
+      400,
+    );
+  }
+  const payload = body.payload as Record<string, unknown>;
+  const payloadKeys = Object.keys(payload);
+  if (payloadKeys.length > LIVE_SESSION_REALTIME_SEND_PAYLOAD_MAX_KEYS) {
+    throw new ServiceError(
+      'LIVE_SESSION_REALTIME_SEND_INVALID_INPUT',
+      `payload allows at most ${LIVE_SESSION_REALTIME_SEND_PAYLOAD_MAX_KEYS} keys.`,
+      400,
+    );
+  }
+  const serialized = JSON.stringify(payload);
+  if (serialized.length > LIVE_SESSION_REALTIME_SEND_PAYLOAD_MAX_LENGTH) {
+    throw new ServiceError(
+      'LIVE_SESSION_REALTIME_SEND_INVALID_INPUT',
+      `payload is too large (max ${LIVE_SESSION_REALTIME_SEND_PAYLOAD_MAX_LENGTH} chars).`,
+      400,
+    );
+  }
+  return payload;
 };
 
 const toPayloadRecord = (value: unknown): Record<string, unknown> | null => {
@@ -1441,6 +1542,89 @@ router.post(
         callId,
         toolName,
         output,
+      });
+    } catch (error) {
+      return next(error);
+    }
+  },
+);
+
+router.post(
+  '/live-sessions/:id/realtime/send',
+  requireHuman,
+  observerActionRateLimiter,
+  async (req, res, next) => {
+    try {
+      assertAllowedQueryFields(
+        req.query,
+        LIVE_SESSION_REALTIME_SEND_QUERY_FIELDS,
+        'LIVE_SESSION_INVALID_QUERY_FIELDS',
+      );
+      const body = assertAllowedBodyFields(
+        req.body,
+        LIVE_SESSION_REALTIME_SEND_BODY_FIELDS,
+        'LIVE_SESSION_REALTIME_SEND_INVALID_FIELDS',
+      );
+      assertLiveSessionIdParam(req.params.id);
+      const detail = await liveSessionService.getSession(req.params.id);
+      if (!detail) {
+        return res.status(404).json({ error: 'LIVE_SESSION_NOT_FOUND' });
+      }
+      if (
+        detail.session.status === 'completed' ||
+        detail.session.status === 'cancelled'
+      ) {
+        return res.status(409).json({
+          error: 'LIVE_SESSION_REALTIME_UNAVAILABLE',
+          message: 'Realtime send is disabled for closed sessions.',
+        });
+      }
+
+      const toRole = parseRealtimeSendToRole(body);
+      const eventType = parseRealtimeSendEventType(body);
+      const payload = parseRealtimeSendPayload(body);
+      const observerId = req.auth?.id as string;
+
+      const gatewaySession = agentGatewayService.ensureExternalSession({
+        channel: 'live_session',
+        externalSessionId: detail.session.id,
+        draftId: detail.session.draftId,
+        roles: ['author', 'critic', 'maker', 'judge'],
+        metadata: {
+          hostAgentId: detail.session.hostAgentId,
+          source: 'live_session',
+        },
+      });
+
+      const event = agentGatewayService.appendEvent(gatewaySession.id, {
+        fromRole: 'observer',
+        toRole,
+        type: eventType,
+        payload: {
+          ...payload,
+          observerId,
+          liveSessionId: detail.session.id,
+        },
+      });
+      await agentGatewayService.persistSession(
+        agentGatewayService.getSession(gatewaySession.id).session,
+      );
+      await agentGatewayService.persistEvent(event);
+
+      getRealtime(req)?.broadcast(
+        `session:${detail.session.id}`,
+        'session_realtime_send',
+        {
+          sessionId: detail.session.id,
+          observerId,
+          event,
+        },
+      );
+
+      return res.status(201).json({
+        sessionId: detail.session.id,
+        observerId,
+        event,
       });
     } catch (error) {
       return next(error);

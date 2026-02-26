@@ -112,6 +112,7 @@ Exit criteria:
   - web regression coverage added for successful bootstrap and auth-required error handling in `apps/web/src/__tests__/live-studio-sessions-rail.spec.tsx`.
 - Realtime copilot tool execution bridge:
   - added observer-only endpoint `POST /api/live-sessions/:id/realtime/tool` with strict query/body allowlists and bounded `callId`,
+  - added observer-only endpoint `POST /api/live-sessions/:id/realtime/send` for safe observer->role runtime events (`toRole` allowlist, `observer_*` event-type guard, bounded payload keys/size), with persistence into `agent_gateway_sessions/events` and API integration coverage for boundary + success paths,
   - endpoint executes only allowlisted tools (`place_prediction`, `follow_studio`) with argument-level validation and live-session scope checks,
   - tool execution now returns normalized output payloads suitable for `function_call_output` wiring on the client side,
   - API integration coverage added for realtime tool boundary validation and successful follow + prediction execution flow,

@@ -4768,6 +4768,230 @@ describe('API integration', () => {
     expect(Number(followRows.rows[0]?.count ?? 0)).toBe(1);
   });
 
+  test('live session realtime send endpoint validates payload boundaries', async () => {
+    const { agentId, apiKey } = await registerAgent(
+      'Live Realtime Send Boundary Agent',
+    );
+    const human = await registerHuman(
+      'live-realtime-send-boundary-human@example.com',
+    );
+
+    const created = await request(app)
+      .post('/api/live-sessions')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        title: 'Live realtime send boundary',
+        objective: 'Validate realtime send endpoint boundaries',
+      });
+    expect(created.status).toBe(201);
+    const sessionId = created.body.session.id as string;
+
+    const invalidQuery = await request(app)
+      .post(`/api/live-sessions/${sessionId}/realtime/send?extra=true`)
+      .set('Authorization', `Bearer ${human.tokens.accessToken}`)
+      .send({
+        toRole: 'author',
+        type: 'observer_ping',
+        payload: {},
+      });
+    expect(invalidQuery.status).toBe(400);
+    expect(invalidQuery.body.error).toBe('LIVE_SESSION_INVALID_QUERY_FIELDS');
+
+    const invalidBodyFields = await request(app)
+      .post(`/api/live-sessions/${sessionId}/realtime/send`)
+      .set('Authorization', `Bearer ${human.tokens.accessToken}`)
+      .send({
+        toRole: 'author',
+        type: 'observer_ping',
+        payload: {},
+        extra: true,
+      });
+    expect(invalidBodyFields.status).toBe(400);
+    expect(invalidBodyFields.body.error).toBe(
+      'LIVE_SESSION_REALTIME_SEND_INVALID_FIELDS',
+    );
+
+    const invalidToRole = await request(app)
+      .post(`/api/live-sessions/${sessionId}/realtime/send`)
+      .set('Authorization', `Bearer ${human.tokens.accessToken}`)
+      .send({
+        toRole: 'observer',
+        type: 'observer_ping',
+        payload: {},
+      });
+    expect(invalidToRole.status).toBe(400);
+    expect(invalidToRole.body.error).toBe(
+      'LIVE_SESSION_REALTIME_SEND_INVALID_INPUT',
+    );
+
+    const invalidTypeFormat = await request(app)
+      .post(`/api/live-sessions/${sessionId}/realtime/send`)
+      .set('Authorization', `Bearer ${human.tokens.accessToken}`)
+      .send({
+        toRole: 'author',
+        type: 'observer ping',
+        payload: {},
+      });
+    expect(invalidTypeFormat.status).toBe(400);
+    expect(invalidTypeFormat.body.error).toBe(
+      'LIVE_SESSION_REALTIME_SEND_INVALID_INPUT',
+    );
+
+    const invalidTypePrefix = await request(app)
+      .post(`/api/live-sessions/${sessionId}/realtime/send`)
+      .set('Authorization', `Bearer ${human.tokens.accessToken}`)
+      .send({
+        toRole: 'author',
+        type: 'agent_ping',
+        payload: {},
+      });
+    expect(invalidTypePrefix.status).toBe(400);
+    expect(invalidTypePrefix.body.error).toBe(
+      'LIVE_SESSION_REALTIME_SEND_INVALID_INPUT',
+    );
+
+    const invalidPayloadType = await request(app)
+      .post(`/api/live-sessions/${sessionId}/realtime/send`)
+      .set('Authorization', `Bearer ${human.tokens.accessToken}`)
+      .send({
+        toRole: 'author',
+        type: 'observer_ping',
+        payload: ['not', 'allowed'],
+      });
+    expect(invalidPayloadType.status).toBe(400);
+    expect(invalidPayloadType.body.error).toBe(
+      'LIVE_SESSION_REALTIME_SEND_INVALID_INPUT',
+    );
+
+    const oversizedPayloadKeys = Object.fromEntries(
+      Array.from({ length: 21 }, (_, index) => [`k${index}`, index]),
+    );
+    const invalidPayloadKeys = await request(app)
+      .post(`/api/live-sessions/${sessionId}/realtime/send`)
+      .set('Authorization', `Bearer ${human.tokens.accessToken}`)
+      .send({
+        toRole: 'author',
+        type: 'observer_ping',
+        payload: oversizedPayloadKeys,
+      });
+    expect(invalidPayloadKeys.status).toBe(400);
+    expect(invalidPayloadKeys.body.error).toBe(
+      'LIVE_SESSION_REALTIME_SEND_INVALID_INPUT',
+    );
+
+    const invalidPayloadSize = await request(app)
+      .post(`/api/live-sessions/${sessionId}/realtime/send`)
+      .set('Authorization', `Bearer ${human.tokens.accessToken}`)
+      .send({
+        toRole: 'author',
+        type: 'observer_ping',
+        payload: {
+          note: 'x'.repeat(6100),
+        },
+      });
+    expect(invalidPayloadSize.status).toBe(400);
+    expect(invalidPayloadSize.body.error).toBe(
+      'LIVE_SESSION_REALTIME_SEND_INVALID_INPUT',
+    );
+
+    const started = await request(app)
+      .post(`/api/live-sessions/${sessionId}/start`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({});
+    expect(started.status).toBe(200);
+
+    const completed = await request(app)
+      .post(`/api/live-sessions/${sessionId}/complete`)
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        recapSummary: 'Closed for realtime send boundary check',
+      });
+    expect(completed.status).toBe(200);
+
+    const closedSession = await request(app)
+      .post(`/api/live-sessions/${sessionId}/realtime/send`)
+      .set('Authorization', `Bearer ${human.tokens.accessToken}`)
+      .send({
+        toRole: 'author',
+        type: 'observer_ping',
+        payload: {},
+      });
+    expect(closedSession.status).toBe(409);
+    expect(closedSession.body.error).toBe('LIVE_SESSION_REALTIME_UNAVAILABLE');
+  });
+
+  test('live session realtime send endpoint appends observer event into gateway stream', async () => {
+    const { agentId, apiKey } = await registerAgent(
+      'Live Realtime Send Execute Agent',
+    );
+    const human = await registerHuman(
+      'live-realtime-send-execute-human@example.com',
+    );
+    const observerToken = human.tokens.accessToken;
+
+    const created = await request(app)
+      .post('/api/live-sessions')
+      .set('x-agent-id', agentId)
+      .set('x-api-key', apiKey)
+      .send({
+        title: 'Live realtime send execute',
+        objective: 'Append observer event into gateway timeline',
+      });
+    expect(created.status).toBe(201);
+    const sessionId = created.body.session.id as string;
+
+    const sendResult = await request(app)
+      .post(`/api/live-sessions/${sessionId}/realtime/send`)
+      .set('Authorization', `Bearer ${observerToken}`)
+      .send({
+        toRole: 'critic',
+        type: 'observer_request_summary',
+        payload: {
+          hint: 'focus-on-composition',
+        },
+      });
+    expect(sendResult.status).toBe(201);
+    expect(sendResult.body.sessionId).toBe(sessionId);
+    expect(sendResult.body.observerId).toBe(human.userId);
+    expect(sendResult.body.event.fromRole).toBe('observer');
+    expect(sendResult.body.event.toRole).toBe('critic');
+    expect(sendResult.body.event.type).toBe('observer_request_summary');
+    expect(sendResult.body.event.payload.hint).toBe('focus-on-composition');
+    expect(sendResult.body.event.payload.observerId).toBe(human.userId);
+    expect(sendResult.body.event.payload.liveSessionId).toBe(sessionId);
+
+    const persistedRows = await db.query(
+      `SELECT
+         e.event_type,
+         e.from_role,
+         e.to_role,
+         e.payload
+       FROM agent_gateway_events e
+       JOIN agent_gateway_sessions s
+         ON s.id = e.session_id
+       WHERE s.external_session_id = $1
+         AND s.channel = 'live_session'
+         AND e.event_type = $2
+       ORDER BY e.created_at DESC
+       LIMIT 1`,
+      [sessionId, 'observer_request_summary'],
+    );
+    expect(persistedRows.rows).toHaveLength(1);
+    expect(persistedRows.rows[0].from_role).toBe('observer');
+    expect(persistedRows.rows[0].to_role).toBe('critic');
+    expect(persistedRows.rows[0].event_type).toBe('observer_request_summary');
+    expect(persistedRows.rows[0].payload).toEqual(
+      expect.objectContaining({
+        hint: 'focus-on-composition',
+        observerId: human.userId,
+        liveSessionId: sessionId,
+      }),
+    );
+  });
+
   test('search compute-heavy endpoints enforce rate limiting', async () => {
     const headers = {
       'x-enforce-rate-limit': 'true',
