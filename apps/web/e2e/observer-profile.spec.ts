@@ -233,6 +233,303 @@ test.describe('Observer profile page', () => {
     await expect.poll(() => digestRequests).toBeGreaterThanOrEqual(2);
   });
 
+  test('persists prediction history controls per scope (self/public)', async ({
+    page,
+  }) => {
+    const telemetryPayloads: Array<{
+      eventType?: string;
+      metadata?: Record<string, unknown>;
+    }> = [];
+
+    const observerProfilePayload = {
+      observer: {
+        id: 'observer-e2e',
+        email: 'observer@example.com',
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+      counts: {
+        followingStudios: 1,
+        watchlistDrafts: 2,
+        digestUnseen: 0,
+      },
+      predictions: {
+        correct: 1,
+        total: 1,
+        rate: 1,
+        netPoints: 10,
+        streak: {
+          current: 1,
+          best: 2,
+        },
+        recentWindow: {
+          size: 10,
+          resolved: 1,
+          correct: 1,
+          rate: 1,
+        },
+        timeWindows: {
+          d7: {
+            days: 7,
+            resolved: 1,
+            correct: 1,
+            rate: 1,
+            netPoints: 10,
+            riskLevel: 'healthy',
+          },
+          d30: {
+            days: 30,
+            resolved: 1,
+            correct: 1,
+            rate: 1,
+            netPoints: 10,
+            riskLevel: 'healthy',
+          },
+        },
+        thresholds: {
+          resolutionWindows: {
+            accuracyRate: {
+              criticalBelow: 0.4,
+              watchBelow: 0.6,
+            },
+            minResolvedPredictions: 3,
+          },
+        },
+        lastResolved: {
+          id: 'pred-resolved',
+          pullRequestId: 'pr-resolved',
+          draftId: 'draft-resolved',
+          draftTitle: 'Resolved Draft',
+          predictedOutcome: 'merge',
+          resolvedOutcome: 'merge',
+          isCorrect: true,
+          stakePoints: 20,
+          payoutPoints: 30,
+          createdAt: '2026-02-01T10:00:00.000Z',
+          resolvedAt: '2026-02-01T11:00:00.000Z',
+          netPoints: 10,
+        },
+        market: {
+          trustTier: 'trusted',
+          minStakePoints: 20,
+          maxStakePoints: 300,
+          dailyStakeCapPoints: 1000,
+          dailyStakeUsedPoints: 150,
+          dailyStakeRemainingPoints: 850,
+          dailySubmissionCap: 8,
+          dailySubmissionsUsed: 2,
+          dailySubmissionsRemaining: 6,
+        },
+      },
+      followingStudios: [],
+      watchlistHighlights: [],
+      recentPredictions: [
+        {
+          id: 'pred-resolved',
+          pullRequestId: 'pr-resolved',
+          draftId: 'draft-resolved',
+          draftTitle: 'Resolved Draft',
+          predictedOutcome: 'merge',
+          resolvedOutcome: 'merge',
+          isCorrect: true,
+          stakePoints: 20,
+          payoutPoints: 30,
+          createdAt: '2026-02-01T10:00:00.000Z',
+          resolvedAt: '2026-02-01T11:00:00.000Z',
+        },
+        {
+          id: 'pred-pending',
+          pullRequestId: 'pr-pending',
+          draftId: 'draft-pending',
+          draftTitle: 'Pending Draft',
+          predictedOutcome: 'reject',
+          resolvedOutcome: null,
+          isCorrect: null,
+          stakePoints: 18,
+          payoutPoints: 0,
+          createdAt: '2026-02-01T12:00:00.000Z',
+          resolvedAt: null,
+        },
+      ],
+    };
+
+    await page.addInitScript(() => {
+      window.localStorage.setItem('finishit_token', 'e2e-token');
+      window.localStorage.setItem(
+        'finishit_user',
+        JSON.stringify({
+          user: {
+            id: 'observer-e2e',
+            email: 'observer@example.com',
+          },
+        }),
+      );
+    });
+
+    await page.route('**/api/**', async (route) => {
+      const requestUrl = new URL(route.request().url());
+      const method = route.request().method();
+      const path = requestUrl.pathname;
+
+      if (method === 'GET' && path === '/api/auth/me') {
+        return route.fulfill(
+          withJson({
+            user: {
+              id: 'observer-e2e',
+              email: 'observer@example.com',
+            },
+          }),
+        );
+      }
+
+      if (method === 'GET' && path === '/api/observers/me/profile') {
+        return route.fulfill(withJson(observerProfilePayload));
+      }
+
+      if (method === 'GET' && path === '/api/observers/observer-e2e/profile') {
+        return route.fulfill(
+          withJson({
+            observer: {
+              id: 'observer-e2e',
+              handle: 'observer-e2e',
+              createdAt: '2026-01-01T00:00:00.000Z',
+            },
+            counts: {
+              followingStudios: 0,
+              watchlistDrafts: 0,
+            },
+            predictions: observerProfilePayload.predictions,
+            followingStudios: [],
+            watchlistHighlights: [],
+            recentPredictions: observerProfilePayload.recentPredictions,
+          }),
+        );
+      }
+
+      if (method === 'GET' && path === '/api/observers/digest') {
+        return route.fulfill(withJson([]));
+      }
+
+      if (method === 'GET' && path === '/api/observers/me/preferences') {
+        return route.fulfill(
+          withJson({
+            digest: {
+              unseenOnly: false,
+              followingOnly: false,
+              updatedAt: '2026-02-01T10:00:00.000Z',
+            },
+          }),
+        );
+      }
+
+      if (method === 'POST' && path === '/api/telemetry/ux') {
+        const payload = route.request().postDataJSON() as {
+          eventType?: string;
+          metadata?: Record<string, unknown>;
+        };
+        telemetryPayloads.push(payload);
+        return route.fulfill(withJson({ ok: true }));
+      }
+
+      return route.fulfill(withJson({}));
+    });
+
+    await navigateWithRetry(page, '/observer/profile');
+    await expect(
+      page.getByRole('heading', { name: /My observer profile/i }),
+    ).toBeVisible();
+
+    await page.getByRole('button', { name: /Pending \(1\)/i }).click();
+    await page.getByRole('button', { name: /^Net$/i }).click();
+
+    await expect
+      .poll(async () =>
+        page.evaluate(() =>
+          window.localStorage.getItem('finishit:observer-prediction-filter:self'),
+        ),
+      )
+      .toBe('pending');
+    await expect
+      .poll(async () =>
+        page.evaluate(() =>
+          window.localStorage.getItem('finishit:observer-prediction-sort:self'),
+        ),
+      )
+      .toBe('net_desc');
+
+    await navigateWithRetry(page, '/observers/observer-e2e');
+    await expect(
+      page.getByRole('heading', { name: /Observer profile/i }),
+    ).toBeVisible();
+
+    await page.getByRole('button', { name: /Resolved \(1\)/i }).click();
+    await page.getByRole('button', { name: /^Stake$/i }).click();
+
+    await expect
+      .poll(async () =>
+        page.evaluate(() =>
+          window.localStorage.getItem(
+            'finishit:observer-prediction-filter:public',
+          ),
+        ),
+      )
+      .toBe('resolved');
+    await expect
+      .poll(async () =>
+        page.evaluate(() =>
+          window.localStorage.getItem('finishit:observer-prediction-sort:public'),
+        ),
+      )
+      .toBe('stake_desc');
+
+    await navigateWithRetry(page, '/observer/profile');
+    await expect(
+      page.getByRole('button', { name: /Pending \(1\)/i }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByRole('button', { name: /^Net$/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
+    await navigateWithRetry(page, '/observers/observer-e2e');
+    await expect(
+      page.getByRole('button', { name: /Resolved \(1\)/i }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByRole('button', { name: /^Stake$/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
+    await expect.poll(() => telemetryPayloads.length).toBeGreaterThanOrEqual(4);
+    expect(
+      telemetryPayloads.filter(
+        (payload) =>
+          payload.eventType === 'observer_prediction_filter_change' &&
+          payload.metadata?.scope === 'self',
+      ),
+    ).toHaveLength(1);
+    expect(
+      telemetryPayloads.filter(
+        (payload) =>
+          payload.eventType === 'observer_prediction_sort_change' &&
+          payload.metadata?.scope === 'self',
+      ),
+    ).toHaveLength(1);
+    expect(
+      telemetryPayloads.filter(
+        (payload) =>
+          payload.eventType === 'observer_prediction_filter_change' &&
+          payload.metadata?.scope === 'public',
+      ),
+    ).toHaveLength(1);
+    expect(
+      telemetryPayloads.filter(
+        (payload) =>
+          payload.eventType === 'observer_prediction_sort_change' &&
+          payload.metadata?.scope === 'public',
+      ),
+    ).toHaveLength(1);
+  });
+
   test('opens public observer profile from private profile link', async ({
     page,
   }) => {
