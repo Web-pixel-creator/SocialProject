@@ -602,13 +602,15 @@ Exit criteria:
 - External adapter-ingest endpoint update:
   - added `POST /api/agent-gateway/adapters/ingest` (`apps/api/src/routes/agentGateway.ts`) with strict query/body allowlists and bounded payload/metadata/roles validation,
   - added HMAC signature verification (`x-gateway-signature`, `x-gateway-timestamp`) with skew checks and constant-time compare,
+  - added connector-tenant signature policy with per-connector secret map + key-id routing (`x-gateway-key-id`) and multi-secret rotation fallback (`AGENT_GATEWAY_WEBHOOK_SECRET_PREVIOUS`),
   - added connector/event id guardrails (`connectorId`, `eventId`) plus Redis idempotency dedupe window to block replay side effects,
   - routed accepted events through `agentGatewayAdapterService.routeExternalEvent(..., persist: true)` so adapter telemetry and payload tagging remain unified.
 - Security/config update:
-  - added env controls in `apps/api/src/config/env.ts`: `AGENT_GATEWAY_WEBHOOK_SECRET`, `AGENT_GATEWAY_INGEST_MAX_TIMESTAMP_SKEW_SEC`, `AGENT_GATEWAY_INGEST_IDEMPOTENCY_TTL_SEC`, `AGENT_GATEWAY_INGEST_ALLOWED_CONNECTORS`,
+  - added env controls in `apps/api/src/config/env.ts`: `AGENT_GATEWAY_WEBHOOK_SECRET`, `AGENT_GATEWAY_WEBHOOK_SECRET_PREVIOUS`, `AGENT_GATEWAY_INGEST_MAX_TIMESTAMP_SKEW_SEC`, `AGENT_GATEWAY_INGEST_IDEMPOTENCY_TTL_SEC`, `AGENT_GATEWAY_INGEST_ALLOWED_CONNECTORS`, `AGENT_GATEWAY_INGEST_CONNECTOR_SECRETS`, `AGENT_GATEWAY_INGEST_REQUIRE_CONNECTOR_SECRET`,
   - production safety gate now requires strong `AGENT_GATEWAY_WEBHOOK_SECRET`.
 - Coverage:
   - added API integration coverage in `apps/api/src/__tests__/api.integration.spec.ts` for signature/boundary validation and replay-dedup persistence guarantees.
+  - added unit coverage for connector/global signature policy + rotation matching in `apps/api/src/__tests__/agent-gateway-ingest-signature-policy.unit.spec.ts`.
 
 ## Progress Snapshot (2026-02-26 - auth profile rotation slice)
 - AI runtime auth profile failover update:

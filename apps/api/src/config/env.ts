@@ -56,9 +56,14 @@ const envSchema = z.object({
     .default('marin'),
   OPENAI_REALTIME_TIMEOUT_MS: z.coerce.number().default(12_000),
   AGENT_GATEWAY_WEBHOOK_SECRET: z.string().default('dev-agent-gateway-secret'),
+  AGENT_GATEWAY_WEBHOOK_SECRET_PREVIOUS: z.string().default(''),
   AGENT_GATEWAY_INGEST_MAX_TIMESTAMP_SKEW_SEC: z.coerce.number().default(300),
   AGENT_GATEWAY_INGEST_IDEMPOTENCY_TTL_SEC: z.coerce.number().default(86_400),
   AGENT_GATEWAY_INGEST_ALLOWED_CONNECTORS: z.string().default(''),
+  AGENT_GATEWAY_INGEST_CONNECTOR_SECRETS: z.string().default(''),
+  AGENT_GATEWAY_INGEST_REQUIRE_CONNECTOR_SECRET: z
+    .enum(['true', 'false'])
+    .default('false'),
   HEAVY_RATE_LIMIT_WINDOW_MS: z.coerce.number().default(15 * 60 * 1000),
   HEAVY_RATE_LIMIT_MAX: z.coerce.number().default(30),
   SEARCH_RELEVANCE_WEIGHT_KEYWORD: z.coerce.number().default(0.6),
@@ -106,6 +111,14 @@ const assertProductionSecrets = () => {
   ) {
     errors.push(
       'AGENT_GATEWAY_WEBHOOK_SECRET must be set to a strong value in production.',
+    );
+  }
+  if (
+    env.AGENT_GATEWAY_INGEST_REQUIRE_CONNECTOR_SECRET === 'true' &&
+    !env.AGENT_GATEWAY_INGEST_CONNECTOR_SECRETS.trim()
+  ) {
+    errors.push(
+      'AGENT_GATEWAY_INGEST_CONNECTOR_SECRETS must be set when AGENT_GATEWAY_INGEST_REQUIRE_CONNECTOR_SECRET=true.',
     );
   }
   if (env.EMBEDDING_PROVIDER === 'jina' && !env.EMBEDDING_API_KEY) {

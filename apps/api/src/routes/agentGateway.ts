@@ -1,4 +1,3 @@
-import crypto from 'node:crypto';
 import { Router } from 'express';
 import { env } from '../config/env';
 import { db } from '../db/pool';
@@ -6,6 +5,12 @@ import { computeHeavyRateLimiter } from '../middleware/security';
 import { redis } from '../redis/client';
 import { agentGatewayAdapterService } from '../services/agentGatewayAdapter/agentGatewayAdapterService';
 import type { AgentGatewayAdapterName } from '../services/agentGatewayAdapter/types';
+import {
+  parseConnectorSecretMap,
+  parseGlobalSecretList,
+  resolveSignatureCandidates,
+  verifySignatureWithCandidates,
+} from '../services/agentGatewayIngest/signaturePolicy';
 import { ServiceError } from '../services/common/errors';
 
 const router = Router();
@@ -20,6 +25,7 @@ const EVENT_TYPE_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,119}$/;
 const EXTERNAL_SESSION_ID_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,127}$/i;
 const CONNECTOR_ID_PATTERN = /^[a-z0-9][a-z0-9._:-]{1,63}$/;
 const IDEMPOTENCY_KEY_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9_.:-]{3,127}$/;
+const SIGNATURE_KEY_ID_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,63}$/;
 const SIGNATURE_PATTERN = /^v1=([a-f0-9]{64})$/i;
 const INGEST_BODY_FIELDS = [
   'adapter',
@@ -45,6 +51,15 @@ const CONNECTOR_ALLOWLIST = new Set(
     .map((value) => value.trim().toLowerCase())
     .filter(Boolean),
 );
+const GLOBAL_SIGNATURE_SECRETS = parseGlobalSecretList(
+  env.AGENT_GATEWAY_WEBHOOK_SECRET,
+  env.AGENT_GATEWAY_WEBHOOK_SECRET_PREVIOUS,
+);
+const CONNECTOR_SECRET_MAP = parseConnectorSecretMap(
+  env.AGENT_GATEWAY_INGEST_CONNECTOR_SECRETS,
+);
+const REQUIRE_CONNECTOR_SECRET =
+  env.AGENT_GATEWAY_INGEST_REQUIRE_CONNECTOR_SECRET === 'true';
 
 const assertAllowedQueryFields = (
   query: unknown,
@@ -272,24 +287,18 @@ const parseSignatureTimestamp = (value: string | null) => {
   return parsed;
 };
 
-const verifySignature = (params: {
-  signatureHex: string;
-  timestamp: number;
-  body: Record<string, unknown>;
-}) => {
-  const expected = crypto
-    .createHmac('sha256', env.AGENT_GATEWAY_WEBHOOK_SECRET)
-    .update(`${params.timestamp}.${stableStringify(params.body)}`)
-    .digest('hex');
-  const left = Buffer.from(expected, 'utf8');
-  const right = Buffer.from(params.signatureHex, 'utf8');
-  if (left.length !== right.length || !crypto.timingSafeEqual(left, right)) {
+const parseSignatureKeyId = (value: string | null) => {
+  if (!value) {
+    return null;
+  }
+  if (!SIGNATURE_KEY_ID_PATTERN.test(value)) {
     throw new ServiceError(
       'AGENT_GATEWAY_INGEST_SIGNATURE_INVALID',
-      'Signature verification failed.',
+      'Invalid signature key id header.',
       401,
     );
   }
+  return value;
 };
 
 const writeIngestTelemetry = async (
@@ -434,11 +443,40 @@ router.post(
       const signatureTimestamp = parseSignatureTimestamp(
         parseHeaderValue(req.headers['x-gateway-timestamp']),
       );
-      verifySignature({
+      const signatureKeyId = parseSignatureKeyId(
+        parseHeaderValue(req.headers['x-gateway-key-id']),
+      );
+      const signatureCandidates = resolveSignatureCandidates({
+        connectorId,
+        keyId: signatureKeyId,
+        connectorSecrets: CONNECTOR_SECRET_MAP,
+        globalSecrets: GLOBAL_SIGNATURE_SECRETS,
+        requireConnectorSecret: REQUIRE_CONNECTOR_SECRET,
+      });
+      if (signatureCandidates.length < 1) {
+        throw new ServiceError(
+          REQUIRE_CONNECTOR_SECRET
+            ? 'AGENT_GATEWAY_INGEST_CONNECTOR_SECRET_REQUIRED'
+            : 'AGENT_GATEWAY_INGEST_SIGNATURE_INVALID',
+          REQUIRE_CONNECTOR_SECRET
+            ? 'Connector secret is not configured.'
+            : 'Signature verification failed.',
+          REQUIRE_CONNECTOR_SECRET ? 403 : 401,
+        );
+      }
+      const matchedSignature = verifySignatureWithCandidates({
         signatureHex: signature,
         timestamp: signatureTimestamp,
-        body,
+        bodyCanonicalJson: stableStringify(body),
+        candidates: signatureCandidates,
       });
+      if (!matchedSignature) {
+        throw new ServiceError(
+          'AGENT_GATEWAY_INGEST_SIGNATURE_INVALID',
+          'Signature verification failed.',
+          401,
+        );
+      }
 
       idempotencyRedisKey = [
         'agent_gateway',
@@ -483,6 +521,9 @@ router.post(
           connectorId,
           eventId,
           signatureTimestamp,
+          signatureKeyId,
+          signatureSecretSource: matchedSignature.source,
+          matchedSignatureKeyId: matchedSignature.keyId,
           ingestReceivedAt: new Date().toISOString(),
         },
         fromRole,
