@@ -1297,6 +1297,8 @@ describe('Admin API routes', () => {
       '/api/admin/agent-gateway/sessions?channel=x',
       '/api/admin/agent-gateway/sessions?provider=bad%20provider',
       `/api/admin/agent-gateway/sessions?provider=${'x'.repeat(65)}`,
+      '/api/admin/agent-gateway/sessions?connector=bad%20connector',
+      '/api/admin/agent-gateway/sessions?connector=x',
       '/api/admin/agent-gateway/sessions?status=pending',
       '/api/admin/agent-gateway/sessions?extra=true',
       `/api/admin/agent-gateway/sessions/${sessionId}?source=cache`,
@@ -1328,7 +1330,7 @@ describe('Admin API routes', () => {
     }
   });
 
-  test('agent gateway sessions endpoint applies channel/provider/status filters', async () => {
+  test('agent gateway sessions endpoint applies channel/provider/connector/status filters', async () => {
     const firstSession = await request(app)
       .post('/api/admin/agent-gateway/sessions')
       .set('x-admin-token', env.ADMIN_API_TOKEN)
@@ -1348,6 +1350,7 @@ describe('Admin API routes', () => {
         type: 'draft_cycle_step',
         payload: {
           selectedProvider: 'gemini-2',
+          connectorId: 'partner-alpha',
         },
       });
     expect(firstEvent.status).toBe(201);
@@ -1371,6 +1374,7 @@ describe('Admin API routes', () => {
         type: 'draft_cycle_step',
         payload: {
           selectedProvider: 'gpt-4.1',
+          connectorId: 'partner-beta',
         },
       });
     expect(secondEvent.status).toBe(201);
@@ -1383,7 +1387,7 @@ describe('Admin API routes', () => {
 
     const response = await request(app)
       .get(
-        '/api/admin/agent-gateway/sessions?source=db&channel=draft_cycle&provider=gpt-4.1&status=closed&limit=20',
+        '/api/admin/agent-gateway/sessions?source=db&channel=draft_cycle&provider=gpt-4.1&connector=partner-beta&status=closed&limit=20',
       )
       .set('x-admin-token', env.ADMIN_API_TOKEN);
 
@@ -1391,6 +1395,7 @@ describe('Admin API routes', () => {
     expect(response.body.filters).toEqual({
       channel: 'draft_cycle',
       provider: 'gpt-4.1',
+      connector: 'partner-beta',
       status: 'closed',
     });
     expect(response.body.sessions).toEqual([

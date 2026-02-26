@@ -263,6 +263,11 @@ Exit criteria:
   - ingest telemetry queries (`source = agent_gateway_ingest`) are now filtered by `metadata.connectorId` when `connector` is provided,
   - responses now include `filters.connector` for explicit operator visibility,
   - admin integration coverage updated for connector filtering and connector query validation.
+- Agent gateway session-list connector parity update:
+  - `/api/admin/agent-gateway/sessions` now also accepts optional `connector` filter with strict connector-id query validation,
+  - in-memory and persisted session listing now both apply connector matching from session metadata and event payload (`payload.connectorId`),
+  - session list response now echoes `filters.connector` for operator-visible scoped queries,
+  - admin integration coverage extended for connector filter application and invalid connector query rejection on session-list endpoints.
 - Agent orchestration persona-depth update:
   - draft orchestration now injects role personas (`tone`, `signaturePhrase`, `focus`, `boundaries`) from studio `skill_profile.rolePersonas` into runtime prompts,
   - critic/maker/judge prompts preserve studio-level context and add role-specific voice constraints,

@@ -50,6 +50,7 @@ export interface AgentGatewaySessionDetail {
 export interface AgentGatewaySessionListFilters {
   channel?: string | null;
   provider?: string | null;
+  connector?: string | null;
   status?: AgentGatewaySessionStatus | null;
 }
 

@@ -2670,7 +2670,14 @@ router.get(
   async (req, res, next) => {
     try {
       const query = assertAllowedQueryFields(req.query, {
-        allowed: ['source', 'limit', 'channel', 'provider', 'status'],
+        allowed: [
+          'source',
+          'limit',
+          'channel',
+          'provider',
+          'connector',
+          'status',
+        ],
         endpoint: '/api/admin/agent-gateway/sessions',
       });
       const source = parseAgentGatewaySourceQuery(query.source);
@@ -2692,6 +2699,12 @@ router.get(
           fieldName: 'provider',
         },
       );
+      const connectorFilter = parseOptionalGatewayConnectorIdQueryString(
+        query.connector,
+        {
+          fieldName: 'connector',
+        },
+      );
       const statusFilter = parseOptionalGatewaySessionStatusQuery(
         query.status,
         {
@@ -2703,11 +2716,13 @@ router.get(
           ? agentGatewayService.listSessions(limit, {
               channel: channelFilter,
               provider: providerFilter,
+              connector: connectorFilter,
               status: statusFilter,
             })
           : await agentGatewayService.listPersistedSessions(limit, {
               channel: channelFilter,
               provider: providerFilter,
+              connector: connectorFilter,
               status: statusFilter,
             });
       res.json({
@@ -2715,6 +2730,7 @@ router.get(
         filters: {
           channel: channelFilter,
           provider: providerFilter,
+          connector: connectorFilter,
           status: statusFilter,
         },
         sessions,

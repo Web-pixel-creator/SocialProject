@@ -130,6 +130,10 @@ const extractProviderIdentifier = (
   toOptionalNormalizedString(payload.selectedProvider) ??
   toOptionalNormalizedString(payload.provider);
 
+const extractConnectorIdentifier = (
+  payload: Record<string, unknown>,
+): string | null => toOptionalNormalizedString(payload.connectorId);
+
 const hasProviderInState = (state: SessionState, provider: string): boolean => {
   const metadataProvider = extractProviderIdentifier(
     toRecord(state.session.metadata),
@@ -142,15 +146,33 @@ const hasProviderInState = (state: SessionState, provider: string): boolean => {
   );
 };
 
+const hasConnectorInState = (
+  state: SessionState,
+  connector: string,
+): boolean => {
+  const metadataConnector = extractConnectorIdentifier(
+    toRecord(state.session.metadata),
+  );
+  if (metadataConnector === connector) {
+    return true;
+  }
+  return state.events.some(
+    (event) =>
+      extractConnectorIdentifier(toRecord(event.payload)) === connector,
+  );
+};
+
 const normalizeSessionListFilters = (
   filters?: AgentGatewaySessionListFilters,
 ): {
   channel: string | null;
   provider: string | null;
+  connector: string | null;
   status: AgentGatewaySessionStatus | null;
 } => ({
   channel: toOptionalNormalizedString(filters?.channel),
   provider: toOptionalNormalizedString(filters?.provider),
+  connector: toOptionalNormalizedString(filters?.connector),
   status: toOptionalGatewaySessionStatus(filters?.status),
 });
 
@@ -393,6 +415,12 @@ export class AgentGatewayServiceImpl implements AgentGatewayService {
         ) {
           return false;
         }
+        if (
+          normalizedFilters.connector &&
+          !hasConnectorInState(state, normalizedFilters.connector)
+        ) {
+          return false;
+        }
         return true;
       })
       .sort((left, right) =>
@@ -440,6 +468,20 @@ export class AgentGatewayServiceImpl implements AgentGatewayService {
                ) = $4
            )
          )
+         AND (
+           $5::text IS NULL OR
+           LOWER(COALESCE(metadata->>'connectorId', '')) = $5 OR EXISTS (
+             SELECT 1
+             FROM agent_gateway_events connector_event_rows
+             WHERE connector_event_rows.session_id = agent_gateway_sessions.id
+               AND LOWER(
+                 COALESCE(
+                   connector_event_rows.payload->>'connectorId',
+                   ''
+                 )
+               ) = $5
+           )
+         )
        ORDER BY updated_at DESC
        LIMIT $1`,
       [
@@ -447,6 +489,7 @@ export class AgentGatewayServiceImpl implements AgentGatewayService {
         normalizedFilters.channel,
         normalizedFilters.status,
         normalizedFilters.provider,
+        normalizedFilters.connector,
       ],
     );
     return result.rows.map((row) => mapSessionRow(toRecord(row)));
