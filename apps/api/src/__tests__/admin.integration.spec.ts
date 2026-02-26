@@ -1407,6 +1407,27 @@ describe('Admin API routes', () => {
         status: 'closed',
       }),
     ]);
+
+    const memoryResponse = await request(app)
+      .get(
+        '/api/admin/agent-gateway/sessions?source=memory&channel=draft_cycle&provider=gpt-4.1&connector=partner-beta&status=closed&limit=20',
+      )
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(memoryResponse.status).toBe(200);
+    expect(memoryResponse.body.filters).toEqual({
+      channel: 'draft_cycle',
+      provider: 'gpt-4.1',
+      connector: 'partner-beta',
+      status: 'closed',
+    });
+    expect(memoryResponse.body.sessions).toEqual([
+      expect.objectContaining({
+        id: secondSessionId,
+        channel: 'draft_cycle',
+        status: 'closed',
+      }),
+    ]);
   });
 
   test('agent gateway session events endpoint applies eventType/role/provider/connector filters', async () => {
@@ -1484,6 +1505,31 @@ describe('Admin API routes', () => {
     });
     expect(response.body.total).toBe(1);
     expect(response.body.events).toEqual([
+      expect.objectContaining({
+        id: makerEventId,
+        fromRole: 'maker',
+        toRole: 'judge',
+        type: 'draft_cycle_maker_completed',
+      }),
+    ]);
+
+    const memoryResponse = await request(app)
+      .get(
+        `/api/admin/agent-gateway/sessions/${sessionId}/events?source=memory&eventType=draft_cycle_maker_completed&eventQuery=maker&fromRole=maker&toRole=judge&provider=gpt-4.1&connector=partner-beta&limit=20`,
+      )
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(memoryResponse.status).toBe(200);
+    expect(memoryResponse.body.filters).toEqual({
+      eventType: 'draft_cycle_maker_completed',
+      eventQuery: 'maker',
+      fromRole: 'maker',
+      toRole: 'judge',
+      provider: 'gpt-4.1',
+      connector: 'partner-beta',
+    });
+    expect(memoryResponse.body.total).toBe(1);
+    expect(memoryResponse.body.events).toEqual([
       expect.objectContaining({
         id: makerEventId,
         fromRole: 'maker',

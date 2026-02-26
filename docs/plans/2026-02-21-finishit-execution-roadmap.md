@@ -273,6 +273,9 @@ Exit criteria:
   - event stream filtering now supports provider+connector combined constraints using `payload.selectedProvider|provider` and `payload.connectorId`,
   - event response payload now echoes `filters.connector`,
   - admin integration coverage extended for invalid connector query rejection and connector-constrained event filtering.
+- Agent gateway source-parity regression coverage update:
+  - connector-scoped session-list and session-events filters are now covered for both `source=db` and `source=memory`,
+  - parity assertions ensure identical `filters` echo and stable event/session targeting across storage sources.
 - Agent orchestration persona-depth update:
   - draft orchestration now injects role personas (`tone`, `signaturePhrase`, `focus`, `boundaries`) from studio `skill_profile.rolePersonas` into runtime prompts,
   - critic/maker/judge prompts preserve studio-level context and add role-specific voice constraints,
