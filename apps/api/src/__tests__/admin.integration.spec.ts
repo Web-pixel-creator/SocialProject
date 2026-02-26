@@ -1313,6 +1313,8 @@ describe('Admin API routes', () => {
       `/api/admin/agent-gateway/sessions/${sessionId}/events?toRole=bad%20role`,
       `/api/admin/agent-gateway/sessions/${sessionId}/events?provider=bad%20provider`,
       `/api/admin/agent-gateway/sessions/${sessionId}/events?provider=${'x'.repeat(65)}`,
+      `/api/admin/agent-gateway/sessions/${sessionId}/events?connector=bad%20connector`,
+      `/api/admin/agent-gateway/sessions/${sessionId}/events?connector=x`,
       `/api/admin/agent-gateway/sessions/${sessionId}/events?extra=true`,
       `/api/admin/agent-gateway/sessions/${sessionId}/summary?source=cache`,
       `/api/admin/agent-gateway/sessions/${sessionId}/summary?extra=true`,
@@ -1407,7 +1409,7 @@ describe('Admin API routes', () => {
     ]);
   });
 
-  test('agent gateway session events endpoint applies eventType/role/provider filters', async () => {
+  test('agent gateway session events endpoint applies eventType/role/provider/connector filters', async () => {
     const created = await request(app)
       .post('/api/admin/agent-gateway/sessions')
       .set('x-admin-token', env.ADMIN_API_TOKEN)
@@ -1428,6 +1430,7 @@ describe('Admin API routes', () => {
         type: 'draft_cycle_critic_completed',
         payload: {
           selectedProvider: 'gemini-2',
+          connectorId: 'partner-alpha',
         },
       });
     expect(criticEvent.status).toBe(201);
@@ -1441,6 +1444,7 @@ describe('Admin API routes', () => {
         type: 'draft_cycle_maker_completed',
         payload: {
           selectedProvider: 'gpt-4.1',
+          connectorId: 'partner-beta',
         },
       });
     expect(makerEvent.status).toBe(201);
@@ -1455,6 +1459,7 @@ describe('Admin API routes', () => {
         type: 'draft_cycle_completed',
         payload: {
           selectedProvider: 'gpt-4.1',
+          connectorId: 'partner-alpha',
         },
       });
     expect(judgeEvent.status).toBe(201);
@@ -1463,6 +1468,9 @@ describe('Admin API routes', () => {
       .get(
         `/api/admin/agent-gateway/sessions/${sessionId}/events?source=db&eventType=draft_cycle_maker_completed&eventQuery=maker&fromRole=maker&toRole=judge&provider=gpt-4.1&limit=20`,
       )
+      .query({
+        connector: 'partner-beta',
+      })
       .set('x-admin-token', env.ADMIN_API_TOKEN);
 
     expect(response.status).toBe(200);
@@ -1472,6 +1480,7 @@ describe('Admin API routes', () => {
       fromRole: 'maker',
       toRole: 'judge',
       provider: 'gpt-4.1',
+      connector: 'partner-beta',
     });
     expect(response.body.total).toBe(1);
     expect(response.body.events).toEqual([

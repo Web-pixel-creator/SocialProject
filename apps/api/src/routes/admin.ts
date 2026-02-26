@@ -3205,6 +3205,7 @@ router.get(
           'fromRole',
           'toRole',
           'provider',
+          'connector',
         ],
         endpoint: '/api/admin/agent-gateway/sessions/:sessionId/events',
       });
@@ -3234,6 +3235,12 @@ router.get(
         query.provider,
         {
           fieldName: 'provider',
+        },
+      );
+      const connectorFilter = parseOptionalGatewayConnectorIdQueryString(
+        query.connector,
+        {
+          fieldName: 'connector',
         },
       );
       const detail =
@@ -3272,6 +3279,16 @@ router.get(
               ? eventProviderRaw.trim().toLowerCase()
               : '';
           if (eventProvider !== providerFilter) {
+            return false;
+          }
+        }
+        if (connectorFilter) {
+          const eventConnectorRaw = event.payload.connectorId;
+          const eventConnector =
+            typeof eventConnectorRaw === 'string'
+              ? eventConnectorRaw.trim().toLowerCase()
+              : '';
+          if (eventConnector !== connectorFilter) {
             return false;
           }
         }
@@ -3315,6 +3332,7 @@ router.get(
           fromRole: fromRoleFilter,
           toRole: toRoleFilter,
           provider: providerFilter,
+          connector: connectorFilter,
         },
         total: filteredEvents.length,
         limit,

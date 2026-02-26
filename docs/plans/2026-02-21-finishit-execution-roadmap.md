@@ -268,6 +268,11 @@ Exit criteria:
   - in-memory and persisted session listing now both apply connector matching from session metadata and event payload (`payload.connectorId`),
   - session list response now echoes `filters.connector` for operator-visible scoped queries,
   - admin integration coverage extended for connector filter application and invalid connector query rejection on session-list endpoints.
+- Agent gateway session-events connector parity update:
+  - `/api/admin/agent-gateway/sessions/:sessionId/events` now accepts optional `connector` query filter with strict connector-id validation,
+  - event stream filtering now supports provider+connector combined constraints using `payload.selectedProvider|provider` and `payload.connectorId`,
+  - event response payload now echoes `filters.connector`,
+  - admin integration coverage extended for invalid connector query rejection and connector-constrained event filtering.
 - Agent orchestration persona-depth update:
   - draft orchestration now injects role personas (`tone`, `signaturePhrase`, `focus`, `boundaries`) from studio `skill_profile.rolePersonas` into runtime prompts,
   - critic/maker/judge prompts preserve studio-level context and add role-specific voice constraints,
