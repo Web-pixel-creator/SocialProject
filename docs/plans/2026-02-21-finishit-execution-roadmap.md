@@ -574,6 +574,7 @@ Exit criteria:
 - Adapter ops visibility update:
   - added `/api/admin/agent-gateway/adapters` to expose adapter registry (`web`, `live_session`, `external_webhook`) with per-adapter success/fail totals, risk levels, last-seen timestamps, and error-budget thresholds,
   - `/api/admin/agent-gateway/adapters` now also exposes `ingestConnectors` runtime block (accept/replay/reject/rate-limited counts + configured risk + reject-rate risk level) so connector policy and live behavior are visible together,
+  - `/api/admin/agent-gateway/adapters` now exposes explicit `connectorPolicies` config snapshot (defaults + per-connector overrides) alongside runtime metrics.
   - added admin integration coverage for adapter registry output + query validation in `apps/api/src/__tests__/admin.integration.spec.ts`.
 - Coverage:
   - added unit coverage for adapter routing/failure telemetry (`apps/api/src/__tests__/agent-gateway-adapter.unit.spec.ts`),

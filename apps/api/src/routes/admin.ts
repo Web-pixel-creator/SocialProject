@@ -2010,6 +2010,33 @@ const buildAgentGatewayIngestConnectorMetrics = (
   };
 };
 
+const buildAgentGatewayConnectorPolicySnapshot = () => {
+  const policies = [...AGENT_GATEWAY_CONNECTOR_POLICY_MAP.values()]
+    .map((policy) => ({
+      connectorId: policy.connectorId,
+      riskLevel: policy.riskLevel,
+      requireConnectorSecret: policy.requireConnectorSecret,
+      rateLimitMax: policy.rateLimitMax,
+      maxPayloadKeys: policy.maxPayloadKeys,
+      maxMetadataKeys: policy.maxMetadataKeys,
+      maxPayloadBytes: policy.maxPayloadBytes,
+    }))
+    .sort((left, right) => left.connectorId.localeCompare(right.connectorId));
+
+  return {
+    total: policies.length,
+    defaults: {
+      riskLevel: 'standard',
+      requireConnectorSecret:
+        env.AGENT_GATEWAY_INGEST_REQUIRE_CONNECTOR_SECRET === 'true',
+      rateLimitMax: env.AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMIT_MAX,
+      rateLimitWindowSec:
+        env.AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMIT_WINDOW_SEC,
+    },
+    policies,
+  };
+};
+
 const buildAgentGatewayTelemetrySnapshot = (
   sessionRows: AgentGatewayTelemetrySessionRow[],
   eventRows: AgentGatewayTelemetryEventRow[],
@@ -2990,6 +3017,7 @@ router.get(
       });
       const ingestConnectors =
         buildAgentGatewayIngestConnectorMetrics(ingestRows);
+      const connectorPolicies = buildAgentGatewayConnectorPolicySnapshot();
       res.json({
         windowHours: hours,
         generatedAt: new Date().toISOString(),
@@ -2999,6 +3027,7 @@ router.get(
         },
         adapters,
         ingestConnectors,
+        connectorPolicies,
       });
     } catch (error) {
       next(error);

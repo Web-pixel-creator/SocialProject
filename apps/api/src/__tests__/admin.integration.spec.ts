@@ -951,6 +951,21 @@ describe('Admin API routes', () => {
         }),
       ]),
     );
+    expect(response.body.connectorPolicies).toEqual(
+      expect.objectContaining({
+        total: expect.any(Number),
+        defaults: expect.objectContaining({
+          riskLevel: 'standard',
+          requireConnectorSecret: expect.any(Boolean),
+          rateLimitMax: expect.any(Number),
+          rateLimitWindowSec: expect.any(Number),
+        }),
+        policies: expect.any(Array),
+      }),
+    );
+    expect(response.body.connectorPolicies.total).toBe(
+      response.body.connectorPolicies.policies.length,
+    );
   });
 
   test('agent gateway telemetry endpoint applies channel and provider filters', async () => {
