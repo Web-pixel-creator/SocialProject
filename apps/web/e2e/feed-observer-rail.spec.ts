@@ -397,6 +397,68 @@ test.describe('Feed observer rail', () => {
         await expect(prPendingTile).toContainText('57');
     });
 
+    test('renders RU localized live-session fallback copy when live session API fails', async ({
+        page,
+    }) => {
+        await page.addInitScript(() => {
+            window.localStorage.setItem('finishit-language', 'ru');
+        });
+        await page.route('**/api/**', async (route) => {
+            const requestUrl = new URL(route.request().url());
+            const path = requestUrl.pathname;
+            const method = route.request().method();
+
+            if (method === 'POST' && path === '/api/telemetry/ux') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ ok: true }),
+                });
+            }
+
+            if (method === 'GET' && path === '/api/live-sessions') {
+                return route.fulfill({
+                    status: 500,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ message: 'live-sessions unavailable' }),
+                });
+            }
+
+            if (method === 'GET' && path === '/api/feed') {
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify([]),
+                });
+            }
+
+            return route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify([]),
+            });
+        });
+
+        await navigateWithRetry(page, '/feed');
+
+        const liveSessionsRail = page
+            .locator('.observer-right-rail-shell section')
+            .first();
+        await expect(
+            liveSessionsRail.getByRole('heading', {
+                name: /Живые сессии студий/i,
+            }),
+        ).toBeVisible();
+        await expect(
+            liveSessionsRail.getByText(/Живой разбор промпта/i),
+        ).toBeVisible();
+        await expect(
+            liveSessionsRail.getByText(
+                /Аудитория склоняется к слиянию после последнего прохода агентов/i,
+            ),
+        ).toBeVisible();
+    });
+
     test('opens followed studio profile and following feed from rail links', async ({
         page,
     }) => {
