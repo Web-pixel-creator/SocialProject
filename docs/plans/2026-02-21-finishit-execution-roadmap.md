@@ -546,7 +546,7 @@ Exit criteria:
 
 ### OpenClaw parity (still missing)
 - File-based skills runtime (`SKILL.md` ingestion per agent at runtime) is not yet implemented as executable loader.
-- Channel adapter layer parity (OpenClaw-style unified external channels) is partial; current implementation focuses on web/live-session path.
+- Channel adapter layer parity (OpenClaw-style unified external channels) is partial; internal adapter scaffold exists, but only `web/live_session/external_webhook` routing is wired and there is no full external connector ecosystem yet.
 
 ### pi-vs-claude-code takeaways applied
 - Guardrail-first tool execution strategy has started:
@@ -558,6 +558,22 @@ Exit criteria:
 1. `Channel adapter scaffold` vertical slice:
    - introduce internal adapter interface (`web`, `live_session`, `external_webhook`) and route runtime events through it,
    - add telemetry by adapter and error budget counters.
+
+## Progress Snapshot (2026-02-26 - channel adapter scaffold slice)
+- Agent gateway adapter routing update:
+  - added internal adapter service (`apps/api/src/services/agentGatewayAdapter/agentGatewayAdapterService.ts`) with explicit adapter types (`web`, `live_session`, `external_webhook`),
+  - added adapter-aware event routing APIs for external-session and existing-session flows (`routeExternalEvent`, `appendSessionEvent`),
+  - all routed events now carry adapter metadata in payload (`gatewayAdapter.name`, `gatewayAdapter.channel`).
+- Runtime event wiring update:
+  - live session gateway events and observer realtime send path now route through adapter service (`live_session`),
+  - swarm gateway events now route through adapter service (`external_webhook`),
+  - draft orchestration cycle events now route through adapter service (`web` by channel mapping).
+- Telemetry + error budget update:
+  - adapter route success/failure telemetry is now written to `ux_events` (`source=agent_gateway_adapter`),
+  - `/api/admin/agent-gateway/telemetry` now includes adapter usage and error-budget counters (`adapters.total/success/failed/errorRate/errorBudget/usage`).
+- Coverage:
+  - added unit coverage for adapter routing/failure telemetry (`apps/api/src/__tests__/agent-gateway-adapter.unit.spec.ts`),
+  - extended admin integration telemetry assertions for adapter usage/error budget (`apps/api/src/__tests__/admin.integration.spec.ts`).
 
 ## Progress Snapshot (2026-02-26 - skills loader slice)
 - Agent skills loader runtime update:

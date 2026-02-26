@@ -1366,6 +1366,12 @@ interface AgentGatewayTelemetryEventRow {
   createdAt: string;
 }
 
+interface AgentGatewayAdapterTelemetryRow {
+  adapter: string;
+  eventType: string;
+  count: number;
+}
+
 interface AgentGatewayCompactionHourlyBucket {
   hour: string;
   compactions: number;
@@ -1437,6 +1443,12 @@ const AGENT_GATEWAY_TELEMETRY_THRESHOLDS: AgentGatewayTelemetryThresholds = {
     criticalAbove: 0.4,
     watchAbove: 0.2,
   },
+};
+
+const AGENT_GATEWAY_ADAPTER_ERROR_BUDGET_TARGET = 0.05;
+const AGENT_GATEWAY_ADAPTER_ERROR_THRESHOLDS = {
+  watchAbove: 0.1,
+  criticalAbove: 0.25,
 };
 
 const createAgentGatewayTelemetryAccumulator =
@@ -1666,6 +1678,7 @@ const finalizeAgentGatewaySessionFlags = (
 const buildAgentGatewayTelemetrySnapshot = (
   sessionRows: AgentGatewayTelemetrySessionRow[],
   eventRows: AgentGatewayTelemetryEventRow[],
+  adapterRows: AgentGatewayAdapterTelemetryRow[],
 ) => {
   const eventsBySession = new Map<string, AgentGatewayTelemetryEventRow[]>();
   for (const eventRow of eventRows) {
@@ -1760,6 +1773,70 @@ const buildAgentGatewayTelemetrySnapshot = (
     cooldownSkipRiskLevel,
   ]);
 
+  const adapterByName = new Map<
+    string,
+    {
+      adapter: string;
+      success: number;
+      failed: number;
+      total: number;
+      errorRate: number | null;
+      riskLevel: AgentGatewayRiskLevel;
+    }
+  >();
+  let adapterSuccessTotal = 0;
+  let adapterFailedTotal = 0;
+  for (const row of adapterRows) {
+    const adapter = row.adapter.trim().toLowerCase();
+    if (adapter.length < 1) {
+      continue;
+    }
+    const current = adapterByName.get(adapter) ?? {
+      adapter,
+      success: 0,
+      failed: 0,
+      total: 0,
+      errorRate: null,
+      riskLevel: 'unknown',
+    };
+    if (row.eventType === 'agent_gateway_adapter_route_success') {
+      current.success += row.count;
+      adapterSuccessTotal += row.count;
+    } else if (row.eventType === 'agent_gateway_adapter_route_failed') {
+      current.failed += row.count;
+      adapterFailedTotal += row.count;
+    }
+    current.total = current.success + current.failed;
+    current.errorRate = toRate(current.failed, current.total);
+    current.riskLevel = resolveAboveRiskLevel(
+      current.errorRate,
+      AGENT_GATEWAY_ADAPTER_ERROR_THRESHOLDS,
+    );
+    adapterByName.set(adapter, current);
+  }
+
+  const adapterUsage = [...adapterByName.values()].sort(
+    (left, right) => right.total - left.total,
+  );
+  const adapterTotal = adapterSuccessTotal + adapterFailedTotal;
+  const adapterErrorRate = toRate(adapterFailedTotal, adapterTotal);
+  const adapterErrorBudgetConsumed =
+    typeof adapterErrorRate === 'number' ? adapterErrorRate : null;
+  const adapterErrorBudgetRemaining =
+    typeof adapterErrorBudgetConsumed === 'number'
+      ? Number(
+          Math.max(
+            0,
+            AGENT_GATEWAY_ADAPTER_ERROR_BUDGET_TARGET -
+              adapterErrorBudgetConsumed,
+          ).toFixed(3),
+        )
+      : null;
+  const adapterErrorBudgetRiskLevel = resolveAboveRiskLevel(
+    adapterErrorRate,
+    AGENT_GATEWAY_ADAPTER_ERROR_THRESHOLDS,
+  );
+
   return {
     sessions: {
       total: totalSessions,
@@ -1807,6 +1884,19 @@ const buildAgentGatewayTelemetrySnapshot = (
     },
     providerUsage: providerUsageItems,
     channelUsage: channelUsageItems,
+    adapters: {
+      total: adapterTotal,
+      success: adapterSuccessTotal,
+      failed: adapterFailedTotal,
+      errorRate: adapterErrorRate,
+      errorBudget: {
+        target: AGENT_GATEWAY_ADAPTER_ERROR_BUDGET_TARGET,
+        consumed: adapterErrorBudgetConsumed,
+        remaining: adapterErrorBudgetRemaining,
+        level: adapterErrorBudgetRiskLevel,
+      },
+      usage: adapterUsage,
+    },
   };
 };
 
@@ -2399,6 +2489,33 @@ router.get(
               createdAt: String(row.created_at ?? ''),
             }))
           : [];
+      const adapterRows: AgentGatewayAdapterTelemetryRow[] = (
+        await db.query(
+          `SELECT
+             LOWER(COALESCE(metadata->>'adapter', 'unknown')) AS adapter,
+             event_type,
+             COUNT(*)::int AS count
+           FROM ux_events
+           WHERE source = 'agent_gateway_adapter'
+             AND event_type IN (
+               'agent_gateway_adapter_route_success',
+               'agent_gateway_adapter_route_failed'
+             )
+             AND created_at >= NOW() - ($1 || ' hours')::interval
+             AND ($2::text IS NULL OR LOWER(COALESCE(metadata->>'channel', '')) = $2)
+             AND (
+               $3::text IS NULL OR
+               LOWER(COALESCE(metadata->>'selectedProvider', '')) = $3 OR
+               LOWER(COALESCE(metadata->>'provider', '')) = $3
+             )
+           GROUP BY LOWER(COALESCE(metadata->>'adapter', 'unknown')), event_type`,
+          [hours, channelFilter, providerFilter],
+        )
+      ).rows.map((row) => ({
+        adapter: String(row.adapter ?? 'unknown'),
+        eventType: String(row.event_type ?? ''),
+        count: toNumber(row.count),
+      }));
       if (providerFilter) {
         const sessionIdsWithProviderEvents = new Set(
           eventRows.map((row) => row.sessionId),
@@ -2410,6 +2527,7 @@ router.get(
       const snapshot = buildAgentGatewayTelemetrySnapshot(
         sessionRows,
         eventRows,
+        adapterRows,
       );
 
       res.json({
@@ -2427,6 +2545,7 @@ router.get(
         attempts: snapshot.attempts,
         providerUsage: snapshot.providerUsage,
         channelUsage: snapshot.channelUsage,
+        adapters: snapshot.adapters,
       });
     } catch (error) {
       next(error);

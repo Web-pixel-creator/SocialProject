@@ -1,6 +1,14 @@
 import { db } from '../../db/pool';
 import { agentGatewayService } from '../agentGateway/agentGatewayService';
 import type { AgentGatewayService } from '../agentGateway/types';
+import {
+  AgentGatewayAdapterServiceImpl,
+  agentGatewayAdapterService,
+} from '../agentGatewayAdapter/agentGatewayAdapterService';
+import type {
+  AgentGatewayAdapterName,
+  AgentGatewayAdapterService,
+} from '../agentGatewayAdapter/types';
 import type { LoadedAgentSkillProfile } from '../agentSkills/agentSkillsService';
 import { agentSkillsService } from '../agentSkills/agentSkillsService';
 import { aiRuntimeService } from '../aiRuntime/aiRuntimeService';
@@ -348,6 +356,21 @@ const getNextRole = (role: AIRuntimeRole): string => {
   return 'author';
 };
 
+const resolveAdapterForChannel = (channel: string): AgentGatewayAdapterName => {
+  const normalized = toNormalized(channel);
+  if (normalized === 'live_session') {
+    return 'live_session';
+  }
+  if (
+    normalized === 'draft_cycle' ||
+    normalized === 'ws-control-plane' ||
+    normalized === 'web'
+  ) {
+    return 'web';
+  }
+  return 'external_webhook';
+};
+
 const safeInvoke = async <T>(
   hook: ((value: T) => Promise<void> | void) | undefined,
   payload: T,
@@ -364,6 +387,7 @@ const safeInvoke = async <T>(
 
 export class DraftOrchestrationServiceImpl {
   private readonly gateway: AgentGatewayService;
+  private readonly adapterRouter: AgentGatewayAdapterService;
   private readonly runtime: AIRuntimeService;
   private readonly queryable: Queryable;
 
@@ -371,10 +395,19 @@ export class DraftOrchestrationServiceImpl {
     gateway: AgentGatewayService = agentGatewayService,
     runtime: AIRuntimeService = aiRuntimeService,
     queryable: Queryable = db,
+    adapterRouter?: AgentGatewayAdapterService,
   ) {
     this.gateway = gateway;
     this.runtime = runtime;
     this.queryable = queryable;
+    this.adapterRouter =
+      adapterRouter ??
+      (gateway === agentGatewayService && queryable === db
+        ? agentGatewayAdapterService
+        : new AgentGatewayAdapterServiceImpl({
+            gateway,
+            queryable,
+          }));
   }
 
   async run(
@@ -393,6 +426,7 @@ export class DraftOrchestrationServiceImpl {
 
     const channel =
       toNormalized(input.channel ?? DEFAULT_CHANNEL) || DEFAULT_CHANNEL;
+    const adapter = resolveAdapterForChannel(channel);
     const externalSessionId =
       input.externalSessionId?.trim() ||
       `${draftId}:${new Date().toISOString()}`;
@@ -414,7 +448,9 @@ export class DraftOrchestrationServiceImpl {
 
     await this.gateway.persistSession(session);
 
-    const startedEvent = this.gateway.appendEvent(session.id, {
+    await this.adapterRouter.appendSessionEvent({
+      adapter,
+      sessionId: session.id,
       fromRole: 'author',
       toRole: 'critic',
       type: 'draft_cycle_started',
@@ -426,12 +462,8 @@ export class DraftOrchestrationServiceImpl {
         studioName: studioContext?.studioName ?? null,
         skillProfile: studioContext?.skillProfile ?? {},
       },
+      persist: true,
     });
-    await this.gateway.persistEvent(startedEvent);
-    await this.gateway.persistSession(
-      this.gateway.getSession(session.id).session,
-    );
-
     const steps: DraftOrchestrationStep[] = [];
     const outputs: Partial<Record<AIRuntimeRole, string | null>> = {};
     let completed = true;
@@ -445,7 +477,9 @@ export class DraftOrchestrationServiceImpl {
       steps.push({ role, prompt, result });
       outputs[role] = result.output;
 
-      const event = this.gateway.appendEvent(session.id, {
+      await this.adapterRouter.appendSessionEvent({
+        adapter,
+        sessionId: session.id,
         fromRole: role,
         toRole: getNextRole(role),
         type: `draft_cycle_${role}_completed`,
@@ -455,11 +489,8 @@ export class DraftOrchestrationServiceImpl {
           attempts: result.attempts,
           output: result.output,
         },
+        persist: true,
       });
-      await this.gateway.persistEvent(event);
-      await this.gateway.persistSession(
-        this.gateway.getSession(session.id).session,
-      );
       await safeInvoke(input.onStep, {
         sessionId: session.id,
         draftId,
@@ -473,7 +504,9 @@ export class DraftOrchestrationServiceImpl {
       }
     }
 
-    const finishEvent = this.gateway.appendEvent(session.id, {
+    await this.adapterRouter.appendSessionEvent({
+      adapter,
+      sessionId: session.id,
       fromRole: completed ? 'judge' : 'author',
       toRole: 'author',
       type: completed ? 'draft_cycle_completed' : 'draft_cycle_failed',
@@ -483,9 +516,8 @@ export class DraftOrchestrationServiceImpl {
         channel,
         stepCount: steps.length,
       },
+      persist: true,
     });
-    await this.gateway.persistEvent(finishEvent);
-
     const closedSession = this.gateway.closeSession(session.id);
     await this.gateway.persistSession(closedSession);
     await safeInvoke(input.onCompleted, {

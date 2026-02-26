@@ -5,6 +5,7 @@ import { db } from '../db/pool';
 import { requireHuman, requireVerifiedAgent } from '../middleware/auth';
 import { observerActionRateLimiter } from '../middleware/security';
 import { agentGatewayService } from '../services/agentGateway/agentGatewayService';
+import { agentGatewayAdapterService } from '../services/agentGatewayAdapter/agentGatewayAdapterService';
 import { ServiceError } from '../services/common/errors';
 import { LiveSessionServiceImpl } from '../services/liveSession/liveSessionService';
 import type {
@@ -1050,7 +1051,7 @@ const getRealtime = (req: Request): RealtimeService | undefined => {
   return req.app.get('realtime');
 };
 
-const recordLiveGatewayEvent = (params: {
+const recordLiveGatewayEvent = async (params: {
   sessionId: string;
   draftId?: string | null;
   hostAgentId: string;
@@ -1060,7 +1061,8 @@ const recordLiveGatewayEvent = (params: {
   payload?: Record<string, unknown>;
 }) => {
   try {
-    const gatewaySession = agentGatewayService.ensureExternalSession({
+    await agentGatewayAdapterService.routeExternalEvent({
+      adapter: 'live_session',
       channel: 'live_session',
       externalSessionId: params.sessionId,
       draftId: params.draftId,
@@ -1069,8 +1071,6 @@ const recordLiveGatewayEvent = (params: {
         hostAgentId: params.hostAgentId,
         source: 'live_session',
       },
-    });
-    agentGatewayService.appendEvent(gatewaySession.id, {
       fromRole: params.fromRole,
       toRole: params.toRole,
       type: params.eventType,
@@ -1205,7 +1205,7 @@ router.post(
           pushToTalk,
         },
       );
-      recordLiveGatewayEvent({
+      await recordLiveGatewayEvent({
         sessionId: detail.session.id,
         draftId: detail.session.draftId,
         hostAgentId: detail.session.hostAgentId,
@@ -1307,7 +1307,7 @@ router.post(
             Math.ceil(repeatBlock.retryAfterMs / 1000),
           );
           res.set('Retry-After', `${retryAfterSeconds}`);
-          recordLiveGatewayEvent({
+          await recordLiveGatewayEvent({
             sessionId: detail.session.id,
             draftId: detail.session.draftId,
             hostAgentId: detail.session.hostAgentId,
@@ -1424,7 +1424,7 @@ router.post(
             Math.ceil(repeatBlock.retryAfterMs / 1000),
           );
           res.set('Retry-After', `${retryAfterSeconds}`);
-          recordLiveGatewayEvent({
+          await recordLiveGatewayEvent({
             sessionId: detail.session.id,
             draftId: detail.session.draftId,
             hostAgentId: detail.session.hostAgentId,
@@ -1521,7 +1521,7 @@ router.post(
           success: true,
         },
       );
-      recordLiveGatewayEvent({
+      await recordLiveGatewayEvent({
         sessionId: detail.session.id,
         draftId: detail.session.draftId,
         hostAgentId: detail.session.hostAgentId,
@@ -1585,7 +1585,8 @@ router.post(
       const payload = parseRealtimeSendPayload(body);
       const observerId = req.auth?.id as string;
 
-      const gatewaySession = agentGatewayService.ensureExternalSession({
+      const routeResult = await agentGatewayAdapterService.routeExternalEvent({
+        adapter: 'live_session',
         channel: 'live_session',
         externalSessionId: detail.session.id,
         draftId: detail.session.draftId,
@@ -1594,9 +1595,6 @@ router.post(
           hostAgentId: detail.session.hostAgentId,
           source: 'live_session',
         },
-      });
-
-      const event = agentGatewayService.appendEvent(gatewaySession.id, {
         fromRole: 'observer',
         toRole,
         type: eventType,
@@ -1605,11 +1603,9 @@ router.post(
           observerId,
           liveSessionId: detail.session.id,
         },
+        persist: true,
       });
-      await agentGatewayService.persistSession(
-        agentGatewayService.getSession(gatewaySession.id).session,
-      );
-      await agentGatewayService.persistEvent(event);
+      const event = routeResult.event;
 
       getRealtime(req)?.broadcast(
         `session:${detail.session.id}`,
@@ -1655,7 +1651,7 @@ router.post('/live-sessions', requireVerifiedAgent, async (req, res, next) => {
       status: detail.session.status,
       draftId: detail.session.draftId,
     });
-    recordLiveGatewayEvent({
+    await recordLiveGatewayEvent({
       sessionId: detail.session.id,
       draftId: detail.session.draftId,
       hostAgentId: req.auth?.id as string,
@@ -1710,7 +1706,7 @@ router.post(
           status: detail.session.status,
         },
       );
-      recordLiveGatewayEvent({
+      await recordLiveGatewayEvent({
         sessionId: detail.session.id,
         draftId: detail.session.draftId,
         hostAgentId: req.auth?.id as string,
@@ -1769,7 +1765,7 @@ router.post(
           recapClipUrl: detail.session.recapClipUrl,
         },
       );
-      recordLiveGatewayEvent({
+      await recordLiveGatewayEvent({
         sessionId: detail.session.id,
         draftId: detail.session.draftId,
         hostAgentId: req.auth?.id as string,
@@ -1836,7 +1832,7 @@ router.post(
           lastSeenAt: presence.lastSeenAt,
         },
       );
-      recordLiveGatewayEvent({
+      await recordLiveGatewayEvent({
         sessionId: req.params.id,
         hostAgentId: req.auth?.id as string,
         eventType: 'live_presence_updated',
@@ -1889,7 +1885,7 @@ router.post(
           lastSeenAt: presence.lastSeenAt,
         },
       );
-      recordLiveGatewayEvent({
+      await recordLiveGatewayEvent({
         sessionId: req.params.id,
         hostAgentId: req.auth?.id as string,
         eventType: 'live_presence_updated',
@@ -1944,7 +1940,7 @@ router.post(
           createdAt: message.createdAt,
         },
       );
-      recordLiveGatewayEvent({
+      await recordLiveGatewayEvent({
         sessionId: req.params.id,
         hostAgentId: req.auth?.id as string,
         eventType: 'live_chat_message',
@@ -2002,7 +1998,7 @@ router.post(
           createdAt: message.createdAt,
         },
       );
-      recordLiveGatewayEvent({
+      await recordLiveGatewayEvent({
         sessionId: req.params.id,
         hostAgentId: req.auth?.id as string,
         eventType: 'live_chat_message',

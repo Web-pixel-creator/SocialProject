@@ -774,6 +774,13 @@ describe('Admin API routes', () => {
       });
     expect(secondFailedEvent.status).toBe(201);
 
+    await db.query(
+      `INSERT INTO ux_events (event_type, user_type, status, source, metadata)
+       VALUES
+         ('agent_gateway_adapter_route_success', 'system', 'ok', 'agent_gateway_adapter', '{"adapter":"web","channel":"draft_cycle"}'::jsonb),
+         ('agent_gateway_adapter_route_failed', 'system', 'failed', 'agent_gateway_adapter', '{"adapter":"external_webhook","channel":"swarm"}'::jsonb)`,
+    );
+
     const response = await request(app)
       .get('/api/admin/agent-gateway/telemetry?hours=24&limit=10')
       .set('x-admin-token', env.ADMIN_API_TOKEN);
@@ -884,6 +891,34 @@ describe('Admin API routes', () => {
         expect.objectContaining({
           channel: 'ws-control-plane',
           count: 2,
+        }),
+      ]),
+    );
+    expect(response.body.adapters).toEqual(
+      expect.objectContaining({
+        total: 2,
+        success: 1,
+        failed: 1,
+        errorRate: 0.5,
+        errorBudget: expect.objectContaining({
+          target: 0.05,
+          level: 'critical',
+        }),
+      }),
+    );
+    expect(response.body.adapters.usage).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          adapter: 'web',
+          success: 1,
+          failed: 0,
+          total: 1,
+        }),
+        expect.objectContaining({
+          adapter: 'external_webhook',
+          success: 0,
+          failed: 1,
+          total: 1,
         }),
       ]),
     );

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db } from '../db/pool';
 import { requireVerifiedAgent } from '../middleware/auth';
 import { agentGatewayService } from '../services/agentGateway/agentGatewayService';
+import { agentGatewayAdapterService } from '../services/agentGatewayAdapter/agentGatewayAdapterService';
 import { ServiceError } from '../services/common/errors';
 import { SwarmServiceImpl } from '../services/swarm/swarmService';
 import type {
@@ -422,7 +423,7 @@ const inferGatewayRoles = (memberRoles: SwarmRole[]) => {
   return Array.from(new Set(['author', ...resolvedRoles]));
 };
 
-const recordSwarmGatewayEvent = (params: {
+const recordSwarmGatewayEvent = async (params: {
   sessionId: string;
   draftId?: string | null;
   hostAgentId: string;
@@ -432,7 +433,8 @@ const recordSwarmGatewayEvent = (params: {
   roles?: string[];
 }) => {
   try {
-    const gatewaySession = agentGatewayService.ensureExternalSession({
+    await agentGatewayAdapterService.routeExternalEvent({
+      adapter: 'external_webhook',
       channel: 'swarm',
       externalSessionId: params.sessionId,
       draftId: params.draftId,
@@ -441,8 +443,6 @@ const recordSwarmGatewayEvent = (params: {
         hostAgentId: params.hostAgentId,
         source: 'swarm',
       },
-    });
-    agentGatewayService.appendEvent(gatewaySession.id, {
       fromRole: params.fromRole,
       type: params.eventType,
       payload: params.payload ?? {},
@@ -522,7 +522,7 @@ router.post('/swarms', requireVerifiedAgent, async (req, res, next) => {
       members: input.members,
     });
     const memberRoles = details.members.map((member) => member.role);
-    recordSwarmGatewayEvent({
+    await recordSwarmGatewayEvent({
       sessionId: details.session.id,
       draftId: details.session.draftId,
       hostAgentId: req.auth?.id as string,
@@ -563,7 +563,7 @@ router.post(
         req.auth?.id as string,
       );
       const memberRoles = details.members.map((member) => member.role);
-      recordSwarmGatewayEvent({
+      await recordSwarmGatewayEvent({
         sessionId: details.session.id,
         draftId: details.session.draftId,
         hostAgentId: req.auth?.id as string,
@@ -605,7 +605,7 @@ router.post(
         req.auth?.id as string,
         input,
       );
-      recordSwarmGatewayEvent({
+      await recordSwarmGatewayEvent({
         sessionId: req.params.id,
         hostAgentId: req.auth?.id as string,
         eventType: `swarm_judge_${event.eventType}`,
@@ -645,7 +645,7 @@ router.post(
         req.auth?.id as string,
         input,
       );
-      recordSwarmGatewayEvent({
+      await recordSwarmGatewayEvent({
         sessionId: details.session.id,
         draftId: details.session.draftId,
         hostAgentId: req.auth?.id as string,
