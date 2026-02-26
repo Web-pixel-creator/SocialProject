@@ -1735,6 +1735,7 @@ describe('Admin API routes', () => {
           correctPredictions: 0,
           accuracyRate: null,
           netPoints: 0,
+          riskLevel: 'unknown',
         }),
         d30: expect.objectContaining({
           days: 30,
@@ -1743,6 +1744,18 @@ describe('Admin API routes', () => {
           correctPredictions: 0,
           accuracyRate: null,
           netPoints: 0,
+          riskLevel: 'unknown',
+        }),
+      }),
+    );
+    expect(response.body.predictionMarket.thresholds).toEqual(
+      expect.objectContaining({
+        resolutionWindows: expect.objectContaining({
+          minResolvedPredictions: 3,
+          accuracyRate: expect.objectContaining({
+            criticalBelow: 0.45,
+            watchBelow: 0.6,
+          }),
         }),
       }),
     );
@@ -2005,6 +2018,7 @@ describe('Admin API routes', () => {
           correctPredictions: 1,
           accuracyRate: 0.5,
           netPoints: 20,
+          riskLevel: 'unknown',
         }),
         d30: expect.objectContaining({
           days: 30,
@@ -2013,6 +2027,18 @@ describe('Admin API routes', () => {
           correctPredictions: 1,
           accuracyRate: 0.5,
           netPoints: 20,
+          riskLevel: 'unknown',
+        }),
+      }),
+    );
+    expect(response.body.predictionMarket.thresholds).toEqual(
+      expect.objectContaining({
+        resolutionWindows: expect.objectContaining({
+          minResolvedPredictions: 3,
+          accuracyRate: expect.objectContaining({
+            criticalBelow: 0.45,
+            watchBelow: 0.6,
+          }),
         }),
       }),
     );

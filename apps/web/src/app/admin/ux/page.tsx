@@ -60,6 +60,7 @@ interface ObserverEngagementResponse {
         correctPredictions?: number;
         accuracyRate?: number | null;
         netPoints?: number;
+        riskLevel?: string | null;
       };
       d30?: {
         days?: number;
@@ -68,6 +69,16 @@ interface ObserverEngagementResponse {
         correctPredictions?: number;
         accuracyRate?: number | null;
         netPoints?: number;
+        riskLevel?: string | null;
+      };
+    };
+    thresholds?: {
+      resolutionWindows?: {
+        accuracyRate?: {
+          criticalBelow?: number;
+          watchBelow?: number;
+        };
+        minResolvedPredictions?: number;
       };
     };
   };
@@ -500,6 +511,14 @@ interface PredictionResolutionWindowItem {
   netPoints: number;
   predictors: number;
   resolvedPredictions: number;
+  riskLevel: HealthLevel | null;
+}
+interface PredictionResolutionWindowThresholds {
+  accuracyRate: {
+    criticalBelow: number;
+    watchBelow: number;
+  };
+  minResolvedPredictions: number;
 }
 interface PredictionFilterScopeFilterItem {
   count: number;
@@ -551,11 +570,14 @@ const DEFAULT_GATEWAY_TELEMETRY_THRESHOLDS: GatewayTelemetryThresholds = {
     watchAbove: 0.2,
   },
 };
-const PREDICTION_RESOLUTION_WINDOW_ACCURACY_THRESHOLDS = {
-  criticalBelow: 0.45,
-  watchBelow: 0.6,
-} as const;
-const PREDICTION_RESOLUTION_WINDOW_MIN_SAMPLE = 3;
+const DEFAULT_PREDICTION_RESOLUTION_WINDOW_THRESHOLDS: PredictionResolutionWindowThresholds =
+  {
+    accuracyRate: {
+      criticalBelow: 0.45,
+      watchBelow: 0.6,
+    },
+    minResolvedPredictions: 3,
+  };
 
 const toNumber = (value: unknown, fallback = 0): number =>
   typeof value === 'number' && Number.isFinite(value) ? value : fallback;
@@ -824,6 +846,45 @@ const normalizePredictionResolutionWindow = (
       (row as Record<string, unknown>).accuracyRate,
     ),
     netPoints: toNumber((row as Record<string, unknown>).netPoints),
+    riskLevel: toHealthLevelValue((row as Record<string, unknown>).riskLevel),
+  };
+};
+
+const normalizePredictionResolutionWindowThresholds = (
+  value: unknown,
+): PredictionResolutionWindowThresholds => {
+  const row = value && typeof value === 'object' ? value : {};
+  const accuracyRate =
+    (row as Record<string, unknown>).accuracyRate &&
+    typeof (row as Record<string, unknown>).accuracyRate === 'object'
+      ? ((row as Record<string, unknown>).accuracyRate as Record<
+          string,
+          unknown
+        >)
+      : {};
+  const criticalBelow = pickFirstFiniteRate(
+    accuracyRate.criticalBelow,
+    DEFAULT_PREDICTION_RESOLUTION_WINDOW_THRESHOLDS.accuracyRate.criticalBelow,
+  );
+  const watchBelow = pickFirstFiniteRate(
+    accuracyRate.watchBelow,
+    DEFAULT_PREDICTION_RESOLUTION_WINDOW_THRESHOLDS.accuracyRate.watchBelow,
+  );
+  const minResolvedPredictions = toNumber(
+    (row as Record<string, unknown>).minResolvedPredictions,
+    DEFAULT_PREDICTION_RESOLUTION_WINDOW_THRESHOLDS.minResolvedPredictions,
+  );
+  return {
+    accuracyRate: {
+      criticalBelow:
+        criticalBelow ??
+        DEFAULT_PREDICTION_RESOLUTION_WINDOW_THRESHOLDS.accuracyRate
+          .criticalBelow,
+      watchBelow:
+        watchBelow ??
+        DEFAULT_PREDICTION_RESOLUTION_WINDOW_THRESHOLDS.accuracyRate.watchBelow,
+    },
+    minResolvedPredictions,
   };
 };
 
@@ -1296,14 +1357,15 @@ const resolveGatewayTelemetryHealthLevel = ({
 
 const resolvePredictionResolutionWindowHealthLevel = (
   window: PredictionResolutionWindowItem,
+  thresholds: PredictionResolutionWindowThresholds,
 ): HealthLevel => {
-  if (window.resolvedPredictions < PREDICTION_RESOLUTION_WINDOW_MIN_SAMPLE) {
+  if (window.riskLevel) {
+    return window.riskLevel;
+  }
+  if (window.resolvedPredictions < thresholds.minResolvedPredictions) {
     return 'unknown';
   }
-  return resolveHealthLevel(
-    window.accuracyRate,
-    PREDICTION_RESOLUTION_WINDOW_ACCURACY_THRESHOLDS,
-  );
+  return resolveHealthLevel(window.accuracyRate, thresholds.accuracyRate);
 };
 
 const healthLabel = (level: HealthLevel): string => {
@@ -2888,6 +2950,19 @@ export default async function AdminUxObserverEngagementPage({
     predictionMarket.hourlyTrend,
   );
   const predictionResolutionWindows = predictionMarket.resolutionWindows ?? {};
+  const predictionResolutionWindowThresholds =
+    normalizePredictionResolutionWindowThresholds(
+      (predictionMarket as Record<string, unknown>).thresholds &&
+        typeof (predictionMarket as Record<string, unknown>).thresholds ===
+          'object'
+        ? (
+            (predictionMarket as Record<string, unknown>).thresholds as Record<
+              string,
+              unknown
+            >
+          ).resolutionWindows
+        : undefined,
+    );
   const predictionWindow7d = normalizePredictionResolutionWindow(
     (predictionResolutionWindows as Record<string, unknown>).d7,
     7,
@@ -2897,9 +2972,15 @@ export default async function AdminUxObserverEngagementPage({
     30,
   );
   const predictionWindow7dRiskLevel =
-    resolvePredictionResolutionWindowHealthLevel(predictionWindow7d);
+    resolvePredictionResolutionWindowHealthLevel(
+      predictionWindow7d,
+      predictionResolutionWindowThresholds,
+    );
   const predictionWindow30dRiskLevel =
-    resolvePredictionResolutionWindowHealthLevel(predictionWindow30d);
+    resolvePredictionResolutionWindowHealthLevel(
+      predictionWindow30d,
+      predictionResolutionWindowThresholds,
+    );
   const predictionFilterTelemetry = data?.predictionFilterTelemetry ?? {};
   const predictionFilterByScopeBreakdown = normalizeBreakdownItems({
     items: predictionFilterTelemetry.byScope,
@@ -4319,13 +4400,14 @@ export default async function AdminUxObserverEngagementPage({
             <p className="text-muted-foreground text-xs">
               Thresholds: watch &lt;{' '}
               {toRateText(
-                PREDICTION_RESOLUTION_WINDOW_ACCURACY_THRESHOLDS.watchBelow,
+                predictionResolutionWindowThresholds.accuracyRate.watchBelow,
               )}{' '}
               | critical &lt;{' '}
               {toRateText(
-                PREDICTION_RESOLUTION_WINDOW_ACCURACY_THRESHOLDS.criticalBelow,
+                predictionResolutionWindowThresholds.accuracyRate.criticalBelow,
               )}{' '}
-              | min sample: {PREDICTION_RESOLUTION_WINDOW_MIN_SAMPLE}
+              | min sample:{' '}
+              {predictionResolutionWindowThresholds.minResolvedPredictions}
             </p>
             <p className="text-muted-foreground text-xs">
               {predictionWindow7d.days}d:{' '}

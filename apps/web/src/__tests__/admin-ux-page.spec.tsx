@@ -109,6 +109,7 @@ describe('admin ux observer engagement page', () => {
                   correctPredictions: 1,
                   accuracyRate: 0.5,
                   netPoints: 19,
+                  riskLevel: 'unknown',
                 },
                 d30: {
                   days: 30,
@@ -117,6 +118,16 @@ describe('admin ux observer engagement page', () => {
                   correctPredictions: 2,
                   accuracyRate: 0.667,
                   netPoints: 31,
+                  riskLevel: 'watch',
+                },
+              },
+              thresholds: {
+                resolutionWindows: {
+                  accuracyRate: {
+                    criticalBelow: 0.5,
+                    watchBelow: 0.7,
+                  },
+                  minResolvedPredictions: 2,
                 },
               },
               hourlyTrend: [
@@ -487,9 +498,10 @@ describe('admin ux observer engagement page', () => {
     expect(screen.getByText(/Participation snapshot/i)).toBeInTheDocument();
     expect(screen.getByText(/Resolved windows/i)).toBeInTheDocument();
     expect(screen.getByText(/7d risk:\s*n\/a/i)).toBeInTheDocument();
-    expect(screen.getByText(/30d risk:\s*Healthy/i)).toBeInTheDocument();
+    expect(screen.getByText(/30d risk:\s*Watch/i)).toBeInTheDocument();
     expect(screen.getByText(/7d:/i)).toBeInTheDocument();
     expect(screen.getByText(/30d:/i)).toBeInTheDocument();
+    expect(screen.getByText(/min sample:\s*2/i)).toBeInTheDocument();
     expect(screen.getByText(/Style fusion metrics/i)).toBeInTheDocument();
     expect(screen.getByText(/Fusion attempts/i)).toBeInTheDocument();
     expect(screen.getByText(/Fusion errors/i)).toBeInTheDocument();

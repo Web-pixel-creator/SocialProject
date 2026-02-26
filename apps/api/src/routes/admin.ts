@@ -34,6 +34,35 @@ const toNumber = (value: string | number | undefined, fallback = 0) =>
     : Number.parseInt(value ?? `${fallback}`, 10);
 const toRate = (numerator: number, denominator: number) =>
   denominator > 0 ? Number((numerator / denominator).toFixed(3)) : null;
+const PREDICTION_RESOLUTION_WINDOW_THRESHOLDS = {
+  accuracyRate: {
+    criticalBelow: 0.45,
+    watchBelow: 0.6,
+  },
+  minResolvedPredictions: 3,
+} as const;
+
+const resolveHealthLevel = (
+  value: number | null,
+  {
+    criticalBelow,
+    watchBelow,
+  }: {
+    criticalBelow: number;
+    watchBelow: number;
+  },
+) => {
+  if (!(typeof value === 'number' && Number.isFinite(value))) {
+    return 'unknown';
+  }
+  if (value < criticalBelow) {
+    return 'critical';
+  }
+  if (value < watchBelow) {
+    return 'watch';
+  }
+  return 'healthy';
+};
 
 const RUNTIME_ROLES: AIRuntimeRole[] = ['author', 'critic', 'maker', 'judge'];
 const AI_RUNTIME_DRY_RUN_ALLOWED_FIELDS = new Set([
@@ -4045,6 +4074,30 @@ router.get(
       const predictionNetPoints30d = Number(
         predictionResolutionWindowsResult.rows[0]?.net_points_30d ?? 0,
       );
+      const predictionWindowAccuracy7d = toRate(
+        predictionCorrect7d,
+        predictionResolved7d,
+      );
+      const predictionWindowAccuracy30d = toRate(
+        predictionCorrect30d,
+        predictionResolved30d,
+      );
+      const predictionWindow7dRiskLevel =
+        predictionResolved7d <
+        PREDICTION_RESOLUTION_WINDOW_THRESHOLDS.minResolvedPredictions
+          ? 'unknown'
+          : resolveHealthLevel(
+              predictionWindowAccuracy7d,
+              PREDICTION_RESOLUTION_WINDOW_THRESHOLDS.accuracyRate,
+            );
+      const predictionWindow30dRiskLevel =
+        predictionResolved30d <
+        PREDICTION_RESOLUTION_WINDOW_THRESHOLDS.minResolvedPredictions
+          ? 'unknown'
+          : resolveHealthLevel(
+              predictionWindowAccuracy30d,
+              PREDICTION_RESOLUTION_WINDOW_THRESHOLDS.accuracyRate,
+            );
       const multimodalAttempts =
         totals.multimodalViews + totals.multimodalEmptyStates;
       const multimodalTotalEvents =
@@ -4135,17 +4188,22 @@ router.get(
               predictors: predictionPredictors7d,
               resolvedPredictions: predictionResolved7d,
               correctPredictions: predictionCorrect7d,
-              accuracyRate: toRate(predictionCorrect7d, predictionResolved7d),
+              accuracyRate: predictionWindowAccuracy7d,
               netPoints: predictionNetPoints7d,
+              riskLevel: predictionWindow7dRiskLevel,
             },
             d30: {
               days: 30,
               predictors: predictionPredictors30d,
               resolvedPredictions: predictionResolved30d,
               correctPredictions: predictionCorrect30d,
-              accuracyRate: toRate(predictionCorrect30d, predictionResolved30d),
+              accuracyRate: predictionWindowAccuracy30d,
               netPoints: predictionNetPoints30d,
+              riskLevel: predictionWindow30dRiskLevel,
             },
+          },
+          thresholds: {
+            resolutionWindows: PREDICTION_RESOLUTION_WINDOW_THRESHOLDS,
           },
         },
         predictionFilterTelemetry: {
