@@ -10,6 +10,7 @@ import {
   type PredictionHistoryItem,
   type PredictionHistorySort,
 } from '../lib/predictionHistory';
+import { formatPredictionOutcomeLabel } from '../lib/predictionOutcome';
 
 export interface ObserverPredictionHistoryEntry extends PredictionHistoryItem {
   id: string;
@@ -125,6 +126,16 @@ const getPredictionResultClassName = (
     return 'text-chart-2';
   }
   return 'text-destructive';
+};
+
+const getPredictionResolvedOutcomeLabel = (
+  prediction: ObserverPredictionHistoryEntry,
+  t: (key: string) => string,
+): string => {
+  if (prediction.resolvedOutcome === null) {
+    return t('observerProfile.pending');
+  }
+  return formatPredictionOutcomeLabel(prediction.resolvedOutcome, t);
 };
 
 const formatPredictionNetPoints = (
@@ -334,9 +345,10 @@ export const ObserverPredictionHistoryPanel = ({
                 {prediction.draftTitle}
               </Link>
               <p className="text-muted-foreground text-xs">
-                {t('observerProfile.predicted')}: {prediction.predictedOutcome}{' '}
-                | {t('observerProfile.resolved')}:{' '}
-                {prediction.resolvedOutcome ?? t('observerProfile.pending')}
+                {t('observerProfile.predicted')}:{' '}
+                {formatPredictionOutcomeLabel(prediction.predictedOutcome, t)} |{' '}
+                {t('observerProfile.resolved')}:{' '}
+                {getPredictionResolvedOutcomeLabel(prediction, t)}
               </p>
               <p className="text-muted-foreground text-xs">
                 {t('observerProfile.stake')}: {prediction.stakePoints} |{' '}

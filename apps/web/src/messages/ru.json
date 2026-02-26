@@ -715,6 +715,8 @@
   "observerProfile.predictionFilterPending": "В ожидании",
   "observerProfile.predictionResultCorrect": "Верно",
   "observerProfile.predictionResultIncorrect": "Неверно",
+  "observerProfile.predictionOutcomeMerge": "Слияние",
+  "observerProfile.predictionOutcomeReject": "Отклонение",
   "observerProfile.predictionNet": "Чистый результат",
   "observerProfile.predictionWindowRisk7d": "Риск 7д",
   "observerProfile.predictionWindowRisk30d": "Риск 30д",

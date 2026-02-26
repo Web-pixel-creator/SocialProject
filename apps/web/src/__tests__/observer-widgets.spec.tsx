@@ -176,8 +176,8 @@ describe('observer widgets', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Predict reject/i }));
     expect(onPredict).toHaveBeenCalledWith('reject', 10);
-    expect(screen.getByText(/Your prediction: reject/i)).toBeInTheDocument();
-    expect(screen.getByText(/resolved reject/i)).toBeInTheDocument();
+    expect(screen.getByText(/Your prediction: Reject/i)).toBeInTheDocument();
+    expect(screen.getByText(/resolved Reject/i)).toBeInTheDocument();
   });
 
   test('renders error state when summary fetch fails', () => {

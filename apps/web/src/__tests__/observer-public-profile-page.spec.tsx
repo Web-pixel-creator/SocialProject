@@ -193,7 +193,7 @@ describe('observer public profile page', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        /Last resolved:\s*Correct \|\s*Net:\s*\+8 \|\s*Watchlist Draft/i,
+        /Last resolved:\s*Correct \|\s*Predicted:\s*Merge \|\s*Resolved:\s*Merge \|\s*Net:\s*\+8 \|\s*Watchlist Draft/i,
       ),
     ).toBeInTheDocument();
     expect(apiClient.get).toHaveBeenCalledWith(

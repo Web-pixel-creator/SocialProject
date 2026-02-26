@@ -507,6 +507,12 @@ describe('admin ux observer engagement page', () => {
       screen.getByText(/^Prediction hourly trend \(UTC\)$/i),
     ).toBeInTheDocument();
     expect(screen.getByText(/Outcome mix/i)).toBeInTheDocument();
+    const mergeOutcome = screen.getByText('Merge').closest('li');
+    expect(mergeOutcome).not.toBeNull();
+    expect(mergeOutcome).toHaveTextContent('1');
+    const rejectOutcome = screen.getByText('Reject').closest('li');
+    expect(rejectOutcome).not.toBeNull();
+    expect(rejectOutcome).toHaveTextContent('1');
     expect(screen.getByText(/Participation snapshot/i)).toBeInTheDocument();
     expect(screen.getByText(/Resolved windows/i)).toBeInTheDocument();
     expect(screen.getByText(/7d risk:\s*n\/a/i)).toBeInTheDocument();

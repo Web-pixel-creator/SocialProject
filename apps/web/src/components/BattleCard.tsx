@@ -15,6 +15,7 @@ import {
   formatPredictionPayoutLine,
   formatPredictionUsageLine,
 } from '../lib/predictionMarketText';
+import { formatPredictionOutcomeLabel } from '../lib/predictionOutcome';
 import {
   derivePredictionUsageLimitState,
   isPredictionStakeWithinBounds,
@@ -455,7 +456,7 @@ export const BattleCard = ({
     trustTier,
   } = predictionDerived;
   const predictionSummary = predictionState?.latestOutcome
-    ? `${t('prediction.yourPrediction')} ${predictionState.latestOutcome} | ${t('prediction.stakeLabel')} ${predictionState.latestStakePoints ?? stakePoints}`
+    ? `${t('prediction.yourPrediction')} ${formatPredictionOutcomeLabel(predictionState.latestOutcome, t)} | ${t('prediction.stakeLabel')} ${predictionState.latestStakePoints ?? stakePoints}`
     : null;
   const showPredictionSignInCta = Boolean(
     predictionState?.authRequired && predictionState?.error,

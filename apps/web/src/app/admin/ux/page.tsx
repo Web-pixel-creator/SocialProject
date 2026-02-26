@@ -565,6 +565,7 @@ interface GatewayCompactionHourlyTrendItem {
 const DEFAULT_API_BASE = 'http://localhost:4000/api';
 const TRAILING_SLASH_REGEX = /\/$/;
 const HOUR_BUCKET_REGEX = /^(\d{4}-\d{2}-\d{2})T(\d{2}):00:00Z$/;
+const PREDICTION_OUTCOME_LABEL_SEGMENT_PATTERN = /[_\s-]+/;
 const GATEWAY_CHANNEL_QUERY_PATTERN = /^[a-z0-9][a-z0-9._:-]{1,63}$/;
 const GATEWAY_PROVIDER_QUERY_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 const GATEWAY_SOURCE_QUERY_PATTERN = /^[a-z]+$/;
@@ -762,23 +763,44 @@ const normalizeGatewaySessionFilters = (
 
 const normalizeBreakdownItems = ({
   items,
+  countName,
   keyName,
 }: {
+  countName?: string;
   items: unknown;
   keyName: string;
 }): Array<{ count: number; key: string }> => {
   if (!Array.isArray(items)) {
     return [];
   }
+  const resolvedCountName = countName ?? 'count';
   return items.map((item, index) => {
     const row = item && typeof item === 'object' ? item : {};
     const key = toStringValue(
       (row as Record<string, unknown>)[keyName],
       `unknown-${index + 1}`,
     );
-    const count = toNumber((row as Record<string, unknown>).count);
+    const count = toNumber((row as Record<string, unknown>)[resolvedCountName]);
     return { key, count };
   });
+};
+
+const formatPredictionOutcomeMetricLabel = (value: string): string => {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'merge') {
+    return 'Merge';
+  }
+  if (normalized === 'reject') {
+    return 'Reject';
+  }
+  if (normalized.length === 0) {
+    return 'Unknown';
+  }
+  return normalized
+    .split(PREDICTION_OUTCOME_LABEL_SEGMENT_PATTERN)
+    .filter((segment) => segment.length > 0)
+    .map((segment) => `${segment.charAt(0).toUpperCase()}${segment.slice(1)}`)
+    .join(' ');
 };
 
 const normalizeHourlyTrendItems = (
@@ -3041,9 +3063,13 @@ export default async function AdminUxObserverEngagementPage({
   const predictionMarket = data?.predictionMarket ?? {};
   const predictionTotals = predictionMarket.totals ?? {};
   const predictionOutcomesBreakdown = normalizeBreakdownItems({
+    countName: 'predictions',
     items: predictionMarket.outcomes,
     keyName: 'predictedOutcome',
-  });
+  }).map((entry) => ({
+    ...entry,
+    key: formatPredictionOutcomeMetricLabel(entry.key),
+  }));
   const predictionHourlyTrend = normalizePredictionHourlyTrendItems(
     predictionMarket.hourlyTrend,
   );

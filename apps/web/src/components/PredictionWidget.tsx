@@ -12,6 +12,10 @@ import {
   formatPredictionUsageLine,
 } from '../lib/predictionMarketText';
 import {
+  formatPredictionOutcomeLabel,
+  type PredictionOutcome,
+} from '../lib/predictionOutcome';
+import {
   derivePredictionUsageLimitState,
   normalizePredictionStakeBounds,
   resolvePredictionStakeInput,
@@ -21,7 +25,6 @@ import {
   type PredictionTrustTier,
 } from '../lib/predictionTier';
 
-type PredictionOutcome = 'merge' | 'reject';
 const DEFAULT_STAKE_POINTS = 10;
 
 export interface PullRequestPredictionSummaryView {
@@ -282,12 +285,15 @@ export const PredictionWidget = ({
       {summary.observerPrediction && (
         <p className="mt-2 text-[11px] text-muted-foreground">
           {t('prediction.yourPrediction')}{' '}
-          {summary.observerPrediction.predictedOutcome}
+          {formatPredictionOutcomeLabel(
+            summary.observerPrediction.predictedOutcome,
+            t,
+          )}
           {` | ${t('prediction.stakeLabel')} ${
             summary.observerPrediction.stakePoints ?? DEFAULT_STAKE_POINTS
           }`}
           {summary.observerPrediction.resolvedOutcome
-            ? ` | ${t('pr.resolved')} ${summary.observerPrediction.resolvedOutcome}`
+            ? ` | ${t('pr.resolved')} ${formatPredictionOutcomeLabel(summary.observerPrediction.resolvedOutcome, t)}`
             : ` | ${t('battle.pending')}`}
           {summary.observerPrediction.resolvedOutcome
             ? ` | ${t('prediction.payoutLabel')} ${summary.observerPrediction.payoutPoints ?? 0}`

@@ -129,6 +129,8 @@ Exit criteria:
   - extracted shared prediction-history helpers (`apps/web/src/lib/predictionHistory.ts`) for totals/accuracy/net calculation and deterministic sorting across filters,
   - private/public observer profile pages now share the same filter/sort logic and render filter buttons with live counts (`All`, `Resolved`, `Pending`),
   - prediction history headers now show resolved/pending counts, accuracy, and net points in one line for faster scanability,
+  - prediction history outcome labels are now localized (`Merge/Reject` in EN, `Слияние/Отклонение` in RU) instead of raw backend enums (`merge/reject`) for cleaner observer readability,
+  - private/public observer summary `Last resolved` line now also includes localized `Predicted` + `Resolved` outcome labels (via shared `predictionOutcome` helper) for clearer post-resolution context,
   - private/public profile pages now render prediction history through a shared panel component (`apps/web/src/components/ObserverPredictionHistoryPanel.tsx`) to keep behavior parity across observer surfaces,
   - added filter-specific empty state (`observerProfile.noPredictionsInFilter`) so empty `Pending/Resolved` views are explicit without masking existing history,
   - prediction history filter selection is now persisted per observer scope (`self` / `public`) using local storage so profile revisits keep the last selected filter,
@@ -221,6 +223,12 @@ Exit criteria:
   - centralized tier formatting helper in `apps/web/src/lib/predictionTier.ts`,
   - localized tier rendering across battle cards, prediction widget, and observer/public profile summaries,
   - helper unit coverage added in `apps/web/src/__tests__/prediction-tier.spec.ts`.
+- Prediction outcome localization parity update:
+  - introduced shared prediction-outcome helper (`apps/web/src/lib/predictionOutcome.ts`) for consistent outcome labels across observer surfaces,
+  - `PredictionWidget` now renders localized observer/resolved outcomes instead of raw enums (`merge/reject`) in draft-detail/feed prediction summaries,
+  - `BattleCard` prediction summary (`Your prediction ...`) now uses the same localized outcome labels for feed-card parity with draft-detail/profile surfaces,
+  - observer private/public summary `Last resolved` lines now include localized `Predicted` + `Resolved` outcomes,
+  - `/admin/ux` `Outcome mix` now renders normalized outcome labels (`Merge/Reject`) and uses the correct outcome-count metric (`predictions`) instead of defaulting to zero-count rows.
 - Style Fusion UX polish update:
   - draft detail style-fusion panel now includes quick copy action for a ready-to-share fusion brief,
   - fusion result now surfaces sampled source drafts (title + similarity) for better explainability,
@@ -461,6 +469,10 @@ Exit criteria:
 - Local API test-runner reliability update:
   - `scripts/ci/run-local-tests.mjs` now retries `migrate:up` with bounded backoff (`LOCAL_TEST_MIGRATE_RETRIES`, `LOCAL_TEST_MIGRATE_RETRY_DELAY_MS`) to reduce cold-start flakiness when Postgres accepts connections before full readiness,
   - dry-run validation confirms the runner still parses args/passthrough as expected.
+- Redis integration-test lifecycle hardening update:
+  - redis wrapper now tracks explicit connection state in test mode (`connectedState`) so `redis.isOpen` reflects wrapper-level successful connects even when fallback hooks are active,
+  - `redis.quit()` now always attempts close and gracefully no-ops on already-closed client, removing lingering Redis `TCPWRAP` handles in API integration runs,
+  - previously blocked targeted API integration checks now pass with live Docker infra (`admin.integration` similar-search metrics and `api.integration` telemetry UX scenario).
 - Feed provenance consistency update (`Battle` + `Change`):
   - `/api/feeds/changes` now joins `draft_provenance` for both `pr_merged` and `fix_request` branches and returns normalized provenance on each change item,
   - web feed types/mappers now preserve provenance for `BattleFeedItem` and `ChangeFeedItem` (`mapBattles`, `mapChanges`) instead of dropping it at client mapping,

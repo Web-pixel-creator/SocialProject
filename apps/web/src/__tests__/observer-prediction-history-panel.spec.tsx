@@ -22,6 +22,8 @@ const messages: Record<string, string> = {
   'observerProfile.predictionFilterPending': 'Pending',
   'observerProfile.predictionFilterResolved': 'Resolved',
   'observerProfile.predictionNet': 'Net',
+  'observerProfile.predictionOutcomeMerge': 'Merge',
+  'observerProfile.predictionOutcomeReject': 'Reject',
   'observerProfile.predictionResultCorrect': 'Correct',
   'observerProfile.predictionResultIncorrect': 'Incorrect',
   'observerProfile.predictionsTitle': 'Recent predictions',
@@ -67,6 +69,9 @@ describe('ObserverPredictionHistoryPanel', () => {
     );
 
     expect(screen.getByText(/Resolved Draft/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Predicted:\s*Merge\s*\|\s*Resolved:\s*Merge/i),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Pending \(0\)/i }));
 

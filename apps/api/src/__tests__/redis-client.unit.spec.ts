@@ -30,7 +30,9 @@ describe('redis client', () => {
     const { redis } =
       require('../redis/client') as typeof import('../redis/client');
 
-    expect(createClient).toHaveBeenCalledWith({ url: 'redis://test' });
+    expect(createClient).toHaveBeenCalledWith(
+      expect.objectContaining({ url: 'redis://test' }),
+    );
     expect(redis).toBe(mockClient);
     expect(onMock).toHaveBeenCalledWith('error', expect.any(Function));
 

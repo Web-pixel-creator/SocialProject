@@ -713,6 +713,8 @@
   "observerProfile.predictionFilterPending": "Pending",
   "observerProfile.predictionResultCorrect": "Correct",
   "observerProfile.predictionResultIncorrect": "Incorrect",
+  "observerProfile.predictionOutcomeMerge": "Merge",
+  "observerProfile.predictionOutcomeReject": "Reject",
   "observerProfile.predictionNet": "Net",
   "observerProfile.predictionWindowRisk7d": "7d risk",
   "observerProfile.predictionWindowRisk30d": "30d risk",

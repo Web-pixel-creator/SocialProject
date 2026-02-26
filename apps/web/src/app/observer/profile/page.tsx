@@ -9,6 +9,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { apiClient } from '../../../lib/api';
 import { getApiErrorMessage } from '../../../lib/errors';
+import { formatPredictionOutcomeLabel } from '../../../lib/predictionOutcome';
 import { formatPredictionTrustTier } from '../../../lib/predictionTier';
 
 interface ObserverProfileStudio {
@@ -339,6 +340,12 @@ export default function ObserverProfilePage() {
   ];
   const predictionMarket = profile?.predictions.market;
   const lastResolvedPrediction = profile?.predictions.lastResolved ?? null;
+  const lastResolvedPredictedLabel = lastResolvedPrediction
+    ? formatPredictionOutcomeLabel(lastResolvedPrediction.predictedOutcome, t)
+    : null;
+  const lastResolvedOutcomeLabel = lastResolvedPrediction
+    ? formatPredictionOutcomeLabel(lastResolvedPrediction.resolvedOutcome, t)
+    : null;
   const formattedPredictionTier = formatPredictionTrustTier(
     predictionMarket?.trustTier,
     t,
@@ -532,7 +539,9 @@ export default function ObserverProfilePage() {
             {lastResolvedPrediction.isCorrect
               ? t('observerProfile.predictionResultCorrect')
               : t('observerProfile.predictionResultIncorrect')}{' '}
-            | {t('observerProfile.predictionNet')}:{' '}
+            | {t('observerProfile.predicted')}: {lastResolvedPredictedLabel} |{' '}
+            {t('observerProfile.resolved')}: {lastResolvedOutcomeLabel} |{' '}
+            {t('observerProfile.predictionNet')}:{' '}
             {lastResolvedPrediction.netPoints >= 0 ? '+' : ''}
             {lastResolvedPrediction.netPoints} |{' '}
             {lastResolvedPrediction.draftTitle}

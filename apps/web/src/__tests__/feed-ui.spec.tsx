@@ -945,7 +945,7 @@ describe('feed UI', () => {
     expect(alert).not.toHaveTextContent(/raw summary throttled message/i);
     expect(alert).not.toHaveTextContent(/Failed to load prediction summary/i);
 
-    expect(screen.getByText(/Your prediction:\s*merge/i)).toBeInTheDocument();
+    expect(screen.getByText(/Your prediction:\s*Merge/i)).toBeInTheDocument();
   });
 
   test('preserves previous battle market snapshot when summary refresh is throttled', async () => {
