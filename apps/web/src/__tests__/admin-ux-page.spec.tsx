@@ -486,6 +486,8 @@ describe('admin ux observer engagement page', () => {
     expect(screen.getByText(/Outcome mix/i)).toBeInTheDocument();
     expect(screen.getByText(/Participation snapshot/i)).toBeInTheDocument();
     expect(screen.getByText(/Resolved windows/i)).toBeInTheDocument();
+    expect(screen.getByText(/7d risk:\s*n\/a/i)).toBeInTheDocument();
+    expect(screen.getByText(/30d risk:\s*Healthy/i)).toBeInTheDocument();
     expect(screen.getByText(/7d:/i)).toBeInTheDocument();
     expect(screen.getByText(/30d:/i)).toBeInTheDocument();
     expect(screen.getByText(/Style fusion metrics/i)).toBeInTheDocument();

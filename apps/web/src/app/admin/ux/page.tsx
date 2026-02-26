@@ -551,6 +551,11 @@ const DEFAULT_GATEWAY_TELEMETRY_THRESHOLDS: GatewayTelemetryThresholds = {
     watchAbove: 0.2,
   },
 };
+const PREDICTION_RESOLUTION_WINDOW_ACCURACY_THRESHOLDS = {
+  criticalBelow: 0.45,
+  watchBelow: 0.6,
+} as const;
+const PREDICTION_RESOLUTION_WINDOW_MIN_SAMPLE = 3;
 
 const toNumber = (value: unknown, fallback = 0): number =>
   typeof value === 'number' && Number.isFinite(value) ? value : fallback;
@@ -1287,6 +1292,18 @@ const resolveGatewayTelemetryHealthLevel = ({
     return 'healthy';
   }
   return 'unknown';
+};
+
+const resolvePredictionResolutionWindowHealthLevel = (
+  window: PredictionResolutionWindowItem,
+): HealthLevel => {
+  if (window.resolvedPredictions < PREDICTION_RESOLUTION_WINDOW_MIN_SAMPLE) {
+    return 'unknown';
+  }
+  return resolveHealthLevel(
+    window.accuracyRate,
+    PREDICTION_RESOLUTION_WINDOW_ACCURACY_THRESHOLDS,
+  );
 };
 
 const healthLabel = (level: HealthLevel): string => {
@@ -2879,6 +2896,10 @@ export default async function AdminUxObserverEngagementPage({
     (predictionResolutionWindows as Record<string, unknown>).d30,
     30,
   );
+  const predictionWindow7dRiskLevel =
+    resolvePredictionResolutionWindowHealthLevel(predictionWindow7d);
+  const predictionWindow30dRiskLevel =
+    resolvePredictionResolutionWindowHealthLevel(predictionWindow30d);
   const predictionFilterTelemetry = data?.predictionFilterTelemetry ?? {};
   const predictionFilterByScopeBreakdown = normalizeBreakdownItems({
     items: predictionFilterTelemetry.byScope,
@@ -4283,6 +4304,29 @@ export default async function AdminUxObserverEngagementPage({
             <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
               Resolved windows
             </h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className={`${healthBadgeClass(predictionWindow7dRiskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide`}
+              >
+                7d risk: {healthLabel(predictionWindow7dRiskLevel)}
+              </span>
+              <span
+                className={`${healthBadgeClass(predictionWindow30dRiskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide`}
+              >
+                30d risk: {healthLabel(predictionWindow30dRiskLevel)}
+              </span>
+            </div>
+            <p className="text-muted-foreground text-xs">
+              Thresholds: watch &lt;{' '}
+              {toRateText(
+                PREDICTION_RESOLUTION_WINDOW_ACCURACY_THRESHOLDS.watchBelow,
+              )}{' '}
+              | critical &lt;{' '}
+              {toRateText(
+                PREDICTION_RESOLUTION_WINDOW_ACCURACY_THRESHOLDS.criticalBelow,
+              )}{' '}
+              | min sample: {PREDICTION_RESOLUTION_WINDOW_MIN_SAMPLE}
+            </p>
             <p className="text-muted-foreground text-xs">
               {predictionWindow7d.days}d:{' '}
               <span className="font-semibold text-foreground">
