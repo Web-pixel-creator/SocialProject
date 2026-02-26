@@ -4656,6 +4656,24 @@ describe('API integration', () => {
     expect(followResult.body.output.followerCount).toBe(1);
     expect(followResult.body.deduplicated).toBeUndefined();
 
+    const followCooldownResult = await request(app)
+      .post(`/api/live-sessions/${sessionId}/realtime/tool`)
+      .set('Authorization', `Bearer ${observerToken}`)
+      .send({
+        callId: 'call_follow_2',
+        name: 'follow_studio',
+        arguments: {
+          studioId: makerId,
+        },
+      });
+    expect(followCooldownResult.status).toBe(429);
+    expect(followCooldownResult.body.error).toBe(
+      'LIVE_SESSION_REALTIME_TOOL_COOLDOWN',
+    );
+    expect(followCooldownResult.body.toolName).toBe('follow_studio');
+    expect(Number(followCooldownResult.body.retryAfterMs)).toBeGreaterThan(0);
+    expect(followCooldownResult.headers['retry-after']).toBeDefined();
+
     const followDuplicateResult = await request(app)
       .post(`/api/live-sessions/${sessionId}/realtime/tool`)
       .set('Authorization', `Bearer ${observerToken}`)

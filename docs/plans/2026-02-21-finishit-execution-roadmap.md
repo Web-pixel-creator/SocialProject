@@ -527,3 +527,46 @@ Exit criteria:
   - cache lookup is now strictly observer-scoped (`observerId` required in payload) so one observer's `callId` cannot dedupe another observer's tool execution,
   - realtime tool boundary now enforces strict `callId` identifier format (`[A-Za-z0-9][A-Za-z0-9_.:-]*`) before execution,
   - API integration coverage updated to verify duplicate follow-tool execution returns deduplicated cached output, conflict on mismatched-arguments/tool-name reuse, invalid-callId rejection, and follow-row singularity.
+- Realtime tool damage-control cooldown update (inspired by `pi-vs-claude-code` guardrail patterns):
+  - `/api/live-sessions/:id/realtime/tool` now enforces short cooldown on repeated same-arguments tool executions (`sessionId + observerId + tool + argumentsHash`) to prevent rapid side-effect spam with rotating `callId`,
+  - blocked calls now return `429 LIVE_SESSION_REALTIME_TOOL_COOLDOWN` plus `Retry-After`,
+  - blocked attempts are written into gateway timeline (`live_realtime_tool_blocked`, reason `duplicate_args_cooldown`) for operator visibility,
+  - integration coverage added in `api.integration.spec.ts` (second follow call with different `callId` but same args is throttled).
+
+## Cross-Repo Audit Update (2026-02-26)
+
+### OpenClaw parity (what is already in code)
+- Gateway session model and compaction: implemented (`agentGatewayService`, `session_compacted`, admin compact/close APIs, telemetry + trend cards).
+- Multi-step orchestration flow: implemented (`draftOrchestrationService`, role sequencing, persisted events).
+- Model failover + provider cooldown: implemented (`aiRuntimeService`, role chains, cooldown skip logic, health/dry-run endpoints).
+- Realtime tool loop (function calls -> tool execution -> function_call_output): implemented (`openaiRealtimeSessionService`, `realtimeToolBridge`, live session realtime tool route).
+- Persona-driven runtime prompts: implemented (studio `skill_profile.rolePersonas` injected into orchestration prompts).
+
+### OpenClaw parity (still missing)
+- File-based skills runtime (`SKILL.md` ingestion per agent at runtime) is not yet implemented as executable loader.
+- Explicit `sessions.send`-style public runtime API (currently available via admin/event surfaces, not a dedicated runtime contract).
+- Channel adapter layer parity (OpenClaw-style unified external channels) is partial; current implementation focuses on web/live-session path.
+- Auth-profile rotation parity (OpenRouter OAuth/API profile switching) is partial; current failover is provider-chain + cooldown.
+
+### pi-vs-claude-code takeaways applied
+- Guardrail-first tool execution strategy has started:
+  - strict allowlists + argument validation (already present),
+  - call-id idempotency (already present),
+  - same-args cooldown throttle (implemented in this update).
+
+### Next implementation queue (code-first)
+1. `Agent skills loader` vertical slice:
+   - add `apps/api/src/services/agentSkills/agentSkillsService.ts` to resolve and validate text skill capsules from `skill_profile`,
+   - inject resolved capsules into orchestration prompts with bounded size and strict sanitization,
+   - add unit + admin integration tests for loader and prompt injection boundaries.
+2. `Runtime sessions.send API` vertical slice:
+   - add observer-safe route for append-only inter-role events (non-admin),
+   - enforce strict query/body allowlists + role and payload bounds,
+   - add integration coverage for success + invalid + unauthorized paths.
+3. `Auth profile rotation` vertical slice:
+   - extend `aiRuntimeService` to support per-provider auth profiles (primary/fallback keys),
+   - expose profile-level health telemetry (`coolingDown`, `lastFailureCode`),
+   - cover with failover simulation tests and admin dry-run assertions.
+4. `Channel adapter scaffold` vertical slice:
+   - introduce internal adapter interface (`web`, `live_session`, `external_webhook`) and route runtime events through it,
+   - add telemetry by adapter and error budget counters.

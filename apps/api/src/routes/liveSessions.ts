@@ -114,6 +114,16 @@ const LIVE_SESSION_REALTIME_TOOLS = [
 ] as const;
 const PREDICTION_MIN_STAKE_POINTS = 5;
 const PREDICTION_MAX_STAKE_POINTS = 500;
+const DEFAULT_REALTIME_TOOL_REPEAT_WINDOW_MS = 4000;
+const LIVE_SESSION_REALTIME_TOOL_REPEAT_WINDOW_MS = Math.max(
+  1000,
+  Number(
+    process.env.LIVE_SESSION_REALTIME_TOOL_REPEAT_WINDOW_MS ??
+      DEFAULT_REALTIME_TOOL_REPEAT_WINDOW_MS,
+  ) || DEFAULT_REALTIME_TOOL_REPEAT_WINDOW_MS,
+);
+const LIVE_SESSION_REALTIME_TOOL_REPEAT_TRACK_LIMIT = 20_000;
+const realtimeToolRepeatState = new Map<string, number>();
 const isUuid = (value: string) => UUID_PATTERN.test(value);
 
 type LiveSessionRealtimeTool = (typeof LIVE_SESSION_REALTIME_TOOLS)[number];
@@ -774,6 +784,66 @@ const hashRealtimeToolArguments = (value: unknown): string =>
     .update(JSON.stringify(canonicalizeForHash(value)))
     .digest('hex');
 
+const cleanupRealtimeToolRepeatState = (now: number) => {
+  for (const [key, lastExecutedAt] of realtimeToolRepeatState) {
+    if (now - lastExecutedAt >= LIVE_SESSION_REALTIME_TOOL_REPEAT_WINDOW_MS) {
+      realtimeToolRepeatState.delete(key);
+    }
+  }
+  if (
+    realtimeToolRepeatState.size > LIVE_SESSION_REALTIME_TOOL_REPEAT_TRACK_LIMIT
+  ) {
+    const overflow =
+      realtimeToolRepeatState.size -
+      LIVE_SESSION_REALTIME_TOOL_REPEAT_TRACK_LIMIT;
+    let removed = 0;
+    for (const key of realtimeToolRepeatState.keys()) {
+      realtimeToolRepeatState.delete(key);
+      removed += 1;
+      if (removed >= overflow) {
+        break;
+      }
+    }
+  }
+};
+
+const buildRealtimeToolRepeatKey = (params: {
+  sessionId: string;
+  observerId: string;
+  toolName: LiveSessionRealtimeTool;
+  argumentsHash: string;
+}) =>
+  `${params.sessionId}:${params.observerId}:${params.toolName}:${params.argumentsHash}`;
+
+const getRealtimeToolRepeatBlock = (params: {
+  sessionId: string;
+  observerId: string;
+  toolName: LiveSessionRealtimeTool;
+  argumentsHash: string;
+}) => {
+  const now = Date.now();
+  cleanupRealtimeToolRepeatState(now);
+  const key = buildRealtimeToolRepeatKey(params);
+  const lastExecutedAt = realtimeToolRepeatState.get(key);
+  if (
+    lastExecutedAt &&
+    now - lastExecutedAt < LIVE_SESSION_REALTIME_TOOL_REPEAT_WINDOW_MS
+  ) {
+    return {
+      key,
+      retryAfterMs:
+        LIVE_SESSION_REALTIME_TOOL_REPEAT_WINDOW_MS - (now - lastExecutedAt),
+    };
+  }
+  return null;
+};
+
+const markRealtimeToolRepeatExecution = (key: string) => {
+  const now = Date.now();
+  realtimeToolRepeatState.set(key, now);
+  cleanupRealtimeToolRepeatState(now);
+};
+
 type RealtimeToolCacheLookupResult =
   | { kind: 'hit'; output: Record<string, unknown> }
   | { kind: 'conflict' }
@@ -1092,6 +1162,7 @@ router.post(
       const observerId = req.auth?.id as string;
       let output: Record<string, unknown>;
       let argumentsHash: string | null = null;
+      let repeatGuardKey: string | null = null;
       if (toolName === 'place_prediction') {
         const predictionArgs = parseRealtimeToolPredictionArguments(
           body.arguments,
@@ -1123,6 +1194,48 @@ router.post(
             });
           }
         }
+        const repeatBlock = getRealtimeToolRepeatBlock({
+          sessionId: detail.session.id,
+          observerId,
+          toolName,
+          argumentsHash,
+        });
+        if (repeatBlock) {
+          const retryAfterSeconds = Math.max(
+            1,
+            Math.ceil(repeatBlock.retryAfterMs / 1000),
+          );
+          res.set('Retry-After', `${retryAfterSeconds}`);
+          recordLiveGatewayEvent({
+            sessionId: detail.session.id,
+            draftId: detail.session.draftId,
+            hostAgentId: detail.session.hostAgentId,
+            eventType: 'live_realtime_tool_blocked',
+            fromRole: 'observer',
+            toRole: 'author',
+            payload: {
+              toolName,
+              callId,
+              observerId,
+              reason: 'duplicate_args_cooldown',
+              retryAfterMs: repeatBlock.retryAfterMs,
+            },
+          });
+          return res.status(429).json({
+            error: 'LIVE_SESSION_REALTIME_TOOL_COOLDOWN',
+            message:
+              'Repeated realtime tool call is cooling down. Retry shortly.',
+            toolName,
+            callId,
+            retryAfterMs: repeatBlock.retryAfterMs,
+          });
+        }
+        repeatGuardKey = buildRealtimeToolRepeatKey({
+          sessionId: detail.session.id,
+          observerId,
+          toolName,
+          argumentsHash,
+        });
         const { draftId, predictedOutcome, stakePoints } = predictionArgs;
         if (detail.session.draftId && detail.session.draftId !== draftId) {
           throw new ServiceError(
@@ -1198,6 +1311,48 @@ router.post(
             });
           }
         }
+        const repeatBlock = getRealtimeToolRepeatBlock({
+          sessionId: detail.session.id,
+          observerId,
+          toolName,
+          argumentsHash,
+        });
+        if (repeatBlock) {
+          const retryAfterSeconds = Math.max(
+            1,
+            Math.ceil(repeatBlock.retryAfterMs / 1000),
+          );
+          res.set('Retry-After', `${retryAfterSeconds}`);
+          recordLiveGatewayEvent({
+            sessionId: detail.session.id,
+            draftId: detail.session.draftId,
+            hostAgentId: detail.session.hostAgentId,
+            eventType: 'live_realtime_tool_blocked',
+            fromRole: 'observer',
+            toRole: 'author',
+            payload: {
+              toolName,
+              callId,
+              observerId,
+              reason: 'duplicate_args_cooldown',
+              retryAfterMs: repeatBlock.retryAfterMs,
+            },
+          });
+          return res.status(429).json({
+            error: 'LIVE_SESSION_REALTIME_TOOL_COOLDOWN',
+            message:
+              'Repeated realtime tool call is cooling down. Retry shortly.',
+            toolName,
+            callId,
+            retryAfterMs: repeatBlock.retryAfterMs,
+          });
+        }
+        repeatGuardKey = buildRealtimeToolRepeatKey({
+          sessionId: detail.session.id,
+          observerId,
+          toolName,
+          argumentsHash,
+        });
         const { studioId } = followStudioArgs;
         const studioExists = await db.query(
           'SELECT studio_name FROM agents WHERE id = $1',
@@ -1240,6 +1395,18 @@ router.post(
           followedAt: existingResult.rows[0]?.created_at ?? null,
           studioName: studioExists.rows[0]?.studio_name ?? null,
         };
+      }
+      if (repeatGuardKey) {
+        markRealtimeToolRepeatExecution(repeatGuardKey);
+      } else if (argumentsHash) {
+        markRealtimeToolRepeatExecution(
+          buildRealtimeToolRepeatKey({
+            sessionId: detail.session.id,
+            observerId,
+            toolName,
+            argumentsHash,
+          }),
+        );
       }
 
       getRealtime(req)?.broadcast(
