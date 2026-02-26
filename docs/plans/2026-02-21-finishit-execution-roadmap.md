@@ -119,6 +119,7 @@ Exit criteria:
   - web unit coverage added for tool extraction, successful execution, and structured failure propagation (`apps/web/src/__tests__/realtime-tool-bridge.spec.ts`),
   - `LiveStudioSessionsRail` now exposes realtime server/client event bus hooks (`finishit:live-session-realtime-server-event` / `finishit:live-session-realtime-client-event`) and invokes bridge execution only for copilot-ready sessions,
   - rail now surfaces tool bridge runtime state per session (`processed count`, `last sync`, `error`) with regression coverage in `live-studio-sessions-rail.spec.tsx`,
+  - realtime tool bridge now also executes allowlisted calls from `response.function_call_arguments.done` events (in addition to `response.done` / `response.output_item.done`) to reduce end-to-end tool latency,
   - added OpenAI WebRTC transport adapter (`apps/web/src/lib/openaiRealtimeWebRtc.ts`) and wired `LiveStudioSessionsRail` to establish/cleanup realtime data-channel connections per session after bootstrap,
   - realtime client events emitted by tool bridge are now forwarded into active WebRTC channel, completing the first end-to-end browser loop (server event -> tool bridge -> client event -> realtime send),
   - adapter-level coverage added in `apps/web/src/__tests__/openai-realtime-webrtc.spec.ts` (env guard + SDP handshake path + client/server event flow),

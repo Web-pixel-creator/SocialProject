@@ -106,6 +106,41 @@ const mapFunctionCallItem = (item: unknown): RealtimeToolCall | null => {
   };
 };
 
+const mapFunctionCallArgumentsDoneEvent = (
+  event: Record<string, unknown>,
+): RealtimeToolCall | null => {
+  if (event.type !== 'response.function_call_arguments.done') {
+    return null;
+  }
+
+  const itemRecord = asRecord(event.item);
+  const outputItemRecord = asRecord(event.output_item);
+  let nameCandidate = '';
+  if (typeof event.name === 'string') {
+    nameCandidate = event.name;
+  } else if (typeof itemRecord?.name === 'string') {
+    nameCandidate = itemRecord.name;
+  } else if (typeof outputItemRecord?.name === 'string') {
+    nameCandidate = outputItemRecord.name;
+  }
+  const rawName = nameCandidate.trim();
+  if (!REALTIME_TOOL_NAMES.has(rawName)) {
+    return null;
+  }
+
+  const callId = normalizeCallId(event.call_id ?? event.callId);
+  const argumentsJson = normalizeArgumentsJson(event.arguments);
+  if (!(callId && argumentsJson)) {
+    return null;
+  }
+
+  return {
+    name: rawName as RealtimeToolName,
+    callId,
+    argumentsJson,
+  };
+};
+
 export const extractRealtimeToolCalls = (
   event: unknown,
 ): RealtimeToolCall[] => {
@@ -123,6 +158,10 @@ export const extractRealtimeToolCalls = (
   }
   if (record.type === 'response.output_item.done') {
     const parsed = mapFunctionCallItem(record.item ?? record.output_item);
+    return parsed ? [parsed] : [];
+  }
+  if (record.type === 'response.function_call_arguments.done') {
+    const parsed = mapFunctionCallArgumentsDoneEvent(record);
     return parsed ? [parsed] : [];
   }
   return [];

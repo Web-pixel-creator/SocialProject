@@ -78,6 +78,25 @@ describe('realtimeToolBridge', () => {
     ]);
   });
 
+  test('extractRealtimeToolCalls parses allowlisted function call from response.function_call_arguments.done', () => {
+    const calls = extractRealtimeToolCalls({
+      type: 'response.function_call_arguments.done',
+      name: 'place_prediction',
+      call_id: 'call_11',
+      arguments:
+        '{"draftId":"00000000-0000-0000-0000-000000000011","outcome":"merge","stakePoints":30}',
+    });
+
+    expect(calls).toEqual([
+      {
+        name: 'place_prediction',
+        callId: 'call_11',
+        argumentsJson:
+          '{"draftId":"00000000-0000-0000-0000-000000000011","outcome":"merge","stakePoints":30}',
+      },
+    ]);
+  });
+
   test('executeRealtimeToolCall posts to realtime tool endpoint', async () => {
     const post = jest.fn().mockResolvedValue({
       data: {
@@ -271,5 +290,57 @@ describe('realtimeToolBridge', () => {
     expect(second).toEqual({ processed: 0 });
     expect(post).toHaveBeenCalledTimes(1);
     expect(sendClientEvent).toHaveBeenCalledTimes(2);
+  });
+
+  test('handleRealtimeToolCallsFromResponseDone handles response.function_call_arguments.done events', async () => {
+    const post = jest.fn().mockResolvedValue({
+      data: {
+        callId: 'call_12',
+        toolName: 'place_prediction',
+        output: {
+          prediction: {
+            pullRequestId: 'pr_12',
+            outcome: 'merge',
+          },
+        },
+      },
+    });
+    const sendClientEvent = jest.fn();
+
+    const result = await handleRealtimeToolCallsFromResponseDone({
+      liveSessionId: 'session_1',
+      serverEvent: {
+        type: 'response.function_call_arguments.done',
+        name: 'place_prediction',
+        call_id: 'call_12',
+        arguments:
+          '{"draftId":"00000000-0000-0000-0000-000000000012","outcome":"merge","stakePoints":40}',
+      },
+      sendClientEvent,
+      client: { post },
+    });
+
+    expect(result).toEqual({ processed: 1 });
+    expect(post).toHaveBeenCalledWith(
+      '/live-sessions/session_1/realtime/tool',
+      {
+        callId: 'call_12',
+        name: 'place_prediction',
+        arguments:
+          '{"draftId":"00000000-0000-0000-0000-000000000012","outcome":"merge","stakePoints":40}',
+      },
+    );
+    expect(sendClientEvent).toHaveBeenCalledTimes(2);
+    expect(sendClientEvent.mock.calls[0][0]).toEqual({
+      type: 'conversation.item.create',
+      item: {
+        type: 'function_call_output',
+        call_id: 'call_12',
+        output: '{"prediction":{"pullRequestId":"pr_12","outcome":"merge"}}',
+      },
+    });
+    expect(sendClientEvent.mock.calls[1][0]).toEqual({
+      type: 'response.create',
+    });
   });
 });
