@@ -1073,7 +1073,9 @@ describe('Admin API routes', () => {
        VALUES
          ('agent_gateway_adapter_route_success', 'system', 'ok', 'agent_gateway_adapter', '{"adapter":"web","channel":"draft_cycle"}'::jsonb),
          ('agent_gateway_adapter_route_failed', 'system', 'failed', 'agent_gateway_adapter', '{"adapter":"web","channel":"draft_cycle"}'::jsonb),
-         ('agent_gateway_adapter_route_success', 'system', 'ok', 'agent_gateway_adapter', '{"adapter":"external_webhook","channel":"swarm"}'::jsonb)`,
+         ('agent_gateway_adapter_route_success', 'system', 'ok', 'agent_gateway_adapter', '{"adapter":"external_webhook","channel":"swarm"}'::jsonb),
+         ('agent_gateway_ingest_accept', 'system', 'ok', 'agent_gateway_ingest', '{"connectorId":"partner-alpha","connectorRiskLevel":"trusted","channel":"draft_cycle"}'::jsonb),
+         ('agent_gateway_ingest_reject', 'system', 'failed', 'agent_gateway_ingest', '{"connectorId":"partner-alpha","connectorRiskLevel":"trusted","channel":"draft_cycle","code":"AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMITED"}'::jsonb)`,
     );
 
     const response = await request(app)
@@ -1126,6 +1128,32 @@ describe('Admin API routes', () => {
           total: 0,
           errorRate: null,
           riskLevel: 'unknown',
+        }),
+      ]),
+    );
+    expect(response.body.ingestConnectors).toEqual(
+      expect.objectContaining({
+        total: 2,
+        accepted: 1,
+        replayed: 0,
+        rejected: 1,
+        rateLimited: 1,
+        rejectRate: 0.5,
+        rateLimitedShare: 1,
+      }),
+    );
+    expect(response.body.ingestConnectors.usage).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          connectorId: 'partner-alpha',
+          configuredRiskLevel: 'trusted',
+          accepted: 1,
+          replayed: 0,
+          rejected: 1,
+          rateLimited: 1,
+          total: 2,
+          rejectRate: 0.5,
+          rateLimitedShare: 1,
         }),
       ]),
     );

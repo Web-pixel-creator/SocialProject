@@ -2937,10 +2937,59 @@ router.get(
         count: toNumber(row.count),
         lastSeenAt: toNullableIsoTimestamp(row.last_seen_at),
       }));
+      const ingestRows: AgentGatewayIngestTelemetryRow[] = (
+        await db.query(
+          `SELECT
+             LOWER(COALESCE(metadata->>'connectorId', 'unknown')) AS connector_id,
+             LOWER(COALESCE(metadata->>'connectorRiskLevel', 'unknown')) AS connector_risk_level,
+             event_type,
+             LOWER(NULLIF(metadata->>'code', '')) AS error_code,
+             COUNT(*)::int AS count,
+             MAX(created_at) AS last_seen_at
+           FROM ux_events
+           WHERE source = 'agent_gateway_ingest'
+             AND event_type IN ($4::text, $5::text, $6::text)
+             AND created_at >= NOW() - ($1 || ' hours')::interval
+             AND ($2::text IS NULL OR LOWER(COALESCE(metadata->>'channel', '')) = $2)
+             AND (
+               $3::text IS NULL OR
+               LOWER(COALESCE(metadata->>'provider', '')) = $3 OR
+               LOWER(COALESCE(metadata->>'selectedProvider', '')) = $3
+             )
+           GROUP BY
+             LOWER(COALESCE(metadata->>'connectorId', 'unknown')),
+             LOWER(COALESCE(metadata->>'connectorRiskLevel', 'unknown')),
+             event_type,
+             LOWER(NULLIF(metadata->>'code', ''))`,
+          [
+            hours,
+            channelFilter,
+            providerFilter,
+            AGENT_GATEWAY_INGEST_ACCEPT_EVENT,
+            AGENT_GATEWAY_INGEST_REPLAY_EVENT,
+            AGENT_GATEWAY_INGEST_REJECT_EVENT,
+          ],
+        )
+      ).rows.map((row) => ({
+        connectorId: String(row.connector_id ?? 'unknown'),
+        connectorRiskLevel:
+          typeof row.connector_risk_level === 'string'
+            ? row.connector_risk_level
+            : null,
+        eventType: String(row.event_type ?? ''),
+        errorCode:
+          typeof row.error_code === 'string' && row.error_code.length > 0
+            ? row.error_code
+            : null,
+        count: toNumber(row.count),
+        lastSeenAt: toNullableIsoTimestamp(row.last_seen_at),
+      }));
 
       const adapters = buildAgentGatewayAdapterMetrics(adapterRows, {
         includeRegistry: true,
       });
+      const ingestConnectors =
+        buildAgentGatewayIngestConnectorMetrics(ingestRows);
       res.json({
         windowHours: hours,
         generatedAt: new Date().toISOString(),
@@ -2949,6 +2998,7 @@ router.get(
           provider: providerFilter,
         },
         adapters,
+        ingestConnectors,
       });
     } catch (error) {
       next(error);
