@@ -260,10 +260,13 @@ describe('observer profile page', () => {
         /7d:\s*67% \(2\/3\),\s*Net:\s*\+9 \| 30d:\s*75% \(6\/8\),\s*Net:\s*\+24/i,
       ),
     ).toBeInTheDocument();
+    expect(screen.getByText(/7d risk/i)).toBeInTheDocument();
+    expect(screen.getByText(/30d risk/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Watch$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Critical$/i)).toBeInTheDocument();
+    expect(screen.getByText(/min sample:\s*2/i)).toBeInTheDocument();
     expect(
-      screen.getByText(
-        /7d risk:\s*Watch \|\s*30d risk:\s*Critical \|\s*min sample:\s*2 \|\s*thresholds:\s*watch <62%,\s*critical <47%/i,
-      ),
+      screen.getByText(/thresholds:\s*watch <62%,\s*critical <47%/i),
     ).toBeInTheDocument();
     expect(
       screen.getByText(

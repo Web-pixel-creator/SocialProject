@@ -183,10 +183,13 @@ describe('observer public profile page', () => {
         /7d:\s*50% \(1\/2\),\s*Net:\s*\+5 \| 30d:\s*78% \(7\/9\),\s*Net:\s*\+31/i,
       ),
     ).toBeInTheDocument();
+    expect(screen.getByText(/7d risk/i)).toBeInTheDocument();
+    expect(screen.getByText(/30d risk/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Watch$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Healthy$/i)).toBeInTheDocument();
+    expect(screen.getByText(/min sample:\s*3/i)).toBeInTheDocument();
     expect(
-      screen.getByText(
-        /7d risk:\s*Watch \|\s*30d risk:\s*Healthy \|\s*min sample:\s*3 \|\s*thresholds:\s*watch <60%,\s*critical <45%/i,
-      ),
+      screen.getByText(/thresholds:\s*watch <60%,\s*critical <45%/i),
     ).toBeInTheDocument();
     expect(
       screen.getByText(

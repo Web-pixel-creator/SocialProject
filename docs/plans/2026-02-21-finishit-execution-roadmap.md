@@ -144,6 +144,7 @@ Exit criteria:
   - `/admin/ux` prediction resolved windows now render threshold-based risk badges (`7d risk`, `30d risk`) with explicit watch/critical cutoffs and minimum resolved-sample guard.
   - prediction-window risk thresholds are now API-first (`predictionMarket.thresholds.resolutionWindows`) and per-window `riskLevel` is returned by backend so admin UI does not drift from server policy.
   - observer profile APIs (`/api/observers/me/profile`, `/api/observers/:id/profile`) now mirror API-first prediction window risk policy (`predictions.thresholds.resolutionWindows` + `predictions.timeWindows.*.riskLevel`), and private/public profile summaries render compact `7d/30d` risk with min-sample + threshold context.
+  - private/public profile summary rendering for `recentWindow + 7d/30d + risk` is now centralized in `ObserverPredictionWindowsSummary` to keep observer surfaces behaviorally in sync.
   - web coverage updated for profile filter labels and shared history helpers (`observer-profile-page.spec.tsx`, `observer-public-profile-page.spec.tsx`, `prediction-history.spec.ts`, `observer-prediction-history-panel.spec.tsx`).
 - Personas v1 connected in onboarding + studio profile surfaces, with API/web test coverage.
 - Prediction-lite hardening updated with explicit abuse throttling on write endpoints:

@@ -4,13 +4,10 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import useSWR from 'swr';
 import { ObserverPredictionHistoryPanel } from '../../../components/ObserverPredictionHistoryPanel';
+import { ObserverPredictionWindowsSummary } from '../../../components/ObserverPredictionWindowsSummary';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { apiClient } from '../../../lib/api';
 import { getApiErrorMessage, getApiErrorStatus } from '../../../lib/errors';
-import {
-  normalizePredictionResolutionWindowThresholds,
-  resolvePredictionResolutionWindowRiskLevel,
-} from '../../../lib/predictionResolutionWindowRisk';
 import { formatPredictionTrustTier } from '../../../lib/predictionTier';
 
 interface ObserverProfileStudio {
@@ -281,42 +278,6 @@ export default function ObserverPublicProfilePage() {
     profile?.observer.handle ?? t('observerPublicProfile.observerLabel');
   const recentPredictions = profile?.recentPredictions ?? [];
   const lastResolvedPrediction = profile?.predictions.lastResolved ?? null;
-  const recentWindow = profile?.predictions.recentWindow ?? {
-    size: 10,
-    resolved: 0,
-    correct: 0,
-    rate: 0,
-  };
-  const timeWindows = profile?.predictions.timeWindows ?? {
-    d7: {
-      days: 7,
-      resolved: 0,
-      correct: 0,
-      rate: 0,
-      netPoints: 0,
-      riskLevel: 'unknown',
-    },
-    d30: {
-      days: 30,
-      resolved: 0,
-      correct: 0,
-      rate: 0,
-      netPoints: 0,
-      riskLevel: 'unknown',
-    },
-  };
-  const predictionResolutionThresholds =
-    normalizePredictionResolutionWindowThresholds(
-      profile?.predictions.thresholds?.resolutionWindows,
-    );
-  const riskLevel7d = resolvePredictionResolutionWindowRiskLevel({
-    window: timeWindows.d7,
-    thresholds: predictionResolutionThresholds,
-  });
-  const riskLevel30d = resolvePredictionResolutionWindowRiskLevel({
-    window: timeWindows.d30,
-    thresholds: predictionResolutionThresholds,
-  });
 
   return (
     <main className="grid gap-4 pb-8 sm:gap-5">
@@ -406,38 +367,12 @@ export default function ObserverPublicProfilePage() {
             {t('observerProfile.lastResolvedNone')}
           </p>
         )}
-        <p className="text-muted-foreground text-xs">
-          {t('observerProfile.recentWindowAccuracy')} ({recentWindow.size}):{' '}
-          {Math.round(recentWindow.rate * 100)}% ({recentWindow.correct}/
-          {recentWindow.resolved})
-        </p>
-        <p className="text-muted-foreground text-xs">
-          7d: {Math.round(timeWindows.d7.rate * 100)}% ({timeWindows.d7.correct}
-          /{timeWindows.d7.resolved}), {t('observerProfile.predictionNet')}:{' '}
-          {timeWindows.d7.netPoints >= 0 ? '+' : ''}
-          {timeWindows.d7.netPoints} | 30d:{' '}
-          {Math.round(timeWindows.d30.rate * 100)}% ({timeWindows.d30.correct}/
-          {timeWindows.d30.resolved}), {t('observerProfile.predictionNet')}:{' '}
-          {timeWindows.d30.netPoints >= 0 ? '+' : ''}
-          {timeWindows.d30.netPoints}
-        </p>
-        <p className="text-muted-foreground text-xs">
-          {t('observerProfile.predictionWindowRisk7d')}:{' '}
-          {t(`observerProfile.health.${riskLevel7d}`)} |{' '}
-          {t('observerProfile.predictionWindowRisk30d')}:{' '}
-          {t(`observerProfile.health.${riskLevel30d}`)} |{' '}
-          {t('observerProfile.predictionWindowRiskMinSample')}:{' '}
-          {predictionResolutionThresholds.minResolvedPredictions} |{' '}
-          {t('observerProfile.predictionWindowRiskThresholds')}: watch &lt;
-          {Math.round(
-            predictionResolutionThresholds.accuracyRate.watchBelow * 100,
-          )}
-          %, critical &lt;
-          {Math.round(
-            predictionResolutionThresholds.accuracyRate.criticalBelow * 100,
-          )}
-          %
-        </p>
+        <ObserverPredictionWindowsSummary
+          recentWindow={profile?.predictions.recentWindow}
+          t={t}
+          thresholds={profile?.predictions.thresholds?.resolutionWindows}
+          timeWindows={profile?.predictions.timeWindows}
+        />
       </section>
 
       <section className="card grid gap-2 p-4 sm:p-5">
