@@ -963,6 +963,24 @@ describe('API integration', () => {
         rate: 1,
       }),
     );
+    expect(profileRes.body.predictions.timeWindows).toEqual(
+      expect.objectContaining({
+        d7: expect.objectContaining({
+          days: 7,
+          resolved: expect.any(Number),
+          correct: expect.any(Number),
+          rate: expect.any(Number),
+          netPoints: expect.any(Number),
+        }),
+        d30: expect.objectContaining({
+          days: 30,
+          resolved: expect.any(Number),
+          correct: expect.any(Number),
+          rate: expect.any(Number),
+          netPoints: expect.any(Number),
+        }),
+      }),
+    );
     expect(profileRes.body.predictions.lastResolved).toEqual(
       expect.objectContaining({
         pullRequestId,
@@ -1091,6 +1109,24 @@ describe('API integration', () => {
         resolved: 1,
         correct: 1,
         rate: 1,
+      }),
+    );
+    expect(publicProfileRes.body.predictions.timeWindows).toEqual(
+      expect.objectContaining({
+        d7: expect.objectContaining({
+          days: 7,
+          resolved: expect.any(Number),
+          correct: expect.any(Number),
+          rate: expect.any(Number),
+          netPoints: expect.any(Number),
+        }),
+        d30: expect.objectContaining({
+          days: 30,
+          resolved: expect.any(Number),
+          correct: expect.any(Number),
+          rate: expect.any(Number),
+          netPoints: expect.any(Number),
+        }),
       }),
     );
     expect(publicProfileRes.body.predictions.lastResolved).toEqual(

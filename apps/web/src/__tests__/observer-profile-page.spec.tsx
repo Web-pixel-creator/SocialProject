@@ -88,6 +88,22 @@ describe('observer profile page', () => {
                 correct: 4,
                 rate: 0.8,
               },
+              timeWindows: {
+                d7: {
+                  days: 7,
+                  resolved: 3,
+                  correct: 2,
+                  rate: 0.67,
+                  netPoints: 9,
+                },
+                d30: {
+                  days: 30,
+                  resolved: 8,
+                  correct: 6,
+                  rate: 0.75,
+                  netPoints: 24,
+                },
+              },
               lastResolved: {
                 id: 'pred-1',
                 pullRequestId: 'pr-1',
@@ -230,6 +246,11 @@ describe('observer profile page', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
+        /7d:\s*67% \(2\/3\),\s*Net:\s*\+9 \| 30d:\s*75% \(6\/8\),\s*Net:\s*\+24/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
         /Last resolved:\s*Correct \|\s*Net:\s*\+8 \|\s*Watchlist Draft/i,
       ),
     ).toBeInTheDocument();
@@ -306,6 +327,22 @@ describe('observer profile page', () => {
                 resolved: 1,
                 correct: 1,
                 rate: 1,
+              },
+              timeWindows: {
+                d7: {
+                  days: 7,
+                  resolved: 1,
+                  correct: 1,
+                  rate: 1,
+                  netPoints: 6,
+                },
+                d30: {
+                  days: 30,
+                  resolved: 2,
+                  correct: 1,
+                  rate: 0.5,
+                  netPoints: 4,
+                },
               },
               lastResolved: {
                 id: 'pred-resolved',

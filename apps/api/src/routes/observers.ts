@@ -192,6 +192,7 @@ const fetchObserverPredictionSignals = async (observerId: string) => {
     currentStreakResult,
     bestStreakResult,
     recentWindowResult,
+    timeWindowsResult,
     lastResolvedResult,
   ] = await Promise.all([
     db.query(
@@ -259,6 +260,40 @@ const fetchObserverPredictionSignals = async (observerId: string) => {
     ),
     db.query(
       `SELECT
+         COUNT(*) FILTER (
+           WHERE COALESCE(resolved_at, created_at) >= NOW() - INTERVAL '7 days'
+         )::int AS resolved_7d,
+         COUNT(*) FILTER (
+           WHERE COALESCE(resolved_at, created_at) >= NOW() - INTERVAL '7 days'
+             AND is_correct = true
+         )::int AS correct_7d,
+         COALESCE(
+           SUM(payout_points - stake_points) FILTER (
+             WHERE COALESCE(resolved_at, created_at) >= NOW() - INTERVAL '7 days'
+           ),
+           0
+         )::int AS net_7d,
+         COUNT(*) FILTER (
+           WHERE COALESCE(resolved_at, created_at) >= NOW() - INTERVAL '30 days'
+         )::int AS resolved_30d,
+         COUNT(*) FILTER (
+           WHERE COALESCE(resolved_at, created_at) >= NOW() - INTERVAL '30 days'
+             AND is_correct = true
+         )::int AS correct_30d,
+         COALESCE(
+           SUM(payout_points - stake_points) FILTER (
+             WHERE COALESCE(resolved_at, created_at) >= NOW() - INTERVAL '30 days'
+           ),
+           0
+         )::int AS net_30d
+       FROM observer_pr_predictions
+       WHERE observer_id = $1
+         AND resolved_outcome IS NOT NULL
+         AND is_correct IS NOT NULL`,
+      [observerId],
+    ),
+    db.query(
+      `SELECT
          opp.id,
          opp.pull_request_id,
          opp.predicted_outcome,
@@ -291,6 +326,12 @@ const fetchObserverPredictionSignals = async (observerId: string) => {
   const recentResolvedCorrect = toSafeNumber(
     recentWindowResult.rows[0]?.resolved_correct,
   );
+  const resolved7d = toSafeNumber(timeWindowsResult.rows[0]?.resolved_7d);
+  const correct7d = toSafeNumber(timeWindowsResult.rows[0]?.correct_7d);
+  const net7d = toSafeNumber(timeWindowsResult.rows[0]?.net_7d);
+  const resolved30d = toSafeNumber(timeWindowsResult.rows[0]?.resolved_30d);
+  const correct30d = toSafeNumber(timeWindowsResult.rows[0]?.correct_30d);
+  const net30d = toSafeNumber(timeWindowsResult.rows[0]?.net_30d);
   const lastResolvedRow = lastResolvedResult.rows[0] as
     | Record<string, unknown>
     | undefined;
@@ -322,6 +363,26 @@ const fetchObserverPredictionSignals = async (observerId: string) => {
           ? Math.round((recentResolvedCorrect / recentResolvedTotal) * 100) /
             100
           : 0,
+    },
+    timeWindows: {
+      d7: {
+        days: 7,
+        resolved: resolved7d,
+        correct: correct7d,
+        rate:
+          resolved7d > 0 ? Math.round((correct7d / resolved7d) * 100) / 100 : 0,
+        netPoints: net7d,
+      },
+      d30: {
+        days: 30,
+        resolved: resolved30d,
+        correct: correct30d,
+        rate:
+          resolved30d > 0
+            ? Math.round((correct30d / resolved30d) * 100) / 100
+            : 0,
+        netPoints: net30d,
+      },
     },
     lastResolved,
   };
@@ -498,6 +559,7 @@ router.get('/observers/me/profile', requireHuman, async (req, res, next) => {
           best: predictionSignals.bestStreak,
         },
         recentWindow: predictionSignals.recentWindow,
+        timeWindows: predictionSignals.timeWindows,
         lastResolved: predictionSignals.lastResolved,
         market: {
           trustTier: predictionMarketProfile.trustTier,
@@ -710,6 +772,7 @@ router.get('/observers/:id/profile', async (req, res, next) => {
           best: predictionSignals.bestStreak,
         },
         recentWindow: predictionSignals.recentWindow,
+        timeWindows: predictionSignals.timeWindows,
         lastResolved: predictionSignals.lastResolved,
         market: {
           trustTier: predictionMarketProfile.trustTier,

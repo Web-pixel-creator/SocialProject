@@ -45,6 +45,22 @@ const profilePayload = {
       correct: 3,
       rate: 0.75,
     },
+    timeWindows: {
+      d7: {
+        days: 7,
+        resolved: 2,
+        correct: 1,
+        rate: 0.5,
+        netPoints: 5,
+      },
+      d30: {
+        days: 30,
+        resolved: 9,
+        correct: 7,
+        rate: 0.78,
+        netPoints: 31,
+      },
+    },
     lastResolved: {
       id: 'pred-1',
       pullRequestId: 'pr-1',
@@ -150,6 +166,11 @@ describe('observer public profile page', () => {
     expect(screen.getByText(/Best:\s*5/i)).toBeInTheDocument();
     expect(
       screen.getByText(/Recent resolved accuracy \(10\):\s*75% \(3\/4\)/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /7d:\s*50% \(1\/2\),\s*Net:\s*\+5 \| 30d:\s*78% \(7\/9\),\s*Net:\s*\+31/i,
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByText(

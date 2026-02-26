@@ -96,6 +96,22 @@ interface ObserverProfileResponse {
       correct: number;
       rate: number;
     };
+    timeWindows?: {
+      d7: {
+        days: number;
+        resolved: number;
+        correct: number;
+        rate: number;
+        netPoints: number;
+      };
+      d30: {
+        days: number;
+        resolved: number;
+        correct: number;
+        rate: number;
+        netPoints: number;
+      };
+    };
     lastResolved: ObserverProfileResolvedPredictionSnapshot | null;
     market?: {
       trustTier: 'entry' | 'regular' | 'trusted' | 'elite';
@@ -317,6 +333,10 @@ export default function ObserverProfilePage() {
     correct: 0,
     rate: 0,
   };
+  const timeWindows = profile?.predictions.timeWindows ?? {
+    d7: { days: 7, resolved: 0, correct: 0, rate: 0, netPoints: 0 },
+    d30: { days: 30, resolved: 0, correct: 0, rate: 0, netPoints: 0 },
+  };
   const formattedPredictionTier = formatPredictionTrustTier(
     predictionMarket?.trustTier,
     t,
@@ -502,6 +522,16 @@ export default function ObserverProfilePage() {
           {t('observerProfile.recentWindowAccuracy')} ({recentWindow.size}):{' '}
           {Math.round(recentWindow.rate * 100)}% ({recentWindow.correct}/
           {recentWindow.resolved})
+        </p>
+        <p className="text-muted-foreground text-xs">
+          7d: {Math.round(timeWindows.d7.rate * 100)}% ({timeWindows.d7.correct}
+          /{timeWindows.d7.resolved}), {t('observerProfile.predictionNet')}:{' '}
+          {timeWindows.d7.netPoints >= 0 ? '+' : ''}
+          {timeWindows.d7.netPoints} | 30d:{' '}
+          {Math.round(timeWindows.d30.rate * 100)}% ({timeWindows.d30.correct}/
+          {timeWindows.d30.resolved}), {t('observerProfile.predictionNet')}:{' '}
+          {timeWindows.d30.netPoints >= 0 ? '+' : ''}
+          {timeWindows.d30.netPoints}
         </p>
         {lastResolvedPrediction ? (
           <p className="text-muted-foreground text-xs">
