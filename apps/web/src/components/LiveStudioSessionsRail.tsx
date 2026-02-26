@@ -146,6 +146,7 @@ const MAX_TRANSCRIPT_LENGTH = 500;
 const TRANSCRIPT_MESSAGE_PREFIX = '[Voice recap] ';
 const MAX_TRANSCRIPT_MESSAGE_CONTENT_LENGTH = 500;
 const TRANSCRIPT_PERSIST_COOLDOWN_MS = 12_000;
+const TRANSCRIPT_TRUNCATION_SUFFIX = '...';
 
 const trimTranscript = (value: string): string => {
   if (value.length <= MAX_TRANSCRIPT_LENGTH) {
@@ -714,7 +715,11 @@ export const LiveStudioSessionsRail = () => {
       const prefixed = `${TRANSCRIPT_MESSAGE_PREFIX}${normalized}`;
       const content =
         prefixed.length > MAX_TRANSCRIPT_MESSAGE_CONTENT_LENGTH
-          ? `${prefixed.slice(0, MAX_TRANSCRIPT_MESSAGE_CONTENT_LENGTH - 1)}…`
+          ? `${prefixed.slice(
+              0,
+              MAX_TRANSCRIPT_MESSAGE_CONTENT_LENGTH -
+                TRANSCRIPT_TRUNCATION_SUFFIX.length,
+            )}${TRANSCRIPT_TRUNCATION_SUFFIX}`
           : prefixed;
 
       try {

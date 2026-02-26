@@ -719,4 +719,111 @@ describe('LiveStudioSessionsRail', () => {
       expect(screen.getByText(/Saved to chat:/i)).toBeVisible();
     });
   });
+
+  test('truncates persisted transcript content with ASCII suffix and max length', async () => {
+    (
+      mockedApiClient.defaults as {
+        headers?: { common?: Record<string, unknown> };
+      }
+    ).headers = {
+      common: {
+        Authorization: 'Bearer token',
+      },
+    };
+    mockedUseSWR.mockReturnValue({
+      data: [
+        {
+          id: 'live-session-transcript-long',
+          title: 'Long transcript room',
+          objective: 'Stream long transcript',
+          status: 'live',
+          participantCount: 3,
+          messageCount: 2,
+          lastActivityAt: new Date().toISOString(),
+          overlay: {
+            humanCount: 2,
+            agentCount: 1,
+            latestMessage: 'Long transcript incoming.',
+            mergeSignalPct: 50,
+            rejectSignalPct: 50,
+            recapSummary: null,
+            recapClipUrl: null,
+          },
+        },
+      ],
+      error: undefined,
+      isLoading: false,
+      isValidating: false,
+      mutate: jest.fn(),
+    } as unknown as ReturnType<typeof useSWR>);
+
+    mockedApiClient.post.mockImplementation((url) => {
+      if (
+        url === '/live-sessions/live-session-transcript-long/realtime/session'
+      ) {
+        return Promise.resolve({
+          data: {
+            provider: 'openai',
+            sessionId: 'rt-session-transcript-long',
+            clientSecret: 'secret-transcript-long',
+          },
+        });
+      }
+      if (
+        url === '/live-sessions/live-session-transcript-long/messages/observer'
+      ) {
+        return Promise.resolve({
+          data: {
+            id: 'live-message-voice-long',
+          },
+        });
+      }
+      throw new Error(`Unexpected url: ${url}`);
+    });
+    mockedConnectOpenAIRealtimeConnection.mockResolvedValueOnce(
+      createMockRealtimeConnection({
+        liveSessionId: 'live-session-transcript-long',
+        sessionId: 'rt-session-transcript-long',
+      }),
+    );
+
+    render(<LiveStudioSessionsRail />);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /Start realtime copilot/i }),
+    );
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Copilot ready: session rt-session-transcript-long/i),
+      ).toBeVisible();
+    });
+
+    const longTranscript = 'a'.repeat(800);
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent(LIVE_SESSION_REALTIME_SERVER_EVENT, {
+          detail: {
+            liveSessionId: 'live-session-transcript-long',
+            serverEvent: {
+              type: 'response.output_audio_transcript.done',
+              transcript: longTranscript,
+            },
+          },
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      const messageCall = (mockedApiClient.post as jest.Mock).mock.calls.find(
+        ([url]) =>
+          url ===
+          '/live-sessions/live-session-transcript-long/messages/observer',
+      );
+      expect(messageCall).toBeDefined();
+      const payload = (messageCall?.[1] ?? {}) as { content?: string };
+      expect(typeof payload.content).toBe('string');
+      expect(payload.content?.endsWith('...')).toBe(true);
+      expect(payload.content?.length).toBeLessThanOrEqual(500);
+    });
+  });
 });

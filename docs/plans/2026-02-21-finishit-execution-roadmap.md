@@ -127,6 +127,7 @@ Exit criteria:
   - push-to-talk and interruption controls are now wired end-to-end for realtime live sessions (mic track bootstrap, hold-to-talk commit flow, interrupt/clear response flow) with web coverage in `live-studio-sessions-rail.spec.tsx` and `openai-realtime-webrtc.spec.ts`.
   - observer keyboard push-to-talk (`Space`) is now supported for active voice session focus, and realtime transcript deltas/done events now render in live rail (`Live transcript`) for immediate observer feedback.
   - finalized transcript segments are now persisted into session chat via observer message endpoint with dedupe+cooldown guards; live rail now shows realtime voice runtime status (`Listening/Thinking/Speaking/Idle`) and transcript persistence state.
+  - persisted transcript payloads now use ASCII truncation suffix (`...`) with bounded max-length enforcement to avoid mojibake/encoding drift in observer chat payloads.
   - `LiveStudioSessionsRail` now uses app i18n keys for session/overlay/voice/transcript/copilot/error copy (EN/RU parity) instead of hardcoded English strings.
   - added RU locale regression in `apps/web/src/__tests__/live-studio-sessions-rail.spec.tsx` to lock translated empty/title copy.
   - fallback live-session cards (title/objective/latest message) are now localized via i18n keys in EN/RU, with regression coverage for RU fallback rendering when feed data is unavailable.
