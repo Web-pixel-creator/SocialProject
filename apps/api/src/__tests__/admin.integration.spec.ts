@@ -143,6 +143,15 @@ describe('Admin API routes', () => {
     expect(gptProvider).toBeTruthy();
     expect(gptProvider.coolingDown).toBe(true);
     expect(typeof gptProvider.cooldownUntil).toBe('string');
+    expect(typeof gptProvider.activeProfile).toBe('string');
+    expect(Array.isArray(gptProvider.profiles)).toBe(true);
+    expect(gptProvider.profiles[0]).toEqual(
+      expect.objectContaining({
+        profile: expect.any(String),
+        coolingDown: expect.any(Boolean),
+        lastFailureCode: expect.anything(),
+      }),
+    );
   });
 
   test('ai runtime read endpoints reject unsupported query fields', async () => {

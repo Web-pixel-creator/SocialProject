@@ -50,7 +50,7 @@ describe('ai runtime http adapters', () => {
 
     expect(result.failed).toBe(false);
     expect(result.selectedProvider).toBe('claude-4');
-    expect(result.output).toContain('[claude-4] Critique:');
+    expect(result.output).toContain('[claude-4@default] Critique:');
   });
 
   test('keeps failover and cooldown behavior with HTTP adapters', async () => {
@@ -109,6 +109,77 @@ describe('ai runtime http adapters', () => {
     expect(secondRun.attempts[1].provider).toBe('gemini-2');
     expect(secondRun.attempts[1].status).toBe('success');
     expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  test('rotates auth profiles inside one provider and reports profile health', async () => {
+    process.env.AI_RUNTIME_USE_HTTP_ADAPTERS = 'true';
+    process.env.AI_PROVIDER_COOLDOWN_MS = '60000';
+    process.env.AI_RUNTIME_GPT_4_1_AUTH_PROFILES = 'primary,fallback';
+    process.env.AI_RUNTIME_GPT_4_1_ENDPOINT__PRIMARY =
+      'https://provider.example/gpt-primary';
+    process.env.AI_RUNTIME_GPT_4_1_API_KEY__PRIMARY = 'gpt-primary-key';
+    process.env.AI_RUNTIME_GPT_4_1_ENDPOINT__FALLBACK =
+      'https://provider.example/gpt-fallback';
+    process.env.AI_RUNTIME_GPT_4_1_API_KEY__FALLBACK = 'gpt-fallback-key';
+
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        text: async () => 'primary unavailable',
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () =>
+          JSON.stringify({ output_text: 'Fallback auth profile output' }),
+      });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const runtime = new AIRuntimeServiceImpl();
+    const result = await runtime.runWithFailover({
+      role: 'author',
+      prompt: 'Run with profile rotation',
+      providersOverride: ['gpt-4.1'],
+    });
+
+    expect(result.failed).toBe(false);
+    expect(result.selectedProvider).toBe('gpt-4.1');
+    expect(result.selectedAuthProfile).toBe('fallback');
+    expect(result.output).toBe('Fallback auth profile output');
+    expect(result.attempts[0]).toMatchObject({
+      provider: 'gpt-4.1',
+      authProfile: 'primary',
+      status: 'failed',
+      errorCode: 'AI_PROVIDER_HTTP_ERROR',
+    });
+    expect(result.attempts[1]).toMatchObject({
+      provider: 'gpt-4.1',
+      authProfile: 'fallback',
+      status: 'success',
+      errorCode: null,
+    });
+
+    const health = runtime.getHealthSnapshot();
+    const gptProvider = health.providers.find(
+      (provider) => provider.provider === 'gpt-4.1',
+    );
+    expect(gptProvider).toBeTruthy();
+    expect(gptProvider?.coolingDown).toBe(false);
+    expect(gptProvider?.activeProfile).toBe('fallback');
+    expect(Array.isArray(gptProvider?.profiles)).toBe(true);
+    const primaryProfile = gptProvider?.profiles.find(
+      (profile) => profile.profile === 'primary',
+    );
+    expect(primaryProfile?.coolingDown).toBe(true);
+    expect(primaryProfile?.lastFailureCode).toBe('AI_PROVIDER_HTTP_ERROR');
+    const fallbackProfile = gptProvider?.profiles.find(
+      (profile) => profile.profile === 'fallback',
+    );
+    expect(fallbackProfile?.coolingDown).toBe(false);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   test('builds health snapshot with blocked roles when provider chain is cooling down', async () => {

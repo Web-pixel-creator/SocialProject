@@ -4,6 +4,7 @@ export type AIRuntimeRole = 'author' | 'critic' | 'maker' | 'judge';
 
 export interface AIRuntimeAttempt {
   provider: string;
+  authProfile: string;
   status: 'success' | 'failed' | 'skipped_cooldown';
   latencyMs: number | null;
   errorCode: string | null;
@@ -13,14 +14,26 @@ export interface AIRuntimeAttempt {
 export interface AIRuntimeResult {
   role: AIRuntimeRole;
   selectedProvider: string | null;
+  selectedAuthProfile: string | null;
   output: string | null;
   failed: boolean;
   attempts: AIRuntimeAttempt[];
 }
 
+export interface AIRuntimeAuthProfileState {
+  profile: string;
+  cooldownUntil: string | null;
+  coolingDown: boolean;
+  lastFailureCode: string | null;
+}
+
 export interface AIRuntimeProviderState {
   provider: string;
   cooldownUntil: string | null;
+  coolingDown: boolean;
+  activeProfile: string | null;
+  lastFailureCode: string | null;
+  profiles: AIRuntimeAuthProfileState[];
 }
 
 export interface AIRuntimeProfile {
@@ -32,6 +45,9 @@ export interface AIRuntimeProviderHealthState {
   provider: string;
   cooldownUntil: string | null;
   coolingDown: boolean;
+  activeProfile: string | null;
+  lastFailureCode: string | null;
+  profiles: AIRuntimeAuthProfileState[];
 }
 
 export interface AIRuntimeRoleHealthState {

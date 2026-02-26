@@ -546,9 +546,7 @@ Exit criteria:
 
 ### OpenClaw parity (still missing)
 - File-based skills runtime (`SKILL.md` ingestion per agent at runtime) is not yet implemented as executable loader.
-- Explicit `sessions.send`-style public runtime API (currently available via admin/event surfaces, not a dedicated runtime contract).
 - Channel adapter layer parity (OpenClaw-style unified external channels) is partial; current implementation focuses on web/live-session path.
-- Auth-profile rotation parity (OpenRouter OAuth/API profile switching) is partial; current failover is provider-chain + cooldown.
 
 ### pi-vs-claude-code takeaways applied
 - Guardrail-first tool execution strategy has started:
@@ -557,19 +555,7 @@ Exit criteria:
   - same-args cooldown throttle (implemented in this update).
 
 ### Next implementation queue (code-first)
-1. `Agent skills loader` vertical slice:
-   - add `apps/api/src/services/agentSkills/agentSkillsService.ts` to resolve and validate text skill capsules from `skill_profile`,
-   - inject resolved capsules into orchestration prompts with bounded size and strict sanitization,
-   - add unit + admin integration tests for loader and prompt injection boundaries.
-2. `Runtime sessions.send API` vertical slice:
-   - add observer-safe route for append-only inter-role events (non-admin),
-   - enforce strict query/body allowlists + role and payload bounds,
-   - add integration coverage for success + invalid + unauthorized paths.
-3. `Auth profile rotation` vertical slice:
-   - extend `aiRuntimeService` to support per-provider auth profiles (primary/fallback keys),
-   - expose profile-level health telemetry (`coolingDown`, `lastFailureCode`),
-   - cover with failover simulation tests and admin dry-run assertions.
-4. `Channel adapter scaffold` vertical slice:
+1. `Channel adapter scaffold` vertical slice:
    - introduce internal adapter interface (`web`, `live_session`, `external_webhook`) and route runtime events through it,
    - add telemetry by adapter and error budget counters.
 
@@ -580,3 +566,25 @@ Exit criteria:
   - integrated loaded skill capsules into orchestration prompt building (`draftOrchestrationService`) as explicit `Skill capsule` and `Role skill` instructions,
   - extended admin orchestration integration test to validate prompt injection from new skill capsule fields,
   - added unit coverage in `apps/api/src/__tests__/agent-skills.unit.spec.ts`.
+
+## Progress Snapshot (2026-02-26 - runtime sessions.send slice)
+- Live runtime observer send API update:
+  - added observer-safe endpoint `POST /api/live-sessions/:id/realtime/send` with strict query/body allowlists and closed-session guard,
+  - enforced `toRole` allowlist (`author`, `critic`, `maker`, `judge`) and `observer_*` event type prefix,
+  - added bounded payload constraints (object-only, max keys, max serialized size) and gateway persistence (`agent_gateway_sessions/events`),
+  - added API integration coverage for boundary + success persistence paths in `apps/api/src/__tests__/api.integration.spec.ts`.
+- Realtime web bridge wiring update:
+  - `LiveStudioSessionsRail` now mirrors bridge client events to `/live-sessions/:id/realtime/send` as best-effort sync,
+  - safe event mapping added for observer runtime loop events (`observer_function_call_output`, `observer_response_create`),
+  - web regression coverage updated in `apps/web/src/__tests__/live-studio-sessions-rail.spec.tsx`.
+
+## Progress Snapshot (2026-02-26 - auth profile rotation slice)
+- AI runtime auth profile failover update:
+  - `aiRuntimeService` now supports per-provider auth profile chains via env (`AI_RUNTIME_<PROVIDER>_AUTH_PROFILES`),
+  - provider execution now rotates within provider profiles before switching to the next provider in the role chain,
+  - profile-scoped cooldown and failure memory added (`coolingDown`, `lastFailureCode`) with provider-level aggregation (`activeProfile`).
+- Health/telemetry surface update:
+  - `/api/admin/ai-runtime/profiles` and `/api/admin/ai-runtime/health` now expose profile-level provider states through `aiRuntimeService.getProviderStates()/getHealthSnapshot()`.
+- Coverage:
+  - added unit coverage for profile rotation/failover in `apps/api/src/__tests__/ai-runtime.unit.spec.ts`,
+  - updated admin integration coverage for profile-state fields in `apps/api/src/__tests__/admin.integration.spec.ts`.

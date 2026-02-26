@@ -29,6 +29,8 @@ const providerEnvPrefixes: Record<string, string> = {
   'gpt-4.1': 'GPT_4_1',
   sd3: 'SD3',
 };
+const DEFAULT_AUTH_PROFILE = 'default';
+const AUTH_PROFILE_IDENTIFIER_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 
 const parseProviders = (
   rawValue: string | undefined,
@@ -42,6 +44,23 @@ const parseProviders = (
     .map((value) => value.trim())
     .filter((value) => value.length > 0);
   return parsed.length > 0 ? parsed : fallback;
+};
+
+const parseAuthProfiles = (rawValue: string | undefined): string[] => {
+  if (!rawValue) {
+    return [DEFAULT_AUTH_PROFILE];
+  }
+  const parsed = rawValue
+    .split(',')
+    .map((value) => value.trim().toLowerCase())
+    .filter(
+      (value) =>
+        value.length > 0 && AUTH_PROFILE_IDENTIFIER_PATTERN.test(value),
+    );
+  if (parsed.length < 1) {
+    return [DEFAULT_AUTH_PROFILE];
+  }
+  return Array.from(new Set(parsed));
 };
 
 const withTimeout = async <T>(
@@ -191,6 +210,18 @@ const toTrimmedString = (value: string | undefined) => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
+const toEnvProfileSuffix = (profile: string): string => {
+  if (profile === DEFAULT_AUTH_PROFILE) {
+    return '';
+  }
+  const token = profile
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  return token.length > 0 ? `__${token}` : '';
+};
+
 const tryParseJson = (value: string) => {
   try {
     return JSON.parse(value) as unknown;
@@ -201,8 +232,10 @@ const tryParseJson = (value: string) => {
 
 export class AIRuntimeServiceImpl implements AIRuntimeService {
   private readonly cooldownMs: number;
-  private readonly cooldownUntilByProvider = new Map<string, number>();
+  private readonly cooldownUntilByProviderProfile = new Map<string, number>();
+  private readonly lastFailureCodeByProviderProfile = new Map<string, string>();
   private readonly roleProfiles: Record<AIRuntimeRole, string[]>;
+  private readonly authProfilesByProvider: Record<string, string[]>;
   private readonly httpAdaptersEnabled: boolean;
   private readonly httpTimeoutMs: number;
 
@@ -233,6 +266,17 @@ export class AIRuntimeServiceImpl implements AIRuntimeService {
         roleProviders.judge,
       ),
     };
+    this.authProfilesByProvider = Object.fromEntries(
+      Object.keys(providerEnvPrefixes).map((provider) => {
+        const envPrefix = providerEnvPrefixes[provider];
+        return [
+          provider,
+          parseAuthProfiles(
+            process.env[`AI_RUNTIME_${envPrefix}_AUTH_PROFILES`],
+          ),
+        ];
+      }),
+    );
   }
 
   getProfiles(): AIRuntimeProfile[] {
@@ -242,37 +286,79 @@ export class AIRuntimeServiceImpl implements AIRuntimeService {
     }));
   }
 
-  getProviderStates(): AIRuntimeProviderState[] {
-    const now = Date.now();
+  private getAllProviders(): string[] {
     const providers = new Set<string>();
     for (const profile of Object.values(this.roleProfiles)) {
       for (const provider of profile) {
         providers.add(provider);
       }
     }
-    return [...providers]
-      .sort((left, right) => left.localeCompare(right))
-      .map((provider) => {
-        const cooldownUntil = this.cooldownUntilByProvider.get(provider);
+    return [...providers].sort((left, right) => left.localeCompare(right));
+  }
+
+  private getProviderAuthProfiles(provider: string): string[] {
+    const configured = this.authProfilesByProvider[provider];
+    if (!configured || configured.length < 1) {
+      return [DEFAULT_AUTH_PROFILE];
+    }
+    return configured;
+  }
+
+  private getProviderProfileKey(provider: string, authProfile: string): string {
+    return `${provider}::${authProfile}`;
+  }
+
+  getProviderStates(): AIRuntimeProviderState[] {
+    const now = Date.now();
+    const providers = this.getAllProviders();
+    return providers.map((provider) => {
+      const profiles = this.getProviderAuthProfiles(provider).map((profile) => {
+        const key = this.getProviderProfileKey(provider, profile);
+        const cooldownUntilRaw = this.cooldownUntilByProviderProfile.get(key);
+        const coolingDown = Boolean(cooldownUntilRaw && cooldownUntilRaw > now);
         return {
-          provider,
+          profile,
           cooldownUntil:
-            cooldownUntil && cooldownUntil > now
-              ? new Date(cooldownUntil).toISOString()
+            cooldownUntilRaw && cooldownUntilRaw > now
+              ? new Date(cooldownUntilRaw).toISOString()
               : null,
+          coolingDown,
+          lastFailureCode:
+            this.lastFailureCodeByProviderProfile.get(key) ?? null,
         };
       });
+      const activeProfile =
+        profiles.find((state) => !state.coolingDown)?.profile ??
+        profiles[0]?.profile ??
+        null;
+      const coolingDown = profiles.every((state) => state.coolingDown);
+      const cooldownCandidates = profiles
+        .map((state) =>
+          state.cooldownUntil ? new Date(state.cooldownUntil).getTime() : 0,
+        )
+        .filter((value) => Number.isFinite(value) && value > 0);
+      const cooldownUntil =
+        coolingDown && cooldownCandidates.length > 0
+          ? new Date(Math.min(...cooldownCandidates)).toISOString()
+          : null;
+      const activeFailureCode =
+        profiles.find((state) => state.lastFailureCode)?.lastFailureCode ??
+        null;
+
+      return {
+        provider,
+        cooldownUntil,
+        coolingDown,
+        activeProfile,
+        lastFailureCode: activeFailureCode,
+        profiles,
+      };
+    });
   }
 
   getHealthSnapshot(): AIRuntimeHealthSnapshot {
     const profiles = this.getProfiles();
-    const providers = this.getProviderStates().map((providerState) => ({
-      provider: providerState.provider,
-      cooldownUntil: providerState.cooldownUntil,
-      coolingDown:
-        typeof providerState.cooldownUntil === 'string' &&
-        providerState.cooldownUntil.length > 0,
-    }));
+    const providers = this.getProviderStates();
     const providerStateByName = new Map(
       providers.map((providerState) => [providerState.provider, providerState]),
     );
@@ -318,7 +404,8 @@ export class AIRuntimeServiceImpl implements AIRuntimeService {
   }
 
   resetProviderState(): void {
-    this.cooldownUntilByProvider.clear();
+    this.cooldownUntilByProviderProfile.clear();
+    this.lastFailureCodeByProviderProfile.clear();
   }
 
   async runWithFailover(input: AIRuntimeRunInput): Promise<AIRuntimeResult> {
@@ -351,63 +438,82 @@ export class AIRuntimeServiceImpl implements AIRuntimeService {
     const now = Date.now();
 
     for (const provider of providers) {
-      const cooldownUntil = this.cooldownUntilByProvider.get(provider);
-      if (cooldownUntil && cooldownUntil > now) {
-        attempts.push({
-          provider,
-          status: 'skipped_cooldown',
-          latencyMs: null,
-          errorCode: null,
-          errorMessage: null,
-        });
-        continue;
-      }
-
-      const attemptStartedAt = Date.now();
-      try {
-        const executor = this.getExecutor(provider, simulateFailures);
-        const execution = await withTimeout(executor(prompt), timeoutMs);
-        const latencyMs = Date.now() - attemptStartedAt;
-
-        if (mutateProviderState) {
-          this.cooldownUntilByProvider.delete(provider);
-        }
-        attempts.push({
-          provider,
-          status: 'success',
-          latencyMs,
-          errorCode: null,
-          errorMessage: null,
-        });
-        return {
-          role: input.role,
-          selectedProvider: provider,
-          output: execution.output,
-          failed: false,
-          attempts,
-        };
-      } catch (error) {
-        const latencyMs = Date.now() - attemptStartedAt;
-        const mappedError = mapErrorMessage(error);
-        if (mutateProviderState) {
-          this.cooldownUntilByProvider.set(
+      const authProfiles = this.getProviderAuthProfiles(provider);
+      for (const authProfile of authProfiles) {
+        const profileKey = this.getProviderProfileKey(provider, authProfile);
+        const cooldownUntil =
+          this.cooldownUntilByProviderProfile.get(profileKey);
+        if (cooldownUntil && cooldownUntil > now) {
+          attempts.push({
             provider,
-            Date.now() + this.cooldownMs,
-          );
+            authProfile,
+            status: 'skipped_cooldown',
+            latencyMs: null,
+            errorCode: null,
+            errorMessage: null,
+          });
+          continue;
         }
-        attempts.push({
-          provider,
-          status: 'failed',
-          latencyMs,
-          errorCode: mappedError.errorCode,
-          errorMessage: mappedError.errorMessage,
-        });
+
+        const attemptStartedAt = Date.now();
+        try {
+          const executor = this.getExecutor(
+            provider,
+            authProfile,
+            simulateFailures,
+          );
+          const execution = await withTimeout(executor(prompt), timeoutMs);
+          const latencyMs = Date.now() - attemptStartedAt;
+
+          if (mutateProviderState) {
+            this.cooldownUntilByProviderProfile.delete(profileKey);
+            this.lastFailureCodeByProviderProfile.delete(profileKey);
+          }
+          attempts.push({
+            provider,
+            authProfile,
+            status: 'success',
+            latencyMs,
+            errorCode: null,
+            errorMessage: null,
+          });
+          return {
+            role: input.role,
+            selectedProvider: provider,
+            selectedAuthProfile: authProfile,
+            output: execution.output,
+            failed: false,
+            attempts,
+          };
+        } catch (error) {
+          const latencyMs = Date.now() - attemptStartedAt;
+          const mappedError = mapErrorMessage(error);
+          if (mutateProviderState) {
+            this.cooldownUntilByProviderProfile.set(
+              profileKey,
+              Date.now() + this.cooldownMs,
+            );
+            this.lastFailureCodeByProviderProfile.set(
+              profileKey,
+              mappedError.errorCode,
+            );
+          }
+          attempts.push({
+            provider,
+            authProfile,
+            status: 'failed',
+            latencyMs,
+            errorCode: mappedError.errorCode,
+            errorMessage: mappedError.errorMessage,
+          });
+        }
       }
     }
 
     return {
       role: input.role,
       selectedProvider: null,
+      selectedAuthProfile: null,
       output: null,
       failed: true,
       attempts,
@@ -416,15 +522,19 @@ export class AIRuntimeServiceImpl implements AIRuntimeService {
 
   private getExecutor(
     provider: string,
+    authProfile: string,
     simulateFailures: Set<string>,
   ): AIRuntimeExecutor {
-    const httpExecutor = this.getHttpExecutor(provider);
+    const httpExecutor = this.getHttpExecutor(provider, authProfile);
+    const shouldFail =
+      simulateFailures.has(provider) ||
+      simulateFailures.has(`${provider}@${authProfile}`);
     if (httpExecutor) {
       return (prompt: string) => {
-        if (simulateFailures.has(provider)) {
+        if (shouldFail) {
           throw new ServiceError(
             'AI_PROVIDER_UNAVAILABLE',
-            `Provider ${provider} is unavailable.`,
+            `Provider ${provider} (${authProfile}) is unavailable.`,
             503,
           );
         }
@@ -433,10 +543,10 @@ export class AIRuntimeServiceImpl implements AIRuntimeService {
     }
 
     return (prompt: string) => {
-      if (simulateFailures.has(provider)) {
+      if (shouldFail) {
         throw new ServiceError(
           'AI_PROVIDER_UNAVAILABLE',
-          `Provider ${provider} is unavailable.`,
+          `Provider ${provider} (${authProfile}) is unavailable.`,
           503,
         );
       }
@@ -449,12 +559,15 @@ export class AIRuntimeServiceImpl implements AIRuntimeService {
           : normalizedPrompt;
 
       return Promise.resolve({
-        output: `[${provider}] ${outputPrefix}: ${truncatedPrompt}`,
+        output: `[${provider}@${authProfile}] ${outputPrefix}: ${truncatedPrompt}`,
       });
     };
   }
 
-  private getHttpExecutor(provider: string): AIRuntimeExecutor | null {
+  private getHttpExecutor(
+    provider: string,
+    authProfile: string,
+  ): AIRuntimeExecutor | null {
     if (!this.httpAdaptersEnabled) {
       return null;
     }
@@ -463,14 +576,20 @@ export class AIRuntimeServiceImpl implements AIRuntimeService {
     if (!envPrefix) {
       return null;
     }
+    const profileSuffix = toEnvProfileSuffix(authProfile);
     const endpoint = toTrimmedString(
-      process.env[`AI_RUNTIME_${envPrefix}_ENDPOINT`],
+      process.env[`AI_RUNTIME_${envPrefix}_ENDPOINT${profileSuffix}`] ??
+        process.env[`AI_RUNTIME_${envPrefix}_ENDPOINT`],
     );
     const apiKey = toTrimmedString(
-      process.env[`AI_RUNTIME_${envPrefix}_API_KEY`],
+      process.env[`AI_RUNTIME_${envPrefix}_API_KEY${profileSuffix}`] ??
+        process.env[`AI_RUNTIME_${envPrefix}_API_KEY`],
     );
     const model =
-      toTrimmedString(process.env[`AI_RUNTIME_${envPrefix}_MODEL`]) ?? provider;
+      toTrimmedString(
+        process.env[`AI_RUNTIME_${envPrefix}_MODEL${profileSuffix}`] ??
+          process.env[`AI_RUNTIME_${envPrefix}_MODEL`],
+      ) ?? provider;
 
     if (!(endpoint && apiKey)) {
       return null;
@@ -490,6 +609,7 @@ export class AIRuntimeServiceImpl implements AIRuntimeService {
             model,
             input: prompt,
             provider,
+            authProfile,
           }),
           signal: controller.signal,
         });
@@ -497,7 +617,7 @@ export class AIRuntimeServiceImpl implements AIRuntimeService {
         if (!response.ok) {
           throw new ServiceError(
             'AI_PROVIDER_HTTP_ERROR',
-            `Provider ${provider} returned HTTP ${response.status}.`,
+            `Provider ${provider} (${authProfile}) returned HTTP ${response.status}.`,
             503,
           );
         }
@@ -509,12 +629,14 @@ export class AIRuntimeServiceImpl implements AIRuntimeService {
         if (typeof parsedBody === 'string' && parsedBody.trim().length > 0) {
           return { output: parsedBody.trim() };
         }
-        return { output: `[${provider}] HTTP adapter produced empty payload.` };
+        return {
+          output: `[${provider}@${authProfile}] HTTP adapter produced empty payload.`,
+        };
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
           throw new ServiceError(
             'AI_PROVIDER_TIMEOUT',
-            `Provider ${provider} timed out after ${this.httpTimeoutMs}ms.`,
+            `Provider ${provider} (${authProfile}) timed out after ${this.httpTimeoutMs}ms.`,
             503,
           );
         }
