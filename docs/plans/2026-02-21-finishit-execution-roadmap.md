@@ -571,6 +571,9 @@ Exit criteria:
 - Telemetry + error budget update:
   - adapter route success/failure telemetry is now written to `ux_events` (`source=agent_gateway_adapter`),
   - `/api/admin/agent-gateway/telemetry` now includes adapter usage and error-budget counters (`adapters.total/success/failed/errorRate/errorBudget/usage`).
+- Adapter ops visibility update:
+  - added `/api/admin/agent-gateway/adapters` to expose adapter registry (`web`, `live_session`, `external_webhook`) with per-adapter success/fail totals, risk levels, last-seen timestamps, and error-budget thresholds,
+  - added admin integration coverage for adapter registry output + query validation in `apps/api/src/__tests__/admin.integration.spec.ts`.
 - Coverage:
   - added unit coverage for adapter routing/failure telemetry (`apps/api/src/__tests__/agent-gateway-adapter.unit.spec.ts`),
   - extended admin integration telemetry assertions for adapter usage/error budget (`apps/api/src/__tests__/admin.integration.spec.ts`).

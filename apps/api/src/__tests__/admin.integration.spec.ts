@@ -1038,6 +1038,92 @@ describe('Admin API routes', () => {
     }
   });
 
+  test('agent gateway adapters endpoint returns registry and error budget signals', async () => {
+    await db.query(
+      `INSERT INTO ux_events (event_type, user_type, status, source, metadata)
+       VALUES
+         ('agent_gateway_adapter_route_success', 'system', 'ok', 'agent_gateway_adapter', '{"adapter":"web","channel":"draft_cycle"}'::jsonb),
+         ('agent_gateway_adapter_route_failed', 'system', 'failed', 'agent_gateway_adapter', '{"adapter":"web","channel":"draft_cycle"}'::jsonb),
+         ('agent_gateway_adapter_route_success', 'system', 'ok', 'agent_gateway_adapter', '{"adapter":"external_webhook","channel":"swarm"}'::jsonb)`,
+    );
+
+    const response = await request(app)
+      .get('/api/admin/agent-gateway/adapters?hours=24')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(response.status).toBe(200);
+    expect(response.body.windowHours).toBe(24);
+    expect(response.body.filters).toEqual({
+      channel: null,
+      provider: null,
+    });
+    expect(response.body.adapters).toEqual(
+      expect.objectContaining({
+        total: 3,
+        success: 2,
+        failed: 1,
+        errorRate: 0.333,
+        thresholds: expect.objectContaining({
+          watchAbove: 0.1,
+          criticalAbove: 0.25,
+        }),
+      }),
+    );
+    expect(response.body.adapters.registry).toEqual(
+      expect.arrayContaining(['web', 'live_session', 'external_webhook']),
+    );
+    expect(response.body.adapters.usage).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          adapter: 'web',
+          success: 1,
+          failed: 1,
+          total: 2,
+          errorRate: 0.5,
+          riskLevel: 'critical',
+        }),
+        expect.objectContaining({
+          adapter: 'external_webhook',
+          success: 1,
+          failed: 0,
+          total: 1,
+          errorRate: 0,
+          riskLevel: 'healthy',
+        }),
+        expect.objectContaining({
+          adapter: 'live_session',
+          success: 0,
+          failed: 0,
+          total: 0,
+          errorRate: null,
+          riskLevel: 'unknown',
+        }),
+      ]),
+    );
+  });
+
+  test('agent gateway adapters endpoint validates query params', async () => {
+    const invalidQueries = [
+      '/api/admin/agent-gateway/adapters?hours=0',
+      '/api/admin/agent-gateway/adapters?hours=721',
+      '/api/admin/agent-gateway/adapters?hours=1.5',
+      '/api/admin/agent-gateway/adapters?hours=oops',
+      '/api/admin/agent-gateway/adapters?channel=bad%20channel',
+      '/api/admin/agent-gateway/adapters?channel=x',
+      '/api/admin/agent-gateway/adapters?provider=bad%20provider',
+      `/api/admin/agent-gateway/adapters?provider=${'x'.repeat(65)}`,
+      '/api/admin/agent-gateway/adapters?limit=10',
+    ];
+
+    for (const url of invalidQueries) {
+      const response = await request(app)
+        .get(url)
+        .set('x-admin-token', env.ADMIN_API_TOKEN);
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('ADMIN_INVALID_QUERY');
+    }
+  });
+
   test('agent gateway session read endpoints validate query params', async () => {
     const created = await request(app)
       .post('/api/admin/agent-gateway/sessions')
