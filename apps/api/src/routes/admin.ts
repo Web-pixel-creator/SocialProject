@@ -9,6 +9,7 @@ import type {
   AgentGatewaySessionDetail,
   AgentGatewaySessionStatus,
 } from '../services/agentGateway/types';
+import { parseConnectorPolicyMap } from '../services/agentGatewayIngest/connectorPolicy';
 import { aiRuntimeService } from '../services/aiRuntime/aiRuntimeService';
 import type { AIRuntimeRole } from '../services/aiRuntime/types';
 import {
@@ -27,6 +28,9 @@ const router = Router();
 const embeddingBackfillService = new EmbeddingBackfillServiceImpl(db);
 const budgetService = new BudgetServiceImpl();
 const privacyService = new PrivacyServiceImpl(db);
+const AGENT_GATEWAY_CONNECTOR_POLICY_MAP = parseConnectorPolicyMap(
+  env.AGENT_GATEWAY_INGEST_CONNECTOR_POLICIES,
+);
 
 const toNumber = (value: string | number | undefined, fallback = 0) =>
   typeof value === 'number'
@@ -1383,6 +1387,15 @@ interface AgentGatewayAdapterTelemetryRow {
   lastSeenAt: string | null;
 }
 
+interface AgentGatewayIngestTelemetryRow {
+  connectorId: string;
+  connectorRiskLevel: string | null;
+  eventType: string;
+  errorCode: string | null;
+  count: number;
+  lastSeenAt: string | null;
+}
+
 interface AgentGatewayCompactionHourlyBucket {
   hour: string;
   compactions: number;
@@ -1470,6 +1483,13 @@ const AGENT_GATEWAY_ADAPTER_ROUTE_SUCCESS_EVENT =
   'agent_gateway_adapter_route_success';
 const AGENT_GATEWAY_ADAPTER_ROUTE_FAILED_EVENT =
   'agent_gateway_adapter_route_failed';
+const AGENT_GATEWAY_INGEST_ACCEPT_EVENT = 'agent_gateway_ingest_accept';
+const AGENT_GATEWAY_INGEST_REPLAY_EVENT = 'agent_gateway_ingest_replay';
+const AGENT_GATEWAY_INGEST_REJECT_EVENT = 'agent_gateway_ingest_reject';
+const AGENT_GATEWAY_INGEST_CONNECTOR_REJECT_THRESHOLDS = {
+  watchAbove: 0.1,
+  criticalAbove: 0.25,
+};
 
 const createAgentGatewayTelemetryAccumulator =
   (): AgentGatewayTelemetryAccumulator => ({
@@ -1573,6 +1593,35 @@ const mergeRiskLevels = (
     return 'watch';
   }
   if (levels.includes('healthy')) {
+    return 'healthy';
+  }
+  return 'unknown';
+};
+
+const normalizeConnectorConfiguredRiskLevel = (
+  value: string | null,
+): 'restricted' | 'standard' | 'trusted' | 'unknown' => {
+  if (!value) {
+    return 'unknown';
+  }
+  const normalized = value.trim().toLowerCase();
+  if (
+    normalized === 'restricted' ||
+    normalized === 'standard' ||
+    normalized === 'trusted'
+  ) {
+    return normalized;
+  }
+  return 'unknown';
+};
+
+const mapConfiguredConnectorRiskToHealth = (
+  level: 'restricted' | 'standard' | 'trusted' | 'unknown',
+): AgentGatewayRiskLevel => {
+  if (level === 'restricted') {
+    return 'watch';
+  }
+  if (level === 'trusted' || level === 'standard') {
     return 'healthy';
   }
   return 'unknown';
@@ -1825,10 +1874,147 @@ const buildAgentGatewayAdapterMetrics = (
   };
 };
 
+const buildAgentGatewayIngestConnectorMetrics = (
+  ingestRows: AgentGatewayIngestTelemetryRow[],
+) => {
+  const connectorById = new Map<
+    string,
+    {
+      connectorId: string;
+      configuredRiskLevel: 'restricted' | 'standard' | 'trusted' | 'unknown';
+      accepted: number;
+      replayed: number;
+      rejected: number;
+      rateLimited: number;
+      total: number;
+      rejectRate: number | null;
+      rateLimitedShare: number | null;
+      riskLevel: AgentGatewayRiskLevel;
+      lastSeenAt: string | null;
+    }
+  >();
+
+  let acceptedTotal = 0;
+  let replayedTotal = 0;
+  let rejectedTotal = 0;
+  let rateLimitedTotal = 0;
+
+  for (const row of ingestRows) {
+    const connectorId = row.connectorId.trim().toLowerCase();
+    if (connectorId.length < 1) {
+      continue;
+    }
+    const configuredRiskLevel = normalizeConnectorConfiguredRiskLevel(
+      row.connectorRiskLevel,
+    );
+    const current = connectorById.get(connectorId) ?? {
+      connectorId,
+      configuredRiskLevel,
+      accepted: 0,
+      replayed: 0,
+      rejected: 0,
+      rateLimited: 0,
+      total: 0,
+      rejectRate: null,
+      rateLimitedShare: null,
+      riskLevel: 'unknown',
+      lastSeenAt: null,
+    };
+    current.configuredRiskLevel =
+      current.configuredRiskLevel === 'unknown'
+        ? configuredRiskLevel
+        : current.configuredRiskLevel;
+
+    if (row.eventType === AGENT_GATEWAY_INGEST_ACCEPT_EVENT) {
+      current.accepted += row.count;
+      acceptedTotal += row.count;
+    } else if (row.eventType === AGENT_GATEWAY_INGEST_REPLAY_EVENT) {
+      current.replayed += row.count;
+      replayedTotal += row.count;
+    } else if (row.eventType === AGENT_GATEWAY_INGEST_REJECT_EVENT) {
+      current.rejected += row.count;
+      rejectedTotal += row.count;
+      if (
+        row.errorCode?.trim().toUpperCase() ===
+        'AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMITED'
+      ) {
+        current.rateLimited += row.count;
+        rateLimitedTotal += row.count;
+      }
+    }
+
+    current.lastSeenAt = selectLatestTimestamp(
+      current.lastSeenAt,
+      row.lastSeenAt,
+    );
+    connectorById.set(connectorId, current);
+  }
+
+  for (const [connectorId, policy] of AGENT_GATEWAY_CONNECTOR_POLICY_MAP) {
+    if (connectorById.has(connectorId)) {
+      continue;
+    }
+    connectorById.set(connectorId, {
+      connectorId,
+      configuredRiskLevel: policy.riskLevel,
+      accepted: 0,
+      replayed: 0,
+      rejected: 0,
+      rateLimited: 0,
+      total: 0,
+      rejectRate: null,
+      rateLimitedShare: null,
+      riskLevel: mapConfiguredConnectorRiskToHealth(policy.riskLevel),
+      lastSeenAt: null,
+    });
+  }
+
+  const usage = [...connectorById.values()]
+    .map((item) => {
+      const total = item.accepted + item.replayed + item.rejected;
+      const rejectRate = toRate(item.rejected, total);
+      const rateLimitedShare = toRate(item.rateLimited, item.rejected);
+      const policyLevel = mapConfiguredConnectorRiskToHealth(
+        item.configuredRiskLevel,
+      );
+      const activityLevel = resolveAboveRiskLevel(
+        rejectRate,
+        AGENT_GATEWAY_INGEST_CONNECTOR_REJECT_THRESHOLDS,
+      );
+      return {
+        ...item,
+        total,
+        rejectRate,
+        rateLimitedShare,
+        riskLevel: mergeRiskLevels([policyLevel, activityLevel]),
+      };
+    })
+    .sort((left, right) => {
+      if (right.total !== left.total) {
+        return right.total - left.total;
+      }
+      return left.connectorId.localeCompare(right.connectorId);
+    });
+
+  const total = acceptedTotal + replayedTotal + rejectedTotal;
+  return {
+    total,
+    accepted: acceptedTotal,
+    replayed: replayedTotal,
+    rejected: rejectedTotal,
+    rateLimited: rateLimitedTotal,
+    rejectRate: toRate(rejectedTotal, total),
+    rateLimitedShare: toRate(rateLimitedTotal, rejectedTotal),
+    usage,
+    thresholds: AGENT_GATEWAY_INGEST_CONNECTOR_REJECT_THRESHOLDS,
+  };
+};
+
 const buildAgentGatewayTelemetrySnapshot = (
   sessionRows: AgentGatewayTelemetrySessionRow[],
   eventRows: AgentGatewayTelemetryEventRow[],
   adapterRows: AgentGatewayAdapterTelemetryRow[],
+  ingestRows: AgentGatewayIngestTelemetryRow[],
 ) => {
   const eventsBySession = new Map<string, AgentGatewayTelemetryEventRow[]>();
   for (const eventRow of eventRows) {
@@ -1926,6 +2112,8 @@ const buildAgentGatewayTelemetrySnapshot = (
   const adapterMetrics = buildAgentGatewayAdapterMetrics(adapterRows, {
     includeRegistry: false,
   });
+  const ingestConnectorMetrics =
+    buildAgentGatewayIngestConnectorMetrics(ingestRows);
 
   return {
     sessions: {
@@ -1975,6 +2163,7 @@ const buildAgentGatewayTelemetrySnapshot = (
     providerUsage: providerUsageItems,
     channelUsage: channelUsageItems,
     adapters: adapterMetrics,
+    ingestConnectors: ingestConnectorMetrics,
   };
 };
 
@@ -2602,6 +2791,53 @@ router.get(
         count: toNumber(row.count),
         lastSeenAt: toNullableIsoTimestamp(row.last_seen_at),
       }));
+      const ingestRows: AgentGatewayIngestTelemetryRow[] = (
+        await db.query(
+          `SELECT
+             LOWER(COALESCE(metadata->>'connectorId', 'unknown')) AS connector_id,
+             LOWER(COALESCE(metadata->>'connectorRiskLevel', 'unknown')) AS connector_risk_level,
+             event_type,
+             LOWER(NULLIF(metadata->>'code', '')) AS error_code,
+             COUNT(*)::int AS count,
+             MAX(created_at) AS last_seen_at
+           FROM ux_events
+           WHERE source = 'agent_gateway_ingest'
+             AND event_type IN ($4::text, $5::text, $6::text)
+             AND created_at >= NOW() - ($1 || ' hours')::interval
+             AND ($2::text IS NULL OR LOWER(COALESCE(metadata->>'channel', '')) = $2)
+             AND (
+               $3::text IS NULL OR
+               LOWER(COALESCE(metadata->>'provider', '')) = $3 OR
+               LOWER(COALESCE(metadata->>'selectedProvider', '')) = $3
+             )
+           GROUP BY
+             LOWER(COALESCE(metadata->>'connectorId', 'unknown')),
+             LOWER(COALESCE(metadata->>'connectorRiskLevel', 'unknown')),
+             event_type,
+             LOWER(NULLIF(metadata->>'code', ''))`,
+          [
+            hours,
+            channelFilter,
+            providerFilter,
+            AGENT_GATEWAY_INGEST_ACCEPT_EVENT,
+            AGENT_GATEWAY_INGEST_REPLAY_EVENT,
+            AGENT_GATEWAY_INGEST_REJECT_EVENT,
+          ],
+        )
+      ).rows.map((row) => ({
+        connectorId: String(row.connector_id ?? 'unknown'),
+        connectorRiskLevel:
+          typeof row.connector_risk_level === 'string'
+            ? row.connector_risk_level
+            : null,
+        eventType: String(row.event_type ?? ''),
+        errorCode:
+          typeof row.error_code === 'string' && row.error_code.length > 0
+            ? row.error_code
+            : null,
+        count: toNumber(row.count),
+        lastSeenAt: toNullableIsoTimestamp(row.last_seen_at),
+      }));
       if (providerFilter) {
         const sessionIdsWithProviderEvents = new Set(
           eventRows.map((row) => row.sessionId),
@@ -2614,6 +2850,7 @@ router.get(
         sessionRows,
         eventRows,
         adapterRows,
+        ingestRows,
       );
 
       res.json({
@@ -2632,6 +2869,7 @@ router.get(
         providerUsage: snapshot.providerUsage,
         channelUsage: snapshot.channelUsage,
         adapters: snapshot.adapters,
+        ingestConnectors: snapshot.ingestConnectors,
       });
     } catch (error) {
       next(error);

@@ -778,7 +778,10 @@ describe('Admin API routes', () => {
       `INSERT INTO ux_events (event_type, user_type, status, source, metadata)
        VALUES
          ('agent_gateway_adapter_route_success', 'system', 'ok', 'agent_gateway_adapter', '{"adapter":"web","channel":"draft_cycle"}'::jsonb),
-         ('agent_gateway_adapter_route_failed', 'system', 'failed', 'agent_gateway_adapter', '{"adapter":"external_webhook","channel":"swarm"}'::jsonb)`,
+         ('agent_gateway_adapter_route_failed', 'system', 'failed', 'agent_gateway_adapter', '{"adapter":"external_webhook","channel":"swarm"}'::jsonb),
+         ('agent_gateway_ingest_accept', 'system', 'ok', 'agent_gateway_ingest', '{"connectorId":"partner-alpha","connectorRiskLevel":"trusted","channel":"draft_cycle"}'::jsonb),
+         ('agent_gateway_ingest_replay', 'system', 'ok', 'agent_gateway_ingest', '{"connectorId":"partner-alpha","connectorRiskLevel":"trusted","channel":"draft_cycle"}'::jsonb),
+         ('agent_gateway_ingest_reject', 'system', 'failed', 'agent_gateway_ingest', '{"connectorId":"partner-alpha","connectorRiskLevel":"trusted","channel":"draft_cycle","code":"AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMITED"}'::jsonb)`,
     );
 
     const response = await request(app)
@@ -919,6 +922,32 @@ describe('Admin API routes', () => {
           success: 0,
           failed: 1,
           total: 1,
+        }),
+      ]),
+    );
+    expect(response.body.ingestConnectors).toEqual(
+      expect.objectContaining({
+        total: 3,
+        accepted: 1,
+        replayed: 1,
+        rejected: 1,
+        rateLimited: 1,
+        rejectRate: 0.333,
+        rateLimitedShare: 1,
+      }),
+    );
+    expect(response.body.ingestConnectors.usage).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          connectorId: 'partner-alpha',
+          configuredRiskLevel: 'trusted',
+          accepted: 1,
+          replayed: 1,
+          rejected: 1,
+          rateLimited: 1,
+          total: 3,
+          rejectRate: 0.333,
+          rateLimitedShare: 1,
         }),
       ]),
     );

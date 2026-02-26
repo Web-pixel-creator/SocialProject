@@ -6,6 +6,10 @@ import { redis } from '../redis/client';
 import { agentGatewayAdapterService } from '../services/agentGatewayAdapter/agentGatewayAdapterService';
 import type { AgentGatewayAdapterName } from '../services/agentGatewayAdapter/types';
 import {
+  parseConnectorPolicyMap,
+  resolveConnectorPolicy,
+} from '../services/agentGatewayIngest/connectorPolicy';
+import {
   parseConnectorSecretMap,
   parseGlobalSecretList,
   resolveSignatureCandidates,
@@ -57,6 +61,9 @@ const GLOBAL_SIGNATURE_SECRETS = parseGlobalSecretList(
 );
 const CONNECTOR_SECRET_MAP = parseConnectorSecretMap(
   env.AGENT_GATEWAY_INGEST_CONNECTOR_SECRETS,
+);
+const CONNECTOR_POLICY_MAP = parseConnectorPolicyMap(
+  env.AGENT_GATEWAY_INGEST_CONNECTOR_POLICIES,
 );
 const REQUIRE_CONNECTOR_SECRET =
   env.AGENT_GATEWAY_INGEST_REQUIRE_CONNECTOR_SECRET === 'true';
@@ -313,12 +320,19 @@ const parseSignatureKeyId = (value: string | null) => {
   return value;
 };
 
-const resolveConnectorRateLimitMax = (overrideRaw: string | null) => {
+const resolveConnectorRateLimitMax = (
+  overrideRaw: string | null,
+  policyRateLimitMax: number | null,
+) => {
+  const baseLimit =
+    typeof policyRateLimitMax === 'number'
+      ? Math.min(Math.max(1, policyRateLimitMax), CONNECTOR_RATE_LIMIT_MAX)
+      : CONNECTOR_RATE_LIMIT_MAX;
   if (env.NODE_ENV !== 'test') {
-    return CONNECTOR_RATE_LIMIT_MAX;
+    return baseLimit;
   }
   const override = parsePositiveInteger(overrideRaw);
-  return override ?? CONNECTOR_RATE_LIMIT_MAX;
+  return override ?? baseLimit;
 };
 
 const enforceConnectorRateLimit = async (
@@ -382,6 +396,7 @@ router.post(
     let idempotencyRedisKey: string | null = null;
     let retryAfterSec: number | null = null;
     let telemetryConnectorId: string | null = null;
+    let telemetryConnectorRiskLevel: string | null = null;
     let telemetryEventId: string | null = null;
     let telemetryAdapter: string | null = null;
     let telemetryChannel: string | null = null;
@@ -490,6 +505,13 @@ router.post(
         );
       }
       telemetryConnectorId = connectorId;
+      const connectorPolicy = resolveConnectorPolicy(
+        CONNECTOR_POLICY_MAP,
+        connectorId,
+      );
+      telemetryConnectorRiskLevel = connectorPolicy.riskLevel;
+      const requireConnectorSecret =
+        REQUIRE_CONNECTOR_SECRET || connectorPolicy.requireConnectorSecret;
 
       const eventId = parseRequiredString(
         body.eventId ?? parseHeaderValue(req.headers['x-idempotency-key']),
@@ -515,17 +537,17 @@ router.post(
         keyId: signatureKeyId,
         connectorSecrets: CONNECTOR_SECRET_MAP,
         globalSecrets: GLOBAL_SIGNATURE_SECRETS,
-        requireConnectorSecret: REQUIRE_CONNECTOR_SECRET,
+        requireConnectorSecret,
       });
       if (signatureCandidates.length < 1) {
         throw new ServiceError(
-          REQUIRE_CONNECTOR_SECRET
+          requireConnectorSecret
             ? 'AGENT_GATEWAY_INGEST_CONNECTOR_SECRET_REQUIRED'
             : 'AGENT_GATEWAY_INGEST_SIGNATURE_INVALID',
-          REQUIRE_CONNECTOR_SECRET
+          requireConnectorSecret
             ? 'Connector secret is not configured.'
             : 'Signature verification failed.',
-          REQUIRE_CONNECTOR_SECRET ? 403 : 401,
+          requireConnectorSecret ? 403 : 401,
         );
       }
       const matchedSignature = verifySignatureWithCandidates({
@@ -541,8 +563,16 @@ router.post(
           401,
         );
       }
+      if (requireConnectorSecret && matchedSignature.source !== 'connector') {
+        throw new ServiceError(
+          'AGENT_GATEWAY_INGEST_CONNECTOR_SECRET_REQUIRED',
+          'Connector secret is required for this connector policy.',
+          403,
+        );
+      }
       const connectorRateLimitMax = resolveConnectorRateLimitMax(
         parseHeaderValue(req.headers['x-gateway-rate-limit-override']),
+        connectorPolicy.rateLimitMax,
       );
       const connectorRateLimit = await enforceConnectorRateLimit(
         connectorId,
@@ -576,6 +606,7 @@ router.post(
           adapter,
           channel,
           connectorId,
+          connectorRiskLevel: connectorPolicy.riskLevel,
           eventId,
           externalSessionId,
         });
@@ -598,11 +629,14 @@ router.post(
         metadata: {
           ...metadata,
           connectorId,
+          connectorRiskLevel: connectorPolicy.riskLevel,
           eventId,
           signatureTimestamp,
           signatureKeyId,
           signatureSecretSource: matchedSignature.source,
           matchedSignatureKeyId: matchedSignature.keyId,
+          connectorPolicyRequireConnectorSecret: requireConnectorSecret,
+          connectorPolicyRateLimitMax: connectorPolicy.rateLimitMax,
           ingestReceivedAt: new Date().toISOString(),
         },
         fromRole,
@@ -620,6 +654,7 @@ router.post(
         adapter,
         channel,
         connectorId,
+        connectorRiskLevel: connectorPolicy.riskLevel,
         eventId,
         sessionId: routed.session.id,
         gatewayEventId: routed.event.id,
@@ -649,6 +684,7 @@ router.post(
           adapter: telemetryAdapter,
           channel: telemetryChannel,
           connectorId: telemetryConnectorId,
+          connectorRiskLevel: telemetryConnectorRiskLevel,
           eventId: telemetryEventId,
           retryAfterSec:
             error.code === 'AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMITED'

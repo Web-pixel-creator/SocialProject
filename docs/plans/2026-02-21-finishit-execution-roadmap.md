@@ -603,16 +603,20 @@ Exit criteria:
   - added `POST /api/agent-gateway/adapters/ingest` (`apps/api/src/routes/agentGateway.ts`) with strict query/body allowlists and bounded payload/metadata/roles validation,
   - added HMAC signature verification (`x-gateway-signature`, `x-gateway-timestamp`) with skew checks and constant-time compare,
   - added connector-tenant signature policy with per-connector secret map + key-id routing (`x-gateway-key-id`) and multi-secret rotation fallback (`AGENT_GATEWAY_WEBHOOK_SECRET_PREVIOUS`),
+  - added connector trust-policy map (`AGENT_GATEWAY_INGEST_CONNECTOR_POLICIES`) with per-connector `riskLevel`, optional `rateLimitMax`, and `requireConnectorSecret` enforcement,
   - added connector/event id guardrails (`connectorId`, `eventId`) plus Redis idempotency dedupe window to block replay side effects,
-  - routed accepted events through `agentGatewayAdapterService.routeExternalEvent(..., persist: true)` so adapter telemetry and payload tagging remain unified.
+  - routed accepted events through `agentGatewayAdapterService.routeExternalEvent(..., persist: true)` so adapter telemetry and payload tagging remain unified,
+  - ingest telemetry now records connector risk context (`connectorRiskLevel`) for accept/replay/reject paths.
 - Security/config update:
-  - added env controls in `apps/api/src/config/env.ts`: `AGENT_GATEWAY_WEBHOOK_SECRET`, `AGENT_GATEWAY_WEBHOOK_SECRET_PREVIOUS`, `AGENT_GATEWAY_INGEST_MAX_TIMESTAMP_SKEW_SEC`, `AGENT_GATEWAY_INGEST_IDEMPOTENCY_TTL_SEC`, `AGENT_GATEWAY_INGEST_ALLOWED_CONNECTORS`, `AGENT_GATEWAY_INGEST_CONNECTOR_SECRETS`, `AGENT_GATEWAY_INGEST_REQUIRE_CONNECTOR_SECRET`, `AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMIT_WINDOW_SEC`, `AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMIT_MAX`,
+  - added env controls in `apps/api/src/config/env.ts`: `AGENT_GATEWAY_WEBHOOK_SECRET`, `AGENT_GATEWAY_WEBHOOK_SECRET_PREVIOUS`, `AGENT_GATEWAY_INGEST_MAX_TIMESTAMP_SKEW_SEC`, `AGENT_GATEWAY_INGEST_IDEMPOTENCY_TTL_SEC`, `AGENT_GATEWAY_INGEST_ALLOWED_CONNECTORS`, `AGENT_GATEWAY_INGEST_CONNECTOR_SECRETS`, `AGENT_GATEWAY_INGEST_REQUIRE_CONNECTOR_SECRET`, `AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMIT_WINDOW_SEC`, `AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMIT_MAX`, `AGENT_GATEWAY_INGEST_CONNECTOR_POLICIES`,
   - production safety gate now requires strong `AGENT_GATEWAY_WEBHOOK_SECRET`.
   - ingest route now enforces per-connector Redis window limiter (`AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMIT_*`) after signature verification, returns `429 AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMITED`, and sets `Retry-After`.
 - Coverage:
   - added API integration coverage in `apps/api/src/__tests__/api.integration.spec.ts` for signature/boundary validation and replay-dedup persistence guarantees.
   - extended API integration coverage for connector limiter behavior (`x-gateway-rate-limit-override` in test mode, `Retry-After` assertion).
   - added unit coverage for connector/global signature policy + rotation matching in `apps/api/src/__tests__/agent-gateway-ingest-signature-policy.unit.spec.ts`.
+  - added connector policy parser coverage in `apps/api/src/__tests__/agent-gateway-ingest-connector-policy.unit.spec.ts`,
+  - extended admin gateway telemetry integration coverage with `ingestConnectors` breakdown (`connectorId`, `configuredRiskLevel`, reject/rate-limit metrics).
 
 ## Progress Snapshot (2026-02-26 - auth profile rotation slice)
 - AI runtime auth profile failover update:

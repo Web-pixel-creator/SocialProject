@@ -71,6 +71,7 @@ const envSchema = z.object({
     .default(120),
   AGENT_GATEWAY_INGEST_ALLOWED_CONNECTORS: z.string().default(''),
   AGENT_GATEWAY_INGEST_CONNECTOR_SECRETS: z.string().default(''),
+  AGENT_GATEWAY_INGEST_CONNECTOR_POLICIES: z.string().default(''),
   AGENT_GATEWAY_INGEST_REQUIRE_CONNECTOR_SECRET: z
     .enum(['true', 'false'])
     .default('false'),
