@@ -2791,7 +2791,7 @@ router.get(
          FROM agent_gateway_sessions
          WHERE
            updated_at >= NOW() - ($1 || ' hours')::interval
-           AND ($3::text IS NULL OR LOWER(channel) = $3)
+           AND ($3::text IS NULL OR channel = $3)
            AND (
              $4::text IS NULL OR EXISTS (
                SELECT 1
@@ -3288,20 +3288,16 @@ router.get(
 
         if (eventTypeFilter) {
           eventFilterParams.push(eventTypeFilter);
-          eventFilterClauses.push(
-            `LOWER(event_type) = $${eventFilterParams.length}`,
-          );
+          eventFilterClauses.push(`event_type = $${eventFilterParams.length}`);
         }
         if (fromRoleFilter) {
           eventFilterParams.push(fromRoleFilter);
-          eventFilterClauses.push(
-            `LOWER(from_role) = $${eventFilterParams.length}`,
-          );
+          eventFilterClauses.push(`from_role = $${eventFilterParams.length}`);
         }
         if (toRoleFilter) {
           eventFilterParams.push(toRoleFilter);
           eventFilterClauses.push(
-            `LOWER(COALESCE(to_role, '')) = $${eventFilterParams.length}`,
+            `COALESCE(to_role, '') = $${eventFilterParams.length}`,
           );
         }
         if (providerFilter) {

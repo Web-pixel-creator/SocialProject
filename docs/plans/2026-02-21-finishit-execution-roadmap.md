@@ -285,6 +285,10 @@ Exit criteria:
 - Agent gateway session-events limit contract regression update:
   - admin integration coverage now asserts `total` is computed pre-limit and remains accurate when `limit` truncates event output,
   - coverage also pins descending event order for filtered DB reads to prevent regressions in timeline pagination UX.
+- Agent gateway query-index hardening update:
+  - added migration `1771603000000_agent_gateway_query_indexes.cjs` with composite indexes for common gateway admin reads (`sessions(channel,status,updated_at)` and event filters by `session_id + provider/connector + roles/type`),
+  - session-list and telemetry DB reads now use direct `channel/status` comparisons (no `LOWER(column)` on normalized columns) for better index utilization,
+  - DB event-filter path now uses direct equality on normalized `event_type/from_role/to_role` to match new composite index strategy.
 - Agent orchestration persona-depth update:
   - draft orchestration now injects role personas (`tone`, `signaturePhrase`, `focus`, `boundaries`) from studio `skill_profile.rolePersonas` into runtime prompts,
   - critic/maker/judge prompts preserve studio-level context and add role-specific voice constraints,

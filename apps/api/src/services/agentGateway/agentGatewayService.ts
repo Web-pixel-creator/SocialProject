@@ -452,8 +452,8 @@ export class AgentGatewayServiceImpl implements AgentGatewayService {
          updated_at
        FROM agent_gateway_sessions
        WHERE
-         ($2::text IS NULL OR LOWER(channel) = $2)
-         AND ($3::text IS NULL OR LOWER(status) = $3)
+         ($2::text IS NULL OR channel = $2)
+         AND ($3::text IS NULL OR status = $3)
          AND (
            $4::text IS NULL OR EXISTS (
              SELECT 1
