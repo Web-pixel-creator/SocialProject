@@ -106,6 +106,14 @@ interface LiveSessionRealtimeClientEventDetail {
   clientEvent: Record<string, unknown>;
 }
 
+type LiveSessionRealtimeSendToRole = 'author' | 'critic' | 'maker' | 'judge';
+
+interface LiveSessionRealtimeGatewaySendPayload {
+  toRole: LiveSessionRealtimeSendToRole;
+  type: string;
+  payload: Record<string, unknown>;
+}
+
 type Translate = (key: string) => string;
 
 export const LIVE_SESSION_REALTIME_SERVER_EVENT =
@@ -362,6 +370,75 @@ const isLiveSessionRealtimeClientEventDetail = (
     return false;
   }
   return true;
+};
+
+const parseFunctionCallOutputPayload = (
+  clientEvent: Record<string, unknown>,
+): LiveSessionRealtimeGatewaySendPayload | null => {
+  if (clientEvent.type !== 'conversation.item.create') {
+    return null;
+  }
+  const item = isRecord(clientEvent.item) ? clientEvent.item : null;
+  if (!item || item.type !== 'function_call_output') {
+    return null;
+  }
+  const callId =
+    typeof item.call_id === 'string' && item.call_id.trim().length > 0
+      ? item.call_id.trim()
+      : null;
+  const outputRaw =
+    typeof item.output === 'string' && item.output.trim().length > 0
+      ? item.output
+      : null;
+  const outputRecord = (() => {
+    if (!outputRaw) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(outputRaw) as unknown;
+      return isRecord(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  })();
+
+  return {
+    toRole: 'author',
+    type: 'observer_function_call_output',
+    payload: {
+      callId,
+      hasError: Boolean(
+        outputRecord &&
+          typeof outputRecord.error === 'string' &&
+          outputRecord.error.trim().length > 0,
+      ),
+      errorCode:
+        outputRecord && typeof outputRecord.error === 'string'
+          ? outputRecord.error
+          : null,
+    },
+  };
+};
+
+const mapRealtimeClientEventToGatewaySendPayload = (
+  clientEvent: Record<string, unknown>,
+): LiveSessionRealtimeGatewaySendPayload | null => {
+  const functionCallOutput = parseFunctionCallOutputPayload(clientEvent);
+  if (functionCallOutput) {
+    return functionCallOutput;
+  }
+
+  if (clientEvent.type === 'response.create') {
+    return {
+      toRole: 'author',
+      type: 'observer_response_create',
+      payload: {
+        source: 'tool_bridge',
+      },
+    };
+  }
+
+  return null;
 };
 
 export const emitLiveSessionRealtimeServerEvent = (
@@ -913,6 +990,17 @@ export const LiveStudioSessionsRail = () => {
         return;
       }
       connection.sendClientEvent(detail.clientEvent);
+      const sendPayload = mapRealtimeClientEventToGatewaySendPayload(
+        detail.clientEvent,
+      );
+      if (!sendPayload) {
+        return;
+      }
+      const syncPromise = apiClient.post(
+        `/live-sessions/${detail.liveSessionId}/realtime/send`,
+        sendPayload,
+      );
+      syncPromise.catch(() => null);
     };
 
     window.addEventListener(

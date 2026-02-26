@@ -446,6 +446,16 @@ describe('LiveStudioSessionsRail', () => {
           call_id: 'call_1',
         },
       });
+      expect(mockedApiClient.post).toHaveBeenCalledWith(
+        '/live-sessions/live-session-1/realtime/send',
+        expect.objectContaining({
+          toRole: 'author',
+          type: 'observer_function_call_output',
+          payload: expect.objectContaining({
+            callId: 'call_1',
+          }),
+        }),
+      );
     });
 
     window.removeEventListener(
