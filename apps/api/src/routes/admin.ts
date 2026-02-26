@@ -1288,7 +1288,9 @@ const buildAgentGatewaySessionSummary = (detail: AgentGatewaySessionDetail) => {
       failedStepCount += 1;
     }
 
-    const selectedProvider = toStringOrNull(payload.selectedProvider);
+    const selectedProvider =
+      toStringOrNull(payload.selectedProvider) ??
+      toStringOrNull(payload.provider);
     if (selectedProvider) {
       bump(providerUsage, selectedProvider);
     }
@@ -1735,7 +1737,9 @@ const accumulateAgentGatewayEventMetrics = (
   event: AgentGatewayTelemetryEventRow,
   flags: AgentGatewaySessionFlags,
 ) => {
-  const selectedProvider = toStringOrNull(event.payload.selectedProvider);
+  const selectedProvider =
+    toStringOrNull(event.payload.selectedProvider) ??
+    toStringOrNull(event.payload.provider);
   if (selectedProvider) {
     bump(accumulator.providerUsage, selectedProvider);
   }
@@ -2833,7 +2837,13 @@ router.get(
                  WHERE session_id = ANY($1::text[])
                    AND (
                      $2::text IS NULL OR
-                     LOWER(COALESCE(payload->>'selectedProvider', '')) = $2
+                     LOWER(
+                       COALESCE(
+                         NULLIF(payload->>'selectedProvider', ''),
+                         NULLIF(payload->>'provider', ''),
+                         ''
+                       )
+                     ) = $2
                    )
                    AND (
                      $3::text IS NULL OR
@@ -2866,8 +2876,13 @@ router.get(
              AND ($2::text IS NULL OR LOWER(COALESCE(metadata->>'channel', '')) = $2)
              AND (
                $3::text IS NULL OR
-               LOWER(COALESCE(metadata->>'selectedProvider', '')) = $3 OR
-               LOWER(COALESCE(metadata->>'provider', '')) = $3
+               LOWER(
+                 COALESCE(
+                   NULLIF(metadata->>'selectedProvider', ''),
+                   NULLIF(metadata->>'provider', ''),
+                   ''
+                 )
+               ) = $3
              )
            GROUP BY LOWER(COALESCE(metadata->>'adapter', 'unknown')), event_type`,
           [
@@ -2900,8 +2915,13 @@ router.get(
              AND ($2::text IS NULL OR LOWER(COALESCE(metadata->>'channel', '')) = $2)
              AND (
                $3::text IS NULL OR
-               LOWER(COALESCE(metadata->>'provider', '')) = $3 OR
-               LOWER(COALESCE(metadata->>'selectedProvider', '')) = $3
+               LOWER(
+                 COALESCE(
+                   NULLIF(metadata->>'selectedProvider', ''),
+                   NULLIF(metadata->>'provider', ''),
+                   ''
+                 )
+               ) = $3
              )
              AND (
                $4::text IS NULL OR
@@ -3025,8 +3045,13 @@ router.get(
              AND ($2::text IS NULL OR LOWER(COALESCE(metadata->>'channel', '')) = $2)
              AND (
                $3::text IS NULL OR
-               LOWER(COALESCE(metadata->>'selectedProvider', '')) = $3 OR
-               LOWER(COALESCE(metadata->>'provider', '')) = $3
+               LOWER(
+                 COALESCE(
+                   NULLIF(metadata->>'selectedProvider', ''),
+                   NULLIF(metadata->>'provider', ''),
+                   ''
+                 )
+               ) = $3
              )
            GROUP BY LOWER(COALESCE(metadata->>'adapter', 'unknown')), event_type`,
           [
@@ -3059,8 +3084,13 @@ router.get(
              AND ($2::text IS NULL OR LOWER(COALESCE(metadata->>'channel', '')) = $2)
              AND (
                $3::text IS NULL OR
-               LOWER(COALESCE(metadata->>'provider', '')) = $3 OR
-               LOWER(COALESCE(metadata->>'selectedProvider', '')) = $3
+               LOWER(
+                 COALESCE(
+                   NULLIF(metadata->>'selectedProvider', ''),
+                   NULLIF(metadata->>'provider', ''),
+                   ''
+                 )
+               ) = $3
              )
              AND (
                $4::text IS NULL OR
@@ -3409,12 +3439,11 @@ router.get(
           return false;
         }
         if (providerFilter) {
-          const eventProviderRaw =
-            event.payload.selectedProvider ?? event.payload.provider;
           const eventProvider =
-            typeof eventProviderRaw === 'string'
-              ? eventProviderRaw.trim().toLowerCase()
-              : '';
+            (
+              toStringOrNull(event.payload.selectedProvider) ??
+              toStringOrNull(event.payload.provider)
+            )?.toLowerCase() ?? '';
           if (eventProvider !== providerFilter) {
             return false;
           }

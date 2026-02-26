@@ -1012,7 +1012,8 @@ describe('Admin API routes', () => {
         type: 'draft_cycle_maker_completed',
         payload: {
           failed: false,
-          selectedProvider: 'gemini-2',
+          selectedProvider: '',
+          provider: 'gemini-2',
           attempts: [{ status: 'success' }],
         },
       });
@@ -1341,6 +1342,56 @@ describe('Admin API routes', () => {
     ]);
   });
 
+  test('agent gateway adapters endpoint applies provider filter with selectedProvider fallback', async () => {
+    await db.query(
+      `INSERT INTO ux_events (event_type, user_type, status, source, metadata)
+       VALUES
+         ('agent_gateway_adapter_route_success', 'system', 'ok', 'agent_gateway_adapter', '{"adapter":"web","channel":"draft_cycle","selectedProvider":"","provider":"gpt-4.1"}'::jsonb),
+         ('agent_gateway_adapter_route_success', 'system', 'ok', 'agent_gateway_adapter', '{"adapter":"external_webhook","channel":"draft_cycle","selectedProvider":"gemini-2"}'::jsonb),
+         ('agent_gateway_ingest_accept', 'system', 'ok', 'agent_gateway_ingest', '{"connectorId":"partner-alpha","connectorRiskLevel":"trusted","channel":"draft_cycle","selectedProvider":"","provider":"gpt-4.1"}'::jsonb),
+         ('agent_gateway_ingest_accept', 'system', 'ok', 'agent_gateway_ingest', '{"connectorId":"partner-beta","connectorRiskLevel":"standard","channel":"draft_cycle","selectedProvider":"gemini-2"}'::jsonb)`,
+    );
+
+    const response = await request(app)
+      .get('/api/admin/agent-gateway/adapters?hours=24&provider=gpt-4.1')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(response.status).toBe(200);
+    expect(response.body.filters).toEqual({
+      channel: null,
+      provider: 'gpt-4.1',
+      connector: null,
+    });
+    expect(response.body.adapters).toEqual(
+      expect.objectContaining({
+        total: 1,
+        success: 1,
+        failed: 0,
+      }),
+    );
+    expect(response.body.adapters.usage).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          adapter: 'web',
+          total: 1,
+          success: 1,
+        }),
+      ]),
+    );
+    expect(response.body.ingestConnectors).toEqual(
+      expect.objectContaining({
+        total: 1,
+        accepted: 1,
+      }),
+    );
+    expect(response.body.ingestConnectors.usage).toEqual([
+      expect.objectContaining({
+        connectorId: 'partner-alpha',
+        total: 1,
+      }),
+    ]);
+  });
+
   test('agent gateway adapters endpoint validates query params', async () => {
     const invalidQueries = [
       '/api/admin/agent-gateway/adapters?hours=0',
@@ -1465,7 +1516,8 @@ describe('Admin API routes', () => {
         fromRole: 'judge',
         type: 'draft_cycle_step',
         payload: {
-          selectedProvider: 'gpt-4.1',
+          selectedProvider: '',
+          provider: 'gpt-4.1',
           connectorId: 'partner-beta',
         },
       });

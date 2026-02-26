@@ -461,8 +461,8 @@ export class AgentGatewayServiceImpl implements AgentGatewayService {
              WHERE event_rows.session_id = agent_gateway_sessions.id
                AND LOWER(
                  COALESCE(
-                   event_rows.payload->>'selectedProvider',
-                   event_rows.payload->>'provider',
+                   NULLIF(event_rows.payload->>'selectedProvider', ''),
+                   NULLIF(event_rows.payload->>'provider', ''),
                    ''
                  )
                ) = $4

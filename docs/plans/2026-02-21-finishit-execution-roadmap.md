@@ -662,3 +662,15 @@ Exit criteria:
 - Coverage:
   - added unit coverage for profile rotation/failover in `apps/api/src/__tests__/ai-runtime.unit.spec.ts`,
   - updated admin integration coverage for profile-state fields in `apps/api/src/__tests__/admin.integration.spec.ts`.
+
+## Progress Snapshot (2026-02-26 - gateway provider fallback + ux_events index slice)
+- Provider fallback normalization update:
+  - admin gateway telemetry/adapters SQL now uses the same normalized provider expression (`selectedProvider` -> `provider` fallback with empty-string guard),
+  - in-memory provider usage accumulation now also falls back to `payload.provider` when `selectedProvider` is empty/missing,
+  - persisted session provider filtering uses normalized SQL fallback in `agentGatewayService.listPersistedSessions`.
+- Query/index performance update:
+  - added migration `apps/api/migrations/1771604000000_agent_gateway_ux_event_query_indexes.cjs`,
+  - added normalized provider index for `agent_gateway_events(session_id, providerExpr)` aligned with new filter expression,
+  - added partial `ux_events` indexes for gateway adapter/ingest telemetry filters (`event_type`, `created_at`, `channel/provider/connector` expressions).
+- Coverage update:
+  - extended admin integration coverage in `apps/api/src/__tests__/admin.integration.spec.ts` for provider fallback cases in session/telemetry paths and adapter+ingest provider-filter metrics.
