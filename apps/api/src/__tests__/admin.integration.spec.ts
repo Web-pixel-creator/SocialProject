@@ -1058,6 +1058,96 @@ describe('Admin API routes', () => {
     ]);
   });
 
+  test('agent gateway telemetry endpoint applies connector filter to session and event aggregates', async () => {
+    const firstSession = await request(app)
+      .post('/api/admin/agent-gateway/sessions')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        channel: 'draft_cycle',
+      });
+    expect(firstSession.status).toBe(201);
+    const firstSessionId = firstSession.body.session.id as string;
+
+    const firstEvent = await request(app)
+      .post(`/api/admin/agent-gateway/sessions/${firstSessionId}/events`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        fromRole: 'maker',
+        toRole: 'judge',
+        type: 'draft_cycle_maker_completed',
+        payload: {
+          failed: false,
+          selectedProvider: 'gpt-4.1',
+          connectorId: 'partner-alpha',
+          attempts: [{ status: 'success' }],
+        },
+      });
+    expect(firstEvent.status).toBe(201);
+
+    const secondSession = await request(app)
+      .post('/api/admin/agent-gateway/sessions')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        channel: 'draft_cycle',
+      });
+    expect(secondSession.status).toBe(201);
+    const secondSessionId = secondSession.body.session.id as string;
+
+    const secondEvent = await request(app)
+      .post(`/api/admin/agent-gateway/sessions/${secondSessionId}/events`)
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        fromRole: 'maker',
+        toRole: 'judge',
+        type: 'draft_cycle_maker_completed',
+        payload: {
+          failed: false,
+          selectedProvider: 'gpt-4.1',
+          connectorId: 'partner-beta',
+          attempts: [{ status: 'success' }],
+        },
+      });
+    expect(secondEvent.status).toBe(201);
+
+    const response = await request(app)
+      .get(
+        '/api/admin/agent-gateway/telemetry?hours=24&limit=10&connector=partner-beta',
+      )
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(response.status).toBe(200);
+    expect(response.body.filters).toEqual({
+      channel: null,
+      provider: null,
+      connector: 'partner-beta',
+    });
+    expect(response.body.sessions).toEqual(
+      expect.objectContaining({
+        total: 1,
+      }),
+    );
+    expect(response.body.events).toEqual(
+      expect.objectContaining({
+        total: 1,
+        draftCycleStepEvents: 1,
+      }),
+    );
+    expect(response.body.providerUsage).toEqual([
+      expect.objectContaining({
+        provider: 'gpt-4.1',
+        count: 1,
+      }),
+    ]);
+    expect(response.body.channelUsage).toEqual([
+      expect.objectContaining({
+        channel: 'draft_cycle',
+        count: 1,
+      }),
+    ]);
+    expect(response.body.sessions.total).toBe(1);
+    expect(response.body.events.total).toBe(1);
+  });
+
   test('agent gateway telemetry endpoint applies connector filter to ingest metrics', async () => {
     await db.query(
       `INSERT INTO ux_events (event_type, user_type, status, source, metadata)

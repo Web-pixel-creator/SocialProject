@@ -2792,9 +2792,22 @@ router.get(
          WHERE
            updated_at >= NOW() - ($1 || ' hours')::interval
            AND ($3::text IS NULL OR LOWER(channel) = $3)
+           AND (
+             $4::text IS NULL OR EXISTS (
+               SELECT 1
+               FROM agent_gateway_events connector_event_rows
+               WHERE connector_event_rows.session_id = agent_gateway_sessions.id
+                 AND LOWER(
+                   COALESCE(
+                     connector_event_rows.payload->>'connectorId',
+                     ''
+                   )
+                 ) = $4
+             )
+           )
          ORDER BY updated_at DESC
          LIMIT $2`,
-        [hours, limit, channelFilter],
+        [hours, limit, channelFilter, connectorFilter],
       );
       let sessionRows: AgentGatewayTelemetrySessionRow[] =
         sessionsResult.rows.map((row) => ({
@@ -2814,7 +2827,7 @@ router.get(
                 `SELECT
                    session_id,
                    event_type,
-                  payload,
+                   payload,
                    created_at
                  FROM agent_gateway_events
                  WHERE session_id = ANY($1::text[])
@@ -2822,8 +2835,12 @@ router.get(
                      $2::text IS NULL OR
                      LOWER(COALESCE(payload->>'selectedProvider', '')) = $2
                    )
+                   AND (
+                     $3::text IS NULL OR
+                     LOWER(COALESCE(payload->>'connectorId', '')) = $3
+                   )
                  ORDER BY created_at DESC`,
-                [sessionIds, providerFilter],
+                [sessionIds, providerFilter, connectorFilter],
               )
             ).rows.map((row) => ({
               sessionId: String(row.session_id ?? ''),
@@ -2919,12 +2936,12 @@ router.get(
         count: toNumber(row.count),
         lastSeenAt: toNullableIsoTimestamp(row.last_seen_at),
       }));
-      if (providerFilter) {
-        const sessionIdsWithProviderEvents = new Set(
+      if (providerFilter || connectorFilter) {
+        const sessionIdsWithFilteredEvents = new Set(
           eventRows.map((row) => row.sessionId),
         );
         sessionRows = sessionRows.filter((row) =>
-          sessionIdsWithProviderEvents.has(row.id),
+          sessionIdsWithFilteredEvents.has(row.id),
         );
       }
       const snapshot = buildAgentGatewayTelemetrySnapshot(

@@ -261,6 +261,7 @@ Exit criteria:
 - Agent gateway admin connector-filter update:
   - `/api/admin/agent-gateway/telemetry` and `/api/admin/agent-gateway/adapters` now accept optional `connector` query filter (validated connector id format),
   - ingest telemetry queries (`source = agent_gateway_ingest`) are now filtered by `metadata.connectorId` when `connector` is provided,
+  - gateway telemetry now also scopes session/event aggregates by `connector` (DB session selection + event payload filtering) so connector drilldown is end-to-end consistent,
   - responses now include `filters.connector` for explicit operator visibility,
   - admin integration coverage updated for connector filtering and connector query validation.
 - Agent gateway session-list connector parity update:
