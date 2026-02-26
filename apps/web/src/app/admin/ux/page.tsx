@@ -52,6 +52,24 @@ interface ObserverEngagementResponse {
       accuracyRate?: number | null;
       payoutToStakeRatio?: number | null;
     }>;
+    resolutionWindows?: {
+      d7?: {
+        days?: number;
+        predictors?: number;
+        resolvedPredictions?: number;
+        correctPredictions?: number;
+        accuracyRate?: number | null;
+        netPoints?: number;
+      };
+      d30?: {
+        days?: number;
+        predictors?: number;
+        resolvedPredictions?: number;
+        correctPredictions?: number;
+        accuracyRate?: number | null;
+        netPoints?: number;
+      };
+    };
   };
   predictionFilterTelemetry?: {
     totalSwitches?: number;
@@ -475,6 +493,14 @@ interface PredictionHourlyTrendItem {
   resolvedPredictions: number;
   stakePoints: number;
 }
+interface PredictionResolutionWindowItem {
+  accuracyRate: number | null;
+  correctPredictions: number;
+  days: number;
+  netPoints: number;
+  predictors: number;
+  resolvedPredictions: number;
+}
 interface PredictionFilterScopeFilterItem {
   count: number;
   filter: string;
@@ -773,6 +799,27 @@ const normalizePredictionHourlyTrendItems = (
       };
     })
     .sort((left, right) => left.hour.localeCompare(right.hour));
+};
+
+const normalizePredictionResolutionWindow = (
+  value: unknown,
+  fallbackDays: number,
+): PredictionResolutionWindowItem => {
+  const row = value && typeof value === 'object' ? value : {};
+  return {
+    days: toNumber((row as Record<string, unknown>).days, fallbackDays),
+    predictors: toNumber((row as Record<string, unknown>).predictors),
+    resolvedPredictions: toNumber(
+      (row as Record<string, unknown>).resolvedPredictions,
+    ),
+    correctPredictions: toNumber(
+      (row as Record<string, unknown>).correctPredictions,
+    ),
+    accuracyRate: pickFirstFiniteRate(
+      (row as Record<string, unknown>).accuracyRate,
+    ),
+    netPoints: toNumber((row as Record<string, unknown>).netPoints),
+  };
 };
 
 const normalizePredictionFilterScopeFilterItems = (
@@ -2823,6 +2870,15 @@ export default async function AdminUxObserverEngagementPage({
   const predictionHourlyTrend = normalizePredictionHourlyTrendItems(
     predictionMarket.hourlyTrend,
   );
+  const predictionResolutionWindows = predictionMarket.resolutionWindows ?? {};
+  const predictionWindow7d = normalizePredictionResolutionWindow(
+    (predictionResolutionWindows as Record<string, unknown>).d7,
+    7,
+  );
+  const predictionWindow30d = normalizePredictionResolutionWindow(
+    (predictionResolutionWindows as Record<string, unknown>).d30,
+    30,
+  );
   const predictionFilterTelemetry = data?.predictionFilterTelemetry ?? {};
   const predictionFilterByScopeBreakdown = normalizeBreakdownItems({
     items: predictionFilterTelemetry.byScope,
@@ -4190,7 +4246,7 @@ export default async function AdminUxObserverEngagementPage({
             value={toRateText(kpis.predictionSettlementRate)}
           />
         </div>
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-3">
           <BreakdownListCard
             emptyLabel="No prediction outcomes in current window."
             items={predictionOutcomesBreakdown}
@@ -4220,6 +4276,43 @@ export default async function AdminUxObserverEngagementPage({
               | Correct:{' '}
               <span className="font-semibold text-foreground">
                 {toNumber(predictionTotals.correctPredictions)}
+              </span>
+            </p>
+          </article>
+          <article className="card grid gap-2 p-4">
+            <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+              Resolved windows
+            </h3>
+            <p className="text-muted-foreground text-xs">
+              {predictionWindow7d.days}d:{' '}
+              <span className="font-semibold text-foreground">
+                {toRateText(predictionWindow7d.accuracyRate)}
+              </span>{' '}
+              ({predictionWindow7d.correctPredictions}/
+              {predictionWindow7d.resolvedPredictions}) | Net:{' '}
+              <span className="font-semibold text-foreground">
+                {predictionWindow7d.netPoints >= 0 ? '+' : ''}
+                {predictionWindow7d.netPoints}
+              </span>{' '}
+              | Predictors:{' '}
+              <span className="font-semibold text-foreground">
+                {predictionWindow7d.predictors}
+              </span>
+            </p>
+            <p className="text-muted-foreground text-xs">
+              {predictionWindow30d.days}d:{' '}
+              <span className="font-semibold text-foreground">
+                {toRateText(predictionWindow30d.accuracyRate)}
+              </span>{' '}
+              ({predictionWindow30d.correctPredictions}/
+              {predictionWindow30d.resolvedPredictions}) | Net:{' '}
+              <span className="font-semibold text-foreground">
+                {predictionWindow30d.netPoints >= 0 ? '+' : ''}
+                {predictionWindow30d.netPoints}
+              </span>{' '}
+              | Predictors:{' '}
+              <span className="font-semibold text-foreground">
+                {predictionWindow30d.predictors}
               </span>
             </p>
           </article>

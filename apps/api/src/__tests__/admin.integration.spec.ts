@@ -1726,6 +1726,26 @@ describe('Admin API routes', () => {
       true,
     );
     expect(response.body.predictionMarket.hourlyTrend).toHaveLength(0);
+    expect(response.body.predictionMarket.resolutionWindows).toEqual(
+      expect.objectContaining({
+        d7: expect.objectContaining({
+          days: 7,
+          predictors: 0,
+          resolvedPredictions: 0,
+          correctPredictions: 0,
+          accuracyRate: null,
+          netPoints: 0,
+        }),
+        d30: expect.objectContaining({
+          days: 30,
+          predictors: 0,
+          resolvedPredictions: 0,
+          correctPredictions: 0,
+          accuracyRate: null,
+          netPoints: 0,
+        }),
+      }),
+    );
     expect(response.body.predictionFilterTelemetry.totalSwitches).toBe(4);
     expect(response.body.predictionFilterTelemetry.byScope).toEqual(
       expect.arrayContaining([
@@ -1976,6 +1996,26 @@ describe('Admin API routes', () => {
       resolvedPredictions: 2,
       correctPredictions: 1,
     });
+    expect(response.body.predictionMarket.resolutionWindows).toEqual(
+      expect.objectContaining({
+        d7: expect.objectContaining({
+          days: 7,
+          predictors: 2,
+          resolvedPredictions: 2,
+          correctPredictions: 1,
+          accuracyRate: 0.5,
+          netPoints: 20,
+        }),
+        d30: expect.objectContaining({
+          days: 30,
+          predictors: 2,
+          resolvedPredictions: 2,
+          correctPredictions: 1,
+          accuracyRate: 0.5,
+          netPoints: 20,
+        }),
+      }),
+    );
     for (const bucket of hourlyTrend) {
       expect(typeof bucket.hour).toBe('string');
     }

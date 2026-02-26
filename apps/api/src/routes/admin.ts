@@ -3760,6 +3760,60 @@ router.get(
          ORDER BY hour_bucket ASC`,
         [hours],
       );
+      const predictionResolutionWindowsResult = await db.query(
+        `WITH resolved_predictions AS (
+           SELECT
+             observer_id,
+             is_correct,
+             stake_points,
+             payout_points,
+             COALESCE(resolved_at, created_at) AS resolved_timestamp
+           FROM observer_pr_predictions
+           WHERE resolved_outcome IS NOT NULL
+         )
+         SELECT
+           COUNT(*) FILTER (
+             WHERE resolved_timestamp >= NOW() - INTERVAL '7 days'
+           )::int AS resolved_7d,
+           COUNT(*) FILTER (
+             WHERE resolved_timestamp >= NOW() - INTERVAL '7 days'
+               AND is_correct = true
+           )::int AS correct_7d,
+           COUNT(DISTINCT observer_id) FILTER (
+             WHERE resolved_timestamp >= NOW() - INTERVAL '7 days'
+           )::int AS predictors_7d,
+           COALESCE(
+             SUM(
+               CASE
+                 WHEN resolved_timestamp >= NOW() - INTERVAL '7 days'
+                   THEN payout_points - stake_points
+                 ELSE 0
+               END
+             ),
+             0
+           )::int AS net_points_7d,
+           COUNT(*) FILTER (
+             WHERE resolved_timestamp >= NOW() - INTERVAL '30 days'
+           )::int AS resolved_30d,
+           COUNT(*) FILTER (
+             WHERE resolved_timestamp >= NOW() - INTERVAL '30 days'
+               AND is_correct = true
+           )::int AS correct_30d,
+           COUNT(DISTINCT observer_id) FILTER (
+             WHERE resolved_timestamp >= NOW() - INTERVAL '30 days'
+           )::int AS predictors_30d,
+           COALESCE(
+             SUM(
+               CASE
+                 WHEN resolved_timestamp >= NOW() - INTERVAL '30 days'
+                   THEN payout_points - stake_points
+                 ELSE 0
+               END
+             ),
+             0
+           )::int AS net_points_30d
+         FROM resolved_predictions`,
+      );
       const predictionFilterRows = await db.query(
         `SELECT
            COALESCE(metadata->>'scope', 'unknown') AS scope,
@@ -3967,6 +4021,30 @@ router.get(
           };
         })
         .filter((row) => row.hour.length > 0);
+      const predictionResolved7d = Number(
+        predictionResolutionWindowsResult.rows[0]?.resolved_7d ?? 0,
+      );
+      const predictionCorrect7d = Number(
+        predictionResolutionWindowsResult.rows[0]?.correct_7d ?? 0,
+      );
+      const predictionPredictors7d = Number(
+        predictionResolutionWindowsResult.rows[0]?.predictors_7d ?? 0,
+      );
+      const predictionNetPoints7d = Number(
+        predictionResolutionWindowsResult.rows[0]?.net_points_7d ?? 0,
+      );
+      const predictionResolved30d = Number(
+        predictionResolutionWindowsResult.rows[0]?.resolved_30d ?? 0,
+      );
+      const predictionCorrect30d = Number(
+        predictionResolutionWindowsResult.rows[0]?.correct_30d ?? 0,
+      );
+      const predictionPredictors30d = Number(
+        predictionResolutionWindowsResult.rows[0]?.predictors_30d ?? 0,
+      );
+      const predictionNetPoints30d = Number(
+        predictionResolutionWindowsResult.rows[0]?.net_points_30d ?? 0,
+      );
       const multimodalAttempts =
         totals.multimodalViews + totals.multimodalEmptyStates;
       const multimodalTotalEvents =
@@ -4051,6 +4129,24 @@ router.get(
             stakePoints: Number(row.stake_points ?? 0),
           })),
           hourlyTrend: predictionHourlyTrend,
+          resolutionWindows: {
+            d7: {
+              days: 7,
+              predictors: predictionPredictors7d,
+              resolvedPredictions: predictionResolved7d,
+              correctPredictions: predictionCorrect7d,
+              accuracyRate: toRate(predictionCorrect7d, predictionResolved7d),
+              netPoints: predictionNetPoints7d,
+            },
+            d30: {
+              days: 30,
+              predictors: predictionPredictors30d,
+              resolvedPredictions: predictionResolved30d,
+              correctPredictions: predictionCorrect30d,
+              accuracyRate: toRate(predictionCorrect30d, predictionResolved30d),
+              netPoints: predictionNetPoints30d,
+            },
+          },
         },
         predictionFilterTelemetry: {
           totalSwitches: predictionFilterTotalSwitches,

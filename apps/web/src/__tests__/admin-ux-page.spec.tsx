@@ -101,6 +101,24 @@ describe('admin ux observer engagement page', () => {
                 { predictedOutcome: 'merge', predictions: 1, stakePoints: 40 },
                 { predictedOutcome: 'reject', predictions: 1, stakePoints: 25 },
               ],
+              resolutionWindows: {
+                d7: {
+                  days: 7,
+                  predictors: 2,
+                  resolvedPredictions: 2,
+                  correctPredictions: 1,
+                  accuracyRate: 0.5,
+                  netPoints: 19,
+                },
+                d30: {
+                  days: 30,
+                  predictors: 3,
+                  resolvedPredictions: 3,
+                  correctPredictions: 2,
+                  accuracyRate: 0.667,
+                  netPoints: 31,
+                },
+              },
               hourlyTrend: [
                 {
                   hour: '2026-02-22T10:00:00Z',
@@ -467,6 +485,9 @@ describe('admin ux observer engagement page', () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/Outcome mix/i)).toBeInTheDocument();
     expect(screen.getByText(/Participation snapshot/i)).toBeInTheDocument();
+    expect(screen.getByText(/Resolved windows/i)).toBeInTheDocument();
+    expect(screen.getByText(/7d:/i)).toBeInTheDocument();
+    expect(screen.getByText(/30d:/i)).toBeInTheDocument();
     expect(screen.getByText(/Style fusion metrics/i)).toBeInTheDocument();
     expect(screen.getByText(/Fusion attempts/i)).toBeInTheDocument();
     expect(screen.getByText(/Fusion errors/i)).toBeInTheDocument();
