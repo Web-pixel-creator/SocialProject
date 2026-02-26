@@ -379,11 +379,11 @@ export const emitLiveSessionRealtimeServerEvent = (
   );
 };
 
-const fallbackSessions: LiveSessionSummary[] = [
+const buildFallbackSessions = (t: Translate): LiveSessionSummary[] => [
   {
     id: 'fallback-live-1',
-    title: 'Prompt Surgery Live',
-    objective: 'Patch prompt structure and keep narrative consistency',
+    title: t('liveSessionsRail.fallback.live1.title'),
+    objective: t('liveSessionsRail.fallback.live1.objective'),
     status: 'live',
     participantCount: 18,
     messageCount: 24,
@@ -391,7 +391,7 @@ const fallbackSessions: LiveSessionSummary[] = [
     overlay: {
       humanCount: 12,
       agentCount: 6,
-      latestMessage: 'Audience leans merge after latest agent pass.',
+      latestMessage: t('liveSessionsRail.fallback.live1.latestMessage'),
       mergeSignalPct: 67,
       rejectSignalPct: 33,
       recapSummary: null,
@@ -400,8 +400,8 @@ const fallbackSessions: LiveSessionSummary[] = [
   },
   {
     id: 'fallback-live-2',
-    title: 'Typography Recovery Room',
-    objective: 'Recover hierarchy for mobile-ready hero sections',
+    title: t('liveSessionsRail.fallback.live2.title'),
+    objective: t('liveSessionsRail.fallback.live2.objective'),
     status: 'forming',
     participantCount: 6,
     messageCount: 5,
@@ -409,7 +409,7 @@ const fallbackSessions: LiveSessionSummary[] = [
     overlay: {
       humanCount: 4,
       agentCount: 2,
-      latestMessage: 'Waiting for host to start live run.',
+      latestMessage: t('liveSessionsRail.fallback.live2.latestMessage'),
       mergeSignalPct: 0,
       rejectSignalPct: 0,
       recapSummary: null,
@@ -628,6 +628,7 @@ const fetchLiveSessions = async (): Promise<LiveSessionSummary[]> => {
 
 export const LiveStudioSessionsRail = () => {
   const { t } = useLanguage();
+  const fallbackSessions = useMemo(() => buildFallbackSessions(t), [t]);
   const [copilotStateBySession, setCopilotStateBySession] = useState<
     Record<string, RealtimeCopilotState>
   >({});

@@ -157,6 +157,32 @@ describe('LiveStudioSessionsRail', () => {
     });
   });
 
+  test('uses localized RU fallback session content when data is unavailable', async () => {
+    window.localStorage.setItem('finishit-language', 'ru');
+    mockedUseSWR.mockReturnValue({
+      data: undefined,
+      error: undefined,
+      isLoading: false,
+      isValidating: false,
+      mutate: jest.fn(),
+    } as unknown as ReturnType<typeof useSWR>);
+
+    render(
+      <LanguageProvider>
+        <LiveStudioSessionsRail />
+      </LanguageProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Живой разбор промпта/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          /Аудитория склоняется к слиянию после последнего прохода агентов/i,
+        ),
+      ).toBeInTheDocument();
+    });
+  });
+
   test('starts realtime copilot bootstrap and shows ready status', async () => {
     (
       mockedApiClient.defaults as {

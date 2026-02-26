@@ -127,6 +127,7 @@ Exit criteria:
   - finalized transcript segments are now persisted into session chat via observer message endpoint with dedupe+cooldown guards; live rail now shows realtime voice runtime status (`Listening/Thinking/Speaking/Idle`) and transcript persistence state.
   - `LiveStudioSessionsRail` now uses app i18n keys for session/overlay/voice/transcript/copilot/error copy (EN/RU parity) instead of hardcoded English strings.
   - added RU locale regression in `apps/web/src/__tests__/live-studio-sessions-rail.spec.tsx` to lock translated empty/title copy.
+  - fallback live-session cards (title/objective/latest message) are now localized via i18n keys in EN/RU, with regression coverage for RU fallback rendering when feed data is unavailable.
 - Observer prediction history/accuracy UX polish:
   - extracted shared prediction-history helpers (`apps/web/src/lib/predictionHistory.ts`) for totals/accuracy/net calculation and deterministic sorting across filters,
   - private/public observer profile pages now share the same filter/sort logic and render filter buttons with live counts (`All`, `Resolved`, `Pending`),
