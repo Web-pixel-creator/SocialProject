@@ -200,10 +200,32 @@ interface SimilarSearchMetricsResponse {
       count?: number;
     }>;
   };
+  styleFusionCopy?: {
+    total?: number;
+    success?: number;
+    errors?: number;
+    successRate?: number | null;
+    errorBreakdown?: Array<{
+      errorCode?: string;
+      count?: number;
+    }>;
+  };
+}
+
+interface StyleFusionCopyMetricsView {
+  errorBreakdown: Array<{
+    count: number;
+    errorCode: string;
+  }>;
+  errors: number;
+  success: number;
+  successRate: number | null;
+  total: number;
 }
 
 interface StyleFusionMetricsView {
   avgSampleCount: number | null;
+  copy: StyleFusionCopyMetricsView;
   errorBreakdown: Array<{
     count: number;
     errorCode: string;
@@ -2447,13 +2469,29 @@ const StatCard = ({
   </article>
 );
 
+const normalizeStyleFusionErrorBreakdown = (
+  items: unknown,
+): Array<{ count: number; errorCode: string }> => {
+  if (!Array.isArray(items)) {
+    return [];
+  }
+  return items.map((entry, index) => {
+    const row = entry && typeof entry === 'object' ? entry : {};
+    return {
+      errorCode: toStringValue(
+        (row as Record<string, unknown>).errorCode,
+        `unknown-${index + 1}`,
+      ),
+      count: toNumber((row as Record<string, unknown>).count),
+    };
+  });
+};
+
 const normalizeStyleFusionMetrics = (
   payload: SimilarSearchMetricsResponse | null,
 ): StyleFusionMetricsView => {
   const styleFusion = payload?.styleFusion ?? {};
-  const rawBreakdown = Array.isArray(styleFusion.errorBreakdown)
-    ? styleFusion.errorBreakdown
-    : [];
+  const styleFusionCopy = payload?.styleFusionCopy ?? {};
   return {
     total: toNumber(styleFusion.total),
     success: toNumber(styleFusion.success),
@@ -2468,10 +2506,22 @@ const normalizeStyleFusionMetrics = (
       Number.isFinite(styleFusion.avgSampleCount)
         ? styleFusion.avgSampleCount
         : null,
-    errorBreakdown: rawBreakdown.map((entry, index) => ({
-      errorCode: toStringValue(entry.errorCode, `unknown-${index + 1}`),
-      count: toNumber(entry.count),
-    })),
+    errorBreakdown: normalizeStyleFusionErrorBreakdown(
+      styleFusion.errorBreakdown,
+    ),
+    copy: {
+      total: toNumber(styleFusionCopy.total),
+      success: toNumber(styleFusionCopy.success),
+      errors: toNumber(styleFusionCopy.errors),
+      successRate:
+        typeof styleFusionCopy.successRate === 'number' &&
+        Number.isFinite(styleFusionCopy.successRate)
+          ? styleFusionCopy.successRate
+          : null,
+      errorBreakdown: normalizeStyleFusionErrorBreakdown(
+        styleFusionCopy.errorBreakdown,
+      ),
+    },
   };
 };
 
@@ -2537,6 +2587,54 @@ const StyleFusionMetricsSection = ({
             ))}
           </ul>
         )}
+      </article>
+      <article className="card grid gap-3 p-4">
+        <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+          Fusion brief copy
+        </h3>
+        <div className="grid gap-3 md:grid-cols-3">
+          <StatCard
+            hint="Copy fusion brief attempts from draft detail"
+            label="Copy attempts"
+            value={`${metrics.copy.total}`}
+          />
+          <StatCard
+            hint="Successful clipboard writes for fusion brief"
+            label="Copy success rate"
+            value={toRateText(metrics.copy.successRate)}
+          />
+          <StatCard
+            hint="Failed copy attempts in current window"
+            label="Copy errors"
+            value={`${metrics.copy.errors}`}
+          />
+        </div>
+        <article className="card grid gap-2 p-4">
+          <h4 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+            Copy errors
+          </h4>
+          {metrics.copy.errorBreakdown.length === 0 ? (
+            <p className="text-muted-foreground text-xs">
+              No fusion-brief copy errors in current window.
+            </p>
+          ) : (
+            <ul className="grid gap-1 text-xs">
+              {metrics.copy.errorBreakdown.map((entry, index) => (
+                <li
+                  className="flex items-center justify-between gap-2"
+                  key={`${entry.errorCode}:${index + 1}`}
+                >
+                  <span className="text-muted-foreground">
+                    {toStringValue(entry.errorCode)}
+                  </span>
+                  <span className="font-semibold text-foreground">
+                    {toNumber(entry.count)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </article>
       </article>
     </section>
   );

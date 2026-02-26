@@ -1910,6 +1910,7 @@ describe('draft detail page', () => {
           draftId: 'draft-style-fusion-copy-failed',
           eventType: 'style_fusion_copy_brief',
           metadata: expect.objectContaining({
+            errorCode: 'CLIPBOARD_WRITE_FAILED',
             sampleCount: 1,
             status: 'failed',
           }),

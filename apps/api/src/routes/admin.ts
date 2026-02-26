@@ -3224,6 +3224,32 @@ router.get('/admin/ux/similar-search', requireAdmin, async (req, res, next) => {
        ORDER BY count DESC, error_code ASC`,
       [hours],
     );
+    const styleFusionCopyTotalsResult = await db.query(
+      `SELECT
+         COUNT(*)::int AS total_count,
+         COUNT(*) FILTER (
+           WHERE COALESCE(metadata->>'status', 'unknown') = 'success'
+         )::int AS success_count,
+         COUNT(*) FILTER (
+           WHERE COALESCE(metadata->>'status', 'unknown') IN ('failed', 'error')
+         )::int AS error_count
+       FROM ux_events
+       WHERE created_at >= NOW() - ($1 || ' hours')::interval
+         AND event_type = 'style_fusion_copy_brief'`,
+      [hours],
+    );
+    const styleFusionCopyErrorsResult = await db.query(
+      `SELECT
+         COALESCE(metadata->>'errorCode', 'unknown') AS error_code,
+         COUNT(*)::int AS count
+       FROM ux_events
+       WHERE created_at >= NOW() - ($1 || ' hours')::interval
+         AND event_type = 'style_fusion_copy_brief'
+         AND COALESCE(metadata->>'status', 'unknown') IN ('failed', 'error')
+       GROUP BY error_code
+       ORDER BY count DESC, error_code ASC`,
+      [hours],
+    );
     const styleFusionTotals = styleFusionTotalsResult.rows[0] ?? {};
     const totalCount = Number(styleFusionTotals.total_count ?? 0);
     const successCount = Number(styleFusionTotals.success_count ?? 0);
@@ -3235,6 +3261,14 @@ router.get('/admin/ux/similar-search', requireAdmin, async (req, res, next) => {
         : null;
     const successRate =
       totalCount > 0 ? Number((successCount / totalCount).toFixed(3)) : null;
+    const styleFusionCopyTotals = styleFusionCopyTotalsResult.rows[0] ?? {};
+    const copyTotalCount = Number(styleFusionCopyTotals.total_count ?? 0);
+    const copySuccessCount = Number(styleFusionCopyTotals.success_count ?? 0);
+    const copyErrorCount = Number(styleFusionCopyTotals.error_count ?? 0);
+    const copySuccessRate =
+      copyTotalCount > 0
+        ? Number((copySuccessCount / copyTotalCount).toFixed(3))
+        : null;
 
     res.json({
       windowHours: hours,
@@ -3247,6 +3281,16 @@ router.get('/admin/ux/similar-search', requireAdmin, async (req, res, next) => {
         successRate,
         avgSampleCount,
         errorBreakdown: styleFusionErrorsResult.rows.map((row) => ({
+          errorCode: row.error_code as string,
+          count: Number(row.count ?? 0),
+        })),
+      },
+      styleFusionCopy: {
+        total: copyTotalCount,
+        success: copySuccessCount,
+        errors: copyErrorCount,
+        successRate: copySuccessRate,
+        errorBreakdown: styleFusionCopyErrorsResult.rows.map((row) => ({
           errorCode: row.error_code as string,
           count: Number(row.count ?? 0),
         })),

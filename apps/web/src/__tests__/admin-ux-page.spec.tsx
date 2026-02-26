@@ -270,6 +270,18 @@ describe('admin ux observer engagement page', () => {
                 },
               ],
             },
+            styleFusionCopy: {
+              total: 2,
+              success: 1,
+              errors: 1,
+              successRate: 0.5,
+              errorBreakdown: [
+                {
+                  errorCode: 'CLIPBOARD_WRITE_FAILED',
+                  count: 1,
+                },
+              ],
+            },
           }),
         } as Response);
       }
@@ -505,6 +517,11 @@ describe('admin ux observer engagement page', () => {
     expect(screen.getByText(/Style fusion metrics/i)).toBeInTheDocument();
     expect(screen.getByText(/Fusion attempts/i)).toBeInTheDocument();
     expect(screen.getByText(/Fusion errors/i)).toBeInTheDocument();
+    expect(screen.getByText(/Fusion brief copy/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Copy attempts/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Copy success rate/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Copy errors/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/CLIPBOARD_WRITE_FAILED/i)).toBeInTheDocument();
     expect(screen.getByText(/Agent gateway live session/i)).toBeInTheDocument();
     expect(
       screen.getByText(/Agent gateway control-plane telemetry/i),

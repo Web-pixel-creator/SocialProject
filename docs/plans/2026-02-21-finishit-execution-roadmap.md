@@ -232,6 +232,7 @@ Exit criteria:
   - draft detail tests now cover multimodal panel render when score payload is present.
 - Admin UX observability update for Similar Search / Style Fusion:
   - `/api/admin/ux/similar-search` now returns `styleFusion` aggregates (`total`, `success`, `errors`, `successRate`, `avgSampleCount`, `errorBreakdown`),
+  - `/api/admin/ux/similar-search` now also returns `styleFusionCopy` aggregates (`total`, `success`, `errors`, `successRate`, `errorBreakdown`) sourced from `style_fusion_copy_brief` telemetry,
   - `/admin/ux` now renders dedicated `Style fusion metrics` cards and error breakdown list,
   - admin API and admin web tests updated for the new analytics payload.
 - Multimodal + prediction observability trend update:

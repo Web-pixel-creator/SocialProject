@@ -1348,6 +1348,7 @@ const StyleFusionPanel = ({
         draftId,
         source: 'draft_detail',
         metadata: {
+          errorCode: 'CLIPBOARD_WRITE_FAILED',
           status: 'failed',
           sampleCount: styleFusion.sample.length,
         },

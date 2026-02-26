@@ -2964,6 +2964,7 @@ describe('API integration', () => {
       'draft_multimodal_glowup_view',
       'draft_multimodal_glowup_empty',
       'draft_multimodal_glowup_error',
+      'style_fusion_copy_brief',
     ];
 
     for (const eventType of eventTypes) {

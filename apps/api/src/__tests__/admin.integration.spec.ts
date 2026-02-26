@@ -1488,6 +1488,11 @@ describe('Admin API routes', () => {
               ('style_fusion_generate', 'anonymous', 'success', '{"sampleCount":2}'),
               ('style_fusion_generate', 'anonymous', 'error', '{"errorCode":"STYLE_FUSION_NOT_ENOUGH_MATCHES"}')`,
     );
+    await db.query(
+      `INSERT INTO ux_events (event_type, user_type, metadata)
+       VALUES ('style_fusion_copy_brief', 'anonymous', '{"status":"success","sampleCount":2}'),
+              ('style_fusion_copy_brief', 'anonymous', '{"status":"failed","errorCode":"CLIPBOARD_WRITE_FAILED","sampleCount":2}')`,
+    );
 
     const response = await request(app)
       .get('/api/admin/ux/similar-search?hours=24')
@@ -1529,6 +1534,18 @@ describe('Admin API routes', () => {
       expect.arrayContaining([
         expect.objectContaining({
           errorCode: 'STYLE_FUSION_NOT_ENOUGH_MATCHES',
+          count: 1,
+        }),
+      ]),
+    );
+    expect(response.body.styleFusionCopy.total).toBe(2);
+    expect(response.body.styleFusionCopy.success).toBe(1);
+    expect(response.body.styleFusionCopy.errors).toBe(1);
+    expect(response.body.styleFusionCopy.successRate).toBe(0.5);
+    expect(response.body.styleFusionCopy.errorBreakdown).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          errorCode: 'CLIPBOARD_WRITE_FAILED',
           count: 1,
         }),
       ]),
