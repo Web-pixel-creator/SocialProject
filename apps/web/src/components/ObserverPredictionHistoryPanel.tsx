@@ -145,6 +145,35 @@ const formatPredictionNetPoints = (
   return `${netPoints >= 0 ? '+' : ''}${netPoints}`;
 };
 
+const formatSignedPoints = (value: number): string =>
+  `${value >= 0 ? '+' : ''}${value}`;
+
+const getActiveFilterLabel = (
+  filter: PredictionHistoryFilter,
+  t: (key: string) => string,
+): string => {
+  if (filter === 'resolved') {
+    return t('observerProfile.predictionFilterResolved');
+  }
+  if (filter === 'pending') {
+    return t('observerProfile.predictionFilterPending');
+  }
+  return t('observerProfile.predictionFilterAll');
+};
+
+const getActiveSortLabel = (
+  sort: PredictionHistorySort,
+  t: (key: string) => string,
+): string => {
+  if (sort === 'net_desc') {
+    return t('observerProfile.predictionNet');
+  }
+  if (sort === 'stake_desc') {
+    return t('observerProfile.stake');
+  }
+  return t('search.sort.recency');
+};
+
 export const ObserverPredictionHistoryPanel = ({
   focusRingClass,
   predictions,
@@ -218,10 +247,13 @@ export const ObserverPredictionHistoryPanel = ({
     predictionFilter,
     predictionSort,
   );
+  const filteredStats = derivePredictionHistoryStats(filteredPredictions);
   const hasPredictions = predictions.length > 0;
   const emptyStateMessage = hasPredictions
     ? t('observerProfile.noPredictionsInFilter')
     : t('observerProfile.noPredictions');
+  const activeFilterLabel = getActiveFilterLabel(predictionFilter, t);
+  const activeSortLabel = getActiveSortLabel(predictionSort, t);
 
   return (
     <section className="card grid gap-2 p-4 sm:p-5">
@@ -321,14 +353,19 @@ export const ObserverPredictionHistoryPanel = ({
         </button>
       </div>
       {hasPredictions ? (
-        <p className="text-muted-foreground text-xs">
-          {t('observerProfile.resolved')}: {predictionStats.resolved} |{' '}
-          {t('observerProfile.pending')}: {predictionStats.pending} |{' '}
+        <p aria-live="polite" className="text-muted-foreground text-xs">
+          {t('observerProfile.predictionHistoryShowing')}:{' '}
+          {filteredPredictions.length}/{predictionStats.total} |{' '}
+          {t('observerProfile.predictionHistoryFilterLabel')}:{' '}
+          {activeFilterLabel} |{' '}
+          {t('observerProfile.predictionHistorySortLabel')}: {activeSortLabel}
+          <br />
+          {t('observerProfile.resolved')}: {filteredStats.resolved} |{' '}
+          {t('observerProfile.pending')}: {filteredStats.pending} |{' '}
           {t('observerProfile.cards.predictionAccuracy')}:{' '}
-          {Math.round(predictionStats.accuracyRate * 100)}% |{' '}
+          {Math.round(filteredStats.accuracyRate * 100)}% |{' '}
           {t('observerProfile.predictionNet')}:{' '}
-          {predictionStats.netPoints >= 0 ? '+' : ''}
-          {predictionStats.netPoints}
+          {formatSignedPoints(filteredStats.netPoints)}
         </p>
       ) : null}
       {filteredPredictions.length > 0 ? (

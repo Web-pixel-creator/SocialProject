@@ -674,3 +674,13 @@ Exit criteria:
   - added partial `ux_events` indexes for gateway adapter/ingest telemetry filters (`event_type`, `created_at`, `channel/provider/connector` expressions).
 - Coverage update:
   - extended admin integration coverage in `apps/api/src/__tests__/admin.integration.spec.ts` for provider fallback cases in session/telemetry paths and adapter+ingest provider-filter metrics.
+
+## Progress Snapshot (2026-02-26 - observer prediction history UX compact summary slice)
+- Observer prediction history panel UX update:
+  - `ObserverPredictionHistoryPanel` now renders a compact, live summary of current result-set state (`showing`, active `filter`, active `sort`) above prediction rows,
+  - summary accuracy/net/resolved/pending metrics are now calculated from the currently filtered list (not global history) to keep values context-accurate while toggling controls,
+  - summary line is now `aria-live="polite"` so assistive tech gets non-disruptive updates when filter/sort changes.
+- Localization update:
+  - added new i18n keys for compact summary labels (`observerProfile.predictionHistoryShowing`, `observerProfile.predictionHistoryFilterLabel`, `observerProfile.predictionHistorySortLabel`) in EN/RU bundles.
+- Coverage update:
+  - extended `apps/web/src/__tests__/observer-prediction-history-panel.spec.tsx` to assert compact-summary rendering and dynamic updates across filter/sort toggles.

@@ -17,6 +17,9 @@ const messages: Record<string, string> = {
   'observerProfile.noPredictions': 'No predictions yet.',
   'observerProfile.noPredictionsInFilter':
     'No predictions for this filter yet.',
+  'observerProfile.predictionHistoryShowing': 'Showing',
+  'observerProfile.predictionHistoryFilterLabel': 'Filter',
+  'observerProfile.predictionHistorySortLabel': 'Sort',
   'observerProfile.pending': 'Pending',
   'observerProfile.predictionFilterAll': 'All',
   'observerProfile.predictionFilterPending': 'Pending',
@@ -72,12 +75,27 @@ describe('ObserverPredictionHistoryPanel', () => {
     expect(
       screen.getByText(/Predicted:\s*Merge\s*\|\s*Resolved:\s*Merge/i),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Showing:\s*1\/1\s*\|\s*Filter:\s*All\s*\|\s*Sort:\s*Recency/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Resolved:\s*1\s*\|\s*Pending:\s*0\s*\|\s*Prediction accuracy:\s*100%\s*\|\s*Net:\s*\+4/i,
+      ),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Pending \(0\)/i }));
 
     expect(screen.queryByText(/Resolved Draft/i)).not.toBeInTheDocument();
     expect(
       screen.getByText(/No predictions for this filter yet\./i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Showing:\s*0\/1\s*\|\s*Filter:\s*Pending\s*\|\s*Sort:\s*Recency/i,
+      ),
     ).toBeInTheDocument();
     expect(apiClient.post).toHaveBeenCalledWith('/telemetry/ux', {
       eventType: 'observer_prediction_filter_change',
@@ -93,6 +111,11 @@ describe('ObserverPredictionHistoryPanel', () => {
     expect(window.localStorage.getItem(STORAGE_KEY_SELF)).toBe('pending');
 
     fireEvent.click(screen.getByRole('button', { name: /Net/i }));
+    expect(
+      screen.getByText(
+        /Showing:\s*0\/1\s*\|\s*Filter:\s*Pending\s*\|\s*Sort:\s*Net/i,
+      ),
+    ).toBeInTheDocument();
 
     expect(apiClient.post).toHaveBeenCalledWith('/telemetry/ux', {
       eventType: 'observer_prediction_sort_change',
