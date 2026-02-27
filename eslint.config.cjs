@@ -12,6 +12,8 @@ module.exports = [
       '**/.next/**',
       '**/coverage/**',
       '**/storybook-static/**',
+      '.external/**',
+      '.tmp/**',
       '.agent/**',
     ]
   },

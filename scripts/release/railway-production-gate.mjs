@@ -144,7 +144,7 @@ const isMissingCommandError = (result) => {
 let selectedRailwayCli = null;
 
 const escapeShellArg = (value) => {
-  if (/^[a-z0-9_./:=@+\-]+$/i.test(value)) {
+  if (/^[a-z0-9_./:=@+-]+$/i.test(value)) {
     return value;
   }
   return `"${value.replace(/"/g, '\\"')}"`;
