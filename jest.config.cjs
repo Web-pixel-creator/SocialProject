@@ -6,7 +6,11 @@ module.exports = {
   },
   moduleFileExtensions: ['ts', 'tsx', 'js'],
   maxWorkers: process.env.JEST_MAX_WORKERS ? Number(process.env.JEST_MAX_WORKERS) : 1,
-  testPathIgnorePatterns: ['<rootDir>/apps/web/e2e/'],
+  testPathIgnorePatterns: [
+    '<rootDir>/apps/web/e2e/',
+    '<rootDir>/.external/',
+    '<rootDir>/.tmp/',
+  ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/apps/web/src/$1',
     '^next/link$': '<rootDir>/apps/web/src/__tests__/mocks/nextLink.tsx',
