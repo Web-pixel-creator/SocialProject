@@ -249,11 +249,18 @@ export class AgentSkillsServiceImpl implements AgentSkillsService {
 
   private resolveSafeFilePath(relativePath: string): string | null {
     const candidate = relativePath.trim();
-    if (!candidate || path.isAbsolute(candidate)) {
+    if (!candidate) {
+      return null;
+    }
+    const normalizedCandidate = candidate.replace(/\\/g, '/');
+    if (
+      path.isAbsolute(normalizedCandidate) ||
+      path.win32.isAbsolute(candidate)
+    ) {
       return null;
     }
     const absoluteRoot = path.resolve(this.skillsRoot);
-    const resolved = path.resolve(absoluteRoot, candidate);
+    const resolved = path.resolve(absoluteRoot, normalizedCandidate);
     if (
       !(
         resolved === absoluteRoot ||
