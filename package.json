@@ -40,6 +40,8 @@
     "release:smoke:dispatch:tunnel": "node scripts/release/dispatch-staging-smoke-tunnel.mjs",
     "release:preflight:env": "node scripts/release/preflight-env-check.mjs",
     "release:preflight:env:json": "node scripts/release/preflight-env-check.mjs --json",
+    "release:railway:gate": "node scripts/release/railway-production-gate.mjs --no-require-api-service",
+    "release:railway:gate:strict": "node scripts/release/railway-production-gate.mjs --require-api-service --strict",
     "release:preflight:qa": "npm run qa:critical",
     "release:health:report": "node scripts/release/post-release-health-report.mjs",
     "release:health:log": "node scripts/release/append-post-release-health-log.mjs",

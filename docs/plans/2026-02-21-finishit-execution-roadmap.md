@@ -777,3 +777,19 @@ Exit criteria:
   - added unit coverage for market-summary rendering and no-market fallback in `apps/web/src/__tests__/observer-prediction-market-summary.spec.tsx`,
   - updated public profile coverage in `apps/web/src/__tests__/observer-public-profile-page.spec.tsx` to assert daily stake summary parity,
   - updated public profile e2e locator assertions in `apps/web/e2e/observer-profile.spec.ts` to avoid strict-mode collisions after shared summary extraction.
+
+## Progress Snapshot (2026-02-27 - Railway production gate automation slice)
+- Release automation update:
+  - added executable Railway release gate `scripts/release/railway-production-gate.mjs`,
+  - gate now validates linked Railway project/environment, required web service deployment status, required env keys, and public health checks (`/`, `/feed`),
+  - gate also supports optional/required API service checks (deployment, env keys, `/health`, `/ready`) and strict warning-as-error mode,
+  - script works across local/global Railway CLI setups (native `railway` or `npx @railway/cli` fallback).
+- Ops workflow update:
+  - added npm commands:
+    - `npm run release:railway:gate`
+    - `npm run release:railway:gate:strict`
+  - integrated gate usage into:
+    - `docs/ops/production-checklist.md`,
+    - `docs/ops/release-runbook.md`,
+    - `docs/ops/deploy.md`,
+    - `docs/ops/railway-production-gate.md` (new detailed runbook).

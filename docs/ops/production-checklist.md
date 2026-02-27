@@ -6,9 +6,13 @@ For release execution and rollback decisions, use:
 - `docs/ops/rollback-playbook.md`
 - `docs/ops/web-e2e-ci-runbook.md`
 - `docs/ops/agent-gateway-ai-runtime-runbook.md`
+- `docs/ops/railway-production-gate.md`
 
 ## Environment
 - [ ] Run `npm run release:preflight:env` in the deployment environment.
+- [ ] Run Railway deployment gate:
+  - [ ] `npm run release:railway:gate` (web-required baseline)
+  - [ ] `npm run release:railway:gate:strict` (requires dedicated API service and fails on warnings)
 - [ ] Set `NODE_ENV=production`
 - [ ] Set `DATABASE_URL` / `REDIS_URL`
 - [ ] Set `S3_*` credentials and bucket

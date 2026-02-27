@@ -19,6 +19,7 @@ Web env (example in `apps/web/.env.example`):
 Preflight validation:
 ```bash
 npm run release:preflight:env
+npm run release:railway:gate
 npm run release:preflight:qa
 ```
 Optional machine-readable summary:
