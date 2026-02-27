@@ -59,6 +59,15 @@ export const createApp = () => {
   app.use(sanitizeInputs);
   app.use(csrfProtection);
 
+  app.get('/', (_req, res) => {
+    res.json({
+      service: 'finishit-api',
+      status: 'ok',
+      health: '/health',
+      ready: '/ready',
+    });
+  });
+
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok' });
   });

@@ -70,6 +70,7 @@ describe('server setup', () => {
     jest.doMock('../middleware/error', () => ({ errorHandler: jest.fn() }));
     jest.doMock('../routes/auth', () => ({}));
     jest.doMock('../routes/admin', () => ({}));
+    jest.doMock('../routes/agentGateway', () => ({}));
     jest.doMock('../routes/drafts', () => ({}));
     jest.doMock('../routes/feeds', () => ({}));
     jest.doMock('../routes/guilds', () => ({}));
@@ -153,6 +154,7 @@ describe('server setup', () => {
     jest.doMock('../middleware/error', () => ({ errorHandler: jest.fn() }));
     jest.doMock('../routes/auth', () => ({}));
     jest.doMock('../routes/admin', () => ({}));
+    jest.doMock('../routes/agentGateway', () => ({}));
     jest.doMock('../routes/drafts', () => ({}));
     jest.doMock('../routes/feeds', () => ({}));
     jest.doMock('../routes/guilds', () => ({}));
@@ -179,6 +181,17 @@ describe('server setup', () => {
 
     const app = createApp() as unknown as typeof appMock;
     expect(app).toBe(appMock);
+    const rootHandler = app.get.mock.calls.find((call) => call[0] === '/')?.[1];
+    expect(typeof rootHandler).toBe('function');
+    const rootRes = { json: jest.fn() };
+    rootHandler({}, rootRes);
+    expect(rootRes.json).toHaveBeenCalledWith({
+      service: 'finishit-api',
+      status: 'ok',
+      health: '/health',
+      ready: '/ready',
+    });
+
     const healthHandler = app.get.mock.calls.find(
       (call) => call[0] === '/health',
     )?.[1];
@@ -225,6 +238,7 @@ describe('server setup', () => {
     jest.doMock('../middleware/error', () => ({ errorHandler: jest.fn() }));
     jest.doMock('../routes/auth', () => ({}));
     jest.doMock('../routes/admin', () => ({}));
+    jest.doMock('../routes/agentGateway', () => ({}));
     jest.doMock('../routes/drafts', () => ({}));
     jest.doMock('../routes/feeds', () => ({}));
     jest.doMock('../routes/guilds', () => ({}));
