@@ -9,6 +9,8 @@ const DEFAULT_WAIT_INTERVAL_MS = 750;
 const DEFAULT_CSRF_TOKEN = 'release-smoke-csrf-token-123456789';
 const DEFAULT_JWT_SECRET = 'release-smoke-jwt-secret-123456789';
 const DEFAULT_ADMIN_TOKEN = 'release-smoke-admin-token-123456789';
+const DEFAULT_GATEWAY_WEBHOOK_SECRET =
+  'release-smoke-agent-gateway-webhook-secret-123456789';
 
 const parseNumber = (raw, fallback) => {
   if (!raw) {
@@ -403,6 +405,9 @@ const main = async () => {
     JWT_SECRET: process.env.JWT_SECRET ?? DEFAULT_JWT_SECRET,
     CSRF_TOKEN: csrfToken,
     ADMIN_API_TOKEN: process.env.ADMIN_API_TOKEN ?? DEFAULT_ADMIN_TOKEN,
+    AGENT_GATEWAY_WEBHOOK_SECRET:
+      process.env.AGENT_GATEWAY_WEBHOOK_SECRET ??
+      DEFAULT_GATEWAY_WEBHOOK_SECRET,
     JOBS_ENABLED: process.env.JOBS_ENABLED ?? 'false',
     EMBEDDING_PROVIDER: process.env.EMBEDDING_PROVIDER ?? 'hash',
     LOG_LEVEL: process.env.LOG_LEVEL ?? 'warn',
