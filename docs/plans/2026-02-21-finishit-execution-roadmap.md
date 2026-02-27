@@ -793,3 +793,18 @@ Exit criteria:
     - `docs/ops/release-runbook.md`,
     - `docs/ops/deploy.md`,
     - `docs/ops/railway-production-gate.md` (new detailed runbook).
+
+## Progress Snapshot (2026-02-27 - observer prediction history reset-control + telemetry-depth slice)
+- Observer prediction history UX update:
+  - `ObserverPredictionHistoryPanel` now includes `Reset view` control that restores history controls to defaults (`All` + `Recency`) and rewrites persisted local-storage preferences for the active scope.
+  - reset control is disabled when the panel is already in default state, preventing redundant actions.
+- Telemetry depth update:
+  - history control telemetry (`observer_prediction_filter_change`, `observer_prediction_sort_change`) now includes filter-scoped metrics and risk context:
+    - `activeFilter`, `activeSort`,
+    - `filteredTotal`, `filteredResolved`, `filteredPending`,
+    - `filteredAccuracyRate`, `filteredNetPoints`, `filteredRiskLevel`.
+  - `Reset view` reuses existing control events (filter/sort) so admin analytics stay compatible without adding a new event type.
+- Localization update:
+  - added `observerProfile.predictionViewReset` to EN/RU dictionaries.
+- Coverage update:
+  - extended `apps/web/src/__tests__/observer-prediction-history-panel.spec.tsx` for reset flow, persisted-state reset, and enriched telemetry payload assertions.

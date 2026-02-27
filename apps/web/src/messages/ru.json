@@ -770,6 +770,7 @@
   "observerProfile.predictionFilterAll": "Все",
   "observerProfile.predictionFilterResolved": "Завершенные",
   "observerProfile.predictionFilterPending": "В ожидании",
+  "observerProfile.predictionViewReset": "Сбросить вид",
   "observerProfile.predictionResultCorrect": "Верно",
   "observerProfile.predictionResultIncorrect": "Неверно",
   "observerProfile.predictionOutcomeMerge": "Слияние",

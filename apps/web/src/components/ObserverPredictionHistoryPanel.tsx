@@ -239,6 +239,42 @@ export const ObserverPredictionHistoryPanel = ({
     }
   };
 
+  const buildPredictionControlTelemetryMetadata = (
+    nextFilter: PredictionHistoryFilter,
+    nextSort: PredictionHistorySort,
+  ): Record<string, unknown> => {
+    const nextFilteredPredictions = filterAndSortPredictionHistory(
+      predictions,
+      nextFilter,
+      nextSort,
+    );
+    const nextFilteredStats = derivePredictionHistoryStats(
+      nextFilteredPredictions,
+    );
+    const nextFilteredRiskLevel = resolvePredictionResolutionWindowRiskLevel({
+      window: {
+        resolved: nextFilteredStats.resolved,
+        rate: nextFilteredStats.accuracyRate,
+      },
+      thresholds: normalizedRiskThresholds,
+    });
+
+    return {
+      scope: telemetryScope,
+      total: predictionStats.total,
+      resolved: predictionStats.resolved,
+      pending: predictionStats.pending,
+      activeFilter: nextFilter,
+      activeSort: nextSort,
+      filteredTotal: nextFilteredStats.total,
+      filteredResolved: nextFilteredStats.resolved,
+      filteredPending: nextFilteredStats.pending,
+      filteredAccuracyRate: nextFilteredStats.accuracyRate,
+      filteredNetPoints: nextFilteredStats.netPoints,
+      filteredRiskLevel: nextFilteredRiskLevel,
+    };
+  };
+
   const handlePredictionFilterChange = (
     nextFilter: PredictionHistoryFilter,
   ) => {
@@ -250,10 +286,7 @@ export const ObserverPredictionHistoryPanel = ({
       metadata: {
         filter: nextFilter,
         previousFilter: predictionFilter,
-        scope: telemetryScope,
-        total: predictionStats.total,
-        resolved: predictionStats.resolved,
-        pending: predictionStats.pending,
+        ...buildPredictionControlTelemetryMetadata(nextFilter, predictionSort),
       },
     });
     writeStoredPredictionFilter(telemetryScope, nextFilter);
@@ -269,13 +302,48 @@ export const ObserverPredictionHistoryPanel = ({
       metadata: {
         sort: nextSort,
         previousSort: predictionSort,
-        scope: telemetryScope,
-        total: predictionStats.total,
-        resolved: predictionStats.resolved,
-        pending: predictionStats.pending,
+        ...buildPredictionControlTelemetryMetadata(predictionFilter, nextSort),
       },
     });
     writeStoredPredictionSort(telemetryScope, nextSort);
+    setPredictionSort(nextSort);
+  };
+
+  const handlePredictionViewReset = () => {
+    const nextFilter: PredictionHistoryFilter = 'all';
+    const nextSort: PredictionHistorySort = 'recent';
+    const didFilterChange = predictionFilter !== nextFilter;
+    const didSortChange = predictionSort !== nextSort;
+
+    if (!(didFilterChange || didSortChange)) {
+      return;
+    }
+
+    if (didFilterChange) {
+      sendTelemetry({
+        eventType: 'observer_prediction_filter_change',
+        metadata: {
+          filter: nextFilter,
+          previousFilter: predictionFilter,
+          ...buildPredictionControlTelemetryMetadata(nextFilter, nextSort),
+        },
+      });
+    }
+
+    if (didSortChange) {
+      sendTelemetry({
+        eventType: 'observer_prediction_sort_change',
+        metadata: {
+          sort: nextSort,
+          previousSort: predictionSort,
+          ...buildPredictionControlTelemetryMetadata(nextFilter, nextSort),
+        },
+      });
+    }
+
+    writeStoredPredictionFilter(telemetryScope, nextFilter);
+    writeStoredPredictionSort(telemetryScope, nextSort);
+    setPredictionFilter(nextFilter);
     setPredictionSort(nextSort);
   };
 
@@ -410,6 +478,18 @@ export const ObserverPredictionHistoryPanel = ({
           type="button"
         >
           {t('observerProfile.stake')}
+        </button>
+        <button
+          className={`rounded-full border px-3 py-1.5 font-semibold text-xs transition ${
+            predictionFilter === 'all' && predictionSort === 'recent'
+              ? 'cursor-not-allowed border-border/25 bg-background/40 text-muted-foreground'
+              : 'border-border/35 bg-background/58 text-foreground hover:bg-background/74'
+          } ${focusRingClass}`}
+          disabled={predictionFilter === 'all' && predictionSort === 'recent'}
+          onClick={handlePredictionViewReset}
+          type="button"
+        >
+          {t('observerProfile.predictionViewReset')}
         </button>
       </div>
       {hasPredictions ? (

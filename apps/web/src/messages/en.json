@@ -768,6 +768,7 @@
   "observerProfile.predictionFilterAll": "All",
   "observerProfile.predictionFilterResolved": "Resolved",
   "observerProfile.predictionFilterPending": "Pending",
+  "observerProfile.predictionViewReset": "Reset view",
   "observerProfile.predictionResultCorrect": "Correct",
   "observerProfile.predictionResultIncorrect": "Incorrect",
   "observerProfile.predictionOutcomeMerge": "Merge",

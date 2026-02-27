@@ -26,6 +26,7 @@ const messages: Record<string, string> = {
   'observerProfile.predictionFilterAll': 'All',
   'observerProfile.predictionFilterPending': 'Pending',
   'observerProfile.predictionFilterResolved': 'Resolved',
+  'observerProfile.predictionViewReset': 'Reset view',
   'observerProfile.predictionNet': 'Net',
   'observerProfile.health.healthy': 'Healthy',
   'observerProfile.health.critical': 'Critical',
@@ -114,17 +115,28 @@ describe('ObserverPredictionHistoryPanel', () => {
         /Merge\s*Prediction accuracy:\s*n\/a\s*\|\s*Reject\s*Prediction accuracy:\s*n\/a\s*\|\s*Stake\s*~\s*0\s*\|\s*Outcome gap:\s*n\/a/i,
       ),
     ).toBeInTheDocument();
-    expect(apiClient.post).toHaveBeenCalledWith('/telemetry/ux', {
-      eventType: 'observer_prediction_filter_change',
-      metadata: {
-        filter: 'pending',
-        previousFilter: 'all',
-        scope: 'self',
-        total: 1,
-        resolved: 1,
-        pending: 0,
-      },
-    });
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/telemetry/ux',
+      expect.objectContaining({
+        eventType: 'observer_prediction_filter_change',
+        metadata: expect.objectContaining({
+          filter: 'pending',
+          previousFilter: 'all',
+          scope: 'self',
+          total: 1,
+          resolved: 1,
+          pending: 0,
+          activeFilter: 'pending',
+          activeSort: 'recent',
+          filteredTotal: 0,
+          filteredResolved: 0,
+          filteredPending: 0,
+          filteredAccuracyRate: 0,
+          filteredNetPoints: 0,
+          filteredRiskLevel: 'unknown',
+        }),
+      }),
+    );
     expect(window.localStorage.getItem(STORAGE_KEY_SELF)).toBe('pending');
 
     fireEvent.click(screen.getByRole('button', { name: /Net/i }));
@@ -134,18 +146,92 @@ describe('ObserverPredictionHistoryPanel', () => {
       ),
     ).toBeInTheDocument();
 
-    expect(apiClient.post).toHaveBeenCalledWith('/telemetry/ux', {
-      eventType: 'observer_prediction_sort_change',
-      metadata: {
-        sort: 'net_desc',
-        previousSort: 'recent',
-        scope: 'self',
-        total: 1,
-        resolved: 1,
-        pending: 0,
-      },
-    });
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/telemetry/ux',
+      expect.objectContaining({
+        eventType: 'observer_prediction_sort_change',
+        metadata: expect.objectContaining({
+          sort: 'net_desc',
+          previousSort: 'recent',
+          scope: 'self',
+          total: 1,
+          resolved: 1,
+          pending: 0,
+          activeFilter: 'pending',
+          activeSort: 'net_desc',
+          filteredTotal: 0,
+          filteredResolved: 0,
+          filteredPending: 0,
+          filteredAccuracyRate: 0,
+          filteredNetPoints: 0,
+          filteredRiskLevel: 'unknown',
+        }),
+      }),
+    );
     expect(window.localStorage.getItem(SORT_STORAGE_KEY_SELF)).toBe('net_desc');
+  });
+
+  test('resets filter and sort preferences back to defaults', () => {
+    window.localStorage.setItem(STORAGE_KEY_SELF, 'pending');
+    window.localStorage.setItem(SORT_STORAGE_KEY_SELF, 'stake_desc');
+
+    render(
+      <ObserverPredictionHistoryPanel
+        focusRingClass=""
+        predictions={[
+          {
+            id: 'pred-reset',
+            draftId: 'draft-reset',
+            draftTitle: 'Reset Draft',
+            predictedOutcome: 'merge',
+            resolvedOutcome: 'merge',
+            isCorrect: true,
+            stakePoints: 10,
+            payoutPoints: 15,
+            createdAt: '2026-02-25T10:00:00.000Z',
+            resolvedAt: '2026-02-25T11:00:00.000Z',
+          },
+        ]}
+        t={t}
+        telemetryScope="self"
+      />,
+    );
+
+    const resetButton = screen.getByRole('button', { name: /Reset view/i });
+    expect(resetButton).not.toBeDisabled();
+    expect(screen.queryByText(/Reset Draft/i)).not.toBeInTheDocument();
+
+    fireEvent.click(resetButton);
+
+    expect(screen.getByText(/Reset Draft/i)).toBeInTheDocument();
+    expect(window.localStorage.getItem(STORAGE_KEY_SELF)).toBe('all');
+    expect(window.localStorage.getItem(SORT_STORAGE_KEY_SELF)).toBe('recent');
+
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/telemetry/ux',
+      expect.objectContaining({
+        eventType: 'observer_prediction_filter_change',
+        metadata: expect.objectContaining({
+          filter: 'all',
+          previousFilter: 'pending',
+          activeFilter: 'all',
+          activeSort: 'recent',
+        }),
+      }),
+    );
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/telemetry/ux',
+      expect.objectContaining({
+        eventType: 'observer_prediction_sort_change',
+        metadata: expect.objectContaining({
+          sort: 'recent',
+          previousSort: 'stake_desc',
+          activeFilter: 'all',
+          activeSort: 'recent',
+        }),
+      }),
+    );
+    expect(resetButton).toBeDisabled();
   });
 
   test('restores previously selected filter from localStorage', () => {
