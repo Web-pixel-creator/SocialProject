@@ -764,6 +764,8 @@
   "observerProfile.predictionHistoryShowing": "Показано",
   "observerProfile.predictionHistoryFilterLabel": "Фильтр",
   "observerProfile.predictionHistorySortLabel": "Сортировка",
+  "observerProfile.predictionHistoryRisk": "Риск",
+  "observerProfile.predictionOutcomeGap": "Разрыв точности",
   "observerProfile.pending": "В ожидании",
   "observerProfile.predictionFilterAll": "Все",
   "observerProfile.predictionFilterResolved": "Завершенные",

@@ -762,6 +762,8 @@
   "observerProfile.predictionHistoryShowing": "Showing",
   "observerProfile.predictionHistoryFilterLabel": "Filter",
   "observerProfile.predictionHistorySortLabel": "Sort",
+  "observerProfile.predictionHistoryRisk": "Risk",
+  "observerProfile.predictionOutcomeGap": "Outcome gap",
   "observerProfile.pending": "pending",
   "observerProfile.predictionFilterAll": "All",
   "observerProfile.predictionFilterResolved": "Resolved",

@@ -684,3 +684,96 @@ Exit criteria:
   - added new i18n keys for compact summary labels (`observerProfile.predictionHistoryShowing`, `observerProfile.predictionHistoryFilterLabel`, `observerProfile.predictionHistorySortLabel`) in EN/RU bundles.
 - Coverage update:
   - extended `apps/web/src/__tests__/observer-prediction-history-panel.spec.tsx` to assert compact-summary rendering and dynamic updates across filter/sort toggles.
+
+## Progress Snapshot (2026-02-26 - admin prediction state drill-down slice)
+- Observer-engagement API update:
+  - `/api/admin/ux/observer-engagement` now exposes `predictionHistoryStateTelemetry.byScope` with the latest active prediction-history controls per scope (`activeFilter`, `activeSort`) and scope-level change timestamps (`filterChangedAt`, `sortChangedAt`, `lastChangedAt`).
+- Admin UX update:
+  - `/admin/ux` now renders a dedicated `Active prediction controls by scope` drill-down table in prediction telemetry so operators can inspect current scope state, not just switch volume.
+- Coverage update:
+  - extended API integration assertions in `apps/api/src/__tests__/admin.integration.spec.ts`,
+  - extended admin UX rendering coverage in `apps/web/src/__tests__/admin-ux-page.spec.tsx`.
+
+## Progress Snapshot (2026-02-27 - admin prediction accuracy/settlement cohort drill-down slice)
+- Observer-engagement API update:
+  - `/api/admin/ux/observer-engagement` now exposes `predictionMarket.cohorts.byOutcome` and `predictionMarket.cohorts.byStakeBand` with prediction/resolved/correct counts plus computed `settlementRate`, `accuracyRate`, and `netPoints`.
+  - stake-band cohorts use fixed FIN-point buckets (`5-24`, `25-74`, `75-199`, `200+`) so cohort trends are comparable between windows.
+- Admin UX update:
+  - `/admin/ux` now renders two new drill-down tables in Prediction market telemetry:
+    - `Resolution cohorts by outcome`,
+    - `Resolution cohorts by stake band`.
+- Coverage update:
+  - API integration coverage extended for non-empty and empty cohort payloads in `apps/api/src/__tests__/admin.integration.spec.ts`,
+  - admin UI coverage extended for new cohort sections in `apps/web/src/__tests__/admin-ux-page.spec.tsx`.
+
+## Progress Snapshot (2026-02-27 - observer prediction outcome-accuracy summary polish slice)
+- Observer profile UX update:
+  - `ObserverPredictionHistoryPanel` compact summary now includes per-outcome resolved accuracy (`Merge`/`Reject`) and filtered average stake signal (`Stake ~ N`) for faster confidence scanning while toggling filter/sort.
+  - outcome accuracy display now gracefully falls back to `observerProfile.health.unknown` when a filtered outcome has no resolved samples.
+  - compact summary now also includes a filter-scoped `Risk` label (healthy/watch/critical/unknown) derived from the same prediction window risk thresholds used elsewhere in observer surfaces.
+- Shared helper update:
+  - added `derivePredictionResolutionBreakdown(...)` in `apps/web/src/lib/predictionHistory.ts` to compute filtered average stake and per-outcome resolved/correct/accuracy metrics in one reusable pass.
+- Localization update:
+  - added `observerProfile.predictionHistoryRisk` in EN/RU bundles.
+- Coverage update:
+  - extended `apps/web/src/__tests__/observer-prediction-history-panel.spec.tsx` with assertions for the new compact outcome-accuracy line and empty-filter fallback behavior,
+  - extended `apps/web/src/__tests__/observer-prediction-history-panel.spec.tsx` with `Risk` assertions (including `Healthy` when resolved sample is sufficient),
+  - added helper coverage for `derivePredictionResolutionBreakdown(...)` in `apps/web/src/__tests__/prediction-history.spec.ts`.
+
+## Progress Snapshot (2026-02-27 - observer history risk-threshold parity slice)
+- Observer profile/public profile parity update:
+  - `ObserverPredictionHistoryPanel` now accepts optional backend thresholds (`riskThresholds`) and resolves compact-summary risk against provided policy when available.
+  - both profile surfaces now pass `profile.predictions.thresholds.resolutionWindows` into the history panel:
+    - `apps/web/src/app/observer/profile/page.tsx`,
+    - `apps/web/src/app/observers/[id]/page.tsx`.
+- Consistency improvement:
+  - risk label in history panel now follows the same server-driven threshold policy used by prediction windows summaries instead of being hardcoded to defaults.
+- Coverage update:
+  - extended `apps/web/src/__tests__/observer-prediction-history-panel.spec.tsx` with threshold-override assertion (`Critical` risk when custom `minResolvedPredictions=1` policy is provided),
+  - verified self/public profile pages still render with updated prop wiring (`observer-profile-page.spec.tsx`, `observer-public-profile-page.spec.tsx`).
+
+## Progress Snapshot (2026-02-27 - admin cohort risk badges slice)
+- Admin prediction telemetry UX update:
+  - added cohort risk policy for prediction telemetry tables (`resolution cohorts by outcome` / `resolution cohorts by stake band`) using explicit thresholds:
+    - settlement rate (`watch < 60%`, `critical < 40%`),
+    - accuracy rate (`watch < 60%`, `critical < 45%`),
+    - minimum resolved sample (`>= 1`).
+  - each cohort row now renders risk badge (`Healthy`/`Watch`/`Critical`/`n/a`) and both tables display threshold summary copy for operator clarity.
+- Consistency update:
+  - risk resolution now uses shared health-label/badge utilities already used by gateway and window-risk cards, keeping visual severity language consistent in `/admin/ux`.
+- Coverage update:
+  - updated `apps/web/src/__tests__/admin-ux-page.spec.tsx` to assert cohort threshold copy, risk column rendering, and risk badge presence in both cohort tables.
+
+## Progress Snapshot (2026-02-27 - admin cohort thresholds API parity slice)
+- Observer-engagement API update:
+  - `/api/admin/ux/observer-engagement` now exposes `predictionMarket.thresholds.cohorts` alongside `thresholds.resolutionWindows`.
+  - cohort thresholds are now server-owned and returned as:
+    - settlement rate (`watch < 60%`, `critical < 40%`),
+    - accuracy rate (`watch < 60%`, `critical < 45%`),
+    - minimum resolved sample (`>= 1`).
+- Admin UX contract update:
+  - updated `/admin/ux` response typing to include `predictionMarket.thresholds.cohorts`, keeping threshold parsing explicit and aligned with API payload shape.
+- Coverage update:
+  - extended API integration expectations in `apps/api/src/__tests__/admin.integration.spec.ts` to assert `predictionMarket.thresholds.cohorts`,
+  - extended `apps/web/src/__tests__/admin-ux-page.spec.tsx` to assert cohort-threshold copy from API-provided policy (not only fallback defaults).
+
+## Progress Snapshot (2026-02-27 - observer prediction outcome-gap summary slice)
+- Observer profile UX update:
+  - `ObserverPredictionHistoryPanel` summary now exposes `Outcome gap` (`Merge accuracy - Reject accuracy`, pp) next to outcome accuracy and average stake,
+  - gap rendering follows a safe guardrail: if one of outcomes has no resolved sample, panel renders localized `n/a` instead of misleading numeric delta.
+- Localization update:
+  - added `observerProfile.predictionOutcomeGap` in EN/RU bundles.
+- Coverage update:
+  - extended `apps/web/src/__tests__/observer-prediction-history-panel.spec.tsx` to assert:
+    - `Outcome gap: n/a` when one side has no resolved sample,
+    - numeric gap rendering (`-50.0pp`) when both outcomes have resolved data.
+
+## Progress Snapshot (2026-02-27 - observer market summary parity slice)
+- Observer profile/public profile parity update:
+  - extracted shared market-summary surface into `apps/web/src/components/ObserverPredictionMarketSummary.tsx`,
+  - both `apps/web/src/app/observer/profile/page.tsx` and `apps/web/src/app/observers/[id]/page.tsx` now render the same prediction market tier + daily caps summary block,
+  - removed duplicated trust-tier formatting logic from profile pages to keep summary behavior in one place.
+- Coverage update:
+  - added unit coverage for market-summary rendering and no-market fallback in `apps/web/src/__tests__/observer-prediction-market-summary.spec.tsx`,
+  - updated public profile coverage in `apps/web/src/__tests__/observer-public-profile-page.spec.tsx` to assert daily stake summary parity,
+  - updated public profile e2e locator assertions in `apps/web/e2e/observer-profile.spec.ts` to avoid strict-mode collisions after shared summary extraction.

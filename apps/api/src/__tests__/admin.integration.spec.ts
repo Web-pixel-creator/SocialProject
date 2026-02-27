@@ -2329,6 +2329,12 @@ describe('Admin API routes', () => {
       true,
     );
     expect(response.body.predictionMarket.hourlyTrend).toHaveLength(0);
+    expect(response.body.predictionMarket.cohorts).toEqual(
+      expect.objectContaining({
+        byOutcome: [],
+        byStakeBand: [],
+      }),
+    );
     expect(response.body.predictionMarket.resolutionWindows).toEqual(
       expect.objectContaining({
         d7: expect.objectContaining({
@@ -2355,6 +2361,17 @@ describe('Admin API routes', () => {
       expect.objectContaining({
         resolutionWindows: expect.objectContaining({
           minResolvedPredictions: 3,
+          accuracyRate: expect.objectContaining({
+            criticalBelow: 0.45,
+            watchBelow: 0.6,
+          }),
+        }),
+        cohorts: expect.objectContaining({
+          minResolvedPredictions: 1,
+          settlementRate: expect.objectContaining({
+            criticalBelow: 0.4,
+            watchBelow: 0.6,
+          }),
           accuracyRate: expect.objectContaining({
             criticalBelow: 0.45,
             watchBelow: 0.6,
@@ -2427,6 +2444,42 @@ describe('Admin API routes', () => {
           count: 1,
         }),
       ]),
+    );
+    expect(response.body.predictionHistoryStateTelemetry.byScope).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          scope: 'self',
+          activeFilter: 'resolved',
+          activeSort: 'recent',
+          filterChangedAt: expect.any(String),
+          sortChangedAt: expect.any(String),
+          lastChangedAt: expect.any(String),
+        }),
+        expect.objectContaining({
+          scope: 'public',
+          activeFilter: 'pending',
+          activeSort: 'stake_desc',
+          filterChangedAt: expect.any(String),
+          sortChangedAt: expect.any(String),
+          lastChangedAt: expect.any(String),
+        }),
+        expect.objectContaining({
+          scope: 'unknown',
+          activeFilter: 'unknown',
+          activeSort: 'unknown',
+          filterChangedAt: expect.any(String),
+          sortChangedAt: expect.any(String),
+          lastChangedAt: expect.any(String),
+        }),
+      ]),
+    );
+    const predictionStateSelf =
+      response.body.predictionHistoryStateTelemetry.byScope.find(
+        (entry: any) => entry.scope === 'self',
+      );
+    expect(predictionStateSelf).toBeTruthy();
+    expect(predictionStateSelf.lastChangedAt).toBe(
+      predictionStateSelf.sortChangedAt,
     );
     expect(response.body.totals.predictionSettles).toBe(1);
     expect(response.body.feedPreferences.viewMode.observer).toBe(1);
@@ -2571,6 +2624,50 @@ describe('Admin API routes', () => {
         }),
       ]),
     );
+    expect(response.body.predictionMarket.cohorts).toEqual(
+      expect.objectContaining({
+        byOutcome: expect.arrayContaining([
+          expect.objectContaining({
+            predictedOutcome: 'merge',
+            predictions: 2,
+            resolvedPredictions: 1,
+            correctPredictions: 1,
+            settlementRate: 0.5,
+            accuracyRate: 1,
+            netPoints: 40,
+          }),
+          expect.objectContaining({
+            predictedOutcome: 'reject',
+            predictions: 1,
+            resolvedPredictions: 1,
+            correctPredictions: 0,
+            settlementRate: 1,
+            accuracyRate: 0,
+            netPoints: -20,
+          }),
+        ]),
+        byStakeBand: expect.arrayContaining([
+          expect.objectContaining({
+            stakeBand: '5-24',
+            predictions: 1,
+            resolvedPredictions: 1,
+            correctPredictions: 0,
+            settlementRate: 1,
+            accuracyRate: 0,
+            netPoints: -20,
+          }),
+          expect.objectContaining({
+            stakeBand: '25-74',
+            predictions: 2,
+            resolvedPredictions: 1,
+            correctPredictions: 1,
+            settlementRate: 0.5,
+            accuracyRate: 1,
+            netPoints: 40,
+          }),
+        ]),
+      }),
+    );
 
     const hourlyTrend = Array.isArray(
       response.body.predictionMarket.hourlyTrend,
@@ -2643,6 +2740,17 @@ describe('Admin API routes', () => {
             watchBelow: 0.6,
           }),
         }),
+        cohorts: expect.objectContaining({
+          minResolvedPredictions: 1,
+          settlementRate: expect.objectContaining({
+            criticalBelow: 0.4,
+            watchBelow: 0.6,
+          }),
+          accuracyRate: expect.objectContaining({
+            criticalBelow: 0.45,
+            watchBelow: 0.6,
+          }),
+        }),
       }),
     );
     for (const bucket of hourlyTrend) {
@@ -2662,6 +2770,11 @@ describe('Admin API routes', () => {
         byScope: [],
         bySort: [],
         byScopeAndSort: [],
+      }),
+    );
+    expect(response.body.predictionHistoryStateTelemetry).toEqual(
+      expect.objectContaining({
+        byScope: [],
       }),
     );
     expect(response.body.kpis.predictionFilterSwitchShare).toBeNull();

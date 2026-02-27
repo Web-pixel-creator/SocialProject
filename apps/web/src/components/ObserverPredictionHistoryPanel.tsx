@@ -1,16 +1,22 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { apiClient } from '../lib/api';
 import {
   derivePredictionHistoryStats,
+  derivePredictionResolutionBreakdown,
   filterAndSortPredictionHistory,
   type PredictionHistoryFilter,
   type PredictionHistoryItem,
   type PredictionHistorySort,
 } from '../lib/predictionHistory';
 import { formatPredictionOutcomeLabel } from '../lib/predictionOutcome';
+import {
+  normalizePredictionResolutionWindowThresholds,
+  type PredictionResolutionWindowThresholds,
+  resolvePredictionResolutionWindowRiskLevel,
+} from '../lib/predictionResolutionWindowRisk';
 
 export interface ObserverPredictionHistoryEntry extends PredictionHistoryItem {
   id: string;
@@ -22,12 +28,15 @@ export interface ObserverPredictionHistoryEntry extends PredictionHistoryItem {
 interface ObserverPredictionHistoryPanelProps {
   focusRingClass: string;
   predictions: ObserverPredictionHistoryEntry[];
+  riskThresholds?: PredictionResolutionWindowThresholds | null;
   telemetryScope: 'self' | 'public';
   t: (key: string) => string;
 }
 
 const PREDICTION_FILTER_STORAGE_PREFIX = 'finishit:observer-prediction-filter';
 const PREDICTION_SORT_STORAGE_PREFIX = 'finishit:observer-prediction-sort';
+const PREDICTION_HISTORY_RISK_THRESHOLDS =
+  normalizePredictionResolutionWindowThresholds({});
 
 const isPredictionHistoryFilter = (
   value: unknown,
@@ -148,6 +157,34 @@ const formatPredictionNetPoints = (
 const formatSignedPoints = (value: number): string =>
   `${value >= 0 ? '+' : ''}${value}`;
 
+const formatOutcomeAccuracy = (
+  correct: number,
+  resolved: number,
+  t: (key: string) => string,
+): string => {
+  if (resolved === 0) {
+    return t('observerProfile.health.unknown');
+  }
+  return `${Math.round((correct / resolved) * 100)}% (${correct}/${resolved})`;
+};
+
+const formatPredictionOutcomeGap = (
+  merge: { correct: number; resolved: number } | undefined,
+  reject: { correct: number; resolved: number } | undefined,
+  t: (key: string) => string,
+): string => {
+  const mergeResolved = merge?.resolved ?? 0;
+  const rejectResolved = reject?.resolved ?? 0;
+  if (mergeResolved === 0 || rejectResolved === 0) {
+    return t('observerProfile.health.unknown');
+  }
+  const mergeAccuracy = (merge?.correct ?? 0) / mergeResolved;
+  const rejectAccuracy = (reject?.correct ?? 0) / rejectResolved;
+  const gap = (mergeAccuracy - rejectAccuracy) * 100;
+  const roundedGap = Math.round(gap * 10) / 10;
+  return `${roundedGap >= 0 ? '+' : ''}${roundedGap.toFixed(1)}pp`;
+};
+
 const getActiveFilterLabel = (
   filter: PredictionHistoryFilter,
   t: (key: string) => string,
@@ -177,6 +214,7 @@ const getActiveSortLabel = (
 export const ObserverPredictionHistoryPanel = ({
   focusRingClass,
   predictions,
+  riskThresholds,
   telemetryScope,
   t,
 }: ObserverPredictionHistoryPanelProps) => {
@@ -248,12 +286,34 @@ export const ObserverPredictionHistoryPanel = ({
     predictionSort,
   );
   const filteredStats = derivePredictionHistoryStats(filteredPredictions);
+  const filteredBreakdown =
+    derivePredictionResolutionBreakdown(filteredPredictions);
+  const normalizedRiskThresholds = useMemo(
+    () =>
+      normalizePredictionResolutionWindowThresholds(
+        riskThresholds ?? PREDICTION_HISTORY_RISK_THRESHOLDS,
+      ),
+    [riskThresholds],
+  );
+  const mergeBreakdown = filteredBreakdown.byPredictedOutcome.find(
+    (item) => item.predictedOutcome === 'merge',
+  );
+  const rejectBreakdown = filteredBreakdown.byPredictedOutcome.find(
+    (item) => item.predictedOutcome === 'reject',
+  );
   const hasPredictions = predictions.length > 0;
   const emptyStateMessage = hasPredictions
     ? t('observerProfile.noPredictionsInFilter')
     : t('observerProfile.noPredictions');
   const activeFilterLabel = getActiveFilterLabel(predictionFilter, t);
   const activeSortLabel = getActiveSortLabel(predictionSort, t);
+  const filteredRiskLevel = resolvePredictionResolutionWindowRiskLevel({
+    window: {
+      resolved: filteredStats.resolved,
+      rate: filteredStats.accuracyRate,
+    },
+    thresholds: normalizedRiskThresholds,
+  });
 
   return (
     <section className="card grid gap-2 p-4 sm:p-5">
@@ -365,7 +425,27 @@ export const ObserverPredictionHistoryPanel = ({
           {t('observerProfile.cards.predictionAccuracy')}:{' '}
           {Math.round(filteredStats.accuracyRate * 100)}% |{' '}
           {t('observerProfile.predictionNet')}:{' '}
-          {formatSignedPoints(filteredStats.netPoints)}
+          {formatSignedPoints(filteredStats.netPoints)} |{' '}
+          {t('observerProfile.predictionHistoryRisk')}:{' '}
+          {t(`observerProfile.health.${filteredRiskLevel}`)}
+          <br />
+          {formatPredictionOutcomeLabel('merge', t)}{' '}
+          {t('observerProfile.cards.predictionAccuracy')}:{' '}
+          {formatOutcomeAccuracy(
+            mergeBreakdown?.correct ?? 0,
+            mergeBreakdown?.resolved ?? 0,
+            t,
+          )}{' '}
+          | {formatPredictionOutcomeLabel('reject', t)}{' '}
+          {t('observerProfile.cards.predictionAccuracy')}:{' '}
+          {formatOutcomeAccuracy(
+            rejectBreakdown?.correct ?? 0,
+            rejectBreakdown?.resolved ?? 0,
+            t,
+          )}{' '}
+          | {t('observerProfile.stake')} ~ {filteredBreakdown.averageStake} |{' '}
+          {t('observerProfile.predictionOutcomeGap')}:{' '}
+          {formatPredictionOutcomeGap(mergeBreakdown, rejectBreakdown, t)}
         </p>
       ) : null}
       {filteredPredictions.length > 0 ? (

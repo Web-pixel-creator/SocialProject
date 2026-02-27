@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import '@testing-library/jest-dom';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import AdminUxObserverEngagementPage from '../app/admin/ux/page';
 
 const originalFetch = global.fetch;
@@ -101,6 +101,48 @@ describe('admin ux observer engagement page', () => {
                 { predictedOutcome: 'merge', predictions: 1, stakePoints: 40 },
                 { predictedOutcome: 'reject', predictions: 1, stakePoints: 25 },
               ],
+              cohorts: {
+                byOutcome: [
+                  {
+                    predictedOutcome: 'merge',
+                    predictions: 2,
+                    resolvedPredictions: 1,
+                    correctPredictions: 1,
+                    settlementRate: 0.5,
+                    accuracyRate: 1,
+                    netPoints: 40,
+                  },
+                  {
+                    predictedOutcome: 'reject',
+                    predictions: 1,
+                    resolvedPredictions: 1,
+                    correctPredictions: 0,
+                    settlementRate: 1,
+                    accuracyRate: 0,
+                    netPoints: -20,
+                  },
+                ],
+                byStakeBand: [
+                  {
+                    stakeBand: '5-24',
+                    predictions: 1,
+                    resolvedPredictions: 1,
+                    correctPredictions: 0,
+                    settlementRate: 1,
+                    accuracyRate: 0,
+                    netPoints: -20,
+                  },
+                  {
+                    stakeBand: '25-74',
+                    predictions: 2,
+                    resolvedPredictions: 1,
+                    correctPredictions: 1,
+                    settlementRate: 0.5,
+                    accuracyRate: 1,
+                    netPoints: 40,
+                  },
+                ],
+              },
               resolutionWindows: {
                 d7: {
                   days: 7,
@@ -128,6 +170,17 @@ describe('admin ux observer engagement page', () => {
                     watchBelow: 0.7,
                   },
                   minResolvedPredictions: 2,
+                },
+                cohorts: {
+                  settlementRate: {
+                    criticalBelow: 0.2,
+                    watchBelow: 0.6,
+                  },
+                  accuracyRate: {
+                    criticalBelow: 0.35,
+                    watchBelow: 0.75,
+                  },
+                  minResolvedPredictions: 1,
                 },
               },
               hourlyTrend: [
@@ -195,6 +248,26 @@ describe('admin ux observer engagement page', () => {
                 { scope: 'self', sort: 'recent', count: 1 },
                 { scope: 'public', sort: 'stake_desc', count: 1 },
                 { scope: 'unknown', sort: 'unknown', count: 1 },
+              ],
+            },
+            predictionHistoryStateTelemetry: {
+              byScope: [
+                {
+                  scope: 'public',
+                  activeFilter: 'pending',
+                  activeSort: 'stake_desc',
+                  filterChangedAt: '2026-02-22T11:07:00.000Z',
+                  sortChangedAt: '2026-02-22T11:08:00.000Z',
+                  lastChangedAt: '2026-02-22T11:08:00.000Z',
+                },
+                {
+                  scope: 'self',
+                  activeFilter: 'resolved',
+                  activeSort: 'recent',
+                  filterChangedAt: '2026-02-22T11:09:00.000Z',
+                  sortChangedAt: '2026-02-22T11:10:00.000Z',
+                  lastChangedAt: '2026-02-22T11:10:00.000Z',
+                },
               ],
             },
             multimodal: {
@@ -496,6 +569,78 @@ describe('admin ux observer engagement page', () => {
     expect(screen.getByText(/Sort scope mix/i)).toBeInTheDocument();
     expect(screen.getByText(/Sort value mix/i)).toBeInTheDocument();
     expect(screen.getByText(/Scope x sort matrix/i)).toBeInTheDocument();
+    const outcomeCohortsHeading = screen.getByText(
+      /Resolution cohorts by outcome/i,
+    );
+    expect(outcomeCohortsHeading).toBeInTheDocument();
+    const outcomeCohortsScoped = within(
+      outcomeCohortsHeading.closest('article') as HTMLElement,
+    );
+    expect(
+      outcomeCohortsScoped.getByText(/Cohort thresholds:/i),
+    ).toBeInTheDocument();
+    expect(
+      outcomeCohortsScoped.getByText(/settlement watch < 60\.0%/i),
+    ).toBeInTheDocument();
+    expect(
+      outcomeCohortsScoped.getByText(/settlement critical < 20\.0%/i),
+    ).toBeInTheDocument();
+    expect(
+      outcomeCohortsScoped.getByText(/accuracy watch < 75\.0%/i),
+    ).toBeInTheDocument();
+    expect(
+      outcomeCohortsScoped.getByText(/accuracy critical < 35\.0%/i),
+    ).toBeInTheDocument();
+    expect(
+      outcomeCohortsScoped.getByText(/min sample: 1/i),
+    ).toBeInTheDocument();
+    expect(outcomeCohortsScoped.getByText(/^Risk$/i)).toBeInTheDocument();
+    expect(outcomeCohortsScoped.getByText(/^Merge$/i)).toBeInTheDocument();
+    expect(outcomeCohortsScoped.getByText(/^50.0%$/i)).toBeInTheDocument();
+    expect(outcomeCohortsScoped.getByText(/^Watch$/i)).toBeInTheDocument();
+    expect(outcomeCohortsScoped.getByText(/^Critical$/i)).toBeInTheDocument();
+    expect(outcomeCohortsScoped.getByText(/\+40/i)).toBeInTheDocument();
+    const stakeBandCohortsHeading = screen.getByText(
+      /Resolution cohorts by stake band/i,
+    );
+    expect(stakeBandCohortsHeading).toBeInTheDocument();
+    const stakeBandCohortsScoped = within(
+      stakeBandCohortsHeading.closest('article') as HTMLElement,
+    );
+    expect(
+      stakeBandCohortsScoped.getByText(/Cohort thresholds:/i),
+    ).toBeInTheDocument();
+    expect(stakeBandCohortsScoped.getByText(/^Risk$/i)).toBeInTheDocument();
+    expect(stakeBandCohortsScoped.getByText(/^25-74$/i)).toBeInTheDocument();
+    expect(stakeBandCohortsScoped.getByText(/^5-24$/i)).toBeInTheDocument();
+    expect(stakeBandCohortsScoped.getByText(/^Watch$/i)).toBeInTheDocument();
+    expect(stakeBandCohortsScoped.getByText(/^Critical$/i)).toBeInTheDocument();
+    expect(stakeBandCohortsScoped.getByText(/-20/i)).toBeInTheDocument();
+    const predictionHistoryScopeStateHeading = screen.getByText(
+      /Active prediction controls by scope/i,
+    );
+    expect(predictionHistoryScopeStateHeading).toBeInTheDocument();
+    const predictionHistoryScopeStateCard =
+      predictionHistoryScopeStateHeading.closest('article');
+    expect(predictionHistoryScopeStateCard).not.toBeNull();
+    const predictionHistoryScopeStateScoped = within(
+      predictionHistoryScopeStateCard as HTMLElement,
+    );
+    expect(
+      predictionHistoryScopeStateScoped.getByText(/^pending$/i),
+    ).toBeInTheDocument();
+    expect(
+      predictionHistoryScopeStateScoped.getByText(/^stake_desc$/i),
+    ).toBeInTheDocument();
+    expect(
+      predictionHistoryScopeStateScoped.getByText(/2026-02-22T11:08:00.000Z/i),
+    ).toBeInTheDocument();
+    expect(
+      predictionHistoryScopeStateScoped.getByText(/^resolved$/i),
+    ).toBeInTheDocument();
+    expect(
+      predictionHistoryScopeStateScoped.getByText(/^recent$/i),
+    ).toBeInTheDocument();
     expect(screen.getByText(/^Filter switch share$/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Sort switch share/i).length).toBeGreaterThan(0);
     expect(
@@ -506,11 +651,15 @@ describe('admin ux observer engagement page', () => {
     expect(
       screen.getByText(/^Prediction hourly trend \(UTC\)$/i),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Outcome mix/i)).toBeInTheDocument();
-    const mergeOutcome = screen.getByText('Merge').closest('li');
+    const outcomeMixHeading = screen.getByText(/Outcome mix/i);
+    expect(outcomeMixHeading).toBeInTheDocument();
+    const outcomeMixScoped = within(
+      outcomeMixHeading.closest('article') as HTMLElement,
+    );
+    const mergeOutcome = outcomeMixScoped.getByText(/^Merge$/i).closest('li');
     expect(mergeOutcome).not.toBeNull();
     expect(mergeOutcome).toHaveTextContent('1');
-    const rejectOutcome = screen.getByText('Reject').closest('li');
+    const rejectOutcome = outcomeMixScoped.getByText(/^Reject$/i).closest('li');
     expect(rejectOutcome).not.toBeNull();
     expect(rejectOutcome).toHaveTextContent('1');
     expect(screen.getByText(/Participation snapshot/i)).toBeInTheDocument();
@@ -592,7 +741,7 @@ describe('admin ux observer engagement page', () => {
       screen.getByRole('cell', { name: /draft_cycle_critic_completed/i }),
     ).toBeInTheDocument();
     expect(screen.getByText(/Engagement health/i)).toBeInTheDocument();
-    expect(screen.getByText('Watch')).toBeInTheDocument();
+    expect(screen.getAllByText(/^Watch$/i).length).toBeGreaterThan(0);
 
     expect(screen.getAllByText('33.3%').length).toBeGreaterThan(0);
     expect(screen.getAllByText('66.7%').length).toBeGreaterThan(0);

@@ -1,5 +1,6 @@
 import {
   derivePredictionHistoryStats,
+  derivePredictionResolutionBreakdown,
   filterAndSortPredictionHistory,
 } from '../lib/predictionHistory';
 
@@ -82,5 +83,38 @@ describe('predictionHistory helpers', () => {
     expect(byStake[0]?.stakePoints).toBeGreaterThanOrEqual(
       byStake[1]?.stakePoints ?? 0,
     );
+  });
+
+  test('derivePredictionResolutionBreakdown returns per-outcome accuracy and average stake', () => {
+    const result = derivePredictionResolutionBreakdown([
+      {
+        ...predictions[0],
+        predictedOutcome: 'merge' as const,
+      },
+      {
+        ...predictions[1],
+        predictedOutcome: 'merge' as const,
+      },
+      {
+        ...predictions[2],
+        predictedOutcome: 'reject' as const,
+      },
+    ]);
+
+    expect(result.averageStake).toBe(10);
+    expect(result.byPredictedOutcome).toEqual([
+      {
+        predictedOutcome: 'merge',
+        resolved: 1,
+        correct: 1,
+        accuracyRate: 1,
+      },
+      {
+        predictedOutcome: 'reject',
+        resolved: 1,
+        correct: 0,
+        accuracyRate: 0,
+      },
+    ]);
   });
 });

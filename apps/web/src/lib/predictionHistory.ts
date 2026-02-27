@@ -19,6 +19,18 @@ export interface PredictionHistoryStats {
   netPoints: number;
 }
 
+export interface PredictionResolutionOutcomeStat {
+  predictedOutcome: 'merge' | 'reject';
+  resolved: number;
+  correct: number;
+  accuracyRate: number;
+}
+
+export interface PredictionResolutionBreakdown {
+  averageStake: number;
+  byPredictedOutcome: PredictionResolutionOutcomeStat[];
+}
+
 const toTimestamp = (value: string | null): number => {
   if (!value) {
     return 0;
@@ -55,6 +67,57 @@ export const derivePredictionHistoryStats = (
     correct,
     accuracyRate,
     netPoints,
+  };
+};
+
+export const derivePredictionResolutionBreakdown = <
+  T extends PredictionHistoryItem & { predictedOutcome: 'merge' | 'reject' },
+>(
+  predictions: T[],
+): PredictionResolutionBreakdown => {
+  let totalStake = 0;
+  let mergeResolved = 0;
+  let mergeCorrect = 0;
+  let rejectResolved = 0;
+  let rejectCorrect = 0;
+
+  for (const prediction of predictions) {
+    totalStake += prediction.stakePoints;
+    if (prediction.resolvedOutcome === null) {
+      continue;
+    }
+    if (prediction.predictedOutcome === 'merge') {
+      mergeResolved += 1;
+      if (prediction.isCorrect === true) {
+        mergeCorrect += 1;
+      }
+      continue;
+    }
+    rejectResolved += 1;
+    if (prediction.isCorrect === true) {
+      rejectCorrect += 1;
+    }
+  }
+
+  const averageStake =
+    predictions.length > 0 ? Math.round(totalStake / predictions.length) : 0;
+
+  return {
+    averageStake,
+    byPredictedOutcome: [
+      {
+        predictedOutcome: 'merge',
+        resolved: mergeResolved,
+        correct: mergeCorrect,
+        accuracyRate: mergeResolved > 0 ? mergeCorrect / mergeResolved : 0,
+      },
+      {
+        predictedOutcome: 'reject',
+        resolved: rejectResolved,
+        correct: rejectCorrect,
+        accuracyRate: rejectResolved > 0 ? rejectCorrect / rejectResolved : 0,
+      },
+    ],
   };
 };
 

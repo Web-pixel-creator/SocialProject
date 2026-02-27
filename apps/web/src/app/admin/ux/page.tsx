@@ -39,6 +39,26 @@ interface ObserverEngagementResponse {
       predictions?: number;
       stakePoints?: number;
     }>;
+    cohorts?: {
+      byOutcome?: Array<{
+        predictedOutcome?: string;
+        predictions?: number;
+        resolvedPredictions?: number;
+        correctPredictions?: number;
+        settlementRate?: number | null;
+        accuracyRate?: number | null;
+        netPoints?: number;
+      }>;
+      byStakeBand?: Array<{
+        stakeBand?: string;
+        predictions?: number;
+        resolvedPredictions?: number;
+        correctPredictions?: number;
+        settlementRate?: number | null;
+        accuracyRate?: number | null;
+        netPoints?: number;
+      }>;
+    };
     hourlyTrend?: Array<{
       hour?: string;
       predictions?: number;
@@ -74,6 +94,17 @@ interface ObserverEngagementResponse {
     };
     thresholds?: {
       resolutionWindows?: {
+        accuracyRate?: {
+          criticalBelow?: number;
+          watchBelow?: number;
+        };
+        minResolvedPredictions?: number;
+      };
+      cohorts?: {
+        settlementRate?: {
+          criticalBelow?: number;
+          watchBelow?: number;
+        };
         accuracyRate?: {
           criticalBelow?: number;
           watchBelow?: number;
@@ -116,6 +147,16 @@ interface ObserverEngagementResponse {
       scope?: string;
       sort?: string;
       count?: number;
+    }>;
+  };
+  predictionHistoryStateTelemetry?: {
+    byScope?: Array<{
+      scope?: string;
+      activeFilter?: string | null;
+      activeSort?: string | null;
+      filterChangedAt?: string | null;
+      sortChangedAt?: string | null;
+      lastChangedAt?: string | null;
     }>;
   };
   multimodal?: {
@@ -542,6 +583,17 @@ interface PredictionResolutionWindowThresholds {
   };
   minResolvedPredictions: number;
 }
+interface PredictionCohortRiskThresholds {
+  accuracyRate: {
+    criticalBelow: number;
+    watchBelow: number;
+  };
+  minResolvedPredictions: number;
+  settlementRate: {
+    criticalBelow: number;
+    watchBelow: number;
+  };
+}
 interface PredictionFilterScopeFilterItem {
   count: number;
   filter: string;
@@ -551,6 +603,32 @@ interface PredictionSortScopeSortItem {
   count: number;
   scope: string;
   sort: string;
+}
+interface PredictionHistoryScopeStateItem {
+  activeFilter: string | null;
+  activeSort: string | null;
+  filterChangedAt: string | null;
+  lastChangedAt: string | null;
+  scope: string;
+  sortChangedAt: string | null;
+}
+interface PredictionCohortByOutcomeItem {
+  accuracyRate: number | null;
+  correctPredictions: number;
+  netPoints: number;
+  predictedOutcome: string;
+  predictions: number;
+  resolvedPredictions: number;
+  settlementRate: number | null;
+}
+interface PredictionCohortByStakeBandItem {
+  accuracyRate: number | null;
+  correctPredictions: number;
+  netPoints: number;
+  predictions: number;
+  resolvedPredictions: number;
+  settlementRate: number | null;
+  stakeBand: string;
 }
 interface GatewayCompactionHourlyTrendItem {
   autoCompactionShare: number | null;
@@ -601,6 +679,18 @@ const DEFAULT_PREDICTION_RESOLUTION_WINDOW_THRESHOLDS: PredictionResolutionWindo
     },
     minResolvedPredictions: 3,
   };
+const DEFAULT_PREDICTION_COHORT_RISK_THRESHOLDS: PredictionCohortRiskThresholds =
+  {
+    accuracyRate: {
+      criticalBelow: 0.45,
+      watchBelow: 0.6,
+    },
+    minResolvedPredictions: 1,
+    settlementRate: {
+      criticalBelow: 0.4,
+      watchBelow: 0.6,
+    },
+  };
 
 const toNumber = (value: unknown, fallback = 0): number =>
   typeof value === 'number' && Number.isFinite(value) ? value : fallback;
@@ -641,6 +731,13 @@ const pickFirstFiniteRate = (...values: unknown[]): number | null => {
     }
   }
   return null;
+};
+const toNullableIsoTimestamp = (value: unknown): string | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.valueOf()) ? null : parsed.toISOString();
 };
 
 const normalizeAboveThresholds = (
@@ -932,6 +1029,67 @@ const normalizePredictionResolutionWindowThresholds = (
   };
 };
 
+const normalizePredictionCohortRiskThresholds = (
+  value: unknown,
+): PredictionCohortRiskThresholds => {
+  const row = value && typeof value === 'object' ? value : {};
+  const settlementRateSource =
+    (row as Record<string, unknown>).settlementRate &&
+    typeof (row as Record<string, unknown>).settlementRate === 'object'
+      ? ((row as Record<string, unknown>).settlementRate as Record<
+          string,
+          unknown
+        >)
+      : {};
+  const accuracyRateSource =
+    (row as Record<string, unknown>).accuracyRate &&
+    typeof (row as Record<string, unknown>).accuracyRate === 'object'
+      ? ((row as Record<string, unknown>).accuracyRate as Record<
+          string,
+          unknown
+        >)
+      : {};
+  const settlementCriticalBelow = pickFirstFiniteRate(
+    settlementRateSource.criticalBelow,
+    DEFAULT_PREDICTION_COHORT_RISK_THRESHOLDS.settlementRate.criticalBelow,
+  );
+  const settlementWatchBelow = pickFirstFiniteRate(
+    settlementRateSource.watchBelow,
+    DEFAULT_PREDICTION_COHORT_RISK_THRESHOLDS.settlementRate.watchBelow,
+  );
+  const accuracyCriticalBelow = pickFirstFiniteRate(
+    accuracyRateSource.criticalBelow,
+    DEFAULT_PREDICTION_COHORT_RISK_THRESHOLDS.accuracyRate.criticalBelow,
+  );
+  const accuracyWatchBelow = pickFirstFiniteRate(
+    accuracyRateSource.watchBelow,
+    DEFAULT_PREDICTION_COHORT_RISK_THRESHOLDS.accuracyRate.watchBelow,
+  );
+  const minResolvedPredictions = toNumber(
+    (row as Record<string, unknown>).minResolvedPredictions,
+    DEFAULT_PREDICTION_COHORT_RISK_THRESHOLDS.minResolvedPredictions,
+  );
+  return {
+    settlementRate: {
+      criticalBelow:
+        settlementCriticalBelow ??
+        DEFAULT_PREDICTION_COHORT_RISK_THRESHOLDS.settlementRate.criticalBelow,
+      watchBelow:
+        settlementWatchBelow ??
+        DEFAULT_PREDICTION_COHORT_RISK_THRESHOLDS.settlementRate.watchBelow,
+    },
+    accuracyRate: {
+      criticalBelow:
+        accuracyCriticalBelow ??
+        DEFAULT_PREDICTION_COHORT_RISK_THRESHOLDS.accuracyRate.criticalBelow,
+      watchBelow:
+        accuracyWatchBelow ??
+        DEFAULT_PREDICTION_COHORT_RISK_THRESHOLDS.accuracyRate.watchBelow,
+    },
+    minResolvedPredictions,
+  };
+};
+
 const normalizePredictionFilterScopeFilterItems = (
   items: unknown,
 ): PredictionFilterScopeFilterItem[] => {
@@ -986,6 +1144,108 @@ const normalizePredictionSortScopeSortItems = (
         left.scope.localeCompare(right.scope) ||
         left.sort.localeCompare(right.sort),
     );
+};
+
+const normalizePredictionHistoryScopeStateItems = (
+  items: unknown,
+): PredictionHistoryScopeStateItem[] => {
+  if (!Array.isArray(items)) {
+    return [];
+  }
+  return items
+    .map((item) => {
+      const row = item && typeof item === 'object' ? item : {};
+      const activeFilterValue = (row as Record<string, unknown>).activeFilter;
+      const activeSortValue = (row as Record<string, unknown>).activeSort;
+      return {
+        scope: toStringValue(
+          (row as Record<string, unknown>).scope,
+          'unknown-scope',
+        ),
+        activeFilter:
+          typeof activeFilterValue === 'string' ? activeFilterValue : null,
+        activeSort:
+          typeof activeSortValue === 'string' ? activeSortValue : null,
+        filterChangedAt: toNullableIsoTimestamp(
+          (row as Record<string, unknown>).filterChangedAt,
+        ),
+        sortChangedAt: toNullableIsoTimestamp(
+          (row as Record<string, unknown>).sortChangedAt,
+        ),
+        lastChangedAt: toNullableIsoTimestamp(
+          (row as Record<string, unknown>).lastChangedAt,
+        ),
+      };
+    })
+    .sort((left, right) => left.scope.localeCompare(right.scope));
+};
+
+const normalizePredictionCohortByOutcomeItems = (
+  items: unknown,
+): PredictionCohortByOutcomeItem[] => {
+  if (!Array.isArray(items)) {
+    return [];
+  }
+  return items
+    .map((item) => {
+      const row = item && typeof item === 'object' ? item : {};
+      return {
+        predictedOutcome: toStringValue(
+          (row as Record<string, unknown>).predictedOutcome,
+          'unknown-outcome',
+        ),
+        predictions: toNumber((row as Record<string, unknown>).predictions),
+        resolvedPredictions: toNumber(
+          (row as Record<string, unknown>).resolvedPredictions,
+        ),
+        correctPredictions: toNumber(
+          (row as Record<string, unknown>).correctPredictions,
+        ),
+        settlementRate: pickFirstFiniteRate(
+          (row as Record<string, unknown>).settlementRate,
+        ),
+        accuracyRate: pickFirstFiniteRate(
+          (row as Record<string, unknown>).accuracyRate,
+        ),
+        netPoints: toNumber((row as Record<string, unknown>).netPoints),
+      };
+    })
+    .sort((left, right) =>
+      left.predictedOutcome.localeCompare(right.predictedOutcome),
+    );
+};
+
+const normalizePredictionCohortByStakeBandItems = (
+  items: unknown,
+): PredictionCohortByStakeBandItem[] => {
+  if (!Array.isArray(items)) {
+    return [];
+  }
+  return items
+    .map((item) => {
+      const row = item && typeof item === 'object' ? item : {};
+      return {
+        stakeBand: toStringValue(
+          (row as Record<string, unknown>).stakeBand,
+          'unknown-band',
+        ),
+        predictions: toNumber((row as Record<string, unknown>).predictions),
+        resolvedPredictions: toNumber(
+          (row as Record<string, unknown>).resolvedPredictions,
+        ),
+        correctPredictions: toNumber(
+          (row as Record<string, unknown>).correctPredictions,
+        ),
+        settlementRate: pickFirstFiniteRate(
+          (row as Record<string, unknown>).settlementRate,
+        ),
+        accuracyRate: pickFirstFiniteRate(
+          (row as Record<string, unknown>).accuracyRate,
+        ),
+        netPoints: toNumber((row as Record<string, unknown>).netPoints),
+      };
+    })
+    .sort((left, right) => left.stakeBand.localeCompare(right.stakeBand));
 };
 
 const normalizeGatewayCompactionHourlyTrendItems = (
@@ -1410,6 +1670,40 @@ const resolvePredictionResolutionWindowHealthLevel = (
     return 'unknown';
   }
   return resolveHealthLevel(window.accuracyRate, thresholds.accuracyRate);
+};
+
+const resolvePredictionCohortHealthLevel = ({
+  accuracyRate,
+  resolvedPredictions,
+  settlementRate,
+  thresholds,
+}: {
+  accuracyRate: number | null;
+  resolvedPredictions: number;
+  settlementRate: number | null;
+  thresholds: PredictionCohortRiskThresholds;
+}): HealthLevel => {
+  if (resolvedPredictions < thresholds.minResolvedPredictions) {
+    return 'unknown';
+  }
+  const settlementHealth = resolveHealthLevel(
+    settlementRate,
+    thresholds.settlementRate,
+  );
+  const accuracyHealth = resolveHealthLevel(
+    accuracyRate,
+    thresholds.accuracyRate,
+  );
+  if (settlementHealth === 'critical' || accuracyHealth === 'critical') {
+    return 'critical';
+  }
+  if (settlementHealth === 'watch' || accuracyHealth === 'watch') {
+    return 'watch';
+  }
+  if (settlementHealth === 'healthy' || accuracyHealth === 'healthy') {
+    return 'healthy';
+  }
+  return 'unknown';
 };
 
 const healthLabel = (level: HealthLevel): string => {
@@ -3070,23 +3364,56 @@ export default async function AdminUxObserverEngagementPage({
     ...entry,
     key: formatPredictionOutcomeMetricLabel(entry.key),
   }));
+  const predictionCohorts =
+    (predictionMarket as Record<string, unknown>).cohorts ?? {};
+  const predictionCohortsByOutcome = normalizePredictionCohortByOutcomeItems(
+    (predictionCohorts as Record<string, unknown>).byOutcome,
+  );
+  const predictionCohortsByStakeBand =
+    normalizePredictionCohortByStakeBandItems(
+      (predictionCohorts as Record<string, unknown>).byStakeBand,
+    );
   const predictionHourlyTrend = normalizePredictionHourlyTrendItems(
     predictionMarket.hourlyTrend,
   );
   const predictionResolutionWindows = predictionMarket.resolutionWindows ?? {};
+  const predictionMarketThresholds =
+    (predictionMarket as Record<string, unknown>).thresholds &&
+    typeof (predictionMarket as Record<string, unknown>).thresholds === 'object'
+      ? ((predictionMarket as Record<string, unknown>).thresholds as Record<
+          string,
+          unknown
+        >)
+      : {};
   const predictionResolutionWindowThresholds =
     normalizePredictionResolutionWindowThresholds(
-      (predictionMarket as Record<string, unknown>).thresholds &&
-        typeof (predictionMarket as Record<string, unknown>).thresholds ===
-          'object'
-        ? (
-            (predictionMarket as Record<string, unknown>).thresholds as Record<
-              string,
-              unknown
-            >
-          ).resolutionWindows
-        : undefined,
+      predictionMarketThresholds.resolutionWindows,
     );
+  const predictionCohortRiskThresholds =
+    normalizePredictionCohortRiskThresholds(predictionMarketThresholds.cohorts);
+  const predictionCohortThresholdSummary = `settlement watch < ${toRateText(predictionCohortRiskThresholds.settlementRate.watchBelow)} | settlement critical < ${toRateText(predictionCohortRiskThresholds.settlementRate.criticalBelow)} | accuracy watch < ${toRateText(predictionCohortRiskThresholds.accuracyRate.watchBelow)} | accuracy critical < ${toRateText(predictionCohortRiskThresholds.accuracyRate.criticalBelow)} | min sample: ${predictionCohortRiskThresholds.minResolvedPredictions}`;
+  const predictionCohortsByOutcomeWithRisk = predictionCohortsByOutcome.map(
+    (entry) => ({
+      ...entry,
+      riskLevel: resolvePredictionCohortHealthLevel({
+        accuracyRate: entry.accuracyRate,
+        resolvedPredictions: entry.resolvedPredictions,
+        settlementRate: entry.settlementRate,
+        thresholds: predictionCohortRiskThresholds,
+      }),
+    }),
+  );
+  const predictionCohortsByStakeBandWithRisk = predictionCohortsByStakeBand.map(
+    (entry) => ({
+      ...entry,
+      riskLevel: resolvePredictionCohortHealthLevel({
+        accuracyRate: entry.accuracyRate,
+        resolvedPredictions: entry.resolvedPredictions,
+        settlementRate: entry.settlementRate,
+        thresholds: predictionCohortRiskThresholds,
+      }),
+    }),
+  );
   const predictionWindow7d = normalizePredictionResolutionWindow(
     (predictionResolutionWindows as Record<string, unknown>).d7,
     7,
@@ -3130,6 +3457,12 @@ export default async function AdminUxObserverEngagementPage({
   const predictionSortByScopeAndSort = normalizePredictionSortScopeSortItems(
     predictionSortTelemetry.byScopeAndSort,
   );
+  const predictionHistoryStateTelemetry =
+    data?.predictionHistoryStateTelemetry ?? {};
+  const predictionHistoryScopeStates =
+    normalizePredictionHistoryScopeStateItems(
+      predictionHistoryStateTelemetry.byScope,
+    );
   const multimodal = data?.multimodal ?? {};
   const multimodalCoverageRate = pickFirstFiniteRate(
     multimodal.coverageRate,
@@ -4584,6 +4917,140 @@ export default async function AdminUxObserverEngagementPage({
             title="Filter value mix"
           />
         </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <article className="card grid gap-2 p-4">
+            <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+              Resolution cohorts by outcome
+            </h3>
+            <p className="text-muted-foreground text-xs">
+              Cohort thresholds: {predictionCohortThresholdSummary}
+            </p>
+            {predictionCohortsByOutcomeWithRisk.length === 0 ? (
+              <p className="text-muted-foreground text-xs">
+                No outcome cohort data in current window.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-left text-xs">
+                  <thead>
+                    <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
+                      <th className="py-2 pr-3">Outcome</th>
+                      <th className="px-3 py-2 text-right">Predictions</th>
+                      <th className="px-3 py-2 text-right">Settled</th>
+                      <th className="px-3 py-2 text-right">Settlement</th>
+                      <th className="px-3 py-2 text-right">Accuracy</th>
+                      <th className="px-3 py-2 text-right">Risk</th>
+                      <th className="px-3 py-2 text-right">Net</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {predictionCohortsByOutcomeWithRisk.map((entry, index) => (
+                      <tr
+                        className="border-border/25 border-b last:border-b-0"
+                        key={`${entry.predictedOutcome}:${index + 1}`}
+                      >
+                        <td className="py-2 pr-3 text-muted-foreground">
+                          {formatPredictionOutcomeMetricLabel(
+                            entry.predictedOutcome,
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-right font-medium text-foreground">
+                          {entry.predictions}
+                        </td>
+                        <td className="px-3 py-2 text-right text-muted-foreground">
+                          {entry.resolvedPredictions}
+                        </td>
+                        <td className="px-3 py-2 text-right text-muted-foreground">
+                          {toRateText(entry.settlementRate)}
+                        </td>
+                        <td className="px-3 py-2 text-right text-muted-foreground">
+                          {toRateText(entry.accuracyRate)}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <span
+                            className={`${healthBadgeClass(entry.riskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide`}
+                          >
+                            {healthLabel(entry.riskLevel)}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-right font-semibold text-foreground">
+                          {entry.netPoints >= 0 ? '+' : ''}
+                          {entry.netPoints}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </article>
+          <article className="card grid gap-2 p-4">
+            <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+              Resolution cohorts by stake band
+            </h3>
+            <p className="text-muted-foreground text-xs">
+              Cohort thresholds: {predictionCohortThresholdSummary}
+            </p>
+            {predictionCohortsByStakeBandWithRisk.length === 0 ? (
+              <p className="text-muted-foreground text-xs">
+                No stake-band cohort data in current window.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-left text-xs">
+                  <thead>
+                    <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
+                      <th className="py-2 pr-3">Stake band</th>
+                      <th className="px-3 py-2 text-right">Predictions</th>
+                      <th className="px-3 py-2 text-right">Settled</th>
+                      <th className="px-3 py-2 text-right">Settlement</th>
+                      <th className="px-3 py-2 text-right">Accuracy</th>
+                      <th className="px-3 py-2 text-right">Risk</th>
+                      <th className="px-3 py-2 text-right">Net</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {predictionCohortsByStakeBandWithRisk.map(
+                      (entry, index) => (
+                        <tr
+                          className="border-border/25 border-b last:border-b-0"
+                          key={`${entry.stakeBand}:${index + 1}`}
+                        >
+                          <td className="py-2 pr-3 text-muted-foreground">
+                            {entry.stakeBand}
+                          </td>
+                          <td className="px-3 py-2 text-right font-medium text-foreground">
+                            {entry.predictions}
+                          </td>
+                          <td className="px-3 py-2 text-right text-muted-foreground">
+                            {entry.resolvedPredictions}
+                          </td>
+                          <td className="px-3 py-2 text-right text-muted-foreground">
+                            {toRateText(entry.settlementRate)}
+                          </td>
+                          <td className="px-3 py-2 text-right text-muted-foreground">
+                            {toRateText(entry.accuracyRate)}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            <span
+                              className={`${healthBadgeClass(entry.riskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide`}
+                            >
+                              {healthLabel(entry.riskLevel)}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-right font-semibold text-foreground">
+                            {entry.netPoints >= 0 ? '+' : ''}
+                            {entry.netPoints}
+                          </td>
+                        </tr>
+                      ),
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </article>
+        </div>
         <article className="card grid gap-2 p-4">
           <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
             Scope x filter matrix
@@ -4673,6 +5140,50 @@ export default async function AdminUxObserverEngagementPage({
                       </td>
                       <td className="px-3 py-2 text-right font-semibold text-foreground">
                         {entry.count}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </article>
+        <article className="card grid gap-2 p-4">
+          <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+            Active prediction controls by scope
+          </h3>
+          {predictionHistoryScopeStates.length === 0 ? (
+            <p className="text-muted-foreground text-xs">
+              No active prediction-history control state in current window.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-left text-xs">
+                <thead>
+                  <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
+                    <th className="py-2 pr-3">Scope</th>
+                    <th className="px-3 py-2">Active filter</th>
+                    <th className="px-3 py-2">Active sort</th>
+                    <th className="px-3 py-2 text-right">Last changed (UTC)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {predictionHistoryScopeStates.map((entry, index) => (
+                    <tr
+                      className="border-border/25 border-b last:border-b-0"
+                      key={`${entry.scope}:${index + 1}`}
+                    >
+                      <td className="py-2 pr-3 text-muted-foreground">
+                        {entry.scope}
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        {entry.activeFilter ?? 'n/a'}
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        {entry.activeSort ?? 'n/a'}
+                      </td>
+                      <td className="px-3 py-2 text-right font-medium text-foreground">
+                        {entry.lastChangedAt ?? 'n/a'}
                       </td>
                     </tr>
                   ))}

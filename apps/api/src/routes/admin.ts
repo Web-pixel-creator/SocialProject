@@ -55,6 +55,17 @@ const PREDICTION_RESOLUTION_WINDOW_THRESHOLDS = {
   },
   minResolvedPredictions: 3,
 } as const;
+const PREDICTION_COHORT_RISK_THRESHOLDS = {
+  settlementRate: {
+    criticalBelow: 0.4,
+    watchBelow: 0.6,
+  },
+  accuracyRate: {
+    criticalBelow: 0.45,
+    watchBelow: 0.6,
+  },
+  minResolvedPredictions: 1,
+} as const;
 
 const resolveHealthLevel = (
   value: number | null,
@@ -4673,6 +4684,70 @@ router.get(
          ORDER BY predicted_outcome`,
         [hours],
       );
+      const predictionCohortsByOutcomeRows = await db.query(
+        `SELECT
+           predicted_outcome,
+           COUNT(*)::int AS prediction_count,
+           COUNT(*) FILTER (WHERE resolved_outcome IS NOT NULL)::int AS resolved_count,
+           COUNT(*) FILTER (WHERE is_correct = true)::int AS correct_count,
+           COALESCE(
+             SUM(
+               CASE
+                 WHEN resolved_outcome IS NOT NULL
+                   THEN payout_points - stake_points
+                 ELSE 0
+               END
+             ),
+             0
+           )::int AS net_points
+         FROM observer_pr_predictions
+         WHERE created_at >= NOW() - ($1 || ' hours')::interval
+         GROUP BY predicted_outcome
+         ORDER BY predicted_outcome`,
+        [hours],
+      );
+      const predictionCohortsByStakeBandRows = await db.query(
+        `WITH stake_bands AS (
+           SELECT
+             CASE
+               WHEN stake_points < 25 THEN '5-24'
+               WHEN stake_points < 75 THEN '25-74'
+               WHEN stake_points < 200 THEN '75-199'
+               ELSE '200+'
+             END AS stake_band,
+             CASE
+               WHEN stake_points < 25 THEN 1
+               WHEN stake_points < 75 THEN 2
+               WHEN stake_points < 200 THEN 3
+               ELSE 4
+             END AS stake_band_order,
+             resolved_outcome,
+             is_correct,
+             stake_points,
+             payout_points
+           FROM observer_pr_predictions
+           WHERE created_at >= NOW() - ($1 || ' hours')::interval
+         )
+         SELECT
+           stake_band,
+           COUNT(*)::int AS prediction_count,
+           COUNT(*) FILTER (WHERE resolved_outcome IS NOT NULL)::int AS resolved_count,
+           COUNT(*) FILTER (WHERE is_correct = true)::int AS correct_count,
+           COALESCE(
+             SUM(
+               CASE
+                 WHEN resolved_outcome IS NOT NULL
+                   THEN payout_points - stake_points
+                 ELSE 0
+               END
+             ),
+             0
+           )::int AS net_points
+         FROM stake_bands
+         GROUP BY stake_band, stake_band_order
+         ORDER BY stake_band_order`,
+        [hours],
+      );
       const predictionHourlyRows = await db.query(
         `SELECT
            TO_CHAR(
@@ -4771,6 +4846,59 @@ router.get(
            AND event_type = 'observer_prediction_sort_change'
          GROUP BY scope, sort_value
          ORDER BY scope, sort_value`,
+        [hours],
+      );
+      const predictionHistoryStateRows = await db.query(
+        `WITH scope_events AS (
+           SELECT
+             COALESCE(metadata->>'scope', 'unknown') AS scope,
+             'filter'::text AS event_kind,
+             COALESCE(metadata->>'filter', 'unknown') AS event_value,
+             created_at
+           FROM ux_events
+           WHERE created_at >= NOW() - ($1 || ' hours')::interval
+             AND user_type = 'observer'
+             AND event_type = 'observer_prediction_filter_change'
+           UNION ALL
+           SELECT
+             COALESCE(metadata->>'scope', 'unknown') AS scope,
+             'sort'::text AS event_kind,
+             COALESCE(metadata->>'sort', 'unknown') AS event_value,
+             created_at
+           FROM ux_events
+           WHERE created_at >= NOW() - ($1 || ' hours')::interval
+             AND user_type = 'observer'
+             AND event_type = 'observer_prediction_sort_change'
+         ),
+         ranked_scope_events AS (
+           SELECT
+             scope,
+             event_kind,
+             event_value,
+             created_at,
+             ROW_NUMBER() OVER (
+               PARTITION BY scope, event_kind
+               ORDER BY created_at DESC
+             ) AS row_rank
+           FROM scope_events
+         )
+         SELECT
+           scope,
+           MAX(event_value) FILTER (
+             WHERE event_kind = 'filter' AND row_rank = 1
+           ) AS active_filter,
+           MAX(created_at) FILTER (
+             WHERE event_kind = 'filter' AND row_rank = 1
+           ) AS filter_changed_at,
+           MAX(event_value) FILTER (
+             WHERE event_kind = 'sort' AND row_rank = 1
+           ) AS active_sort,
+           MAX(created_at) FILTER (
+             WHERE event_kind = 'sort' AND row_rank = 1
+           ) AS sort_changed_at
+         FROM ranked_scope_events
+         GROUP BY scope
+         ORDER BY scope`,
         [hours],
       );
 
@@ -4908,6 +5036,26 @@ router.get(
           (left, right) =>
             right.count - left.count || left.sort.localeCompare(right.sort),
         );
+      const predictionHistoryStateByScope = predictionHistoryStateRows.rows.map(
+        (row) => {
+          const filterChangedAt = toNullableIsoTimestamp(row.filter_changed_at);
+          const sortChangedAt = toNullableIsoTimestamp(row.sort_changed_at);
+          const lastChangedAt =
+            [filterChangedAt, sortChangedAt]
+              .filter((value): value is string => value !== null)
+              .sort((left, right) => right.localeCompare(left))[0] ?? null;
+          return {
+            scope: String(row.scope ?? 'unknown'),
+            activeFilter:
+              typeof row.active_filter === 'string' ? row.active_filter : null,
+            activeSort:
+              typeof row.active_sort === 'string' ? row.active_sort : null,
+            filterChangedAt,
+            sortChangedAt,
+            lastChangedAt,
+          };
+        },
+      );
       const predictionHistoryControlSwitches =
         predictionFilterTotalSwitches + predictionSortTotalSwitches;
       const predictionSortSwitchShare = toRate(
@@ -5085,6 +5233,36 @@ router.get(
             predictions: Number(row.prediction_count ?? 0),
             stakePoints: Number(row.stake_points ?? 0),
           })),
+          cohorts: {
+            byOutcome: predictionCohortsByOutcomeRows.rows.map((row) => {
+              const predictions = Number(row.prediction_count ?? 0);
+              const resolvedPredictions = Number(row.resolved_count ?? 0);
+              const correctPredictions = Number(row.correct_count ?? 0);
+              return {
+                predictedOutcome: row.predicted_outcome,
+                predictions,
+                resolvedPredictions,
+                correctPredictions,
+                settlementRate: toRate(resolvedPredictions, predictions),
+                accuracyRate: toRate(correctPredictions, resolvedPredictions),
+                netPoints: Number(row.net_points ?? 0),
+              };
+            }),
+            byStakeBand: predictionCohortsByStakeBandRows.rows.map((row) => {
+              const predictions = Number(row.prediction_count ?? 0);
+              const resolvedPredictions = Number(row.resolved_count ?? 0);
+              const correctPredictions = Number(row.correct_count ?? 0);
+              return {
+                stakeBand: String(row.stake_band ?? 'unknown'),
+                predictions,
+                resolvedPredictions,
+                correctPredictions,
+                settlementRate: toRate(resolvedPredictions, predictions),
+                accuracyRate: toRate(correctPredictions, resolvedPredictions),
+                netPoints: Number(row.net_points ?? 0),
+              };
+            }),
+          },
           hourlyTrend: predictionHourlyTrend,
           resolutionWindows: {
             d7: {
@@ -5108,6 +5286,7 @@ router.get(
           },
           thresholds: {
             resolutionWindows: PREDICTION_RESOLUTION_WINDOW_THRESHOLDS,
+            cohorts: PREDICTION_COHORT_RISK_THRESHOLDS,
           },
         },
         predictionFilterTelemetry: {
@@ -5121,6 +5300,9 @@ router.get(
           byScope: predictionSortByScope,
           bySort: predictionSortBySort,
           byScopeAndSort: predictionSortByScopeAndSort,
+        },
+        predictionHistoryStateTelemetry: {
+          byScope: predictionHistoryStateByScope,
         },
         feedPreferences: {
           viewMode: {

@@ -4,13 +4,13 @@ import Link from 'next/link';
 import { useState } from 'react';
 import useSWR from 'swr';
 import { ObserverPredictionHistoryPanel } from '../../../components/ObserverPredictionHistoryPanel';
+import { ObserverPredictionMarketSummary } from '../../../components/ObserverPredictionMarketSummary';
 import { ObserverPredictionWindowsSummary } from '../../../components/ObserverPredictionWindowsSummary';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { apiClient } from '../../../lib/api';
 import { getApiErrorMessage } from '../../../lib/errors';
 import { formatPredictionOutcomeLabel } from '../../../lib/predictionOutcome';
-import { formatPredictionTrustTier } from '../../../lib/predictionTier';
 
 interface ObserverProfileStudio {
   id: string;
@@ -346,10 +346,6 @@ export default function ObserverProfilePage() {
   const lastResolvedOutcomeLabel = lastResolvedPrediction
     ? formatPredictionOutcomeLabel(lastResolvedPrediction.resolvedOutcome, t)
     : null;
-  const formattedPredictionTier = formatPredictionTrustTier(
-    predictionMarket?.trustTier,
-    t,
-  );
   const followingStudioDigestEntries = digestEntries
     .filter((entry) => entry.fromFollowingStudio)
     .slice(0, 8);
@@ -551,26 +547,7 @@ export default function ObserverProfilePage() {
             {t('observerProfile.lastResolvedNone')}
           </p>
         )}
-        {predictionMarket ? (
-          <>
-            <p className="text-muted-foreground text-xs">
-              {t('observerProfile.marketTier')}: {formattedPredictionTier} |{' '}
-              {t('observerProfile.maxStake')}: {predictionMarket.maxStakePoints}
-            </p>
-            <p className="text-muted-foreground text-xs">
-              {t('observerProfile.dailyStake')}:{' '}
-              {predictionMarket.dailyStakeUsedPoints}/
-              {predictionMarket.dailyStakeCapPoints} (
-              {t('observerProfile.remaining')}{' '}
-              {predictionMarket.dailyStakeRemainingPoints}) |{' '}
-              {t('observerProfile.dailySubmissions')}:{' '}
-              {predictionMarket.dailySubmissionsUsed}/
-              {predictionMarket.dailySubmissionCap} (
-              {t('observerProfile.remaining')}{' '}
-              {predictionMarket.dailySubmissionsRemaining})
-            </p>
-          </>
-        ) : null}
+        <ObserverPredictionMarketSummary market={predictionMarket} t={t} />
       </section>
 
       <section className="card grid gap-2 p-4 sm:p-5">
@@ -761,6 +738,7 @@ export default function ObserverProfilePage() {
       <ObserverPredictionHistoryPanel
         focusRingClass={focusRingClass}
         predictions={recentPredictions}
+        riskThresholds={profile?.predictions.thresholds?.resolutionWindows}
         t={t}
         telemetryScope="self"
       />

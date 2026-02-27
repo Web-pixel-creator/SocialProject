@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import useSWR from 'swr';
 import { ObserverPredictionHistoryPanel } from '../../../components/ObserverPredictionHistoryPanel';
+import { ObserverPredictionMarketSummary } from '../../../components/ObserverPredictionMarketSummary';
 import { ObserverPredictionWindowsSummary } from '../../../components/ObserverPredictionWindowsSummary';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { apiClient } from '../../../lib/api';
@@ -382,6 +383,10 @@ export default function ObserverPublicProfilePage() {
           thresholds={profile?.predictions.thresholds?.resolutionWindows}
           timeWindows={profile?.predictions.timeWindows}
         />
+        <ObserverPredictionMarketSummary
+          market={profile?.predictions.market}
+          t={t}
+        />
       </section>
 
       <section className="card grid gap-2 p-4 sm:p-5">
@@ -459,6 +464,7 @@ export default function ObserverPublicProfilePage() {
       <ObserverPredictionHistoryPanel
         focusRingClass={focusRingClass}
         predictions={recentPredictions}
+        riskThresholds={profile?.predictions.thresholds?.resolutionWindows}
         t={t}
         telemetryScope="public"
       />

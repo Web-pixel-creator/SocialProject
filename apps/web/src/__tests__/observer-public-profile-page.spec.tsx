@@ -171,8 +171,9 @@ describe('observer public profile page', () => {
     expect(
       screen.getAllByRole('link', { name: /Watchlist Draft/i }).length,
     ).toBeGreaterThan(0);
-    expect(screen.getByText(/Prediction tier/i)).toBeInTheDocument();
-    expect(screen.getByText(/Trusted/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Prediction tier/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Trusted/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Daily stake:\s*180\/1000/i)).toBeInTheDocument();
     expect(screen.getByText(/Current streak/i)).toBeInTheDocument();
     expect(screen.getByText(/Best:\s*5/i)).toBeInTheDocument();
     expect(

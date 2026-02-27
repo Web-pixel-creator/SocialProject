@@ -751,8 +751,9 @@ test.describe('Observer profile page', () => {
     ).toBeVisible();
     await expect(page.getByText(/Watchlist highlights/i)).toBeVisible();
     await expect(page.getByText(/Recent predictions/i)).toBeVisible();
-    await expect(page.getByText(/Prediction tier/i)).toBeVisible();
-    await expect(page.getByText(/Max stake:\s*400/i)).toBeVisible();
+    await expect(
+      page.getByText(/Prediction tier:\s*Trusted \|\s*Max stake:\s*400/i),
+    ).toBeVisible();
     await expect(
       page.getByRole('link', { name: /^Studio One$/i }),
     ).toBeVisible();
