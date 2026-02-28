@@ -135,10 +135,16 @@ const readTokenFromGhAuth = () => {
 
 const resolveTokenCandidates = ({ tokenFromArg }) => {
   const candidates = [];
+  const isAsciiVisible = (value) => /^[\x21-\x7E]+$/u.test(value);
   const addCandidate = (token, source) => {
     const normalized = token?.trim();
     if (!normalized) {
       return;
+    }
+    if (!isAsciiVisible(normalized)) {
+      throw new Error(
+        `Token from '${source}' contains unsupported characters. Use the exact GitHub token value (ASCII only), without placeholders, spaces, or localized text.`,
+      );
     }
     if (candidates.some((entry) => entry.token === normalized)) {
       return;
