@@ -33,6 +33,36 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-02-28 - production post-deploy launch-gate verification
+
+- Scope: final production launch-gate verification after deployment convergence (strict infra gate + smoke + health/SLO + runtime/connector probes).
+- Release commander: Codex automation.
+- Window (UTC): 2026-02-28 17:51 -> 2026-02-28 18:01.
+- Production checks and outcomes:
+  - Railway strict production gate: pass (`node scripts/release/railway-production-gate.mjs --require-api-service --strict --json`), with `SocialProject` recovered from transient `BUILDING/DEPLOYING` to `SUCCESS`; API service health (`/health`, `/ready`) stayed `200`.
+  - Post-deploy production smoke: pass (`npm run release:smoke`) against dedicated API + web origins (`api-production-7540.up.railway.app`, `socialproject-production.up.railway.app`), `19/19` steps green (`artifacts/release/smoke-results-production-postdeploy.json`).
+  - Launch health/SLO checkpoint: pass (`artifacts/release/production-launch-gate-health-summary.json`) including `health=ok`, `ready=ok`, runtime healthy, stale sessions below threshold, telemetry non-empty, and expected cron jobs present + successful.
+  - Runtime orchestration probe: pass (`POST /api/admin/agent-gateway/orchestrate`, channel `release_runtime_probe`) with 3-step chain `critic->maker->judge`, session persisted, and prompt markers present (`Skill capsule`, `Role skill`, `Role persona`).
+  - Adapter matrix probe: pass across `web`, `live_session`, `release_runtime_probe` (`201` each, 3 steps each); adapter usage remains non-empty for `web`, `live_session`, `external_webhook`.
+  - Signed connector ingest probe: pass (`POST /api/agent-gateway/adapters/ingest`, connector `launch_probe`, `201 applied=true`) with connector telemetry/adapters snapshots remaining non-empty.
+  - Backup/restore launch requirement remains satisfied from latest drill (`2026-02-27`): backup checkpoint and restore drill both pass.
+- Evidence:
+  - `artifacts/release/railway-gate-strict.json` (refreshed)
+  - `artifacts/release/smoke-results-production-postdeploy.json` (new)
+  - `artifacts/release/production-launch-gate-health-summary.json` (new)
+  - `artifacts/release/production-runtime-orchestration-probe.json` (refreshed)
+  - `artifacts/release/production-agent-gateway-adapter-matrix-probe.json` (refreshed)
+  - `artifacts/release/production-agent-gateway-ingest-probe.json` (refreshed)
+  - `artifacts/release/production-agent-gateway-telemetry.json` (refreshed)
+  - `artifacts/release/production-agent-gateway-adapters.json` (refreshed)
+  - `artifacts/release/production-admin-health-summary.json` (refreshed)
+  - `artifacts/release/backup-restore-checkpoint.json`
+  - `artifacts/release/restore-drill-summary.json`
+- Incidents:
+  - none.
+- Follow-ups:
+  - none.
+
 ### 2026-02-28 - production runtime/connector parity checkpoint
 
 - Scope: close remaining runtime/adapter parity evidence on live production traffic.
