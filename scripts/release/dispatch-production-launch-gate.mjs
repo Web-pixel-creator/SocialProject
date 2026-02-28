@@ -105,6 +105,15 @@ const parseCliArgs = (argv) => {
     throw new Error(`Unknown argument: ${arg}\n\n${USAGE}`);
   }
 
+  if (
+    tokenFromArg &&
+    (/^<[^>]+>$/u.test(tokenFromArg) || /NEW_GITHUB_PAT|YOUR_TOKEN|TOKEN_HERE/u.test(tokenFromArg))
+  ) {
+    throw new Error(
+      `Token argument looks like a placeholder ('${tokenFromArg}'). Pass a real PAT value without angle brackets.`,
+    );
+  }
+
   return {
     tokenFromArg,
   };
@@ -138,12 +147,9 @@ const resolveTokenCandidates = ({ tokenFromArg }) => {
   };
 
   addCandidate(tokenFromArg, 'cli-arg');
-
-  if (!tokenFromArg) {
-    addCandidate(process.env.GITHUB_TOKEN, 'env:GITHUB_TOKEN');
-    addCandidate(process.env.GH_TOKEN, 'env:GH_TOKEN');
-    addCandidate(readTokenFromGhAuth(), 'gh-auth');
-  }
+  addCandidate(process.env.GITHUB_TOKEN, 'env:GITHUB_TOKEN');
+  addCandidate(process.env.GH_TOKEN, 'env:GH_TOKEN');
+  addCandidate(readTokenFromGhAuth(), 'gh-auth');
 
   return candidates;
 };
@@ -367,6 +373,15 @@ const main = async () => {
 main().catch((error) => {
   const message = error instanceof Error ? error.message : String(error);
   process.stderr.write(`${message}\n`);
+  if (
+    message.includes(' 401 ') ||
+    message.includes('Bad credentials') ||
+    message.includes('Requires authentication')
+  ) {
+    process.stderr.write(
+      'Auth troubleshooting: use a real token value (not placeholders), or run gh auth login. Fine-grained PAT requires Actions: Read/Write and Contents: Read.\n',
+    );
+  }
   if (message.includes("Workflow does not have 'workflow_dispatch' trigger")) {
     process.stderr.write(
       'Target workflow ref does not include workflow_dispatch. Push updated workflow file or set RELEASE_WORKFLOW_REF to a ref that already has it.\n',
