@@ -33,6 +33,25 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-02-28 - launch-gate automation hardening (transient deploy + matrix retry)
+
+- Scope: improve robustness of the new one-command production launch gate after observing transient deploy and matrix-channel flakiness.
+- Release commander: Codex automation.
+- Window (UTC): 2026-02-28 18:17 -> 2026-02-28 18:33.
+- Changes:
+  - Updated `scripts/release/production-launch-gate.mjs` to:
+    - handle non-zero strict gate runs during transient `BUILDING/DEPLOYING/INITIALIZING` states by parsing JSON output and retrying until convergence window closes,
+    - use canonical deep-sort payload signing and send required ingest signature headers (`x-gateway-signature`, `x-gateway-timestamp`),
+    - add adapter-matrix retry loop (up to 3 attempts per channel) with error capture in matrix artifact.
+- Verification:
+  - `npm run release:launch:gate:production:json -- --runtime-draft-id 3fefc86d-eb94-42f2-8c97-8b57eff8944e --require-skill-markers`: pass.
+  - Summary artifact: `artifacts/release/production-launch-gate-summary.json` (`status=pass`).
+  - Runtime probe confirms skill markers path (`require-skill-markers`) in production flow.
+- Incidents:
+  - none.
+- Follow-ups:
+  - none.
+
 ### 2026-02-28 - production launch-gate automation command
 
 - Scope: codify final post-deploy production launch gate into a single repeatable command.

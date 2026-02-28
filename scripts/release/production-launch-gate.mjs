@@ -413,24 +413,38 @@ const main = async () => {
       const channels = ['web', 'live_session', o.runtimeChannel];
       const channelChecks = [];
       for (const channel of channels) {
-        const m = await postOrGet({
-          adminToken,
-          apiBaseUrl,
-          body: {
-            draftId: runtimeDraftId,
-            channel,
-            externalSessionId: `launch-gate-matrix-${channel}-${crypto.randomUUID()}`,
-            promptSeed: `production launch gate matrix ${channel}`,
-          },
-          csrfToken,
-          method: 'POST',
-          pathName: '/api/admin/agent-gateway/orchestrate',
-          timeoutMs: o.httpTimeoutMs,
-          useAdmin: true,
-        });
+        let m = null;
+        let attempt = 0;
+        while (attempt < 3) {
+          attempt += 1;
+          m = await postOrGet({
+            adminToken,
+            apiBaseUrl,
+            body: {
+              draftId: runtimeDraftId,
+              channel,
+              externalSessionId: `launch-gate-matrix-${channel}-${crypto.randomUUID()}`,
+              promptSeed: `production launch gate matrix ${channel}`,
+            },
+            csrfToken,
+            method: 'POST',
+            pathName: '/api/admin/agent-gateway/orchestrate',
+            timeoutMs: o.httpTimeoutMs,
+            useAdmin: true,
+          });
+          if (m.status === 201) {
+            break;
+          }
+          if (m.status < 500) {
+            break;
+          }
+          await sleep(500);
+        }
         channelChecks.push({
+          attempts: attempt,
           channel,
           completed: m.json?.completed ?? null,
+          error: m.ok ? null : m.json?.message || m.json?.error || m.text,
           ok: m.ok,
           status: m.status,
           stepRoles: Array.isArray(m.json?.steps) ? m.json.steps.map((s) => s.role) : [],
