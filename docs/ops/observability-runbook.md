@@ -13,12 +13,16 @@ Related runtime incident runbook:
 
 ## Dashboard Links
 
-Replace `<OBS_BASE_URL>` with your monitoring base URL.
-
-- API Overview: `<OBS_BASE_URL>/dashboards/finishit-api-overview`
-- Jobs and Scheduler: `<OBS_BASE_URL>/dashboards/finishit-jobs`
-- Data Stores (PostgreSQL/Redis): `<OBS_BASE_URL>/dashboards/finishit-datastores`
-- Release Health: `<OBS_BASE_URL>/dashboards/finishit-release-health`
+- Railway project console:
+  - `https://railway.com/project/22b65d7b-9d83-46b2-bedc-af15ea0dffdd?environmentId=2219df73-931b-4c6e-ac5a-5578f0bf10fd`
+- Production service domains:
+  - API: `https://api-production-7540.up.railway.app`
+  - Web: `https://socialproject-production.up.railway.app`
+  - S3-compatible storage: `https://s3server-production.up.railway.app`
+- Primary health pages:
+  - API health: `https://api-production-7540.up.railway.app/health`
+  - API readiness: `https://api-production-7540.up.railway.app/ready`
+  - Web root: `https://socialproject-production.up.railway.app/`
 - Admin metrics fallback:
   - `GET /api/admin/system/metrics` (`x-admin-token` required)
   - `GET /api/admin/embeddings/metrics` (`x-admin-token` required)
