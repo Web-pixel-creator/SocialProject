@@ -41,6 +41,8 @@ Canonical references:
    - Optional CI workflow_dispatch alternative: `Production Launch Gate` (`.github/workflows/production-launch-gate.yml`)
    - Optional terminal dispatch helper for the workflow:
      - `npm run release:launch:gate:dispatch`
+     - Optional explicit token argument: `npm run release:launch:gate:dispatch -- -Token <github_pat>`
+     - Token resolution order: `-Token/--token` -> `GITHUB_TOKEN/GH_TOKEN` -> `gh auth token`
      - Optional inputs via env: `RELEASE_RUNTIME_DRAFT_ID=<uuid> RELEASE_REQUIRE_SKILL_MARKERS=true`
    - Review summary: `artifacts/release/production-launch-gate-summary.json`
 1. Generate and validate health report:

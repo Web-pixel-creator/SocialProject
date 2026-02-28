@@ -6,6 +6,13 @@ const DEFAULT_WORKFLOW_REF = 'main';
 const DEFAULT_WAIT_TIMEOUT_MS = 20 * 60 * 1000;
 const DEFAULT_WAIT_POLL_MS = 5000;
 const RUN_DISCOVERY_GRACE_MS = 2 * 60 * 1000;
+const USAGE = `Usage: npm run release:smoke:dispatch -- [--token <value>|-Token <value>|--token=<value>|-Token=<value>]
+
+Token resolution order:
+1) --token / -Token argument
+2) GITHUB_TOKEN / GH_TOKEN
+3) gh auth token
+`;
 
 const parseNumber = (raw, fallback) => {
   if (!raw) {
@@ -61,6 +68,133 @@ const resolveRepoSlug = () => {
   return parseRepoSlugFromRemote(readOriginRemote());
 };
 
+const toErrorMessage = (error) => (error instanceof Error ? error.message : String(error));
+
+const parseCliArgs = (argv) => {
+  let tokenFromArg = '';
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+
+    if (arg === '--help' || arg === '-h') {
+      process.stdout.write(`${USAGE}\n`);
+      process.exit(0);
+    }
+
+    if (arg === '--token' || arg === '--Token' || arg === '-Token' || arg === '-token') {
+      const value = (argv[index + 1] ?? '').trim();
+      if (!value) {
+        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
+      }
+      tokenFromArg = value;
+      index += 1;
+      continue;
+    }
+
+    if (
+      arg.startsWith('--token=') ||
+      arg.startsWith('--Token=') ||
+      arg.startsWith('-Token=') ||
+      arg.startsWith('-token=')
+    ) {
+      const value = arg.slice(arg.indexOf('=') + 1).trim();
+      if (!value) {
+        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
+      }
+      tokenFromArg = value;
+      continue;
+    }
+
+    throw new Error(`Unknown argument: ${arg}\n\n${USAGE}`);
+  }
+
+  return {
+    tokenFromArg,
+  };
+};
+
+const readTokenFromGhAuth = () => {
+  try {
+    return execFileSync('gh', ['auth', 'token'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+  } catch {
+    return '';
+  }
+};
+
+const resolveTokenCandidates = ({ tokenFromArg }) => {
+  const candidates = [];
+  const addCandidate = (token, source) => {
+    const normalized = token?.trim();
+    if (!normalized) {
+      return;
+    }
+    if (candidates.some((entry) => entry.token === normalized)) {
+      return;
+    }
+    candidates.push({
+      token: normalized,
+      source,
+    });
+  };
+
+  addCandidate(tokenFromArg, 'cli-arg');
+
+  if (!tokenFromArg) {
+    addCandidate(process.env.GITHUB_TOKEN, 'env:GITHUB_TOKEN');
+    addCandidate(process.env.GH_TOKEN, 'env:GH_TOKEN');
+    addCandidate(readTokenFromGhAuth(), 'gh-auth');
+  }
+
+  return candidates;
+};
+
+const isAuthenticationError = (message) =>
+  message.includes(' 401 ') ||
+  message.includes('Bad credentials') ||
+  message.includes('Requires authentication') ||
+  message.includes('Resource not accessible by integration');
+
+const selectToken = async ({ candidates, baseApiUrl }) => {
+  if (candidates.length === 0) {
+    throw new Error(
+      'Missing GitHub token. Provide --token/-Token, or set GITHUB_TOKEN/GH_TOKEN, or run gh auth login.',
+    );
+  }
+
+  const probeUrl = `${baseApiUrl}`;
+
+  for (let index = 0; index < candidates.length; index += 1) {
+    const candidate = candidates[index];
+    try {
+      await githubRequest({
+        token: candidate.token,
+        method: 'GET',
+        url: probeUrl,
+      });
+      if (index > 0) {
+        process.stderr.write(
+          `GitHub auth fallback: using token source '${candidate.source}'.\n`,
+        );
+      }
+      return candidate;
+    } catch (error) {
+      const message = toErrorMessage(error);
+      const hasNextCandidate = index + 1 < candidates.length;
+      if (!hasNextCandidate || !isAuthenticationError(message)) {
+        throw error;
+      }
+      process.stderr.write(
+        `GitHub token source '${candidate.source}' failed auth, trying next source.\n`,
+      );
+    }
+  }
+
+  throw new Error('Unable to resolve a working GitHub token.');
+};
+
 const githubRequest = async ({ token, method, url, body }) => {
   const response = await fetch(url, {
     method,
@@ -98,7 +232,7 @@ const githubRequest = async ({ token, method, url, body }) => {
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const main = async () => {
-  const token = (process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN ?? '').trim();
+  const cli = parseCliArgs(process.argv.slice(2));
   const apiBaseUrl = (process.env.RELEASE_API_BASE_URL ?? '').trim();
   const webBaseUrl = (process.env.RELEASE_WEB_BASE_URL ?? '').trim();
   const csrfToken = (process.env.RELEASE_CSRF_TOKEN ?? '').trim();
@@ -108,14 +242,13 @@ const main = async () => {
   const waitTimeoutMs = parseNumber(process.env.RELEASE_WAIT_TIMEOUT_MS, DEFAULT_WAIT_TIMEOUT_MS);
   const waitPollMs = parseNumber(process.env.RELEASE_WAIT_POLL_MS, DEFAULT_WAIT_POLL_MS);
 
-  if (!token) {
-    throw new Error(
-      'Missing GitHub token. Set GITHUB_TOKEN (or GH_TOKEN) with repo workflow permissions.',
-    );
-  }
-
   const repoSlug = resolveRepoSlug();
   const baseApiUrl = `https://api.github.com/repos/${repoSlug}`;
+  const selectedToken = await selectToken({
+    candidates: resolveTokenCandidates(cli),
+    baseApiUrl,
+  });
+  const token = selectedToken.token;
   const dispatchUrl = `${baseApiUrl}/actions/workflows/${encodeURIComponent(
     workflowFile,
   )}/dispatches`;

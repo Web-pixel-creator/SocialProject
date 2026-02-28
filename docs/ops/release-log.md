@@ -33,6 +33,27 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - dispatch token fallback + Railway secret compatibility
+
+- Scope: harden local workflow dispatch auth and align production launch-gate CI with `RAILWAY_API_TOKEN` as primary secret.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 00:00 -> 2026-03-01 00:10.
+- Changes:
+  - Updated `scripts/release/dispatch-production-launch-gate.mjs`:
+    - token resolution order is now `-Token/--token` -> `GITHUB_TOKEN/GH_TOKEN` -> `gh auth token`,
+    - added `--help` usage output and auth fallback messaging when an earlier token source fails.
+  - Updated `scripts/release/dispatch-staging-smoke.mjs` with the same token resolution order and CLI token options.
+  - Updated `.github/workflows/production-launch-gate.yml` to map `RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN || secrets.RAILWAY_TOKEN }}` and keep `RAILWAY_TOKEN` as compatibility alias.
+  - Updated release docs (`release-runbook.md`, `release-checklist.md`) with new token flow and Railway secret guidance.
+- Verification:
+  - `node --check scripts/release/dispatch-production-launch-gate.mjs`: pass.
+  - `node --check scripts/release/dispatch-staging-smoke.mjs`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - rotate leaked PATs (`GitHub` + `Railway`) and update local/repo secrets.
+
 ### 2026-02-28 - production launch-gate workflow automation
 
 - Scope: add CI workflow_dispatch automation for the production launch gate command.

@@ -61,7 +61,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
       - [ ] Optional overrides: `RELEASE_NODE_ENV`, `RELEASE_FRONTEND_URL`, `RELEASE_NEXT_PUBLIC_API_BASE_URL`, `RELEASE_NEXT_PUBLIC_WS_BASE_URL`, `RELEASE_NEXT_PUBLIC_ENABLE_ADMIN_UX_LINK`
     - [ ] Optional `release_run_tunnel_helper=true` input to execute in-CI tunnel helper rehearsal (`release_tunnel_helper_ci_rehearsal` job) and publish tunnel retry diagnostics artifacts.
   - [ ] If staging URLs are not available, allow `release_smoke_staging` to run the built-in local-stack fallback (`npm run release:dry-run:local`) and collect evidence as a rehearsal run.
-  - [ ] Optional terminal dispatch helper (requires `GITHUB_TOKEN` with Actions write):
+  - [ ] Optional terminal dispatch helper (token resolution: `-Token/--token` -> `GITHUB_TOKEN/GH_TOKEN` -> `gh auth token`; token needs Actions write):
     - [ ] Auto-select dispatch mode (uses repo/env staging URLs when available, otherwise falls back to tunnel helper): `npm run release:smoke:dispatch:auto`
     - [ ] Optional safe preview (no dispatch): `npm run release:smoke:dispatch:auto -- --dry-run` (add `--prefer-tunnel` to force tunnel path).
     - [ ] `RELEASE_API_BASE_URL=<staging-api-url> RELEASE_WEB_BASE_URL=<staging-web-url> npm run release:smoke:dispatch`
@@ -193,9 +193,10 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
     - [ ] `npm run release:launch:gate:production:skills`
     - [ ] JSON variant: `npm run release:launch:gate:production:skills:json`
   - [ ] Optional CI workflow_dispatch path: `Production Launch Gate` workflow (`.github/workflows/production-launch-gate.yml`)
-    - [ ] Ensure secrets/vars are configured before dispatch: `RAILWAY_TOKEN` (secret), `RAILWAY_PROJECT_ID` (variable), `RAILWAY_ENVIRONMENT_ID` (variable).
+    - [ ] Ensure secrets/vars are configured before dispatch: `RAILWAY_API_TOKEN` (secret, recommended; `RAILWAY_TOKEN` supported as legacy fallback), `RAILWAY_PROJECT_ID` (variable), `RAILWAY_ENVIRONMENT_ID` (variable).
     - [ ] Optional inputs: `runtime_draft_id`, `require_skill_markers`.
-    - [ ] Optional terminal dispatch helper (requires `GITHUB_TOKEN` or `GH_TOKEN`): `npm run release:launch:gate:dispatch`
+    - [ ] Optional terminal dispatch helper (token resolution: `-Token/--token` -> `GITHUB_TOKEN/GH_TOKEN` -> `gh auth token`): `npm run release:launch:gate:dispatch`
+      - [ ] Optional explicit token argument: `npm run release:launch:gate:dispatch -- -Token <github_pat>`
       - [ ] Optional runtime draft input: `RELEASE_RUNTIME_DRAFT_ID=<uuid>`
       - [ ] Optional skill marker requirement: `RELEASE_REQUIRE_SKILL_MARKERS=true`
   - [ ] Confirm summary artifact: `artifacts/release/production-launch-gate-summary.json`
