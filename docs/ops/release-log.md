@@ -52,6 +52,26 @@ Copy this block for each release:
 - Follow-ups:
   - configure repo secrets/vars if missing: `RAILWAY_TOKEN`, `RAILWAY_PROJECT_ID`, `RAILWAY_ENVIRONMENT_ID`.
 
+### 2026-02-28 - launch-gate workflow terminal dispatch helper
+
+- Scope: add one-command terminal helper to dispatch and optionally wait for the `Production Launch Gate` workflow run.
+- Release commander: Codex automation.
+- Window (UTC): 2026-02-28 18:47 -> 2026-02-28 18:50.
+- Changes:
+  - Added script: `scripts/release/dispatch-production-launch-gate.mjs`.
+  - Added npm alias: `npm run release:launch:gate:dispatch`.
+  - Supports optional inputs via env:
+    - `RELEASE_RUNTIME_DRAFT_ID`
+    - `RELEASE_REQUIRE_SKILL_MARKERS=true`
+    - optional wait controls (`RELEASE_WAIT_FOR_COMPLETION`, `RELEASE_WAIT_TIMEOUT_MS`, `RELEASE_WAIT_POLL_MS`)
+- Verification:
+  - Local syntax check: `node --check scripts/release/dispatch-production-launch-gate.mjs`.
+  - Runtime dispatch validation requires GitHub tokened environment (`GITHUB_TOKEN`/`GH_TOKEN`) and was not executed in current shell.
+- Incidents:
+  - none.
+- Follow-ups:
+  - none.
+
 ### 2026-02-28 - launch-gate skills command alias
 
 - Scope: add dedicated npm aliases for strict launch gate with required skills-runtime prompt markers.

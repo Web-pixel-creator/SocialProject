@@ -51,6 +51,7 @@
     "release:launch:gate:production:json": "node scripts/release/production-launch-gate.mjs --strict --json",
     "release:launch:gate:production:skills": "node scripts/release/production-launch-gate.mjs --strict --require-skill-markers",
     "release:launch:gate:production:skills:json": "node scripts/release/production-launch-gate.mjs --strict --json --require-skill-markers",
+    "release:launch:gate:dispatch": "node scripts/release/dispatch-production-launch-gate.mjs",
     "release:smoke:inputs": "node scripts/release/manage-staging-inputs.mjs",
     "release:smoke:artifact": "node scripts/release/fetch-smoke-report-artifact.mjs",
     "release:smoke:diff": "node scripts/release/compare-smoke-results.mjs",
