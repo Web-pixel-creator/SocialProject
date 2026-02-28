@@ -35,6 +35,10 @@ Canonical references:
 
 ## 3. Post-release verification
 
+1. Run the consolidated production launch gate:
+   - `npm run release:launch:gate:production`
+   - Optional JSON output: `npm run release:launch:gate:production:json`
+   - Review summary: `artifacts/release/production-launch-gate-summary.json`
 1. Generate and validate health report:
    - `npm run release:health:report`
    - `npm run release:health:schema:check`

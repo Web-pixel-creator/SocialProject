@@ -33,6 +33,35 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-02-28 - production launch-gate automation command
+
+- Scope: codify final post-deploy production launch gate into a single repeatable command.
+- Release commander: Codex automation.
+- Window (UTC): 2026-02-28 18:10 -> 2026-02-28 18:16.
+- Implementation:
+  - Added `scripts/release/production-launch-gate.mjs` to execute strict Railway gate, production smoke, launch health snapshot, runtime probe, adapter matrix probe, signed ingest probe, and telemetry/admin summary refresh.
+  - Added npm commands:
+    - `npm run release:launch:gate:production`
+    - `npm run release:launch:gate:production:json`
+  - Updated runbooks/checklists to include the one-command gate in post-release verification.
+- Verification:
+  - `npm run release:launch:gate:production:json`: pass.
+  - Summary artifact: `artifacts/release/production-launch-gate-summary.json` (`status=pass`).
+  - Generated artifacts include:
+    - `artifacts/release/railway-gate-strict.json`
+    - `artifacts/release/smoke-results-production-postdeploy.json`
+    - `artifacts/release/production-launch-gate-health-summary.json`
+    - `artifacts/release/production-runtime-orchestration-probe.json`
+    - `artifacts/release/production-agent-gateway-adapter-matrix-probe.json`
+    - `artifacts/release/production-agent-gateway-ingest-probe.json`
+    - `artifacts/release/production-agent-gateway-telemetry.json`
+    - `artifacts/release/production-agent-gateway-adapters.json`
+    - `artifacts/release/production-admin-health-summary.json`
+- Incidents:
+  - none.
+- Follow-ups:
+  - none.
+
 ### 2026-02-28 - production post-deploy launch-gate verification
 
 - Scope: final production launch-gate verification after deployment convergence (strict infra gate + smoke + health/SLO + runtime/connector probes).

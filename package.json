@@ -47,6 +47,8 @@
     "release:health:log": "node scripts/release/append-post-release-health-log.mjs",
     "release:health:schema:check": "node scripts/release/validate-release-health-report-schema.mjs",
     "release:health:schema:check:json": "node scripts/release/validate-release-health-report-schema.mjs --json",
+    "release:launch:gate:production": "node scripts/release/production-launch-gate.mjs --strict",
+    "release:launch:gate:production:json": "node scripts/release/production-launch-gate.mjs --strict --json",
     "release:smoke:inputs": "node scripts/release/manage-staging-inputs.mjs",
     "release:smoke:artifact": "node scripts/release/fetch-smoke-report-artifact.mjs",
     "release:smoke:diff": "node scripts/release/compare-smoke-results.mjs",

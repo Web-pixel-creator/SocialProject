@@ -8,6 +8,9 @@ Use this gate before rollout to confirm Railway runtime readiness with executabl
   - `npm run release:railway:gate`
 - Strict production gate (API required, warnings are blockers):
   - `npm run release:railway:gate:strict`
+- Full post-deploy production launch gate (strict + smoke + runtime/connector probes + summaries):
+  - `npm run release:launch:gate:production`
+  - JSON summary variant: `npm run release:launch:gate:production:json`
 
 ## What is checked
 
