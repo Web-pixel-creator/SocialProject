@@ -33,6 +33,23 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-02-28 - launch-gate skills command alias
+
+- Scope: add dedicated npm aliases for strict launch gate with required skills-runtime prompt markers.
+- Release commander: Codex automation.
+- Window (UTC): 2026-02-28 18:39 -> 2026-02-28 18:40.
+- Changes:
+  - Added:
+    - `npm run release:launch:gate:production:skills`
+    - `npm run release:launch:gate:production:skills:json`
+  - Updated release checklist with the optional strict skills-runtime variant.
+- Verification:
+  - `npm run release:launch:gate:production:skills:json -- --runtime-draft-id 3fefc86d-eb94-42f2-8c97-8b57eff8944e`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - none.
+
 ### 2026-02-28 - launch-gate automation hardening (transient deploy + matrix retry)
 
 - Scope: improve robustness of the new one-command production launch gate after observing transient deploy and matrix-channel flakiness.

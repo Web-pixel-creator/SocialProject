@@ -189,6 +189,9 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
 - [ ] Run one-command production launch gate (strict):
   - [ ] `npm run release:launch:gate:production`
   - [ ] Optional machine-readable output: `npm run release:launch:gate:production:json`
+  - [ ] Optional strict skills-runtime variant (requires skill markers in runtime prompt):
+    - [ ] `npm run release:launch:gate:production:skills`
+    - [ ] JSON variant: `npm run release:launch:gate:production:skills:json`
   - [ ] Confirm summary artifact: `artifacts/release/production-launch-gate-summary.json`
   - [ ] Confirm health summary artifact: `artifacts/release/production-launch-gate-health-summary.json`
 - [ ] Generate post-release health report from latest workflow_dispatch run:
