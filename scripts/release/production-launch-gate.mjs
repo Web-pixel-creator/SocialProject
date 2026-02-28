@@ -55,12 +55,16 @@ const sortDeep = (value) => {
 const quote = (v) =>
   /^[a-z0-9_./:=@+-]+$/i.test(v) ? v : `"${v.replace(/"/g, '\\"')}"`;
 
-const run = (command, args = [], env = process.env) => {
+const runRaw = (command, args = [], env = process.env) => {
   const full = [command, ...args.map(quote)].join(' ');
-  const res = spawnSync(full, { encoding: 'utf8', env, shell: true });
+  return { ...spawnSync(full, { encoding: 'utf8', env, shell: true }), full };
+};
+
+const run = (command, args = [], env = process.env) => {
+  const res = runRaw(command, args, env);
   if (res.error) throw res.error;
   if (res.status !== 0) {
-    throw new Error(res.stderr.trim() || res.stdout.trim() || `${full} failed`);
+    throw new Error(res.stderr.trim() || res.stdout.trim() || `${res.full} failed`);
   }
   return res.stdout;
 };
@@ -196,7 +200,7 @@ const main = async () => {
     if (!o.skipRailwayGate) {
       const start = Date.now();
       while (true) {
-        const raw = run('node', [
+        const result = runRaw('node', [
           path.resolve('scripts/release/railway-production-gate.mjs'),
           '--json',
           '--require-api-service',
@@ -208,7 +212,17 @@ const main = async () => {
           o.apiService,
           ...(o.strict ? ['--strict'] : []),
         ]);
-        gate = JSON.parse(raw);
+        if (result.error) {
+          throw result.error;
+        }
+        const payload = result.stdout.trim();
+        if (!payload) {
+          throw new Error(
+            result.stderr.trim() ||
+              'railway production gate returned empty output',
+          );
+        }
+        gate = JSON.parse(payload);
         await writeJson(path.resolve(ARTIFACTS.railwayGate), gate);
         if (gate.status === 'pass') break;
         const transient =
@@ -216,7 +230,11 @@ const main = async () => {
           gate.failures.length > 0 &&
           gate.failures.every((f) => f.code === 'DEPLOYMENT_NOT_SUCCESS') &&
           Array.isArray(gate.services) &&
-          gate.services.some((s) => ['BUILDING', 'DEPLOYING'].includes(s.deploymentStatus));
+          gate.services.some((s) =>
+            ['BUILDING', 'DEPLOYING', 'INITIALIZING'].includes(
+              s.deploymentStatus,
+            ),
+          );
         if (!transient || Date.now() - start > o.gateWaitMs) {
           throw new Error('Railway strict gate failed');
         }
