@@ -69,6 +69,38 @@ const run = (command, args = [], env = process.env) => {
   return res.stdout;
 };
 
+const isMissingCommand = (res) => {
+  const stderr = String(res?.stderr || '').toLowerCase();
+  const stdout = String(res?.stdout || '').toLowerCase();
+  return (
+    res?.error?.code === 'ENOENT' ||
+    stderr.includes('not recognized as an internal or external command') ||
+    stderr.includes('command not found') ||
+    stdout.includes('not recognized as an internal or external command') ||
+    stdout.includes('command not found')
+  );
+};
+
+const runRailway = (args, env = process.env) => {
+  const primary = runRaw('railway', args, env);
+  if (!primary.error && primary.status === 0) {
+    return primary.stdout;
+  }
+  if (!isMissingCommand(primary)) {
+    throw new Error(
+      primary.stderr.trim() || primary.stdout.trim() || 'railway command failed',
+    );
+  }
+  const fallback = runRaw('npx', ['-y', '@railway/cli', ...args], env);
+  if (fallback.error) throw fallback.error;
+  if (fallback.status !== 0) {
+    throw new Error(
+      fallback.stderr.trim() || fallback.stdout.trim() || 'npx @railway/cli failed',
+    );
+  }
+  return fallback.stdout;
+};
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const writeJson = async (file, data) => {
@@ -251,7 +283,7 @@ const main = async () => {
     if (!apiBaseUrl || !webBaseUrl) throw new Error('Unable to resolve production base URLs');
 
     const vars = JSON.parse(
-      run('railway', [
+      runRailway([
         'variable',
         'list',
         '--service',

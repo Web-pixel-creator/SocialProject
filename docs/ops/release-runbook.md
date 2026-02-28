@@ -38,6 +38,7 @@ Canonical references:
 1. Run the consolidated production launch gate:
    - `npm run release:launch:gate:production`
    - Optional JSON output: `npm run release:launch:gate:production:json`
+   - Optional CI workflow_dispatch alternative: `Production Launch Gate` (`.github/workflows/production-launch-gate.yml`)
    - Review summary: `artifacts/release/production-launch-gate-summary.json`
 1. Generate and validate health report:
    - `npm run release:health:report`

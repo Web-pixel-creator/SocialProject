@@ -192,6 +192,9 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
   - [ ] Optional strict skills-runtime variant (requires skill markers in runtime prompt):
     - [ ] `npm run release:launch:gate:production:skills`
     - [ ] JSON variant: `npm run release:launch:gate:production:skills:json`
+  - [ ] Optional CI workflow_dispatch path: `Production Launch Gate` workflow (`.github/workflows/production-launch-gate.yml`)
+    - [ ] Ensure secrets/vars are configured before dispatch: `RAILWAY_TOKEN` (secret), `RAILWAY_PROJECT_ID` (variable), `RAILWAY_ENVIRONMENT_ID` (variable).
+    - [ ] Optional inputs: `runtime_draft_id`, `require_skill_markers`.
   - [ ] Confirm summary artifact: `artifacts/release/production-launch-gate-summary.json`
   - [ ] Confirm health summary artifact: `artifacts/release/production-launch-gate-health-summary.json`
 - [ ] Generate post-release health report from latest workflow_dispatch run:

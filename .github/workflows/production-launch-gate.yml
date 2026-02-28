@@ -1,0 +1,146 @@
+name: Production Launch Gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      runtime_draft_id:
+        description: 'Optional production draft id for runtime/matrix probes (defaults to smoke-created draft).'
+        required: false
+        type: string
+      require_skill_markers:
+        description: 'Require Skill capsule / Role skill / Role persona markers in runtime prompt.'
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: production-launch-gate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  production_launch_gate:
+    name: Production Launch Gate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID }}
+      RAILWAY_ENVIRONMENT_ID: ${{ vars.RAILWAY_ENVIRONMENT_ID }}
+      RAILWAY_ENVIRONMENT_NAME: ${{ vars.RAILWAY_ENVIRONMENT_NAME }}
+      RAILWAY_WEB_SERVICE: ${{ vars.RAILWAY_WEB_SERVICE }}
+      RAILWAY_API_SERVICE: ${{ vars.RAILWAY_API_SERVICE }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Bootstrap Node CI tooling
+        uses: ./.github/actions/node-ci-bootstrap
+
+      - name: Validate Railway CI context
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=()
+          [[ -z "${RAILWAY_TOKEN:-}" ]] && missing+=("RAILWAY_TOKEN (secret)")
+          [[ -z "${RAILWAY_PROJECT_ID:-}" ]] && missing+=("RAILWAY_PROJECT_ID (variable)")
+          [[ -z "${RAILWAY_ENVIRONMENT_ID:-}" ]] && missing+=("RAILWAY_ENVIRONMENT_ID (variable)")
+          if (( ${#missing[@]} > 0 )); then
+            echo "Missing required Railway CI context:"
+            for item in "${missing[@]}"; do
+              echo " - ${item}"
+            done
+            exit 1
+          fi
+
+      - name: Link Railway project/environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y @railway/cli link \
+            --project "${RAILWAY_PROJECT_ID}" \
+            --environment "${RAILWAY_ENVIRONMENT_ID}"
+
+      - name: Run production launch gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/release
+          args=(--strict --json)
+          if [[ "${{ inputs.require_skill_markers }}" == "true" ]]; then
+            args+=(--require-skill-markers)
+          fi
+          if [[ -n "${{ inputs.runtime_draft_id }}" ]]; then
+            args+=(--runtime-draft-id "${{ inputs.runtime_draft_id }}")
+          fi
+          node scripts/release/production-launch-gate.mjs "${args[@]}" \
+            | tee artifacts/release/production-launch-gate-workflow-output.json
+
+      - name: Render launch gate step summary markdown
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          summary_json="artifacts/release/production-launch-gate-summary.json"
+          summary_md="artifacts/release/production-launch-gate-step-summary.md"
+          mkdir -p artifacts/release
+          {
+            echo "## Production Launch Gate"
+            if [[ -f "${summary_json}" ]]; then
+              echo ""
+              echo "- status: \`$(jq -r '.status // "unknown"' "${summary_json}")\`"
+              echo "- pass: \`$(jq -r '.pass // false' "${summary_json}")\`"
+              echo "- environment: \`$(jq -r '.config.environment // "n/a"' "${summary_json}")\`"
+              echo "- runtime_draft_id: \`$(jq -r '.config.runtimeDraftId // "auto-from-smoke"' "${summary_json}")\`"
+              echo "- require_skill_markers: \`$(jq -r '.config.requireSkillMarkers // false' "${summary_json}")\`"
+              echo ""
+              echo "### Checks"
+              jq -r '.checks | to_entries[] | "- \(.key): `\((if .value.skipped then "SKIPPED" elif .value.pass then "PASS" else "FAIL" end))`"' "${summary_json}"
+            else
+              echo ""
+              echo "- summary artifact missing: \`${summary_json}\`"
+            fi
+          } > "${summary_md}"
+
+      - name: Append launch gate summary to step summary
+        if: always()
+        uses: ./.github/actions/append-step-summary
+        with:
+          summary_path: artifacts/release/production-launch-gate-step-summary.md
+
+      - name: Upload launch gate artifacts (core)
+        if: always()
+        uses: ./.github/actions/release-artifacts-upload
+        with:
+          artifact_1_name: production-launch-gate-summary
+          artifact_1_path: artifacts/release/production-launch-gate-summary.json
+          artifact_2_name: production-launch-gate-workflow-output
+          artifact_2_path: artifacts/release/production-launch-gate-workflow-output.json
+          artifact_3_name: railway-gate-strict
+          artifact_3_path: artifacts/release/railway-gate-strict.json
+          artifact_4_name: production-smoke-postdeploy
+          artifact_4_path: artifacts/release/smoke-results-production-postdeploy.json
+
+      - name: Upload launch gate artifacts (runtime/connector)
+        if: always()
+        uses: ./.github/actions/release-artifacts-upload
+        with:
+          artifact_1_name: production-launch-gate-health-summary
+          artifact_1_path: artifacts/release/production-launch-gate-health-summary.json
+          artifact_2_name: production-runtime-orchestration-probe
+          artifact_2_path: artifacts/release/production-runtime-orchestration-probe.json
+          artifact_3_name: production-adapter-matrix-probe
+          artifact_3_path: artifacts/release/production-agent-gateway-adapter-matrix-probe.json
+          artifact_4_name: production-ingest-probe
+          artifact_4_path: artifacts/release/production-agent-gateway-ingest-probe.json
+
+      - name: Upload launch gate artifacts (telemetry)
+        if: always()
+        uses: ./.github/actions/release-artifacts-upload
+        with:
+          artifact_1_name: production-gateway-telemetry
+          artifact_1_path: artifacts/release/production-agent-gateway-telemetry.json
+          artifact_2_name: production-gateway-adapters
+          artifact_2_path: artifacts/release/production-agent-gateway-adapters.json
+          artifact_3_name: production-admin-health-summary
+          artifact_3_path: artifacts/release/production-admin-health-summary.json

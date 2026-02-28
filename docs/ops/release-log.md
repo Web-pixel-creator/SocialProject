@@ -33,6 +33,25 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-02-28 - production launch-gate workflow automation
+
+- Scope: add CI workflow_dispatch automation for the production launch gate command.
+- Release commander: Codex automation.
+- Window (UTC): 2026-02-28 18:42 -> 2026-02-28 18:46.
+- Changes:
+  - Added workflow: `.github/workflows/production-launch-gate.yml`.
+  - Workflow runs `scripts/release/production-launch-gate.mjs` in strict mode, supports optional `runtime_draft_id` and `require_skill_markers` inputs, and uploads launch-gate artifacts.
+  - Added Railway context validation (`RAILWAY_TOKEN`, `RAILWAY_PROJECT_ID`, `RAILWAY_ENVIRONMENT_ID`) and explicit Railway link step before gate execution.
+  - Updated release checklist/runbook to include workflow dispatch path.
+- Verification:
+  - Local workflow policy check passed (`npm run ci:workflow:inline-node-check`).
+  - Regression check of strict skills gate after workflow/update changes passed:
+    - `npm run release:launch:gate:production:skills:json -- --runtime-draft-id 3fefc86d-eb94-42f2-8c97-8b57eff8944e`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - configure repo secrets/vars if missing: `RAILWAY_TOKEN`, `RAILWAY_PROJECT_ID`, `RAILWAY_ENVIRONMENT_ID`.
+
 ### 2026-02-28 - launch-gate skills command alias
 
 - Scope: add dedicated npm aliases for strict launch gate with required skills-runtime prompt markers.
