@@ -33,6 +33,74 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-02-28 - production runtime/connector parity checkpoint
+
+- Scope: close remaining runtime/adapter parity evidence on live production traffic.
+- Release commander: Codex automation.
+- Window (UTC): 2026-02-28 17:02 -> 2026-02-28 17:37.
+- Production checks and outcomes:
+  - `GET /api/admin/ai-runtime/health`: pass (`summary.health=ok`, `rolesBlocked=0`, `providersCoolingDown=0`).
+  - `POST /api/admin/ai-runtime/dry-run`: pass (`failed=false`, selected provider `claude-4`).
+  - `POST /api/admin/agent-gateway/orchestrate` (channel `release_runtime_probe`): pass (`201`, 3-step `critic->maker->judge`, session persisted/events closed, `sessionId=ags-99789664ba3a4e42bb627775`).
+  - Adapter matrix probe (`web`, `live_session`, `release_runtime_probe`): pass (`201` for all 3 channels), with `/api/admin/agent-gateway/adapters?hours=24` showing all adapters non-empty (`web=5`, `live_session=5`, `external_webhook=25`).
+  - Signed connector ingest refresh (`POST /api/agent-gateway/adapters/ingest`, connector `launch_probe`): pass (`201`), and `ingestConnectorsTotal=1` on both telemetry/adapters endpoints for the last 24h window.
+  - Skills-runtime live signal: seeded production-safe smoke studio profile (`Smoke Author 2b0566`) and reran orchestration probe; prompt now includes `Skill capsule`, `Role skill`, and `Role persona` markers, with loaded skill counts (`global=1`, `critic=1`, `maker=1`).
+  - Railway infra cleanup: deleted archived `s3mock` service via Railway GraphQL `serviceDelete(id, environmentId)` mutation; subsequent `railway status --json` confirms `s3mock` absent from both `serviceInstances` and project `services` list.
+  - Legacy storage cleanup: deleted `minio` and `s3` services via Railway GraphQL `serviceDelete(id, environmentId)`; `railway status --json` confirms both absent from project services/environment instances.
+  - Volume cleanup: deleted detached legacy volumes `minio-volume` and `s3-volume` via Railway GraphQL `volumeDelete(volumeId)`; follow-up `railway status --json` confirms both IDs absent from environment volume instances.
+  - Post-cleanup gate: pass (`node scripts/release/railway-production-gate.mjs --json --require-api-service`) with zero failures/warnings; `/`, `/feed`, `/health`, `/ready` remain `200`.
+  - Post-cleanup runtime checks: refreshed admin health summary remains stable (`health=ok`, `rolesBlocked=0`, gateway telemetry non-empty, natural cron complete).
+- Evidence:
+  - `artifacts/release/railway-service-delete-s3mock.json` (new)
+  - `artifacts/release/railway-service-status-summary.json` (refreshed, no `s3mock`)
+  - `artifacts/release/railway-service-delete-legacy-storage.json` (refreshed, includes service + volume deletion confirmation)
+  - `artifacts/release/railway-gate-strict.json` (refreshed, post-cleanup pass)
+  - `artifacts/release/production-skill-profile-seed.json` (new)
+  - `artifacts/release/production-runtime-orchestration-probe.json`
+  - `artifacts/release/production-agent-gateway-adapter-matrix-probe.json`
+  - `artifacts/release/production-agent-gateway-ingest-probe.json` (refreshed)
+  - `artifacts/release/production-agent-gateway-adapters.json` (refreshed)
+  - `artifacts/release/production-agent-gateway-telemetry.json` (refreshed)
+  - `artifacts/release/production-admin-health-summary.json` (refreshed)
+- Incidents:
+  - none.
+- Follow-ups:
+  - none.
+
+### 2026-02-27 - post-release health run #469 (id 22482957944)
+
+- Source workflow run: #469 (https://github.com/Web-pixel-creator/SocialProject/actions/runs/22482957944).
+- Overall health: pass.
+- Required jobs: 5/5 passed.
+- Required artifacts: 5/5 present.
+- Failed jobs total: 0.
+- Smoke summary: pass=true totalSteps=19 failedSteps=0.
+- Report artifact: `artifacts/release/post-release-health-run-22482957944.json`.
+
+### 2026-02-27 - production launch hardening checkpoint
+
+- Scope: close remaining production launch evidence for jobs/runtime telemetry and observability wiring.
+- Release commander: Codex automation.
+- Window (UTC): 2026-02-27 11:49 -> 2026-02-27 11:55.
+- Production checks and outcomes:
+  - `GET /api/admin/jobs/metrics?hours=24`: initially non-empty via manual probe (`manual_cleanup`, `totalRuns=1`, `lastStatus=success`).
+  - Natural cron execution confirmed on `2026-02-28` (UTC): `budgets_reset` (`00:00`), `glowup_reel` (`00:05`), `autopsy_report` (`00:10`), `retention_cleanup` (`00:15`), `embedding_backfill` (`00:20`) all `success`.
+  - `POST /api/agent-gateway/adapters/ingest` (signed probe): pass (`201`), with connector/adapters telemetry populated.
+  - `GET /api/admin/agent-gateway/telemetry?hours=24&limit=200&connector=launch_probe`: pass, sessions/events/adapters/ingest totals > 0.
+  - `GET /api/admin/agent-gateway/adapters?hours=24&connector=launch_probe`: pass, adapter usage shows `external_webhook` success activity.
+  - Railway cleanup: experimental `minio`/`s3` services confirmed stopped (`activeDeployments=0`); `s3mock` remains stopped/crashed (non-serving).
+  - Railway CLI limitation: service deletion is not exposed in current CLI commands; final removal of `s3mock` requires Railway dashboard/API.
+- Evidence:
+  - `artifacts/release/production-jobs-metrics-summary.json`
+  - `artifacts/release/production-admin-health-summary.json` (updated `naturalCronComplete=true`)
+  - `artifacts/release/production-agent-gateway-ingest-probe.json`
+  - `artifacts/release/railway-service-status-summary.json`
+  - `docs/ops/observability-runbook.md` (dashboard links replaced with concrete production URLs)
+- Incidents:
+  - none.
+- Follow-ups:
+  - Closed in 2026-02-28 runtime/connector parity checkpoint (`s3mock` deleted).
+
 ### 2026-02-09 - post-release health run #284 (id 21815945348)
 
 - Source workflow run: #284 (https://github.com/Web-pixel-creator/SocialProject/actions/runs/21815945348).
