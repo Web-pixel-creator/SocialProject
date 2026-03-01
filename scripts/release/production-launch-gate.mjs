@@ -45,6 +45,7 @@ const EXPECTED_CRON_JOBS = [
   'retention_cleanup',
   'embedding_backfill',
 ];
+const EXTERNAL_CHANNELS = ['telegram', 'slack', 'discord'];
 const REQUIRED_SMOKE_STEP_NAMES = [
   'api.health',
   'api.ready',
@@ -169,6 +170,57 @@ const buildSmokeStepStatus = (smokeReport) => {
     pass: missing.length === 0 && failed.length === 0,
     required: REQUIRED_SMOKE_STEP_NAMES,
   };
+};
+const resolveExternalChannelProbePayload = ({ channel, suffix }) => {
+  if (channel === 'telegram') {
+    const chatId = -100_000_000 - Number(suffix.slice(-4));
+    return {
+      expectedExternalSessionId: `telegram_chat:${chatId}`,
+      payload: {
+        message: {
+          chat: {
+            id: chatId,
+          },
+        },
+      },
+    };
+  }
+  if (channel === 'slack') {
+    const slackChannelId = `C${suffix.slice(-8).toUpperCase()}`;
+    return {
+      expectedExternalSessionId: `slack_channel:${slackChannelId.toLowerCase()}`,
+      payload: {
+        event: {
+          channel: slackChannelId,
+        },
+      },
+    };
+  }
+  const discordChannelId = `${Math.abs(Number(suffix.slice(-12)))}`;
+  return {
+    expectedExternalSessionId: `discord_channel:${discordChannelId}`,
+    payload: {
+      channel_id: discordChannelId,
+    },
+  };
+};
+const resolveExternalChannelProfiles = (profiles) => {
+  const picked = [];
+  for (const channel of EXTERNAL_CHANNELS) {
+    const profile = profiles.find(
+      (entry) =>
+        entry &&
+        typeof entry === 'object' &&
+        String(entry.channel || '').toLowerCase() === channel &&
+        String(entry.adapter || '').toLowerCase() === 'external_webhook' &&
+        typeof entry.connectorId === 'string' &&
+        entry.connectorId.length > 0,
+    );
+    if (profile) {
+      picked.push(profile);
+    }
+  }
+  return picked;
 };
 
 const parseArgs = (argv) => {
@@ -660,6 +712,22 @@ const main = async () => {
     };
 
     if (!o.skipIngestProbe) {
+      const adaptersBeforeIngest = await postOrGet({
+        adminToken,
+        apiBaseUrl,
+        csrfToken,
+        pathName: '/api/admin/agent-gateway/adapters?hours=24',
+        timeoutMs: o.httpTimeoutMs,
+        useAdmin: true,
+      });
+      const configuredProfiles = Array.isArray(
+        adaptersBeforeIngest.json?.connectorProfiles?.profiles,
+      )
+        ? adaptersBeforeIngest.json.connectorProfiles.profiles
+        : [];
+      const externalChannelProfiles = resolveExternalChannelProfiles(
+        configuredProfiles,
+      );
       const ts = Math.floor(Date.now() / 1000);
       const payload = {
         adapter: 'external_webhook',
@@ -689,14 +757,117 @@ const main = async () => {
         pathName: '/api/agent-gateway/adapters/ingest',
         timeoutMs: o.httpTimeoutMs,
       });
+      const channelFallbackChecks = [];
+      if (externalChannelProfiles.length > 0) {
+        for (const profile of externalChannelProfiles) {
+          const channel = String(profile.channel || '').toLowerCase();
+          const connectorId = String(profile.connectorId || '').toLowerCase();
+          const suffix = Date.now().toString();
+          const channelProbe = resolveExternalChannelProbePayload({
+            channel,
+            suffix,
+          });
+          const probePayload = {
+            adapter: String(profile.adapter || 'external_webhook').toLowerCase(),
+            channel,
+            connectorId,
+            eventId: `launchprobe-${channel}-${suffix}`,
+            fromRole: String(profile.fromRole || 'observer').toLowerCase(),
+            toRole: profile.toRole ? String(profile.toRole).toLowerCase() : null,
+            type: String(profile.type || 'observer_message').toLowerCase(),
+            payload: {
+              ...channelProbe.payload,
+              source: 'production-launch-gate-channel-fallback',
+            },
+          };
+          const channelCanonical = JSON.stringify(sortDeep(probePayload));
+          const channelSig = `v1=${crypto
+            .createHmac('sha256', webhookSecret)
+            .update(`${ts}.${channelCanonical}`)
+            .digest('hex')}`;
+          const channelIngest = await postOrGet({
+            apiBaseUrl,
+            body: probePayload,
+            csrfToken,
+            headers: {
+              'x-gateway-signature': channelSig,
+              'x-gateway-timestamp': String(ts),
+            },
+            method: 'POST',
+            pathName: '/api/agent-gateway/adapters/ingest',
+            timeoutMs: o.httpTimeoutMs,
+          });
+          const sessions = await postOrGet({
+            adminToken,
+            apiBaseUrl,
+            csrfToken,
+            method: 'GET',
+            pathName: `/api/admin/agent-gateway/sessions?source=db&limit=50&channel=${encodeURIComponent(channel)}&connector=${encodeURIComponent(connectorId)}`,
+            timeoutMs: o.httpTimeoutMs,
+            useAdmin: true,
+          });
+          const sessionRows = Array.isArray(sessions.json?.sessions)
+            ? sessions.json.sessions
+            : [];
+          const matchedSession = sessionRows.find(
+            (row) => row?.id === channelIngest.json?.sessionId,
+          );
+          const pass =
+            channelIngest.status === 201 &&
+            channelIngest.json?.applied === true &&
+            sessions.ok &&
+            matchedSession?.externalSessionId ===
+              channelProbe.expectedExternalSessionId;
+          channelFallbackChecks.push({
+            channel,
+            connectorId,
+            expectedExternalSessionId: channelProbe.expectedExternalSessionId,
+            ingestStatus: channelIngest.status,
+            ingestApplied: channelIngest.json?.applied ?? null,
+            pass,
+            resolvedExternalSessionId:
+              matchedSession?.externalSessionId ?? null,
+            sessionId: channelIngest.json?.sessionId ?? null,
+            sessionsStatus: sessions.status,
+          });
+        }
+      }
+      const externalChannelFallback =
+        externalChannelProfiles.length === 0
+          ? {
+              checks: [],
+              configuredChannels: [],
+              pass: true,
+              reason:
+                'No configured connector profiles for telegram/slack/discord.',
+              skipped: true,
+            }
+          : {
+              checks: channelFallbackChecks,
+              configuredChannels: externalChannelProfiles.map((entry) =>
+                String(entry.channel || '').toLowerCase(),
+              ),
+              pass: channelFallbackChecks.every((entry) => entry.pass),
+              reason: null,
+              skipped: false,
+            };
       const ingestArtifact = {
         baseUrl: apiBaseUrl,
         checkedAtUtc: new Date().toISOString(),
+        externalChannelFallback,
         ingest: { applied: ingest.json?.applied ?? null, status: ingest.status },
-        pass: ingest.status === 201 && ingest.json?.applied === true,
+        pass:
+          ingest.status === 201 &&
+          ingest.json?.applied === true &&
+          externalChannelFallback.pass,
       };
       await writeJson(path.resolve(ARTIFACTS.ingestProbe), ingestArtifact);
       if (!ingestArtifact.pass) throw new Error('Ingest probe failed');
+      summary.checks.ingestExternalChannelFallback = {
+        pass: externalChannelFallback.pass,
+        skipped: externalChannelFallback.skipped,
+        configuredChannels: externalChannelFallback.configuredChannels,
+      };
     }
     summary.checks.ingestProbe = { pass: true, skipped: o.skipIngestProbe };
 
