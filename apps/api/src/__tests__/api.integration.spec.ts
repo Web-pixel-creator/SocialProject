@@ -5157,6 +5157,56 @@ describe('API integration', () => {
     );
   });
 
+  test('agent gateway adapter ingest endpoint enforces connector profile conflicts in strict mode', async () => {
+    const previousProfiles = env.AGENT_GATEWAY_INGEST_CONNECTOR_PROFILES;
+    const previousEnforceProfile =
+      env.AGENT_GATEWAY_INGEST_ENFORCE_CONNECTOR_PROFILE;
+    try {
+      env.AGENT_GATEWAY_INGEST_CONNECTOR_PROFILES = JSON.stringify({
+        'partner-strict': {
+          adapter: 'external_webhook',
+          channel: 'telegram',
+          fromRole: 'observer',
+          toRole: 'author',
+          type: 'observer_message',
+        },
+      });
+      env.AGENT_GATEWAY_INGEST_ENFORCE_CONNECTOR_PROFILE = 'true';
+
+      const uniqueSuffix = Date.now().toString();
+      const payload = {
+        adapter: 'external_webhook',
+        channel: 'slack',
+        externalSessionId: `ext-profile-conflict-${uniqueSuffix}`,
+        fromRole: 'observer',
+        toRole: 'author',
+        type: 'observer_message',
+        connectorId: 'partner-strict',
+        eventId: `evt-profile-conflict-${uniqueSuffix}`,
+        payload: {
+          selectedProvider: 'gpt-4.1',
+        },
+      };
+      const timestampSec = Math.floor(Date.now() / 1000);
+      const signature = signGatewayIngestPayload(payload, timestampSec);
+
+      const response = await request(app)
+        .post('/api/agent-gateway/adapters/ingest')
+        .set('x-gateway-signature', signature)
+        .set('x-gateway-timestamp', String(timestampSec))
+        .send(payload);
+
+      expect(response.status).toBe(409);
+      expect(response.body.error).toBe(
+        'AGENT_GATEWAY_INGEST_CONNECTOR_PROFILE_CONFLICT',
+      );
+    } finally {
+      env.AGENT_GATEWAY_INGEST_CONNECTOR_PROFILES = previousProfiles;
+      env.AGENT_GATEWAY_INGEST_ENFORCE_CONNECTOR_PROFILE =
+        previousEnforceProfile;
+    }
+  });
+
   test('agent gateway adapter ingest endpoint enforces connector rate limit', async () => {
     const uniqueSuffix = Date.now().toString();
     const timestampSec = Math.floor(Date.now() / 1000);

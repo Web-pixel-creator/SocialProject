@@ -73,17 +73,27 @@ const CONNECTOR_SECRET_MAP = parseConnectorSecretMap(
 const CONNECTOR_POLICY_MAP = parseConnectorPolicyMap(
   env.AGENT_GATEWAY_INGEST_CONNECTOR_POLICIES,
 );
-const CONNECTOR_PROFILE_MAP = parseConnectorProfileMap(
-  env.AGENT_GATEWAY_INGEST_CONNECTOR_PROFILES,
-);
 const REQUIRE_CONNECTOR_SECRET =
   env.AGENT_GATEWAY_INGEST_REQUIRE_CONNECTOR_SECRET === 'true';
-const ENFORCE_CONNECTOR_PROFILE =
-  env.AGENT_GATEWAY_INGEST_ENFORCE_CONNECTOR_PROFILE === 'true';
 const CONNECTOR_RATE_LIMIT_WINDOW_SEC =
   env.AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMIT_WINDOW_SEC;
 const CONNECTOR_RATE_LIMIT_MAX =
   env.AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMIT_MAX;
+const resolveConnectorProfileMap = (() => {
+  let cachedRaw = env.AGENT_GATEWAY_INGEST_CONNECTOR_PROFILES;
+  let cachedMap = parseConnectorProfileMap(cachedRaw);
+  return () => {
+    const nextRaw = env.AGENT_GATEWAY_INGEST_CONNECTOR_PROFILES;
+    if (nextRaw === cachedRaw) {
+      return cachedMap;
+    }
+    cachedMap = parseConnectorProfileMap(nextRaw);
+    cachedRaw = nextRaw;
+    return cachedMap;
+  };
+})();
+const isConnectorProfileEnforcementEnabled = () =>
+  env.AGENT_GATEWAY_INGEST_ENFORCE_CONNECTOR_PROFILE === 'true';
 
 const assertAllowedQueryFields = (
   query: unknown,
@@ -455,7 +465,7 @@ router.post(
       }
       telemetryConnectorId = connectorId;
       const connectorProfile = resolveConnectorProfile(
-        CONNECTOR_PROFILE_MAP,
+        resolveConnectorProfileMap(),
         connectorId,
       );
       const resolvedConnectorDefaults = resolveConnectorProfileDefaults({
@@ -503,7 +513,7 @@ router.post(
         pattern: EVENT_TYPE_PATTERN,
         errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
       });
-      if (ENFORCE_CONNECTOR_PROFILE) {
+      if (isConnectorProfileEnforcementEnabled()) {
         const conflicts = collectConnectorProfileConflicts({
           profile: connectorProfile,
           resolved: {

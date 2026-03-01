@@ -846,6 +846,7 @@ Exit criteria:
   - `/api/admin/agent-gateway/telemetry` and `/api/admin/agent-gateway/adapters` connector profile snapshot now includes `defaults.enforceProfile`.
 - Coverage update:
   - extended connector-profile unit coverage for conflict detection behavior and unconstrained-field no-conflict path in `apps/api/src/__tests__/agent-gateway-ingest-connector-profile.unit.spec.ts`.
+  - added API integration coverage for strict connector-profile conflict rejection path in `apps/api/src/__tests__/api.integration.spec.ts`.
 - Launch-gate revalidation:
   - workflow dispatch strict matrix re-run on latest `main` passed:
     - run `#14` (`22538929205`) with `runtime_draft_id=3fefc86d-eb94-42f2-8c97-8b57eff8944e`, `require_skill_markers=true`, `require_natural_cron_window=true`.
