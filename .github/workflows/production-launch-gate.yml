@@ -22,6 +22,16 @@ on:
         required: false
         default: ''
         type: string
+      allow_failure_drill:
+        description: 'Allow controlled negative drill inputs (for operator validation only).'
+        required: false
+        default: false
+        type: boolean
+      webhook_secret_override:
+        description: 'Optional drill-only override for RELEASE_AGENT_GATEWAY_WEBHOOK_SECRET (requires allow_failure_drill=true).'
+        required: false
+        default: ''
+        type: string
 
 concurrency:
   group: production-launch-gate-${{ github.workflow }}-${{ github.ref }}
@@ -74,12 +84,20 @@ jobs:
             echo "require_skill_markers=true requires runtime_draft_id input (draft with skill markers)."
             exit 1
           fi
+          if [[ -n "${{ inputs.webhook_secret_override }}" && "${{ inputs.allow_failure_drill }}" != "true" ]]; then
+            echo "webhook_secret_override requires allow_failure_drill=true."
+            exit 1
+          fi
 
       - name: Run production launch gate
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p artifacts/release
+          webhook_secret="${RELEASE_AGENT_GATEWAY_WEBHOOK_SECRET}"
+          if [[ "${{ inputs.allow_failure_drill }}" == "true" && -n "${{ inputs.webhook_secret_override }}" ]]; then
+            webhook_secret="${{ inputs.webhook_secret_override }}"
+          fi
           args=(--strict --json --skip-railway-gate --api-base-url "${RELEASE_API_BASE_URL}" --web-base-url "${RELEASE_WEB_BASE_URL}")
           if [[ "${{ inputs.require_skill_markers }}" == "true" ]]; then
             args+=(--require-skill-markers)
@@ -93,7 +111,7 @@ jobs:
           if [[ -n "${{ inputs.runtime_draft_id }}" ]]; then
             args+=(--runtime-draft-id "${{ inputs.runtime_draft_id }}")
           fi
-          node scripts/release/production-launch-gate.mjs "${args[@]}" \
+          RELEASE_AGENT_GATEWAY_WEBHOOK_SECRET="${webhook_secret}" node scripts/release/production-launch-gate.mjs "${args[@]}" \
             | tee artifacts/release/production-launch-gate-workflow-output.json
 
       - name: Render launch gate step summary markdown

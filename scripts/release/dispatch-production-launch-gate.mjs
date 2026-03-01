@@ -15,6 +15,8 @@ Options:
   --require-skill-markers                workflow input require_skill_markers=true
   --require-natural-cron-window          workflow input require_natural_cron_window=true
   --required-external-channels <csv|all> workflow input required_external_channels
+  --allow-failure-drill                  workflow input allow_failure_drill=true
+  --webhook-secret-override <value>      workflow input webhook_secret_override (requires allow_failure_drill)
   --help|-h
 
 Token resolution order:
@@ -99,6 +101,8 @@ const parseCliArgs = (argv) => {
   let requireSkillMarkers;
   let requireNaturalCronWindow;
   let requiredExternalChannels = '';
+  let allowFailureDrill;
+  let webhookSecretOverride = '';
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -150,6 +154,14 @@ const parseCliArgs = (argv) => {
       );
       continue;
     }
+    if (arg.startsWith('--webhook-secret-override=')) {
+      const value = arg.slice('--webhook-secret-override='.length);
+      if (!value) {
+        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
+      }
+      webhookSecretOverride = value;
+      continue;
+    }
     if (arg === '--runtime-draft-id') {
       const value = (argv[index + 1] ?? '').trim();
       if (!value) {
@@ -179,6 +191,19 @@ const parseCliArgs = (argv) => {
       index += 1;
       continue;
     }
+    if (arg === '--allow-failure-drill') {
+      allowFailureDrill = true;
+      continue;
+    }
+    if (arg === '--webhook-secret-override') {
+      const value = argv[index + 1] ?? '';
+      if (!value) {
+        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
+      }
+      webhookSecretOverride = value;
+      index += 1;
+      continue;
+    }
 
     throw new Error(`Unknown argument: ${arg}\n\n${USAGE}`);
   }
@@ -193,11 +218,13 @@ const parseCliArgs = (argv) => {
   }
 
   return {
+    allowFailureDrill,
     requireNaturalCronWindow,
     requireSkillMarkers,
     requiredExternalChannels,
     runtimeDraftId,
     tokenFromArg,
+    webhookSecretOverride,
   };
 };
 
@@ -366,9 +393,21 @@ const main = async () => {
       process.env.RELEASE_REQUIRED_EXTERNAL_CHANNELS ?? '',
       'RELEASE_REQUIRED_EXTERNAL_CHANNELS',
     );
+  const allowFailureDrill =
+    typeof cli.allowFailureDrill === 'boolean'
+      ? cli.allowFailureDrill
+      : parseBoolean(process.env.RELEASE_ALLOW_FAILURE_DRILL, false);
+  const webhookSecretOverride =
+    cli.webhookSecretOverride ||
+    String(process.env.RELEASE_WEBHOOK_SECRET_OVERRIDE ?? '');
   if (requireSkillMarkers && !runtimeDraftId) {
     throw new Error(
       'RELEASE_REQUIRE_SKILL_MARKERS=true requires RELEASE_RUNTIME_DRAFT_ID to be set (draft with skill markers).',
+    );
+  }
+  if (webhookSecretOverride && !allowFailureDrill) {
+    throw new Error(
+      'RELEASE_WEBHOOK_SECRET_OVERRIDE/--webhook-secret-override requires RELEASE_ALLOW_FAILURE_DRILL=true or --allow-failure-drill.',
     );
   }
 
@@ -422,6 +461,12 @@ const main = async () => {
   if (requiredExternalChannels) {
     inputs.required_external_channels = requiredExternalChannels;
   }
+  if (allowFailureDrill) {
+    inputs.allow_failure_drill = 'true';
+  }
+  if (webhookSecretOverride) {
+    inputs.webhook_secret_override = webhookSecretOverride;
+  }
 
   const dispatchStartedAtMs = Date.now();
   await githubRequest({
@@ -451,6 +496,12 @@ const main = async () => {
       requiredExternalChannels || 'none'
     }\n`,
   );
+  process.stdout.write(
+    `Allow failure drill input: ${allowFailureDrill ? 'true' : 'false'}\n`,
+  );
+  if (webhookSecretOverride) {
+    process.stdout.write('Webhook secret override input: [provided]\n');
+  }
 
   if (!waitForCompletion) {
     process.stdout.write('Dispatch-only mode enabled. Exiting without polling.\n');
