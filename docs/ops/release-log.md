@@ -33,6 +33,39 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - admin ux release-health alert telemetry visibility
+
+- Scope: expose persisted `release_external_channel_failure_mode_alert` signals in `/admin/ux` observer-engagement metrics and close prior monitoring follow-up.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 17:44 -> 2026-03-01 17:53.
+- Changes:
+  - Updated admin observer-engagement API aggregation (`/api/admin/ux/observer-engagement`) with release-health alert telemetry block:
+    - `releaseHealthAlerts.totalAlerts`
+    - `releaseHealthAlerts.uniqueRuns`
+    - `releaseHealthAlerts.firstAppearanceCount`
+    - `releaseHealthAlerts.byChannel[]`
+    - `releaseHealthAlerts.byFailureMode[]`
+    - `releaseHealthAlerts.hourlyTrend[]`
+    - `releaseHealthAlerts.latest` (`receivedAtUtc`, `runId`, `runNumber`, `runUrl`)
+  - Added KPI mirrors in API payload:
+    - `kpis.releaseHealthAlertCount`
+    - `kpis.releaseHealthFirstAppearanceCount`
+    - `kpis.releaseHealthAlertedRunCount`
+  - Extended `/admin/ux` UI with `Release health alert telemetry` cards and UTC hourly trend table.
+  - Added ops guidance updates:
+    - `docs/ops/release-runbook.md`
+    - `docs/ops/release-checklist.md`
+    - include explicit post-release `/admin/ux` telemetry verification after health report checks.
+- Validation:
+  - `npm run lint`: pass.
+  - `npx jest apps/web/src/__tests__/admin-ux-page.spec.tsx --runInBand`: pass.
+  - `npx jest apps/api/src/__tests__/admin.integration.spec.ts --runInBand -t "release health external-channel alert webhook|observer engagement metrics endpoint returns KPI aggregates and segments|observer engagement metrics endpoint includes prediction hourly trend"`: pass.
+- Rollout result: implementation merged to `main` (`02013df`); production deploy pending next release window.
+- Incidents:
+  - none.
+- Follow-ups:
+  - monitor `/admin/ux` `Release health alert telemetry` for sustained non-zero first-appearance spikes and introduce threshold-triggered blocking card when trend baseline indicates regression.
+
 ### 2026-03-01 - internal release-health webhook receiver rollout + final alert-routing sign-off
 
 - Scope: replace temporary external test webhook with internal production receiver and re-validate first-appearance alert routing end-to-end.
