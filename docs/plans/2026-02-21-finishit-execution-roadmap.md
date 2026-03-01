@@ -577,7 +577,7 @@ Exit criteria:
 
 ### OpenClaw parity (still missing)
 - File-based skills runtime loader is implemented (including runtime auto-discovery), but full production traffic adoption still needs operational validation under sustained connector traffic.
-- Channel adapter layer parity (OpenClaw-style unified external channels) remains partial; internal adapter scaffold exists (`web/live_session/external_webhook`), but full external connector ecosystem parity (Telegram/Slack/Discord operator-ready adapters + routing workflows) is still pending.
+- External connector baseline parity (Telegram/Slack/Discord) is now operational via connector profiles + strict launch-gate required-channel verification. Remaining gap is sustained-traffic soak and operator routing playbooks for channel-specific failure classes.
 
 ### pi-vs-claude-code takeaways applied
 - Guardrail-first tool execution strategy has started:
@@ -586,9 +586,9 @@ Exit criteria:
   - same-args cooldown throttle (implemented in this update).
 
 ### Next implementation queue (code-first)
-1. `External connector ecosystem` vertical slice:
-   - ship operator-ready adapter workflow for external channels (Telegram/Slack/Discord) on top of existing `external_webhook` ingest and connector profile/policy controls,
-   - add channel-specific runbook traces and failure-mode telemetry assertions per connector family.
+1. `External connector ecosystem` hardening slice:
+   - run sustained-traffic connector validation on production paths (Telegram/Slack/Discord) and track channel-specific failure-mode distribution from launch-gate traces,
+   - formalize operator routing playbooks/escalation actions per channel failure class.
 2. `Skills-runtime production workflow` vertical slice:
    - validate full skills-runtime lifecycle on production traffic (load -> prompt injection -> orchestration path -> telemetry),
    - add launch-gate assertions for skills-runtime operational markers beyond single runtime probe.

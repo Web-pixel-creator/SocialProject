@@ -28,6 +28,8 @@ const RELEASE_FALLBACK_ENV = {
 const ARTIFACTS = {
   adapters: 'artifacts/release/production-agent-gateway-adapters.json',
   adminHealth: 'artifacts/release/production-admin-health-summary.json',
+  externalChannelTraces:
+    'artifacts/release/production-agent-gateway-external-channel-traces.json',
   healthSummary: 'artifacts/release/production-launch-gate-health-summary.json',
   ingestProbe: 'artifacts/release/production-agent-gateway-ingest-probe.json',
   matrixProbe:
@@ -287,6 +289,37 @@ const resolveExternalChannelProfiles = (profiles) => {
     }
   }
   return picked;
+};
+const classifyExternalChannelFallbackFailure = (check) => {
+  if (!check || typeof check !== 'object' || check.pass) {
+    return null;
+  }
+  if (check.ingestStatus !== 201) {
+    return 'ingest_http_error';
+  }
+  if (check.ingestApplied !== true) {
+    return 'ingest_not_applied';
+  }
+  if (check.sessionsStatus !== 200) {
+    return 'sessions_lookup_error';
+  }
+  if (
+    typeof check.expectedExternalSessionId === 'string' &&
+    check.expectedExternalSessionId.length > 0 &&
+    check.resolvedExternalSessionId !== check.expectedExternalSessionId
+  ) {
+    return 'fallback_session_mismatch';
+  }
+  if (check.telemetryStatus !== 200) {
+    return 'telemetry_http_error';
+  }
+  if (Number(check.telemetryTotal || 0) <= 0) {
+    return 'telemetry_no_connector_events';
+  }
+  if (Number(check.telemetryAccepted || 0) <= 0) {
+    return 'telemetry_zero_accepted';
+  }
+  return 'unknown';
 };
 
 const parseArgs = (argv) => {
@@ -1002,7 +1035,7 @@ const main = async () => {
             connectorTelemetryPass &&
             matchedSession?.externalSessionId ===
               channelProbe.expectedExternalSessionId;
-          channelFallbackChecks.push({
+          const check = {
             channel,
             connectorId,
             expectedExternalSessionId: channelProbe.expectedExternalSessionId,
@@ -1024,7 +1057,14 @@ const main = async () => {
             telemetryStatus: connectorTelemetry?.status ?? null,
             telemetryTotal:
               Number(connectorTelemetry?.json?.ingestConnectors?.total ?? 0) || 0,
-          });
+            trace: {
+              probeEventId: probePayload.eventId,
+              probeType: probePayload.type,
+              source: probePayload.payload?.source ?? null,
+            },
+          };
+          check.failureMode = classifyExternalChannelFallbackFailure(check);
+          channelFallbackChecks.push(check);
         }
       }
       const externalChannelFallback =
@@ -1039,6 +1079,20 @@ const main = async () => {
           const requiredChecks = channelFallbackChecks.filter((entry) =>
             requiredChannels.includes(entry.channel),
           );
+          const failedChannels = channelFallbackChecks
+            .filter((entry) => !entry.pass)
+            .map((entry) => ({
+              channel: entry.channel,
+              connectorId: entry.connectorId,
+              failureMode: entry.failureMode,
+            }));
+          const requiredFailedChannels = requiredChecks
+            .filter((entry) => !entry.pass)
+            .map((entry) => ({
+              channel: entry.channel,
+              connectorId: entry.connectorId,
+              failureMode: entry.failureMode,
+            }));
           const requiredChannelsPass =
             requiredChannels.length === 0
               ? true
@@ -1049,11 +1103,13 @@ const main = async () => {
             return {
               checks: [],
               configuredChannels: [],
+              failedChannels: [],
               missingRequiredChannels: [],
               pass: true,
               reason:
                 'No configured connector profiles for telegram/slack/discord.',
               requiredChannels: [],
+              requiredFailedChannels: [],
               requiredChannelsPass: true,
               skipped: true,
             };
@@ -1061,6 +1117,7 @@ const main = async () => {
           return {
             checks: channelFallbackChecks,
             configuredChannels,
+            failedChannels,
             missingRequiredChannels,
             pass:
               requiredChannels.length > 0
@@ -1071,10 +1128,51 @@ const main = async () => {
                 ? `Missing required external channels: ${missingRequiredChannels.join(', ')}.`
                 : null,
             requiredChannels,
+            requiredFailedChannels,
             requiredChannelsPass,
             skipped: false,
           };
         })();
+      const externalChannelTracesArtifact = {
+        checkedAtUtc: new Date().toISOString(),
+        configuredChannels: externalChannelFallback.configuredChannels,
+        failedChannels: externalChannelFallback.failedChannels,
+        missingRequiredChannels: externalChannelFallback.missingRequiredChannels,
+        pass: externalChannelFallback.pass,
+        requiredChannels: externalChannelFallback.requiredChannels,
+        requiredFailedChannels: externalChannelFallback.requiredFailedChannels,
+        requiredChannelsPass: externalChannelFallback.requiredChannelsPass,
+        checks: channelFallbackChecks.map((entry) => ({
+          channel: entry.channel,
+          connectorId: entry.connectorId,
+          pass: entry.pass,
+          failureMode: entry.failureMode,
+          trace: entry.trace,
+          expectedExternalSessionId: entry.expectedExternalSessionId,
+          resolvedExternalSessionId: entry.resolvedExternalSessionId,
+          ingest: {
+            status: entry.ingestStatus,
+            applied: entry.ingestApplied,
+            sessionId: entry.sessionId,
+          },
+          sessions: {
+            status: entry.sessionsStatus,
+          },
+          telemetry: {
+            status: entry.telemetryStatus,
+            attempts: entry.telemetryAttempts,
+            pass: entry.telemetryPass,
+            total: entry.telemetryTotal,
+            accepted: entry.telemetryAccepted,
+            rejected: entry.telemetryRejected,
+          },
+        })),
+        skipped: externalChannelFallback.skipped,
+      };
+      await writeJson(
+        path.resolve(ARTIFACTS.externalChannelTraces),
+        externalChannelTracesArtifact,
+      );
       const ingestArtifact = {
         baseUrl: apiBaseUrl,
         checkedAtUtc: new Date().toISOString(),
@@ -1094,6 +1192,12 @@ const main = async () => {
         missingRequiredChannels: externalChannelFallback.missingRequiredChannels,
         requiredChannelsPass: externalChannelFallback.requiredChannelsPass,
       };
+      summary.checks.ingestExternalChannelFailureModes = {
+        pass: externalChannelFallback.pass,
+        skipped: externalChannelFallback.skipped,
+        failedChannels: externalChannelFallback.failedChannels,
+        requiredFailedChannels: externalChannelFallback.requiredFailedChannels,
+      };
       summary.checks.ingestProbe = { pass: ingestArtifact.pass, skipped: false };
       if (!ingestArtifact.pass) throw new Error('Ingest probe failed');
     } else {
@@ -1105,6 +1209,24 @@ const main = async () => {
         missingRequiredChannels: [],
         requiredChannelsPass: true,
       };
+      summary.checks.ingestExternalChannelFailureModes = {
+        pass: true,
+        skipped: true,
+        failedChannels: [],
+        requiredFailedChannels: [],
+      };
+      await writeJson(path.resolve(ARTIFACTS.externalChannelTraces), {
+        checkedAtUtc: new Date().toISOString(),
+        configuredChannels: [],
+        failedChannels: [],
+        missingRequiredChannels: [],
+        pass: true,
+        requiredChannels: [],
+        requiredFailedChannels: [],
+        requiredChannelsPass: true,
+        checks: [],
+        skipped: true,
+      });
       summary.checks.ingestProbe = { pass: true, skipped: true };
     }
 

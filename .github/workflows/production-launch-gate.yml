@@ -170,3 +170,5 @@ jobs:
           artifact_2_path: artifacts/release/production-agent-gateway-adapters.json
           artifact_3_name: production-admin-health-summary
           artifact_3_path: artifacts/release/production-admin-health-summary.json
+          artifact_4_name: production-external-channel-traces
+          artifact_4_path: artifacts/release/production-agent-gateway-external-channel-traces.json

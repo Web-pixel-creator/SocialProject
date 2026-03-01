@@ -227,14 +227,17 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
   - [ ] Confirm `ingestExternalChannelFallback.pass=true` in launch gate summary when Telegram/Slack/Discord connector profiles are configured.
     - [ ] If no `telegram/slack/discord` connector profiles are configured, allow `ingestExternalChannelFallback.skipped=true`.
     - [ ] For configured channels, confirm per-channel fallback checks also include positive ingest telemetry assertion (`telemetryPass=true`, `telemetryAccepted > 0`).
+  - [ ] Confirm `ingestExternalChannelFailureModes.pass=true` in launch gate summary.
   - [ ] When `required_external_channels` is set, confirm:
     - [ ] `ingestExternalChannelFallback.requiredChannels` contains expected channels.
     - [ ] `ingestExternalChannelFallback.missingRequiredChannels=[]`.
     - [ ] `ingestExternalChannelFallback.requiredChannelsPass=true`.
+    - [ ] `ingestExternalChannelFailureModes.requiredFailedChannels=[]`.
   - [ ] To enforce connector parity before public launch, run one strict external-channel pass:
     - [ ] Ensure production `AGENT_GATEWAY_INGEST_CONNECTOR_PROFILES` includes Telegram/Slack/Discord profiles.
     - [ ] Dispatch: `npm run release:launch:gate:dispatch -- --required-external-channels all`
     - [ ] Confirm `ingestExternalChannelFallback.pass=true` with required channels resolved.
+    - [ ] Confirm trace artifact `production-external-channel-traces` is uploaded and inspect `failureMode` per required channel.
 - [ ] Generate post-release health report from latest workflow_dispatch run:
   - [ ] `npm run release:health:report`
   - [ ] `--strict` mode now validates required release artifacts in addition to required jobs (`release-smoke-report`, `release-smoke-preflight-summary`, `release-env-preflight-summary`, `retry-schema-gate-summary`, `release-smoke-preflight-schema-summary`).

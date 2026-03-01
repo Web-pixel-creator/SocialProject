@@ -61,6 +61,7 @@ Canonical references:
    - With `require_skill_markers=true`, launch gate also asserts matrix-channel marker coverage (`skillMarkerMatrixChannels.pass=true`) across `web`, `live_session`, and runtime probe channel orchestration paths.
    - Launch gate now also checks external connector channel fallback probes from configured connector profiles (`telegram` / `slack` / `discord`) via `ingestExternalChannelFallback`.
    - For each configured external channel probe, launch gate also verifies connector telemetry counters (`ingestConnectors.accepted/total`) via admin telemetry API before passing fallback checks.
+   - Launch gate now exposes per-channel fallback failure-mode diagnostics in summary check `ingestExternalChannelFailureModes` and trace artifact `artifacts/release/production-agent-gateway-external-channel-traces.json` (uploaded as workflow artifact `production-external-channel-traces`).
    - Optional strict channel requirement can be enabled with `--required-external-channels telegram,slack` (or workflow input/env equivalent); in this mode, launch gate fails if required channels are not configured or fallback probe validation fails.
    - Recommended rollout to move from `skipped` to active external-channel verification:
      - set production `AGENT_GATEWAY_INGEST_CONNECTOR_PROFILES` (see `docs/ops/examples/agent-gateway-ingest-connector-profiles.example.json`),
@@ -71,6 +72,7 @@ Canonical references:
        - `ingestExternalChannelFallback.pass=true`
        - `ingestExternalChannelFallback.requiredChannels=["telegram","slack","discord"]`
        - `ingestExternalChannelFallback.missingRequiredChannels=[]`.
+       - `ingestExternalChannelFailureModes.pass=true` and `requiredFailedChannels=[]`.
 1. Generate and validate health report:
    - `npm run release:health:report`
    - Optional launch-gate workflow profile:

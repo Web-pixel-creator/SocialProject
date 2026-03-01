@@ -239,6 +239,13 @@ Notes:
 - Profile configuration is visible in:
   - `GET /api/admin/agent-gateway/telemetry?hours=24&limit=200` (`connectorProfiles`)
   - `GET /api/admin/agent-gateway/adapters?hours=24` (`connectorProfiles`)
+- Release-gate connector diagnostics:
+  - `production-launch-gate` summary includes:
+    - `ingestExternalChannelFallback`
+    - `ingestExternalChannelFailureModes`
+  - per-channel trace/failure details are stored in:
+    - `artifacts/release/production-agent-gateway-external-channel-traces.json`
+    - workflow artifact: `production-external-channel-traces`.
 
 ## Security Notes
 
