@@ -33,6 +33,29 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - production admin ux telemetry evidence capture
+
+- Scope: complete visual production verification for `/admin/ux` `Release health alert telemetry` block after merge/deploy propagation.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 17:58 -> 2026-03-01 18:02.
+- Validation:
+  - Live page check passed:
+    - `https://socialproject-production.up.railway.app/admin/ux` rendered `Release health alert telemetry`.
+  - Observed live release-health telemetry values:
+    - `Alert events=1`
+    - `First appearances=3`
+    - `Alerted runs=1`
+    - `Latest alerted run=#48`
+  - Evidence captured:
+    - screenshot: `artifacts/release/admin-ux-release-health-telemetry-2026-03-01.png`
+  - Upstream release automation baseline remains healthy:
+    - `Production Launch Gate` run `#50` (`22549107431`) -> `success`
+    - downstream `Release Health Gate` run `#211` (`22549123756`) -> `success`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - none.
+
 ### 2026-03-01 - strict launch-gate validation after admin ux telemetry merge
 
 - Scope: verify production launch-gate and downstream health automation after merging admin UX alert telemetry visibility updates.
