@@ -826,10 +826,13 @@ const main = async () => {
       matrixArtifact.pass =
         matrixChannelFlowPass && matrixAdapterUsagePass && matrixMarkerCoveragePass;
       await writeJson(path.resolve(ARTIFACTS.matrixProbe), matrixArtifact);
+      const summaryMatrixFailedChannels = o.requireSkillMarkers
+        ? matrixMarkerFailedChannels
+        : [];
       summary.checks.skillMarkerMatrixChannels = {
         pass: o.requireSkillMarkers ? matrixMarkerCoveragePass : true,
         skipped: !o.requireSkillMarkers,
-        failedChannels: matrixMarkerFailedChannels,
+        failedChannels: summaryMatrixFailedChannels,
       };
       summary.checks.adapterMatrixProbe = {
         pass: matrixArtifact.pass,

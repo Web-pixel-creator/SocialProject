@@ -992,3 +992,7 @@ Exit criteria:
     - `--runtime-draft-id 3fefc86d-eb94-42f2-8c97-8b57eff8944e`
     - `--require-skill-markers`
     - `--require-natural-cron-window`.
+  - CLI required-channel negative path run `#34` (`22541313729`) intentionally failed with:
+    - `requiredChannels=["telegram"]`
+    - `missingRequiredChannels=["telegram"]`.
+  - baseline sanity run `#35` (`22541336245`) passed after negative validation.

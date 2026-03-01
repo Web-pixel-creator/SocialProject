@@ -58,6 +58,11 @@ Copy this block for each release:
   - CLI-input dispatch validation passed:
     - `npm run release:launch:gate:dispatch -- --runtime-draft-id 3fefc86d-eb94-42f2-8c97-8b57eff8944e --require-skill-markers --require-natural-cron-window`
     - run `#33` (`22541273708`): `success`.
+  - CLI required-channel negative/positive validation:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels telegram`
+      - run `#34` (`22541313729`): expected `failure` with `requiredChannels=["telegram"]` and `missingRequiredChannels=["telegram"]`.
+    - `npm run release:launch:gate:dispatch`
+      - run `#35` (`22541336245`): `success` baseline after negative validation.
 - Incidents:
   - temporary network outage from local automation shell to `api.github.com` briefly blocked live dispatch verification (`fetch failed` / unable to connect remote server); verification completed after connectivity restoration.
 - Follow-ups:
