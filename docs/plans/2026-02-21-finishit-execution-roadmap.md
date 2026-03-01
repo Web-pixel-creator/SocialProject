@@ -987,3 +987,8 @@ Exit criteria:
   - required external channels now use the same allowed-channel validation (`telegram`, `slack`, `discord`, `all`) for both CLI and env paths.
 - Ops docs update:
   - release checklist/runbook now document CLI-first dispatch examples.
+- Revalidation:
+  - CLI-input dispatch run `#33` (`22541273708`) passed:
+    - `--runtime-draft-id 3fefc86d-eb94-42f2-8c97-8b57eff8944e`
+    - `--require-skill-markers`
+    - `--require-natural-cron-window`.

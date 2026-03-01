@@ -37,7 +37,7 @@ Copy this block for each release:
 
 - Scope: remove env-only friction for workflow dispatch by adding explicit CLI flags to `release:launch:gate:dispatch`.
 - Release commander: Codex automation.
-- Window (UTC): 2026-03-01 10:09 -> 2026-03-01 10:17.
+- Window (UTC): 2026-03-01 10:09 -> 2026-03-01 10:21.
 - Changes:
   - Updated `scripts/release/dispatch-production-launch-gate.mjs`:
     - added CLI flags:
@@ -55,10 +55,13 @@ Copy this block for each release:
 - Verification:
   - `node --check scripts/release/dispatch-production-launch-gate.mjs`: pass.
   - `node scripts/release/dispatch-production-launch-gate.mjs --help`: pass (new options rendered).
+  - CLI-input dispatch validation passed:
+    - `npm run release:launch:gate:dispatch -- --runtime-draft-id 3fefc86d-eb94-42f2-8c97-8b57eff8944e --require-skill-markers --require-natural-cron-window`
+    - run `#33` (`22541273708`): `success`.
 - Incidents:
-  - temporary network outage from local automation shell to `api.github.com` blocked live dispatch verification during this checkpoint (`fetch failed` / unable to connect remote server).
+  - temporary network outage from local automation shell to `api.github.com` briefly blocked live dispatch verification (`fetch failed` / unable to connect remote server); verification completed after connectivity restoration.
 - Follow-ups:
-  - re-run one live dispatch using CLI input flags after network connectivity restores.
+  - none.
 
 ### 2026-03-01 - skills-runtime matrix marker coverage in launch-gate
 
