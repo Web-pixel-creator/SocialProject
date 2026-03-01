@@ -33,6 +33,48 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - post-release health run #24 (id 22540547708)
+
+- Source workflow run: #24 (https://github.com/Web-pixel-creator/SocialProject/actions/runs/22540547708).
+- Overall health: pass.
+- Required jobs: 1/1 passed.
+- Required artifacts: 9/9 present.
+- Failed jobs total: 0.
+- Smoke summary: pass=true totalSteps=19 failedSteps=0.
+- Report artifact: `artifacts/release/post-release-health-run-22540547708.json`.
+
+### 2026-03-01 - skill-marker multi-step gate hardening + strict run #24
+
+- Scope: harden skills-runtime launch-gate marker validation from first-step-only detection to multi-step orchestration coverage.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 09:24 -> 2026-03-01 09:32.
+- Changes:
+  - Updated `scripts/release/production-launch-gate.mjs`:
+    - runtime probe now computes marker coverage per orchestration step (`critic/maker/judge`),
+    - added summary check `skillMarkerMultiStep`,
+    - strict marker rule with `require_skill_markers=true` is now:
+      - `Role persona` marker on every step,
+      - `Skill capsule` marker on every step,
+      - `Role skill` marker on at least one step.
+  - Updated release docs:
+    - `docs/ops/release-checklist.md`
+    - `docs/ops/release-runbook.md`
+- Verification:
+  - `node --check scripts/release/production-launch-gate.mjs`: pass.
+  - strict dispatch matrix re-run after patch:
+    - run `#24` (`22540547708`) `success`
+    - URL: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/22540547708`
+  - Summary checks from run `#24`:
+    - `skillMarkerMultiStep.pass=true`
+    - `missingRolePersonaRoles=[]`
+    - `missingSkillCapsuleRoles=[]`
+    - `roleSkillPresentRoles=["critic","maker"]`
+- Incidents:
+  - run `#22` (`22540472390`) and run `#23` (`22540519731`) failed with `Runtime probe failed` during intermediate strict-all-steps `Role skill` gate iteration.
+  - fixed by separating marker requirements (`Role persona`/`Skill capsule` per-step, `Role skill` any-step).
+- Follow-ups:
+  - none.
+
 ### 2026-03-01 - external-channel fallback probe in launch-gate + strict run #20
 
 - Scope: extend production launch-gate ingest probe with connector-profile-driven external channel fallback verification for Telegram/Slack/Discord.

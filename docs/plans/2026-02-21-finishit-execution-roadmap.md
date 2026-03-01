@@ -897,3 +897,26 @@ Exit criteria:
   - strict launch-gate run `#20` (`22540366264`) passed with new check present:
     - `ingestExternalChannelFallback.pass=true`
     - `ingestExternalChannelFallback.skipped=true` (no `telegram/slack/discord` profiles configured in current production profile map).
+
+## Progress Snapshot (2026-03-01 - skills-runtime multi-step marker gate)
+- Launch-gate runtime marker update:
+  - runtime probe marker validation now uses per-step coverage instead of first-step-only prompt check.
+  - added launch summary check `skillMarkerMultiStep` with explicit marker diagnostics:
+    - `missingRolePersonaRoles`
+    - `missingSkillCapsuleRoles`
+    - `roleSkillPresentRoles`
+  - strict marker pass rule when `require_skill_markers=true`:
+    - `Role persona` marker on every orchestration step,
+    - `Skill capsule` marker on every orchestration step,
+    - `Role skill` marker present on at least one orchestration step.
+- Ops expectations update:
+  - release checklist/runbook now document the new `skillMarkerMultiStep` launch-gate requirement semantics.
+- Revalidation:
+  - strict launch-gate run `#24` (`22540547708`) passed with:
+    - `skillMarkerMultiStep.pass=true`
+    - `missingRolePersonaRoles=[]`
+    - `missingSkillCapsuleRoles=[]`
+    - `roleSkillPresentRoles=["critic","maker"]`.
+- Incident trace during rollout:
+  - initial strict-all-roles `Role skill` criterion failed in run `#22` (`22540472390`) and run `#23` (`22540519731`),
+  - criterion was corrected to match runtime intent (role-skill optional per-role, but required to appear on at least one orchestration step).
