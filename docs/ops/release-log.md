@@ -33,6 +33,40 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - launch-gate required external channels control
+
+- Scope: add explicit launch-gate control to require specific external connector channels (`telegram` / `slack` / `discord`) during fallback ingest verification.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 10:02 -> 2026-03-01 10:10.
+- Changes:
+  - Updated `scripts/release/production-launch-gate.mjs`:
+    - added `--required-external-channels <csv|all>` and env fallback `RELEASE_REQUIRED_EXTERNAL_CHANNELS`,
+    - validates allowed channels and blocks invalid values,
+    - blocks invalid combination `--required-external-channels` + `--skip-ingest-probe`,
+    - `ingestExternalChannelFallback` now reports and evaluates:
+      - `requiredChannels`
+      - `missingRequiredChannels`
+      - `requiredChannelsPass`
+    - gate now fails when required channels are missing or their fallback checks fail.
+  - Updated `.github/workflows/production-launch-gate.yml`:
+    - new workflow input `required_external_channels`,
+    - forwards input to launch-gate script,
+    - renders `required_external_channels` in step summary.
+  - Updated `scripts/release/dispatch-production-launch-gate.mjs`:
+    - forwards `RELEASE_REQUIRED_EXTERNAL_CHANNELS` to workflow input `required_external_channels`,
+    - prints resolved value in dispatch output.
+  - Updated docs:
+    - `docs/ops/release-checklist.md`
+    - `docs/ops/release-runbook.md`
+- Verification:
+  - `node --check scripts/release/production-launch-gate.mjs`: pass.
+  - `node --check scripts/release/dispatch-production-launch-gate.mjs`: pass.
+  - `npm run ultracite:check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - execute a strict workflow_dispatch run with `required_external_channels` once production connector profiles are finalized.
+
 ### 2026-03-01 - post-release health run #24 (id 22540547708)
 
 - Source workflow run: #24 (https://github.com/Web-pixel-creator/SocialProject/actions/runs/22540547708).

@@ -48,6 +48,7 @@ Canonical references:
        - Optional explicit token argument: `npm run release:launch:gate:dispatch -- -Token <github_pat>`
        - Token resolution order: `-Token/--token` -> `GITHUB_TOKEN/GH_TOKEN` -> `gh auth token`
        - Optional inputs via env: `RELEASE_RUNTIME_DRAFT_ID=<uuid> RELEASE_REQUIRE_SKILL_MARKERS=true RELEASE_REQUIRE_NATURAL_CRON_WINDOW=true`
+       - Optional required external channels via env: `RELEASE_REQUIRED_EXTERNAL_CHANNELS=telegram,slack` (or `all`)
        - When `RELEASE_REQUIRE_SKILL_MARKERS=true`, `RELEASE_RUNTIME_DRAFT_ID` is required and must point to a draft with skill markers.
    - Review summary: `artifacts/release/production-launch-gate-summary.json`
    - Launch gate now asserts required smoke step set (`api.health`, draft/PR/search API path, `web.home`, `web.feed`, `web.search`, `web.draft.detail`) via `smokeRequiredSteps.pass=true`.
@@ -55,6 +56,7 @@ Canonical references:
      - `Role persona` + `Skill capsule` markers must be present for every orchestration role step.
      - `Role skill` marker must be present in at least one orchestration step.
    - Launch gate now also checks external connector channel fallback probes from configured connector profiles (`telegram` / `slack` / `discord`) via `ingestExternalChannelFallback`.
+   - Optional strict channel requirement can be enabled with `--required-external-channels telegram,slack` (or workflow input/env equivalent); in this mode, launch gate fails if required channels are not configured or fallback probe validation fails.
 1. Generate and validate health report:
    - `npm run release:health:report`
    - Optional launch-gate workflow profile:

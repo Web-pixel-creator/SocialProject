@@ -82,6 +82,28 @@ const parseBoolean = (value) => {
   const normalized = value.trim().toLowerCase();
   return normalized === 'true' || normalized === '1' || normalized === 'yes';
 };
+const parseExternalChannels = (value, sourceLabel) => {
+  if (typeof value !== 'string') {
+    return [];
+  }
+  const normalized = value
+    .split(',')
+    .map((entry) => entry.trim().toLowerCase())
+    .filter((entry) => entry.length > 0);
+  if (normalized.length === 0) {
+    return [];
+  }
+  if (normalized.includes('all')) {
+    return [...EXTERNAL_CHANNELS];
+  }
+  const invalid = normalized.filter((entry) => !EXTERNAL_CHANNELS.includes(entry));
+  if (invalid.length > 0) {
+    throw new Error(
+      `${sourceLabel} contains unsupported channels: ${invalid.join(', ')}. Allowed: ${EXTERNAL_CHANNELS.join(', ')} or all.`,
+    );
+  }
+  return [...new Set(normalized)];
+};
 
 const quote = (v) =>
   /^[a-z0-9_./:=@+-]+$/i.test(v) ? v : `"${v.replace(/"/g, '\\"')}"`;
@@ -233,6 +255,10 @@ const parseArgs = (argv) => {
     help: false,
     httpTimeoutMs: DEFAULTS.httpTimeoutMs,
     json: false,
+    requiredExternalChannels: parseExternalChannels(
+      process.env.RELEASE_REQUIRED_EXTERNAL_CHANNELS || '',
+      'RELEASE_REQUIRED_EXTERNAL_CHANNELS',
+    ),
     requireSkillMarkers: false,
     requireNaturalCronWindow: parseBoolean(
       process.env.RELEASE_REQUIRE_NATURAL_CRON_WINDOW,
@@ -258,6 +284,22 @@ const parseArgs = (argv) => {
     else if (a === '--skip-runtime-probes') o.skipRuntimeProbes = true;
     else if (a === '--skip-ingest-probe') o.skipIngestProbe = true;
     else if (a === '--skip-railway-gate') o.skipRailwayGate = true;
+    else if (a === '--required-external-channels') {
+      const value = argv[++i];
+      if (value === undefined) {
+        throw new Error('Missing value for --required-external-channels');
+      }
+      o.requiredExternalChannels = parseExternalChannels(
+        value,
+        '--required-external-channels',
+      );
+    } else if (a.startsWith('--required-external-channels=')) {
+      const value = a.slice('--required-external-channels='.length);
+      o.requiredExternalChannels = parseExternalChannels(
+        value,
+        '--required-external-channels',
+      );
+    }
     else if (a === '--require-skill-markers') o.requireSkillMarkers = true;
     else if (a === '--require-natural-cron-window')
       o.requireNaturalCronWindow = true;
@@ -290,6 +332,7 @@ const printHelp = () => {
       '  --web-base-url <url> --api-base-url <url>',
       '  --runtime-draft-id <uuid> --runtime-channel <name>',
       '  --skip-railway-gate --skip-smoke --skip-runtime-probes --skip-ingest-probe',
+      '  --required-external-channels <telegram,slack,discord|all>',
       '  --require-skill-markers',
       '  --require-natural-cron-window',
       '',
@@ -467,6 +510,11 @@ const main = async () => {
     if (o.requireSkillMarkers && !o.runtimeDraftId) {
       throw new Error(
         '--require-skill-markers requires explicit --runtime-draft-id (or RELEASE_RUNTIME_PROBE_DRAFT_ID) that points to a draft with configured skill markers.',
+      );
+    }
+    if (o.skipIngestProbe && o.requiredExternalChannels.length > 0) {
+      throw new Error(
+        '--required-external-channels cannot be combined with --skip-ingest-probe.',
       );
     }
     if (!runtimeDraftId) throw new Error('Runtime draft id is missing');
@@ -875,24 +923,53 @@ const main = async () => {
         }
       }
       const externalChannelFallback =
-        externalChannelProfiles.length === 0
-          ? {
+        (() => {
+          const configuredChannels = externalChannelProfiles.map((entry) =>
+            String(entry.channel || '').toLowerCase(),
+          );
+          const requiredChannels = o.requiredExternalChannels;
+          const missingRequiredChannels = requiredChannels.filter(
+            (entry) => !configuredChannels.includes(entry),
+          );
+          const requiredChecks = channelFallbackChecks.filter((entry) =>
+            requiredChannels.includes(entry.channel),
+          );
+          const requiredChannelsPass =
+            requiredChannels.length === 0
+              ? true
+              : missingRequiredChannels.length === 0 &&
+                requiredChecks.length === requiredChannels.length &&
+                requiredChecks.every((entry) => entry.pass);
+          if (configuredChannels.length === 0 && requiredChannels.length === 0) {
+            return {
               checks: [],
               configuredChannels: [],
+              missingRequiredChannels: [],
               pass: true,
               reason:
                 'No configured connector profiles for telegram/slack/discord.',
+              requiredChannels: [],
+              requiredChannelsPass: true,
               skipped: true,
-            }
-          : {
-              checks: channelFallbackChecks,
-              configuredChannels: externalChannelProfiles.map((entry) =>
-                String(entry.channel || '').toLowerCase(),
-              ),
-              pass: channelFallbackChecks.every((entry) => entry.pass),
-              reason: null,
-              skipped: false,
             };
+          }
+          return {
+            checks: channelFallbackChecks,
+            configuredChannels,
+            missingRequiredChannels,
+            pass:
+              requiredChannels.length > 0
+                ? requiredChannelsPass
+                : channelFallbackChecks.every((entry) => entry.pass),
+            reason:
+              missingRequiredChannels.length > 0
+                ? `Missing required external channels: ${missingRequiredChannels.join(', ')}.`
+                : null,
+            requiredChannels,
+            requiredChannelsPass,
+            skipped: false,
+          };
+        })();
       const ingestArtifact = {
         baseUrl: apiBaseUrl,
         checkedAtUtc: new Date().toISOString(),
@@ -909,6 +986,9 @@ const main = async () => {
         pass: externalChannelFallback.pass,
         skipped: externalChannelFallback.skipped,
         configuredChannels: externalChannelFallback.configuredChannels,
+        requiredChannels: externalChannelFallback.requiredChannels,
+        missingRequiredChannels: externalChannelFallback.missingRequiredChannels,
+        requiredChannelsPass: externalChannelFallback.requiredChannelsPass,
       };
     }
     summary.checks.ingestProbe = { pass: true, skipped: o.skipIngestProbe };

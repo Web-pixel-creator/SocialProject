@@ -268,6 +268,9 @@ const main = async () => {
     process.env.RELEASE_REQUIRE_NATURAL_CRON_WINDOW,
     false,
   );
+  const requiredExternalChannels = (
+    process.env.RELEASE_REQUIRED_EXTERNAL_CHANNELS ?? ''
+  ).trim();
   if (requireSkillMarkers && !runtimeDraftId) {
     throw new Error(
       'RELEASE_REQUIRE_SKILL_MARKERS=true requires RELEASE_RUNTIME_DRAFT_ID to be set (draft with skill markers).',
@@ -321,6 +324,9 @@ const main = async () => {
   if (requireNaturalCronWindow) {
     inputs.require_natural_cron_window = 'true';
   }
+  if (requiredExternalChannels) {
+    inputs.required_external_channels = requiredExternalChannels;
+  }
 
   const dispatchStartedAtMs = Date.now();
   await githubRequest({
@@ -343,6 +349,11 @@ const main = async () => {
   process.stdout.write(
     `Require natural cron window input: ${
       requireNaturalCronWindow ? 'true' : 'false'
+    }\n`,
+  );
+  process.stdout.write(
+    `Required external channels input: ${
+      requiredExternalChannels || 'none'
     }\n`,
   );
 

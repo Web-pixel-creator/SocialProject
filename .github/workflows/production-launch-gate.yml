@@ -17,6 +17,11 @@ on:
         required: false
         default: false
         type: boolean
+      required_external_channels:
+        description: 'Optional comma-separated channels that must be configured and pass fallback ingest probe (telegram,slack,discord or all).'
+        required: false
+        default: ''
+        type: string
 
 concurrency:
   group: production-launch-gate-${{ github.workflow }}-${{ github.ref }}
@@ -82,6 +87,9 @@ jobs:
           if [[ "${{ inputs.require_natural_cron_window }}" == "true" ]]; then
             args+=(--require-natural-cron-window)
           fi
+          if [[ -n "${{ inputs.required_external_channels }}" ]]; then
+            args+=(--required-external-channels "${{ inputs.required_external_channels }}")
+          fi
           if [[ -n "${{ inputs.runtime_draft_id }}" ]]; then
             args+=(--runtime-draft-id "${{ inputs.runtime_draft_id }}")
           fi
@@ -106,6 +114,11 @@ jobs:
               echo "- runtime_draft_id: \`$(jq -r '.config.runtimeDraftId // "auto-from-smoke"' "${summary_json}")\`"
               echo "- require_skill_markers: \`$(jq -r '.config.requireSkillMarkers // false' "${summary_json}")\`"
               echo "- require_natural_cron_window: \`$(jq -r '.config.requireNaturalCronWindow // false' "${summary_json}")\`"
+              required_external_channels="$(jq -r '(.config.requiredExternalChannels // []) | join(",")' "${summary_json}")"
+              if [[ -z "${required_external_channels}" ]]; then
+                required_external_channels="none"
+              fi
+              echo "- required_external_channels: \`${required_external_channels}\`"
               echo ""
               echo "### Checks"
               jq -r '.checks | to_entries[] | "- \(.key): `\((if .value.skipped then "SKIPPED" elif .value.pass then "PASS" else "FAIL" end))`"' "${summary_json}"
