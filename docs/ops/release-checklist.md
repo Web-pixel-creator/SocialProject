@@ -272,6 +272,10 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
       - [ ] `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_BEARER_TOKEN` (`Authorization: Bearer ...`)
     - [ ] recommended production internal receiver:
       - [ ] `https://api-production-7540.up.railway.app/api/admin/release-health/external-channel-alerts`
+  - [ ] Confirm admin UX telemetry reflects post-release alert state:
+    - [ ] Open `/admin/ux` and review `Release health alert telemetry`.
+    - [ ] Verify `Alert events`, `First appearances`, and `Alerted runs` are consistent with `externalChannelFailureModes.firstAppearanceAlert`.
+    - [ ] For healthy strict windows, confirm no unexpected non-zero first-appearance spikes by channel/failure mode.
   - [ ] Optional machine-readable summary: `npm run release:health:report -- --json`
   - [ ] Optional strict gate (fails command on unhealthy run): `npm run release:health:report -- --strict`
   - [ ] Validate report schema: `npm run release:health:schema:check` (or explicit file path: `npm run release:health:schema:check -- artifacts/release/post-release-health-run-<run_id>.json`)

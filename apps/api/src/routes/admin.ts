@@ -4478,6 +4478,19 @@ router.get(
         'feed_view_mode_hint_dismiss',
         'feed_density_change',
       ];
+      const releaseHealthAlertRows = await db.query(
+        `SELECT metadata, created_at
+         FROM ux_events
+         WHERE created_at >= NOW() - ($1 || ' hours')::interval
+           AND event_type = $2
+           AND source = $3
+         ORDER BY created_at DESC`,
+        [
+          hours,
+          RELEASE_EXTERNAL_CHANNEL_ALERT_EVENT,
+          RELEASE_EXTERNAL_CHANNEL_ALERT_SOURCE,
+        ],
+      );
 
       const totalsResult = await db.query(
         `SELECT event_type, COUNT(*)::int AS count
@@ -5440,6 +5453,138 @@ router.get(
         multimodalInvalidQueryErrors,
         multimodalErrorSignalsTotal,
       );
+      const releaseHealthAlertByChannelMap = new Map<string, number>();
+      const releaseHealthAlertByFailureModeMap = new Map<string, number>();
+      const releaseHealthAlertHourlyTrendMap = new Map<
+        string,
+        {
+          alerts: number;
+          firstAppearances: number;
+          hour: string;
+        }
+      >();
+      const releaseHealthAlertRunIds = new Set<number>();
+      let releaseHealthAlertFirstAppearanceCount = 0;
+      let releaseHealthAlertLatest: {
+        receivedAtUtc: string | null;
+        runId: number | null;
+        runNumber: number | null;
+        runUrl: string | null;
+      } | null = null;
+
+      for (const row of releaseHealthAlertRows.rows) {
+        const metadata =
+          row.metadata &&
+          typeof row.metadata === 'object' &&
+          !Array.isArray(row.metadata)
+            ? (row.metadata as Record<string, unknown>)
+            : {};
+        const createdAtIso = toNullableIsoTimestamp(row.created_at);
+        const receivedAtIso =
+          toNullableIsoTimestamp(metadata.receivedAtUtc) ?? createdAtIso;
+        const run =
+          metadata.run &&
+          typeof metadata.run === 'object' &&
+          !Array.isArray(metadata.run)
+            ? (metadata.run as Record<string, unknown>)
+            : {};
+        const runIdRaw = Number(run.id);
+        const runId =
+          Number.isInteger(runIdRaw) && runIdRaw > 0 ? runIdRaw : null;
+        const runNumberRaw = Number(run.number);
+        const runNumber =
+          Number.isInteger(runNumberRaw) && runNumberRaw > 0
+            ? runNumberRaw
+            : null;
+        const runUrl =
+          typeof run.htmlUrl === 'string' && run.htmlUrl.length > 0
+            ? run.htmlUrl
+            : typeof run.runUrl === 'string' && run.runUrl.length > 0
+              ? run.runUrl
+              : null;
+        if (runId !== null) {
+          releaseHealthAlertRunIds.add(runId);
+        }
+        if (releaseHealthAlertLatest === null) {
+          releaseHealthAlertLatest = {
+            receivedAtUtc: receivedAtIso,
+            runId,
+            runNumber,
+            runUrl,
+          };
+        }
+
+        const firstAppearances = Array.isArray(metadata.firstAppearances)
+          ? metadata.firstAppearances
+          : [];
+        releaseHealthAlertFirstAppearanceCount += firstAppearances.length;
+        for (const entry of firstAppearances) {
+          if (!(entry && typeof entry === 'object') || Array.isArray(entry)) {
+            continue;
+          }
+          const parsed = entry as Record<string, unknown>;
+          const channel = String(parsed.channel ?? 'unknown')
+            .trim()
+            .toLowerCase();
+          const failureMode = String(parsed.failureMode ?? 'unknown')
+            .trim()
+            .toLowerCase();
+          const normalizedChannel = channel.length > 0 ? channel : 'unknown';
+          const normalizedFailureMode =
+            failureMode.length > 0 ? failureMode : 'unknown';
+          releaseHealthAlertByChannelMap.set(
+            normalizedChannel,
+            (releaseHealthAlertByChannelMap.get(normalizedChannel) ?? 0) + 1,
+          );
+          releaseHealthAlertByFailureModeMap.set(
+            normalizedFailureMode,
+            (releaseHealthAlertByFailureModeMap.get(normalizedFailureMode) ??
+              0) + 1,
+          );
+        }
+
+        if (createdAtIso) {
+          const hour = `${createdAtIso.slice(0, 13)}:00:00Z`;
+          const current = releaseHealthAlertHourlyTrendMap.get(hour) ?? {
+            hour,
+            alerts: 0,
+            firstAppearances: 0,
+          };
+          current.alerts += 1;
+          current.firstAppearances += firstAppearances.length;
+          releaseHealthAlertHourlyTrendMap.set(hour, current);
+        }
+      }
+
+      const releaseHealthAlertTotal = releaseHealthAlertRows.rows.length;
+      const releaseHealthAlertByChannel = Array.from(
+        releaseHealthAlertByChannelMap.entries(),
+      )
+        .map(([channel, count]) => ({
+          channel,
+          count,
+          rate: toRate(count, releaseHealthAlertFirstAppearanceCount),
+        }))
+        .sort(
+          (left, right) =>
+            right.count - left.count || left.channel.localeCompare(right.channel),
+        );
+      const releaseHealthAlertByFailureMode = Array.from(
+        releaseHealthAlertByFailureModeMap.entries(),
+      )
+        .map(([failureMode, count]) => ({
+          failureMode,
+          count,
+          rate: toRate(count, releaseHealthAlertFirstAppearanceCount),
+        }))
+        .sort(
+          (left, right) =>
+            right.count - left.count ||
+            left.failureMode.localeCompare(right.failureMode),
+        );
+      const releaseHealthAlertHourlyTrend = Array.from(
+        releaseHealthAlertHourlyTrendMap.values(),
+      ).sort((left, right) => left.hour.localeCompare(right.hour));
 
       res.json({
         windowHours: hours,
@@ -5471,6 +5616,19 @@ router.get(
           payoutToStakeRatio,
           multimodalCoverageRate,
           multimodalErrorRate,
+          releaseHealthAlertCount: releaseHealthAlertTotal,
+          releaseHealthFirstAppearanceCount:
+            releaseHealthAlertFirstAppearanceCount,
+          releaseHealthAlertedRunCount: releaseHealthAlertRunIds.size,
+        },
+        releaseHealthAlerts: {
+          totalAlerts: releaseHealthAlertTotal,
+          uniqueRuns: releaseHealthAlertRunIds.size,
+          firstAppearanceCount: releaseHealthAlertFirstAppearanceCount,
+          byChannel: releaseHealthAlertByChannel,
+          byFailureMode: releaseHealthAlertByFailureMode,
+          hourlyTrend: releaseHealthAlertHourlyTrend,
+          latest: releaseHealthAlertLatest,
         },
         multimodal: {
           views: totals.multimodalViews,

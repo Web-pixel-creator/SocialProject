@@ -308,6 +308,42 @@ describe('admin ux observer engagement page', () => {
                 },
               ],
             },
+            releaseHealthAlerts: {
+              totalAlerts: 2,
+              uniqueRuns: 1,
+              firstAppearanceCount: 3,
+              byChannel: [
+                { channel: 'telegram', count: 2, rate: 0.667 },
+                { channel: 'slack', count: 1, rate: 0.333 },
+              ],
+              byFailureMode: [
+                { failureMode: 'ingest_http_error', count: 2, rate: 0.667 },
+                {
+                  failureMode: 'telemetry_zero_accepted',
+                  count: 1,
+                  rate: 0.333,
+                },
+              ],
+              hourlyTrend: [
+                {
+                  hour: '2026-03-01T17:00:00Z',
+                  alerts: 1,
+                  firstAppearances: 2,
+                },
+                {
+                  hour: '2026-03-01T18:00:00Z',
+                  alerts: 1,
+                  firstAppearances: 1,
+                },
+              ],
+              latest: {
+                receivedAtUtc: '2026-03-01T18:12:34.000Z',
+                runId: 22548544748,
+                runNumber: 49,
+                runUrl:
+                  'https://github.com/Web-pixel-creator/SocialProject/actions/runs/22548544748',
+              },
+            },
             feedPreferences: {
               viewMode: { observer: 1, focus: 2, unknown: 0, total: 3 },
               density: { comfort: 1, compact: 3, unknown: 0, total: 4 },
@@ -542,6 +578,34 @@ describe('admin ux observer engagement page', () => {
     );
     expect(
       screen.getByText(/Multimodal GlowUp telemetry/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Release health alert telemetry/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/^Alert events$/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/^First appearances$/i).length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.getByText(/^Alerted runs$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Latest alerted run$/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/First-appearance channels/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/First-appearance failure modes/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Release-health alert hourly trend \(UTC\)/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/ingest_http_error/i)).toBeInTheDocument();
+    expect(screen.getByText(/telemetry_zero_accepted/i)).toBeInTheDocument();
+    expect(screen.getByText(/2026-03-01 17:00 UTC/i)).toBeInTheDocument();
+    expect(screen.getByText(/2026-03-01 18:00 UTC/i)).toBeInTheDocument();
+    expect(screen.getByText(/#49/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', {
+        name: /https:\/\/github\.com\/Web-pixel-creator\/SocialProject\/actions\/runs\/22548544748/i,
+      }),
     ).toBeInTheDocument();
     expect(screen.getByText(/^Provider usage$/i)).toBeInTheDocument();
     expect(screen.getByText(/gemini-2/i)).toBeInTheDocument();

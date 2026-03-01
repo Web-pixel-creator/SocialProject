@@ -22,6 +22,35 @@ interface ObserverEngagementResponse {
     payoutToStakeRatio?: number | null;
     multimodalCoverageRate?: number | null;
     multimodalErrorRate?: number | null;
+    releaseHealthAlertCount?: number | null;
+    releaseHealthFirstAppearanceCount?: number | null;
+    releaseHealthAlertedRunCount?: number | null;
+  };
+  releaseHealthAlerts?: {
+    totalAlerts?: number;
+    uniqueRuns?: number;
+    firstAppearanceCount?: number;
+    byChannel?: Array<{
+      channel?: string;
+      count?: number;
+      rate?: number | null;
+    }>;
+    byFailureMode?: Array<{
+      failureMode?: string;
+      count?: number;
+      rate?: number | null;
+    }>;
+    hourlyTrend?: Array<{
+      hour?: string;
+      alerts?: number;
+      firstAppearances?: number;
+    }>;
+    latest?: {
+      receivedAtUtc?: string | null;
+      runId?: number | null;
+      runNumber?: number | null;
+      runUrl?: string | null;
+    } | null;
   };
   predictionMarket?: {
     totals?: {
@@ -639,6 +668,11 @@ interface GatewayCompactionHourlyTrendItem {
   manualCompactions: number;
   prunedEventCount: number;
 }
+interface ReleaseHealthAlertHourlyTrendItem {
+  alerts: number;
+  firstAppearances: number;
+  hour: string;
+}
 
 const DEFAULT_API_BASE = 'http://localhost:4000/api';
 const TRAILING_SLASH_REGEX = /\/$/;
@@ -924,6 +958,29 @@ const normalizeHourlyTrendItems = (
         ),
         errorRate: pickFirstFiniteRate(
           (row as Record<string, unknown>).errorRate,
+        ),
+      };
+    })
+    .sort((left, right) => left.hour.localeCompare(right.hour));
+};
+
+const normalizeReleaseHealthAlertHourlyTrendItems = (
+  items: unknown,
+): ReleaseHealthAlertHourlyTrendItem[] => {
+  if (!Array.isArray(items)) {
+    return [];
+  }
+  return items
+    .map((item) => {
+      const row = item && typeof item === 'object' ? item : {};
+      return {
+        hour: toStringValue(
+          (row as Record<string, unknown>).hour,
+          'unknown-hour',
+        ),
+        alerts: toNumber((row as Record<string, unknown>).alerts),
+        firstAppearances: toNumber(
+          (row as Record<string, unknown>).firstAppearances,
         ),
       };
     })
@@ -3048,6 +3105,55 @@ const HourlyTrendCard = ({
   </article>
 );
 
+const ReleaseHealthAlertHourlyTrendCard = ({
+  emptyLabel,
+  items,
+  title,
+}: {
+  emptyLabel: string;
+  items: ReleaseHealthAlertHourlyTrendItem[];
+  title: string;
+}) => (
+  <article className="card grid gap-2 p-4">
+    <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+      {title}
+    </h3>
+    {items.length === 0 ? (
+      <p className="text-muted-foreground text-xs">{emptyLabel}</p>
+    ) : (
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-left text-xs">
+          <thead>
+            <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
+              <th className="py-2 pr-3">Hour</th>
+              <th className="px-3 py-2 text-right">Alerts</th>
+              <th className="px-3 py-2 text-right">First appearances</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((entry) => (
+              <tr
+                className="border-border/25 border-b last:border-b-0"
+                key={entry.hour}
+              >
+                <td className="py-2 pr-3 text-muted-foreground">
+                  {formatHourBucket(entry.hour)}
+                </td>
+                <td className="px-3 py-2 text-right text-foreground">
+                  {entry.alerts}
+                </td>
+                <td className="px-3 py-2 text-right text-foreground">
+                  {entry.firstAppearances}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </article>
+);
+
 const PredictionHourlyTrendCard = ({
   emptyLabel,
   items,
@@ -3488,6 +3594,49 @@ export default async function AdminUxObserverEngagementPage({
   const multimodalHourlyTrend = normalizeHourlyTrendItems(
     multimodal.hourlyTrend,
   );
+  const releaseHealthAlerts = data?.releaseHealthAlerts ?? {};
+  const releaseHealthAlertByChannel = normalizeBreakdownItems({
+    items: releaseHealthAlerts.byChannel,
+    keyName: 'channel',
+  });
+  const releaseHealthAlertByFailureMode = normalizeBreakdownItems({
+    items: releaseHealthAlerts.byFailureMode,
+    keyName: 'failureMode',
+  });
+  const releaseHealthAlertHourlyTrend =
+    normalizeReleaseHealthAlertHourlyTrendItems(
+      releaseHealthAlerts.hourlyTrend,
+    );
+  const releaseHealthAlertLatest =
+    releaseHealthAlerts.latest && typeof releaseHealthAlerts.latest === 'object'
+      ? (releaseHealthAlerts.latest as {
+          receivedAtUtc?: string | null;
+          runId?: number | null;
+          runNumber?: number | null;
+          runUrl?: string | null;
+        })
+      : null;
+  const releaseHealthAlertLatestReceivedAt = toNullableIsoTimestamp(
+    releaseHealthAlertLatest?.receivedAtUtc,
+  );
+  const releaseHealthAlertLatestRunNumber =
+    typeof releaseHealthAlertLatest?.runNumber === 'number' &&
+    Number.isInteger(releaseHealthAlertLatest.runNumber) &&
+    releaseHealthAlertLatest.runNumber > 0
+      ? releaseHealthAlertLatest.runNumber
+      : null;
+  const releaseHealthAlertLatestRunId =
+    typeof releaseHealthAlertLatest?.runId === 'number' &&
+    Number.isInteger(releaseHealthAlertLatest.runId) &&
+    releaseHealthAlertLatest.runId > 0
+      ? releaseHealthAlertLatest.runId
+      : null;
+  const releaseHealthAlertLatestRunLabel =
+    releaseHealthAlertLatestRunNumber !== null
+      ? `#${releaseHealthAlertLatestRunNumber}`
+      : releaseHealthAlertLatestRunId !== null
+        ? String(releaseHealthAlertLatestRunId)
+        : 'n/a';
   const feedPreferences = data?.feedPreferences ?? {};
   const viewMode = feedPreferences.viewMode ?? {};
   const density = feedPreferences.density ?? {};
@@ -4664,6 +4813,78 @@ export default async function AdminUxObserverEngagementPage({
             </article>
           ))}
         </div>
+      </section>
+
+      <section className="card grid gap-4 p-4 sm:p-5">
+        <h2 className="font-semibold text-foreground text-lg">
+          Release health alert telemetry
+        </h2>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            hint="release-health webhook events in current window"
+            label="Alert events"
+            value={`${toNumber(
+              releaseHealthAlerts.totalAlerts,
+              toNumber(kpis.releaseHealthAlertCount),
+            )}`}
+          />
+          <StatCard
+            hint="sum of first-appearance entries across alert events"
+            label="First appearances"
+            value={`${toNumber(
+              releaseHealthAlerts.firstAppearanceCount,
+              toNumber(kpis.releaseHealthFirstAppearanceCount),
+            )}`}
+          />
+          <StatCard
+            hint="unique launch-gate run ids represented in alert events"
+            label="Alerted runs"
+            value={`${toNumber(
+              releaseHealthAlerts.uniqueRuns,
+              toNumber(kpis.releaseHealthAlertedRunCount),
+            )}`}
+          />
+          <StatCard
+            hint="latest run that generated a release-health alert event"
+            label="Latest alerted run"
+            value={releaseHealthAlertLatestRunLabel}
+          />
+        </div>
+        <p className="text-muted-foreground text-xs">
+          Latest received:{' '}
+          <span className="font-semibold text-foreground">
+            {releaseHealthAlertLatestReceivedAt ?? 'n/a'}
+          </span>
+          {' | '}Run URL:{' '}
+          {typeof releaseHealthAlertLatest?.runUrl === 'string' &&
+          releaseHealthAlertLatest.runUrl.length > 0 ? (
+            <a
+              className="font-semibold text-foreground underline-offset-2 hover:underline"
+              href={releaseHealthAlertLatest.runUrl}
+            >
+              {releaseHealthAlertLatest.runUrl}
+            </a>
+          ) : (
+            <span className="font-semibold text-foreground">n/a</span>
+          )}
+        </p>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <BreakdownListCard
+            emptyLabel="No alert channel distribution in current window."
+            items={releaseHealthAlertByChannel}
+            title="First-appearance channels"
+          />
+          <BreakdownListCard
+            emptyLabel="No failure-mode distribution in current window."
+            items={releaseHealthAlertByFailureMode}
+            title="First-appearance failure modes"
+          />
+        </div>
+        <ReleaseHealthAlertHourlyTrendCard
+          emptyLabel="No release-health alert hourly trend data in current window."
+          items={releaseHealthAlertHourlyTrend}
+          title="Release-health alert hourly trend (UTC)"
+        />
       </section>
 
       <section className="card grid gap-4 p-4 sm:p-5">

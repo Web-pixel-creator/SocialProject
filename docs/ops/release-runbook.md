@@ -98,7 +98,10 @@ Canonical references:
        - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_BEARER_TOKEN` -> `Authorization: Bearer ...`
      - production default can use internal endpoint:
        - `https://api-production-7540.up.railway.app/api/admin/release-health/external-channel-alerts`
-   - `npm run release:health:schema:check`
+      - monitor admin UX telemetry after launch-gate health report:
+        - open `/admin/ux` and verify `Release health alert telemetry` reflects current run state.
+        - for healthy strict windows expect `Alert events=0`, `First appearances=0`, and no channel/failure-mode outliers.
+    - `npm run release:health:schema:check`
 2. Confirm alerts, latency, and error rates are within thresholds.
 3. Validate runtime/gateway control plane health:
    - `GET /api/admin/ai-runtime/health` reports `summary.health = "ok"` and `rolesBlocked = 0`.

@@ -2338,7 +2338,8 @@ describe('Admin API routes', () => {
     await db.query(
       `INSERT INTO ux_events (event_type, user_type, status, source, metadata, created_at)
        VALUES
-         ('draft_multimodal_glowup_error', 'system', 'invalid_query', 'api', '{"reason":"invalid_query","errorCode":"MULTIMODAL_GLOWUP_INVALID_QUERY_FIELDS"}', NOW() - INTERVAL '7 minutes')`,
+         ('draft_multimodal_glowup_error', 'system', 'invalid_query', 'api', '{"reason":"invalid_query","errorCode":"MULTIMODAL_GLOWUP_INVALID_QUERY_FIELDS"}', NOW() - INTERVAL '7 minutes'),
+         ('release_external_channel_failure_mode_alert', 'system', 'ok', 'release_health_gate_webhook', '{"label":"external-channel-failure-mode-first-appearance","run":{"id":22548544748,"number":49,"htmlUrl":"https://github.com/Web-pixel-creator/SocialProject/actions/runs/22548544748"},"firstAppearances":[{"channel":"telegram","failureMode":"ingest_http_error"},{"channel":"slack","failureMode":"telemetry_zero_accepted"}],"receivedAtUtc":"2026-03-01T17:25:44.000Z"}', NOW() - INTERVAL '5 minutes')`,
     );
 
     const response = await request(app)
@@ -2370,6 +2371,9 @@ describe('Admin API routes', () => {
     expect(response.body.kpis.payoutToStakeRatio).toBeNull();
     expect(response.body.kpis.multimodalCoverageRate).toBe(0.5);
     expect(response.body.kpis.multimodalErrorRate).toBe(0.333);
+    expect(response.body.kpis.releaseHealthAlertCount).toBe(1);
+    expect(response.body.kpis.releaseHealthFirstAppearanceCount).toBe(2);
+    expect(response.body.kpis.releaseHealthAlertedRunCount).toBe(1);
     expect(typeof response.body.kpis.observerSessionTimeSec).toBe('number');
     expect(response.body.multimodal.views).toBe(1);
     expect(response.body.multimodal.emptyStates).toBe(1);
@@ -2399,6 +2403,74 @@ describe('Admin API routes', () => {
         invalidQueryRate: 0.5,
       }),
     );
+    expect(response.body.releaseHealthAlerts).toEqual(
+      expect.objectContaining({
+        totalAlerts: 1,
+        uniqueRuns: 1,
+        firstAppearanceCount: 2,
+        latest: expect.objectContaining({
+          runId: 22548544748,
+          runNumber: 49,
+          runUrl:
+            'https://github.com/Web-pixel-creator/SocialProject/actions/runs/22548544748',
+        }),
+      }),
+    );
+    expect(response.body.releaseHealthAlerts.byChannel).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          channel: 'telegram',
+          count: 1,
+          rate: 0.5,
+        }),
+        expect.objectContaining({
+          channel: 'slack',
+          count: 1,
+          rate: 0.5,
+        }),
+      ]),
+    );
+    expect(response.body.releaseHealthAlerts.byFailureMode).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          failureMode: 'ingest_http_error',
+          count: 1,
+          rate: 0.5,
+        }),
+        expect.objectContaining({
+          failureMode: 'telemetry_zero_accepted',
+          count: 1,
+          rate: 0.5,
+        }),
+      ]),
+    );
+    const releaseHealthAlertHourlyTrend = Array.isArray(
+      response.body.releaseHealthAlerts.hourlyTrend,
+    )
+      ? response.body.releaseHealthAlerts.hourlyTrend
+      : [];
+    expect(releaseHealthAlertHourlyTrend.length).toBeGreaterThan(0);
+    const releaseHealthAlertHourlyTotals = releaseHealthAlertHourlyTrend.reduce(
+      (
+        acc: { alerts: number; firstAppearances: number },
+        bucket: any,
+      ) => ({
+        alerts: acc.alerts + Number(bucket?.alerts ?? 0),
+        firstAppearances:
+          acc.firstAppearances + Number(bucket?.firstAppearances ?? 0),
+      }),
+      {
+        alerts: 0,
+        firstAppearances: 0,
+      },
+    );
+    expect(releaseHealthAlertHourlyTotals).toEqual({
+      alerts: 1,
+      firstAppearances: 2,
+    });
+    for (const bucket of releaseHealthAlertHourlyTrend) {
+      expect(typeof bucket.hour).toBe('string');
+    }
     const multimodalHourlyTrend = Array.isArray(
       response.body.multimodal.hourlyTrend,
     )
@@ -2885,6 +2957,17 @@ describe('Admin API routes', () => {
     expect(response.body.predictionHistoryStateTelemetry).toEqual(
       expect.objectContaining({
         byScope: [],
+      }),
+    );
+    expect(response.body.releaseHealthAlerts).toEqual(
+      expect.objectContaining({
+        totalAlerts: 0,
+        uniqueRuns: 0,
+        firstAppearanceCount: 0,
+        byChannel: [],
+        byFailureMode: [],
+        hourlyTrend: [],
+        latest: null,
       }),
     );
     expect(response.body.kpis.predictionFilterSwitchShare).toBeNull();
