@@ -204,6 +204,11 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
     - [ ] Optional inputs: `runtime_draft_id`, `require_skill_markers`, `require_natural_cron_window`, `required_external_channels`.
     - [ ] Optional terminal dispatch helper (token resolution: `-Token/--token` -> `GITHUB_TOKEN/GH_TOKEN` -> `gh auth token`): `npm run release:launch:gate:dispatch`
       - [ ] Optional explicit token argument: `npm run release:launch:gate:dispatch -- -Token <github_pat>`
+      - [ ] Optional explicit workflow inputs via CLI args:
+        - [ ] `--runtime-draft-id <uuid>`
+        - [ ] `--require-skill-markers`
+        - [ ] `--require-natural-cron-window`
+        - [ ] `--required-external-channels <telegram,slack|all>`
       - [ ] Optional runtime draft input: `RELEASE_RUNTIME_DRAFT_ID=<uuid>`
       - [ ] Optional skill marker requirement: `RELEASE_REQUIRE_SKILL_MARKERS=true`
       - [ ] Optional natural cron requirement: `RELEASE_REQUIRE_NATURAL_CRON_WINDOW=true`

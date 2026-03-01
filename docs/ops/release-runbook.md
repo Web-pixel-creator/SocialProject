@@ -46,6 +46,9 @@ Canonical references:
      - Optional terminal dispatch helper for the workflow:
        - `npm run release:launch:gate:dispatch`
        - Optional explicit token argument: `npm run release:launch:gate:dispatch -- -Token <github_pat>`
+       - Optional explicit workflow inputs via CLI args:
+         - `npm run release:launch:gate:dispatch -- --runtime-draft-id <uuid> --require-skill-markers --require-natural-cron-window`
+         - `npm run release:launch:gate:dispatch -- --required-external-channels telegram,slack`
        - Token resolution order: `-Token/--token` -> `GITHUB_TOKEN/GH_TOKEN` -> `gh auth token`
        - Optional inputs via env: `RELEASE_RUNTIME_DRAFT_ID=<uuid> RELEASE_REQUIRE_SKILL_MARKERS=true RELEASE_REQUIRE_NATURAL_CRON_WINDOW=true`
        - Optional required external channels via env: `RELEASE_REQUIRED_EXTERNAL_CHANNELS=telegram,slack` (or `all`)

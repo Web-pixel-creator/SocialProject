@@ -975,3 +975,15 @@ Exit criteria:
     - `skillMarkerMultiStep.pass=true`
     - `skillMarkerMatrixChannels.pass=true`
     - `skillMarkerMatrixChannels.failedChannels=[]`.
+
+## Progress Snapshot (2026-03-01 - launch-gate dispatch helper CLI inputs)
+- Release operations UX update:
+  - `dispatch-production-launch-gate.mjs` now supports direct CLI workflow inputs (in addition to env):
+    - `--runtime-draft-id <uuid>`
+    - `--require-skill-markers`
+    - `--require-natural-cron-window`
+    - `--required-external-channels <csv|all>`
+  - shorthand `--runtime-draft-id=<uuid>` / `--required-external-channels=<csv|all>` forms added.
+  - required external channels now use the same allowed-channel validation (`telegram`, `slack`, `discord`, `all`) for both CLI and env paths.
+- Ops docs update:
+  - release checklist/runbook now document CLI-first dispatch examples.

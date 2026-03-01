@@ -6,7 +6,16 @@ const DEFAULT_WORKFLOW_REF = 'main';
 const DEFAULT_WAIT_TIMEOUT_MS = 20 * 60 * 1000;
 const DEFAULT_WAIT_POLL_MS = 5000;
 const RUN_DISCOVERY_GRACE_MS = 2 * 60 * 1000;
-const USAGE = `Usage: npm run release:launch:gate:dispatch -- [--token <value>|-Token <value>|--token=<value>|-Token=<value>]
+const EXTERNAL_CHANNELS = ['telegram', 'slack', 'discord'];
+const USAGE = `Usage: npm run release:launch:gate:dispatch -- [options]
+
+Options:
+  --token|-Token <value>                 GitHub token override
+  --runtime-draft-id <uuid>              workflow input runtime_draft_id
+  --require-skill-markers                workflow input require_skill_markers=true
+  --require-natural-cron-window          workflow input require_natural_cron_window=true
+  --required-external-channels <csv|all> workflow input required_external_channels
+  --help|-h
 
 Token resolution order:
 1) --token / -Token argument
@@ -67,8 +76,29 @@ const resolveRepoSlug = () => {
 const toErrorMessage = (error) =>
   error instanceof Error ? error.message : String(error);
 
+const parseExternalChannels = (raw, sourceLabel) => {
+  if (typeof raw !== 'string') return '';
+  const normalized = raw
+    .split(',')
+    .map((entry) => entry.trim().toLowerCase())
+    .filter((entry) => entry.length > 0);
+  if (normalized.length === 0) return '';
+  if (normalized.includes('all')) return 'all';
+  const invalid = normalized.filter((entry) => !EXTERNAL_CHANNELS.includes(entry));
+  if (invalid.length > 0) {
+    throw new Error(
+      `${sourceLabel} contains unsupported channels: ${invalid.join(', ')}. Allowed: ${EXTERNAL_CHANNELS.join(', ')} or all.`,
+    );
+  }
+  return [...new Set(normalized)].join(',');
+};
+
 const parseCliArgs = (argv) => {
   let tokenFromArg = '';
+  let runtimeDraftId = '';
+  let requireSkillMarkers;
+  let requireNaturalCronWindow;
+  let requiredExternalChannels = '';
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -101,6 +131,54 @@ const parseCliArgs = (argv) => {
       tokenFromArg = value;
       continue;
     }
+    if (arg.startsWith('--runtime-draft-id=')) {
+      const value = arg.slice('--runtime-draft-id='.length).trim();
+      if (!value) {
+        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
+      }
+      runtimeDraftId = value;
+      continue;
+    }
+    if (arg.startsWith('--required-external-channels=')) {
+      const value = arg.slice('--required-external-channels='.length).trim();
+      if (!value) {
+        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
+      }
+      requiredExternalChannels = parseExternalChannels(
+        value,
+        '--required-external-channels',
+      );
+      continue;
+    }
+    if (arg === '--runtime-draft-id') {
+      const value = (argv[index + 1] ?? '').trim();
+      if (!value) {
+        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
+      }
+      runtimeDraftId = value;
+      index += 1;
+      continue;
+    }
+    if (arg === '--require-skill-markers') {
+      requireSkillMarkers = true;
+      continue;
+    }
+    if (arg === '--require-natural-cron-window') {
+      requireNaturalCronWindow = true;
+      continue;
+    }
+    if (arg === '--required-external-channels') {
+      const value = (argv[index + 1] ?? '').trim();
+      if (!value) {
+        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
+      }
+      requiredExternalChannels = parseExternalChannels(
+        value,
+        '--required-external-channels',
+      );
+      index += 1;
+      continue;
+    }
 
     throw new Error(`Unknown argument: ${arg}\n\n${USAGE}`);
   }
@@ -115,6 +193,10 @@ const parseCliArgs = (argv) => {
   }
 
   return {
+    requireNaturalCronWindow,
+    requireSkillMarkers,
+    requiredExternalChannels,
+    runtimeDraftId,
     tokenFromArg,
   };
 };
@@ -259,18 +341,22 @@ const main = async () => {
     process.env.RELEASE_WAIT_POLL_MS,
     DEFAULT_WAIT_POLL_MS,
   );
-  const runtimeDraftId = (process.env.RELEASE_RUNTIME_DRAFT_ID ?? '').trim();
-  const requireSkillMarkers = parseBoolean(
-    process.env.RELEASE_REQUIRE_SKILL_MARKERS,
-    false,
-  );
-  const requireNaturalCronWindow = parseBoolean(
-    process.env.RELEASE_REQUIRE_NATURAL_CRON_WINDOW,
-    false,
-  );
-  const requiredExternalChannels = (
-    process.env.RELEASE_REQUIRED_EXTERNAL_CHANNELS ?? ''
-  ).trim();
+  const runtimeDraftId =
+    cli.runtimeDraftId || (process.env.RELEASE_RUNTIME_DRAFT_ID ?? '').trim();
+  const requireSkillMarkers =
+    typeof cli.requireSkillMarkers === 'boolean'
+      ? cli.requireSkillMarkers
+      : parseBoolean(process.env.RELEASE_REQUIRE_SKILL_MARKERS, false);
+  const requireNaturalCronWindow =
+    typeof cli.requireNaturalCronWindow === 'boolean'
+      ? cli.requireNaturalCronWindow
+      : parseBoolean(process.env.RELEASE_REQUIRE_NATURAL_CRON_WINDOW, false);
+  const requiredExternalChannels =
+    cli.requiredExternalChannels ||
+    parseExternalChannels(
+      process.env.RELEASE_REQUIRED_EXTERNAL_CHANNELS ?? '',
+      'RELEASE_REQUIRED_EXTERNAL_CHANNELS',
+    );
   if (requireSkillMarkers && !runtimeDraftId) {
     throw new Error(
       'RELEASE_REQUIRE_SKILL_MARKERS=true requires RELEASE_RUNTIME_DRAFT_ID to be set (draft with skill markers).',

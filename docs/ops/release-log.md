@@ -33,6 +33,32 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - dispatch helper CLI inputs for launch-gate workflow
+
+- Scope: remove env-only friction for workflow dispatch by adding explicit CLI flags to `release:launch:gate:dispatch`.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 10:09 -> 2026-03-01 10:17.
+- Changes:
+  - Updated `scripts/release/dispatch-production-launch-gate.mjs`:
+    - added CLI flags:
+      - `--runtime-draft-id <uuid>`
+      - `--require-skill-markers`
+      - `--require-natural-cron-window`
+      - `--required-external-channels <csv|all>`
+    - added `--runtime-draft-id=<uuid>` and `--required-external-channels=<csv|all>` forms,
+    - added channel-value validation for `--required-external-channels` / `RELEASE_REQUIRED_EXTERNAL_CHANNELS`.
+    - CLI values now override env values for dispatch inputs.
+  - Updated docs:
+    - `docs/ops/release-checklist.md`
+    - `docs/ops/release-runbook.md`
+- Verification:
+  - `node --check scripts/release/dispatch-production-launch-gate.mjs`: pass.
+  - `node scripts/release/dispatch-production-launch-gate.mjs --help`: pass (new options rendered).
+- Incidents:
+  - temporary network outage from local automation shell to `api.github.com` blocked live dispatch verification during this checkpoint (`fetch failed` / unable to connect remote server).
+- Follow-ups:
+  - re-run one live dispatch using CLI input flags after network connectivity restores.
+
 ### 2026-03-01 - skills-runtime matrix marker coverage in launch-gate
 
 - Scope: extend skills-runtime marker validation from single runtime probe to all matrix orchestration channels (`web`, `live_session`, runtime probe channel).
