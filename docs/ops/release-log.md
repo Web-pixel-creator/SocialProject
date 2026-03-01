@@ -33,6 +33,55 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - internal release-health webhook receiver rollout + final alert-routing sign-off
+
+- Scope: replace temporary external test webhook with internal production receiver and re-validate first-appearance alert routing end-to-end.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 17:20 -> 2026-03-01 17:26.
+- Changes:
+  - Added internal admin receiver endpoint:
+    - `POST /api/admin/release-health/external-channel-alerts`
+    - auth: `x-admin-token` (`requireAdmin`) + production CSRF gate (`x-csrf-token`).
+    - payload validation: strict allowlist + bounded fields + first-appearance normalization.
+    - persistence: stores accepted alerts to `ux_events` (`event_type=release_external_channel_failure_mode_alert`, `source=release_health_gate_webhook`).
+  - Updated release-health alert sender:
+    - webhook POST now supports protected receiver headers from env:
+      - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_ADMIN_TOKEN` -> `x-admin-token`
+      - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_CSRF_TOKEN` -> `x-csrf-token`
+      - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_BEARER_TOKEN` -> `Authorization: Bearer ...`.
+  - Updated `Release Health Gate` workflow env wiring:
+    - passes `RELEASE_ADMIN_API_TOKEN` and `RELEASE_CSRF_TOKEN` into post-release health execution for protected webhook delivery.
+  - Set repository secret:
+    - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_URL=https://api-production-7540.up.railway.app/api/admin/release-health/external-channel-alerts`.
+- Validation matrix:
+  - controlled negative launch-gate run `#48` (`22548497613`): expected `failure`.
+    - downstream `Release Health Gate` run `#206` (`22548516043`) captured:
+      - `workflow.profile=launch_gate`
+      - `firstAppearanceAlert.triggered=true`
+      - `firstAppearanceAlert.webhookUrlConfigured=true`
+      - `firstAppearanceAlert.webhookAttempted=true`
+      - `firstAppearanceAlert.webhookDelivered=true`
+      - `firstAppearanceAlert.webhookStatusCode=202`.
+  - strict healthy launch-gate run `#49` (`22548544748`): `success`.
+    - downstream `Release Health Gate` run `#208` (`22548565685`) captured:
+      - `workflow.profile=launch_gate`
+      - `externalChannelFailureModes.pass=true`
+      - `firstAppearanceAlert.triggered=false`
+      - `firstAppearanceAlert.webhookUrlConfigured=true`
+      - `firstAppearanceAlert.webhookAttempted=false`.
+- Local verification:
+  - `npm run lint`: pass.
+  - `npm --workspace apps/api run build`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `node --check scripts/release/post-release-health-report.mjs`: pass.
+  - `npm --silent run release:health:report -- 22548544748 --workflow-file production-launch-gate.yml --profile launch-gate --json --strict`: pass.
+  - `npm --silent run release:health:schema:check -- artifacts/release/post-release-health-run-22548544748.json`: pass.
+  - `npm --workspace apps/api run test -- src/__tests__/admin.integration.spec.ts --runInBand`: blocked locally (Docker engine not running for Postgres/Redis dependency bootstrap).
+- Incidents:
+  - none.
+- Follow-ups:
+  - monitor `release_external_channel_failure_mode_alert` volume in admin UX telemetry and add threshold dashboard card if alert frequency increases.
+
 ### 2026-03-01 - strict launch-gate baseline revalidation after workflow-run automation
 
 - Scope: confirm strict launch-gate and downstream `Release Health Gate` automation stay green after workflow-run integration changes.

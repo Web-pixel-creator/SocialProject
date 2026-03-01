@@ -1286,3 +1286,31 @@ Exit criteria:
 - Remaining sign-off gap:
   - configure production `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_URL`.
   - execute one controlled negative drill and capture delivery evidence against production incident endpoint.
+
+## Progress Snapshot (2026-03-01 - internal production alert receiver sign-off completed)
+- Internal production alert receiver rollout:
+  - added protected endpoint `POST /api/admin/release-health/external-channel-alerts` (admin token + CSRF) to ingest `firstAppearanceAlert` payloads and persist them as UX telemetry events:
+    - `event_type=release_external_channel_failure_mode_alert`
+    - `source=release_health_gate_webhook`.
+- Release Health Gate webhook auth delivery update:
+  - post-release alert sender now supports protected webhook headers:
+    - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_ADMIN_TOKEN`
+    - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_CSRF_TOKEN`
+    - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_BEARER_TOKEN`.
+  - workflow `release-health-gate.yml` now forwards `RELEASE_ADMIN_API_TOKEN` + `RELEASE_CSRF_TOKEN` to post-release gate script.
+  - production secret configured:
+    - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_URL=https://api-production-7540.up.railway.app/api/admin/release-health/external-channel-alerts`.
+- End-to-end validation:
+  - controlled negative launch-gate run `#48` (`22548497613`) triggered `Release Health Gate` run `#206` (`22548516043`) with:
+    - `firstAppearanceAlert.triggered=true`
+    - `webhookUrlConfigured=true`
+    - `webhookAttempted=true`
+    - `webhookDelivered=true`
+    - `webhookStatusCode=202`.
+  - strict healthy launch-gate run `#49` (`22548544748`) triggered `Release Health Gate` run `#208` (`22548565685`) with:
+    - `externalChannelFailureModes.pass=true`
+    - `firstAppearanceAlert.triggered=false`
+    - `webhookUrlConfigured=true`
+    - `webhookAttempted=false`.
+- Outcome:
+  - previously open webhook sign-off gap is now closed using an internal production-managed receiver path (no external `httpbin` dependency).
