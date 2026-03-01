@@ -17,6 +17,14 @@ const DEFAULTS = {
   webService: process.env.RAILWAY_WEB_SERVICE || 'SocialProject',
 };
 
+const RELEASE_FALLBACK_ENV = {
+  adminToken: 'RELEASE_ADMIN_API_TOKEN',
+  apiBaseUrl: 'RELEASE_API_BASE_URL',
+  csrfToken: 'RELEASE_CSRF_TOKEN',
+  webBaseUrl: 'RELEASE_WEB_BASE_URL',
+  webhookSecret: 'RELEASE_AGENT_GATEWAY_WEBHOOK_SECRET',
+};
+
 const ARTIFACTS = {
   adapters: 'artifacts/release/production-agent-gateway-adapters.json',
   adminHealth: 'artifacts/release/production-admin-health-summary.json',
@@ -278,25 +286,48 @@ const main = async () => {
     const services = Array.isArray(gate?.services) ? gate.services : [];
     const findService = (name) =>
       services.find((s) => (s.name || '').trim().toLowerCase() === name.trim().toLowerCase());
-    const apiBaseUrl = o.apiBaseUrl || findService(o.apiService)?.publicBaseUrl;
-    const webBaseUrl = o.webBaseUrl || findService(o.webService)?.publicBaseUrl;
+    const apiBaseUrl =
+      o.apiBaseUrl ||
+      process.env[RELEASE_FALLBACK_ENV.apiBaseUrl] ||
+      findService(o.apiService)?.publicBaseUrl;
+    const webBaseUrl =
+      o.webBaseUrl ||
+      process.env[RELEASE_FALLBACK_ENV.webBaseUrl] ||
+      findService(o.webService)?.publicBaseUrl;
     if (!apiBaseUrl || !webBaseUrl) throw new Error('Unable to resolve production base URLs');
 
-    const vars = JSON.parse(
-      runRailway([
-        'variable',
-        'list',
-        '--service',
-        o.apiService,
-        '--environment',
-        o.environment,
-        '--json',
-      ]),
-    );
-    const adminToken = String(vars.ADMIN_API_TOKEN || '').trim();
-    const csrfToken = String(vars.CSRF_TOKEN || '').trim();
-    const webhookSecret = String(vars.AGENT_GATEWAY_WEBHOOK_SECRET || '').trim();
-    if (!adminToken || !csrfToken || !webhookSecret) throw new Error('Missing required API secrets');
+    let adminToken = String(
+      process.env[RELEASE_FALLBACK_ENV.adminToken] || '',
+    ).trim();
+    let csrfToken = String(process.env[RELEASE_FALLBACK_ENV.csrfToken] || '').trim();
+    let webhookSecret = String(
+      process.env[RELEASE_FALLBACK_ENV.webhookSecret] || '',
+    ).trim();
+    if (!adminToken || !csrfToken || !webhookSecret) {
+      const vars = JSON.parse(
+        runRailway([
+          'variable',
+          'list',
+          '--service',
+          o.apiService,
+          '--environment',
+          o.environment,
+          '--json',
+        ]),
+      );
+      adminToken ||= String(vars.ADMIN_API_TOKEN || '').trim();
+      csrfToken ||= String(vars.CSRF_TOKEN || '').trim();
+      webhookSecret ||= String(vars.AGENT_GATEWAY_WEBHOOK_SECRET || '').trim();
+    }
+    if (!adminToken || !csrfToken || !webhookSecret) {
+      const missing = [];
+      if (!adminToken) missing.push('ADMIN_API_TOKEN');
+      if (!csrfToken) missing.push('CSRF_TOKEN');
+      if (!webhookSecret) missing.push('AGENT_GATEWAY_WEBHOOK_SECRET');
+      throw new Error(
+        `Missing required API secrets: ${missing.join(', ')}. Provide Railway access or set ${RELEASE_FALLBACK_ENV.adminToken}/${RELEASE_FALLBACK_ENV.csrfToken}/${RELEASE_FALLBACK_ENV.webhookSecret}.`,
+      );
+    }
 
     if (!o.skipSmoke) {
       run('node', [path.resolve('scripts/release/smoke-check.mjs')], {

@@ -31,6 +31,11 @@ jobs:
       RAILWAY_ENVIRONMENT_NAME: ${{ vars.RAILWAY_ENVIRONMENT_NAME }}
       RAILWAY_WEB_SERVICE: ${{ vars.RAILWAY_WEB_SERVICE }}
       RAILWAY_API_SERVICE: ${{ vars.RAILWAY_API_SERVICE }}
+      RELEASE_API_BASE_URL: ${{ vars.RELEASE_API_BASE_URL }}
+      RELEASE_WEB_BASE_URL: ${{ vars.RELEASE_WEB_BASE_URL }}
+      RELEASE_ADMIN_API_TOKEN: ${{ secrets.RELEASE_ADMIN_API_TOKEN }}
+      RELEASE_CSRF_TOKEN: ${{ secrets.RELEASE_CSRF_TOKEN }}
+      RELEASE_AGENT_GATEWAY_WEBHOOK_SECRET: ${{ secrets.RELEASE_AGENT_GATEWAY_WEBHOOK_SECRET }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -38,36 +43,30 @@ jobs:
       - name: Bootstrap Node CI tooling
         uses: ./.github/actions/node-ci-bootstrap
 
-      - name: Validate Railway CI context
+      - name: Validate launch-gate CI context
         shell: bash
         run: |
           set -euo pipefail
           missing=()
-          [[ -z "${RAILWAY_API_TOKEN:-}" ]] && missing+=("RAILWAY_API_TOKEN (secret) or RAILWAY_TOKEN (legacy secret)")
-          [[ -z "${RAILWAY_PROJECT_ID:-}" ]] && missing+=("RAILWAY_PROJECT_ID (variable)")
-          [[ -z "${RAILWAY_ENVIRONMENT_ID:-}" ]] && missing+=("RAILWAY_ENVIRONMENT_ID (variable)")
+          [[ -z "${RELEASE_API_BASE_URL:-}" ]] && missing+=("RELEASE_API_BASE_URL (variable)")
+          [[ -z "${RELEASE_WEB_BASE_URL:-}" ]] && missing+=("RELEASE_WEB_BASE_URL (variable)")
+          [[ -z "${RELEASE_ADMIN_API_TOKEN:-}" ]] && missing+=("RELEASE_ADMIN_API_TOKEN (secret)")
+          [[ -z "${RELEASE_CSRF_TOKEN:-}" ]] && missing+=("RELEASE_CSRF_TOKEN (secret)")
+          [[ -z "${RELEASE_AGENT_GATEWAY_WEBHOOK_SECRET:-}" ]] && missing+=("RELEASE_AGENT_GATEWAY_WEBHOOK_SECRET (secret)")
           if (( ${#missing[@]} > 0 )); then
-            echo "Missing required Railway CI context:"
+            echo "Missing required launch-gate CI context:"
             for item in "${missing[@]}"; do
               echo " - ${item}"
             done
             exit 1
           fi
 
-      - name: Link Railway project/environment
-        shell: bash
-        run: |
-          set -euo pipefail
-          npx -y @railway/cli link \
-            --project "${RAILWAY_PROJECT_ID}" \
-            --environment "${RAILWAY_ENVIRONMENT_ID}"
-
       - name: Run production launch gate
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p artifacts/release
-          args=(--strict --json)
+          args=(--strict --json --skip-railway-gate --api-base-url "${RELEASE_API_BASE_URL}" --web-base-url "${RELEASE_WEB_BASE_URL}")
           if [[ "${{ inputs.require_skill_markers }}" == "true" ]]; then
             args+=(--require-skill-markers)
           fi

@@ -193,7 +193,10 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
     - [ ] `npm run release:launch:gate:production:skills`
     - [ ] JSON variant: `npm run release:launch:gate:production:skills:json`
   - [ ] Optional CI workflow_dispatch path: `Production Launch Gate` workflow (`.github/workflows/production-launch-gate.yml`)
-    - [ ] Ensure secrets/vars are configured before dispatch: `RAILWAY_API_TOKEN` (secret, recommended; `RAILWAY_TOKEN` supported as legacy fallback), `RAILWAY_PROJECT_ID` (variable), `RAILWAY_ENVIRONMENT_ID` (variable).
+    - [ ] Ensure launch-gate secrets/vars are configured before dispatch:
+      - [ ] Variables: `RELEASE_API_BASE_URL`, `RELEASE_WEB_BASE_URL`
+      - [ ] Secrets: `RELEASE_ADMIN_API_TOKEN`, `RELEASE_CSRF_TOKEN`, `RELEASE_AGENT_GATEWAY_WEBHOOK_SECRET`
+      - [ ] Optional Railway compatibility context: `RAILWAY_API_TOKEN`/`RAILWAY_TOKEN`, `RAILWAY_PROJECT_ID`, `RAILWAY_ENVIRONMENT_ID`
     - [ ] Optional inputs: `runtime_draft_id`, `require_skill_markers`.
     - [ ] Optional terminal dispatch helper (token resolution: `-Token/--token` -> `GITHUB_TOKEN/GH_TOKEN` -> `gh auth token`): `npm run release:launch:gate:dispatch`
       - [ ] Optional explicit token argument: `npm run release:launch:gate:dispatch -- -Token <github_pat>`

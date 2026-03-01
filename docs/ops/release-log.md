@@ -33,6 +33,27 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - launch-gate CI fallback from Railway token to RELEASE context
+
+- Scope: unblock production launch-gate workflow_dispatch when Railway API token linkage fails in CI (`railway link unauthorized`).
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 06:25 -> 2026-03-01 06:40.
+- Changes:
+  - Updated `.github/workflows/production-launch-gate.yml`:
+    - removed mandatory `railway link` step from CI path,
+    - now validates `RELEASE_API_BASE_URL`, `RELEASE_WEB_BASE_URL`, `RELEASE_ADMIN_API_TOKEN`, `RELEASE_CSRF_TOKEN`, `RELEASE_AGENT_GATEWAY_WEBHOOK_SECRET`,
+    - runs gate with `--skip-railway-gate --api-base-url ... --web-base-url ...`.
+  - Updated `scripts/release/production-launch-gate.mjs`:
+    - supports env fallback for API/Web base URLs and API secrets via `RELEASE_*`,
+    - keeps Railway variable lookup as fallback when `RELEASE_*` values are absent.
+  - Updated release docs/checklist for the new CI context requirements.
+- Verification:
+  - pending workflow rerun after setting `RELEASE_*` secrets/vars in repository settings.
+- Incidents:
+  - none.
+- Follow-ups:
+  - keep Railway token path as optional strict infra gate and rotate leaked/invalid tokens.
+
 ### 2026-03-01 - dispatch token fallback + Railway secret compatibility
 
 - Scope: harden local workflow dispatch auth and align production launch-gate CI with `RAILWAY_API_TOKEN` as primary secret.
