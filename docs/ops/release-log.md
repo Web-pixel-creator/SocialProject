@@ -33,6 +33,39 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - alert-risk escalation triage after strict launch-gate run #53
+
+- Scope: execute incident triage for sustained `releaseHealthAlertTelemetry.escalationTriggered=true` and set strict-mode decision window.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 18:31 -> 2026-03-01 18:36.
+- Execution:
+  - Applied workflow env wiring for alert-risk controls in `Release Health Gate`:
+    - `RELEASE_HEALTH_ALERT_RISK_ENABLED`
+    - `RELEASE_HEALTH_ALERT_RISK_WINDOW_HOURS`
+    - `RELEASE_HEALTH_ALERT_RISK_ESCALATION_STREAK`
+    - `RELEASE_HEALTH_ALERT_RISK_STRICT`
+  - Dispatched strict `Production Launch Gate` run `#53` (`22549817562`) with `required_external_channels=all`.
+  - Verified downstream `Release Health Gate` run `#221` (`22549833993`) artifacts.
+- Validation:
+  - launch-gate run `#53` completed with `success`.
+  - downstream health summary confirms alert-risk check is active in workflow context:
+    - `releaseHealthAlertTelemetry.evaluated=true`
+    - `status=critical`
+    - `counts.alertEvents=1`, `counts.firstAppearances=3`, `counts.alertedRuns=1`
+    - `consecutiveSuccessfulRunStreak=5`
+    - `escalationTriggered=true`.
+  - Correlation check on live `/admin/ux`:
+    - latest alerted run remains `#48` (failed controlled drill run `22548497613`, completed `2026-03-01 17:22:18 UTC`).
+    - latest received timestamp remains `2026-03-01T17:23:02.118Z`.
+    - at triage time (`2026-03-01 18:35:44 UTC`) alert age is ~`1.21h`; current 24h risk window expires at `2026-03-02 17:23:02 UTC`.
+- Triage decision:
+  - treat current escalation as expected residual signal from historical controlled drill event inside the active 24h window, not as a new launch-gate regression.
+  - keep `RELEASE_HEALTH_ALERT_RISK_STRICT=false` until after `2026-03-02 17:23:02 UTC`, then re-run strict launch-gate and reassess.
+- Incidents:
+  - none.
+- Follow-ups:
+  - after window expiry (`2026-03-02 17:23:02 UTC`), run strict launch-gate again and confirm `releaseHealthAlertTelemetry.status=healthy` and `escalationTriggered=false`; only then consider enabling `RELEASE_HEALTH_ALERT_RISK_STRICT=true`.
+
 ### 2026-03-01 - release-health alert-risk automation in post-release health gate
 
 - Scope: automate admin UX alert-risk evaluation in launch-gate post-release health reports and trigger advisory escalation signal on sustained non-healthy windows.
