@@ -885,3 +885,15 @@ Exit criteria:
 - Verification:
   - launch-gate profile strict check passed on run `#18` (`22540039019`) with required jobs/artifacts `1/1` and `9/9`.
   - default CI profile strict check remains green on run `#469` (`22482957944`) with required jobs/artifacts `5/5` and `5/5`.
+
+## Progress Snapshot (2026-03-01 - external connector fallback probe instrumentation)
+- Launch-gate ingest coverage update:
+  - `production-launch-gate.mjs` ingest stage now supports connector-profile-driven external channel fallback probes for `telegram`, `slack`, `discord`.
+  - for each configured channel profile, gate sends signed ingest payload without explicit `externalSessionId` and validates persisted session fallback id format via admin sessions API.
+  - launch summary now includes dedicated check `ingestExternalChannelFallback`, and ingest artifact now includes `externalChannelFallback` details (`configuredChannels`, `checks`, `reason`, `skipped`).
+- Ops expectations update:
+  - release checklist/runbook now require `ingestExternalChannelFallback.pass=true` when external channel profiles are configured and allow explicit `skipped=true` when they are not configured.
+- Revalidation:
+  - strict launch-gate run `#20` (`22540366264`) passed with new check present:
+    - `ingestExternalChannelFallback.pass=true`
+    - `ingestExternalChannelFallback.skipped=true` (no `telegram/slack/discord` profiles configured in current production profile map).

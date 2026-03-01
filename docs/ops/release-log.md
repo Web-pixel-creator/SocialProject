@@ -33,6 +33,37 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - external-channel fallback probe in launch-gate + strict run #20
+
+- Scope: extend production launch-gate ingest probe with connector-profile-driven external channel fallback verification for Telegram/Slack/Discord.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 09:18 -> 2026-03-01 09:21.
+- Changes:
+  - Updated `scripts/release/production-launch-gate.mjs`:
+    - ingest probe now resolves configured connector profiles for `telegram/slack/discord` (when present),
+    - for each configured channel profile, gate sends signed ingest event without explicit `externalSessionId` and verifies persisted session external id fallback (`telegram_chat:*`, `slack_channel:*`, `discord_channel:*`),
+    - added summary check `ingestExternalChannelFallback` and detailed `externalChannelFallback` block in `production-agent-gateway-ingest-probe.json`,
+    - when no configured external channel profiles are present, check is explicit `skipped=true` with reason.
+  - Updated release docs:
+    - `docs/ops/release-checklist.md`
+    - `docs/ops/release-runbook.md`
+- Verification:
+  - `node --check scripts/release/production-launch-gate.mjs`: pass.
+  - `npm run release:launch:gate:dispatch` with strict matrix inputs:
+    - `RELEASE_RUNTIME_DRAFT_ID=3fefc86d-eb94-42f2-8c97-8b57eff8944e`
+    - `RELEASE_REQUIRE_SKILL_MARKERS=true`
+    - `RELEASE_REQUIRE_NATURAL_CRON_WINDOW=true`
+  - Workflow result: run `#20` (id `22540366264`) `success`.
+  - Workflow URL: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/22540366264`
+  - Launch gate summary check:
+    - `ingestExternalChannelFallback.pass=true`
+    - `ingestExternalChannelFallback.skipped=true`
+    - `configuredChannels=[]`
+- Incidents:
+  - none.
+- Follow-ups:
+  - configure at least one production connector profile for `telegram/slack/discord` to move check from `skipped` to active channel verification.
+
 ### 2026-03-01 - post-release health run #18 (id 22540039019)
 
 - Source workflow run: #18 (https://github.com/Web-pixel-creator/SocialProject/actions/runs/22540039019).
