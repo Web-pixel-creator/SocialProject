@@ -1073,3 +1073,17 @@ Exit criteria:
 - Health profile revalidation:
   - `npm run release:health:report -- 22542439669 --workflow-file production-launch-gate.yml --profile launch-gate --json --strict`: pass (`requiredJobs=1/1`, `requiredArtifacts=9/9`).
   - `npm run release:health:schema:check -- artifacts/release/post-release-health-run-22542439669.json`: pass.
+
+## Progress Snapshot (2026-03-01 - smoke diff regression check after CI recovery)
+- Release smoke comparison:
+  - compared prior successful CI baseline run `#469` (`22482957944`) with recovered CI run `#524` (`22542195730`):
+    - `npm run release:smoke:diff -- 22482957944 22542195730`
+- Diff outcome:
+  - overall status remained green (`pass -> pass`),
+  - step coverage unchanged (`19 -> 19`),
+  - failed steps unchanged (`0 -> 0`),
+  - pass/fail regressions: none.
+- Evidence:
+  - diff report saved to `artifacts/release/smoke-diff-22482957944-vs-22542195730.json`.
+- Observation:
+  - candidate total smoke duration increased (~`+3600ms`) without functional regression; monitor latency trend via production observability.

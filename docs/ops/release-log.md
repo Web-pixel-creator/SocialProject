@@ -33,6 +33,28 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - smoke diff validation (CI run #469 vs #524)
+
+- Scope: compare release-smoke behavior against previous successful CI baseline after CI/launch-gate recovery.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 11:32 -> 2026-03-01 11:33.
+- Changes:
+  - Executed smoke diff:
+    - `npm run release:smoke:diff -- 22482957944 22542195730`
+- Verification:
+  - overall result: `pass -> pass`.
+  - step count unchanged: `19 -> 19`.
+  - failed steps unchanged: `0 -> 0`.
+  - pass/fail regressions: none.
+  - diff artifact:
+    - `artifacts/release/smoke-diff-22482957944-vs-22542195730.json`.
+- Notes:
+  - duration increased in candidate run (`+3600.33ms` total), mostly on web-home, draft-detail, and health checks; functional outcome unchanged.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: monitor p95 latency trend in production observability dashboards for matching drift.
+
 ### 2026-03-01 - strict launch-gate all-flags matrix pass
 
 - Scope: validate full strict launch-gate matrix in one production run (`skill markers + natural cron window + required external channels`).
