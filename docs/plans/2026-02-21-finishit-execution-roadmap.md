@@ -825,6 +825,7 @@ Exit criteria:
   - in `--strict` mode this check is required (`connectorProfilesSnapshot.pass=true`), while non-strict mode records it as informational.
   - added optional strict cron-window assertion (`--require-natural-cron-window` / `RELEASE_REQUIRE_NATURAL_CRON_WINDOW=true`) to require that expected cron jobs have successful runs for the current UTC date.
   - wired workflow/dispatch inputs for cron-window strictness (`require_natural_cron_window` in `.github/workflows/production-launch-gate.yml`, `RELEASE_REQUIRE_NATURAL_CRON_WINDOW=true` in `dispatch-production-launch-gate.mjs`).
+  - fixed launch dispatch run-discovery logic to always wait on a newly created workflow run (baseline run-id filtering), preventing false positives from reusing immediately previous successful runs.
 - Coverage update:
   - extended skills-loader coverage in `apps/api/src/__tests__/agent-skills.unit.spec.ts` for runtime auto-load on/off behavior,
   - added connector-profile parser coverage in `apps/api/src/__tests__/agent-gateway-ingest-connector-profile.unit.spec.ts`,

@@ -279,6 +279,32 @@ const main = async () => {
   const dispatchUrl = `${baseApiUrl}/actions/workflows/${encodeURIComponent(
     workflowFile,
   )}/dispatches`;
+  const listRunsUrl = `${baseApiUrl}/actions/workflows/${encodeURIComponent(
+    workflowFile,
+  )}/runs?event=workflow_dispatch&branch=${encodeURIComponent(workflowRef)}&per_page=20`;
+
+  let baselineRunIds = new Set();
+  try {
+    const baseline = await githubRequest({
+      token,
+      method: 'GET',
+      url: listRunsUrl,
+    });
+    const baselineRuns = Array.isArray(baseline?.workflow_runs)
+      ? baseline.workflow_runs
+      : [];
+    baselineRunIds = new Set(
+      baselineRuns
+        .map((run) => Number(run?.id))
+        .filter((id) => Number.isFinite(id)),
+    );
+  } catch (error) {
+    process.stderr.write(
+      `Warning: unable to read baseline workflow runs before dispatch (${toErrorMessage(
+        error,
+      )}). Falling back to timestamp-based discovery.\n`,
+    );
+  }
 
   const inputs = {};
   if (runtimeDraftId) {
@@ -320,10 +346,6 @@ const main = async () => {
     return;
   }
 
-  const listRunsUrl = `${baseApiUrl}/actions/workflows/${encodeURIComponent(
-    workflowFile,
-  )}/runs?event=workflow_dispatch&branch=${encodeURIComponent(workflowRef)}&per_page=20`;
-
   const findRun = async () => {
     const data = await githubRequest({
       token,
@@ -332,6 +354,10 @@ const main = async () => {
     });
     const runs = Array.isArray(data?.workflow_runs) ? data.workflow_runs : [];
     for (const run of runs) {
+      const runId = Number(run?.id);
+      if (Number.isFinite(runId) && baselineRunIds.has(runId)) {
+        continue;
+      }
       const createdAtMs = Date.parse(run.created_at ?? '');
       if (Number.isNaN(createdAtMs)) {
         continue;
