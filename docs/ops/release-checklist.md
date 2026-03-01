@@ -201,7 +201,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
       - [ ] Variables: `RELEASE_API_BASE_URL`, `RELEASE_WEB_BASE_URL`
       - [ ] Secrets: `RELEASE_ADMIN_API_TOKEN`, `RELEASE_CSRF_TOKEN`, `RELEASE_AGENT_GATEWAY_WEBHOOK_SECRET`
       - [ ] Optional Railway compatibility context: `RAILWAY_API_TOKEN`/`RAILWAY_TOKEN`, `RAILWAY_PROJECT_ID`, `RAILWAY_ENVIRONMENT_ID`
-    - [ ] Optional inputs: `runtime_draft_id`, `require_skill_markers`, `require_natural_cron_window`, `required_external_channels`.
+    - [ ] Optional inputs: `runtime_draft_id`, `require_skill_markers`, `require_natural_cron_window`, `required_external_channels`, `allow_failure_drill`, `webhook_secret_override`.
     - [ ] Optional terminal dispatch helper (token resolution: `-Token/--token` -> `GITHUB_TOKEN/GH_TOKEN` -> `gh auth token`): `npm run release:launch:gate:dispatch`
       - [ ] Optional explicit token argument: `npm run release:launch:gate:dispatch -- -Token <github_pat>`
       - [ ] Optional explicit workflow inputs via CLI args:
@@ -209,10 +209,15 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
         - [ ] `--require-skill-markers`
         - [ ] `--require-natural-cron-window`
         - [ ] `--required-external-channels <telegram,slack|all>`
+        - [ ] `--allow-failure-drill`
+        - [ ] `--webhook-secret-override <value>` (requires `--allow-failure-drill`; drill-only)
       - [ ] Optional runtime draft input: `RELEASE_RUNTIME_DRAFT_ID=<uuid>`
       - [ ] Optional skill marker requirement: `RELEASE_REQUIRE_SKILL_MARKERS=true`
       - [ ] Optional natural cron requirement: `RELEASE_REQUIRE_NATURAL_CRON_WINDOW=true`
       - [ ] Optional required external channels: `RELEASE_REQUIRED_EXTERNAL_CHANNELS=telegram,slack` (or `all`)
+      - [ ] Optional controlled drill toggles:
+        - [ ] `RELEASE_ALLOW_FAILURE_DRILL=true`
+        - [ ] `RELEASE_WEBHOOK_SECRET_OVERRIDE=<value>` (requires `RELEASE_ALLOW_FAILURE_DRILL=true`)
       - [ ] If `RELEASE_REQUIRE_SKILL_MARKERS=true`, `RELEASE_RUNTIME_DRAFT_ID` is mandatory.
   - [ ] Confirm summary artifact: `artifacts/release/production-launch-gate-summary.json`
   - [ ] Confirm health summary artifact: `artifacts/release/production-launch-gate-health-summary.json`

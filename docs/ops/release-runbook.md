@@ -49,9 +49,11 @@ Canonical references:
        - Optional explicit workflow inputs via CLI args:
          - `npm run release:launch:gate:dispatch -- --runtime-draft-id <uuid> --require-skill-markers --require-natural-cron-window`
          - `npm run release:launch:gate:dispatch -- --required-external-channels telegram,slack`
+         - controlled negative drill: `npm run release:launch:gate:dispatch -- --required-external-channels all --allow-failure-drill --webhook-secret-override <dummy-value>`
        - Token resolution order: `-Token/--token` -> `GITHUB_TOKEN/GH_TOKEN` -> `gh auth token`
        - Optional inputs via env: `RELEASE_RUNTIME_DRAFT_ID=<uuid> RELEASE_REQUIRE_SKILL_MARKERS=true RELEASE_REQUIRE_NATURAL_CRON_WINDOW=true`
        - Optional required external channels via env: `RELEASE_REQUIRED_EXTERNAL_CHANNELS=telegram,slack` (or `all`)
+       - Optional drill inputs via env (drill-only): `RELEASE_ALLOW_FAILURE_DRILL=true RELEASE_WEBHOOK_SECRET_OVERRIDE=<value>`
        - When `RELEASE_REQUIRE_SKILL_MARKERS=true`, `RELEASE_RUNTIME_DRAFT_ID` is required and must point to a draft with skill markers.
    - Review summary: `artifacts/release/production-launch-gate-summary.json`
    - Launch gate now asserts required smoke step set (`api.health`, draft/PR/search API path, `web.home`, `web.feed`, `web.search`, `web.draft.detail`) via `smokeRequiredSteps.pass=true`.
@@ -85,6 +87,7 @@ Canonical references:
      - `externalChannelFailureModes.pass=true`
      - `externalChannelFailureModes.nonPassModes=[]`
      - defaults: `windowSize=3`, `minimumRuns=1` (override via `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_WINDOW` and `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_MIN_RUNS`).
+     - trend baseline uses successful previous runs plus the current analyzed run (so previous controlled-failure drills do not keep healthy runs red).
    - First non-pass appearance hook:
      - health report emits `externalChannelFailureModes.firstAppearanceAlert` with triage entries (`channel`, `failureMode`, `runId`),
      - optional webhook delivery can be enabled via `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_URL` (CI secret) with timeout override `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_TIMEOUT_MS`.

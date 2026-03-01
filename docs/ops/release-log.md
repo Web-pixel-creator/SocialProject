@@ -33,6 +33,44 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - controlled negative drill + first-appearance webhook validation
+
+- Scope: execute safe negative launch-gate drill to validate first-appearance alert delivery end-to-end without rotating production secrets.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 16:52 -> 2026-03-01 17:10.
+- Changes:
+  - Added drill-only workflow inputs in `production-launch-gate.yml`:
+    - `allow_failure_drill`
+    - `webhook_secret_override` (guarded: requires `allow_failure_drill=true`).
+  - Extended dispatch helper `release:launch:gate:dispatch` with matching CLI/env inputs:
+    - `--allow-failure-drill`
+    - `--webhook-secret-override <value>`
+    - env equivalents: `RELEASE_ALLOW_FAILURE_DRILL`, `RELEASE_WEBHOOK_SECRET_OVERRIDE`.
+  - Updated rolling trend semantics in post-release health:
+    - previous failed runs are excluded from baseline window (current run still always analyzed), preventing drill failures from poisoning subsequent strict healthy checks.
+- Drill execution:
+  - Controlled negative run `#43` (`22547872597`) dispatched with:
+    - `--allow-failure-drill`
+    - `--webhook-secret-override drill-invalid-secret`
+    - strict matrix inputs (`runtime_draft_id` + `require_skill_markers` + `require_natural_cron_window` + `required_external_channels=all`).
+  - Run `#43` failed as expected and produced external trace `failureMode=ingest_http_error` for required channels.
+- Alert-hook validation:
+  - `npm --silent run release:health:report -- 22547872597 --profile launch-gate --json` with `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_URL=https://httpbin.org/post`:
+    - `externalChannelFailureModes.firstAppearanceAlert.triggered=true`
+    - webhook delivery confirmed: `webhookAttempted=true`, `webhookDelivered=true`, `webhookStatusCode=200`.
+- Post-drill sanity:
+  - strict normal run `#44` (`22547906409`) succeeded.
+  - strict health report for run `#44` now passes with cleaned baseline semantics (`nonPassModes=[]`, `firstAppearanceAlert.triggered=false`).
+- Verification:
+  - `npm run lint`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm --silent run release:health:schema:check -- artifacts/release/post-release-health-run-22547872597.json`: pass.
+  - `npm --silent run release:health:schema:check -- artifacts/release/post-release-health-run-22547906409.json`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - configure `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_URL` to production incident endpoint (PagerDuty/Slack webhook bridge) for CI automation path.
+
 ### 2026-03-01 - first-appearance alert hook for external-channel failure modes
 
 - Scope: add automated first-appearance alert hook (`channel + mode + run id`) for launch-gate rolling failure-mode trend window.

@@ -1216,5 +1216,28 @@ Exit criteria:
     - `firstAppearanceAlert.triggered=false`
     - `firstAppearanceAlert.webhookAttempted=false`.
   - `npm --silent run release:health:schema:check -- artifacts/release/post-release-health-run-22547210842.json`: pass.
+
+## Progress Snapshot (2026-03-01 - controlled negative drill + webhook delivery validation)
+- Controlled drill capability:
+  - production launch-gate workflow now supports guarded drill-only inputs:
+    - `allow_failure_drill`
+    - `webhook_secret_override` (requires `allow_failure_drill=true`).
+  - dispatch helper now supports matching CLI/env knobs:
+    - `--allow-failure-drill`
+    - `--webhook-secret-override`
+    - `RELEASE_ALLOW_FAILURE_DRILL`
+    - `RELEASE_WEBHOOK_SECRET_OVERRIDE`.
+- Execution evidence:
+  - controlled negative run `#43` (`22547872597`) intentionally failed with external-channel `failureMode=ingest_http_error` for required channels.
+  - alert-hook delivery validated against `https://httpbin.org/post`:
+    - `firstAppearanceAlert.triggered=true`
+    - `webhookAttempted=true`
+    - `webhookDelivered=true`
+    - `webhookStatusCode=200`.
+- Baseline stability adjustment:
+  - rolling trend baseline now ignores previous failed runs (current run still always analyzed), so controlled drills do not keep subsequent healthy strict checks red.
+- Post-drill sanity:
+  - strict normal run `#44` (`22547906409`) passed.
+  - strict launch-gate health report for run `#44` passed (`nonPassModes=[]`, `firstAppearanceAlert.triggered=false`).
 - Next increment:
-  - connect webhook target to incident-management endpoint and validate delivery path on controlled negative launch-gate run.
+  - wire `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_URL` to production incident-management endpoint and validate delivery in CI automation path.

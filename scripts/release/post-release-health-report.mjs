@@ -806,6 +806,12 @@ const analyzeExternalChannelFailureModeTrend = async ({
       if (trend.analyzedRuns.length >= windowSize) {
         break;
       }
+      if (
+        Number(candidate.id) !== Number(currentRun.id) &&
+        candidate.conclusion !== 'success'
+      ) {
+        continue;
+      }
       const runArtifacts =
         candidate.id === Number(currentRun.id)
           ? currentRunArtifacts
