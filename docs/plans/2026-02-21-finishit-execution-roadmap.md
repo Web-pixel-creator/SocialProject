@@ -820,6 +820,7 @@ Exit criteria:
   - connector default application path is now centralized in `resolveConnectorProfileDefaults(...)` (body-overrides-profile precedence), and ingest route reuses this resolver,
   - ingest route now also supports channel-aware `externalSessionId` fallback extraction from payload/metadata (`telegram`/`slack`/`discord`) when explicit `externalSessionId` is not provided (`apps/api/src/services/agentGatewayIngest/connectorEnvelope.ts`),
   - `/api/admin/agent-gateway/telemetry` and `/api/admin/agent-gateway/adapters` now expose `connectorProfiles` snapshot (defaults + resolved profile list) alongside `connectorPolicies`,
+  - added ready-to-copy connector profile example (`docs/ops/examples/agent-gateway-ingest-connector-profiles.example.json`) for Telegram/Slack/Discord + launch probe channels,
   - keeps existing explicit-body precedence and existing signature/idempotency/rate-limit guardrails unchanged.
 - Launch-gate automation update:
   - `scripts/release/production-launch-gate.mjs` now validates `connectorProfiles` snapshot presence on both admin gateway endpoints,

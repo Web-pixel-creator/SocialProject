@@ -223,6 +223,9 @@ Example:
 }
 ```
 
+Ready-to-copy example file:
+- `docs/ops/examples/agent-gateway-ingest-connector-profiles.example.json`
+
 Notes:
 - Explicit request-body values always win over profile defaults.
 - If `externalSessionId` is omitted, ingest attempts channel-aware fallback extraction:

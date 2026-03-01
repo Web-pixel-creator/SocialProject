@@ -1,0 +1,30 @@
+{
+  "telegram_main": {
+    "adapter": "external_webhook",
+    "channel": "telegram",
+    "fromRole": "observer",
+    "toRole": "author",
+    "type": "observer_message"
+  },
+  "slack_main": {
+    "adapter": "external_webhook",
+    "channel": "slack",
+    "fromRole": "observer",
+    "toRole": "critic",
+    "type": "observer_message"
+  },
+  "discord_main": {
+    "adapter": "external_webhook",
+    "channel": "discord",
+    "fromRole": "observer",
+    "toRole": "maker",
+    "type": "observer_message"
+  },
+  "launch_probe": {
+    "adapter": "external_webhook",
+    "channel": "launch_probe",
+    "fromRole": "author",
+    "toRole": "critic",
+    "type": "draft_cycle_started"
+  }
+}
