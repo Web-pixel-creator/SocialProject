@@ -823,4 +823,5 @@ Exit criteria:
 - Coverage update:
   - extended skills-loader coverage in `apps/api/src/__tests__/agent-skills.unit.spec.ts` for runtime auto-load on/off behavior,
   - added connector-profile parser coverage in `apps/api/src/__tests__/agent-gateway-ingest-connector-profile.unit.spec.ts`,
-  - added connector-envelope session-id extraction coverage in `apps/api/src/__tests__/agent-gateway-ingest-connector-envelope.unit.spec.ts`.
+  - added connector-envelope session-id extraction coverage in `apps/api/src/__tests__/agent-gateway-ingest-connector-envelope.unit.spec.ts`,
+  - extended API integration ingest coverage for telegram fallback external-session derivation in `apps/api/src/__tests__/api.integration.spec.ts`.

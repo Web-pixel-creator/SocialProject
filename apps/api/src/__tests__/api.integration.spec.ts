@@ -5092,6 +5092,71 @@ describe('API integration', () => {
     );
   });
 
+  test('agent gateway adapter ingest endpoint derives telegram external session id when omitted', async () => {
+    const uniqueSuffix = Date.now().toString();
+    const eventId = `evt-telegram-${uniqueSuffix}`;
+    const payload = {
+      adapter: 'external_webhook',
+      channel: 'telegram',
+      fromRole: 'observer',
+      toRole: 'author',
+      type: 'observer_message',
+      connectorId: 'partner-alpha',
+      eventId,
+      payload: {
+        message: {
+          chat: {
+            id: -100_987_654,
+          },
+        },
+        selectedProvider: 'gpt-4.1',
+      },
+    };
+    const timestampSec = Math.floor(Date.now() / 1000);
+    const signature = signGatewayIngestPayload(payload, timestampSec);
+
+    const response = await request(app)
+      .post('/api/agent-gateway/adapters/ingest')
+      .set('x-gateway-signature', signature)
+      .set('x-gateway-timestamp', String(timestampSec))
+      .send(payload);
+
+    expect(response.status).toBe(201);
+    expect(response.body.applied).toBe(true);
+    expect(response.body.deduplicated).toBe(false);
+    expect(response.body.channel).toBe('telegram');
+    expect(response.body.eventId).toBe(eventId);
+    expect(response.body.event.type).toBe('observer_message');
+
+    const persisted = await db.query(
+      `SELECT
+         s.external_session_id,
+         e.payload
+       FROM agent_gateway_events e
+       JOIN agent_gateway_sessions s
+         ON s.id = e.session_id
+       WHERE s.channel = 'telegram'
+         AND e.payload->>'eventId' = $1
+       ORDER BY e.created_at DESC
+       LIMIT 1`,
+      [eventId],
+    );
+    expect(persisted.rows).toHaveLength(1);
+    expect(persisted.rows[0].external_session_id).toBe(
+      'telegram_chat:-100987654',
+    );
+    expect(persisted.rows[0].payload).toEqual(
+      expect.objectContaining({
+        eventId,
+        connectorId: 'partner-alpha',
+        gatewayAdapter: expect.objectContaining({
+          name: 'external_webhook',
+          channel: 'telegram',
+        }),
+      }),
+    );
+  });
+
   test('agent gateway adapter ingest endpoint enforces connector rate limit', async () => {
     const uniqueSuffix = Date.now().toString();
     const timestampSec = Math.floor(Date.now() / 1000);
