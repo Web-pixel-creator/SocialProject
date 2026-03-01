@@ -287,16 +287,25 @@ const selectToken = async ({ candidates, baseApiUrl }) => {
 };
 
 const githubRequest = async ({ token, method, url, body }) => {
-  const response = await fetch(url, {
-    method,
-    headers: {
-      Accept: 'application/vnd.github+json',
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      'X-GitHub-Api-Version': GITHUB_API_VERSION,
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let response;
+  try {
+    response = await fetch(url, {
+      method,
+      headers: {
+        Accept: 'application/vnd.github+json',
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'X-GitHub-Api-Version': GITHUB_API_VERSION,
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (error) {
+    throw new Error(
+      `GitHub API ${method} ${url} request failed before response: ${toErrorMessage(
+        error,
+      )}`,
+    );
+  }
 
   if (response.ok) {
     if (response.status === 204) {

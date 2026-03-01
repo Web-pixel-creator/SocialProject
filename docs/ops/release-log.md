@@ -48,6 +48,7 @@ Copy this block for each release:
     - added `--runtime-draft-id=<uuid>` and `--required-external-channels=<csv|all>` forms,
     - added channel-value validation for `--required-external-channels` / `RELEASE_REQUIRED_EXTERNAL_CHANNELS`.
     - CLI values now override env values for dispatch inputs.
+    - improved GitHub request error surface for pre-response failures (now includes method + URL context instead of bare `fetch failed`).
   - Updated docs:
     - `docs/ops/release-checklist.md`
     - `docs/ops/release-runbook.md`
