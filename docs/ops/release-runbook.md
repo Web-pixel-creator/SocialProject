@@ -106,6 +106,10 @@ Canonical references:
       - includes `riskLevel`, `counts`, `consecutiveSuccessfulRunStreak`, and `escalationTriggered`.
       - escalation rule defaults to `2` consecutive successful dispatch runs with non-healthy risk (override via `RELEASE_HEALTH_ALERT_RISK_ESCALATION_STREAK`).
       - strict failure is optional (`RELEASE_HEALTH_ALERT_RISK_STRICT=true`); default behavior is advisory-only.
+      - optional one-command reassessment helper for post-window strict enablement:
+        - `npm run release:alert-risk:reassess -- --not-before-utc <ISO8601_UTC>`
+        - optional apply mode (sets `RELEASE_HEALTH_ALERT_RISK_STRICT=true` only when ready): `npm run release:alert-risk:reassess -- --not-before-utc <ISO8601_UTC> --apply`
+        - helper writes machine-readable summary to `artifacts/release/alert-risk-strict-reassessment-<run_id>.json`.
       - when `escalationTriggered=true`, start incident triage using `docs/ops/agent-gateway-ai-runtime-runbook.md` (`External-channel failure-mode routing`) and attach release-health summary evidence.
     - `npm run release:health:schema:check`
 2. Confirm alerts, latency, and error rates are within thresholds.

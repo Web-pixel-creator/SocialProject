@@ -267,6 +267,9 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
     - [ ] `RELEASE_HEALTH_ALERT_RISK_WINDOW_HOURS=<n>` (default `24`)
     - [ ] `RELEASE_HEALTH_ALERT_RISK_ESCALATION_STREAK=<n>` (default `2`, minimum `2`)
     - [ ] `RELEASE_HEALTH_ALERT_RISK_STRICT=<true|false>` (default `false`, advisory-only when `false`)
+    - [ ] Optional post-window reassessment helper:
+      - [ ] `npm run release:alert-risk:reassess -- --not-before-utc <ISO8601_UTC>`
+      - [ ] Optional auto-apply (`RELEASE_HEALTH_ALERT_RISK_STRICT=true` only when ready): `npm run release:alert-risk:reassess -- --not-before-utc <ISO8601_UTC> --apply`
   - [ ] Optional alert-hook controls for first non-pass appearance in rolling window:
     - [ ] `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_ENABLED=<true|false>` (default `true`)
     - [ ] `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_TIMEOUT_MS=<ms>` (default `10000`)

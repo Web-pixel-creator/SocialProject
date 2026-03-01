@@ -49,6 +49,7 @@
     "release:health:log": "node scripts/release/append-post-release-health-log.mjs",
     "release:health:schema:check": "node scripts/release/validate-release-health-report-schema.mjs",
     "release:health:schema:check:json": "node scripts/release/validate-release-health-report-schema.mjs --json",
+    "release:alert-risk:reassess": "node scripts/release/reassess-alert-risk-strict.mjs",
     "release:launch:gate:production": "node scripts/release/production-launch-gate.mjs --strict",
     "release:launch:gate:production:json": "node scripts/release/production-launch-gate.mjs --strict --json",
     "release:launch:gate:production:skills": "node scripts/release/production-launch-gate.mjs --strict --require-skill-markers",
