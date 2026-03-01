@@ -920,3 +920,31 @@ Exit criteria:
 - Incident trace during rollout:
   - initial strict-all-roles `Role skill` criterion failed in run `#22` (`22540472390`) and run `#23` (`22540519731`),
   - criterion was corrected to match runtime intent (role-skill optional per-role, but required to appear on at least one orchestration step).
+
+## Progress Snapshot (2026-03-01 - required external channels gate + failure diagnostics)
+- Launch-gate control-plane update:
+  - `production-launch-gate.mjs` now supports `--required-external-channels <csv|all>` (env alternative: `RELEASE_REQUIRED_EXTERNAL_CHANNELS`) to enforce required external connector channels (`telegram`, `slack`, `discord`) during ingest fallback verification.
+  - launch-gate workflow now supports matching dispatch input `required_external_channels`, and dispatch helper forwards `RELEASE_REQUIRED_EXTERNAL_CHANNELS`.
+  - summary check `ingestExternalChannelFallback` now reports:
+    - `requiredChannels`
+    - `missingRequiredChannels`
+    - `requiredChannelsPass`
+  - invalid control combination is now blocked (`--required-external-channels` + `--skip-ingest-probe`).
+- Failure observability update:
+  - ingest failures now still write explicit summary checks before exiting:
+    - `checks.ingestExternalChannelFallback`
+    - `checks.ingestProbe`
+  - this removes prior truncated-check ambiguity on negative launch-gate runs.
+- Ops docs update:
+  - release checklist/runbook now include the `required_external_channels` workflow/env controls and expected summary assertions for strict required-channel runs.
+- Revalidation matrix:
+  - baseline pass run `#25` (`22540764904`) with no required channels.
+  - strict matrix pass run `#27` (`22540811251`) with:
+    - `runtime_draft_id=3fefc86d-eb94-42f2-8c97-8b57eff8944e`
+    - `require_skill_markers=true`
+    - `require_natural_cron_window=true`
+  - negative required-channel run `#29` (`22540889549`) intentionally failed with:
+    - `requiredChannels=["telegram"]`
+    - `missingRequiredChannels=["telegram"]`
+    - `ingestProbe.pass=false`
+  - post-negative baseline sanity run `#30` (`22540913414`) passed.
