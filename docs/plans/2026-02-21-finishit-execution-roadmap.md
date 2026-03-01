@@ -823,6 +823,7 @@ Exit criteria:
 - Launch-gate automation update:
   - `scripts/release/production-launch-gate.mjs` now validates `connectorProfiles` snapshot presence on both admin gateway endpoints,
   - in `--strict` mode this check is required (`connectorProfilesSnapshot.pass=true`), while non-strict mode records it as informational.
+  - added optional strict cron-window assertion (`--require-natural-cron-window` / `RELEASE_REQUIRE_NATURAL_CRON_WINDOW=true`) to require that expected cron jobs have successful runs for the current UTC date.
 - Coverage update:
   - extended skills-loader coverage in `apps/api/src/__tests__/agent-skills.unit.spec.ts` for runtime auto-load on/off behavior,
   - added connector-profile parser coverage in `apps/api/src/__tests__/agent-gateway-ingest-connector-profile.unit.spec.ts`,

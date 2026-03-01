@@ -192,6 +192,9 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
   - [ ] Optional strict skills-runtime variant (requires skill markers in runtime prompt):
     - [ ] `npm run release:launch:gate:production:skills`
     - [ ] JSON variant: `npm run release:launch:gate:production:skills:json`
+  - [ ] Optional natural-cron strict variant (run after UTC 00:20 window):
+    - [ ] `npm run release:launch:gate:production -- --strict --require-natural-cron-window`
+    - [ ] Env alternative: `RELEASE_REQUIRE_NATURAL_CRON_WINDOW=true npm run release:launch:gate:production -- --strict`
   - [ ] Optional CI workflow_dispatch path: `Production Launch Gate` workflow (`.github/workflows/production-launch-gate.yml`)
     - [ ] Ensure launch-gate secrets/vars are configured before dispatch:
       - [ ] Variables: `RELEASE_API_BASE_URL`, `RELEASE_WEB_BASE_URL`

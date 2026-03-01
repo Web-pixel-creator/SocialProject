@@ -60,6 +60,14 @@ const sortDeep = (value) => {
   return out;
 };
 
+const parseBoolean = (value) => {
+  if (typeof value !== 'string') {
+    return false;
+  }
+  const normalized = value.trim().toLowerCase();
+  return normalized === 'true' || normalized === '1' || normalized === 'yes';
+};
+
 const quote = (v) =>
   /^[a-z0-9_./:=@+-]+$/i.test(v) ? v : `"${v.replace(/"/g, '\\"')}"`;
 
@@ -136,6 +144,9 @@ const parseArgs = (argv) => {
     httpTimeoutMs: DEFAULTS.httpTimeoutMs,
     json: false,
     requireSkillMarkers: false,
+    requireNaturalCronWindow: parseBoolean(
+      process.env.RELEASE_REQUIRE_NATURAL_CRON_WINDOW,
+    ),
     runtimeChannel: DEFAULTS.runtimeChannel,
     runtimeDraftId: process.env.RELEASE_RUNTIME_PROBE_DRAFT_ID || '',
     skipIngestProbe: false,
@@ -158,6 +169,8 @@ const parseArgs = (argv) => {
     else if (a === '--skip-ingest-probe') o.skipIngestProbe = true;
     else if (a === '--skip-railway-gate') o.skipRailwayGate = true;
     else if (a === '--require-skill-markers') o.requireSkillMarkers = true;
+    else if (a === '--require-natural-cron-window')
+      o.requireNaturalCronWindow = true;
     else if (a === '--environment') o.environment = argv[++i] || '';
     else if (a === '--web-service') o.webService = argv[++i] || '';
     else if (a === '--api-service') o.apiService = argv[++i] || '';
@@ -188,6 +201,7 @@ const printHelp = () => {
       '  --runtime-draft-id <uuid> --runtime-channel <name>',
       '  --skip-railway-gate --skip-smoke --skip-runtime-probes --skip-ingest-probe',
       '  --require-skill-markers',
+      '  --require-natural-cron-window',
       '',
     ].join('\n'),
   );
@@ -376,6 +390,30 @@ const main = async () => {
       ? health['/api/admin/jobs/metrics?hours=24'].json.rows
       : [];
     const names = new Set(rows.map((r) => r.job_name));
+    const utcDateKey = new Date().toISOString().slice(0, 10);
+    const cronByName = Object.fromEntries(rows.map((row) => [row.job_name, row]));
+    const naturalCronRows = EXPECTED_CRON_JOBS.map((jobName) => {
+      const row = cronByName[jobName] ?? {};
+      const lastRunAt =
+        typeof row.last_run_at === 'string' ? row.last_run_at : null;
+      const lastStatus =
+        typeof row.last_status === 'string'
+          ? row.last_status.toLowerCase()
+          : null;
+      const ranToday =
+        typeof lastRunAt === 'string' &&
+        lastRunAt.length >= 10 &&
+        lastRunAt.slice(0, 10) === utcDateKey;
+      const passed = ranToday && lastStatus === 'success';
+      return {
+        jobName,
+        lastRunAt,
+        lastStatus,
+        passed,
+        ranToday,
+      };
+    });
+    const naturalCronComplete = naturalCronRows.every((row) => row.passed);
     const healthSummary = {
       baseUrl: apiBaseUrl,
       checks: {
@@ -389,6 +427,12 @@ const main = async () => {
           Number(health['/api/admin/agent-gateway/telemetry?hours=24&limit=200'].json?.sessions?.total ?? 0) > 0 &&
           Number(health['/api/admin/agent-gateway/telemetry?hours=24&limit=200'].json?.events?.total ?? 0) > 0,
         expectedCronJobsPresent: EXPECTED_CRON_JOBS.every((j) => names.has(j)),
+        naturalCronWindow: o.requireNaturalCronWindow ? naturalCronComplete : true,
+      },
+      cron: {
+        requireNaturalCronWindow: o.requireNaturalCronWindow,
+        rows: naturalCronRows,
+        utcDateKey,
       },
       generatedAtUtc: new Date().toISOString(),
     };
