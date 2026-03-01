@@ -1432,6 +1432,100 @@ describe('Admin API routes', () => {
     }
   });
 
+  test('release health external-channel alert webhook stores accepted alert payload', async () => {
+    const response = await request(app)
+      .post('/api/admin/release-health/external-channel-alerts')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        label: 'external-channel-failure-mode-first-appearance',
+        generatedAtUtc: '2026-03-01T17:10:00.000Z',
+        repository: 'Web-pixel-creator/SocialProject',
+        workflow: {
+          file: 'production-launch-gate.yml',
+          profile: 'launch-gate',
+        },
+        trendWindow: {
+          windowSize: 3,
+          minimumRuns: 1,
+          analyzedRuns: 3,
+        },
+        run: {
+          id: 22548257961,
+          number: 47,
+          htmlUrl:
+            'https://github.com/Web-pixel-creator/SocialProject/actions/runs/22548257961',
+        },
+        firstAppearances: [
+          {
+            channel: 'telegram',
+            failureMode: 'ingest_http_error',
+            connectorId: 'telegram-prod',
+            runId: 22548257961,
+            runNumber: 47,
+            runUrl:
+              'https://github.com/Web-pixel-creator/SocialProject/actions/runs/22548257961',
+          },
+        ],
+      });
+
+    expect(response.status).toBe(202);
+    expect(response.body).toMatchObject({
+      status: 'accepted',
+      eventType: 'release_external_channel_failure_mode_alert',
+      firstAppearanceCount: 1,
+    });
+
+    const stored = await db.query(
+      `SELECT event_type, source, metadata
+       FROM ux_events
+       WHERE event_type = 'release_external_channel_failure_mode_alert'
+       ORDER BY id DESC
+       LIMIT 1`,
+    );
+    expect(stored.rows).toHaveLength(1);
+    expect(stored.rows[0].event_type).toBe(
+      'release_external_channel_failure_mode_alert',
+    );
+    expect(stored.rows[0].source).toBe('release_health_gate_webhook');
+    expect(stored.rows[0].metadata).toEqual(
+      expect.objectContaining({
+        label: 'external-channel-failure-mode-first-appearance',
+        repository: 'Web-pixel-creator/SocialProject',
+        firstAppearances: [
+          expect.objectContaining({
+            channel: 'telegram',
+            failureMode: 'ingest_http_error',
+            connectorId: 'telegram-prod',
+          }),
+        ],
+      }),
+    );
+  });
+
+  test('release health external-channel alert webhook validates query and body fields', async () => {
+    const invalidQuery = await request(app)
+      .post('/api/admin/release-health/external-channel-alerts?extra=true')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        label: 'external-channel-failure-mode-first-appearance',
+        repository: 'Web-pixel-creator/SocialProject',
+        firstAppearances: [],
+      });
+    expect(invalidQuery.status).toBe(400);
+    expect(invalidQuery.body.error).toBe('ADMIN_INVALID_QUERY');
+
+    const invalidBody = await request(app)
+      .post('/api/admin/release-health/external-channel-alerts')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        label: 'wrong-label',
+        repository: 'Web-pixel-creator/SocialProject',
+        firstAppearances: [],
+      });
+    expect(invalidBody.status).toBe(400);
+    expect(invalidBody.body.error).toBe('ADMIN_INVALID_BODY');
+  });
+
   test('agent gateway session read endpoints validate query params', async () => {
     const created = await request(app)
       .post('/api/admin/agent-gateway/sessions')

@@ -216,16 +216,18 @@ const parsePositiveInteger = ({ raw, fallback, minimum, label }) => {
   return parsed;
 };
 
-const postJsonWithTimeout = async ({ url, payload, timeoutMs }) => {
+const postJsonWithTimeout = async ({ url, payload, timeoutMs, headers = {} }) => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
+    const mergedHeaders = {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      ...headers,
+    };
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
+      headers: mergedHeaders,
       body: JSON.stringify(payload),
       signal: controller.signal,
     });
@@ -239,6 +241,36 @@ const postJsonWithTimeout = async ({ url, payload, timeoutMs }) => {
   } finally {
     clearTimeout(timeout);
   }
+};
+
+const resolveExternalChannelAlertWebhookHeaders = () => {
+  const headers = {};
+  const adminToken = String(
+    process.env.RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_ADMIN_TOKEN ??
+      process.env.RELEASE_ADMIN_API_TOKEN ??
+      '',
+  ).trim();
+  const csrfToken = String(
+    process.env.RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_CSRF_TOKEN ??
+      process.env.RELEASE_CSRF_TOKEN ??
+      '',
+  ).trim();
+  const bearerToken = String(
+    process.env.RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_BEARER_TOKEN ??
+      '',
+  ).trim();
+
+  if (adminToken.length > 0) {
+    headers['x-admin-token'] = adminToken;
+  }
+  if (csrfToken.length > 0) {
+    headers['x-csrf-token'] = csrfToken;
+  }
+  if (bearerToken.length > 0) {
+    headers.Authorization = `Bearer ${bearerToken}`;
+  }
+
+  return headers;
 };
 
 const parseCliArgs = (argv) => {
@@ -704,6 +736,7 @@ const buildExternalChannelFirstAppearanceAlert = ({
 const dispatchExternalChannelFirstAppearanceAlert = async ({
   alert,
   webhookUrl,
+  webhookHeaders,
   timeoutMs,
 }) => {
   const next = {
@@ -721,6 +754,7 @@ const dispatchExternalChannelFirstAppearanceAlert = async ({
       url: webhookUrl,
       payload: next.payload,
       timeoutMs,
+      headers: webhookHeaders,
     });
     next.webhookStatusCode = Number(response.status);
     next.webhookDelivered = response.ok === true;
@@ -1208,6 +1242,8 @@ const main = async () => {
     minimum: 1000,
     label: 'RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_TIMEOUT_MS',
   });
+  const externalChannelAlertWebhookHeaders =
+    resolveExternalChannelAlertWebhookHeaders();
   const externalChannelFailureModeTrendBase =
     workflowProfile.profileKey === 'launch_gate'
       ? await analyzeExternalChannelFailureModeTrend({
@@ -1246,6 +1282,7 @@ const main = async () => {
         await dispatchExternalChannelFirstAppearanceAlert({
           alert: firstAppearanceAlertBase,
           webhookUrl: externalChannelAlertWebhookUrl,
+          webhookHeaders: externalChannelAlertWebhookHeaders,
           timeoutMs: externalChannelAlertTimeoutMs,
         });
     } else {

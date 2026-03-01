@@ -92,6 +92,12 @@ Canonical references:
    - First non-pass appearance hook:
      - health report emits `externalChannelFailureModes.firstAppearanceAlert` with triage entries (`channel`, `failureMode`, `runId`),
      - optional webhook delivery can be enabled via `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_URL` (CI secret) with timeout override `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_TIMEOUT_MS`.
+     - for protected webhook receivers, post-release health supports auth headers from env:
+       - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_ADMIN_TOKEN` -> `x-admin-token`
+       - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_CSRF_TOKEN` -> `x-csrf-token`
+       - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_BEARER_TOKEN` -> `Authorization: Bearer ...`
+     - production default can use internal endpoint:
+       - `https://api-production-7540.up.railway.app/api/admin/release-health/external-channel-alerts`
    - `npm run release:health:schema:check`
 2. Confirm alerts, latency, and error rates are within thresholds.
 3. Validate runtime/gateway control plane health:

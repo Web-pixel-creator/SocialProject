@@ -266,6 +266,12 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
     - [ ] `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_ENABLED=<true|false>` (default `true`)
     - [ ] `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_TIMEOUT_MS=<ms>` (default `10000`)
     - [ ] optional webhook secret in CI: `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_URL`
+    - [ ] optional protected-receiver headers:
+      - [ ] `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_ADMIN_TOKEN` (`x-admin-token`)
+      - [ ] `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_CSRF_TOKEN` (`x-csrf-token`)
+      - [ ] `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_BEARER_TOKEN` (`Authorization: Bearer ...`)
+    - [ ] recommended production internal receiver:
+      - [ ] `https://api-production-7540.up.railway.app/api/admin/release-health/external-channel-alerts`
   - [ ] Optional machine-readable summary: `npm run release:health:report -- --json`
   - [ ] Optional strict gate (fails command on unhealthy run): `npm run release:health:report -- --strict`
   - [ ] Validate report schema: `npm run release:health:schema:check` (or explicit file path: `npm run release:health:schema:check -- artifacts/release/post-release-health-run-<run_id>.json`)

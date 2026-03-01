@@ -1530,6 +1530,11 @@ const AGENT_GATEWAY_ADAPTER_ROUTE_FAILED_EVENT =
 const AGENT_GATEWAY_INGEST_ACCEPT_EVENT = 'agent_gateway_ingest_accept';
 const AGENT_GATEWAY_INGEST_REPLAY_EVENT = 'agent_gateway_ingest_replay';
 const AGENT_GATEWAY_INGEST_REJECT_EVENT = 'agent_gateway_ingest_reject';
+const RELEASE_EXTERNAL_CHANNEL_ALERT_LABEL =
+  'external-channel-failure-mode-first-appearance';
+const RELEASE_EXTERNAL_CHANNEL_ALERT_EVENT =
+  'release_external_channel_failure_mode_alert';
+const RELEASE_EXTERNAL_CHANNEL_ALERT_SOURCE = 'release_health_gate_webhook';
 const AGENT_GATEWAY_INGEST_CONNECTOR_REJECT_THRESHOLDS = {
   watchAbove: 0.1,
   criticalAbove: 0.25,
@@ -3188,6 +3193,239 @@ router.get(
         ingestConnectors,
         connectorPolicies,
         connectorProfiles,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+router.post(
+  '/admin/release-health/external-channel-alerts',
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      assertAllowedQueryFields(req.query, {
+        allowed: [],
+        endpoint: '/api/admin/release-health/external-channel-alerts',
+      });
+      const body = assertAllowedBodyFields(req.body, {
+        allowed: [
+          'label',
+          'generatedAtUtc',
+          'repository',
+          'workflow',
+          'trendWindow',
+          'run',
+          'firstAppearances',
+        ],
+        endpoint: '/api/admin/release-health/external-channel-alerts',
+      });
+
+      const label = parseRequiredBoundedBodyString(body.label, {
+        fieldName: 'label',
+        maxLength: 120,
+      });
+      if (label !== RELEASE_EXTERNAL_CHANNEL_ALERT_LABEL) {
+        throw new ServiceError(
+          'ADMIN_INVALID_BODY',
+          `label must be '${RELEASE_EXTERNAL_CHANNEL_ALERT_LABEL}'.`,
+          400,
+        );
+      }
+      const repository = parseRequiredBoundedBodyString(body.repository, {
+        fieldName: 'repository',
+        maxLength: 200,
+      });
+      const generatedAtUtc = parseOptionalBoundedBodyString(body.generatedAtUtc, {
+        fieldName: 'generatedAtUtc',
+        maxLength: 64,
+      });
+      if (generatedAtUtc && Number.isNaN(Date.parse(generatedAtUtc))) {
+        throw new ServiceError(
+          'ADMIN_INVALID_BODY',
+          'generatedAtUtc must be a valid ISO timestamp.',
+          400,
+        );
+      }
+      const workflow = parseOptionalObjectBody(body.workflow, {
+        fieldName: 'workflow',
+        maxKeys: 4,
+        maxJsonLength: 800,
+      });
+      const trendWindow = parseOptionalObjectBody(body.trendWindow, {
+        fieldName: 'trendWindow',
+        maxKeys: 8,
+        maxJsonLength: 800,
+      });
+      const run = parseOptionalObjectBody(body.run, {
+        fieldName: 'run',
+        maxKeys: 8,
+        maxJsonLength: 800,
+      });
+
+      if (!Array.isArray(body.firstAppearances)) {
+        throw new ServiceError(
+          'ADMIN_INVALID_BODY',
+          'firstAppearances must be an array.',
+          400,
+        );
+      }
+      if (body.firstAppearances.length > 20) {
+        throw new ServiceError(
+          'ADMIN_INVALID_BODY',
+          'firstAppearances supports up to 20 items.',
+          400,
+        );
+      }
+
+      const firstAppearances = body.firstAppearances.map((entry, index) => {
+        if (!(entry && typeof entry === 'object') || Array.isArray(entry)) {
+          throw new ServiceError(
+            'ADMIN_INVALID_BODY',
+            `firstAppearances[${index}] must be an object.`,
+            400,
+          );
+        }
+
+        const parsed = entry as Record<string, unknown>;
+        const allowedKeys = new Set([
+          'channel',
+          'failureMode',
+          'connectorId',
+          'runId',
+          'runNumber',
+          'runUrl',
+        ]);
+        const unsupported = Object.keys(parsed).filter(
+          (key) => !allowedKeys.has(key),
+        );
+        if (unsupported.length > 0) {
+          throw new ServiceError(
+            'ADMIN_INVALID_BODY',
+            `Unsupported fields in firstAppearances[${index}]: ${unsupported.join(', ')}.`,
+            400,
+          );
+        }
+
+        const channel = parseRequiredBoundedBodyString(parsed.channel, {
+          fieldName: `firstAppearances[${index}].channel`,
+          maxLength: 64,
+        }).toLowerCase();
+        if (!AGENT_GATEWAY_CHANNEL_PATTERN.test(channel)) {
+          throw new ServiceError(
+            'ADMIN_INVALID_BODY',
+            `firstAppearances[${index}].channel must use a valid channel format.`,
+            400,
+          );
+        }
+
+        const failureMode = parseRequiredBoundedBodyString(parsed.failureMode, {
+          fieldName: `firstAppearances[${index}].failureMode`,
+          maxLength: 120,
+        });
+        if (!AGENT_GATEWAY_EVENT_TYPE_PATTERN.test(failureMode)) {
+          throw new ServiceError(
+            'ADMIN_INVALID_BODY',
+            `firstAppearances[${index}].failureMode must use a valid format.`,
+            400,
+          );
+        }
+
+        const connectorId = parseOptionalBoundedBodyString(parsed.connectorId, {
+          fieldName: `firstAppearances[${index}].connectorId`,
+          maxLength: 64,
+        });
+        if (
+          connectorId &&
+          !AGENT_GATEWAY_CONNECTOR_ID_PATTERN.test(connectorId.toLowerCase())
+        ) {
+          throw new ServiceError(
+            'ADMIN_INVALID_BODY',
+            `firstAppearances[${index}].connectorId must use a valid connector id format.`,
+            400,
+          );
+        }
+
+        if (
+          parsed.runId !== undefined &&
+          !(typeof parsed.runId === 'number' && Number.isInteger(parsed.runId))
+        ) {
+          throw new ServiceError(
+            'ADMIN_INVALID_BODY',
+            `firstAppearances[${index}].runId must be an integer when provided.`,
+            400,
+          );
+        }
+        if (
+          parsed.runNumber !== undefined &&
+          !(
+            typeof parsed.runNumber === 'number' &&
+            Number.isInteger(parsed.runNumber)
+          )
+        ) {
+          throw new ServiceError(
+            'ADMIN_INVALID_BODY',
+            `firstAppearances[${index}].runNumber must be an integer when provided.`,
+            400,
+          );
+        }
+        const runId =
+          typeof parsed.runId === 'number' && Number.isInteger(parsed.runId)
+            ? parsed.runId
+            : null;
+        const runNumber =
+          typeof parsed.runNumber === 'number' &&
+          Number.isInteger(parsed.runNumber)
+            ? parsed.runNumber
+            : null;
+        const runUrl = parseOptionalBoundedBodyString(parsed.runUrl, {
+          fieldName: `firstAppearances[${index}].runUrl`,
+          maxLength: 500,
+        });
+
+        return {
+          channel,
+          failureMode,
+          connectorId: connectorId ?? null,
+          runId,
+          runNumber,
+          runUrl: runUrl ?? null,
+        };
+      });
+
+      await db.query(
+        `INSERT INTO ux_events
+         (event_type, user_type, user_id, draft_id, pr_id, sort, status, range, timing_ms, source, metadata)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+        [
+          RELEASE_EXTERNAL_CHANNEL_ALERT_EVENT,
+          'system',
+          null,
+          null,
+          null,
+          null,
+          'ok',
+          null,
+          null,
+          RELEASE_EXTERNAL_CHANNEL_ALERT_SOURCE,
+          {
+            label,
+            repository,
+            generatedAtUtc: generatedAtUtc ?? null,
+            workflow: workflow ?? null,
+            trendWindow: trendWindow ?? null,
+            run: run ?? null,
+            firstAppearances,
+            receivedAtUtc: new Date().toISOString(),
+          },
+        ],
+      );
+
+      res.status(202).json({
+        status: 'accepted',
+        eventType: RELEASE_EXTERNAL_CHANNEL_ALERT_EVENT,
+        firstAppearanceCount: firstAppearances.length,
       });
     } catch (error) {
       next(error);
