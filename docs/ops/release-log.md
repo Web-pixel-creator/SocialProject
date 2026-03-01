@@ -37,7 +37,7 @@ Copy this block for each release:
 
 - Scope: validate new `required_external_channels` behavior on live workflow runs and ensure failing ingest probes expose explicit check state in summary artifacts.
 - Release commander: Codex automation.
-- Window (UTC): 2026-03-01 09:44 -> 2026-03-01 09:52.
+- Window (UTC): 2026-03-01 09:44 -> 2026-03-01 09:55.
 - Changes:
   - Updated `scripts/release/production-launch-gate.mjs`:
     - when ingest probe fails, summary now still includes:
@@ -48,11 +48,16 @@ Copy this block for each release:
   - Workflow run `#25` (`22540764904`): `success` (baseline, no required external channels).
   - Workflow run `#26` (`22540785777`): `failure` with `required_external_channels=telegram` (expected negative test).
   - Workflow run `#27` (`22540811251`): `success` (`runtime_draft_id` + `require_skill_markers=true` + `require_natural_cron_window=true`).
+  - Workflow run `#29` (`22540889549`): `failure` with `required_external_channels=telegram` after diagnostics patch; summary now includes:
+    - `ingestExternalChannelFallback.pass=false`
+    - `missingRequiredChannels=["telegram"]`
+    - `ingestProbe.pass=false`
+  - Workflow run `#30` (`22540913414`): `success` (baseline sanity after negative test).
   - `npm run release:health:report -- 22540811251 --workflow-file production-launch-gate.yml --profile launch-gate --json --strict`: pass.
 - Incidents:
   - run `#28` (`22540848262`) (triggered before pushing diagnostics patch) still showed truncated checks on ingest failure; addressed in current script patch.
 - Follow-ups:
-  - dispatch one more negative test after patch push to confirm failed summary now includes `ingestExternalChannelFallback` and `ingestProbe`.
+  - none.
 
 ### 2026-03-01 - launch-gate required external channels control
 
