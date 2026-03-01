@@ -81,6 +81,10 @@ Canonical references:
      - `npm run release:health:report -- --workflow-file production-launch-gate.yml --profile launch-gate`
      - Shortcut: `npm run release:health:report:launch-gate`
      - Shortcut JSON: `npm run release:health:report:launch-gate:json`
+   - For launch-gate profile, health report now includes mandatory rolling external-channel trend check from `production-external-channel-traces` artifacts:
+     - `externalChannelFailureModes.pass=true`
+     - `externalChannelFailureModes.nonPassModes=[]`
+     - defaults: `windowSize=3`, `minimumRuns=1` (override via `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_WINDOW` and `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_MIN_RUNS`).
    - `npm run release:health:schema:check`
 2. Confirm alerts, latency, and error rates are within thresholds.
 3. Validate runtime/gateway control plane health:

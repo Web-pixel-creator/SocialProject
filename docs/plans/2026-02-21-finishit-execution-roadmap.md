@@ -1163,3 +1163,27 @@ Exit criteria:
   - `npm run release:health:schema:check -- artifacts/release/post-release-health-run-22547210842.json`: pass.
 - Next hardening increment:
   - automate rolling-window failure-mode trend extraction across recent strict runs and alert when any non-null mode appears.
+
+## Progress Snapshot (2026-03-01 - rolling external-channel trend gate integration)
+- Release-health gate integration:
+  - `scripts/release/post-release-health-report.mjs` now computes rolling external-channel failure-mode trend for launch-gate profile from `production-external-channel-traces` artifacts.
+  - trend result is surfaced in report as `externalChannelFailureModes` and is now part of mandatory `summary.pass` evaluation for launch-gate profile.
+  - launch-gate health artifact requirements now include `production-external-channel-traces` (`requiredArtifactsTotal` for launch-gate profile moved from `9` to `10`).
+- Controls:
+  - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_WINDOW` (default `3`)
+  - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_MIN_RUNS` (default `1`).
+- Schema + docs sync:
+  - release health schema version bumped to `1.3.0` with `externalChannelFailureModes` contract.
+  - release checklist/runbook updated with mandatory assertions:
+    - `externalChannelFailureModes.pass=true`
+    - `externalChannelFailureModes.nonPassModes=[]`.
+- Revalidation:
+  - `npm run release:health:report -- 22547210842 --profile launch-gate --strict --json`: pass.
+  - trend payload confirms:
+    - `windowSize=3`
+    - `analyzedRuns=3`
+    - `nonPassModes=[]`
+    - `runsWithRequiredFailures=[]`.
+  - `npm run release:health:schema:check -- artifacts/release/post-release-health-run-22547210842.json`: pass.
+- Next increment:
+  - add step-summary rendering for `externalChannelFailureModes` in CI `Release Health Gate` workflow output.

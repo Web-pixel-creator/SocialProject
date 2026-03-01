@@ -22,7 +22,7 @@
       "const": "docs/ops/schemas/release-health-report-output.schema.json"
     },
     "schemaVersion": {
-      "const": "1.2.0"
+      "const": "1.3.0"
     },
     "generatedAtUtc": {
       "type": "string",
@@ -55,6 +55,16 @@
     },
     "smokeReport": {
       "$ref": "#/$defs/smokeReport"
+    },
+    "externalChannelFailureModes": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/externalChannelFailureModes"
+        }
+      ]
     }
   },
   "$defs": {
@@ -351,6 +361,204 @@
             "type": "string",
             "minLength": 1
           }
+        }
+      }
+    },
+    "externalChannelModeDistribution": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "externalChannelAnalysisError": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runId",
+        "message"
+      ],
+      "properties": {
+        "runId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "externalChannelAnalyzedRun": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifactId",
+        "checkedAtUtc",
+        "checksTotal",
+        "conclusion",
+        "failedChannelsTotal",
+        "htmlUrl",
+        "modeDistribution",
+        "pass",
+        "requiredChannelsPass",
+        "requiredFailedChannelsTotal",
+        "runId",
+        "runNumber",
+        "skipped"
+      ],
+      "properties": {
+        "artifactId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "checkedAtUtc": {
+          "$ref": "#/$defs/nullableDateTime"
+        },
+        "checksTotal": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "conclusion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "failedChannelsTotal": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "htmlUrl": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modeDistribution": {
+          "$ref": "#/$defs/externalChannelModeDistribution"
+        },
+        "pass": {
+          "type": "boolean"
+        },
+        "requiredChannelsPass": {
+          "type": "boolean"
+        },
+        "requiredFailedChannelsTotal": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "runId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "runNumber": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "skipped": {
+          "type": "boolean"
+        }
+      }
+    },
+    "externalChannelFailureModes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifactName",
+        "currentRunId",
+        "pass",
+        "reasons",
+        "windowSize",
+        "minimumRuns",
+        "analyzedRuns",
+        "modeDistribution",
+        "channelModeDistribution",
+        "nonPassModes",
+        "runsWithFailures",
+        "runsWithRequiredFailures",
+        "missingArtifactRunIds",
+        "analysisErrors",
+        "generatedAtUtc"
+      ],
+      "properties": {
+        "artifactName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "currentRunId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "pass": {
+          "type": "boolean"
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "windowSize": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "minimumRuns": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "analyzedRuns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/externalChannelAnalyzedRun"
+          }
+        },
+        "modeDistribution": {
+          "$ref": "#/$defs/externalChannelModeDistribution"
+        },
+        "channelModeDistribution": {
+          "$ref": "#/$defs/externalChannelModeDistribution"
+        },
+        "nonPassModes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "runsWithFailures": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "runsWithRequiredFailures": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "missingArtifactRunIds": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "analysisErrors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/externalChannelAnalysisError"
+          }
+        },
+        "generatedAtUtc": {
+          "type": "string",
+          "format": "date-time"
         }
       }
     },

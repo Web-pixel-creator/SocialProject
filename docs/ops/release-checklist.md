@@ -241,6 +241,10 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
     - [ ] Dispatch: `npm run release:launch:gate:dispatch -- --required-external-channels all`
     - [ ] Confirm `ingestExternalChannelFallback.pass=true` with required channels resolved.
     - [ ] Confirm trace artifact `production-external-channel-traces` is uploaded and inspect `failureMode` per required channel.
+  - [ ] Confirm launch-gate post-release health report includes rolling external-channel trend check:
+    - [ ] `externalChannelFailureModes.pass=true`
+    - [ ] `externalChannelFailureModes.nonPassModes=[]`
+    - [ ] `externalChannelFailureModes.analyzedRuns >= 1` (default window is 3 runs).
 - [ ] Generate post-release health report from latest workflow_dispatch run:
   - [ ] `npm run release:health:report`
   - [ ] `--strict` mode now validates required release artifacts in addition to required jobs (`release-smoke-report`, `release-smoke-preflight-summary`, `release-env-preflight-summary`, `retry-schema-gate-summary`, `release-smoke-preflight-schema-summary`).
@@ -249,6 +253,9 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
   - [ ] Optional launch-gate shortcut command: `npm run release:health:report:launch-gate`
   - [ ] Optional launch-gate shortcut JSON output: `npm run release:health:report:launch-gate:json`
   - [ ] Optional explicit run id for launch-gate profile: `npm run release:health:report -- <run_id> --workflow-file production-launch-gate.yml --profile launch-gate`
+  - [ ] Optional rolling-window tuning for external-channel trend check:
+    - [ ] `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_WINDOW=<n>` (default `3`)
+    - [ ] `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_MIN_RUNS=<n>` (default `1`)
   - [ ] Optional machine-readable summary: `npm run release:health:report -- --json`
   - [ ] Optional strict gate (fails command on unhealthy run): `npm run release:health:report -- --strict`
   - [ ] Validate report schema: `npm run release:health:schema:check` (or explicit file path: `npm run release:health:schema:check -- artifacts/release/post-release-health-run-<run_id>.json`)

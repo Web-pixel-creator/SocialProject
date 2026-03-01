@@ -33,6 +33,39 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - launch-gate rolling external-channel trend gate in post-release health
+
+- Scope: make rolling external-channel `failureMode` trend analysis a mandatory launch-gate post-release health check.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 16:18 -> 2026-03-01 16:30.
+- Changes:
+  - Updated `scripts/release/post-release-health-report.mjs`:
+    - launch-gate profile now requires artifact `production-external-channel-traces` (required artifacts `10` total),
+    - added rolling-window analysis over recent `production-launch-gate.yml` `workflow_dispatch` runs,
+    - added machine-readable report block `externalChannelFailureModes` (`pass`, `windowSize`, `minimumRuns`, `analyzedRuns`, `nonPassModes`, `runsWithRequiredFailures`, `reasons`),
+    - launch-gate `summary.pass` now fails when trend check fails.
+  - Added rolling-window controls:
+    - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_WINDOW` (default `3`)
+    - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_MIN_RUNS` (default `1`).
+  - Updated release health schema contract:
+    - `docs/ops/schemas/release-health-report-output.schema.json`
+    - version bump `1.2.0 -> 1.3.0`
+    - sample sync in `docs/ops/schemas/samples/release-health-report-output.sample.json`.
+  - Updated ops runbook/checklist with mandatory trend-check expectations.
+- Verification:
+  - `node --check scripts/release/post-release-health-report.mjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run release:health:report -- 22547210842 --profile launch-gate --strict --json`: pass.
+    - `requiredArtifactsTotal=10`, `requiredArtifactsPresent=10`
+    - `externalChannelFailureModes.pass=true`
+    - `externalChannelFailureModes.analyzedRuns=3`
+    - `externalChannelFailureModes.nonPassModes=[]`.
+  - `npm run release:health:schema:check -- artifacts/release/post-release-health-run-22547210842.json`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: render `externalChannelFailureModes` block in Release Health Gate step-summary markdown for faster operator triage.
+
 ### 2026-03-01 - sustained strict launch-gate soak (3-run external-channel baseline)
 
 - Scope: execute repeated strict production launch-gate passes to collect initial external-channel `failureMode` distribution baseline.
