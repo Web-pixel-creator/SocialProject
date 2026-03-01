@@ -33,6 +33,42 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - production launch verification refresh (strict)
+
+- Scope: refresh strict production verification after CI launch-gate unblocking and confirm cron/backup evidence remains valid.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 06:39 -> 2026-03-01 06:41.
+- Verification:
+  - `npm run release:launch:gate:production:json`: pass (`status=pass`, all checks pass).
+  - Refreshed artifacts:
+    - `artifacts/release/production-launch-gate-summary.json`
+    - `artifacts/release/production-launch-gate-health-summary.json`
+    - `artifacts/release/production-admin-health-summary.json`
+    - `artifacts/release/production-runtime-orchestration-probe.json`
+    - `artifacts/release/production-agent-gateway-adapter-matrix-probe.json`
+    - `artifacts/release/production-agent-gateway-ingest-probe.json`
+    - `artifacts/release/production-agent-gateway-telemetry.json`
+    - `artifacts/release/production-agent-gateway-adapters.json`
+  - Health snapshot confirms production checks: `health=true`, `ready=true`, `telemetryNonEmpty=true`, `expectedCronJobsPresent=true`.
+  - Jobs snapshot confirms expected cron set present with 5 rows (`budgets_reset`, `glowup_reel`, `autopsy_report`, `retention_cleanup`, `embedding_backfill`).
+  - Backup/restore requirement remains satisfied from latest drill artifacts:
+    - `artifacts/release/backup-restore-checkpoint.json` (`restoreListValidated=true`)
+    - `artifacts/release/restore-drill-summary.json` (`restoreDrillPassed=true`)
+- Incidents:
+  - none.
+- Follow-ups:
+  - rotate/revoke all exposed temporary tokens and keep only current secrets in Railway/GitHub.
+
+### 2026-03-01 - post-release health run #469 (id 22482957944)
+
+- Source workflow run: #469 (https://github.com/Web-pixel-creator/SocialProject/actions/runs/22482957944).
+- Overall health: pass.
+- Required jobs: 5/5 passed.
+- Required artifacts: 5/5 present.
+- Failed jobs total: 0.
+- Smoke summary: pass=true totalSteps=19 failedSteps=0.
+- Report artifact: `artifacts/release/post-release-health-run-22482957944.json`.
+
 ### 2026-03-01 - launch-gate CI fallback from Railway token to RELEASE context
 
 - Scope: unblock production launch-gate workflow_dispatch when Railway API token linkage fails in CI (`railway link unauthorized`).
