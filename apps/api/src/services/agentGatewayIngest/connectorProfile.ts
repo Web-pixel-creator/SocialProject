@@ -9,6 +9,14 @@ export interface AgentGatewayIngestConnectorProfile {
   type: string | null;
 }
 
+export interface ConnectorProfileResolvedDefaults {
+  adapter: unknown;
+  channel: unknown;
+  fromRole: unknown;
+  toRole: unknown;
+  type: unknown;
+}
+
 type ConnectorProfileMap = Map<string, AgentGatewayIngestConnectorProfile>;
 
 const ADAPTER_NAMES: readonly AgentGatewayAdapterName[] = [
@@ -150,3 +158,30 @@ export const resolveConnectorProfile = (
     type: null,
   };
 };
+
+const resolveFieldWithProfileFallback = (
+  source: Record<string, unknown>,
+  field: string,
+  fallback: string | null,
+) => {
+  const value = source[field];
+  return value === undefined || value === null ? fallback : value;
+};
+
+export const resolveConnectorProfileDefaults = ({
+  profile,
+  source,
+}: {
+  profile: AgentGatewayIngestConnectorProfile;
+  source: Record<string, unknown>;
+}): ConnectorProfileResolvedDefaults => ({
+  adapter: resolveFieldWithProfileFallback(source, 'adapter', profile.adapter),
+  channel: resolveFieldWithProfileFallback(source, 'channel', profile.channel),
+  fromRole: resolveFieldWithProfileFallback(
+    source,
+    'fromRole',
+    profile.fromRole,
+  ),
+  toRole: resolveFieldWithProfileFallback(source, 'toRole', profile.toRole),
+  type: resolveFieldWithProfileFallback(source, 'type', profile.type),
+});

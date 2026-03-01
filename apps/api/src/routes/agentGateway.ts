@@ -14,6 +14,7 @@ import {
 import {
   parseConnectorProfileMap,
   resolveConnectorProfile,
+  resolveConnectorProfileDefaults,
 } from '../services/agentGatewayIngest/connectorProfile';
 import {
   parseConnectorSecretMap,
@@ -80,9 +81,6 @@ const CONNECTOR_RATE_LIMIT_WINDOW_SEC =
   env.AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMIT_WINDOW_SEC;
 const CONNECTOR_RATE_LIMIT_MAX =
   env.AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMIT_MAX;
-
-const resolveProfileDefault = (value: unknown, fallback: string | null) =>
-  value === undefined || value === null ? fallback : value;
 
 const assertAllowedQueryFields = (
   query: unknown,
@@ -457,9 +455,13 @@ router.post(
         CONNECTOR_PROFILE_MAP,
         connectorId,
       );
+      const resolvedConnectorDefaults = resolveConnectorProfileDefaults({
+        profile: connectorProfile,
+        source: body,
+      });
 
       const adapterRaw = parseOptionalString(
-        resolveProfileDefault(body.adapter, connectorProfile.adapter),
+        resolvedConnectorDefaults.adapter,
         {
           fieldName: 'adapter',
           pattern: CHANNEL_PATTERN,
@@ -477,39 +479,27 @@ router.post(
       }
       telemetryAdapter = adapter;
 
-      const channel = parseRequiredString(
-        resolveProfileDefault(body.channel, connectorProfile.channel),
-        {
-          fieldName: 'channel',
-          pattern: CHANNEL_PATTERN,
-          errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
-        },
-      );
+      const channel = parseRequiredString(resolvedConnectorDefaults.channel, {
+        fieldName: 'channel',
+        pattern: CHANNEL_PATTERN,
+        errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
+      });
       telemetryChannel = channel;
-      const fromRole = parseRequiredString(
-        resolveProfileDefault(body.fromRole, connectorProfile.fromRole),
-        {
-          fieldName: 'fromRole',
-          pattern: ROLE_PATTERN,
-          errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
-        },
-      );
-      const toRole = parseOptionalString(
-        resolveProfileDefault(body.toRole, connectorProfile.toRole),
-        {
-          fieldName: 'toRole',
-          pattern: ROLE_PATTERN,
-          errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
-        },
-      );
-      const type = parseRequiredString(
-        resolveProfileDefault(body.type, connectorProfile.type),
-        {
-          fieldName: 'type',
-          pattern: EVENT_TYPE_PATTERN,
-          errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
-        },
-      );
+      const fromRole = parseRequiredString(resolvedConnectorDefaults.fromRole, {
+        fieldName: 'fromRole',
+        pattern: ROLE_PATTERN,
+        errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
+      });
+      const toRole = parseOptionalString(resolvedConnectorDefaults.toRole, {
+        fieldName: 'toRole',
+        pattern: ROLE_PATTERN,
+        errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
+      });
+      const type = parseRequiredString(resolvedConnectorDefaults.type, {
+        fieldName: 'type',
+        pattern: EVENT_TYPE_PATTERN,
+        errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
+      });
       const draftId = parseOptionalUuid(
         body.draftId,
         'draftId',

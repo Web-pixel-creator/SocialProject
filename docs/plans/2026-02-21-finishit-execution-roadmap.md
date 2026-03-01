@@ -817,6 +817,7 @@ Exit criteria:
 - Connector ecosystem update:
   - added configurable connector profiles parser (`apps/api/src/services/agentGatewayIngest/connectorProfile.ts`) with startup validation via `AGENT_GATEWAY_INGEST_CONNECTOR_PROFILES`,
   - ingest route now supports connector-level defaults for `adapter`, `channel`, `fromRole`, `toRole`, and `type` when those fields are omitted in incoming payloads,
+  - connector default application path is now centralized in `resolveConnectorProfileDefaults(...)` (body-overrides-profile precedence), and ingest route reuses this resolver,
   - ingest route now also supports channel-aware `externalSessionId` fallback extraction from payload/metadata (`telegram`/`slack`/`discord`) when explicit `externalSessionId` is not provided (`apps/api/src/services/agentGatewayIngest/connectorEnvelope.ts`),
   - `/api/admin/agent-gateway/telemetry` and `/api/admin/agent-gateway/adapters` now expose `connectorProfiles` snapshot (defaults + resolved profile list) alongside `connectorPolicies`,
   - keeps existing explicit-body precedence and existing signature/idempotency/rate-limit guardrails unchanged.
@@ -830,5 +831,6 @@ Exit criteria:
 - Coverage update:
   - extended skills-loader coverage in `apps/api/src/__tests__/agent-skills.unit.spec.ts` for runtime auto-load on/off behavior,
   - added connector-profile parser coverage in `apps/api/src/__tests__/agent-gateway-ingest-connector-profile.unit.spec.ts`,
+  - added connector-profile default-precedence coverage (`resolveConnectorProfileDefaults`) in `apps/api/src/__tests__/agent-gateway-ingest-connector-profile.unit.spec.ts`,
   - added connector-envelope session-id extraction coverage in `apps/api/src/__tests__/agent-gateway-ingest-connector-envelope.unit.spec.ts`,
   - extended API integration ingest coverage for telegram fallback external-session derivation in `apps/api/src/__tests__/api.integration.spec.ts`.
