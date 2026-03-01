@@ -33,6 +33,16 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - post-release health run #18 (id 22540039019)
+
+- Source workflow run: #18 (https://github.com/Web-pixel-creator/SocialProject/actions/runs/22540039019).
+- Overall health: pass.
+- Required jobs: 1/1 passed.
+- Required artifacts: 9/9 present.
+- Failed jobs total: 0.
+- Smoke summary: pass=true totalSteps=19 failedSteps=0.
+- Report artifact: `artifacts/release/post-release-health-run-22540039019.json`.
+
 ### 2026-03-01 - release health report workflow profiles (CI + launch-gate)
 
 - Scope: extend post-release health reporting to support both `CI` and `Production Launch Gate` workflow-dispatch runs with profile-specific required job/artifact gates.
