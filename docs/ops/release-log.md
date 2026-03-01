@@ -33,6 +33,27 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - launch-gate strict matrix stabilization (runtime draft + cron + skills)
+
+- Scope: close strict launch-gate matrix by validating combined flags and hardening workflow-dispatch reliability.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 07:21 -> 2026-03-01 07:36.
+- Changes:
+  - fixed dispatch run discovery to ignore baseline runs and always wait for newly created workflow run (`fix(release): harden launch-dispatch run discovery`, `68b0fc3`).
+  - added strict guardrail: `require_skill_markers=true` now requires explicit runtime draft id in gate script, dispatch helper, and workflow validation (`fix(release): require explicit runtime draft for skill markers`, `15cfc5a`).
+- Verification:
+  - run `#11` (id `22538508894`): pass (strict baseline)  
+    https://github.com/Web-pixel-creator/SocialProject/actions/runs/22538508894
+  - run `#12` (id `22538528611`): pass (`require_natural_cron_window=true`)  
+    https://github.com/Web-pixel-creator/SocialProject/actions/runs/22538528611
+  - run `#13` (id `22538669836`): pass (`runtime_draft_id=3fefc86d-eb94-42f2-8c97-8b57eff8944e`, `require_skill_markers=true`, `require_natural_cron_window=true`)  
+    https://github.com/Web-pixel-creator/SocialProject/actions/runs/22538669836
+  - run `#10` (id `22538448853`) intentionally captured failure root-cause before guardrail (`Runtime probe failed` because `require_skill_markers=true` was used without explicit runtime draft id).
+- Incidents:
+  - none.
+- Follow-ups:
+  - keep using explicit `runtime_draft_id` for all skill-marker strict runs.
+
 ### 2026-03-01 - production launch verification refresh (strict)
 
 - Scope: refresh strict production verification after CI launch-gate unblocking and confirm cron/backup evidence remains valid.
