@@ -171,6 +171,16 @@ const main = () => {
         `- release-health alert consecutive successful runs: \`${String(telemetry?.consecutiveSuccessfulRunStreak ?? 0)}\``,
         `- release-health alert escalation: \`${telemetry?.escalationTriggered === true ? 'triggered' : 'not-triggered'}\``,
       );
+      if (telemetry?.latestAlertRun && typeof telemetry.latestAlertRun === 'object') {
+        lines.push(
+          `- release-health latest alert run: \`id=${String(telemetry.latestAlertRun.id ?? 'n/a')} number=${String(telemetry.latestAlertRun.number ?? 'n/a')} conclusion=${String(telemetry.latestAlertRun.conclusion ?? 'unknown')}\``,
+        );
+      }
+      if (telemetry?.escalationSuppressed === true) {
+        lines.push(
+          `- release-health escalation suppression: \`${String(telemetry?.escalationSuppressionReason ?? 'suppressed')}\``,
+        );
+      }
       if (typeof telemetry?.fetchError === 'string' && telemetry.fetchError.length > 0) {
         lines.push(`- release-health alert telemetry fetch error: \`${telemetry.fetchError}\``);
       }

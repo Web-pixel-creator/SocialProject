@@ -335,6 +335,14 @@ const fetchReleaseHealthAlertTelemetryCheck = async ({
     riskLevel: 'unknown',
     pass: true,
     consecutiveSuccessfulRunStreak: 0,
+    latestAlertRun: {
+      id: null,
+      number: null,
+      url: null,
+      conclusion: null,
+    },
+    escalationSuppressed: false,
+    escalationSuppressionReason: null,
     escalationTriggered: false,
     reasons: [],
   };
@@ -395,6 +403,10 @@ const fetchReleaseHealthAlertTelemetryCheck = async ({
     typeof observerEngagementPayload.releaseHealthAlerts === 'object'
       ? observerEngagementPayload.releaseHealthAlerts
       : {};
+  const latestAlert =
+    releaseHealthAlerts.latest && typeof releaseHealthAlerts.latest === 'object'
+      ? releaseHealthAlerts.latest
+      : {};
   const kpis =
     observerEngagementPayload?.kpis && typeof observerEngagementPayload.kpis === 'object'
       ? observerEngagementPayload.kpis
@@ -426,6 +438,36 @@ const fetchReleaseHealthAlertTelemetryCheck = async ({
     alertedRuns,
     firstAppearances,
   });
+  const latestAlertRunId = toNonNegativeInteger(
+    toFiniteNumber(latestAlert.runId, null),
+    0,
+  );
+  const latestAlertRunNumber = toNonNegativeInteger(
+    toFiniteNumber(latestAlert.runNumber, null),
+    0,
+  );
+  const latestAlertRunUrl =
+    typeof latestAlert.runUrl === 'string' && latestAlert.runUrl.length > 0
+      ? latestAlert.runUrl
+      : null;
+  let latestAlertRunConclusion = null;
+  let latestAlertRunConclusionLookupError = null;
+  if (latestAlertRunId > 0) {
+    try {
+      const latestAlertRun = await githubRequest({
+        token,
+        method: 'GET',
+        url: `${baseApiUrl}/actions/runs/${latestAlertRunId}`,
+      });
+      latestAlertRunConclusion =
+        typeof latestAlertRun?.conclusion === 'string' &&
+        latestAlertRun.conclusion.length > 0
+          ? latestAlertRun.conclusion
+          : null;
+    } catch (error) {
+      latestAlertRunConclusionLookupError = toErrorMessage(error);
+    }
+  }
 
   let consecutiveSuccessfulRunStreak = 0;
   try {
@@ -443,14 +485,30 @@ const fetchReleaseHealthAlertTelemetryCheck = async ({
     // Keep streak at 0 when run-history lookup fails; this check remains advisory.
   }
 
-  const escalationTriggered =
+  const escalationCandidate =
     (riskLevel === 'watch' || riskLevel === 'critical') &&
     consecutiveSuccessfulRunStreak >= escalationStreak;
+  const escalationSuppressionReason =
+    escalationCandidate &&
+    typeof latestAlertRunConclusion === 'string' &&
+    latestAlertRunConclusion !== 'success'
+      ? `suppressed because latest alert run #${String(latestAlertRunNumber > 0 ? latestAlertRunNumber : latestAlertRunId)} concluded '${latestAlertRunConclusion}'`
+      : null;
+  const escalationSuppressed = escalationSuppressionReason !== null;
+  const escalationTriggered = escalationCandidate && !escalationSuppressed;
 
   const reasons = [];
   if (escalationTriggered) {
     reasons.push(
       `alert risk remained ${riskLevel} across ${String(consecutiveSuccessfulRunStreak)} consecutive successful workflow_dispatch runs`,
+    );
+  }
+  if (escalationSuppressed && escalationSuppressionReason) {
+    reasons.push(escalationSuppressionReason);
+  }
+  if (latestAlertRunConclusionLookupError) {
+    reasons.push(
+      `unable to resolve latest alert run conclusion: ${latestAlertRunConclusionLookupError}`,
     );
   }
 
@@ -469,6 +527,14 @@ const fetchReleaseHealthAlertTelemetryCheck = async ({
     riskLevel,
     pass: riskLevel === 'healthy',
     consecutiveSuccessfulRunStreak,
+    latestAlertRun: {
+      id: latestAlertRunId > 0 ? latestAlertRunId : null,
+      number: latestAlertRunNumber > 0 ? latestAlertRunNumber : null,
+      url: latestAlertRunUrl,
+      conclusion: latestAlertRunConclusion,
+    },
+    escalationSuppressed,
+    escalationSuppressionReason,
     escalationTriggered,
     reasons,
   };
@@ -1455,6 +1521,21 @@ const toJsonSummaryPayload = ({ report, outputPath, strict }) => ({
           pass: report.releaseHealthAlertTelemetry.pass === true,
           consecutiveSuccessfulRunStreak:
             report.releaseHealthAlertTelemetry.consecutiveSuccessfulRunStreak ?? 0,
+          latestAlertRun: {
+            id: report.releaseHealthAlertTelemetry.latestAlertRun?.id ?? null,
+            number:
+              report.releaseHealthAlertTelemetry.latestAlertRun?.number ?? null,
+            url: report.releaseHealthAlertTelemetry.latestAlertRun?.url ?? null,
+            conclusion:
+              report.releaseHealthAlertTelemetry.latestAlertRun?.conclusion ?? null,
+          },
+          escalationSuppressed:
+            report.releaseHealthAlertTelemetry.escalationSuppressed === true,
+          escalationSuppressionReason:
+            typeof report.releaseHealthAlertTelemetry.escalationSuppressionReason ===
+            'string'
+              ? report.releaseHealthAlertTelemetry.escalationSuppressionReason
+              : null,
           escalationTriggered:
             report.releaseHealthAlertTelemetry.escalationTriggered === true,
           reasons: Array.isArray(report.releaseHealthAlertTelemetry.reasons)
@@ -1833,6 +1914,24 @@ const main = async () => {
           report.releaseHealthAlertTelemetry.escalationTriggered === true,
         )}\n`,
       );
+      const latestAlertRun = report.releaseHealthAlertTelemetry.latestAlertRun;
+      if (latestAlertRun && typeof latestAlertRun === 'object') {
+        process.stdout.write(
+          `Release-health latest alert run: id=${String(
+            latestAlertRun.id ?? 'n/a',
+          )} number=${String(latestAlertRun.number ?? 'n/a')} conclusion=${String(
+            latestAlertRun.conclusion ?? 'unknown',
+          )}\n`,
+        );
+      }
+      if (report.releaseHealthAlertTelemetry.escalationSuppressed === true) {
+        process.stdout.write(
+          `Release-health alert escalation suppression: ${String(
+            report.releaseHealthAlertTelemetry.escalationSuppressionReason ??
+              'suppressed',
+          )}\n`,
+        );
+      }
       if (
         report.releaseHealthAlertTelemetry.fetchError &&
         typeof report.releaseHealthAlertTelemetry.fetchError === 'string'

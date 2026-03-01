@@ -22,7 +22,7 @@
       "const": "docs/ops/schemas/release-health-report-output.schema.json"
     },
     "schemaVersion": {
-      "const": "1.5.0"
+      "const": "1.6.0"
     },
     "generatedAtUtc": {
       "type": "string",
@@ -821,6 +821,44 @@
         }
       }
     },
+    "releaseHealthAlertTelemetryRun": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "number",
+        "url",
+        "conclusion"
+      ],
+      "properties": {
+        "id": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "number": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "conclusion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
     "releaseHealthAlertTelemetry": {
       "type": "object",
       "additionalProperties": false,
@@ -839,6 +877,9 @@
         "riskLevel",
         "pass",
         "consecutiveSuccessfulRunStreak",
+        "latestAlertRun",
+        "escalationSuppressed",
+        "escalationSuppressionReason",
         "escalationTriggered",
         "reasons"
       ],
@@ -909,6 +950,18 @@
         "consecutiveSuccessfulRunStreak": {
           "type": "integer",
           "minimum": 0
+        },
+        "latestAlertRun": {
+          "$ref": "#/$defs/releaseHealthAlertTelemetryRun"
+        },
+        "escalationSuppressed": {
+          "type": "boolean"
+        },
+        "escalationSuppressionReason": {
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "escalationTriggered": {
           "type": "boolean"
