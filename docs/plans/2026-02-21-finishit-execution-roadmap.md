@@ -1038,3 +1038,19 @@ Exit criteria:
 - Revalidation:
   - `npm run release:health:report -- 22541810462 --workflow-file production-launch-gate.yml --profile launch-gate --json --strict`: pass.
   - `npm run release:health:schema:check -- artifacts/release/post-release-health-run-22541810462.json`: pass.
+
+## Progress Snapshot (2026-03-01 - CI workflow_dispatch recovery + Release Health Gate success)
+- CI dispatch failure triage:
+  - initial CI workflow_dispatch run `#523` (`22542022452`) failed on:
+    - `test` job (`Run lint`) due `no-empty` in `scripts/release/production-launch-gate.mjs`,
+    - `release_smoke_staging` due missing `RELEASE_*` env preflight config (`DATABASE_URL`, `REDIS_URL`, `S3_*`, `JWT_SECRET`, `EMBEDDING_PROVIDER`, `NEXT_PUBLIC_SEARCH_*`).
+- Remediation:
+  - patched empty catch block in `production-launch-gate.mjs` (lint-safe non-empty catch).
+  - synchronized missing GitHub `RELEASE_*` workflow config from current Railway production env:
+    - variables (`RELEASE_NODE_ENV`, `RELEASE_FRONTEND_URL`, `RELEASE_S3_*`, `RELEASE_EMBEDDING_PROVIDER`, `RELEASE_NEXT_PUBLIC_*`),
+    - secrets (`RELEASE_DATABASE_URL`, `RELEASE_REDIS_URL`, `RELEASE_JWT_SECRET`, `RELEASE_ADMIN_API_TOKEN`, `RELEASE_S3_ACCESS_KEY_ID`, `RELEASE_S3_SECRET_ACCESS_KEY`).
+- Revalidation:
+  - rerun CI workflow_dispatch `#524` (`22542195730`): `success`.
+  - downstream `Release Health Gate` run (`22542270014`): `success`.
+  - `npm run release:health:report -- 22542195730 --json --strict`: pass (`requiredJobs=5/5`, `requiredArtifacts=5/5`).
+  - `npm run release:health:schema:check -- artifacts/release/post-release-health-run-22542195730.json`: pass.

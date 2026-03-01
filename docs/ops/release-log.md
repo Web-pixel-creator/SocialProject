@@ -33,6 +33,38 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - CI workflow_dispatch recovery for release health automation
+
+- Scope: restore green CI workflow_dispatch path and downstream Release Health Gate evidence after failed run `#523`.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 11:02 -> 2026-03-01 11:21.
+- Changes:
+  - fixed lint blocker in `scripts/release/production-launch-gate.mjs` (non-empty catch block).
+  - synchronized missing GitHub release-smoke env configuration from Railway production runtime:
+    - variables: `RELEASE_NODE_ENV`, `RELEASE_FRONTEND_URL`, `RELEASE_S3_*`, `RELEASE_EMBEDDING_PROVIDER`, `RELEASE_NEXT_PUBLIC_*`,
+    - secrets: `RELEASE_DATABASE_URL`, `RELEASE_REDIS_URL`, `RELEASE_JWT_SECRET`, `RELEASE_ADMIN_API_TOKEN`, `RELEASE_S3_ACCESS_KEY_ID`, `RELEASE_S3_SECRET_ACCESS_KEY`.
+- Verification:
+  - CI workflow_dispatch run `#524` (`22542195730`): `success`.
+  - downstream `Release Health Gate` run (`22542270014`): `success`.
+  - `npm run release:health:report -- 22542195730 --json --strict`: pass.
+  - `npm run release:health:schema:check -- artifacts/release/post-release-health-run-22542195730.json`: pass.
+- Incidents:
+  - prior CI workflow_dispatch run `#523` (`22542022452`) failed due:
+    - lint rule `no-empty` in launch-gate script,
+    - missing `RELEASE_*` staging env preflight configuration.
+- Follow-ups:
+  - none.
+
+### 2026-03-01 - post-release health run #524 (id 22542195730)
+
+- Source workflow run: #524 (https://github.com/Web-pixel-creator/SocialProject/actions/runs/22542195730).
+- Overall health: pass.
+- Required jobs: 5/5 passed.
+- Required artifacts: 5/5 present.
+- Failed jobs total: 0.
+- Smoke summary: pass=true totalSteps=19 failedSteps=0.
+- Report artifact: `artifacts/release/post-release-health-run-22542195730.json`.
+
 ### 2026-03-01 - post-release health run #37 (id 22541810462)
 
 - Source workflow run: #37 (https://github.com/Web-pixel-creator/SocialProject/actions/runs/22541810462).
