@@ -820,6 +820,9 @@ Exit criteria:
   - ingest route now also supports channel-aware `externalSessionId` fallback extraction from payload/metadata (`telegram`/`slack`/`discord`) when explicit `externalSessionId` is not provided (`apps/api/src/services/agentGatewayIngest/connectorEnvelope.ts`),
   - `/api/admin/agent-gateway/telemetry` and `/api/admin/agent-gateway/adapters` now expose `connectorProfiles` snapshot (defaults + resolved profile list) alongside `connectorPolicies`,
   - keeps existing explicit-body precedence and existing signature/idempotency/rate-limit guardrails unchanged.
+- Launch-gate automation update:
+  - `scripts/release/production-launch-gate.mjs` now validates `connectorProfiles` snapshot presence on both admin gateway endpoints,
+  - in `--strict` mode this check is required (`connectorProfilesSnapshot.pass=true`), while non-strict mode records it as informational.
 - Coverage update:
   - extended skills-loader coverage in `apps/api/src/__tests__/agent-skills.unit.spec.ts` for runtime auto-load on/off behavior,
   - added connector-profile parser coverage in `apps/api/src/__tests__/agent-gateway-ingest-connector-profile.unit.spec.ts`,

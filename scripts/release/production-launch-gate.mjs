@@ -117,6 +117,13 @@ const writeJson = async (file, data) => {
 };
 
 const readJson = async (file) => JSON.parse(await readFile(file, 'utf8'));
+const hasConnectorProfilesSnapshot = (value) =>
+  Boolean(
+    value &&
+      typeof value === 'object' &&
+      Array.isArray(value.profiles) &&
+      Number.isFinite(value.total),
+  );
 
 const parseArgs = (argv) => {
   const o = {
@@ -614,16 +621,35 @@ const main = async () => {
     });
     await writeJson(path.resolve(ARTIFACTS.telemetry), telemetry.json ?? {});
     await writeJson(path.resolve(ARTIFACTS.adapters), adapters.json ?? {});
+    const telemetryConnectorProfilesReady = hasConnectorProfilesSnapshot(
+      telemetry.json?.connectorProfiles,
+    );
+    const adaptersConnectorProfilesReady = hasConnectorProfilesSnapshot(
+      adapters.json?.connectorProfiles,
+    );
+    const connectorProfilesReady =
+      telemetryConnectorProfilesReady && adaptersConnectorProfilesReady;
     await writeJson(path.resolve(ARTIFACTS.adminHealth), {
       timestampUtc: new Date().toISOString(),
       gateway: {
         adaptersTotal: adapters.json?.adapters?.total ?? null,
+        adaptersConnectorProfilesTotal:
+          adapters.json?.connectorProfiles?.total ?? null,
+        telemetryConnectorProfilesTotal:
+          telemetry.json?.connectorProfiles?.total ?? null,
         telemetryEventsTotal: telemetry.json?.events?.total ?? null,
         telemetrySessionsTotal: telemetry.json?.sessions?.total ?? null,
       },
       jobs: { expectedJobs: EXPECTED_CRON_JOBS, rows: rows.length },
     });
     summary.checks.snapshots = { pass: telemetry.ok && adapters.ok, skipped: false };
+    summary.checks.connectorProfilesSnapshot = {
+      pass: o.strict ? connectorProfilesReady : true,
+      skipped: false,
+      strictRequired: o.strict,
+      telemetryReady: telemetryConnectorProfilesReady,
+      adaptersReady: adaptersConnectorProfilesReady,
+    };
 
     summary.pass = Object.values(summary.checks).every((c) => c.pass);
     summary.status = summary.pass ? 'pass' : 'fail';
