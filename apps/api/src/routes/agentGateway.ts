@@ -5,6 +5,7 @@ import { computeHeavyRateLimiter } from '../middleware/security';
 import { redis } from '../redis/client';
 import { agentGatewayAdapterService } from '../services/agentGatewayAdapter/agentGatewayAdapterService';
 import type { AgentGatewayAdapterName } from '../services/agentGatewayAdapter/types';
+import { resolveConnectorExternalSessionId } from '../services/agentGatewayIngest/connectorEnvelope';
 import {
   parseConnectorPolicyMap,
   resolveConnectorIngestBudgetLimits,
@@ -485,11 +486,6 @@ router.post(
         },
       );
       telemetryChannel = channel;
-      const externalSessionId = parseRequiredString(body.externalSessionId, {
-        fieldName: 'externalSessionId',
-        pattern: EXTERNAL_SESSION_ID_PATTERN,
-        errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
-      });
       const fromRole = parseRequiredString(
         resolveProfileDefault(body.fromRole, connectorProfile.fromRole),
         {
@@ -550,6 +546,19 @@ router.post(
         maxBytes: connectorBudgetLimits.maxPayloadBytes,
         errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
       });
+      const externalSessionId = parseRequiredString(
+        resolveConnectorExternalSessionId({
+          explicitExternalSessionId: body.externalSessionId,
+          channel,
+          payload,
+          metadata,
+        }),
+        {
+          fieldName: 'externalSessionId',
+          pattern: EXTERNAL_SESSION_ID_PATTERN,
+          errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
+        },
+      );
 
       const eventId = parseRequiredString(
         body.eventId ?? parseHeaderValue(req.headers['x-idempotency-key']),

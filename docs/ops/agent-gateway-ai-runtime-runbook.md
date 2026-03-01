@@ -225,6 +225,10 @@ Example:
 
 Notes:
 - Explicit request-body values always win over profile defaults.
+- If `externalSessionId` is omitted, ingest attempts channel-aware fallback extraction:
+  - `telegram`: `message.chat.id` / related update shapes,
+  - `slack`: `event.channel` / `channel.id`,
+  - `discord`: `channel_id` / `d.channel_id`.
 - Invalid profile JSON fails fast on API startup.
 - Profile configuration is visible in:
   - `GET /api/admin/agent-gateway/telemetry?hours=24&limit=200` (`connectorProfiles`)
