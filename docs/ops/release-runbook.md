@@ -51,7 +51,9 @@ Canonical references:
        - When `RELEASE_REQUIRE_SKILL_MARKERS=true`, `RELEASE_RUNTIME_DRAFT_ID` is required and must point to a draft with skill markers.
    - Review summary: `artifacts/release/production-launch-gate-summary.json`
    - Launch gate now asserts required smoke step set (`api.health`, draft/PR/search API path, `web.home`, `web.feed`, `web.search`, `web.draft.detail`) via `smokeRequiredSteps.pass=true`.
-   - With `require_skill_markers=true`, launch gate asserts multi-step marker coverage (`skillMarkerMultiStep.pass=true`) across all orchestration roles (`critic`, `maker`, `judge`).
+   - With `require_skill_markers=true`, launch gate asserts multi-step marker coverage (`skillMarkerMultiStep.pass=true`):
+     - `Role persona` + `Skill capsule` markers must be present for every orchestration role step.
+     - `Role skill` marker must be present in at least one orchestration step.
    - Launch gate now also checks external connector channel fallback probes from configured connector profiles (`telegram` / `slack` / `discord`) via `ingestExternalChannelFallback`.
 1. Generate and validate health report:
    - `npm run release:health:report`

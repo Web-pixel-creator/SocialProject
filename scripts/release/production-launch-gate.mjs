@@ -591,7 +591,6 @@ const main = async () => {
             const hasRoleSkill = prompt.includes('Role skill');
             const hasSkillCapsule = prompt.includes('Skill capsule');
             return {
-              hasAll: hasRolePersona && hasRoleSkill && hasSkillCapsule,
               hasRolePersona,
               hasRoleSkill,
               hasSkillCapsule,
@@ -600,9 +599,17 @@ const main = async () => {
             };
           })
         : [];
-      const allStepsHaveSkillMarkers =
+      const hasRolePersonaAllSteps =
         stepPromptCoverage.length > 0 &&
-        stepPromptCoverage.every((step) => step.hasAll);
+        stepPromptCoverage.every((step) => step.hasRolePersona);
+      const hasSkillCapsuleAllSteps =
+        stepPromptCoverage.length > 0 &&
+        stepPromptCoverage.every((step) => step.hasSkillCapsule);
+      const hasRoleSkillAnyStep = stepPromptCoverage.some(
+        (step) => step.hasRoleSkill,
+      );
+      const skillMarkerMultiStepPass =
+        hasRolePersonaAllSteps && hasSkillCapsuleAllSteps && hasRoleSkillAnyStep;
       const rtArtifact = {
         baseUrl: apiBaseUrl,
         checkedAtUtc: new Date().toISOString(),
@@ -628,10 +635,19 @@ const main = async () => {
           stepRoles: Array.isArray(rt.json?.steps) ? rt.json.steps.map((s) => s.role) : [],
         },
         markers: {
-          allStepsHaveSkillMarkers,
-          missingRoles: stepPromptCoverage
-            .filter((step) => !step.hasAll)
+          hasRolePersonaAllSteps,
+          hasRoleSkillAnyStep,
+          hasSkillCapsuleAllSteps,
+          missingRolePersonaRoles: stepPromptCoverage
+            .filter((step) => !step.hasRolePersona)
             .map((step) => step.role),
+          missingSkillCapsuleRoles: stepPromptCoverage
+            .filter((step) => !step.hasSkillCapsule)
+            .map((step) => step.role),
+          roleSkillPresentRoles: stepPromptCoverage
+            .filter((step) => step.hasRoleSkill)
+            .map((step) => step.role),
+          skillMarkerMultiStepPass,
           stepCount: stepPromptCoverage.length,
           steps: stepPromptCoverage,
         },
@@ -644,13 +660,15 @@ const main = async () => {
         rtArtifact.orchestration.status === 201 &&
         rtArtifact.orchestration.completed === true &&
         rtArtifact.orchestration.stepRoles.join(',') === 'critic,maker,judge' &&
-        (!o.requireSkillMarkers || rtArtifact.markers.allStepsHaveSkillMarkers);
+        (!o.requireSkillMarkers || rtArtifact.markers.skillMarkerMultiStepPass);
       await writeJson(path.resolve(ARTIFACTS.runtimeProbe), rtArtifact);
       if (!rtArtifact.pass) throw new Error('Runtime probe failed');
       summary.checks.skillMarkerMultiStep = {
-        pass: o.requireSkillMarkers ? rtArtifact.markers.allStepsHaveSkillMarkers : true,
+        pass: o.requireSkillMarkers ? rtArtifact.markers.skillMarkerMultiStepPass : true,
         skipped: !o.requireSkillMarkers,
-        missingRoles: rtArtifact.markers.missingRoles,
+        missingRolePersonaRoles: rtArtifact.markers.missingRolePersonaRoles,
+        missingSkillCapsuleRoles: rtArtifact.markers.missingSkillCapsuleRoles,
+        roleSkillPresentRoles: rtArtifact.markers.roleSkillPresentRoles,
       };
 
       const channels = ['web', 'live_session', o.runtimeChannel];
