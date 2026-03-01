@@ -33,6 +33,31 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - connector profile strict mode + launch-gate run #14
+
+- Scope: enforce optional strict connector-profile policy at ingest runtime and re-validate full strict production launch-gate matrix on latest `main`.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 07:38 -> 2026-03-01 07:53.
+- Changes:
+  - Added `AGENT_GATEWAY_INGEST_ENFORCE_CONNECTOR_PROFILE` env flag (default `false`).
+  - Added profile conflict resolver `collectConnectorProfileConflicts(...)` and ingest guard:
+    - when strict mode is enabled, profile/body conflicts now return `409 AGENT_GATEWAY_INGEST_CONNECTOR_PROFILE_CONFLICT`.
+  - Extended admin connector-profile snapshot with `defaults.enforceProfile`.
+  - Updated runbook/roadmap docs for strict connector profile mode.
+- Verification:
+  - `npm run test -- --runInBand apps/api/src/__tests__/agent-gateway-ingest-connector-profile.unit.spec.ts apps/api/src/__tests__/agent-gateway-ingest-connector-envelope.unit.spec.ts apps/api/src/__tests__/agent-skills.unit.spec.ts`: pass (`19/19`).
+  - `npm run ultracite:check`: pass.
+  - `npm run release:launch:gate:dispatch` with:
+    - `RELEASE_RUNTIME_DRAFT_ID=3fefc86d-eb94-42f2-8c97-8b57eff8944e`
+    - `RELEASE_REQUIRE_SKILL_MARKERS=true`
+    - `RELEASE_REQUIRE_NATURAL_CRON_WINDOW=true`
+  - Workflow result: run `#14` (id `22538929205`) `success` on head `949e1d2`.
+  - Workflow URL: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/22538929205`
+- Incidents:
+  - none.
+- Follow-ups:
+  - none.
+
 ### 2026-03-01 - launch-gate strict matrix stabilization (runtime draft + cron + skills)
 
 - Scope: close strict launch-gate matrix by validating combined flags and hardening workflow-dispatch reliability.
