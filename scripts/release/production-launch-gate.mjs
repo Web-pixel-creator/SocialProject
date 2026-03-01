@@ -896,6 +896,35 @@ const main = async () => {
             timeoutMs: o.httpTimeoutMs,
             useAdmin: true,
           });
+          let connectorTelemetry = null;
+          let connectorTelemetryAttempts = 0;
+          let connectorTelemetryPass = false;
+          while (connectorTelemetryAttempts < 3) {
+            connectorTelemetryAttempts += 1;
+            connectorTelemetry = await postOrGet({
+              adminToken,
+              apiBaseUrl,
+              csrfToken,
+              method: 'GET',
+              pathName: `/api/admin/agent-gateway/telemetry?hours=24&limit=200&channel=${encodeURIComponent(channel)}&connector=${encodeURIComponent(connectorId)}`,
+              timeoutMs: o.httpTimeoutMs,
+              useAdmin: true,
+            });
+            const telemetryTotal = Number(
+              connectorTelemetry.json?.ingestConnectors?.total ?? 0,
+            );
+            const telemetryAccepted = Number(
+              connectorTelemetry.json?.ingestConnectors?.accepted ?? 0,
+            );
+            connectorTelemetryPass =
+              connectorTelemetry.ok &&
+              telemetryTotal > 0 &&
+              telemetryAccepted > 0;
+            if (connectorTelemetryPass) {
+              break;
+            }
+            await sleep(500);
+          }
           const sessionRows = Array.isArray(sessions.json?.sessions)
             ? sessions.json.sessions
             : [];
@@ -906,6 +935,7 @@ const main = async () => {
             channelIngest.status === 201 &&
             channelIngest.json?.applied === true &&
             sessions.ok &&
+            connectorTelemetryPass &&
             matchedSession?.externalSessionId ===
               channelProbe.expectedExternalSessionId;
           channelFallbackChecks.push({
@@ -919,6 +949,17 @@ const main = async () => {
               matchedSession?.externalSessionId ?? null,
             sessionId: channelIngest.json?.sessionId ?? null,
             sessionsStatus: sessions.status,
+            telemetryAccepted:
+              Number(connectorTelemetry?.json?.ingestConnectors?.accepted ?? 0) ||
+              0,
+            telemetryAttempts: connectorTelemetryAttempts,
+            telemetryPass: connectorTelemetryPass,
+            telemetryRejected:
+              Number(connectorTelemetry?.json?.ingestConnectors?.rejected ?? 0) ||
+              0,
+            telemetryStatus: connectorTelemetry?.status ?? null,
+            telemetryTotal:
+              Number(connectorTelemetry?.json?.ingestConnectors?.total ?? 0) || 0,
           });
         }
       }

@@ -218,6 +218,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
     - [ ] `Role skill` marker is present on at least one orchestration step.
   - [ ] Confirm `ingestExternalChannelFallback.pass=true` in launch gate summary when Telegram/Slack/Discord connector profiles are configured.
     - [ ] If no `telegram/slack/discord` connector profiles are configured, allow `ingestExternalChannelFallback.skipped=true`.
+    - [ ] For configured channels, confirm per-channel fallback checks also include positive ingest telemetry assertion (`telemetryPass=true`, `telemetryAccepted > 0`).
   - [ ] When `required_external_channels` is set, confirm:
     - [ ] `ingestExternalChannelFallback.requiredChannels` contains expected channels.
     - [ ] `ingestExternalChannelFallback.missingRequiredChannels=[]`.

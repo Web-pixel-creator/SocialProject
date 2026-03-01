@@ -56,6 +56,7 @@ Canonical references:
      - `Role persona` + `Skill capsule` markers must be present for every orchestration role step.
      - `Role skill` marker must be present in at least one orchestration step.
    - Launch gate now also checks external connector channel fallback probes from configured connector profiles (`telegram` / `slack` / `discord`) via `ingestExternalChannelFallback`.
+   - For each configured external channel probe, launch gate also verifies connector telemetry counters (`ingestConnectors.accepted/total`) via admin telemetry API before passing fallback checks.
    - Optional strict channel requirement can be enabled with `--required-external-channels telegram,slack` (or workflow input/env equivalent); in this mode, launch gate fails if required channels are not configured or fallback probe validation fails.
 1. Generate and validate health report:
    - `npm run release:health:report`
