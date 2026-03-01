@@ -582,6 +582,17 @@ describe('admin ux observer engagement page', () => {
     expect(
       screen.getByText(/Release health alert telemetry/i),
     ).toBeInTheDocument();
+    const releaseHealthHeading = screen.getByText(
+      /Release health alert telemetry/i,
+    );
+    const releaseHealthSection = releaseHealthHeading.closest('section');
+    expect(releaseHealthSection).not.toBeNull();
+    if (!releaseHealthSection) {
+      throw new Error('Release health section should be present');
+    }
+    const releaseHealthScoped = within(releaseHealthSection);
+    expect(releaseHealthScoped.getByText(/^Alert risk$/i)).toBeInTheDocument();
+    expect(releaseHealthScoped.getByText(/^Critical$/i)).toBeInTheDocument();
     expect(screen.getByText(/^Alert events$/i)).toBeInTheDocument();
     expect(screen.getAllByText(/^First appearances$/i).length).toBeGreaterThan(
       0,

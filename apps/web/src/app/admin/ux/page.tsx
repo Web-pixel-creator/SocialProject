@@ -1813,6 +1813,53 @@ const deriveGatewayHealthLevel = (
   return overview.status.needsAttention ? 'watch' : 'healthy';
 };
 
+const RELEASE_HEALTH_ALERT_RISK_THRESHOLDS = {
+  alertedRuns: {
+    criticalAbove: 2,
+    watchAbove: 1,
+  },
+  firstAppearances: {
+    criticalAbove: 3,
+    watchAbove: 1,
+  },
+  totalAlerts: {
+    criticalAbove: 3,
+    watchAbove: 1,
+  },
+} as const;
+
+const deriveReleaseHealthAlertRiskLevel = ({
+  alertedRuns,
+  firstAppearances,
+  totalAlerts,
+}: {
+  alertedRuns: number;
+  firstAppearances: number;
+  totalAlerts: number;
+}): HealthLevel => {
+  const levels: HealthLevel[] = [
+    resolveRiskHealthLevel(
+      firstAppearances,
+      RELEASE_HEALTH_ALERT_RISK_THRESHOLDS.firstAppearances,
+    ),
+    resolveRiskHealthLevel(
+      totalAlerts,
+      RELEASE_HEALTH_ALERT_RISK_THRESHOLDS.totalAlerts,
+    ),
+    resolveRiskHealthLevel(
+      alertedRuns,
+      RELEASE_HEALTH_ALERT_RISK_THRESHOLDS.alertedRuns,
+    ),
+  ];
+  if (levels.includes('critical')) {
+    return 'critical';
+  }
+  if (levels.includes('watch')) {
+    return 'watch';
+  }
+  return 'healthy';
+};
+
 const resolveGatewaySessionMutations = async ({
   closeRequested,
   compactRequested,
@@ -3607,6 +3654,23 @@ export default async function AdminUxObserverEngagementPage({
     normalizeReleaseHealthAlertHourlyTrendItems(
       releaseHealthAlerts.hourlyTrend,
     );
+  const releaseHealthAlertCount = toNumber(
+    releaseHealthAlerts.totalAlerts,
+    toNumber(kpis.releaseHealthAlertCount),
+  );
+  const releaseHealthAlertFirstAppearanceCount = toNumber(
+    releaseHealthAlerts.firstAppearanceCount,
+    toNumber(kpis.releaseHealthFirstAppearanceCount),
+  );
+  const releaseHealthAlertedRunCount = toNumber(
+    releaseHealthAlerts.uniqueRuns,
+    toNumber(kpis.releaseHealthAlertedRunCount),
+  );
+  const releaseHealthAlertRiskLevel = deriveReleaseHealthAlertRiskLevel({
+    alertedRuns: releaseHealthAlertedRunCount,
+    firstAppearances: releaseHealthAlertFirstAppearanceCount,
+    totalAlerts: releaseHealthAlertCount,
+  });
   const releaseHealthAlertLatest =
     releaseHealthAlerts.latest && typeof releaseHealthAlerts.latest === 'object'
       ? (releaseHealthAlerts.latest as {
@@ -4816,33 +4880,41 @@ export default async function AdminUxObserverEngagementPage({
       </section>
 
       <section className="card grid gap-4 p-4 sm:p-5">
-        <h2 className="font-semibold text-foreground text-lg">
-          Release health alert telemetry
-        </h2>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="font-semibold text-foreground text-lg">
+            Release health alert telemetry
+          </h2>
+          <span
+            className={`${healthBadgeClass(releaseHealthAlertRiskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide`}
+          >
+            Alert risk: {healthLabel(releaseHealthAlertRiskLevel)}
+          </span>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+          <article className="rounded-xl border border-border/25 bg-background/60 p-3">
+            <p className="font-semibold text-foreground text-sm">Alert risk</p>
+            <p className="mt-2 font-semibold text-base text-foreground">
+              {healthLabel(releaseHealthAlertRiskLevel)}
+            </p>
+            <p className="text-muted-foreground text-xs">
+              Critical at first appearances &gt;= 3, alert events &gt;= 3, or
+              alerted runs &gt;= 2.
+            </p>
+          </article>
           <StatCard
             hint="release-health webhook events in current window"
             label="Alert events"
-            value={`${toNumber(
-              releaseHealthAlerts.totalAlerts,
-              toNumber(kpis.releaseHealthAlertCount),
-            )}`}
+            value={`${releaseHealthAlertCount}`}
           />
           <StatCard
             hint="sum of first-appearance entries across alert events"
             label="First appearances"
-            value={`${toNumber(
-              releaseHealthAlerts.firstAppearanceCount,
-              toNumber(kpis.releaseHealthFirstAppearanceCount),
-            )}`}
+            value={`${releaseHealthAlertFirstAppearanceCount}`}
           />
           <StatCard
             hint="unique launch-gate run ids represented in alert events"
             label="Alerted runs"
-            value={`${toNumber(
-              releaseHealthAlerts.uniqueRuns,
-              toNumber(kpis.releaseHealthAlertedRunCount),
-            )}`}
+            value={`${releaseHealthAlertedRunCount}`}
           />
           <StatCard
             hint="latest run that generated a release-health alert event"
