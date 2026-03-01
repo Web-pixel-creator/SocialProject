@@ -948,3 +948,15 @@ Exit criteria:
     - `missingRequiredChannels=["telegram"]`
     - `ingestProbe.pass=false`
   - post-negative baseline sanity run `#30` (`22540913414`) passed.
+
+## Progress Snapshot (2026-03-01 - external connector fallback telemetry assertions)
+- Launch-gate ingest verification update:
+  - external channel fallback checks now also require connector telemetry evidence from `/api/admin/agent-gateway/telemetry` (scoped by `channel` + `connector`).
+  - per-channel fallback pass now requires:
+    - `ingestConnectors.total > 0`
+    - `ingestConnectors.accepted > 0`
+  - fallback diagnostics now include telemetry fields (`telemetryPass`, `telemetryAccepted`, `telemetryTotal`, `telemetryAttempts`, `telemetryStatus`, `telemetryRejected`) per channel check.
+- Ops expectations update:
+  - release checklist/runbook now explicitly call out telemetry assertion requirements for configured external channels.
+- Revalidation:
+  - baseline launch-gate run `#31` (`22540991179`) passed after patch deployment.

@@ -33,6 +33,27 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - external fallback telemetry assertions in launch-gate
+
+- Scope: strengthen external connector fallback verification by asserting connector telemetry counters per channel probe.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 10:04 -> 2026-03-01 10:08.
+- Changes:
+  - Updated `scripts/release/production-launch-gate.mjs`:
+    - each configured external channel fallback check now also polls `/api/admin/agent-gateway/telemetry` scoped by `channel + connector`,
+    - per-channel pass now requires telemetry evidence (`ingestConnectors.total > 0` and `ingestConnectors.accepted > 0`),
+    - fallback check details now include telemetry diagnostics (`telemetryPass`, `telemetryAccepted`, `telemetryTotal`, `telemetryAttempts`, `telemetryStatus`, `telemetryRejected`).
+  - Updated docs:
+    - `docs/ops/release-checklist.md`
+    - `docs/ops/release-runbook.md`
+- Verification:
+  - `node --check scripts/release/production-launch-gate.mjs`: pass.
+  - workflow run `#31` (`22540991179`): `success` (baseline launch-gate sanity after patch).
+- Incidents:
+  - none.
+- Follow-ups:
+  - execute one strict run with configured Telegram/Slack/Discord profiles to exercise telemetry assertions on active external-channel probes.
+
 ### 2026-03-01 - launch-gate required channels validation runs + ingest fail diagnostics
 
 - Scope: validate new `required_external_channels` behavior on live workflow runs and ensure failing ingest probes expose explicit check state in summary artifacts.
