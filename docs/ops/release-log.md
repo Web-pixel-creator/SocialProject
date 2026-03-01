@@ -37,7 +37,7 @@ Copy this block for each release:
 
 - Scope: execute incident triage for sustained `releaseHealthAlertTelemetry.escalationTriggered=true` and set strict-mode decision window.
 - Release commander: Codex automation.
-- Window (UTC): 2026-03-01 18:31 -> 2026-03-01 18:36.
+- Window (UTC): 2026-03-01 18:31 -> 2026-03-01 18:38.
 - Execution:
   - Applied workflow env wiring for alert-risk controls in `Release Health Gate`:
     - `RELEASE_HEALTH_ALERT_RISK_ENABLED`
@@ -46,6 +46,11 @@ Copy this block for each release:
     - `RELEASE_HEALTH_ALERT_RISK_STRICT`
   - Dispatched strict `Production Launch Gate` run `#53` (`22549817562`) with `required_external_channels=all`.
   - Verified downstream `Release Health Gate` run `#221` (`22549833993`) artifacts.
+  - Applied repository variables for alert-risk automation controls:
+    - `RELEASE_HEALTH_ALERT_RISK_ENABLED=true`
+    - `RELEASE_HEALTH_ALERT_RISK_WINDOW_HOURS=24`
+    - `RELEASE_HEALTH_ALERT_RISK_ESCALATION_STREAK=2`
+    - `RELEASE_HEALTH_ALERT_RISK_STRICT=false`.
 - Validation:
   - launch-gate run `#53` completed with `success`.
   - downstream health summary confirms alert-risk check is active in workflow context:
