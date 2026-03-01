@@ -33,6 +33,37 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - skills-runtime matrix marker coverage in launch-gate
+
+- Scope: extend skills-runtime marker validation from single runtime probe to all matrix orchestration channels (`web`, `live_session`, runtime probe channel).
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 10:01 -> 2026-03-01 10:06.
+- Changes:
+  - Updated `scripts/release/production-launch-gate.mjs`:
+    - added matrix-channel marker coverage checks derived from orchestration step prompts,
+    - new summary check `skillMarkerMatrixChannels` with `failedChannels` diagnostics,
+    - `adapterMatrixProbe` now reports component signals (`channelFlowPass`, `adapterUsagePass`, `skillMarkerMatrixPass`),
+    - runtime/matrix checks now persist diagnostic check states in summary before failure exits.
+  - Updated docs:
+    - `docs/ops/release-checklist.md`
+    - `docs/ops/release-runbook.md`
+- Verification:
+  - `node --check scripts/release/production-launch-gate.mjs`: pass.
+  - `npm run ultracite:check`: pass.
+  - workflow run `#32` (`22541079581`): `success` with strict inputs:
+    - `runtime_draft_id=3fefc86d-eb94-42f2-8c97-8b57eff8944e`
+    - `require_skill_markers=true`
+    - `require_natural_cron_window=true`
+  - run `#32` summary assertions:
+    - `skillMarkerMultiStep.pass=true`
+    - `skillMarkerMatrixChannels.pass=true`
+    - `skillMarkerMatrixChannels.failedChannels=[]`
+  - `npm run release:health:report -- 22541079581 --workflow-file production-launch-gate.yml --profile launch-gate --json --strict`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - none.
+
 ### 2026-03-01 - external fallback telemetry assertions in launch-gate
 
 - Scope: strengthen external connector fallback verification by asserting connector telemetry counters per channel probe.

@@ -960,3 +960,18 @@ Exit criteria:
   - release checklist/runbook now explicitly call out telemetry assertion requirements for configured external channels.
 - Revalidation:
   - baseline launch-gate run `#31` (`22540991179`) passed after patch deployment.
+
+## Progress Snapshot (2026-03-01 - skills-runtime matrix marker coverage)
+- Launch-gate runtime-depth update:
+  - skills-runtime marker validation now extends beyond single runtime probe and covers matrix orchestration channels (`web`, `live_session`, runtime probe channel).
+  - added summary check `skillMarkerMatrixChannels` with explicit `failedChannels` diagnostics.
+  - `adapterMatrixProbe` summary now includes component-level signals (`channelFlowPass`, `adapterUsagePass`, `skillMarkerMatrixPass`) for clearer triage.
+- Diagnostics reliability update:
+  - runtime/matrix checks now persist summary check states before throwing on failure, reducing ambiguity in failed launch-gate artifacts.
+- Ops expectations update:
+  - release checklist/runbook now require `skillMarkerMatrixChannels.pass=true` when `require_skill_markers=true`.
+- Revalidation:
+  - strict launch-gate run `#32` (`22541079581`) passed with:
+    - `skillMarkerMultiStep.pass=true`
+    - `skillMarkerMatrixChannels.pass=true`
+    - `skillMarkerMatrixChannels.failedChannels=[]`.
