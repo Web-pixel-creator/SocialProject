@@ -48,14 +48,15 @@ Copy this block for each release:
 - Verification:
   - `npm run test -- --runInBand apps/api/src/__tests__/agent-gateway-ingest-connector-profile.unit.spec.ts apps/api/src/__tests__/agent-gateway-ingest-connector-envelope.unit.spec.ts`: pass (`13/13`).
   - `npm run ultracite:check`: pass.
-  - `npm run test -- --runInBand apps/api/src/__tests__/api.integration.spec.ts -t "agent gateway adapter ingest endpoint enforces connector profile conflicts in strict mode"`: blocked in current shell by integration DB dependency (`AggregateError` on DB truncate pre-test hook).
+  - `docker compose up -d postgres redis`: pass (both containers healthy).
+  - `npm run test -- --runInBand apps/api/src/__tests__/api.integration.spec.ts -t "agent gateway adapter ingest endpoint enforces connector profile conflicts in strict mode"`: pass.
   - `npm run release:launch:gate:dispatch` with strict matrix inputs (`runtime_draft_id` + `require_skill_markers=true` + `require_natural_cron_window=true`): pass.
   - Workflow result: run `#15` (id `22539023145`) `success` on head `7f09bf1`.
   - Workflow URL: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/22539023145`
 - Incidents:
   - none.
 - Follow-ups:
-  - rerun the targeted API integration test in a shell with local Postgres/Redis integration stack available.
+  - none.
 
 ### 2026-03-01 - connector profile strict mode + launch-gate run #14
 
