@@ -33,6 +33,31 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - strict launch-gate validation after admin ux telemetry merge
+
+- Scope: verify production launch-gate and downstream health automation after merging admin UX alert telemetry visibility updates.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 17:54 -> 2026-03-01 17:56.
+- Execution:
+  - Dispatched `Production Launch Gate` run `#50` (`22549107431`) with strict external-channel requirement:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all`
+- Validation:
+  - `Production Launch Gate` run `#50` completed with `success`.
+  - Strict launch-gate health report command passed:
+    - `npm --silent run release:health:report -- 22549107431 --workflow-file production-launch-gate.yml --profile launch-gate --json --strict`
+    - summary confirms:
+      - `requiredJobsPassed=1/1`
+      - `requiredArtifactsPresent=10/10`
+      - `externalChannelFailureModes.pass=true`
+      - `externalChannelFailureModes.firstAppearanceAlert.triggered=false`.
+  - Schema validation passed:
+    - `npm --silent run release:health:schema:check -- artifacts/release/post-release-health-run-22549107431.json`.
+  - Downstream `Release Health Gate` run `#211` (`22549123756`) triggered via `workflow_run` and completed with `success`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - confirm `/admin/ux` production surface reflects `Release health alert telemetry` block after web deploy propagation and capture screenshot evidence in next release window.
+
 ### 2026-03-01 - admin ux release-health alert telemetry visibility
 
 - Scope: expose persisted `release_external_channel_failure_mode_alert` signals in `/admin/ux` observer-engagement metrics and close prior monitoring follow-up.
