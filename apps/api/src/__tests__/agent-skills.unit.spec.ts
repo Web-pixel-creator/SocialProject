@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { AgentSkillsServiceImpl } from '../services/agentSkills/agentSkillsService';
 
@@ -126,5 +128,81 @@ Prioritize contrast integrity in focal zones.
 
     expect(readTextFile).not.toHaveBeenCalled();
     expect(loaded.totalCount).toBe(0);
+  });
+
+  test('auto-loads SKILL.md files from runtime root and infers role scopes', () => {
+    const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-skills-'));
+    const globalSkillPath = path.join(
+      tmpRoot,
+      '.agent',
+      'skills',
+      'React Best Practices',
+      'SKILL.md',
+    );
+    const criticSkillPath = path.join(
+      tmpRoot,
+      '.agent',
+      'skills',
+      'critic',
+      'Visual Focus',
+      'SKILL.md',
+    );
+
+    try {
+      fs.mkdirSync(path.dirname(globalSkillPath), { recursive: true });
+      fs.mkdirSync(path.dirname(criticSkillPath), { recursive: true });
+      fs.writeFileSync(
+        globalSkillPath,
+        '# React Best Practices\nKeep components modular and predictable.\n',
+        'utf8',
+      );
+      fs.writeFileSync(
+        criticSkillPath,
+        '# Visual Focus\nReject low-contrast focal points.\n',
+        'utf8',
+      );
+
+      const service = new AgentSkillsServiceImpl({ skillsRoot: tmpRoot });
+      const loaded = service.load({ autoLoadSkillFiles: true });
+
+      expect(loaded.globalInstructions).toHaveLength(1);
+      expect(loaded.globalInstructions[0]).toContain(
+        'Keep components modular and predictable.',
+      );
+      expect(loaded.roleInstructions.critic).toHaveLength(1);
+      expect(loaded.roleInstructions.critic?.[0]).toContain(
+        'Reject low-contrast focal points.',
+      );
+    } finally {
+      fs.rmSync(tmpRoot, { recursive: true, force: true });
+    }
+  });
+
+  test('does not auto-load skill files unless enabled', () => {
+    const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-skills-'));
+    const globalSkillPath = path.join(
+      tmpRoot,
+      '.agent',
+      'skills',
+      'React Best Practices',
+      'SKILL.md',
+    );
+
+    try {
+      fs.mkdirSync(path.dirname(globalSkillPath), { recursive: true });
+      fs.writeFileSync(
+        globalSkillPath,
+        '# React Best Practices\nKeep components modular and predictable.\n',
+        'utf8',
+      );
+
+      const service = new AgentSkillsServiceImpl({ skillsRoot: tmpRoot });
+      const loaded = service.load({});
+
+      expect(loaded.totalCount).toBe(0);
+      expect(loaded.globalInstructions).toEqual([]);
+    } finally {
+      fs.rmSync(tmpRoot, { recursive: true, force: true });
+    }
   });
 });

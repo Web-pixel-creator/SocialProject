@@ -9,11 +9,13 @@ const MAX_CAPSULES_TOTAL = 12;
 const MAX_GLOBAL_SKILLS = 6;
 const MAX_ROLE_SKILLS = 4;
 const MAX_FILE_SKILLS = 6;
+const MAX_SKILL_AUTODISCOVERY_DEPTH = 4;
 const MAX_LABEL_LENGTH = 48;
 const MAX_INSTRUCTION_LENGTH = 240;
 const MAX_TOTAL_CHAR_BUDGET = 2200;
 const MAX_FILE_CONTENT_LENGTH = 12_000;
 const MAX_FILE_LINES = 24;
+const DEFAULT_AUTOLOAD_ROOT = '.agent/skills';
 const SKILL_FILE_EXTENSION_ALLOWLIST = new Set(['.md', '.txt']);
 const MARKDOWN_HEADING_PREFIX_PATTERN = /^#{1,6}\s+/;
 const MARKDOWN_QUOTE_PREFIX_PATTERN = /^>\s+/;
@@ -143,6 +145,12 @@ interface SkillFileEntry {
   roles: AIRuntimeRole[];
 }
 
+interface SkillAutoLoadConfig {
+  enabled: boolean;
+  maxFiles: number;
+  rootPath: string;
+}
+
 const sanitizeSkillLine = (line: string) => {
   const withoutMarkdownDecorators = line
     .replace(MARKDOWN_HEADING_PREFIX_PATTERN, '')
@@ -233,6 +241,60 @@ const parseSkillFileEntries = (profile: Record<string, unknown>) => {
   return entries;
 };
 
+const parseSkillAutoLoadConfig = (
+  profile: Record<string, unknown>,
+): SkillAutoLoadConfig => {
+  const runtime =
+    profile.skillRuntime &&
+    typeof profile.skillRuntime === 'object' &&
+    !Array.isArray(profile.skillRuntime)
+      ? (profile.skillRuntime as Record<string, unknown>)
+      : {};
+
+  const normalizeBoolean = (value: unknown) => {
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    if (typeof value !== 'string') {
+      return false;
+    }
+    const normalized = value.trim().toLowerCase();
+    return normalized === 'true' || normalized === '1' || normalized === 'yes';
+  };
+
+  const parseMaxFiles = (value: unknown) => {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      const bounded = Math.floor(value);
+      return Math.min(Math.max(1, bounded), MAX_FILE_SKILLS);
+    }
+    if (typeof value === 'string') {
+      const parsed = Number.parseInt(value, 10);
+      if (Number.isFinite(parsed)) {
+        return Math.min(Math.max(1, parsed), MAX_FILE_SKILLS);
+      }
+    }
+    return MAX_FILE_SKILLS;
+  };
+
+  const enabled =
+    normalizeBoolean(profile.autoLoadSkillFiles) ||
+    normalizeBoolean(runtime.autoLoadSkillFiles) ||
+    normalizeBoolean(runtime.autoLoadFiles);
+  const rootPath =
+    sanitizeText(runtime.rootPath, 260) ??
+    sanitizeText(profile.skillFilesRoot, 260) ??
+    DEFAULT_AUTOLOAD_ROOT;
+  const maxFiles = parseMaxFiles(
+    runtime.maxFiles ?? profile.autoLoadSkillFilesMax,
+  );
+
+  return {
+    enabled,
+    maxFiles,
+    rootPath,
+  };
+};
+
 export class AgentSkillsServiceImpl implements AgentSkillsService {
   private readonly skillsRoot: string;
   private readonly readTextFile: AgentSkillsServiceDependencies['readTextFile'];
@@ -274,6 +336,149 @@ export class AgentSkillsServiceImpl implements AgentSkillsService {
       return null;
     }
     return resolved;
+  }
+
+  private resolveSafeDirectoryPath(relativePath: string): string | null {
+    const candidate = relativePath.trim();
+    if (!candidate) {
+      return null;
+    }
+    const normalizedCandidate = candidate.replace(/\\/g, '/');
+    if (
+      path.isAbsolute(normalizedCandidate) ||
+      path.win32.isAbsolute(candidate)
+    ) {
+      return null;
+    }
+    const absoluteRoot = path.resolve(this.skillsRoot);
+    const resolved = path.resolve(absoluteRoot, normalizedCandidate);
+    if (
+      !(
+        resolved === absoluteRoot ||
+        resolved.startsWith(`${absoluteRoot}${path.sep}`)
+      )
+    ) {
+      return null;
+    }
+    return resolved;
+  }
+
+  private inferRolesFromPath(relativePath: string): AIRuntimeRole[] {
+    const segments = relativePath
+      .replace(/\\/g, '/')
+      .split('/')
+      .map((segment) => segment.trim().toLowerCase())
+      .filter(Boolean);
+
+    const roles = RUNTIME_ROLES.filter((role) =>
+      segments.some(
+        (segment) =>
+          segment === role ||
+          segment === `${role}s` ||
+          segment === `${role}-skills` ||
+          segment === `${role}_skills`,
+      ),
+    );
+
+    return [...new Set(roles)];
+  }
+
+  private discoverAutoSkillFiles(
+    profile: Record<string, unknown>,
+  ): SkillFileEntry[] {
+    const config = parseSkillAutoLoadConfig(profile);
+    if (!config.enabled) {
+      return [];
+    }
+    const autoloadRoot = this.resolveSafeDirectoryPath(config.rootPath);
+    if (!autoloadRoot) {
+      return [];
+    }
+
+    const rootAbsolute = path.resolve(this.skillsRoot);
+    const queue: Array<{ absoluteDir: string; depth: number }> = [
+      { absoluteDir: autoloadRoot, depth: 0 },
+    ];
+    const visitedDirs = new Set<string>([autoloadRoot]);
+    const discovered: SkillFileEntry[] = [];
+
+    while (queue.length > 0 && discovered.length < config.maxFiles) {
+      const current = queue.shift();
+      if (!current) {
+        break;
+      }
+
+      let entries: fs.Dirent[] = [];
+      try {
+        entries = fs.readdirSync(current.absoluteDir, { withFileTypes: true });
+      } catch {
+        continue;
+      }
+
+      entries.sort((left, right) => left.name.localeCompare(right.name));
+
+      for (const entry of entries) {
+        if (discovered.length >= config.maxFiles) {
+          break;
+        }
+
+        if (entry.isSymbolicLink()) {
+          continue;
+        }
+
+        const absolutePath = path.resolve(current.absoluteDir, entry.name);
+        if (entry.isDirectory()) {
+          if (current.depth + 1 > MAX_SKILL_AUTODISCOVERY_DEPTH) {
+            continue;
+          }
+          if (!visitedDirs.has(absolutePath)) {
+            visitedDirs.add(absolutePath);
+            queue.push({
+              absoluteDir: absolutePath,
+              depth: current.depth + 1,
+            });
+          }
+          continue;
+        }
+
+        if (!entry.isFile()) {
+          continue;
+        }
+
+        const fileName = entry.name.toLowerCase();
+        const extension = path.extname(fileName);
+        if (!SKILL_FILE_EXTENSION_ALLOWLIST.has(extension)) {
+          continue;
+        }
+        if (!(fileName === 'skill.md' || fileName === 'skill.txt')) {
+          continue;
+        }
+
+        const relativePath = path.relative(rootAbsolute, absolutePath);
+        const normalizedRelativePath = relativePath.replace(/\\/g, '/');
+        if (
+          !normalizedRelativePath ||
+          normalizedRelativePath.startsWith('..') ||
+          path.isAbsolute(relativePath)
+        ) {
+          continue;
+        }
+
+        const parentLabel =
+          sanitizeText(
+            path.basename(path.dirname(absolutePath)),
+            MAX_LABEL_LENGTH,
+          ) ?? sanitizeText(path.basename(absolutePath), MAX_LABEL_LENGTH);
+
+        discovered.push({
+          filePath: normalizedRelativePath,
+          label: parentLabel,
+          roles: this.inferRolesFromPath(normalizedRelativePath),
+        });
+      }
+    }
+
+    return discovered;
   }
 
   load(profile: unknown): LoadedAgentSkillProfile {
@@ -385,7 +590,24 @@ export class AgentSkillsServiceImpl implements AgentSkillsService {
       }
     }
 
-    for (const skillFile of parseSkillFileEntries(record)) {
+    const explicitSkillFiles = parseSkillFileEntries(record);
+    const autoSkillFiles = this.discoverAutoSkillFiles(record);
+    const combinedSkillFiles: SkillFileEntry[] = [];
+    const seenSkillFileEntries = new Set<string>();
+    for (const skillFile of [...explicitSkillFiles, ...autoSkillFiles]) {
+      if (combinedSkillFiles.length >= MAX_FILE_SKILLS) {
+        break;
+      }
+      const rolesKey = [...skillFile.roles].sort().join(',');
+      const dedupeKey = `${skillFile.filePath.toLowerCase()}|${rolesKey}`;
+      if (seenSkillFileEntries.has(dedupeKey)) {
+        continue;
+      }
+      seenSkillFileEntries.add(dedupeKey);
+      combinedSkillFiles.push(skillFile);
+    }
+
+    for (const skillFile of combinedSkillFiles) {
       const absolutePath = this.resolveSafeFilePath(skillFile.filePath);
       if (!absolutePath) {
         continue;
