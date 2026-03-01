@@ -79,6 +79,7 @@ Canonical references:
    - Rollout stop condition: if `requiredFailedChannels` remains non-empty across two consecutive strict runs, pause rollout and apply rollback decision thresholds.
 1. Generate and validate health report:
    - `npm run release:health:report`
+   - `Release Health Gate` workflow now auto-runs on completed `workflow_dispatch` runs from both `CI` and `Production Launch Gate` workflows (`workflow_run` trigger).
    - Optional launch-gate workflow profile:
      - `npm run release:health:report -- --workflow-file production-launch-gate.yml --profile launch-gate`
      - Shortcut: `npm run release:health:report:launch-gate`

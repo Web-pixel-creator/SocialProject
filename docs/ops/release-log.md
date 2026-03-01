@@ -33,6 +33,42 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - Release Health Gate automation path validation for launch-gate alerts
+
+- Scope: validate first-appearance alert delivery via real `workflow_run` automation path (not local/manual report execution).
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 17:00 -> 2026-03-01 17:06.
+- Changes:
+  - Updated `release-health-gate.yml` trigger scope to include:
+    - `CI`
+    - `Production Launch Gate`
+  - Added workflow-profile resolver step so post-release health runs with:
+    - `profile=ci` for CI source runs,
+    - `profile=launch-gate` + `workflow-file=production-launch-gate.yml` for launch-gate source runs.
+  - Configured temporary validation webhook secret:
+    - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_URL=https://httpbin.org/post` (test endpoint).
+- Validation matrix:
+  - controlled negative launch-gate run `#45` (`22548090338`): expected `failure`.
+    - triggered `Release Health Gate` run (`22548110308`) via `workflow_run`.
+    - post-release summary artifact confirms:
+      - `workflow.profile=launch_gate`
+      - `firstAppearanceAlert.triggered=true`
+      - `firstAppearanceAlert.webhookAttempted=true`
+      - `firstAppearanceAlert.webhookDelivered=true`
+      - `firstAppearanceAlert.webhookStatusCode=200`.
+  - normal strict launch-gate run `#46` (`22548135330`): `success`.
+    - triggered `Release Health Gate` run (`22548155997`) via `workflow_run`.
+    - post-release summary artifact confirms:
+      - `workflow.profile=launch_gate`
+      - `externalChannelFailureModes.pass=true`
+      - `firstAppearanceAlert.triggered=false`.
+- Post-validation cleanup:
+  - removed temporary test secret `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_URL` to avoid routing future production alerts to `httpbin`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - replace temporary `httpbin` webhook secret with production incident endpoint (PagerDuty/Slack bridge URL).
+
 ### 2026-03-01 - controlled negative drill + first-appearance webhook validation
 
 - Scope: execute safe negative launch-gate drill to validate first-appearance alert delivery end-to-end without rotating production secrets.

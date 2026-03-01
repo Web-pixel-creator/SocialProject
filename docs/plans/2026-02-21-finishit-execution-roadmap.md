@@ -1239,5 +1239,27 @@ Exit criteria:
 - Post-drill sanity:
   - strict normal run `#44` (`22547906409`) passed.
   - strict launch-gate health report for run `#44` passed (`nonPassModes=[]`, `firstAppearanceAlert.triggered=false`).
+
+## Progress Snapshot (2026-03-01 - workflow-run automation path validated for launch-gate alerts)
+- Release Health Gate workflow integration:
+  - `release-health-gate.yml` now listens to both `CI` and `Production Launch Gate` completion events.
+  - profile selection is now source-aware:
+    - source `CI` -> `profile=ci`,
+    - source `Production Launch Gate` -> `profile=launch-gate` with `workflow-file=production-launch-gate.yml`.
+- Automation-path validation evidence:
+  - controlled negative launch-gate run `#45` (`22548090338`) triggered Release Health Gate run `22548110308`:
+    - health summary confirms `workflow.profile=launch_gate`,
+    - `firstAppearanceAlert.triggered=true`,
+    - `webhookAttempted=true`,
+    - `webhookDelivered=true`,
+    - `webhookStatusCode=200`.
+  - normal strict launch-gate run `#46` (`22548135330`) triggered Release Health Gate run `22548155997`:
+    - health summary confirms `workflow.profile=launch_gate`,
+    - `externalChannelFailureModes.pass=true`,
+    - `firstAppearanceAlert.triggered=false`.
+- Temporary config note:
+  - validation used test webhook endpoint (`https://httpbin.org/post`) via secret
+    `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_URL`.
+  - temporary test secret was removed after validation to prevent accidental production alert routing.
 - Next increment:
-  - wire `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_URL` to production incident-management endpoint and validate delivery in CI automation path.
+  - replace temporary webhook secret with production incident-management endpoint and re-run one controlled drill for final sign-off.

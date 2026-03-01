@@ -271,6 +271,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
   - [ ] Validate report schema: `npm run release:health:schema:check` (or explicit file path: `npm run release:health:schema:check -- artifacts/release/post-release-health-run-<run_id>.json`)
   - [ ] Optional machine-readable schema validation summary: `npm run release:health:schema:check:json`
   - [ ] Confirm `Release Health Gate` workflow passed for this run (`workflow_run` automation after `CI` `workflow_dispatch`).
+    - [ ] For `Production Launch Gate` source runs, confirm `workflow.profile=launch_gate` in `post-release-health-summary` artifact.
   - [ ] Confirm artifacts from `Release Health Gate`: `post-release-health-report`, `post-release-health-summary`, `post-release-health-schema-summary`.
   - [ ] Save/attach `artifacts/release/post-release-health-run-<run_id>.json` to release ticket.
 - [ ] API error rate within threshold.
