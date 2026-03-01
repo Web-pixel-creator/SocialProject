@@ -82,7 +82,12 @@ const tryReadJson = (filePath) => {
   }
 
   try {
-    const raw = readFileSync(filePath, 'utf8').replace(/^\uFEFF/gu, '');
+    const buffer = readFileSync(filePath);
+    let raw = buffer.toString('utf8');
+    if (raw.includes('\u0000')) {
+      raw = buffer.toString('utf16le');
+    }
+    raw = raw.replace(/^\uFEFF/gu, '');
     return {
       status: 'ok',
       payload: JSON.parse(raw),
@@ -130,6 +135,24 @@ const main = () => {
         `- external-channel non-pass modes: \`${Array.isArray(trend?.nonPassModes) && trend.nonPassModes.length > 0 ? trend.nonPassModes.join(', ') : 'none'}\``,
         `- external-channel required-failure runs: \`${Array.isArray(trend?.runsWithRequiredFailures) && trend.runsWithRequiredFailures.length > 0 ? trend.runsWithRequiredFailures.join(', ') : 'none'}\``,
       );
+      if (
+        trend?.firstAppearanceAlert &&
+        typeof trend.firstAppearanceAlert === 'object'
+      ) {
+        const firstAlert = trend.firstAppearanceAlert;
+        const firstEntries = Array.isArray(firstAlert.firstAppearances)
+          ? firstAlert.firstAppearances
+          : [];
+        lines.push(
+          `- external-channel first-appearance alert: \`${firstAlert.triggered === true ? 'triggered' : 'not-triggered'}\``,
+          `- external-channel alert webhook: \`${firstAlert.webhookAttempted === true ? (firstAlert.webhookDelivered === true ? 'delivered' : 'failed') : 'not-attempted'}\``,
+        );
+        if (firstEntries.length > 0) {
+          lines.push(
+            `- external-channel first-appearance entries: \`${firstEntries.map((entry) => `${String(entry.channel ?? 'unknown')}|${String(entry.failureMode ?? 'unknown')}@${String(entry.runId ?? 'n/a')}`).join(', ')}\``,
+          );
+        }
+      }
       if (Array.isArray(trend?.reasons) && trend.reasons.length > 0) {
         lines.push(
           `- external-channel trend reasons: \`${trend.reasons.join('; ')}\``,

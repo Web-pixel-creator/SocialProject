@@ -33,6 +33,46 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - first-appearance alert hook for external-channel failure modes
+
+- Scope: add automated first-appearance alert hook (`channel + mode + run id`) for launch-gate rolling failure-mode trend window.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 16:36 -> 2026-03-01 16:52.
+- Changes:
+  - Updated `scripts/release/post-release-health-report.mjs`:
+    - trend analysis now stores per-run `nonPassChecks` and computes first-appearance set for current run vs previous analyzed runs,
+    - added `externalChannelFailureModes.firstAppearanceAlert` payload:
+      - `triggered`
+      - `firstAppearances[]` (`channel`, `failureMode`, `connectorId`, `runId`, `runNumber`, `runUrl`)
+      - webhook delivery telemetry (`webhookAttempted`, `webhookDelivered`, `webhookStatusCode`, `webhookError`),
+    - added optional webhook dispatch when first-appearance is detected:
+      - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_URL`
+      - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_ENABLED` (default `true`)
+      - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_TIMEOUT_MS` (default `10000`).
+  - Updated CI `Release Health Gate` workflow:
+    - passes optional secret `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_URL` into post-release gate script.
+  - Updated step summary renderer:
+    - now prints first-appearance alert state and delivery result in markdown summary.
+    - added UTF-16/BOM-safe JSON parsing for Windows-generated summary files.
+  - Updated release health schema contract:
+    - version bump `1.3.0 -> 1.4.0`,
+    - schema/sample sync for `firstAppearanceAlert` + `nonPassChecks`.
+  - Updated release checklist/runbook with new alert-hook controls.
+- Verification:
+  - `node --check scripts/release/post-release-health-report.mjs`: pass.
+  - `node --check scripts/release/render-post-release-health-step-summary.mjs`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm --silent run release:health:report -- 22547210842 --profile launch-gate --strict --json`: pass.
+    - `externalChannelFailureModes.firstAppearanceAlert.triggered=false`
+    - `externalChannelFailureModes.firstAppearanceAlert.webhookAttempted=false`.
+  - `npm --silent run release:health:schema:check -- artifacts/release/post-release-health-run-22547210842.json`: pass.
+  - generated step summary includes first-appearance alert lines (`not-triggered` / `not-attempted`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - connect webhook target to incident-management endpoint and verify live delivery on controlled negative run.
+
 ### 2026-03-01 - Release Health Gate step-summary external-channel trend visibility
 
 - Scope: expose launch-gate external-channel trend gate result directly in `Release Health Gate` markdown summary and harden JSON summary generation.

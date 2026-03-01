@@ -1193,5 +1193,28 @@ Exit criteria:
   - `scripts/release/run-post-release-health-gate.sh` now uses `npm --silent run` for JSON-producing commands so CI artifacts remain machine-parseable.
 - Result:
   - operator step summary now exposes launch-gate external-channel trend state without manual JSON inspection.
+
+## Progress Snapshot (2026-03-01 - first-appearance alert hook with triage payload)
+- Alert-hook automation update:
+  - launch-gate health report now computes first non-pass appearance for current run vs previous analyzed runs in rolling window.
+  - added `externalChannelFailureModes.firstAppearanceAlert` payload with triage fields:
+    - `channel`
+    - `failureMode`
+    - `connectorId`
+    - `runId` / `runNumber` / `runUrl`.
+  - optional webhook dispatch is now supported:
+    - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_URL`
+    - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_ENABLED` (default `true`)
+    - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_TIMEOUT_MS` (default `10000`).
+- CI integration:
+  - `Release Health Gate` workflow now forwards optional webhook secret to post-release gate script.
+  - step summary now surfaces first-appearance alert state (`triggered/not-triggered`, webhook delivery state).
+- Schema/contract update:
+  - release health schema bumped to `1.4.0` with `firstAppearanceAlert` + `nonPassChecks` contract.
+- Revalidation:
+  - `npm --silent run release:health:report -- 22547210842 --profile launch-gate --strict --json`: pass with
+    - `firstAppearanceAlert.triggered=false`
+    - `firstAppearanceAlert.webhookAttempted=false`.
+  - `npm --silent run release:health:schema:check -- artifacts/release/post-release-health-run-22547210842.json`: pass.
 - Next increment:
-  - add automated alert hook on first non-pass mode appearance in rolling window (channel + mode + run id triage payload).
+  - connect webhook target to incident-management endpoint and validate delivery path on controlled negative launch-gate run.

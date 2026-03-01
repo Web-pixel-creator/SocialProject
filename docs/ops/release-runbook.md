@@ -85,6 +85,9 @@ Canonical references:
      - `externalChannelFailureModes.pass=true`
      - `externalChannelFailureModes.nonPassModes=[]`
      - defaults: `windowSize=3`, `minimumRuns=1` (override via `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_WINDOW` and `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_MIN_RUNS`).
+   - First non-pass appearance hook:
+     - health report emits `externalChannelFailureModes.firstAppearanceAlert` with triage entries (`channel`, `failureMode`, `runId`),
+     - optional webhook delivery can be enabled via `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_URL` (CI secret) with timeout override `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_TIMEOUT_MS`.
    - `npm run release:health:schema:check`
 2. Confirm alerts, latency, and error rates are within thresholds.
 3. Validate runtime/gateway control plane health:

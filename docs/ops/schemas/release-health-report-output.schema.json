@@ -22,7 +22,7 @@
       "const": "docs/ops/schemas/release-health-report-output.schema.json"
     },
     "schemaVersion": {
-      "const": "1.3.0"
+      "const": "1.4.0"
     },
     "generatedAtUtc": {
       "type": "string",
@@ -400,6 +400,7 @@
         "failedChannelsTotal",
         "htmlUrl",
         "modeDistribution",
+        "nonPassChecks",
         "pass",
         "requiredChannelsPass",
         "requiredFailedChannelsTotal",
@@ -438,6 +439,12 @@
         "modeDistribution": {
           "$ref": "#/$defs/externalChannelModeDistribution"
         },
+        "nonPassChecks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/externalChannelNonPassCheck"
+          }
+        },
         "pass": {
           "type": "boolean"
         },
@@ -464,6 +471,221 @@
         }
       }
     },
+    "externalChannelNonPassCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "channel",
+        "connectorId",
+        "failureMode"
+      ],
+      "properties": {
+        "channel": {
+          "type": "string",
+          "minLength": 1
+        },
+        "connectorId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "failureMode": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "externalChannelFirstAppearance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "channel",
+        "connectorId",
+        "failureMode",
+        "runId",
+        "runNumber",
+        "runUrl"
+      ],
+      "properties": {
+        "channel": {
+          "type": "string",
+          "minLength": 1
+        },
+        "connectorId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "failureMode": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "runNumber": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "runUrl": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "externalChannelFirstAppearanceAlertPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "generatedAtUtc",
+        "repository",
+        "workflow",
+        "trendWindow",
+        "run",
+        "firstAppearances"
+      ],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generatedAtUtc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "repository": {
+          "type": "string",
+          "minLength": 1
+        },
+        "workflow": {
+          "$ref": "#/$defs/workflow"
+        },
+        "trendWindow": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "windowSize",
+            "minimumRuns",
+            "analyzedRuns"
+          ],
+          "properties": {
+            "windowSize": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "minimumRuns": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "analyzedRuns": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "run": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "number",
+            "htmlUrl"
+          ],
+          "properties": {
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "number": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1
+            },
+            "htmlUrl": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "firstAppearances": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/externalChannelFirstAppearance"
+          }
+        }
+      }
+    },
+    "externalChannelFirstAppearanceAlert": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "triggered",
+        "webhookUrlConfigured",
+        "webhookAttempted",
+        "webhookDelivered",
+        "webhookStatusCode",
+        "webhookError",
+        "webhookDeliveredAtUtc",
+        "firstAppearances",
+        "payload"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "triggered": {
+          "type": "boolean"
+        },
+        "webhookUrlConfigured": {
+          "type": "boolean"
+        },
+        "webhookAttempted": {
+          "type": "boolean"
+        },
+        "webhookDelivered": {
+          "type": "boolean"
+        },
+        "webhookStatusCode": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 100
+        },
+        "webhookError": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "webhookDeliveredAtUtc": {
+          "$ref": "#/$defs/nullableDateTime"
+        },
+        "firstAppearances": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/externalChannelFirstAppearance"
+          }
+        },
+        "payload": {
+          "$ref": "#/$defs/externalChannelFirstAppearanceAlertPayload"
+        }
+      }
+    },
     "externalChannelFailureModes": {
       "type": "object",
       "additionalProperties": false,
@@ -482,6 +704,7 @@
         "runsWithRequiredFailures",
         "missingArtifactRunIds",
         "analysisErrors",
+        "firstAppearanceAlert",
         "generatedAtUtc"
       ],
       "properties": {
@@ -555,6 +778,9 @@
           "items": {
             "$ref": "#/$defs/externalChannelAnalysisError"
           }
+        },
+        "firstAppearanceAlert": {
+          "$ref": "#/$defs/externalChannelFirstAppearanceAlert"
         },
         "generatedAtUtc": {
           "type": "string",

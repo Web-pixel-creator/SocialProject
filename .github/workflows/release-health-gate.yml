@@ -35,6 +35,7 @@ jobs:
       - name: Run post-release health checks
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_URL: ${{ secrets.RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_URL }}
         shell: bash
         run: bash scripts/release/run-post-release-health-gate.sh
 

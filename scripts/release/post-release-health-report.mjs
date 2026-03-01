@@ -17,6 +17,7 @@ const EXTERNAL_CHANNEL_TRACE_FILE_NAME =
 const EXTERNAL_CHANNEL_FAILURE_MODE_PASS_LABEL = 'pass_null';
 const DEFAULT_EXTERNAL_CHANNEL_TREND_WINDOW = 3;
 const DEFAULT_EXTERNAL_CHANNEL_TREND_MIN_RUNS = 1;
+const DEFAULT_EXTERNAL_CHANNEL_ALERT_TIMEOUT_MS = 10000;
 const WORKFLOW_PROFILES = {
   ci: {
     requiredArtifactNames: [
@@ -213,6 +214,31 @@ const parsePositiveInteger = ({ raw, fallback, minimum, label }) => {
     );
   }
   return parsed;
+};
+
+const postJsonWithTimeout = async ({ url, payload, timeoutMs }) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    const text = await response.text();
+    return {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      responseBodyPreview: text.slice(0, 500),
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
 };
 
 const parseCliArgs = (argv) => {
@@ -533,6 +559,7 @@ const summarizeExternalChannelTracePayload = ({ tracePayload }) => {
 
   const modeDistribution = {};
   const channelModeDistribution = {};
+  const nonPassChecks = [];
   for (const check of checks) {
     const channel =
       typeof check?.channel === 'string' && check.channel.length > 0
@@ -544,6 +571,16 @@ const summarizeExternalChannelTracePayload = ({ tracePayload }) => {
         : EXTERNAL_CHANNEL_FAILURE_MODE_PASS_LABEL;
     incrementCount(modeDistribution, failureMode);
     incrementCount(channelModeDistribution, `${channel}|${failureMode}`);
+    if (failureMode !== EXTERNAL_CHANNEL_FAILURE_MODE_PASS_LABEL) {
+      nonPassChecks.push({
+        channel,
+        connectorId:
+          typeof check?.connectorId === 'string' && check.connectorId.length > 0
+            ? check.connectorId
+            : null,
+        failureMode,
+      });
+    }
   }
 
   return {
@@ -552,12 +589,151 @@ const summarizeExternalChannelTracePayload = ({ tracePayload }) => {
     checksTotal: checks.length,
     failedChannelsTotal: failedChannels.length,
     modeDistribution,
+    nonPassChecks,
     channelModeDistribution,
     pass: tracePayload?.pass === true,
     requiredFailedChannelsTotal: requiredFailedChannels.length,
     requiredChannelsPass: tracePayload?.requiredChannelsPass === true,
     skipped: tracePayload?.skipped === true,
   };
+};
+
+const buildExternalChannelFirstAppearanceAlert = ({
+  trend,
+  currentRunId,
+  currentRunNumber,
+  currentRunUrl,
+  repository,
+  workflowFile,
+  workflowProfile,
+}) => {
+  const currentRun = trend.analyzedRuns.find(
+    (entry) => Number(entry.runId) === Number(currentRunId),
+  );
+  const currentNonPassChecks = Array.isArray(currentRun?.nonPassChecks)
+    ? currentRun.nonPassChecks
+    : [];
+  const previousChannelModeKeys = new Set();
+  for (const analyzedRun of trend.analyzedRuns) {
+    if (Number(analyzedRun.runId) === Number(currentRunId)) {
+      continue;
+    }
+    const checks = Array.isArray(analyzedRun.nonPassChecks)
+      ? analyzedRun.nonPassChecks
+      : [];
+    for (const check of checks) {
+      if (
+        typeof check?.channel === 'string' &&
+        check.channel.length > 0 &&
+        typeof check?.failureMode === 'string' &&
+        check.failureMode.length > 0
+      ) {
+        previousChannelModeKeys.add(`${check.channel}|${check.failureMode}`);
+      }
+    }
+  }
+
+  const dedupeKeys = new Set();
+  const firstAppearances = [];
+  for (const check of currentNonPassChecks) {
+    if (
+      typeof check?.channel !== 'string' ||
+      check.channel.length === 0 ||
+      typeof check?.failureMode !== 'string' ||
+      check.failureMode.length === 0
+    ) {
+      continue;
+    }
+    const channelModeKey = `${check.channel}|${check.failureMode}`;
+    if (previousChannelModeKeys.has(channelModeKey) || dedupeKeys.has(channelModeKey)) {
+      continue;
+    }
+    dedupeKeys.add(channelModeKey);
+    firstAppearances.push({
+      channel: check.channel,
+      connectorId:
+        typeof check.connectorId === 'string' && check.connectorId.length > 0
+          ? check.connectorId
+          : null,
+      failureMode: check.failureMode,
+      runId: Number(currentRunId),
+      runNumber:
+        Number.isInteger(Number(currentRunNumber)) && Number(currentRunNumber) > 0
+          ? Number(currentRunNumber)
+          : null,
+      runUrl: typeof currentRunUrl === 'string' ? currentRunUrl : null,
+    });
+  }
+
+  return {
+    enabled: false,
+    triggered: firstAppearances.length > 0,
+    webhookUrlConfigured: false,
+    webhookAttempted: false,
+    webhookDelivered: false,
+    webhookStatusCode: null,
+    webhookError: null,
+    webhookDeliveredAtUtc: null,
+    firstAppearances,
+    payload: {
+      label: 'external-channel-failure-mode-first-appearance',
+      generatedAtUtc: new Date().toISOString(),
+      repository,
+      workflow: {
+        file: workflowFile,
+        profile: workflowProfile,
+      },
+      trendWindow: {
+        windowSize: trend.windowSize,
+        minimumRuns: trend.minimumRuns,
+        analyzedRuns: trend.analyzedRuns.length,
+      },
+      run: {
+        id: Number(currentRunId),
+        number:
+          Number.isInteger(Number(currentRunNumber)) && Number(currentRunNumber) > 0
+            ? Number(currentRunNumber)
+            : null,
+        htmlUrl: typeof currentRunUrl === 'string' ? currentRunUrl : null,
+      },
+      firstAppearances,
+    },
+  };
+};
+
+const dispatchExternalChannelFirstAppearanceAlert = async ({
+  alert,
+  webhookUrl,
+  timeoutMs,
+}) => {
+  const next = {
+    ...alert,
+    enabled: true,
+    webhookUrlConfigured: webhookUrl.length > 0,
+  };
+  if (!next.triggered || !next.webhookUrlConfigured) {
+    return next;
+  }
+
+  next.webhookAttempted = true;
+  try {
+    const response = await postJsonWithTimeout({
+      url: webhookUrl,
+      payload: next.payload,
+      timeoutMs,
+    });
+    next.webhookStatusCode = Number(response.status);
+    next.webhookDelivered = response.ok === true;
+    next.webhookDeliveredAtUtc = response.ok ? new Date().toISOString() : null;
+    if (!response.ok) {
+      next.webhookError = `webhook responded ${String(response.status)} ${response.statusText}${response.responseBodyPreview ? `: ${response.responseBodyPreview}` : ''}`;
+    }
+  } catch (error) {
+    next.webhookDelivered = false;
+    next.webhookError = toErrorMessage(error);
+  }
+
+  return next;
 };
 
 const analyzeExternalChannelFailureModeTrend = async ({
@@ -685,6 +861,7 @@ const analyzeExternalChannelFailureModeTrend = async ({
           failedChannelsTotal: summary.failedChannelsTotal,
           htmlUrl: candidate.htmlUrl,
           modeDistribution: summary.modeDistribution,
+          nonPassChecks: summary.nonPassChecks,
           pass: summary.pass,
           requiredChannelsPass: summary.requiredChannelsPass,
           requiredFailedChannelsTotal: summary.requiredFailedChannelsTotal,
@@ -904,6 +1081,44 @@ const toJsonSummaryPayload = ({ report, outputPath, strict }) => ({
           runsWithRequiredFailures:
             report.externalChannelFailureModes.runsWithRequiredFailures,
           reasons: report.externalChannelFailureModes.reasons,
+          firstAppearanceAlert:
+            report.externalChannelFailureModes.firstAppearanceAlert &&
+            typeof report.externalChannelFailureModes.firstAppearanceAlert ===
+              'object'
+              ? {
+                  triggered:
+                    report.externalChannelFailureModes.firstAppearanceAlert
+                      .triggered === true,
+                  enabled:
+                    report.externalChannelFailureModes.firstAppearanceAlert
+                      .enabled === true,
+                  webhookUrlConfigured:
+                    report.externalChannelFailureModes.firstAppearanceAlert
+                      .webhookUrlConfigured === true,
+                  firstAppearances: Array.isArray(
+                    report.externalChannelFailureModes.firstAppearanceAlert
+                      .firstAppearances,
+                  )
+                    ? report.externalChannelFailureModes.firstAppearanceAlert
+                        .firstAppearances
+                    : [],
+                  webhookAttempted:
+                    report.externalChannelFailureModes.firstAppearanceAlert
+                      .webhookAttempted === true,
+                  webhookDelivered:
+                    report.externalChannelFailureModes.firstAppearanceAlert
+                      .webhookDelivered === true,
+                  webhookStatusCode:
+                    report.externalChannelFailureModes.firstAppearanceAlert
+                      .webhookStatusCode ?? null,
+                  webhookError:
+                    typeof report.externalChannelFailureModes.firstAppearanceAlert
+                      .webhookError === 'string'
+                      ? report.externalChannelFailureModes.firstAppearanceAlert
+                          .webhookError
+                      : null,
+                }
+              : null,
         }
       : null,
   outputPath,
@@ -972,7 +1187,22 @@ const main = async () => {
     minimum: 1,
     label: 'RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_MIN_RUNS',
   });
-  const externalChannelFailureModeTrend =
+  const externalChannelAlertEnabled = parseBoolean(
+    process.env.RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_ENABLED,
+    true,
+  );
+  const externalChannelAlertWebhookUrl = String(
+    process.env.RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_URL ??
+      process.env.RELEASE_EXTERNAL_CHANNEL_ALERT_WEBHOOK_URL ??
+      '',
+  ).trim();
+  const externalChannelAlertTimeoutMs = parsePositiveInteger({
+    raw: process.env.RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_TIMEOUT_MS,
+    fallback: DEFAULT_EXTERNAL_CHANNEL_ALERT_TIMEOUT_MS,
+    minimum: 1000,
+    label: 'RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_TIMEOUT_MS',
+  });
+  const externalChannelFailureModeTrendBase =
     workflowProfile.profileKey === 'launch_gate'
       ? await analyzeExternalChannelFailureModeTrend({
           token,
@@ -984,6 +1214,41 @@ const main = async () => {
           minimumRuns: externalChannelTrendMinimumRuns,
         })
       : null;
+  const externalChannelFailureModeTrend =
+    externalChannelFailureModeTrendBase &&
+    typeof externalChannelFailureModeTrendBase === 'object'
+      ? {
+          ...externalChannelFailureModeTrendBase,
+          firstAppearanceAlert: null,
+        }
+      : null;
+  if (
+    externalChannelFailureModeTrend &&
+    workflowProfile.profileKey === 'launch_gate'
+  ) {
+    const firstAppearanceAlertBase = buildExternalChannelFirstAppearanceAlert({
+      trend: externalChannelFailureModeTrend,
+      currentRunId: run.id,
+      currentRunNumber: run.run_number,
+      currentRunUrl: run.html_url,
+      repository: repoSlug,
+      workflowFile,
+      workflowProfile: workflowProfile.profileKey,
+    });
+    if (externalChannelAlertEnabled) {
+      externalChannelFailureModeTrend.firstAppearanceAlert =
+        await dispatchExternalChannelFirstAppearanceAlert({
+          alert: firstAppearanceAlertBase,
+          webhookUrl: externalChannelAlertWebhookUrl,
+          timeoutMs: externalChannelAlertTimeoutMs,
+        });
+    } else {
+      externalChannelFailureModeTrend.firstAppearanceAlert = {
+        ...firstAppearanceAlertBase,
+        enabled: false,
+      };
+    }
+  }
   let smokeSummary = await readLocalSmokeSummary({
     runId,
     smokeFetchMode: workflowProfile.smokeFetchMode,
@@ -1054,6 +1319,20 @@ const main = async () => {
   ) {
     reasons.push(
       `external-channel failure-mode trend check failed: ${externalChannelFailureModeTrend.reasons.join(', ')}`,
+    );
+  }
+  if (
+    externalChannelFailureModeTrend &&
+    externalChannelFailureModeTrend.firstAppearanceAlert &&
+    externalChannelFailureModeTrend.firstAppearanceAlert.triggered === true &&
+    externalChannelFailureModeTrend.firstAppearanceAlert.webhookAttempted === true &&
+    externalChannelFailureModeTrend.firstAppearanceAlert.webhookDelivered !== true
+  ) {
+    reasons.push(
+      `external-channel first-appearance alert webhook failed: ${
+        externalChannelFailureModeTrend.firstAppearanceAlert.webhookError ??
+        'delivery failed'
+      }`,
     );
   }
 
@@ -1170,6 +1449,14 @@ const main = async () => {
             : 'none'
         }\n`,
       );
+      const alert = report.externalChannelFailureModes.firstAppearanceAlert;
+      if (alert && typeof alert === 'object') {
+        process.stdout.write(
+          `External-channel first-appearance alert: triggered=${String(
+            alert.triggered === true,
+          )} webhookDelivered=${String(alert.webhookDelivered === true)}\n`,
+        );
+      }
     }
     process.stdout.write(`Report written: ${outputPath}\n`);
   }

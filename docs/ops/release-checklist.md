@@ -245,6 +245,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
     - [ ] `externalChannelFailureModes.pass=true`
     - [ ] `externalChannelFailureModes.nonPassModes=[]`
     - [ ] `externalChannelFailureModes.analyzedRuns >= 1` (default window is 3 runs).
+    - [ ] `externalChannelFailureModes.firstAppearanceAlert.triggered=false` for healthy window.
 - [ ] Generate post-release health report from latest workflow_dispatch run:
   - [ ] `npm run release:health:report`
   - [ ] `--strict` mode now validates required release artifacts in addition to required jobs (`release-smoke-report`, `release-smoke-preflight-summary`, `release-env-preflight-summary`, `retry-schema-gate-summary`, `release-smoke-preflight-schema-summary`).
@@ -256,6 +257,10 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
   - [ ] Optional rolling-window tuning for external-channel trend check:
     - [ ] `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_WINDOW=<n>` (default `3`)
     - [ ] `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_MIN_RUNS=<n>` (default `1`)
+  - [ ] Optional alert-hook controls for first non-pass appearance in rolling window:
+    - [ ] `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_ENABLED=<true|false>` (default `true`)
+    - [ ] `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_TIMEOUT_MS=<ms>` (default `10000`)
+    - [ ] optional webhook secret in CI: `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_URL`
   - [ ] Optional machine-readable summary: `npm run release:health:report -- --json`
   - [ ] Optional strict gate (fails command on unhealthy run): `npm run release:health:report -- --strict`
   - [ ] Validate report schema: `npm run release:health:schema:check` (or explicit file path: `npm run release:health:schema:check -- artifacts/release/post-release-health-run-<run_id>.json`)
