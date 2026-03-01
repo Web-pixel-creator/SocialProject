@@ -216,6 +216,9 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
   - [ ] When `require_skill_markers=true`, confirm `skillMarkerMultiStep.pass=true` in launch gate summary:
     - [ ] `Role persona` and `Skill capsule` markers are present on every orchestration step.
     - [ ] `Role skill` marker is present on at least one orchestration step.
+  - [ ] When `require_skill_markers=true`, confirm matrix-channel marker coverage check is green:
+    - [ ] `skillMarkerMatrixChannels.pass=true`.
+    - [ ] `skillMarkerMatrixChannels.failedChannels=[]`.
   - [ ] Confirm `ingestExternalChannelFallback.pass=true` in launch gate summary when Telegram/Slack/Discord connector profiles are configured.
     - [ ] If no `telegram/slack/discord` connector profiles are configured, allow `ingestExternalChannelFallback.skipped=true`.
     - [ ] For configured channels, confirm per-channel fallback checks also include positive ingest telemetry assertion (`telemetryPass=true`, `telemetryAccepted > 0`).

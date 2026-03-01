@@ -55,6 +55,7 @@ Canonical references:
    - With `require_skill_markers=true`, launch gate asserts multi-step marker coverage (`skillMarkerMultiStep.pass=true`):
      - `Role persona` + `Skill capsule` markers must be present for every orchestration role step.
      - `Role skill` marker must be present in at least one orchestration step.
+   - With `require_skill_markers=true`, launch gate also asserts matrix-channel marker coverage (`skillMarkerMatrixChannels.pass=true`) across `web`, `live_session`, and runtime probe channel orchestration paths.
    - Launch gate now also checks external connector channel fallback probes from configured connector profiles (`telegram` / `slack` / `discord`) via `ingestExternalChannelFallback`.
    - For each configured external channel probe, launch gate also verifies connector telemetry counters (`ingestConnectors.accepted/total`) via admin telemetry API before passing fallback checks.
    - Optional strict channel requirement can be enabled with `--required-external-channels telegram,slack` (or workflow input/env equivalent); in this mode, launch gate fails if required channels are not configured or fallback probe validation fails.
