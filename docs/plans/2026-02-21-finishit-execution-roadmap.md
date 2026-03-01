@@ -1135,4 +1135,31 @@ Exit criteria:
     - incident-routing requirement for any failed channel,
     - rollout pause when `requiredFailedChannels` is non-empty in two consecutive strict runs.
 - Remaining gap:
-  - execute sustained-traffic connector soak and build failure-mode distribution baseline from repeated `production-external-channel-traces` artifacts.
+  - automate rolling failure-mode trend extraction and operator alerting from repeated `production-external-channel-traces` artifacts.
+
+## Progress Snapshot (2026-03-01 - sustained-traffic strict launch-gate soak baseline)
+- Sustained strict validation runset:
+  - executed 3 consecutive strict launch-gate runs with full controls:
+    - run `#40` (`22547175018`)
+    - run `#41` (`22547193363`)
+    - run `#42` (`22547210842`)
+  - shared inputs:
+    - `--runtime-draft-id 3fefc86d-eb94-42f2-8c97-8b57eff8944e`
+    - `--require-skill-markers`
+    - `--require-natural-cron-window`
+    - `--required-external-channels all`.
+- Failure-mode distribution baseline:
+  - collected `production-external-channel-traces` for each run and summarized to:
+    - `artifacts/release/external-channel-failure-mode-soak-22547175018-22547210842.json`
+  - aggregated result across 9 checks (`3 channels x 3 runs`):
+    - `pass_null=9`
+    - no non-null failure modes observed.
+  - per-channel result:
+    - `telegram|pass_null=3`
+    - `slack|pass_null=3`
+    - `discord|pass_null=3`.
+- Health validation:
+  - `npm run release:health:report -- 22547210842 --profile launch-gate --strict --json`: pass (`requiredJobs=1/1`, `requiredArtifacts=9/9`).
+  - `npm run release:health:schema:check -- artifacts/release/post-release-health-run-22547210842.json`: pass.
+- Next hardening increment:
+  - automate rolling-window failure-mode trend extraction across recent strict runs and alert when any non-null mode appears.

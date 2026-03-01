@@ -33,6 +33,48 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - sustained strict launch-gate soak (3-run external-channel baseline)
+
+- Scope: execute repeated strict production launch-gate passes to collect initial external-channel `failureMode` distribution baseline.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 16:10 -> 2026-03-01 16:17.
+- Changes:
+  - Executed three consecutive strict dispatch runs:
+    - run `#40` (`22547175018`)
+    - run `#41` (`22547193363`)
+    - run `#42` (`22547210842`)
+  - Inputs for each run:
+    - `--runtime-draft-id 3fefc86d-eb94-42f2-8c97-8b57eff8944e`
+    - `--require-skill-markers`
+    - `--require-natural-cron-window`
+    - `--required-external-channels all`
+  - Collected per-run `production-external-channel-traces` artifacts and wrote distribution summary:
+    - `artifacts/release/external-channel-failure-mode-soak-22547175018-22547210842.json`
+- Verification:
+  - all three workflow runs completed with `success`.
+  - all required channels passed in all runs (`requiredFailedChannels=[]`).
+  - failure-mode distribution across 9 channel checks (3 channels x 3 runs):
+    - `pass_null=9`
+    - no non-null failure modes observed.
+  - channel distribution:
+    - `telegram|pass_null=3`
+    - `slack|pass_null=3`
+    - `discord|pass_null=3`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - continue periodic soak sampling and alert on first non-null `failureMode` occurrence per channel.
+
+### 2026-03-01 - post-release health run #42 (id 22547210842)
+
+- Source workflow run: #42 (https://github.com/Web-pixel-creator/SocialProject/actions/runs/22547210842).
+- Overall health: pass.
+- Required jobs: 1/1 passed.
+- Required artifacts: 9/9 present.
+- Failed jobs total: 0.
+- Smoke summary: pass=true totalSteps=19 failedSteps=0.
+- Report artifact: `artifacts/release/post-release-health-run-22547210842.json`.
+
 ### 2026-03-01 - external-channel failure-mode routing playbook integration
 
 - Scope: formalize operator routing actions for launch-gate external-channel `failureMode` diagnostics and wire them into release procedure.
