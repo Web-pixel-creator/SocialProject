@@ -583,7 +583,26 @@ const main = async () => {
         timeoutMs: o.httpTimeoutMs,
         useAdmin: true,
       });
-      const firstPrompt = rt.json?.steps?.[0]?.prompt || '';
+      const stepPromptCoverage = Array.isArray(rt.json?.steps)
+        ? rt.json.steps.map((step) => {
+            const prompt = typeof step?.prompt === 'string' ? step.prompt : '';
+            const role = String(step?.role ?? 'unknown');
+            const hasRolePersona = prompt.includes('Role persona');
+            const hasRoleSkill = prompt.includes('Role skill');
+            const hasSkillCapsule = prompt.includes('Skill capsule');
+            return {
+              hasAll: hasRolePersona && hasRoleSkill && hasSkillCapsule,
+              hasRolePersona,
+              hasRoleSkill,
+              hasSkillCapsule,
+              promptLength: prompt.length,
+              role,
+            };
+          })
+        : [];
+      const allStepsHaveSkillMarkers =
+        stepPromptCoverage.length > 0 &&
+        stepPromptCoverage.every((step) => step.hasAll);
       const rtArtifact = {
         baseUrl: apiBaseUrl,
         checkedAtUtc: new Date().toISOString(),
@@ -609,9 +628,12 @@ const main = async () => {
           stepRoles: Array.isArray(rt.json?.steps) ? rt.json.steps.map((s) => s.role) : [],
         },
         markers: {
-          hasRolePersona: firstPrompt.includes('Role persona'),
-          hasRoleSkill: firstPrompt.includes('Role skill'),
-          hasSkillCapsule: firstPrompt.includes('Skill capsule'),
+          allStepsHaveSkillMarkers,
+          missingRoles: stepPromptCoverage
+            .filter((step) => !step.hasAll)
+            .map((step) => step.role),
+          stepCount: stepPromptCoverage.length,
+          steps: stepPromptCoverage,
         },
       };
       rtArtifact.pass =
@@ -622,12 +644,14 @@ const main = async () => {
         rtArtifact.orchestration.status === 201 &&
         rtArtifact.orchestration.completed === true &&
         rtArtifact.orchestration.stepRoles.join(',') === 'critic,maker,judge' &&
-        (!o.requireSkillMarkers ||
-          (rtArtifact.markers.hasRolePersona &&
-            rtArtifact.markers.hasRoleSkill &&
-            rtArtifact.markers.hasSkillCapsule));
+        (!o.requireSkillMarkers || rtArtifact.markers.allStepsHaveSkillMarkers);
       await writeJson(path.resolve(ARTIFACTS.runtimeProbe), rtArtifact);
       if (!rtArtifact.pass) throw new Error('Runtime probe failed');
+      summary.checks.skillMarkerMultiStep = {
+        pass: o.requireSkillMarkers ? rtArtifact.markers.allStepsHaveSkillMarkers : true,
+        skipped: !o.requireSkillMarkers,
+        missingRoles: rtArtifact.markers.missingRoles,
+      };
 
       const channels = ['web', 'live_session', o.runtimeChannel];
       const channelChecks = [];
