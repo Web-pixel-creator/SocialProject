@@ -43,11 +43,11 @@ Canonical references:
      - `RELEASE_API_BASE_URL`, `RELEASE_WEB_BASE_URL` (repo variables)
      - `RELEASE_ADMIN_API_TOKEN`, `RELEASE_CSRF_TOKEN`, `RELEASE_AGENT_GATEWAY_WEBHOOK_SECRET` (repo secrets)
    - Railway token context remains optional for local/CLI checks.
-   - Optional terminal dispatch helper for the workflow:
-     - `npm run release:launch:gate:dispatch`
-     - Optional explicit token argument: `npm run release:launch:gate:dispatch -- -Token <github_pat>`
-     - Token resolution order: `-Token/--token` -> `GITHUB_TOKEN/GH_TOKEN` -> `gh auth token`
-     - Optional inputs via env: `RELEASE_RUNTIME_DRAFT_ID=<uuid> RELEASE_REQUIRE_SKILL_MARKERS=true`
+     - Optional terminal dispatch helper for the workflow:
+       - `npm run release:launch:gate:dispatch`
+       - Optional explicit token argument: `npm run release:launch:gate:dispatch -- -Token <github_pat>`
+       - Token resolution order: `-Token/--token` -> `GITHUB_TOKEN/GH_TOKEN` -> `gh auth token`
+       - Optional inputs via env: `RELEASE_RUNTIME_DRAFT_ID=<uuid> RELEASE_REQUIRE_SKILL_MARKERS=true RELEASE_REQUIRE_NATURAL_CRON_WINDOW=true`
    - Review summary: `artifacts/release/production-launch-gate-summary.json`
 1. Generate and validate health report:
    - `npm run release:health:report`

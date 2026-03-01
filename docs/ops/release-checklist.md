@@ -200,11 +200,12 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
       - [ ] Variables: `RELEASE_API_BASE_URL`, `RELEASE_WEB_BASE_URL`
       - [ ] Secrets: `RELEASE_ADMIN_API_TOKEN`, `RELEASE_CSRF_TOKEN`, `RELEASE_AGENT_GATEWAY_WEBHOOK_SECRET`
       - [ ] Optional Railway compatibility context: `RAILWAY_API_TOKEN`/`RAILWAY_TOKEN`, `RAILWAY_PROJECT_ID`, `RAILWAY_ENVIRONMENT_ID`
-    - [ ] Optional inputs: `runtime_draft_id`, `require_skill_markers`.
+    - [ ] Optional inputs: `runtime_draft_id`, `require_skill_markers`, `require_natural_cron_window`.
     - [ ] Optional terminal dispatch helper (token resolution: `-Token/--token` -> `GITHUB_TOKEN/GH_TOKEN` -> `gh auth token`): `npm run release:launch:gate:dispatch`
       - [ ] Optional explicit token argument: `npm run release:launch:gate:dispatch -- -Token <github_pat>`
       - [ ] Optional runtime draft input: `RELEASE_RUNTIME_DRAFT_ID=<uuid>`
       - [ ] Optional skill marker requirement: `RELEASE_REQUIRE_SKILL_MARKERS=true`
+      - [ ] Optional natural cron requirement: `RELEASE_REQUIRE_NATURAL_CRON_WINDOW=true`
   - [ ] Confirm summary artifact: `artifacts/release/production-launch-gate-summary.json`
   - [ ] Confirm health summary artifact: `artifacts/release/production-launch-gate-health-summary.json`
   - [ ] In strict mode, confirm `connectorProfilesSnapshot.pass=true` in launch gate summary.

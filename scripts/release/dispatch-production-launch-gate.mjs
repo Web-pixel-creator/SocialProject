@@ -264,6 +264,10 @@ const main = async () => {
     process.env.RELEASE_REQUIRE_SKILL_MARKERS,
     false,
   );
+  const requireNaturalCronWindow = parseBoolean(
+    process.env.RELEASE_REQUIRE_NATURAL_CRON_WINDOW,
+    false,
+  );
 
   const repoSlug = resolveRepoSlug();
   const baseApiUrl = `https://api.github.com/repos/${repoSlug}`;
@@ -283,6 +287,9 @@ const main = async () => {
   if (requireSkillMarkers) {
     inputs.require_skill_markers = 'true';
   }
+  if (requireNaturalCronWindow) {
+    inputs.require_natural_cron_window = 'true';
+  }
 
   const dispatchStartedAtMs = Date.now();
   await githubRequest({
@@ -301,6 +308,11 @@ const main = async () => {
   }
   process.stdout.write(
     `Require skill markers input: ${requireSkillMarkers ? 'true' : 'false'}\n`,
+  );
+  process.stdout.write(
+    `Require natural cron window input: ${
+      requireNaturalCronWindow ? 'true' : 'false'
+    }\n`,
   );
 
   if (!waitForCompletion) {

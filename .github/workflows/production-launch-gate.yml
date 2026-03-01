@@ -12,6 +12,11 @@ on:
         required: false
         default: false
         type: boolean
+      require_natural_cron_window:
+        description: 'Require expected cron jobs to have successful runs in current UTC date window.'
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: production-launch-gate-${{ github.workflow }}-${{ github.ref }}
@@ -70,6 +75,9 @@ jobs:
           if [[ "${{ inputs.require_skill_markers }}" == "true" ]]; then
             args+=(--require-skill-markers)
           fi
+          if [[ "${{ inputs.require_natural_cron_window }}" == "true" ]]; then
+            args+=(--require-natural-cron-window)
+          fi
           if [[ -n "${{ inputs.runtime_draft_id }}" ]]; then
             args+=(--runtime-draft-id "${{ inputs.runtime_draft_id }}")
           fi
@@ -93,6 +101,7 @@ jobs:
               echo "- environment: \`$(jq -r '.config.environment // "n/a"' "${summary_json}")\`"
               echo "- runtime_draft_id: \`$(jq -r '.config.runtimeDraftId // "auto-from-smoke"' "${summary_json}")\`"
               echo "- require_skill_markers: \`$(jq -r '.config.requireSkillMarkers // false' "${summary_json}")\`"
+              echo "- require_natural_cron_window: \`$(jq -r '.config.requireNaturalCronWindow // false' "${summary_json}")\`"
               echo ""
               echo "### Checks"
               jq -r '.checks | to_entries[] | "- \(.key): `\((if .value.skipped then "SKIPPED" elif .value.pass then "PASS" else "FAIL" end))`"' "${summary_json}"
