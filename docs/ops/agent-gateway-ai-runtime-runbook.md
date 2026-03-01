@@ -198,6 +198,38 @@ During production rollout and post-release verification:
 If these fail for longer than 10 minutes, follow rollback thresholds in:
 - `docs/ops/rollback-playbook.md`
 
+## Connector Ingest Profiles (Optional Runtime Defaults)
+
+Use `AGENT_GATEWAY_INGEST_CONNECTOR_PROFILES` to provide per-connector defaults
+for `/api/agent-gateway/adapters/ingest` when external payloads omit one or more fields:
+- `adapter`
+- `channel`
+- `fromRole`
+- `toRole`
+- `type`
+
+Example:
+
+```json
+{
+  "telegram_main": {
+    "adapter": "external_webhook",
+    "channel": "telegram",
+    "fromRole": "observer",
+    "toRole": "author",
+    "type": "observer_message"
+  },
+  "slack_main": "slack"
+}
+```
+
+Notes:
+- Explicit request-body values always win over profile defaults.
+- Invalid profile JSON fails fast on API startup.
+- Profile configuration is visible in:
+  - `GET /api/admin/agent-gateway/telemetry?hours=24&limit=200` (`connectorProfiles`)
+  - `GET /api/admin/agent-gateway/adapters?hours=24` (`connectorProfiles`)
+
 ## Security Notes
 
 - Admin endpoints must never be exposed without `x-admin-token`.
