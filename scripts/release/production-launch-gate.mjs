@@ -981,7 +981,6 @@ const main = async () => {
           externalChannelFallback.pass,
       };
       await writeJson(path.resolve(ARTIFACTS.ingestProbe), ingestArtifact);
-      if (!ingestArtifact.pass) throw new Error('Ingest probe failed');
       summary.checks.ingestExternalChannelFallback = {
         pass: externalChannelFallback.pass,
         skipped: externalChannelFallback.skipped,
@@ -990,8 +989,19 @@ const main = async () => {
         missingRequiredChannels: externalChannelFallback.missingRequiredChannels,
         requiredChannelsPass: externalChannelFallback.requiredChannelsPass,
       };
+      summary.checks.ingestProbe = { pass: ingestArtifact.pass, skipped: false };
+      if (!ingestArtifact.pass) throw new Error('Ingest probe failed');
+    } else {
+      summary.checks.ingestExternalChannelFallback = {
+        pass: true,
+        skipped: true,
+        configuredChannels: [],
+        requiredChannels: [],
+        missingRequiredChannels: [],
+        requiredChannelsPass: true,
+      };
+      summary.checks.ingestProbe = { pass: true, skipped: true };
     }
-    summary.checks.ingestProbe = { pass: true, skipped: o.skipIngestProbe };
 
     const telemetry = await postOrGet({
       adminToken,
