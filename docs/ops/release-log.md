@@ -33,6 +33,49 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - one-command alert-risk strict reassessment automation
+
+- Scope: add one-command reassessment path that executes strict launch-gate, waits for downstream `Release Health Gate` artifacts, and decides readiness for enabling `RELEASE_HEALTH_ALERT_RISK_STRICT=true`.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 18:55 -> 2026-03-01 19:02.
+- Changes:
+  - Added script: `scripts/release/reassess-alert-risk-strict.mjs`.
+    - dispatches strict launch-gate via existing helper (`required_external_channels=all` by default),
+    - waits for matching `Release Health Gate` `workflow_run`,
+    - downloads post-release health artifacts and evaluates `releaseHealthAlertTelemetry` in CI context,
+    - emits machine-readable summary artifact:
+      - `artifacts/release/alert-risk-strict-reassessment-<run_id>.json`,
+    - supports deferred window guard:
+      - `--not-before-utc <ISO8601_UTC>`,
+    - supports optional apply mode:
+      - `--apply` (sets `RELEASE_HEALTH_ALERT_RISK_STRICT=true` only when readiness conditions pass).
+  - Added npm command:
+    - `release:alert-risk:reassess`.
+  - Updated release docs:
+    - `docs/ops/release-runbook.md`
+    - `docs/ops/release-checklist.md`.
+- Validation:
+  - `node --check scripts/release/reassess-alert-risk-strict.mjs`: pass.
+  - Deferred mode check:
+    - `npm --silent run release:alert-risk:reassess -- --not-before-utc 2026-03-02T17:23:02Z --json`: `status=deferred`.
+  - Full end-to-end run:
+    - `npm --silent run release:alert-risk:reassess -- --json`: `status=not_ready`.
+    - strict launch-gate run `#56` (`22550294371`): `success`.
+    - downstream `Release Health Gate` run `#229` (`22550318741`): `success`.
+    - readiness result from CI artifact:
+      - `releaseHealthAlertTelemetry.status=critical`
+      - `releaseHealthAlertTelemetry.evaluated=true`
+      - `releaseHealthAlertTelemetry.latestAlertRun.number=48`, `conclusion=failure`
+      - `releaseHealthAlertTelemetry.escalationSuppressed=true`
+      - `releaseHealthAlertTelemetry.escalationTriggered=false`
+      - strict-enable decision: not ready until telemetry returns healthy post-window.
+- Incidents:
+  - none.
+- Follow-ups:
+  - after `2026-03-02 17:23:02 UTC`, run:
+    - `npm run release:alert-risk:reassess -- --not-before-utc 2026-03-02T17:23:02Z --apply`
+  - enablement is accepted only when script returns `status=ready` and `strictVariableApplied=true`.
+
 ### 2026-03-01 - alert-risk escalation suppression for failed latest drill run
 
 - Scope: prevent advisory escalation noise when the latest alerted run is a known failed controlled drill and validate behavior in CI.
