@@ -33,6 +33,54 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - release health schema sync for launch-gate profile
+
+- Scope: align release health JSON schema with the current launch-gate report payload shape.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 10:50 -> 2026-03-01 10:53.
+- Changes:
+  - Updated release health schema `docs/ops/schemas/release-health-report-output.schema.json`:
+    - added root `workflow` contract (`file`, `profile`),
+    - allowed smoke source `local-launch-gate`,
+    - bumped schema version const to `1.2.0`.
+  - Updated schema version contract constant:
+    - `scripts/release/release-health-schema-contracts.mjs`.
+  - Updated sample payload:
+    - `docs/ops/schemas/samples/release-health-report-output.sample.json`.
+- Verification:
+  - Re-generated launch-gate health report:
+    - `npm run release:health:report -- 22541810462 --workflow-file production-launch-gate.yml --profile launch-gate --json --strict`: pass.
+  - Schema validation:
+    - `npm run release:health:schema:check -- artifacts/release/post-release-health-run-22541810462.json`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - none.
+
+### 2026-03-01 - strict external-channel parity run executed
+
+- Scope: execute the documented production strict external-channel launch-gate run after connector profile rollout.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 10:48 -> 2026-03-01 10:50.
+- Changes:
+  - Executed workflow dispatch with required external channel enforcement:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all`
+  - Captured run artifact evidence from workflow run `#37` (`22541810462`).
+- Verification:
+  - Workflow run `#37` (`22541810462`): `success`.
+  - `npm run release:health:report -- 22541810462 --workflow-file production-launch-gate.yml --profile launch-gate --json --strict`: pass.
+  - `production-launch-gate-summary` artifact confirms:
+    - `ingestExternalChannelFallback.pass=true`
+    - `ingestExternalChannelFallback.configuredChannels=["telegram","slack","discord"]`
+    - `ingestExternalChannelFallback.requiredChannels=["telegram","slack","discord"]`
+    - `ingestExternalChannelFallback.missingRequiredChannels=[]`
+    - `ingestExternalChannelFallback.requiredChannelsPass=true`
+    - `connectorProfilesSnapshot.pass=true`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - none.
+
 ### 2026-03-01 - external-channel strict rollout instructions in release docs
 
 - Scope: document the exact transition path from `ingestExternalChannelFallback.skipped=true` to strict required-channel verification for public-launch readiness.

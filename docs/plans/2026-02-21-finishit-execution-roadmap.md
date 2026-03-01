@@ -1009,3 +1009,32 @@ Exit criteria:
     - assert `ingestExternalChannelFallback.requiredChannels` and `missingRequiredChannels=[]`.
 - Objective:
   - close the remaining external connector ecosystem launch gap with reproducible operator steps, not ad-hoc manual flow.
+
+## Progress Snapshot (2026-03-01 - external-channel strict rollout execution)
+- Production connector parity run:
+  - executed strict launch-gate dispatch with required channels:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all`
+  - workflow run `#37` (`22541810462`) completed with `success`.
+- Required-channel verification evidence:
+  - strict launch-gate summary confirms:
+    - `ingestExternalChannelFallback.pass=true`
+    - `ingestExternalChannelFallback.configuredChannels=["telegram","slack","discord"]`
+    - `ingestExternalChannelFallback.requiredChannels=["telegram","slack","discord"]`
+    - `ingestExternalChannelFallback.missingRequiredChannels=[]`
+    - `ingestExternalChannelFallback.requiredChannelsPass=true`.
+- Launch-gate health profile verification:
+  - `npm run release:health:report -- 22541810462 --workflow-file production-launch-gate.yml --profile launch-gate --json --strict` passed with required jobs/artifacts `1/1` and `9/9`.
+- Outcome:
+  - external connector strict rollout gap is now closed with live production evidence, not documentation-only intent.
+
+## Progress Snapshot (2026-03-01 - launch-gate health schema contract sync)
+- Contract alignment update:
+  - release health schema now reflects current launch-gate report shape:
+    - added root `workflow` object (`file`, `profile`),
+    - added smoke source enum value `local-launch-gate`,
+    - bumped schema version to `1.2.0`.
+  - schema version constant updated in `release-health-schema-contracts.mjs`.
+  - sample payload updated with `workflow` block and `schemaVersion=1.2.0`.
+- Revalidation:
+  - `npm run release:health:report -- 22541810462 --workflow-file production-launch-gate.yml --profile launch-gate --json --strict`: pass.
+  - `npm run release:health:schema:check -- artifacts/release/post-release-health-run-22541810462.json`: pass.

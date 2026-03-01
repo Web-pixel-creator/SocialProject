@@ -9,6 +9,7 @@
     "schemaVersion",
     "generatedAtUtc",
     "repository",
+    "workflow",
     "run",
     "summary",
     "jobs",
@@ -21,7 +22,7 @@
       "const": "docs/ops/schemas/release-health-report-output.schema.json"
     },
     "schemaVersion": {
-      "const": "1.1.0"
+      "const": "1.2.0"
     },
     "generatedAtUtc": {
       "type": "string",
@@ -30,6 +31,9 @@
     "repository": {
       "type": "string",
       "minLength": 1
+    },
+    "workflow": {
+      "$ref": "#/$defs/workflow"
     },
     "run": {
       "$ref": "#/$defs/run"
@@ -60,6 +64,24 @@
         "null"
       ],
       "format": "date-time"
+    },
+    "workflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "file",
+        "profile"
+      ],
+      "properties": {
+        "file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "profile": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
     },
     "run": {
       "type": "object",
@@ -368,6 +390,7 @@
           "type": "string",
           "enum": [
             "local",
+            "local-launch-gate",
             "unavailable"
           ]
         },

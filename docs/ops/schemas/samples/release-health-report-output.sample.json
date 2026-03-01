@@ -1,8 +1,12 @@
 {
   "schemaPath": "docs/ops/schemas/release-health-report-output.schema.json",
-  "schemaVersion": "1.1.0",
+  "schemaVersion": "1.2.0",
   "generatedAtUtc": "2026-02-09T12:45:00.000Z",
   "repository": "Web-pixel-creator/SocialProject",
+  "workflow": {
+    "file": "ci.yml",
+    "profile": "ci"
+  },
   "run": {
     "id": 21815945348,
     "runNumber": 284,
