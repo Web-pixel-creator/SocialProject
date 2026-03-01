@@ -33,6 +33,43 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - strict launch-gate all-flags matrix pass
+
+- Scope: validate full strict launch-gate matrix in one production run (`skill markers + natural cron window + required external channels`).
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 11:26 -> 2026-03-01 11:29.
+- Changes:
+  - Executed strict dispatch with full matrix inputs:
+    - `npm run release:launch:gate:dispatch -- --runtime-draft-id 3fefc86d-eb94-42f2-8c97-8b57eff8944e --require-skill-markers --require-natural-cron-window --required-external-channels all`
+  - Captured run artifact evidence from workflow run `#38` (`22542439669`).
+- Verification:
+  - Workflow run `#38` (`22542439669`): `success`.
+  - `npm run release:health:report -- 22542439669 --workflow-file production-launch-gate.yml --profile launch-gate --json --strict`: pass.
+  - `npm run release:health:schema:check -- artifacts/release/post-release-health-run-22542439669.json`: pass.
+  - `production-launch-gate-summary` confirms:
+    - `requireSkillMarkers=true`
+    - `requireNaturalCronWindow=true`
+    - `requiredExternalChannels=["telegram","slack","discord"]`
+    - `skillMarkerMultiStep.pass=true`
+    - `skillMarkerMatrixChannels.pass=true`
+    - `ingestExternalChannelFallback.requiredChannelsPass=true`
+    - `ingestExternalChannelFallback.missingRequiredChannels=[]`
+    - `connectorProfilesSnapshot.pass=true`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - none.
+
+### 2026-03-01 - post-release health run #38 (id 22542439669)
+
+- Source workflow run: #38 (https://github.com/Web-pixel-creator/SocialProject/actions/runs/22542439669).
+- Overall health: pass.
+- Required jobs: 1/1 passed.
+- Required artifacts: 9/9 present.
+- Failed jobs total: 0.
+- Smoke summary: pass=true totalSteps=19 failedSteps=0.
+- Report artifact: `artifacts/release/post-release-health-run-22542439669.json`.
+
 ### 2026-03-01 - CI workflow_dispatch recovery for release health automation
 
 - Scope: restore green CI workflow_dispatch path and downstream Release Health Gate evidence after failed run `#523`.

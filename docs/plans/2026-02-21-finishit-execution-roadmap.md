@@ -1054,3 +1054,22 @@ Exit criteria:
   - downstream `Release Health Gate` run (`22542270014`): `success`.
   - `npm run release:health:report -- 22542195730 --json --strict`: pass (`requiredJobs=5/5`, `requiredArtifacts=5/5`).
   - `npm run release:health:schema:check -- artifacts/release/post-release-health-run-22542195730.json`: pass.
+
+## Progress Snapshot (2026-03-01 - strict launch-gate all-flags matrix run)
+- Full strict matrix execution:
+  - dispatched production launch-gate with all strict controls enabled in one run:
+    - `--runtime-draft-id 3fefc86d-eb94-42f2-8c97-8b57eff8944e`
+    - `--require-skill-markers`
+    - `--require-natural-cron-window`
+    - `--required-external-channels all`
+  - workflow run `#38` (`22542439669`) completed with `success`.
+- Summary assertions:
+  - `skillMarkerMultiStep.pass=true`
+  - `skillMarkerMatrixChannels.pass=true`
+  - `ingestExternalChannelFallback.requiredChannels=["telegram","slack","discord"]`
+  - `ingestExternalChannelFallback.missingRequiredChannels=[]`
+  - `ingestExternalChannelFallback.requiredChannelsPass=true`
+  - `connectorProfilesSnapshot.pass=true`.
+- Health profile revalidation:
+  - `npm run release:health:report -- 22542439669 --workflow-file production-launch-gate.yml --profile launch-gate --json --strict`: pass (`requiredJobs=1/1`, `requiredArtifacts=9/9`).
+  - `npm run release:health:schema:check -- artifacts/release/post-release-health-run-22542439669.json`: pass.
