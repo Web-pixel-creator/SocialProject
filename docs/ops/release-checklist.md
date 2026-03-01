@@ -262,6 +262,11 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
   - [ ] Optional rolling-window tuning for external-channel trend check:
     - [ ] `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_WINDOW=<n>` (default `3`)
     - [ ] `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_MIN_RUNS=<n>` (default `1`)
+  - [ ] Optional admin-UX alert-risk automation controls (launch-gate profile):
+    - [ ] `RELEASE_HEALTH_ALERT_RISK_ENABLED=<true|false>` (default `true`)
+    - [ ] `RELEASE_HEALTH_ALERT_RISK_WINDOW_HOURS=<n>` (default `24`)
+    - [ ] `RELEASE_HEALTH_ALERT_RISK_ESCALATION_STREAK=<n>` (default `2`, minimum `2`)
+    - [ ] `RELEASE_HEALTH_ALERT_RISK_STRICT=<true|false>` (default `false`, advisory-only when `false`)
   - [ ] Optional alert-hook controls for first non-pass appearance in rolling window:
     - [ ] `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_ENABLED=<true|false>` (default `true`)
     - [ ] `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_TIMEOUT_MS=<ms>` (default `10000`)
@@ -276,6 +281,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
     - [ ] Open `/admin/ux` and review `Release health alert telemetry`.
     - [ ] Verify `Alert events`, `First appearances`, and `Alerted runs` are consistent with `externalChannelFailureModes.firstAppearanceAlert`.
     - [ ] Verify `Alert risk` status is `Healthy` for strict healthy windows (watch on any alert, critical when `firstAppearances>=3` or `alertEvents>=3` or `alertedRuns>=2`).
+    - [ ] In launch-gate health summary JSON, verify `releaseHealthAlertTelemetry` fields are present and check `escalationTriggered=false` for normal healthy windows.
     - [ ] For healthy strict windows, confirm no unexpected non-zero first-appearance spikes by channel/failure mode.
   - [ ] Optional machine-readable summary: `npm run release:health:report -- --json`
   - [ ] Optional strict gate (fails command on unhealthy run): `npm run release:health:report -- --strict`

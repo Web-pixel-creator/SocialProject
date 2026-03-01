@@ -22,7 +22,7 @@
       "const": "docs/ops/schemas/release-health-report-output.schema.json"
     },
     "schemaVersion": {
-      "const": "1.4.0"
+      "const": "1.5.0"
     },
     "generatedAtUtc": {
       "type": "string",
@@ -63,6 +63,16 @@
         },
         {
           "$ref": "#/$defs/externalChannelFailureModes"
+        }
+      ]
+    },
+    "releaseHealthAlertTelemetry": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/releaseHealthAlertTelemetry"
         }
       ]
     }
@@ -785,6 +795,130 @@
         "generatedAtUtc": {
           "type": "string",
           "format": "date-time"
+        }
+      }
+    },
+    "releaseHealthAlertTelemetryCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "alertEvents",
+        "firstAppearances",
+        "alertedRuns"
+      ],
+      "properties": {
+        "alertEvents": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "firstAppearances": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "alertedRuns": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "releaseHealthAlertTelemetry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "strict",
+        "windowHours",
+        "escalationStreak",
+        "apiBaseUrl",
+        "endpointUrl",
+        "status",
+        "evaluated",
+        "fetchedAtUtc",
+        "fetchError",
+        "counts",
+        "riskLevel",
+        "pass",
+        "consecutiveSuccessfulRunStreak",
+        "escalationTriggered",
+        "reasons"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "strict": {
+          "type": "boolean"
+        },
+        "windowHours": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "escalationStreak": {
+          "type": "integer",
+          "minimum": 2
+        },
+        "apiBaseUrl": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "endpointUrl": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "disabled",
+            "unavailable",
+            "healthy",
+            "watch",
+            "critical"
+          ]
+        },
+        "evaluated": {
+          "type": "boolean"
+        },
+        "fetchedAtUtc": {
+          "$ref": "#/$defs/nullableDateTime"
+        },
+        "fetchError": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "counts": {
+          "$ref": "#/$defs/releaseHealthAlertTelemetryCounts"
+        },
+        "riskLevel": {
+          "type": "string",
+          "enum": [
+            "unknown",
+            "healthy",
+            "watch",
+            "critical"
+          ]
+        },
+        "pass": {
+          "type": "boolean"
+        },
+        "consecutiveSuccessfulRunStreak": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "escalationTriggered": {
+          "type": "boolean"
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     },

@@ -159,6 +159,27 @@ const main = () => {
         );
       }
     }
+    if (
+      payload?.releaseHealthAlertTelemetry &&
+      typeof payload.releaseHealthAlertTelemetry === 'object'
+    ) {
+      const telemetry = payload.releaseHealthAlertTelemetry;
+      lines.push(
+        `- release-health alert risk: \`${String(telemetry?.riskLevel ?? 'unknown')}\` (status \`${String(telemetry?.status ?? 'unknown')}\`)`,
+        `- release-health alert evaluated: \`${telemetry?.evaluated === true ? 'yes' : 'no'}\``,
+        `- release-health alert counts: \`events=${String(telemetry?.counts?.alertEvents ?? 0)} firstAppearances=${String(telemetry?.counts?.firstAppearances ?? 0)} alertedRuns=${String(telemetry?.counts?.alertedRuns ?? 0)}\``,
+        `- release-health alert consecutive successful runs: \`${String(telemetry?.consecutiveSuccessfulRunStreak ?? 0)}\``,
+        `- release-health alert escalation: \`${telemetry?.escalationTriggered === true ? 'triggered' : 'not-triggered'}\``,
+      );
+      if (typeof telemetry?.fetchError === 'string' && telemetry.fetchError.length > 0) {
+        lines.push(`- release-health alert telemetry fetch error: \`${telemetry.fetchError}\``);
+      }
+      if (Array.isArray(telemetry?.reasons) && telemetry.reasons.length > 0) {
+        lines.push(
+          `- release-health alert reasons: \`${telemetry.reasons.join('; ')}\``,
+        );
+      }
+    }
   } else if (healthSummary.status === 'missing') {
     lines.push('- health summary: `missing`');
   } else {

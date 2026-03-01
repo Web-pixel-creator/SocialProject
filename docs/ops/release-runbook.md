@@ -89,9 +89,9 @@ Canonical references:
      - `externalChannelFailureModes.nonPassModes=[]`
      - defaults: `windowSize=3`, `minimumRuns=1` (override via `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_WINDOW` and `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_MIN_RUNS`).
      - trend baseline uses successful previous runs plus the current analyzed run (so previous controlled-failure drills do not keep healthy runs red).
-   - First non-pass appearance hook:
-     - health report emits `externalChannelFailureModes.firstAppearanceAlert` with triage entries (`channel`, `failureMode`, `runId`),
-     - optional webhook delivery can be enabled via `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_URL` (CI secret) with timeout override `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_TIMEOUT_MS`.
+    - First non-pass appearance hook:
+      - health report emits `externalChannelFailureModes.firstAppearanceAlert` with triage entries (`channel`, `failureMode`, `runId`),
+      - optional webhook delivery can be enabled via `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_URL` (CI secret) with timeout override `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_TIMEOUT_MS`.
      - for protected webhook receivers, post-release health supports auth headers from env:
        - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_ADMIN_TOKEN` -> `x-admin-token`
        - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_CSRF_TOKEN` -> `x-csrf-token`
@@ -102,6 +102,10 @@ Canonical references:
         - open `/admin/ux` and verify `Release health alert telemetry` reflects current run state.
         - for healthy strict windows expect `Alert events=0`, `First appearances=0`, and no channel/failure-mode outliers.
         - verify `Alert risk` status is `Healthy` (watch when any alert appears, critical when `firstAppearances>=3` or `alertEvents>=3` or `alertedRuns>=2`).
+    - Launch-gate health report now also emits `releaseHealthAlertTelemetry`:
+      - includes `riskLevel`, `counts`, `consecutiveSuccessfulRunStreak`, and `escalationTriggered`.
+      - escalation rule defaults to `2` consecutive successful dispatch runs with non-healthy risk (override via `RELEASE_HEALTH_ALERT_RISK_ESCALATION_STREAK`).
+      - strict failure is optional (`RELEASE_HEALTH_ALERT_RISK_STRICT=true`); default behavior is advisory-only.
     - `npm run release:health:schema:check`
 2. Confirm alerts, latency, and error rates are within thresholds.
 3. Validate runtime/gateway control plane health:

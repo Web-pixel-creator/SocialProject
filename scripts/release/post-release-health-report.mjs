@@ -18,6 +18,22 @@ const EXTERNAL_CHANNEL_FAILURE_MODE_PASS_LABEL = 'pass_null';
 const DEFAULT_EXTERNAL_CHANNEL_TREND_WINDOW = 3;
 const DEFAULT_EXTERNAL_CHANNEL_TREND_MIN_RUNS = 1;
 const DEFAULT_EXTERNAL_CHANNEL_ALERT_TIMEOUT_MS = 10000;
+const DEFAULT_RELEASE_HEALTH_ALERT_RISK_WINDOW_HOURS = 24;
+const DEFAULT_RELEASE_HEALTH_ALERT_RISK_ESCALATION_STREAK = 2;
+const RELEASE_HEALTH_ALERT_RISK_THRESHOLDS = {
+  alertedRuns: {
+    criticalAbove: 2,
+    watchAbove: 1,
+  },
+  firstAppearances: {
+    criticalAbove: 3,
+    watchAbove: 1,
+  },
+  totalAlerts: {
+    criticalAbove: 3,
+    watchAbove: 1,
+  },
+};
 const WORKFLOW_PROFILES = {
   ci: {
     requiredArtifactNames: [
@@ -214,6 +230,248 @@ const parsePositiveInteger = ({ raw, fallback, minimum, label }) => {
     );
   }
   return parsed;
+};
+
+const toFiniteNumber = (value, fallback) =>
+  typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+
+const toNonNegativeInteger = (value, fallback = 0) => {
+  const parsed = toFiniteNumber(value, null);
+  if (parsed === null) {
+    return fallback;
+  }
+  return Math.max(0, Math.trunc(parsed));
+};
+
+const normalizeReleaseApiBaseUrl = (value) => value.replace(/\/+$/u, '');
+
+const buildObserverEngagementEndpointUrl = ({ apiBaseUrl, windowHours }) => {
+  const normalizedBase = normalizeReleaseApiBaseUrl(apiBaseUrl);
+  const pathPrefix = normalizedBase.endsWith('/api') ? '' : '/api';
+  return `${normalizedBase}${pathPrefix}/admin/ux/observer-engagement?hours=${String(windowHours)}`;
+};
+
+const deriveReleaseHealthAlertRiskLevel = ({
+  alertEvents,
+  alertedRuns,
+  firstAppearances,
+}) => {
+  if (
+    firstAppearances >= RELEASE_HEALTH_ALERT_RISK_THRESHOLDS.firstAppearances.criticalAbove ||
+    alertEvents >= RELEASE_HEALTH_ALERT_RISK_THRESHOLDS.totalAlerts.criticalAbove ||
+    alertedRuns >= RELEASE_HEALTH_ALERT_RISK_THRESHOLDS.alertedRuns.criticalAbove
+  ) {
+    return 'critical';
+  }
+  if (firstAppearances >= 1 || alertEvents >= 1 || alertedRuns >= 1) {
+    return 'watch';
+  }
+  return 'healthy';
+};
+
+const countConsecutiveSuccessfulRunsFromCurrent = ({ currentRunId, runs }) => {
+  if (!Array.isArray(runs) || runs.length === 0) {
+    return 0;
+  }
+  const currentIndex = runs.findIndex(
+    (entry) => Number(entry?.id) === Number(currentRunId),
+  );
+  if (currentIndex < 0) {
+    return 0;
+  }
+  let streak = 0;
+  for (let index = currentIndex; index < runs.length; index += 1) {
+    if (runs[index]?.conclusion !== 'success') {
+      break;
+    }
+    streak += 1;
+  }
+  return streak;
+};
+
+const fetchReleaseHealthAlertTelemetryCheck = async ({
+  token,
+  baseApiUrl,
+  workflowFile,
+  currentRunId,
+}) => {
+  const enabled = parseBoolean(process.env.RELEASE_HEALTH_ALERT_RISK_ENABLED, true);
+  const strict = parseBoolean(process.env.RELEASE_HEALTH_ALERT_RISK_STRICT, false);
+  const windowHours = parsePositiveInteger({
+    raw: process.env.RELEASE_HEALTH_ALERT_RISK_WINDOW_HOURS,
+    fallback: DEFAULT_RELEASE_HEALTH_ALERT_RISK_WINDOW_HOURS,
+    minimum: 1,
+    label: 'RELEASE_HEALTH_ALERT_RISK_WINDOW_HOURS',
+  });
+  const escalationStreak = parsePositiveInteger({
+    raw: process.env.RELEASE_HEALTH_ALERT_RISK_ESCALATION_STREAK,
+    fallback: DEFAULT_RELEASE_HEALTH_ALERT_RISK_ESCALATION_STREAK,
+    minimum: 2,
+    label: 'RELEASE_HEALTH_ALERT_RISK_ESCALATION_STREAK',
+  });
+  const apiBaseUrlRaw = String(process.env.RELEASE_API_BASE_URL ?? '').trim();
+  const adminToken = String(
+    process.env.RELEASE_ADMIN_API_TOKEN ??
+      process.env.RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_ADMIN_TOKEN ??
+      '',
+  ).trim();
+
+  const payloadBase = {
+    enabled,
+    strict,
+    windowHours,
+    escalationStreak,
+    apiBaseUrl: apiBaseUrlRaw.length > 0 ? normalizeReleaseApiBaseUrl(apiBaseUrlRaw) : null,
+    endpointUrl: null,
+    status: enabled ? 'unavailable' : 'disabled',
+    evaluated: false,
+    fetchedAtUtc: null,
+    fetchError: null,
+    counts: {
+      alertEvents: 0,
+      firstAppearances: 0,
+      alertedRuns: 0,
+    },
+    riskLevel: 'unknown',
+    pass: true,
+    consecutiveSuccessfulRunStreak: 0,
+    escalationTriggered: false,
+    reasons: [],
+  };
+
+  if (!enabled) {
+    return payloadBase;
+  }
+
+  if (apiBaseUrlRaw.length === 0) {
+    return {
+      ...payloadBase,
+      fetchError: 'RELEASE_API_BASE_URL is not configured.',
+    };
+  }
+
+  if (adminToken.length === 0) {
+    return {
+      ...payloadBase,
+      fetchError: 'RELEASE_ADMIN_API_TOKEN is not configured.',
+    };
+  }
+
+  const endpointUrl = buildObserverEngagementEndpointUrl({
+    apiBaseUrl: apiBaseUrlRaw,
+    windowHours,
+  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  let observerEngagementPayload = null;
+  try {
+    const response = await fetch(endpointUrl, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        'x-admin-token': adminToken,
+      },
+      signal: controller.signal,
+    });
+    const responseText = await response.text();
+    if (!response.ok) {
+      throw new Error(
+        `observer-engagement request failed (${response.status} ${response.statusText})${responseText ? `: ${responseText.slice(0, 300)}` : ''}`,
+      );
+    }
+    observerEngagementPayload = responseText ? JSON.parse(responseText) : {};
+  } catch (error) {
+    return {
+      ...payloadBase,
+      endpointUrl,
+      fetchError: toErrorMessage(error),
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  const releaseHealthAlerts =
+    observerEngagementPayload?.releaseHealthAlerts &&
+    typeof observerEngagementPayload.releaseHealthAlerts === 'object'
+      ? observerEngagementPayload.releaseHealthAlerts
+      : {};
+  const kpis =
+    observerEngagementPayload?.kpis && typeof observerEngagementPayload.kpis === 'object'
+      ? observerEngagementPayload.kpis
+      : {};
+
+  const alertEvents = toNonNegativeInteger(
+    toFiniteNumber(
+      releaseHealthAlerts.totalAlerts,
+      toFiniteNumber(kpis.releaseHealthAlertCount, 0),
+    ),
+    0,
+  );
+  const firstAppearances = toNonNegativeInteger(
+    toFiniteNumber(
+      releaseHealthAlerts.firstAppearanceCount,
+      toFiniteNumber(kpis.releaseHealthFirstAppearanceCount, 0),
+    ),
+    0,
+  );
+  const alertedRuns = toNonNegativeInteger(
+    toFiniteNumber(
+      releaseHealthAlerts.uniqueRuns,
+      toFiniteNumber(kpis.releaseHealthAlertedRunCount, 0),
+    ),
+    0,
+  );
+  const riskLevel = deriveReleaseHealthAlertRiskLevel({
+    alertEvents,
+    alertedRuns,
+    firstAppearances,
+  });
+
+  let consecutiveSuccessfulRunStreak = 0;
+  try {
+    const recentRuns = await listWorkflowDispatchRuns({
+      token,
+      baseApiUrl,
+      workflowFile,
+      limit: Math.max(escalationStreak * 4, 20),
+    });
+    consecutiveSuccessfulRunStreak = countConsecutiveSuccessfulRunsFromCurrent({
+      currentRunId,
+      runs: recentRuns,
+    });
+  } catch {
+    // Keep streak at 0 when run-history lookup fails; this check remains advisory.
+  }
+
+  const escalationTriggered =
+    (riskLevel === 'watch' || riskLevel === 'critical') &&
+    consecutiveSuccessfulRunStreak >= escalationStreak;
+
+  const reasons = [];
+  if (escalationTriggered) {
+    reasons.push(
+      `alert risk remained ${riskLevel} across ${String(consecutiveSuccessfulRunStreak)} consecutive successful workflow_dispatch runs`,
+    );
+  }
+
+  return {
+    ...payloadBase,
+    endpointUrl,
+    status: riskLevel,
+    evaluated: true,
+    fetchedAtUtc: new Date().toISOString(),
+    fetchError: null,
+    counts: {
+      alertEvents,
+      firstAppearances,
+      alertedRuns,
+    },
+    riskLevel,
+    pass: riskLevel === 'healthy',
+    consecutiveSuccessfulRunStreak,
+    escalationTriggered,
+    reasons,
+  };
 };
 
 const postJsonWithTimeout = async ({ url, payload, timeoutMs, headers = {} }) => {
@@ -1161,6 +1419,49 @@ const toJsonSummaryPayload = ({ report, outputPath, strict }) => ({
               : null,
         }
       : null,
+  releaseHealthAlertTelemetry:
+    report.releaseHealthAlertTelemetry &&
+    typeof report.releaseHealthAlertTelemetry === 'object'
+      ? {
+          enabled: report.releaseHealthAlertTelemetry.enabled === true,
+          strict: report.releaseHealthAlertTelemetry.strict === true,
+          windowHours: report.releaseHealthAlertTelemetry.windowHours,
+          escalationStreak: report.releaseHealthAlertTelemetry.escalationStreak,
+          status:
+            typeof report.releaseHealthAlertTelemetry.status === 'string'
+              ? report.releaseHealthAlertTelemetry.status
+              : 'unknown',
+          evaluated: report.releaseHealthAlertTelemetry.evaluated === true,
+          fetchedAtUtc:
+            typeof report.releaseHealthAlertTelemetry.fetchedAtUtc === 'string'
+              ? report.releaseHealthAlertTelemetry.fetchedAtUtc
+              : null,
+          fetchError:
+            typeof report.releaseHealthAlertTelemetry.fetchError === 'string'
+              ? report.releaseHealthAlertTelemetry.fetchError
+              : null,
+          counts: {
+            alertEvents:
+              report.releaseHealthAlertTelemetry.counts?.alertEvents ?? 0,
+            firstAppearances:
+              report.releaseHealthAlertTelemetry.counts?.firstAppearances ?? 0,
+            alertedRuns:
+              report.releaseHealthAlertTelemetry.counts?.alertedRuns ?? 0,
+          },
+          riskLevel:
+            typeof report.releaseHealthAlertTelemetry.riskLevel === 'string'
+              ? report.releaseHealthAlertTelemetry.riskLevel
+              : 'unknown',
+          pass: report.releaseHealthAlertTelemetry.pass === true,
+          consecutiveSuccessfulRunStreak:
+            report.releaseHealthAlertTelemetry.consecutiveSuccessfulRunStreak ?? 0,
+          escalationTriggered:
+            report.releaseHealthAlertTelemetry.escalationTriggered === true,
+          reasons: Array.isArray(report.releaseHealthAlertTelemetry.reasons)
+            ? report.releaseHealthAlertTelemetry.reasons
+            : [],
+        }
+      : null,
   outputPath,
 });
 
@@ -1292,6 +1593,15 @@ const main = async () => {
       };
     }
   }
+  const releaseHealthAlertTelemetry =
+    workflowProfile.profileKey === 'launch_gate'
+      ? await fetchReleaseHealthAlertTelemetryCheck({
+          token,
+          baseApiUrl,
+          workflowFile,
+          currentRunId: run.id,
+        })
+      : null;
   let smokeSummary = await readLocalSmokeSummary({
     runId,
     smokeFetchMode: workflowProfile.smokeFetchMode,
@@ -1330,12 +1640,18 @@ const main = async () => {
   }
 
   const runConclusion = run?.conclusion ?? null;
+  const releaseHealthAlertRiskStrictFailure =
+    releaseHealthAlertTelemetry &&
+    releaseHealthAlertTelemetry.enabled === true &&
+    releaseHealthAlertTelemetry.strict === true &&
+    releaseHealthAlertTelemetry.escalationTriggered === true;
   const pass =
     runConclusion === 'success' &&
     jobSummary.requiredMissing.length === 0 &&
     jobSummary.requiredFailed.length === 0 &&
     artifactSummary.requiredMissing.length === 0 &&
-    (externalChannelFailureModeTrend?.pass ?? true);
+    (externalChannelFailureModeTrend?.pass ?? true) &&
+    !releaseHealthAlertRiskStrictFailure;
 
   const reasons = [];
   if (runConclusion !== 'success') {
@@ -1376,6 +1692,11 @@ const main = async () => {
         externalChannelFailureModeTrend.firstAppearanceAlert.webhookError ??
         'delivery failed'
       }`,
+    );
+  }
+  if (releaseHealthAlertRiskStrictFailure) {
+    reasons.push(
+      'release-health alert-risk escalation marked as strict failure (RELEASE_HEALTH_ALERT_RISK_STRICT=true)',
     );
   }
 
@@ -1430,6 +1751,7 @@ const main = async () => {
     })),
     smokeReport: smokeSummary,
     externalChannelFailureModes: externalChannelFailureModeTrend,
+    releaseHealthAlertTelemetry,
   };
 
   await mkdir(outputDir, { recursive: true });
@@ -1498,6 +1820,25 @@ const main = async () => {
           `External-channel first-appearance alert: triggered=${String(
             alert.triggered === true,
           )} webhookDelivered=${String(alert.webhookDelivered === true)}\n`,
+        );
+      }
+    }
+    if (report.releaseHealthAlertTelemetry) {
+      process.stdout.write(
+        `Release-health alert telemetry: status=${String(
+          report.releaseHealthAlertTelemetry.status,
+        )} risk=${String(report.releaseHealthAlertTelemetry.riskLevel)} evaluated=${String(
+          report.releaseHealthAlertTelemetry.evaluated === true,
+        )} escalation=${String(
+          report.releaseHealthAlertTelemetry.escalationTriggered === true,
+        )}\n`,
+      );
+      if (
+        report.releaseHealthAlertTelemetry.fetchError &&
+        typeof report.releaseHealthAlertTelemetry.fetchError === 'string'
+      ) {
+        process.stdout.write(
+          `Release-health alert telemetry fetch error: ${report.releaseHealthAlertTelemetry.fetchError}\n`,
         );
       }
     }
