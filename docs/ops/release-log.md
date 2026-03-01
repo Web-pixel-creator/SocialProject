@@ -33,6 +33,38 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - alert-risk escalation suppression for failed latest drill run
+
+- Scope: prevent advisory escalation noise when the latest alerted run is a known failed controlled drill and validate behavior in CI.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 18:44 -> 2026-03-01 18:49.
+- Changes:
+  - Updated `scripts/release/post-release-health-report.mjs`:
+    - added `releaseHealthAlertTelemetry.latestAlertRun` (`id`, `number`, `url`, `conclusion`) using GitHub Actions run lookup.
+    - added `releaseHealthAlertTelemetry.escalationSuppressed` + `escalationSuppressionReason`.
+    - changed escalation decision: when escalation candidate is true but latest alert run conclusion is non-`success`, mark suppression and keep `escalationTriggered=false`.
+  - Updated `scripts/release/render-post-release-health-step-summary.mjs` to print latest alert run and suppression reason.
+  - Updated schema contract/sample to `1.6.0`:
+    - `scripts/release/release-health-schema-contracts.mjs`
+    - `docs/ops/schemas/release-health-report-output.schema.json`
+    - `docs/ops/schemas/samples/release-health-report-output.sample.json`.
+- Local validation:
+  - `npm --silent run release:health:schema:check`: pass.
+  - `npm --silent run release:health:report -- 22549817562 --workflow-file production-launch-gate.yml --profile launch-gate --json --strict`: pass.
+- CI validation:
+  - strict `Production Launch Gate` run `#54` (`22550066885`): `success`.
+  - downstream `Release Health Gate` run `#225` (`22550083631`): `success`.
+  - artifact `post-release-health-summary-22550066885.json` confirms:
+    - `releaseHealthAlertTelemetry.status=critical`
+    - `releaseHealthAlertTelemetry.latestAlertRun.number=48`
+    - `releaseHealthAlertTelemetry.latestAlertRun.conclusion=failure`
+    - `releaseHealthAlertTelemetry.escalationSuppressed=true`
+    - `releaseHealthAlertTelemetry.escalationTriggered=false`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - after current 24h window expiry (`2026-03-02 17:23:02 UTC`), run strict launch-gate again and reassess whether to enable `RELEASE_HEALTH_ALERT_RISK_STRICT=true`.
+
 ### 2026-03-01 - alert-risk escalation triage after strict launch-gate run #53
 
 - Scope: execute incident triage for sustained `releaseHealthAlertTelemetry.escalationTriggered=true` and set strict-mode decision window.
