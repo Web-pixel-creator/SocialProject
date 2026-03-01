@@ -808,3 +808,16 @@ Exit criteria:
   - added `observerProfile.predictionViewReset` to EN/RU dictionaries.
 - Coverage update:
   - extended `apps/web/src/__tests__/observer-prediction-history-panel.spec.tsx` for reset flow, persisted-state reset, and enriched telemetry payload assertions.
+
+## Progress Snapshot (2026-03-01 - ingest connector-profile defaults + runtime skill autodiscovery slice)
+- Runtime skills loader update:
+  - `agentSkillsService` now supports profile-driven auto-discovery of runtime `SKILL.md`/`SKILL.txt` files (`autoLoadSkillFiles`, `skillRuntime.autoLoadFiles`, `skillFilesRoot` / `skillRuntime.rootPath`),
+  - auto-discovery is root-jail constrained, symlink-safe, depth-bounded, and deduplicated with explicit `skillFiles`,
+  - role scope can now be inferred from skill file path segments (`author`/`critic`/`maker`/`judge`) before capsule injection.
+- Connector ecosystem update:
+  - added configurable connector profiles parser (`apps/api/src/services/agentGatewayIngest/connectorProfile.ts`) with startup validation via `AGENT_GATEWAY_INGEST_CONNECTOR_PROFILES`,
+  - ingest route now supports connector-level defaults for `adapter`, `channel`, `fromRole`, `toRole`, and `type` when those fields are omitted in incoming payloads,
+  - keeps existing explicit-body precedence and existing signature/idempotency/rate-limit guardrails unchanged.
+- Coverage update:
+  - extended skills-loader coverage in `apps/api/src/__tests__/agent-skills.unit.spec.ts` for runtime auto-load on/off behavior,
+  - added connector-profile parser coverage in `apps/api/src/__tests__/agent-gateway-ingest-connector-profile.unit.spec.ts`.

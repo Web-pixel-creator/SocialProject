@@ -11,6 +11,10 @@ import {
   resolveConnectorPolicy,
 } from '../services/agentGatewayIngest/connectorPolicy';
 import {
+  parseConnectorProfileMap,
+  resolveConnectorProfile,
+} from '../services/agentGatewayIngest/connectorProfile';
+import {
   parseConnectorSecretMap,
   parseGlobalSecretList,
   resolveSignatureCandidates,
@@ -66,12 +70,18 @@ const CONNECTOR_SECRET_MAP = parseConnectorSecretMap(
 const CONNECTOR_POLICY_MAP = parseConnectorPolicyMap(
   env.AGENT_GATEWAY_INGEST_CONNECTOR_POLICIES,
 );
+const CONNECTOR_PROFILE_MAP = parseConnectorProfileMap(
+  env.AGENT_GATEWAY_INGEST_CONNECTOR_PROFILES,
+);
 const REQUIRE_CONNECTOR_SECRET =
   env.AGENT_GATEWAY_INGEST_REQUIRE_CONNECTOR_SECRET === 'true';
 const CONNECTOR_RATE_LIMIT_WINDOW_SEC =
   env.AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMIT_WINDOW_SEC;
 const CONNECTOR_RATE_LIMIT_MAX =
   env.AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMIT_MAX;
+
+const resolveProfileDefault = (value: unknown, fallback: string | null) =>
+  value === undefined || value === null ? fallback : value;
 
 const assertAllowedQueryFields = (
   query: unknown,
@@ -422,54 +432,6 @@ router.post(
         );
       }
 
-      const adapterRaw = parseOptionalString(body.adapter, {
-        fieldName: 'adapter',
-        pattern: CHANNEL_PATTERN,
-        errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
-      });
-      const adapter = (adapterRaw ??
-        'external_webhook') as AgentGatewayAdapterName;
-      if (!ADAPTER_NAME_SET.has(adapter)) {
-        throw new ServiceError(
-          'AGENT_GATEWAY_INGEST_INVALID_INPUT',
-          'adapter is not supported.',
-          400,
-        );
-      }
-      telemetryAdapter = adapter;
-
-      const channel = parseRequiredString(body.channel, {
-        fieldName: 'channel',
-        pattern: CHANNEL_PATTERN,
-        errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
-      });
-      telemetryChannel = channel;
-      const externalSessionId = parseRequiredString(body.externalSessionId, {
-        fieldName: 'externalSessionId',
-        pattern: EXTERNAL_SESSION_ID_PATTERN,
-        errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
-      });
-      const fromRole = parseRequiredString(body.fromRole, {
-        fieldName: 'fromRole',
-        pattern: ROLE_PATTERN,
-        errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
-      });
-      const toRole = parseOptionalString(body.toRole, {
-        fieldName: 'toRole',
-        pattern: ROLE_PATTERN,
-        errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
-      });
-      const type = parseRequiredString(body.type, {
-        fieldName: 'type',
-        pattern: EVENT_TYPE_PATTERN,
-        errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
-      });
-      const draftId = parseOptionalUuid(
-        body.draftId,
-        'draftId',
-        'AGENT_GATEWAY_INGEST_INVALID_INPUT',
-      );
-
       const connectorId = parseRequiredString(
         body.connectorId ??
           parseHeaderValue(req.headers['x-gateway-connector-id']),
@@ -490,6 +452,73 @@ router.post(
         );
       }
       telemetryConnectorId = connectorId;
+      const connectorProfile = resolveConnectorProfile(
+        CONNECTOR_PROFILE_MAP,
+        connectorId,
+      );
+
+      const adapterRaw = parseOptionalString(
+        resolveProfileDefault(body.adapter, connectorProfile.adapter),
+        {
+          fieldName: 'adapter',
+          pattern: CHANNEL_PATTERN,
+          errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
+        },
+      );
+      const adapter = (adapterRaw ??
+        'external_webhook') as AgentGatewayAdapterName;
+      if (!ADAPTER_NAME_SET.has(adapter)) {
+        throw new ServiceError(
+          'AGENT_GATEWAY_INGEST_INVALID_INPUT',
+          'adapter is not supported.',
+          400,
+        );
+      }
+      telemetryAdapter = adapter;
+
+      const channel = parseRequiredString(
+        resolveProfileDefault(body.channel, connectorProfile.channel),
+        {
+          fieldName: 'channel',
+          pattern: CHANNEL_PATTERN,
+          errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
+        },
+      );
+      telemetryChannel = channel;
+      const externalSessionId = parseRequiredString(body.externalSessionId, {
+        fieldName: 'externalSessionId',
+        pattern: EXTERNAL_SESSION_ID_PATTERN,
+        errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
+      });
+      const fromRole = parseRequiredString(
+        resolveProfileDefault(body.fromRole, connectorProfile.fromRole),
+        {
+          fieldName: 'fromRole',
+          pattern: ROLE_PATTERN,
+          errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
+        },
+      );
+      const toRole = parseOptionalString(
+        resolveProfileDefault(body.toRole, connectorProfile.toRole),
+        {
+          fieldName: 'toRole',
+          pattern: ROLE_PATTERN,
+          errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
+        },
+      );
+      const type = parseRequiredString(
+        resolveProfileDefault(body.type, connectorProfile.type),
+        {
+          fieldName: 'type',
+          pattern: EVENT_TYPE_PATTERN,
+          errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
+        },
+      );
+      const draftId = parseOptionalUuid(
+        body.draftId,
+        'draftId',
+        'AGENT_GATEWAY_INGEST_INVALID_INPUT',
+      );
       const connectorPolicy = resolveConnectorPolicy(
         CONNECTOR_POLICY_MAP,
         connectorId,
