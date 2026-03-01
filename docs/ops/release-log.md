@@ -33,6 +33,53 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - release-health alert-risk automation in post-release health gate
+
+- Scope: automate admin UX alert-risk evaluation in launch-gate post-release health reports and trigger advisory escalation signal on sustained non-healthy windows.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 18:18 -> 2026-03-01 18:26.
+- Changes:
+  - Updated `scripts/release/post-release-health-report.mjs`:
+    - new launch-gate report block `releaseHealthAlertTelemetry` with:
+      - `status`, `riskLevel`, `counts` (`alertEvents`, `firstAppearances`, `alertedRuns`)
+      - `consecutiveSuccessfulRunStreak`
+      - `escalationTriggered`
+      - `reasons[]`
+    - fetch source: production admin endpoint `/api/admin/ux/observer-engagement?hours=<window>` using `RELEASE_API_BASE_URL` + admin token.
+    - new controls:
+      - `RELEASE_HEALTH_ALERT_RISK_ENABLED` (default `true`)
+      - `RELEASE_HEALTH_ALERT_RISK_WINDOW_HOURS` (default `24`)
+      - `RELEASE_HEALTH_ALERT_RISK_ESCALATION_STREAK` (default `2`, min `2`)
+      - `RELEASE_HEALTH_ALERT_RISK_STRICT` (default `false`; advisory unless enabled).
+  - Updated release-health step-summary renderer to print alert-risk status and escalation lines.
+  - Updated `Release Health Gate` workflow env wiring to pass:
+    - `RELEASE_API_BASE_URL` (repo variable)
+    - `RELEASE_ADMIN_API_TOKEN` (repo secret)
+    for in-workflow risk evaluation.
+  - Updated schema contract/sample:
+    - `docs/ops/schemas/release-health-report-output.schema.json`
+    - `docs/ops/schemas/samples/release-health-report-output.sample.json`
+    - schema version `1.4.0 -> 1.5.0`.
+  - Updated release runbook/checklist with alert-risk automation + escalation routing notes.
+- Local validation:
+  - `node --check scripts/release/post-release-health-report.mjs`: pass.
+  - `node --check scripts/release/render-post-release-health-step-summary.mjs`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm --silent run release:health:report -- 22549331429 --workflow-file production-launch-gate.yml --profile launch-gate --json --strict`: pass.
+  - `npm --silent run release:health:schema:check -- artifacts/release/post-release-health-run-22549331429.json`: pass.
+- CI validation:
+  - strict launch-gate run `#52` (`22549645465`): `success`.
+  - downstream `Release Health Gate` run `#218` (`22549667472`): `success`.
+  - summary confirms new block evaluated in workflow context:
+    - `releaseHealthAlertTelemetry.status=critical`
+    - `releaseHealthAlertTelemetry.evaluated=true`
+    - `releaseHealthAlertTelemetry.escalationTriggered=true`
+    - reason: `alert risk remained critical across 4 consecutive successful workflow_dispatch runs`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - execute incident triage on sustained alert-risk escalation signal (`escalationTriggered=true`) and decide whether to enable `RELEASE_HEALTH_ALERT_RISK_STRICT=true` after triage baseline stabilizes.
+
 ### 2026-03-01 - release-health alert risk thresholds on admin ux + strict revalidation
 
 - Scope: close alert-frequency follow-up by adding threshold-based risk indicator to `/admin/ux` `Release health alert telemetry`, then revalidate strict launch-gate path.

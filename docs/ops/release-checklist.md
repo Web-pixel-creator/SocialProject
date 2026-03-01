@@ -282,6 +282,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
     - [ ] Verify `Alert events`, `First appearances`, and `Alerted runs` are consistent with `externalChannelFailureModes.firstAppearanceAlert`.
     - [ ] Verify `Alert risk` status is `Healthy` for strict healthy windows (watch on any alert, critical when `firstAppearances>=3` or `alertEvents>=3` or `alertedRuns>=2`).
     - [ ] In launch-gate health summary JSON, verify `releaseHealthAlertTelemetry` fields are present and check `escalationTriggered=false` for normal healthy windows.
+    - [ ] If `releaseHealthAlertTelemetry.escalationTriggered=true`, route incident triage via `docs/ops/agent-gateway-ai-runtime-runbook.md` (`External-channel failure-mode routing`) and capture summary evidence before next rollout.
     - [ ] For healthy strict windows, confirm no unexpected non-zero first-appearance spikes by channel/failure mode.
   - [ ] Optional machine-readable summary: `npm run release:health:report -- --json`
   - [ ] Optional strict gate (fails command on unhealthy run): `npm run release:health:report -- --strict`
