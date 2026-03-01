@@ -1263,3 +1263,26 @@ Exit criteria:
   - temporary test secret was removed after validation to prevent accidental production alert routing.
 - Next increment:
   - replace temporary webhook secret with production incident-management endpoint and re-run one controlled drill for final sign-off.
+
+## Progress Snapshot (2026-03-01 - strict baseline revalidation after workflow-run automation)
+- Strict launch-gate revalidation:
+  - dispatched run `#47` (`22548257961`) with full strict matrix:
+    - `--runtime-draft-id 3fefc86d-eb94-42f2-8c97-8b57eff8944e`
+    - `--require-skill-markers`
+    - `--require-natural-cron-window`
+    - `--required-external-channels all`
+  - run completed with `success`.
+- Health verification:
+  - `npm --silent run release:health:report -- 22548257961 --workflow-file production-launch-gate.yml --profile launch-gate --json --strict`: pass.
+  - summary confirms:
+    - `requiredJobsPassed=1/1`
+    - `requiredArtifactsPresent=10/10`
+    - `externalChannelFailureModes.pass=true`
+    - `firstAppearanceAlert.triggered=false`
+    - `firstAppearanceAlert.webhookUrlConfigured=false`.
+  - `npm --silent run release:health:schema:check -- artifacts/release/post-release-health-run-22548257961.json`: pass.
+- Workflow-run automation confirmation:
+  - downstream `Release Health Gate` run `#203` (`22548278469`) auto-triggered from launch-gate completion and finished with `success`.
+- Remaining sign-off gap:
+  - configure production `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_URL`.
+  - execute one controlled negative drill and capture delivery evidence against production incident endpoint.

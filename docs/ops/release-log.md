@@ -33,6 +33,35 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - strict launch-gate baseline revalidation after workflow-run automation
+
+- Scope: confirm strict launch-gate and downstream `Release Health Gate` automation stay green after workflow-run integration changes.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 17:08 -> 2026-03-01 17:10.
+- Execution:
+  - dispatched strict launch-gate run `#47` (`22548257961`) with:
+    - `--runtime-draft-id 3fefc86d-eb94-42f2-8c97-8b57eff8944e`
+    - `--require-skill-markers`
+    - `--require-natural-cron-window`
+    - `--required-external-channels all`.
+- Validation:
+  - launch-gate run `#47` completed with `success`.
+  - strict report command passed:
+    - `npm --silent run release:health:report -- 22548257961 --workflow-file production-launch-gate.yml --profile launch-gate --json --strict`
+    - summary confirms:
+      - `requiredJobsPassed=1/1`
+      - `requiredArtifactsPresent=10/10`
+      - `externalChannelFailureModes.pass=true`
+      - `firstAppearanceAlert.triggered=false`
+      - `firstAppearanceAlert.webhookUrlConfigured=false`.
+  - schema validation passed:
+    - `npm --silent run release:health:schema:check -- artifacts/release/post-release-health-run-22548257961.json`.
+  - downstream `Release Health Gate` run `#203` (`22548278469`) triggered via `workflow_run` and completed with `success`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - set production `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_URL` and run one controlled negative drill for final alert-routing sign-off.
+
 ### 2026-03-01 - Release Health Gate automation path validation for launch-gate alerts
 
 - Scope: validate first-appearance alert delivery via real `workflow_run` automation path (not local/manual report execution).
