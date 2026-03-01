@@ -10,6 +10,7 @@ import type {
   AgentGatewaySessionStatus,
 } from '../services/agentGateway/types';
 import { parseConnectorPolicyMap } from '../services/agentGatewayIngest/connectorPolicy';
+import { parseConnectorProfileMap } from '../services/agentGatewayIngest/connectorProfile';
 import { aiRuntimeService } from '../services/aiRuntime/aiRuntimeService';
 import type { AIRuntimeRole } from '../services/aiRuntime/types';
 import {
@@ -30,6 +31,9 @@ const budgetService = new BudgetServiceImpl();
 const privacyService = new PrivacyServiceImpl(db);
 const AGENT_GATEWAY_CONNECTOR_POLICY_MAP = parseConnectorPolicyMap(
   env.AGENT_GATEWAY_INGEST_CONNECTOR_POLICIES,
+);
+const AGENT_GATEWAY_CONNECTOR_PROFILE_MAP = parseConnectorProfileMap(
+  env.AGENT_GATEWAY_INGEST_CONNECTOR_PROFILES,
 );
 
 const toNumber = (value: string | number | undefined, fallback = 0) =>
@@ -2079,6 +2083,31 @@ const buildAgentGatewayConnectorPolicySnapshot = () => {
   };
 };
 
+const buildAgentGatewayConnectorProfileSnapshot = () => {
+  const profiles = [...AGENT_GATEWAY_CONNECTOR_PROFILE_MAP.values()]
+    .map((profile) => ({
+      connectorId: profile.connectorId,
+      adapter: profile.adapter,
+      channel: profile.channel,
+      fromRole: profile.fromRole,
+      toRole: profile.toRole,
+      type: profile.type,
+    }))
+    .sort((left, right) => left.connectorId.localeCompare(right.connectorId));
+
+  return {
+    total: profiles.length,
+    defaults: {
+      adapter: null,
+      channel: null,
+      fromRole: null,
+      toRole: null,
+      type: null,
+    },
+    profiles,
+  };
+};
+
 const buildAgentGatewayTelemetrySnapshot = (
   sessionRows: AgentGatewayTelemetrySessionRow[],
   eventRows: AgentGatewayTelemetryEventRow[],
@@ -3001,6 +3030,7 @@ router.get(
         adapters: snapshot.adapters,
         ingestConnectors: snapshot.ingestConnectors,
         connectorPolicies: buildAgentGatewayConnectorPolicySnapshot(),
+        connectorProfiles: buildAgentGatewayConnectorProfileSnapshot(),
       });
     } catch (error) {
       next(error);
@@ -3143,6 +3173,7 @@ router.get(
       const ingestConnectors =
         buildAgentGatewayIngestConnectorMetrics(ingestRows);
       const connectorPolicies = buildAgentGatewayConnectorPolicySnapshot();
+      const connectorProfiles = buildAgentGatewayConnectorProfileSnapshot();
       res.json({
         windowHours: hours,
         generatedAt: new Date().toISOString(),
@@ -3154,6 +3185,7 @@ router.get(
         adapters,
         ingestConnectors,
         connectorPolicies,
+        connectorProfiles,
       });
     } catch (error) {
       next(error);

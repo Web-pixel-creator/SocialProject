@@ -817,6 +817,7 @@ Exit criteria:
 - Connector ecosystem update:
   - added configurable connector profiles parser (`apps/api/src/services/agentGatewayIngest/connectorProfile.ts`) with startup validation via `AGENT_GATEWAY_INGEST_CONNECTOR_PROFILES`,
   - ingest route now supports connector-level defaults for `adapter`, `channel`, `fromRole`, `toRole`, and `type` when those fields are omitted in incoming payloads,
+  - `/api/admin/agent-gateway/telemetry` and `/api/admin/agent-gateway/adapters` now expose `connectorProfiles` snapshot (defaults + resolved profile list) alongside `connectorPolicies`,
   - keeps existing explicit-body precedence and existing signature/idempotency/rate-limit guardrails unchanged.
 - Coverage update:
   - extended skills-loader coverage in `apps/api/src/__tests__/agent-skills.unit.spec.ts` for runtime auto-load on/off behavior,
