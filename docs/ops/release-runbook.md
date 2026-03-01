@@ -48,6 +48,7 @@ Canonical references:
        - Optional explicit token argument: `npm run release:launch:gate:dispatch -- -Token <github_pat>`
        - Token resolution order: `-Token/--token` -> `GITHUB_TOKEN/GH_TOKEN` -> `gh auth token`
        - Optional inputs via env: `RELEASE_RUNTIME_DRAFT_ID=<uuid> RELEASE_REQUIRE_SKILL_MARKERS=true RELEASE_REQUIRE_NATURAL_CRON_WINDOW=true`
+       - When `RELEASE_REQUIRE_SKILL_MARKERS=true`, `RELEASE_RUNTIME_DRAFT_ID` is required and must point to a draft with skill markers.
    - Review summary: `artifacts/release/production-launch-gate-summary.json`
 1. Generate and validate health report:
    - `npm run release:health:report`

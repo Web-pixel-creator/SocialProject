@@ -192,6 +192,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
   - [ ] Optional strict skills-runtime variant (requires skill markers in runtime prompt):
     - [ ] `npm run release:launch:gate:production:skills`
     - [ ] JSON variant: `npm run release:launch:gate:production:skills:json`
+    - [ ] Provide explicit `runtime_draft_id` that contains skill markers.
   - [ ] Optional natural-cron strict variant (run after UTC 00:20 window):
     - [ ] `npm run release:launch:gate:production -- --strict --require-natural-cron-window`
     - [ ] Env alternative: `RELEASE_REQUIRE_NATURAL_CRON_WINDOW=true npm run release:launch:gate:production -- --strict`
@@ -206,6 +207,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
       - [ ] Optional runtime draft input: `RELEASE_RUNTIME_DRAFT_ID=<uuid>`
       - [ ] Optional skill marker requirement: `RELEASE_REQUIRE_SKILL_MARKERS=true`
       - [ ] Optional natural cron requirement: `RELEASE_REQUIRE_NATURAL_CRON_WINDOW=true`
+      - [ ] If `RELEASE_REQUIRE_SKILL_MARKERS=true`, `RELEASE_RUNTIME_DRAFT_ID` is mandatory.
   - [ ] Confirm summary artifact: `artifacts/release/production-launch-gate-summary.json`
   - [ ] Confirm health summary artifact: `artifacts/release/production-launch-gate-health-summary.json`
   - [ ] In strict mode, confirm `connectorProfilesSnapshot.pass=true` in launch gate summary.

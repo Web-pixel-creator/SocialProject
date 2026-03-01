@@ -65,6 +65,10 @@ jobs:
             done
             exit 1
           fi
+          if [[ "${{ inputs.require_skill_markers }}" == "true" && -z "${{ inputs.runtime_draft_id }}" ]]; then
+            echo "require_skill_markers=true requires runtime_draft_id input (draft with skill markers)."
+            exit 1
+          fi
 
       - name: Run production launch gate
         shell: bash

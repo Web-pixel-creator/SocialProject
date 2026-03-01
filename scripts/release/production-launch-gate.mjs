@@ -364,6 +364,11 @@ const main = async () => {
     summary.checks.smoke = { pass: true, skipped: o.skipSmoke };
 
     const runtimeDraftId = o.runtimeDraftId || smoke.context?.draftId;
+    if (o.requireSkillMarkers && !o.runtimeDraftId) {
+      throw new Error(
+        '--require-skill-markers requires explicit --runtime-draft-id (or RELEASE_RUNTIME_PROBE_DRAFT_ID) that points to a draft with configured skill markers.',
+      );
+    }
     if (!runtimeDraftId) throw new Error('Runtime draft id is missing');
 
     const health = {};

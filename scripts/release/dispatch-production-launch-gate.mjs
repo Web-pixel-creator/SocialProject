@@ -268,6 +268,11 @@ const main = async () => {
     process.env.RELEASE_REQUIRE_NATURAL_CRON_WINDOW,
     false,
   );
+  if (requireSkillMarkers && !runtimeDraftId) {
+    throw new Error(
+      'RELEASE_REQUIRE_SKILL_MARKERS=true requires RELEASE_RUNTIME_DRAFT_ID to be set (draft with skill markers).',
+    );
+  }
 
   const repoSlug = resolveRepoSlug();
   const baseApiUrl = `https://api.github.com/repos/${repoSlug}`;
