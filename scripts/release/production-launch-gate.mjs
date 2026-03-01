@@ -412,7 +412,10 @@ const postOrGet = async ({
     let json = null;
     try {
       json = JSON.parse(text);
-    } catch {}
+    } catch {
+      // Non-JSON response body is expected for some probe failures.
+      json = null;
+    }
     return { json, ok: r.ok, status: r.status, text };
   } finally {
     clearTimeout(t);
