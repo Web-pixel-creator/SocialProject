@@ -975,6 +975,9 @@ Exit criteria:
     - `skillMarkerMultiStep.pass=true`
     - `skillMarkerMatrixChannels.pass=true`
     - `skillMarkerMatrixChannels.failedChannels=[]`.
+  - baseline run `#36` (`22541380483`) confirms skipped semantics remain clean when markers are not required:
+    - `skillMarkerMatrixChannels.skipped=true`
+    - `skillMarkerMatrixChannels.failedChannels=[]`.
 
 ## Progress Snapshot (2026-03-01 - launch-gate dispatch helper CLI inputs)
 - Release operations UX update:

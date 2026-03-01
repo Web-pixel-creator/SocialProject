@@ -33,6 +33,25 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - matrix marker skipped-diagnostics normalization
+
+- Scope: keep launch-gate marker diagnostics semantically clean when skill-marker enforcement is disabled.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 10:21 -> 2026-03-01 10:23.
+- Changes:
+  - Updated `scripts/release/production-launch-gate.mjs`:
+    - `skillMarkerMatrixChannels.failedChannels` now returns `[]` when `require_skill_markers=false` (`skipped=true`) instead of emitting non-actionable missing-marker lists.
+- Verification:
+  - `node --check scripts/release/production-launch-gate.mjs`: pass.
+  - workflow run `#36` (`22541380483`): `success`.
+  - run `#36` summary confirms:
+    - `skillMarkerMatrixChannels.skipped=true`
+    - `skillMarkerMatrixChannels.failedChannels=[]`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - none.
+
 ### 2026-03-01 - dispatch helper CLI inputs for launch-gate workflow
 
 - Scope: remove env-only friction for workflow dispatch by adding explicit CLI flags to `release:launch:gate:dispatch`.
