@@ -62,6 +62,15 @@ Canonical references:
    - Launch gate now also checks external connector channel fallback probes from configured connector profiles (`telegram` / `slack` / `discord`) via `ingestExternalChannelFallback`.
    - For each configured external channel probe, launch gate also verifies connector telemetry counters (`ingestConnectors.accepted/total`) via admin telemetry API before passing fallback checks.
    - Optional strict channel requirement can be enabled with `--required-external-channels telegram,slack` (or workflow input/env equivalent); in this mode, launch gate fails if required channels are not configured or fallback probe validation fails.
+   - Recommended rollout to move from `skipped` to active external-channel verification:
+     - set production `AGENT_GATEWAY_INGEST_CONNECTOR_PROFILES` (see `docs/ops/examples/agent-gateway-ingest-connector-profiles.example.json`),
+     - deploy API with new env,
+     - run strict dispatch:
+       - `npm run release:launch:gate:dispatch -- --required-external-channels all`
+     - confirm in summary:
+       - `ingestExternalChannelFallback.pass=true`
+       - `ingestExternalChannelFallback.requiredChannels=["telegram","slack","discord"]`
+       - `ingestExternalChannelFallback.missingRequiredChannels=[]`.
 1. Generate and validate health report:
    - `npm run release:health:report`
    - Optional launch-gate workflow profile:

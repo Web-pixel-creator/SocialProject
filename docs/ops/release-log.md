@@ -33,6 +33,25 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - external-channel strict rollout instructions in release docs
+
+- Scope: document the exact transition path from `ingestExternalChannelFallback.skipped=true` to strict required-channel verification for public-launch readiness.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 10:24 -> 2026-03-01 10:27.
+- Changes:
+  - Updated `docs/ops/release-runbook.md` with explicit rollout sequence:
+    - configure `AGENT_GATEWAY_INGEST_CONNECTOR_PROFILES`,
+    - deploy API env,
+    - dispatch with `--required-external-channels all`,
+    - validate required-channel summary fields.
+  - Updated `docs/ops/release-checklist.md` with a dedicated strict external-channel parity checkpoint before public launch.
+- Verification:
+  - doc-only change.
+- Incidents:
+  - none.
+- Follow-ups:
+  - execute the documented strict external-channel run after production connector profiles are configured.
+
 ### 2026-03-01 - matrix marker skipped-diagnostics normalization
 
 - Scope: keep launch-gate marker diagnostics semantically clean when skill-marker enforcement is disabled.

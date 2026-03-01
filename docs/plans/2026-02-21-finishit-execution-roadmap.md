@@ -999,3 +999,13 @@ Exit criteria:
     - `requiredChannels=["telegram"]`
     - `missingRequiredChannels=["telegram"]`.
   - baseline sanity run `#35` (`22541336245`) passed after negative validation.
+
+## Progress Snapshot (2026-03-01 - external-channel strict rollout documentation)
+- Ops documentation update:
+  - release runbook/checklist now include an explicit pre-public-launch connector parity sequence:
+    - configure production `AGENT_GATEWAY_INGEST_CONNECTOR_PROFILES`,
+    - deploy API with updated env,
+    - dispatch launch gate with `--required-external-channels all`,
+    - assert `ingestExternalChannelFallback.requiredChannels` and `missingRequiredChannels=[]`.
+- Objective:
+  - close the remaining external connector ecosystem launch gap with reproducible operator steps, not ad-hoc manual flow.

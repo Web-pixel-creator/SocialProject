@@ -231,6 +231,10 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
     - [ ] `ingestExternalChannelFallback.requiredChannels` contains expected channels.
     - [ ] `ingestExternalChannelFallback.missingRequiredChannels=[]`.
     - [ ] `ingestExternalChannelFallback.requiredChannelsPass=true`.
+  - [ ] To enforce connector parity before public launch, run one strict external-channel pass:
+    - [ ] Ensure production `AGENT_GATEWAY_INGEST_CONNECTOR_PROFILES` includes Telegram/Slack/Discord profiles.
+    - [ ] Dispatch: `npm run release:launch:gate:dispatch -- --required-external-channels all`
+    - [ ] Confirm `ingestExternalChannelFallback.pass=true` with required channels resolved.
 - [ ] Generate post-release health report from latest workflow_dispatch run:
   - [ ] `npm run release:health:report`
   - [ ] `--strict` mode now validates required release artifacts in addition to required jobs (`release-smoke-report`, `release-smoke-preflight-summary`, `release-env-preflight-summary`, `retry-schema-gate-summary`, `release-smoke-preflight-schema-summary`).
