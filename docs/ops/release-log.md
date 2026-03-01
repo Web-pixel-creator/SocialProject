@@ -33,6 +33,36 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - release-health alert risk thresholds on admin ux + strict revalidation
+
+- Scope: close alert-frequency follow-up by adding threshold-based risk indicator to `/admin/ux` `Release health alert telemetry`, then revalidate strict launch-gate path.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 18:03 -> 2026-03-01 18:12.
+- Changes:
+  - Updated admin UX release-health telemetry presentation:
+    - added `Alert risk` derived status (`Healthy` / `Watch` / `Critical`) from window metrics.
+    - thresholds:
+      - watch when any alert signal is present in window (`alertEvents>=1` or `firstAppearances>=1` or `alertedRuns>=1`)
+      - critical when elevated recurrence appears (`firstAppearances>=3` or `alertEvents>=3` or `alertedRuns>=2`).
+  - Added/updated web test coverage for release-health risk card rendering.
+  - Updated release runbook/checklist with explicit `Alert risk` operational expectation and threshold semantics.
+- Validation:
+  - `npm run lint`: pass.
+  - `npx jest apps/web/src/__tests__/admin-ux-page.spec.tsx --runInBand`: pass.
+  - strict launch-gate dispatch:
+    - `Production Launch Gate` run `#51` (`22549331429`) -> `success`.
+  - strict launch-gate health report:
+    - `npm --silent run release:health:report -- 22549331429 --workflow-file production-launch-gate.yml --profile launch-gate --json --strict`: pass.
+    - `npm --silent run release:health:schema:check -- artifacts/release/post-release-health-run-22549331429.json`: pass.
+  - downstream `Release Health Gate` run `#215` (`22549347596`) completed with `success`.
+  - production visual verification:
+    - `/admin/ux` now renders `Alert risk: Critical` with current telemetry snapshot (`Alert events=1`, `First appearances=3`, `Alerted runs=1`).
+    - screenshot evidence: `artifacts/release/admin-ux-release-health-risk-telemetry-2026-03-01.png`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - if `Alert risk` remains `Watch`/`Critical` for two consecutive strict healthy windows, escalate to incident triage using external-channel failure-mode routing runbook.
+
 ### 2026-03-01 - production admin ux telemetry evidence capture
 
 - Scope: complete visual production verification for `/admin/ux` `Release health alert telemetry` block after merge/deploy propagation.

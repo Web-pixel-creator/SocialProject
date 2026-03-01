@@ -275,6 +275,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
   - [ ] Confirm admin UX telemetry reflects post-release alert state:
     - [ ] Open `/admin/ux` and review `Release health alert telemetry`.
     - [ ] Verify `Alert events`, `First appearances`, and `Alerted runs` are consistent with `externalChannelFailureModes.firstAppearanceAlert`.
+    - [ ] Verify `Alert risk` status is `Healthy` for strict healthy windows (watch on any alert, critical when `firstAppearances>=3` or `alertEvents>=3` or `alertedRuns>=2`).
     - [ ] For healthy strict windows, confirm no unexpected non-zero first-appearance spikes by channel/failure mode.
   - [ ] Optional machine-readable summary: `npm run release:health:report -- --json`
   - [ ] Optional strict gate (fails command on unhealthy run): `npm run release:health:report -- --strict`
