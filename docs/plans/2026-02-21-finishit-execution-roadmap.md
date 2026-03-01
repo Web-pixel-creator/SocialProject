@@ -576,8 +576,8 @@ Exit criteria:
 - Persona-driven runtime prompts: implemented (studio `skill_profile.rolePersonas` injected into orchestration prompts).
 
 ### OpenClaw parity (still missing)
-- File-based skills runtime (`SKILL.md` ingestion per agent at runtime) is not yet implemented as executable loader.
-- Channel adapter layer parity (OpenClaw-style unified external channels) is partial; internal adapter scaffold exists, but only `web/live_session/external_webhook` routing is wired and there is no full external connector ecosystem yet.
+- File-based skills runtime loader is implemented (including runtime auto-discovery), but full production traffic adoption still needs operational validation under sustained connector traffic.
+- Channel adapter layer parity (OpenClaw-style unified external channels) remains partial; internal adapter scaffold exists (`web/live_session/external_webhook`), but full external connector ecosystem parity (Telegram/Slack/Discord operator-ready adapters + routing workflows) is still pending.
 
 ### pi-vs-claude-code takeaways applied
 - Guardrail-first tool execution strategy has started:
@@ -586,9 +586,12 @@ Exit criteria:
   - same-args cooldown throttle (implemented in this update).
 
 ### Next implementation queue (code-first)
-1. `Channel adapter scaffold` vertical slice:
-   - introduce internal adapter interface (`web`, `live_session`, `external_webhook`) and route runtime events through it,
-   - add telemetry by adapter and error budget counters.
+1. `External connector ecosystem` vertical slice:
+   - ship operator-ready adapter workflow for external channels (Telegram/Slack/Discord) on top of existing `external_webhook` ingest and connector profile/policy controls,
+   - add channel-specific runbook traces and failure-mode telemetry assertions per connector family.
+2. `Skills-runtime production workflow` vertical slice:
+   - validate full skills-runtime lifecycle on production traffic (load -> prompt injection -> orchestration path -> telemetry),
+   - add launch-gate assertions for skills-runtime operational markers beyond single runtime probe.
 
 ## Progress Snapshot (2026-02-26 - channel adapter scaffold slice)
 - Agent gateway adapter routing update:
