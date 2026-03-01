@@ -232,6 +232,9 @@ Notes:
   - `telegram`: `message.chat.id` / related update shapes,
   - `slack`: `event.channel` / `channel.id`,
   - `discord`: `channel_id` / `d.channel_id`.
+- Optional strict mode: `AGENT_GATEWAY_INGEST_ENFORCE_CONNECTOR_PROFILE=true`
+  rejects requests that conflict with configured profile fields (`adapter`,
+  `channel`, `fromRole`, `toRole`, `type`).
 - Invalid profile JSON fails fast on API startup.
 - Profile configuration is visible in:
   - `GET /api/admin/agent-gateway/telemetry?hours=24&limit=200` (`connectorProfiles`)

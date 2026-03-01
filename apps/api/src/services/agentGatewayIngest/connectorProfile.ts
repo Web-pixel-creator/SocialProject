@@ -17,6 +17,14 @@ export interface ConnectorProfileResolvedDefaults {
   type: unknown;
 }
 
+export interface ConnectorProfileResolvedFields {
+  adapter: AgentGatewayAdapterName;
+  channel: string;
+  fromRole: string;
+  toRole: string | null;
+  type: string;
+}
+
 type ConnectorProfileMap = Map<string, AgentGatewayIngestConnectorProfile>;
 
 const ADAPTER_NAMES: readonly AgentGatewayAdapterName[] = [
@@ -185,3 +193,29 @@ export const resolveConnectorProfileDefaults = ({
   toRole: resolveFieldWithProfileFallback(source, 'toRole', profile.toRole),
   type: resolveFieldWithProfileFallback(source, 'type', profile.type),
 });
+
+export const collectConnectorProfileConflicts = ({
+  profile,
+  resolved,
+}: {
+  profile: AgentGatewayIngestConnectorProfile;
+  resolved: ConnectorProfileResolvedFields;
+}) => {
+  const conflicts: string[] = [];
+  if (profile.adapter && resolved.adapter !== profile.adapter) {
+    conflicts.push('adapter');
+  }
+  if (profile.channel && resolved.channel !== profile.channel) {
+    conflicts.push('channel');
+  }
+  if (profile.fromRole && resolved.fromRole !== profile.fromRole) {
+    conflicts.push('fromRole');
+  }
+  if (profile.toRole && resolved.toRole !== profile.toRole) {
+    conflicts.push('toRole');
+  }
+  if (profile.type && resolved.type !== profile.type) {
+    conflicts.push('type');
+  }
+  return conflicts;
+};

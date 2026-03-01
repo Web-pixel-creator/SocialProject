@@ -12,6 +12,7 @@ import {
   resolveConnectorPolicy,
 } from '../services/agentGatewayIngest/connectorPolicy';
 import {
+  collectConnectorProfileConflicts,
   parseConnectorProfileMap,
   resolveConnectorProfile,
   resolveConnectorProfileDefaults,
@@ -77,6 +78,8 @@ const CONNECTOR_PROFILE_MAP = parseConnectorProfileMap(
 );
 const REQUIRE_CONNECTOR_SECRET =
   env.AGENT_GATEWAY_INGEST_REQUIRE_CONNECTOR_SECRET === 'true';
+const ENFORCE_CONNECTOR_PROFILE =
+  env.AGENT_GATEWAY_INGEST_ENFORCE_CONNECTOR_PROFILE === 'true';
 const CONNECTOR_RATE_LIMIT_WINDOW_SEC =
   env.AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMIT_WINDOW_SEC;
 const CONNECTOR_RATE_LIMIT_MAX =
@@ -500,6 +503,25 @@ router.post(
         pattern: EVENT_TYPE_PATTERN,
         errorCode: 'AGENT_GATEWAY_INGEST_INVALID_INPUT',
       });
+      if (ENFORCE_CONNECTOR_PROFILE) {
+        const conflicts = collectConnectorProfileConflicts({
+          profile: connectorProfile,
+          resolved: {
+            adapter,
+            channel,
+            fromRole,
+            toRole,
+            type,
+          },
+        });
+        if (conflicts.length > 0) {
+          throw new ServiceError(
+            'AGENT_GATEWAY_INGEST_CONNECTOR_PROFILE_CONFLICT',
+            `Connector profile conflict for fields: ${conflicts.join(', ')}.`,
+            409,
+          );
+        }
+      }
       const draftId = parseOptionalUuid(
         body.draftId,
         'draftId',

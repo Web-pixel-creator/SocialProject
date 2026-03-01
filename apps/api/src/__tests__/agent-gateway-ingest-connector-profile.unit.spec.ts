@@ -1,4 +1,5 @@
 import {
+  collectConnectorProfileConflicts,
   parseConnectorProfileMap,
   resolveConnectorProfile,
   resolveConnectorProfileDefaults,
@@ -136,6 +137,60 @@ describe('agent gateway ingest connector profile', () => {
       toRole: 'maker',
       type: 'draft_cycle_critic_completed',
     });
+  });
+
+  test('collects connector profile conflicts when resolved fields diverge', () => {
+    const profile = resolveConnectorProfile(
+      parseConnectorProfileMap(
+        JSON.stringify({
+          'telegram-main': {
+            adapter: 'external_webhook',
+            channel: 'telegram',
+            fromRole: 'observer',
+            toRole: 'author',
+            type: 'observer_message',
+          },
+        }),
+      ),
+      'telegram-main',
+    );
+
+    const conflicts = collectConnectorProfileConflicts({
+      profile,
+      resolved: {
+        adapter: 'external_webhook',
+        channel: 'telegram_ops',
+        fromRole: 'critic',
+        toRole: 'maker',
+        type: 'draft_cycle_critic_completed',
+      },
+    });
+
+    expect(conflicts).toEqual(['channel', 'fromRole', 'toRole', 'type']);
+  });
+
+  test('does not report conflicts when profile does not constrain field', () => {
+    const profile = resolveConnectorProfile(
+      parseConnectorProfileMap(
+        JSON.stringify({
+          'slack-main': 'slack',
+        }),
+      ),
+      'slack-main',
+    );
+
+    const conflicts = collectConnectorProfileConflicts({
+      profile,
+      resolved: {
+        adapter: 'external_webhook',
+        channel: 'slack',
+        fromRole: 'observer',
+        toRole: 'critic',
+        type: 'observer_message',
+      },
+    });
+
+    expect(conflicts).toEqual([]);
   });
 
   test('throws on malformed or invalid connector profile payload', () => {

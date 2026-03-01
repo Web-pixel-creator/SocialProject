@@ -2103,6 +2103,8 @@ const buildAgentGatewayConnectorProfileSnapshot = () => {
       fromRole: null,
       toRole: null,
       type: null,
+      enforceProfile:
+        env.AGENT_GATEWAY_INGEST_ENFORCE_CONNECTOR_PROFILE === 'true',
     },
     profiles,
   };

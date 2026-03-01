@@ -818,6 +818,7 @@ Exit criteria:
   - added configurable connector profiles parser (`apps/api/src/services/agentGatewayIngest/connectorProfile.ts`) with startup validation via `AGENT_GATEWAY_INGEST_CONNECTOR_PROFILES`,
   - ingest route now supports connector-level defaults for `adapter`, `channel`, `fromRole`, `toRole`, and `type` when those fields are omitted in incoming payloads,
   - connector default application path is now centralized in `resolveConnectorProfileDefaults(...)` (body-overrides-profile precedence), and ingest route reuses this resolver,
+  - added optional strict profile enforcement (`AGENT_GATEWAY_INGEST_ENFORCE_CONNECTOR_PROFILE=true`) that rejects payload/profile conflicts with explicit `AGENT_GATEWAY_INGEST_CONNECTOR_PROFILE_CONFLICT` (`409`),
   - ingest route now also supports channel-aware `externalSessionId` fallback extraction from payload/metadata (`telegram`/`slack`/`discord`) when explicit `externalSessionId` is not provided (`apps/api/src/services/agentGatewayIngest/connectorEnvelope.ts`),
   - `/api/admin/agent-gateway/telemetry` and `/api/admin/agent-gateway/adapters` now expose `connectorProfiles` snapshot (defaults + resolved profile list) alongside `connectorPolicies`,
   - added ready-to-copy connector profile example (`docs/ops/examples/agent-gateway-ingest-connector-profiles.example.json`) for Telegram/Slack/Discord + launch probe channels,
