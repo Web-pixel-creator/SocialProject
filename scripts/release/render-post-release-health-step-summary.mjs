@@ -82,9 +82,10 @@ const tryReadJson = (filePath) => {
   }
 
   try {
+    const raw = readFileSync(filePath, 'utf8').replace(/^\uFEFF/gu, '');
     return {
       status: 'ok',
-      payload: JSON.parse(readFileSync(filePath, 'utf8')),
+      payload: JSON.parse(raw),
       errorMessage: '',
     };
   } catch (error) {
@@ -118,6 +119,23 @@ const main = () => {
       `- failed jobs: \`${String(payload?.totals?.failedJobsTotal ?? 0)}\``,
       `- artifacts discovered: \`${String(payload?.totals?.artifactsDiscovered ?? 0)}\``,
     );
+    if (
+      payload?.externalChannelFailureModes &&
+      typeof payload.externalChannelFailureModes === 'object'
+    ) {
+      const trend = payload.externalChannelFailureModes;
+      lines.push(
+        `- external-channel trend: \`${trend?.pass === true ? 'pass' : 'fail'}\``,
+        `- external-channel analyzed runs: \`${String(trend?.analyzedRuns ?? 0)}\` (window \`${String(trend?.windowSize ?? 0)}\`)`,
+        `- external-channel non-pass modes: \`${Array.isArray(trend?.nonPassModes) && trend.nonPassModes.length > 0 ? trend.nonPassModes.join(', ') : 'none'}\``,
+        `- external-channel required-failure runs: \`${Array.isArray(trend?.runsWithRequiredFailures) && trend.runsWithRequiredFailures.length > 0 ? trend.runsWithRequiredFailures.join(', ') : 'none'}\``,
+      );
+      if (Array.isArray(trend?.reasons) && trend.reasons.length > 0) {
+        lines.push(
+          `- external-channel trend reasons: \`${trend.reasons.join('; ')}\``,
+        );
+      }
+    }
   } else if (healthSummary.status === 'missing') {
     lines.push('- health summary: `missing`');
   } else {

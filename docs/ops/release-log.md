@@ -33,6 +33,32 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - Release Health Gate step-summary external-channel trend visibility
+
+- Scope: expose launch-gate external-channel trend gate result directly in `Release Health Gate` markdown summary and harden JSON summary generation.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 16:30 -> 2026-03-01 16:36.
+- Changes:
+  - Updated `scripts/release/render-post-release-health-step-summary.mjs`:
+    - now renders external-channel trend lines when `externalChannelFailureModes` is present:
+      - trend pass/fail
+      - analyzed runs + window
+      - non-pass modes
+      - required-failure runs
+    - added BOM-safe JSON parsing to avoid false parse errors on UTF-8 BOM files.
+  - Updated `scripts/release/run-post-release-health-gate.sh`:
+    - switched to `npm --silent run ...` for summary-producing commands to keep JSON outputs machine-parseable in CI artifacts.
+- Verification:
+  - `node --check scripts/release/render-post-release-health-step-summary.mjs`: pass.
+  - generated summary for run `#42` includes:
+    - `external-channel trend: pass`
+    - `external-channel analyzed runs: 3 (window 3)`
+    - `external-channel non-pass modes: none`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - none.
+
 ### 2026-03-01 - launch-gate rolling external-channel trend gate in post-release health
 
 - Scope: make rolling external-channel `failureMode` trend analysis a mandatory launch-gate post-release health check.

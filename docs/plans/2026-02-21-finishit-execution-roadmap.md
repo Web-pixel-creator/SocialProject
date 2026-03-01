@@ -1185,5 +1185,13 @@ Exit criteria:
     - `nonPassModes=[]`
     - `runsWithRequiredFailures=[]`.
   - `npm run release:health:schema:check -- artifacts/release/post-release-health-run-22547210842.json`: pass.
+
+## Progress Snapshot (2026-03-01 - release-health step-summary trend rendering + JSON stability)
+- Release Health Gate UX/stability update:
+  - `scripts/release/render-post-release-health-step-summary.mjs` now renders `externalChannelFailureModes` trend details from health summary payload.
+  - BOM-safe JSON parse handling added for summary reader to prevent false parse failures on UTF-8 BOM files.
+  - `scripts/release/run-post-release-health-gate.sh` now uses `npm --silent run` for JSON-producing commands so CI artifacts remain machine-parseable.
+- Result:
+  - operator step summary now exposes launch-gate external-channel trend state without manual JSON inspection.
 - Next increment:
-  - add step-summary rendering for `externalChannelFailureModes` in CI `Release Health Gate` workflow output.
+  - add automated alert hook on first non-pass mode appearance in rolling window (channel + mode + run id triage payload).
