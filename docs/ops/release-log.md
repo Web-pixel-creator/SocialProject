@@ -33,6 +33,30 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - connector-profile strict integration path revalidation (run #15)
+
+- Scope: make connector-profile strict enforcement testable in live route path (runtime-cached profile map + strict-mode integration scenario), then re-run strict production launch-gate matrix on latest head.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 08:02 -> 2026-03-01 08:07.
+- Changes:
+  - Updated `apps/api/src/routes/agentGateway.ts`:
+    - connector profiles now resolve via runtime-cached map (`resolveConnectorProfileMap()`),
+    - strict enforcement toggle is evaluated at request time (`isConnectorProfileEnforcementEnabled()`),
+    - keeps startup validation semantics while allowing controlled runtime profile updates.
+  - Added strict conflict integration scenario in `apps/api/src/__tests__/api.integration.spec.ts`:
+    - when strict mode is enabled and connector payload diverges from profile constraints, ingest returns `409 AGENT_GATEWAY_INGEST_CONNECTOR_PROFILE_CONFLICT`.
+- Verification:
+  - `npm run test -- --runInBand apps/api/src/__tests__/agent-gateway-ingest-connector-profile.unit.spec.ts apps/api/src/__tests__/agent-gateway-ingest-connector-envelope.unit.spec.ts`: pass (`13/13`).
+  - `npm run ultracite:check`: pass.
+  - `npm run test -- --runInBand apps/api/src/__tests__/api.integration.spec.ts -t "agent gateway adapter ingest endpoint enforces connector profile conflicts in strict mode"`: blocked in current shell by integration DB dependency (`AggregateError` on DB truncate pre-test hook).
+  - `npm run release:launch:gate:dispatch` with strict matrix inputs (`runtime_draft_id` + `require_skill_markers=true` + `require_natural_cron_window=true`): pass.
+  - Workflow result: run `#15` (id `22539023145`) `success` on head `7f09bf1`.
+  - Workflow URL: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/22539023145`
+- Incidents:
+  - none.
+- Follow-ups:
+  - rerun the targeted API integration test in a shell with local Postgres/Redis integration stack available.
+
 ### 2026-03-01 - connector profile strict mode + launch-gate run #14
 
 - Scope: enforce optional strict connector-profile policy at ingest runtime and re-validate full strict production launch-gate matrix on latest `main`.

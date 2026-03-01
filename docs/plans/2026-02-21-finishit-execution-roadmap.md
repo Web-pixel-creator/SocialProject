@@ -850,3 +850,5 @@ Exit criteria:
 - Launch-gate revalidation:
   - workflow dispatch strict matrix re-run on latest `main` passed:
     - run `#14` (`22538929205`) with `runtime_draft_id=3fefc86d-eb94-42f2-8c97-8b57eff8944e`, `require_skill_markers=true`, `require_natural_cron_window=true`.
+  - post-change strict matrix re-run after connector-profile route-path update also passed:
+    - run `#15` (`22539023145`) on head `7f09bf1` with the same strict inputs (`runtime_draft_id` + `require_skill_markers=true` + `require_natural_cron_window=true`).
