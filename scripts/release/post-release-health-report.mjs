@@ -10,26 +10,52 @@ import {
 const GITHUB_API_VERSION = '2022-11-28';
 const DEFAULT_WORKFLOW_FILE = 'ci.yml';
 const DEFAULT_OUTPUT_DIR = 'artifacts/release';
-const REQUIRED_JOB_NAMES = [
-  'Ultracite Full Scope (blocking)',
-  'test',
-  'Security Hygiene Gate',
-  'Release Smoke Dry-Run (staging/manual)',
-  'Pre-release Performance Gate (staging/manual)',
-];
-const REQUIRED_ARTIFACT_NAMES = [
-  'release-smoke-report',
-  'release-smoke-preflight-summary',
-  'release-env-preflight-summary',
-  'retry-schema-gate-summary',
-  'release-smoke-preflight-schema-summary',
-];
+const WORKFLOW_PROFILES = {
+  ci: {
+    requiredArtifactNames: [
+      'release-smoke-report',
+      'release-smoke-preflight-summary',
+      'release-env-preflight-summary',
+      'retry-schema-gate-summary',
+      'release-smoke-preflight-schema-summary',
+    ],
+    requiredJobNames: [
+      'Ultracite Full Scope (blocking)',
+      'test',
+      'Security Hygiene Gate',
+      'Release Smoke Dry-Run (staging/manual)',
+      'Pre-release Performance Gate (staging/manual)',
+    ],
+    smokeArtifactName: 'release-smoke-report',
+    smokeFetchMode: 'ci',
+    workflowFile: 'ci.yml',
+  },
+  launch_gate: {
+    requiredArtifactNames: [
+      'production-launch-gate-summary',
+      'production-launch-gate-health-summary',
+      'production-smoke-postdeploy',
+      'production-runtime-orchestration-probe',
+      'production-adapter-matrix-probe',
+      'production-ingest-probe',
+      'production-gateway-telemetry',
+      'production-gateway-adapters',
+      'production-admin-health-summary',
+    ],
+    requiredJobNames: ['Production Launch Gate'],
+    smokeArtifactName: 'production-smoke-postdeploy',
+    smokeFetchMode: 'local-launch-gate',
+    workflowFile: 'production-launch-gate.yml',
+  },
+};
 const USAGE = `Usage: npm run release:health:report -- [run_id] [options]
 
 Arguments:
   run_id   Optional GitHub Actions run id (workflow_dispatch). If omitted, the latest completed workflow_dispatch run is used.
 
 Options:
+  --workflow-file <name> Select workflow file for run discovery (defaults to profile default).
+  --profile <name>       Health profile: ci | launch-gate.
   --json             Print machine-readable summary JSON to stdout.
   --strict           Exit with non-zero status when overall health is not pass.
   --skip-smoke-fetch Skip automatic local smoke-artifact fetch when missing.
@@ -171,12 +197,15 @@ const parseCliArgs = (argv) => {
   const options = {
     help: false,
     json: false,
+    profile: '',
     strict: false,
     skipSmokeFetch: false,
     runId: null,
+    workflowFile: '',
   };
 
-  for (const arg of args) {
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
     if (arg === '--help' || arg === '-h') {
       options.help = true;
       continue;
@@ -193,6 +222,32 @@ const parseCliArgs = (argv) => {
       options.skipSmokeFetch = true;
       continue;
     }
+    if (arg === '--workflow-file') {
+      const value = (args[index + 1] ?? '').trim();
+      if (!value) {
+        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
+      }
+      options.workflowFile = value;
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith('--workflow-file=')) {
+      options.workflowFile = arg.slice('--workflow-file='.length).trim();
+      continue;
+    }
+    if (arg === '--profile') {
+      const value = (args[index + 1] ?? '').trim();
+      if (!value) {
+        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
+      }
+      options.profile = value;
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith('--profile=')) {
+      options.profile = arg.slice('--profile='.length).trim();
+      continue;
+    }
     if (arg.startsWith('-')) {
       throw new Error(`Unknown argument: ${arg}\n\n${USAGE}`);
     }
@@ -206,6 +261,64 @@ const parseCliArgs = (argv) => {
   return {
     ...options,
     runId: parseRunId(positionals[0]),
+  };
+};
+
+const normalizeProfileKey = (value) => {
+  return value.trim().toLowerCase().replace(/-/gu, '_');
+};
+
+const resolveWorkflowProfile = ({ profileArg, workflowFileArg }) => {
+  const profileFromCliRaw = normalizeProfileKey(profileArg || '');
+  if (profileFromCliRaw && !(profileFromCliRaw in WORKFLOW_PROFILES)) {
+    const knownProfiles = Object.keys(WORKFLOW_PROFILES).join(', ');
+    throw new Error(
+      `Unknown release health profile '${profileFromCliRaw}'. Expected one of: ${knownProfiles}.`,
+    );
+  }
+  const profileFromEnvRaw = normalizeProfileKey(
+    process.env.RELEASE_HEALTH_REPORT_PROFILE || '',
+  );
+  if (profileFromEnvRaw && !(profileFromEnvRaw in WORKFLOW_PROFILES)) {
+    const knownProfiles = Object.keys(WORKFLOW_PROFILES).join(', ');
+    throw new Error(
+      `Unknown release health profile from RELEASE_HEALTH_REPORT_PROFILE ('${profileFromEnvRaw}'). Expected one of: ${knownProfiles}.`,
+    );
+  }
+  const profileFromCli = profileFromCliRaw;
+  const profileFromEnv = profileFromEnvRaw;
+  const normalizedWorkflowFileArg = String(workflowFileArg || '').trim();
+  const normalizedWorkflowFileEnv = String(
+    process.env.RELEASE_WORKFLOW_FILE || '',
+  ).trim();
+  const workflowFileFromInput =
+    normalizedWorkflowFileArg || normalizedWorkflowFileEnv;
+
+  if (
+    !profileFromCli &&
+    !profileFromEnv &&
+    workflowFileFromInput.toLowerCase() === 'production-launch-gate.yml'
+  ) {
+    return {
+      profileKey: 'launch_gate',
+      ...WORKFLOW_PROFILES.launch_gate,
+      workflowFile: workflowFileFromInput,
+    };
+  }
+
+  const profileKey = profileFromCli || profileFromEnv || 'ci';
+  const profile = WORKFLOW_PROFILES[profileKey];
+  if (!profile) {
+    const knownProfiles = Object.keys(WORKFLOW_PROFILES).join(', ');
+    throw new Error(
+      `Unknown release health profile '${profileKey}'. Expected one of: ${knownProfiles}.`,
+    );
+  }
+
+  return {
+    profileKey,
+    ...profile,
+    workflowFile: workflowFileFromInput || profile.workflowFile,
   };
 };
 
@@ -279,15 +392,19 @@ const findLatestDispatchRunId = async ({ token, baseApiUrl, workflowFile }) => {
   };
 };
 
-const readLocalSmokeSummary = async (runId) => {
-  const smokePath = path.resolve(
-    `artifacts/release/ci-run-${runId}/smoke-results.json`,
-  );
+const readLocalSmokeSummary = async ({ runId, smokeFetchMode }) => {
+  const smokePath =
+    smokeFetchMode === 'local-launch-gate'
+      ? path.resolve('artifacts/release/smoke-results-production-postdeploy.json')
+      : path.resolve(`artifacts/release/ci-run-${runId}/smoke-results.json`);
   try {
     const raw = await readFile(smokePath, 'utf8');
     const parsed = JSON.parse(raw);
     return {
-      source: 'local',
+      source:
+        smokeFetchMode === 'local-launch-gate'
+          ? 'local-launch-gate'
+          : 'local',
       path: smokePath,
       generatedAtUtc:
         typeof parsed?.generatedAtUtc === 'string'
@@ -308,7 +425,7 @@ const readLocalSmokeSummary = async (runId) => {
   }
 };
 
-const buildJobSummary = (jobs) => {
+const buildJobSummary = ({ jobs, requiredJobNames }) => {
   const normalized = jobs.map((job) => ({
     id: job.id,
     name: job.name,
@@ -319,7 +436,7 @@ const buildJobSummary = (jobs) => {
     htmlUrl: job.html_url,
   }));
 
-  const required = REQUIRED_JOB_NAMES.map((name) => {
+  const required = requiredJobNames.map((name) => {
     const matched = normalized.find((job) => job.name === name);
     return {
       name,
@@ -352,14 +469,14 @@ const buildJobSummary = (jobs) => {
   };
 };
 
-const buildArtifactSummary = (artifacts) => {
+const buildArtifactSummary = ({ artifacts, requiredArtifactNames }) => {
   const normalized = artifacts.map((artifact) => ({
     id: artifact.id,
     name: artifact.name,
     expired: artifact.expired,
   }));
 
-  const required = REQUIRED_ARTIFACT_NAMES.map((name) => {
+  const required = requiredArtifactNames.map((name) => {
     const matches = normalized.filter((artifact) => artifact.name === name);
     const activeMatch = matches.find((artifact) => artifact.expired === false);
     return {
@@ -385,6 +502,10 @@ const toJsonSummaryPayload = ({ report, outputPath, strict }) => ({
   label: RELEASE_HEALTH_REPORT_LABEL,
   status: report.summary.pass ? 'pass' : 'fail',
   strict,
+  workflow: {
+    file: report.workflow.file,
+    profile: report.workflow.profile,
+  },
   run: {
     id: report.run.id,
     runNumber: report.run.runNumber,
@@ -423,8 +544,11 @@ const main = async () => {
 
   const token = resolveToken();
   const repoSlug = resolveRepoSlug();
-  const workflowFile =
-    process.env.RELEASE_WORKFLOW_FILE?.trim() ?? DEFAULT_WORKFLOW_FILE;
+  const workflowProfile = resolveWorkflowProfile({
+    profileArg: cli.profile,
+    workflowFileArg: cli.workflowFile,
+  });
+  const workflowFile = workflowProfile.workflowFile || DEFAULT_WORKFLOW_FILE;
   const outputDir =
     process.env.RELEASE_HEALTH_REPORT_OUTPUT_DIR?.trim() ?? DEFAULT_OUTPUT_DIR;
   const baseApiUrl = `https://api.github.com/repos/${repoSlug}`;
@@ -454,9 +578,18 @@ const main = async () => {
   const artifacts = Array.isArray(artifactsData?.artifacts)
     ? artifactsData.artifacts
     : [];
-  const jobSummary = buildJobSummary(jobs);
-  const artifactSummary = buildArtifactSummary(artifacts);
-  let smokeSummary = await readLocalSmokeSummary(runId);
+  const jobSummary = buildJobSummary({
+    jobs,
+    requiredJobNames: workflowProfile.requiredJobNames,
+  });
+  const artifactSummary = buildArtifactSummary({
+    artifacts,
+    requiredArtifactNames: workflowProfile.requiredArtifactNames,
+  });
+  let smokeSummary = await readLocalSmokeSummary({
+    runId,
+    smokeFetchMode: workflowProfile.smokeFetchMode,
+  });
   const shouldFetchSmokeFromEnv = parseBoolean(
     process.env.RELEASE_HEALTH_REPORT_FETCH_SMOKE,
     true,
@@ -464,15 +597,24 @@ const main = async () => {
   const shouldFetchSmoke =
     cli.skipSmokeFetch === true ? false : shouldFetchSmokeFromEnv;
   const smokeArtifactPresent = artifacts.some(
-    (artifact) => artifact?.name === 'release-smoke-report' && !artifact?.expired,
+    (artifact) =>
+      artifact?.name === workflowProfile.smokeArtifactName && !artifact?.expired,
   );
-  if (shouldFetchSmoke && smokeSummary.source !== 'local' && smokeArtifactPresent) {
+  if (
+    shouldFetchSmoke &&
+    smokeSummary.source !== 'local' &&
+    workflowProfile.smokeFetchMode === 'ci' &&
+    smokeArtifactPresent
+  ) {
     try {
       await runNpmCommand({
         args: ['run', 'release:smoke:artifact', '--', String(runId)],
         env: token ? { GITHUB_TOKEN: token } : undefined,
       });
-      smokeSummary = await readLocalSmokeSummary(runId);
+      smokeSummary = await readLocalSmokeSummary({
+        runId,
+        smokeFetchMode: workflowProfile.smokeFetchMode,
+      });
     } catch (error) {
       smokeSummary = {
         ...smokeSummary,
@@ -513,6 +655,10 @@ const main = async () => {
     schemaVersion: RELEASE_HEALTH_REPORT_JSON_SCHEMA_VERSION,
     generatedAtUtc: new Date().toISOString(),
     repository: repoSlug,
+    workflow: {
+      file: workflowFile,
+      profile: workflowProfile.profileKey,
+    },
     run: {
       id: run.id,
       runNumber: run.run_number ?? resolvedRun.runNumber,
@@ -575,6 +721,9 @@ const main = async () => {
     process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
   } else {
     process.stdout.write(`Repository: ${repoSlug}\n`);
+    process.stdout.write(
+      `Workflow: ${report.workflow.file} (profile ${report.workflow.profile})\n`,
+    );
     process.stdout.write(
       `Run: #${report.run.runNumber ?? '<unknown>'} (id ${report.run.id})\n`,
     );

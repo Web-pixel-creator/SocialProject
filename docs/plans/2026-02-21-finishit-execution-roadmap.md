@@ -864,3 +864,21 @@ Exit criteria:
 - Revalidation:
   - strict dispatch matrix re-run passed after guardrail patch:
     - run `#18` (`22540039019`) with `runtime_draft_id=3fefc86d-eb94-42f2-8c97-8b57eff8944e`, `require_skill_markers=true`, `require_natural_cron_window=true`.
+
+## Progress Snapshot (2026-03-01 - post-release health report profile parity)
+- Release-health automation update:
+  - `scripts/release/post-release-health-report.mjs` now supports workflow-aware profiles:
+    - `ci` (existing required jobs/artifacts gate),
+    - `launch-gate` (Production Launch Gate job + launch artifact set gate).
+  - added CLI selectors:
+    - `--workflow-file <name>`
+    - `--profile <ci|launch-gate>`
+  - summary output now includes resolved workflow metadata (`file`, `profile`) for traceability.
+- Ops workflow update:
+  - added npm shortcuts:
+    - `release:health:report:launch-gate`
+    - `release:health:report:launch-gate:json`
+  - release checklist/runbook now document launch-gate health profile commands.
+- Verification:
+  - launch-gate profile strict check passed on run `#18` (`22540039019`) with required jobs/artifacts `1/1` and `9/9`.
+  - default CI profile strict check remains green on run `#469` (`22482957944`) with required jobs/artifacts `5/5` and `5/5`.

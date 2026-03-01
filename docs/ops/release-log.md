@@ -33,6 +33,36 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - release health report workflow profiles (CI + launch-gate)
+
+- Scope: extend post-release health reporting to support both `CI` and `Production Launch Gate` workflow-dispatch runs with profile-specific required job/artifact gates.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 08:37 -> 2026-03-01 08:43.
+- Changes:
+  - Updated `scripts/release/post-release-health-report.mjs`:
+    - added workflow profile support (`ci`, `launch-gate`) with profile-aware required jobs/artifacts,
+    - added CLI options `--workflow-file` and `--profile`,
+    - added workflow metadata (`file`, `profile`) to JSON/text summary output,
+    - launch-gate profile now validates `Production Launch Gate` job + 9 launch artifacts and reads local smoke summary from `artifacts/release/smoke-results-production-postdeploy.json`.
+  - Added npm shortcuts:
+    - `npm run release:health:report:launch-gate`
+    - `npm run release:health:report:launch-gate:json`
+  - Updated ops docs:
+    - `docs/ops/release-checklist.md`
+    - `docs/ops/release-runbook.md`
+- Verification:
+  - `node --check scripts/release/post-release-health-report.mjs`: pass.
+  - `npm run release:health:report -- --workflow-file production-launch-gate.yml --profile launch-gate --json --strict`: pass.
+    - resolved run: `#18` (`22540039019`)
+    - required jobs/artifacts: `1/1`, `9/9`
+  - `npm run release:health:report -- --json --strict` (default CI profile): pass.
+    - resolved run: `#469` (`22482957944`)
+    - required jobs/artifacts: `5/5`, `5/5`
+- Incidents:
+  - none.
+- Follow-ups:
+  - none.
+
 ### 2026-03-01 - launch-gate smoke required-step guardrail + strict run #18
 
 - Scope: tighten production launch-gate by enforcing required smoke step coverage (including seeded draft detail web surface) before runtime probes.

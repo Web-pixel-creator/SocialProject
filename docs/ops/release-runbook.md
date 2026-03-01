@@ -53,6 +53,10 @@ Canonical references:
    - Launch gate now asserts required smoke step set (`api.health`, draft/PR/search API path, `web.home`, `web.feed`, `web.search`, `web.draft.detail`) via `smokeRequiredSteps.pass=true`.
 1. Generate and validate health report:
    - `npm run release:health:report`
+   - Optional launch-gate workflow profile:
+     - `npm run release:health:report -- --workflow-file production-launch-gate.yml --profile launch-gate`
+     - Shortcut: `npm run release:health:report:launch-gate`
+     - Shortcut JSON: `npm run release:health:report:launch-gate:json`
    - `npm run release:health:schema:check`
 2. Confirm alerts, latency, and error rates are within thresholds.
 3. Validate runtime/gateway control plane health:

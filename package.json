@@ -44,6 +44,8 @@
     "release:railway:gate:strict": "node scripts/release/railway-production-gate.mjs --require-api-service --strict",
     "release:preflight:qa": "npm run qa:critical",
     "release:health:report": "node scripts/release/post-release-health-report.mjs",
+    "release:health:report:launch-gate": "node scripts/release/post-release-health-report.mjs --workflow-file production-launch-gate.yml --profile launch-gate",
+    "release:health:report:launch-gate:json": "node scripts/release/post-release-health-report.mjs --workflow-file production-launch-gate.yml --profile launch-gate --json",
     "release:health:log": "node scripts/release/append-post-release-health-log.mjs",
     "release:health:schema:check": "node scripts/release/validate-release-health-report-schema.mjs",
     "release:health:schema:check:json": "node scripts/release/validate-release-health-report-schema.mjs --json",

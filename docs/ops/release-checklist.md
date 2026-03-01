@@ -216,6 +216,10 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
   - [ ] `npm run release:health:report`
   - [ ] `--strict` mode now validates required release artifacts in addition to required jobs (`release-smoke-report`, `release-smoke-preflight-summary`, `release-env-preflight-summary`, `retry-schema-gate-summary`, `release-smoke-preflight-schema-summary`).
   - [ ] Optional explicit run id: `npm run release:health:report -- <run_id>`
+  - [ ] Optional launch-gate workflow health profile: `npm run release:health:report -- --workflow-file production-launch-gate.yml --profile launch-gate`
+  - [ ] Optional launch-gate shortcut command: `npm run release:health:report:launch-gate`
+  - [ ] Optional launch-gate shortcut JSON output: `npm run release:health:report:launch-gate:json`
+  - [ ] Optional explicit run id for launch-gate profile: `npm run release:health:report -- <run_id> --workflow-file production-launch-gate.yml --profile launch-gate`
   - [ ] Optional machine-readable summary: `npm run release:health:report -- --json`
   - [ ] Optional strict gate (fails command on unhealthy run): `npm run release:health:report -- --strict`
   - [ ] Validate report schema: `npm run release:health:schema:check` (or explicit file path: `npm run release:health:schema:check -- artifacts/release/post-release-health-run-<run_id>.json`)
