@@ -852,3 +852,15 @@ Exit criteria:
     - run `#14` (`22538929205`) with `runtime_draft_id=3fefc86d-eb94-42f2-8c97-8b57eff8944e`, `require_skill_markers=true`, `require_natural_cron_window=true`.
   - post-change strict matrix re-run after connector-profile route-path update also passed:
     - run `#15` (`22539023145`) on head `7f09bf1` with the same strict inputs (`runtime_draft_id` + `require_skill_markers=true` + `require_natural_cron_window=true`).
+
+## Progress Snapshot (2026-03-01 - launch-gate smoke required-step guardrail)
+- Launch-gate reliability update:
+  - `scripts/release/production-launch-gate.mjs` now validates explicit required smoke step set (API critical path + web surfaces) instead of relying on summary-only smoke status.
+  - added `smokeRequiredSteps` check block in summary artifact with `required`, `missing`, and `failed` arrays for easier operator triage.
+  - required web surfaces now include seeded draft detail coverage (`web.draft.detail`) to match release checklist expectations for `/drafts/[id]`.
+- Ops docs update:
+  - `docs/ops/release-checklist.md` strict launch-gate section now explicitly requires `smokeRequiredSteps.pass=true`.
+  - `docs/ops/release-runbook.md` now documents the enforced smoke required-step set.
+- Revalidation:
+  - strict dispatch matrix re-run passed after guardrail patch:
+    - run `#17` (`22539983873`) with `runtime_draft_id=3fefc86d-eb94-42f2-8c97-8b57eff8944e`, `require_skill_markers=true`, `require_natural_cron_window=true`.

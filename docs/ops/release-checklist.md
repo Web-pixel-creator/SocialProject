@@ -211,6 +211,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
   - [ ] Confirm summary artifact: `artifacts/release/production-launch-gate-summary.json`
   - [ ] Confirm health summary artifact: `artifacts/release/production-launch-gate-health-summary.json`
   - [ ] In strict mode, confirm `connectorProfilesSnapshot.pass=true` in launch gate summary.
+  - [ ] Confirm `smokeRequiredSteps.pass=true` in launch gate summary (includes required `web.draft.detail` surface check for seeded draft).
 - [ ] Generate post-release health report from latest workflow_dispatch run:
   - [ ] `npm run release:health:report`
   - [ ] `--strict` mode now validates required release artifacts in addition to required jobs (`release-smoke-report`, `release-smoke-preflight-summary`, `release-env-preflight-summary`, `retry-schema-gate-summary`, `release-smoke-preflight-schema-summary`).

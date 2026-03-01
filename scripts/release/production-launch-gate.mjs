@@ -45,6 +45,20 @@ const EXPECTED_CRON_JOBS = [
   'retention_cleanup',
   'embedding_backfill',
 ];
+const REQUIRED_SMOKE_STEP_NAMES = [
+  'api.health',
+  'api.ready',
+  'api.draft.create',
+  'api.draft.get',
+  'api.draft.list',
+  'api.pr.submit',
+  'api.pr.decide',
+  'api.search',
+  'web.home',
+  'web.feed',
+  'web.search',
+  'web.draft.detail',
+];
 
 const sortDeep = (value) => {
   if (Array.isArray(value)) {
@@ -132,6 +146,30 @@ const hasConnectorProfilesSnapshot = (value) =>
       Array.isArray(value.profiles) &&
       Number.isFinite(value.total),
   );
+const buildSmokeStepStatus = (smokeReport) => {
+  const steps = Array.isArray(smokeReport?.steps) ? smokeReport.steps : [];
+  const byName = new Map(
+    steps
+      .filter(
+        (step) =>
+          step &&
+          typeof step === 'object' &&
+          typeof step.name === 'string' &&
+          step.name.length > 0,
+      )
+      .map((step) => [step.name, step]),
+  );
+  const missing = REQUIRED_SMOKE_STEP_NAMES.filter((name) => !byName.has(name));
+  const failed = REQUIRED_SMOKE_STEP_NAMES.filter(
+    (name) => byName.get(name)?.pass !== true,
+  );
+  return {
+    failed,
+    missing,
+    pass: missing.length === 0 && failed.length === 0,
+    required: REQUIRED_SMOKE_STEP_NAMES,
+  };
+};
 
 const parseArgs = (argv) => {
   const o = {
@@ -361,6 +399,16 @@ const main = async () => {
     }
     const smoke = await readJson(path.resolve(o.smokeResultsPath));
     if (!smoke.summary?.pass) throw new Error('Production smoke failed');
+    const smokeStepStatus = buildSmokeStepStatus(smoke);
+    summary.checks.smokeRequiredSteps = {
+      ...smokeStepStatus,
+      skipped: o.skipSmoke,
+    };
+    if (!smokeStepStatus.pass) {
+      throw new Error(
+        `Production smoke required steps failed (missing: ${smokeStepStatus.missing.join(', ') || 'none'}; failed: ${smokeStepStatus.failed.join(', ') || 'none'}).`,
+      );
+    }
     summary.checks.smoke = { pass: true, skipped: o.skipSmoke };
 
     const runtimeDraftId = o.runtimeDraftId || smoke.context?.draftId;
