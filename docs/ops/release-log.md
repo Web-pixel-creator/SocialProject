@@ -33,6 +33,29 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - external-channel failure-mode routing playbook integration
+
+- Scope: formalize operator routing actions for launch-gate external-channel `failureMode` diagnostics and wire them into release procedure.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 16:05 -> 2026-03-01 16:10.
+- Changes:
+  - Updated `docs/ops/agent-gateway-ai-runtime-runbook.md`:
+    - added `External-channel failure-mode routing` matrix with first-action + escalation owner per failure class.
+    - added release hard-stop rule for persistent `requiredFailedChannels`.
+  - Updated `docs/ops/release-runbook.md`:
+    - linked strict launch-gate external-channel failures to routing matrix.
+    - added rollout stop condition when `requiredFailedChannels` stays non-empty across two consecutive strict runs.
+  - Updated `docs/ops/release-checklist.md`:
+    - added explicit strict check for `ingestExternalChannelFailureModes.failedChannels=[]`.
+    - added mandatory routing + incident capture on any failed channel before retry.
+    - added two-consecutive-run rollout pause checkpoint for `requiredFailedChannels`.
+- Verification:
+  - doc-only process hardening; no runtime behavior change.
+- Incidents:
+  - none.
+- Follow-ups:
+  - execute sustained-traffic strict launch-gate soak and collect failure-mode distribution evidence.
+
 ### 2026-03-01 - launch-gate external-channel failure-mode diagnostics pass
 
 - Scope: land and validate external-channel failure-mode diagnostics for strict production launch-gate.

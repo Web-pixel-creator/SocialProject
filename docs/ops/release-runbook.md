@@ -73,6 +73,8 @@ Canonical references:
        - `ingestExternalChannelFallback.requiredChannels=["telegram","slack","discord"]`
        - `ingestExternalChannelFallback.missingRequiredChannels=[]`.
        - `ingestExternalChannelFailureModes.pass=true` and `requiredFailedChannels=[]`.
+   - If any channel appears in `ingestExternalChannelFailureModes.failedChannels`, route by failure class using `docs/ops/agent-gateway-ai-runtime-runbook.md` (`External-channel failure-mode routing` section) before re-dispatching.
+   - Rollout stop condition: if `requiredFailedChannels` remains non-empty across two consecutive strict runs, pause rollout and apply rollback decision thresholds.
 1. Generate and validate health report:
    - `npm run release:health:report`
    - Optional launch-gate workflow profile:

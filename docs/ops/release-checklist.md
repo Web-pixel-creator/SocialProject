@@ -228,11 +228,14 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
     - [ ] If no `telegram/slack/discord` connector profiles are configured, allow `ingestExternalChannelFallback.skipped=true`.
     - [ ] For configured channels, confirm per-channel fallback checks also include positive ingest telemetry assertion (`telemetryPass=true`, `telemetryAccepted > 0`).
   - [ ] Confirm `ingestExternalChannelFailureModes.pass=true` in launch gate summary.
+    - [ ] Confirm `ingestExternalChannelFailureModes.failedChannels=[]` for strict pre-launch parity runs.
   - [ ] When `required_external_channels` is set, confirm:
     - [ ] `ingestExternalChannelFallback.requiredChannels` contains expected channels.
     - [ ] `ingestExternalChannelFallback.missingRequiredChannels=[]`.
     - [ ] `ingestExternalChannelFallback.requiredChannelsPass=true`.
     - [ ] `ingestExternalChannelFailureModes.requiredFailedChannels=[]`.
+    - [ ] If any channel fails, route by `failureMode` using `docs/ops/agent-gateway-ai-runtime-runbook.md` (`External-channel failure-mode routing`) and capture incident evidence before retry.
+    - [ ] If `requiredFailedChannels` is non-empty in two consecutive strict runs, pause rollout and execute rollback decision flow.
   - [ ] To enforce connector parity before public launch, run one strict external-channel pass:
     - [ ] Ensure production `AGENT_GATEWAY_INGEST_CONNECTOR_PROFILES` includes Telegram/Slack/Discord profiles.
     - [ ] Dispatch: `npm run release:launch:gate:dispatch -- --required-external-channels all`

@@ -247,6 +247,26 @@ Notes:
     - `artifacts/release/production-agent-gateway-external-channel-traces.json`
     - workflow artifact: `production-external-channel-traces`.
 
+### External-channel failure-mode routing (release gate)
+
+When launch-gate reports non-empty `ingestExternalChannelFailureModes.failedChannels`
+or `requiredFailedChannels`, route by `failureMode`:
+
+| failureMode | Typical signal | First operator actions | Escalate to |
+| --- | --- | --- | --- |
+| `ingest_http_error` | Ingest probe returns non-`201` | Check `RELEASE_AGENT_GATEWAY_WEBHOOK_SECRET`, API URL, and `/api/agent-gateway/adapters/ingest` route health; inspect API response body/status in workflow logs. | Backend/API on-call |
+| `ingest_not_applied` | `ingestApplied=false` despite `201` | Check ingest response payload for policy rejects/conflicts; validate connector profile strictness (`AGENT_GATEWAY_INGEST_ENFORCE_CONNECTOR_PROFILE`) and channel profile fields. | Backend/API on-call |
+| `sessions_lookup_error` | Admin sessions lookup non-`200` | Verify `RELEASE_ADMIN_API_TOKEN` and `/api/admin/agent-gateway/sessions` health; check DB readiness and admin-token scope. | Backend/API + Platform |
+| `fallback_session_mismatch` | Resolved external session differs from expected fallback id | Compare channel payload shape vs connector extractor expectations (`telegram` chat id, `slack` channel id, `discord` channel id); validate connector profile `channel` value. | Backend/API on-call |
+| `telemetry_http_error` | Admin telemetry endpoint non-`200` | Verify `/api/admin/agent-gateway/telemetry` availability and admin token; check API deploy health and recent errors. | Backend/API + Platform |
+| `telemetry_no_connector_events` | Telemetry total remains `0` for channel/connector | Confirm telemetry query window/filters; verify connector id and channel labels in profile map; inspect ingest logs for dropped events. | Backend/API on-call |
+| `telemetry_zero_accepted` | Telemetry has events but accepted count is `0` | Inspect rejection reasons in ingest telemetry; validate webhook secret and profile constraints, and check payload schema drift. | Backend/API on-call |
+| `unknown` | None of known predicates matched | Download `production-external-channel-traces` + launch summary, attach raw check payloads, and open incident with run URL + commit SHA. | Release commander |
+
+Hard stop rule for release window:
+- if `requiredFailedChannels` is non-empty for more than one consecutive strict run,
+  pause rollout and use rollback thresholds from `docs/ops/rollback-playbook.md`.
+
 ## Security Notes
 
 - Admin endpoints must never be exposed without `x-admin-token`.

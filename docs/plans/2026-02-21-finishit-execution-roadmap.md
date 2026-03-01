@@ -1114,3 +1114,25 @@ Exit criteria:
   - `npm run release:health:schema:check -- artifacts/release/post-release-health-run-22547059063.json`: pass.
 - Next hardening step:
   - run sustained-traffic connector soak and track channel-level failure-mode distribution from `production-external-channel-traces`.
+
+## Progress Snapshot (2026-03-01 - external-channel failure-mode operator playbook formalization)
+- Operator routing formalization:
+  - documented per-`failureMode` response matrix in
+    `docs/ops/agent-gateway-ai-runtime-runbook.md` (`External-channel failure-mode routing`),
+    including first actions and escalation owner for:
+    - `ingest_http_error`
+    - `ingest_not_applied`
+    - `sessions_lookup_error`
+    - `fallback_session_mismatch`
+    - `telemetry_http_error`
+    - `telemetry_no_connector_events`
+    - `telemetry_zero_accepted`
+    - `unknown`.
+- Release process integration:
+  - release runbook now links strict launch-gate failure classes directly to this routing matrix.
+  - release checklist now enforces:
+    - explicit `failedChannels=[]` check on strict parity runs,
+    - incident-routing requirement for any failed channel,
+    - rollout pause when `requiredFailedChannels` is non-empty in two consecutive strict runs.
+- Remaining gap:
+  - execute sustained-traffic connector soak and build failure-mode distribution baseline from repeated `production-external-channel-traces` artifacts.
