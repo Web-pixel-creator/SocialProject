@@ -1087,3 +1087,30 @@ Exit criteria:
   - diff report saved to `artifacts/release/smoke-diff-22482957944-vs-22542195730.json`.
 - Observation:
   - candidate total smoke duration increased (~`+3600ms`) without functional regression; monitor latency trend via production observability.
+
+## Progress Snapshot (2026-03-01 - external-channel failure-mode diagnostics live validation)
+- Launch-gate hardening update:
+  - added failure-mode classification for external connector fallback checks (`telegram`, `slack`, `discord`) and persisted per-channel traces.
+  - added summary check `ingestExternalChannelFailureModes` with:
+    - `failedChannels`
+    - `requiredFailedChannels`
+  - added dedicated workflow artifact upload:
+    - `production-external-channel-traces` (`production-agent-gateway-external-channel-traces.json`).
+- Strict production validation:
+  - dispatched full strict matrix run with all controls:
+    - `--runtime-draft-id 3fefc86d-eb94-42f2-8c97-8b57eff8944e`
+    - `--require-skill-markers`
+    - `--require-natural-cron-window`
+    - `--required-external-channels all`
+  - workflow run `#39` (`22547059063`) completed with `success`.
+- Evidence:
+  - launch summary confirms:
+    - `ingestExternalChannelFailureModes.pass=true`
+    - `ingestExternalChannelFailureModes.requiredFailedChannels=[]`
+    - `ingestExternalChannelFallback.requiredChannels=["telegram","slack","discord"]`
+    - `ingestExternalChannelFallback.missingRequiredChannels=[]`.
+  - trace artifact confirms per-channel successful probes with `failureMode=null`.
+  - `npm run release:health:report -- 22547059063 --profile launch-gate --strict --json`: pass (`requiredJobs=1/1`, `requiredArtifacts=9/9`).
+  - `npm run release:health:schema:check -- artifacts/release/post-release-health-run-22547059063.json`: pass.
+- Next hardening step:
+  - run sustained-traffic connector soak and track channel-level failure-mode distribution from `production-external-channel-traces`.

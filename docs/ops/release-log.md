@@ -33,6 +33,44 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-01 - launch-gate external-channel failure-mode diagnostics pass
+
+- Scope: land and validate external-channel failure-mode diagnostics for strict production launch-gate.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-01 15:58 -> 2026-03-01 16:04.
+- Changes:
+  - Landed `main` commit `01e3b00`:
+    - launch-gate summary check `ingestExternalChannelFailureModes`,
+    - per-channel trace artifact `production-agent-gateway-external-channel-traces.json`,
+    - workflow artifact upload `production-external-channel-traces`,
+    - ops docs/runbook/checklist + roadmap sync for failure-mode diagnostics.
+  - Executed strict dispatch with full matrix inputs:
+    - `npm run release:launch:gate:dispatch -- --runtime-draft-id 3fefc86d-eb94-42f2-8c97-8b57eff8944e --require-skill-markers --require-natural-cron-window --required-external-channels all`
+- Verification:
+  - Workflow run `#39` (`22547059063`): `success`.
+  - `production-launch-gate-summary` confirms:
+    - `ingestExternalChannelFailureModes.pass=true`
+    - `ingestExternalChannelFailureModes.requiredFailedChannels=[]`
+    - `ingestExternalChannelFallback.requiredChannels=["telegram","slack","discord"]`
+    - `ingestExternalChannelFallback.missingRequiredChannels=[]`.
+  - Workflow artifacts include `production-external-channel-traces` with per-channel trace rows (`telegram`, `slack`, `discord`) and `failureMode=null` on pass path.
+  - `npm run release:health:report -- 22547059063 --profile launch-gate --strict --json`: pass.
+  - `npm run release:health:schema:check -- artifacts/release/post-release-health-run-22547059063.json`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - use `production-external-channel-traces` in sustained-traffic soak to profile failure-mode distribution by channel.
+
+### 2026-03-01 - post-release health run #39 (id 22547059063)
+
+- Source workflow run: #39 (https://github.com/Web-pixel-creator/SocialProject/actions/runs/22547059063).
+- Overall health: pass.
+- Required jobs: 1/1 passed.
+- Required artifacts: 9/9 present.
+- Failed jobs total: 0.
+- Smoke summary: pass=true totalSteps=19 failedSteps=0.
+- Report artifact: `artifacts/release/post-release-health-run-22547059063.json`.
+
 ### 2026-03-01 - smoke diff validation (CI run #469 vs #524)
 
 - Scope: compare release-smoke behavior against previous successful CI baseline after CI/launch-gate recovery.
