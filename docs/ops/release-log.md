@@ -48,7 +48,11 @@ Copy this block for each release:
     - keeps Railway variable lookup as fallback when `RELEASE_*` values are absent.
   - Updated release docs/checklist for the new CI context requirements.
 - Verification:
-  - pending workflow rerun after setting `RELEASE_*` secrets/vars in repository settings.
+  - Repository context updated via `gh`:
+    - variables: `RELEASE_API_BASE_URL`, `RELEASE_WEB_BASE_URL`
+    - secrets: `RELEASE_ADMIN_API_TOKEN`, `RELEASE_CSRF_TOKEN`, `RELEASE_AGENT_GATEWAY_WEBHOOK_SECRET`
+  - `npm run release:launch:gate:dispatch`: pass (run `#4`, id `22537713929`)
+  - Workflow URL: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/22537713929`
 - Incidents:
   - none.
 - Follow-ups:
