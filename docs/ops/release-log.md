@@ -33,11 +33,11 @@ Copy this block for each release:
 
 ## Entries
 
-### 2026-03-01 - launch-gate smoke required-step guardrail + strict run #17
+### 2026-03-01 - launch-gate smoke required-step guardrail + strict run #18
 
 - Scope: tighten production launch-gate by enforcing required smoke step coverage (including seeded draft detail web surface) before runtime probes.
 - Release commander: Codex automation.
-- Window (UTC): 2026-03-01 08:21 -> 2026-03-01 08:24.
+- Window (UTC): 2026-03-01 08:21 -> 2026-03-01 08:32.
 - Changes:
   - Updated `scripts/release/production-launch-gate.mjs`:
     - added `REQUIRED_SMOKE_STEP_NAMES` guardrail (`api.health`, `api.ready`, `api.draft.create/get/list`, `api.pr.submit/decide`, `api.search`, `web.home/feed/search/draft.detail`),
@@ -52,8 +52,8 @@ Copy this block for each release:
     - `RELEASE_RUNTIME_DRAFT_ID=3fefc86d-eb94-42f2-8c97-8b57eff8944e`
     - `RELEASE_REQUIRE_SKILL_MARKERS=true`
     - `RELEASE_REQUIRE_NATURAL_CRON_WINDOW=true`
-  - Workflow result: run `#17` (id `22539983873`) `success`.
-  - Workflow URL: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/22539983873`
+  - Workflow result: run `#18` (id `22540039019`) `success`.
+  - Workflow URL: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/22540039019`
 - Incidents:
   - none.
 - Follow-ups:

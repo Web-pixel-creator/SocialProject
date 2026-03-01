@@ -863,4 +863,4 @@ Exit criteria:
   - `docs/ops/release-runbook.md` now documents the enforced smoke required-step set.
 - Revalidation:
   - strict dispatch matrix re-run passed after guardrail patch:
-    - run `#17` (`22539983873`) with `runtime_draft_id=3fefc86d-eb94-42f2-8c97-8b57eff8944e`, `require_skill_markers=true`, `require_natural_cron_window=true`.
+    - run `#18` (`22540039019`) with `runtime_draft_id=3fefc86d-eb94-42f2-8c97-8b57eff8944e`, `require_skill_markers=true`, `require_natural_cron_window=true`.
