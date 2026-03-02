@@ -82,6 +82,9 @@ Copy this block for each release:
     - summary artifact now confirms variable lookup in workflow context is healthy:
       - `strictVariableCurrent.value=false`
       - `strictVariableCurrent.lookupError=null`.
+  - Repository window-gate variable configured:
+    - set `RELEASE_HEALTH_ALERT_RISK_STRICT_NOT_BEFORE_UTC=2026-03-02T17:23:02Z` at `2026-03-02 05:55:10 UTC`.
+    - `Alert-Risk Strict Reassess` run `#4` (`22563379342`): `success`, `status=deferred`, with `notBeforeUtc=2026-03-02T17:23:02.000Z` and healthy variable lookup.
 - Incidents:
   - none.
 - Follow-ups:
