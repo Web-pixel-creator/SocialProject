@@ -342,6 +342,39 @@ const waitForReleaseHealthSummary = async ({ targetRunId }) => {
   );
 };
 
+const normalizeBooleanString = (value) => {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  if (['1', 'true', 'yes', 'y'].includes(normalized)) {
+    return true;
+  }
+  if (['0', 'false', 'no', 'n'].includes(normalized)) {
+    return false;
+  }
+  return null;
+};
+
+const readRepoStrictVariable = () => {
+  try {
+    const response = runCommand({
+      command: 'gh',
+      args: ['variable', 'get', 'RELEASE_HEALTH_ALERT_RISK_STRICT', '--json', 'value', '-q', '.value'],
+      label: 'gh variable get RELEASE_HEALTH_ALERT_RISK_STRICT',
+    });
+    const rawValue = String(response.stdout ?? '').trim();
+    return {
+      rawValue,
+      boolValue: normalizeBooleanString(rawValue),
+      error: null,
+    };
+  } catch (error) {
+    return {
+      rawValue: null,
+      boolValue: null,
+      error: toErrorMessage(error),
+    };
+  }
+};
+
 const main = async () => {
   const options = parseCliArgs(process.argv.slice(2));
   const now = new Date();
@@ -356,6 +389,7 @@ const main = async () => {
 
   const runLabel = options.runId ? String(options.runId) : 'pending';
   mkdirSync(DEFAULT_OUTPUT_DIR, { recursive: true });
+  const strictVariableBefore = readRepoStrictVariable();
 
   if (deferred) {
     const summary = {
@@ -369,6 +403,11 @@ const main = async () => {
       ],
       applyRequested: options.apply,
       strictVariableApplied: false,
+      strictVariableCurrent: {
+        value: strictVariableBefore.boolValue,
+        rawValue: strictVariableBefore.rawValue,
+        lookupError: strictVariableBefore.error,
+      },
       run: {
         id: null,
         url: null,
@@ -384,6 +423,52 @@ const main = async () => {
     } else {
       process.stdout.write(`Reassessment deferred until ${summary.notBeforeUtc}.\n`);
       process.stdout.write(`Summary: ${summary.outputPath}\n`);
+    }
+    return;
+  }
+
+  if (!options.runId && strictVariableBefore.boolValue === true) {
+    const outputPath = resolve(
+      `${DEFAULT_OUTPUT_DIR}/alert-risk-strict-reassessment-${runLabel}.json`,
+    );
+    const summary = {
+      label: 'release:alert-risk:strict-reassess',
+      status: 'already_enabled',
+      generatedAtUtc: now.toISOString(),
+      notBeforeUtc: configuredNotBefore ? configuredNotBefore.toISOString() : null,
+      applyRequested: options.apply,
+      strictVariableApplied: false,
+      strictVariableCurrent: {
+        value: strictVariableBefore.boolValue,
+        rawValue: strictVariableBefore.rawValue,
+        lookupError: strictVariableBefore.error,
+      },
+      requiredExternalChannels: options.requiredExternalChannels,
+      readyToEnableStrict: true,
+      notReadyReasons: [],
+      run: {
+        id: null,
+        url: null,
+      },
+      releaseHealthWorkflowRun: null,
+      healthReport: null,
+      releaseHealthAlertTelemetry: null,
+      dispatchLogPath: null,
+      sourceSummaryPath: null,
+      sourceReportPath: null,
+      sourceArtifactRoot: null,
+      summarySnapshotPath: null,
+      reportSnapshotPath: null,
+      outputPath,
+    };
+    writeFileSync(outputPath, `${JSON.stringify(summary, null, 2)}\n`, 'utf8');
+    if (options.json) {
+      process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
+    } else {
+      process.stdout.write(
+        'RELEASE_HEALTH_ALERT_RISK_STRICT is already enabled; reassessment dispatch skipped.\n',
+      );
+      process.stdout.write(`Summary: ${outputPath}\n`);
     }
     return;
   }
@@ -474,6 +559,7 @@ const main = async () => {
       strictVariableApplyError = toErrorMessage(error);
     }
   }
+  const strictVariableAfter = readRepoStrictVariable();
 
   const outputPath = resolve(
     `${DEFAULT_OUTPUT_DIR}/alert-risk-strict-reassessment-${String(runId)}.json`,
@@ -504,6 +590,16 @@ const main = async () => {
     applyRequested: options.apply,
     strictVariableApplied,
     strictVariableApplyError,
+    strictVariableBefore: {
+      value: strictVariableBefore.boolValue,
+      rawValue: strictVariableBefore.rawValue,
+      lookupError: strictVariableBefore.error,
+    },
+    strictVariableAfter: {
+      value: strictVariableAfter.boolValue,
+      rawValue: strictVariableAfter.rawValue,
+      lookupError: strictVariableAfter.error,
+    },
     requiredExternalChannels: options.requiredExternalChannels,
     readyToEnableStrict,
     notReadyReasons,

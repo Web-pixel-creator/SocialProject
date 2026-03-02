@@ -1,0 +1,127 @@
+name: Alert-Risk Strict Reassess
+
+on:
+  schedule:
+    - cron: '35 17 * * *'
+  workflow_dispatch:
+    inputs:
+      not_before_utc:
+        description: 'UTC timestamp gate for reassessment start (ISO8601).'
+        required: false
+        default: '2026-03-02T17:23:02Z'
+        type: string
+      required_external_channels:
+        description: 'Required external channels passed to launch-gate dispatch.'
+        required: false
+        default: all
+        type: string
+      apply_strict:
+        description: 'Apply RELEASE_HEALTH_ALERT_RISK_STRICT=true when reassessment is ready.'
+        required: false
+        default: true
+        type: boolean
+
+concurrency:
+  group: alert-risk-strict-reassess-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  alert_risk_strict_reassess:
+    name: Alert-Risk Strict Reassess
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    env:
+      RELEASE_HEALTH_ALERT_RISK_STRICT_NOT_BEFORE_UTC: ${{ vars.RELEASE_HEALTH_ALERT_RISK_STRICT_NOT_BEFORE_UTC }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Bootstrap Node CI tooling
+        uses: ./.github/actions/node-ci-bootstrap
+
+      - name: Run alert-risk strict reassessment
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/release
+
+          not_before_utc="${RELEASE_HEALTH_ALERT_RISK_STRICT_NOT_BEFORE_UTC:-2026-03-02T17:23:02Z}"
+          required_external_channels="all"
+          apply_strict="true"
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            if [[ -n "${{ inputs.not_before_utc }}" ]]; then
+              not_before_utc="${{ inputs.not_before_utc }}"
+            fi
+            if [[ -n "${{ inputs.required_external_channels }}" ]]; then
+              required_external_channels="${{ inputs.required_external_channels }}"
+            fi
+            apply_strict="${{ inputs.apply_strict }}"
+          fi
+
+          args=(--json --required-external-channels "${required_external_channels}")
+          if [[ -n "${not_before_utc}" ]]; then
+            args+=(--not-before-utc "${not_before_utc}")
+          fi
+          if [[ "${apply_strict}" == "true" ]]; then
+            args+=(--apply)
+          fi
+
+          npm --silent run release:alert-risk:reassess -- "${args[@]}" \
+            | tee artifacts/release/alert-risk-strict-reassessment-workflow-output.json
+
+          summary_path="$(jq -r '.outputPath // empty' artifacts/release/alert-risk-strict-reassessment-workflow-output.json)"
+          if [[ -n "${summary_path}" && -f "${summary_path}" ]]; then
+            cp "${summary_path}" artifacts/release/alert-risk-strict-reassessment-summary.json
+          else
+            cp artifacts/release/alert-risk-strict-reassessment-workflow-output.json artifacts/release/alert-risk-strict-reassessment-summary.json
+          fi
+
+      - name: Render reassessment step summary markdown
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          summary_json="artifacts/release/alert-risk-strict-reassessment-summary.json"
+          summary_md="artifacts/release/alert-risk-strict-reassessment-step-summary.md"
+          mkdir -p artifacts/release
+          {
+            echo "## Alert-Risk Strict Reassessment"
+            if [[ -f "${summary_json}" ]]; then
+              echo ""
+              echo "- status: \`$(jq -r '.status // "unknown"' "${summary_json}")\`"
+              echo "- ready_to_enable_strict: \`$(jq -r '.readyToEnableStrict // false' "${summary_json}")\`"
+              echo "- strict_variable_applied: \`$(jq -r '.strictVariableApplied // false' "${summary_json}")\`"
+              echo "- launch_gate_run_id: \`$(jq -r '.run.id // "n/a"' "${summary_json}")\`"
+              echo "- release_health_run_id: \`$(jq -r '.releaseHealthWorkflowRun.id // "n/a"' "${summary_json}")\`"
+              echo "- strict_before: \`$(jq -r '.strictVariableBefore.value // .strictVariableCurrent.value // "unknown"' "${summary_json}")\`"
+              echo "- strict_after: \`$(jq -r '.strictVariableAfter.value // .strictVariableCurrent.value // "unknown"' "${summary_json}")\`"
+              reasons="$(jq -r '(.notReadyReasons // []) | join(" | ")' "${summary_json}")"
+              if [[ -n "${reasons}" ]]; then
+                echo "- not_ready_reasons: \`${reasons}\`"
+              fi
+            else
+              echo ""
+              echo "- summary artifact missing: \`${summary_json}\`"
+            fi
+          } > "${summary_md}"
+
+      - name: Append reassessment summary to step summary
+        if: always()
+        uses: ./.github/actions/append-step-summary
+        with:
+          summary_path: artifacts/release/alert-risk-strict-reassessment-step-summary.md
+
+      - name: Upload reassessment artifacts
+        if: always()
+        uses: ./.github/actions/release-artifacts-upload
+        with:
+          artifact_1_name: alert-risk-strict-reassessment-summary
+          artifact_1_path: artifacts/release/alert-risk-strict-reassessment-summary.json
+          artifact_2_name: alert-risk-strict-reassessment-workflow-output
+          artifact_2_path: artifacts/release/alert-risk-strict-reassessment-workflow-output.json
+          artifact_3_name: alert-risk-strict-reassessment-step-summary
+          artifact_3_path: artifacts/release/alert-risk-strict-reassessment-step-summary.md
