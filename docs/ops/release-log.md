@@ -33,6 +33,48 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-02 - scheduled alert-risk strict reassessment workflow automation
+
+- Scope: automate post-window strict enablement reassessment via dedicated workflow to avoid manual operator timing.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-02 05:41 -> 2026-03-02 05:45.
+- Changes:
+  - Added workflow:
+    - `.github/workflows/alert-risk-strict-reassess.yml`
+    - triggers:
+      - schedule: `17:35 UTC` daily
+      - manual: `workflow_dispatch`
+    - execution:
+      - runs `npm run release:alert-risk:reassess` in JSON mode,
+      - supports dispatch inputs (`not_before_utc`, `required_external_channels`, `apply_strict`),
+      - uploads artifacts:
+        - `alert-risk-strict-reassessment-summary`
+        - `alert-risk-strict-reassessment-workflow-output`
+        - `alert-risk-strict-reassessment-step-summary`.
+  - Updated reassessment script:
+    - reads current `RELEASE_HEALTH_ALERT_RISK_STRICT` before execution.
+    - skips new dispatch when strict is already enabled (`status=already_enabled`).
+    - includes before/after strict variable snapshots in summary payload.
+  - Updated docs:
+    - `docs/ops/release-runbook.md`
+    - `docs/ops/release-checklist.md`.
+- Validation:
+  - `node --check scripts/release/reassess-alert-risk-strict.mjs`: pass.
+  - `npm --silent run ci:workflow:inline-node-check`: pass.
+  - Deferred pre-window safety run:
+    - `npm --silent run release:alert-risk:reassess -- --not-before-utc 2026-03-02T17:23:02Z --apply --json`
+    - result:
+      - `status=deferred`
+      - `strictVariableCurrent.value=false`
+      - no strict apply attempted.
+- Incidents:
+  - none.
+- Follow-ups:
+  - after `2026-03-02 17:23:02 UTC`, run `Alert-Risk Strict Reassess` once via `workflow_dispatch` (or allow scheduled run) and confirm:
+    - `status=ready`
+    - `strictVariableApplied=true`
+    - `strictVariableAfter.value=true`.
+
 ### 2026-03-01 - one-command alert-risk strict reassessment automation
 
 - Scope: add one-command reassessment path that executes strict launch-gate, waits for downstream `Release Health Gate` artifacts, and decides readiness for enabling `RELEASE_HEALTH_ALERT_RISK_STRICT=true`.
