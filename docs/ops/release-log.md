@@ -67,9 +67,16 @@ Copy this block for each release:
       - `status=deferred`
       - `strictVariableCurrent.value=false`
       - no strict apply attempted.
+  - Manual workflow validation (pre-window):
+    - `Alert-Risk Strict Reassess` run `#1` (`22563138983`): `success`
+    - summary artifact confirms `status=deferred`.
+    - observed permission caveat in workflow context:
+      - `gh variable get RELEASE_HEALTH_ALERT_RISK_STRICT` returned `HTTP 403 Resource not accessible by integration` with default `GITHUB_TOKEN`.
+      - workflow updated to prefer optional `RELEASE_GITHUB_PAT` secret for variable read/set operations.
 - Incidents:
   - none.
 - Follow-ups:
+  - configure repo secret `RELEASE_GITHUB_PAT` (Actions write + Contents read) to enable workflow-side `RELEASE_HEALTH_ALERT_RISK_STRICT` apply path.
   - after `2026-03-02 17:23:02 UTC`, run `Alert-Risk Strict Reassess` once via `workflow_dispatch` (or allow scheduled run) and confirm:
     - `status=ready`
     - `strictVariableApplied=true`
