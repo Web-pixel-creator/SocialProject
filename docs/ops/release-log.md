@@ -76,10 +76,15 @@ Copy this block for each release:
   - Post-patch workflow revalidation:
     - `Alert-Risk Strict Reassess` run `#2` (`22563210803`): `success`
     - summary artifact remains `status=deferred` (pre-window), and confirms variable API access still requires configured `RELEASE_GITHUB_PAT`.
+  - PAT-backed workflow validation:
+    - configured repo secret `RELEASE_GITHUB_PAT` at `2026-03-02 05:53:05 UTC`.
+    - `Alert-Risk Strict Reassess` run `#3` (`22563325027`): `success`.
+    - summary artifact now confirms variable lookup in workflow context is healthy:
+      - `strictVariableCurrent.value=false`
+      - `strictVariableCurrent.lookupError=null`.
 - Incidents:
   - none.
 - Follow-ups:
-  - configure repo secret `RELEASE_GITHUB_PAT` (Actions write + Contents read) to enable workflow-side `RELEASE_HEALTH_ALERT_RISK_STRICT` apply path.
   - after `2026-03-02 17:23:02 UTC`, run `Alert-Risk Strict Reassess` once via `workflow_dispatch` (or allow scheduled run) and confirm:
     - `status=ready`
     - `strictVariableApplied=true`
