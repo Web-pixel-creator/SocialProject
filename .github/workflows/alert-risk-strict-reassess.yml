@@ -34,7 +34,8 @@ jobs:
       contents: read
     env:
       RELEASE_HEALTH_ALERT_RISK_STRICT_NOT_BEFORE_UTC: ${{ vars.RELEASE_HEALTH_ALERT_RISK_STRICT_NOT_BEFORE_UTC }}
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      RELEASE_GITHUB_PAT: ${{ secrets.RELEASE_GITHUB_PAT }}
+      GH_TOKEN: ${{ secrets.RELEASE_GITHUB_PAT || secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -60,6 +61,10 @@ jobs:
               required_external_channels="${{ inputs.required_external_channels }}"
             fi
             apply_strict="${{ inputs.apply_strict }}"
+          fi
+
+          if [[ "${apply_strict}" == "true" && -z "${RELEASE_GITHUB_PAT}" ]]; then
+            echo "Warning: RELEASE_GITHUB_PAT is not configured; strict variable apply may fail due GitHub token permission limits."
           fi
 
           args=(--json --required-external-channels "${required_external_channels}")

@@ -271,6 +271,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
       - [ ] `npm run release:alert-risk:reassess -- --not-before-utc <ISO8601_UTC>`
       - [ ] Optional auto-apply (`RELEASE_HEALTH_ALERT_RISK_STRICT=true` only when ready): `npm run release:alert-risk:reassess -- --not-before-utc <ISO8601_UTC> --apply`
       - [ ] Optional scheduled/manual workflow path: `Alert-Risk Strict Reassess` (`.github/workflows/alert-risk-strict-reassess.yml`)
+      - [ ] For workflow variable apply/read path, set repo secret `RELEASE_GITHUB_PAT` (Actions write + Contents read); `GITHUB_TOKEN` may be insufficient for variables API.
   - [ ] Optional alert-hook controls for first non-pass appearance in rolling window:
     - [ ] `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_ENABLED=<true|false>` (default `true`)
     - [ ] `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_TIMEOUT_MS=<ms>` (default `10000`)

@@ -113,6 +113,7 @@ Canonical references:
       - optional workflow automation:
         - `Alert-Risk Strict Reassess` (`.github/workflows/alert-risk-strict-reassess.yml`)
         - schedule: `17:35 UTC` daily (or run manually via `workflow_dispatch`)
+        - for variable apply/read in workflow context, configure repo secret `RELEASE_GITHUB_PAT` (Actions write + Contents read); default `GITHUB_TOKEN` may not access variables API.
       - when `escalationTriggered=true`, start incident triage using `docs/ops/agent-gateway-ai-runtime-runbook.md` (`External-channel failure-mode routing`) and attach release-health summary evidence.
     - `npm run release:health:schema:check`
 2. Confirm alerts, latency, and error rates are within thresholds.
