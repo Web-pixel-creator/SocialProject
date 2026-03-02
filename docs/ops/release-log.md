@@ -85,6 +85,18 @@ Copy this block for each release:
   - Repository window-gate variable configured:
     - set `RELEASE_HEALTH_ALERT_RISK_STRICT_NOT_BEFORE_UTC=2026-03-02T17:23:02Z` at `2026-03-02 05:55:10 UTC`.
     - `Alert-Risk Strict Reassess` run `#4` (`22563379342`): `success`, `status=deferred`, with `notBeforeUtc=2026-03-02T17:23:02.000Z` and healthy variable lookup.
+  - Full non-deferred workflow-path validation:
+    - manual run with inputs `not_before_utc=2020-01-01T00:00:00Z`, `apply_strict=true`, `required_external_channels=all`:
+      - `Alert-Risk Strict Reassess` run `#5` (`22563417276`): `success`
+      - launched strict `Production Launch Gate` run `#57` (`22563432392`): `success`
+      - downstream `Release Health Gate` run `#235` (`22563455276`): `success`
+      - reassessment summary:
+        - `status=not_ready`
+        - `strictVariableBefore.value=false`
+        - `strictVariableAfter.value=false`
+        - `releaseHealthAlertTelemetry.status=critical`
+        - `releaseHealthAlertTelemetry.escalationSuppressed=true`
+        - `releaseHealthAlertTelemetry.escalationTriggered=false`.
 - Incidents:
   - none.
 - Follow-ups:
