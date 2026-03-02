@@ -73,6 +73,9 @@ Copy this block for each release:
     - observed permission caveat in workflow context:
       - `gh variable get RELEASE_HEALTH_ALERT_RISK_STRICT` returned `HTTP 403 Resource not accessible by integration` with default `GITHUB_TOKEN`.
       - workflow updated to prefer optional `RELEASE_GITHUB_PAT` secret for variable read/set operations.
+  - Post-patch workflow revalidation:
+    - `Alert-Risk Strict Reassess` run `#2` (`22563210803`): `success`
+    - summary artifact remains `status=deferred` (pre-window), and confirms variable API access still requires configured `RELEASE_GITHUB_PAT`.
 - Incidents:
   - none.
 - Follow-ups:
