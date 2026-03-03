@@ -1,3 +1,11 @@
+import {
+  EngagementHealthSection,
+  EngagementOverviewSection,
+  FeedInteractionCountersSection,
+  FeedPreferenceKpisSection,
+  TopSegmentsSection,
+} from './components/engagement-sections';
+
 interface ObserverEngagementResponse {
   windowHours: number;
   kpis?: {
@@ -3954,6 +3962,13 @@ export default async function AdminUxObserverEngagementPage({
   const topSegments = [...segments]
     .sort((left, right) => toNumber(right.count) - toNumber(left.count))
     .slice(0, 8);
+  const topSegmentsView = topSegments.map((segment, index) => ({
+    count: toNumber(segment.count),
+    draftStatus: segment.draftStatus ?? 'unknown',
+    eventType: segment.eventType ?? 'unknown',
+    key: `${segment.mode ?? 'unknown'}:${segment.eventType ?? 'event'}:${index + 1}`,
+    mode: segment.mode ?? 'unknown',
+  }));
   const gatewayProviders = gatewayOverview
     ? Object.entries(gatewayOverview.summary.providerUsage).sort(
         (left, right) => right[1] - left[1],
@@ -4897,9 +4912,16 @@ export default async function AdminUxObserverEngagementPage({
     ...signal,
     level: resolveHealthLevel(signal.value, signal.thresholds),
   }));
-  const visibleHealthSignals = healthSignals.filter(
-    (signal) => signal.level !== 'unknown',
-  );
+  const engagementHealthSignals = healthSignals
+    .filter((signal) => signal.level !== 'unknown')
+    .map((signal) => ({
+      badgeClassName: healthBadgeClass(signal.level),
+      badgeLabel: healthLabel(signal.level),
+      id: signal.id,
+      label: signal.label,
+      note: signal.note,
+      valueText: toRateText(signal.value),
+    }));
   const panelTabs: Array<{
     id: AdminUxPanel;
     label: string;
@@ -5467,112 +5489,20 @@ export default async function AdminUxObserverEngagementPage({
         </section>
       ) : null}
 
-      {isPanelVisible('engagement') && shouldCompactEngagementOverview ? (
-        <section className="card grid gap-3 p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="font-semibold text-foreground text-lg">
-              Engagement overview
-            </h2>
-            <span className="inline-flex items-center rounded-full border border-border/45 bg-background/45 px-2 py-0.5 font-semibold text-muted-foreground text-xs uppercase tracking-wide">
-              low signal
-            </span>
-          </div>
-          <p className="text-muted-foreground text-sm">
-            No observer session activity in the selected window yet. Expanded
-            KPI cards appear automatically after first session events.
-          </p>
-          <div className="grid gap-2 sm:grid-cols-3">
-            <div className="rounded-lg border border-border/25 bg-background/55 px-3 py-2">
-              <p className="text-muted-foreground text-xs uppercase tracking-wide">
-                Sessions
-              </p>
-              <p className="font-semibold text-foreground text-sm">
-                {engagementSessionCount}
-              </p>
-            </div>
-            <div className="rounded-lg border border-border/25 bg-background/55 px-3 py-2">
-              <p className="text-muted-foreground text-xs uppercase tracking-wide">
-                Avg session
-              </p>
-              <p className="font-semibold text-foreground text-sm">
-                {engagementAvgSessionSeconds.toFixed(1)}s
-              </p>
-            </div>
-            <div className="rounded-lg border border-border/25 bg-background/55 px-3 py-2">
-              <p className="text-muted-foreground text-xs uppercase tracking-wide">
-                Returns / follows
-              </p>
-              <p className="font-semibold text-foreground text-sm">
-                {toRateText(kpis.return24h)} / {toRateText(kpis.followRate)}
-              </p>
-            </div>
-          </div>
-        </section>
-      ) : null}
-      {isPanelVisible('engagement') && !shouldCompactEngagementOverview ? (
-        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-          <StatCard
-            hint="Observer sessions in the current window"
-            label="Session count"
-            value={`${engagementSessionCount}`}
-          />
-          <StatCard
-            hint="Average observer session duration"
-            label="Avg session"
-            value={`${engagementAvgSessionSeconds.toFixed(1)}s`}
-          />
-          <StatCard
-            hint="watchlist_follow / draft_arc_view"
-            label="Follow rate"
-            value={toRateText(kpis.followRate)}
-          />
-          <StatCard
-            hint="digest_open / watchlist_follow"
-            label="Digest open rate"
-            value={toRateText(kpis.digestOpenRate)}
-          />
-          <StatCard
-            hint="Observer returns from previous 24h window"
-            label="24h retention"
-            value={toRateText(kpis.return24h)}
-          />
-        </section>
-      ) : null}
+      <EngagementOverviewSection
+        digestOpenRateText={toRateText(kpis.digestOpenRate)}
+        engagementAvgSessionSeconds={engagementAvgSessionSeconds}
+        engagementSessionCount={engagementSessionCount}
+        followRateText={toRateText(kpis.followRate)}
+        isVisible={isPanelVisible('engagement')}
+        return24hRateText={toRateText(kpis.return24h)}
+        shouldCompact={shouldCompactEngagementOverview}
+      />
 
-      {isPanelVisible('engagement') ? (
-        <section className="card grid gap-3 p-4 sm:p-5">
-          <h2 className="font-semibold text-foreground text-lg">
-            Engagement health
-          </h2>
-          {visibleHealthSignals.length === 0 ? (
-            <CompactEmptyState message="Waiting for enough engagement telemetry to score health signals." />
-          ) : (
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {visibleHealthSignals.map((signal) => (
-                <article
-                  className="rounded-xl border border-border/25 bg-background/60 p-3"
-                  key={signal.id}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="font-semibold text-foreground text-sm">
-                      {signal.label}
-                    </p>
-                    <span
-                      className={`${healthBadgeClass(signal.level)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
-                    >
-                      {healthLabel(signal.level)}
-                    </span>
-                  </div>
-                  <p className="mt-2 font-semibold text-base text-foreground">
-                    {toRateText(signal.value)}
-                  </p>
-                  <p className="text-muted-foreground text-xs">{signal.note}</p>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-      ) : null}
+      <EngagementHealthSection
+        isVisible={isPanelVisible('engagement')}
+        signals={engagementHealthSignals}
+      />
       {isPanelVisible('release') ? (
         <section className="card grid gap-4 p-4 sm:p-5">
           <div className="flex items-center justify-between gap-2">
@@ -5686,51 +5616,15 @@ export default async function AdminUxObserverEngagementPage({
         </section>
       ) : null}
 
-      {isPanelVisible('engagement') ? (
-        <section className="card grid gap-4 p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="font-semibold text-foreground text-lg">
-              Feed preference KPIs
-            </h2>
-            {shouldCompactFeedPreferenceKpis ? (
-              <span className="inline-flex items-center rounded-full border border-border/45 bg-background/45 px-2 py-0.5 font-semibold text-muted-foreground text-xs uppercase tracking-wide">
-                low signal
-              </span>
-            ) : null}
-          </div>
-          {shouldCompactFeedPreferenceKpis ? (
-            <CompactEmptyState message="No preference interaction events yet. Expanded KPI cards appear after mode/density/hint telemetry arrives." />
-          ) : (
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              <StatCard
-                hint="share of mode switches to Observer"
-                label="Observer mode share"
-                value={toRateText(kpis.viewModeObserverRate)}
-              />
-              <StatCard
-                hint="historical share from legacy Focus mode"
-                label="Legacy focus share"
-                value={toRateText(kpis.viewModeFocusRate)}
-              />
-              <StatCard
-                hint="share of density changes to Comfort"
-                label="Comfort density share"
-                value={toRateText(kpis.densityComfortRate)}
-              />
-              <StatCard
-                hint="share of density changes to Compact"
-                label="Compact density share"
-                value={toRateText(kpis.densityCompactRate)}
-              />
-              <StatCard
-                hint="hint dismiss / (hint dismiss + hint switch)"
-                label="Hint dismiss rate"
-                value={toRateText(kpis.hintDismissRate)}
-              />
-            </div>
-          )}
-        </section>
-      ) : null}
+      <FeedPreferenceKpisSection
+        comfortDensityShareText={toRateText(kpis.densityComfortRate)}
+        compactDensityShareText={toRateText(kpis.densityCompactRate)}
+        hintDismissRateText={toRateText(kpis.hintDismissRate)}
+        isVisible={isPanelVisible('engagement')}
+        legacyFocusShareText={toRateText(kpis.viewModeFocusRate)}
+        observerModeShareText={toRateText(kpis.viewModeObserverRate)}
+        shouldCompact={shouldCompactFeedPreferenceKpis}
+      />
 
       {isPanelVisible('style') ? (
         <section className="card grid gap-4 p-4 sm:p-5">
@@ -6411,123 +6305,33 @@ export default async function AdminUxObserverEngagementPage({
         </section>
       ) : null}
 
-      {isPanelVisible('engagement') && shouldCompactFeedPreferenceEvents ? (
-        <section className="card grid gap-3 p-4 sm:p-5">
-          <h2 className="font-semibold text-foreground text-lg">
-            Feed interaction counters
-          </h2>
-          <div className="grid gap-2 sm:grid-cols-3">
-            <div className="rounded-lg border border-border/25 bg-background/55 px-3 py-2">
-              <p className="text-muted-foreground text-xs uppercase tracking-wide">
-                Mode switches
-              </p>
-              <p className="font-semibold text-foreground text-sm">
-                {viewModeTotal}
-              </p>
-            </div>
-            <div className="rounded-lg border border-border/25 bg-background/55 px-3 py-2">
-              <p className="text-muted-foreground text-xs uppercase tracking-wide">
-                Density switches
-              </p>
-              <p className="font-semibold text-foreground text-sm">
-                {densityTotal}
-              </p>
-            </div>
-            <div className="rounded-lg border border-border/25 bg-background/55 px-3 py-2">
-              <p className="text-muted-foreground text-xs uppercase tracking-wide">
-                Hint interactions
-              </p>
-              <p className="font-semibold text-foreground text-sm">
-                {hintInteractionTotal}
-              </p>
-            </div>
-          </div>
-        </section>
-      ) : null}
-      {isPanelVisible('engagement') && !shouldCompactFeedPreferenceEvents ? (
-        <section className="grid gap-4 lg:grid-cols-3">
-          <article className="card grid gap-2 p-4">
-            <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-              Observer mode events
-            </h3>
-            <p className="text-muted-foreground text-xs">
-              observer: {toNumber(viewMode.observer)} | legacy focus:{' '}
-              {toNumber(viewMode.focus)} | unknown: {toNumber(viewMode.unknown)}{' '}
-              | total: {viewModeTotal}
-            </p>
-          </article>
+      <FeedInteractionCountersSection
+        density={{
+          comfort: toNumber(density.comfort),
+          compact: toNumber(density.compact),
+          total: densityTotal,
+          unknown: toNumber(density.unknown),
+        }}
+        hint={{
+          dismissCount: toNumber(hint.dismissCount),
+          switchCount: toNumber(hint.switchCount),
+          total: hintInteractionTotal,
+        }}
+        isVisible={isPanelVisible('engagement')}
+        shouldCompact={shouldCompactFeedPreferenceEvents}
+        viewMode={{
+          focus: toNumber(viewMode.focus),
+          observer: toNumber(viewMode.observer),
+          total: viewModeTotal,
+          unknown: toNumber(viewMode.unknown),
+        }}
+      />
 
-          <article className="card grid gap-2 p-4">
-            <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-              Density events
-            </h3>
-            <p className="text-muted-foreground text-xs">
-              comfort: {toNumber(density.comfort)} | compact:{' '}
-              {toNumber(density.compact)} | unknown: {toNumber(density.unknown)}{' '}
-              | total: {densityTotal}
-            </p>
-          </article>
-
-          <article className="card grid gap-2 p-4">
-            <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-              Hint interactions
-            </h3>
-            <p className="text-muted-foreground text-xs">
-              dismiss: {toNumber(hint.dismissCount)} | switch:{' '}
-              {toNumber(hint.switchCount)} | total: {hintInteractionTotal}
-            </p>
-          </article>
-        </section>
-      ) : null}
-
-      {isPanelVisible('engagement') ? (
-        <section className="card grid gap-3 p-4 sm:p-5">
-          <h2 className="font-semibold text-foreground text-lg">
-            Top segments
-          </h2>
-          {topSegments.length === 0 && shouldCompactFeedPreferenceEvents ? (
-            <CompactEmptyState message="No segment ranking yet. Segment table appears after observer interaction events are collected." />
-          ) : null}
-          {topSegments.length === 0 && !shouldCompactFeedPreferenceEvents ? (
-            <CompactEmptyState message="No segment data yet." />
-          ) : null}
-          {topSegments.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-left text-sm">
-                <thead>
-                  <tr className="border-border/25 border-b text-muted-foreground text-xs uppercase tracking-wide">
-                    <th className="py-2 pr-3">Mode</th>
-                    <th className="px-3 py-2">Draft status</th>
-                    <th className="px-3 py-2">Event</th>
-                    <th className="px-3 py-2 text-right">Count</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topSegments.map((segment, index) => (
-                    <tr
-                      className="border-border/25 border-b last:border-b-0"
-                      key={`${segment.mode ?? 'unknown'}:${segment.eventType ?? 'event'}:${index + 1}`}
-                    >
-                      <td className="py-2 pr-3 text-foreground">
-                        {segment.mode ?? 'unknown'}
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground">
-                        {segment.draftStatus ?? 'unknown'}
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground">
-                        {segment.eventType ?? 'unknown'}
-                      </td>
-                      <td className="px-3 py-2 text-right text-foreground">
-                        {toNumber(segment.count)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : null}
-        </section>
-      ) : null}
+      <TopSegmentsSection
+        isVisible={isPanelVisible('engagement')}
+        shouldCompactFeedPreferenceEvents={shouldCompactFeedPreferenceEvents}
+        topSegments={topSegmentsView}
+      />
     </main>
   );
 }
