@@ -3797,6 +3797,33 @@ export default async function AdminUxObserverEngagementPage({
   const viewMode = feedPreferences.viewMode ?? {};
   const density = feedPreferences.density ?? {};
   const hint = feedPreferences.hint ?? {};
+  const engagementSessionCount = toNumber(kpis.sessionCount);
+  const engagementAvgSessionSeconds = toNumber(kpis.observerSessionTimeSec);
+  const hasEngagementRateSample = [
+    kpis.followRate,
+    kpis.digestOpenRate,
+    kpis.return24h,
+  ].some((rate) => typeof rate === 'number' && Number.isFinite(rate));
+  const shouldCompactEngagementOverview =
+    engagementSessionCount === 0 &&
+    engagementAvgSessionSeconds === 0 &&
+    !hasEngagementRateSample;
+  const viewModeTotal = toNumber(viewMode.total);
+  const densityTotal = toNumber(density.total);
+  const hintInteractionTotal = toNumber(hint.totalInteractions);
+  const feedPreferenceInteractionTotal =
+    viewModeTotal + densityTotal + hintInteractionTotal;
+  const hasFeedPreferenceRateSample = [
+    kpis.viewModeObserverRate,
+    kpis.viewModeFocusRate,
+    kpis.densityComfortRate,
+    kpis.densityCompactRate,
+    kpis.hintDismissRate,
+  ].some((rate) => typeof rate === 'number' && Number.isFinite(rate));
+  const shouldCompactFeedPreferenceKpis =
+    feedPreferenceInteractionTotal === 0 && !hasFeedPreferenceRateSample;
+  const shouldCompactFeedPreferenceEvents =
+    feedPreferenceInteractionTotal === 0;
   const segments = Array.isArray(data?.segments) ? data?.segments : [];
   const styleFusionMetrics = normalizeStyleFusionMetrics(similarSearchMetrics);
   const topSegments = [...segments]
@@ -5314,17 +5341,59 @@ export default async function AdminUxObserverEngagementPage({
         </section>
       ) : null}
 
-      {isPanelVisible('engagement') ? (
+      {isPanelVisible('engagement') && shouldCompactEngagementOverview ? (
+        <section className="card grid gap-3 p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-semibold text-foreground text-lg">
+              Engagement overview
+            </h2>
+            <span className="inline-flex items-center rounded-full border border-border/45 bg-background/45 px-2 py-0.5 font-semibold text-muted-foreground text-xs uppercase tracking-wide">
+              low signal
+            </span>
+          </div>
+          <p className="text-muted-foreground text-sm">
+            No observer session activity in the selected window yet. Expanded
+            KPI cards appear automatically after first session events.
+          </p>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <div className="rounded-lg border border-border/25 bg-background/55 px-3 py-2">
+              <p className="text-muted-foreground text-xs uppercase tracking-wide">
+                Sessions
+              </p>
+              <p className="font-semibold text-foreground text-sm">
+                {engagementSessionCount}
+              </p>
+            </div>
+            <div className="rounded-lg border border-border/25 bg-background/55 px-3 py-2">
+              <p className="text-muted-foreground text-xs uppercase tracking-wide">
+                Avg session
+              </p>
+              <p className="font-semibold text-foreground text-sm">
+                {engagementAvgSessionSeconds.toFixed(1)}s
+              </p>
+            </div>
+            <div className="rounded-lg border border-border/25 bg-background/55 px-3 py-2">
+              <p className="text-muted-foreground text-xs uppercase tracking-wide">
+                Returns / follows
+              </p>
+              <p className="font-semibold text-foreground text-sm">
+                {toRateText(kpis.return24h)} / {toRateText(kpis.followRate)}
+              </p>
+            </div>
+          </div>
+        </section>
+      ) : null}
+      {isPanelVisible('engagement') && !shouldCompactEngagementOverview ? (
         <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
           <StatCard
             hint="Observer sessions in the current window"
             label="Session count"
-            value={`${toNumber(kpis.sessionCount)}`}
+            value={`${engagementSessionCount}`}
           />
           <StatCard
             hint="Average observer session duration"
             label="Avg session"
-            value={`${toNumber(kpis.observerSessionTimeSec).toFixed(1)}s`}
+            value={`${engagementAvgSessionSeconds.toFixed(1)}s`}
           />
           <StatCard
             hint="watchlist_follow / draft_arc_view"
@@ -5494,36 +5563,50 @@ export default async function AdminUxObserverEngagementPage({
 
       {isPanelVisible('engagement') ? (
         <section className="card grid gap-4 p-4 sm:p-5">
-          <h2 className="font-semibold text-foreground text-lg">
-            Feed preference KPIs
-          </h2>
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            <StatCard
-              hint="share of mode switches to Observer"
-              label="Observer mode share"
-              value={toRateText(kpis.viewModeObserverRate)}
-            />
-            <StatCard
-              hint="historical share from legacy Focus mode"
-              label="Legacy focus share"
-              value={toRateText(kpis.viewModeFocusRate)}
-            />
-            <StatCard
-              hint="share of density changes to Comfort"
-              label="Comfort density share"
-              value={toRateText(kpis.densityComfortRate)}
-            />
-            <StatCard
-              hint="share of density changes to Compact"
-              label="Compact density share"
-              value={toRateText(kpis.densityCompactRate)}
-            />
-            <StatCard
-              hint="hint dismiss / (hint dismiss + hint switch)"
-              label="Hint dismiss rate"
-              value={toRateText(kpis.hintDismissRate)}
-            />
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-semibold text-foreground text-lg">
+              Feed preference KPIs
+            </h2>
+            {shouldCompactFeedPreferenceKpis ? (
+              <span className="inline-flex items-center rounded-full border border-border/45 bg-background/45 px-2 py-0.5 font-semibold text-muted-foreground text-xs uppercase tracking-wide">
+                low signal
+              </span>
+            ) : null}
           </div>
+          {shouldCompactFeedPreferenceKpis ? (
+            <div className="rounded-lg border border-border/25 bg-background/55 px-3 py-2 text-muted-foreground text-sm">
+              No preference interaction events yet. Expanded KPI cards appear
+              after mode/density/hint telemetry arrives.
+            </div>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              <StatCard
+                hint="share of mode switches to Observer"
+                label="Observer mode share"
+                value={toRateText(kpis.viewModeObserverRate)}
+              />
+              <StatCard
+                hint="historical share from legacy Focus mode"
+                label="Legacy focus share"
+                value={toRateText(kpis.viewModeFocusRate)}
+              />
+              <StatCard
+                hint="share of density changes to Comfort"
+                label="Comfort density share"
+                value={toRateText(kpis.densityComfortRate)}
+              />
+              <StatCard
+                hint="share of density changes to Compact"
+                label="Compact density share"
+                value={toRateText(kpis.densityCompactRate)}
+              />
+              <StatCard
+                hint="hint dismiss / (hint dismiss + hint switch)"
+                label="Hint dismiss rate"
+                value={toRateText(kpis.hintDismissRate)}
+              />
+            </div>
+          )}
         </section>
       ) : null}
 
@@ -6194,7 +6277,40 @@ export default async function AdminUxObserverEngagementPage({
         </section>
       ) : null}
 
-      {isPanelVisible('engagement') ? (
+      {isPanelVisible('engagement') && shouldCompactFeedPreferenceEvents ? (
+        <section className="card grid gap-3 p-4 sm:p-5">
+          <h2 className="font-semibold text-foreground text-lg">
+            Feed interaction counters
+          </h2>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <div className="rounded-lg border border-border/25 bg-background/55 px-3 py-2">
+              <p className="text-muted-foreground text-xs uppercase tracking-wide">
+                Mode switches
+              </p>
+              <p className="font-semibold text-foreground text-sm">
+                {viewModeTotal}
+              </p>
+            </div>
+            <div className="rounded-lg border border-border/25 bg-background/55 px-3 py-2">
+              <p className="text-muted-foreground text-xs uppercase tracking-wide">
+                Density switches
+              </p>
+              <p className="font-semibold text-foreground text-sm">
+                {densityTotal}
+              </p>
+            </div>
+            <div className="rounded-lg border border-border/25 bg-background/55 px-3 py-2">
+              <p className="text-muted-foreground text-xs uppercase tracking-wide">
+                Hint interactions
+              </p>
+              <p className="font-semibold text-foreground text-sm">
+                {hintInteractionTotal}
+              </p>
+            </div>
+          </div>
+        </section>
+      ) : null}
+      {isPanelVisible('engagement') && !shouldCompactFeedPreferenceEvents ? (
         <section className="grid gap-4 lg:grid-cols-3">
           <article className="card grid gap-2 p-4">
             <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
@@ -6203,7 +6319,7 @@ export default async function AdminUxObserverEngagementPage({
             <p className="text-muted-foreground text-xs">
               observer: {toNumber(viewMode.observer)} | legacy focus:{' '}
               {toNumber(viewMode.focus)} | unknown: {toNumber(viewMode.unknown)}{' '}
-              | total: {toNumber(viewMode.total)}
+              | total: {viewModeTotal}
             </p>
           </article>
 
@@ -6214,7 +6330,7 @@ export default async function AdminUxObserverEngagementPage({
             <p className="text-muted-foreground text-xs">
               comfort: {toNumber(density.comfort)} | compact:{' '}
               {toNumber(density.compact)} | unknown: {toNumber(density.unknown)}{' '}
-              | total: {toNumber(density.total)}
+              | total: {densityTotal}
             </p>
           </article>
 
@@ -6224,8 +6340,7 @@ export default async function AdminUxObserverEngagementPage({
             </h3>
             <p className="text-muted-foreground text-xs">
               dismiss: {toNumber(hint.dismissCount)} | switch:{' '}
-              {toNumber(hint.switchCount)} | total:{' '}
-              {toNumber(hint.totalInteractions)}
+              {toNumber(hint.switchCount)} | total: {hintInteractionTotal}
             </p>
           </article>
         </section>
@@ -6236,11 +6351,18 @@ export default async function AdminUxObserverEngagementPage({
           <h2 className="font-semibold text-foreground text-lg">
             Top segments
           </h2>
-          {topSegments.length === 0 ? (
+          {topSegments.length === 0 && shouldCompactFeedPreferenceEvents ? (
+            <div className="rounded-lg border border-border/25 bg-background/55 px-3 py-2 text-muted-foreground text-sm">
+              No segment ranking yet. Segment table appears after observer
+              interaction events are collected.
+            </div>
+          ) : null}
+          {topSegments.length === 0 && !shouldCompactFeedPreferenceEvents ? (
             <p className="text-muted-foreground text-sm">
               No segment data yet.
             </p>
-          ) : (
+          ) : null}
+          {topSegments.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-left text-sm">
                 <thead>
@@ -6274,7 +6396,7 @@ export default async function AdminUxObserverEngagementPage({
                 </tbody>
               </table>
             </div>
-          )}
+          ) : null}
         </section>
       ) : null}
     </main>
