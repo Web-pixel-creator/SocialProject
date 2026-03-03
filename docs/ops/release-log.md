@@ -33,6 +33,37 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-03 - admin UX shared empty-state render helper pass
+
+- Scope: remove duplicated compact/plain empty-state JSX by introducing one shared renderer for table/list cards.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-03 17:09 -> 2026-03-03 17:14.
+- Changes:
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - added `CardEmptyStateMessage` component for compact/plain no-data message rendering.
+    - migrated empty-state rendering in:
+      - `BreakdownListCard`
+      - `HourlyTrendCard`
+      - `ReleaseHealthAlertHourlyTrendCard`
+      - `PredictionHourlyTrendCard`
+      - `GatewayCompactionHourlyTrendCard`
+  - Kept existing behavior unchanged while reducing repeated markup paths.
+- Validation:
+  - `npx ultracite check apps/web/src/app/admin/ux/page.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Execution:
+  - Commit: `ff940e3c5def08ed8e1e78c5665c76bc9cb040b9` pushed to `main`.
+  - Railway production deployments:
+    - `SocialProject`: `0f368f72-d12f-453e-aa54-c45ec6f2ffdf` (`SUCCESS`).
+    - `api`: `324e52f5-3343-4e44-883a-7e29083764dc` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-03T17:14:19.255Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: consider extracting a shared table-card shell component for remaining repeated `article + title + overflow table` patterns.
+
 ### 2026-03-03 - admin UX shared empty-state helper pass
 
 - Scope: reduce repetitive card-empty logic by introducing one shared resolver for compact/plain no-data states.
