@@ -2977,6 +2977,34 @@ const CardEmptyStateMessage = ({
   return null;
 };
 
+const TableCardShell = ({
+  emptyLabel,
+  hasItems,
+  showCompactEmptyState,
+  showPlainEmptyState,
+  table,
+  title,
+}: {
+  emptyLabel: string;
+  hasItems: boolean;
+  showCompactEmptyState: boolean;
+  showPlainEmptyState: boolean;
+  table: JSX.Element;
+  title: string;
+}) => (
+  <article className="card grid gap-2 p-4">
+    <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+      {title}
+    </h3>
+    <CardEmptyStateMessage
+      emptyLabel={emptyLabel}
+      showCompactEmptyState={showCompactEmptyState}
+      showPlainEmptyState={showPlainEmptyState}
+    />
+    {hasItems ? <div className="overflow-x-auto">{table}</div> : null}
+  </article>
+);
+
 const normalizeStyleFusionErrorBreakdown = (
   items: unknown,
 ): Array<{ count: number; errorCode: string }> => {
@@ -3242,59 +3270,54 @@ const HourlyTrendCard = ({
       itemCount: items.length,
     });
   return (
-    <article className="card grid gap-2 p-4">
-      <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-        {title}
-      </h3>
-      <CardEmptyStateMessage
-        emptyLabel={emptyLabel}
-        showCompactEmptyState={showCompactEmptyState}
-        showPlainEmptyState={showPlainEmptyState}
-      />
-      {hasItems ? (
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left text-xs">
-            <thead>
-              <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
-                <th className="py-2 pr-3">Hour</th>
-                <th className="px-3 py-2 text-right">Views</th>
-                <th className="px-3 py-2 text-right">Empty</th>
-                <th className="px-3 py-2 text-right">Errors</th>
-                <th className="px-3 py-2 text-right">Coverage</th>
-                <th className="px-3 py-2 text-right">Error rate</th>
+    <TableCardShell
+      emptyLabel={emptyLabel}
+      hasItems={hasItems}
+      showCompactEmptyState={showCompactEmptyState}
+      showPlainEmptyState={showPlainEmptyState}
+      table={
+        <table className="w-full border-collapse text-left text-xs">
+          <thead>
+            <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
+              <th className="py-2 pr-3">Hour</th>
+              <th className="px-3 py-2 text-right">Views</th>
+              <th className="px-3 py-2 text-right">Empty</th>
+              <th className="px-3 py-2 text-right">Errors</th>
+              <th className="px-3 py-2 text-right">Coverage</th>
+              <th className="px-3 py-2 text-right">Error rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((entry) => (
+              <tr
+                className="border-border/25 border-b last:border-b-0"
+                key={entry.hour}
+              >
+                <td className="py-2 pr-3 text-muted-foreground">
+                  {formatHourBucket(entry.hour)}
+                </td>
+                <td className="px-3 py-2 text-right text-foreground">
+                  {entry.views}
+                </td>
+                <td className="px-3 py-2 text-right text-foreground">
+                  {entry.emptyStates}
+                </td>
+                <td className="px-3 py-2 text-right text-foreground">
+                  {entry.errors}
+                </td>
+                <td className="px-3 py-2 text-right text-foreground">
+                  {toRateText(entry.coverageRate)}
+                </td>
+                <td className="px-3 py-2 text-right text-foreground">
+                  {toRateText(entry.errorRate)}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {items.map((entry) => (
-                <tr
-                  className="border-border/25 border-b last:border-b-0"
-                  key={entry.hour}
-                >
-                  <td className="py-2 pr-3 text-muted-foreground">
-                    {formatHourBucket(entry.hour)}
-                  </td>
-                  <td className="px-3 py-2 text-right text-foreground">
-                    {entry.views}
-                  </td>
-                  <td className="px-3 py-2 text-right text-foreground">
-                    {entry.emptyStates}
-                  </td>
-                  <td className="px-3 py-2 text-right text-foreground">
-                    {entry.errors}
-                  </td>
-                  <td className="px-3 py-2 text-right text-foreground">
-                    {toRateText(entry.coverageRate)}
-                  </td>
-                  <td className="px-3 py-2 text-right text-foreground">
-                    {toRateText(entry.errorRate)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
-    </article>
+            ))}
+          </tbody>
+        </table>
+      }
+      title={title}
+    />
   );
 };
 
@@ -3315,47 +3338,42 @@ const ReleaseHealthAlertHourlyTrendCard = ({
       itemCount: items.length,
     });
   return (
-    <article className="card grid gap-2 p-4">
-      <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-        {title}
-      </h3>
-      <CardEmptyStateMessage
-        emptyLabel={emptyLabel}
-        showCompactEmptyState={showCompactEmptyState}
-        showPlainEmptyState={showPlainEmptyState}
-      />
-      {hasItems ? (
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left text-xs">
-            <thead>
-              <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
-                <th className="py-2 pr-3">Hour</th>
-                <th className="px-3 py-2 text-right">Alerts</th>
-                <th className="px-3 py-2 text-right">First appearances</th>
+    <TableCardShell
+      emptyLabel={emptyLabel}
+      hasItems={hasItems}
+      showCompactEmptyState={showCompactEmptyState}
+      showPlainEmptyState={showPlainEmptyState}
+      table={
+        <table className="w-full border-collapse text-left text-xs">
+          <thead>
+            <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
+              <th className="py-2 pr-3">Hour</th>
+              <th className="px-3 py-2 text-right">Alerts</th>
+              <th className="px-3 py-2 text-right">First appearances</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((entry) => (
+              <tr
+                className="border-border/25 border-b last:border-b-0"
+                key={entry.hour}
+              >
+                <td className="py-2 pr-3 text-muted-foreground">
+                  {formatHourBucket(entry.hour)}
+                </td>
+                <td className="px-3 py-2 text-right text-foreground">
+                  {entry.alerts}
+                </td>
+                <td className="px-3 py-2 text-right text-foreground">
+                  {entry.firstAppearances}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {items.map((entry) => (
-                <tr
-                  className="border-border/25 border-b last:border-b-0"
-                  key={entry.hour}
-                >
-                  <td className="py-2 pr-3 text-muted-foreground">
-                    {formatHourBucket(entry.hour)}
-                  </td>
-                  <td className="px-3 py-2 text-right text-foreground">
-                    {entry.alerts}
-                  </td>
-                  <td className="px-3 py-2 text-right text-foreground">
-                    {entry.firstAppearances}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
-    </article>
+            ))}
+          </tbody>
+        </table>
+      }
+      title={title}
+    />
   );
 };
 
@@ -3376,59 +3394,54 @@ const PredictionHourlyTrendCard = ({
       itemCount: items.length,
     });
   return (
-    <article className="card grid gap-2 p-4">
-      <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-        {title}
-      </h3>
-      <CardEmptyStateMessage
-        emptyLabel={emptyLabel}
-        showCompactEmptyState={showCompactEmptyState}
-        showPlainEmptyState={showPlainEmptyState}
-      />
-      {hasItems ? (
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left text-xs">
-            <thead>
-              <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
-                <th className="py-2 pr-3">Hour</th>
-                <th className="px-3 py-2 text-right">Predictions</th>
-                <th className="px-3 py-2 text-right">Stake</th>
-                <th className="px-3 py-2 text-right">Payout</th>
-                <th className="px-3 py-2 text-right">Accuracy</th>
-                <th className="px-3 py-2 text-right">Payout/Stake</th>
+    <TableCardShell
+      emptyLabel={emptyLabel}
+      hasItems={hasItems}
+      showCompactEmptyState={showCompactEmptyState}
+      showPlainEmptyState={showPlainEmptyState}
+      table={
+        <table className="w-full border-collapse text-left text-xs">
+          <thead>
+            <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
+              <th className="py-2 pr-3">Hour</th>
+              <th className="px-3 py-2 text-right">Predictions</th>
+              <th className="px-3 py-2 text-right">Stake</th>
+              <th className="px-3 py-2 text-right">Payout</th>
+              <th className="px-3 py-2 text-right">Accuracy</th>
+              <th className="px-3 py-2 text-right">Payout/Stake</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((entry) => (
+              <tr
+                className="border-border/25 border-b last:border-b-0"
+                key={entry.hour}
+              >
+                <td className="py-2 pr-3 text-muted-foreground">
+                  {formatHourBucket(entry.hour)}
+                </td>
+                <td className="px-3 py-2 text-right text-foreground">
+                  {entry.predictions}
+                </td>
+                <td className="px-3 py-2 text-right text-foreground">
+                  {entry.stakePoints}
+                </td>
+                <td className="px-3 py-2 text-right text-foreground">
+                  {entry.payoutPoints}
+                </td>
+                <td className="px-3 py-2 text-right text-foreground">
+                  {toRateText(entry.accuracyRate)}
+                </td>
+                <td className="px-3 py-2 text-right text-foreground">
+                  {toRateText(entry.payoutToStakeRatio)}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {items.map((entry) => (
-                <tr
-                  className="border-border/25 border-b last:border-b-0"
-                  key={entry.hour}
-                >
-                  <td className="py-2 pr-3 text-muted-foreground">
-                    {formatHourBucket(entry.hour)}
-                  </td>
-                  <td className="px-3 py-2 text-right text-foreground">
-                    {entry.predictions}
-                  </td>
-                  <td className="px-3 py-2 text-right text-foreground">
-                    {entry.stakePoints}
-                  </td>
-                  <td className="px-3 py-2 text-right text-foreground">
-                    {entry.payoutPoints}
-                  </td>
-                  <td className="px-3 py-2 text-right text-foreground">
-                    {toRateText(entry.accuracyRate)}
-                  </td>
-                  <td className="px-3 py-2 text-right text-foreground">
-                    {toRateText(entry.payoutToStakeRatio)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
-    </article>
+            ))}
+          </tbody>
+        </table>
+      }
+      title={title}
+    />
   );
 };
 
@@ -3449,65 +3462,60 @@ const GatewayCompactionHourlyTrendCard = ({
       itemCount: items.length,
     });
   return (
-    <article className="card grid gap-2 p-4">
-      <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-        {title}
-      </h3>
-      <CardEmptyStateMessage
-        emptyLabel={emptyLabel}
-        showCompactEmptyState={showCompactEmptyState}
-        showPlainEmptyState={showPlainEmptyState}
-      />
-      {hasItems ? (
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left text-xs">
-            <thead>
-              <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
-                <th className="py-2 pr-3">Hour</th>
-                <th className="px-3 py-2 text-right">Compactions</th>
-                <th className="px-3 py-2 text-right">Auto</th>
-                <th className="px-3 py-2 text-right">Manual</th>
-                <th className="px-3 py-2 text-right">Auto share</th>
-                <th className="px-3 py-2 text-right">Pruned</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((entry) => {
-                return (
-                  <tr
-                    className="border-border/25 border-b last:border-b-0"
-                    key={entry.hour}
-                  >
-                    <td className="py-2 pr-3 text-muted-foreground">
-                      {formatHourBucket(entry.hour)}
-                    </td>
-                    <td className="px-3 py-2 text-right text-foreground">
-                      {entry.compactions}
-                    </td>
-                    <td className="px-3 py-2 text-right text-foreground">
-                      {entry.autoCompactions}
-                    </td>
-                    <td className="px-3 py-2 text-right text-foreground">
-                      {entry.manualCompactions}
-                    </td>
-                    <td className="px-3 py-2 text-right text-foreground">
-                      <span
-                        className={`${healthBadgeClass(entry.autoCompactionRiskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
-                      >
-                        {toRateText(entry.autoCompactionShare)}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-right text-foreground">
-                      {entry.prunedEventCount}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
-    </article>
+    <TableCardShell
+      emptyLabel={emptyLabel}
+      hasItems={hasItems}
+      showCompactEmptyState={showCompactEmptyState}
+      showPlainEmptyState={showPlainEmptyState}
+      table={
+        <table className="w-full border-collapse text-left text-xs">
+          <thead>
+            <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
+              <th className="py-2 pr-3">Hour</th>
+              <th className="px-3 py-2 text-right">Compactions</th>
+              <th className="px-3 py-2 text-right">Auto</th>
+              <th className="px-3 py-2 text-right">Manual</th>
+              <th className="px-3 py-2 text-right">Auto share</th>
+              <th className="px-3 py-2 text-right">Pruned</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((entry) => {
+              return (
+                <tr
+                  className="border-border/25 border-b last:border-b-0"
+                  key={entry.hour}
+                >
+                  <td className="py-2 pr-3 text-muted-foreground">
+                    {formatHourBucket(entry.hour)}
+                  </td>
+                  <td className="px-3 py-2 text-right text-foreground">
+                    {entry.compactions}
+                  </td>
+                  <td className="px-3 py-2 text-right text-foreground">
+                    {entry.autoCompactions}
+                  </td>
+                  <td className="px-3 py-2 text-right text-foreground">
+                    {entry.manualCompactions}
+                  </td>
+                  <td className="px-3 py-2 text-right text-foreground">
+                    <span
+                      className={`${healthBadgeClass(entry.autoCompactionRiskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
+                    >
+                      {toRateText(entry.autoCompactionShare)}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-right text-foreground">
+                    {entry.prunedEventCount}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      }
+      title={title}
+    />
   );
 };
 
