@@ -33,6 +33,37 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-03 - admin UX shared empty-state helper pass
+
+- Scope: reduce repetitive card-empty logic by introducing one shared resolver for compact/plain no-data states.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-03 16:56 -> 2026-03-03 17:03.
+- Changes:
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - added `resolveCardEmptyState({ itemCount, compactEmptyState })`.
+    - migrated empty-state condition logic to the shared helper in:
+      - `BreakdownListCard`
+      - `HourlyTrendCard`
+      - `ReleaseHealthAlertHourlyTrendCard`
+      - `PredictionHourlyTrendCard`
+      - `GatewayCompactionHourlyTrendCard`
+  - Behavior unchanged: UI still renders compact no-data block only when `compactEmptyState=true`, otherwise keeps plain fallback text.
+- Validation:
+  - `npx ultracite check apps/web/src/app/admin/ux/page.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Execution:
+  - Commit: `690cb71df3087c1cefb0ed912ccad2dd721aca96` pushed to `main`.
+  - Railway production deployments:
+    - `SocialProject`: `a035574e-87ce-4153-9591-33e469f2be80` (`SUCCESS`).
+    - `api`: `260326b4-b32a-4cb4-be01-a21f096689cf` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-03T17:02:57.985Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: extract shared empty-state render block to remove remaining duplicated `CompactEmptyState/plain <p>` JSX in table/list cards.
+
 ### 2026-03-03 - admin UX gateway hourly compact-empty toggle pass
 
 - Scope: finish compact-empty parity by adding opt-in compact state support to gateway hourly telemetry table.
