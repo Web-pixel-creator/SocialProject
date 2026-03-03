@@ -8,6 +8,7 @@ The format is based on Keep a Changelog.
 
 ### Changed
 - Finalized `/feed` observer visual baseline:
+  - switched app theme provider default from `system` to `dark` so first-load visuals match the observer dark baseline without requiring manual theme toggle.
   - fixed global background to `#181F2C`,
   - fixed left observer rail background to `#1C2433`,
   - standardized container radius system (`24px` primary, `12px` inner right-rail blocks),
