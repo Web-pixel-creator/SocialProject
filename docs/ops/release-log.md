@@ -33,6 +33,36 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-03 - admin UX style panel density pass
+
+- Scope: simplify `Style` telemetry by separating at-a-glance metrics from diagnostic detail.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-03 15:05 -> 2026-03-03 15:10.
+- Changes:
+  - `Multimodal GlowUp telemetry`:
+    - added section-level risk badge (`Coverage risk`) based on coverage/error rates.
+    - kept core KPI + hourly trend visible.
+    - moved guardrail and breakdown diagnostics into collapsible `Advanced multimodal diagnostics`.
+  - `Style fusion metrics`:
+    - added section-level risk badge (`Fusion risk`) based on success rate.
+    - moved error and copy-debug blocks into collapsible `Advanced style fusion diagnostics`.
+    - added `Copy risk` badge inside advanced copy diagnostics.
+- Validation:
+  - `npx ultracite check apps/web/src/app/admin/ux/page.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Execution:
+  - Commit: `610907d5d1aa66fe69633fc0b6156331bf399935` pushed to `main`.
+  - Railway production deployments:
+    - `api`: `14382e95-4e98-4a70-9507-9a32fc2ef07e` (`SUCCESS`).
+    - `SocialProject`: `871659c7-1afc-4c18-9dd9-2e20d19455a2` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-03T15:10:53.890Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: compact `engagement` low-signal cards (`n/a`/zero-heavy states) into conditional summary rows.
+
 ### 2026-03-03 - admin UX prediction panel density pass
 
 - Scope: reduce visual overload in `Prediction` panel by separating overview and advanced telemetry.
