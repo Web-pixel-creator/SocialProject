@@ -77,6 +77,101 @@ test.describe('Feed observer rail', () => {
     await expect(radarTab).toHaveAttribute('aria-pressed', 'false');
   });
 
+  test('keeps observer visual baseline tokens and right-rail geometry', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await openFeed(page);
+    await page.getByTestId('feed-right-rail-tab-live').click();
+
+    const baseline = await page.evaluate(() => {
+      const bodyBg = getComputedStyle(document.body).backgroundColor;
+      const leftRail = document.querySelector('.observer-left-rail');
+      const topbar = document.querySelector('.topbar-surface');
+      const rightRailShell = document.querySelector(
+        '[data-testid="feed-right-rail-shell"]',
+      );
+      const feedShell = document.querySelector('.feed-shell');
+      const liveRail = document.querySelector(
+        '[data-testid="live-studio-sessions-rail"]',
+      );
+      const overlayHeading = Array.from(document.querySelectorAll('p')).find(
+        (node) =>
+          node.textContent?.trim().toLowerCase() === 'session overlay',
+      );
+      const overlayCard = overlayHeading?.closest('div');
+      const startCta = Array.from(
+        document.querySelectorAll<HTMLElement>('button, a'),
+      ).find(
+        (node) =>
+          node.textContent?.trim().toLowerCase() === 'start realtime copilot',
+      );
+      const signInCta = Array.from(
+        document.querySelectorAll<HTMLElement>('button, a'),
+      ).find(
+        (node) => node.textContent?.trim().toLowerCase() === 'sign in required',
+      );
+      const topbarRight = topbar?.getBoundingClientRect().right ?? null;
+      const rightRailRight = rightRailShell?.getBoundingClientRect().right ?? null;
+
+      return {
+        bodyBg,
+        leftRailBg: leftRail ? getComputedStyle(leftRail).backgroundColor : null,
+        feedShellColumns: feedShell
+          ? getComputedStyle(feedShell).gridTemplateColumns
+          : null,
+        liveRailRadius: liveRail ? getComputedStyle(liveRail).borderRadius : null,
+        overlayCardRadius: overlayCard
+          ? getComputedStyle(overlayCard).borderRadius
+          : null,
+        rightEdgeDeltaPx:
+          topbarRight !== null && rightRailRight !== null
+            ? Math.abs(topbarRight - rightRailRight)
+            : null,
+        startCta: startCta
+          ? {
+              backgroundColor: getComputedStyle(startCta).backgroundColor,
+              fontSize: getComputedStyle(startCta).fontSize,
+              height: getComputedStyle(startCta).height,
+            }
+          : null,
+        signInCta: signInCta
+          ? {
+              backgroundColor: getComputedStyle(signInCta).backgroundColor,
+              fontSize: getComputedStyle(signInCta).fontSize,
+              height: getComputedStyle(signInCta).height,
+            }
+          : null,
+      };
+    });
+
+    expect(baseline.bodyBg).toBe('rgb(24, 31, 44)');
+    expect(baseline.leftRailBg).toBe('rgb(28, 36, 51)');
+    expect(baseline.feedShellColumns ?? '').toContain('370px');
+    expect(baseline.liveRailRadius).toBe('24px');
+    expect(baseline.overlayCardRadius).toBe('12px');
+
+    expect(baseline.startCta).toEqual(
+      expect.objectContaining({
+        backgroundColor: 'rgb(28, 36, 51)',
+        fontSize: '12px',
+        height: '32px',
+      }),
+    );
+    expect(baseline.signInCta).toEqual(
+      expect.objectContaining({
+        fontSize: '12px',
+        height: '32px',
+      }),
+    );
+    expect(baseline.signInCta?.backgroundColor).not.toBe(
+      baseline.startCta?.backgroundColor,
+    );
+    expect(baseline.rightEdgeDeltaPx ?? Number.POSITIVE_INFINITY).toBeLessThan(
+      1,
+    );
+  });
+
   test('supports keyboard navigation across primary feed tabs', async ({
     page,
   }) => {

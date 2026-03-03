@@ -30,6 +30,7 @@ The format is based on Keep a Changelog.
   - normalized shared `.pill` badge typography from `11px` to `12px` (`text-xs`) to remove remaining micro-text in feed rail counters/meta chips.
   - added unit coverage for right-rail count badge updates and section-switch skeleton behavior in `feed-page-client.spec.tsx`.
   - added Playwright coverage for right-rail tab persistence after reload (`feed-observer-rail.spec.ts`).
+  - added Playwright visual-token regression for `/feed` observer baseline (page/rail colors, 24px/12px radius system, 12px/32px right-rail CTA sizing, and right-rail/topbar right-edge alignment).
   - refreshed visual smoke baselines for `/feed` desktop/mobile snapshots after right-rail tab UI update.
   - aligned feed e2e specs with Ultracite formatting/import order and resolved remaining lint blockers (`noDelete`, `useConsistentTypeDefinitions`) in observer/feed navigation suites.
   - documented explicit Biome test-file exceptions for Playwright inline-regex locator assertions and sync route-mock handlers in feed e2e specs to keep lint output actionable.
