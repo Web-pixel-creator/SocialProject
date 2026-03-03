@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 import { openFeed } from './utils/feed';
 
 const DRAFT_ID = 'draft-hover-e2e-motion';
@@ -63,22 +63,10 @@ const readTransform = async (locator: Locator) => {
   });
 };
 
-const expectHoverTransform = async (
-  locator: Locator,
-  shouldMove: boolean,
-): Promise<void> => {
+const expectHoverTransform = async (locator: Locator): Promise<void> => {
   await expect(locator).toBeVisible();
   await locator.scrollIntoViewIfNeeded();
   await locator.hover();
-
-  if (shouldMove) {
-    await expect
-      .poll(async () => {
-        return await readTransform(locator);
-      })
-      .not.toBe('none');
-    return;
-  }
 
   await expect
     .poll(async () => {
@@ -88,7 +76,7 @@ const expectHoverTransform = async (
 };
 
 test.describe('Reduced motion on feed route widgets', () => {
-  test('keeps card hover lift animation in normal motion mode', async ({
+  test('keeps card hover transform disabled in normal motion mode', async ({
     page,
   }) => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
@@ -100,7 +88,7 @@ test.describe('Reduced motion on feed route widgets', () => {
       .locator('article')
       .filter({ hasText: new RegExp(draftHeading, 'i') })
       .first();
-    await expectHoverTransform(draftCard, true);
+    await expectHoverTransform(draftCard);
 
     await page.getByRole('button', { name: /^Battles$/i }).click();
     await expect(page).toHaveURL(/tab=Battles/);
@@ -109,10 +97,10 @@ test.describe('Reduced motion on feed route widgets', () => {
       .locator('article')
       .filter({ hasText: new RegExp(BATTLE_TITLE, 'i') })
       .first();
-    await expectHoverTransform(battleCard, true);
+    await expectHoverTransform(battleCard);
   });
 
-  test('disables card hover lift animation when reduced motion is enabled', async ({
+  test('keeps card hover transform disabled when reduced motion is enabled', async ({
     page,
   }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -124,7 +112,7 @@ test.describe('Reduced motion on feed route widgets', () => {
       .locator('article')
       .filter({ hasText: new RegExp(draftHeading, 'i') })
       .first();
-    await expectHoverTransform(draftCard, false);
+    await expectHoverTransform(draftCard);
 
     await page.getByRole('button', { name: /^Battles$/i }).click();
     await expect(page).toHaveURL(/tab=Battles/);
@@ -133,6 +121,6 @@ test.describe('Reduced motion on feed route widgets', () => {
       .locator('article')
       .filter({ hasText: new RegExp(BATTLE_TITLE, 'i') })
       .first();
-    await expectHoverTransform(battleCard, false);
+    await expectHoverTransform(battleCard);
   });
 });

@@ -25,6 +25,9 @@ The format is based on Keep a Changelog.
   - added keyboard navigation inside desktop `More` tab list (`ArrowUp/Down/Left/Right`, `Home`, `End`) with unit and browser-level regression coverage.
   - added mobile focus-return guardrails for overlays: `Filters`/`More` now have stable toggle/close test hooks and verified escape-close focus restoration to source toggles in browser regression.
   - added mobile `More` keyboard regression (`ArrowDown`, `End`, `Escape`) to verify list focus movement and post-close focus handoff.
+  - synced smoke e2e expectations with the current observer rail UX:
+    - mobile rail controls are asserted from the `Pulse radar` tab state,
+    - feed cards are asserted as non-lifting on hover in both normal and reduced-motion modes (matching removed hover-lift design behavior).
   - aligned feed e2e suites with right-rail section tabs (`Live`/`Studio`/`Pulse radar`) so rail assertions switch to the proper tab before checking section-specific widgets.
   - updated feed filter e2e assertions to use labeled form controls (`Sort`/`Status`/`Time range`/`Intent`) for stable query-sync checks with the current combobox/select implementation.
   - normalized shared `.pill` badge typography from `11px` to `12px` (`text-xs`) to remove remaining micro-text in feed rail counters/meta chips.
