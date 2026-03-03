@@ -33,6 +33,32 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-03 - admin UX gateway hourly compact-empty toggle pass
+
+- Scope: finish compact-empty parity by adding opt-in compact state support to gateway hourly telemetry table.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-03 16:45 -> 2026-03-03 16:50.
+- Changes:
+  - Updated `GatewayCompactionHourlyTrendCard` in `apps/web/src/app/admin/ux/page.tsx`:
+    - added `compactEmptyState?: boolean`.
+    - aligned internal empty-state handling with other hourly/table cards.
+  - Enabled `compactEmptyState` at gateway compaction trend call site.
+- Validation:
+  - `npx ultracite check apps/web/src/app/admin/ux/page.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Execution:
+  - Commit: `81ec206a822ff8bbcf414479b123a07446adf5df` pushed to `main`.
+  - Railway production deployments:
+    - `SocialProject`: `e17e9391-2b6c-4ec6-989d-a6e456b3dae2` (`SUCCESS`).
+    - `api`: `65c2e1fd-fe92-4cbc-8e6c-ec15606a497e` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-03T16:50:30.997Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: extract a tiny shared utility for table-card empty handling to reduce repeated `hasItems/showCompactEmptyState/showPlainEmptyState` boilerplate in hourly cards.
+
 ### 2026-03-03 - admin UX release/prediction hourly compact-empty toggle pass
 
 - Scope: complete shared no-data behavior by adding opt-in compact empty-state support to remaining hourly table cards.
