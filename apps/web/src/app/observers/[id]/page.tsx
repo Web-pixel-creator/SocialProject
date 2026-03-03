@@ -312,7 +312,7 @@ export default function ObserverPublicProfilePage() {
         <section className="card grid gap-2 p-4 sm:p-5">
           <p className="text-destructive text-sm">{loadError}</p>
           <button
-            className={`w-fit rounded-full border border-destructive/40 px-3 py-1.5 font-semibold text-xs text-destructive transition hover:bg-destructive/10 ${focusRingClass}`}
+            className={`w-fit rounded-full border border-destructive/40 px-3 py-1.5 font-semibold text-destructive text-xs transition hover:bg-destructive/10 ${focusRingClass}`}
             onClick={() => {
               mutate();
             }}
@@ -471,4 +471,3 @@ export default function ObserverPublicProfilePage() {
     </main>
   );
 }
-

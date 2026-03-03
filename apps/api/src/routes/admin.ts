@@ -3237,10 +3237,13 @@ router.post(
         fieldName: 'repository',
         maxLength: 200,
       });
-      const generatedAtUtc = parseOptionalBoundedBodyString(body.generatedAtUtc, {
-        fieldName: 'generatedAtUtc',
-        maxLength: 64,
-      });
+      const generatedAtUtc = parseOptionalBoundedBodyString(
+        body.generatedAtUtc,
+        {
+          fieldName: 'generatedAtUtc',
+          maxLength: 64,
+        },
+      );
       if (generatedAtUtc && Number.isNaN(Date.parse(generatedAtUtc))) {
         throw new ServiceError(
           'ADMIN_INVALID_BODY',
@@ -4447,6 +4450,7 @@ router.get('/admin/ux/similar-search', requireAdmin, async (req, res, next) => {
 router.get(
   '/admin/ux/observer-engagement',
   requireAdmin,
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: This endpoint intentionally aggregates many analytics slices into one admin response.
   async (req, res, next) => {
     try {
       const query = assertAllowedQueryFields(req.query, {
@@ -5496,12 +5500,12 @@ router.get(
           Number.isInteger(runNumberRaw) && runNumberRaw > 0
             ? runNumberRaw
             : null;
-        const runUrl =
-          typeof run.htmlUrl === 'string' && run.htmlUrl.length > 0
-            ? run.htmlUrl
-            : typeof run.runUrl === 'string' && run.runUrl.length > 0
-              ? run.runUrl
-              : null;
+        let runUrl: string | null = null;
+        if (typeof run.htmlUrl === 'string' && run.htmlUrl.length > 0) {
+          runUrl = run.htmlUrl;
+        } else if (typeof run.runUrl === 'string' && run.runUrl.length > 0) {
+          runUrl = run.runUrl;
+        }
         if (runId !== null) {
           releaseHealthAlertRunIds.add(runId);
         }
@@ -5567,7 +5571,8 @@ router.get(
         }))
         .sort(
           (left, right) =>
-            right.count - left.count || left.channel.localeCompare(right.channel),
+            right.count - left.count ||
+            left.channel.localeCompare(right.channel),
         );
       const releaseHealthAlertByFailureMode = Array.from(
         releaseHealthAlertByFailureModeMap.entries(),

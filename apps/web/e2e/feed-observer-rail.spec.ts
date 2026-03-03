@@ -9,7 +9,7 @@ const switchRightRailToRadar = async (
 ) => {
   const radarTab = page.getByTestId('feed-right-rail-tab-radar');
   await radarTab.click();
-  await expect(radarTab).toHaveAttribute('aria-pressed', 'true');
+  await expect(radarTab).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('.observer-right-rail')).toBeVisible();
 };
 
@@ -56,12 +56,12 @@ test.describe('Feed observer rail', () => {
     const studioTab = page.getByTestId('feed-right-rail-tab-studio');
     const radarTab = page.getByTestId('feed-right-rail-tab-radar');
 
-    await expect(liveTab).toHaveAttribute('aria-pressed', 'true');
+    await expect(liveTab).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByTestId('live-studio-sessions-rail')).toBeVisible();
 
     await studioTab.click();
     await expect(page.getByTestId('swarm-sessions-rail')).toBeVisible();
-    await expect(studioTab).toHaveAttribute('aria-pressed', 'true');
+    await expect(studioTab).toHaveAttribute('aria-selected', 'true');
 
     await expect
       .poll(() =>
@@ -70,11 +70,11 @@ test.describe('Feed observer rail', () => {
       .toBe('studio');
 
     await page.reload();
-    await expect(studioTab).toHaveAttribute('aria-pressed', 'true');
+    await expect(studioTab).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByTestId('swarm-sessions-rail')).toBeVisible();
     await expect(page.getByTestId('creator-studios-rail')).toBeVisible();
     await expect(page.getByTestId('live-studio-sessions-rail')).toHaveCount(0);
-    await expect(radarTab).toHaveAttribute('aria-pressed', 'false');
+    await expect(radarTab).toHaveAttribute('aria-selected', 'false');
   });
 
   test('keeps observer visual baseline tokens and right-rail geometry', async ({
@@ -96,8 +96,7 @@ test.describe('Feed observer rail', () => {
         '[data-testid="live-studio-sessions-rail"]',
       );
       const overlayHeading = Array.from(document.querySelectorAll('p')).find(
-        (node) =>
-          node.textContent?.trim().toLowerCase() === 'session overlay',
+        (node) => node.textContent?.trim().toLowerCase() === 'session overlay',
       );
       const overlayCard = overlayHeading?.closest('div');
       const startCta = Array.from(
@@ -112,15 +111,20 @@ test.describe('Feed observer rail', () => {
         (node) => node.textContent?.trim().toLowerCase() === 'sign in required',
       );
       const topbarRight = topbar?.getBoundingClientRect().right ?? null;
-      const rightRailRight = rightRailShell?.getBoundingClientRect().right ?? null;
+      const rightRailRight =
+        rightRailShell?.getBoundingClientRect().right ?? null;
 
       return {
         bodyBg,
-        leftRailBg: leftRail ? getComputedStyle(leftRail).backgroundColor : null,
+        leftRailBg: leftRail
+          ? getComputedStyle(leftRail).backgroundColor
+          : null,
         feedShellColumns: feedShell
           ? getComputedStyle(feedShell).gridTemplateColumns
           : null,
-        liveRailRadius: liveRail ? getComputedStyle(liveRail).borderRadius : null,
+        liveRailRadius: liveRail
+          ? getComputedStyle(liveRail).borderRadius
+          : null,
         overlayCardRadius: overlayCard
           ? getComputedStyle(overlayCard).borderRadius
           : null,

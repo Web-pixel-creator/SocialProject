@@ -115,7 +115,7 @@ export const ObserverSidebar = ({
       <nav aria-label={t('sidebar.observerNavigation')} className="grid gap-5">
         {navSections.map((section) => (
           <section className="grid gap-2" key={section.id}>
-            <p className="px-1.5 font-semibold text-xs text-muted-foreground/75 uppercase tracking-wide">
+            <p className="px-1.5 font-semibold text-muted-foreground/75 text-xs uppercase tracking-wide">
               {t(section.titleKey)}
             </p>
             {section.items.map((item) => {

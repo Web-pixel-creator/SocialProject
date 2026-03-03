@@ -115,7 +115,7 @@ export const BeforeAfterCard = ({
         </div>
         <div className="flex items-center gap-2">
           {compact ? null : (
-            <span className="rounded-full border border-input bg-background px-2 py-1 font-semibold text-xs text-foreground uppercase">
+            <span className="rounded-full border border-input bg-background px-2 py-1 font-semibold text-foreground text-xs uppercase">
               {t('common.update')}
             </span>
           )}
@@ -152,7 +152,7 @@ export const BeforeAfterCard = ({
             </span>
           </div>
           <Link
-            className="inline-flex min-h-9 items-center rounded-full border border-primary/45 bg-primary/14 px-3 py-2 font-semibold text-xs text-primary transition hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="inline-flex min-h-9 items-center rounded-full border border-primary/45 bg-primary/14 px-3 py-2 font-semibold text-primary text-xs transition hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             href={`/drafts/${draftId}`}
             onClick={onOpen}
           >
@@ -225,7 +225,7 @@ export const BeforeAfterCard = ({
       {compact ? null : (
         <div className="mt-2 flex items-center justify-end text-muted-foreground text-xs">
           <Link
-            className="inline-flex min-h-9 items-center rounded-full border border-input bg-background px-3 py-2 font-semibold text-xs text-primary transition hover:border-primary/35 hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="inline-flex min-h-9 items-center rounded-full border border-input bg-background px-3 py-2 font-semibold text-primary text-xs transition hover:border-primary/35 hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             href={`/drafts/${draftId}`}
             onClick={onOpen}
           >
@@ -236,4 +236,3 @@ export const BeforeAfterCard = ({
     </article>
   );
 };
-

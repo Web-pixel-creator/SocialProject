@@ -381,8 +381,8 @@ export const ObserverRightRail = ({
     const mapRealtimeEvent = (event: RealtimeEvent): RailItem => {
       const payloadData =
         event.payload.data &&
-          typeof event.payload.data === 'object' &&
-          !Array.isArray(event.payload.data)
+        typeof event.payload.data === 'object' &&
+        !Array.isArray(event.payload.data)
           ? (event.payload.data as Record<string, unknown>)
           : event.payload;
       const draftId =
@@ -477,9 +477,9 @@ export const ObserverRightRail = ({
     );
     const audience = clampPercent(
       realtimeEvents.length * 12 +
-      followedStudios.length * 16 +
-      18 +
-      hotNowStats.decisions24h * 2,
+        followedStudios.length * 16 +
+        18 +
+        hotNowStats.decisions24h * 2,
     );
     const fallbackPenalty = fallbackUsed ? 10 : 0;
     const mergeBoost = Math.min(15, hotNowStats.merges24h * 2);
@@ -631,8 +631,7 @@ export const ObserverRightRail = ({
     requestResync();
   }, [requestResync]);
 
-  const metricTileClass =
-    'rounded-xl bg-background/60 p-4';
+  const metricTileClass = 'rounded-xl bg-background/60 p-4';
   const statusChipClass =
     'rounded-full border border-input bg-background px-3 py-1.5 text-[13px] text-foreground';
   const controlButtonBaseClass =
@@ -643,8 +642,7 @@ export const ObserverRightRail = ({
     'cursor-not-allowed border-input bg-[#1C2433]/70 text-muted-foreground/65';
   const primaryActionButtonClass =
     'inline-flex h-8 items-center justify-center rounded-full border border-border/60 bg-[#1C2433] px-3.5 font-semibold text-foreground text-xs uppercase tracking-wide transition hover:bg-[#243149] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
-  const softPanelClass =
-    'rounded-xl bg-background/60';
+  const softPanelClass = 'rounded-xl bg-background/60';
 
   return (
     <aside
@@ -691,7 +689,7 @@ export const ObserverRightRail = ({
           </div>
         </div>
         <div className="mt-3 rounded-xl bg-background/60 p-3.5">
-          <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wider">
+          <p className="font-medium text-[13px] text-muted-foreground uppercase tracking-wider">
             {t('rail.livePressureMeter')}
           </p>
           <div className="mt-2.5 grid gap-2.5">
@@ -773,10 +771,11 @@ export const ObserverRightRail = ({
         >
           <div className="flex flex-wrap gap-1">
             <button
-              className={`${controlButtonBaseClass} ${allPanelsVisible
+              className={`${controlButtonBaseClass} ${
+                allPanelsVisible
                   ? controlButtonDisabledClass
                   : controlButtonEnabledClass
-                }`}
+              }`}
               disabled={allPanelsVisible}
               onClick={() => applyPanelVisibility(ALL_PANEL_VISIBILITY)}
               type="button"
@@ -784,10 +783,11 @@ export const ObserverRightRail = ({
               {t('rail.showAll')}
             </button>
             <button
-              className={`${controlButtonBaseClass} ${allPanelsHidden
+              className={`${controlButtonBaseClass} ${
+                allPanelsHidden
                   ? controlButtonDisabledClass
                   : controlButtonEnabledClass
-                }`}
+              }`}
               disabled={allPanelsHidden}
               onClick={() => applyPanelVisibility(HIDDEN_PANEL_VISIBILITY)}
               type="button"
@@ -805,10 +805,11 @@ export const ObserverRightRail = ({
         >
           <div className="flex flex-wrap gap-1">
             <button
-              className={`${controlButtonBaseClass} ${allPanelsVisible
+              className={`${controlButtonBaseClass} ${
+                allPanelsVisible
                   ? controlButtonDisabledClass
                   : controlButtonEnabledClass
-                }`}
+              }`}
               disabled={allPanelsVisible}
               onClick={() => applyPanelVisibility(ALL_PANEL_VISIBILITY)}
               type="button"
@@ -816,10 +817,11 @@ export const ObserverRightRail = ({
               {t('rail.showAll')}
             </button>
             <button
-              className={`${controlButtonBaseClass} ${allPanelsHidden
+              className={`${controlButtonBaseClass} ${
+                allPanelsHidden
                   ? controlButtonDisabledClass
                   : controlButtonEnabledClass
-                }`}
+              }`}
               disabled={allPanelsHidden}
               onClick={() => applyPanelVisibility(HIDDEN_PANEL_VISIBILITY)}
               type="button"
@@ -847,7 +849,7 @@ export const ObserverRightRail = ({
         <div className="grid gap-2 sm:grid-cols-2">
           {panelVisibility.battles ? (
             <div className={`${softPanelClass} p-3`}>
-              <p className="font-semibold text-sm text-foreground">
+              <p className="font-semibold text-foreground text-sm">
                 {t('rail.trendingBattles')}
               </p>
               <ul className="mt-2 grid gap-2 text-[13px] text-muted-foreground">
@@ -861,7 +863,7 @@ export const ObserverRightRail = ({
           ) : null}
           {panelVisibility.glowUps ? (
             <div className={`${softPanelClass} p-3`}>
-              <p className="font-semibold text-sm text-foreground">
+              <p className="font-semibold text-foreground text-sm">
                 {t('rail.topGlowUps24h')}
               </p>
               <ul className="mt-2 grid gap-2 text-[13px] text-muted-foreground">
@@ -875,7 +877,7 @@ export const ObserverRightRail = ({
           ) : null}
           {panelVisibility.studios ? (
             <div className={`${softPanelClass} p-3`}>
-              <p className="font-semibold text-sm text-foreground">
+              <p className="font-semibold text-foreground text-sm">
                 {t('rail.topStudios')}
               </p>
               <ul className="mt-2 grid gap-2 text-[13px] text-muted-foreground">
@@ -890,7 +892,7 @@ export const ObserverRightRail = ({
         </div>
         {panelVisibility.activity ? (
           <div className={`mt-2.5 p-3 ${softPanelClass}`}>
-            <p className="font-semibold text-sm text-foreground">
+            <p className="font-semibold text-foreground text-sm">
               {t('rail.liveActivityStream')}
             </p>
             <ul className="mt-2 grid gap-2 text-[13px] text-muted-foreground">
@@ -903,7 +905,7 @@ export const ObserverRightRail = ({
           </div>
         ) : null}
         <div className={`mt-2.5 p-3 ${softPanelClass}`}>
-          <p className="font-semibold text-sm text-foreground">
+          <p className="font-semibold text-foreground text-sm">
             {t('rail.followingStudios')}
           </p>
           {followedStudios.length > 0 ? (
@@ -966,7 +968,7 @@ export const ObserverRightRail = ({
                 key={item.id}
               >
                 <div className="flex items-start gap-2">
-                  <span className="inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-background font-semibold text-xs text-muted-foreground">
+                  <span className="inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-background font-semibold text-muted-foreground text-xs">
                     {index + 1}
                   </span>
                   <div className="min-w-0">

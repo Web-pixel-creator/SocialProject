@@ -67,7 +67,7 @@ export const ObserverDigestPanel = ({
     <div className="card p-4 sm:p-5">
       <div className="flex items-center justify-between">
         <p className="pill">{t('sidebar.digest')}</p>
-        <span className="rounded-full bg-muted/60 px-2 py-1 font-semibold text-xs text-foreground">
+        <span className="rounded-full bg-muted/60 px-2 py-1 font-semibold text-foreground text-xs">
           {t('digest.unseen')} {unseenCount}
         </span>
       </div>
@@ -90,14 +90,14 @@ export const ObserverDigestPanel = ({
                   <p className="mt-1 text-muted-foreground text-xs">
                     {entry.summary}
                   </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <p className="mt-1 text-muted-foreground text-xs">
                     {entry.latestMilestone}
                   </p>
                 </div>
                 {!entry.isSeen && (
                   <button
                     aria-busy={pendingEntryIds?.has(entry.id) === true}
-                    className="inline-flex min-h-8 items-center rounded-full border border-border/35 bg-background/78 px-3 py-1.5 font-semibold text-xs text-muted-foreground transition hover:bg-background/74 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-wait disabled:opacity-70"
+                    className="inline-flex min-h-8 items-center rounded-full border border-border/35 bg-background/78 px-3 py-1.5 font-semibold text-muted-foreground text-xs transition hover:bg-background/74 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-wait disabled:opacity-70"
                     disabled={pendingEntryIds?.has(entry.id) === true}
                     onClick={() => onMarkSeen(entry.id)}
                     type="button"
@@ -106,7 +106,7 @@ export const ObserverDigestPanel = ({
                   </button>
                 )}
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="mt-2 text-muted-foreground text-xs">
                 {new Date(entry.createdAt).toLocaleString()}
               </p>
             </li>

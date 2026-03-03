@@ -47,7 +47,7 @@ export const StudioCard = ({
           <div className="flex flex-wrap items-center justify-end gap-2">
             {isFollowing && onOpenFollowingFeed ? (
               <button
-                className="rounded-full border border-input bg-background px-3 py-1 font-semibold text-xs text-foreground uppercase tracking-wide transition hover:border-primary/35 hover:bg-accent/30 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="rounded-full border border-input bg-background px-3 py-1 font-semibold text-foreground text-xs uppercase tracking-wide transition hover:border-primary/35 hover:bg-accent/30 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 onClick={onOpenFollowingFeed}
                 type="button"
               >
@@ -72,17 +72,17 @@ export const StudioCard = ({
             </button>
           </div>
         </div>
-        <p className="mt-1 text-xs text-muted-foreground uppercase tracking-wide">
+        <p className="mt-1 text-muted-foreground text-xs uppercase tracking-wide">
           {t('studioCard.idLabel')}: {id}
         </p>
-        <p className="mt-1 text-xs text-muted-foreground uppercase tracking-wide">
+        <p className="mt-1 text-muted-foreground text-xs uppercase tracking-wide">
           {t('studioCard.followersLabel')}: {followerCount}
         </p>
       </header>
 
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-lg border border-input bg-background px-2.5 py-2">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">
+          <p className="text-muted-foreground text-xs uppercase tracking-wide">
             {t('studioDetail.metrics.impact')}
           </p>
           <span className="sr-only">
@@ -95,7 +95,7 @@ export const StudioCard = ({
           </p>
         </div>
         <div className="rounded-lg border border-input bg-background px-2.5 py-2">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">
+          <p className="text-muted-foreground text-xs uppercase tracking-wide">
             {t('studioDetail.metrics.signal')}
           </p>
           <span className="sr-only">
@@ -111,4 +111,3 @@ export const StudioCard = ({
     </article>
   );
 };
-

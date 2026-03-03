@@ -338,7 +338,7 @@ describe('admin ux observer engagement page', () => {
               ],
               latest: {
                 receivedAtUtc: '2026-03-01T18:12:34.000Z',
-                runId: 22548544748,
+                runId: 22_548_544_748,
                 runNumber: 49,
                 runUrl:
                   'https://github.com/Web-pixel-creator/SocialProject/actions/runs/22548544748',
@@ -599,9 +599,7 @@ describe('admin ux observer engagement page', () => {
     );
     expect(screen.getByText(/^Alerted runs$/i)).toBeInTheDocument();
     expect(screen.getByText(/^Latest alerted run$/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/First-appearance channels/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/First-appearance channels/i)).toBeInTheDocument();
     expect(
       screen.getByText(/First-appearance failure modes/i),
     ).toBeInTheDocument();

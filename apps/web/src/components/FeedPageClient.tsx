@@ -2,12 +2,12 @@
 
 import { Menu, X } from 'lucide-react';
 import {
+  type KeyboardEvent as ReactKeyboardEvent,
   Suspense,
   useCallback,
   useEffect,
   useRef,
   useState,
-  type KeyboardEvent,
 } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { CreatorStudiosRail } from './CreatorStudiosRail';
@@ -73,7 +73,10 @@ export default function FeedPageClient() {
   );
 
   const handleRightRailTabKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLButtonElement>, currentView: RightRailView) => {
+    (
+      event: ReactKeyboardEvent<HTMLButtonElement>,
+      currentView: RightRailView,
+    ) => {
       const currentIndex = RIGHT_RAIL_TAB_ORDER.indexOf(currentView);
       if (currentIndex < 0) {
         return;
@@ -157,7 +160,7 @@ export default function FeedPageClient() {
     return () => {
       window.clearTimeout(timerId);
     };
-  }, [isRightRailSwitching, rightRailView]);
+  }, [isRightRailSwitching]);
 
   useEffect(() => {
     if (!mobileSidebarOpen) {
@@ -206,7 +209,7 @@ export default function FeedPageClient() {
         <header className="card observer-feed-header overflow-hidden p-4 sm:p-5 lg:p-6">
           <div className="grid gap-4 sm:gap-5">
             <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
-              <p className="inline-flex w-fit items-center gap-2 rounded-full border border-border/25 bg-background/60 px-3 py-1.5 font-semibold text-xs text-muted-foreground uppercase tracking-wider sm:py-2">
+              <p className="inline-flex w-fit items-center gap-2 rounded-full border border-border/25 bg-background/60 px-3 py-1.5 font-semibold text-muted-foreground text-xs uppercase tracking-wider sm:py-2">
                 <span>{t('feed.observerStream')}</span>
                 <span aria-hidden="true">/</span>
                 <span className="text-primary">{t('header.feeds')}</span>
@@ -230,7 +233,7 @@ export default function FeedPageClient() {
               </div>
               <div className="grid w-full gap-2 sm:w-auto md:justify-items-end">
                 <div className="flex flex-wrap items-center justify-end gap-2">
-                  <span className="inline-flex min-h-8 items-center rounded-full border border-primary/35 bg-primary/10 px-2.5 py-1.5 font-semibold text-xs text-primary uppercase tracking-wide sm:min-h-9 sm:px-3 sm:py-2">
+                  <span className="inline-flex min-h-8 items-center rounded-full border border-primary/35 bg-primary/10 px-2.5 py-1.5 font-semibold text-primary text-xs uppercase tracking-wide sm:min-h-9 sm:px-3 sm:py-2">
                     {t('header.observerMode')}
                   </span>
                   <button
@@ -273,15 +276,14 @@ export default function FeedPageClient() {
       >
         <section className="grid gap-4">
           <div
+            aria-label="Right rail sections"
             className="no-scrollbar flex min-w-0 snap-x snap-mandatory items-center gap-1.5 overflow-x-auto rounded-[1.5rem] border border-border/45 bg-card/48 p-0.5 pr-1 sm:snap-none sm:p-1 sm:pr-1.5"
             data-testid="feed-right-rail-tabs"
             role="tablist"
-            aria-label="Right rail sections"
           >
             <button
               aria-controls="feed-right-rail-panel-live"
               aria-selected={rightRailView === 'live'}
-              aria-pressed={rightRailView === 'live'}
               className={`inline-flex h-8 shrink-0 items-center rounded-full border px-3.5 font-semibold text-xs uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                 rightRailView === 'live'
                   ? 'border-primary/55 bg-primary/14 text-primary'
@@ -289,8 +291,8 @@ export default function FeedPageClient() {
               }`}
               data-testid="feed-right-rail-tab-live"
               id="feed-right-rail-tab-live"
-              onKeyDown={(event) => handleRightRailTabKeyDown(event, 'live')}
               onClick={() => switchRightRailView('live')}
+              onKeyDown={(event) => handleRightRailTabKeyDown(event, 'live')}
               ref={(node) => {
                 rightRailTabRefs.current.live = node;
               }}
@@ -309,7 +311,6 @@ export default function FeedPageClient() {
             <button
               aria-controls="feed-right-rail-panel-studio"
               aria-selected={rightRailView === 'studio'}
-              aria-pressed={rightRailView === 'studio'}
               className={`inline-flex h-8 shrink-0 items-center rounded-full border px-3.5 font-semibold text-xs uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                 rightRailView === 'studio'
                   ? 'border-primary/55 bg-primary/14 text-primary'
@@ -317,8 +318,8 @@ export default function FeedPageClient() {
               }`}
               data-testid="feed-right-rail-tab-studio"
               id="feed-right-rail-tab-studio"
-              onKeyDown={(event) => handleRightRailTabKeyDown(event, 'studio')}
               onClick={() => switchRightRailView('studio')}
+              onKeyDown={(event) => handleRightRailTabKeyDown(event, 'studio')}
               ref={(node) => {
                 rightRailTabRefs.current.studio = node;
               }}
@@ -337,7 +338,6 @@ export default function FeedPageClient() {
             <button
               aria-controls="feed-right-rail-panel-radar"
               aria-selected={rightRailView === 'radar'}
-              aria-pressed={rightRailView === 'radar'}
               className={`inline-flex h-8 shrink-0 items-center rounded-full border px-3.5 font-semibold text-xs uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                 rightRailView === 'radar'
                   ? 'border-primary/55 bg-primary/14 text-primary'
@@ -345,8 +345,8 @@ export default function FeedPageClient() {
               }`}
               data-testid="feed-right-rail-tab-radar"
               id="feed-right-rail-tab-radar"
-              onKeyDown={(event) => handleRightRailTabKeyDown(event, 'radar')}
               onClick={() => switchRightRailView('radar')}
+              onKeyDown={(event) => handleRightRailTabKeyDown(event, 'radar')}
               ref={(node) => {
                 rightRailTabRefs.current.radar = node;
               }}

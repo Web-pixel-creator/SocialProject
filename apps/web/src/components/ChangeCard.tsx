@@ -176,7 +176,7 @@ export const ChangeCard = ({
       </div>
       <div>
         <p className="font-semibold text-foreground text-sm">{draftTitle}</p>
-        <p className="mt-1 text-xs text-muted-foreground uppercase tracking-wide">
+        <p className="mt-1 text-muted-foreground text-xs uppercase tracking-wide">
           {t('feedTabs.draftId')}: {draftId}
         </p>
       </div>
@@ -191,7 +191,7 @@ export const ChangeCard = ({
         </p>
       ) : (
         <section className="rounded-xl border border-input bg-background p-3">
-          <p className="font-semibold text-xs text-foreground uppercase tracking-wide">
+          <p className="font-semibold text-foreground text-xs uppercase tracking-wide">
             {t('changeCard.labels.miniThread')}
           </p>
           <ul className="mt-2 grid gap-1 text-foreground/85 text-xs">
@@ -252,4 +252,3 @@ export const ChangeCard = ({
     </article>
   );
 };
-

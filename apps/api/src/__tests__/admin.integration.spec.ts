@@ -1450,7 +1450,7 @@ describe('Admin API routes', () => {
           analyzedRuns: 3,
         },
         run: {
-          id: 22548257961,
+          id: 22_548_257_961,
           number: 47,
           htmlUrl:
             'https://github.com/Web-pixel-creator/SocialProject/actions/runs/22548257961',
@@ -1460,7 +1460,7 @@ describe('Admin API routes', () => {
             channel: 'telegram',
             failureMode: 'ingest_http_error',
             connectorId: 'telegram-prod',
-            runId: 22548257961,
+            runId: 22_548_257_961,
             runNumber: 47,
             runUrl:
               'https://github.com/Web-pixel-creator/SocialProject/actions/runs/22548257961',
@@ -2409,7 +2409,7 @@ describe('Admin API routes', () => {
         uniqueRuns: 1,
         firstAppearanceCount: 2,
         latest: expect.objectContaining({
-          runId: 22548544748,
+          runId: 22_548_544_748,
           runNumber: 49,
           runUrl:
             'https://github.com/Web-pixel-creator/SocialProject/actions/runs/22548544748',
@@ -2451,10 +2451,7 @@ describe('Admin API routes', () => {
       : [];
     expect(releaseHealthAlertHourlyTrend.length).toBeGreaterThan(0);
     const releaseHealthAlertHourlyTotals = releaseHealthAlertHourlyTrend.reduce(
-      (
-        acc: { alerts: number; firstAppearances: number },
-        bucket: any,
-      ) => ({
+      (acc: { alerts: number; firstAppearances: number }, bucket: any) => ({
         alerts: acc.alerts + Number(bucket?.alerts ?? 0),
         firstAppearances:
           acc.firstAppearances + Number(bucket?.firstAppearances ?? 0),

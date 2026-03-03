@@ -166,14 +166,17 @@ export const SwarmSessionsRail = ({
   }, [onSessionCountChange, sessions.length]);
 
   return (
-    <section className="card rounded-[1.5rem] border-input bg-card p-6" data-testid="swarm-sessions-rail">
+    <section
+      className="card rounded-[1.5rem] border-input bg-card p-6"
+      data-testid="swarm-sessions-rail"
+    >
       <header className="flex items-center justify-between gap-2">
-        <h3 className="font-semibold text-lg text-foreground tracking-tight">
+        <h3 className="font-semibold text-foreground text-lg tracking-tight">
           Agent swarms
         </h3>
         <span className="pill">{sessions.length}</span>
       </header>
-      <p className="mt-2 text-muted-foreground text-[15px] leading-relaxed">
+      <p className="mt-2 text-[15px] text-muted-foreground leading-relaxed">
         Temporary studio teams with role-based execution and judge checkpoints.
       </p>
 
@@ -198,21 +201,23 @@ export const SwarmSessionsRail = ({
                 {session.status}
               </span>
             </div>
-            <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground leading-relaxed">
+            <p className="mt-1.5 line-clamp-2 text-muted-foreground text-sm leading-relaxed">
               {session.objective}
             </p>
-            <div className="mt-3.5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              <span className="inline-flex items-center rounded-full border border-input bg-background px-3 py-1.5 font-medium text-sm uppercase tracking-wide text-foreground">{session.memberCount} members</span>
-              <span className="inline-flex items-center rounded-full border border-input bg-background px-3 py-1.5 font-medium text-sm uppercase tracking-wide text-foreground">
+            <div className="mt-3.5 flex flex-wrap items-center gap-2 text-muted-foreground text-sm">
+              <span className="inline-flex items-center rounded-full border border-input bg-background px-3 py-1.5 font-medium text-foreground text-sm uppercase tracking-wide">
+                {session.memberCount} members
+              </span>
+              <span className="inline-flex items-center rounded-full border border-input bg-background px-3 py-1.5 font-medium text-foreground text-sm uppercase tracking-wide">
                 {session.judgeEventCount} judge events
               </span>
-              <span className="inline-flex items-center rounded-full border border-input bg-background px-3 py-1.5 font-medium text-sm uppercase tracking-wide text-foreground">
+              <span className="inline-flex items-center rounded-full border border-input bg-background px-3 py-1.5 font-medium text-foreground text-sm uppercase tracking-wide">
                 {formatRelativeMinutes(session.lastActivityAt)}
               </span>
             </div>
             {session.replayTimeline.length > 0 ? (
-              <div className="mt-4 space-y-2.5 pt-3 border-t border-input/30">
-                <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wider">
+              <div className="mt-4 space-y-2.5 border-input/30 border-t pt-3">
+                <p className="font-medium text-[13px] text-muted-foreground uppercase tracking-wider">
                   Replay timeline
                 </p>
                 {session.replayTimeline.map((event) => (
@@ -220,11 +225,11 @@ export const SwarmSessionsRail = ({
                     className="rounded-xl bg-background/60 px-4 py-3.5"
                     key={event.id}
                   >
-                    <p className="font-semibold text-sm text-foreground uppercase tracking-wide">
+                    <p className="font-semibold text-foreground text-sm uppercase tracking-wide">
                       {event.eventType}
                       {event.score !== null ? ` · ${event.score}` : ''}
                     </p>
-                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground leading-relaxed">
+                    <p className="mt-1 line-clamp-2 text-muted-foreground text-sm leading-relaxed">
                       {event.notes}
                     </p>
                   </div>

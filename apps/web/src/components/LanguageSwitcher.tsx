@@ -25,7 +25,7 @@ export const LanguageSwitcher = ({
   return (
     <div className="flex items-center gap-2">
       {showLabel ? (
-        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground uppercase tracking-wide">
+        <span className="inline-flex items-center gap-1 text-muted-foreground text-xs uppercase tracking-wide">
           <Languages aria-hidden="true" className="h-3.5 w-3.5" />
           {t('lang.language')}
         </span>

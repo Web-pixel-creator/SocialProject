@@ -146,10 +146,10 @@ export const ImagePair = ({
       )}
       {showCornerLabels && (
         <>
-          <span className="absolute bottom-2 left-2 rounded-full border border-input bg-background px-2 py-1 font-semibold text-xs text-foreground">
+          <span className="absolute bottom-2 left-2 rounded-full border border-input bg-background px-2 py-1 font-semibold text-foreground text-xs">
             {beforeLabel}
           </span>
-          <span className="absolute right-2 bottom-2 rounded-full border border-input bg-background px-2 py-1 font-semibold text-xs text-foreground">
+          <span className="absolute right-2 bottom-2 rounded-full border border-input bg-background px-2 py-1 font-semibold text-foreground text-xs">
             {afterLabel}
           </span>
         </>
@@ -173,8 +173,11 @@ interface StatsGridProps {
 export const StatsGrid = ({ tiles }: StatsGridProps) => (
   <section className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
     {tiles.map((tile) => (
-      <div className="rounded-xl border border-input bg-background p-2.5" key={tile.label}>
-        <p className="text-xs text-muted-foreground uppercase tracking-wide">
+      <div
+        className="rounded-xl border border-input bg-background p-2.5"
+        key={tile.label}
+      >
+        <p className="text-muted-foreground text-xs uppercase tracking-wide">
           {tile.label}
         </p>
         <p
@@ -202,7 +205,7 @@ export const KeyMetricPreview = ({
 }: KeyMetricPreviewProps) => (
   <section className="mt-3 rounded-xl border border-input bg-background p-3">
     <div className="flex items-end justify-between gap-3">
-      <p className="text-xs text-muted-foreground uppercase tracking-wide">
+      <p className="text-muted-foreground text-xs uppercase tracking-wide">
         {label}
       </p>
       <p className={`font-semibold text-xl sm:text-2xl ${toneClass}`}>
@@ -272,9 +275,7 @@ export const ObserverActions = ({
     const isActive = Boolean(actionState?.[action]);
     const isPending = pendingAction === action;
     return `${buttonClassName} ${
-      isActive
-        ? 'border-primary/45 bg-primary/14 text-primary'
-        : 'border-input'
+      isActive ? 'border-primary/45 bg-primary/14 text-primary' : 'border-input'
     } ${isPending ? 'cursor-wait opacity-70' : ''}`;
   };
 
@@ -330,7 +331,7 @@ export const ObserverActions = ({
       className="mt-2 rounded-xl border border-input bg-background p-2.5"
       ref={containerRef}
     >
-      <p className="mb-2 text-xs text-muted-foreground uppercase tracking-wide">
+      <p className="mb-2 text-muted-foreground text-xs uppercase tracking-wide">
         {resolvedTitle}
       </p>
       <div className="grid grid-cols-3 gap-1.5">
@@ -392,7 +393,7 @@ export const ObserverActions = ({
       {authRequiredMessage ? (
         <output
           aria-live="polite"
-          className="mt-2 rounded-lg border border-input bg-background px-2.5 py-2 text-xs text-muted-foreground"
+          className="mt-2 rounded-lg border border-input bg-background px-2.5 py-2 text-muted-foreground text-xs"
           data-testid="observer-action-auth-required"
         >
           {authRequiredMessage}{' '}
@@ -457,7 +458,7 @@ interface CardDetailsProps {
 
 export const CardDetails = ({ summaryLabel, children }: CardDetailsProps) => (
   <details className="group mt-3 overflow-hidden rounded-xl border border-input bg-background">
-    <summary className="flex min-h-9 cursor-pointer list-none items-center justify-between px-3 py-2 font-semibold text-xs text-foreground/85 uppercase tracking-wide transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [&::-webkit-details-marker]:hidden">
+    <summary className="flex min-h-9 cursor-pointer list-none items-center justify-between px-3 py-2 font-semibold text-foreground/85 text-xs uppercase tracking-wide transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [&::-webkit-details-marker]:hidden">
       {summaryLabel}
       <span
         aria-hidden="true"
@@ -471,4 +472,3 @@ export const CardDetails = ({ summaryLabel, children }: CardDetailsProps) => (
     </div>
   </details>
 );
-

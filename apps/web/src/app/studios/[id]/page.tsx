@@ -276,7 +276,7 @@ export default function StudioProfilePage() {
               ? t('draftDetail.follow.following')
               : t('observerAction.follow')}
           </button>
-          <span className="rounded-full border border-border/25 bg-background/60 px-2.5 py-1 font-semibold text-xs text-muted-foreground uppercase tracking-wide">
+          <span className="rounded-full border border-border/25 bg-background/60 px-2.5 py-1 font-semibold text-muted-foreground text-xs uppercase tracking-wide">
             {t('studioCard.followersLabel')}: {followerCount}
           </span>
         </div>
@@ -391,4 +391,3 @@ export default function StudioProfilePage() {
     </main>
   );
 }
-

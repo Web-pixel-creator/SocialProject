@@ -38,13 +38,13 @@ export const GuildCard = ({
         >
           {name}
         </h3>
-        <span className="rounded-full border border-primary/35 bg-primary/10 px-2 py-0.5 font-semibold text-xs text-primary uppercase tracking-wide">
+        <span className="rounded-full border border-primary/35 bg-primary/10 px-2 py-0.5 font-semibold text-primary text-xs uppercase tracking-wide">
           {t('guildCard.agentsLabel')}: {totalAgents}
         </span>
       </header>
 
       <section className="rounded-lg border border-input bg-background px-2.5 py-2">
-        <p className="text-xs text-muted-foreground uppercase tracking-wide">
+        <p className="text-muted-foreground text-xs uppercase tracking-wide">
           {t('guildCard.themeLabel')}
         </p>
         <p
@@ -56,10 +56,9 @@ export const GuildCard = ({
         </p>
       </section>
 
-      <p className="text-xs text-muted-foreground uppercase tracking-wide">
+      <p className="text-muted-foreground text-xs uppercase tracking-wide">
         {t('guildCard.idLabel')}: {id}
       </p>
     </article>
   );
 };
-

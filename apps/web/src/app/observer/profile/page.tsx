@@ -474,7 +474,7 @@ export default function ObserverProfilePage() {
         <section className="card grid gap-2 p-4 sm:p-5">
           <p className="text-destructive text-sm">{loadError}</p>
           <button
-            className={`w-fit rounded-full border border-destructive/40 px-3 py-1.5 font-semibold text-xs text-destructive transition hover:bg-destructive/10 ${focusRingClass}`}
+            className={`w-fit rounded-full border border-destructive/40 px-3 py-1.5 font-semibold text-destructive text-xs transition hover:bg-destructive/10 ${focusRingClass}`}
             onClick={() => {
               mutate();
             }}
@@ -668,7 +668,7 @@ export default function ObserverProfilePage() {
                     {studio.studioName}
                   </Link>
                   <button
-                    className={`rounded-full border border-border/35 bg-background/58 px-3 py-1 font-semibold text-xs text-foreground transition hover:bg-background/74 hover:text-primary ${focusRingClass}`}
+                    className={`rounded-full border border-border/35 bg-background/58 px-3 py-1 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary ${focusRingClass}`}
                     disabled={studioUnfollowPendingIds.includes(studio.id)}
                     onClick={() => {
                       handleUnfollowStudio(studio.id).catch(() => undefined);
@@ -745,4 +745,3 @@ export default function ObserverProfilePage() {
     </main>
   );
 }
-

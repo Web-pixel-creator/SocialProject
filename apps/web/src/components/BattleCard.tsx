@@ -281,7 +281,7 @@ const BattleCardFooter = ({
           )}
         </div>
         <Link
-          className="inline-flex min-h-9 items-center rounded-full border border-primary/45 bg-primary/14 px-3 py-2 font-semibold text-xs text-primary transition hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="inline-flex min-h-9 items-center rounded-full border border-primary/45 bg-primary/14 px-3 py-2 font-semibold text-primary text-xs transition hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           href={`/drafts/${id}`}
         >
           {t('battle.openBattle')}
@@ -336,7 +336,7 @@ const BattleCardFooter = ({
 
       <div className="mt-2 flex items-center justify-end text-muted-foreground text-xs">
         <Link
-          className="inline-flex min-h-9 items-center rounded-full border border-input bg-background px-3 py-2 font-semibold text-xs text-primary transition hover:border-primary/35 hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="inline-flex min-h-9 items-center rounded-full border border-input bg-background px-3 py-2 font-semibold text-primary text-xs transition hover:border-primary/35 hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           href={`/drafts/${id}`}
         >
           {t('battle.openBattle')}
@@ -537,7 +537,7 @@ export const BattleCard = ({
           beforeImageUrl={beforeImageUrl}
           beforeLabel={leftLabel}
           centerOverlay={
-            <span className="absolute top-1/2 left-1/2 inline-flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-input bg-background font-semibold text-xs text-foreground uppercase">
+            <span className="absolute top-1/2 left-1/2 inline-flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-input bg-background font-semibold text-foreground text-xs uppercase">
               VS
             </span>
           }
@@ -598,13 +598,13 @@ export const BattleCard = ({
           </div>
         )}
         {voteLabel && (
-          <p className="mt-2 text-xs text-primary">
+          <p className="mt-2 text-primary text-xs">
             {t('battle.yourVote')}: {voteLabel}
           </p>
         )}
         {!compact && onPredict ? (
           <div className="mt-3 rounded-lg border border-input bg-background p-2.5">
-            <p className="font-semibold text-xs text-muted-foreground uppercase tracking-wide">
+            <p className="font-semibold text-muted-foreground text-xs uppercase tracking-wide">
               {t('sidebar.predictMode')}
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -655,7 +655,7 @@ export const BattleCard = ({
                 ))}
               </div>
               <button
-                className="rounded-full border border-primary/35 bg-primary/10 px-3 py-1.5 font-semibold text-xs text-primary transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-55"
+                className="rounded-full border border-primary/35 bg-primary/10 px-3 py-1.5 font-semibold text-primary text-xs transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-55"
                 disabled={
                   predictionDisabled || Boolean(predictionState?.pending)
                 }
@@ -667,7 +667,7 @@ export const BattleCard = ({
                   : t('prediction.predictMerge')}
               </button>
               <button
-                className="rounded-full border border-destructive/35 bg-destructive/10 px-3 py-1.5 font-semibold text-xs text-destructive transition hover:bg-destructive/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-55"
+                className="rounded-full border border-destructive/35 bg-destructive/10 px-3 py-1.5 font-semibold text-destructive text-xs transition hover:bg-destructive/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-55"
                 disabled={
                   predictionDisabled || Boolean(predictionState?.pending)
                 }
@@ -679,47 +679,45 @@ export const BattleCard = ({
                   : t('prediction.predictReject')}
               </button>
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-1 text-muted-foreground text-xs">
               {t('prediction.stakeLabel')} {minStakePoints}-{maxStakePoints} FIN
             </p>
             {predictionSummary ? (
-              <p className="mt-2 text-xs text-primary">
-                {predictionSummary}
-              </p>
+              <p className="mt-2 text-primary text-xs">{predictionSummary}</p>
             ) : null}
             {predictionDisabledReason ? (
-              <p className="mt-1 text-xs text-destructive">
+              <p className="mt-1 text-destructive text-xs">
                 {predictionDisabledReason}
               </p>
             ) : null}
             {stakeAdjustmentHint ? (
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 text-muted-foreground text-xs">
                 {stakeAdjustmentHint}
               </p>
             ) : null}
             {hasMarketSummary ? (
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 text-muted-foreground text-xs">
                 {formatPredictionMarketPoolLine(t, predictionDerived)}
               </p>
             ) : null}
             {hasMarketSummary ? (
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 text-muted-foreground text-xs">
                 {formatPredictionOddsLine(t, predictionDerived)}
               </p>
             ) : null}
             {hasPotentialPayout ? (
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 text-muted-foreground text-xs">
                 {formatPredictionPayoutLine(t, predictionDerived)}
               </p>
             ) : null}
             {hasObserverMarketProfile ? (
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 text-muted-foreground text-xs">
                 {formatPredictionNetPointsLine(t, observerNetPoints)} |{' '}
                 {t('prediction.tierLabel')} {formattedTier}
               </p>
             ) : null}
             {hasUsageCaps ? (
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 text-muted-foreground text-xs">
                 {formatPredictionUsageLine(t, predictionDerived, {
                   includeRemaining: true,
                   unknownCapLabel: '-',
@@ -727,7 +725,7 @@ export const BattleCard = ({
               </p>
             ) : null}
             {predictionState?.error ? (
-              <p className="mt-1 text-xs text-destructive" role="alert">
+              <p className="mt-1 text-destructive text-xs" role="alert">
                 {showPredictionSignInCta ? (
                   <>
                     {t('prediction.signInRequired')}{' '}
@@ -766,4 +764,3 @@ export const BattleCard = ({
     </article>
   );
 };
-

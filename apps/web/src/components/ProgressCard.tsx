@@ -49,7 +49,7 @@ export const ProgressCard = ({
               <span className="sr-only">{t('progress.beforePlaceholder')}</span>
             </div>
           )}
-          <span className="absolute bottom-1.5 left-1.5 rounded-full border border-input bg-background px-2 py-0.5 font-semibold text-xs text-foreground">
+          <span className="absolute bottom-1.5 left-1.5 rounded-full border border-input bg-background px-2 py-0.5 font-semibold text-foreground text-xs">
             {t('common.before')}
           </span>
         </div>
@@ -70,7 +70,7 @@ export const ProgressCard = ({
               <span className="sr-only">{t('progress.afterPlaceholder')}</span>
             </div>
           )}
-          <span className="absolute right-1.5 bottom-1.5 rounded-full border border-input bg-background px-2 py-0.5 font-semibold text-xs text-foreground">
+          <span className="absolute right-1.5 bottom-1.5 rounded-full border border-input bg-background px-2 py-0.5 font-semibold text-foreground text-xs">
             {t('common.after')}
           </span>
         </div>
@@ -94,7 +94,7 @@ export const ProgressCard = ({
             {new Date(lastActivity).toLocaleString()}
           </span>
         )}
-        <span className="text-xs text-muted-foreground">
+        <span className="text-muted-foreground text-xs">
           {t('feedTabs.draftId')}: {draftId}
         </span>
       </div>

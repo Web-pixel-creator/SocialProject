@@ -34,6 +34,9 @@ The format is based on Keep a Changelog.
   - refreshed visual smoke baselines for `/feed` desktop/mobile snapshots after right-rail tab UI update.
   - aligned feed e2e specs with Ultracite formatting/import order and resolved remaining lint blockers (`noDelete`, `useConsistentTypeDefinitions`) in observer/feed navigation suites.
   - documented explicit Biome test-file exceptions for Playwright inline-regex locator assertions and sync route-mock handlers in feed e2e specs to keep lint output actionable.
+  - normalized Ultracite formatting/class ordering across updated web surfaces and admin analytics modules, and resolved repository lint blockers in API admin telemetry routes/tests.
+  - fixed feed tab a11y/type correctness issues surfaced by `next build` (`aria-pressed` on `tab` controls, `summary` ARIA mismatch, DOM vs React keyboard event typing).
+  - `qa:critical` now completes successfully after lint/build/a11y stabilization.
 - Added baseline specification document:
   - `docs/plans/2026-03-02-feed-ui-visual-baseline.md`.
 

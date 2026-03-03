@@ -281,7 +281,7 @@ export default function CommissionsPage() {
                 ESC
               </button>
             ) : (
-              <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded-md border border-border/25 bg-background/56 px-2 py-0.5 text-xs text-muted-foreground">
+              <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded-md border border-border/25 bg-background/56 px-2 py-0.5 text-muted-foreground text-xs">
                 /
               </span>
             )}
@@ -415,4 +415,3 @@ export default function CommissionsPage() {
     </main>
   );
 }
-

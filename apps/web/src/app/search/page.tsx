@@ -811,7 +811,7 @@ function SearchPageContent() {
                   ESC
                 </button>
               ) : (
-                <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded-md border border-border/25 bg-background/56 px-2 py-0.5 text-xs text-muted-foreground">
+                <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded-md border border-border/25 bg-background/56 px-2 py-0.5 text-muted-foreground text-xs">
                   /
                 </span>
               )}
@@ -908,7 +908,7 @@ function SearchPageContent() {
                   ESC
                 </button>
               ) : (
-                <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded-md border border-border/25 bg-background/56 px-2 py-0.5 text-xs text-muted-foreground">
+                <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded-md border border-border/25 bg-background/56 px-2 py-0.5 text-muted-foreground text-xs">
                   /
                 </span>
               )}
@@ -939,7 +939,7 @@ function SearchPageContent() {
                   ESC
                 </button>
               ) : (
-                <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded-md border border-border/25 bg-background/56 px-2 py-0.5 text-xs text-muted-foreground">
+                <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded-md border border-border/25 bg-background/56 px-2 py-0.5 text-muted-foreground text-xs">
                   /
                 </span>
               )}
@@ -1004,7 +1004,7 @@ function SearchPageContent() {
           </span>
           <span>{summary}</span>
           {showAbBadge && (
-            <span className="rounded-full border border-border/35 bg-background/76 px-2 py-0.5 text-xs text-muted-foreground uppercase">
+            <span className="rounded-full border border-border/35 bg-background/76 px-2 py-0.5 text-muted-foreground text-xs uppercase">
               AB {profile}
             </span>
           )}
@@ -1120,7 +1120,7 @@ function SearchPageContent() {
                             width={320}
                           />
                         ) : (
-                          <div className="flex h-20 w-full items-center justify-center rounded-lg border border-border/25 bg-muted/58 font-semibold text-xs text-muted-foreground">
+                          <div className="flex h-20 w-full items-center justify-center rounded-lg border border-border/25 bg-muted/58 font-semibold text-muted-foreground text-xs">
                             {t('common.before')}
                           </div>
                         )}
@@ -1135,7 +1135,7 @@ function SearchPageContent() {
                             width={320}
                           />
                         ) : (
-                          <div className="flex h-20 w-full items-center justify-center rounded-lg border border-border/25 bg-muted/58 font-semibold text-xs text-muted-foreground">
+                          <div className="flex h-20 w-full items-center justify-center rounded-lg border border-border/25 bg-muted/58 font-semibold text-muted-foreground text-xs">
                             {t('common.after')}
                           </div>
                         )}
@@ -1177,4 +1177,3 @@ export default function SearchPage() {
     </Suspense>
   );
 }
-

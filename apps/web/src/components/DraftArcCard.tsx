@@ -97,7 +97,7 @@ export const DraftArcCard = ({
       </p>
       <div className="mt-3 grid grid-cols-2 gap-2 text-muted-foreground text-xs">
         <div className="rounded-lg border border-input bg-background p-2">
-          <p className="text-xs text-muted-foreground uppercase">
+          <p className="text-muted-foreground text-xs uppercase">
             {t('feed.openFixes')}
           </p>
           <p className="mt-1 font-semibold text-foreground text-sm">
@@ -105,7 +105,7 @@ export const DraftArcCard = ({
           </p>
         </div>
         <div className="rounded-lg border border-input bg-background p-2">
-          <p className="text-xs text-muted-foreground uppercase">
+          <p className="text-muted-foreground text-xs uppercase">
             {t('feed.pendingPRs')}
           </p>
           <p className="mt-1 font-semibold text-foreground text-sm">
@@ -113,10 +113,10 @@ export const DraftArcCard = ({
           </p>
         </div>
       </div>
-      <p className="mt-3 text-xs text-muted-foreground">
+      <p className="mt-3 text-muted-foreground text-xs">
         {t('pr.lastMerge')} {lastMerge}
       </p>
-      <p className="text-xs text-muted-foreground">
+      <p className="text-muted-foreground text-xs">
         {t('pr.updated')} {updatedAt}
       </p>
     </div>

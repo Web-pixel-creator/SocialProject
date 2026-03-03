@@ -3373,6 +3373,7 @@ const GatewayTelemetryThresholdsCard = ({
   </article>
 );
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: The page intentionally aggregates multiple admin datasets in one SSR entrypoint.
 export default async function AdminUxObserverEngagementPage({
   searchParams,
 }: {
@@ -3695,12 +3696,12 @@ export default async function AdminUxObserverEngagementPage({
     releaseHealthAlertLatest.runId > 0
       ? releaseHealthAlertLatest.runId
       : null;
-  const releaseHealthAlertLatestRunLabel =
-    releaseHealthAlertLatestRunNumber !== null
-      ? `#${releaseHealthAlertLatestRunNumber}`
-      : releaseHealthAlertLatestRunId !== null
-        ? String(releaseHealthAlertLatestRunId)
-        : 'n/a';
+  let releaseHealthAlertLatestRunLabel = 'n/a';
+  if (releaseHealthAlertLatestRunNumber !== null) {
+    releaseHealthAlertLatestRunLabel = `#${releaseHealthAlertLatestRunNumber}`;
+  } else if (releaseHealthAlertLatestRunId !== null) {
+    releaseHealthAlertLatestRunLabel = String(releaseHealthAlertLatestRunId);
+  }
   const feedPreferences = data?.feedPreferences ?? {};
   const viewMode = feedPreferences.viewMode ?? {};
   const density = feedPreferences.density ?? {};
@@ -5589,4 +5590,3 @@ export default async function AdminUxObserverEngagementPage({
     </main>
   );
 }
-

@@ -133,7 +133,7 @@ export const PredictionWidget = ({
         </p>
         <div className="mt-3">
           <Link
-            className="inline-flex min-h-8 items-center rounded-full border border-primary/35 bg-primary/10 px-3 py-1.5 font-semibold text-xs text-primary transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="inline-flex min-h-8 items-center rounded-full border border-primary/35 bg-primary/10 px-3 py-1.5 font-semibold text-primary text-xs transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             href="/login"
           >
             {t('header.signIn')}
@@ -233,7 +233,7 @@ export const PredictionWidget = ({
         {summary.accuracy.total} ({accuracyPct}%)
       </p>
       <div className="mt-3 grid gap-2">
-        <label className="text-xs text-muted-foreground" htmlFor="stake">
+        <label className="text-muted-foreground text-xs" htmlFor="stake">
           {t('prediction.stakeLabel')}
         </label>
         <input
@@ -248,9 +248,7 @@ export const PredictionWidget = ({
           value={stakeInput}
         />
         {stakeAdjustmentHint ? (
-          <p className="text-xs text-muted-foreground">
-            {stakeAdjustmentHint}
-          </p>
+          <p className="text-muted-foreground text-xs">{stakeAdjustmentHint}</p>
         ) : null}
       </div>
       <div className="mt-3 flex items-center gap-2">
@@ -280,10 +278,10 @@ export const PredictionWidget = ({
         </button>
       </div>
       {limitReason ? (
-        <p className="mt-2 text-xs text-destructive">{limitReason}</p>
+        <p className="mt-2 text-destructive text-xs">{limitReason}</p>
       ) : null}
       {summary.observerPrediction && (
-        <p className="mt-2 text-xs text-muted-foreground">
+        <p className="mt-2 text-muted-foreground text-xs">
           {t('prediction.yourPrediction')}{' '}
           {formatPredictionOutcomeLabel(
             summary.observerPrediction.predictedOutcome,
@@ -300,7 +298,7 @@ export const PredictionWidget = ({
             : ''}
         </p>
       )}
-      <p className="mt-2 text-xs text-muted-foreground">
+      <p className="mt-2 text-muted-foreground text-xs">
         {formatPredictionNetPointsLine(t, marketSnapshot.observerNetPoints)}
       </p>
     </div>

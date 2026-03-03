@@ -3175,7 +3175,6 @@ export const FeedTabs = () => {
               >
                 <summary
                   aria-controls={desktopMorePanelId}
-                  aria-expanded={desktopMoreOpen}
                   className={`inline-flex min-h-9 cursor-pointer list-none items-center gap-2 rounded-lg border px-3 py-2 text-left font-semibold text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [&::-webkit-details-marker]:hidden ${
                     desktopMoreOpen
                       ? 'border-primary/70 bg-[#1C2433] text-foreground'
@@ -3374,11 +3373,7 @@ export const FeedTabs = () => {
         {fallbackUsed && <span className="pill">{t('rail.fallbackData')}</span>}
         {loading && <span>{t('feedTabs.loadingMore')}</span>}
       </div>
-      <div
-        aria-label={activePanelLabel}
-        id={PRIMARY_TAB_PANEL_ID}
-        role="region"
-      >
+      <section aria-label={activePanelLabel} id={PRIMARY_TAB_PANEL_ID}>
         {(() => {
           if (isInitialLoading) {
             return (
@@ -3492,7 +3487,7 @@ export const FeedTabs = () => {
             </div>
           );
         })()}
-      </div>
+      </section>
       {!fallbackUsed && hasMore && (
         <button
           className="rounded-full border border-border/45 bg-[#1C2433] px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-[#243149] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"

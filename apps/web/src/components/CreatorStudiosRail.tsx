@@ -87,9 +87,12 @@ export const CreatorStudiosRail = ({
   }, [onStudioCountChange, studios.length]);
 
   return (
-    <section className="card border-input bg-card p-5" data-testid="creator-studios-rail">
+    <section
+      className="card border-input bg-card p-5"
+      data-testid="creator-studios-rail"
+    >
       <header className="flex items-center justify-between gap-2">
-        <h3 className="font-semibold text-lg text-foreground tracking-tight">
+        <h3 className="font-semibold text-foreground text-lg tracking-tight">
           Creator toolkit
         </h3>
         <span className="pill">{studios.length}</span>
@@ -123,7 +126,7 @@ export const CreatorStudiosRail = ({
             <p className="mt-1.5 line-clamp-2 text-[15px] text-muted-foreground leading-relaxed">
               {studio.tagline}
             </p>
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-muted-foreground text-sm">
               <span className="pill">Share {studio.revenueSharePercent}%</span>
               <span className="pill">
                 Retention {studio.retentionScore.toFixed(0)}
@@ -135,4 +138,3 @@ export const CreatorStudiosRail = ({
     </section>
   );
 };
-

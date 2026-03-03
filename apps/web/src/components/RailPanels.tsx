@@ -51,8 +51,8 @@ export type FeedRow = Record<string, unknown>;
 export const asRows = (data: unknown): FeedRow[] =>
   Array.isArray(data)
     ? data.filter(
-      (item): item is FeedRow => typeof item === 'object' && item !== null,
-    )
+        (item): item is FeedRow => typeof item === 'object' && item !== null,
+      )
     : [];
 
 export const asString = (value: unknown): string | undefined =>
@@ -126,8 +126,7 @@ export const PanelHeader = memo(function PanelHeader({
   badge,
   badgeTone = 'default',
 }: PanelHeaderProps) {
-  let badgeClass =
-    'border border-input bg-background text-foreground';
+  let badgeClass = 'border border-input bg-background text-foreground';
   if (badgeTone === 'hot') {
     badgeClass = 'border tag-hot';
   } else if (badgeTone === 'live') {
@@ -176,7 +175,7 @@ export const ItemList = memo(function ItemList({
             key={item.id}
           >
             <div className="flex items-start gap-2.5">
-              <span className="inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-background font-semibold text-xs text-muted-foreground">
+              <span className="inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-background font-semibold text-muted-foreground text-xs">
                 {index + 1}
               </span>
               <div className="min-w-0">
@@ -229,8 +228,9 @@ export const BattleList = memo(function BattleList({
             <div className="flex items-start justify-between gap-2">
               <p className="line-clamp-2 text-foreground">{item.title}</p>
               <span
-                className={`flex-shrink-0 rounded-full px-2.5 py-1 font-semibold text-xs uppercase tracking-wide ${index === 0 ? 'tag-hot border' : 'tag-live border'
-                  }`}
+                className={`flex-shrink-0 rounded-full px-2.5 py-1 font-semibold text-xs uppercase tracking-wide ${
+                  index === 0 ? 'tag-hot border' : 'tag-live border'
+                }`}
               >
                 {index === 0 ? hotLabel : liveLabel}
               </span>

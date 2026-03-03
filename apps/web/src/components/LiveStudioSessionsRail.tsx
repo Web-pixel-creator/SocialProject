@@ -413,8 +413,8 @@ const parseFunctionCallOutputPayload = (
       callId,
       hasError: Boolean(
         outputRecord &&
-        typeof outputRecord.error === 'string' &&
-        outputRecord.error.trim().length > 0,
+          typeof outputRecord.error === 'string' &&
+          outputRecord.error.trim().length > 0,
       ),
       errorCode:
         outputRecord && typeof outputRecord.error === 'string'
@@ -765,7 +765,7 @@ export const LiveStudioSessionsRail = ({
       }
       const hasAuthHeader =
         typeof apiClient.defaults?.headers?.common?.Authorization ===
-        'string' &&
+          'string' &&
         apiClient.defaults.headers.common.Authorization.trim().length > 0;
       if (!hasAuthHeader) {
         return;
@@ -799,10 +799,10 @@ export const LiveStudioSessionsRail = ({
       const content =
         prefixed.length > MAX_TRANSCRIPT_MESSAGE_CONTENT_LENGTH
           ? `${prefixed.slice(
-            0,
-            MAX_TRANSCRIPT_MESSAGE_CONTENT_LENGTH -
-            TRANSCRIPT_TRUNCATION_SUFFIX.length,
-          )}${TRANSCRIPT_TRUNCATION_SUFFIX}`
+              0,
+              MAX_TRANSCRIPT_MESSAGE_CONTENT_LENGTH -
+                TRANSCRIPT_TRUNCATION_SUFFIX.length,
+            )}${TRANSCRIPT_TRUNCATION_SUFFIX}`
           : prefixed;
 
       try {
@@ -1420,10 +1420,8 @@ export const LiveStudioSessionsRail = ({
     'rounded-[1.5rem] border border-border/45 bg-card/72 px-5 py-5';
   const sessionMetaPillClass =
     'inline-flex h-8 min-w-[7.5rem] items-center justify-center rounded-xl border border-border/60 bg-background/82 px-3 font-semibold text-sm text-foreground';
-  const overlayCard1Class =
-    'mt-4 rounded-xl bg-background/58 px-4 py-4';
-  const overlayCard2Class =
-    'mt-3 rounded-xl bg-background/58 px-4 py-4';
+  const overlayCard1Class = 'mt-4 rounded-xl bg-background/58 px-4 py-4';
+  const overlayCard2Class = 'mt-3 rounded-xl bg-background/58 px-4 py-4';
   const actionButtonBaseClass =
     'inline-flex h-8 w-full items-center justify-center rounded-xl px-4 font-semibold text-[12px] leading-none transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
   const controlButtonClass = `${actionButtonBaseClass} border border-border/60 bg-[#1C2433] text-foreground hover:bg-[#243149] disabled:cursor-not-allowed disabled:opacity-50`;
@@ -1434,12 +1432,12 @@ export const LiveStudioSessionsRail = ({
   return (
     <section className={railShellClass} data-testid="live-studio-sessions-rail">
       <header className="flex items-center justify-between gap-2">
-        <h2 className="font-semibold text-foreground text-2xl tracking-tight">
+        <h2 className="font-semibold text-2xl text-foreground tracking-tight">
           {t('liveSessionsRail.title')}
         </h2>
         <span className={railCountBadgeClass}>{sessions.length}</span>
       </header>
-      <p className="mt-3 text-muted-foreground text-[15px] leading-relaxed">
+      <p className="mt-3 text-[15px] text-muted-foreground leading-relaxed">
         {t('liveSessionsRail.description')}
       </p>
 
@@ -1492,7 +1490,7 @@ export const LiveStudioSessionsRail = ({
               </p>
               {session.overlay.mergeSignalPct +
                 session.overlay.rejectSignalPct >
-                0 ? (
+              0 ? (
                 <div className="mt-3">
                   <p className="font-bold text-[15px] text-foreground">
                     {t('liveSessionsRail.overlay.predictionSignal')}:
@@ -1519,15 +1517,15 @@ export const LiveStudioSessionsRail = ({
             {/* Recap (completed only) */}
             {session.status === 'completed' && session.overlay.recapSummary ? (
               <div className={overlayCard2Class}>
-                <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wider">
+                <p className="font-medium text-[13px] text-muted-foreground uppercase tracking-wider">
                   {t('liveSessionsRail.overlay.autoRecap')}
                 </p>
-                <p className="mt-1.5 line-clamp-3 text-sm text-muted-foreground leading-relaxed">
+                <p className="mt-1.5 line-clamp-3 text-muted-foreground text-sm leading-relaxed">
                   {session.overlay.recapSummary}
                 </p>
                 {session.overlay.recapClipUrl ? (
                   <a
-                    className="mt-1.5 inline-block text-sm text-primary underline-offset-2 hover:underline"
+                    className="mt-1.5 inline-block text-primary text-sm underline-offset-2 hover:underline"
                     href={session.overlay.recapClipUrl}
                     rel="noreferrer"
                     target="_blank"
@@ -1552,7 +1550,7 @@ export const LiveStudioSessionsRail = ({
                 type="button"
               >
                 {copilotStateBySession[session.id]?.status === 'loading' ||
-                  copilotStateBySession[session.id]?.status === 'connecting'
+                copilotStateBySession[session.id]?.status === 'connecting'
                   ? t('liveSessionsRail.controls.startingCopilot')
                   : t('liveSessionsRail.controls.startCopilot')}
               </button>
@@ -1566,7 +1564,7 @@ export const LiveStudioSessionsRail = ({
               )}
             </div>
             {copilotStateBySession[session.id]?.status === 'ready' &&
-              copilotStateBySession[session.id]?.bootstrap ? (
+            copilotStateBySession[session.id]?.bootstrap ? (
               <div className="space-y-2">
                 <p className="text-[13px] text-chart-2">
                   {t('liveSessionsRail.ready.copilotReady')}{' '}
@@ -1596,12 +1594,12 @@ export const LiveStudioSessionsRail = ({
                       <span
                         className={`rounded-full px-2.5 py-1 font-semibold text-xs uppercase tracking-wide ${getRealtimeStatusClassName(
                           voiceRuntimeStateBySession[session.id]?.status ??
-                          'idle',
+                            'idle',
                         )}`}
                       >
                         {toRealtimeStatusLabel(
                           voiceRuntimeStateBySession[session.id]?.status ??
-                          'idle',
+                            'idle',
                           t,
                         )}
                       </span>
@@ -1609,15 +1607,9 @@ export const LiveStudioSessionsRail = ({
                     <div className="flex flex-wrap items-center gap-2">
                       <button
                         className={controlButtonClass}
-                        onPointerCancel={() =>
-                          handlePushToTalkStop(session.id)
-                        }
-                        onPointerDown={() =>
-                          handlePushToTalkStart(session.id)
-                        }
-                        onPointerLeave={() =>
-                          handlePushToTalkStop(session.id)
-                        }
+                        onPointerCancel={() => handlePushToTalkStop(session.id)}
+                        onPointerDown={() => handlePushToTalkStart(session.id)}
+                        onPointerLeave={() => handlePushToTalkStop(session.id)}
                         onPointerUp={() => handlePushToTalkStop(session.id)}
                         type="button"
                       >
@@ -1635,8 +1627,8 @@ export const LiveStudioSessionsRail = ({
                     </div>
                     <p className="text-[13px] text-muted-foreground">
                       {t('liveSessionsRail.voice.interruptions')}:{' '}
-                      {voiceControlStateBySession[session.id]
-                        ?.interruptions ?? 0}
+                      {voiceControlStateBySession[session.id]?.interruptions ??
+                        0}
                     </p>
                     {voiceControlStateBySession[session.id]?.lastCommitAt ? (
                       <p className="text-[13px] text-muted-foreground">
@@ -1666,41 +1658,41 @@ export const LiveStudioSessionsRail = ({
                 )}
                 {(transcriptStateBySession[session.id]?.liveText ||
                   transcriptStateBySession[session.id]?.finalText) && (
-                    <div className={`mt-1 ${subtleInfoPanelClass}`}>
-                      <p className="text-[13px] text-muted-foreground uppercase tracking-wide">
-                        {t('liveSessionsRail.transcript.title')}
+                  <div className={`mt-1 ${subtleInfoPanelClass}`}>
+                    <p className="text-[13px] text-muted-foreground uppercase tracking-wide">
+                      {t('liveSessionsRail.transcript.title')}
+                    </p>
+                    <p className="line-clamp-3 text-[13px] text-muted-foreground">
+                      {transcriptStateBySession[session.id]?.liveText ||
+                        transcriptStateBySession[session.id]?.finalText}
+                    </p>
+                    {transcriptStateBySession[session.id]?.lastEventAt ? (
+                      <p className="text-[13px] text-muted-foreground">
+                        {t('liveSessionsRail.transcript.updated')}:{' '}
+                        {formatRelativeMinutes(
+                          transcriptStateBySession[session.id]
+                            ?.lastEventAt as string,
+                          t,
+                        )}
                       </p>
-                      <p className="line-clamp-3 text-[13px] text-muted-foreground">
-                        {transcriptStateBySession[session.id]?.liveText ||
-                          transcriptStateBySession[session.id]?.finalText}
+                    ) : null}
+                    {transcriptStateBySession[session.id]?.persistedAt ? (
+                      <p className="text-[13px] text-muted-foreground">
+                        {t('liveSessionsRail.transcript.savedToChat')}:{' '}
+                        {formatRelativeMinutes(
+                          transcriptStateBySession[session.id]
+                            ?.persistedAt as string,
+                          t,
+                        )}
                       </p>
-                      {transcriptStateBySession[session.id]?.lastEventAt ? (
-                        <p className="text-[13px] text-muted-foreground">
-                          {t('liveSessionsRail.transcript.updated')}:{' '}
-                          {formatRelativeMinutes(
-                            transcriptStateBySession[session.id]
-                              ?.lastEventAt as string,
-                            t,
-                          )}
-                        </p>
-                      ) : null}
-                      {transcriptStateBySession[session.id]?.persistedAt ? (
-                        <p className="text-[13px] text-muted-foreground">
-                          {t('liveSessionsRail.transcript.savedToChat')}:{' '}
-                          {formatRelativeMinutes(
-                            transcriptStateBySession[session.id]
-                              ?.persistedAt as string,
-                            t,
-                          )}
-                        </p>
-                      ) : null}
-                      {transcriptStateBySession[session.id]?.persistError ? (
-                        <p className="text-[13px] text-destructive">
-                          {transcriptStateBySession[session.id]?.persistError}
-                        </p>
-                      ) : null}
-                    </div>
-                  )}
+                    ) : null}
+                    {transcriptStateBySession[session.id]?.persistError ? (
+                      <p className="text-[13px] text-destructive">
+                        {transcriptStateBySession[session.id]?.persistError}
+                      </p>
+                    ) : null}
+                  </div>
+                )}
               </div>
             ) : null}
             {voiceControlStateBySession[session.id]?.error ? (
