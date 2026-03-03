@@ -3147,93 +3147,117 @@ const BreakdownListCard = ({
   title,
   emptyLabel,
   items,
+  compactEmptyState = false,
 }: {
+  compactEmptyState?: boolean;
   emptyLabel: string;
   items: Array<{ count: number; key: string }>;
   title: string;
-}) => (
-  <article className="card grid gap-2 p-4">
-    <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-      {title}
-    </h3>
-    {items.length === 0 ? (
-      <p className="text-muted-foreground text-xs">{emptyLabel}</p>
-    ) : (
-      <ul className="grid gap-1 text-xs">
-        {items.map((entry, index) => (
-          <li
-            className="flex items-center justify-between gap-2"
-            key={`${entry.key}:${index + 1}`}
-          >
-            <span className="text-muted-foreground">{entry.key}</span>
-            <span className="font-semibold text-foreground">{entry.count}</span>
-          </li>
-        ))}
-      </ul>
-    )}
-  </article>
-);
+}) => {
+  const hasItems = items.length > 0;
+  const showCompactEmptyState = !hasItems && compactEmptyState;
+  const showPlainEmptyState = !(hasItems || compactEmptyState);
+  return (
+    <article className="card grid gap-2 p-4">
+      <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+        {title}
+      </h3>
+      {showCompactEmptyState ? (
+        <CompactEmptyState message={emptyLabel} size="xs" />
+      ) : null}
+      {showPlainEmptyState ? (
+        <p className="text-muted-foreground text-xs">{emptyLabel}</p>
+      ) : null}
+      {hasItems ? (
+        <ul className="grid gap-1 text-xs">
+          {items.map((entry, index) => (
+            <li
+              className="flex items-center justify-between gap-2"
+              key={`${entry.key}:${index + 1}`}
+            >
+              <span className="text-muted-foreground">{entry.key}</span>
+              <span className="font-semibold text-foreground">
+                {entry.count}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </article>
+  );
+};
 
 const HourlyTrendCard = ({
   emptyLabel,
   items,
   title,
+  compactEmptyState = false,
 }: {
+  compactEmptyState?: boolean;
   emptyLabel: string;
   items: MultimodalHourlyTrendItem[];
   title: string;
-}) => (
-  <article className="card grid gap-2 p-4">
-    <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-      {title}
-    </h3>
-    {items.length === 0 ? (
-      <p className="text-muted-foreground text-xs">{emptyLabel}</p>
-    ) : (
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-left text-xs">
-          <thead>
-            <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
-              <th className="py-2 pr-3">Hour</th>
-              <th className="px-3 py-2 text-right">Views</th>
-              <th className="px-3 py-2 text-right">Empty</th>
-              <th className="px-3 py-2 text-right">Errors</th>
-              <th className="px-3 py-2 text-right">Coverage</th>
-              <th className="px-3 py-2 text-right">Error rate</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((entry) => (
-              <tr
-                className="border-border/25 border-b last:border-b-0"
-                key={entry.hour}
-              >
-                <td className="py-2 pr-3 text-muted-foreground">
-                  {formatHourBucket(entry.hour)}
-                </td>
-                <td className="px-3 py-2 text-right text-foreground">
-                  {entry.views}
-                </td>
-                <td className="px-3 py-2 text-right text-foreground">
-                  {entry.emptyStates}
-                </td>
-                <td className="px-3 py-2 text-right text-foreground">
-                  {entry.errors}
-                </td>
-                <td className="px-3 py-2 text-right text-foreground">
-                  {toRateText(entry.coverageRate)}
-                </td>
-                <td className="px-3 py-2 text-right text-foreground">
-                  {toRateText(entry.errorRate)}
-                </td>
+}) => {
+  const hasItems = items.length > 0;
+  const showCompactEmptyState = !hasItems && compactEmptyState;
+  const showPlainEmptyState = !(hasItems || compactEmptyState);
+  return (
+    <article className="card grid gap-2 p-4">
+      <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+        {title}
+      </h3>
+      {showCompactEmptyState ? (
+        <CompactEmptyState message={emptyLabel} size="xs" />
+      ) : null}
+      {showPlainEmptyState ? (
+        <p className="text-muted-foreground text-xs">{emptyLabel}</p>
+      ) : null}
+      {hasItems ? (
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left text-xs">
+            <thead>
+              <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
+                <th className="py-2 pr-3">Hour</th>
+                <th className="px-3 py-2 text-right">Views</th>
+                <th className="px-3 py-2 text-right">Empty</th>
+                <th className="px-3 py-2 text-right">Errors</th>
+                <th className="px-3 py-2 text-right">Coverage</th>
+                <th className="px-3 py-2 text-right">Error rate</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    )}
-  </article>
-);
+            </thead>
+            <tbody>
+              {items.map((entry) => (
+                <tr
+                  className="border-border/25 border-b last:border-b-0"
+                  key={entry.hour}
+                >
+                  <td className="py-2 pr-3 text-muted-foreground">
+                    {formatHourBucket(entry.hour)}
+                  </td>
+                  <td className="px-3 py-2 text-right text-foreground">
+                    {entry.views}
+                  </td>
+                  <td className="px-3 py-2 text-right text-foreground">
+                    {entry.emptyStates}
+                  </td>
+                  <td className="px-3 py-2 text-right text-foreground">
+                    {entry.errors}
+                  </td>
+                  <td className="px-3 py-2 text-right text-foreground">
+                    {toRateText(entry.coverageRate)}
+                  </td>
+                  <td className="px-3 py-2 text-right text-foreground">
+                    {toRateText(entry.errorRate)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+    </article>
+  );
+};
 
 const ReleaseHealthAlertHourlyTrendCard = ({
   emptyLabel,
@@ -5663,6 +5687,7 @@ export default async function AdminUxObserverEngagementPage({
             />
           </div>
           <HourlyTrendCard
+            compactEmptyState
             emptyLabel="No hourly multimodal trend data in current window."
             items={multimodalHourlyTrend}
             title="Hourly trend (UTC)"
@@ -5781,6 +5806,7 @@ export default async function AdminUxObserverEngagementPage({
           </div>
           <div className="grid gap-4 lg:grid-cols-3">
             <BreakdownListCard
+              compactEmptyState
               emptyLabel="No prediction outcomes in current window."
               items={predictionOutcomesBreakdown}
               title="Outcome mix"
@@ -5887,11 +5913,13 @@ export default async function AdminUxObserverEngagementPage({
                   value={`${toNumber(predictionFilterTelemetry.totalSwitches)}`}
                 />
                 <BreakdownListCard
+                  compactEmptyState
                   emptyLabel="No scope-switch data in current window."
                   items={predictionFilterByScopeBreakdown}
                   title="Filter scope mix"
                 />
                 <BreakdownListCard
+                  compactEmptyState
                   emptyLabel="No filter-value data in current window."
                   items={predictionFilterByFilterBreakdown}
                   title="Filter value mix"
@@ -6089,11 +6117,13 @@ export default async function AdminUxObserverEngagementPage({
                   value={`${toNumber(predictionSortTelemetry.totalSwitches)}`}
                 />
                 <BreakdownListCard
+                  compactEmptyState
                   emptyLabel="No sort scope data in current window."
                   items={predictionSortByScopeBreakdown}
                   title="Sort scope mix"
                 />
                 <BreakdownListCard
+                  compactEmptyState
                   emptyLabel="No sort-value data in current window."
                   items={predictionSortBySortBreakdown}
                   title="Sort value mix"
