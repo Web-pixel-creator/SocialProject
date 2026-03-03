@@ -142,9 +142,6 @@ const openFilters = async () => {
   }
 };
 
-const openControls = async () => {
-  await openMoreTabs();
-};
 describe('feed UI', () => {
   beforeEach(() => {
     (apiClient.get as jest.Mock).mockReset();
@@ -193,67 +190,68 @@ describe('feed UI', () => {
     await waitFor(() => expect(apiClient.get).toHaveBeenCalled());
     const tab = await openTab(/GlowUps/i);
     expect(tab).toHaveAttribute('aria-pressed', 'true');
-    expect(tab).toHaveClass('text-primary');
+    expect(tab).toHaveClass('bg-[#1C2433]');
   });
 
-  test('switches feed density between comfort and compact', async () => {
-    (apiClient.get as jest.Mock).mockResolvedValueOnce({
-      data: [{ id: 'draft-density', type: 'draft', glowUpScore: 4.2 }],
-    });
+  test('supports keyboard navigation across primary tabs', async () => {
     await renderFeedTabs();
-    await openControls();
 
-    const comfortButton = screen.getByRole('button', { name: /Comfort/i });
-    const compactButton = screen.getByRole('button', { name: /Compact/i });
-    const grid = screen.getByTestId('feed-items-grid');
+    const tabStrip = screen.getByTestId('feed-primary-tabs');
+    const allTab = within(tabStrip).getByRole('button', { name: /^All$/i });
 
-    expect(comfortButton).toHaveAttribute('aria-pressed', 'true');
-    expect(compactButton).toHaveAttribute('aria-pressed', 'false');
-    expect(grid.className).toContain('gap-4');
-    expect(grid.className).not.toContain('gap-2.5');
+    allTab.focus();
+    expect(allTab).toHaveFocus();
 
-    (apiClient.post as jest.Mock).mockClear();
-    await clickAndFlush(compactButton);
+    fireEvent.keyDown(allTab, { key: 'ArrowRight' });
+    const hotNowTab = within(tabStrip).getByRole('button', {
+      name: /Hot now/i,
+    });
+    await waitFor(() => {
+      expect(hotNowTab).toHaveFocus();
+      expect(hotNowTab).toHaveAttribute('aria-pressed', 'true');
+    });
 
-    expect(comfortButton).toHaveAttribute('aria-pressed', 'false');
-    expect(compactButton).toHaveAttribute('aria-pressed', 'true');
-    expect(grid.className).toContain('gap-2.5');
-    expect(grid.className).not.toContain('md:grid-cols-2');
-    expect(apiClient.post).toHaveBeenCalledWith(
-      '/telemetry/ux',
-      expect.objectContaining({
-        eventType: 'feed_density_change',
-        density: 'compact',
-        previousDensity: 'comfort',
-        sourceTab: 'All',
-      }),
-    );
+    fireEvent.keyDown(hotNowTab, { key: 'End' });
+    const forYouTab = within(tabStrip).getByRole('button', {
+      name: /For you/i,
+    });
+    await waitFor(() => {
+      expect(forYouTab).toHaveFocus();
+      expect(forYouTab).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    fireEvent.keyDown(forYouTab, { key: 'Home' });
+    await waitFor(() => {
+      expect(allTab).toHaveFocus();
+      expect(allTab).toHaveAttribute('aria-pressed', 'true');
+    });
   });
 
-  test('defaults feed density to compact on mobile when preference is missing', async () => {
-    window.localStorage.removeItem('finishit-feed-density');
-    Object.defineProperty(window, 'matchMedia', {
-      value: (query: string) => ({
-        matches: query === '(max-width: 767px)',
-        media: query,
-        onchange: null,
-        addListener: jest.fn(),
-        removeListener: jest.fn(),
-        addEventListener: jest.fn(),
-        removeEventListener: jest.fn(),
-        dispatchEvent: jest.fn(),
-      }),
-      configurable: true,
+  test('supports keyboard navigation inside desktop more tabs list', async () => {
+    await renderFeedTabs();
+    await openMoreTabs();
+
+    const progressTab = screen.getByTestId('feed-more-tab-progress');
+    const changesTab = screen.getByTestId('feed-more-tab-changes');
+    const archiveTab = screen.getByTestId('feed-more-tab-archive');
+
+    progressTab.focus();
+    expect(progressTab).toHaveFocus();
+
+    fireEvent.keyDown(progressTab, { key: 'ArrowDown' });
+    await waitFor(() => {
+      expect(changesTab).toHaveFocus();
     });
 
-    await renderFeedTabs();
-    await openControls();
+    fireEvent.keyDown(changesTab, { key: 'End' });
+    await waitFor(() => {
+      expect(archiveTab).toHaveFocus();
+    });
 
-    const comfortButton = screen.getByRole('button', { name: /Comfort/i });
-    const compactButton = screen.getByRole('button', { name: /Compact/i });
-
-    expect(comfortButton).toHaveAttribute('aria-pressed', 'false');
-    expect(compactButton).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.keyDown(archiveTab, { key: 'Home' });
+    await waitFor(() => {
+      expect(progressTab).toHaveFocus();
+    });
   });
 
   test('opens filters as mobile bottom sheet on narrow viewport', async () => {
@@ -332,6 +330,7 @@ describe('feed UI', () => {
     });
 
     await renderFeedTabs();
+    const filtersButton = screen.getByTestId('feed-filters-toggle');
     await openFilters();
 
     expect(
@@ -343,6 +342,9 @@ describe('feed UI', () => {
     expect(
       screen.queryByRole('dialog', { name: /Filters/i }),
     ).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(filtersButton).toHaveFocus();
+    });
   });
 
   test('opens more controls as mobile bottom sheet on narrow viewport', async () => {
@@ -432,6 +434,7 @@ describe('feed UI', () => {
     });
 
     await renderFeedTabs();
+    const moreButton = screen.getByTestId('feed-mobile-more-toggle');
     await openMoreTabs();
 
     expect(screen.getByRole('dialog', { name: /More/i })).toBeInTheDocument();
@@ -439,6 +442,9 @@ describe('feed UI', () => {
     await pressEscapeAndFlush();
 
     expect(screen.queryByRole('dialog', { name: /More/i })).toBeNull();
+    await waitFor(() => {
+      expect(moreButton).toHaveFocus();
+    });
   });
 
   test('falls back when for-you feed fails', async () => {

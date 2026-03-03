@@ -4,8 +4,6 @@ import {
   ArrowUp,
   ChevronDown,
   Inbox,
-  LayoutGrid,
-  Rows3,
   Search,
   SlidersHorizontal,
   X,
@@ -14,9 +12,11 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   memo,
+  type KeyboardEvent as ReactKeyboardEvent,
   type RefObject,
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -69,6 +69,7 @@ const TABS = [
 ];
 const PRIMARY_TABS = ['All', 'Hot Now', 'Live Drafts', 'Battles', 'For You'];
 const MORE_TABS = TABS.filter((tab) => !PRIMARY_TABS.includes(tab));
+const PRIMARY_TAB_PANEL_ID = 'feed-primary-tabpanel';
 const PAGE_SIZE = 6;
 const DEFAULT_SORT = 'recent';
 const DEFAULT_STATUS = 'all';
@@ -376,6 +377,12 @@ const parseBattlePredictionMarket = (
   };
 };
 
+const toPrimaryTabDomId = (tab: string): string =>
+  `feed-primary-tab-${tab.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+
+const toFeedTabSlug = (tab: string): string =>
+  tab.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
 const searchableTextByItemKind = (item: FeedItem): string => {
   if (item.kind === 'draft' || item.kind === 'hot') {
     return `${item.title} ${item.id}`;
@@ -446,6 +453,135 @@ interface AllFeedFiltersProps {
   onIntentChange: (value: FeedIntent) => void;
 }
 
+interface FilterSelectOption {
+  value: string;
+  label: string;
+}
+
+interface FilterSelectProps {
+  label: string;
+  value: string;
+  options: FilterSelectOption[];
+  onValueChange: (value: string) => void;
+}
+
+const FilterSelect = memo(function FilterSelect({
+  label,
+  value,
+  options,
+  onValueChange,
+}: FilterSelectProps) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const listboxId = useId();
+  const selectedOption =
+    options.find((option) => option.value === value) ?? options[0] ?? null;
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (
+        containerRef.current &&
+        event.target instanceof Node &&
+        !containerRef.current.contains(event.target)
+      ) {
+        setOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <select
+        aria-label={label}
+        className="sr-only"
+        onChange={(event) => onValueChange(event.target.value)}
+        tabIndex={-1}
+        value={value}
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <button
+        aria-controls={listboxId}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        className={`inline-flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+          open
+            ? 'border-primary/70 bg-[#1C2433] text-foreground'
+            : 'border-border/45 bg-[#1C2433] text-foreground hover:border-primary/45 hover:bg-[#243149]'
+        }`}
+        onClick={() => setOpen((previous) => !previous)}
+        role="combobox"
+        type="button"
+      >
+        <span className="truncate">{selectedOption?.label ?? label}</span>
+        <ChevronDown
+          aria-hidden="true"
+          className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
+            open ? 'rotate-180' : ''
+          }`}
+        />
+      </button>
+      {open ? (
+        <div
+          className="absolute top-full z-40 mt-1 w-full overflow-hidden rounded-lg border border-border/45 bg-popover p-1"
+          id={listboxId}
+          role="listbox"
+        >
+          {options.map((option) => {
+            const selected = option.value === value;
+            return (
+              <button
+                aria-selected={selected}
+                className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                  selected
+                    ? 'bg-accent/85 text-foreground'
+                    : 'text-popover-foreground hover:bg-accent/70 hover:text-foreground'
+                }`}
+                key={option.value}
+                onClick={() => {
+                  onValueChange(option.value);
+                  setOpen(false);
+                }}
+                role="option"
+                type="button"
+              >
+                <span className="truncate">{option.label}</span>
+                {selected ? (
+                  <span
+                    aria-hidden="true"
+                    className="ml-2 inline-flex h-1.5 w-1.5 shrink-0 rounded-full bg-primary"
+                  />
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+});
+
 const AllFeedFilters = memo(function AllFeedFilters({
   sort,
   status,
@@ -462,71 +598,51 @@ const AllFeedFilters = memo(function AllFeedFilters({
   onIntentChange,
 }: AllFeedFiltersProps) {
   return (
-    <div className="grid gap-3 rounded-2xl border border-border/25 bg-background/60 p-4 text-foreground/85 text-xs md:grid-cols-2 xl:grid-cols-4">
-      <label className="grid gap-1">
-        <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
+    <div className="grid gap-3 rounded-[1.5rem] border border-input bg-card p-4 text-foreground/85 text-xs md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-1">
+        <span className="font-semibold text-muted-foreground text-xs uppercase tracking-wide">
           {labels.sort}
         </span>
-        <select
-          className="rounded-lg border border-border/25 bg-background/70 px-3 py-2 text-foreground text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          onChange={(event) => onSortChange(event.target.value as FeedSort)}
+        <FilterSelect
+          label={labels.sort}
+          onValueChange={(nextValue) => onSortChange(nextValue as FeedSort)}
+          options={sortOptions}
           value={sort}
-        >
-          {sortOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="grid gap-1">
-        <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
+        />
+      </div>
+      <div className="grid gap-1">
+        <span className="font-semibold text-muted-foreground text-xs uppercase tracking-wide">
           {labels.status}
         </span>
-        <select
-          className="rounded-lg border border-border/25 bg-background/70 px-3 py-2 text-foreground text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          onChange={(event) => onStatusChange(event.target.value as FeedStatus)}
+        <FilterSelect
+          label={labels.status}
+          onValueChange={(nextValue) => onStatusChange(nextValue as FeedStatus)}
+          options={statusOptions}
           value={status}
-        >
-          {statusOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="grid gap-1">
-        <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
+        />
+      </div>
+      <div className="grid gap-1">
+        <span className="font-semibold text-muted-foreground text-xs uppercase tracking-wide">
           {labels.timeRange}
         </span>
-        <select
-          className="rounded-lg border border-border/25 bg-background/70 px-3 py-2 text-foreground text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          onChange={(event) => onRangeChange(event.target.value as FeedRange)}
+        <FilterSelect
+          label={labels.timeRange}
+          onValueChange={(nextValue) => onRangeChange(nextValue as FeedRange)}
+          options={rangeOptions}
           value={range}
-        >
-          {rangeOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="grid gap-1">
-        <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
+        />
+      </div>
+      <div className="grid gap-1">
+        <span className="font-semibold text-muted-foreground text-xs uppercase tracking-wide">
           {labels.intent}
         </span>
-        <select
-          className="rounded-lg border border-border/25 bg-background/70 px-3 py-2 text-foreground text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          onChange={(event) => onIntentChange(event.target.value as FeedIntent)}
+        <FilterSelect
+          label={labels.intent}
+          onValueChange={(nextValue) => onIntentChange(nextValue as FeedIntent)}
+          options={intentOptions}
           value={intent}
-        >
-          {intentOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </label>
+        />
+      </div>
     </div>
   );
 });
@@ -545,18 +661,18 @@ const BattleFilters = memo(function BattleFilters({
   onBattleFilterChange,
 }: BattleFiltersProps) {
   return (
-    <div className="grid gap-2 rounded-2xl border border-border/25 bg-background/60 p-3 text-foreground/85 text-xs">
-      <p className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
+    <div className="grid gap-2 rounded-[1.5rem] border border-input bg-card p-3 text-foreground/85 text-xs">
+      <p className="font-semibold text-muted-foreground text-xs uppercase tracking-wide">
         {label}
       </p>
       <div className="flex flex-wrap gap-2">
         {battleFilterOptions.map((option) => (
           <button
             aria-pressed={battleFilter === option.value}
-            className={`rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+            className={`rounded-full px-3 py-1.5 font-semibold text-xs uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
               battleFilter === option.value
-                ? 'border border-primary/35 bg-primary/15 text-primary'
-                : 'border border-transparent bg-background/56 text-muted-foreground hover:bg-background/74 hover:text-foreground'
+                ? 'border border-primary/55 bg-[#1C2433] text-primary'
+                : 'border border-border/45 bg-[#1C2433] text-muted-foreground hover:bg-[#243149] hover:text-foreground'
             }`}
             key={option.value}
             onClick={() => onBattleFilterChange(option.value)}
@@ -593,39 +709,29 @@ const FollowingFilters = memo(function FollowingFilters({
   onStatusChange,
 }: FollowingFiltersProps) {
   return (
-    <div className="grid gap-3 rounded-2xl border border-border/25 bg-background/60 p-4 text-foreground/85 text-xs md:grid-cols-2">
-      <label className="grid gap-1">
-        <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
+    <div className="grid gap-3 rounded-[1.5rem] border border-input bg-card p-4 text-foreground/85 text-xs md:grid-cols-2">
+      <div className="grid gap-1">
+        <span className="font-semibold text-muted-foreground text-xs uppercase tracking-wide">
           {labels.sort}
         </span>
-        <select
-          className="rounded-lg border border-border/25 bg-background/70 px-3 py-2 text-foreground text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          onChange={(event) => onSortChange(event.target.value as FeedSort)}
+        <FilterSelect
+          label={labels.sort}
+          onValueChange={(nextValue) => onSortChange(nextValue as FeedSort)}
+          options={sortOptions}
           value={sort}
-        >
-          {sortOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="grid gap-1">
-        <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
+        />
+      </div>
+      <div className="grid gap-1">
+        <span className="font-semibold text-muted-foreground text-xs uppercase tracking-wide">
           {labels.status}
         </span>
-        <select
-          className="rounded-lg border border-border/25 bg-background/70 px-3 py-2 text-foreground text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          onChange={(event) => onStatusChange(event.target.value as FeedStatus)}
+        <FilterSelect
+          label={labels.status}
+          onValueChange={(nextValue) => onStatusChange(nextValue as FeedStatus)}
+          options={statusOptions}
           value={status}
-        >
-          {statusOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </label>
+        />
+      </div>
     </div>
   );
 });
@@ -707,7 +813,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
         <span
           aria-atomic="true"
           aria-live="polite"
-          className="inline-flex w-fit items-center rounded-full border border-transparent bg-background/55 px-2.5 py-1 text-[11px] sm:text-xs"
+          className="inline-flex w-fit items-center rounded-full border border-border/45 bg-[#1C2433] px-2.5 py-1 text-xs sm:text-xs"
         >
           {shownLabel}: {shownValue}
         </span>
@@ -716,11 +822,12 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
             aria-controls={filtersPanelId}
             aria-expanded={filtersOpen}
             aria-keyshortcuts="Shift+F"
-            className={`inline-flex min-h-8 w-fit flex-shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-3.5 sm:py-1.5 sm:text-xs ${
+            className={`inline-flex min-h-8 w-fit flex-shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 font-semibold text-xs uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-3.5 sm:py-1.5 sm:text-xs ${
               filtersOpen
-                ? 'border-primary/35 bg-primary/10 text-primary'
-                : 'border-transparent bg-background/52 text-muted-foreground hover:bg-background/74 hover:text-foreground'
+                ? 'border-primary/55 bg-[#1C2433] text-primary'
+                : 'border-border/45 bg-[#1C2433] text-muted-foreground hover:bg-[#243149] hover:text-foreground'
             }`}
+            data-testid="feed-filters-toggle"
             onClick={onToggleFilters}
             ref={filtersButtonRef}
             type="button"
@@ -736,7 +843,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
             {hasActiveFilters ? (
               <span
                 aria-hidden="true"
-                className="ml-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] text-primary"
+                className="ml-1 rounded-full border border-primary/35 bg-[#1C2433] px-1.5 py-0.5 text-primary text-xs"
               >
                 {activeFilterCount}
               </span>
@@ -748,7 +855,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
         <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto pr-1 pb-0.5">
           {hasActiveFilters ? (
             <span
-              className="flex-shrink-0 rounded-full bg-muted/58 px-2.5 py-1 font-semibold text-[11px]"
+              className="flex-shrink-0 rounded-full border border-border/45 bg-[#1C2433] px-2.5 py-1 font-semibold text-xs"
               title={activeFilterPills.join(' | ')}
             >
               {labels.activeFilters}: {activeFilterCount}
@@ -756,7 +863,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           ) : null}
           {hasBattleFilterApplied ? (
             <button
-              className="min-h-8 flex-shrink-0 rounded-full bg-muted/58 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/74 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="min-h-8 flex-shrink-0 rounded-full border border-border/45 bg-[#1C2433] px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-[#243149] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={onResetBattleFilterQuick}
               type="button"
             >
@@ -765,7 +872,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           ) : null}
           {hasStatusFilterApplied ? (
             <button
-              className="min-h-8 flex-shrink-0 rounded-full bg-muted/58 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/74 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="min-h-8 flex-shrink-0 rounded-full border border-border/45 bg-[#1C2433] px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-[#243149] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={onResetStatusFilterQuick}
               type="button"
             >
@@ -774,7 +881,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           ) : null}
           {hasSortFilterApplied ? (
             <button
-              className="min-h-8 flex-shrink-0 rounded-full bg-muted/58 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/74 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="min-h-8 flex-shrink-0 rounded-full border border-border/45 bg-[#1C2433] px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-[#243149] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={onResetSortFilterQuick}
               type="button"
             >
@@ -783,7 +890,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           ) : null}
           {hasRangeFilterApplied ? (
             <button
-              className="min-h-8 flex-shrink-0 rounded-full bg-muted/58 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/74 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="min-h-8 flex-shrink-0 rounded-full border border-border/45 bg-[#1C2433] px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-[#243149] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={onResetRangeFilterQuick}
               type="button"
             >
@@ -792,7 +899,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           ) : null}
           {hasIntentFilterApplied ? (
             <button
-              className="min-h-8 flex-shrink-0 rounded-full bg-muted/58 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/74 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="min-h-8 flex-shrink-0 rounded-full border border-border/45 bg-[#1C2433] px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-[#243149] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={onResetIntentFilterQuick}
               type="button"
             >
@@ -801,7 +908,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           ) : null}
           {hasActiveFilters ? (
             <button
-              className="min-h-8 flex-shrink-0 rounded-full bg-muted/58 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-muted/74 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="min-h-8 flex-shrink-0 rounded-full border border-border/45 bg-[#1C2433] px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-[#243149] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={onResetFilters}
               type="button"
             >
@@ -877,6 +984,10 @@ export const FeedTabs = () => {
     new Map(),
   );
   const desktopMoreDetailsRef = useRef<HTMLDetailsElement | null>(null);
+  const primaryTabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const moreTabButtonRefs = useRef<Record<string, HTMLButtonElement | null>>(
+    {},
+  );
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const mobileMoreButtonRef = useRef<HTMLButtonElement>(null);
   const mobileMoreCloseButtonRef = useRef<HTMLButtonElement>(null);
@@ -1071,9 +1182,6 @@ export const FeedTabs = () => {
   const mobileMorePanelId = 'feed-mobile-more-panel';
   const shownLabel = t('feedTabs.shown');
   const backToTopLabel = t('feedTabs.backToTop');
-  const densityLabel = t('feedTabs.density.label');
-  const comfortLabel = t('feedTabs.density.comfort');
-  const compactLabel = t('feedTabs.density.compact');
   const activeFilterLabels = useMemo(
     () => ({
       activeFilters: t('feedTabs.activeFilters'),
@@ -1089,15 +1197,15 @@ export const FeedTabs = () => {
 
   const tabClass = (tab: string, isActive: boolean): string => {
     if (!isActive) {
-      return 'border-transparent bg-background/52 text-muted-foreground hover:bg-background/72 hover:text-foreground';
+      return 'border-border/45 bg-[#1C2433] text-muted-foreground hover:bg-[#243149] hover:text-foreground';
     }
     if (tab === 'Hot Now') {
-      return 'tag-hot';
+      return 'border-destructive/55 bg-[#1C2433] text-destructive';
     }
     if (tab === 'Live Drafts') {
-      return 'tag-live';
+      return 'border-chart-2/60 bg-[#1C2433] text-chart-2';
     }
-    return 'border-primary/45 bg-primary/12 text-primary';
+    return 'border-primary/55 bg-[#1C2433] text-primary';
   };
 
   useEffect(() => {
@@ -1469,6 +1577,37 @@ export const FeedTabs = () => {
       updateQuery({ tab });
     },
     [updateQuery],
+  );
+
+  const handlePrimaryTabKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLButtonElement>, currentTab: string) => {
+      const currentIndex = PRIMARY_TABS.indexOf(currentTab);
+      if (currentIndex < 0) {
+        return;
+      }
+
+      let nextIndex = currentIndex;
+      if (event.key === 'ArrowRight') {
+        nextIndex = (currentIndex + 1) % PRIMARY_TABS.length;
+      } else if (event.key === 'ArrowLeft') {
+        nextIndex =
+          (currentIndex - 1 + PRIMARY_TABS.length) % PRIMARY_TABS.length;
+      } else if (event.key === 'Home') {
+        nextIndex = 0;
+      } else if (event.key === 'End') {
+        nextIndex = PRIMARY_TABS.length - 1;
+      } else {
+        return;
+      }
+
+      event.preventDefault();
+      const nextTab = PRIMARY_TABS[nextIndex];
+      handleTabSelect(nextTab);
+      window.requestAnimationFrame(() => {
+        primaryTabRefs.current[nextTab]?.focus();
+      });
+    },
+    [handleTabSelect],
   );
 
   useEffect(() => {
@@ -1877,21 +2016,6 @@ export const FeedTabs = () => {
       filter: next,
     });
   }, []);
-  const handleDensityChange = useCallback(
-    (next: FeedDensity) => {
-      if (next === density) {
-        return;
-      }
-      setDensity(next);
-      sendTelemetry({
-        eventType: 'feed_density_change',
-        density: next,
-        previousDensity: density,
-        sourceTab: active,
-      });
-    },
-    [active, density],
-  );
   const handleProgressCardOpen = useCallback((draftId: string) => {
     sendTelemetry({
       eventType: 'feed_card_open',
@@ -2888,6 +3012,10 @@ export const FeedTabs = () => {
     hasMore && !fallbackUsed
       ? `${visibleItems.length} / ${items.length}+`
       : `${visibleItems.length} / ${items.length}`;
+  const activePrimaryTabForFocus = PRIMARY_TABS.includes(active)
+    ? active
+    : PRIMARY_TABS[0];
+  const activePanelLabel = tabLabels[active] ?? active;
   const handleMoreTabSelect = useCallback(
     (tab: string) => {
       handleTabSelect(tab);
@@ -2896,37 +3024,77 @@ export const FeedTabs = () => {
     },
     [closeDesktopMore, handleTabSelect],
   );
+  const handleMoreTabKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLButtonElement>, currentTab: string) => {
+      const currentIndex = MORE_TABS.indexOf(currentTab);
+      if (currentIndex < 0) {
+        return;
+      }
+
+      let nextIndex = currentIndex;
+      if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
+        nextIndex = (currentIndex + 1) % MORE_TABS.length;
+      } else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
+        nextIndex = (currentIndex - 1 + MORE_TABS.length) % MORE_TABS.length;
+      } else if (event.key === 'Home') {
+        nextIndex = 0;
+      } else if (event.key === 'End') {
+        nextIndex = MORE_TABS.length - 1;
+      } else {
+        return;
+      }
+
+      event.preventDefault();
+      const nextTab = MORE_TABS[nextIndex];
+      window.requestAnimationFrame(() => {
+        moreTabButtonRefs.current[nextTab]?.focus();
+      });
+    },
+    [],
+  );
   const morePanelContent = (
     <>
-      <div className="grid gap-1">
+      <div className="grid gap-1" data-testid="feed-more-tab-list">
         {MORE_TABS.map((tab) => (
           <button
             aria-pressed={active === tab}
-            className={`rounded-lg px-3 py-2 text-left font-semibold text-xs uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+            className={`flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
               active === tab
-                ? 'border border-primary/35 bg-primary/15 text-primary'
-                : 'border border-transparent bg-background/56 text-muted-foreground hover:bg-background/74 hover:text-foreground'
+                ? 'border-primary/45 bg-[#1C2433] text-primary'
+                : 'border-border/45 bg-[#1C2433] text-popover-foreground hover:bg-[#243149] hover:text-foreground'
             }`}
+            data-testid={`feed-more-tab-${toFeedTabSlug(tab)}`}
+            id={`feed-more-tab-${toFeedTabSlug(tab)}`}
             key={tab}
             onClick={() => {
               handleMoreTabSelect(tab);
             }}
+            onKeyDown={(event) => handleMoreTabKeyDown(event, tab)}
+            ref={(node) => {
+              moreTabButtonRefs.current[tab] = node;
+            }}
             type="button"
           >
-            {tabLabels[tab] ?? tab}
+            <span className="truncate">{tabLabels[tab] ?? tab}</span>
+            {active === tab ? (
+              <span
+                aria-hidden="true"
+                className="ml-2 inline-flex h-1.5 w-1.5 shrink-0 rounded-full bg-primary"
+              />
+            ) : null}
           </button>
         ))}
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+      <div className="mt-1 flex flex-wrap items-center justify-between gap-2 border-border/35 border-t px-2 pt-2">
         <span
-          className="rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-[11px] text-muted-foreground"
+          className="rounded-full border border-border/45 bg-[#1C2433] px-3 py-1.5 font-semibold text-muted-foreground text-xs"
           title={activeFilterPills.join(' | ')}
         >
           {activeFilterLabels.activeFilters}: {activeFilterCount}
         </span>
         {hasActiveFilters ? (
           <button
-            className="min-h-8 rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-background/74 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="min-h-8 rounded-full border border-border/45 bg-[#1C2433] px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-[#243149] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             onClick={handleResetFilters}
             type="button"
           >
@@ -2941,16 +3109,28 @@ export const FeedTabs = () => {
     <section className="grid gap-2.5 sm:gap-3">
       <div className="grid gap-2 sm:gap-2.5">
         <div className="grid gap-1.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-          <div className="no-scrollbar flex min-w-0 snap-x snap-mandatory items-center gap-1.5 overflow-x-auto rounded-2xl bg-card/48 p-0.5 pr-1 sm:snap-none sm:p-1 sm:pr-1.5">
+          <div
+            aria-label={t('header.feeds')}
+            className="no-scrollbar flex min-w-0 snap-x snap-mandatory items-center gap-1.5 overflow-x-auto rounded-[1.5rem] border border-border/45 bg-card/48 p-0.5 pr-1 sm:snap-none sm:p-1 sm:pr-1.5"
+            data-testid="feed-primary-tabs"
+            role="toolbar"
+          >
             {PRIMARY_TABS.map((tab) => (
               <button
+                aria-controls={PRIMARY_TAB_PANEL_ID}
                 aria-pressed={active === tab}
-                className={`min-h-8 flex-shrink-0 snap-start rounded-full border px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-4 sm:py-2 sm:text-xs ${tabClass(
+                className={`min-h-8 flex-shrink-0 snap-start rounded-full border px-3 py-1.5 font-semibold text-xs uppercase tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-4 sm:py-2 sm:text-xs ${tabClass(
                   tab,
                   active === tab,
                 )}`}
+                id={toPrimaryTabDomId(tab)}
                 key={tab}
                 onClick={() => handleTabSelect(tab)}
+                onKeyDown={(event) => handlePrimaryTabKeyDown(event, tab)}
+                ref={(node) => {
+                  primaryTabRefs.current[tab] = node;
+                }}
+                tabIndex={activePrimaryTabForFocus === tab ? 0 : -1}
                 type="button"
               >
                 {tabLabels[tab] ?? tab}
@@ -2960,11 +3140,12 @@ export const FeedTabs = () => {
               <button
                 aria-controls={mobileMorePanelId}
                 aria-expanded={moreOpen}
-                className={`inline-flex min-h-8 flex-shrink-0 snap-start items-center gap-1 rounded-full border px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-4 sm:py-2 sm:text-xs ${
+                className={`inline-flex min-h-8 flex-shrink-0 snap-start items-center gap-1 rounded-full border px-3 py-1.5 font-semibold text-xs uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-4 sm:py-2 sm:text-xs ${
                   MORE_TABS.includes(active)
-                    ? 'border-primary/45 bg-primary/12 text-primary'
-                    : 'border-transparent bg-card/48 text-muted-foreground hover:bg-card/68 hover:text-foreground'
+                    ? 'border-primary/55 bg-[#1C2433] text-primary'
+                    : 'border-border/45 bg-[#1C2433] text-muted-foreground hover:bg-[#243149] hover:text-foreground'
                 }`}
+                data-testid="feed-mobile-more-toggle"
                 onClick={() => {
                   setMoreOpen((previous) => !previous);
                   setFiltersOpen(false);
@@ -2994,23 +3175,24 @@ export const FeedTabs = () => {
               >
                 <summary
                   aria-controls={desktopMorePanelId}
-                  className={`inline-flex min-h-8 cursor-pointer list-none items-center gap-1 rounded-full border px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-4 sm:py-2 sm:text-xs [&::-webkit-details-marker]:hidden ${
-                    MORE_TABS.includes(active)
-                      ? 'border-primary/45 bg-primary/12 text-primary'
-                      : 'border-transparent bg-card/48 text-muted-foreground hover:bg-card/68 hover:text-foreground'
+                  aria-expanded={desktopMoreOpen}
+                  className={`inline-flex min-h-9 cursor-pointer list-none items-center gap-2 rounded-lg border px-3 py-2 text-left font-semibold text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [&::-webkit-details-marker]:hidden ${
+                    desktopMoreOpen
+                      ? 'border-primary/70 bg-[#1C2433] text-foreground'
+                      : 'border-border/45 bg-[#1C2433] text-foreground hover:border-primary/45 hover:bg-[#243149]'
                   }`}
                   data-testid="feed-more-summary"
                 >
                   {moreLabel}
                   <ChevronDown
                     aria-hidden="true"
-                    className={`h-3 w-3 transition-transform motion-reduce:transform-none motion-reduce:transition-none ${
+                    className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform motion-reduce:transform-none motion-reduce:transition-none ${
                       desktopMoreOpen ? 'rotate-180' : ''
                     }`}
                   />
                 </summary>
                 <div
-                  className="absolute right-0 z-20 mt-2 grid min-w-[16rem] gap-2 rounded-2xl border border-border/25 bg-card/95 p-2 sm:p-2.5"
+                  className="absolute top-full right-0 z-20 mt-1 grid min-w-[16rem] overflow-hidden rounded-lg border border-border/45 bg-popover p-1"
                   id={desktopMorePanelId}
                 >
                   {morePanelContent}
@@ -3019,9 +3201,9 @@ export const FeedTabs = () => {
             </div>
           )}
         </div>
-        <div className="grid gap-1.5 rounded-2xl border border-border/25 bg-card/68 p-2 sm:gap-2 sm:p-2.5">
-          <div className="grid gap-1.5 min-[360px]:grid-cols-[minmax(0,1fr)_auto] min-[360px]:items-center">
-            <label className="group relative flex min-h-9 w-full min-w-0 items-center gap-2 rounded-full border border-border/25 bg-background/70 px-3 py-2 text-muted-foreground text-xs transition focus-within:border-primary/35 focus-within:bg-background hover:border-border/45 hover:bg-background/74 sm:px-3.5 sm:py-2.5">
+        <div className="grid gap-1.5 rounded-[1.5rem] border border-input bg-card p-2 sm:gap-2 sm:p-2.5">
+          <div className="grid gap-1.5">
+            <label className="group relative flex min-h-9 w-full min-w-0 items-center gap-2 rounded-full border border-input bg-background px-3 py-2 text-muted-foreground text-xs transition focus-within:border-primary/35 focus-within:bg-background hover:border-primary/30 hover:bg-accent/25 sm:px-3.5 sm:py-2.5">
               <Search aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
               <input
                 aria-keyshortcuts="/"
@@ -3043,44 +3225,11 @@ export const FeedTabs = () => {
                   <X aria-hidden="true" className="h-3.5 w-3.5" />
                 </button>
               ) : (
-                <span className="hidden rounded-md bg-background/75 px-1.5 py-0.5 font-semibold text-[10px] text-muted-foreground uppercase transition group-focus-within:inline sm:inline">
+                <span className="hidden rounded-md bg-background/75 px-1.5 py-0.5 font-semibold text-muted-foreground text-xs uppercase transition group-focus-within:inline sm:inline">
                   Esc
                 </span>
               )}
             </label>
-            {isMobileViewport ? null : (
-              <fieldset className="inline-flex w-fit items-center gap-1 rounded-full border border-transparent bg-background/42 p-0.5 min-[360px]:justify-self-end">
-                <legend className="sr-only">{densityLabel}</legend>
-                <button
-                  aria-pressed={density === 'comfort'}
-                  className={`inline-flex min-h-8 items-center gap-1 rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-3.5 sm:py-2 ${
-                    density === 'comfort'
-                      ? 'border border-primary/35 bg-primary/10 text-primary'
-                      : 'border border-transparent bg-background/34 text-muted-foreground hover:bg-background/56 hover:text-foreground'
-                  }`}
-                  onClick={() => handleDensityChange('comfort')}
-                  type="button"
-                >
-                  <LayoutGrid aria-hidden="true" className="h-3 w-3" />
-                  <span className="hidden sm:inline">{comfortLabel}</span>
-                  <span className="sr-only sm:hidden">{comfortLabel}</span>
-                </button>
-                <button
-                  aria-pressed={density === 'compact'}
-                  className={`inline-flex min-h-8 items-center gap-1 rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-3.5 sm:py-2 ${
-                    density === 'compact'
-                      ? 'border border-primary/35 bg-primary/10 text-primary'
-                      : 'border border-transparent bg-background/34 text-muted-foreground hover:bg-background/56 hover:text-foreground'
-                  }`}
-                  onClick={() => handleDensityChange('compact')}
-                  type="button"
-                >
-                  <Rows3 aria-hidden="true" className="h-3 w-3" />
-                  <span className="hidden sm:inline">{compactLabel}</span>
-                  <span className="sr-only sm:hidden">{compactLabel}</span>
-                </button>
-              </fieldset>
-            )}
           </div>
           <ActiveFilterChips
             activeFilterCount={activeFilterCount}
@@ -3135,7 +3284,7 @@ export const FeedTabs = () => {
             type="button"
           />
           <section
-            className="relative z-10 max-h-[78vh] w-full overflow-y-auto rounded-2xl border border-border/25 bg-card p-2.5 sm:p-3"
+            className="relative z-10 max-h-[78vh] w-full overflow-y-auto rounded-[1.5rem] border border-border/25 bg-card p-2.5 sm:p-3"
             id={mobileFilterPanelId}
           >
             <div
@@ -3152,7 +3301,7 @@ export const FeedTabs = () => {
               <div className="flex items-center gap-1.5">
                 {hasActiveFilters ? (
                   <button
-                    className="rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-background/74 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    className="rounded-full border border-border/45 bg-[#1C2433] px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-[#243149] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     onClick={handleResetFilters}
                     type="button"
                   >
@@ -3160,7 +3309,8 @@ export const FeedTabs = () => {
                   </button>
                 ) : null}
                 <button
-                  className="rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition hover:bg-background/74 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  className="rounded-full border border-border/45 bg-[#1C2433] px-3 py-1.5 font-semibold text-xs uppercase tracking-wide transition hover:bg-[#243149] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  data-testid="feed-mobile-filters-close"
                   onClick={() => setFiltersOpen(false)}
                   ref={mobileFiltersCloseButtonRef}
                   type="button"
@@ -3189,7 +3339,7 @@ export const FeedTabs = () => {
             type="button"
           />
           <section
-            className="relative z-10 max-h-[78vh] w-full overflow-y-auto rounded-2xl border border-border/25 bg-card p-2.5 sm:p-3"
+            className="relative z-10 max-h-[78vh] w-full overflow-y-auto rounded-[1.5rem] border border-border/25 bg-card p-2.5 sm:p-3"
             id={mobileMorePanelId}
           >
             <div
@@ -3204,47 +3354,14 @@ export const FeedTabs = () => {
                 {moreLabel}
               </h3>
               <button
-                className="rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition hover:bg-background/74 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="rounded-full border border-border/45 bg-[#1C2433] px-3 py-1.5 font-semibold text-xs uppercase tracking-wide transition hover:bg-[#243149] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                data-testid="feed-mobile-more-close"
                 onClick={() => setMoreOpen(false)}
                 ref={mobileMoreCloseButtonRef}
                 type="button"
               >
                 {t('common.close')}
               </button>
-            </div>
-            <div className="mb-2.5 grid gap-1.5 rounded-xl border border-border/25 bg-background/58 p-2">
-              <p className="px-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wide">
-                {densityLabel}
-              </p>
-              <fieldset className="inline-flex w-fit items-center gap-1 rounded-full border border-transparent bg-background/42 p-0.5">
-                <legend className="sr-only">{densityLabel}</legend>
-                <button
-                  aria-pressed={density === 'comfort'}
-                  className={`inline-flex min-h-8 items-center gap-1 rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
-                    density === 'comfort'
-                      ? 'border border-primary/35 bg-primary/10 text-primary'
-                      : 'border border-transparent bg-background/34 text-muted-foreground hover:bg-background/56 hover:text-foreground'
-                  }`}
-                  onClick={() => handleDensityChange('comfort')}
-                  type="button"
-                >
-                  <LayoutGrid aria-hidden="true" className="h-3 w-3" />
-                  {comfortLabel}
-                </button>
-                <button
-                  aria-pressed={density === 'compact'}
-                  className={`inline-flex min-h-8 items-center gap-1 rounded-full px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
-                    density === 'compact'
-                      ? 'border border-primary/35 bg-primary/10 text-primary'
-                      : 'border border-transparent bg-background/34 text-muted-foreground hover:bg-background/56 hover:text-foreground'
-                  }`}
-                  onClick={() => handleDensityChange('compact')}
-                  type="button"
-                >
-                  <Rows3 aria-hidden="true" className="h-3 w-3" />
-                  {compactLabel}
-                </button>
-              </fieldset>
             </div>
             <div className="grid gap-2">{morePanelContent}</div>
           </section>
@@ -3257,122 +3374,128 @@ export const FeedTabs = () => {
         {fallbackUsed && <span className="pill">{t('rail.fallbackData')}</span>}
         {loading && <span>{t('feedTabs.loadingMore')}</span>}
       </div>
-      {(() => {
-        if (isInitialLoading) {
-          return (
-            <div className={feedGridClass}>
-              {Array.from({ length: 3 }, (_, index) => (
-                <article
-                  className="card grid gap-2.5 p-3 motion-safe:animate-pulse motion-reduce:animate-none sm:p-4"
-                  key={`feed-skeleton-${index + 1}`}
-                >
-                  <div className="h-3 w-24 rounded bg-muted/85" />
-                  <div className="h-32 rounded-lg bg-muted/75 sm:h-36" />
-                  <div className="h-2.5 w-2/3 rounded bg-muted/85" />
-                  <div className="h-2.5 w-1/2 rounded bg-muted/80" />
-                </article>
-              ))}
-            </div>
-          );
-        }
+      <div
+        aria-label={activePanelLabel}
+        id={PRIMARY_TAB_PANEL_ID}
+        role="region"
+      >
+        {(() => {
+          if (isInitialLoading) {
+            return (
+              <div className={feedGridClass}>
+                {Array.from({ length: 3 }, (_, index) => (
+                  <article
+                    className="card grid gap-2.5 p-3 motion-safe:animate-pulse motion-reduce:animate-none sm:p-4"
+                    key={`feed-skeleton-${index + 1}`}
+                  >
+                    <div className="h-3 w-24 rounded bg-muted/85" />
+                    <div className="h-32 rounded-lg bg-muted/75 sm:h-36" />
+                    <div className="h-2.5 w-2/3 rounded bg-muted/85" />
+                    <div className="h-2.5 w-1/2 rounded bg-muted/80" />
+                  </article>
+                ))}
+              </div>
+            );
+          }
 
-        if (visibleItems.length === 0) {
-          return (
-            <div className="card grid gap-3 p-4 text-sm sm:gap-3.5 sm:p-5">
-              <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/25 bg-background/58 text-muted-foreground">
-                <Inbox aria-hidden="true" className="h-5 w-5" />
-              </div>
-              <div className="grid gap-1">
-                <p className="font-semibold text-base text-foreground">
-                  {emptyStateTitle}
-                </p>
-                <p>{emptyMessage}</p>
-              </div>
-              {hasActiveFilters ? (
-                <div className="grid gap-2 rounded-xl border border-border/25 bg-background/52 p-2.5 sm:p-3">
-                  <p className="font-semibold text-foreground text-xs uppercase tracking-wide">
-                    {t('feedTabs.activeFilters')}: {activeFilterCount}
-                  </p>
-                  <div className="flex flex-wrap gap-1">
-                    {activeFilterPills.map((pill) => (
-                      <span
-                        className="rounded-full border border-border/25 bg-background/60 px-2 py-1 text-[11px] text-muted-foreground"
-                        key={pill}
-                      >
-                        {pill}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {hasSearchQuery ? (
-                      <button
-                        className="rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-background/74 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                        onClick={handleClearSearchFromEmptyState}
-                        type="button"
-                      >
-                        {t('feedTabs.emptyAction.clearSearch')}
-                      </button>
-                    ) : null}
-                    <button
-                      className="rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-[11px] text-foreground transition hover:bg-background/74 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                      onClick={handleResetFilters}
-                      type="button"
-                    >
-                      {t('search.actions.resetFilters')}
-                    </button>
-                  </div>
+          if (visibleItems.length === 0) {
+            return (
+              <div className="card grid gap-3 p-4 text-sm sm:gap-3.5 sm:p-5">
+                <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/25 bg-background/58 text-muted-foreground">
+                  <Inbox aria-hidden="true" className="h-5 w-5" />
                 </div>
-              ) : null}
-              <div className="flex flex-wrap gap-1.5">
-                {active === 'Battles' ? (
-                  <>
-                    {hasBattleFilterApplied ? (
+                <div className="grid gap-1">
+                  <p className="font-semibold text-base text-foreground">
+                    {emptyStateTitle}
+                  </p>
+                  <p>{emptyMessage}</p>
+                </div>
+                {hasActiveFilters ? (
+                  <div className="grid gap-2 rounded-xl border border-input bg-background p-2.5 sm:p-3">
+                    <p className="font-semibold text-foreground text-xs uppercase tracking-wide">
+                      {t('feedTabs.activeFilters')}: {activeFilterCount}
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {activeFilterPills.map((pill) => (
+                        <span
+                          className="rounded-full border border-border/45 bg-[#1C2433] px-2 py-1 text-muted-foreground text-xs"
+                          key={pill}
+                        >
+                          {pill}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {hasSearchQuery ? (
+                        <button
+                          className="rounded-full border border-border/45 bg-[#1C2433] px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-[#243149] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                          onClick={handleClearSearchFromEmptyState}
+                          type="button"
+                        >
+                          {t('feedTabs.emptyAction.clearSearch')}
+                        </button>
+                      ) : null}
                       <button
-                        className="rounded-full border border-primary/35 bg-primary/10 px-4 py-2 font-semibold text-primary text-xs transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                        onClick={handleOpenAllBattles}
+                        className="rounded-full border border-border/45 bg-[#1C2433] px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-[#243149] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                        onClick={handleResetFilters}
                         type="button"
                       >
-                        {t('feedTabs.emptyAction.openAllBattles')}
+                        {t('search.actions.resetFilters')}
                       </button>
-                    ) : null}
-                    <button
-                      className="rounded-full border border-primary/35 bg-primary/10 px-4 py-2 font-semibold text-primary text-xs transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                      onClick={openLiveDrafts}
-                      type="button"
-                    >
-                      {t('feedTabs.emptyAction.openLiveDrafts')}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <Link
-                      className="rounded-full border border-primary/35 bg-primary/10 px-4 py-2 font-semibold text-primary text-xs transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                      href="/demo"
-                    >
-                      {t('feedTabs.emptyAction.runDemo')}
-                    </Link>
-                    <Link
-                      className="rounded-full border border-transparent bg-background/58 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                      href="/search"
-                    >
-                      {t('feedTabs.emptyAction.openSearch')}
-                    </Link>
-                  </>
-                )}
+                    </div>
+                  </div>
+                ) : null}
+                <div className="flex flex-wrap gap-1.5">
+                  {active === 'Battles' ? (
+                    <>
+                      {hasBattleFilterApplied ? (
+                        <button
+                          className="rounded-full border border-primary/55 bg-[#1C2433] px-4 py-2 font-semibold text-primary text-xs transition hover:bg-[#243149] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                          onClick={handleOpenAllBattles}
+                          type="button"
+                        >
+                          {t('feedTabs.emptyAction.openAllBattles')}
+                        </button>
+                      ) : null}
+                      <button
+                        className="rounded-full border border-primary/55 bg-[#1C2433] px-4 py-2 font-semibold text-primary text-xs transition hover:bg-[#243149] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                        onClick={openLiveDrafts}
+                        type="button"
+                      >
+                        {t('feedTabs.emptyAction.openLiveDrafts')}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <Link
+                        className="rounded-full border border-primary/55 bg-[#1C2433] px-4 py-2 font-semibold text-primary text-xs transition hover:bg-[#243149] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                        href="/demo"
+                      >
+                        {t('feedTabs.emptyAction.runDemo')}
+                      </Link>
+                      <Link
+                        className="rounded-full border border-border/45 bg-[#1C2433] px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-[#243149] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                        href="/search"
+                      >
+                        {t('feedTabs.emptyAction.openSearch')}
+                      </Link>
+                    </>
+                  )}
+                </div>
               </div>
+            );
+          }
+
+          return (
+            <div className={feedGridClass} data-testid="feed-items-grid">
+              {renderedItems}
             </div>
           );
-        }
-
-        return (
-          <div className={feedGridClass} data-testid="feed-items-grid">
-            {renderedItems}
-          </div>
-        );
-      })()}
+        })()}
+      </div>
       {!fallbackUsed && hasMore && (
         <button
-          className="rounded-full border border-transparent bg-background/58 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="rounded-full border border-border/45 bg-[#1C2433] px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-[#243149] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           onClick={() => setOffset((prev) => prev + PAGE_SIZE)}
           type="button"
         >
@@ -3381,7 +3504,7 @@ export const FeedTabs = () => {
       )}
       {!(loading || fallbackUsed || hasMore) && visibleItems.length > 0 ? (
         <div
-          className="inline-flex w-fit items-center rounded-full border border-border/25 bg-background/60 px-3 py-1.5 text-muted-foreground text-xs"
+          className="inline-flex w-fit items-center rounded-full border border-input bg-background px-3 py-1.5 text-muted-foreground text-xs"
           data-testid="feed-end-indicator"
         >
           {shownLabel}: {shownValue}
@@ -3389,7 +3512,7 @@ export const FeedTabs = () => {
       ) : null}
       {showBackToTop && (
         <button
-          className="fixed right-4 bottom-4 z-30 rounded-full border border-primary/35 bg-card px-4 py-2 font-semibold text-primary text-xs transition hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:right-[22rem]"
+          className="fixed right-4 bottom-4 z-30 rounded-full border border-primary/55 bg-[#1C2433] px-4 py-2 font-semibold text-primary text-xs transition hover:bg-[#243149] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:right-[22rem]"
           data-testid="feed-back-to-top"
           onClick={handleBackToTop}
           type="button"

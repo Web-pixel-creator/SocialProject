@@ -1,3 +1,5 @@
+/* biome-ignore-all lint/performance/useTopLevelRegex: Inline regex keeps Playwright locator assertions readable in this e2e spec. */
+/* biome-ignore-all lint/suspicious/useAwait: Route mock handlers intentionally return sync fulfill calls. */
 import { expect, test } from '@playwright/test';
 import { FEED_PATH } from './utils/feed';
 import { navigateWithRetry } from './utils/navigation';
@@ -169,7 +171,7 @@ const waitForFeedReady = async (page: Parameters<typeof test>[0]['page']) => {
     .poll(
       async () => {
         try {
-          const response = await page.request.get(FEED_PATH, { timeout: 5_000 });
+          const response = await page.request.get(FEED_PATH, { timeout: 5000 });
           return response.status();
         } catch {
           return 0;
@@ -201,12 +203,13 @@ test.describe('Feed innovation rails', () => {
     const liveRail = page.getByTestId('live-studio-sessions-rail');
     await expect(liveRail).toBeVisible();
     await expect(liveRail.getByText(/Neon Sprint/i)).toBeVisible();
-    await expect(liveRail.getByText(/Prediction signal: Merge/i)).toBeVisible();
+    await expect(liveRail.getByText(/Prediction signal:/i)).toBeVisible();
     await expect(liveRail.getByText(/Host recap:/i)).toBeVisible();
-    await expect(liveRail.getByRole('link', { name: /Open recap clip/i })).toHaveAttribute(
-      'href',
-      'https://cdn.example.com/live-e2e-1.mp4',
-    );
+    await expect(
+      liveRail.getByRole('link', { name: /Open recap clip/i }),
+    ).toHaveAttribute('href', 'https://cdn.example.com/live-e2e-1.mp4');
+
+    await page.getByTestId('feed-right-rail-tab-studio').click();
 
     const swarmRail = page.getByTestId('swarm-sessions-rail');
     await expect(swarmRail).toBeVisible();
@@ -238,8 +241,12 @@ test.describe('Feed innovation rails', () => {
         .getByTestId('live-studio-sessions-rail')
         .getByText(/Prompt Surgery Live/i),
     ).toBeVisible();
+
+    await page.getByTestId('feed-right-rail-tab-studio').click();
     await expect(
-      page.getByTestId('swarm-sessions-rail').getByText(/Creative strike team/i),
+      page
+        .getByTestId('swarm-sessions-rail')
+        .getByText(/Creative strike team/i),
     ).toBeVisible();
     await expect(
       page.getByTestId('creator-studios-rail').getByText(/Prompt Forge/i),

@@ -4,6 +4,38 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog.
 
+## [Unreleased]
+
+### Changed
+- Finalized `/feed` observer visual baseline:
+  - fixed global background to `#181F2C`,
+  - fixed left observer rail background to `#1C2433`,
+  - standardized container radius system (`24px` primary, `12px` inner right-rail blocks),
+  - standardized right-rail session CTA sizing (`12px` font, `32px` height),
+  - standardized feed card micro-typography floor to `12px` (`text-xs`) in core feed cards/shared card primitives,
+  - extended the `12px` micro-typography floor to remaining app surfaces (`search`, `draft detail`, `observer profile/public profile`, `studio detail`, `demo`, `commissions`, `pull request detail`, and admin health badges),
+  - removed hover-lift motion from feed cards,
+  - aligned right rail to topbar edge and validated desktop widths up to `1728px`.
+  - reduced right-rail cognitive load by introducing section tabs in `FeedPageClient` (`Live`, `Studio`, `Pulse radar`) so heavy rails no longer render all at once.
+  - persisted selected right-rail tab in `localStorage` (`finishit-feed-right-rail-view`) to keep observer context across reloads.
+  - added right-rail tab count badges and lightweight skeleton transition states during section switches.
+  - added accessible right-rail tab semantics (`tablist`/`tab`/`tabpanel`) with keyboard navigation (`ArrowLeft/Right`, `Home`, `End`) and roving `tabIndex`.
+  - added keyboard navigation for central feed primary tabs (`ArrowLeft/Right`, `Home`, `End`) with roving `tabIndex` and stable focus handoff on tab switch.
+  - added browser-level regression coverage for primary-tab keyboard flow in `apps/web/e2e/feed-observer-rail.spec.ts`.
+  - added keyboard navigation inside desktop `More` tab list (`ArrowUp/Down/Left/Right`, `Home`, `End`) with unit and browser-level regression coverage.
+  - added mobile focus-return guardrails for overlays: `Filters`/`More` now have stable toggle/close test hooks and verified escape-close focus restoration to source toggles in browser regression.
+  - added mobile `More` keyboard regression (`ArrowDown`, `End`, `Escape`) to verify list focus movement and post-close focus handoff.
+  - aligned feed e2e suites with right-rail section tabs (`Live`/`Studio`/`Pulse radar`) so rail assertions switch to the proper tab before checking section-specific widgets.
+  - updated feed filter e2e assertions to use labeled form controls (`Sort`/`Status`/`Time range`/`Intent`) for stable query-sync checks with the current combobox/select implementation.
+  - normalized shared `.pill` badge typography from `11px` to `12px` (`text-xs`) to remove remaining micro-text in feed rail counters/meta chips.
+  - added unit coverage for right-rail count badge updates and section-switch skeleton behavior in `feed-page-client.spec.tsx`.
+  - added Playwright coverage for right-rail tab persistence after reload (`feed-observer-rail.spec.ts`).
+  - refreshed visual smoke baselines for `/feed` desktop/mobile snapshots after right-rail tab UI update.
+  - aligned feed e2e specs with Ultracite formatting/import order and resolved remaining lint blockers (`noDelete`, `useConsistentTypeDefinitions`) in observer/feed navigation suites.
+  - documented explicit Biome test-file exceptions for Playwright inline-regex locator assertions and sync route-mock handlers in feed e2e specs to keep lint output actionable.
+- Added baseline specification document:
+  - `docs/plans/2026-03-02-feed-ui-visual-baseline.md`.
+
 ## [0.1.40] - 2026-02-09
 
 ### Changed
