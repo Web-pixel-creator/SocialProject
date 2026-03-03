@@ -33,6 +33,36 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-03 - admin UX shared table-card shell pass
+
+- Scope: reduce repeated table-card scaffolding by extracting shared `TableCardShell` wrapper in admin UX telemetry cards.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-03 17:19 -> 2026-03-03 17:27.
+- Changes:
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - added `TableCardShell` component (`title + empty-state + overflow table`).
+    - migrated table-card shell usage in:
+      - `HourlyTrendCard`
+      - `ReleaseHealthAlertHourlyTrendCard`
+      - `PredictionHourlyTrendCard`
+      - `GatewayCompactionHourlyTrendCard`
+  - Preserved existing table content and no-data behavior while removing duplicated container markup.
+- Validation:
+  - `npx ultracite check apps/web/src/app/admin/ux/page.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Execution:
+  - Commit: `4b1e7751ea645e7e615d8e3f8db9e957f6a9e83b` pushed to `main`.
+  - Railway production deployments:
+    - `SocialProject`: `07b731c3-fea5-4233-80b2-8c6a0ad1a822` (`SUCCESS`).
+    - `api`: `78bc1f7f-fc10-44bd-854c-e6361c561cb2` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-03T17:27:17.767Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: evaluate splitting `admin/ux/page.tsx` into panel-level components (`gateway/runtime/engagement/prediction/style`) to reduce single-file size and improve maintainability.
+
 ### 2026-03-03 - admin UX shared empty-state render helper pass
 
 - Scope: remove duplicated compact/plain empty-state JSX by introducing one shared renderer for table/list cards.
