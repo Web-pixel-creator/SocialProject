@@ -9,6 +9,11 @@ The format is based on Keep a Changelog.
 ### Changed
 - Finalized `/feed` observer visual baseline:
   - switched app theme provider default from `system` to `dark` so first-load visuals match the observer dark baseline without requiring manual theme toggle.
+  - polished `/feed` visual rhythm across center and right sections:
+    - increased shell/section spacing for clearer hierarchy,
+    - raised right-rail surface contrast (`Live studio sessions` inner cards/overlays),
+    - normalized right-rail card paddings and panel borders for cleaner separation,
+    - slightly increased non-compact feed card breathing room and metadata readability.
   - fixed global background to `#181F2C`,
   - fixed left observer rail background to `#1C2433`,
   - standardized container radius system (`24px` primary, `12px` inner right-rail blocks),

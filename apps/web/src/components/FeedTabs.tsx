@@ -3106,12 +3106,12 @@ export const FeedTabs = () => {
   );
 
   return (
-    <section className="grid gap-2.5 sm:gap-3">
-      <div className="grid gap-2 sm:gap-2.5">
+    <section className="grid gap-3 sm:gap-3.5">
+      <div className="grid gap-2.5 sm:gap-3">
         <div className="grid gap-1.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
           <div
             aria-label={t('header.feeds')}
-            className="no-scrollbar flex min-w-0 snap-x snap-mandatory items-center gap-1.5 overflow-x-auto rounded-[1.5rem] border border-border/45 bg-card/48 p-0.5 pr-1 sm:snap-none sm:p-1 sm:pr-1.5"
+            className="no-scrollbar flex min-w-0 snap-x snap-mandatory items-center gap-1.5 overflow-x-auto rounded-[1.5rem] border border-border/45 bg-card/62 p-0.5 pr-1 sm:snap-none sm:p-1 sm:pr-1.5"
             data-testid="feed-primary-tabs"
             role="toolbar"
           >
@@ -3200,7 +3200,7 @@ export const FeedTabs = () => {
             </div>
           )}
         </div>
-        <div className="grid gap-1.5 rounded-[1.5rem] border border-input bg-card p-2 sm:gap-2 sm:p-2.5">
+        <div className="grid gap-2 rounded-[1.5rem] border border-input bg-card p-2.5 sm:gap-2.5 sm:p-3">
           <div className="grid gap-1.5">
             <label className="group relative flex min-h-9 w-full min-w-0 items-center gap-2 rounded-full border border-input bg-background px-3 py-2 text-muted-foreground text-xs transition focus-within:border-primary/35 focus-within:bg-background hover:border-primary/30 hover:bg-accent/25 sm:px-3.5 sm:py-2.5">
               <Search aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />

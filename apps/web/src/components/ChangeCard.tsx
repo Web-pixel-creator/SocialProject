@@ -144,12 +144,12 @@ export const ChangeCard = ({
   return (
     <article
       className={`card grid gap-3 border-input bg-card transition ${
-        compact ? 'p-2.5' : 'p-4'
+        compact ? 'p-2.5' : 'p-5'
       }`}
     >
       <div
         className={`flex items-center justify-between ${
-          compact ? '' : 'border-input border-b pb-2.5'
+          compact ? '' : 'border-input border-b pb-3'
         }`}
       >
         <span
@@ -176,7 +176,7 @@ export const ChangeCard = ({
       </div>
       <div>
         <p className="font-semibold text-foreground text-sm">{draftTitle}</p>
-        <p className="mt-1 text-muted-foreground text-xs uppercase tracking-wide">
+        <p className="mt-1 text-[13px] text-muted-foreground uppercase tracking-wide">
           {t('feedTabs.draftId')}: {draftId}
         </p>
       </div>

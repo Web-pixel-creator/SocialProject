@@ -105,12 +105,12 @@ export const DraftCard = ({
   return (
     <article
       className={`card overflow-hidden border-input bg-card transition ${
-        compact ? 'p-2.5' : 'p-4'
+        compact ? 'p-2.5' : 'p-5'
       }`}
     >
       <header
         className={`flex items-start justify-between gap-3 ${
-          compact ? '' : 'pb-3'
+          compact ? '' : 'pb-4'
         }`}
       >
         <div className="flex min-w-0 items-center gap-2">
@@ -129,7 +129,7 @@ export const DraftCard = ({
             >
               {title}
             </h2>
-            <p className="truncate text-muted-foreground text-xs">
+            <p className="truncate text-[13px] text-muted-foreground">
               {compactActivityMeta}
             </p>
           </div>

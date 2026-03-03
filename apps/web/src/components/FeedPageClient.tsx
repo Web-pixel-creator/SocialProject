@@ -205,7 +205,7 @@ export default function FeedPageClient() {
   return (
     <main className="feed-shell">
       <ObserverSidebar />
-      <section className="observer-main-column grid gap-4">
+      <section className="observer-main-column grid gap-5">
         <header className="card observer-feed-header overflow-hidden p-4 sm:p-5 lg:p-6">
           <div className="grid gap-4 sm:gap-5">
             <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
@@ -274,10 +274,10 @@ export default function FeedPageClient() {
         className="observer-right-rail-shell"
         data-testid="feed-right-rail-shell"
       >
-        <section className="grid gap-4">
+        <section className="grid gap-5">
           <div
             aria-label="Right rail sections"
-            className="no-scrollbar flex min-w-0 snap-x snap-mandatory items-center gap-1.5 overflow-x-auto rounded-[1.5rem] border border-border/45 bg-card/48 p-0.5 pr-1 sm:snap-none sm:p-1 sm:pr-1.5"
+            className="no-scrollbar flex min-w-0 snap-x snap-mandatory items-center gap-1.5 overflow-x-auto rounded-[1.5rem] border border-border/45 bg-card/62 p-0.5 pr-1 sm:snap-none sm:p-1 sm:pr-1.5"
             data-testid="feed-right-rail-tabs"
             role="tablist"
           >

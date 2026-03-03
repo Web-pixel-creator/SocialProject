@@ -1413,21 +1413,23 @@ export const LiveStudioSessionsRail = ({
   };
 
   const railShellClass =
-    'card !rounded-[1.5rem] border border-border/45 bg-card px-5 py-5';
+    'card !rounded-[1.5rem] border border-border/45 bg-card px-5 py-5 sm:px-6 sm:py-6';
   const railCountBadgeClass =
     'inline-flex h-8 min-w-8 items-center justify-center rounded-full border border-border/55 bg-background/65 px-2 font-semibold text-sm text-foreground';
   const sessionCardClass =
-    'rounded-[1.5rem] border border-border/45 bg-card/72 px-5 py-5';
+    'rounded-[1.5rem] border border-border/45 bg-card/85 px-4 py-4 sm:px-5 sm:py-5';
   const sessionMetaPillClass =
-    'inline-flex h-8 min-w-[7.5rem] items-center justify-center rounded-xl border border-border/60 bg-background/82 px-3 font-semibold text-sm text-foreground';
-  const overlayCard1Class = 'mt-4 rounded-xl bg-background/58 px-4 py-4';
-  const overlayCard2Class = 'mt-3 rounded-xl bg-background/58 px-4 py-4';
+    'inline-flex h-8 min-w-[7.75rem] items-center justify-center rounded-xl border border-border/60 bg-[#1C2433] px-3 font-semibold text-xs text-foreground sm:text-sm';
+  const overlayCard1Class =
+    'mt-4 rounded-xl border border-border/45 bg-background/62 px-4 py-4';
+  const overlayCard2Class =
+    'mt-3 rounded-xl border border-border/45 bg-background/62 px-4 py-4';
   const actionButtonBaseClass =
     'inline-flex h-8 w-full items-center justify-center rounded-xl px-4 font-semibold text-[12px] leading-none transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
   const controlButtonClass = `${actionButtonBaseClass} border border-border/60 bg-[#1C2433] text-foreground hover:bg-[#243149] disabled:cursor-not-allowed disabled:opacity-50`;
   const primaryButtonClass = `${actionButtonBaseClass} border border-primary/45 bg-primary text-primary-foreground hover:bg-primary/90`;
   const subtleInfoPanelClass =
-    'space-y-2 rounded-xl bg-background/72 px-3.5 py-3.5';
+    'space-y-2 rounded-xl border border-border/45 bg-background/72 px-3.5 py-3.5';
 
   return (
     <section className={railShellClass} data-testid="live-studio-sessions-rail">
@@ -1441,7 +1443,7 @@ export const LiveStudioSessionsRail = ({
         {t('liveSessionsRail.description')}
       </p>
 
-      <div className="mt-5 grid gap-5">
+      <div className="mt-5 grid gap-6">
         {sessions.length === 0 && !isLoading ? (
           <p className="rounded-xl bg-background/60 px-4 py-3 text-muted-foreground text-sm">
             {t('liveSessionsRail.empty')}
