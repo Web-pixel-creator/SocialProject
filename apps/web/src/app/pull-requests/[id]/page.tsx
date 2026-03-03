@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -285,7 +285,7 @@ export default function PullRequestReviewPage({
             PR {pullRequest.id}
           </h1>
           <span
-            className={`rounded-full px-2.5 py-1 font-semibold text-[10px] uppercase ${statusTone}`}
+            className={`rounded-full px-2.5 py-1 font-semibold text-xs uppercase ${statusTone}`}
           >
             {statusLabel}
           </span>
@@ -399,3 +399,4 @@ export default function PullRequestReviewPage({
     </main>
   );
 }
+

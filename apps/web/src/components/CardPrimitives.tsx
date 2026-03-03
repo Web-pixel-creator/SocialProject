@@ -91,7 +91,7 @@ export const ImagePair = ({
     Boolean(afterImageUrl) && afterImageUrl !== failedAfterUrl;
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-border/25 bg-background/45">
+    <div className="relative overflow-hidden rounded-xl border border-input bg-background">
       <div className={`grid ${heightClass} grid-cols-2`}>
         <div className="h-full w-full">
           {canRenderBefore ? (
@@ -106,7 +106,7 @@ export const ImagePair = ({
               width={360}
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-background/60">
+            <div className="flex h-full w-full items-center justify-center bg-background">
               <span className="text-muted-foreground text-xs">
                 {beforeLabel}
               </span>
@@ -126,7 +126,7 @@ export const ImagePair = ({
               width={360}
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-background/60">
+            <div className="flex h-full w-full items-center justify-center bg-background">
               <span className="text-muted-foreground text-xs">
                 {afterLabel}
               </span>
@@ -134,22 +134,22 @@ export const ImagePair = ({
           )}
         </div>
       </div>
-      <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-primary/35" />
+      <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border/90" />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-background/10"
+        className="pointer-events-none absolute inset-0 bg-background/8"
       />
       {centerOverlay ?? (
-        <span className="absolute top-1/2 left-1/2 inline-flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-border/25 bg-background/74 text-foreground">
+        <span className="absolute top-1/2 left-1/2 inline-flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-input bg-background text-foreground">
           <ArrowRightLeft aria-hidden="true" className="h-4 w-4" />
         </span>
       )}
       {showCornerLabels && (
         <>
-          <span className="absolute bottom-2 left-2 rounded-full border border-border/25 bg-background/74 px-2 py-1 font-semibold text-[10px] text-foreground">
+          <span className="absolute bottom-2 left-2 rounded-full border border-input bg-background px-2 py-1 font-semibold text-xs text-foreground">
             {beforeLabel}
           </span>
-          <span className="absolute right-2 bottom-2 rounded-full border border-border/25 bg-background/74 px-2 py-1 font-semibold text-[10px] text-foreground">
+          <span className="absolute right-2 bottom-2 rounded-full border border-input bg-background px-2 py-1 font-semibold text-xs text-foreground">
             {afterLabel}
           </span>
         </>
@@ -173,8 +173,8 @@ interface StatsGridProps {
 export const StatsGrid = ({ tiles }: StatsGridProps) => (
   <section className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
     {tiles.map((tile) => (
-      <div className="rounded-xl bg-background/40 p-2.5" key={tile.label}>
-        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+      <div className="rounded-xl border border-input bg-background p-2.5" key={tile.label}>
+        <p className="text-xs text-muted-foreground uppercase tracking-wide">
           {tile.label}
         </p>
         <p
@@ -200,9 +200,9 @@ export const KeyMetricPreview = ({
   helper,
   toneClass = 'text-primary',
 }: KeyMetricPreviewProps) => (
-  <section className="mt-3 rounded-xl bg-background/40 p-3">
+  <section className="mt-3 rounded-xl border border-input bg-background p-3">
     <div className="flex items-end justify-between gap-3">
-      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+      <p className="text-xs text-muted-foreground uppercase tracking-wide">
         {label}
       </p>
       <p className={`font-semibold text-xl sm:text-2xl ${toneClass}`}>
@@ -239,7 +239,7 @@ const isToggleObserverAction = (action: ObserverActionType): boolean =>
 
 export const ObserverActions = ({
   title,
-  buttonClassName = 'inline-flex min-h-8 items-center justify-center gap-1 rounded-lg border border-transparent bg-background/58 px-2 py-1.5 text-[10px] text-muted-foreground transition hover:bg-background/74 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-2.5',
+  buttonClassName = 'inline-flex min-h-9 items-center justify-center gap-1 rounded-lg border border-input bg-background px-2.5 py-2 text-xs text-foreground transition hover:border-primary/35 hover:bg-accent/30 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
   actionState,
   pendingAction = null,
   authRequiredMessage = null,
@@ -273,8 +273,8 @@ export const ObserverActions = ({
     const isPending = pendingAction === action;
     return `${buttonClassName} ${
       isActive
-        ? 'border-primary/35 bg-primary/12 text-primary'
-        : 'border-transparent'
+        ? 'border-primary/45 bg-primary/14 text-primary'
+        : 'border-input'
     } ${isPending ? 'cursor-wait opacity-70' : ''}`;
   };
 
@@ -327,10 +327,10 @@ export const ObserverActions = ({
 
   return (
     <section
-      className="mt-2 rounded-xl bg-background/32 p-2.5"
+      className="mt-2 rounded-xl border border-input bg-background p-2.5"
       ref={containerRef}
     >
-      <p className="mb-2 text-[10px] text-muted-foreground uppercase tracking-wide">
+      <p className="mb-2 text-xs text-muted-foreground uppercase tracking-wide">
         {resolvedTitle}
       </p>
       <div className="grid grid-cols-3 gap-1.5">
@@ -392,7 +392,7 @@ export const ObserverActions = ({
       {authRequiredMessage ? (
         <output
           aria-live="polite"
-          className="mt-2 rounded-lg border border-border/25 bg-background/58 px-2.5 py-2 text-[11px] text-muted-foreground"
+          className="mt-2 rounded-lg border border-input bg-background px-2.5 py-2 text-xs text-muted-foreground"
           data-testid="observer-action-auth-required"
         >
           {authRequiredMessage}{' '}
@@ -422,7 +422,7 @@ export const EvolutionTimeline = ({
   const { t } = useLanguage();
 
   return (
-    <section className="mt-3 rounded-xl bg-background/35 p-3">
+    <section className="mt-3 rounded-xl border border-input bg-background p-3">
       <div className="flex items-center justify-between gap-2">
         <p className="font-semibold text-foreground text-sm">
           {t('common.evolution')}
@@ -456,18 +456,19 @@ interface CardDetailsProps {
 }
 
 export const CardDetails = ({ summaryLabel, children }: CardDetailsProps) => (
-  <details className="group mt-3 overflow-hidden rounded-xl border border-border/25 bg-background/35">
-    <summary className="flex min-h-8 cursor-pointer list-none items-center justify-between px-3 py-2 font-semibold text-[11px] text-muted-foreground uppercase tracking-wide transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 [&::-webkit-details-marker]:hidden">
+  <details className="group mt-3 overflow-hidden rounded-xl border border-input bg-background">
+    <summary className="flex min-h-9 cursor-pointer list-none items-center justify-between px-3 py-2 font-semibold text-xs text-foreground/85 uppercase tracking-wide transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [&::-webkit-details-marker]:hidden">
       {summaryLabel}
       <span
         aria-hidden="true"
-        className="text-[10px] transition-transform group-open:rotate-45"
+        className="text-xs transition-transform group-open:rotate-45"
       >
         +
       </span>
     </summary>
-    <div className="grid gap-2 border-border/25 border-t px-3 py-3">
+    <div className="grid gap-2 border-input border-t bg-background px-3 py-3">
       {children}
     </div>
   </details>
 );
+

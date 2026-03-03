@@ -116,6 +116,10 @@ interface LiveSessionRealtimeGatewaySendPayload {
 
 type Translate = (key: string) => string;
 
+interface LiveStudioSessionsRailProps {
+  onSessionCountChange?: (count: number) => void;
+}
+
 export const LIVE_SESSION_REALTIME_SERVER_EVENT =
   'finishit:live-session-realtime-server-event';
 export const LIVE_SESSION_REALTIME_CLIENT_EVENT =
@@ -328,15 +332,15 @@ const toRealtimeStatusLabel = (
 
 const getRealtimeStatusClassName = (status: RealtimeVoiceRuntimeStatus) => {
   if (status === 'listening') {
-    return 'border border-chart-2/40 bg-chart-2/12 text-chart-2';
+    return 'border border-chart-2/60 bg-chart-2/20 text-chart-2';
   }
   if (status === 'thinking') {
-    return 'border border-primary/35 bg-primary/10 text-primary';
+    return 'border border-primary/55 bg-primary/18 text-primary';
   }
   if (status === 'speaking') {
-    return 'border border-chart-3/35 bg-chart-3/12 text-chart-3';
+    return 'border border-chart-3/55 bg-chart-3/18 text-chart-3';
   }
-  return 'border border-border/35 bg-background/60 text-muted-foreground';
+  return 'border border-border/45 bg-background/78 text-foreground/80';
 };
 
 const isLiveSessionRealtimeServerEventDetail = (
@@ -409,8 +413,8 @@ const parseFunctionCallOutputPayload = (
       callId,
       hasError: Boolean(
         outputRecord &&
-          typeof outputRecord.error === 'string' &&
-          outputRecord.error.trim().length > 0,
+        typeof outputRecord.error === 'string' &&
+        outputRecord.error.trim().length > 0,
       ),
       errorCode:
         outputRecord && typeof outputRecord.error === 'string'
@@ -497,10 +501,10 @@ const buildFallbackSessions = (t: Translate): LiveSessionSummary[] => [
 ];
 
 const statusClassByValue: Record<LiveSessionStatus, string> = {
-  forming: 'border border-border/35 bg-muted/40 text-muted-foreground',
-  live: 'border border-chart-2/45 bg-chart-2/12 text-chart-2',
-  completed: 'border border-primary/35 bg-primary/10 text-primary',
-  cancelled: 'border border-destructive/45 bg-destructive/12 text-destructive',
+  forming: 'border border-border/50 bg-muted/55 text-foreground/80',
+  live: 'border border-chart-2/60 bg-chart-2/20 text-chart-2',
+  completed: 'border border-primary/55 bg-primary/18 text-primary',
+  cancelled: 'border border-destructive/60 bg-destructive/20 text-destructive',
 };
 
 const toLiveSessionStatusLabel = (
@@ -704,7 +708,9 @@ const fetchLiveSessions = async (): Promise<LiveSessionSummary[]> => {
   return sessionsWithOverlay;
 };
 
-export const LiveStudioSessionsRail = () => {
+export const LiveStudioSessionsRail = ({
+  onSessionCountChange,
+}: LiveStudioSessionsRailProps = {}) => {
   const { t } = useLanguage();
   const fallbackSessions = useMemo(() => buildFallbackSessions(t), [t]);
   const [copilotStateBySession, setCopilotStateBySession] = useState<
@@ -759,7 +765,7 @@ export const LiveStudioSessionsRail = () => {
       }
       const hasAuthHeader =
         typeof apiClient.defaults?.headers?.common?.Authorization ===
-          'string' &&
+        'string' &&
         apiClient.defaults.headers.common.Authorization.trim().length > 0;
       if (!hasAuthHeader) {
         return;
@@ -793,10 +799,10 @@ export const LiveStudioSessionsRail = () => {
       const content =
         prefixed.length > MAX_TRANSCRIPT_MESSAGE_CONTENT_LENGTH
           ? `${prefixed.slice(
-              0,
-              MAX_TRANSCRIPT_MESSAGE_CONTENT_LENGTH -
-                TRANSCRIPT_TRUNCATION_SUFFIX.length,
-            )}${TRANSCRIPT_TRUNCATION_SUFFIX}`
+            0,
+            MAX_TRANSCRIPT_MESSAGE_CONTENT_LENGTH -
+            TRANSCRIPT_TRUNCATION_SUFFIX.length,
+          )}${TRANSCRIPT_TRUNCATION_SUFFIX}`
           : prefixed;
 
       try {
@@ -1027,6 +1033,10 @@ export const LiveStudioSessionsRail = () => {
   );
 
   const sessions = data ?? fallbackSessions;
+
+  useEffect(() => {
+    onSessionCountChange?.(sessions.length);
+  }, [onSessionCountChange, sessions.length]);
 
   useEffect(() => {
     const activeSessionIds = new Set(sessions.map((session) => session.id));
@@ -1402,58 +1412,79 @@ export const LiveStudioSessionsRail = () => {
     }));
   };
 
+  const railShellClass =
+    'card !rounded-[1.5rem] border border-border/45 bg-card px-5 py-5';
+  const railCountBadgeClass =
+    'inline-flex h-8 min-w-8 items-center justify-center rounded-full border border-border/55 bg-background/65 px-2 font-semibold text-sm text-foreground';
+  const sessionCardClass =
+    'rounded-[1.5rem] border border-border/45 bg-card/72 px-5 py-5';
+  const sessionMetaPillClass =
+    'inline-flex h-8 min-w-[7.5rem] items-center justify-center rounded-xl border border-border/60 bg-background/82 px-3 font-semibold text-sm text-foreground';
+  const overlayCard1Class =
+    'mt-4 rounded-xl bg-background/58 px-4 py-4';
+  const overlayCard2Class =
+    'mt-3 rounded-xl bg-background/58 px-4 py-4';
+  const actionButtonBaseClass =
+    'inline-flex h-8 w-full items-center justify-center rounded-xl px-4 font-semibold text-[12px] leading-none transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
+  const controlButtonClass = `${actionButtonBaseClass} border border-border/60 bg-[#1C2433] text-foreground hover:bg-[#243149] disabled:cursor-not-allowed disabled:opacity-50`;
+  const primaryButtonClass = `${actionButtonBaseClass} border border-primary/45 bg-primary text-primary-foreground hover:bg-primary/90`;
+  const subtleInfoPanelClass =
+    'space-y-2 rounded-xl bg-background/72 px-3.5 py-3.5';
+
   return (
-    <section className="card p-4" data-testid="live-studio-sessions-rail">
+    <section className={railShellClass} data-testid="live-studio-sessions-rail">
       <header className="flex items-center justify-between gap-2">
-        <h2 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+        <h2 className="font-semibold text-foreground text-2xl tracking-tight">
           {t('liveSessionsRail.title')}
         </h2>
-        <span className="pill">{sessions.length}</span>
+        <span className={railCountBadgeClass}>{sessions.length}</span>
       </header>
-      <p className="mt-2 text-muted-foreground text-xs">
+      <p className="mt-3 text-muted-foreground text-[15px] leading-relaxed">
         {t('liveSessionsRail.description')}
       </p>
 
-      <div className="mt-3 grid gap-2">
+      <div className="mt-5 grid gap-5">
         {sessions.length === 0 && !isLoading ? (
-          <p className="rounded-lg border border-border/30 bg-background/45 px-3 py-2 text-muted-foreground text-xs">
+          <p className="rounded-xl bg-background/60 px-4 py-3 text-muted-foreground text-sm">
             {t('liveSessionsRail.empty')}
           </p>
         ) : null}
         {sessions.map((session) => (
-          <article
-            className="rounded-lg border border-border/30 bg-background/42 px-3 py-2"
-            key={session.id}
-          >
-            <div className="flex items-start justify-between gap-2">
-              <p className="line-clamp-1 font-semibold text-foreground text-xs">
+          <article className={sessionCardClass} key={session.id}>
+            <div className="flex items-center justify-between gap-3">
+              <p className="line-clamp-1 font-semibold text-[17px] text-foreground">
                 {session.title}
               </p>
               <span
-                className={`rounded-full px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide ${statusClassByValue[session.status] ?? statusClassByValue.forming}`}
+                className={`inline-flex h-8 flex-shrink-0 items-center gap-1.5 rounded-full border border-border/55 bg-background/72 px-3 font-semibold text-xs ${statusClassByValue[session.status] ?? statusClassByValue.forming}`}
               >
+                {session.status === 'live' ? (
+                  <span className="inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-current" />
+                ) : null}
                 {toLiveSessionStatusLabel(session.status, t)}
               </span>
             </div>
-            <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">
+            <p className="mt-3 line-clamp-2 text-[15px] text-muted-foreground leading-relaxed">
               {session.objective}
             </p>
-            <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
-              <span className="pill">
+            <div className="mt-4 flex flex-wrap items-center gap-2.5">
+              <span className={sessionMetaPillClass}>
                 {session.participantCount} {t('liveSessionsRail.joined')}
               </span>
-              <span className="pill">
+              <span className={sessionMetaPillClass}>
                 {session.messageCount} {t('liveSessionsRail.messages')}
               </span>
-              <span className="pill">
+              <span className={sessionMetaPillClass}>
                 {formatRelativeMinutes(session.lastActivityAt, t)}
               </span>
             </div>
-            <div className="mt-2 space-y-1.5 border-border/25 border-t pt-2">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+
+            {/* Session Overlay — card 1: title + observers + prediction */}
+            <div className={overlayCard1Class}>
+              <p className="font-semibold text-[15px] text-foreground">
                 {t('liveSessionsRail.overlay.title')}
               </p>
-              <p className="text-[10px] text-muted-foreground">
+              <p className="mt-1 text-[15px] text-muted-foreground">
                 {t('liveSessionsRail.overlay.observers')}{' '}
                 {session.overlay.humanCount} |{' '}
                 {t('liveSessionsRail.overlay.agents')}{' '}
@@ -1461,179 +1492,190 @@ export const LiveStudioSessionsRail = () => {
               </p>
               {session.overlay.mergeSignalPct +
                 session.overlay.rejectSignalPct >
-              0 ? (
-                <p className="text-[10px] text-muted-foreground">
-                  {t('liveSessionsRail.overlay.predictionSignal')}:{' '}
-                  {t('observerProfile.predictionOutcomeMerge')}{' '}
-                  {session.overlay.mergeSignalPct}% /{' '}
-                  {t('observerProfile.predictionOutcomeReject')}{' '}
-                  {session.overlay.rejectSignalPct}%
-                </p>
-              ) : null}
-              {session.overlay.latestMessage ? (
-                <p className="line-clamp-2 rounded-md border border-border/25 bg-background/52 px-2 py-1.5 text-[10px] text-muted-foreground">
-                  {session.overlay.latestMessage}
-                </p>
-              ) : null}
-              {session.status === 'completed' &&
-              session.overlay.recapSummary ? (
-                <div className="space-y-1 rounded-md border border-border/25 bg-background/52 px-2 py-1.5">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                    {t('liveSessionsRail.overlay.autoRecap')}
+                0 ? (
+                <div className="mt-3">
+                  <p className="font-bold text-[15px] text-foreground">
+                    {t('liveSessionsRail.overlay.predictionSignal')}:
                   </p>
-                  <p className="line-clamp-3 text-[10px] text-muted-foreground">
-                    {session.overlay.recapSummary}
+                  <p className="mt-0.5 text-[15px] text-muted-foreground">
+                    {t('observerProfile.predictionOutcomeMerge')}{' '}
+                    {session.overlay.mergeSignalPct}% /{' '}
+                    {t('observerProfile.predictionOutcomeReject')}{' '}
+                    {session.overlay.rejectSignalPct}%
                   </p>
-                  {session.overlay.recapClipUrl ? (
-                    <a
-                      className="text-[10px] text-primary underline-offset-2 hover:underline"
-                      href={session.overlay.recapClipUrl}
-                      rel="noreferrer"
-                      target="_blank"
-                    >
-                      {t('liveSessionsRail.overlay.openRecapClip')}
-                    </a>
-                  ) : null}
                 </div>
               ) : null}
+            </div>
 
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                <button
-                  className="rounded-md border border-border/35 bg-background/60 px-2 py-1 font-semibold text-[10px] text-foreground transition hover:bg-background/75 disabled:cursor-not-allowed disabled:opacity-65"
-                  disabled={
-                    session.status === 'completed' ||
-                    session.status === 'cancelled' ||
-                    copilotStateBySession[session.id]?.status === 'loading' ||
-                    copilotStateBySession[session.id]?.status === 'connecting'
-                  }
-                  onClick={() => handleRealtimeBootstrap(session)}
-                  type="button"
-                >
-                  {copilotStateBySession[session.id]?.status === 'loading' ||
-                  copilotStateBySession[session.id]?.status === 'connecting'
-                    ? t('liveSessionsRail.controls.startingCopilot')
-                    : t('liveSessionsRail.controls.startCopilot')}
-                </button>
-                {hasObserverToken ? null : (
-                  <Link
-                    className="text-[10px] text-primary underline-offset-2 hover:underline"
-                    href="/login"
-                  >
-                    {t('liveSessionsRail.controls.signInRequired')}
-                  </Link>
-                )}
+            {/* Session Overlay — card 2: latest message */}
+            {session.overlay.latestMessage ? (
+              <div className={overlayCard2Class}>
+                <p className="text-[15px] text-muted-foreground leading-relaxed">
+                  {session.overlay.latestMessage}
+                </p>
               </div>
-              {copilotStateBySession[session.id]?.status === 'ready' &&
+            ) : null}
+
+            {/* Recap (completed only) */}
+            {session.status === 'completed' && session.overlay.recapSummary ? (
+              <div className={overlayCard2Class}>
+                <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wider">
+                  {t('liveSessionsRail.overlay.autoRecap')}
+                </p>
+                <p className="mt-1.5 line-clamp-3 text-sm text-muted-foreground leading-relaxed">
+                  {session.overlay.recapSummary}
+                </p>
+                {session.overlay.recapClipUrl ? (
+                  <a
+                    className="mt-1.5 inline-block text-sm text-primary underline-offset-2 hover:underline"
+                    href={session.overlay.recapClipUrl}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    {t('liveSessionsRail.overlay.openRecapClip')}
+                  </a>
+                ) : null}
+              </div>
+            ) : null}
+
+            {/* Action buttons — full-width stacked */}
+            <div className="mt-4 grid gap-2">
+              <button
+                className={controlButtonClass}
+                disabled={
+                  session.status === 'completed' ||
+                  session.status === 'cancelled' ||
+                  copilotStateBySession[session.id]?.status === 'loading' ||
+                  copilotStateBySession[session.id]?.status === 'connecting'
+                }
+                onClick={() => handleRealtimeBootstrap(session)}
+                type="button"
+              >
+                {copilotStateBySession[session.id]?.status === 'loading' ||
+                  copilotStateBySession[session.id]?.status === 'connecting'
+                  ? t('liveSessionsRail.controls.startingCopilot')
+                  : t('liveSessionsRail.controls.startCopilot')}
+              </button>
+              {hasObserverToken ? null : (
+                <Link
+                  className={`${primaryButtonClass} text-center`}
+                  href="/login"
+                >
+                  {t('liveSessionsRail.controls.signInRequired')}
+                </Link>
+              )}
+            </div>
+            {copilotStateBySession[session.id]?.status === 'ready' &&
               copilotStateBySession[session.id]?.bootstrap ? (
-                <div className="space-y-1">
-                  <p className="text-[10px] text-chart-2">
-                    {t('liveSessionsRail.ready.copilotReady')}{' '}
-                    {copilotStateBySession[session.id]?.bootstrap?.sessionId}
+              <div className="space-y-2">
+                <p className="text-[13px] text-chart-2">
+                  {t('liveSessionsRail.ready.copilotReady')}{' '}
+                  {copilotStateBySession[session.id]?.bootstrap?.sessionId}
+                </p>
+                <p className="text-[13px] text-muted-foreground">
+                  {t('liveSessionsRail.ready.toolBridge')}:{' '}
+                  {toolBridgeStateBySession[session.id]?.processedCount ?? 0}{' '}
+                  {t('liveSessionsRail.ready.processed')}
+                </p>
+                {toolBridgeStateBySession[session.id]?.lastProcessedAt ? (
+                  <p className="text-[13px] text-muted-foreground">
+                    {t('liveSessionsRail.ready.lastSync')}:{' '}
+                    {formatRelativeMinutes(
+                      toolBridgeStateBySession[session.id]
+                        ?.lastProcessedAt as string,
+                      t,
+                    )}
                   </p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {t('liveSessionsRail.ready.toolBridge')}:{' '}
-                    {toolBridgeStateBySession[session.id]?.processedCount ?? 0}{' '}
-                    {t('liveSessionsRail.ready.processed')}
-                  </p>
-                  {toolBridgeStateBySession[session.id]?.lastProcessedAt ? (
-                    <p className="text-[10px] text-muted-foreground">
-                      {t('liveSessionsRail.ready.lastSync')}:{' '}
-                      {formatRelativeMinutes(
-                        toolBridgeStateBySession[session.id]
-                          ?.lastProcessedAt as string,
-                        t,
-                      )}
+                ) : null}
+                {copilotStateBySession[session.id]?.pushToTalkEnabled ? (
+                  <div className={`mt-1 ${subtleInfoPanelClass}`}>
+                    <p className="text-[13px] text-muted-foreground uppercase tracking-wide">
+                      {t('liveSessionsRail.voice.title')}
                     </p>
-                  ) : null}
-                  {copilotStateBySession[session.id]?.pushToTalkEnabled ? (
-                    <div className="mt-1 space-y-1 rounded-md border border-border/25 bg-background/52 px-2 py-1.5">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                        {t('liveSessionsRail.voice.title')}
-                      </p>
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={`rounded-full px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide ${getRealtimeStatusClassName(
-                            voiceRuntimeStateBySession[session.id]?.status ??
-                              'idle',
-                          )}`}
-                        >
-                          {toRealtimeStatusLabel(
-                            voiceRuntimeStateBySession[session.id]?.status ??
-                              'idle',
-                            t,
-                          )}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <button
-                          className="rounded-md border border-border/35 bg-background/65 px-2 py-1 font-semibold text-[10px] text-foreground transition hover:bg-background/80"
-                          onPointerCancel={() =>
-                            handlePushToTalkStop(session.id)
-                          }
-                          onPointerDown={() =>
-                            handlePushToTalkStart(session.id)
-                          }
-                          onPointerLeave={() =>
-                            handlePushToTalkStop(session.id)
-                          }
-                          onPointerUp={() => handlePushToTalkStop(session.id)}
-                          type="button"
-                        >
-                          {voiceControlStateBySession[session.id]?.isHolding
-                            ? t('liveSessionsRail.voice.listeningReleaseToSend')
-                            : t('liveSessionsRail.voice.holdToTalk')}
-                        </button>
-                        <button
-                          className="rounded-md border border-border/35 bg-background/65 px-2 py-1 font-semibold text-[10px] text-foreground transition hover:bg-background/80"
-                          onClick={() => handlePushToTalkInterrupt(session.id)}
-                          type="button"
-                        >
-                          {t('liveSessionsRail.voice.interruptResponse')}
-                        </button>
-                      </div>
-                      <p className="text-[10px] text-muted-foreground">
-                        {t('liveSessionsRail.voice.interruptions')}:{' '}
-                        {voiceControlStateBySession[session.id]
-                          ?.interruptions ?? 0}
-                      </p>
-                      {voiceControlStateBySession[session.id]?.lastCommitAt ? (
-                        <p className="text-[10px] text-muted-foreground">
-                          {t('liveSessionsRail.voice.lastVoiceSend')}:{' '}
-                          {formatRelativeMinutes(
-                            voiceControlStateBySession[session.id]
-                              ?.lastCommitAt as string,
-                            t,
-                          )}
-                        </p>
-                      ) : null}
-                      <p className="text-[10px] text-muted-foreground">
-                        {t('liveSessionsRail.voice.keyboardHold')}{' '}
-                        <kbd className="rounded border border-border/45 px-1 py-0.5 text-[10px]">
-                          Space
-                        </kbd>{' '}
-                        {t('liveSessionsRail.voice.toTalk')}
-                        {voiceFocusSessionId === session.id
-                          ? ` (${t('liveSessionsRail.voice.active')})`
-                          : ''}
-                      </p>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`rounded-full px-2.5 py-1 font-semibold text-xs uppercase tracking-wide ${getRealtimeStatusClassName(
+                          voiceRuntimeStateBySession[session.id]?.status ??
+                          'idle',
+                        )}`}
+                      >
+                        {toRealtimeStatusLabel(
+                          voiceRuntimeStateBySession[session.id]?.status ??
+                          'idle',
+                          t,
+                        )}
+                      </span>
                     </div>
-                  ) : (
-                    <p className="text-[10px] text-muted-foreground">
-                      {t('liveSessionsRail.voice.unavailable')}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        className={controlButtonClass}
+                        onPointerCancel={() =>
+                          handlePushToTalkStop(session.id)
+                        }
+                        onPointerDown={() =>
+                          handlePushToTalkStart(session.id)
+                        }
+                        onPointerLeave={() =>
+                          handlePushToTalkStop(session.id)
+                        }
+                        onPointerUp={() => handlePushToTalkStop(session.id)}
+                        type="button"
+                      >
+                        {voiceControlStateBySession[session.id]?.isHolding
+                          ? t('liveSessionsRail.voice.listeningReleaseToSend')
+                          : t('liveSessionsRail.voice.holdToTalk')}
+                      </button>
+                      <button
+                        className={controlButtonClass}
+                        onClick={() => handlePushToTalkInterrupt(session.id)}
+                        type="button"
+                      >
+                        {t('liveSessionsRail.voice.interruptResponse')}
+                      </button>
+                    </div>
+                    <p className="text-[13px] text-muted-foreground">
+                      {t('liveSessionsRail.voice.interruptions')}:{' '}
+                      {voiceControlStateBySession[session.id]
+                        ?.interruptions ?? 0}
                     </p>
-                  )}
-                  {(transcriptStateBySession[session.id]?.liveText ||
-                    transcriptStateBySession[session.id]?.finalText) && (
-                    <div className="mt-1 space-y-1 rounded-md border border-border/25 bg-background/52 px-2 py-1.5">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                    {voiceControlStateBySession[session.id]?.lastCommitAt ? (
+                      <p className="text-[13px] text-muted-foreground">
+                        {t('liveSessionsRail.voice.lastVoiceSend')}:{' '}
+                        {formatRelativeMinutes(
+                          voiceControlStateBySession[session.id]
+                            ?.lastCommitAt as string,
+                          t,
+                        )}
+                      </p>
+                    ) : null}
+                    <p className="text-[13px] text-muted-foreground">
+                      {t('liveSessionsRail.voice.keyboardHold')}{' '}
+                      <kbd className="rounded border border-border/55 bg-background/88 px-1.5 py-0.5 text-[13px] text-foreground/90">
+                        Space
+                      </kbd>{' '}
+                      {t('liveSessionsRail.voice.toTalk')}
+                      {voiceFocusSessionId === session.id
+                        ? ` (${t('liveSessionsRail.voice.active')})`
+                        : ''}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-[13px] text-muted-foreground">
+                    {t('liveSessionsRail.voice.unavailable')}
+                  </p>
+                )}
+                {(transcriptStateBySession[session.id]?.liveText ||
+                  transcriptStateBySession[session.id]?.finalText) && (
+                    <div className={`mt-1 ${subtleInfoPanelClass}`}>
+                      <p className="text-[13px] text-muted-foreground uppercase tracking-wide">
                         {t('liveSessionsRail.transcript.title')}
                       </p>
-                      <p className="line-clamp-3 text-[10px] text-muted-foreground">
+                      <p className="line-clamp-3 text-[13px] text-muted-foreground">
                         {transcriptStateBySession[session.id]?.liveText ||
                           transcriptStateBySession[session.id]?.finalText}
                       </p>
                       {transcriptStateBySession[session.id]?.lastEventAt ? (
-                        <p className="text-[10px] text-muted-foreground">
+                        <p className="text-[13px] text-muted-foreground">
                           {t('liveSessionsRail.transcript.updated')}:{' '}
                           {formatRelativeMinutes(
                             transcriptStateBySession[session.id]
@@ -1643,7 +1685,7 @@ export const LiveStudioSessionsRail = () => {
                         </p>
                       ) : null}
                       {transcriptStateBySession[session.id]?.persistedAt ? (
-                        <p className="text-[10px] text-muted-foreground">
+                        <p className="text-[13px] text-muted-foreground">
                           {t('liveSessionsRail.transcript.savedToChat')}:{' '}
                           {formatRelativeMinutes(
                             transcriptStateBySession[session.id]
@@ -1653,30 +1695,29 @@ export const LiveStudioSessionsRail = () => {
                         </p>
                       ) : null}
                       {transcriptStateBySession[session.id]?.persistError ? (
-                        <p className="text-[10px] text-destructive">
+                        <p className="text-[13px] text-destructive">
                           {transcriptStateBySession[session.id]?.persistError}
                         </p>
                       ) : null}
                     </div>
                   )}
-                </div>
-              ) : null}
-              {voiceControlStateBySession[session.id]?.error ? (
-                <p className="text-[10px] text-destructive">
-                  {voiceControlStateBySession[session.id]?.error}
-                </p>
-              ) : null}
-              {toolBridgeStateBySession[session.id]?.error ? (
-                <p className="text-[10px] text-destructive">
-                  {toolBridgeStateBySession[session.id]?.error}
-                </p>
-              ) : null}
-              {copilotStateBySession[session.id]?.status === 'error' ? (
-                <p className="text-[10px] text-destructive">
-                  {copilotStateBySession[session.id]?.error}
-                </p>
-              ) : null}
-            </div>
+              </div>
+            ) : null}
+            {voiceControlStateBySession[session.id]?.error ? (
+              <p className="text-[13px] text-destructive">
+                {voiceControlStateBySession[session.id]?.error}
+              </p>
+            ) : null}
+            {toolBridgeStateBySession[session.id]?.error ? (
+              <p className="text-[13px] text-destructive">
+                {toolBridgeStateBySession[session.id]?.error}
+              </p>
+            ) : null}
+            {copilotStateBySession[session.id]?.status === 'error' ? (
+              <p className="text-[13px] text-destructive">
+                {copilotStateBySession[session.id]?.error}
+              </p>
+            ) : null}
           </article>
         ))}
       </div>

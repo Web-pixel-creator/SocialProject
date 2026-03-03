@@ -217,7 +217,7 @@ const getDecisionPresentation = (
     };
   }
   return {
-    className: 'border border-border/25 bg-muted/60 text-foreground',
+    className: 'border border-input bg-background text-foreground',
     label: t('battle.pending'),
   };
 };
@@ -242,7 +242,7 @@ const getProvenancePresentation = (
     };
   }
   return {
-    className: 'border border-border/25 bg-muted/60 text-foreground',
+    className: 'border border-input bg-background text-muted-foreground',
     label: t('feed.provenance.unverified'),
   };
 };
@@ -265,7 +265,7 @@ const BattleCardFooter = ({
 }: BattleCardFooterProps) => {
   if (compact) {
     return (
-      <section className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+      <section className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-input bg-background px-2.5 py-2 text-xs">
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full border border-primary/35 bg-primary/12 px-2 py-0.5 font-semibold text-primary">
             +{glowUpScore.toFixed(1)}%
@@ -281,7 +281,7 @@ const BattleCardFooter = ({
           )}
         </div>
         <Link
-          className="inline-flex min-h-8 items-center rounded-full border border-primary/35 bg-primary/10 px-3 py-1.5 font-semibold text-[11px] text-primary transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="inline-flex min-h-9 items-center rounded-full border border-primary/45 bg-primary/14 px-3 py-2 font-semibold text-xs text-primary transition hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           href={`/drafts/${id}`}
         >
           {t('battle.openBattle')}
@@ -336,7 +336,7 @@ const BattleCardFooter = ({
 
       <div className="mt-2 flex items-center justify-end text-muted-foreground text-xs">
         <Link
-          className="font-semibold text-[11px] text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="inline-flex min-h-9 items-center rounded-full border border-input bg-background px-3 py-2 font-semibold text-xs text-primary transition hover:border-primary/35 hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           href={`/drafts/${id}`}
         >
           {t('battle.openBattle')}
@@ -493,10 +493,8 @@ export const BattleCard = ({
 
   return (
     <article
-      className={`card overflow-hidden transition ${
-        compact
-          ? 'p-2.5 motion-safe:hover:-translate-y-1'
-          : 'p-4 motion-safe:hover:-translate-y-1'
+      className={`card overflow-hidden border-input bg-card transition ${
+        compact ? 'p-2.5' : 'p-4'
       }`}
     >
       <header
@@ -518,13 +516,13 @@ export const BattleCard = ({
         </div>
         <div className="flex flex-col items-end gap-1">
           <span
-            className={`rounded-full px-2 py-1 font-semibold text-[10px] uppercase tracking-wide ${decisionUi.className}`}
+            className={`rounded-full px-2 py-1 font-semibold text-xs uppercase tracking-wide ${decisionUi.className}`}
           >
             {decisionUi.label}
           </span>
           {provenancePresentation && (
             <span
-              className={`rounded-full px-2 py-1 font-semibold text-[10px] uppercase tracking-wide ${provenancePresentation.className}`}
+              className={`rounded-full px-2 py-1 font-semibold text-xs uppercase tracking-wide ${provenancePresentation.className}`}
             >
               {provenancePresentation.label}
             </span>
@@ -539,7 +537,7 @@ export const BattleCard = ({
           beforeImageUrl={beforeImageUrl}
           beforeLabel={leftLabel}
           centerOverlay={
-            <span className="absolute top-1/2 left-1/2 inline-flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-border/25 bg-background/74 font-semibold text-[11px] text-foreground uppercase">
+            <span className="absolute top-1/2 left-1/2 inline-flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-input bg-background font-semibold text-xs text-foreground uppercase">
               VS
             </span>
           }
@@ -549,7 +547,7 @@ export const BattleCard = ({
       </section>
 
       <section
-        className={`mt-3.5 rounded-xl border border-border/25 bg-background/35 ${
+        className={`mt-3.5 rounded-xl border border-input bg-background ${
           compact ? 'p-2.5' : 'p-3'
         }`}
       >
@@ -575,10 +573,10 @@ export const BattleCard = ({
           <div className="mt-3 grid grid-cols-2 gap-2">
             <button
               aria-pressed={userVote === 'left'}
-              className={`rounded-lg border px-2 py-1.5 font-semibold text-[11px] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+              className={`rounded-lg border px-2 py-1.5 font-semibold text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                 userVote === 'left'
                   ? 'border-primary/45 bg-primary/15 text-primary'
-                  : 'border-border/25 bg-muted/60 text-muted-foreground hover:bg-muted/74 hover:text-foreground'
+                  : 'border-input bg-background text-foreground/80 hover:border-primary/30 hover:bg-accent/25 hover:text-foreground'
               }`}
               onClick={() => castVote('left')}
               type="button"
@@ -587,10 +585,10 @@ export const BattleCard = ({
             </button>
             <button
               aria-pressed={userVote === 'right'}
-              className={`rounded-lg border px-2 py-1.5 font-semibold text-[11px] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+              className={`rounded-lg border px-2 py-1.5 font-semibold text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                 userVote === 'right'
                   ? 'border-primary/45 bg-primary/15 text-primary'
-                  : 'border-border/25 bg-muted/60 text-muted-foreground hover:bg-muted/74 hover:text-foreground'
+                  : 'border-input bg-background text-foreground/80 hover:border-primary/30 hover:bg-accent/25 hover:text-foreground'
               }`}
               onClick={() => castVote('right')}
               type="button"
@@ -600,17 +598,17 @@ export const BattleCard = ({
           </div>
         )}
         {voteLabel && (
-          <p className="mt-2 text-[11px] text-primary">
+          <p className="mt-2 text-xs text-primary">
             {t('battle.yourVote')}: {voteLabel}
           </p>
         )}
         {!compact && onPredict ? (
-          <div className="mt-3 rounded-lg border border-border/25 bg-background/45 p-2.5">
-            <p className="font-semibold text-[10px] text-muted-foreground uppercase tracking-wide">
+          <div className="mt-3 rounded-lg border border-input bg-background p-2.5">
+            <p className="font-semibold text-xs text-muted-foreground uppercase tracking-wide">
               {t('sidebar.predictMode')}
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <label className="inline-flex items-center gap-2 rounded-lg border border-border/25 bg-background/70 px-2.5 py-1.5 text-xs">
+              <label className="inline-flex items-center gap-2 rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs">
                 <span className="text-muted-foreground">
                   {t('prediction.stakeLabel')}
                 </span>
@@ -640,10 +638,10 @@ export const BattleCard = ({
                   <button
                     aria-label={`${t('prediction.stakeLabel')} ${quickStakePoint}`}
                     aria-pressed={stakePoints === quickStakePoint}
-                    className={`rounded-full border px-2 py-1 font-semibold text-[10px] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                    className={`rounded-full border px-2 py-1 font-semibold text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                       stakePoints === quickStakePoint
                         ? 'border-primary/35 bg-primary/10 text-primary'
-                        : 'border-border/25 bg-background/65 text-muted-foreground hover:bg-background/78 hover:text-foreground'
+                        : 'border-input bg-background text-muted-foreground hover:border-primary/30 hover:bg-accent/25 hover:text-foreground'
                     }`}
                     key={quickStakePoint}
                     onClick={() => {
@@ -657,7 +655,7 @@ export const BattleCard = ({
                 ))}
               </div>
               <button
-                className="rounded-full border border-primary/35 bg-primary/10 px-3 py-1.5 font-semibold text-[11px] text-primary transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-55"
+                className="rounded-full border border-primary/35 bg-primary/10 px-3 py-1.5 font-semibold text-xs text-primary transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-55"
                 disabled={
                   predictionDisabled || Boolean(predictionState?.pending)
                 }
@@ -669,7 +667,7 @@ export const BattleCard = ({
                   : t('prediction.predictMerge')}
               </button>
               <button
-                className="rounded-full border border-destructive/35 bg-destructive/10 px-3 py-1.5 font-semibold text-[11px] text-destructive transition hover:bg-destructive/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-55"
+                className="rounded-full border border-destructive/35 bg-destructive/10 px-3 py-1.5 font-semibold text-xs text-destructive transition hover:bg-destructive/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-55"
                 disabled={
                   predictionDisabled || Boolean(predictionState?.pending)
                 }
@@ -681,47 +679,47 @@ export const BattleCard = ({
                   : t('prediction.predictReject')}
               </button>
             </div>
-            <p className="mt-1 text-[11px] text-muted-foreground">
+            <p className="mt-1 text-xs text-muted-foreground">
               {t('prediction.stakeLabel')} {minStakePoints}-{maxStakePoints} FIN
             </p>
             {predictionSummary ? (
-              <p className="mt-2 text-[11px] text-primary">
+              <p className="mt-2 text-xs text-primary">
                 {predictionSummary}
               </p>
             ) : null}
             {predictionDisabledReason ? (
-              <p className="mt-1 text-[11px] text-destructive">
+              <p className="mt-1 text-xs text-destructive">
                 {predictionDisabledReason}
               </p>
             ) : null}
             {stakeAdjustmentHint ? (
-              <p className="mt-1 text-[11px] text-muted-foreground">
+              <p className="mt-1 text-xs text-muted-foreground">
                 {stakeAdjustmentHint}
               </p>
             ) : null}
             {hasMarketSummary ? (
-              <p className="mt-1 text-[11px] text-muted-foreground">
+              <p className="mt-1 text-xs text-muted-foreground">
                 {formatPredictionMarketPoolLine(t, predictionDerived)}
               </p>
             ) : null}
             {hasMarketSummary ? (
-              <p className="mt-1 text-[11px] text-muted-foreground">
+              <p className="mt-1 text-xs text-muted-foreground">
                 {formatPredictionOddsLine(t, predictionDerived)}
               </p>
             ) : null}
             {hasPotentialPayout ? (
-              <p className="mt-1 text-[11px] text-muted-foreground">
+              <p className="mt-1 text-xs text-muted-foreground">
                 {formatPredictionPayoutLine(t, predictionDerived)}
               </p>
             ) : null}
             {hasObserverMarketProfile ? (
-              <p className="mt-1 text-[11px] text-muted-foreground">
+              <p className="mt-1 text-xs text-muted-foreground">
                 {formatPredictionNetPointsLine(t, observerNetPoints)} |{' '}
                 {t('prediction.tierLabel')} {formattedTier}
               </p>
             ) : null}
             {hasUsageCaps ? (
-              <p className="mt-1 text-[11px] text-muted-foreground">
+              <p className="mt-1 text-xs text-muted-foreground">
                 {formatPredictionUsageLine(t, predictionDerived, {
                   includeRemaining: true,
                   unknownCapLabel: '-',
@@ -729,7 +727,7 @@ export const BattleCard = ({
               </p>
             ) : null}
             {predictionState?.error ? (
-              <p className="mt-1 text-[11px] text-destructive" role="alert">
+              <p className="mt-1 text-xs text-destructive" role="alert">
                 {showPredictionSignInCta ? (
                   <>
                     {t('prediction.signInRequired')}{' '}
@@ -768,3 +766,4 @@ export const BattleCard = ({
     </article>
   );
 };
+

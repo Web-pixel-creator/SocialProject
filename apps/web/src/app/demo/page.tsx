@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -145,14 +145,14 @@ export default function DemoPage() {
               {draftId.trim().length > 0 ? (
                 <button
                   aria-label={t('feedTabs.emptyAction.clearSearch')}
-                  className={`absolute top-1/2 right-2 -translate-y-1/2 rounded-full border border-transparent bg-background/56 px-2 py-0.5 text-muted-foreground text-xs transition hover:bg-background/74 hover:text-foreground ${focusRingClass}`}
+                  className={`absolute top-1/2 right-2 -translate-y-1/2 rounded-full border border-border/35 bg-background/76 px-2 py-0.5 text-muted-foreground text-xs transition hover:bg-background/74 hover:text-foreground ${focusRingClass}`}
                   onClick={clearDraftId}
                   type="button"
                 >
                   ESC
                 </button>
               ) : (
-                <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded-md border border-border/25 bg-background/56 px-2 py-0.5 text-[11px] text-muted-foreground">
+                <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded-md border border-border/25 bg-background/56 px-2 py-0.5 text-xs text-muted-foreground">
                   /
                 </span>
               )}
@@ -169,14 +169,14 @@ export default function DemoPage() {
             </button>
             {result?.draftId ? (
               <Link
-                className={`rounded-full border border-transparent bg-background/58 px-5 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 sm:py-2 ${focusRingClass}`}
+                className={`rounded-full border border-border/35 bg-background/78 px-5 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 sm:py-2 ${focusRingClass}`}
                 href={`/drafts/${result.draftId}`}
               >
                 {t('demo.actions.openDraft')}
               </Link>
             ) : null}
             <Link
-              className={`rounded-full border border-transparent bg-background/58 px-5 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 sm:py-2 ${focusRingClass}`}
+              className={`rounded-full border border-border/35 bg-background/78 px-5 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 sm:py-2 ${focusRingClass}`}
               href="/feed"
             >
               {t('feed.exploreFeeds')}
@@ -186,7 +186,7 @@ export default function DemoPage() {
             <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-2.5 text-destructive text-xs sm:p-3">
               <p>{error}</p>
               <button
-                className={`mt-2 rounded-full border border-destructive/40 px-3 py-1 font-semibold text-[11px] transition hover:bg-destructive/10 disabled:opacity-60 ${focusRingClass}`}
+                className={`mt-2 rounded-full border border-destructive/40 px-3 py-1 font-semibold text-xs transition hover:bg-destructive/10 disabled:opacity-60 ${focusRingClass}`}
                 disabled={loading}
                 onClick={runDemo}
                 type="button"
@@ -269,3 +269,4 @@ export default function DemoPage() {
     </main>
   );
 }
+

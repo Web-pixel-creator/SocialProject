@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import useSWR from 'swr';
 import { apiClient } from '../lib/api';
 
@@ -22,6 +23,10 @@ interface SwarmReplayEvent {
   score: number | null;
   notes: string;
   createdAt: string | Date;
+}
+
+interface SwarmSessionsRailProps {
+  onSessionCountChange?: (count: number) => void;
 }
 
 const fallbackSessions: SwarmSessionSummary[] = [
@@ -140,7 +145,9 @@ const fetchSwarms = async (): Promise<SwarmSessionSummary[]> => {
   return sessionsWithTimeline;
 };
 
-export const SwarmSessionsRail = () => {
+export const SwarmSessionsRail = ({
+  onSessionCountChange,
+}: SwarmSessionsRailProps = {}) => {
   const { data, isLoading } = useSWR<SwarmSessionSummary[]>(
     'feed-swarm-sessions',
     fetchSwarms,
@@ -154,66 +161,70 @@ export const SwarmSessionsRail = () => {
 
   const sessions = data ?? fallbackSessions;
 
+  useEffect(() => {
+    onSessionCountChange?.(sessions.length);
+  }, [onSessionCountChange, sessions.length]);
+
   return (
-    <section className="card p-4" data-testid="swarm-sessions-rail">
+    <section className="card rounded-[1.5rem] border-input bg-card p-6" data-testid="swarm-sessions-rail">
       <header className="flex items-center justify-between gap-2">
-        <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+        <h3 className="font-semibold text-lg text-foreground tracking-tight">
           Agent swarms
         </h3>
         <span className="pill">{sessions.length}</span>
       </header>
-      <p className="mt-2 text-muted-foreground text-xs">
+      <p className="mt-2 text-muted-foreground text-[15px] leading-relaxed">
         Temporary studio teams with role-based execution and judge checkpoints.
       </p>
 
-      <div className="mt-3 grid gap-2">
+      <div className="mt-5 grid gap-5">
         {sessions.length === 0 && !isLoading ? (
-          <p className="rounded-lg border border-border/30 bg-background/45 px-3 py-2 text-muted-foreground text-xs">
+          <p className="rounded-xl bg-background/60 px-4 py-3 text-muted-foreground text-sm">
             No active swarms right now.
           </p>
         ) : null}
         {sessions.map((session) => (
           <article
-            className="rounded-lg border border-border/30 bg-background/42 px-3 py-2"
+            className="rounded-[1.5rem] border border-input bg-card px-5 py-5"
             key={session.id}
           >
-            <div className="flex items-start justify-between gap-2">
-              <p className="line-clamp-1 font-semibold text-foreground text-xs">
+            <div className="flex items-start justify-between gap-3">
+              <p className="line-clamp-1 font-semibold text-foreground text-lg tracking-tight">
                 {session.title}
               </p>
               <span
-                className={`rounded-full px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide ${statusClassByValue[session.status] ?? statusClassByValue.forming}`}
+                className={`flex-shrink-0 rounded-full px-2.5 py-1 font-semibold text-xs uppercase tracking-wide ${statusClassByValue[session.status] ?? statusClassByValue.forming}`}
               >
                 {session.status}
               </span>
             </div>
-            <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">
+            <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground leading-relaxed">
               {session.objective}
             </p>
-            <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
-              <span className="pill">{session.memberCount} members</span>
-              <span className="pill">
+            <div className="mt-3.5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <span className="inline-flex items-center rounded-full border border-input bg-background px-3 py-1.5 font-medium text-sm uppercase tracking-wide text-foreground">{session.memberCount} members</span>
+              <span className="inline-flex items-center rounded-full border border-input bg-background px-3 py-1.5 font-medium text-sm uppercase tracking-wide text-foreground">
                 {session.judgeEventCount} judge events
               </span>
-              <span className="pill">
+              <span className="inline-flex items-center rounded-full border border-input bg-background px-3 py-1.5 font-medium text-sm uppercase tracking-wide text-foreground">
                 {formatRelativeMinutes(session.lastActivityAt)}
               </span>
             </div>
             {session.replayTimeline.length > 0 ? (
-              <div className="mt-2 space-y-1.5 border-border/25 border-t pt-2">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+              <div className="mt-4 space-y-2.5 pt-3 border-t border-input/30">
+                <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wider">
                   Replay timeline
                 </p>
                 {session.replayTimeline.map((event) => (
                   <div
-                    className="rounded-md border border-border/25 bg-background/52 px-2 py-1.5"
+                    className="rounded-xl bg-background/60 px-4 py-3.5"
                     key={event.id}
                   >
-                    <p className="line-clamp-1 font-semibold text-[10px] text-foreground uppercase tracking-wide">
+                    <p className="font-semibold text-sm text-foreground uppercase tracking-wide">
                       {event.eventType}
                       {event.score !== null ? ` · ${event.score}` : ''}
                     </p>
-                    <p className="line-clamp-2 text-[10px] text-muted-foreground">
+                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground leading-relaxed">
                       {event.notes}
                     </p>
                   </div>

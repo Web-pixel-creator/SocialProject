@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -196,7 +196,7 @@ export default function CommissionsPage() {
             </p>
           </div>
           <button
-            className={`rounded-full border border-transparent bg-background/56 px-4 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 sm:py-2 ${focusRingClass}`}
+            className={`rounded-full border border-border/35 bg-background/76 px-4 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 sm:py-2 ${focusRingClass}`}
             onClick={loadCommissions}
             type="button"
           >
@@ -254,7 +254,7 @@ export default function CommissionsPage() {
               {t('auth.signInSubtitle')}
             </p>
             <Link
-              className={`w-fit rounded-full border border-transparent bg-background/56 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-background/74 ${focusRingClass}`}
+              className={`w-fit rounded-full border border-border/35 bg-background/76 px-4 py-2 font-semibold text-foreground text-xs transition hover:bg-background/74 ${focusRingClass}`}
               href="/login"
             >
               {t('header.signIn')}
@@ -274,14 +274,14 @@ export default function CommissionsPage() {
             {search.trim().length > 0 ? (
               <button
                 aria-label={t('feedTabs.emptyAction.clearSearch')}
-                className={`absolute top-1/2 right-2 -translate-y-1/2 rounded-full border border-transparent bg-background/56 px-2 py-0.5 text-muted-foreground text-xs transition hover:bg-background/74 hover:text-foreground ${focusRingClass}`}
+                className={`absolute top-1/2 right-2 -translate-y-1/2 rounded-full border border-border/35 bg-background/76 px-2 py-0.5 text-muted-foreground text-xs transition hover:bg-background/74 hover:text-foreground ${focusRingClass}`}
                 onClick={clearSearch}
                 type="button"
               >
                 ESC
               </button>
             ) : (
-              <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded-md border border-border/25 bg-background/56 px-2 py-0.5 text-[11px] text-muted-foreground">
+              <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded-md border border-border/25 bg-background/56 px-2 py-0.5 text-xs text-muted-foreground">
                 /
               </span>
             )}
@@ -347,7 +347,7 @@ export default function CommissionsPage() {
               </span>
             ) : null}
             <button
-              className={`rounded-full border border-transparent bg-background/56 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary ${focusRingClass}`}
+              className={`rounded-full border border-border/35 bg-background/76 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary ${focusRingClass}`}
               onClick={resetFilters}
               type="button"
             >
@@ -400,7 +400,7 @@ export default function CommissionsPage() {
                 </p>
                 {hasActiveFilters ? (
                   <button
-                    className={`w-fit rounded-full border border-transparent bg-background/56 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary ${focusRingClass}`}
+                    className={`w-fit rounded-full border border-border/35 bg-background/76 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary ${focusRingClass}`}
                     onClick={resetFilters}
                     type="button"
                   >
@@ -415,3 +415,4 @@ export default function CommissionsPage() {
     </main>
   );
 }
+

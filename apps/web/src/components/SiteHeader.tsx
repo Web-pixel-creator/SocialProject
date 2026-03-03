@@ -70,7 +70,7 @@ export const SiteHeader = () => {
     if (user) {
       return (
         <>
-          <span className="rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-foreground text-xs">
+          <span className="rounded-full border border-border/35 bg-background/78 px-3 py-1.5 font-semibold text-foreground text-xs">
             {userLabel}
           </span>
           <button className="glass-button" onClick={logout} type="button">
@@ -93,7 +93,7 @@ export const SiteHeader = () => {
     if (user) {
       return (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-foreground text-xs">
+          <span className="rounded-full border border-border/35 bg-background/78 px-3 py-1.5 font-semibold text-foreground text-xs">
             {userLabel}
           </span>
           <button className="glass-button" onClick={logout} type="button">
@@ -243,7 +243,7 @@ export const SiteHeader = () => {
   }, [mobileMenuOpen, pathname]);
 
   return (
-    <header className="topbar-surface sticky top-3 z-50 mb-5 rounded-2xl border border-border/25 p-4 sm:p-5 lg:p-6">
+    <header className="topbar-surface sticky top-3 z-50 mb-5 rounded-[1.5rem] border border-border/25 p-4 sm:p-5 lg:p-6">
       <div className="flex items-center justify-between gap-3">
         <Link
           className="flex items-center gap-2 font-bold text-foreground text-lg tracking-tight sm:text-xl"
@@ -278,7 +278,7 @@ export const SiteHeader = () => {
               {searchQuery.trim().length > 0 ? (
                 <button
                   aria-label={t('feedTabs.emptyAction.clearSearch')}
-                  className={`ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-transparent bg-background/58 text-muted-foreground transition hover:border-primary/40 hover:bg-background/74 hover:text-primary ${focusRingClass}`}
+                  className={`ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-border/35 bg-background/78 text-muted-foreground transition hover:border-primary/40 hover:bg-background/74 hover:text-primary ${focusRingClass}`}
                   onClick={clearSearchQuery}
                   type="button"
                 >
@@ -287,7 +287,7 @@ export const SiteHeader = () => {
               ) : null}
               <button
                 aria-label={t('header.search')}
-                className={`ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-transparent bg-background/58 text-muted-foreground transition hover:border-primary/40 hover:bg-background/74 hover:text-primary ${focusRingClass}`}
+                className={`ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-border/35 bg-background/78 text-muted-foreground transition hover:border-primary/40 hover:bg-background/74 hover:text-primary ${focusRingClass}`}
                 type="submit"
               >
                 <Search aria-hidden="true" className="h-3.5 w-3.5" />
@@ -296,7 +296,7 @@ export const SiteHeader = () => {
           )}
           <LanguageSwitcher />
           <ModeToggle />
-          <span className="inline-flex min-h-8 items-center gap-1 rounded-full border border-primary/35 bg-primary/12 px-3 py-1.5 font-semibold text-[11px] text-primary uppercase tracking-wide sm:min-h-9 sm:py-2 sm:text-xs">
+          <span className="inline-flex min-h-8 items-center gap-1 rounded-full border border-primary/35 bg-primary/12 px-3 py-1.5 font-semibold text-xs text-primary uppercase tracking-wide sm:min-h-9 sm:py-2">
             <Eye aria-hidden="true" className="h-3.5 w-3.5" />
             {t('header.observerMode')}
           </span>
@@ -306,7 +306,7 @@ export const SiteHeader = () => {
           aria-controls="mobile-site-menu"
           aria-expanded={mobileMenuOpen}
           aria-label={mobileMenuOpen ? t('common.close') : t('common.menu')}
-          className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-transparent bg-background/58 text-foreground transition hover:bg-background/74 md:hidden ${focusRingClass}`}
+          className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/45 bg-[#1C2433] text-foreground transition hover:bg-[#243149] md:hidden ${focusRingClass}`}
           onClick={() => setMobileMenuOpen((current) => !current)}
           ref={mobileToggleRef}
           type="button"
@@ -326,8 +326,8 @@ export const SiteHeader = () => {
               aria-current={active ? 'page' : undefined}
               className={`inline-flex min-h-8 items-center rounded-full border px-3 py-1.5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:py-2 ${
                 active
-                  ? 'border-primary/45 bg-primary/10 text-primary'
-                  : 'border-transparent bg-background/58 text-muted-foreground hover:bg-background/74 hover:text-foreground'
+                  ? 'border-primary/55 bg-[#1C2433] text-primary'
+                  : 'border-border/45 bg-[#1C2433] text-muted-foreground hover:bg-[#243149] hover:text-foreground'
               }`}
               href={link.href}
               key={link.href}
@@ -367,7 +367,7 @@ export const SiteHeader = () => {
               {searchQuery.trim().length > 0 ? (
                 <button
                   aria-label={t('feedTabs.emptyAction.clearSearch')}
-                  className={`ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-transparent bg-background/58 text-muted-foreground transition hover:border-primary/40 hover:bg-background/74 hover:text-primary ${focusRingClass}`}
+                  className={`ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-border/45 bg-[#1C2433] text-muted-foreground transition hover:border-primary/40 hover:bg-[#243149] hover:text-primary ${focusRingClass}`}
                   onClick={clearSearchQuery}
                   type="button"
                 >
@@ -376,7 +376,7 @@ export const SiteHeader = () => {
               ) : null}
               <button
                 aria-label={t('header.search')}
-                className={`ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-transparent bg-background/58 text-muted-foreground transition hover:border-primary/40 hover:bg-background/74 hover:text-primary ${focusRingClass}`}
+                className={`ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-border/45 bg-[#1C2433] text-muted-foreground transition hover:border-primary/40 hover:bg-[#243149] hover:text-primary ${focusRingClass}`}
                 type="submit"
               >
                 <Search aria-hidden="true" className="h-3.5 w-3.5" />
@@ -394,8 +394,8 @@ export const SiteHeader = () => {
                   aria-current={active ? 'page' : undefined}
                   className={`rounded-xl border px-3 py-2 transition ${focusRingClass} ${
                     active
-                      ? 'border-primary/45 bg-primary/10 text-primary'
-                      : 'border-transparent bg-background/58 text-muted-foreground hover:bg-background/74 hover:text-foreground'
+                      ? 'border-primary/55 bg-[#1C2433] text-primary'
+                      : 'border-border/45 bg-[#1C2433] text-muted-foreground hover:bg-[#243149] hover:text-foreground'
                   }`}
                   href={link.href}
                   key={link.href}
@@ -414,7 +414,7 @@ export const SiteHeader = () => {
             <LanguageSwitcher />
             <div className="flex items-center gap-2">
               <ModeToggle />
-              <span className="inline-flex min-h-8 items-center gap-1 rounded-full border border-primary/35 bg-primary/12 px-3 py-1.5 font-semibold text-[11px] text-primary uppercase tracking-wide sm:min-h-9 sm:py-2 sm:text-xs">
+              <span className="inline-flex min-h-8 items-center gap-1 rounded-full border border-primary/35 bg-primary/12 px-3 py-1.5 font-semibold text-xs text-primary uppercase tracking-wide sm:min-h-9 sm:py-2">
                 <Eye aria-hidden="true" className="h-3.5 w-3.5" />
                 {t('header.observerMode')}
               </span>

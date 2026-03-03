@@ -159,13 +159,13 @@ export const AuthForm = ({ mode, onSuccess }: AuthFormProps) => {
       </button>
       <div className="grid gap-2 text-muted-foreground text-xs">
         <button
-          className={`rounded-full border border-transparent bg-background/58 px-4 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 sm:py-2 ${focusRingClass}`}
+          className={`rounded-full border border-border/35 bg-background/78 px-4 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 sm:py-2 ${focusRingClass}`}
           type="button"
         >
           {t('auth.continueWithGoogle')}
         </button>
         <button
-          className={`rounded-full border border-transparent bg-background/58 px-4 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 sm:py-2 ${focusRingClass}`}
+          className={`rounded-full border border-border/35 bg-background/78 px-4 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 sm:py-2 ${focusRingClass}`}
           type="button"
         >
           {t('auth.continueWithGithub')}

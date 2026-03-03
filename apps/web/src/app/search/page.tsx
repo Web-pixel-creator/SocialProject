@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Image from 'next/image';
 import Link from 'next/link';
@@ -767,7 +767,7 @@ function SearchPageContent() {
             className={`rounded-lg px-3 py-1.5 text-sm sm:py-2 ${focusRingClass} ${
               mode === 'text'
                 ? 'border border-primary/35 bg-primary/10 text-primary'
-                : 'border border-transparent bg-background/54 text-muted-foreground hover:bg-background/74 hover:text-foreground'
+                : 'border border-border/35 bg-background/74 text-muted-foreground hover:bg-background/74 hover:text-foreground'
             }`}
             onClick={() => setMode('text')}
             type="button"
@@ -779,7 +779,7 @@ function SearchPageContent() {
             className={`rounded-lg px-3 py-1.5 text-sm sm:py-2 ${focusRingClass} ${
               mode === 'visual'
                 ? 'border border-primary/35 bg-primary/10 text-primary'
-                : 'border border-transparent bg-background/54 text-muted-foreground hover:bg-background/74 hover:text-foreground'
+                : 'border border-border/35 bg-background/74 text-muted-foreground hover:bg-background/74 hover:text-foreground'
             }`}
             onClick={() => setMode('visual')}
             type="button"
@@ -804,14 +804,14 @@ function SearchPageContent() {
               {query.length > 0 ? (
                 <button
                   aria-label={t('feedTabs.emptyAction.clearSearch')}
-                  className={`absolute top-1/2 right-2 -translate-y-1/2 rounded-full border border-transparent bg-background/56 px-2 py-0.5 text-muted-foreground text-xs transition hover:bg-background/74 hover:text-foreground ${focusRingClass}`}
+                  className={`absolute top-1/2 right-2 -translate-y-1/2 rounded-full border border-border/35 bg-background/76 px-2 py-0.5 text-muted-foreground text-xs transition hover:bg-background/74 hover:text-foreground ${focusRingClass}`}
                   onClick={clearTextQuery}
                   type="button"
                 >
                   ESC
                 </button>
               ) : (
-                <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded-md border border-border/25 bg-background/56 px-2 py-0.5 text-[11px] text-muted-foreground">
+                <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded-md border border-border/25 bg-background/56 px-2 py-0.5 text-xs text-muted-foreground">
                   /
                 </span>
               )}
@@ -901,14 +901,14 @@ function SearchPageContent() {
               {visualDraftId.length > 0 ? (
                 <button
                   aria-label={t('feedTabs.emptyAction.clearSearch')}
-                  className={`absolute top-1/2 right-2 -translate-y-1/2 rounded-full border border-transparent bg-background/56 px-2 py-0.5 text-muted-foreground text-xs transition hover:bg-background/74 hover:text-foreground ${focusRingClass}`}
+                  className={`absolute top-1/2 right-2 -translate-y-1/2 rounded-full border border-border/35 bg-background/76 px-2 py-0.5 text-muted-foreground text-xs transition hover:bg-background/74 hover:text-foreground ${focusRingClass}`}
                   onClick={clearVisualDraftId}
                   type="button"
                 >
                   ESC
                 </button>
               ) : (
-                <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded-md border border-border/25 bg-background/56 px-2 py-0.5 text-[11px] text-muted-foreground">
+                <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded-md border border-border/25 bg-background/56 px-2 py-0.5 text-xs text-muted-foreground">
                   /
                 </span>
               )}
@@ -932,14 +932,14 @@ function SearchPageContent() {
               {visualTags.length > 0 ? (
                 <button
                   aria-label={t('feedTabs.emptyAction.clearSearch')}
-                  className={`absolute top-1/2 right-2 -translate-y-1/2 rounded-full border border-transparent bg-background/56 px-2 py-0.5 text-muted-foreground text-xs transition hover:bg-background/74 hover:text-foreground ${focusRingClass}`}
+                  className={`absolute top-1/2 right-2 -translate-y-1/2 rounded-full border border-border/35 bg-background/76 px-2 py-0.5 text-muted-foreground text-xs transition hover:bg-background/74 hover:text-foreground ${focusRingClass}`}
                   onClick={clearVisualTags}
                   type="button"
                 >
                   ESC
                 </button>
               ) : (
-                <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded-md border border-border/25 bg-background/56 px-2 py-0.5 text-[11px] text-muted-foreground">
+                <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded-md border border-border/25 bg-background/56 px-2 py-0.5 text-xs text-muted-foreground">
                   /
                 </span>
               )}
@@ -1004,7 +1004,7 @@ function SearchPageContent() {
           </span>
           <span>{summary}</span>
           {showAbBadge && (
-            <span className="rounded-full border border-transparent bg-background/56 px-2 py-0.5 text-[11px] text-muted-foreground uppercase">
+            <span className="rounded-full border border-border/35 bg-background/76 px-2 py-0.5 text-xs text-muted-foreground uppercase">
               AB {profile}
             </span>
           )}
@@ -1013,7 +1013,7 @@ function SearchPageContent() {
           <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-destructive text-xs">
             <p>{error}</p>
             <button
-              className={`mt-2 rounded-full border border-destructive/40 px-3 py-1 font-semibold text-[11px] transition hover:bg-destructive/10 disabled:opacity-60 ${focusRingClass}`}
+              className={`mt-2 rounded-full border border-destructive/40 px-3 py-1 font-semibold text-xs transition hover:bg-destructive/10 disabled:opacity-60 ${focusRingClass}`}
               disabled={loading}
               onClick={retrySearch}
               type="button"
@@ -1041,7 +1041,7 @@ function SearchPageContent() {
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <button
-                className={`rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary ${focusRingClass}`}
+                className={`rounded-full border border-border/35 bg-background/78 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary ${focusRingClass}`}
                 onClick={
                   mode === 'visual' ? resetVisualFilters : resetTextFilters
                 }
@@ -1060,7 +1060,7 @@ function SearchPageContent() {
                 </button>
               ) : null}
               <Link
-                className={`rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary ${focusRingClass}`}
+                className={`rounded-full border border-border/35 bg-background/78 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary ${focusRingClass}`}
                 href="/feed"
               >
                 {t('feed.exploreFeeds')}
@@ -1120,7 +1120,7 @@ function SearchPageContent() {
                             width={320}
                           />
                         ) : (
-                          <div className="flex h-20 w-full items-center justify-center rounded-lg border border-border/25 bg-muted/58 font-semibold text-[11px] text-muted-foreground">
+                          <div className="flex h-20 w-full items-center justify-center rounded-lg border border-border/25 bg-muted/58 font-semibold text-xs text-muted-foreground">
                             {t('common.before')}
                           </div>
                         )}
@@ -1135,7 +1135,7 @@ function SearchPageContent() {
                             width={320}
                           />
                         ) : (
-                          <div className="flex h-20 w-full items-center justify-center rounded-lg border border-border/25 bg-muted/58 font-semibold text-[11px] text-muted-foreground">
+                          <div className="flex h-20 w-full items-center justify-center rounded-lg border border-border/25 bg-muted/58 font-semibold text-xs text-muted-foreground">
                             {t('common.after')}
                           </div>
                         )}
@@ -1177,3 +1177,4 @@ export default function SearchPage() {
     </Suspense>
   );
 }
+

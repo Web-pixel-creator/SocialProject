@@ -56,7 +56,7 @@ export const ChangeCard = ({
       };
     }
     return {
-      className: 'border border-border/25 bg-muted/60 text-foreground',
+      className: 'border border-input bg-background text-muted-foreground',
       label: t('feed.provenance.unverified'),
     };
   };
@@ -143,33 +143,31 @@ export const ChangeCard = ({
 
   return (
     <article
-      className={`card grid gap-3 transition ${
-        compact
-          ? 'p-2.5 motion-safe:hover:-translate-y-1'
-          : 'p-4 motion-safe:hover:-translate-y-1'
+      className={`card grid gap-3 border-input bg-card transition ${
+        compact ? 'p-2.5' : 'p-4'
       }`}
     >
       <div
         className={`flex items-center justify-between ${
-          compact ? '' : 'border-border/25 border-b pb-2.5'
+          compact ? '' : 'border-input border-b pb-2.5'
         }`}
       >
         <span
-          className={`rounded-full px-2 py-1 font-semibold text-[10px] uppercase ${badgeTone}`}
+          className={`rounded-full px-2 py-1 font-semibold text-xs uppercase ${badgeTone}`}
         >
           {badge}
         </span>
         <div className="flex items-center gap-1.5">
           {severityLabel && (
             <span
-              className={`rounded-full px-2 py-1 font-semibold text-[10px] uppercase ${severityTone}`}
+              className={`rounded-full px-2 py-1 font-semibold text-xs uppercase ${severityTone}`}
             >
               {severityLabel}
             </span>
           )}
           {provenancePresentation && (
             <span
-              className={`rounded-full px-2 py-1 font-semibold text-[10px] uppercase ${provenancePresentation.className}`}
+              className={`rounded-full px-2 py-1 font-semibold text-xs uppercase ${provenancePresentation.className}`}
             >
               {provenancePresentation.label}
             </span>
@@ -178,7 +176,7 @@ export const ChangeCard = ({
       </div>
       <div>
         <p className="font-semibold text-foreground text-sm">{draftTitle}</p>
-        <p className="mt-1 text-[11px] text-muted-foreground uppercase tracking-wide">
+        <p className="mt-1 text-xs text-muted-foreground uppercase tracking-wide">
           {t('feedTabs.draftId')}: {draftId}
         </p>
       </div>
@@ -188,18 +186,18 @@ export const ChangeCard = ({
         {description}
       </p>
       {compact ? (
-        <p className="rounded-lg border border-border/25 bg-background/60 px-2 py-1.5 text-foreground/80 text-xs">
+        <p className="rounded-lg border border-input bg-background px-2 py-1.5 text-foreground/80 text-xs">
           {threadItems[0]}
         </p>
       ) : (
-        <section className="rounded-xl border border-border/25 bg-background/60 p-3">
-          <p className="font-semibold text-[10px] text-foreground uppercase tracking-wide">
+        <section className="rounded-xl border border-input bg-background p-3">
+          <p className="font-semibold text-xs text-foreground uppercase tracking-wide">
             {t('changeCard.labels.miniThread')}
           </p>
           <ul className="mt-2 grid gap-1 text-foreground/85 text-xs">
             {threadItems.map((line) => (
               <li
-                className="rounded-md border border-border/25 bg-background/70 px-2 py-1.5"
+                className="rounded-md border border-input bg-background px-2 py-1.5"
                 key={`${id}-${line}`}
               >
                 {line}
@@ -210,7 +208,7 @@ export const ChangeCard = ({
       )}
       <div
         className={`flex items-center justify-between text-muted-foreground text-xs ${
-          compact ? '' : 'border-border/25 border-t pt-2'
+          compact ? '' : 'border-input border-t pt-2'
         }`}
       >
         <span>{formatTime(occurredAt)}</span>
@@ -254,3 +252,4 @@ export const ChangeCard = ({
     </article>
   );
 };
+

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -263,7 +263,7 @@ export default function StudioProfilePage() {
           <button
             aria-busy={isFollowPending}
             aria-pressed={isFollowing}
-            className={`rounded-full border px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+            className={`rounded-full border px-3 py-1.5 font-semibold text-xs uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
               isFollowing
                 ? 'border-primary/35 bg-primary/10 text-primary'
                 : 'border-border/35 bg-background/65 text-muted-foreground hover:bg-background/82 hover:text-foreground'
@@ -276,7 +276,7 @@ export default function StudioProfilePage() {
               ? t('draftDetail.follow.following')
               : t('observerAction.follow')}
           </button>
-          <span className="rounded-full border border-border/25 bg-background/60 px-2.5 py-1 font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
+          <span className="rounded-full border border-border/25 bg-background/60 px-2.5 py-1 font-semibold text-xs text-muted-foreground uppercase tracking-wide">
             {t('studioCard.followersLabel')}: {followerCount}
           </span>
         </div>
@@ -391,3 +391,4 @@ export default function StudioProfilePage() {
     </main>
   );
 }
+

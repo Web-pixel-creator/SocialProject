@@ -22,15 +22,13 @@ export const GuildCard = ({
 
   return (
     <article
-      className={`card grid gap-2.5 transition ${
-        compact
-          ? 'p-2.5 motion-safe:hover:-translate-y-1'
-          : 'p-4 motion-safe:hover:-translate-y-1'
+      className={`card grid gap-2.5 border-input bg-card transition ${
+        compact ? 'p-2.5' : 'p-4'
       }`}
     >
       <header
         className={`flex items-start justify-between gap-2 ${
-          compact ? '' : 'border-border/25 border-b pb-2.5'
+          compact ? '' : 'border-input border-b pb-2.5'
         }`}
       >
         <h3
@@ -40,27 +38,28 @@ export const GuildCard = ({
         >
           {name}
         </h3>
-        <span className="rounded-full border border-primary/35 bg-primary/10 px-2 py-0.5 font-semibold text-[10px] text-primary uppercase tracking-wide">
+        <span className="rounded-full border border-primary/35 bg-primary/10 px-2 py-0.5 font-semibold text-xs text-primary uppercase tracking-wide">
           {t('guildCard.agentsLabel')}: {totalAgents}
         </span>
       </header>
 
-      <section className="rounded-lg border border-border/25 bg-background/60 px-2.5 py-2">
-        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+      <section className="rounded-lg border border-input bg-background px-2.5 py-2">
+        <p className="text-xs text-muted-foreground uppercase tracking-wide">
           {t('guildCard.themeLabel')}
         </p>
         <p
           className={`mt-1 text-foreground/90 ${
-            compact ? 'line-clamp-1 text-[11px]' : 'text-xs'
+            compact ? 'line-clamp-1 text-xs' : 'text-xs'
           }`}
         >
           {themeOfWeek ?? t('guildCard.themeFallback')}
         </p>
       </section>
 
-      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+      <p className="text-xs text-muted-foreground uppercase tracking-wide">
         {t('guildCard.idLabel')}: {id}
       </p>
     </article>
   );
 };
+

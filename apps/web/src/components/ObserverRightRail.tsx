@@ -43,6 +43,10 @@ interface ObserverRailData {
   fallbackUsed: boolean;
 }
 
+interface ObserverRightRailProps {
+  onSignalCountChange?: (count: number) => void;
+}
+
 type RailPanelKey = 'battles' | 'activity' | 'glowUps' | 'studios';
 type RailPanelVisibility = Record<RailPanelKey, boolean>;
 type RailPanelVisibilityUpdater =
@@ -323,7 +327,9 @@ const fetchObserverRailData = async (): Promise<ObserverRailData> => {
   }
 };
 
-export const ObserverRightRail = () => {
+export const ObserverRightRail = ({
+  onSignalCountChange,
+}: ObserverRightRailProps = {}) => {
   const { t } = useLanguage();
   const realtimeEnabled = process.env.NODE_ENV !== 'test';
   const {
@@ -375,8 +381,8 @@ export const ObserverRightRail = () => {
     const mapRealtimeEvent = (event: RealtimeEvent): RailItem => {
       const payloadData =
         event.payload.data &&
-        typeof event.payload.data === 'object' &&
-        !Array.isArray(event.payload.data)
+          typeof event.payload.data === 'object' &&
+          !Array.isArray(event.payload.data)
           ? (event.payload.data as Record<string, unknown>)
           : event.payload;
       const draftId =
@@ -443,6 +449,19 @@ export const ObserverRightRail = () => {
     return result;
   }, [activity, realtimeActivity]);
 
+  useEffect(() => {
+    const signalCount = Math.min(
+      99,
+      battles.length + mergedActivity.length + followedStudios.length,
+    );
+    onSignalCountChange?.(signalCount);
+  }, [
+    battles.length,
+    followedStudios.length,
+    mergedActivity.length,
+    onSignalCountChange,
+  ]);
+
   const liveEventRate = useMemo(() => {
     const base = realtimeEvents.length + mergedActivity.length;
     return Math.max(12, base * 3);
@@ -458,9 +477,9 @@ export const ObserverRightRail = () => {
     );
     const audience = clampPercent(
       realtimeEvents.length * 12 +
-        followedStudios.length * 16 +
-        18 +
-        hotNowStats.decisions24h * 2,
+      followedStudios.length * 16 +
+      18 +
+      hotNowStats.decisions24h * 2,
     );
     const fallbackPenalty = fallbackUsed ? 10 : 0;
     const mergeBoost = Math.min(15, hotNowStats.merges24h * 2);
@@ -613,33 +632,33 @@ export const ObserverRightRail = () => {
   }, [requestResync]);
 
   const metricTileClass =
-    'rounded-lg bg-background/42 p-2 sm:border sm:border-border/25 sm:bg-background/42 sm:p-2.5';
+    'rounded-xl bg-background/60 p-4';
   const statusChipClass =
-    'rounded-full border border-transparent bg-background/55 px-2 py-0.5 sm:border-border/25 sm:bg-background/60 sm:px-2.5 sm:py-1';
+    'rounded-full border border-input bg-background px-3 py-1.5 text-[13px] text-foreground';
   const controlButtonBaseClass =
-    'min-h-8 rounded-full border px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-3.5 sm:py-2 sm:text-xs';
+    'inline-flex h-8 items-center justify-center rounded-full border px-3.5 font-semibold text-xs uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
   const controlButtonEnabledClass =
-    'border-transparent bg-background/58 text-muted-foreground hover:bg-background/74 hover:text-foreground';
+    'border-input bg-[#1C2433] text-foreground hover:border-primary/35 hover:bg-[#243149] hover:text-foreground';
   const controlButtonDisabledClass =
-    'cursor-not-allowed border-transparent bg-background/45 text-muted-foreground/45';
+    'cursor-not-allowed border-input bg-[#1C2433]/70 text-muted-foreground/65';
   const primaryActionButtonClass =
-    'inline-flex min-h-8 items-center justify-center rounded-full border border-primary/35 bg-primary/10 px-3 py-1.5 font-semibold text-primary uppercase tracking-wide transition hover:border-primary/45 hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9 sm:px-3.5 sm:py-2';
+    'inline-flex h-8 items-center justify-center rounded-full border border-border/60 bg-[#1C2433] px-3.5 font-semibold text-foreground text-xs uppercase tracking-wide transition hover:bg-[#243149] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
   const softPanelClass =
-    'rounded-lg bg-background/42 sm:border sm:border-border/25';
+    'rounded-xl bg-background/60';
 
   return (
     <aside
       aria-label={t('rail.realtimeShell')}
-      className="observer-right-rail grid grid-cols-1 gap-4 sm:gap-4"
+      className="observer-right-rail grid grid-cols-1 gap-5"
     >
-      <section className="card relative overflow-hidden p-4 sm:p-4">
-        <p className="live-signal inline-flex items-center gap-2 font-semibold text-xs uppercase tracking-wide">
+      <section className="card relative overflow-hidden rounded-[1.5rem] border-input bg-card p-6">
+        <p className="live-signal inline-flex items-center gap-2 font-semibold text-sm uppercase tracking-wide">
           <span className="icon-breathe live-dot inline-flex h-2.5 w-2.5 rounded-full" />
           {t('rail.liveWsConnected')}
         </p>
-        <div className="mt-2 grid grid-cols-2 gap-1.5 text-xs sm:mt-3 sm:gap-2">
+        <div className="mt-3 grid grid-cols-2 gap-2.5 text-sm">
           <div className={metricTileClass}>
-            <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">
+            <p className="text-[13px] text-muted-foreground uppercase tracking-wide">
               {t('rail.liveDrafts')}
             </p>
             <p className="mt-1 font-semibold text-lg text-primary">
@@ -647,7 +666,7 @@ export const ObserverRightRail = () => {
             </p>
           </div>
           <div className={metricTileClass}>
-            <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">
+            <p className="text-[13px] text-muted-foreground uppercase tracking-wide">
               {t('rail.prPending')}
             </p>
             <p className="mt-1 font-semibold text-lg text-primary">
@@ -655,7 +674,7 @@ export const ObserverRightRail = () => {
             </p>
           </div>
           <div className={metricTileClass}>
-            <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">
+            <p className="text-[13px] text-muted-foreground uppercase tracking-wide">
               {t('rail.eventsMin')}
             </p>
             <p className="mt-1 font-semibold text-lg text-primary">
@@ -663,7 +682,7 @@ export const ObserverRightRail = () => {
             </p>
           </div>
           <div className={metricTileClass}>
-            <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">
+            <p className="text-[13px] text-muted-foreground uppercase tracking-wide">
               {t('rail.latency')}
             </p>
             <p className="mt-1 font-semibold text-foreground text-lg">
@@ -671,11 +690,11 @@ export const ObserverRightRail = () => {
             </p>
           </div>
         </div>
-        <div className="mt-2 rounded-lg border border-border/25 bg-background/42 p-2 sm:mt-3 sm:p-2.5">
-          <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">
+        <div className="mt-3 rounded-xl bg-background/60 p-3.5">
+          <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wider">
             {t('rail.livePressureMeter')}
           </p>
-          <div className="mt-1.5 grid gap-1.5 sm:mt-2 sm:gap-2">
+          <div className="mt-2.5 grid gap-2.5">
             <PressureMeterRow
               label={t('rail.pressurePr')}
               value={livePressure.prPressure}
@@ -690,12 +709,12 @@ export const ObserverRightRail = () => {
             />
           </div>
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground/70 sm:mt-3 sm:gap-2">
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-[13px] text-muted-foreground sm:mt-3">
           {loading && (
             <span className={statusChipClass}>{t('rail.loadingData')}</span>
           )}
           {isResyncing && (
-            <span className="rounded-full bg-primary/10 px-2 py-1 text-primary">
+            <span className="rounded-full border border-primary/45 bg-primary/20 px-2.5 py-1 font-semibold text-primary">
               {t('rail.resyncingStream')}
             </span>
           )}
@@ -709,13 +728,13 @@ export const ObserverRightRail = () => {
           )}
         </div>
         {needsResync && (
-          <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-primary/25 bg-primary/10 p-1.5 sm:p-2">
-            <span className="text-[11px] text-primary">
+          <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-primary/40 bg-primary/16 p-3">
+            <span className="font-semibold text-[13px] text-primary">
               {t('rail.resyncRequired')}
             </span>
             <button
               aria-label={t('rail.resyncNow')}
-              className={`${primaryActionButtonClass} px-2 text-[10px]`}
+              className={`${primaryActionButtonClass} px-2.5`}
               disabled={isResyncing}
               onClick={handleManualResync}
               type="button"
@@ -727,12 +746,12 @@ export const ObserverRightRail = () => {
         {resyncToast && (
           <div
             aria-live="polite"
-            className="mt-2 rounded-lg border border-border/25 bg-accent/60 p-1.5 text-[11px] text-foreground sm:p-2"
+            className="mt-2 rounded-lg border border-input bg-accent/80 p-3 text-[13px] text-foreground"
           >
             {resyncToast}
           </div>
         )}
-        <div className="mt-2 flex items-center justify-between gap-2 text-[11px]">
+        <div className="mt-2 flex items-center justify-between gap-2 text-[13px]">
           <span
             className={`${statusChipClass} font-semibold text-muted-foreground`}
           >
@@ -754,11 +773,10 @@ export const ObserverRightRail = () => {
         >
           <div className="flex flex-wrap gap-1">
             <button
-              className={`${controlButtonBaseClass} ${
-                allPanelsVisible
+              className={`${controlButtonBaseClass} ${allPanelsVisible
                   ? controlButtonDisabledClass
                   : controlButtonEnabledClass
-              }`}
+                }`}
               disabled={allPanelsVisible}
               onClick={() => applyPanelVisibility(ALL_PANEL_VISIBILITY)}
               type="button"
@@ -766,11 +784,10 @@ export const ObserverRightRail = () => {
               {t('rail.showAll')}
             </button>
             <button
-              className={`${controlButtonBaseClass} ${
-                allPanelsHidden
+              className={`${controlButtonBaseClass} ${allPanelsHidden
                   ? controlButtonDisabledClass
                   : controlButtonEnabledClass
-              }`}
+                }`}
               disabled={allPanelsHidden}
               onClick={() => applyPanelVisibility(HIDDEN_PANEL_VISIBILITY)}
               type="button"
@@ -780,19 +797,18 @@ export const ObserverRightRail = () => {
           </div>
         </div>
       </section>
-      <section className="card p-3 sm:p-4 lg:hidden">
+      <section className="card border-input bg-card p-5 lg:hidden">
         <PanelHeader icon={Flame} title={t('rail.pulseRadar')} />
         <div
-          className="mt-2 grid gap-1.5"
+          className="mt-2 grid gap-2"
           data-testid="observer-rail-mobile-controls"
         >
           <div className="flex flex-wrap gap-1">
             <button
-              className={`${controlButtonBaseClass} ${
-                allPanelsVisible
+              className={`${controlButtonBaseClass} ${allPanelsVisible
                   ? controlButtonDisabledClass
                   : controlButtonEnabledClass
-              }`}
+                }`}
               disabled={allPanelsVisible}
               onClick={() => applyPanelVisibility(ALL_PANEL_VISIBILITY)}
               type="button"
@@ -800,11 +816,10 @@ export const ObserverRightRail = () => {
               {t('rail.showAll')}
             </button>
             <button
-              className={`${controlButtonBaseClass} ${
-                allPanelsHidden
+              className={`${controlButtonBaseClass} ${allPanelsHidden
                   ? controlButtonDisabledClass
                   : controlButtonEnabledClass
-              }`}
+                }`}
               disabled={allPanelsHidden}
               onClick={() => applyPanelVisibility(HIDDEN_PANEL_VISIBILITY)}
               type="button"
@@ -815,7 +830,7 @@ export const ObserverRightRail = () => {
         </div>
         {allPanelsHidden ? (
           <div
-            className={`mt-2.5 p-2 text-[11px] text-muted-foreground ${softPanelClass}`}
+            className={`mt-2.5 p-3 text-[13px] text-muted-foreground ${softPanelClass}`}
           >
             <p>{t('rail.noPanelsSelected')}</p>
             <div className="mt-2 flex justify-end">
@@ -831,11 +846,11 @@ export const ObserverRightRail = () => {
         ) : null}
         <div className="grid gap-2 sm:grid-cols-2">
           {panelVisibility.battles ? (
-            <div className={`${softPanelClass} p-2 sm:p-2.5`}>
-              <p className="font-semibold text-foreground text-xs">
+            <div className={`${softPanelClass} p-3`}>
+              <p className="font-semibold text-sm text-foreground">
                 {t('rail.trendingBattles')}
               </p>
-              <ul className="mt-1.5 grid gap-1 text-[11px] text-muted-foreground">
+              <ul className="mt-2 grid gap-2 text-[13px] text-muted-foreground">
                 {battles.slice(0, 2).map((item) => (
                   <li className="line-clamp-1" key={`mobile-battle-${item.id}`}>
                     {item.title}
@@ -845,11 +860,11 @@ export const ObserverRightRail = () => {
             </div>
           ) : null}
           {panelVisibility.glowUps ? (
-            <div className={`${softPanelClass} p-2 sm:p-2.5`}>
-              <p className="font-semibold text-foreground text-xs">
+            <div className={`${softPanelClass} p-3`}>
+              <p className="font-semibold text-sm text-foreground">
                 {t('rail.topGlowUps24h')}
               </p>
-              <ul className="mt-1.5 grid gap-1 text-[11px] text-muted-foreground">
+              <ul className="mt-2 grid gap-2 text-[13px] text-muted-foreground">
                 {glowUps.slice(0, 2).map((item) => (
                   <li className="line-clamp-1" key={`mobile-glow-${item.id}`}>
                     {item.title}
@@ -859,11 +874,11 @@ export const ObserverRightRail = () => {
             </div>
           ) : null}
           {panelVisibility.studios ? (
-            <div className={`${softPanelClass} p-2 sm:p-2.5`}>
-              <p className="font-semibold text-foreground text-xs">
+            <div className={`${softPanelClass} p-3`}>
+              <p className="font-semibold text-sm text-foreground">
                 {t('rail.topStudios')}
               </p>
-              <ul className="mt-1.5 grid gap-1 text-[11px] text-muted-foreground">
+              <ul className="mt-2 grid gap-2 text-[13px] text-muted-foreground">
                 {studios.slice(0, 2).map((item) => (
                   <li className="line-clamp-1" key={`mobile-studio-${item.id}`}>
                     {item.title}
@@ -874,11 +889,11 @@ export const ObserverRightRail = () => {
           ) : null}
         </div>
         {panelVisibility.activity ? (
-          <div className={`mt-2.5 p-2 sm:p-2.5 ${softPanelClass}`}>
-            <p className="font-semibold text-foreground text-xs">
+          <div className={`mt-2.5 p-3 ${softPanelClass}`}>
+            <p className="font-semibold text-sm text-foreground">
               {t('rail.liveActivityStream')}
             </p>
-            <ul className="mt-1.5 grid gap-1 text-[11px] text-muted-foreground">
+            <ul className="mt-2 grid gap-2 text-[13px] text-muted-foreground">
               {mergedActivity.slice(0, 3).map((item) => (
                 <li className="line-clamp-1" key={`mobile-activity-${item.id}`}>
                   {item.title}
@@ -887,12 +902,12 @@ export const ObserverRightRail = () => {
             </ul>
           </div>
         ) : null}
-        <div className={`mt-2.5 p-2 sm:p-2.5 ${softPanelClass}`}>
-          <p className="font-semibold text-foreground text-xs">
+        <div className={`mt-2.5 p-3 ${softPanelClass}`}>
+          <p className="font-semibold text-sm text-foreground">
             {t('rail.followingStudios')}
           </p>
           {followedStudios.length > 0 ? (
-            <ul className="mt-1.5 grid gap-1 text-[11px] text-muted-foreground">
+            <ul className="mt-2 grid gap-2 text-[13px] text-muted-foreground">
               {followedStudios.slice(0, 2).map((item) => (
                 <li
                   className="line-clamp-1"
@@ -903,7 +918,7 @@ export const ObserverRightRail = () => {
               ))}
             </ul>
           ) : (
-            <p className="mt-1.5 text-[11px] text-muted-foreground">
+            <p className="mt-2 text-[13px] text-muted-foreground">
               {t('rail.noFollowingStudios')}
             </p>
           )}
@@ -941,17 +956,17 @@ export const ObserverRightRail = () => {
         items={studios}
         title={t('rail.topStudios')}
       />
-      <section className="card hidden p-3 sm:p-3.5 lg:block">
+      <section className="card hidden border-input bg-card p-5 lg:block">
         <PanelHeader icon={Users} title={t('rail.followingStudios')} />
         {followedStudios.length > 0 ? (
-          <ul className="grid gap-2 text-xs">
+          <ul className="grid gap-2 text-sm">
             {followedStudios.map((item, index) => (
               <li
-                className="rounded-lg border border-border/25 bg-background/60 p-2 transition-colors hover:bg-background/74 sm:p-2.5"
+                className="rounded-lg bg-background/85 p-3 transition-colors hover:bg-accent/25"
                 key={item.id}
               >
                 <div className="flex items-start gap-2">
-                  <span className="inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-background/60 font-semibold text-[10px] text-muted-foreground">
+                  <span className="inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-background font-semibold text-xs text-muted-foreground">
                     {index + 1}
                   </span>
                   <div className="min-w-0">
@@ -968,7 +983,7 @@ export const ObserverRightRail = () => {
                       </p>
                     )}
                     {item.meta ? (
-                      <p className="mt-1 text-[11px] text-muted-foreground/70">
+                      <p className="mt-1 text-[13px] text-muted-foreground">
                         {item.meta}
                       </p>
                     ) : null}
@@ -978,7 +993,7 @@ export const ObserverRightRail = () => {
             ))}
           </ul>
         ) : (
-          <p className="text-muted-foreground text-xs">
+          <p className="text-muted-foreground text-sm">
             {t('rail.noFollowingStudios')}
           </p>
         )}
@@ -989,7 +1004,7 @@ export const ObserverRightRail = () => {
         </div>
       </section>
       {allPanelsHidden ? (
-        <section className="card hidden p-4 text-[11px] text-muted-foreground sm:p-4 lg:block">
+        <section className="card hidden border-input bg-card p-5 text-[13px] text-muted-foreground lg:block">
           <p>{t('rail.noPanelsSelected')}</p>
           <div className="mt-2">
             <button
@@ -1013,12 +1028,12 @@ const PressureMeterRow = ({
   label: string;
   value: number;
 }) => (
-  <div className="grid gap-1">
-    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+  <div className="grid gap-1.5">
+    <div className="flex items-center justify-between text-[13px] text-muted-foreground">
       <span>{label}</span>
       <span className="font-semibold text-foreground">{value}%</span>
     </div>
-    <div className="h-1.5 overflow-hidden rounded-full bg-muted/50">
+    <div className="h-2 overflow-hidden rounded-full bg-muted/50">
       <div
         className="h-full rounded-full bg-primary/85 transition-[width] duration-300 ease-out"
         style={{ width: `${value}%` }}

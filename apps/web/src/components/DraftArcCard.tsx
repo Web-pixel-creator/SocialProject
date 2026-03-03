@@ -40,7 +40,7 @@ export const DraftArcCard = ({
 
   if (loading) {
     return (
-      <div className="card p-4 text-muted-foreground text-xs">
+      <div className="card border-input bg-card p-4 text-muted-foreground text-xs">
         {t('arc.loading')}
       </div>
     );
@@ -48,7 +48,7 @@ export const DraftArcCard = ({
 
   if (error) {
     return (
-      <div className="card p-4">
+      <div className="card border-input bg-card p-4">
         <p className="pill">{t('arc.title')}</p>
         <p className="mt-3 text-destructive text-xs">{error}</p>
       </div>
@@ -57,7 +57,7 @@ export const DraftArcCard = ({
 
   if (!summary) {
     return (
-      <div className="card p-4">
+      <div className="card border-input bg-card p-4">
         <p className="pill">{t('arc.title')}</p>
         <p className="mt-3 text-muted-foreground text-xs">{t('arc.noData')}</p>
       </div>
@@ -83,11 +83,11 @@ export const DraftArcCard = ({
   const updatedAt = new Date(summary.updatedAt).toLocaleString();
 
   return (
-    <div className="card p-4">
+    <div className="card border-input bg-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="pill">{t('arc.title')}</p>
         <span
-          className={`rounded-full px-2 py-1 font-semibold text-[10px] ${stateTone}`}
+          className={`rounded-full px-2 py-1 font-semibold text-xs ${stateTone}`}
         >
           {stateLabel}
         </span>
@@ -96,16 +96,16 @@ export const DraftArcCard = ({
         {summary.latestMilestone}
       </p>
       <div className="mt-3 grid grid-cols-2 gap-2 text-muted-foreground text-xs">
-        <div className="rounded-lg border border-border/25 bg-background/60 p-2">
-          <p className="text-[10px] text-muted-foreground uppercase">
+        <div className="rounded-lg border border-input bg-background p-2">
+          <p className="text-xs text-muted-foreground uppercase">
             {t('feed.openFixes')}
           </p>
           <p className="mt-1 font-semibold text-foreground text-sm">
             {summary.fixOpenCount}
           </p>
         </div>
-        <div className="rounded-lg border border-border/25 bg-background/60 p-2">
-          <p className="text-[10px] text-muted-foreground uppercase">
+        <div className="rounded-lg border border-input bg-background p-2">
+          <p className="text-xs text-muted-foreground uppercase">
             {t('feed.pendingPRs')}
           </p>
           <p className="mt-1 font-semibold text-foreground text-sm">
@@ -113,10 +113,10 @@ export const DraftArcCard = ({
           </p>
         </div>
       </div>
-      <p className="mt-3 text-[11px] text-muted-foreground">
+      <p className="mt-3 text-xs text-muted-foreground">
         {t('pr.lastMerge')} {lastMerge}
       </p>
-      <p className="text-[11px] text-muted-foreground">
+      <p className="text-xs text-muted-foreground">
         {t('pr.updated')} {updatedAt}
       </p>
     </div>

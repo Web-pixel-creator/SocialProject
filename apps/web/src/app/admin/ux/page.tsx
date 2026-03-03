@@ -1,4 +1,4 @@
-interface ObserverEngagementResponse {
+﻿interface ObserverEngagementResponse {
   windowHours: number;
   kpis?: {
     observerSessionTimeSec?: number | null;
@@ -3311,7 +3311,7 @@ const GatewayCompactionHourlyTrendCard = ({
                   </td>
                   <td className="px-3 py-2 text-right text-foreground">
                     <span
-                      className={`${healthBadgeClass(entry.autoCompactionRiskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide`}
+                      className={`${healthBadgeClass(entry.autoCompactionRiskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
                     >
                       {toRateText(entry.autoCompactionShare)}
                     </span>
@@ -4585,7 +4585,7 @@ export default async function AdminUxObserverEngagementPage({
           </h2>
           {gatewayOverview ? (
             <span
-              className={`${healthBadgeClass(gatewayHealthLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide`}
+              className={`${healthBadgeClass(gatewayHealthLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
             >
               {healthLabel(gatewayHealthLevel)}
             </span>
@@ -4601,29 +4601,29 @@ export default async function AdminUxObserverEngagementPage({
           </h2>
           <div className="flex flex-wrap items-center gap-2">
             <span
-              className={`${healthBadgeClass(resolvedGatewayTelemetryHealthLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide`}
+              className={`${healthBadgeClass(resolvedGatewayTelemetryHealthLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
             >
               Telemetry health:{' '}
               {healthLabel(resolvedGatewayTelemetryHealthLevel)}
             </span>
             <span
-              className={`${healthBadgeClass(gatewayAutoCompactionShareLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide`}
+              className={`${healthBadgeClass(gatewayAutoCompactionShareLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
             >
               Auto compaction risk:{' '}
               {healthLabel(gatewayAutoCompactionShareLevel)}
             </span>
             <span
-              className={`${healthBadgeClass(gatewayFailedStepLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide`}
+              className={`${healthBadgeClass(gatewayFailedStepLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
             >
               Failed-step risk: {healthLabel(gatewayFailedStepLevel)}
             </span>
             <span
-              className={`${healthBadgeClass(gatewayRuntimeSuccessLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide`}
+              className={`${healthBadgeClass(gatewayRuntimeSuccessLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
             >
               Runtime success: {healthLabel(gatewayRuntimeSuccessLevel)}
             </span>
             <span
-              className={`${healthBadgeClass(gatewayCooldownSkipLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide`}
+              className={`${healthBadgeClass(gatewayCooldownSkipLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
             >
               Cooldown skip risk: {healthLabel(gatewayCooldownSkipLevel)}
             </span>
@@ -4814,7 +4814,7 @@ export default async function AdminUxObserverEngagementPage({
             AI runtime failover
           </h2>
           <span
-            className={`${healthBadgeClass(aiRuntimeHealthLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide`}
+            className={`${healthBadgeClass(aiRuntimeHealthLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
           >
             {healthLabel(aiRuntimeHealthLevel)}
           </span>
@@ -4865,7 +4865,7 @@ export default async function AdminUxObserverEngagementPage({
                   {signal.label}
                 </p>
                 <span
-                  className={`${healthBadgeClass(signal.level)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide`}
+                  className={`${healthBadgeClass(signal.level)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
                 >
                   {healthLabel(signal.level)}
                 </span>
@@ -4885,7 +4885,7 @@ export default async function AdminUxObserverEngagementPage({
             Release health alert telemetry
           </h2>
           <span
-            className={`${healthBadgeClass(releaseHealthAlertRiskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide`}
+            className={`${healthBadgeClass(releaseHealthAlertRiskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
           >
             Alert risk: {healthLabel(releaseHealthAlertRiskLevel)}
           </span>
@@ -5137,12 +5137,12 @@ export default async function AdminUxObserverEngagementPage({
             </h3>
             <div className="flex flex-wrap items-center gap-2">
               <span
-                className={`${healthBadgeClass(predictionWindow7dRiskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide`}
+                className={`${healthBadgeClass(predictionWindow7dRiskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
               >
                 7d risk: {healthLabel(predictionWindow7dRiskLevel)}
               </span>
               <span
-                className={`${healthBadgeClass(predictionWindow30dRiskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide`}
+                className={`${healthBadgeClass(predictionWindow30dRiskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
               >
                 30d risk: {healthLabel(predictionWindow30dRiskLevel)}
               </span>
@@ -5261,7 +5261,7 @@ export default async function AdminUxObserverEngagementPage({
                         </td>
                         <td className="px-3 py-2 text-right">
                           <span
-                            className={`${healthBadgeClass(entry.riskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide`}
+                            className={`${healthBadgeClass(entry.riskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
                           >
                             {healthLabel(entry.riskLevel)}
                           </span>
@@ -5326,7 +5326,7 @@ export default async function AdminUxObserverEngagementPage({
                           </td>
                           <td className="px-3 py-2 text-right">
                             <span
-                              className={`${healthBadgeClass(entry.riskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide`}
+                              className={`${healthBadgeClass(entry.riskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
                             >
                               {healthLabel(entry.riskLevel)}
                             </span>
@@ -5589,3 +5589,4 @@ export default async function AdminUxObserverEngagementPage({
     </main>
   );
 }
+

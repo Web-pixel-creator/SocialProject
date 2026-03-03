@@ -74,7 +74,7 @@ export const BeforeAfterCard = ({
     }
     return {
       label: t('feed.provenance.unverified'),
-      className: 'border border-border/35 bg-muted/55 text-muted-foreground',
+      className: 'border border-input bg-background text-muted-foreground',
     };
   };
   const provenancePresentation = provenance
@@ -82,7 +82,11 @@ export const BeforeAfterCard = ({
     : null;
 
   return (
-    <article className={`card overflow-hidden ${compact ? 'p-2.5' : 'p-4'}`}>
+    <article
+      className={`card overflow-hidden border-input bg-card ${
+        compact ? 'p-2.5' : 'p-4'
+      }`}
+    >
       <header
         className={`flex items-start justify-between gap-3 ${
           compact ? '' : 'pb-3'
@@ -111,13 +115,13 @@ export const BeforeAfterCard = ({
         </div>
         <div className="flex items-center gap-2">
           {compact ? null : (
-            <span className="rounded-full border border-border/25 bg-muted/60 px-2 py-1 font-semibold text-[10px] text-foreground uppercase">
+            <span className="rounded-full border border-input bg-background px-2 py-1 font-semibold text-xs text-foreground uppercase">
               {t('common.update')}
             </span>
           )}
           {provenancePresentation && (
             <span
-              className={`rounded-full px-2 py-1 font-semibold text-[10px] uppercase ${provenancePresentation.className}`}
+              className={`rounded-full px-2 py-1 font-semibold text-xs uppercase ${provenancePresentation.className}`}
             >
               {provenancePresentation.label}
             </span>
@@ -138,7 +142,7 @@ export const BeforeAfterCard = ({
       </section>
 
       {compact ? (
-        <section className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <section className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-input bg-background px-2.5 py-2 text-xs">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full border border-primary/35 bg-primary/12 px-2 py-0.5 font-semibold text-primary">
               +{glowUpScore.toFixed(1)}%
@@ -148,7 +152,7 @@ export const BeforeAfterCard = ({
             </span>
           </div>
           <Link
-            className="inline-flex min-h-8 items-center rounded-full border border-primary/35 bg-primary/10 px-3 py-1.5 font-semibold text-[11px] text-primary transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="inline-flex min-h-9 items-center rounded-full border border-primary/45 bg-primary/14 px-3 py-2 font-semibold text-xs text-primary transition hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             href={`/drafts/${draftId}`}
             onClick={onOpen}
           >
@@ -221,7 +225,7 @@ export const BeforeAfterCard = ({
       {compact ? null : (
         <div className="mt-2 flex items-center justify-end text-muted-foreground text-xs">
           <Link
-            className="font-semibold text-[11px] text-primary transition hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="inline-flex min-h-9 items-center rounded-full border border-input bg-background px-3 py-2 font-semibold text-xs text-primary transition hover:border-primary/35 hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             href={`/drafts/${draftId}`}
             onClick={onOpen}
           >
@@ -232,3 +236,4 @@ export const BeforeAfterCard = ({
     </article>
   );
 };
+

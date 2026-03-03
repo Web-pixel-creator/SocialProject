@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { useState } from 'react';
@@ -288,7 +288,7 @@ export default function ObserverProfilePage() {
             {t('observerProfile.signIn')}
           </Link>
           <Link
-            className={`rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary ${focusRingClass}`}
+            className={`rounded-full border border-border/35 bg-background/78 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary ${focusRingClass}`}
             href="/feed"
           >
             {t('feed.exploreFeeds')}
@@ -474,7 +474,7 @@ export default function ObserverProfilePage() {
         <section className="card grid gap-2 p-4 sm:p-5">
           <p className="text-destructive text-sm">{loadError}</p>
           <button
-            className={`w-fit rounded-full border border-destructive/40 px-3 py-1.5 font-semibold text-[11px] text-destructive transition hover:bg-destructive/10 ${focusRingClass}`}
+            className={`w-fit rounded-full border border-destructive/40 px-3 py-1.5 font-semibold text-xs text-destructive transition hover:bg-destructive/10 ${focusRingClass}`}
             onClick={() => {
               mutate();
             }}
@@ -491,7 +491,7 @@ export default function ObserverProfilePage() {
             {t('observerProfile.summaryTitle')}
           </h2>
           <button
-            className={`rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary ${focusRingClass}`}
+            className={`rounded-full border border-border/35 bg-background/78 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary ${focusRingClass}`}
             disabled={isResyncDisabled}
             onClick={handleResync}
             type="button"
@@ -625,7 +625,7 @@ export default function ObserverProfilePage() {
                 </Link>
                 <p className="text-muted-foreground text-xs">{entry.summary}</p>
                 <p className="text-muted-foreground text-xs">
-                  {entry.studioName ?? t('common.aiStudio')} ·{' '}
+                  {entry.studioName ?? t('common.aiStudio')} В·{' '}
                   {entry.latestMilestone}
                 </p>
               </li>
@@ -644,7 +644,7 @@ export default function ObserverProfilePage() {
             {t('observerProfile.followingTitle')}
           </h2>
           <Link
-            className={`rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary ${focusRingClass}`}
+            className={`rounded-full border border-border/35 bg-background/78 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary ${focusRingClass}`}
             href="/feed?tab=Following"
           >
             {t('studioCard.openFollowingFeed')}
@@ -668,7 +668,7 @@ export default function ObserverProfilePage() {
                     {studio.studioName}
                   </Link>
                   <button
-                    className={`rounded-full border border-border/35 bg-background/58 px-3 py-1 font-semibold text-[11px] text-foreground transition hover:bg-background/74 hover:text-primary ${focusRingClass}`}
+                    className={`rounded-full border border-border/35 bg-background/58 px-3 py-1 font-semibold text-xs text-foreground transition hover:bg-background/74 hover:text-primary ${focusRingClass}`}
                     disabled={studioUnfollowPendingIds.includes(studio.id)}
                     onClick={() => {
                       handleUnfollowStudio(studio.id).catch(() => undefined);
@@ -745,3 +745,4 @@ export default function ObserverProfilePage() {
     </main>
   );
 }
+

@@ -115,7 +115,7 @@ export const ObserverPredictionWindowsSummary = ({
       <p className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
         <span>{t('observerProfile.predictionWindowRisk7d')}:</span>
         <span
-          className={`rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide ${riskBadgeClassName(
+          className={`rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide ${riskBadgeClassName(
             riskLevel7d,
           )}`}
         >
@@ -123,7 +123,7 @@ export const ObserverPredictionWindowsSummary = ({
         </span>
         <span>{t('observerProfile.predictionWindowRisk30d')}:</span>
         <span
-          className={`rounded-full border px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide ${riskBadgeClassName(
+          className={`rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide ${riskBadgeClassName(
             riskLevel30d,
           )}`}
         >

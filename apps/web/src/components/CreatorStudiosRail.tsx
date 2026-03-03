@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import useSWR from 'swr';
 import { apiClient } from '../lib/api';
 
@@ -12,6 +13,10 @@ interface CreatorStudioSummary {
   status: CreatorStudioStatus;
   revenueSharePercent: number;
   retentionScore: number;
+}
+
+interface CreatorStudiosRailProps {
+  onStudioCountChange?: (count: number) => void;
 }
 
 const fallbackStudios: CreatorStudioSummary[] = [
@@ -61,7 +66,9 @@ const fetchCreatorStudios = async (): Promise<CreatorStudioSummary[]> => {
   }));
 };
 
-export const CreatorStudiosRail = () => {
+export const CreatorStudiosRail = ({
+  onStudioCountChange,
+}: CreatorStudiosRailProps = {}) => {
   const { data, isLoading } = useSWR<CreatorStudioSummary[]>(
     'feed-creator-studios',
     fetchCreatorStudios,
@@ -75,44 +82,48 @@ export const CreatorStudiosRail = () => {
 
   const studios = data ?? fallbackStudios;
 
+  useEffect(() => {
+    onStudioCountChange?.(studios.length);
+  }, [onStudioCountChange, studios.length]);
+
   return (
-    <section className="card p-4" data-testid="creator-studios-rail">
+    <section className="card border-input bg-card p-5" data-testid="creator-studios-rail">
       <header className="flex items-center justify-between gap-2">
-        <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+        <h3 className="font-semibold text-lg text-foreground tracking-tight">
           Creator toolkit
         </h3>
         <span className="pill">{studios.length}</span>
       </header>
-      <p className="mt-2 text-muted-foreground text-xs">
+      <p className="mt-2 text-[15px] text-muted-foreground leading-relaxed">
         Human-run agent studios with governance rules and revenue-share setup.
       </p>
 
-      <div className="mt-3 grid gap-2">
+      <div className="mt-3 grid gap-3">
         {studios.length === 0 && !isLoading ? (
-          <p className="rounded-lg border border-border/30 bg-background/45 px-3 py-2 text-muted-foreground text-xs">
+          <p className="rounded-lg bg-background/85 px-3 py-2 text-muted-foreground text-sm">
             No active creator studios yet.
           </p>
         ) : null}
 
         {studios.map((studio) => (
           <article
-            className="rounded-lg border border-border/30 bg-background/42 px-3 py-2"
+            className="rounded-xl bg-background/72 px-4 py-4"
             key={studio.id}
           >
             <div className="flex items-start justify-between gap-2">
-              <p className="line-clamp-1 font-semibold text-foreground text-xs">
+              <p className="line-clamp-1 font-semibold text-base text-foreground">
                 {studio.studioName}
               </p>
               <span
-                className={`rounded-full px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide ${statusClassByValue[studio.status] ?? statusClassByValue.draft}`}
+                className={`rounded-full px-2.5 py-1 font-semibold text-xs uppercase tracking-wide ${statusClassByValue[studio.status] ?? statusClassByValue.draft}`}
               >
                 {studio.status}
               </span>
             </div>
-            <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">
+            <p className="mt-1.5 line-clamp-2 text-[15px] text-muted-foreground leading-relaxed">
               {studio.tagline}
             </p>
-            <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               <span className="pill">Share {studio.revenueSharePercent}%</span>
               <span className="pill">
                 Retention {studio.retentionScore.toFixed(0)}
@@ -124,3 +135,4 @@ export const CreatorStudiosRail = () => {
     </section>
   );
 };
+

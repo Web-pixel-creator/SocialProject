@@ -51,8 +51,8 @@ export type FeedRow = Record<string, unknown>;
 export const asRows = (data: unknown): FeedRow[] =>
   Array.isArray(data)
     ? data.filter(
-        (item): item is FeedRow => typeof item === 'object' && item !== null,
-      )
+      (item): item is FeedRow => typeof item === 'object' && item !== null,
+    )
     : [];
 
 export const asString = (value: unknown): string | undefined =>
@@ -127,7 +127,7 @@ export const PanelHeader = memo(function PanelHeader({
   badgeTone = 'default',
 }: PanelHeaderProps) {
   let badgeClass =
-    'border border-transparent bg-background/58 text-muted-foreground';
+    'border border-input bg-background text-foreground';
   if (badgeTone === 'hot') {
     badgeClass = 'border tag-hot';
   } else if (badgeTone === 'live') {
@@ -135,14 +135,14 @@ export const PanelHeader = memo(function PanelHeader({
   }
 
   return (
-    <div className="mb-2 flex items-center justify-between gap-2 sm:mb-2.5">
-      <h2 className="inline-flex items-center gap-2 font-semibold text-foreground text-sm">
-        <Icon aria-hidden="true" className="h-4 w-4 text-primary/90" />
+    <div className="mb-3 flex items-center justify-between gap-2">
+      <h2 className="inline-flex items-center gap-2 font-semibold text-base text-foreground">
+        <Icon aria-hidden="true" className="h-4.5 w-4.5 text-primary/90" />
         {title}
       </h2>
       {badge ? (
         <span
-          className={`rounded-full px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide ${badgeClass}`}
+          className={`rounded-full px-2.5 py-1 font-semibold text-xs uppercase tracking-wide ${badgeClass}`}
         >
           {badge}
         </span>
@@ -165,22 +165,24 @@ export const ItemList = memo(function ItemList({
   className,
 }: ItemListProps) {
   return (
-    <section className={`card p-3 sm:p-3.5 ${className ?? ''}`}>
+    <section
+      className={`card rounded-[1.5rem] border-input bg-card p-5 ${className ?? ''}`}
+    >
       <PanelHeader icon={Icon} title={title} />
-      <ul className="grid gap-2 text-xs">
+      <ul className="grid gap-2.5 text-sm">
         {items.map((item, index) => (
           <li
-            className="rounded-lg border border-border/25 bg-background/60 p-2 transition-colors hover:bg-background/74 sm:p-2.5"
+            className="rounded-xl bg-background/60 p-3.5 transition-colors hover:bg-accent/25"
             key={item.id}
           >
-            <div className="flex items-start gap-2">
-              <span className="inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-background/60 font-semibold text-[10px] text-muted-foreground">
+            <div className="flex items-start gap-2.5">
+              <span className="inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-background font-semibold text-xs text-muted-foreground">
                 {index + 1}
               </span>
               <div className="min-w-0">
                 <p className="line-clamp-2 text-foreground">{item.title}</p>
                 {item.meta && (
-                  <p className="mt-1 text-[11px] text-muted-foreground/70">
+                  <p className="mt-1.5 text-[13px] text-muted-foreground">
                     {item.meta}
                   </p>
                 )}
@@ -209,31 +211,32 @@ export const BattleList = memo(function BattleList({
   className,
 }: BattleListProps) {
   return (
-    <section className={`card p-3 sm:p-3.5 ${className ?? ''}`}>
+    <section
+      className={`card rounded-[1.5rem] border-input bg-card p-5 ${className ?? ''}`}
+    >
       <PanelHeader
         badge={hotLabel}
         badgeTone="hot"
         icon={Swords}
         title={title}
       />
-      <ul className="grid gap-2 text-xs">
+      <ul className="grid gap-2.5 text-sm">
         {items.map((item, index) => (
           <li
-            className="rounded-lg border border-border/25 bg-background/60 p-2 transition-colors hover:bg-background/74 sm:p-2.5"
+            className="rounded-xl bg-background/60 p-3.5 transition-colors hover:bg-accent/25"
             key={item.id}
           >
             <div className="flex items-start justify-between gap-2">
               <p className="line-clamp-2 text-foreground">{item.title}</p>
               <span
-                className={`rounded-full px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wide ${
-                  index === 0 ? 'tag-hot border' : 'tag-live border'
-                }`}
+                className={`flex-shrink-0 rounded-full px-2.5 py-1 font-semibold text-xs uppercase tracking-wide ${index === 0 ? 'tag-hot border' : 'tag-live border'
+                  }`}
               >
                 {index === 0 ? hotLabel : liveLabel}
               </span>
             </div>
             {item.meta && (
-              <p className="mt-1 line-clamp-1 text-[11px] text-muted-foreground/70">
+              <p className="mt-1.5 line-clamp-1 text-[13px] text-muted-foreground">
                 {item.meta}
               </p>
             )}
@@ -256,23 +259,25 @@ export const ActivityTicker = memo(function ActivityTicker({
   className,
 }: ActivityTickerProps) {
   return (
-    <section className={`card p-3 sm:p-3.5 ${className ?? ''}`}>
+    <section
+      className={`card rounded-[1.5rem] border-input bg-card p-5 ${className ?? ''}`}
+    >
       <PanelHeader icon={Activity} title={title} />
-      <ul className="max-h-64 space-y-2 overflow-y-auto pr-1 text-xs">
+      <ul className="max-h-72 space-y-2.5 overflow-y-auto pr-1 text-sm">
         {items.map((item) => (
           <li
-            className="rounded-lg border border-border/25 bg-background/60 p-2 transition-colors hover:bg-background/74 sm:p-2.5"
+            className="rounded-xl bg-background/60 p-3.5 transition-colors hover:bg-accent/25"
             key={item.id}
           >
-            <div className="flex items-start gap-2">
+            <div className="flex items-start gap-2.5">
               <span
                 aria-hidden="true"
-                className="icon-breathe live-dot mt-1 inline-flex h-2 w-2 rounded-full"
+                className="icon-breathe live-dot mt-1.5 inline-flex h-2 w-2 rounded-full"
               />
               <div>
                 <p className="line-clamp-2 text-foreground">{item.title}</p>
                 {item.meta && (
-                  <p className="mt-1 text-[11px] text-muted-foreground/70">
+                  <p className="mt-1.5 text-[13px] text-muted-foreground">
                     {item.meta}
                   </p>
                 )}

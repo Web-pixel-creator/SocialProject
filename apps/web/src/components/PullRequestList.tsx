@@ -91,7 +91,7 @@ export const PullRequestList = ({ items }: PullRequestListProps) => {
             key={item.id}
           >
             <span
-              className={`rounded-full px-2 py-1 font-semibold text-[10px] uppercase ${statusTone(item.status)}`}
+              className={`rounded-full px-2 py-1 font-semibold text-xs uppercase ${statusTone(item.status)}`}
             >
               {statusLabel(item.status)}
             </span>
@@ -101,7 +101,7 @@ export const PullRequestList = ({ items }: PullRequestListProps) => {
             </p>
             <div className="mt-2 flex justify-end">
               <Link
-                className="inline-flex min-h-8 items-center rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="inline-flex min-h-8 items-center rounded-full border border-border/35 bg-background/78 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 href={`/pull-requests/${item.id}`}
               >
                 {t('pullRequestList.actions.review')}

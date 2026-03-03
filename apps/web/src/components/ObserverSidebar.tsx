@@ -104,20 +104,18 @@ export const ObserverSidebar = ({
   const searchParams = useSearchParams();
   const tabValue = searchParams?.get('tab') ?? null;
   const { t } = useLanguage();
+  const shellClass = mobile
+    ? 'rounded-[1.5rem] border border-border/45 bg-[#1C2433] p-4'
+    : 'observer-left-rail hidden rounded-[1.5rem] border border-border/45 bg-[#1C2433] p-4 lg:block';
+  const navItemClass =
+    'inline-flex h-8 items-center gap-2.5 rounded-xl border px-3 font-semibold text-xs leading-none transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
 
   return (
-    <aside
-      aria-label={t('sidebar.observerNavigation')}
-      className={
-        mobile
-          ? 'rounded-2xl bg-sidebar/70 p-3'
-          : 'observer-left-rail hidden rounded-2xl bg-sidebar/70 p-3 lg:block'
-      }
-    >
-      <nav aria-label={t('sidebar.observerNavigation')} className="grid gap-4">
+    <aside aria-label={t('sidebar.observerNavigation')} className={shellClass}>
+      <nav aria-label={t('sidebar.observerNavigation')} className="grid gap-5">
         {navSections.map((section) => (
-          <section className="grid gap-1.5" key={section.id}>
-            <p className="px-2 font-semibold text-[11px] text-muted-foreground/70 uppercase tracking-wide">
+          <section className="grid gap-2" key={section.id}>
+            <p className="px-1.5 font-semibold text-xs text-muted-foreground/75 uppercase tracking-wide">
               {t(section.titleKey)}
             </p>
             {section.items.map((item) => {
@@ -125,16 +123,16 @@ export const ObserverSidebar = ({
               const active = isNavItemActive(item.href, pathname, tabValue);
               return (
                 <Link
-                  className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                  className={`${navItemClass} ${
                     active
-                      ? 'border-primary/35 bg-primary/12 text-primary'
-                      : 'border-transparent bg-background/58 text-muted-foreground hover:bg-background/74 hover:text-foreground'
+                      ? 'border-primary/45 bg-[#1C2433] text-primary'
+                      : 'border-border/55 bg-[#1C2433] text-foreground/85 hover:bg-[#243149] hover:text-foreground'
                   }`}
                   href={item.href}
                   key={`${item.href}:${item.labelKey}`}
                   onClick={onNavigate}
                 >
-                  <Icon aria-hidden="true" className="h-4 w-4" />
+                  <Icon aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
                   {t(item.labelKey)}
                 </Link>
               );

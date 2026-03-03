@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -228,7 +228,7 @@ export default function ObserverPublicProfilePage() {
             {t('feed.exploreFeeds')}
           </Link>
           <Link
-            className={`rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary ${focusRingClass}`}
+            className={`rounded-full border border-border/35 bg-background/78 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary ${focusRingClass}`}
             href="/observer/profile"
           >
             {t('observerProfile.title')}
@@ -312,7 +312,7 @@ export default function ObserverPublicProfilePage() {
         <section className="card grid gap-2 p-4 sm:p-5">
           <p className="text-destructive text-sm">{loadError}</p>
           <button
-            className={`w-fit rounded-full border border-destructive/40 px-3 py-1.5 font-semibold text-[11px] text-destructive transition hover:bg-destructive/10 ${focusRingClass}`}
+            className={`w-fit rounded-full border border-destructive/40 px-3 py-1.5 font-semibold text-xs text-destructive transition hover:bg-destructive/10 ${focusRingClass}`}
             onClick={() => {
               mutate();
             }}
@@ -329,7 +329,7 @@ export default function ObserverPublicProfilePage() {
             {t('observerProfile.summaryTitle')}
           </h2>
           <button
-            className={`rounded-full border border-transparent bg-background/58 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary ${focusRingClass}`}
+            className={`rounded-full border border-border/35 bg-background/78 px-3 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 hover:text-primary ${focusRingClass}`}
             disabled={isLoading || isValidating}
             onClick={() => {
               mutate();
@@ -471,3 +471,4 @@ export default function ObserverPublicProfilePage() {
     </main>
   );
 }
+

@@ -95,7 +95,7 @@ export const DraftCard = ({
     }
     return {
       label: t('feed.provenance.unverified'),
-      className: 'border border-border/35 bg-muted/55 text-muted-foreground',
+      className: 'border border-input bg-background text-muted-foreground',
     };
   };
   const provenancePresentation = provenance
@@ -104,10 +104,8 @@ export const DraftCard = ({
 
   return (
     <article
-      className={`card overflow-hidden transition ${
-        compact
-          ? 'p-2.5 motion-safe:hover:-translate-y-1'
-          : 'p-4 motion-safe:hover:-translate-y-1'
+      className={`card overflow-hidden border-input bg-card transition ${
+        compact ? 'p-2.5' : 'p-4'
       }`}
     >
       <header
@@ -139,12 +137,12 @@ export const DraftCard = ({
         <div className="flex flex-shrink-0 items-center gap-2">
           {fromFollowingStudio ? (
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-1 font-semibold text-[10px] text-primary">
+              <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-1 font-semibold text-xs text-primary">
                 {t('draftDetail.followingStudios.pill')}
               </span>
               {onUnfollowStudio ? (
                 <button
-                  className="rounded-full border border-border/35 bg-background/65 px-2.5 py-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wide transition hover:bg-background/82 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  className="rounded-full border border-input bg-background px-2.5 py-1 font-semibold text-xs text-foreground uppercase tracking-wide transition hover:border-primary/35 hover:bg-accent/30 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   disabled={isUnfollowStudioPending}
                   onClick={onUnfollowStudio}
                   type="button"
@@ -155,12 +153,12 @@ export const DraftCard = ({
             </div>
           ) : null}
           {typeof hotScore === 'number' && (
-            <span className="tag-hot rounded-full border px-2 py-1 font-semibold text-[10px]">
+            <span className="tag-hot rounded-full border px-2 py-1 font-semibold text-xs">
               {t('rail.hot')} {hotScore.toFixed(2)}
             </span>
           )}
           {compact ? null : (
-            <span className="rounded-full border border-border/25 bg-muted/60 px-2 py-1 font-semibold text-[10px] text-foreground uppercase">
+            <span className="rounded-full border border-input bg-background px-2 py-1 font-semibold text-xs text-foreground uppercase">
               {stageLabel}
             </span>
           )}
@@ -171,7 +169,7 @@ export const DraftCard = ({
           )}
           {provenancePresentation && (
             <span
-              className={`rounded-full px-2 py-1 font-semibold text-[10px] uppercase ${provenancePresentation.className}`}
+              className={`rounded-full px-2 py-1 font-semibold text-xs uppercase ${provenancePresentation.className}`}
             >
               {provenancePresentation.label}
             </span>
@@ -192,7 +190,7 @@ export const DraftCard = ({
       </section>
 
       {compact ? (
-        <section className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <section className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-input bg-background px-2.5 py-2 text-xs">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-muted-foreground">
               {t('feedTabs.metrics.prsFix')}: {prCount} | {fixCount}
@@ -209,7 +207,7 @@ export const DraftCard = ({
             </span>
           </div>
           <Link
-            className="inline-flex min-h-8 items-center rounded-full border border-primary/35 bg-primary/10 px-3 py-1.5 font-semibold text-[11px] text-primary transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="inline-flex min-h-9 items-center rounded-full border border-primary/45 bg-primary/14 px-3 py-2 font-semibold text-xs text-primary transition hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             href={`/drafts/${id}`}
           >
             {t('feedTabs.openDetail')}
@@ -287,7 +285,7 @@ export const DraftCard = ({
       {compact ? null : (
         <div className="mt-2 flex items-center justify-end text-muted-foreground text-xs">
           <Link
-            className="font-semibold text-[11px] text-primary transition hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="inline-flex min-h-9 items-center rounded-full border border-input bg-background px-3 py-2 font-semibold text-xs text-primary transition hover:border-primary/35 hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             href={`/drafts/${id}`}
           >
             {t('feedTabs.openDetail')}
@@ -302,3 +300,4 @@ export const DraftCard = ({
     </article>
   );
 };
+

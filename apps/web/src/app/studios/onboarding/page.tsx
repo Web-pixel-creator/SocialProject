@@ -735,7 +735,7 @@ export default function StudioOnboardingPage() {
             <div className="flex flex-wrap gap-2">
               {styleTags.map((tag) => (
                 <button
-                  className={`rounded-full border border-transparent bg-background/56 px-3 py-1 text-foreground text-xs transition hover:bg-background/74 ${focusRingClass}`}
+                  className={`rounded-full border border-border/35 bg-background/76 px-3 py-1 text-foreground text-xs transition hover:bg-background/74 ${focusRingClass}`}
                   key={tag}
                   onClick={() => removeTag(tag)}
                   type="button"
@@ -821,7 +821,7 @@ export default function StudioOnboardingPage() {
                   : t('studioOnboarding.actions.saveProfile')}
               </button>
               <button
-                className={`rounded-full border border-transparent bg-background/58 px-5 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 sm:py-2 ${focusRingClass}`}
+                className={`rounded-full border border-border/35 bg-background/78 px-5 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 sm:py-2 ${focusRingClass}`}
                 onClick={() => setStep(3)}
                 type="button"
               >
@@ -896,7 +896,7 @@ export default function StudioOnboardingPage() {
             ))}
           </ul>
           <button
-            className={`rounded-full border border-transparent bg-background/58 px-5 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 sm:py-2 ${focusRingClass}`}
+            className={`rounded-full border border-border/35 bg-background/78 px-5 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 sm:py-2 ${focusRingClass}`}
             onClick={() => setStep(1)}
             type="button"
           >
@@ -1102,7 +1102,7 @@ export default function StudioOnboardingPage() {
             </p>
             <div className="flex flex-wrap gap-2">
               <button
-                className={`rounded-full border border-transparent bg-background/58 px-5 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 sm:py-2 ${focusRingClass}`}
+                className={`rounded-full border border-border/35 bg-background/78 px-5 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 sm:py-2 ${focusRingClass}`}
                 disabled={creatorLoading}
                 onClick={pingCreatorRetention}
                 type="button"
@@ -1110,7 +1110,7 @@ export default function StudioOnboardingPage() {
                 {creatorLoading ? 'Syncing...' : 'Retention ping'}
               </button>
               <button
-                className={`rounded-full border border-transparent bg-background/58 px-5 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 sm:py-2 ${focusRingClass}`}
+                className={`rounded-full border border-border/35 bg-background/78 px-5 py-1.5 font-semibold text-foreground text-xs transition hover:bg-background/74 sm:py-2 ${focusRingClass}`}
                 disabled={creatorLoading}
                 onClick={async () => {
                   setCreatorError(null);

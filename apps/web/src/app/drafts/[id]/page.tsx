@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -628,12 +628,12 @@ const renderOrchestrationTimelineEntry = (
         >
           {title}
         </span>
-        <span className="text-[10px] text-muted-foreground">
+        <span className="text-xs text-muted-foreground">
           #{entry.sequence}
         </span>
       </div>
       {entry.type === 'step' && (
-        <p className="mt-1 text-[11px] text-muted-foreground">
+        <p className="mt-1 text-xs text-muted-foreground">
           {t('draftDetail.orchestration.provider')}:&nbsp;
           {entry.provider ?? t('draftDetail.orchestration.unknownProvider')}
         </p>
@@ -641,21 +641,21 @@ const renderOrchestrationTimelineEntry = (
       {entry.type === 'completed' &&
         entry.stepCount !== null &&
         entry.stepCount >= 0 && (
-          <p className="mt-1 text-[11px] text-muted-foreground">
+          <p className="mt-1 text-xs text-muted-foreground">
             {t('draftDetail.orchestration.steps')}:&nbsp;
             {entry.stepCount}
           </p>
         )}
       {entry.type === 'step' && entry.attempts.length > 0 && (
         <>
-          <p className="mt-2 text-[11px] text-muted-foreground">
+          <p className="mt-2 text-xs text-muted-foreground">
             {t('draftDetail.orchestration.attempts')}:&nbsp;
             {entry.attempts.length}
           </p>
           <ul className="mt-1 grid gap-1">
             {entry.attempts.map((attempt, index) => (
               <li
-                className="text-[11px] text-muted-foreground"
+                className="text-xs text-muted-foreground"
                 key={`${entry.id}-${attempt.provider}-${index}`}
               >
                 {attempt.provider} • {attempt.status}
@@ -667,7 +667,7 @@ const renderOrchestrationTimelineEntry = (
         </>
       )}
       {entry.type === 'compacted' && (
-        <div className="mt-1 grid gap-1 text-[11px] text-muted-foreground">
+        <div className="mt-1 grid gap-1 text-xs text-muted-foreground">
           {entry.prunedCount !== null && (
             <p>
               {t('draftDetail.orchestration.pruned')}:&nbsp;
@@ -928,7 +928,7 @@ const MultimodalGlowUpCard = ({
         </p>
         <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
           <div className="rounded-lg border border-border/25 bg-background/60 p-2.5">
-            <p className="text-[10px] text-muted-foreground uppercase">
+            <p className="text-xs text-muted-foreground uppercase">
               {t('draftDetail.multimodal.score')}
             </p>
             <p className="mt-1 font-semibold text-foreground">
@@ -936,7 +936,7 @@ const MultimodalGlowUpCard = ({
             </p>
           </div>
           <div className="rounded-lg border border-border/25 bg-background/60 p-2.5">
-            <p className="text-[10px] text-muted-foreground uppercase">
+            <p className="text-xs text-muted-foreground uppercase">
               {t('draftDetail.multimodal.confidence')}
             </p>
             <p className="mt-1 font-semibold text-foreground">
@@ -944,7 +944,7 @@ const MultimodalGlowUpCard = ({
             </p>
           </div>
           <div className="rounded-lg border border-border/25 bg-background/60 p-2.5">
-            <p className="text-[10px] text-muted-foreground uppercase">
+            <p className="text-xs text-muted-foreground uppercase">
               {t('draftDetail.multimodal.visual')}
             </p>
             <p className="mt-1 font-medium text-foreground">
@@ -952,7 +952,7 @@ const MultimodalGlowUpCard = ({
             </p>
           </div>
           <div className="rounded-lg border border-border/25 bg-background/60 p-2.5">
-            <p className="text-[10px] text-muted-foreground uppercase">
+            <p className="text-xs text-muted-foreground uppercase">
               {t('draftDetail.multimodal.narrative')}
             </p>
             <p className="mt-1 font-medium text-foreground">
@@ -960,7 +960,7 @@ const MultimodalGlowUpCard = ({
             </p>
           </div>
           <div className="rounded-lg border border-border/25 bg-background/60 p-2.5">
-            <p className="text-[10px] text-muted-foreground uppercase">
+            <p className="text-xs text-muted-foreground uppercase">
               {t('draftDetail.multimodal.audio')}
             </p>
             <p className="mt-1 font-medium text-foreground">
@@ -968,7 +968,7 @@ const MultimodalGlowUpCard = ({
             </p>
           </div>
           <div className="rounded-lg border border-border/25 bg-background/60 p-2.5">
-            <p className="text-[10px] text-muted-foreground uppercase">
+            <p className="text-xs text-muted-foreground uppercase">
               {t('draftDetail.multimodal.video')}
             </p>
             <p className="mt-1 font-medium text-foreground">
@@ -1060,14 +1060,14 @@ const FollowingStudiosCard = ({
                 {studio.studioName}
               </span>
               {studio.id === draftAuthorId && (
-                <span className="rounded-full border border-primary/35 bg-primary/12 px-2 py-0.5 font-semibold text-[10px] text-primary">
+                <span className="rounded-full border border-primary/35 bg-primary/12 px-2 py-0.5 font-semibold text-xs text-primary">
                   {t('draftDetail.followingStudios.currentDraft')}
                 </span>
               )}
             </div>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              Impact {studio.impact.toFixed(0)} · Signal{' '}
-              {studio.signal.toFixed(0)} · {t('studioCard.followersLabel')}{' '}
+            <p className="mt-1 text-xs text-muted-foreground">
+              Impact {studio.impact.toFixed(0)} В· Signal{' '}
+              {studio.signal.toFixed(0)} В· {t('studioCard.followersLabel')}{' '}
               {studio.followerCount}
             </p>
           </Link>
@@ -1382,7 +1382,7 @@ const StyleFusionPanel = ({
         <div className="mt-3 rounded-lg border border-border/25 bg-background/58 p-3 text-xs sm:p-3.5">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <p className="text-[10px] text-muted-foreground uppercase">
+              <p className="text-xs text-muted-foreground uppercase">
                 {t('draftDetail.similar.styleFusionResult')}
               </p>
               <p className="mt-1 font-semibold text-foreground text-sm">
@@ -1390,7 +1390,7 @@ const StyleFusionPanel = ({
               </p>
             </div>
             <button
-              className="inline-flex items-center rounded-lg border border-border/25 bg-background/58 px-2.5 py-1.5 font-medium text-[11px] text-foreground transition hover:border-border/45 hover:bg-background/74 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="inline-flex items-center rounded-lg border border-border/25 bg-background/58 px-2.5 py-1.5 font-medium text-xs text-foreground transition hover:border-border/45 hover:bg-background/74 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={copyFusionBrief}
               type="button"
             >
@@ -1399,7 +1399,7 @@ const StyleFusionPanel = ({
           </div>
           <div className="mt-2 grid gap-3 sm:grid-cols-2">
             <div>
-              <p className="text-[10px] text-muted-foreground uppercase">
+              <p className="text-xs text-muted-foreground uppercase">
                 {t('draftDetail.similar.styleDirectives')}
               </p>
               {styleFusion.styleDirectives.length > 0 ? (
@@ -1415,7 +1415,7 @@ const StyleFusionPanel = ({
               )}
             </div>
             <div>
-              <p className="text-[10px] text-muted-foreground uppercase">
+              <p className="text-xs text-muted-foreground uppercase">
                 {t('draftDetail.similar.winningHints')}
               </p>
               {styleFusion.winningPrHints.length > 0 ? (
@@ -1432,7 +1432,7 @@ const StyleFusionPanel = ({
             </div>
           </div>
           <div className="mt-3">
-            <p className="text-[10px] text-muted-foreground uppercase">
+            <p className="text-xs text-muted-foreground uppercase">
               {t('draftDetail.similar.sampleDrafts')}
             </p>
             {styleFusion.sample.length > 0 ? (
@@ -1445,7 +1445,7 @@ const StyleFusionPanel = ({
                     <span className="truncate text-foreground">
                       {sample.title}
                     </span>
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       {t('draftDetail.similar.similarity')}{' '}
                       {Number(sample.score ?? 0).toFixed(2)}
                     </span>
@@ -2350,11 +2350,11 @@ export default function DraftDetailPage() {
                       className="rounded-lg border border-border/25 bg-background/60 p-2.5 text-xs sm:p-3"
                       key={item.id}
                     >
-                      <p className="text-[10px] text-muted-foreground uppercase">
+                      <p className="text-xs text-muted-foreground uppercase">
                         {item.type}
                       </p>
                       <p className="text-foreground text-sm">{item.title}</p>
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         {t('draftDetail.similar.similarity')}{' '}
                         {Number(item.score ?? 0).toFixed(2)} | GlowUp{' '}
                         {Number(item.glowUpScore ?? 0).toFixed(1)}
@@ -2463,7 +2463,7 @@ export default function DraftDetailPage() {
                 {t('draftDetail.orchestration.title')}
               </h3>
               <div className="mt-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
-                <label className="grid gap-1 text-[11px] text-muted-foreground">
+                <label className="grid gap-1 text-xs text-muted-foreground">
                   <span>{t('draftDetail.orchestration.filterType')}</span>
                   <select
                     className="rounded-lg border border-border/25 bg-background/60 px-2.5 py-2 text-foreground text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -2489,7 +2489,7 @@ export default function DraftDetailPage() {
                     </option>
                   </select>
                 </label>
-                <label className="grid gap-1 text-[11px] text-muted-foreground">
+                <label className="grid gap-1 text-xs text-muted-foreground">
                   <span>{t('draftDetail.orchestration.filterQuery')}</span>
                   <input
                     className="rounded-lg border border-border/25 bg-background/60 px-2.5 py-2 text-foreground text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -2504,7 +2504,7 @@ export default function DraftDetailPage() {
                     value={orchestrationQuery}
                   />
                 </label>
-                <label className="grid gap-1 text-[11px] text-muted-foreground">
+                <label className="grid gap-1 text-xs text-muted-foreground">
                   <span>{t('draftDetail.orchestration.filterLimit')}</span>
                   <select
                     className="rounded-lg border border-border/25 bg-background/60 px-2.5 py-2 text-foreground text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -2553,7 +2553,7 @@ export default function DraftDetailPage() {
                     >
                       <div className="flex items-center justify-between">
                         <span className="text-foreground">{note.message}</span>
-                        <span className="text-[10px] text-muted-foreground">
+                        <span className="text-xs text-muted-foreground">
                           {note.time}
                         </span>
                       </div>
@@ -2569,3 +2569,4 @@ export default function DraftDetailPage() {
     </main>
   );
 }
+

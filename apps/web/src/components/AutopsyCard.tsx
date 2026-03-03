@@ -19,10 +19,8 @@ export const AutopsyCard = ({
 
   return (
     <article
-      className={`card transition ${
-        compact
-          ? 'p-2.5 motion-safe:hover:-translate-y-1'
-          : 'p-4 motion-safe:hover:-translate-y-1'
+      className={`card border-input bg-card transition ${
+        compact ? 'p-2.5' : 'p-4'
       }`}
     >
       <p className="pill">{t('autopsy.pill')}</p>
@@ -37,7 +35,7 @@ export const AutopsyCard = ({
           : t('common.draft')}
       </p>
       <p
-        className={`text-muted-foreground ${compact ? 'mt-2 line-clamp-1 text-xs' : 'mt-3 text-sm'}`}
+        className={`text-foreground/85 ${compact ? 'mt-2 line-clamp-1 text-xs' : 'mt-3 text-sm'}`}
       >
         {summary}
       </p>
