@@ -111,8 +111,21 @@ const AI_RUNTIME_DRY_RUN_MAX_ARRAY_ITEM_LENGTH = 64;
 const AI_RUNTIME_DRY_RUN_MAX_PROMPT_LENGTH = 4000;
 const AI_RUNTIME_DRY_RUN_MAX_TIMEOUT_MS = 120_000;
 const AI_RUNTIME_PROVIDER_IDENTIFIER_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+const SANDBOX_PILOT_MAX_CODE_LENGTH = 40_000;
+const SANDBOX_PILOT_MAX_FILES = 8;
+const SANDBOX_PILOT_MAX_FILE_PATH_LENGTH = 240;
+const SANDBOX_PILOT_ALLOWED_LANGUAGES = new Set([
+  'bash',
+  'javascript',
+  'js',
+  'node',
+  'python',
+  'py',
+  'sh',
+]);
 const SANDBOX_EXECUTION_OPERATION_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,79}$/;
 const SANDBOX_EXECUTION_EGRESS_PROFILE_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+const SANDBOX_PILOT_FILE_PATH_PATTERN = /^[a-z0-9][a-z0-9._/-]{0,239}$/i;
 const AGENT_GATEWAY_MAX_KEEP_RECENT = 299;
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -1394,6 +1407,107 @@ const parseOptionalRuntimeTimeout = (value: unknown): number | undefined => {
     );
   }
   return normalized;
+};
+
+const parseSandboxPilotLanguage = (value: unknown): string => {
+  if (!(typeof value === 'string' && value.trim().length > 0)) {
+    throw new ServiceError(
+      'ADMIN_INVALID_BODY',
+      'language must be a non-empty string.',
+      400,
+    );
+  }
+  const normalized = value.trim().toLowerCase();
+  if (!SANDBOX_PILOT_ALLOWED_LANGUAGES.has(normalized)) {
+    throw new ServiceError(
+      'ADMIN_INVALID_BODY',
+      `language must be one of: ${Array.from(SANDBOX_PILOT_ALLOWED_LANGUAGES)
+        .sort()
+        .join(', ')}.`,
+      400,
+    );
+  }
+  return normalized;
+};
+
+const parseSandboxPilotCode = (value: unknown): string => {
+  if (typeof value !== 'string') {
+    throw new ServiceError('ADMIN_INVALID_BODY', 'code must be a string.', 400);
+  }
+  const code = value.trim();
+  if (code.length < 1) {
+    throw new ServiceError(
+      'ADMIN_INVALID_BODY',
+      'code must not be empty.',
+      400,
+    );
+  }
+  if (code.length > SANDBOX_PILOT_MAX_CODE_LENGTH) {
+    throw new ServiceError(
+      'ADMIN_INVALID_BODY',
+      `code exceeds max length (${SANDBOX_PILOT_MAX_CODE_LENGTH}).`,
+      400,
+    );
+  }
+  return value;
+};
+
+const parseSandboxPilotFiles = (
+  value: unknown,
+): Array<{ path: string; contentBase64: string }> => {
+  if (value === undefined || value === null) {
+    return [];
+  }
+  if (!Array.isArray(value)) {
+    throw new ServiceError(
+      'ADMIN_INVALID_BODY',
+      'files must be an array.',
+      400,
+    );
+  }
+  if (value.length > SANDBOX_PILOT_MAX_FILES) {
+    throw new ServiceError(
+      'ADMIN_INVALID_BODY',
+      `files supports up to ${SANDBOX_PILOT_MAX_FILES} entries.`,
+      400,
+    );
+  }
+  const files: Array<{ path: string; contentBase64: string }> = [];
+  for (const file of value) {
+    if (!(file && typeof file === 'object')) {
+      throw new ServiceError(
+        'ADMIN_INVALID_BODY',
+        'files entries must be objects.',
+        400,
+      );
+    }
+    const record = file as Record<string, unknown>;
+    const filePath = typeof record.path === 'string' ? record.path.trim() : '';
+    if (
+      filePath.length < 1 ||
+      filePath.length > SANDBOX_PILOT_MAX_FILE_PATH_LENGTH ||
+      !SANDBOX_PILOT_FILE_PATH_PATTERN.test(filePath)
+    ) {
+      throw new ServiceError(
+        'ADMIN_INVALID_BODY',
+        'files.path must use relative sandbox path format.',
+        400,
+      );
+    }
+    const contentBase64 =
+      typeof record.contentBase64 === 'string'
+        ? record.contentBase64.trim()
+        : '';
+    if (contentBase64.length < 1) {
+      throw new ServiceError(
+        'ADMIN_INVALID_BODY',
+        'files.contentBase64 must be a non-empty base64 string.',
+        400,
+      );
+    }
+    files.push({ contentBase64, path: filePath });
+  }
+  return files;
 };
 
 const getRealtime = (req: Request) =>
@@ -2777,6 +2891,85 @@ router.post(
       });
     } catch (error) {
       next(error);
+    }
+  },
+);
+
+router.post(
+  '/admin/sandbox-execution/pilot/run-code',
+  requireAdmin,
+  async (req, res, next) => {
+    let sandboxId: string | null = null;
+    try {
+      assertAllowedQueryFields(req.query, {
+        allowed: [],
+        endpoint: '/api/admin/sandbox-execution/pilot/run-code',
+      });
+      const body = assertAllowedBodyFields(req.body, {
+        allowed: ['language', 'code', 'timeoutMs', 'files'],
+        endpoint: '/api/admin/sandbox-execution/pilot/run-code',
+      });
+      if (!sandboxExecutionService.isEnabled()) {
+        throw new ServiceError(
+          'SANDBOX_EXECUTION_DISABLED',
+          'Sandbox execution is disabled by feature flag.',
+          503,
+        );
+      }
+
+      const language = parseSandboxPilotLanguage(body.language ?? 'javascript');
+      const code = parseSandboxPilotCode(body.code);
+      const timeoutMs = parseBoundedOptionalInt(body.timeoutMs, {
+        fieldName: 'timeoutMs',
+        invalidCode: 'ADMIN_INVALID_BODY',
+        max: AI_RUNTIME_DRY_RUN_MAX_TIMEOUT_MS,
+        min: 1,
+      });
+      const files = parseSandboxPilotFiles(body.files);
+      const sandbox = await sandboxExecutionService.createSandbox({
+        limits: typeof timeoutMs === 'number' ? { timeoutMs } : undefined,
+      });
+      sandboxId = sandbox.sandboxId;
+      if (files.length > 0) {
+        await sandboxExecutionService.uploadFiles({
+          files,
+          sandboxId,
+        });
+      }
+      const commandResult = await sandboxExecutionService.runCommand({
+        command: 'echo sandbox_smoke_ok',
+        sandboxId,
+      });
+      const codeResult = await sandboxExecutionService.runCode({
+        code,
+        language,
+        sandboxId,
+        timeoutMs,
+      });
+      const artifactPaths =
+        files.length > 0
+          ? (
+              await sandboxExecutionService.downloadArtifacts({
+                paths: files.map((file) => file.path),
+                sandboxId,
+              })
+            ).artifacts.map((artifact) => artifact.path)
+          : [];
+
+      res.json({
+        artifactPaths,
+        codeResult,
+        commandResult,
+        sandbox,
+      });
+    } catch (error) {
+      next(error);
+    } finally {
+      if (sandboxId) {
+        await sandboxExecutionService
+          .destroySandbox({ sandboxId })
+          .catch(() => undefined);
+      }
     }
   },
 );

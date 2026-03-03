@@ -1,4 +1,15 @@
+import { spawn } from 'node:child_process';
 import crypto from 'node:crypto';
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { env } from '../../config/env';
 import { db } from '../../db/pool';
 import { ServiceError } from '../common/errors';
@@ -45,12 +56,35 @@ import type {
 interface SandboxExecutionQueryable {
   query(text: string, values?: unknown[]): Promise<unknown>;
 }
+interface LocalSandboxState {
+  sandboxId: string;
+  rootDir: string;
+  createdAtMs: number;
+  expiresAtMs: number | null;
+  limits: SandboxExecutionLimits;
+}
 
 const parseBooleanFlag = (value: string | undefined): boolean =>
   value?.trim().toLowerCase() === 'true';
 const PROVIDER_IDENTIFIER_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 const normalizeProviderIdentifier = (value: string) =>
   value.trim().toLowerCase();
+const SANDBOX_ID_PATTERN = /^sbx_[a-f0-9]{32}$/;
+const DEFAULT_SANDBOX_LIMITS = {
+  maxArtifactBytes: 5_242_880,
+  timeoutMs: 15_000,
+  ttlSeconds: 900,
+} as const;
+const MAX_SANDBOX_PROCESS_OUTPUT_BYTES = 1_048_576;
+const SANDBOX_SUPPORTED_CODE_LANGUAGES = new Set([
+  'bash',
+  'javascript',
+  'js',
+  'node',
+  'python',
+  'py',
+  'sh',
+]);
 const LIMIT_FIELD_NAMES = [
   'cpuCores',
   'memoryMb',
@@ -72,18 +106,64 @@ export const SANDBOX_EXECUTION_TELEMETRY_SOURCE = 'sandbox_execution';
 export const SANDBOX_EXECUTION_TELEMETRY_EVENT_TYPE =
   'sandbox_execution_attempt';
 
-const createNotImplementedError = (operation: string) =>
-  new ServiceError(
-    'SANDBOX_EXECUTION_NOT_IMPLEMENTED',
-    `Sandbox execution operation '${operation}' is not implemented yet.`,
-    503,
-  );
-
 const createOperationInvalidError = () =>
   new ServiceError(
     'SANDBOX_EXECUTION_OPERATION_INVALID',
     'operation is required.',
     400,
+  );
+const createSandboxInputInvalidError = (message: string) =>
+  new ServiceError('SANDBOX_EXECUTION_INVALID_INPUT', message, 400);
+const createSandboxIdInvalidError = () =>
+  createSandboxInputInvalidError(
+    'sandboxId must use the expected sandbox identifier format.',
+  );
+const createSandboxNotFoundError = (sandboxId: string) =>
+  new ServiceError(
+    'SANDBOX_EXECUTION_SANDBOX_NOT_FOUND',
+    `Sandbox "${sandboxId}" was not found.`,
+    404,
+  );
+const createSandboxExpiredError = (sandboxId: string) =>
+  new ServiceError(
+    'SANDBOX_EXECUTION_SANDBOX_EXPIRED',
+    `Sandbox "${sandboxId}" has expired.`,
+    410,
+  );
+const createSandboxPathInvalidError = (pathValue: string) =>
+  createSandboxInputInvalidError(
+    `Sandbox path "${pathValue}" is invalid or escapes sandbox root.`,
+  );
+const createSandboxPathNotFoundError = (pathValue: string) =>
+  new ServiceError(
+    'SANDBOX_EXECUTION_PATH_NOT_FOUND',
+    `Sandbox path "${pathValue}" does not exist.`,
+    404,
+  );
+const createSandboxProcessFailedError = (
+  operation: string,
+  errorMessage: string,
+) =>
+  new ServiceError(
+    'SANDBOX_EXECUTION_PROCESS_FAILED',
+    `Sandbox process execution failed for ${operation}: ${errorMessage}.`,
+    502,
+  );
+const createSandboxLanguageUnsupportedError = (language: string) =>
+  createSandboxInputInvalidError(
+    `Unsupported code language "${language}". Supported values: ${Array.from(
+      SANDBOX_SUPPORTED_CODE_LANGUAGES,
+    )
+      .sort()
+      .join(', ')}.`,
+  );
+const createSandboxArtifactTooLargeError = (
+  pathValue: string,
+  size: number,
+  limit: number,
+) =>
+  createSandboxInputInvalidError(
+    `Artifact "${pathValue}" size ${size} bytes exceeds limit ${limit} bytes.`,
   );
 const createEgressProfileRequiredError = (operation: string) =>
   new ServiceError(
@@ -194,6 +274,7 @@ const toSafeErrorMessage = (error: unknown): string | null => {
 export class SandboxExecutionServiceImpl implements SandboxExecutionService {
   private readonly enabled: boolean;
   private readonly queryable: SandboxExecutionQueryable;
+  private readonly sandboxes = new Map<string, LocalSandboxState>();
   private readonly egressProfiles: SandboxExecutionEgressProfileMap;
   private readonly egressProviderAllowlists: SandboxExecutionEgressProviderAllowlistMap;
   private readonly operationLimitProfiles: SandboxExecutionOperationLimitProfileMap;
@@ -334,32 +415,429 @@ export class SandboxExecutionServiceImpl implements SandboxExecutionService {
     }
   }
 
-  createSandbox(_input: SandboxCreateInput): Promise<SandboxHandle> {
-    return Promise.reject(createNotImplementedError('createSandbox'));
+  async createSandbox(input: SandboxCreateInput): Promise<SandboxHandle> {
+    await this.purgeExpiredSandboxes();
+    const normalizedLimits = this.normalizeRequestedLimits(input.limits);
+    if (normalizedLimits.invalidReasons.length > 0) {
+      throw createLimitInputInvalidError(normalizedLimits.invalidReasons);
+    }
+    const limits: SandboxExecutionLimits = {
+      ...DEFAULT_SANDBOX_LIMITS,
+      ...(normalizedLimits.limits ?? {}),
+    };
+    const rootDir = await mkdtemp(path.join(os.tmpdir(), 'sandbox-exec-'));
+    const createdAtMs = Date.now();
+    const ttlSeconds =
+      typeof limits.ttlSeconds === 'number'
+        ? limits.ttlSeconds
+        : DEFAULT_SANDBOX_LIMITS.ttlSeconds;
+    const expiresAtMs = createdAtMs + ttlSeconds * 1000;
+    const sandboxId = `sbx_${crypto.randomUUID().replaceAll('-', '')}`;
+    const state: LocalSandboxState = {
+      createdAtMs,
+      expiresAtMs,
+      limits,
+      rootDir,
+      sandboxId,
+    };
+    this.sandboxes.set(sandboxId, state);
+    return this.toSandboxHandle(state);
   }
 
-  runCommand(_input: SandboxRunCommandInput): Promise<SandboxCommandResult> {
-    return Promise.reject(createNotImplementedError('runCommand'));
+  async runCommand(
+    input: SandboxRunCommandInput,
+  ): Promise<SandboxCommandResult> {
+    const state = await this.requireSandboxState(input.sandboxId);
+    if (
+      !(typeof input.command === 'string' && input.command.trim().length > 0)
+    ) {
+      throw createSandboxInputInvalidError(
+        'command must be a non-empty string.',
+      );
+    }
+    const cwd = input.cwd
+      ? await this.resolveSandboxPath(state, input.cwd, {
+          requireDirectory: true,
+          requireExisting: true,
+        })
+      : state.rootDir;
+    const timeoutMs = this.resolveCommandTimeoutMs(state, input.timeoutMs);
+    const shellProcess =
+      process.platform === 'win32'
+        ? {
+            args: ['-NoProfile', '-NonInteractive', '-Command', input.command],
+            file: 'powershell',
+          }
+        : { args: ['-lc', input.command], file: '/bin/sh' };
+    return this.executeProcess({
+      args: shellProcess.args,
+      cwd,
+      file: shellProcess.file,
+      operation: 'runCommand',
+      timeoutMs,
+    });
   }
 
-  runCode(_input: SandboxRunCodeInput): Promise<SandboxCodeResult> {
-    return Promise.reject(createNotImplementedError('runCode'));
+  async runCode(input: SandboxRunCodeInput): Promise<SandboxCodeResult> {
+    const state = await this.requireSandboxState(input.sandboxId);
+    const language = this.normalizeCodeLanguage(input.language);
+    const code =
+      typeof input.code === 'string' ? input.code : `${input.code ?? ''}`;
+    if (code.trim().length < 1) {
+      throw createSandboxInputInvalidError('code must be a non-empty string.');
+    }
+    const timeoutMs = this.resolveCommandTimeoutMs(state, input.timeoutMs);
+    const scriptExtension = this.resolveScriptExtension(language);
+    const scriptPath = path.join(
+      state.rootDir,
+      `inline-${crypto.randomUUID()}.${scriptExtension}`,
+    );
+    await writeFile(scriptPath, code, 'utf8');
+    const processInput = this.resolveCodeProcess(language, scriptPath);
+    const commandResult = await this.executeProcess({
+      args: processInput.args,
+      cwd: state.rootDir,
+      file: processInput.file,
+      operation: `runCode:${language}`,
+      timeoutMs,
+    });
+    return {
+      durationMs: commandResult.durationMs,
+      error: commandResult.stderr.length > 0 ? commandResult.stderr : null,
+      output: commandResult.stdout,
+    };
   }
 
-  uploadFiles(
-    _input: SandboxUploadFilesInput,
+  async uploadFiles(
+    input: SandboxUploadFilesInput,
   ): Promise<SandboxUploadFilesResult> {
-    return Promise.reject(createNotImplementedError('uploadFiles'));
+    const state = await this.requireSandboxState(input.sandboxId);
+    if (!Array.isArray(input.files)) {
+      throw createSandboxInputInvalidError('files must be an array.');
+    }
+    let uploadedCount = 0;
+    for (const file of input.files) {
+      if (!(file && typeof file === 'object')) {
+        throw createSandboxInputInvalidError('files items must be objects.');
+      }
+      if (!(typeof file.path === 'string' && file.path.trim().length > 0)) {
+        throw createSandboxInputInvalidError(
+          'files.path must be a non-empty string.',
+        );
+      }
+      if (
+        !(
+          typeof file.contentBase64 === 'string' &&
+          file.contentBase64.trim().length > 0
+        )
+      ) {
+        throw createSandboxInputInvalidError(
+          'files.contentBase64 must be a non-empty base64 string.',
+        );
+      }
+      const destination = await this.resolveSandboxPath(state, file.path, {
+        requireDirectory: false,
+        requireExisting: false,
+      });
+      const content = Buffer.from(file.contentBase64, 'base64');
+      if (
+        typeof state.limits.maxArtifactBytes === 'number' &&
+        content.byteLength > state.limits.maxArtifactBytes
+      ) {
+        throw createSandboxArtifactTooLargeError(
+          file.path,
+          content.byteLength,
+          state.limits.maxArtifactBytes,
+        );
+      }
+      await mkdir(path.dirname(destination), { recursive: true });
+      await writeFile(destination, content);
+      uploadedCount += 1;
+    }
+    return { uploadedCount };
   }
 
-  downloadArtifacts(
-    _input: SandboxDownloadArtifactsInput,
+  async downloadArtifacts(
+    input: SandboxDownloadArtifactsInput,
   ): Promise<SandboxDownloadArtifactsResult> {
-    return Promise.reject(createNotImplementedError('downloadArtifacts'));
+    const state = await this.requireSandboxState(input.sandboxId);
+    if (!Array.isArray(input.paths)) {
+      throw createSandboxInputInvalidError('paths must be an array.');
+    }
+    const artifacts: SandboxDownloadArtifactsResult['artifacts'] = [];
+    for (const artifactPath of input.paths) {
+      if (
+        !(typeof artifactPath === 'string' && artifactPath.trim().length > 0)
+      ) {
+        throw createSandboxInputInvalidError(
+          'paths must contain non-empty strings.',
+        );
+      }
+      const resolvedPath = await this.resolveSandboxPath(state, artifactPath, {
+        requireDirectory: false,
+        requireExisting: true,
+      });
+      const fileStats = await stat(resolvedPath);
+      if (!fileStats.isFile()) {
+        throw createSandboxPathInvalidError(artifactPath);
+      }
+      if (
+        typeof state.limits.maxArtifactBytes === 'number' &&
+        fileStats.size > state.limits.maxArtifactBytes
+      ) {
+        throw createSandboxArtifactTooLargeError(
+          artifactPath,
+          fileStats.size,
+          state.limits.maxArtifactBytes,
+        );
+      }
+      const content = await readFile(resolvedPath);
+      artifacts.push({
+        contentBase64: content.toString('base64'),
+        path: artifactPath,
+      });
+    }
+    return { artifacts };
   }
 
-  destroySandbox(_input: SandboxDestroySandboxInput): Promise<void> {
-    return Promise.reject(createNotImplementedError('destroySandbox'));
+  async destroySandbox(input: SandboxDestroySandboxInput): Promise<void> {
+    const sandboxId = this.normalizeSandboxId(input.sandboxId);
+    const state = this.sandboxes.get(sandboxId);
+    if (!state) {
+      return;
+    }
+    await this.disposeSandboxState(state);
+  }
+
+  private toSandboxHandle(state: LocalSandboxState): SandboxHandle {
+    return {
+      createdAt: new Date(state.createdAtMs).toISOString(),
+      expiresAt:
+        state.expiresAtMs === null
+          ? null
+          : new Date(state.expiresAtMs).toISOString(),
+      mode: this.getMode(),
+      sandboxId: state.sandboxId,
+    };
+  }
+
+  private normalizeSandboxId(value: unknown): string {
+    if (typeof value !== 'string') {
+      throw createSandboxIdInvalidError();
+    }
+    const normalized = value.trim().toLowerCase();
+    if (!SANDBOX_ID_PATTERN.test(normalized)) {
+      throw createSandboxIdInvalidError();
+    }
+    return normalized;
+  }
+
+  private resolveCommandTimeoutMs(
+    state: LocalSandboxState,
+    requestedTimeoutMs: unknown,
+  ): number {
+    if (
+      requestedTimeoutMs === undefined ||
+      requestedTimeoutMs === null ||
+      requestedTimeoutMs === ''
+    ) {
+      return state.limits.timeoutMs ?? DEFAULT_SANDBOX_LIMITS.timeoutMs;
+    }
+    const parsed = Number(requestedTimeoutMs);
+    if (!(Number.isFinite(parsed) && parsed > 0)) {
+      throw createSandboxInputInvalidError(
+        'timeoutMs must be a positive integer.',
+      );
+    }
+    return Math.floor(parsed);
+  }
+
+  private normalizeCodeLanguage(value: unknown): string {
+    if (!(typeof value === 'string' && value.trim().length > 0)) {
+      throw createSandboxInputInvalidError(
+        'language must be a non-empty string.',
+      );
+    }
+    const normalized = value.trim().toLowerCase();
+    if (!SANDBOX_SUPPORTED_CODE_LANGUAGES.has(normalized)) {
+      throw createSandboxLanguageUnsupportedError(normalized);
+    }
+    return normalized;
+  }
+
+  private resolveScriptExtension(language: string): string {
+    if (language === 'javascript' || language === 'js' || language === 'node') {
+      return 'js';
+    }
+    if (language === 'python' || language === 'py') {
+      return 'py';
+    }
+    return 'sh';
+  }
+
+  private resolveCodeProcess(
+    language: string,
+    scriptPath: string,
+  ): { file: string; args: string[] } {
+    if (language === 'javascript' || language === 'js' || language === 'node') {
+      return { args: [scriptPath], file: 'node' };
+    }
+    if (language === 'python' || language === 'py') {
+      return { args: [scriptPath], file: 'python3' };
+    }
+    return { args: [scriptPath], file: 'sh' };
+  }
+
+  private async requireSandboxState(sandboxIdValue: unknown) {
+    await this.purgeExpiredSandboxes();
+    const sandboxId = this.normalizeSandboxId(sandboxIdValue);
+    const state = this.sandboxes.get(sandboxId);
+    if (!state) {
+      throw createSandboxNotFoundError(sandboxId);
+    }
+    if (!(state.expiresAtMs === null || state.expiresAtMs > Date.now())) {
+      await this.disposeSandboxState(state);
+      throw createSandboxExpiredError(sandboxId);
+    }
+    return state;
+  }
+
+  private async disposeSandboxState(state: LocalSandboxState): Promise<void> {
+    this.sandboxes.delete(state.sandboxId);
+    await rm(state.rootDir, { force: true, recursive: true });
+  }
+
+  private async purgeExpiredSandboxes(): Promise<void> {
+    const nowMs = Date.now();
+    const expired = Array.from(this.sandboxes.values()).filter(
+      (state) => !(state.expiresAtMs === null || state.expiresAtMs > nowMs),
+    );
+    for (const state of expired) {
+      await this.disposeSandboxState(state);
+    }
+  }
+
+  private async resolveSandboxPath(
+    state: LocalSandboxState,
+    sandboxPath: unknown,
+    {
+      requireDirectory,
+      requireExisting,
+    }: { requireExisting: boolean; requireDirectory: boolean },
+  ): Promise<string> {
+    if (!(typeof sandboxPath === 'string' && sandboxPath.trim().length > 0)) {
+      throw createSandboxInputInvalidError(
+        'sandbox path must be a non-empty string.',
+      );
+    }
+    const resolvedPath = path.resolve(state.rootDir, sandboxPath.trim());
+    const relativePath = path.relative(state.rootDir, resolvedPath);
+    if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+      throw createSandboxPathInvalidError(sandboxPath.trim());
+    }
+    if (!(requireExisting || requireDirectory)) {
+      return resolvedPath;
+    }
+    try {
+      const fileStats = await stat(resolvedPath);
+      if (requireDirectory && !fileStats.isDirectory()) {
+        throw createSandboxPathInvalidError(sandboxPath.trim());
+      }
+      return resolvedPath;
+    } catch (error) {
+      if (error instanceof ServiceError) {
+        throw error;
+      }
+      if (requireExisting) {
+        throw createSandboxPathNotFoundError(sandboxPath.trim());
+      }
+      return resolvedPath;
+    }
+  }
+
+  private executeProcess({
+    args,
+    cwd,
+    file,
+    operation,
+    timeoutMs,
+  }: {
+    file: string;
+    args: string[];
+    cwd: string;
+    timeoutMs: number;
+    operation: string;
+  }): Promise<SandboxCommandResult> {
+    return new Promise<SandboxCommandResult>((resolve, reject) => {
+      const startedAt = Date.now();
+      let finished = false;
+      let timeoutTriggered = false;
+      let stdout = '';
+      let stderr = '';
+      let stdoutBytes = 0;
+      let stderrBytes = 0;
+      const appendChunk = (
+        value: string,
+        chunk: Buffer | string,
+        totalBytes: number,
+      ): { nextValue: string; nextBytes: number } => {
+        const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+        const nextBytes = totalBytes + buffer.byteLength;
+        if (totalBytes >= MAX_SANDBOX_PROCESS_OUTPUT_BYTES) {
+          return { nextBytes, nextValue: value };
+        }
+        const remaining = MAX_SANDBOX_PROCESS_OUTPUT_BYTES - totalBytes;
+        const appended = buffer.subarray(0, remaining).toString('utf8');
+        return {
+          nextBytes,
+          nextValue: `${value}${appended}`,
+        };
+      };
+      const child = spawn(file, args, {
+        cwd,
+        env: process.env,
+        windowsHide: true,
+      });
+      const timer = setTimeout(() => {
+        timeoutTriggered = true;
+        child.kill('SIGKILL');
+      }, timeoutMs);
+      child.stdout?.on('data', (chunk: Buffer | string) => {
+        const next = appendChunk(stdout, chunk, stdoutBytes);
+        stdout = next.nextValue;
+        stdoutBytes = next.nextBytes;
+      });
+      child.stderr?.on('data', (chunk: Buffer | string) => {
+        const next = appendChunk(stderr, chunk, stderrBytes);
+        stderr = next.nextValue;
+        stderrBytes = next.nextBytes;
+      });
+      child.once('error', (error) => {
+        if (finished) {
+          return;
+        }
+        finished = true;
+        clearTimeout(timer);
+        reject(createSandboxProcessFailedError(operation, error.message));
+      });
+      child.once('close', (code) => {
+        if (finished) {
+          return;
+        }
+        finished = true;
+        clearTimeout(timer);
+        if (timeoutTriggered) {
+          reject(createExecutionTimeoutError(operation, timeoutMs));
+          return;
+        }
+        resolve({
+          durationMs: Date.now() - startedAt,
+          exitCode: typeof code === 'number' ? code : -1,
+          stderr,
+          stdout,
+        });
+      });
+    });
   }
 
   private async recordTelemetry(input: {

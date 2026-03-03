@@ -92,19 +92,66 @@ describe('sandbox execution service phase-a fallback', () => {
     expect(queryable.query).not.toHaveBeenCalled();
   });
 
-  test('sandbox lifecycle operations are explicit stubs in phase A', async () => {
+  test('sandbox lifecycle operations support local adapter flow', async () => {
     const queryable = createQueryable();
     const service = new SandboxExecutionServiceImpl(true, queryable);
+    const sandbox = await service.createSandbox({
+      limits: { timeoutMs: 5000, ttlSeconds: 60 },
+    });
 
-    await expect(service.createSandbox({})).rejects.toMatchObject({
-      code: 'SANDBOX_EXECUTION_NOT_IMPLEMENTED',
+    expect(sandbox.sandboxId).toMatch(/^sbx_[a-f0-9]{32}$/);
+    const upload = await service.uploadFiles({
+      sandboxId: sandbox.sandboxId,
+      files: [
+        {
+          contentBase64: Buffer.from('hello sandbox', 'utf8').toString(
+            'base64',
+          ),
+          path: 'input.txt',
+        },
+      ],
     });
+    expect(upload.uploadedCount).toBe(1);
+
+    const commandResult = await service.runCommand({
+      sandboxId: sandbox.sandboxId,
+      command:
+        process.platform === 'win32'
+          ? 'Get-Content input.txt'
+          : 'cat input.txt',
+    });
+    expect(commandResult.exitCode).toBe(0);
+    expect(commandResult.stdout).toContain('hello sandbox');
+
+    const codeResult = await service.runCode({
+      sandboxId: sandbox.sandboxId,
+      language: 'javascript',
+      code: "console.log('sandbox code ok')",
+    });
+    expect(codeResult.output).toContain('sandbox code ok');
+
+    const artifacts = await service.downloadArtifacts({
+      sandboxId: sandbox.sandboxId,
+      paths: ['input.txt'],
+    });
+    expect(artifacts.artifacts).toHaveLength(1);
+    expect(
+      Buffer.from(artifacts.artifacts[0].contentBase64, 'base64').toString(
+        'utf8',
+      ),
+    ).toBe('hello sandbox');
+
     await expect(
-      service.destroySandbox({ sandboxId: 'sandbox-1' }),
+      service.destroySandbox({ sandboxId: sandbox.sandboxId }),
+    ).resolves.toBeUndefined();
+    await expect(
+      service.runCommand({
+        sandboxId: sandbox.sandboxId,
+        command: process.platform === 'win32' ? 'echo test' : 'echo test',
+      }),
     ).rejects.toMatchObject({
-      code: 'SANDBOX_EXECUTION_NOT_IMPLEMENTED',
+      code: 'SANDBOX_EXECUTION_SANDBOX_NOT_FOUND',
     });
-    expect(queryable.query).not.toHaveBeenCalled();
   });
 
   test('emits failed telemetry and rethrows fallback errors', async () => {
