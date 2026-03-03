@@ -695,6 +695,7 @@ const ADMIN_UX_PANELS = [
   'prediction',
   'release',
   'style',
+  'debug',
 ] as const;
 type AdminUxPanel = (typeof ADMIN_UX_PANELS)[number];
 const ADMIN_UX_PANEL_VALUES = new Set<string>(ADMIN_UX_PANELS);
@@ -4628,12 +4629,131 @@ export default async function AdminUxObserverEngagementPage({
     { id: 'prediction', label: 'Prediction' },
     { id: 'release', label: 'Release' },
     { id: 'style', label: 'Style' },
+    { id: 'debug', label: 'Debug' },
     { id: 'all', label: 'All metrics' },
   ];
   const buildPanelHref = (panel: AdminUxPanel) =>
     `/admin/ux?hours=${hours}&panel=${panel}`;
   const isPanelVisible = (panel: Exclude<AdminUxPanel, 'all'>) =>
     activePanel === 'all' || activePanel === panel;
+  const isDebugPanelVisible = activePanel === 'debug';
+  const stickyKpis = [
+    {
+      id: 'kpi-return24h',
+      label: '24h retention',
+      value: toRateText(kpis.return24h),
+      level: resolveHealthLevel(kpis.return24h, {
+        criticalBelow: 0.1,
+        watchBelow: 0.2,
+      }),
+    },
+    {
+      id: 'kpi-follow-rate',
+      label: 'Follow rate',
+      value: toRateText(kpis.followRate),
+      level: resolveHealthLevel(kpis.followRate, {
+        criticalBelow: 0.15,
+        watchBelow: 0.3,
+      }),
+    },
+    {
+      id: 'kpi-digest-open-rate',
+      label: 'Digest open',
+      value: toRateText(kpis.digestOpenRate),
+      level: resolveHealthLevel(kpis.digestOpenRate, {
+        criticalBelow: 0.2,
+        watchBelow: 0.35,
+      }),
+    },
+    {
+      id: 'kpi-prediction-accuracy',
+      label: 'Prediction accuracy',
+      value: toRateText(kpis.predictionAccuracyRate),
+      level: resolveHealthLevel(kpis.predictionAccuracyRate, {
+        criticalBelow: 0.45,
+        watchBelow: 0.6,
+      }),
+    },
+  ];
+  const releaseBreakdownRows = [
+    ...releaseHealthAlertByChannel.map((entry) => ({
+      category: 'channel',
+      key: entry.key,
+      count: entry.count,
+    })),
+    ...releaseHealthAlertByFailureMode.map((entry) => ({
+      category: 'failure mode',
+      key: entry.key,
+      count: entry.count,
+    })),
+  ];
+  const multimodalBreakdownRows = [
+    ...multimodalProviderBreakdown.map((entry) => ({
+      category: 'provider',
+      key: entry.key,
+      count: entry.count,
+    })),
+    ...multimodalEmptyReasonBreakdown.map((entry) => ({
+      category: 'empty reason',
+      key: entry.key,
+      count: entry.count,
+    })),
+    ...multimodalErrorReasonBreakdown.map((entry) => ({
+      category: 'error reason',
+      key: entry.key,
+      count: entry.count,
+    })),
+  ];
+  const debugPayload = {
+    activePanel,
+    filters: {
+      gatewayChannelFilter,
+      gatewayProviderFilter,
+      gatewaySourceFilter,
+      gatewayStatusFilter,
+    },
+    gateway: {
+      overview: gatewayOverview,
+      telemetry: gatewayTelemetry,
+      eventsSample: (gatewayRecentEvents ?? []).slice(0, 10),
+    },
+    runtime: {
+      summary: aiRuntimeSummary,
+      providers: aiRuntimeProviders,
+      dryRun: aiRuntimeDryRunResult,
+    },
+    release: {
+      latest: releaseHealthAlertLatest,
+      counts: {
+        releaseHealthAlertCount,
+        releaseHealthAlertFirstAppearanceCount,
+        releaseHealthAlertedRunCount,
+      },
+    },
+  };
+  const debugPayloadText = JSON.stringify(debugPayload, null, 2);
+  const debugContextRows: Array<{ label: string; value: string }> = [
+    { label: 'Panel', value: activePanel },
+    { label: 'Hours', value: `${hours}` },
+    {
+      label: 'Gateway source',
+      value: toStringValue(gatewaySessionsSource, 'n/a'),
+    },
+    { label: 'Session id', value: selectedSessionId ?? 'n/a' },
+    { label: 'Session scope', value: gatewaySessionScopeLabel },
+    {
+      label: 'Gateway status',
+      value: toStringValue(
+        gatewayOverview?.session.status ?? selectedSession?.status,
+        appliedGatewaySessionStatusLabel,
+      ),
+    },
+    {
+      label: 'Runtime health',
+      value: toStringValue(aiRuntimeSummary.health, 'n/a'),
+    },
+    { label: 'Release risk', value: healthLabel(releaseHealthAlertRiskLevel) },
+  ];
 
   return (
     <main className="mx-auto grid w-full max-w-7xl gap-4" id="main-content">
@@ -4670,6 +4790,31 @@ export default async function AdminUxObserverEngagementPage({
           Focus view: <span className="text-foreground">{activePanel}</span>.
           Use tabs to reduce noise and scan one domain at a time.
         </p>
+      </section>
+
+      <section className="sticky top-2 z-10 rounded-2xl border border-border/45 bg-card/95 px-3 py-2 backdrop-blur">
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          {stickyKpis.map((kpi) => (
+            <article
+              className="flex items-center justify-between gap-2 rounded-lg border border-border/35 bg-background/45 px-3 py-2"
+              key={kpi.id}
+            >
+              <div className="min-w-0">
+                <p className="truncate text-muted-foreground text-xs uppercase tracking-wide">
+                  {kpi.label}
+                </p>
+                <p className="font-semibold text-foreground text-sm">
+                  {kpi.value}
+                </p>
+              </div>
+              <span
+                className={`${healthBadgeClass(kpi.level)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[11px] uppercase tracking-wide`}
+              >
+                {healthLabel(kpi.level)}
+              </span>
+            </article>
+          ))}
+        </div>
       </section>
 
       {isPanelVisible('gateway') ? (
@@ -5058,18 +5203,46 @@ export default async function AdminUxObserverEngagementPage({
               <span className="font-semibold text-foreground">n/a</span>
             )}
           </p>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <BreakdownListCard
-              emptyLabel="No alert channel distribution in current window."
-              items={releaseHealthAlertByChannel}
-              title="First-appearance channels"
-            />
-            <BreakdownListCard
-              emptyLabel="No failure-mode distribution in current window."
-              items={releaseHealthAlertByFailureMode}
-              title="First-appearance failure modes"
-            />
-          </div>
+          <article className="card grid gap-2 p-4">
+            <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+              Alert breakdowns
+            </h3>
+            {releaseBreakdownRows.length === 0 ? (
+              <p className="text-muted-foreground text-xs">
+                No alert channel or failure-mode distribution in current window.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-left text-xs">
+                  <thead>
+                    <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
+                      <th className="py-2 pr-3">Category</th>
+                      <th className="px-3 py-2">Key</th>
+                      <th className="px-3 py-2 text-right">Count</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {releaseBreakdownRows.map((entry, index) => (
+                      <tr
+                        className="border-border/25 border-b last:border-b-0"
+                        key={`${entry.category}:${entry.key}:${index + 1}`}
+                      >
+                        <td className="py-2 pr-3 text-muted-foreground">
+                          {entry.category}
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground">
+                          {entry.key}
+                        </td>
+                        <td className="px-3 py-2 text-right font-semibold text-foreground">
+                          {entry.count}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </article>
           <ReleaseHealthAlertHourlyTrendCard
             emptyLabel="No release-health alert hourly trend data in current window."
             items={releaseHealthAlertHourlyTrend}
@@ -5155,23 +5328,46 @@ export default async function AdminUxObserverEngagementPage({
               value={toRateText(multimodalGuardrails.invalidQueryRate)}
             />
           </div>
-          <div className="grid gap-4 lg:grid-cols-3">
-            <BreakdownListCard
-              emptyLabel="No provider data in current window."
-              items={multimodalProviderBreakdown}
-              title="Provider usage"
-            />
-            <BreakdownListCard
-              emptyLabel="No empty-state reasons in current window."
-              items={multimodalEmptyReasonBreakdown}
-              title="Empty-state reasons"
-            />
-            <BreakdownListCard
-              emptyLabel="No error reasons in current window."
-              items={multimodalErrorReasonBreakdown}
-              title="Error reasons"
-            />
-          </div>
+          <article className="card grid gap-2 p-4">
+            <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+              Multimodal breakdown
+            </h3>
+            {multimodalBreakdownRows.length === 0 ? (
+              <p className="text-muted-foreground text-xs">
+                No provider/empty/error breakdown data in current window.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-left text-xs">
+                  <thead>
+                    <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
+                      <th className="py-2 pr-3">Category</th>
+                      <th className="px-3 py-2">Key</th>
+                      <th className="px-3 py-2 text-right">Count</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {multimodalBreakdownRows.map((entry, index) => (
+                      <tr
+                        className="border-border/25 border-b last:border-b-0"
+                        key={`${entry.category}:${entry.key}:${index + 1}`}
+                      >
+                        <td className="py-2 pr-3 text-muted-foreground">
+                          {entry.category}
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground">
+                          {entry.key}
+                        </td>
+                        <td className="px-3 py-2 text-right font-semibold text-foreground">
+                          {entry.count}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </article>
           <HourlyTrendCard
             emptyLabel="No hourly multimodal trend data in current window."
             items={multimodalHourlyTrend}
@@ -5641,6 +5837,83 @@ export default async function AdminUxObserverEngagementPage({
 
       {isPanelVisible('style') ? (
         <StyleFusionMetricsSection metrics={styleFusionMetrics} />
+      ) : null}
+
+      {isDebugPanelVisible ? (
+        <section className="card grid gap-4 p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="font-semibold text-foreground text-lg">
+              Debug diagnostics
+            </h2>
+            <span className="inline-flex items-center rounded-full border border-border/45 bg-background/45 px-2 py-0.5 font-semibold text-muted-foreground text-xs uppercase tracking-wide">
+              raw telemetry
+            </span>
+          </div>
+          <p className="text-muted-foreground text-sm">
+            Raw context moved here to keep operational tabs clean. Use this tab
+            only for investigations.
+          </p>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              hint="events sampled from selected session in debug payload"
+              label="Events sample"
+              value={`${debugPayload.gateway.eventsSample.length}`}
+            />
+            <StatCard
+              hint="gateway alert sessions in sampled telemetry"
+              label="Attention sessions"
+              value={`${toNumber(gatewayTelemetrySessions.attention)}`}
+            />
+            <StatCard
+              hint="runtime providers returned by health snapshot"
+              label="Runtime providers"
+              value={`${aiRuntimeProviders.length}`}
+            />
+            <StatCard
+              hint="release-health webhook events in current window"
+              label="Release alerts"
+              value={`${releaseHealthAlertCount}`}
+            />
+          </div>
+          <article className="card grid gap-2 p-4">
+            <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+              Context snapshot
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-left text-xs">
+                <thead>
+                  <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
+                    <th className="py-2 pr-3">Key</th>
+                    <th className="px-3 py-2">Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {debugContextRows.map((entry) => (
+                    <tr
+                      className="border-border/25 border-b last:border-b-0"
+                      key={entry.label}
+                    >
+                      <td className="py-2 pr-3 font-medium text-foreground">
+                        {entry.label}
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        {entry.value}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </article>
+          <details className="rounded-xl border border-border/30 bg-background/45 p-3">
+            <summary className="cursor-pointer font-semibold text-foreground text-xs uppercase tracking-wide">
+              Raw payload snapshot (JSON)
+            </summary>
+            <pre className="mt-3 overflow-x-auto whitespace-pre-wrap rounded-lg border border-border/30 bg-background/80 p-3 text-muted-foreground text-xs">
+              {debugPayloadText}
+            </pre>
+          </details>
+        </section>
       ) : null}
 
       {isPanelVisible('engagement') ? (
