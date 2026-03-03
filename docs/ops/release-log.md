@@ -33,6 +33,44 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-03 - sandbox execution pilot adapter rollout + strict gate confirmation
+
+- Scope: replace sandbox lifecycle stubs with local execution adapter and expose a protected pilot admin route for live sandbox run-code validation.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-03 11:03 -> 2026-03-03 11:16.
+- Changes:
+  - Implemented local sandbox lifecycle in `SandboxExecutionServiceImpl`:
+    - `createSandbox`, `runCommand`, `runCode`, `uploadFiles`, `downloadArtifacts`, `destroySandbox`.
+    - Added per-sandbox TTL lifecycle, cleanup, sandbox-path escape protection, and bounded process-output capture.
+    - Added validation/error coverage for invalid sandbox id/path, unsupported language, timeout, missing sandbox, and artifact size limits.
+  - Added new protected pilot route:
+    - `POST /api/admin/sandbox-execution/pilot/run-code`
+    - endpoint validates `language`, `code`, `timeoutMs`, `files`, runs smoke command + code execution, and always destroys sandbox in `finally`.
+  - Updated unit coverage to verify full sandbox lifecycle flow instead of `NOT_IMPLEMENTED` stubs.
+- Validation:
+  - `npx jest apps/api/src/__tests__/sandbox-execution.unit.spec.ts apps/api/src/__tests__/sandbox-execution-egress-profile.unit.spec.ts apps/api/src/__tests__/sandbox-execution-limits-profile.unit.spec.ts apps/api/src/__tests__/ai-runtime.unit.spec.ts --runInBand --config jest.config.cjs`: pass.
+  - `npm --workspace apps/api run build`: pass.
+  - `npx ultracite check apps/api/src/services/sandboxExecution/sandboxExecutionService.ts apps/api/src/routes/admin.ts apps/api/src/__tests__/sandbox-execution.unit.spec.ts`: pass.
+- Execution:
+  - Deployed production `api` service revision:
+    - deployment `473bca33-16d7-431d-a130-f9fc50c65339` (`SUCCESS`, commit `ee1b39df2269a5edde538e284a4338f5c0fd56d9`).
+  - Frontend service `SocialProject` auto-deployed same commit:
+    - deployment `c3c1fcb1-b980-4690-b8ea-34054a7bb305` (`SUCCESS`).
+  - Ran strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+  - Result summary:
+    - launch-gate `status=pass`
+    - `sandboxExecutionMetrics.pass=true`
+    - `sandboxExecutionAuditPolicy.pass=true`
+    - `sandboxExecutionEgressPolicy.pass=true`
+    - `sandboxExecutionLimitsPolicy.pass=true`
+    - `ingestExternalChannelFallback.pass=true`
+    - `ingestExternalChannelFailureModes.pass=true`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - Add focused API route tests for `/api/admin/sandbox-execution/pilot/run-code` negative paths (`invalid language`, `file path violation`, `feature-flag off`) to harden regression coverage.
+
 ### 2026-03-03 - sandbox execution timeline/session telemetry hardening rollout
 
 - Scope: add explicit runtime execution timeline/session correlation metadata for sandbox fallback telemetry and deploy to production.
