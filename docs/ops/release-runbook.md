@@ -120,6 +120,27 @@ Canonical references:
 3. Validate runtime/gateway control plane health:
    - `GET /api/admin/ai-runtime/health` reports `summary.health = "ok"` and `rolesBlocked = 0`.
    - `POST /api/admin/ai-runtime/dry-run` succeeds for at least one critical role probe.
+   - `GET /api/admin/sandbox-execution/metrics?hours=24&limit=20` is reachable and telemetry summary is present.
+   - Optional scoped check: `GET /api/admin/sandbox-execution/metrics?hours=24&operation=ai_runtime_dry_run`.
+   - Scoped audit envelope coverage should be present for runtime dry-run telemetry:
+     - `auditCoverage.totalWithAudit > 0`
+     - `auditCoverage.actorTypeCount > 0`
+     - `auditCoverage.sourceRouteCount > 0`
+     - `auditCoverage.toolNameCount > 0`
+   - If `SANDBOX_EXECUTION_EGRESS_ENFORCE=true`, verify:
+     - `SANDBOX_EXECUTION_EGRESS_PROFILES` resolves a profile for `ai_runtime_dry_run` (or wildcard `*`).
+     - `SANDBOX_EXECUTION_EGRESS_PROVIDER_ALLOWLISTS` contains that profile.
+   - If `SANDBOX_EXECUTION_LIMITS_ENFORCE=true`, verify:
+     - `SANDBOX_EXECUTION_OPERATION_LIMIT_PROFILES` resolves a profile for `ai_runtime_dry_run` (or wildcard `*`).
+     - `SANDBOX_EXECUTION_LIMIT_PROFILES` contains that resolved profile.
+   - Launch gate egress-policy probe should be green when mapping is configured:
+     - `sandboxExecutionEgressPolicy.pass=true`, or
+     - `sandboxExecutionEgressPolicy.skipped=true` when no `SANDBOX_EXECUTION_EGRESS_PROFILES` mapping exists for runtime dry-run path.
+   - Launch gate limits-policy probe should be green when mapping is configured:
+     - `sandboxExecutionLimitsPolicy.pass=true`, or
+     - `sandboxExecutionLimitsPolicy.skipped=true` when no `SANDBOX_EXECUTION_OPERATION_LIMIT_PROFILES` mapping exists for runtime dry-run path.
+   - Launch gate audit-policy probe should be green:
+     - `sandboxExecutionAuditPolicy.pass=true` with required fields `actorType`, `sourceRoute`, `toolName`.
    - `GET /api/admin/agent-gateway/sessions?source=db&limit=20` shows no abnormal stale active session growth.
 4. Record outcome in release log.
 

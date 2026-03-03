@@ -23,6 +23,11 @@ import { ServiceError } from '../services/common/errors';
 import { draftOrchestrationService } from '../services/orchestration/draftOrchestrationService';
 import { PrivacyServiceImpl } from '../services/privacy/privacyService';
 import type { RealtimeService } from '../services/realtime/types';
+import {
+  SANDBOX_EXECUTION_TELEMETRY_EVENT_TYPE,
+  SANDBOX_EXECUTION_TELEMETRY_SOURCE,
+  sandboxExecutionService,
+} from '../services/sandboxExecution/sandboxExecutionService';
 import { EmbeddingBackfillServiceImpl } from '../services/search/embeddingBackfillService';
 
 const router = Router();
@@ -106,6 +111,8 @@ const AI_RUNTIME_DRY_RUN_MAX_ARRAY_ITEM_LENGTH = 64;
 const AI_RUNTIME_DRY_RUN_MAX_PROMPT_LENGTH = 4000;
 const AI_RUNTIME_DRY_RUN_MAX_TIMEOUT_MS = 120_000;
 const AI_RUNTIME_PROVIDER_IDENTIFIER_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+const SANDBOX_EXECUTION_OPERATION_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,79}$/;
+const SANDBOX_EXECUTION_EGRESS_PROFILE_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 const AGENT_GATEWAY_MAX_KEEP_RECENT = 299;
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -612,6 +619,58 @@ const parseOptionalProviderIdentifierQueryString = (
   return normalized;
 };
 
+const parseOptionalSandboxExecutionOperationQueryString = (
+  value: unknown,
+  {
+    fieldName,
+  }: {
+    fieldName: string;
+  },
+): string | null => {
+  const parsed = parseOptionalBoundedQueryString(value, {
+    fieldName,
+    maxLength: 80,
+  });
+  if (!parsed) {
+    return null;
+  }
+  const normalized = parsed.toLowerCase();
+  if (!SANDBOX_EXECUTION_OPERATION_PATTERN.test(normalized)) {
+    throw new ServiceError(
+      'ADMIN_INVALID_QUERY',
+      `${fieldName} must use a valid sandbox execution operation format.`,
+      400,
+    );
+  }
+  return normalized;
+};
+
+const parseOptionalSandboxExecutionStatusQuery = (
+  value: unknown,
+  {
+    fieldName,
+  }: {
+    fieldName: string;
+  },
+): 'ok' | 'failed' | null => {
+  const parsed = parseOptionalBoundedQueryString(value, {
+    fieldName,
+    maxLength: 16,
+  });
+  if (!parsed) {
+    return null;
+  }
+  const normalized = parsed.toLowerCase();
+  if (normalized === 'ok' || normalized === 'failed') {
+    return normalized;
+  }
+  throw new ServiceError(
+    'ADMIN_INVALID_QUERY',
+    `${fieldName} must be either "ok" or "failed".`,
+    400,
+  );
+};
+
 const parseOptionalGatewaySessionStatusQuery = (
   value: unknown,
   {
@@ -658,6 +717,118 @@ const parseOptionalGatewayRoleQueryString = (
     throw new ServiceError(
       'ADMIN_INVALID_QUERY',
       `${fieldName} must use a valid role format.`,
+      400,
+    );
+  }
+  return normalized;
+};
+
+const parseOptionalSandboxExecutionEgressDecisionQuery = (
+  value: unknown,
+  {
+    fieldName,
+  }: {
+    fieldName: string;
+  },
+): 'allow' | 'deny' | 'not_enforced' | null => {
+  const parsed = parseOptionalBoundedQueryString(value, {
+    fieldName,
+    maxLength: 32,
+  });
+  if (!parsed) {
+    return null;
+  }
+  const normalized = parsed.toLowerCase();
+  if (
+    normalized === 'allow' ||
+    normalized === 'deny' ||
+    normalized === 'not_enforced'
+  ) {
+    return normalized;
+  }
+  throw new ServiceError(
+    'ADMIN_INVALID_QUERY',
+    `${fieldName} must be one of "allow", "deny", "not_enforced".`,
+    400,
+  );
+};
+
+const parseOptionalSandboxExecutionLimitDecisionQuery = (
+  value: unknown,
+  {
+    fieldName,
+  }: {
+    fieldName: string;
+  },
+): 'allow' | 'deny' | 'not_enforced' | null => {
+  const parsed = parseOptionalBoundedQueryString(value, {
+    fieldName,
+    maxLength: 32,
+  });
+  if (!parsed) {
+    return null;
+  }
+  const normalized = parsed.toLowerCase();
+  if (
+    normalized === 'allow' ||
+    normalized === 'deny' ||
+    normalized === 'not_enforced'
+  ) {
+    return normalized;
+  }
+  throw new ServiceError(
+    'ADMIN_INVALID_QUERY',
+    `${fieldName} must be one of "allow", "deny", "not_enforced".`,
+    400,
+  );
+};
+
+const parseOptionalSandboxExecutionEgressProfileQuery = (
+  value: unknown,
+  {
+    fieldName,
+  }: {
+    fieldName: string;
+  },
+): string | null => {
+  const parsed = parseOptionalBoundedQueryString(value, {
+    fieldName,
+    maxLength: 64,
+  });
+  if (!parsed) {
+    return null;
+  }
+  const normalized = parsed.toLowerCase();
+  if (!SANDBOX_EXECUTION_EGRESS_PROFILE_PATTERN.test(normalized)) {
+    throw new ServiceError(
+      'ADMIN_INVALID_QUERY',
+      `${fieldName} must use a valid egress profile identifier format.`,
+      400,
+    );
+  }
+  return normalized;
+};
+
+const parseOptionalSandboxExecutionLimitProfileQuery = (
+  value: unknown,
+  {
+    fieldName,
+  }: {
+    fieldName: string;
+  },
+): string | null => {
+  const parsed = parseOptionalBoundedQueryString(value, {
+    fieldName,
+    maxLength: 64,
+  });
+  if (!parsed) {
+    return null;
+  }
+  const normalized = parsed.toLowerCase();
+  if (!SANDBOX_EXECUTION_EGRESS_PROFILE_PATTERN.test(normalized)) {
+    throw new ServiceError(
+      'ADMIN_INVALID_QUERY',
+      `${fieldName} must use a valid limit profile identifier format.`,
       400,
     );
   }
@@ -2568,15 +2739,37 @@ router.post(
         { fieldName: 'simulateFailures' },
       );
       const timeoutMs = parseOptionalRuntimeTimeout(timeoutMsRaw);
+      const role = roleRaw as AIRuntimeRole;
+      const roleProfile = aiRuntimeService
+        .getProfiles()
+        .find((profile) => profile.role === role);
+      const egressPolicyProviders =
+        providersOverride && providersOverride.length > 0
+          ? providersOverride
+          : (roleProfile?.providers ?? []);
 
-      const result = await aiRuntimeService.runWithFailover({
-        role: roleRaw as AIRuntimeRole,
-        prompt,
-        timeoutMs,
-        providersOverride,
-        simulateFailures,
-        mutateProviderState: false,
-      });
+      const result = await sandboxExecutionService.executeWithFallback(
+        'ai_runtime_dry_run',
+        () =>
+          aiRuntimeService.runWithFailover({
+            role,
+            prompt,
+            timeoutMs,
+            providersOverride,
+            simulateFailures,
+            mutateProviderState: false,
+          }),
+        {
+          providerIdentifiers: egressPolicyProviders,
+          requestedLimits:
+            typeof timeoutMs === 'number' ? { timeoutMs } : undefined,
+          audit: {
+            actorType: 'admin',
+            sourceRoute: '/api/admin/ai-runtime/dry-run',
+            toolName: 'aiRuntime.runWithFailover',
+          },
+        },
+      );
 
       res.json({
         result,
@@ -4179,6 +4372,303 @@ router.get('/admin/system/metrics', requireAdmin, async (req, res, next) => {
     next(error);
   }
 });
+
+router.get(
+  '/admin/sandbox-execution/metrics',
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      const query = assertAllowedQueryFields(req.query, {
+        allowed: [
+          'hours',
+          'operation',
+          'status',
+          'limit',
+          'egressProfile',
+          'egressDecision',
+          'limitsProfile',
+          'limitsDecision',
+        ],
+        endpoint: '/api/admin/sandbox-execution/metrics',
+      });
+      const hours = parseBoundedQueryInt(query.hours, {
+        fieldName: 'hours',
+        defaultValue: 24,
+        min: 1,
+        max: 720,
+      });
+      const operation = parseOptionalSandboxExecutionOperationQueryString(
+        query.operation,
+        {
+          fieldName: 'operation',
+        },
+      );
+      const status = parseOptionalSandboxExecutionStatusQuery(query.status, {
+        fieldName: 'status',
+      });
+      const egressProfile = parseOptionalSandboxExecutionEgressProfileQuery(
+        query.egressProfile,
+        {
+          fieldName: 'egressProfile',
+        },
+      );
+      const egressDecision = parseOptionalSandboxExecutionEgressDecisionQuery(
+        query.egressDecision,
+        {
+          fieldName: 'egressDecision',
+        },
+      );
+      const limitsProfile = parseOptionalSandboxExecutionLimitProfileQuery(
+        query.limitsProfile,
+        {
+          fieldName: 'limitsProfile',
+        },
+      );
+      const limitsDecision = parseOptionalSandboxExecutionLimitDecisionQuery(
+        query.limitsDecision,
+        {
+          fieldName: 'limitsDecision',
+        },
+      );
+      const limit = parseBoundedQueryInt(query.limit, {
+        fieldName: 'limit',
+        defaultValue: 20,
+        min: 1,
+        max: 200,
+      });
+
+      const filters: string[] = [
+        'source = $1',
+        'event_type = $2',
+        "created_at >= NOW() - ($3 || ' hours')::interval",
+      ];
+      const params: unknown[] = [
+        SANDBOX_EXECUTION_TELEMETRY_SOURCE,
+        SANDBOX_EXECUTION_TELEMETRY_EVENT_TYPE,
+        hours,
+      ];
+
+      if (operation) {
+        params.push(operation);
+        filters.push(
+          `LOWER(COALESCE(metadata->>'operation', '')) = $${params.length}`,
+        );
+      }
+      if (status) {
+        params.push(status);
+        filters.push(`status = $${params.length}`);
+      }
+      if (egressProfile) {
+        params.push(egressProfile);
+        filters.push(
+          `LOWER(COALESCE(metadata->>'egressProfile', '')) = $${params.length}`,
+        );
+      }
+      if (egressDecision) {
+        params.push(egressDecision);
+        filters.push(
+          `LOWER(COALESCE(metadata->>'egressDecision', 'not_enforced')) = $${params.length}`,
+        );
+      }
+      if (limitsProfile) {
+        params.push(limitsProfile);
+        filters.push(
+          `LOWER(COALESCE(metadata->>'limitsProfile', '')) = $${params.length}`,
+        );
+      }
+      if (limitsDecision) {
+        params.push(limitsDecision);
+        filters.push(
+          `LOWER(COALESCE(metadata->>'limitsDecision', 'not_enforced')) = $${params.length}`,
+        );
+      }
+
+      const summary = await db.query(
+        `SELECT COUNT(*)::int AS total,
+                COUNT(*) FILTER (WHERE status = 'ok')::int AS success_count,
+                COUNT(*) FILTER (WHERE status = 'failed')::int AS failed_count,
+                AVG(timing_ms)::float AS avg_timing_ms,
+                PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY timing_ms) AS p95_timing_ms,
+                MAX(created_at) AS last_event_at
+         FROM ux_events
+         WHERE ${filters.join(' AND ')}`,
+        params,
+      );
+
+      const operationParams = [...params, limit];
+      const byOperation = await db.query(
+        `SELECT LOWER(COALESCE(metadata->>'operation', 'unknown')) AS operation,
+                COUNT(*)::int AS total,
+                COUNT(*) FILTER (WHERE status = 'ok')::int AS success_count,
+                COUNT(*) FILTER (WHERE status = 'failed')::int AS failed_count,
+                AVG(timing_ms)::float AS avg_timing_ms,
+                PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY timing_ms) AS p95_timing_ms,
+                MAX(created_at) AS last_event_at
+         FROM ux_events
+         WHERE ${filters.join(' AND ')}
+         GROUP BY operation
+         ORDER BY total DESC, operation
+         LIMIT $${operationParams.length}`,
+        operationParams,
+      );
+
+      const modeBreakdown = await db.query(
+        `SELECT LOWER(COALESCE(metadata->>'mode', 'unknown')) AS mode,
+                COALESCE(status, 'unknown') AS status,
+                COUNT(*)::int AS count
+         FROM ux_events
+         WHERE ${filters.join(' AND ')}
+         GROUP BY mode, status
+         ORDER BY mode, status`,
+        params,
+      );
+
+      const egressProfileBreakdown = await db.query(
+        `SELECT LOWER(COALESCE(metadata->>'egressProfile', 'none')) AS egress_profile,
+                COALESCE(status, 'unknown') AS status,
+                COUNT(*)::int AS count
+         FROM ux_events
+         WHERE ${filters.join(' AND ')}
+         GROUP BY egress_profile, status
+         ORDER BY egress_profile, status`,
+        params,
+      );
+
+      const limitsProfileBreakdown = await db.query(
+        `SELECT LOWER(COALESCE(metadata->>'limitsProfile', 'none')) AS limits_profile,
+                COALESCE(status, 'unknown') AS status,
+                COUNT(*)::int AS count
+         FROM ux_events
+         WHERE ${filters.join(' AND ')}
+         GROUP BY limits_profile, status
+         ORDER BY limits_profile, status`,
+        params,
+      );
+
+      const auditCoverage = await db.query(
+        `SELECT
+                COUNT(*) FILTER (
+                  WHERE
+                    NULLIF(BTRIM(COALESCE(metadata #>> '{audit,actorId}', '')), '') IS NOT NULL
+                    OR NULLIF(BTRIM(COALESCE(metadata #>> '{audit,actorType}', '')), '') IS NOT NULL
+                    OR NULLIF(BTRIM(COALESCE(metadata #>> '{audit,sessionId}', '')), '') IS NOT NULL
+                    OR NULLIF(BTRIM(COALESCE(metadata #>> '{audit,sourceRoute}', '')), '') IS NOT NULL
+                    OR NULLIF(BTRIM(COALESCE(metadata #>> '{audit,toolName}', '')), '') IS NOT NULL
+                )::int AS total_with_audit,
+                COUNT(*) FILTER (
+                  WHERE NULLIF(BTRIM(COALESCE(metadata #>> '{audit,actorId}', '')), '') IS NOT NULL
+                )::int AS actor_id_count,
+                COUNT(*) FILTER (
+                  WHERE NULLIF(BTRIM(COALESCE(metadata #>> '{audit,actorType}', '')), '') IS NOT NULL
+                )::int AS actor_type_count,
+                COUNT(*) FILTER (
+                  WHERE NULLIF(BTRIM(COALESCE(metadata #>> '{audit,sessionId}', '')), '') IS NOT NULL
+                )::int AS session_id_count,
+                COUNT(*) FILTER (
+                  WHERE NULLIF(BTRIM(COALESCE(metadata #>> '{audit,sourceRoute}', '')), '') IS NOT NULL
+                )::int AS source_route_count,
+                COUNT(*) FILTER (
+                  WHERE NULLIF(BTRIM(COALESCE(metadata #>> '{audit,toolName}', '')), '') IS NOT NULL
+                )::int AS tool_name_count
+         FROM ux_events
+         WHERE ${filters.join(' AND ')}`,
+        params,
+      );
+
+      const summaryRow = summary.rows[0] ?? {
+        total: 0,
+        success_count: 0,
+        failed_count: 0,
+        avg_timing_ms: null,
+        p95_timing_ms: null,
+        last_event_at: null,
+      };
+      const auditCoverageRow = auditCoverage.rows[0] ?? {
+        total_with_audit: 0,
+        actor_id_count: 0,
+        actor_type_count: 0,
+        session_id_count: 0,
+        source_route_count: 0,
+        tool_name_count: 0,
+      };
+      const totalEvents = Number(summaryRow.total ?? 0);
+      const totalWithAudit = Number(auditCoverageRow.total_with_audit ?? 0);
+
+      res.json({
+        windowHours: hours,
+        filters: {
+          operation,
+          status,
+          egressProfile,
+          egressDecision,
+          limitsProfile,
+          limitsDecision,
+          limit,
+          source: SANDBOX_EXECUTION_TELEMETRY_SOURCE,
+          eventType: SANDBOX_EXECUTION_TELEMETRY_EVENT_TYPE,
+        },
+        summary: {
+          total: totalEvents,
+          successCount: Number(summaryRow.success_count ?? 0),
+          failedCount: Number(summaryRow.failed_count ?? 0),
+          avgTimingMs:
+            summaryRow.avg_timing_ms === null
+              ? null
+              : Number(Number(summaryRow.avg_timing_ms).toFixed(3)),
+          p95TimingMs:
+            summaryRow.p95_timing_ms === null
+              ? null
+              : Number(Number(summaryRow.p95_timing_ms).toFixed(3)),
+          lastEventAt: toNullableIsoTimestamp(summaryRow.last_event_at),
+        },
+        auditCoverage: {
+          totalWithAudit,
+          actorIdCount: Number(auditCoverageRow.actor_id_count ?? 0),
+          actorTypeCount: Number(auditCoverageRow.actor_type_count ?? 0),
+          sessionIdCount: Number(auditCoverageRow.session_id_count ?? 0),
+          sourceRouteCount: Number(auditCoverageRow.source_route_count ?? 0),
+          toolNameCount: Number(auditCoverageRow.tool_name_count ?? 0),
+          coverageRate:
+            totalEvents > 0
+              ? Number((totalWithAudit / totalEvents).toFixed(3))
+              : null,
+        },
+        byOperation: byOperation.rows.map((row) => ({
+          operation: String(row.operation ?? 'unknown'),
+          total: Number(row.total ?? 0),
+          successCount: Number(row.success_count ?? 0),
+          failedCount: Number(row.failed_count ?? 0),
+          avgTimingMs:
+            row.avg_timing_ms === null
+              ? null
+              : Number(Number(row.avg_timing_ms).toFixed(3)),
+          p95TimingMs:
+            row.p95_timing_ms === null
+              ? null
+              : Number(Number(row.p95_timing_ms).toFixed(3)),
+          lastEventAt: toNullableIsoTimestamp(row.last_event_at),
+        })),
+        modeBreakdown: modeBreakdown.rows.map((row) => ({
+          mode: String(row.mode ?? 'unknown'),
+          status: String(row.status ?? 'unknown'),
+          count: Number(row.count ?? 0),
+        })),
+        egressProfileBreakdown: egressProfileBreakdown.rows.map((row) => ({
+          egressProfile: String(row.egress_profile ?? 'none'),
+          status: String(row.status ?? 'unknown'),
+          count: Number(row.count ?? 0),
+        })),
+        limitsProfileBreakdown: limitsProfileBreakdown.rows.map((row) => ({
+          limitsProfile: String(row.limits_profile ?? 'none'),
+          status: String(row.status ?? 'unknown'),
+          count: Number(row.count ?? 0),
+        })),
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 router.get('/admin/ux/metrics', requireAdmin, async (req, res, next) => {
   try {

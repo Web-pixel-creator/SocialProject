@@ -36,6 +36,14 @@ const ARTIFACTS = {
     'artifacts/release/production-agent-gateway-adapter-matrix-probe.json',
   railwayGate: 'artifacts/release/railway-gate-strict.json',
   runtimeProbe: 'artifacts/release/production-runtime-orchestration-probe.json',
+  sandboxExecutionAuditPolicy:
+    'artifacts/release/production-sandbox-execution-audit-policy.json',
+  sandboxExecutionEgressPolicy:
+    'artifacts/release/production-sandbox-execution-egress-policy.json',
+  sandboxExecutionLimitsPolicy:
+    'artifacts/release/production-sandbox-execution-limits-policy.json',
+  sandboxExecutionMetrics:
+    'artifacts/release/production-sandbox-execution-metrics.json',
   summary: 'artifacts/release/production-launch-gate-summary.json',
   telemetry: 'artifacts/release/production-agent-gateway-telemetry.json',
 };
@@ -48,6 +56,16 @@ const EXPECTED_CRON_JOBS = [
   'embedding_backfill',
 ];
 const EXTERNAL_CHANNELS = ['telegram', 'slack', 'discord'];
+const SANDBOX_EGRESS_OPERATION_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,79}$/;
+const SANDBOX_EGRESS_PROFILE_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+const SANDBOX_EGRESS_WILDCARD_KEY = '*';
+const SANDBOX_LIMIT_PROFILE_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+const SANDBOX_RUNTIME_PROBE_OPERATION = 'ai_runtime_dry_run';
+const SANDBOX_RUNTIME_REQUIRED_AUDIT_FIELDS = [
+  'actorType',
+  'sourceRoute',
+  'toolName',
+];
 const REQUIRED_SMOKE_STEP_NAMES = [
   'api.health',
   'api.ready',
@@ -105,6 +123,240 @@ const parseExternalChannels = (value, sourceLabel) => {
     );
   }
   return [...new Set(normalized)];
+};
+const normalizeLower = (value) => value.trim().toLowerCase();
+const parseSandboxExecutionEgressProfiles = (rawValue, sourceLabel) => {
+  const raw = String(rawValue || '').trim();
+  if (!raw) {
+    return new Map();
+  }
+  let parsed = null;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    throw new Error(
+      `${sourceLabel} has invalid JSON: ${
+        error instanceof Error ? error.message : 'unknown parse error'
+      }`,
+    );
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error(`${sourceLabel} must be a JSON object.`);
+  }
+  const map = new Map();
+  for (const [operationRaw, profileRaw] of Object.entries(parsed)) {
+    if (typeof profileRaw !== 'string') {
+      throw new Error(
+        `${sourceLabel} entry "${operationRaw}" must map to a string profile.`,
+      );
+    }
+    const operation = normalizeLower(operationRaw);
+    const profile = normalizeLower(profileRaw);
+    if (
+      operation !== SANDBOX_EGRESS_WILDCARD_KEY &&
+      !SANDBOX_EGRESS_OPERATION_PATTERN.test(operation)
+    ) {
+      throw new Error(
+        `${sourceLabel} entry "${operationRaw}" has invalid operation id.`,
+      );
+    }
+    if (!SANDBOX_EGRESS_PROFILE_PATTERN.test(profile)) {
+      throw new Error(
+        `${sourceLabel} entry "${operationRaw}" has invalid profile id.`,
+      );
+    }
+    map.set(operation, profile);
+  }
+  return map;
+};
+const resolveSandboxExecutionEgressProfile = (profiles, operation) => {
+  const normalized = normalizeLower(operation);
+  if (profiles.has(normalized)) {
+    return profiles.get(normalized) || null;
+  }
+  if (profiles.has(SANDBOX_EGRESS_WILDCARD_KEY)) {
+    return profiles.get(SANDBOX_EGRESS_WILDCARD_KEY) || null;
+  }
+  return null;
+};
+const resolveSandboxExecutionEgressProfilesConfig = (apiServiceVars) => {
+  const candidates = [
+    {
+      raw: process.env.RELEASE_SANDBOX_EXECUTION_EGRESS_PROFILES,
+      source: 'RELEASE_SANDBOX_EXECUTION_EGRESS_PROFILES',
+    },
+    {
+      raw: process.env.SANDBOX_EXECUTION_EGRESS_PROFILES,
+      source: 'SANDBOX_EXECUTION_EGRESS_PROFILES',
+    },
+    {
+      raw:
+        apiServiceVars && typeof apiServiceVars === 'object'
+          ? apiServiceVars.SANDBOX_EXECUTION_EGRESS_PROFILES
+          : '',
+      source: 'Railway api service variable SANDBOX_EXECUTION_EGRESS_PROFILES',
+    },
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate.raw === 'string' && candidate.raw.trim().length > 0) {
+      return {
+        source: candidate.source,
+        value: candidate.raw.trim(),
+      };
+    }
+  }
+  return {
+    source: 'unset',
+    value: '',
+  };
+};
+const resolveSandboxExecutionEgressEnforceConfig = (apiServiceVars) => {
+  const candidates = [
+    {
+      raw: process.env.RELEASE_SANDBOX_EXECUTION_EGRESS_ENFORCE,
+      source: 'RELEASE_SANDBOX_EXECUTION_EGRESS_ENFORCE',
+    },
+    {
+      raw: process.env.SANDBOX_EXECUTION_EGRESS_ENFORCE,
+      source: 'SANDBOX_EXECUTION_EGRESS_ENFORCE',
+    },
+    {
+      raw:
+        apiServiceVars && typeof apiServiceVars === 'object'
+          ? apiServiceVars.SANDBOX_EXECUTION_EGRESS_ENFORCE
+          : '',
+      source: 'Railway api service variable SANDBOX_EXECUTION_EGRESS_ENFORCE',
+    },
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate.raw === 'string' && candidate.raw.trim().length > 0) {
+      return {
+        source: candidate.source,
+        value: parseBoolean(candidate.raw),
+      };
+    }
+  }
+  return {
+    source: 'unset',
+    value: false,
+  };
+};
+const parseSandboxExecutionOperationLimitProfiles = (rawValue, sourceLabel) => {
+  const raw = String(rawValue || '').trim();
+  if (!raw) {
+    return new Map();
+  }
+  let parsed = null;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    throw new Error(
+      `${sourceLabel} has invalid JSON: ${
+        error instanceof Error ? error.message : 'unknown parse error'
+      }`,
+    );
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error(`${sourceLabel} must be a JSON object.`);
+  }
+  const map = new Map();
+  for (const [operationRaw, profileRaw] of Object.entries(parsed)) {
+    if (typeof profileRaw !== 'string') {
+      throw new Error(
+        `${sourceLabel} entry "${operationRaw}" must map to a string profile.`,
+      );
+    }
+    const operation = normalizeLower(operationRaw);
+    const profile = normalizeLower(profileRaw);
+    if (
+      operation !== SANDBOX_EGRESS_WILDCARD_KEY &&
+      !SANDBOX_EGRESS_OPERATION_PATTERN.test(operation)
+    ) {
+      throw new Error(
+        `${sourceLabel} entry "${operationRaw}" has invalid operation id.`,
+      );
+    }
+    if (!SANDBOX_LIMIT_PROFILE_PATTERN.test(profile)) {
+      throw new Error(
+        `${sourceLabel} entry "${operationRaw}" has invalid profile id.`,
+      );
+    }
+    map.set(operation, profile);
+  }
+  return map;
+};
+const resolveSandboxExecutionOperationLimitProfile = (profiles, operation) => {
+  const normalized = normalizeLower(operation);
+  if (profiles.has(normalized)) {
+    return profiles.get(normalized) || null;
+  }
+  if (profiles.has(SANDBOX_EGRESS_WILDCARD_KEY)) {
+    return profiles.get(SANDBOX_EGRESS_WILDCARD_KEY) || null;
+  }
+  return null;
+};
+const resolveSandboxExecutionOperationLimitProfilesConfig = (apiServiceVars) => {
+  const candidates = [
+    {
+      raw: process.env.RELEASE_SANDBOX_EXECUTION_OPERATION_LIMIT_PROFILES,
+      source: 'RELEASE_SANDBOX_EXECUTION_OPERATION_LIMIT_PROFILES',
+    },
+    {
+      raw: process.env.SANDBOX_EXECUTION_OPERATION_LIMIT_PROFILES,
+      source: 'SANDBOX_EXECUTION_OPERATION_LIMIT_PROFILES',
+    },
+    {
+      raw:
+        apiServiceVars && typeof apiServiceVars === 'object'
+          ? apiServiceVars.SANDBOX_EXECUTION_OPERATION_LIMIT_PROFILES
+          : '',
+      source:
+        'Railway api service variable SANDBOX_EXECUTION_OPERATION_LIMIT_PROFILES',
+    },
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate.raw === 'string' && candidate.raw.trim().length > 0) {
+      return {
+        source: candidate.source,
+        value: candidate.raw.trim(),
+      };
+    }
+  }
+  return {
+    source: 'unset',
+    value: '',
+  };
+};
+const resolveSandboxExecutionLimitsEnforceConfig = (apiServiceVars) => {
+  const candidates = [
+    {
+      raw: process.env.RELEASE_SANDBOX_EXECUTION_LIMITS_ENFORCE,
+      source: 'RELEASE_SANDBOX_EXECUTION_LIMITS_ENFORCE',
+    },
+    {
+      raw: process.env.SANDBOX_EXECUTION_LIMITS_ENFORCE,
+      source: 'SANDBOX_EXECUTION_LIMITS_ENFORCE',
+    },
+    {
+      raw:
+        apiServiceVars && typeof apiServiceVars === 'object'
+          ? apiServiceVars.SANDBOX_EXECUTION_LIMITS_ENFORCE
+          : '',
+      source: 'Railway api service variable SANDBOX_EXECUTION_LIMITS_ENFORCE',
+    },
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate.raw === 'string' && candidate.raw.trim().length > 0) {
+      return {
+        source: candidate.source,
+        value: parseBoolean(candidate.raw),
+      };
+    }
+  }
+  return {
+    source: 'unset',
+    value: false,
+  };
 };
 
 const quote = (v) =>
@@ -537,6 +789,7 @@ const main = async () => {
     let webhookSecret = String(
       process.env[RELEASE_FALLBACK_ENV.webhookSecret] || '',
     ).trim();
+    let apiServiceVars = null;
     if (!adminToken || !csrfToken || !webhookSecret) {
       const vars = JSON.parse(
         runRailway([
@@ -549,6 +802,7 @@ const main = async () => {
           '--json',
         ]),
       );
+      apiServiceVars = vars;
       adminToken ||= String(vars.ADMIN_API_TOKEN || '').trim();
       csrfToken ||= String(vars.CSRF_TOKEN || '').trim();
       webhookSecret ||= String(vars.AGENT_GATEWAY_WEBHOOK_SECRET || '').trim();
@@ -562,6 +816,50 @@ const main = async () => {
         `Missing required API secrets: ${missing.join(', ')}. Provide Railway access or set ${RELEASE_FALLBACK_ENV.adminToken}/${RELEASE_FALLBACK_ENV.csrfToken}/${RELEASE_FALLBACK_ENV.webhookSecret}.`,
       );
     }
+    if (!apiServiceVars) {
+      try {
+        apiServiceVars = JSON.parse(
+          runRailway([
+            'variable',
+            'list',
+            '--service',
+            o.apiService,
+            '--environment',
+            o.environment,
+            '--json',
+          ]),
+        );
+      } catch {
+        apiServiceVars = null;
+      }
+    }
+    const sandboxExecutionEgressConfig = resolveSandboxExecutionEgressProfilesConfig(
+      apiServiceVars,
+    );
+    const sandboxExecutionEgressProfiles = parseSandboxExecutionEgressProfiles(
+      sandboxExecutionEgressConfig.value,
+      sandboxExecutionEgressConfig.source,
+    );
+    const runtimeDryRunEgressProfile = resolveSandboxExecutionEgressProfile(
+      sandboxExecutionEgressProfiles,
+      SANDBOX_RUNTIME_PROBE_OPERATION,
+    );
+    const sandboxExecutionEgressEnforceConfig = resolveSandboxExecutionEgressEnforceConfig(
+      apiServiceVars,
+    );
+    const sandboxExecutionOperationLimitProfilesConfig =
+      resolveSandboxExecutionOperationLimitProfilesConfig(apiServiceVars);
+    const sandboxExecutionOperationLimitProfiles =
+      parseSandboxExecutionOperationLimitProfiles(
+        sandboxExecutionOperationLimitProfilesConfig.value,
+        sandboxExecutionOperationLimitProfilesConfig.source,
+      );
+    const runtimeDryRunLimitProfile = resolveSandboxExecutionOperationLimitProfile(
+      sandboxExecutionOperationLimitProfiles,
+      SANDBOX_RUNTIME_PROBE_OPERATION,
+    );
+    const sandboxExecutionLimitsEnforceConfig =
+      resolveSandboxExecutionLimitsEnforceConfig(apiServiceVars);
 
     if (!o.skipSmoke) {
       run('node', [path.resolve('scripts/release/smoke-check.mjs')], {
@@ -606,6 +904,7 @@ const main = async () => {
       ['/api/admin/system/metrics', true],
       ['/api/admin/embeddings/metrics', true],
       ['/api/admin/ai-runtime/health', true],
+      ['/api/admin/sandbox-execution/metrics?hours=24&limit=20', true],
       ['/api/admin/agent-gateway/sessions?source=db&limit=20', true],
       ['/api/admin/agent-gateway/telemetry?hours=24&limit=200', true],
       ['/api/admin/jobs/metrics?hours=24', true],
@@ -659,6 +958,12 @@ const main = async () => {
         telemetryNonEmpty:
           Number(health['/api/admin/agent-gateway/telemetry?hours=24&limit=200'].json?.sessions?.total ?? 0) > 0 &&
           Number(health['/api/admin/agent-gateway/telemetry?hours=24&limit=200'].json?.events?.total ?? 0) > 0,
+        sandboxExecutionMetricsReachable:
+          health['/api/admin/sandbox-execution/metrics?hours=24&limit=20'].status ===
+            200 &&
+          typeof health[
+            '/api/admin/sandbox-execution/metrics?hours=24&limit=20'
+          ].json?.summary === 'object',
         expectedCronJobsPresent: EXPECTED_CRON_JOBS.every((j) => names.has(j)),
         naturalCronWindow: o.requireNaturalCronWindow ? naturalCronComplete : true,
       },
@@ -696,6 +1001,302 @@ const main = async () => {
         timeoutMs: o.httpTimeoutMs,
         useAdmin: true,
       });
+      const sandboxExecutionMetrics = await postOrGet({
+        adminToken,
+        apiBaseUrl,
+        csrfToken,
+        pathName:
+          '/api/admin/sandbox-execution/metrics?hours=24&operation=ai_runtime_dry_run&limit=20',
+        timeoutMs: o.httpTimeoutMs,
+        useAdmin: true,
+      });
+      const sandboxExecutionMetricsTotal =
+        Number(sandboxExecutionMetrics.json?.summary?.total ?? 0) || 0;
+      const sandboxExecutionMetricsSuccessCount =
+        Number(sandboxExecutionMetrics.json?.summary?.successCount ?? 0) || 0;
+      const sandboxExecutionMetricsFailedCount =
+        Number(sandboxExecutionMetrics.json?.summary?.failedCount ?? 0) || 0;
+      const sandboxExecutionAuditTotalWithAudit =
+        Number(sandboxExecutionMetrics.json?.auditCoverage?.totalWithAudit ?? 0) ||
+        0;
+      const sandboxExecutionAuditActorTypeCount =
+        Number(sandboxExecutionMetrics.json?.auditCoverage?.actorTypeCount ?? 0) ||
+        0;
+      const sandboxExecutionAuditSourceRouteCount =
+        Number(
+          sandboxExecutionMetrics.json?.auditCoverage?.sourceRouteCount ?? 0,
+        ) || 0;
+      const sandboxExecutionAuditToolNameCount =
+        Number(sandboxExecutionMetrics.json?.auditCoverage?.toolNameCount ?? 0) ||
+        0;
+      const sandboxExecutionAuditPolicy = {
+        actorTypeCount: sandboxExecutionAuditActorTypeCount,
+        pass:
+          sandboxExecutionMetrics.ok &&
+          sandboxExecutionMetricsTotal > 0 &&
+          sandboxExecutionAuditTotalWithAudit > 0 &&
+          sandboxExecutionAuditActorTypeCount > 0 &&
+          sandboxExecutionAuditSourceRouteCount > 0 &&
+          sandboxExecutionAuditToolNameCount > 0,
+        requiredFields: SANDBOX_RUNTIME_REQUIRED_AUDIT_FIELDS,
+        sourceRouteCount: sandboxExecutionAuditSourceRouteCount,
+        status: sandboxExecutionMetrics.status,
+        toolNameCount: sandboxExecutionAuditToolNameCount,
+        total: sandboxExecutionMetricsTotal,
+        totalWithAudit: sandboxExecutionAuditTotalWithAudit,
+      };
+      let sandboxExecutionEgressPolicy = {
+        allowProbe: null,
+        configSource: sandboxExecutionEgressConfig.source,
+        decisionAllowProbe: null,
+        decisionDenyProbe: null,
+        denyProbe: null,
+        enforcementEnabled: sandboxExecutionEgressEnforceConfig.value,
+        enforcementSource: sandboxExecutionEgressEnforceConfig.source,
+        expectedEgressProfile: runtimeDryRunEgressProfile,
+        pass: true,
+        reason:
+          'No egress profile mapping configured for ai_runtime_dry_run (or wildcard fallback).',
+        skipped: true,
+      };
+      let sandboxExecutionLimitsPolicy = {
+        allowProbe: null,
+        configSource: sandboxExecutionOperationLimitProfilesConfig.source,
+        decisionAllowProbe: null,
+        decisionDenyProbe: null,
+        denyProbe: null,
+        enforcementEnabled: sandboxExecutionLimitsEnforceConfig.value,
+        enforcementSource: sandboxExecutionLimitsEnforceConfig.source,
+        expectedLimitProfile: runtimeDryRunLimitProfile,
+        pass: true,
+        reason:
+          'No limits profile mapping configured for ai_runtime_dry_run (or wildcard fallback).',
+        skipped: true,
+      };
+      if (runtimeDryRunEgressProfile) {
+        const deniedProfile = `probe_${crypto
+          .randomUUID()
+          .replace(/-/g, '')
+          .slice(0, 24)}`;
+        const allowProbeResponse = await postOrGet({
+          adminToken,
+          apiBaseUrl,
+          csrfToken,
+          pathName: `/api/admin/sandbox-execution/metrics?hours=24&operation=${encodeURIComponent(
+            SANDBOX_RUNTIME_PROBE_OPERATION,
+          )}&egressProfile=${encodeURIComponent(runtimeDryRunEgressProfile)}&limit=20`,
+          timeoutMs: o.httpTimeoutMs,
+          useAdmin: true,
+        });
+        const denyProbeResponse = await postOrGet({
+          adminToken,
+          apiBaseUrl,
+          csrfToken,
+          pathName: `/api/admin/sandbox-execution/metrics?hours=24&operation=${encodeURIComponent(
+            SANDBOX_RUNTIME_PROBE_OPERATION,
+          )}&egressProfile=${encodeURIComponent(deniedProfile)}&limit=20`,
+          timeoutMs: o.httpTimeoutMs,
+          useAdmin: true,
+        });
+        const allowDecisionProbeResponse =
+          sandboxExecutionEgressEnforceConfig.value
+            ? await postOrGet({
+                adminToken,
+                apiBaseUrl,
+                csrfToken,
+                pathName: `/api/admin/sandbox-execution/metrics?hours=24&operation=${encodeURIComponent(
+                  SANDBOX_RUNTIME_PROBE_OPERATION,
+                )}&egressProfile=${encodeURIComponent(runtimeDryRunEgressProfile)}&egressDecision=allow&limit=20`,
+                timeoutMs: o.httpTimeoutMs,
+                useAdmin: true,
+              })
+            : null;
+        const denyDecisionProbeResponse =
+          sandboxExecutionEgressEnforceConfig.value
+            ? await postOrGet({
+                adminToken,
+                apiBaseUrl,
+                csrfToken,
+                pathName: `/api/admin/sandbox-execution/metrics?hours=24&operation=${encodeURIComponent(
+                  SANDBOX_RUNTIME_PROBE_OPERATION,
+                )}&egressProfile=${encodeURIComponent(runtimeDryRunEgressProfile)}&egressDecision=deny&limit=20`,
+                timeoutMs: o.httpTimeoutMs,
+                useAdmin: true,
+              })
+            : null;
+        const allowTotal =
+          Number(allowProbeResponse.json?.summary?.total ?? 0) || 0;
+        const allowSuccessCount =
+          Number(allowProbeResponse.json?.summary?.successCount ?? 0) || 0;
+        const allowFailedCount =
+          Number(allowProbeResponse.json?.summary?.failedCount ?? 0) || 0;
+        const denyTotal = Number(denyProbeResponse.json?.summary?.total ?? 0) || 0;
+        const denySuccessCount =
+          Number(denyProbeResponse.json?.summary?.successCount ?? 0) || 0;
+        const denyFailedCount =
+          Number(denyProbeResponse.json?.summary?.failedCount ?? 0) || 0;
+        const allowDecisionTotal =
+          Number(allowDecisionProbeResponse?.json?.summary?.total ?? 0) || 0;
+        const denyDecisionTotal =
+          Number(denyDecisionProbeResponse?.json?.summary?.total ?? 0) || 0;
+        sandboxExecutionEgressPolicy = {
+          allowProbe: {
+            failedCount: allowFailedCount,
+            status: allowProbeResponse.status,
+            successCount: allowSuccessCount,
+            total: allowTotal,
+          },
+          configSource: sandboxExecutionEgressConfig.source,
+          decisionAllowProbe:
+            allowDecisionProbeResponse === null
+              ? null
+              : {
+                  status: allowDecisionProbeResponse.status,
+                  total: allowDecisionTotal,
+                },
+          decisionDenyProbe:
+            denyDecisionProbeResponse === null
+              ? null
+              : {
+                  status: denyDecisionProbeResponse.status,
+                  total: denyDecisionTotal,
+                },
+          denyProbe: {
+            failedCount: denyFailedCount,
+            profile: deniedProfile,
+            status: denyProbeResponse.status,
+            successCount: denySuccessCount,
+            total: denyTotal,
+          },
+          enforcementEnabled: sandboxExecutionEgressEnforceConfig.value,
+          enforcementSource: sandboxExecutionEgressEnforceConfig.source,
+          expectedEgressProfile: runtimeDryRunEgressProfile,
+          pass:
+            allowProbeResponse.ok &&
+            allowTotal > 0 &&
+            denyProbeResponse.ok &&
+            denyTotal === 0 &&
+            (!sandboxExecutionEgressEnforceConfig.value ||
+              ((allowDecisionProbeResponse?.ok ?? false) &&
+                allowDecisionTotal > 0 &&
+                (denyDecisionProbeResponse?.ok ?? false) &&
+                denyDecisionTotal === 0)),
+          reason: null,
+          skipped: false,
+        };
+      }
+      if (runtimeDryRunLimitProfile) {
+        const deniedProfile = `probe_${crypto
+          .randomUUID()
+          .replace(/-/g, '')
+          .slice(0, 24)}`;
+        const allowProbeResponse = await postOrGet({
+          adminToken,
+          apiBaseUrl,
+          csrfToken,
+          pathName: `/api/admin/sandbox-execution/metrics?hours=24&operation=${encodeURIComponent(
+            SANDBOX_RUNTIME_PROBE_OPERATION,
+          )}&limitsProfile=${encodeURIComponent(runtimeDryRunLimitProfile)}&limit=20`,
+          timeoutMs: o.httpTimeoutMs,
+          useAdmin: true,
+        });
+        const denyProbeResponse = await postOrGet({
+          adminToken,
+          apiBaseUrl,
+          csrfToken,
+          pathName: `/api/admin/sandbox-execution/metrics?hours=24&operation=${encodeURIComponent(
+            SANDBOX_RUNTIME_PROBE_OPERATION,
+          )}&limitsProfile=${encodeURIComponent(deniedProfile)}&limit=20`,
+          timeoutMs: o.httpTimeoutMs,
+          useAdmin: true,
+        });
+        const allowDecisionProbeResponse =
+          sandboxExecutionLimitsEnforceConfig.value
+            ? await postOrGet({
+                adminToken,
+                apiBaseUrl,
+                csrfToken,
+                pathName: `/api/admin/sandbox-execution/metrics?hours=24&operation=${encodeURIComponent(
+                  SANDBOX_RUNTIME_PROBE_OPERATION,
+                )}&limitsProfile=${encodeURIComponent(runtimeDryRunLimitProfile)}&limitsDecision=allow&limit=20`,
+                timeoutMs: o.httpTimeoutMs,
+                useAdmin: true,
+              })
+            : null;
+        const denyDecisionProbeResponse =
+          sandboxExecutionLimitsEnforceConfig.value
+            ? await postOrGet({
+                adminToken,
+                apiBaseUrl,
+                csrfToken,
+                pathName: `/api/admin/sandbox-execution/metrics?hours=24&operation=${encodeURIComponent(
+                  SANDBOX_RUNTIME_PROBE_OPERATION,
+                )}&limitsProfile=${encodeURIComponent(runtimeDryRunLimitProfile)}&limitsDecision=deny&limit=20`,
+                timeoutMs: o.httpTimeoutMs,
+                useAdmin: true,
+              })
+            : null;
+        const allowTotal =
+          Number(allowProbeResponse.json?.summary?.total ?? 0) || 0;
+        const allowSuccessCount =
+          Number(allowProbeResponse.json?.summary?.successCount ?? 0) || 0;
+        const allowFailedCount =
+          Number(allowProbeResponse.json?.summary?.failedCount ?? 0) || 0;
+        const denyTotal = Number(denyProbeResponse.json?.summary?.total ?? 0) || 0;
+        const denySuccessCount =
+          Number(denyProbeResponse.json?.summary?.successCount ?? 0) || 0;
+        const denyFailedCount =
+          Number(denyProbeResponse.json?.summary?.failedCount ?? 0) || 0;
+        const allowDecisionTotal =
+          Number(allowDecisionProbeResponse?.json?.summary?.total ?? 0) || 0;
+        const denyDecisionTotal =
+          Number(denyDecisionProbeResponse?.json?.summary?.total ?? 0) || 0;
+        sandboxExecutionLimitsPolicy = {
+          allowProbe: {
+            failedCount: allowFailedCount,
+            status: allowProbeResponse.status,
+            successCount: allowSuccessCount,
+            total: allowTotal,
+          },
+          configSource: sandboxExecutionOperationLimitProfilesConfig.source,
+          decisionAllowProbe:
+            allowDecisionProbeResponse === null
+              ? null
+              : {
+                  status: allowDecisionProbeResponse.status,
+                  total: allowDecisionTotal,
+                },
+          decisionDenyProbe:
+            denyDecisionProbeResponse === null
+              ? null
+              : {
+                  status: denyDecisionProbeResponse.status,
+                  total: denyDecisionTotal,
+                },
+          denyProbe: {
+            failedCount: denyFailedCount,
+            profile: deniedProfile,
+            status: denyProbeResponse.status,
+            successCount: denySuccessCount,
+            total: denyTotal,
+          },
+          enforcementEnabled: sandboxExecutionLimitsEnforceConfig.value,
+          enforcementSource: sandboxExecutionLimitsEnforceConfig.source,
+          expectedLimitProfile: runtimeDryRunLimitProfile,
+          pass:
+            allowProbeResponse.ok &&
+            allowTotal > 0 &&
+            denyProbeResponse.ok &&
+            denyTotal === 0 &&
+            (!sandboxExecutionLimitsEnforceConfig.value ||
+              ((allowDecisionProbeResponse?.ok ?? false) &&
+                allowDecisionTotal > 0 &&
+                (denyDecisionProbeResponse?.ok ?? false) &&
+                denyDecisionTotal === 0)),
+          reason: null,
+          skipped: false,
+        };
+      }
       const rt = await postOrGet({
         adminToken,
         apiBaseUrl,
@@ -723,6 +1324,18 @@ const main = async () => {
           selectedProvider: runtimeDryRun.json?.result?.selectedProvider ?? null,
           status: runtimeDryRun.status,
         },
+        sandboxExecutionMetrics: {
+          ok: sandboxExecutionMetrics.ok,
+          status: sandboxExecutionMetrics.status,
+          total: sandboxExecutionMetricsTotal,
+          successCount: sandboxExecutionMetricsSuccessCount,
+          failedCount: sandboxExecutionMetricsFailedCount,
+          lastEventAt:
+            sandboxExecutionMetrics.json?.summary?.lastEventAt ?? null,
+        },
+        auditPolicy: sandboxExecutionAuditPolicy,
+        egressPolicy: sandboxExecutionEgressPolicy,
+        limitsPolicy: sandboxExecutionLimitsPolicy,
         runtimeHealth: {
           health: runtimeHealth.json?.summary?.health ?? null,
           ok: runtimeHealth.ok,
@@ -748,12 +1361,62 @@ const main = async () => {
         rtArtifact.runtimeHealth.health === 'ok' &&
         rtArtifact.runtimeDryRun.ok &&
         rtArtifact.runtimeDryRun.failed === false &&
+        rtArtifact.sandboxExecutionMetrics.ok &&
+        rtArtifact.sandboxExecutionMetrics.total > 0 &&
+        rtArtifact.sandboxExecutionMetrics.successCount > 0 &&
+        rtArtifact.auditPolicy.pass &&
+        (rtArtifact.egressPolicy.skipped || rtArtifact.egressPolicy.pass) &&
+        (rtArtifact.limitsPolicy.skipped || rtArtifact.limitsPolicy.pass) &&
         rtArtifact.orchestration.status === 201 &&
         rtArtifact.orchestration.completed === true &&
         rtArtifact.orchestration.stepRoles.join(',') === 'critic,maker,judge' &&
         (!o.requireSkillMarkers || runtimeMarkers.skillMarkerMultiStepPass);
       await writeJson(path.resolve(ARTIFACTS.runtimeProbe), rtArtifact);
+      await writeJson(
+        path.resolve(ARTIFACTS.sandboxExecutionMetrics),
+        rtArtifact.sandboxExecutionMetrics,
+      );
+      await writeJson(
+        path.resolve(ARTIFACTS.sandboxExecutionAuditPolicy),
+        rtArtifact.auditPolicy,
+      );
+      await writeJson(
+        path.resolve(ARTIFACTS.sandboxExecutionEgressPolicy),
+        rtArtifact.egressPolicy,
+      );
+      await writeJson(
+        path.resolve(ARTIFACTS.sandboxExecutionLimitsPolicy),
+        rtArtifact.limitsPolicy,
+      );
       summary.checks.runtimeProbe = { pass: rtArtifact.pass, skipped: false };
+      summary.checks.sandboxExecutionMetrics = {
+        pass:
+          rtArtifact.sandboxExecutionMetrics.ok &&
+          rtArtifact.sandboxExecutionMetrics.total > 0 &&
+          rtArtifact.sandboxExecutionMetrics.successCount > 0,
+        skipped: false,
+      };
+      summary.checks.sandboxExecutionAuditPolicy = {
+        pass: rtArtifact.auditPolicy.pass,
+        skipped: false,
+        requiredFields: rtArtifact.auditPolicy.requiredFields,
+      };
+      summary.checks.sandboxExecutionEgressPolicy = {
+        pass: rtArtifact.egressPolicy.skipped || rtArtifact.egressPolicy.pass,
+        skipped: rtArtifact.egressPolicy.skipped,
+        configSource: rtArtifact.egressPolicy.configSource,
+        enforcementEnabled: rtArtifact.egressPolicy.enforcementEnabled,
+        enforcementSource: rtArtifact.egressPolicy.enforcementSource,
+        expectedEgressProfile: rtArtifact.egressPolicy.expectedEgressProfile,
+      };
+      summary.checks.sandboxExecutionLimitsPolicy = {
+        pass: rtArtifact.limitsPolicy.skipped || rtArtifact.limitsPolicy.pass,
+        skipped: rtArtifact.limitsPolicy.skipped,
+        configSource: rtArtifact.limitsPolicy.configSource,
+        enforcementEnabled: rtArtifact.limitsPolicy.enforcementEnabled,
+        enforcementSource: rtArtifact.limitsPolicy.enforcementSource,
+        expectedLimitProfile: rtArtifact.limitsPolicy.expectedLimitProfile,
+      };
       summary.checks.skillMarkerMultiStep = {
         pass: o.requireSkillMarkers ? runtimeMarkers.skillMarkerMultiStepPass : true,
         skipped: !o.requireSkillMarkers,
@@ -880,6 +1543,22 @@ const main = async () => {
       if (!matrixArtifact.pass) throw new Error('Adapter matrix probe failed');
     } else {
       summary.checks.runtimeProbe = { pass: true, skipped: true };
+      summary.checks.sandboxExecutionMetrics = {
+        pass: true,
+        skipped: true,
+      };
+      summary.checks.sandboxExecutionAuditPolicy = {
+        pass: true,
+        skipped: true,
+      };
+      summary.checks.sandboxExecutionEgressPolicy = {
+        pass: true,
+        skipped: true,
+      };
+      summary.checks.sandboxExecutionLimitsPolicy = {
+        pass: true,
+        skipped: true,
+      };
       summary.checks.skillMarkerMultiStep = {
         pass: true,
         skipped: true,
@@ -1266,6 +1945,40 @@ const main = async () => {
           telemetry.json?.connectorProfiles?.total ?? null,
         telemetryEventsTotal: telemetry.json?.events?.total ?? null,
         telemetrySessionsTotal: telemetry.json?.sessions?.total ?? null,
+      },
+      sandboxExecution: {
+        egressConfigSource: sandboxExecutionEgressConfig.source,
+        egressEnforcementEnabled: sandboxExecutionEgressEnforceConfig.value,
+        egressEnforcementSource: sandboxExecutionEgressEnforceConfig.source,
+        limitsConfigSource: sandboxExecutionOperationLimitProfilesConfig.source,
+        limitsEnforcementEnabled: sandboxExecutionLimitsEnforceConfig.value,
+        limitsEnforcementSource: sandboxExecutionLimitsEnforceConfig.source,
+        failedCount:
+          health['/api/admin/sandbox-execution/metrics?hours=24&limit=20'].json
+            ?.summary?.failedCount ?? null,
+        runtimeDryRunEgressProfile: runtimeDryRunEgressProfile ?? null,
+        runtimeDryRunLimitProfile: runtimeDryRunLimitProfile ?? null,
+        status:
+          health['/api/admin/sandbox-execution/metrics?hours=24&limit=20']
+            .status,
+        successCount:
+          health['/api/admin/sandbox-execution/metrics?hours=24&limit=20'].json
+            ?.summary?.successCount ?? null,
+        total:
+          health['/api/admin/sandbox-execution/metrics?hours=24&limit=20'].json
+            ?.summary?.total ?? null,
+        auditTotalWithAudit:
+          health['/api/admin/sandbox-execution/metrics?hours=24&limit=20'].json
+            ?.auditCoverage?.totalWithAudit ?? null,
+        auditActorTypeCount:
+          health['/api/admin/sandbox-execution/metrics?hours=24&limit=20'].json
+            ?.auditCoverage?.actorTypeCount ?? null,
+        auditSourceRouteCount:
+          health['/api/admin/sandbox-execution/metrics?hours=24&limit=20'].json
+            ?.auditCoverage?.sourceRouteCount ?? null,
+        auditToolNameCount:
+          health['/api/admin/sandbox-execution/metrics?hours=24&limit=20'].json
+            ?.auditCoverage?.toolNameCount ?? null,
       },
       jobs: { expectedJobs: EXPECTED_CRON_JOBS, rows: rows.length },
     });

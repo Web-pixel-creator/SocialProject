@@ -5,6 +5,7 @@ Use this runbook for incidents that affect:
 - `GET|POST /api/admin/agent-gateway/sessions*`
 - `GET /api/admin/ai-runtime/health`
 - `POST /api/admin/ai-runtime/dry-run`
+- `GET /api/admin/sandbox-execution/metrics`
 
 This runbook complements:
 - `docs/ops/observability-runbook.md`
@@ -73,6 +74,20 @@ curl -s "$API_BASE_URL/api/admin/ai-runtime/dry-run" \
   }'
 ```
 
+6. Check sandbox execution telemetry snapshot (fallback/execution-plane path):
+
+```bash
+curl -s "$API_BASE_URL/api/admin/sandbox-execution/metrics?hours=24&limit=20" \
+  -H "x-admin-token: $ADMIN_API_TOKEN"
+```
+
+Optional filtered probe:
+
+```bash
+curl -s "$API_BASE_URL/api/admin/sandbox-execution/metrics?hours=24&operation=ai_runtime_dry_run&status=failed" \
+  -H "x-admin-token: $ADMIN_API_TOKEN"
+```
+
 ## Operational SLO Checks
 
 Treat runtime/gateway as degraded when any of the following is true:
@@ -84,6 +99,70 @@ Treat runtime/gateway as degraded when any of the following is true:
 - Gateway sessions pile up in `active` state without new events for more than 15 minutes.
 
 ## Incident Playbooks
+
+### D) Sandbox execution telemetry degradation
+
+Symptoms:
+- Sudden growth in `failedCount` on `/api/admin/sandbox-execution/metrics`.
+- Spikes isolated to one operation (`byOperation[].operation`).
+- Elevated latency (`avgTimingMs` / `p95TimingMs`) for execution-wrapped operations.
+
+Actions:
+1. Pull scoped metrics for the failing operation:
+
+```bash
+curl -s "$API_BASE_URL/api/admin/sandbox-execution/metrics?hours=24&operation=<operation>&limit=50" \
+  -H "x-admin-token: $ADMIN_API_TOKEN"
+```
+
+2. Compare `modeBreakdown`, `egressProfileBreakdown`, and `limitsProfileBreakdown` for concentration of failures.
+3. Validate policy configuration in deployment env:
+   - `SANDBOX_EXECUTION_EGRESS_ENFORCE`
+   - `SANDBOX_EXECUTION_EGRESS_PROFILES`
+   - `SANDBOX_EXECUTION_EGRESS_PROVIDER_ALLOWLISTS`
+   - `SANDBOX_EXECUTION_LIMITS_ENFORCE`
+   - `SANDBOX_EXECUTION_OPERATION_LIMIT_PROFILES`
+   - `SANDBOX_EXECUTION_LIMIT_PROFILES`
+4. If failure rate is sustained, disable execution-plane path:
+   - set `SANDBOX_EXECUTION_ENABLED=false`
+   - redeploy API.
+5. Validate fallback stability by re-running dry-run and metrics checks.
+
+Optional deny/allow filter probe for a mapped operation profile:
+
+```bash
+curl -s "$API_BASE_URL/api/admin/sandbox-execution/metrics?hours=24&operation=ai_runtime_dry_run&egressProfile=<expected_profile>&limit=20" \
+  -H "x-admin-token: $ADMIN_API_TOKEN"
+curl -s "$API_BASE_URL/api/admin/sandbox-execution/metrics?hours=24&operation=ai_runtime_dry_run&egressProfile=probe_not_configured&limit=20" \
+  -H "x-admin-token: $ADMIN_API_TOKEN"
+curl -s "$API_BASE_URL/api/admin/sandbox-execution/metrics?hours=24&operation=ai_runtime_dry_run&limitsProfile=<expected_profile>&limit=20" \
+  -H "x-admin-token: $ADMIN_API_TOKEN"
+curl -s "$API_BASE_URL/api/admin/sandbox-execution/metrics?hours=24&operation=ai_runtime_dry_run&limitsProfile=probe_not_configured&limit=20" \
+  -H "x-admin-token: $ADMIN_API_TOKEN"
+```
+
+Expected:
+- mapped profile query shows `summary.total > 0`,
+- unmapped probe profile query shows `summary.total = 0`.
+- runtime dry-run scoped query includes audit envelope coverage:
+  - `auditCoverage.totalWithAudit > 0`
+  - `auditCoverage.actorTypeCount > 0`
+  - `auditCoverage.sourceRouteCount > 0`
+  - `auditCoverage.toolNameCount > 0`.
+
+Verification:
+- `summary.failedCount` stabilizes and no longer trends upward.
+- operation-level `p95TimingMs` returns to baseline.
+- critical dry-run path remains successful.
+
+Kill-switch playbook (if degradation persists):
+1. Set `SANDBOX_EXECUTION_ENABLED=false`.
+2. Redeploy API service.
+3. Run:
+   - `GET /api/admin/ai-runtime/health`
+   - `POST /api/admin/ai-runtime/dry-run`
+   - `GET /api/admin/sandbox-execution/metrics?hours=24&operation=ai_runtime_dry_run`
+4. If fallback path is stable, keep execution plane disabled and continue incident triage.
 
 ### A) AI provider failover cascade
 

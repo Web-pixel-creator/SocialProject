@@ -46,13 +46,26 @@ Trigger rollback if any condition persists beyond the stated window:
 7. Confirm alert recovery and error-rate normalization.
 8. Announce rollback complete.
 
-## 5. Data-Safe Migration Guidance
+## 5. Sandbox Execution Kill-Switch (Fast Mitigation)
+
+Use this when failures are isolated to execution-plane wrapped paths and a full rollback is not yet required.
+
+1. Set `SANDBOX_EXECUTION_ENABLED=false` in API environment variables.
+2. Redeploy API service.
+3. Verify fallback path health:
+   - `GET /api/admin/ai-runtime/health`
+   - `POST /api/admin/ai-runtime/dry-run`
+   - `GET /api/admin/sandbox-execution/metrics?hours=24&operation=ai_runtime_dry_run`
+4. Confirm telemetry stabilizes (`failedCount` no longer grows) and user impact is reduced.
+5. Keep incident open for root-cause analysis before re-enabling execution plane.
+
+## 6. Data-Safe Migration Guidance
 
 - Expand/contract migrations: rollback app first, defer schema cleanup.
 - Destructive migrations: do not auto-rollback schema; recover via restore/PITR plan.
 - Any migration rollback must be approved by DB owner and logged.
 
-## 6. Incident Log Template
+## 7. Incident Log Template
 
 Capture this in the incident ticket:
 

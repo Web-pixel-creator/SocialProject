@@ -33,6 +33,141 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-03 - sandbox execution audit envelope rollout + strict gate confirmation
+
+- Scope: enforce and verify audit-envelope telemetry for sandbox-wrapped runtime execution path in production launch gate.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-03 10:23 -> 2026-03-03 10:29.
+- Execution:
+  - Deployed latest `api` service revision (deployment `572dd3ef-0312-4432-a366-81dc349a0366`) with:
+    - audit metadata persistence in sandbox execution telemetry,
+    - `auditCoverage` summary in `GET /api/admin/sandbox-execution/metrics`,
+    - strict gate audit check/artifact wiring.
+  - Ran strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+  - Result summary:
+    - launch-gate `status=pass`
+    - `sandboxExecutionAuditPolicy.pass=true`
+    - audit policy artifact:
+      - `total=3`
+      - `totalWithAudit=1`
+      - `actorTypeCount=1`
+      - `sourceRouteCount=1`
+      - `toolNameCount=1`
+    - existing checks stayed green:
+      - `sandboxExecutionMetrics.pass=true`
+      - `sandboxExecutionEgressPolicy.pass=true`
+      - `sandboxExecutionLimitsPolicy.pass=true`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add explicit `actorId` propagation for admin-auth contexts when token model is upgraded to user-bound auth.
+
+### 2026-03-03 - sandbox execution limits enforcement rollout + strict gate confirmation
+
+- Scope: roll out production execution-limit enforcement for sandbox-wrapped runtime probe path and confirm strict gate evidence.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-03 10:06 -> 2026-03-03 10:11.
+- Execution:
+  - Applied production `api` service vars on Railway:
+    - `SANDBOX_EXECUTION_LIMITS_ENFORCE=true`
+    - `SANDBOX_EXECUTION_OPERATION_LIMIT_PROFILES={"ai_runtime_dry_run":"runtime_default"}`
+    - `SANDBOX_EXECUTION_LIMIT_PROFILES={"runtime_default":{"cpuCores":2,"memoryMb":1024,"timeoutMs":12000,"ttlSeconds":900,"maxArtifactBytes":5242880}}`
+  - Deployed latest `api` service revision with limits-policy code path.
+  - Ran strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+  - Result summary:
+    - launch-gate `status=pass`
+    - `sandboxExecutionLimitsPolicy.pass=true`
+    - limits-policy artifact:
+      - allow probe `total=1`
+      - decision allow probe `total=1`
+      - decision deny probe `total=0`
+      - deny-profile probe `total=0`
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add one negative controlled drill run with intentionally strict `timeoutMs` request in dry-run payload to continuously validate `SANDBOX_EXECUTION_TIMEOUT` telemetry path.
+
+### 2026-03-03 - sandbox execution limits profile enforcement (phase step)
+
+- Scope: add profile-based execution limits enforcement for sandbox-wrapped runtime path and expose limits telemetry in admin/launch-gate checks.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-03 09:45 -> 2026-03-03 10:02.
+- Changes:
+  - Added limit profile parser/resolver:
+    - `apps/api/src/services/sandboxExecution/limitsProfile.ts`.
+  - Added new env/config surface:
+    - `SANDBOX_EXECUTION_LIMITS_ENFORCE`
+    - `SANDBOX_EXECUTION_OPERATION_LIMIT_PROFILES`
+    - `SANDBOX_EXECUTION_LIMIT_PROFILES`
+    - files: `apps/api/src/config/env.ts`, `apps/api/.env.example`.
+  - Extended sandbox execution policy evaluation:
+    - enforced limit profile resolution before fallback execution,
+    - deny path with explicit errors (`SANDBOX_EXECUTION_LIMIT_PROFILE_REQUIRED`, `SANDBOX_EXECUTION_LIMIT_PROFILE_UNCONFIGURED`, `SANDBOX_EXECUTION_LIMITS_EXCEEDED`),
+    - runtime timeout guard (`SANDBOX_EXECUTION_TIMEOUT`) via effective timeout from requested/profile limits.
+  - Extended telemetry metadata and admin metrics:
+    - new metadata fields: `limitsProfile`, `limitsDecision`, `limitsApplied`, `limitsRequested`,
+    - `GET /api/admin/sandbox-execution/metrics` supports `limitsProfile` / `limitsDecision` filters and `limitsProfileBreakdown` output.
+  - Extended production launch-gate script with limits policy probe/check:
+    - new artifact: `artifacts/release/production-sandbox-execution-limits-policy.json`
+    - new summary check: `sandboxExecutionLimitsPolicy`.
+- Validation:
+  - `npx ultracite check` on changed API files: pass.
+  - `npx jest apps/api/src/__tests__/sandbox-execution.unit.spec.ts apps/api/src/__tests__/sandbox-execution-egress-profile.unit.spec.ts apps/api/src/__tests__/sandbox-execution-limits-profile.unit.spec.ts apps/api/src/__tests__/ai-runtime.unit.spec.ts --runInBand --config jest.config.cjs`: pass.
+  - `npm --workspace apps/api run build`: pass.
+  - `node --check scripts/release/production-launch-gate.mjs`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - run strict production launch-gate after deploying this revision to verify `sandboxExecutionLimitsPolicy.pass=true` in live environment.
+
+### 2026-03-03 - sandbox egress enforcement rollout + strict launch-gate validation
+
+- Scope: enable and validate production egress enforcement for sandbox-wrapped AI runtime dry-run path (`ai_runtime_dry_run`) with strict launch-gate evidence.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-03 09:24 -> 2026-03-03 09:37.
+- Execution:
+  - Applied production `api` service vars on Railway:
+    - `SANDBOX_EXECUTION_EGRESS_ENFORCE=true`
+    - `SANDBOX_EXECUTION_EGRESS_PROFILES={"ai_runtime_dry_run":"ai_runtime"}`
+    - `SANDBOX_EXECUTION_EGRESS_PROVIDER_ALLOWLISTS={"ai_runtime":["claude-4","gpt-4.1","gemini-2","sd3","dalle-3"]}`
+  - Initial strict run failed at launch health checkpoint (`sandboxExecutionMetricsReachable=false`) because production API had not yet been redeployed with new endpoint.
+  - Deployed latest `api` service revision to production and reran:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+  - Result summary:
+    - launch-gate `status=pass`
+    - `sandboxExecutionMetrics.pass=true`
+    - `sandboxExecutionEgressPolicy.pass=true`
+    - egress probe artifact:
+      - allow probe `total=1`
+      - decision allow probe `total=1`
+      - decision deny probe `total=0`
+      - deny-profile probe `total=0`
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: run `release:launch:gate:production:skills` once skill-marker strictness is required for this release window.
+
+### 2026-03-03 - alert-risk strict reassessment closure after window
+
+- Scope: close the pending post-window strict reassessment task and confirm repository strict variable state.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-03 06:44 -> 2026-03-03 06:45.
+- Execution:
+  - Ran:
+    - `npm run release:alert-risk:reassess -- --not-before-utc 2026-03-02T17:23:02Z --apply --json`
+  - Result summary:
+    - `status=already_enabled`
+    - `readyToEnableStrict=true`
+    - `strictVariableCurrent.value=true`
+    - `strictVariableApplied=false` (no-op because strict was already enabled before this run)
+    - `outputPath=artifacts/release/alert-risk-strict-reassessment-pending.json`
+- Incidents:
+  - none.
+- Follow-ups:
+  - none for strict enablement (closure complete).
+
 ### 2026-03-02 - scheduled alert-risk strict reassessment workflow automation
 
 - Scope: automate post-window strict enablement reassessment via dedicated workflow to avoid manual operator timing.

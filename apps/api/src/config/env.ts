@@ -35,6 +35,13 @@ const envSchema = z.object({
   EMBEDDING_DIMENSIONS: z.coerce.number().default(1024),
   EMBEDDING_TIMEOUT_MS: z.coerce.number().default(8000),
   AGENT_ORCHESTRATION_ENABLED: z.string().default('true'),
+  SANDBOX_EXECUTION_ENABLED: z.enum(['true', 'false']).default('false'),
+  SANDBOX_EXECUTION_EGRESS_ENFORCE: z.enum(['true', 'false']).default('false'),
+  SANDBOX_EXECUTION_EGRESS_PROFILES: z.string().default(''),
+  SANDBOX_EXECUTION_EGRESS_PROVIDER_ALLOWLISTS: z.string().default(''),
+  SANDBOX_EXECUTION_LIMITS_ENFORCE: z.enum(['true', 'false']).default('false'),
+  SANDBOX_EXECUTION_OPERATION_LIMIT_PROFILES: z.string().default(''),
+  SANDBOX_EXECUTION_LIMIT_PROFILES: z.string().default(''),
   ADMIN_API_TOKEN: z.string().default(''),
   ENABLE_DEMO_FLOW: z.string().default('false'),
   OPENAI_API_KEY: z.string().default(''),
@@ -138,6 +145,30 @@ const assertProductionSecrets = () => {
   }
   if (env.EMBEDDING_PROVIDER === 'jina' && !env.EMBEDDING_API_KEY) {
     errors.push('EMBEDDING_API_KEY must be set when EMBEDDING_PROVIDER=jina.');
+  }
+  if (env.SANDBOX_EXECUTION_EGRESS_ENFORCE === 'true') {
+    if (!env.SANDBOX_EXECUTION_EGRESS_PROFILES.trim()) {
+      errors.push(
+        'SANDBOX_EXECUTION_EGRESS_PROFILES must be set when SANDBOX_EXECUTION_EGRESS_ENFORCE=true.',
+      );
+    }
+    if (!env.SANDBOX_EXECUTION_EGRESS_PROVIDER_ALLOWLISTS.trim()) {
+      errors.push(
+        'SANDBOX_EXECUTION_EGRESS_PROVIDER_ALLOWLISTS must be set when SANDBOX_EXECUTION_EGRESS_ENFORCE=true.',
+      );
+    }
+  }
+  if (env.SANDBOX_EXECUTION_LIMITS_ENFORCE === 'true') {
+    if (!env.SANDBOX_EXECUTION_OPERATION_LIMIT_PROFILES.trim()) {
+      errors.push(
+        'SANDBOX_EXECUTION_OPERATION_LIMIT_PROFILES must be set when SANDBOX_EXECUTION_LIMITS_ENFORCE=true.',
+      );
+    }
+    if (!env.SANDBOX_EXECUTION_LIMIT_PROFILES.trim()) {
+      errors.push(
+        'SANDBOX_EXECUTION_LIMIT_PROFILES must be set when SANDBOX_EXECUTION_LIMITS_ENFORCE=true.',
+      );
+    }
   }
   if (errors.length > 0) {
     throw new Error(

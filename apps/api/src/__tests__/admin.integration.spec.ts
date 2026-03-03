@@ -94,6 +94,229 @@ describe('Admin API routes', () => {
     expect(response.body.error).toBe('ADMIN_INVALID_QUERY');
   });
 
+  test('sandbox execution metrics aggregates telemetry events', async () => {
+    await db.query(
+      `INSERT INTO ux_events (event_type, user_type, status, timing_ms, source, metadata)
+       VALUES
+        ($1, 'system', 'ok', 120, $2, $3::jsonb),
+        ($1, 'system', 'failed', 280, $2, $4::jsonb),
+        ($1, 'system', 'ok', 95, $2, $5::jsonb)`,
+      [
+        'sandbox_execution_attempt',
+        'sandbox_execution',
+        JSON.stringify({
+          operation: 'ai_runtime_dry_run',
+          mode: 'fallback_only',
+          egressProfile: 'openai_api',
+          egressEnforced: true,
+          egressDecision: 'allow',
+          limitsProfile: 'runtime_default',
+          limitsEnforced: true,
+          limitsDecision: 'allow',
+          audit: {
+            actorType: 'admin',
+            sourceRoute: '/api/admin/ai-runtime/dry-run',
+            toolName: 'aiRuntime.runWithFailover',
+          },
+          sandboxExecutionEnabled: false,
+          fallbackPathUsed: true,
+          errorCode: null,
+          errorMessage: null,
+        }),
+        JSON.stringify({
+          operation: 'ai_runtime_dry_run',
+          mode: 'fallback_only',
+          egressProfile: 'openai_api',
+          egressEnforced: true,
+          egressDecision: 'deny',
+          limitsProfile: 'runtime_default',
+          limitsEnforced: true,
+          limitsDecision: 'deny',
+          audit: {
+            actorId: 'admin-user-1',
+            actorType: 'admin',
+            sessionId: 'session-123',
+            sourceRoute: '/api/admin/ai-runtime/dry-run',
+            toolName: 'aiRuntime.runWithFailover',
+          },
+          sandboxExecutionEnabled: false,
+          fallbackPathUsed: true,
+          errorCode: 'AI_RUNTIME_TIMEOUT',
+          errorMessage: 'provider timed out',
+        }),
+        JSON.stringify({
+          operation: 'live_session_tool',
+          mode: 'fallback_only',
+          egressProfile: 'internal_webhook',
+          egressEnforced: false,
+          egressDecision: 'not_enforced',
+          limitsProfile: 'global_default',
+          limitsEnforced: false,
+          limitsDecision: 'not_enforced',
+          sandboxExecutionEnabled: false,
+          fallbackPathUsed: true,
+          errorCode: null,
+          errorMessage: null,
+        }),
+      ],
+    );
+
+    const response = await request(app)
+      .get('/api/admin/sandbox-execution/metrics?hours=24&limit=10')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(response.status).toBe(200);
+    expect(response.body.windowHours).toBe(24);
+    expect(response.body.filters).toMatchObject({
+      operation: null,
+      status: null,
+      egressProfile: null,
+      egressDecision: null,
+      limitsProfile: null,
+      limitsDecision: null,
+      limit: 10,
+      source: 'sandbox_execution',
+      eventType: 'sandbox_execution_attempt',
+    });
+    expect(response.body.summary.total).toBe(3);
+    expect(response.body.summary.successCount).toBe(2);
+    expect(response.body.summary.failedCount).toBe(1);
+    expect(response.body.summary.avgTimingMs).toBeGreaterThan(0);
+    expect(response.body.summary.p95TimingMs).toBeGreaterThan(0);
+    expect(response.body.auditCoverage).toMatchObject({
+      totalWithAudit: 2,
+      actorIdCount: 1,
+      actorTypeCount: 2,
+      sessionIdCount: 1,
+      sourceRouteCount: 2,
+      toolNameCount: 2,
+      coverageRate: 0.667,
+    });
+
+    const dryRunRow = response.body.byOperation.find(
+      (row: { operation: string }) => row.operation === 'ai_runtime_dry_run',
+    );
+    expect(dryRunRow).toBeTruthy();
+    expect(dryRunRow).toMatchObject({
+      total: 2,
+      successCount: 1,
+      failedCount: 1,
+    });
+
+    const modeBreakdown = response.body.modeBreakdown.find(
+      (row: { mode: string; status: string }) =>
+        row.mode === 'fallback_only' && row.status === 'failed',
+    );
+    expect(modeBreakdown).toBeTruthy();
+    expect(modeBreakdown.count).toBe(1);
+
+    const egressProfileBreakdown = response.body.egressProfileBreakdown.find(
+      (row: { egressProfile: string; status: string }) =>
+        row.egressProfile === 'openai_api' && row.status === 'ok',
+    );
+    expect(egressProfileBreakdown).toBeTruthy();
+    expect(egressProfileBreakdown.count).toBe(1);
+
+    const limitsProfileBreakdown = response.body.limitsProfileBreakdown.find(
+      (row: { limitsProfile: string; status: string }) =>
+        row.limitsProfile === 'runtime_default' && row.status === 'ok',
+    );
+    expect(limitsProfileBreakdown).toBeTruthy();
+    expect(limitsProfileBreakdown.count).toBe(1);
+  });
+
+  test('sandbox execution metrics applies operation and status filters', async () => {
+    await db.query(
+      `INSERT INTO ux_events (event_type, user_type, status, timing_ms, source, metadata)
+       VALUES
+        ($1, 'system', 'ok', 100, $2, $3::jsonb),
+        ($1, 'system', 'failed', 240, $2, $4::jsonb)`,
+      [
+        'sandbox_execution_attempt',
+        'sandbox_execution',
+        JSON.stringify({
+          operation: 'ai_runtime_dry_run',
+          mode: 'fallback_only',
+          egressProfile: 'openai_api',
+          egressDecision: 'allow',
+          limitsProfile: 'runtime_default',
+          limitsDecision: 'allow',
+        }),
+        JSON.stringify({
+          operation: 'live_session_tool',
+          mode: 'fallback_only',
+          egressProfile: 'internal_webhook',
+          egressDecision: 'deny',
+          limitsProfile: 'global_default',
+          limitsDecision: 'deny',
+        }),
+      ],
+    );
+
+    const response = await request(app)
+      .get(
+        '/api/admin/sandbox-execution/metrics?hours=24&operation=live_session_tool&status=failed&egressProfile=internal_webhook&egressDecision=deny&limitsProfile=global_default&limitsDecision=deny',
+      )
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(response.status).toBe(200);
+    expect(response.body.filters).toMatchObject({
+      operation: 'live_session_tool',
+      status: 'failed',
+      egressProfile: 'internal_webhook',
+      egressDecision: 'deny',
+      limitsProfile: 'global_default',
+      limitsDecision: 'deny',
+    });
+    expect(response.body.summary.total).toBe(1);
+    expect(response.body.summary.successCount).toBe(0);
+    expect(response.body.summary.failedCount).toBe(1);
+    expect(response.body.byOperation).toHaveLength(1);
+    expect(response.body.byOperation[0]).toMatchObject({
+      operation: 'live_session_tool',
+      total: 1,
+      failedCount: 1,
+    });
+  });
+
+  test('sandbox execution metrics rejects invalid query payload', async () => {
+    const unsupportedQuery = await request(app)
+      .get('/api/admin/sandbox-execution/metrics?extra=true')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+    expect(unsupportedQuery.status).toBe(400);
+    expect(unsupportedQuery.body.error).toBe('ADMIN_INVALID_QUERY');
+
+    const invalidStatus = await request(app)
+      .get('/api/admin/sandbox-execution/metrics?status=warning')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+    expect(invalidStatus.status).toBe(400);
+    expect(invalidStatus.body.error).toBe('ADMIN_INVALID_QUERY');
+
+    const invalidEgressProfile = await request(app)
+      .get('/api/admin/sandbox-execution/metrics?egressProfile=bad%20profile')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+    expect(invalidEgressProfile.status).toBe(400);
+    expect(invalidEgressProfile.body.error).toBe('ADMIN_INVALID_QUERY');
+
+    const invalidEgressDecision = await request(app)
+      .get('/api/admin/sandbox-execution/metrics?egressDecision=blocked')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+    expect(invalidEgressDecision.status).toBe(400);
+    expect(invalidEgressDecision.body.error).toBe('ADMIN_INVALID_QUERY');
+
+    const invalidLimitsProfile = await request(app)
+      .get('/api/admin/sandbox-execution/metrics?limitsProfile=bad%20profile')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+    expect(invalidLimitsProfile.status).toBe(400);
+    expect(invalidLimitsProfile.body.error).toBe('ADMIN_INVALID_QUERY');
+
+    const invalidLimitsDecision = await request(app)
+      .get('/api/admin/sandbox-execution/metrics?limitsDecision=blocked')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+    expect(invalidLimitsDecision.status).toBe(400);
+    expect(invalidLimitsDecision.body.error).toBe('ADMIN_INVALID_QUERY');
+  });
+
   test('ai runtime profiles endpoint returns configured role chains', async () => {
     const response = await request(app)
       .get('/api/admin/ai-runtime/profiles')

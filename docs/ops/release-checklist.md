@@ -172,6 +172,19 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
 - [ ] Runtime/gateway control-plane rehearsal passes:
   - [ ] `GET /api/admin/ai-runtime/health` returns `summary.health = "ok"` and `rolesBlocked = 0`.
   - [ ] `POST /api/admin/ai-runtime/dry-run` succeeds for a critical role probe.
+  - [ ] If `SANDBOX_EXECUTION_EGRESS_ENFORCE=true`, verify deployment config includes:
+    - [ ] `SANDBOX_EXECUTION_EGRESS_PROFILES` mapping for `ai_runtime_dry_run` (or `*`).
+    - [ ] `SANDBOX_EXECUTION_EGRESS_PROVIDER_ALLOWLISTS` entry for resolved egress profile.
+  - [ ] If `SANDBOX_EXECUTION_LIMITS_ENFORCE=true`, verify deployment config includes:
+    - [ ] `SANDBOX_EXECUTION_OPERATION_LIMIT_PROFILES` mapping for `ai_runtime_dry_run` (or `*`).
+    - [ ] `SANDBOX_EXECUTION_LIMIT_PROFILES` entry for resolved limit profile.
+  - [ ] `GET /api/admin/sandbox-execution/metrics?hours=24&limit=20` returns healthy telemetry snapshot for wrapped execution operations.
+  - [ ] Optional scoped drill for active path: `GET /api/admin/sandbox-execution/metrics?hours=24&operation=ai_runtime_dry_run`.
+  - [ ] Scoped telemetry includes non-empty audit envelope coverage for runtime dry-run:
+    - [ ] `auditCoverage.totalWithAudit > 0`
+    - [ ] `auditCoverage.actorTypeCount > 0`
+    - [ ] `auditCoverage.sourceRouteCount > 0`
+    - [ ] `auditCoverage.toolNameCount > 0`
   - [ ] `GET /api/admin/agent-gateway/sessions?source=db&limit=20` shows no abnormal stale active session growth.
   - [ ] `GET /api/admin/agent-gateway/telemetry?hours=24&limit=200` returns stable aggregate metrics (sessions/events/attempts/provider usage).
 
@@ -221,6 +234,14 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
       - [ ] If `RELEASE_REQUIRE_SKILL_MARKERS=true`, `RELEASE_RUNTIME_DRAFT_ID` is mandatory.
   - [ ] Confirm summary artifact: `artifacts/release/production-launch-gate-summary.json`
   - [ ] Confirm health summary artifact: `artifacts/release/production-launch-gate-health-summary.json`
+  - [ ] Confirm `sandboxExecutionMetrics.pass=true` in launch gate summary.
+  - [ ] Optional artifact drill: inspect `artifacts/release/production-sandbox-execution-metrics.json` for `total > 0` and `successCount > 0`.
+  - [ ] Confirm `sandboxExecutionAuditPolicy.pass=true` in launch gate summary.
+  - [ ] Optional artifact drill: inspect `artifacts/release/production-sandbox-execution-audit-policy.json` (`totalWithAudit > 0`, `actorTypeCount > 0`, `sourceRouteCount > 0`, `toolNameCount > 0`).
+  - [ ] Confirm `sandboxExecutionEgressPolicy.pass=true` (or `skipped=true` when no `SANDBOX_EXECUTION_EGRESS_PROFILES` mapping exists for `ai_runtime_dry_run` / `*`).
+  - [ ] Optional artifact drill: inspect `artifacts/release/production-sandbox-execution-egress-policy.json` (allow probe `total > 0`, deny probe `total = 0`).
+  - [ ] Confirm `sandboxExecutionLimitsPolicy.pass=true` (or `skipped=true` when no `SANDBOX_EXECUTION_OPERATION_LIMIT_PROFILES` mapping exists for `ai_runtime_dry_run` / `*`).
+  - [ ] Optional artifact drill: inspect `artifacts/release/production-sandbox-execution-limits-policy.json` (allow probe `total > 0`, deny probe `total = 0`).
   - [ ] In strict mode, confirm `connectorProfilesSnapshot.pass=true` in launch gate summary.
   - [ ] Confirm `smokeRequiredSteps.pass=true` in launch gate summary (includes required `web.draft.detail` surface check for seeded draft).
   - [ ] When `require_skill_markers=true`, confirm `skillMarkerMultiStep.pass=true` in launch gate summary:
