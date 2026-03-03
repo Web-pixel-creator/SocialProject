@@ -33,6 +33,37 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-03 - admin UX density pass for gateway/runtime
+
+- Scope: reduce cognitive load in `/admin/ux` by simplifying gateway/runtime telemetry presentation.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-03 14:06 -> 2026-03-03 14:14.
+- Changes:
+  - `Agent gateway control-plane telemetry`:
+    - moved risk chips from header into dedicated `Risk signals` card.
+    - moved scope filters into collapsible `Scope and source controls`.
+    - replaced inline scope debug text with structured `Applied scope` blocks.
+    - replaced dense event pipe-text with structured `Event counters` blocks.
+  - `AI runtime failover`:
+    - added structured `Runtime snapshot` card.
+    - merged role/provider lists into a compact `Role and provider matrix` table card.
+    - moved dry-run form/results into collapsible `Dry-run simulator`.
+- Validation:
+  - `npx ultracite check apps/web/src/app/admin/ux/page.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Execution:
+  - Commit: `8a6ca6df9757a7834cc560ac51e3f353cf6468bf` pushed to `main`.
+  - Railway production deployments:
+    - `api`: `cd6d2f49-2f18-4d73-b6da-837e751b03cf` (`SUCCESS`).
+    - `SocialProject`: `5953da7e-10f2-40da-93c6-02d1d1ce77a6` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-03T14:14:01.261Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: split heavy `prediction` panel into overview + advanced subpanels (same compact-card pattern).
+
 ### 2026-03-03 - admin UX dashboard readability pass (tabs + debug isolation)
 
 - Scope: reduce `/admin/ux` visual overload by isolating raw diagnostics in a dedicated tab and consolidating breakdown cards.
