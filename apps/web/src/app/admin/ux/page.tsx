@@ -4236,17 +4236,52 @@ export default async function AdminUxObserverEngagementPage({
       ...providerState,
       isCoolingDown: providerState.coolingDown,
     }));
+    const isDryRunPanelOpen =
+      aiDryRunRequested ||
+      aiRuntimeDryRunResult !== null ||
+      aiRuntimeDryRunErrorMessage !== null ||
+      aiRuntimeDryRunInfoMessage !== null;
+    const runtimeOverviewRows: Array<{ key: string; value: string }> = [
+      {
+        key: 'Runtime health',
+        value: toStringValue(aiRuntimeSummary.health, 'n/a'),
+      },
+      {
+        key: 'Roles blocked',
+        value: `${aiRuntimeSummary.rolesBlocked}`,
+      },
+      {
+        key: 'Providers cooling down',
+        value: `${aiRuntimeSummary.providersCoolingDown}`,
+      },
+      {
+        key: 'Generated (UTC)',
+        value: aiRuntimeHealthGeneratedAt ?? 'n/a',
+      },
+    ];
 
     return (
-      <div className="grid gap-3">
-        <p className="text-muted-foreground text-xs">
-          Runtime health: {aiRuntimeSummary.health} | Roles blocked:{' '}
-          {aiRuntimeSummary.rolesBlocked} | Providers cooling down:{' '}
-          {aiRuntimeSummary.providersCoolingDown}
-          {aiRuntimeHealthGeneratedAt
-            ? ` | Generated: ${aiRuntimeHealthGeneratedAt}`
-            : ''}
-        </p>
+      <div className="grid gap-4">
+        <article className="card grid gap-2 p-3">
+          <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+            Runtime snapshot
+          </h3>
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            {runtimeOverviewRows.map((row) => (
+              <div
+                className="rounded-lg border border-border/30 bg-background/55 px-3 py-2"
+                key={row.key}
+              >
+                <p className="text-muted-foreground text-xs uppercase tracking-wide">
+                  {row.key}
+                </p>
+                <p className="font-semibold text-foreground text-sm">
+                  {row.value}
+                </p>
+              </div>
+            ))}
+          </div>
+        </article>
         {hasBlockedRoles ? (
           <article className="rounded-xl border border-destructive/40 bg-destructive/10 p-3">
             <p className="font-semibold text-destructive text-xs uppercase tracking-wide">
@@ -4296,258 +4331,297 @@ export default async function AdminUxObserverEngagementPage({
             value={`${aiRuntimeSummary.providersReady}`}
           />
         </div>
-        <form className="grid gap-2" method="get">
-          <input name="hours" type="hidden" value={`${hours}`} />
-          <input name="panel" type="hidden" value={activePanel} />
-          <input
-            name="gatewaySource"
-            type="hidden"
-            value={gatewaySourceFilter ?? ''}
-          />
-          {appliedGatewaySessionChannelFilter ? (
-            <input
-              name="gatewayChannel"
-              type="hidden"
-              value={appliedGatewaySessionChannelFilter}
-            />
-          ) : null}
-          {appliedGatewaySessionProviderFilter ? (
-            <input
-              name="gatewayProvider"
-              type="hidden"
-              value={appliedGatewaySessionProviderFilter}
-            />
-          ) : null}
-          <input
-            name="gatewayStatus"
-            type="hidden"
-            value={appliedGatewaySessionStatusInputValue}
-          />
-          {selectedSessionId ? (
-            <input name="session" type="hidden" value={selectedSessionId} />
-          ) : null}
-          <input name="eventsLimit" type="hidden" value={`${eventsLimit}`} />
-          <input name="eventType" type="hidden" value={eventTypeFilter} />
-          <input name="eventQuery" type="hidden" value={eventQuery} />
-          <div className="flex flex-wrap items-center gap-2">
-            <label
-              className="text-muted-foreground text-xs uppercase tracking-wide"
-              htmlFor="ai-runtime-role"
-            >
-              Role
-            </label>
-            <select
-              className="rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm"
-              defaultValue={aiRole}
-              id="ai-runtime-role"
-              name="aiRole"
-            >
-              {AI_RUNTIME_ROLES.map((role) => (
-                <option key={role} value={role}>
-                  {role}
-                </option>
-              ))}
-            </select>
-            <label
-              className="text-muted-foreground text-xs uppercase tracking-wide"
-              htmlFor="ai-runtime-timeout"
-            >
-              Timeout (ms)
-            </label>
-            <input
-              className="w-32 rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm"
-              defaultValue={`${aiTimeoutMs ?? 12_000}`}
-              id="ai-runtime-timeout"
-              max={120_000}
-              min={250}
-              name="aiTimeoutMs"
-              type="number"
-            />
-            <button
-              className="rounded-md border border-border bg-background px-3 py-1 text-foreground text-sm hover:bg-accent"
-              name="aiDryRun"
-              type="submit"
-              value="1"
-            >
-              Run dry-run
-            </button>
-          </div>
-          <label
-            className="text-muted-foreground text-xs uppercase tracking-wide"
-            htmlFor="ai-runtime-prompt"
-          >
-            Prompt
-          </label>
-          <input
-            className="w-full rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm"
-            defaultValue={aiPrompt}
-            id="ai-runtime-prompt"
-            name="aiPrompt"
-            required
-            type="text"
-          />
-          <div className="grid gap-2 md:grid-cols-2">
-            <div className="grid gap-1">
-              <label
-                className="text-muted-foreground text-xs uppercase tracking-wide"
-                htmlFor="ai-runtime-providers"
-              >
-                Providers override (csv)
-              </label>
-              <input
-                className="w-full rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm"
-                defaultValue={aiProvidersCsv}
-                id="ai-runtime-providers"
-                name="aiProviders"
-                placeholder="claude-4,gpt-4.1"
-                type="text"
-              />
+        <article className="card grid gap-3 p-4">
+          <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+            Role and provider matrix
+          </h3>
+          <div className="grid gap-3 lg:grid-cols-2">
+            <div className="grid gap-2">
+              <p className="text-muted-foreground text-xs uppercase tracking-wide">
+                Role profiles
+              </p>
+              {hasProfiles ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-left text-xs">
+                    <thead>
+                      <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
+                        <th className="py-2 pr-3">Role</th>
+                        <th className="px-3 py-2">Provider chain</th>
+                        <th className="px-3 py-2 text-right">Ready</th>
+                        <th className="px-3 py-2 text-right">Blocked</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {aiRuntimeRoleStatesBase.map((profile) => (
+                        <tr
+                          className="border-border/25 border-b last:border-b-0"
+                          key={profile.role}
+                        >
+                          <td className="py-2 pr-3 font-medium text-foreground">
+                            {profile.role}
+                          </td>
+                          <td className="px-3 py-2 text-muted-foreground">
+                            {profile.providers.join(' -> ') || 'n/a'}
+                          </td>
+                          <td className="px-3 py-2 text-right text-foreground">
+                            {profile.availableProviders.length}
+                          </td>
+                          <td className="px-3 py-2 text-right text-foreground">
+                            {profile.blockedProviders.length}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-xs">
+                  No runtime profiles returned.
+                </p>
+              )}
             </div>
-            <div className="grid gap-1">
-              <label
-                className="text-muted-foreground text-xs uppercase tracking-wide"
-                htmlFor="ai-runtime-failures"
-              >
-                Simulate failures (csv)
-              </label>
-              <input
-                className="w-full rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm"
-                defaultValue={aiFailuresCsv}
-                id="ai-runtime-failures"
-                name="aiFailures"
-                placeholder="claude-4"
-                type="text"
-              />
+            <div className="grid gap-2">
+              <p className="text-muted-foreground text-xs uppercase tracking-wide">
+                Provider states
+              </p>
+              {hasProviders ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-left text-xs">
+                    <thead>
+                      <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
+                        <th className="py-2 pr-3">Provider</th>
+                        <th className="px-3 py-2">State</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cooldownRows.map((providerState) => (
+                        <tr
+                          className="border-border/25 border-b last:border-b-0"
+                          key={providerState.provider}
+                        >
+                          <td className="py-2 pr-3 font-medium text-foreground">
+                            {providerState.provider}
+                          </td>
+                          <td className="px-3 py-2 text-muted-foreground">
+                            {providerState.isCoolingDown
+                              ? `cooldown active (${providerState.cooldownUntil})`
+                              : 'ready'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-xs">
+                  No provider state data.
+                </p>
+              )}
             </div>
           </div>
-        </form>
-
-        {aiRuntimeDryRunErrorMessage ? (
-          <p className="text-red-400 text-xs">{aiRuntimeDryRunErrorMessage}</p>
-        ) : null}
-        {aiRuntimeDryRunInfoMessage ? (
-          <p className="text-emerald-400 text-xs">
-            {aiRuntimeDryRunInfoMessage}
-          </p>
-        ) : null}
-
-        <div className="grid gap-3 lg:grid-cols-2">
-          <article className="rounded-xl border border-border/25 bg-background/60 p-3">
-            <p className="text-muted-foreground text-xs uppercase tracking-wide">
-              Role profiles
-            </p>
-            {hasProfiles ? (
-              <ul className="mt-2 grid gap-1 text-xs">
-                {aiRuntimeRoleStatesBase.map((profile) => (
-                  <li key={profile.role}>
-                    <span className="font-semibold text-foreground">
-                      {profile.role}
-                    </span>{' '}
-                    <span className="text-muted-foreground">
-                      {profile.providers.join(' -> ') || 'n/a'}
-                      {' | '}
-                      ready: {profile.availableProviders.length}
-                      {' | '}
-                      blocked: {profile.blockedProviders.length}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-2 text-muted-foreground text-xs">
-                No runtime profiles returned.
-              </p>
-            )}
-          </article>
-          <article className="rounded-xl border border-border/25 bg-background/60 p-3">
-            <p className="text-muted-foreground text-xs uppercase tracking-wide">
-              Provider states
-            </p>
-            {hasProviders ? (
-              <ul className="mt-2 grid gap-1 text-xs">
-                {cooldownRows.map((providerState) => (
-                  <li
-                    className="flex flex-wrap items-center justify-between gap-2"
-                    key={providerState.provider}
-                  >
-                    <span className="font-semibold text-foreground">
-                      {providerState.provider}
-                    </span>
-                    <span className="text-muted-foreground">
-                      {providerState.isCoolingDown
-                        ? `cooldown active (${providerState.cooldownUntil})`
-                        : 'ready'}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-2 text-muted-foreground text-xs">
-                No provider state data.
-              </p>
-            )}
-          </article>
-        </div>
-
-        {aiRuntimeDryRunResult ? (
-          <article className="rounded-xl border border-border/25 bg-background/60 p-3">
-            <p className="text-muted-foreground text-xs uppercase tracking-wide">
-              Dry-run result
-            </p>
-            <p className="mt-1 text-foreground text-xs">
-              Role: {aiRuntimeDryRunResult.role} | Selected:{' '}
-              {aiRuntimeDryRunResult.selectedProvider ?? 'n/a'} | Failed:{' '}
-              {aiRuntimeDryRunResult.failed ? 'yes' : 'no'}
-            </p>
-            {aiRuntimeDryRunResult.output ? (
-              <pre className="mt-2 overflow-x-auto whitespace-pre-wrap rounded-md border border-border/30 bg-background/80 p-2 text-muted-foreground text-xs">
-                {aiRuntimeDryRunResult.output}
-              </pre>
+        </article>
+        <details
+          className="rounded-xl border border-border/30 bg-background/45 p-3"
+          open={isDryRunPanelOpen}
+        >
+          <summary className="cursor-pointer font-semibold text-foreground text-xs uppercase tracking-wide">
+            Dry-run simulator
+          </summary>
+          <form className="mt-3 grid gap-2" method="get">
+            <input name="hours" type="hidden" value={`${hours}`} />
+            <input name="panel" type="hidden" value={activePanel} />
+            <input
+              name="gatewaySource"
+              type="hidden"
+              value={gatewaySourceFilter ?? ''}
+            />
+            {appliedGatewaySessionChannelFilter ? (
+              <input
+                name="gatewayChannel"
+                type="hidden"
+                value={appliedGatewaySessionChannelFilter}
+              />
             ) : null}
-            <div className="mt-2 overflow-x-auto">
-              <table className="w-full border-collapse text-left text-xs">
-                <thead>
-                  <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
-                    <th className="py-2 pr-3">Provider</th>
-                    <th className="px-3 py-2">Status</th>
-                    <th className="px-3 py-2 text-right">Latency</th>
-                    <th className="px-3 py-2">Error</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {aiRuntimeDryRunResult.attempts.map((attempt, index) => (
-                    <tr
-                      className="border-border/25 border-b last:border-b-0"
-                      key={`${attempt.provider}:${index + 1}`}
-                    >
-                      <td className="py-2 pr-3 text-foreground">
-                        {attempt.provider}
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground">
-                        {attempt.status}
-                      </td>
-                      <td className="px-3 py-2 text-right text-muted-foreground">
-                        {attempt.latencyMs !== null
-                          ? `${attempt.latencyMs}ms`
-                          : 'n/a'}
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground">
-                        {attempt.errorCode && attempt.errorCode.length > 0
-                          ? `${attempt.errorCode}${
-                              attempt.errorMessage &&
-                              attempt.errorMessage.length > 0
-                                ? `: ${attempt.errorMessage}`
-                                : ''
-                            }`
-                          : 'none'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            {appliedGatewaySessionProviderFilter ? (
+              <input
+                name="gatewayProvider"
+                type="hidden"
+                value={appliedGatewaySessionProviderFilter}
+              />
+            ) : null}
+            <input
+              name="gatewayStatus"
+              type="hidden"
+              value={appliedGatewaySessionStatusInputValue}
+            />
+            {selectedSessionId ? (
+              <input name="session" type="hidden" value={selectedSessionId} />
+            ) : null}
+            <input name="eventsLimit" type="hidden" value={`${eventsLimit}`} />
+            <input name="eventType" type="hidden" value={eventTypeFilter} />
+            <input name="eventQuery" type="hidden" value={eventQuery} />
+            <div className="flex flex-wrap items-center gap-2">
+              <label
+                className="text-muted-foreground text-xs uppercase tracking-wide"
+                htmlFor="ai-runtime-role"
+              >
+                Role
+              </label>
+              <select
+                className="rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm"
+                defaultValue={aiRole}
+                id="ai-runtime-role"
+                name="aiRole"
+              >
+                {AI_RUNTIME_ROLES.map((role) => (
+                  <option key={role} value={role}>
+                    {role}
+                  </option>
+                ))}
+              </select>
+              <label
+                className="text-muted-foreground text-xs uppercase tracking-wide"
+                htmlFor="ai-runtime-timeout"
+              >
+                Timeout (ms)
+              </label>
+              <input
+                className="w-32 rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm"
+                defaultValue={`${aiTimeoutMs ?? 12_000}`}
+                id="ai-runtime-timeout"
+                max={120_000}
+                min={250}
+                name="aiTimeoutMs"
+                type="number"
+              />
+              <button
+                className="rounded-md border border-border bg-background px-3 py-1 text-foreground text-sm hover:bg-accent"
+                name="aiDryRun"
+                type="submit"
+                value="1"
+              >
+                Run dry-run
+              </button>
             </div>
-          </article>
-        ) : null}
+            <label
+              className="text-muted-foreground text-xs uppercase tracking-wide"
+              htmlFor="ai-runtime-prompt"
+            >
+              Prompt
+            </label>
+            <input
+              className="w-full rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm"
+              defaultValue={aiPrompt}
+              id="ai-runtime-prompt"
+              name="aiPrompt"
+              required
+              type="text"
+            />
+            <div className="grid gap-2 md:grid-cols-2">
+              <div className="grid gap-1">
+                <label
+                  className="text-muted-foreground text-xs uppercase tracking-wide"
+                  htmlFor="ai-runtime-providers"
+                >
+                  Providers override (csv)
+                </label>
+                <input
+                  className="w-full rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm"
+                  defaultValue={aiProvidersCsv}
+                  id="ai-runtime-providers"
+                  name="aiProviders"
+                  placeholder="claude-4,gpt-4.1"
+                  type="text"
+                />
+              </div>
+              <div className="grid gap-1">
+                <label
+                  className="text-muted-foreground text-xs uppercase tracking-wide"
+                  htmlFor="ai-runtime-failures"
+                >
+                  Simulate failures (csv)
+                </label>
+                <input
+                  className="w-full rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm"
+                  defaultValue={aiFailuresCsv}
+                  id="ai-runtime-failures"
+                  name="aiFailures"
+                  placeholder="claude-4"
+                  type="text"
+                />
+              </div>
+            </div>
+          </form>
+          {aiRuntimeDryRunErrorMessage ? (
+            <p className="mt-2 text-red-400 text-xs">
+              {aiRuntimeDryRunErrorMessage}
+            </p>
+          ) : null}
+          {aiRuntimeDryRunInfoMessage ? (
+            <p className="mt-2 text-emerald-400 text-xs">
+              {aiRuntimeDryRunInfoMessage}
+            </p>
+          ) : null}
+          {aiRuntimeDryRunResult ? (
+            <article className="mt-3 rounded-xl border border-border/25 bg-background/60 p-3">
+              <p className="text-muted-foreground text-xs uppercase tracking-wide">
+                Dry-run result
+              </p>
+              <p className="mt-1 text-foreground text-xs">
+                Role: {aiRuntimeDryRunResult.role} | Selected:{' '}
+                {aiRuntimeDryRunResult.selectedProvider ?? 'n/a'} | Failed:{' '}
+                {aiRuntimeDryRunResult.failed ? 'yes' : 'no'}
+              </p>
+              {aiRuntimeDryRunResult.output ? (
+                <pre className="mt-2 overflow-x-auto whitespace-pre-wrap rounded-md border border-border/30 bg-background/80 p-2 text-muted-foreground text-xs">
+                  {aiRuntimeDryRunResult.output}
+                </pre>
+              ) : null}
+              <div className="mt-2 overflow-x-auto">
+                <table className="w-full border-collapse text-left text-xs">
+                  <thead>
+                    <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
+                      <th className="py-2 pr-3">Provider</th>
+                      <th className="px-3 py-2">Status</th>
+                      <th className="px-3 py-2 text-right">Latency</th>
+                      <th className="px-3 py-2">Error</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {aiRuntimeDryRunResult.attempts.map((attempt, index) => (
+                      <tr
+                        className="border-border/25 border-b last:border-b-0"
+                        key={`${attempt.provider}:${index + 1}`}
+                      >
+                        <td className="py-2 pr-3 text-foreground">
+                          {attempt.provider}
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground">
+                          {attempt.status}
+                        </td>
+                        <td className="px-3 py-2 text-right text-muted-foreground">
+                          {attempt.latencyMs !== null
+                            ? `${attempt.latencyMs}ms`
+                            : 'n/a'}
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground">
+                          {attempt.errorCode && attempt.errorCode.length > 0
+                            ? `${attempt.errorCode}${
+                                attempt.errorMessage &&
+                                attempt.errorMessage.length > 0
+                                  ? `: ${attempt.errorMessage}`
+                                  : ''
+                              }`
+                            : 'none'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </article>
+          ) : null}
+        </details>
       </div>
     );
   };
@@ -4754,6 +4828,81 @@ export default async function AdminUxObserverEngagementPage({
     },
     { label: 'Release risk', value: healthLabel(releaseHealthAlertRiskLevel) },
   ];
+  const gatewayRiskSignals = [
+    {
+      id: 'gateway-auto-compaction',
+      label: 'Auto compaction risk',
+      level: gatewayAutoCompactionShareLevel,
+    },
+    {
+      id: 'gateway-failed-step',
+      label: 'Failed-step risk',
+      level: gatewayFailedStepLevel,
+    },
+    {
+      id: 'gateway-runtime-success',
+      label: 'Runtime success',
+      level: gatewayRuntimeSuccessLevel,
+    },
+    {
+      id: 'gateway-cooldown-skip',
+      label: 'Cooldown skip risk',
+      level: gatewayCooldownSkipLevel,
+    },
+  ];
+  const gatewayScopeOverridesApplied =
+    (gatewaySourceFilter ?? '').length > 0 ||
+    (appliedGatewayChannelFilter ?? '').length > 0 ||
+    (appliedGatewayProviderFilter ?? '').length > 0 ||
+    (appliedGatewaySessionStatusInputValue ?? '').length > 0;
+  const gatewayScopeRows: Array<{ key: string; value: string }> = [
+    {
+      key: 'Source',
+      value: gatewaySourceFilter === 'memory' ? 'memory' : 'db',
+    },
+    {
+      key: 'Channel',
+      value: appliedGatewayChannelFilter ?? 'all',
+    },
+    {
+      key: 'Provider',
+      value: appliedGatewayProviderFilter ?? 'all',
+    },
+    {
+      key: 'Status',
+      value: appliedGatewaySessionStatusLabel,
+    },
+  ];
+  const gatewayEventCounters: Array<{ key: string; value: string }> = [
+    {
+      key: 'Total events',
+      value: `${toNumber(gatewayTelemetryEvents.total)}`,
+    },
+    {
+      key: 'Cycle steps',
+      value: `${toNumber(gatewayTelemetryEvents.draftCycleStepEvents)}`,
+    },
+    {
+      key: 'Failed steps',
+      value: `${toNumber(gatewayTelemetryEvents.failedStepEvents)}`,
+    },
+    {
+      key: 'Compactions',
+      value: `${toNumber(gatewayTelemetryEvents.compactionEvents)}`,
+    },
+    {
+      key: 'Auto compactions',
+      value: `${toNumber(gatewayTelemetryEvents.autoCompactionEvents)}`,
+    },
+    {
+      key: 'Manual compactions',
+      value: `${toNumber(gatewayTelemetryEvents.manualCompactionEvents)}`,
+    },
+    {
+      key: 'Pruned events',
+      value: `${toNumber(gatewayTelemetryEvents.prunedEventCount)}`,
+    },
+  ];
 
   return (
     <main className="mx-auto grid w-full max-w-7xl gap-4" id="main-content">
@@ -4841,145 +4990,165 @@ export default async function AdminUxObserverEngagementPage({
             <h2 className="font-semibold text-foreground text-lg">
               Agent gateway control-plane telemetry
             </h2>
-            <div className="flex flex-wrap items-center gap-2">
-              <span
-                className={`${healthBadgeClass(resolvedGatewayTelemetryHealthLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
-              >
-                Telemetry health:{' '}
-                {healthLabel(resolvedGatewayTelemetryHealthLevel)}
-              </span>
-              <span
-                className={`${healthBadgeClass(gatewayAutoCompactionShareLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
-              >
-                Auto compaction risk:{' '}
-                {healthLabel(gatewayAutoCompactionShareLevel)}
-              </span>
-              <span
-                className={`${healthBadgeClass(gatewayFailedStepLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
-              >
-                Failed-step risk: {healthLabel(gatewayFailedStepLevel)}
-              </span>
-              <span
-                className={`${healthBadgeClass(gatewayRuntimeSuccessLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
-              >
-                Runtime success: {healthLabel(gatewayRuntimeSuccessLevel)}
-              </span>
-              <span
-                className={`${healthBadgeClass(gatewayCooldownSkipLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
-              >
-                Cooldown skip risk: {healthLabel(gatewayCooldownSkipLevel)}
-              </span>
-            </div>
+            <span
+              className={`${healthBadgeClass(resolvedGatewayTelemetryHealthLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
+            >
+              Telemetry health:{' '}
+              {healthLabel(resolvedGatewayTelemetryHealthLevel)}
+            </span>
           </div>
+          <article className="card grid gap-2 p-3">
+            <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+              Risk signals
+            </h3>
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              {gatewayRiskSignals.map((signal) => (
+                <div
+                  className="flex items-center justify-between gap-2 rounded-lg border border-border/30 bg-background/55 px-3 py-2"
+                  key={signal.id}
+                >
+                  <p className="font-medium text-foreground text-xs">
+                    {signal.label}
+                  </p>
+                  <span
+                    className={`${healthBadgeClass(signal.level)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[11px] uppercase tracking-wide`}
+                  >
+                    {healthLabel(signal.level)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </article>
           {gatewayTelemetryError ? (
             <p className="text-muted-foreground text-sm">
               {gatewayTelemetryError}
             </p>
           ) : (
             <>
-              <form className="flex flex-wrap items-end gap-2" method="get">
-                <input name="hours" type="hidden" value={`${hours}`} />
-                <input name="panel" type="hidden" value={activePanel} />
-                <label
-                  className="grid gap-1 text-muted-foreground text-xs uppercase tracking-wide"
-                  htmlFor="gateway-source-scope-select"
+              <details
+                className="rounded-xl border border-border/30 bg-background/45 p-3"
+                open={gatewayScopeOverridesApplied}
+              >
+                <summary className="cursor-pointer font-semibold text-foreground text-xs uppercase tracking-wide">
+                  Scope and source controls
+                </summary>
+                <form
+                  className="mt-3 flex flex-wrap items-end gap-2"
+                  method="get"
                 >
-                  Source
-                  <select
-                    className="w-32 rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm normal-case tracking-normal"
-                    defaultValue={gatewaySourceFilter ?? ''}
-                    id="gateway-source-scope-select"
-                    name="gatewaySource"
+                  <input name="hours" type="hidden" value={`${hours}`} />
+                  <input name="panel" type="hidden" value={activePanel} />
+                  <label
+                    className="grid gap-1 text-muted-foreground text-xs uppercase tracking-wide"
+                    htmlFor="gateway-source-scope-select"
                   >
-                    <option value="">db</option>
-                    <option value="memory">memory</option>
-                  </select>
-                </label>
-                {selectedSessionId ? (
+                    Source
+                    <select
+                      className="w-32 rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm normal-case tracking-normal"
+                      defaultValue={gatewaySourceFilter ?? ''}
+                      id="gateway-source-scope-select"
+                      name="gatewaySource"
+                    >
+                      <option value="">db</option>
+                      <option value="memory">memory</option>
+                    </select>
+                  </label>
+                  {selectedSessionId ? (
+                    <input
+                      name="session"
+                      type="hidden"
+                      value={selectedSessionId}
+                    />
+                  ) : null}
                   <input
-                    name="session"
+                    name="eventsLimit"
                     type="hidden"
-                    value={selectedSessionId}
+                    value={`${eventsLimit}`}
                   />
-                ) : null}
-                <input
-                  name="eventsLimit"
-                  type="hidden"
-                  value={`${eventsLimit}`}
-                />
-                <input name="eventType" type="hidden" value={eventTypeFilter} />
-                <input name="eventQuery" type="hidden" value={eventQuery} />
-                <label
-                  className="grid gap-1 text-muted-foreground text-xs uppercase tracking-wide"
-                  htmlFor="gateway-channel-scope-input"
-                >
-                  Channel scope
                   <input
-                    className="w-48 rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm normal-case tracking-normal"
-                    defaultValue={appliedGatewayChannelFilter ?? ''}
-                    id="gateway-channel-scope-input"
-                    name="gatewayChannel"
-                    placeholder="all channels"
-                    type="text"
+                    name="eventType"
+                    type="hidden"
+                    value={eventTypeFilter}
                   />
-                </label>
-                <label
-                  className="grid gap-1 text-muted-foreground text-xs uppercase tracking-wide"
-                  htmlFor="gateway-provider-scope-input"
-                >
-                  Provider scope
-                  <input
-                    className="w-44 rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm normal-case tracking-normal"
-                    defaultValue={appliedGatewayProviderFilter ?? ''}
-                    id="gateway-provider-scope-input"
-                    name="gatewayProvider"
-                    placeholder="all providers"
-                    type="text"
-                  />
-                </label>
-                <label
-                  className="grid gap-1 text-muted-foreground text-xs uppercase tracking-wide"
-                  htmlFor="gateway-status-scope-select"
-                >
-                  Session status
-                  <select
-                    className="w-36 rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm normal-case tracking-normal"
-                    defaultValue={appliedGatewaySessionStatusInputValue}
-                    id="gateway-status-scope-select"
-                    name="gatewayStatus"
+                  <input name="eventQuery" type="hidden" value={eventQuery} />
+                  <label
+                    className="grid gap-1 text-muted-foreground text-xs uppercase tracking-wide"
+                    htmlFor="gateway-channel-scope-input"
                   >
-                    <option value="">all statuses</option>
-                    <option value="active">active</option>
-                    <option value="closed">closed</option>
-                  </select>
-                </label>
-                <button
-                  className="rounded-md border border-border bg-background px-3 py-1 text-foreground text-sm hover:bg-accent"
-                  type="submit"
-                >
-                  Apply scope
-                </button>
-                <a
-                  className="rounded-md border border-border bg-background px-3 py-1 text-foreground text-sm hover:bg-accent"
-                  href={buildPanelHref(activePanel)}
-                >
-                  Reset scope
-                </a>
-              </form>
-              <p className="text-muted-foreground text-xs">
-                Scope: channel{' '}
-                <span className="text-foreground">
-                  {appliedGatewayChannelFilter ?? 'all'}
-                </span>{' '}
-                | provider{' '}
-                <span className="text-foreground">
-                  {appliedGatewayProviderFilter ?? 'all'}
-                </span>
-                {' | '}status{' '}
-                <span className="text-foreground">
-                  {appliedGatewaySessionStatusLabel}
-                </span>
-              </p>
+                    Channel scope
+                    <input
+                      className="w-48 rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm normal-case tracking-normal"
+                      defaultValue={appliedGatewayChannelFilter ?? ''}
+                      id="gateway-channel-scope-input"
+                      name="gatewayChannel"
+                      placeholder="all channels"
+                      type="text"
+                    />
+                  </label>
+                  <label
+                    className="grid gap-1 text-muted-foreground text-xs uppercase tracking-wide"
+                    htmlFor="gateway-provider-scope-input"
+                  >
+                    Provider scope
+                    <input
+                      className="w-44 rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm normal-case tracking-normal"
+                      defaultValue={appliedGatewayProviderFilter ?? ''}
+                      id="gateway-provider-scope-input"
+                      name="gatewayProvider"
+                      placeholder="all providers"
+                      type="text"
+                    />
+                  </label>
+                  <label
+                    className="grid gap-1 text-muted-foreground text-xs uppercase tracking-wide"
+                    htmlFor="gateway-status-scope-select"
+                  >
+                    Session status
+                    <select
+                      className="w-36 rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm normal-case tracking-normal"
+                      defaultValue={appliedGatewaySessionStatusInputValue}
+                      id="gateway-status-scope-select"
+                      name="gatewayStatus"
+                    >
+                      <option value="">all statuses</option>
+                      <option value="active">active</option>
+                      <option value="closed">closed</option>
+                    </select>
+                  </label>
+                  <button
+                    className="rounded-md border border-border bg-background px-3 py-1 text-foreground text-sm hover:bg-accent"
+                    type="submit"
+                  >
+                    Apply scope
+                  </button>
+                  <a
+                    className="rounded-md border border-border bg-background px-3 py-1 text-foreground text-sm hover:bg-accent"
+                    href={buildPanelHref(activePanel)}
+                  >
+                    Reset scope
+                  </a>
+                </form>
+              </details>
+              <article className="card grid gap-2 p-3">
+                <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+                  Applied scope
+                </h3>
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  {gatewayScopeRows.map((row) => (
+                    <div
+                      className="rounded-lg border border-border/30 bg-background/55 px-3 py-2"
+                      key={row.key}
+                    >
+                      <p className="text-muted-foreground text-xs uppercase tracking-wide">
+                        {row.key}
+                      </p>
+                      <p className="font-semibold text-foreground text-sm">
+                        {row.value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </article>
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <StatCard
                   hint="sessions sampled in current window"
@@ -5022,16 +5191,26 @@ export default async function AdminUxObserverEngagementPage({
                   value={toRateText(gatewayTelemetryAttempts.skippedRate)}
                 />
               </div>
-              <p className="text-muted-foreground text-xs">
-                Events: total {toNumber(gatewayTelemetryEvents.total)} | cycle
-                steps {toNumber(gatewayTelemetryEvents.draftCycleStepEvents)} |
-                failed steps {toNumber(gatewayTelemetryEvents.failedStepEvents)}{' '}
-                | compactions{' '}
-                {toNumber(gatewayTelemetryEvents.compactionEvents)} | auto{' '}
-                {toNumber(gatewayTelemetryEvents.autoCompactionEvents)} | manual{' '}
-                {toNumber(gatewayTelemetryEvents.manualCompactionEvents)} |
-                pruned {toNumber(gatewayTelemetryEvents.prunedEventCount)}
-              </p>
+              <article className="card grid gap-2 p-3">
+                <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+                  Event counters
+                </h3>
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  {gatewayEventCounters.map((counter) => (
+                    <div
+                      className="rounded-lg border border-border/30 bg-background/55 px-3 py-2"
+                      key={counter.key}
+                    >
+                      <p className="text-muted-foreground text-xs uppercase tracking-wide">
+                        {counter.key}
+                      </p>
+                      <p className="font-semibold text-foreground text-sm">
+                        {counter.value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </article>
               <GatewayCompactionHourlyTrendCard
                 emptyLabel="No compaction events in current sample."
                 items={gatewayCompactionHourlyTrend}
