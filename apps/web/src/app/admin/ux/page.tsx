@@ -3395,68 +3395,79 @@ const GatewayCompactionHourlyTrendCard = ({
   emptyLabel,
   items,
   title,
+  compactEmptyState = false,
 }: {
+  compactEmptyState?: boolean;
   emptyLabel: string;
   items: GatewayCompactionHourlyTrendItem[];
   title: string;
-}) => (
-  <article className="card grid gap-2 p-4">
-    <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-      {title}
-    </h3>
-    {items.length === 0 ? (
-      <p className="text-muted-foreground text-xs">{emptyLabel}</p>
-    ) : (
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-left text-xs">
-          <thead>
-            <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
-              <th className="py-2 pr-3">Hour</th>
-              <th className="px-3 py-2 text-right">Compactions</th>
-              <th className="px-3 py-2 text-right">Auto</th>
-              <th className="px-3 py-2 text-right">Manual</th>
-              <th className="px-3 py-2 text-right">Auto share</th>
-              <th className="px-3 py-2 text-right">Pruned</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((entry) => {
-              return (
-                <tr
-                  className="border-border/25 border-b last:border-b-0"
-                  key={entry.hour}
-                >
-                  <td className="py-2 pr-3 text-muted-foreground">
-                    {formatHourBucket(entry.hour)}
-                  </td>
-                  <td className="px-3 py-2 text-right text-foreground">
-                    {entry.compactions}
-                  </td>
-                  <td className="px-3 py-2 text-right text-foreground">
-                    {entry.autoCompactions}
-                  </td>
-                  <td className="px-3 py-2 text-right text-foreground">
-                    {entry.manualCompactions}
-                  </td>
-                  <td className="px-3 py-2 text-right text-foreground">
-                    <span
-                      className={`${healthBadgeClass(entry.autoCompactionRiskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
-                    >
-                      {toRateText(entry.autoCompactionShare)}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 text-right text-foreground">
-                    {entry.prunedEventCount}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    )}
-  </article>
-);
+}) => {
+  const hasItems = items.length > 0;
+  const showCompactEmptyState = !hasItems && compactEmptyState;
+  const showPlainEmptyState = !(hasItems || compactEmptyState);
+  return (
+    <article className="card grid gap-2 p-4">
+      <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+        {title}
+      </h3>
+      {showCompactEmptyState ? (
+        <CompactEmptyState message={emptyLabel} size="xs" />
+      ) : null}
+      {showPlainEmptyState ? (
+        <p className="text-muted-foreground text-xs">{emptyLabel}</p>
+      ) : null}
+      {hasItems ? (
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left text-xs">
+            <thead>
+              <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
+                <th className="py-2 pr-3">Hour</th>
+                <th className="px-3 py-2 text-right">Compactions</th>
+                <th className="px-3 py-2 text-right">Auto</th>
+                <th className="px-3 py-2 text-right">Manual</th>
+                <th className="px-3 py-2 text-right">Auto share</th>
+                <th className="px-3 py-2 text-right">Pruned</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((entry) => {
+                return (
+                  <tr
+                    className="border-border/25 border-b last:border-b-0"
+                    key={entry.hour}
+                  >
+                    <td className="py-2 pr-3 text-muted-foreground">
+                      {formatHourBucket(entry.hour)}
+                    </td>
+                    <td className="px-3 py-2 text-right text-foreground">
+                      {entry.compactions}
+                    </td>
+                    <td className="px-3 py-2 text-right text-foreground">
+                      {entry.autoCompactions}
+                    </td>
+                    <td className="px-3 py-2 text-right text-foreground">
+                      {entry.manualCompactions}
+                    </td>
+                    <td className="px-3 py-2 text-right text-foreground">
+                      <span
+                        className={`${healthBadgeClass(entry.autoCompactionRiskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
+                      >
+                        {toRateText(entry.autoCompactionShare)}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-right text-foreground">
+                      {entry.prunedEventCount}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+    </article>
+  );
+};
 
 const GatewayTelemetryThresholdsCard = ({
   thresholds,
@@ -5365,6 +5376,7 @@ export default async function AdminUxObserverEngagementPage({
                 </div>
               </article>
               <GatewayCompactionHourlyTrendCard
+                compactEmptyState
                 emptyLabel="No compaction events in current sample."
                 items={gatewayCompactionHourlyTrend}
                 title="Gateway compaction trend (UTC)"
