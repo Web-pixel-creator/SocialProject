@@ -2959,6 +2959,24 @@ const resolveCardEmptyState = ({
   };
 };
 
+const CardEmptyStateMessage = ({
+  emptyLabel,
+  showCompactEmptyState,
+  showPlainEmptyState,
+}: {
+  emptyLabel: string;
+  showCompactEmptyState: boolean;
+  showPlainEmptyState: boolean;
+}) => {
+  if (showCompactEmptyState) {
+    return <CompactEmptyState message={emptyLabel} size="xs" />;
+  }
+  if (showPlainEmptyState) {
+    return <p className="text-muted-foreground text-xs">{emptyLabel}</p>;
+  }
+  return null;
+};
+
 const normalizeStyleFusionErrorBreakdown = (
   items: unknown,
 ): Array<{ count: number; errorCode: string }> => {
@@ -3183,12 +3201,11 @@ const BreakdownListCard = ({
       <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
         {title}
       </h3>
-      {showCompactEmptyState ? (
-        <CompactEmptyState message={emptyLabel} size="xs" />
-      ) : null}
-      {showPlainEmptyState ? (
-        <p className="text-muted-foreground text-xs">{emptyLabel}</p>
-      ) : null}
+      <CardEmptyStateMessage
+        emptyLabel={emptyLabel}
+        showCompactEmptyState={showCompactEmptyState}
+        showPlainEmptyState={showPlainEmptyState}
+      />
       {hasItems ? (
         <ul className="grid gap-1 text-xs">
           {items.map((entry, index) => (
@@ -3229,12 +3246,11 @@ const HourlyTrendCard = ({
       <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
         {title}
       </h3>
-      {showCompactEmptyState ? (
-        <CompactEmptyState message={emptyLabel} size="xs" />
-      ) : null}
-      {showPlainEmptyState ? (
-        <p className="text-muted-foreground text-xs">{emptyLabel}</p>
-      ) : null}
+      <CardEmptyStateMessage
+        emptyLabel={emptyLabel}
+        showCompactEmptyState={showCompactEmptyState}
+        showPlainEmptyState={showPlainEmptyState}
+      />
       {hasItems ? (
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left text-xs">
@@ -3303,12 +3319,11 @@ const ReleaseHealthAlertHourlyTrendCard = ({
       <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
         {title}
       </h3>
-      {showCompactEmptyState ? (
-        <CompactEmptyState message={emptyLabel} size="xs" />
-      ) : null}
-      {showPlainEmptyState ? (
-        <p className="text-muted-foreground text-xs">{emptyLabel}</p>
-      ) : null}
+      <CardEmptyStateMessage
+        emptyLabel={emptyLabel}
+        showCompactEmptyState={showCompactEmptyState}
+        showPlainEmptyState={showPlainEmptyState}
+      />
       {hasItems ? (
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left text-xs">
@@ -3365,12 +3380,11 @@ const PredictionHourlyTrendCard = ({
       <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
         {title}
       </h3>
-      {showCompactEmptyState ? (
-        <CompactEmptyState message={emptyLabel} size="xs" />
-      ) : null}
-      {showPlainEmptyState ? (
-        <p className="text-muted-foreground text-xs">{emptyLabel}</p>
-      ) : null}
+      <CardEmptyStateMessage
+        emptyLabel={emptyLabel}
+        showCompactEmptyState={showCompactEmptyState}
+        showPlainEmptyState={showPlainEmptyState}
+      />
       {hasItems ? (
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left text-xs">
@@ -3439,12 +3453,11 @@ const GatewayCompactionHourlyTrendCard = ({
       <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
         {title}
       </h3>
-      {showCompactEmptyState ? (
-        <CompactEmptyState message={emptyLabel} size="xs" />
-      ) : null}
-      {showPlainEmptyState ? (
-        <p className="text-muted-foreground text-xs">{emptyLabel}</p>
-      ) : null}
+      <CardEmptyStateMessage
+        emptyLabel={emptyLabel}
+        showCompactEmptyState={showCompactEmptyState}
+        showPlainEmptyState={showPlainEmptyState}
+      />
       {hasItems ? (
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left text-xs">
