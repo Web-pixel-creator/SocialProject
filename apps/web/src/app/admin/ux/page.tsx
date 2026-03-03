@@ -2924,6 +2924,22 @@ const StatCard = ({
   );
 };
 
+const CompactEmptyState = ({
+  message,
+  size = 'sm',
+}: {
+  message: string;
+  size?: 'sm' | 'xs';
+}) => (
+  <div
+    className={`rounded-lg border border-border/25 bg-background/55 px-3 py-2 text-muted-foreground ${
+      size === 'xs' ? 'text-xs' : 'text-sm'
+    }`}
+  >
+    {message}
+  </div>
+);
+
 const normalizeStyleFusionErrorBreakdown = (
   items: unknown,
 ): Array<{ count: number; errorCode: string }> => {
@@ -3043,9 +3059,10 @@ const StyleFusionMetricsSection = ({
               Fusion errors
             </h3>
             {metrics.errorBreakdown.length === 0 ? (
-              <p className="text-muted-foreground text-xs">
-                No style-fusion errors in current window.
-              </p>
+              <CompactEmptyState
+                message="No style-fusion errors in current window."
+                size="xs"
+              />
             ) : (
               <ul className="grid gap-1 text-xs">
                 {metrics.errorBreakdown.map((entry, index) => (
@@ -3097,9 +3114,10 @@ const StyleFusionMetricsSection = ({
                 Copy errors
               </h4>
               {metrics.copy.errorBreakdown.length === 0 ? (
-                <p className="text-muted-foreground text-xs">
-                  No fusion-brief copy errors in current window.
-                </p>
+                <CompactEmptyState
+                  message="No fusion-brief copy errors in current window."
+                  size="xs"
+                />
               ) : (
                 <ul className="grid gap-1 text-xs">
                   {metrics.copy.errorBreakdown.map((entry, index) => (
@@ -5419,9 +5437,7 @@ export default async function AdminUxObserverEngagementPage({
             Engagement health
           </h2>
           {visibleHealthSignals.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              Waiting for enough engagement telemetry to score health signals.
-            </p>
+            <CompactEmptyState message="Waiting for enough engagement telemetry to score health signals." />
           ) : (
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {visibleHealthSignals.map((signal) => (
@@ -5574,10 +5590,7 @@ export default async function AdminUxObserverEngagementPage({
             ) : null}
           </div>
           {shouldCompactFeedPreferenceKpis ? (
-            <div className="rounded-lg border border-border/25 bg-background/55 px-3 py-2 text-muted-foreground text-sm">
-              No preference interaction events yet. Expanded KPI cards appear
-              after mode/density/hint telemetry arrives.
-            </div>
+            <CompactEmptyState message="No preference interaction events yet. Expanded KPI cards appear after mode/density/hint telemetry arrives." />
           ) : (
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               <StatCard
@@ -5676,9 +5689,10 @@ export default async function AdminUxObserverEngagementPage({
                   Multimodal breakdown
                 </h3>
                 {multimodalBreakdownRows.length === 0 ? (
-                  <p className="text-muted-foreground text-xs">
-                    No provider/empty/error breakdown data in current window.
-                  </p>
+                  <CompactEmptyState
+                    message="No provider/empty/error breakdown data in current window."
+                    size="xs"
+                  />
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full border-collapse text-left text-xs">
@@ -5892,9 +5906,10 @@ export default async function AdminUxObserverEngagementPage({
                     Cohort thresholds: {predictionCohortThresholdSummary}
                   </p>
                   {predictionCohortsByOutcomeWithRisk.length === 0 ? (
-                    <p className="text-muted-foreground text-xs">
-                      No outcome cohort data in current window.
-                    </p>
+                    <CompactEmptyState
+                      message="No outcome cohort data in current window."
+                      size="xs"
+                    />
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full border-collapse text-left text-xs">
@@ -5962,9 +5977,10 @@ export default async function AdminUxObserverEngagementPage({
                     Cohort thresholds: {predictionCohortThresholdSummary}
                   </p>
                   {predictionCohortsByStakeBandWithRisk.length === 0 ? (
-                    <p className="text-muted-foreground text-xs">
-                      No stake-band cohort data in current window.
-                    </p>
+                    <CompactEmptyState
+                      message="No stake-band cohort data in current window."
+                      size="xs"
+                    />
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full border-collapse text-left text-xs">
@@ -6028,9 +6044,10 @@ export default async function AdminUxObserverEngagementPage({
                   Scope x filter matrix
                 </h3>
                 {predictionFilterByScopeAndFilter.length === 0 ? (
-                  <p className="text-muted-foreground text-xs">
-                    No scope/filter matrix data in current window.
-                  </p>
+                  <CompactEmptyState
+                    message="No scope/filter matrix data in current window."
+                    size="xs"
+                  />
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full border-collapse text-left text-xs">
@@ -6087,9 +6104,10 @@ export default async function AdminUxObserverEngagementPage({
                   Scope x sort matrix
                 </h3>
                 {predictionSortByScopeAndSort.length === 0 ? (
-                  <p className="text-muted-foreground text-xs">
-                    No scope/sort matrix data in current window.
-                  </p>
+                  <CompactEmptyState
+                    message="No scope/sort matrix data in current window."
+                    size="xs"
+                  />
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full border-collapse text-left text-xs">
@@ -6127,10 +6145,10 @@ export default async function AdminUxObserverEngagementPage({
                   Active prediction controls by scope
                 </h3>
                 {predictionHistoryScopeStates.length === 0 ? (
-                  <p className="text-muted-foreground text-xs">
-                    No active prediction-history control state in current
-                    window.
-                  </p>
+                  <CompactEmptyState
+                    message="No active prediction-history control state in current window."
+                    size="xs"
+                  />
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full border-collapse text-left text-xs">
@@ -6352,15 +6370,10 @@ export default async function AdminUxObserverEngagementPage({
             Top segments
           </h2>
           {topSegments.length === 0 && shouldCompactFeedPreferenceEvents ? (
-            <div className="rounded-lg border border-border/25 bg-background/55 px-3 py-2 text-muted-foreground text-sm">
-              No segment ranking yet. Segment table appears after observer
-              interaction events are collected.
-            </div>
+            <CompactEmptyState message="No segment ranking yet. Segment table appears after observer interaction events are collected." />
           ) : null}
           {topSegments.length === 0 && !shouldCompactFeedPreferenceEvents ? (
-            <p className="text-muted-foreground text-sm">
-              No segment data yet.
-            </p>
+            <CompactEmptyState message="No segment data yet." />
           ) : null}
           {topSegments.length > 0 ? (
             <div className="overflow-x-auto">
