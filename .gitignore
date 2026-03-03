@@ -23,3 +23,7 @@ test-results/
 .external/
 .tmp-web-dev.log
 .tmp-web-dev.err.log
+.tmp-web-dev-*.log
+.tmp-web-dev-*.err.log
+.tmp-web-dev.latest
+.next/
