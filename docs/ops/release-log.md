@@ -33,6 +33,38 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-03 - admin UX engagement panel extraction pass
+
+- Scope: start panel-level decomposition by moving `engagement` rendering out of monolithic `page.tsx` into dedicated component module.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-03 17:46 -> 2026-03-03 17:55.
+- Changes:
+  - Added `apps/web/src/app/admin/ux/components/engagement-sections.tsx` with extracted sections:
+    - `EngagementOverviewSection`
+    - `EngagementHealthSection`
+    - `FeedPreferenceKpisSection`
+    - `FeedInteractionCountersSection`
+    - `TopSegmentsSection`
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - replaced large inline `engagement` JSX blocks with section components and explicit view-model props.
+    - normalized signal/segment props (`engagementHealthSignals`, `topSegmentsView`) before render.
+  - Kept existing UX behavior and ordering while reducing `page.tsx` inline section complexity.
+- Validation:
+  - `npx ultracite check apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/engagement-sections.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Execution:
+  - Commit: `631f210dcfa7742ee04ab9f117fb44825e31b447` pushed to `main`.
+  - Railway production deployments:
+    - `SocialProject`: `354aa103-da6d-480b-85f0-4648743b0de2` (`SUCCESS`).
+    - `api`: `f0e26162-b0af-4454-9445-40d39706fee4` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-03T17:55:25.552Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: extract `runtime` section (`renderAiRuntimeSectionBody`) into `components/runtime-sections.tsx`, then apply same pattern to `gateway`.
+
 ### 2026-03-03 - admin UX shared table-card shell pass
 
 - Scope: reduce repeated table-card scaffolding by extracting shared `TableCardShell` wrapper in admin UX telemetry cards.
