@@ -33,6 +33,34 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-03 - admin UX unified compact empty-state component pass
+
+- Scope: standardize empty-state rendering across `engagement`, `prediction`, and `style` telemetry panels.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-03 15:47 -> 2026-03-03 15:54.
+- Changes:
+  - Added reusable `CompactEmptyState` component in `apps/web/src/app/admin/ux/page.tsx`.
+  - Migrated repeated empty-state blocks in:
+    - `Engagement health` + `Feed preference KPIs` + `Top segments`.
+    - `Prediction` advanced tables (`cohorts`, `scope/filter`, `scope/sort`, `active controls`).
+    - `Style` diagnostics (`Fusion errors`, `Copy errors`, `Multimodal breakdown`).
+  - Unified visual treatment for low-signal and no-data states without changing telemetry logic.
+- Validation:
+  - `npx ultracite check apps/web/src/app/admin/ux/page.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Execution:
+  - Commit: `d3903123b149c268ab6e9eafe2c79dce256e7e8c` pushed to `main`.
+  - Railway production deployments:
+    - `SocialProject`: `a16e6a3d-02b0-4ce8-8249-d2b66d776f09` (`SUCCESS`).
+    - `api`: `e7e625ba-55b3-4559-b132-e6640285903b` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-03T15:54:32.715Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: lift empty-state defaults in shared `BreakdownListCard`/`HourlyTrendCard` to use `CompactEmptyState` via a helper prop without affecting non-target panels.
+
 ### 2026-03-03 - admin UX engagement low-signal compaction pass
 
 - Scope: reduce noise in `Engagement` panel by replacing zero/`n/a`-heavy card grids with compact summary rows.
