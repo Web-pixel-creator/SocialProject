@@ -2985,11 +2985,27 @@ const StyleFusionMetricsSection = ({
 }: {
   metrics: StyleFusionMetricsView;
 }) => {
+  const fusionSuccessLevel = resolveHealthLevel(metrics.successRate, {
+    criticalBelow: 0.5,
+    watchBelow: 0.7,
+  });
+  const fusionCopySuccessLevel = resolveHealthLevel(metrics.copy.successRate, {
+    criticalBelow: 0.6,
+    watchBelow: 0.8,
+  });
+
   return (
     <section className="card grid gap-4 p-4 sm:p-5">
-      <h2 className="font-semibold text-foreground text-lg">
-        Style fusion metrics
-      </h2>
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="font-semibold text-foreground text-lg">
+          Style fusion metrics
+        </h2>
+        <span
+          className={`${healthBadgeClass(fusionSuccessLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
+        >
+          Fusion risk: {healthLabel(fusionSuccessLevel)}
+        </span>
+      </div>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
           hint="Total style-fusion generation attempts"
@@ -3017,80 +3033,94 @@ const StyleFusionMetricsSection = ({
           }
         />
       </div>
-      <article className="card grid gap-2 p-4">
-        <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-          Fusion errors
-        </h3>
-        {metrics.errorBreakdown.length === 0 ? (
-          <p className="text-muted-foreground text-xs">
-            No style-fusion errors in current window.
-          </p>
-        ) : (
-          <ul className="grid gap-1 text-xs">
-            {metrics.errorBreakdown.map((entry, index) => (
-              <li
-                className="flex items-center justify-between gap-2"
-                key={`${entry.errorCode}:${index + 1}`}
+      <details className="rounded-xl border border-border/30 bg-background/45 p-3">
+        <summary className="cursor-pointer font-semibold text-foreground text-xs uppercase tracking-wide">
+          Advanced style fusion diagnostics
+        </summary>
+        <div className="mt-3 grid gap-4">
+          <article className="card grid gap-2 p-4">
+            <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+              Fusion errors
+            </h3>
+            {metrics.errorBreakdown.length === 0 ? (
+              <p className="text-muted-foreground text-xs">
+                No style-fusion errors in current window.
+              </p>
+            ) : (
+              <ul className="grid gap-1 text-xs">
+                {metrics.errorBreakdown.map((entry, index) => (
+                  <li
+                    className="flex items-center justify-between gap-2"
+                    key={`${entry.errorCode}:${index + 1}`}
+                  >
+                    <span className="text-muted-foreground">
+                      {toStringValue(entry.errorCode)}
+                    </span>
+                    <span className="font-semibold text-foreground">
+                      {toNumber(entry.count)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </article>
+          <article className="card grid gap-3 p-4">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+                Fusion brief copy
+              </h3>
+              <span
+                className={`${healthBadgeClass(fusionCopySuccessLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
               >
-                <span className="text-muted-foreground">
-                  {toStringValue(entry.errorCode)}
-                </span>
-                <span className="font-semibold text-foreground">
-                  {toNumber(entry.count)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </article>
-      <article className="card grid gap-3 p-4">
-        <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-          Fusion brief copy
-        </h3>
-        <div className="grid gap-3 md:grid-cols-3">
-          <StatCard
-            hint="Copy fusion brief attempts from draft detail"
-            label="Copy attempts"
-            value={`${metrics.copy.total}`}
-          />
-          <StatCard
-            hint="Successful clipboard writes for fusion brief"
-            label="Copy success rate"
-            value={toRateText(metrics.copy.successRate)}
-          />
-          <StatCard
-            hint="Failed copy attempts in current window"
-            label="Copy errors"
-            value={`${metrics.copy.errors}`}
-          />
+                Copy risk: {healthLabel(fusionCopySuccessLevel)}
+              </span>
+            </div>
+            <div className="grid gap-3 md:grid-cols-3">
+              <StatCard
+                hint="Copy fusion brief attempts from draft detail"
+                label="Copy attempts"
+                value={`${metrics.copy.total}`}
+              />
+              <StatCard
+                hint="Successful clipboard writes for fusion brief"
+                label="Copy success rate"
+                value={toRateText(metrics.copy.successRate)}
+              />
+              <StatCard
+                hint="Failed copy attempts in current window"
+                label="Copy errors"
+                value={`${metrics.copy.errors}`}
+              />
+            </div>
+            <article className="card grid gap-2 p-4">
+              <h4 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+                Copy errors
+              </h4>
+              {metrics.copy.errorBreakdown.length === 0 ? (
+                <p className="text-muted-foreground text-xs">
+                  No fusion-brief copy errors in current window.
+                </p>
+              ) : (
+                <ul className="grid gap-1 text-xs">
+                  {metrics.copy.errorBreakdown.map((entry, index) => (
+                    <li
+                      className="flex items-center justify-between gap-2"
+                      key={`${entry.errorCode}:${index + 1}`}
+                    >
+                      <span className="text-muted-foreground">
+                        {toStringValue(entry.errorCode)}
+                      </span>
+                      <span className="font-semibold text-foreground">
+                        {toNumber(entry.count)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </article>
+          </article>
         </div>
-        <article className="card grid gap-2 p-4">
-          <h4 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-            Copy errors
-          </h4>
-          {metrics.copy.errorBreakdown.length === 0 ? (
-            <p className="text-muted-foreground text-xs">
-              No fusion-brief copy errors in current window.
-            </p>
-          ) : (
-            <ul className="grid gap-1 text-xs">
-              {metrics.copy.errorBreakdown.map((entry, index) => (
-                <li
-                  className="flex items-center justify-between gap-2"
-                  key={`${entry.errorCode}:${index + 1}`}
-                >
-                  <span className="text-muted-foreground">
-                    {toStringValue(entry.errorCode)}
-                  </span>
-                  <span className="font-semibold text-foreground">
-                    {toNumber(entry.count)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </article>
-      </article>
+      </details>
     </section>
   );
 };
@@ -3662,6 +3692,31 @@ export default async function AdminUxObserverEngagementPage({
     multimodal.errorRate,
     kpis.multimodalErrorRate,
   );
+  const multimodalCoverageLevel = resolveHealthLevel(multimodalCoverageRate, {
+    criticalBelow: 0.45,
+    watchBelow: 0.65,
+  });
+  const multimodalErrorLevel = resolveRiskHealthLevel(multimodalErrorRate, {
+    criticalAbove: 0.2,
+    watchAbove: 0.1,
+  });
+  let multimodalOverallLevel: HealthLevel = 'healthy';
+  if (
+    multimodalCoverageLevel === 'critical' ||
+    multimodalErrorLevel === 'critical'
+  ) {
+    multimodalOverallLevel = 'critical';
+  } else if (
+    multimodalCoverageLevel === 'watch' ||
+    multimodalErrorLevel === 'watch'
+  ) {
+    multimodalOverallLevel = 'watch';
+  } else if (
+    multimodalCoverageLevel === 'unknown' &&
+    multimodalErrorLevel === 'unknown'
+  ) {
+    multimodalOverallLevel = 'unknown';
+  }
   const multimodalProviderBreakdown = normalizeBreakdownItems({
     items: multimodal.providerBreakdown,
     keyName: 'provider',
@@ -5474,9 +5529,16 @@ export default async function AdminUxObserverEngagementPage({
 
       {isPanelVisible('style') ? (
         <section className="card grid gap-4 p-4 sm:p-5">
-          <h2 className="font-semibold text-foreground text-lg">
-            Multimodal GlowUp telemetry
-          </h2>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="font-semibold text-foreground text-lg">
+              Multimodal GlowUp telemetry
+            </h2>
+            <span
+              className={`${healthBadgeClass(multimodalOverallLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
+            >
+              Coverage risk: {healthLabel(multimodalOverallLevel)}
+            </span>
+          </div>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <StatCard
               hint="draft detail panels with multimodal score loaded"
@@ -5503,62 +5565,71 @@ export default async function AdminUxObserverEngagementPage({
               label="Error rate"
               value={toRateText(multimodalErrorRate)}
             />
-            <StatCard
-              hint="query validation rejects for multimodal read requests"
-              label="Invalid query errors"
-              value={`${toNumber(multimodalGuardrails.invalidQueryErrors)}`}
-            />
-            <StatCard
-              hint="invalid-query errors / all multimodal error signals"
-              label="Invalid query share"
-              value={toRateText(multimodalGuardrails.invalidQueryRate)}
-            />
           </div>
-          <article className="card grid gap-2 p-4">
-            <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-              Multimodal breakdown
-            </h3>
-            {multimodalBreakdownRows.length === 0 ? (
-              <p className="text-muted-foreground text-xs">
-                No provider/empty/error breakdown data in current window.
-              </p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-left text-xs">
-                  <thead>
-                    <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
-                      <th className="py-2 pr-3">Category</th>
-                      <th className="px-3 py-2">Key</th>
-                      <th className="px-3 py-2 text-right">Count</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {multimodalBreakdownRows.map((entry, index) => (
-                      <tr
-                        className="border-border/25 border-b last:border-b-0"
-                        key={`${entry.category}:${entry.key}:${index + 1}`}
-                      >
-                        <td className="py-2 pr-3 text-muted-foreground">
-                          {entry.category}
-                        </td>
-                        <td className="px-3 py-2 text-muted-foreground">
-                          {entry.key}
-                        </td>
-                        <td className="px-3 py-2 text-right font-semibold text-foreground">
-                          {entry.count}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </article>
           <HourlyTrendCard
             emptyLabel="No hourly multimodal trend data in current window."
             items={multimodalHourlyTrend}
             title="Hourly trend (UTC)"
           />
+          <details className="rounded-xl border border-border/30 bg-background/45 p-3">
+            <summary className="cursor-pointer font-semibold text-foreground text-xs uppercase tracking-wide">
+              Advanced multimodal diagnostics
+            </summary>
+            <div className="mt-3 grid gap-4">
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <StatCard
+                  hint="query validation rejects for multimodal read requests"
+                  label="Invalid query errors"
+                  value={`${toNumber(multimodalGuardrails.invalidQueryErrors)}`}
+                />
+                <StatCard
+                  hint="invalid-query errors / all multimodal error signals"
+                  label="Invalid query share"
+                  value={toRateText(multimodalGuardrails.invalidQueryRate)}
+                />
+              </div>
+              <article className="card grid gap-2 p-4">
+                <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+                  Multimodal breakdown
+                </h3>
+                {multimodalBreakdownRows.length === 0 ? (
+                  <p className="text-muted-foreground text-xs">
+                    No provider/empty/error breakdown data in current window.
+                  </p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-left text-xs">
+                      <thead>
+                        <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
+                          <th className="py-2 pr-3">Category</th>
+                          <th className="px-3 py-2">Key</th>
+                          <th className="px-3 py-2 text-right">Count</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {multimodalBreakdownRows.map((entry, index) => (
+                          <tr
+                            className="border-border/25 border-b last:border-b-0"
+                            key={`${entry.category}:${entry.key}:${index + 1}`}
+                          >
+                            <td className="py-2 pr-3 text-muted-foreground">
+                              {entry.category}
+                            </td>
+                            <td className="px-3 py-2 text-muted-foreground">
+                              {entry.key}
+                            </td>
+                            <td className="px-3 py-2 text-right font-semibold text-foreground">
+                              {entry.count}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </article>
+            </div>
+          </details>
         </section>
       ) : null}
 
