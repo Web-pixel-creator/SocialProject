@@ -56,7 +56,10 @@ Copy this block for each release:
     - deployment `473bca33-16d7-431d-a130-f9fc50c65339` (`SUCCESS`, commit `ee1b39df2269a5edde538e284a4338f5c0fd56d9`).
   - Frontend service `SocialProject` auto-deployed same commit:
     - deployment `c3c1fcb1-b980-4690-b8ea-34054a7bb305` (`SUCCESS`).
+  - Follow-up docs-only auto-deploy pass also completed with `SUCCESS` for both `api` and `SocialProject` (runtime code path unchanged).
   - Ran strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+  - Re-ran strict launch-gate after final deploy pair:
     - `npm run release:launch:gate:production:json -- --required-external-channels all`
   - Result summary:
     - launch-gate `status=pass`
