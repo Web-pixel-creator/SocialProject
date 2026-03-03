@@ -33,6 +33,40 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-03 - admin UX engagement low-signal compaction pass
+
+- Scope: reduce noise in `Engagement` panel by replacing zero/`n/a`-heavy card grids with compact summary rows.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-03 15:24 -> 2026-03-03 15:38.
+- Changes:
+  - Added low-signal detection in `apps/web/src/app/admin/ux/page.tsx`:
+    - `shouldCompactEngagementOverview`
+    - `shouldCompactFeedPreferenceKpis`
+    - `shouldCompactFeedPreferenceEvents`
+  - `Engagement overview`:
+    - when there is no session activity/rate sample, render a single compact summary card instead of five KPI cards.
+  - `Feed preference KPIs`:
+    - when interaction totals are empty, render one concise summary row with `low signal` badge instead of full KPI grid.
+  - `Feed interaction counters`:
+    - when totals are zero, collapse three separate cards into one compact counter row.
+  - `Top segments`:
+    - switched empty low-signal state to compact explanatory row.
+- Validation:
+  - `npx ultracite check apps/web/src/app/admin/ux/page.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Execution:
+  - Commit: `80061676ab944817e195138da49e4b0de8746109` pushed to `main`.
+  - Railway production deployments:
+    - `SocialProject`: `5f42912a-f69b-4adf-b66e-76ecdde6e47d` (`SUCCESS`).
+    - `api`: `1d9a378e-3510-4a02-be15-4b55033ad932` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-03T15:38:16.029Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: merge repetitive empty-state copy across `engagement`/`prediction`/`style` into one reusable compact-empty component.
+
 ### 2026-03-03 - admin UX style panel density pass
 
 - Scope: simplify `Style` telemetry by separating at-a-glance metrics from diagnostic detail.
