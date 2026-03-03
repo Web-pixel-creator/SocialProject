@@ -231,6 +231,26 @@ Exit criteria:
   - strict gate outcome confirms:
     - `sandboxExecutionAuditPolicy.pass=true`
     - artifact totals: `total=3`, `totalWithAudit=1`, `actorTypeCount=1`, `sourceRouteCount=1`, `toolNameCount=1`.
+- Completed execution-session/timeline telemetry hardening for pilot runtime flow:
+  - sandbox execution telemetry metadata now includes:
+    - `executionSessionId`
+    - `startedAtUtc`
+    - `finishedAtUtc`,
+  - when audit envelope is present but `audit.sessionId` is not provided, runtime fallback path now injects `executionSessionId` into `audit.sessionId` for deterministic correlation,
+  - updated unit coverage verifies:
+    - timestamp ordering (`finishedAtUtc >= startedAtUtc`),
+    - auto-injected audit session id matches execution session id,
+  - validation:
+    - `npx ultracite check` on changed sandbox files passed,
+    - `npx jest ...sandbox-execution... ai-runtime.unit... --runInBand --config jest.config.cjs` passed,
+    - `npm --workspace apps/api run build` passed,
+  - production rollout:
+    - deployed `api` revision `256758c2-3fe5-4b3b-b1bb-0fdd4c24571b`,
+    - strict launch-gate (`required_external_channels=all`) passed with:
+      - `sandboxExecutionMetrics.pass=true`
+      - `sandboxExecutionAuditPolicy.pass=true`
+      - `sandboxExecutionEgressPolicy.pass=true`
+      - `sandboxExecutionLimitsPolicy.pass=true`.
 
 ## Risks
 

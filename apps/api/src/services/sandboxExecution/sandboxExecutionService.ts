@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { env } from '../../config/env';
 import { db } from '../../db/pool';
 import { ServiceError } from '../common/errors';
@@ -266,13 +267,23 @@ export class SandboxExecutionServiceImpl implements SandboxExecutionService {
       normalizedOperation,
       policyContext,
     );
-    const audit = this.normalizeAuditContext(policyContext?.audit);
+    const startedAtTimestamp = Date.now();
+    const startedAtUtc = new Date(startedAtTimestamp).toISOString();
+    const executionSessionId = crypto.randomUUID();
+    const audit = this.applyExecutionSessionId(
+      this.normalizeAuditContext(policyContext?.audit),
+      executionSessionId,
+    );
     const policyError = egressPolicy.error ?? limitsPolicy.error;
     if (policyError) {
+      const finishedAtUtc = new Date().toISOString();
       await this.recordTelemetry({
         operation: normalizedOperation,
         status: 'failed',
         durationMs: 0,
+        executionSessionId,
+        startedAtUtc,
+        finishedAtUtc,
         errorCode: policyError.code,
         errorMessage: toSafeErrorMessage(policyError),
         egressPolicy,
@@ -283,29 +294,36 @@ export class SandboxExecutionServiceImpl implements SandboxExecutionService {
     }
 
     // Phase A: keep existing in-process execution behavior while emitting telemetry.
-    const startedAt = Date.now();
     try {
       const result = await this.runWithExecutionTimeout(
         fallback(),
         normalizedOperation,
         limitsPolicy.effectiveTimeoutMs,
       );
-      const durationMs = Date.now() - startedAt;
+      const finishedAtTimestamp = Date.now();
+      const durationMs = finishedAtTimestamp - startedAtTimestamp;
       await this.recordTelemetry({
         operation: normalizedOperation,
         status: 'ok',
         durationMs,
+        executionSessionId,
+        startedAtUtc,
+        finishedAtUtc: new Date(finishedAtTimestamp).toISOString(),
         egressPolicy,
         limitsPolicy,
         audit,
       });
       return result;
     } catch (error) {
-      const durationMs = Date.now() - startedAt;
+      const finishedAtTimestamp = Date.now();
+      const durationMs = finishedAtTimestamp - startedAtTimestamp;
       await this.recordTelemetry({
         operation: normalizedOperation,
         status: 'failed',
         durationMs,
+        executionSessionId,
+        startedAtUtc,
+        finishedAtUtc: new Date(finishedAtTimestamp).toISOString(),
         errorCode: error instanceof ServiceError ? error.code : 'UNKNOWN',
         errorMessage: toSafeErrorMessage(error),
         egressPolicy,
@@ -348,6 +366,9 @@ export class SandboxExecutionServiceImpl implements SandboxExecutionService {
     operation: string;
     status: 'ok' | 'failed';
     durationMs: number;
+    executionSessionId: string;
+    startedAtUtc: string;
+    finishedAtUtc: string;
     errorCode?: string;
     errorMessage?: string | null;
     egressPolicy: EgressPolicyEvaluation;
@@ -373,6 +394,9 @@ export class SandboxExecutionServiceImpl implements SandboxExecutionService {
 
   private buildTelemetryMetadata(input: {
     operation: string;
+    executionSessionId: string;
+    startedAtUtc: string;
+    finishedAtUtc: string;
     errorCode?: string;
     errorMessage?: string | null;
     egressPolicy: EgressPolicyEvaluation;
@@ -382,6 +406,9 @@ export class SandboxExecutionServiceImpl implements SandboxExecutionService {
     return {
       operation: input.operation,
       mode: this.getMode(),
+      executionSessionId: input.executionSessionId,
+      startedAtUtc: input.startedAtUtc,
+      finishedAtUtc: input.finishedAtUtc,
       egressProfile: input.egressPolicy.egressProfile,
       egressEnforced: input.egressPolicy.egressEnforced,
       egressDecision: input.egressPolicy.egressDecision,
@@ -737,6 +764,19 @@ export class SandboxExecutionServiceImpl implements SandboxExecutionService {
       toolName: this.normalizeAuditValue(input.toolName),
     };
     return Object.values(audit).some((value) => value !== null) ? audit : null;
+  }
+
+  private applyExecutionSessionId(
+    audit: SandboxExecutionTelemetryAuditMetadata | null,
+    executionSessionId: string,
+  ): SandboxExecutionTelemetryAuditMetadata | null {
+    if (audit === null) {
+      return null;
+    }
+    return {
+      ...audit,
+      sessionId: audit.sessionId ?? executionSessionId,
+    };
   }
 }
 

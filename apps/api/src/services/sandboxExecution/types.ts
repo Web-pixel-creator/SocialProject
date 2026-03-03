@@ -36,6 +36,9 @@ export interface SandboxExecutionPolicyContext {
 export interface SandboxExecutionTelemetryMetadata {
   operation: string;
   mode: SandboxExecutionMode;
+  executionSessionId: string;
+  startedAtUtc: string;
+  finishedAtUtc: string;
   egressProfile: string | null;
   egressEnforced: boolean;
   egressDecision: SandboxExecutionEgressDecision;

@@ -8,6 +8,15 @@ describe('sandbox execution service phase-a fallback', () => {
   const getLastTelemetryMetadata = (queryable: { query: jest.Mock }) => {
     const [, values] = queryable.query.mock.calls.at(-1) as [string, unknown[]];
     return JSON.parse(String(values[4])) as {
+      audit: {
+        actorId: string | null;
+        actorType: string | null;
+        sessionId: string | null;
+        sourceRoute: string | null;
+        toolName: string | null;
+      } | null;
+      executionSessionId: string;
+      finishedAtUtc: string;
       egressAllowedProviders: string[] | null;
       egressDecision: string;
       egressDeniedProviders: string[] | null;
@@ -20,6 +29,7 @@ describe('sandbox execution service phase-a fallback', () => {
       limitsRequested: Record<string, number> | null;
       errorCode: string | null;
       operation: string;
+      startedAtUtc: string;
     };
   };
 
@@ -312,6 +322,34 @@ describe('sandbox execution service phase-a fallback', () => {
       sessionId: 'session-123',
       sourceRoute: '/api/admin/ai-runtime/dry-run',
       toolName: 'aiRuntime.runWithFailover',
+    });
+    expect(typeof metadata.executionSessionId).toBe('string');
+    expect(metadata.executionSessionId.length).toBeGreaterThan(0);
+    expect(metadata.startedAtUtc).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(metadata.finishedAtUtc).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(new Date(metadata.finishedAtUtc).valueOf()).toBeGreaterThanOrEqual(
+      new Date(metadata.startedAtUtc).valueOf(),
+    );
+  });
+
+  test('injects execution session id into audit envelope when session id is absent', async () => {
+    const queryable = createQueryable();
+    const service = new SandboxExecutionServiceImpl(false, queryable);
+
+    await service.executeWithFallback('ai_runtime_dry_run', async () => 'ok', {
+      audit: {
+        actorType: 'admin',
+        sourceRoute: '/api/admin/ai-runtime/dry-run',
+        toolName: 'aiRuntime.runWithFailover',
+      },
+    });
+
+    const metadata = getLastTelemetryMetadata(queryable);
+    expect(metadata.audit).toMatchObject({
+      actorType: 'admin',
+      sourceRoute: '/api/admin/ai-runtime/dry-run',
+      toolName: 'aiRuntime.runWithFailover',
+      sessionId: metadata.executionSessionId,
     });
   });
 

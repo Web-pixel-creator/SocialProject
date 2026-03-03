@@ -33,6 +33,47 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-03 - sandbox execution timeline/session telemetry hardening rollout
+
+- Scope: add explicit runtime execution timeline/session correlation metadata for sandbox fallback telemetry and deploy to production.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-03 10:44 -> 2026-03-03 10:52.
+- Changes:
+  - Extended sandbox execution telemetry metadata with:
+    - `executionSessionId`
+    - `startedAtUtc`
+    - `finishedAtUtc`
+  - Added audit correlation fallback:
+    - when `audit` exists and `audit.sessionId` is absent, service now sets `audit.sessionId = executionSessionId`.
+  - Added unit coverage:
+    - timestamp ordering assertion (`finishedAtUtc >= startedAtUtc`)
+    - injected audit session-id correlation assertion.
+- Validation:
+  - `npx ultracite check apps/api/src/services/sandboxExecution/types.ts apps/api/src/services/sandboxExecution/sandboxExecutionService.ts apps/api/src/__tests__/sandbox-execution.unit.spec.ts`: pass.
+  - `npx jest apps/api/src/__tests__/sandbox-execution.unit.spec.ts apps/api/src/__tests__/sandbox-execution-egress-profile.unit.spec.ts apps/api/src/__tests__/sandbox-execution-limits-profile.unit.spec.ts apps/api/src/__tests__/ai-runtime.unit.spec.ts --runInBand --config jest.config.cjs`: pass.
+  - `npm --workspace apps/api run build`: pass.
+- Execution:
+  - Deployed production `api` service revision:
+    - deployment `256758c2-3fe5-4b3b-b1bb-0fdd4c24571b` (`SUCCESS`).
+  - Ran strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+  - Result summary:
+    - launch-gate `status=pass`
+    - `sandboxExecutionMetrics.pass=true`
+    - `sandboxExecutionAuditPolicy.pass=true`
+    - `sandboxExecutionEgressPolicy.pass=true`
+    - `sandboxExecutionLimitsPolicy.pass=true`
+    - audit policy artifact:
+      - `total=4`
+      - `totalWithAudit=2`
+      - `actorTypeCount=2`
+      - `sourceRouteCount=2`
+      - `toolNameCount=2`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - none.
+
 ### 2026-03-03 - sandbox execution audit envelope rollout + strict gate confirmation
 
 - Scope: enforce and verify audit-envelope telemetry for sandbox-wrapped runtime execution path in production launch gate.
