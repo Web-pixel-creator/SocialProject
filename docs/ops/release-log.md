@@ -33,6 +33,33 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-03 - admin UX dashboard readability pass (tabs + debug isolation)
+
+- Scope: reduce `/admin/ux` visual overload by isolating raw diagnostics in a dedicated tab and consolidating breakdown cards.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-03 12:08 -> 2026-03-03 12:16.
+- Changes:
+  - Added panel tab `Debug` in `apps/web/src/app/admin/ux/page.tsx` and rendered raw diagnostics only when `panel=debug` (not mixed into normal operational views).
+  - Added sticky top KPI strip (24h retention, follow rate, digest open, prediction accuracy) for at-a-glance health scanning.
+  - Replaced dual release breakdown cards with one compact table (`channel` + `failure mode` rows).
+  - Replaced 3 multimodal breakdown cards with one compact table (`provider` + `empty reason` + `error reason` rows).
+  - Increased sticky badge/readability sizing from 10/11px variants to 11/12px.
+- Validation:
+  - `npx ultracite check apps/web/src/app/admin/ux/page.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Execution:
+  - Commit: `04019a149de875c4eb6475103857352add7c8da7` pushed to `main`.
+  - Railway production deployments:
+    - `api`: `d9464380-05e4-4f21-a25e-2c0715248983` (`SUCCESS`).
+    - `SocialProject`: `3fc9c0e1-afa1-49b6-998e-b2acbe3615f7` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-03T12:16:39.323Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - Continue section-level density pass for gateway/runtime cards (reduce text noise and move rarely used controls into collapsible subpanels).
+
 ### 2026-03-03 - sandbox execution pilot adapter rollout + strict gate confirmation
 
 - Scope: replace sandbox lifecycle stubs with local execution adapter and expose a protected pilot admin route for live sandbox run-code validation.
