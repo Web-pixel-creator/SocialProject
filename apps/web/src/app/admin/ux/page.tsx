@@ -2940,6 +2940,25 @@ const CompactEmptyState = ({
   </div>
 );
 
+const resolveCardEmptyState = ({
+  compactEmptyState,
+  itemCount,
+}: {
+  compactEmptyState: boolean;
+  itemCount: number;
+}): {
+  hasItems: boolean;
+  showCompactEmptyState: boolean;
+  showPlainEmptyState: boolean;
+} => {
+  const hasItems = itemCount > 0;
+  return {
+    hasItems,
+    showCompactEmptyState: !hasItems && compactEmptyState,
+    showPlainEmptyState: !(hasItems || compactEmptyState),
+  };
+};
+
 const normalizeStyleFusionErrorBreakdown = (
   items: unknown,
 ): Array<{ count: number; errorCode: string }> => {
@@ -3154,9 +3173,11 @@ const BreakdownListCard = ({
   items: Array<{ count: number; key: string }>;
   title: string;
 }) => {
-  const hasItems = items.length > 0;
-  const showCompactEmptyState = !hasItems && compactEmptyState;
-  const showPlainEmptyState = !(hasItems || compactEmptyState);
+  const { hasItems, showCompactEmptyState, showPlainEmptyState } =
+    resolveCardEmptyState({
+      compactEmptyState,
+      itemCount: items.length,
+    });
   return (
     <article className="card grid gap-2 p-4">
       <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
@@ -3198,9 +3219,11 @@ const HourlyTrendCard = ({
   items: MultimodalHourlyTrendItem[];
   title: string;
 }) => {
-  const hasItems = items.length > 0;
-  const showCompactEmptyState = !hasItems && compactEmptyState;
-  const showPlainEmptyState = !(hasItems || compactEmptyState);
+  const { hasItems, showCompactEmptyState, showPlainEmptyState } =
+    resolveCardEmptyState({
+      compactEmptyState,
+      itemCount: items.length,
+    });
   return (
     <article className="card grid gap-2 p-4">
       <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
@@ -3270,9 +3293,11 @@ const ReleaseHealthAlertHourlyTrendCard = ({
   items: ReleaseHealthAlertHourlyTrendItem[];
   title: string;
 }) => {
-  const hasItems = items.length > 0;
-  const showCompactEmptyState = !hasItems && compactEmptyState;
-  const showPlainEmptyState = !(hasItems || compactEmptyState);
+  const { hasItems, showCompactEmptyState, showPlainEmptyState } =
+    resolveCardEmptyState({
+      compactEmptyState,
+      itemCount: items.length,
+    });
   return (
     <article className="card grid gap-2 p-4">
       <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
@@ -3330,9 +3355,11 @@ const PredictionHourlyTrendCard = ({
   items: PredictionHourlyTrendItem[];
   title: string;
 }) => {
-  const hasItems = items.length > 0;
-  const showCompactEmptyState = !hasItems && compactEmptyState;
-  const showPlainEmptyState = !(hasItems || compactEmptyState);
+  const { hasItems, showCompactEmptyState, showPlainEmptyState } =
+    resolveCardEmptyState({
+      compactEmptyState,
+      itemCount: items.length,
+    });
   return (
     <article className="card grid gap-2 p-4">
       <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
@@ -3402,9 +3429,11 @@ const GatewayCompactionHourlyTrendCard = ({
   items: GatewayCompactionHourlyTrendItem[];
   title: string;
 }) => {
-  const hasItems = items.length > 0;
-  const showCompactEmptyState = !hasItems && compactEmptyState;
-  const showPlainEmptyState = !(hasItems || compactEmptyState);
+  const { hasItems, showCompactEmptyState, showPlainEmptyState } =
+    resolveCardEmptyState({
+      compactEmptyState,
+      itemCount: items.length,
+    });
   return (
     <article className="card grid gap-2 p-4">
       <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
