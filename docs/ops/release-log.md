@@ -33,6 +33,39 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-03 - admin UX prediction panel density pass
+
+- Scope: reduce visual overload in `Prediction` panel by separating overview and advanced telemetry.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-03 14:33 -> 2026-03-03 14:40.
+- Changes:
+  - Added top-level prediction risk badge (`Accuracy risk`) near section title.
+  - Kept high-signal blocks visible by default:
+    - totals/rates KPI cards
+    - outcome + participation + resolved windows
+    - hourly trend
+  - Moved heavy diagnostic data into collapsible `Advanced prediction telemetry`:
+    - filter/sort switch breakdowns
+    - resolution cohorts tables
+    - scope x filter/sort matrices
+    - active control-state table
+    - switch-share KPI cards
+- Validation:
+  - `npx ultracite check apps/web/src/app/admin/ux/page.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Execution:
+  - Commit: `3eb1d203af6a8a49a254255563634a1b6ed88a8d` pushed to `main`.
+  - Railway production deployments:
+    - `api`: `e258c312-b2aa-41ea-976b-5c1104433eee` (`SUCCESS`).
+    - `SocialProject`: `02465dca-56e6-4ce4-9f5b-156148f7def4` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-03T14:40:53.533Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - Apply same collapsible/overview pattern to `style` advanced diagnostics next.
+
 ### 2026-03-03 - admin UX density pass for gateway/runtime
 
 - Scope: reduce cognitive load in `/admin/ux` by simplifying gateway/runtime telemetry presentation.
