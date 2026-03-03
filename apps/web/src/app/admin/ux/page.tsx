@@ -1,4 +1,4 @@
-﻿interface ObserverEngagementResponse {
+interface ObserverEngagementResponse {
   windowHours: number;
   kpis?: {
     observerSessionTimeSec?: number | null;
@@ -687,6 +687,17 @@ const GATEWAY_SOURCE_VALUES = new Set(['db', 'memory']);
 const GATEWAY_SESSION_STATUS_VALUES = new Set(['active', 'closed']);
 const AI_RUNTIME_ROLES = ['author', 'critic', 'maker', 'judge'] as const;
 type AIRuntimeRoleOption = (typeof AI_RUNTIME_ROLES)[number];
+const ADMIN_UX_PANELS = [
+  'all',
+  'gateway',
+  'runtime',
+  'engagement',
+  'prediction',
+  'release',
+  'style',
+] as const;
+type AdminUxPanel = (typeof ADMIN_UX_PANELS)[number];
+const ADMIN_UX_PANEL_VALUES = new Set<string>(ADMIN_UX_PANELS);
 const DEFAULT_GATEWAY_TELEMETRY_THRESHOLDS: GatewayTelemetryThresholds = {
   autoCompactionShare: {
     criticalAbove: 0.8,
@@ -1486,6 +1497,17 @@ const resolveGatewayEventsRequestFilters = ({
   eventType: eventType === 'all' ? null : eventType,
   provider: sessionFilters.provider ?? queryProvider,
 });
+
+const resolveAdminUxPanel = (value: unknown): AdminUxPanel => {
+  if (typeof value !== 'string') {
+    return 'gateway';
+  }
+  const normalized = value.trim().toLowerCase();
+  if (!ADMIN_UX_PANEL_VALUES.has(normalized)) {
+    return 'gateway';
+  }
+  return normalized as AdminUxPanel;
+};
 
 type AdminUxPageSearchParams =
   | Record<string, string | string[] | undefined>
@@ -2879,15 +2901,27 @@ const StatCard = ({
   hint?: string;
   label: string;
   value: string;
-}) => (
-  <article className="card grid gap-1 p-4">
-    <p className="text-muted-foreground text-xs uppercase tracking-wide">
-      {label}
-    </p>
-    <p className="font-semibold text-foreground text-xl sm:text-2xl">{value}</p>
-    {hint ? <p className="text-muted-foreground text-xs">{hint}</p> : null}
-  </article>
-);
+}) => {
+  const normalizedValue = value.trim().toLowerCase();
+  const isNaValue = normalizedValue === 'n/a' || normalizedValue === 'na';
+  return (
+    <article className="card grid gap-1 p-4">
+      <p className="text-muted-foreground text-xs uppercase tracking-wide">
+        {label}
+      </p>
+      <p
+        className={
+          isNaValue
+            ? 'font-medium text-base text-muted-foreground'
+            : 'font-semibold text-foreground text-xl sm:text-2xl'
+        }
+      >
+        {value}
+      </p>
+      {hint ? <p className="text-muted-foreground text-xs">{hint}</p> : null}
+    </article>
+  );
+};
 
 const normalizeStyleFusionErrorBreakdown = (
   items: unknown,
@@ -3386,6 +3420,7 @@ export default async function AdminUxObserverEngagementPage({
   const hours = Number.isFinite(parsedHours)
     ? Math.min(Math.max(parsedHours, 1), 720)
     : 24;
+  const activePanel = resolveAdminUxPanel(resolvedSearchParams?.panel);
   const {
     gatewayChannelFilter,
     gatewayProviderFilter,
@@ -3930,6 +3965,7 @@ export default async function AdminUxObserverEngagementPage({
           <>
             <form className="flex flex-wrap items-center gap-2" method="get">
               <input name="hours" type="hidden" value={`${hours}`} />
+              <input name="panel" type="hidden" value={activePanel} />
               <input
                 name="gatewaySource"
                 type="hidden"
@@ -4073,11 +4109,16 @@ export default async function AdminUxObserverEngagementPage({
                 Close session
               </button>
             </form>
-            <p className="text-muted-foreground text-xs">
-              Source: {gatewaySessionsSource} | Selected: {selectedSessionId} |
-              Status: {currentSessionStatus} | Draft: {currentDraftId}
-              {` | Scope: ${gatewaySessionScopeLabel}`}
-            </p>
+            <details className="rounded-lg border border-border/30 bg-background/45 px-3 py-2">
+              <summary className="cursor-pointer text-muted-foreground text-xs uppercase tracking-wide">
+                Session details
+              </summary>
+              <p className="mt-2 text-muted-foreground text-xs">
+                Source: {gatewaySessionsSource} | Selected: {selectedSessionId}{' '}
+                | Status: {currentSessionStatus} | Draft: {currentDraftId}
+                {` | Scope: ${gatewaySessionScopeLabel}`}
+              </p>
+            </details>
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-muted-foreground text-xs uppercase tracking-wide">
                 Session id
@@ -4104,14 +4145,21 @@ export default async function AdminUxObserverEngagementPage({
             ) : null}
           </>
         ) : null}
-        <p className="text-muted-foreground text-xs">
-          Source: {gatewayOverview.source} | Session:{' '}
-          <span className="text-foreground">{gatewayOverview.session.id}</span>{' '}
-          | Channel:{' '}
-          <span className="text-foreground">
-            {gatewayOverview.session.channel}
-          </span>
-        </p>
+        <details className="rounded-lg border border-border/30 bg-background/45 px-3 py-2">
+          <summary className="cursor-pointer text-muted-foreground text-xs uppercase tracking-wide">
+            Gateway source details
+          </summary>
+          <p className="mt-2 text-muted-foreground text-xs">
+            Source: {gatewayOverview.source} | Session:{' '}
+            <span className="text-foreground">
+              {gatewayOverview.session.id}
+            </span>{' '}
+            | Channel:{' '}
+            <span className="text-foreground">
+              {gatewayOverview.session.channel}
+            </span>
+          </p>
+        </details>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
           <StatCard
             hint="persisted gateway status"
@@ -4249,6 +4297,7 @@ export default async function AdminUxObserverEngagementPage({
         </div>
         <form className="grid gap-2" method="get">
           <input name="hours" type="hidden" value={`${hours}`} />
+          <input name="panel" type="hidden" value={activePanel} />
           <input
             name="gatewaySource"
             type="hidden"
@@ -4566,6 +4615,25 @@ export default async function AdminUxObserverEngagementPage({
     ...signal,
     level: resolveHealthLevel(signal.value, signal.thresholds),
   }));
+  const visibleHealthSignals = healthSignals.filter(
+    (signal) => signal.level !== 'unknown',
+  );
+  const panelTabs: Array<{
+    id: AdminUxPanel;
+    label: string;
+  }> = [
+    { id: 'gateway', label: 'Gateway' },
+    { id: 'runtime', label: 'Runtime' },
+    { id: 'engagement', label: 'Engagement' },
+    { id: 'prediction', label: 'Prediction' },
+    { id: 'release', label: 'Release' },
+    { id: 'style', label: 'Style' },
+    { id: 'all', label: 'All metrics' },
+  ];
+  const buildPanelHref = (panel: AdminUxPanel) =>
+    `/admin/ux?hours=${hours}&panel=${panel}`;
+  const isPanelVisible = (panel: Exclude<AdminUxPanel, 'all'>) =>
+    activePanel === 'all' || activePanel === panel;
 
   return (
     <main className="mx-auto grid w-full max-w-7xl gap-4" id="main-content">
@@ -4580,696 +4648,918 @@ export default async function AdminUxObserverEngagementPage({
       </header>
 
       <section className="card grid gap-3 p-4 sm:p-5">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="font-semibold text-foreground text-lg">
-            Agent gateway live session
-          </h2>
-          {gatewayOverview ? (
-            <span
-              className={`${healthBadgeClass(gatewayHealthLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
-            >
-              {healthLabel(gatewayHealthLevel)}
-            </span>
-          ) : null}
-        </div>
-        {renderGatewaySectionBody()}
-      </section>
-
-      <section className="card grid gap-4 p-4 sm:p-5">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="font-semibold text-foreground text-lg">
-            Agent gateway control-plane telemetry
-          </h2>
-          <div className="flex flex-wrap items-center gap-2">
-            <span
-              className={`${healthBadgeClass(resolvedGatewayTelemetryHealthLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
-            >
-              Telemetry health:{' '}
-              {healthLabel(resolvedGatewayTelemetryHealthLevel)}
-            </span>
-            <span
-              className={`${healthBadgeClass(gatewayAutoCompactionShareLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
-            >
-              Auto compaction risk:{' '}
-              {healthLabel(gatewayAutoCompactionShareLevel)}
-            </span>
-            <span
-              className={`${healthBadgeClass(gatewayFailedStepLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
-            >
-              Failed-step risk: {healthLabel(gatewayFailedStepLevel)}
-            </span>
-            <span
-              className={`${healthBadgeClass(gatewayRuntimeSuccessLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
-            >
-              Runtime success: {healthLabel(gatewayRuntimeSuccessLevel)}
-            </span>
-            <span
-              className={`${healthBadgeClass(gatewayCooldownSkipLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
-            >
-              Cooldown skip risk: {healthLabel(gatewayCooldownSkipLevel)}
-            </span>
-          </div>
-        </div>
-        {gatewayTelemetryError ? (
-          <p className="text-muted-foreground text-sm">
-            {gatewayTelemetryError}
-          </p>
-        ) : (
-          <>
-            <form className="flex flex-wrap items-end gap-2" method="get">
-              <input name="hours" type="hidden" value={`${hours}`} />
-              <label
-                className="grid gap-1 text-muted-foreground text-xs uppercase tracking-wide"
-                htmlFor="gateway-source-scope-select"
-              >
-                Source
-                <select
-                  className="w-32 rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm normal-case tracking-normal"
-                  defaultValue={gatewaySourceFilter ?? ''}
-                  id="gateway-source-scope-select"
-                  name="gatewaySource"
-                >
-                  <option value="">db</option>
-                  <option value="memory">memory</option>
-                </select>
-              </label>
-              {selectedSessionId ? (
-                <input name="session" type="hidden" value={selectedSessionId} />
-              ) : null}
-              <input
-                name="eventsLimit"
-                type="hidden"
-                value={`${eventsLimit}`}
-              />
-              <input name="eventType" type="hidden" value={eventTypeFilter} />
-              <input name="eventQuery" type="hidden" value={eventQuery} />
-              <label
-                className="grid gap-1 text-muted-foreground text-xs uppercase tracking-wide"
-                htmlFor="gateway-channel-scope-input"
-              >
-                Channel scope
-                <input
-                  className="w-48 rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm normal-case tracking-normal"
-                  defaultValue={appliedGatewayChannelFilter ?? ''}
-                  id="gateway-channel-scope-input"
-                  name="gatewayChannel"
-                  placeholder="all channels"
-                  type="text"
-                />
-              </label>
-              <label
-                className="grid gap-1 text-muted-foreground text-xs uppercase tracking-wide"
-                htmlFor="gateway-provider-scope-input"
-              >
-                Provider scope
-                <input
-                  className="w-44 rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm normal-case tracking-normal"
-                  defaultValue={appliedGatewayProviderFilter ?? ''}
-                  id="gateway-provider-scope-input"
-                  name="gatewayProvider"
-                  placeholder="all providers"
-                  type="text"
-                />
-              </label>
-              <label
-                className="grid gap-1 text-muted-foreground text-xs uppercase tracking-wide"
-                htmlFor="gateway-status-scope-select"
-              >
-                Session status
-                <select
-                  className="w-36 rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm normal-case tracking-normal"
-                  defaultValue={appliedGatewaySessionStatusInputValue}
-                  id="gateway-status-scope-select"
-                  name="gatewayStatus"
-                >
-                  <option value="">all statuses</option>
-                  <option value="active">active</option>
-                  <option value="closed">closed</option>
-                </select>
-              </label>
-              <button
-                className="rounded-md border border-border bg-background px-3 py-1 text-foreground text-sm hover:bg-accent"
-                type="submit"
-              >
-                Apply scope
-              </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {panelTabs.map((tab) => {
+            const active = activePanel === tab.id;
+            return (
               <a
-                className="rounded-md border border-border bg-background px-3 py-1 text-foreground text-sm hover:bg-accent"
-                href={`/admin/ux?hours=${hours}`}
+                className={`inline-flex items-center rounded-full border px-3 py-1.5 font-semibold text-xs transition-colors ${
+                  active
+                    ? 'border-primary/70 bg-primary/15 text-primary'
+                    : 'border-border/45 bg-background/40 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                }`}
+                href={buildPanelHref(tab.id)}
+                key={tab.id}
               >
-                Reset scope
+                {tab.label}
               </a>
-            </form>
-            <p className="text-muted-foreground text-xs">
-              Scope: channel{' '}
-              <span className="text-foreground">
-                {appliedGatewayChannelFilter ?? 'all'}
-              </span>{' '}
-              | provider{' '}
-              <span className="text-foreground">
-                {appliedGatewayProviderFilter ?? 'all'}
-              </span>
-              {' | '}status{' '}
-              <span className="text-foreground">
-                {appliedGatewaySessionStatusLabel}
-              </span>
-            </p>
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-8">
-              <StatCard
-                hint="sessions sampled in current window"
-                label="Sessions"
-                value={`${toNumber(gatewayTelemetrySessions.total)}`}
-              />
-              <StatCard
-                hint="sessions with failed steps or failed cycles"
-                label="Attention sessions"
-                value={`${toNumber(gatewayTelemetrySessions.attention)}`}
-              />
-              <StatCard
-                hint="sessions with at least one compaction event"
-                label="Compacted sessions"
-                value={`${toNumber(gatewayTelemetrySessions.compacted)}`}
-              />
-              <StatCard
-                hint="sessions compacted by auto buffer guardrail"
-                label="Auto compacted sessions"
-                value={`${toNumber(gatewayTelemetrySessions.autoCompacted)}`}
-              />
-              <StatCard
-                hint="auto compactions / total compactions"
-                label="Auto compaction share"
-                value={toRateText(gatewayTelemetryEvents.autoCompactionShare)}
-              />
-              <StatCard
-                hint="failed steps / cycle step events"
-                label="Failed step rate"
-                value={toRateText(gatewayTelemetryEvents.failedStepRate)}
-              />
-              <StatCard
-                hint="successful provider attempts / total attempts"
-                label="Runtime success rate"
-                value={toRateText(gatewayTelemetryAttempts.successRate)}
-              />
-              <StatCard
-                hint="cooldown-skipped attempts / total attempts"
-                label="Cooldown skip rate"
-                value={toRateText(gatewayTelemetryAttempts.skippedRate)}
-              />
-            </div>
-            <p className="text-muted-foreground text-xs">
-              Events: total {toNumber(gatewayTelemetryEvents.total)} | cycle
-              steps {toNumber(gatewayTelemetryEvents.draftCycleStepEvents)} |
-              failed steps {toNumber(gatewayTelemetryEvents.failedStepEvents)} |
-              compactions {toNumber(gatewayTelemetryEvents.compactionEvents)} |
-              auto {toNumber(gatewayTelemetryEvents.autoCompactionEvents)} |
-              manual {toNumber(gatewayTelemetryEvents.manualCompactionEvents)} |
-              pruned {toNumber(gatewayTelemetryEvents.prunedEventCount)}
-            </p>
-            <GatewayCompactionHourlyTrendCard
-              emptyLabel="No compaction events in current sample."
-              items={gatewayCompactionHourlyTrend}
-              title="Gateway compaction trend (UTC)"
-            />
-            <div className="grid gap-3 lg:grid-cols-3">
-              <GatewayTelemetryThresholdsCard
-                thresholds={gatewayTelemetryThresholds}
-              />
-              <BreakdownListCard
-                emptyLabel="No provider usage in current sample."
-                items={gatewayTelemetryProviderUsage}
-                title="Provider usage (sample)"
-              />
-              <BreakdownListCard
-                emptyLabel="No channel usage in current sample."
-                items={gatewayTelemetryChannelUsage}
-                title="Channel usage (sample)"
-              />
-            </div>
-          </>
-        )}
-      </section>
-
-      <section className="card grid gap-3 p-4 sm:p-5">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="font-semibold text-foreground text-lg">
-            AI runtime failover
-          </h2>
-          <span
-            className={`${healthBadgeClass(aiRuntimeHealthLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
-          >
-            {healthLabel(aiRuntimeHealthLevel)}
-          </span>
-        </div>
-        {renderAiRuntimeSectionBody()}
-      </section>
-
-      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        <StatCard
-          hint="Observer sessions in the current window"
-          label="Session count"
-          value={`${toNumber(kpis.sessionCount)}`}
-        />
-        <StatCard
-          hint="Average observer session duration"
-          label="Avg session"
-          value={`${toNumber(kpis.observerSessionTimeSec).toFixed(1)}s`}
-        />
-        <StatCard
-          hint="watchlist_follow / draft_arc_view"
-          label="Follow rate"
-          value={toRateText(kpis.followRate)}
-        />
-        <StatCard
-          hint="digest_open / watchlist_follow"
-          label="Digest open rate"
-          value={toRateText(kpis.digestOpenRate)}
-        />
-        <StatCard
-          hint="Observer returns from previous 24h window"
-          label="24h retention"
-          value={toRateText(kpis.return24h)}
-        />
-      </section>
-
-      <section className="card grid gap-3 p-4 sm:p-5">
-        <h2 className="font-semibold text-foreground text-lg">
-          Engagement health
-        </h2>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
-          {healthSignals.map((signal) => (
-            <article
-              className="rounded-xl border border-border/25 bg-background/60 p-3"
-              key={signal.id}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <p className="font-semibold text-foreground text-sm">
-                  {signal.label}
-                </p>
-                <span
-                  className={`${healthBadgeClass(signal.level)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
-                >
-                  {healthLabel(signal.level)}
-                </span>
-              </div>
-              <p className="mt-2 font-semibold text-base text-foreground">
-                {toRateText(signal.value)}
-              </p>
-              <p className="text-muted-foreground text-xs">{signal.note}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="card grid gap-4 p-4 sm:p-5">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="font-semibold text-foreground text-lg">
-            Release health alert telemetry
-          </h2>
-          <span
-            className={`${healthBadgeClass(releaseHealthAlertRiskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
-          >
-            Alert risk: {healthLabel(releaseHealthAlertRiskLevel)}
-          </span>
-        </div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-          <article className="rounded-xl border border-border/25 bg-background/60 p-3">
-            <p className="font-semibold text-foreground text-sm">Alert risk</p>
-            <p className="mt-2 font-semibold text-base text-foreground">
-              {healthLabel(releaseHealthAlertRiskLevel)}
-            </p>
-            <p className="text-muted-foreground text-xs">
-              Critical at first appearances &gt;= 3, alert events &gt;= 3, or
-              alerted runs &gt;= 2.
-            </p>
-          </article>
-          <StatCard
-            hint="release-health webhook events in current window"
-            label="Alert events"
-            value={`${releaseHealthAlertCount}`}
-          />
-          <StatCard
-            hint="sum of first-appearance entries across alert events"
-            label="First appearances"
-            value={`${releaseHealthAlertFirstAppearanceCount}`}
-          />
-          <StatCard
-            hint="unique launch-gate run ids represented in alert events"
-            label="Alerted runs"
-            value={`${releaseHealthAlertedRunCount}`}
-          />
-          <StatCard
-            hint="latest run that generated a release-health alert event"
-            label="Latest alerted run"
-            value={releaseHealthAlertLatestRunLabel}
-          />
+            );
+          })}
         </div>
         <p className="text-muted-foreground text-xs">
-          Latest received:{' '}
-          <span className="font-semibold text-foreground">
-            {releaseHealthAlertLatestReceivedAt ?? 'n/a'}
-          </span>
-          {' | '}Run URL:{' '}
-          {typeof releaseHealthAlertLatest?.runUrl === 'string' &&
-          releaseHealthAlertLatest.runUrl.length > 0 ? (
-            <a
-              className="font-semibold text-foreground underline-offset-2 hover:underline"
-              href={releaseHealthAlertLatest.runUrl}
-            >
-              {releaseHealthAlertLatest.runUrl}
-            </a>
-          ) : (
-            <span className="font-semibold text-foreground">n/a</span>
-          )}
+          Focus view: <span className="text-foreground">{activePanel}</span>.
+          Use tabs to reduce noise and scan one domain at a time.
         </p>
-        <div className="grid gap-4 lg:grid-cols-2">
-          <BreakdownListCard
-            emptyLabel="No alert channel distribution in current window."
-            items={releaseHealthAlertByChannel}
-            title="First-appearance channels"
-          />
-          <BreakdownListCard
-            emptyLabel="No failure-mode distribution in current window."
-            items={releaseHealthAlertByFailureMode}
-            title="First-appearance failure modes"
-          />
-        </div>
-        <ReleaseHealthAlertHourlyTrendCard
-          emptyLabel="No release-health alert hourly trend data in current window."
-          items={releaseHealthAlertHourlyTrend}
-          title="Release-health alert hourly trend (UTC)"
-        />
       </section>
 
-      <section className="card grid gap-4 p-4 sm:p-5">
-        <h2 className="font-semibold text-foreground text-lg">
-          Feed preference KPIs
-        </h2>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-          <StatCard
-            hint="share of mode switches to Observer"
-            label="Observer mode share"
-            value={toRateText(kpis.viewModeObserverRate)}
-          />
-          <StatCard
-            hint="historical share from legacy Focus mode"
-            label="Legacy focus share"
-            value={toRateText(kpis.viewModeFocusRate)}
-          />
-          <StatCard
-            hint="share of density changes to Comfort"
-            label="Comfort density share"
-            value={toRateText(kpis.densityComfortRate)}
-          />
-          <StatCard
-            hint="share of density changes to Compact"
-            label="Compact density share"
-            value={toRateText(kpis.densityCompactRate)}
-          />
-          <StatCard
-            hint="hint dismiss / (hint dismiss + hint switch)"
-            label="Hint dismiss rate"
-            value={toRateText(kpis.hintDismissRate)}
-          />
-        </div>
-      </section>
+      {isPanelVisible('gateway') ? (
+        <section className="card grid gap-3 p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-semibold text-foreground text-lg">
+              Agent gateway live session
+            </h2>
+            {gatewayOverview ? (
+              <span
+                className={`${healthBadgeClass(gatewayHealthLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
+              >
+                {healthLabel(gatewayHealthLevel)}
+              </span>
+            ) : null}
+          </div>
+          {renderGatewaySectionBody()}
+        </section>
+      ) : null}
 
-      <section className="card grid gap-4 p-4 sm:p-5">
-        <h2 className="font-semibold text-foreground text-lg">
-          Multimodal GlowUp telemetry
-        </h2>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-7">
-          <StatCard
-            hint="draft detail panels with multimodal score loaded"
-            label="Views"
-            value={`${toNumber(multimodal.views)}`}
-          />
-          <StatCard
-            hint="draft detail panels where multimodal score is unavailable"
-            label="Empty states"
-            value={`${toNumber(multimodal.emptyStates)}`}
-          />
-          <StatCard
-            hint="draft detail multimodal load errors"
-            label="Errors"
-            value={`${toNumber(multimodal.errors)}`}
-          />
-          <StatCard
-            hint="view / (view + empty)"
-            label="Coverage rate"
-            value={toRateText(multimodalCoverageRate)}
-          />
-          <StatCard
-            hint="error / (view + empty + error)"
-            label="Error rate"
-            value={toRateText(multimodalErrorRate)}
-          />
-          <StatCard
-            hint="query validation rejects for multimodal read requests"
-            label="Invalid query errors"
-            value={`${toNumber(multimodalGuardrails.invalidQueryErrors)}`}
-          />
-          <StatCard
-            hint="invalid-query errors / all multimodal error signals"
-            label="Invalid query share"
-            value={toRateText(multimodalGuardrails.invalidQueryRate)}
-          />
-        </div>
-        <div className="grid gap-4 lg:grid-cols-3">
-          <BreakdownListCard
-            emptyLabel="No provider data in current window."
-            items={multimodalProviderBreakdown}
-            title="Provider usage"
-          />
-          <BreakdownListCard
-            emptyLabel="No empty-state reasons in current window."
-            items={multimodalEmptyReasonBreakdown}
-            title="Empty-state reasons"
-          />
-          <BreakdownListCard
-            emptyLabel="No error reasons in current window."
-            items={multimodalErrorReasonBreakdown}
-            title="Error reasons"
-          />
-        </div>
-        <HourlyTrendCard
-          emptyLabel="No hourly multimodal trend data in current window."
-          items={multimodalHourlyTrend}
-          title="Hourly trend (UTC)"
-        />
-      </section>
-
-      <section className="card grid gap-4 p-4 sm:p-5">
-        <h2 className="font-semibold text-foreground text-lg">
-          Prediction market telemetry
-        </h2>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-7">
-          <StatCard
-            hint="submitted predictions in current window"
-            label="Predictions"
-            value={`${toNumber(predictionTotals.predictions)}`}
-          />
-          <StatCard
-            hint="unique observers placing predictions"
-            label="Predictors"
-            value={`${toNumber(predictionTotals.predictors)}`}
-          />
-          <StatCard
-            hint="unique PR markets with predictions"
-            label="Markets"
-            value={`${toNumber(predictionTotals.markets)}`}
-          />
-          <StatCard
-            hint="total FIN points staked"
-            label="Stake pool"
-            value={`${toNumber(predictionTotals.stakePoints)}`}
-          />
-          <StatCard
-            hint="correct / resolved predictions"
-            label="Accuracy rate"
-            value={toRateText(kpis.predictionAccuracyRate)}
-          />
-          <StatCard
-            hint="payout points / stake points"
-            label="Payout ratio"
-            value={toRateText(kpis.payoutToStakeRatio)}
-          />
-          <StatCard
-            hint="resolved prediction settlements / submitted predictions"
-            label="Settlement rate"
-            value={toRateText(kpis.predictionSettlementRate)}
-          />
-        </div>
-        <div className="grid gap-4 lg:grid-cols-3">
-          <BreakdownListCard
-            emptyLabel="No prediction outcomes in current window."
-            items={predictionOutcomesBreakdown}
-            title="Outcome mix"
-          />
-          <article className="card grid gap-2 p-4">
-            <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-              Participation snapshot
-            </h3>
-            <p className="text-muted-foreground text-xs">
-              Participation rate:{' '}
-              <span className="font-semibold text-foreground">
-                {toRateText(kpis.predictionParticipationRate)}
-              </span>
-            </p>
-            <p className="text-muted-foreground text-xs">
-              Average stake:{' '}
-              <span className="font-semibold text-foreground">
-                {toFixedText(predictionTotals.averageStakePoints)}
-              </span>
-            </p>
-            <p className="text-muted-foreground text-xs">
-              Resolved:{' '}
-              <span className="font-semibold text-foreground">
-                {toNumber(predictionTotals.resolvedPredictions)}
-              </span>{' '}
-              | Correct:{' '}
-              <span className="font-semibold text-foreground">
-                {toNumber(predictionTotals.correctPredictions)}
-              </span>
-            </p>
-          </article>
-          <article className="card grid gap-2 p-4">
-            <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-              Resolved windows
-            </h3>
+      {isPanelVisible('gateway') ? (
+        <section className="card grid gap-4 p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-semibold text-foreground text-lg">
+              Agent gateway control-plane telemetry
+            </h2>
             <div className="flex flex-wrap items-center gap-2">
               <span
-                className={`${healthBadgeClass(predictionWindow7dRiskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
+                className={`${healthBadgeClass(resolvedGatewayTelemetryHealthLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
               >
-                7d risk: {healthLabel(predictionWindow7dRiskLevel)}
+                Telemetry health:{' '}
+                {healthLabel(resolvedGatewayTelemetryHealthLevel)}
               </span>
               <span
-                className={`${healthBadgeClass(predictionWindow30dRiskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
+                className={`${healthBadgeClass(gatewayAutoCompactionShareLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
               >
-                30d risk: {healthLabel(predictionWindow30dRiskLevel)}
+                Auto compaction risk:{' '}
+                {healthLabel(gatewayAutoCompactionShareLevel)}
+              </span>
+              <span
+                className={`${healthBadgeClass(gatewayFailedStepLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
+              >
+                Failed-step risk: {healthLabel(gatewayFailedStepLevel)}
+              </span>
+              <span
+                className={`${healthBadgeClass(gatewayRuntimeSuccessLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
+              >
+                Runtime success: {healthLabel(gatewayRuntimeSuccessLevel)}
+              </span>
+              <span
+                className={`${healthBadgeClass(gatewayCooldownSkipLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
+              >
+                Cooldown skip risk: {healthLabel(gatewayCooldownSkipLevel)}
               </span>
             </div>
-            <p className="text-muted-foreground text-xs">
-              Thresholds: watch &lt;{' '}
-              {toRateText(
-                predictionResolutionWindowThresholds.accuracyRate.watchBelow,
-              )}{' '}
-              | critical &lt;{' '}
-              {toRateText(
-                predictionResolutionWindowThresholds.accuracyRate.criticalBelow,
-              )}{' '}
-              | min sample:{' '}
-              {predictionResolutionWindowThresholds.minResolvedPredictions}
+          </div>
+          {gatewayTelemetryError ? (
+            <p className="text-muted-foreground text-sm">
+              {gatewayTelemetryError}
             </p>
-            <p className="text-muted-foreground text-xs">
-              {predictionWindow7d.days}d:{' '}
-              <span className="font-semibold text-foreground">
-                {toRateText(predictionWindow7d.accuracyRate)}
-              </span>{' '}
-              ({predictionWindow7d.correctPredictions}/
-              {predictionWindow7d.resolvedPredictions}) | Net:{' '}
-              <span className="font-semibold text-foreground">
-                {predictionWindow7d.netPoints >= 0 ? '+' : ''}
-                {predictionWindow7d.netPoints}
-              </span>{' '}
-              | Predictors:{' '}
-              <span className="font-semibold text-foreground">
-                {predictionWindow7d.predictors}
-              </span>
-            </p>
-            <p className="text-muted-foreground text-xs">
-              {predictionWindow30d.days}d:{' '}
-              <span className="font-semibold text-foreground">
-                {toRateText(predictionWindow30d.accuracyRate)}
-              </span>{' '}
-              ({predictionWindow30d.correctPredictions}/
-              {predictionWindow30d.resolvedPredictions}) | Net:{' '}
-              <span className="font-semibold text-foreground">
-                {predictionWindow30d.netPoints >= 0 ? '+' : ''}
-                {predictionWindow30d.netPoints}
-              </span>{' '}
-              | Predictors:{' '}
-              <span className="font-semibold text-foreground">
-                {predictionWindow30d.predictors}
-              </span>
-            </p>
-          </article>
-        </div>
-        <div className="grid gap-4 lg:grid-cols-3">
+          ) : (
+            <>
+              <form className="flex flex-wrap items-end gap-2" method="get">
+                <input name="hours" type="hidden" value={`${hours}`} />
+                <input name="panel" type="hidden" value={activePanel} />
+                <label
+                  className="grid gap-1 text-muted-foreground text-xs uppercase tracking-wide"
+                  htmlFor="gateway-source-scope-select"
+                >
+                  Source
+                  <select
+                    className="w-32 rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm normal-case tracking-normal"
+                    defaultValue={gatewaySourceFilter ?? ''}
+                    id="gateway-source-scope-select"
+                    name="gatewaySource"
+                  >
+                    <option value="">db</option>
+                    <option value="memory">memory</option>
+                  </select>
+                </label>
+                {selectedSessionId ? (
+                  <input
+                    name="session"
+                    type="hidden"
+                    value={selectedSessionId}
+                  />
+                ) : null}
+                <input
+                  name="eventsLimit"
+                  type="hidden"
+                  value={`${eventsLimit}`}
+                />
+                <input name="eventType" type="hidden" value={eventTypeFilter} />
+                <input name="eventQuery" type="hidden" value={eventQuery} />
+                <label
+                  className="grid gap-1 text-muted-foreground text-xs uppercase tracking-wide"
+                  htmlFor="gateway-channel-scope-input"
+                >
+                  Channel scope
+                  <input
+                    className="w-48 rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm normal-case tracking-normal"
+                    defaultValue={appliedGatewayChannelFilter ?? ''}
+                    id="gateway-channel-scope-input"
+                    name="gatewayChannel"
+                    placeholder="all channels"
+                    type="text"
+                  />
+                </label>
+                <label
+                  className="grid gap-1 text-muted-foreground text-xs uppercase tracking-wide"
+                  htmlFor="gateway-provider-scope-input"
+                >
+                  Provider scope
+                  <input
+                    className="w-44 rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm normal-case tracking-normal"
+                    defaultValue={appliedGatewayProviderFilter ?? ''}
+                    id="gateway-provider-scope-input"
+                    name="gatewayProvider"
+                    placeholder="all providers"
+                    type="text"
+                  />
+                </label>
+                <label
+                  className="grid gap-1 text-muted-foreground text-xs uppercase tracking-wide"
+                  htmlFor="gateway-status-scope-select"
+                >
+                  Session status
+                  <select
+                    className="w-36 rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm normal-case tracking-normal"
+                    defaultValue={appliedGatewaySessionStatusInputValue}
+                    id="gateway-status-scope-select"
+                    name="gatewayStatus"
+                  >
+                    <option value="">all statuses</option>
+                    <option value="active">active</option>
+                    <option value="closed">closed</option>
+                  </select>
+                </label>
+                <button
+                  className="rounded-md border border-border bg-background px-3 py-1 text-foreground text-sm hover:bg-accent"
+                  type="submit"
+                >
+                  Apply scope
+                </button>
+                <a
+                  className="rounded-md border border-border bg-background px-3 py-1 text-foreground text-sm hover:bg-accent"
+                  href={buildPanelHref(activePanel)}
+                >
+                  Reset scope
+                </a>
+              </form>
+              <p className="text-muted-foreground text-xs">
+                Scope: channel{' '}
+                <span className="text-foreground">
+                  {appliedGatewayChannelFilter ?? 'all'}
+                </span>{' '}
+                | provider{' '}
+                <span className="text-foreground">
+                  {appliedGatewayProviderFilter ?? 'all'}
+                </span>
+                {' | '}status{' '}
+                <span className="text-foreground">
+                  {appliedGatewaySessionStatusLabel}
+                </span>
+              </p>
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <StatCard
+                  hint="sessions sampled in current window"
+                  label="Sessions"
+                  value={`${toNumber(gatewayTelemetrySessions.total)}`}
+                />
+                <StatCard
+                  hint="sessions with failed steps or failed cycles"
+                  label="Attention sessions"
+                  value={`${toNumber(gatewayTelemetrySessions.attention)}`}
+                />
+                <StatCard
+                  hint="sessions with at least one compaction event"
+                  label="Compacted sessions"
+                  value={`${toNumber(gatewayTelemetrySessions.compacted)}`}
+                />
+                <StatCard
+                  hint="sessions compacted by auto buffer guardrail"
+                  label="Auto compacted sessions"
+                  value={`${toNumber(gatewayTelemetrySessions.autoCompacted)}`}
+                />
+                <StatCard
+                  hint="auto compactions / total compactions"
+                  label="Auto compaction share"
+                  value={toRateText(gatewayTelemetryEvents.autoCompactionShare)}
+                />
+                <StatCard
+                  hint="failed steps / cycle step events"
+                  label="Failed step rate"
+                  value={toRateText(gatewayTelemetryEvents.failedStepRate)}
+                />
+                <StatCard
+                  hint="successful provider attempts / total attempts"
+                  label="Runtime success rate"
+                  value={toRateText(gatewayTelemetryAttempts.successRate)}
+                />
+                <StatCard
+                  hint="cooldown-skipped attempts / total attempts"
+                  label="Cooldown skip rate"
+                  value={toRateText(gatewayTelemetryAttempts.skippedRate)}
+                />
+              </div>
+              <p className="text-muted-foreground text-xs">
+                Events: total {toNumber(gatewayTelemetryEvents.total)} | cycle
+                steps {toNumber(gatewayTelemetryEvents.draftCycleStepEvents)} |
+                failed steps {toNumber(gatewayTelemetryEvents.failedStepEvents)}{' '}
+                | compactions{' '}
+                {toNumber(gatewayTelemetryEvents.compactionEvents)} | auto{' '}
+                {toNumber(gatewayTelemetryEvents.autoCompactionEvents)} | manual{' '}
+                {toNumber(gatewayTelemetryEvents.manualCompactionEvents)} |
+                pruned {toNumber(gatewayTelemetryEvents.prunedEventCount)}
+              </p>
+              <GatewayCompactionHourlyTrendCard
+                emptyLabel="No compaction events in current sample."
+                items={gatewayCompactionHourlyTrend}
+                title="Gateway compaction trend (UTC)"
+              />
+              <div className="grid gap-3 lg:grid-cols-3">
+                <GatewayTelemetryThresholdsCard
+                  thresholds={gatewayTelemetryThresholds}
+                />
+                <BreakdownListCard
+                  emptyLabel="No provider usage in current sample."
+                  items={gatewayTelemetryProviderUsage}
+                  title="Provider usage (sample)"
+                />
+                <BreakdownListCard
+                  emptyLabel="No channel usage in current sample."
+                  items={gatewayTelemetryChannelUsage}
+                  title="Channel usage (sample)"
+                />
+              </div>
+            </>
+          )}
+        </section>
+      ) : null}
+
+      {isPanelVisible('runtime') ? (
+        <section className="card grid gap-3 p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-semibold text-foreground text-lg">
+              AI runtime failover
+            </h2>
+            <span
+              className={`${healthBadgeClass(aiRuntimeHealthLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
+            >
+              {healthLabel(aiRuntimeHealthLevel)}
+            </span>
+          </div>
+          {renderAiRuntimeSectionBody()}
+        </section>
+      ) : null}
+
+      {isPanelVisible('engagement') ? (
+        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
           <StatCard
-            hint="observer prediction-history filter changes"
-            label="Filter switches"
-            value={`${toNumber(predictionFilterTelemetry.totalSwitches)}`}
+            hint="Observer sessions in the current window"
+            label="Session count"
+            value={`${toNumber(kpis.sessionCount)}`}
           />
-          <BreakdownListCard
-            emptyLabel="No scope-switch data in current window."
-            items={predictionFilterByScopeBreakdown}
-            title="Filter scope mix"
+          <StatCard
+            hint="Average observer session duration"
+            label="Avg session"
+            value={`${toNumber(kpis.observerSessionTimeSec).toFixed(1)}s`}
           />
-          <BreakdownListCard
-            emptyLabel="No filter-value data in current window."
-            items={predictionFilterByFilterBreakdown}
-            title="Filter value mix"
+          <StatCard
+            hint="watchlist_follow / draft_arc_view"
+            label="Follow rate"
+            value={toRateText(kpis.followRate)}
           />
-        </div>
-        <div className="grid gap-4 lg:grid-cols-2">
+          <StatCard
+            hint="digest_open / watchlist_follow"
+            label="Digest open rate"
+            value={toRateText(kpis.digestOpenRate)}
+          />
+          <StatCard
+            hint="Observer returns from previous 24h window"
+            label="24h retention"
+            value={toRateText(kpis.return24h)}
+          />
+        </section>
+      ) : null}
+
+      {isPanelVisible('engagement') ? (
+        <section className="card grid gap-3 p-4 sm:p-5">
+          <h2 className="font-semibold text-foreground text-lg">
+            Engagement health
+          </h2>
+          {visibleHealthSignals.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              Waiting for enough engagement telemetry to score health signals.
+            </p>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {visibleHealthSignals.map((signal) => (
+                <article
+                  className="rounded-xl border border-border/25 bg-background/60 p-3"
+                  key={signal.id}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-semibold text-foreground text-sm">
+                      {signal.label}
+                    </p>
+                    <span
+                      className={`${healthBadgeClass(signal.level)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
+                    >
+                      {healthLabel(signal.level)}
+                    </span>
+                  </div>
+                  <p className="mt-2 font-semibold text-base text-foreground">
+                    {toRateText(signal.value)}
+                  </p>
+                  <p className="text-muted-foreground text-xs">{signal.note}</p>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      ) : null}
+      {isPanelVisible('release') ? (
+        <section className="card grid gap-4 p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="font-semibold text-foreground text-lg">
+              Release health alert telemetry
+            </h2>
+            <span
+              className={`${healthBadgeClass(releaseHealthAlertRiskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
+            >
+              Alert risk: {healthLabel(releaseHealthAlertRiskLevel)}
+            </span>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <article className="rounded-xl border border-border/25 bg-background/60 p-3">
+              <p className="font-semibold text-foreground text-sm">
+                Alert risk
+              </p>
+              <p className="mt-2 font-semibold text-base text-foreground">
+                {healthLabel(releaseHealthAlertRiskLevel)}
+              </p>
+              <p className="text-muted-foreground text-xs">
+                Critical at first appearances &gt;= 3, alert events &gt;= 3, or
+                alerted runs &gt;= 2.
+              </p>
+            </article>
+            <StatCard
+              hint="release-health webhook events in current window"
+              label="Alert events"
+              value={`${releaseHealthAlertCount}`}
+            />
+            <StatCard
+              hint="sum of first-appearance entries across alert events"
+              label="First appearances"
+              value={`${releaseHealthAlertFirstAppearanceCount}`}
+            />
+            <StatCard
+              hint="unique launch-gate run ids represented in alert events"
+              label="Alerted runs"
+              value={`${releaseHealthAlertedRunCount}`}
+            />
+            <StatCard
+              hint="latest run that generated a release-health alert event"
+              label="Latest alerted run"
+              value={releaseHealthAlertLatestRunLabel}
+            />
+          </div>
+          <p className="text-muted-foreground text-xs">
+            Latest received:{' '}
+            <span className="font-semibold text-foreground">
+              {releaseHealthAlertLatestReceivedAt ?? 'n/a'}
+            </span>
+            {' | '}Run URL:{' '}
+            {typeof releaseHealthAlertLatest?.runUrl === 'string' &&
+            releaseHealthAlertLatest.runUrl.length > 0 ? (
+              <a
+                className="font-semibold text-foreground underline-offset-2 hover:underline"
+                href={releaseHealthAlertLatest.runUrl}
+              >
+                {releaseHealthAlertLatest.runUrl}
+              </a>
+            ) : (
+              <span className="font-semibold text-foreground">n/a</span>
+            )}
+          </p>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <BreakdownListCard
+              emptyLabel="No alert channel distribution in current window."
+              items={releaseHealthAlertByChannel}
+              title="First-appearance channels"
+            />
+            <BreakdownListCard
+              emptyLabel="No failure-mode distribution in current window."
+              items={releaseHealthAlertByFailureMode}
+              title="First-appearance failure modes"
+            />
+          </div>
+          <ReleaseHealthAlertHourlyTrendCard
+            emptyLabel="No release-health alert hourly trend data in current window."
+            items={releaseHealthAlertHourlyTrend}
+            title="Release-health alert hourly trend (UTC)"
+          />
+        </section>
+      ) : null}
+
+      {isPanelVisible('engagement') ? (
+        <section className="card grid gap-4 p-4 sm:p-5">
+          <h2 className="font-semibold text-foreground text-lg">
+            Feed preference KPIs
+          </h2>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <StatCard
+              hint="share of mode switches to Observer"
+              label="Observer mode share"
+              value={toRateText(kpis.viewModeObserverRate)}
+            />
+            <StatCard
+              hint="historical share from legacy Focus mode"
+              label="Legacy focus share"
+              value={toRateText(kpis.viewModeFocusRate)}
+            />
+            <StatCard
+              hint="share of density changes to Comfort"
+              label="Comfort density share"
+              value={toRateText(kpis.densityComfortRate)}
+            />
+            <StatCard
+              hint="share of density changes to Compact"
+              label="Compact density share"
+              value={toRateText(kpis.densityCompactRate)}
+            />
+            <StatCard
+              hint="hint dismiss / (hint dismiss + hint switch)"
+              label="Hint dismiss rate"
+              value={toRateText(kpis.hintDismissRate)}
+            />
+          </div>
+        </section>
+      ) : null}
+
+      {isPanelVisible('style') ? (
+        <section className="card grid gap-4 p-4 sm:p-5">
+          <h2 className="font-semibold text-foreground text-lg">
+            Multimodal GlowUp telemetry
+          </h2>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              hint="draft detail panels with multimodal score loaded"
+              label="Views"
+              value={`${toNumber(multimodal.views)}`}
+            />
+            <StatCard
+              hint="draft detail panels where multimodal score is unavailable"
+              label="Empty states"
+              value={`${toNumber(multimodal.emptyStates)}`}
+            />
+            <StatCard
+              hint="draft detail multimodal load errors"
+              label="Errors"
+              value={`${toNumber(multimodal.errors)}`}
+            />
+            <StatCard
+              hint="view / (view + empty)"
+              label="Coverage rate"
+              value={toRateText(multimodalCoverageRate)}
+            />
+            <StatCard
+              hint="error / (view + empty + error)"
+              label="Error rate"
+              value={toRateText(multimodalErrorRate)}
+            />
+            <StatCard
+              hint="query validation rejects for multimodal read requests"
+              label="Invalid query errors"
+              value={`${toNumber(multimodalGuardrails.invalidQueryErrors)}`}
+            />
+            <StatCard
+              hint="invalid-query errors / all multimodal error signals"
+              label="Invalid query share"
+              value={toRateText(multimodalGuardrails.invalidQueryRate)}
+            />
+          </div>
+          <div className="grid gap-4 lg:grid-cols-3">
+            <BreakdownListCard
+              emptyLabel="No provider data in current window."
+              items={multimodalProviderBreakdown}
+              title="Provider usage"
+            />
+            <BreakdownListCard
+              emptyLabel="No empty-state reasons in current window."
+              items={multimodalEmptyReasonBreakdown}
+              title="Empty-state reasons"
+            />
+            <BreakdownListCard
+              emptyLabel="No error reasons in current window."
+              items={multimodalErrorReasonBreakdown}
+              title="Error reasons"
+            />
+          </div>
+          <HourlyTrendCard
+            emptyLabel="No hourly multimodal trend data in current window."
+            items={multimodalHourlyTrend}
+            title="Hourly trend (UTC)"
+          />
+        </section>
+      ) : null}
+
+      {isPanelVisible('prediction') ? (
+        <section className="card grid gap-4 p-4 sm:p-5">
+          <h2 className="font-semibold text-foreground text-lg">
+            Prediction market telemetry
+          </h2>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              hint="submitted predictions in current window"
+              label="Predictions"
+              value={`${toNumber(predictionTotals.predictions)}`}
+            />
+            <StatCard
+              hint="unique observers placing predictions"
+              label="Predictors"
+              value={`${toNumber(predictionTotals.predictors)}`}
+            />
+            <StatCard
+              hint="unique PR markets with predictions"
+              label="Markets"
+              value={`${toNumber(predictionTotals.markets)}`}
+            />
+            <StatCard
+              hint="total FIN points staked"
+              label="Stake pool"
+              value={`${toNumber(predictionTotals.stakePoints)}`}
+            />
+            <StatCard
+              hint="correct / resolved predictions"
+              label="Accuracy rate"
+              value={toRateText(kpis.predictionAccuracyRate)}
+            />
+            <StatCard
+              hint="payout points / stake points"
+              label="Payout ratio"
+              value={toRateText(kpis.payoutToStakeRatio)}
+            />
+            <StatCard
+              hint="resolved prediction settlements / submitted predictions"
+              label="Settlement rate"
+              value={toRateText(kpis.predictionSettlementRate)}
+            />
+          </div>
+          <div className="grid gap-4 lg:grid-cols-3">
+            <BreakdownListCard
+              emptyLabel="No prediction outcomes in current window."
+              items={predictionOutcomesBreakdown}
+              title="Outcome mix"
+            />
+            <article className="card grid gap-2 p-4">
+              <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+                Participation snapshot
+              </h3>
+              <p className="text-muted-foreground text-xs">
+                Participation rate:{' '}
+                <span className="font-semibold text-foreground">
+                  {toRateText(kpis.predictionParticipationRate)}
+                </span>
+              </p>
+              <p className="text-muted-foreground text-xs">
+                Average stake:{' '}
+                <span className="font-semibold text-foreground">
+                  {toFixedText(predictionTotals.averageStakePoints)}
+                </span>
+              </p>
+              <p className="text-muted-foreground text-xs">
+                Resolved:{' '}
+                <span className="font-semibold text-foreground">
+                  {toNumber(predictionTotals.resolvedPredictions)}
+                </span>{' '}
+                | Correct:{' '}
+                <span className="font-semibold text-foreground">
+                  {toNumber(predictionTotals.correctPredictions)}
+                </span>
+              </p>
+            </article>
+            <article className="card grid gap-2 p-4">
+              <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+                Resolved windows
+              </h3>
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={`${healthBadgeClass(predictionWindow7dRiskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
+                >
+                  7d risk: {healthLabel(predictionWindow7dRiskLevel)}
+                </span>
+                <span
+                  className={`${healthBadgeClass(predictionWindow30dRiskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
+                >
+                  30d risk: {healthLabel(predictionWindow30dRiskLevel)}
+                </span>
+              </div>
+              <p className="text-muted-foreground text-xs">
+                Thresholds: watch &lt;{' '}
+                {toRateText(
+                  predictionResolutionWindowThresholds.accuracyRate.watchBelow,
+                )}{' '}
+                | critical &lt;{' '}
+                {toRateText(
+                  predictionResolutionWindowThresholds.accuracyRate
+                    .criticalBelow,
+                )}{' '}
+                | min sample:{' '}
+                {predictionResolutionWindowThresholds.minResolvedPredictions}
+              </p>
+              <p className="text-muted-foreground text-xs">
+                {predictionWindow7d.days}d:{' '}
+                <span className="font-semibold text-foreground">
+                  {toRateText(predictionWindow7d.accuracyRate)}
+                </span>{' '}
+                ({predictionWindow7d.correctPredictions}/
+                {predictionWindow7d.resolvedPredictions}) | Net:{' '}
+                <span className="font-semibold text-foreground">
+                  {predictionWindow7d.netPoints >= 0 ? '+' : ''}
+                  {predictionWindow7d.netPoints}
+                </span>{' '}
+                | Predictors:{' '}
+                <span className="font-semibold text-foreground">
+                  {predictionWindow7d.predictors}
+                </span>
+              </p>
+              <p className="text-muted-foreground text-xs">
+                {predictionWindow30d.days}d:{' '}
+                <span className="font-semibold text-foreground">
+                  {toRateText(predictionWindow30d.accuracyRate)}
+                </span>{' '}
+                ({predictionWindow30d.correctPredictions}/
+                {predictionWindow30d.resolvedPredictions}) | Net:{' '}
+                <span className="font-semibold text-foreground">
+                  {predictionWindow30d.netPoints >= 0 ? '+' : ''}
+                  {predictionWindow30d.netPoints}
+                </span>{' '}
+                | Predictors:{' '}
+                <span className="font-semibold text-foreground">
+                  {predictionWindow30d.predictors}
+                </span>
+              </p>
+            </article>
+          </div>
+          <div className="grid gap-4 lg:grid-cols-3">
+            <StatCard
+              hint="observer prediction-history filter changes"
+              label="Filter switches"
+              value={`${toNumber(predictionFilterTelemetry.totalSwitches)}`}
+            />
+            <BreakdownListCard
+              emptyLabel="No scope-switch data in current window."
+              items={predictionFilterByScopeBreakdown}
+              title="Filter scope mix"
+            />
+            <BreakdownListCard
+              emptyLabel="No filter-value data in current window."
+              items={predictionFilterByFilterBreakdown}
+              title="Filter value mix"
+            />
+          </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <article className="card grid gap-2 p-4">
+              <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+                Resolution cohorts by outcome
+              </h3>
+              <p className="text-muted-foreground text-xs">
+                Cohort thresholds: {predictionCohortThresholdSummary}
+              </p>
+              {predictionCohortsByOutcomeWithRisk.length === 0 ? (
+                <p className="text-muted-foreground text-xs">
+                  No outcome cohort data in current window.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-left text-xs">
+                    <thead>
+                      <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
+                        <th className="py-2 pr-3">Outcome</th>
+                        <th className="px-3 py-2 text-right">Predictions</th>
+                        <th className="px-3 py-2 text-right">Settled</th>
+                        <th className="px-3 py-2 text-right">Settlement</th>
+                        <th className="px-3 py-2 text-right">Accuracy</th>
+                        <th className="px-3 py-2 text-right">Risk</th>
+                        <th className="px-3 py-2 text-right">Net</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {predictionCohortsByOutcomeWithRisk.map(
+                        (entry, index) => (
+                          <tr
+                            className="border-border/25 border-b last:border-b-0"
+                            key={`${entry.predictedOutcome}:${index + 1}`}
+                          >
+                            <td className="py-2 pr-3 text-muted-foreground">
+                              {formatPredictionOutcomeMetricLabel(
+                                entry.predictedOutcome,
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-right font-medium text-foreground">
+                              {entry.predictions}
+                            </td>
+                            <td className="px-3 py-2 text-right text-muted-foreground">
+                              {entry.resolvedPredictions}
+                            </td>
+                            <td className="px-3 py-2 text-right text-muted-foreground">
+                              {toRateText(entry.settlementRate)}
+                            </td>
+                            <td className="px-3 py-2 text-right text-muted-foreground">
+                              {toRateText(entry.accuracyRate)}
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                              <span
+                                className={`${healthBadgeClass(entry.riskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
+                              >
+                                {healthLabel(entry.riskLevel)}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-right font-semibold text-foreground">
+                              {entry.netPoints >= 0 ? '+' : ''}
+                              {entry.netPoints}
+                            </td>
+                          </tr>
+                        ),
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </article>
+            <article className="card grid gap-2 p-4">
+              <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+                Resolution cohorts by stake band
+              </h3>
+              <p className="text-muted-foreground text-xs">
+                Cohort thresholds: {predictionCohortThresholdSummary}
+              </p>
+              {predictionCohortsByStakeBandWithRisk.length === 0 ? (
+                <p className="text-muted-foreground text-xs">
+                  No stake-band cohort data in current window.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-left text-xs">
+                    <thead>
+                      <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
+                        <th className="py-2 pr-3">Stake band</th>
+                        <th className="px-3 py-2 text-right">Predictions</th>
+                        <th className="px-3 py-2 text-right">Settled</th>
+                        <th className="px-3 py-2 text-right">Settlement</th>
+                        <th className="px-3 py-2 text-right">Accuracy</th>
+                        <th className="px-3 py-2 text-right">Risk</th>
+                        <th className="px-3 py-2 text-right">Net</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {predictionCohortsByStakeBandWithRisk.map(
+                        (entry, index) => (
+                          <tr
+                            className="border-border/25 border-b last:border-b-0"
+                            key={`${entry.stakeBand}:${index + 1}`}
+                          >
+                            <td className="py-2 pr-3 text-muted-foreground">
+                              {entry.stakeBand}
+                            </td>
+                            <td className="px-3 py-2 text-right font-medium text-foreground">
+                              {entry.predictions}
+                            </td>
+                            <td className="px-3 py-2 text-right text-muted-foreground">
+                              {entry.resolvedPredictions}
+                            </td>
+                            <td className="px-3 py-2 text-right text-muted-foreground">
+                              {toRateText(entry.settlementRate)}
+                            </td>
+                            <td className="px-3 py-2 text-right text-muted-foreground">
+                              {toRateText(entry.accuracyRate)}
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                              <span
+                                className={`${healthBadgeClass(entry.riskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
+                              >
+                                {healthLabel(entry.riskLevel)}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-right font-semibold text-foreground">
+                              {entry.netPoints >= 0 ? '+' : ''}
+                              {entry.netPoints}
+                            </td>
+                          </tr>
+                        ),
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </article>
+          </div>
           <article className="card grid gap-2 p-4">
             <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-              Resolution cohorts by outcome
+              Scope x filter matrix
             </h3>
-            <p className="text-muted-foreground text-xs">
-              Cohort thresholds: {predictionCohortThresholdSummary}
-            </p>
-            {predictionCohortsByOutcomeWithRisk.length === 0 ? (
+            {predictionFilterByScopeAndFilter.length === 0 ? (
               <p className="text-muted-foreground text-xs">
-                No outcome cohort data in current window.
+                No scope/filter matrix data in current window.
               </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-left text-xs">
                   <thead>
                     <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
-                      <th className="py-2 pr-3">Outcome</th>
-                      <th className="px-3 py-2 text-right">Predictions</th>
-                      <th className="px-3 py-2 text-right">Settled</th>
-                      <th className="px-3 py-2 text-right">Settlement</th>
-                      <th className="px-3 py-2 text-right">Accuracy</th>
-                      <th className="px-3 py-2 text-right">Risk</th>
-                      <th className="px-3 py-2 text-right">Net</th>
+                      <th className="py-2 pr-3">Scope</th>
+                      <th className="px-3 py-2">Filter</th>
+                      <th className="px-3 py-2 text-right">Count</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {predictionCohortsByOutcomeWithRisk.map((entry, index) => (
+                    {predictionFilterByScopeAndFilter.map((entry, index) => (
                       <tr
                         className="border-border/25 border-b last:border-b-0"
-                        key={`${entry.predictedOutcome}:${index + 1}`}
+                        key={`${entry.scope}:${entry.filter}:${index + 1}`}
                       >
                         <td className="py-2 pr-3 text-muted-foreground">
-                          {formatPredictionOutcomeMetricLabel(
-                            entry.predictedOutcome,
-                          )}
+                          {entry.scope}
                         </td>
-                        <td className="px-3 py-2 text-right font-medium text-foreground">
-                          {entry.predictions}
-                        </td>
-                        <td className="px-3 py-2 text-right text-muted-foreground">
-                          {entry.resolvedPredictions}
-                        </td>
-                        <td className="px-3 py-2 text-right text-muted-foreground">
-                          {toRateText(entry.settlementRate)}
-                        </td>
-                        <td className="px-3 py-2 text-right text-muted-foreground">
-                          {toRateText(entry.accuracyRate)}
-                        </td>
-                        <td className="px-3 py-2 text-right">
-                          <span
-                            className={`${healthBadgeClass(entry.riskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
-                          >
-                            {healthLabel(entry.riskLevel)}
-                          </span>
+                        <td className="px-3 py-2 text-muted-foreground">
+                          {entry.filter}
                         </td>
                         <td className="px-3 py-2 text-right font-semibold text-foreground">
-                          {entry.netPoints >= 0 ? '+' : ''}
-                          {entry.netPoints}
+                          {entry.count}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </article>
+          <div className="grid gap-4 lg:grid-cols-3">
+            <StatCard
+              hint="observer prediction-history sort changes"
+              label="Sort switches"
+              value={`${toNumber(predictionSortTelemetry.totalSwitches)}`}
+            />
+            <BreakdownListCard
+              emptyLabel="No sort scope data in current window."
+              items={predictionSortByScopeBreakdown}
+              title="Sort scope mix"
+            />
+            <BreakdownListCard
+              emptyLabel="No sort-value data in current window."
+              items={predictionSortBySortBreakdown}
+              title="Sort value mix"
+            />
+          </div>
+          <article className="card grid gap-2 p-4">
+            <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+              Scope x sort matrix
+            </h3>
+            {predictionSortByScopeAndSort.length === 0 ? (
+              <p className="text-muted-foreground text-xs">
+                No scope/sort matrix data in current window.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-left text-xs">
+                  <thead>
+                    <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
+                      <th className="py-2 pr-3">Scope</th>
+                      <th className="px-3 py-2">Sort</th>
+                      <th className="px-3 py-2 text-right">Count</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {predictionSortByScopeAndSort.map((entry, index) => (
+                      <tr
+                        className="border-border/25 border-b last:border-b-0"
+                        key={`${entry.scope}:${entry.sort}:${index + 1}`}
+                      >
+                        <td className="py-2 pr-3 text-muted-foreground">
+                          {entry.scope}
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground">
+                          {entry.sort}
+                        </td>
+                        <td className="px-3 py-2 text-right font-semibold text-foreground">
+                          {entry.count}
                         </td>
                       </tr>
                     ))}
@@ -5280,313 +5570,162 @@ export default async function AdminUxObserverEngagementPage({
           </article>
           <article className="card grid gap-2 p-4">
             <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-              Resolution cohorts by stake band
+              Active prediction controls by scope
             </h3>
-            <p className="text-muted-foreground text-xs">
-              Cohort thresholds: {predictionCohortThresholdSummary}
-            </p>
-            {predictionCohortsByStakeBandWithRisk.length === 0 ? (
+            {predictionHistoryScopeStates.length === 0 ? (
               <p className="text-muted-foreground text-xs">
-                No stake-band cohort data in current window.
+                No active prediction-history control state in current window.
               </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-left text-xs">
                   <thead>
                     <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
-                      <th className="py-2 pr-3">Stake band</th>
-                      <th className="px-3 py-2 text-right">Predictions</th>
-                      <th className="px-3 py-2 text-right">Settled</th>
-                      <th className="px-3 py-2 text-right">Settlement</th>
-                      <th className="px-3 py-2 text-right">Accuracy</th>
-                      <th className="px-3 py-2 text-right">Risk</th>
-                      <th className="px-3 py-2 text-right">Net</th>
+                      <th className="py-2 pr-3">Scope</th>
+                      <th className="px-3 py-2">Active filter</th>
+                      <th className="px-3 py-2">Active sort</th>
+                      <th className="px-3 py-2 text-right">
+                        Last changed (UTC)
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {predictionCohortsByStakeBandWithRisk.map(
-                      (entry, index) => (
-                        <tr
-                          className="border-border/25 border-b last:border-b-0"
-                          key={`${entry.stakeBand}:${index + 1}`}
-                        >
-                          <td className="py-2 pr-3 text-muted-foreground">
-                            {entry.stakeBand}
-                          </td>
-                          <td className="px-3 py-2 text-right font-medium text-foreground">
-                            {entry.predictions}
-                          </td>
-                          <td className="px-3 py-2 text-right text-muted-foreground">
-                            {entry.resolvedPredictions}
-                          </td>
-                          <td className="px-3 py-2 text-right text-muted-foreground">
-                            {toRateText(entry.settlementRate)}
-                          </td>
-                          <td className="px-3 py-2 text-right text-muted-foreground">
-                            {toRateText(entry.accuracyRate)}
-                          </td>
-                          <td className="px-3 py-2 text-right">
-                            <span
-                              className={`${healthBadgeClass(entry.riskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
-                            >
-                              {healthLabel(entry.riskLevel)}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2 text-right font-semibold text-foreground">
-                            {entry.netPoints >= 0 ? '+' : ''}
-                            {entry.netPoints}
-                          </td>
-                        </tr>
-                      ),
-                    )}
+                    {predictionHistoryScopeStates.map((entry, index) => (
+                      <tr
+                        className="border-border/25 border-b last:border-b-0"
+                        key={`${entry.scope}:${index + 1}`}
+                      >
+                        <td className="py-2 pr-3 text-muted-foreground">
+                          {entry.scope}
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground">
+                          {entry.activeFilter ?? 'n/a'}
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground">
+                          {entry.activeSort ?? 'n/a'}
+                        </td>
+                        <td className="px-3 py-2 text-right font-medium text-foreground">
+                          {entry.lastChangedAt ?? 'n/a'}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
             )}
           </article>
-        </div>
-        <article className="card grid gap-2 p-4">
-          <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-            Scope x filter matrix
-          </h3>
-          {predictionFilterByScopeAndFilter.length === 0 ? (
-            <p className="text-muted-foreground text-xs">
-              No scope/filter matrix data in current window.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-left text-xs">
-                <thead>
-                  <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
-                    <th className="py-2 pr-3">Scope</th>
-                    <th className="px-3 py-2">Filter</th>
-                    <th className="px-3 py-2 text-right">Count</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {predictionFilterByScopeAndFilter.map((entry, index) => (
-                    <tr
-                      className="border-border/25 border-b last:border-b-0"
-                      key={`${entry.scope}:${entry.filter}:${index + 1}`}
-                    >
-                      <td className="py-2 pr-3 text-muted-foreground">
-                        {entry.scope}
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground">
-                        {entry.filter}
-                      </td>
-                      <td className="px-3 py-2 text-right font-semibold text-foreground">
-                        {entry.count}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </article>
-        <div className="grid gap-4 lg:grid-cols-3">
-          <StatCard
-            hint="observer prediction-history sort changes"
-            label="Sort switches"
-            value={`${toNumber(predictionSortTelemetry.totalSwitches)}`}
-          />
-          <BreakdownListCard
-            emptyLabel="No sort scope data in current window."
-            items={predictionSortByScopeBreakdown}
-            title="Sort scope mix"
-          />
-          <BreakdownListCard
-            emptyLabel="No sort-value data in current window."
-            items={predictionSortBySortBreakdown}
-            title="Sort value mix"
-          />
-        </div>
-        <article className="card grid gap-2 p-4">
-          <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-            Scope x sort matrix
-          </h3>
-          {predictionSortByScopeAndSort.length === 0 ? (
-            <p className="text-muted-foreground text-xs">
-              No scope/sort matrix data in current window.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-left text-xs">
-                <thead>
-                  <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
-                    <th className="py-2 pr-3">Scope</th>
-                    <th className="px-3 py-2">Sort</th>
-                    <th className="px-3 py-2 text-right">Count</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {predictionSortByScopeAndSort.map((entry, index) => (
-                    <tr
-                      className="border-border/25 border-b last:border-b-0"
-                      key={`${entry.scope}:${entry.sort}:${index + 1}`}
-                    >
-                      <td className="py-2 pr-3 text-muted-foreground">
-                        {entry.scope}
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground">
-                        {entry.sort}
-                      </td>
-                      <td className="px-3 py-2 text-right font-semibold text-foreground">
-                        {entry.count}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </article>
-        <article className="card grid gap-2 p-4">
-          <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-            Active prediction controls by scope
-          </h3>
-          {predictionHistoryScopeStates.length === 0 ? (
-            <p className="text-muted-foreground text-xs">
-              No active prediction-history control state in current window.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-left text-xs">
-                <thead>
-                  <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
-                    <th className="py-2 pr-3">Scope</th>
-                    <th className="px-3 py-2">Active filter</th>
-                    <th className="px-3 py-2">Active sort</th>
-                    <th className="px-3 py-2 text-right">Last changed (UTC)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {predictionHistoryScopeStates.map((entry, index) => (
-                    <tr
-                      className="border-border/25 border-b last:border-b-0"
-                      key={`${entry.scope}:${index + 1}`}
-                    >
-                      <td className="py-2 pr-3 text-muted-foreground">
-                        {entry.scope}
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground">
-                        {entry.activeFilter ?? 'n/a'}
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground">
-                        {entry.activeSort ?? 'n/a'}
-                      </td>
-                      <td className="px-3 py-2 text-right font-medium text-foreground">
-                        {entry.lastChangedAt ?? 'n/a'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </article>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <StatCard
-            hint="filter switches / (filter + sort switches)"
-            label="Filter switch share"
-            value={toRateText(kpis.predictionFilterSwitchShare)}
-          />
-          <StatCard
-            hint="sort switches / (filter + sort switches)"
-            label="Sort switch share"
-            value={toRateText(kpis.predictionSortSwitchShare)}
-          />
-          <StatCard
-            hint="non-recency sort switches / all sort switches"
-            label="Non-default sort share"
-            value={toRateText(kpis.predictionNonDefaultSortRate)}
-          />
-        </div>
-        <PredictionHourlyTrendCard
-          emptyLabel="No hourly prediction trend data in current window."
-          items={predictionHourlyTrend}
-          title="Prediction hourly trend (UTC)"
-        />
-      </section>
-
-      <StyleFusionMetricsSection metrics={styleFusionMetrics} />
-
-      <section className="grid gap-4 lg:grid-cols-3">
-        <article className="card grid gap-2 p-4">
-          <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-            Observer mode events
-          </h3>
-          <p className="text-muted-foreground text-xs">
-            observer: {toNumber(viewMode.observer)} | legacy focus:{' '}
-            {toNumber(viewMode.focus)} | unknown: {toNumber(viewMode.unknown)} |
-            total: {toNumber(viewMode.total)}
-          </p>
-        </article>
-
-        <article className="card grid gap-2 p-4">
-          <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-            Density events
-          </h3>
-          <p className="text-muted-foreground text-xs">
-            comfort: {toNumber(density.comfort)} | compact:{' '}
-            {toNumber(density.compact)} | unknown: {toNumber(density.unknown)} |
-            total: {toNumber(density.total)}
-          </p>
-        </article>
-
-        <article className="card grid gap-2 p-4">
-          <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-            Hint interactions
-          </h3>
-          <p className="text-muted-foreground text-xs">
-            dismiss: {toNumber(hint.dismissCount)} | switch:{' '}
-            {toNumber(hint.switchCount)} | total:{' '}
-            {toNumber(hint.totalInteractions)}
-          </p>
-        </article>
-      </section>
-
-      <section className="card grid gap-3 p-4 sm:p-5">
-        <h2 className="font-semibold text-foreground text-lg">Top segments</h2>
-        {topSegments.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No segment data yet.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left text-sm">
-              <thead>
-                <tr className="border-border/25 border-b text-muted-foreground text-xs uppercase tracking-wide">
-                  <th className="py-2 pr-3">Mode</th>
-                  <th className="px-3 py-2">Draft status</th>
-                  <th className="px-3 py-2">Event</th>
-                  <th className="px-3 py-2 text-right">Count</th>
-                </tr>
-              </thead>
-              <tbody>
-                {topSegments.map((segment, index) => (
-                  <tr
-                    className="border-border/25 border-b last:border-b-0"
-                    key={`${segment.mode ?? 'unknown'}:${segment.eventType ?? 'event'}:${index + 1}`}
-                  >
-                    <td className="py-2 pr-3 text-foreground">
-                      {segment.mode ?? 'unknown'}
-                    </td>
-                    <td className="px-3 py-2 text-muted-foreground">
-                      {segment.draftStatus ?? 'unknown'}
-                    </td>
-                    <td className="px-3 py-2 text-muted-foreground">
-                      {segment.eventType ?? 'unknown'}
-                    </td>
-                    <td className="px-3 py-2 text-right text-foreground">
-                      {toNumber(segment.count)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <StatCard
+              hint="filter switches / (filter + sort switches)"
+              label="Filter switch share"
+              value={toRateText(kpis.predictionFilterSwitchShare)}
+            />
+            <StatCard
+              hint="sort switches / (filter + sort switches)"
+              label="Sort switch share"
+              value={toRateText(kpis.predictionSortSwitchShare)}
+            />
+            <StatCard
+              hint="non-recency sort switches / all sort switches"
+              label="Non-default sort share"
+              value={toRateText(kpis.predictionNonDefaultSortRate)}
+            />
           </div>
-        )}
-      </section>
+          <PredictionHourlyTrendCard
+            emptyLabel="No hourly prediction trend data in current window."
+            items={predictionHourlyTrend}
+            title="Prediction hourly trend (UTC)"
+          />
+        </section>
+      ) : null}
+
+      {isPanelVisible('style') ? (
+        <StyleFusionMetricsSection metrics={styleFusionMetrics} />
+      ) : null}
+
+      {isPanelVisible('engagement') ? (
+        <section className="grid gap-4 lg:grid-cols-3">
+          <article className="card grid gap-2 p-4">
+            <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+              Observer mode events
+            </h3>
+            <p className="text-muted-foreground text-xs">
+              observer: {toNumber(viewMode.observer)} | legacy focus:{' '}
+              {toNumber(viewMode.focus)} | unknown: {toNumber(viewMode.unknown)}{' '}
+              | total: {toNumber(viewMode.total)}
+            </p>
+          </article>
+
+          <article className="card grid gap-2 p-4">
+            <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+              Density events
+            </h3>
+            <p className="text-muted-foreground text-xs">
+              comfort: {toNumber(density.comfort)} | compact:{' '}
+              {toNumber(density.compact)} | unknown: {toNumber(density.unknown)}{' '}
+              | total: {toNumber(density.total)}
+            </p>
+          </article>
+
+          <article className="card grid gap-2 p-4">
+            <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+              Hint interactions
+            </h3>
+            <p className="text-muted-foreground text-xs">
+              dismiss: {toNumber(hint.dismissCount)} | switch:{' '}
+              {toNumber(hint.switchCount)} | total:{' '}
+              {toNumber(hint.totalInteractions)}
+            </p>
+          </article>
+        </section>
+      ) : null}
+
+      {isPanelVisible('engagement') ? (
+        <section className="card grid gap-3 p-4 sm:p-5">
+          <h2 className="font-semibold text-foreground text-lg">
+            Top segments
+          </h2>
+          {topSegments.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              No segment data yet.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-left text-sm">
+                <thead>
+                  <tr className="border-border/25 border-b text-muted-foreground text-xs uppercase tracking-wide">
+                    <th className="py-2 pr-3">Mode</th>
+                    <th className="px-3 py-2">Draft status</th>
+                    <th className="px-3 py-2">Event</th>
+                    <th className="px-3 py-2 text-right">Count</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topSegments.map((segment, index) => (
+                    <tr
+                      className="border-border/25 border-b last:border-b-0"
+                      key={`${segment.mode ?? 'unknown'}:${segment.eventType ?? 'event'}:${index + 1}`}
+                    >
+                      <td className="py-2 pr-3 text-foreground">
+                        {segment.mode ?? 'unknown'}
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        {segment.draftStatus ?? 'unknown'}
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        {segment.eventType ?? 'unknown'}
+                      </td>
+                      <td className="px-3 py-2 text-right text-foreground">
+                        {toNumber(segment.count)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      ) : null}
     </main>
   );
 }

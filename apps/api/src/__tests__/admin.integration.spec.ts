@@ -9,6 +9,7 @@ import {
   getUtcDateKey,
 } from '../services/budget/budgetService';
 import { PostServiceImpl } from '../services/post/postService';
+import { sandboxExecutionService } from '../services/sandboxExecution/sandboxExecutionService';
 
 env.ADMIN_API_TOKEN = env.ADMIN_API_TOKEN || 'test-admin-token';
 
@@ -315,6 +316,84 @@ describe('Admin API routes', () => {
       .set('x-admin-token', env.ADMIN_API_TOKEN);
     expect(invalidLimitsDecision.status).toBe(400);
     expect(invalidLimitsDecision.body.error).toBe('ADMIN_INVALID_QUERY');
+  });
+
+  test('sandbox pilot run-code rejects unsupported language', async () => {
+    const enabledSpy = jest
+      .spyOn(sandboxExecutionService, 'isEnabled')
+      .mockReturnValue(true);
+    const createSandboxSpy = jest.spyOn(
+      sandboxExecutionService,
+      'createSandbox',
+    );
+    try {
+      const response = await request(app)
+        .post('/api/admin/sandbox-execution/pilot/run-code')
+        .set('x-admin-token', env.ADMIN_API_TOKEN)
+        .send({
+          language: 'ruby',
+          code: "puts 'hello'",
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('ADMIN_INVALID_BODY');
+      expect(createSandboxSpy).not.toHaveBeenCalled();
+    } finally {
+      createSandboxSpy.mockRestore();
+      enabledSpy.mockRestore();
+    }
+  });
+
+  test('sandbox pilot run-code rejects file path escape payload', async () => {
+    const enabledSpy = jest
+      .spyOn(sandboxExecutionService, 'isEnabled')
+      .mockReturnValue(true);
+    const createSandboxSpy = jest.spyOn(
+      sandboxExecutionService,
+      'createSandbox',
+    );
+    try {
+      const response = await request(app)
+        .post('/api/admin/sandbox-execution/pilot/run-code')
+        .set('x-admin-token', env.ADMIN_API_TOKEN)
+        .send({
+          code: "console.log('ok')",
+          language: 'javascript',
+          files: [
+            {
+              path: '../escape.txt',
+              contentBase64: Buffer.from('payload').toString('base64'),
+            },
+          ],
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('ADMIN_INVALID_BODY');
+      expect(createSandboxSpy).not.toHaveBeenCalled();
+    } finally {
+      createSandboxSpy.mockRestore();
+      enabledSpy.mockRestore();
+    }
+  });
+
+  test('sandbox pilot run-code returns disabled error when feature flag is off', async () => {
+    const enabledSpy = jest
+      .spyOn(sandboxExecutionService, 'isEnabled')
+      .mockReturnValue(false);
+    try {
+      const response = await request(app)
+        .post('/api/admin/sandbox-execution/pilot/run-code')
+        .set('x-admin-token', env.ADMIN_API_TOKEN)
+        .send({
+          code: "console.log('ok')",
+          language: 'javascript',
+        });
+
+      expect(response.status).toBe(503);
+      expect(response.body.error).toBe('SANDBOX_EXECUTION_DISABLED');
+    } finally {
+      enabledSpy.mockRestore();
+    }
   });
 
   test('ai runtime profiles endpoint returns configured role chains', async () => {
