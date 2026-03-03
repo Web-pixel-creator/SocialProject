@@ -33,6 +33,35 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-03 - admin UX release/prediction hourly compact-empty toggle pass
+
+- Scope: complete shared no-data behavior by adding opt-in compact empty-state support to remaining hourly table cards.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-03 16:20 -> 2026-03-03 16:30.
+- Changes:
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - `ReleaseHealthAlertHourlyTrendCard` now supports `compactEmptyState?: boolean`.
+    - `PredictionHourlyTrendCard` now supports `compactEmptyState?: boolean`.
+  - Enabled compact mode for both call sites:
+    - `Release health alert hourly trend (UTC)`.
+    - `Prediction hourly trend (UTC)`.
+  - Behavior remains opt-in and backward-compatible for non-target sections.
+- Validation:
+  - `npx ultracite check apps/web/src/app/admin/ux/page.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Execution:
+  - Commit: `4e322ad9c71ae7ed0c13c6251553b106dc039fc4` pushed to `main`.
+  - Railway production deployments:
+    - `SocialProject`: `31aeb319-9f96-4f2a-a640-c28106688875` (`SUCCESS`).
+    - `api`: `df42f34e-bf86-40ac-9f83-02aaf6bdfc24` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-03T16:30:26.029Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: decide whether to migrate `GatewayCompactionHourlyTrendCard` to same toggle or keep legacy empty-state for gateway-only readability.
+
 ### 2026-03-03 - admin UX shared-card compact empty-state toggle pass
 
 - Scope: add opt-in compact empty-state support to shared telemetry cards and apply it only to targeted panels.
