@@ -33,6 +33,32 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX page content extraction pass
+
+- Scope: finish the next `admin/ux/page.tsx` thinning step by extracting header/panel/main composition into a dedicated page-content component.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 14:37 -> 2026-03-04 14:44.
+- Changes:
+  - Added `apps/web/src/app/admin/ux/components/admin-ux-page-content.tsx`:
+    - composes `AdminUxPageLayout`, `AdminUxPageHeader`, `AdminUxPanelChrome`, and `AdminUxMainPanels`,
+    - resolves panel chrome view model and effective window-hours in one place.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - replaced inline page composition block with `<AdminUxPageContent ... />`,
+    - retained only query-state resolution, data-loading, and error branch handling.
+  - `admin/ux/page.tsx` reduced to `35` lines.
+- Validation:
+  - `npx ultracite fix apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/admin-ux-page-content.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+  - `npm run release:alert-risk:reassess -- --apply`: `status=already_enabled` (`RELEASE_HEALTH_ALERT_RISK_STRICT=true`).
+  - `npm run release:railway:gate:strict`: pass (after Railway deployment reached `SUCCESS` for `web` and `api`).
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: `status=pass` (`generatedAtUtc=2026-03-04T14:43:47.252Z`).
+- Execution:
+  - Commit: `f1a7cea17b2326bcb7cfbc343770288b243f884a` pushed to `main`.
+- Incidents:
+  - transient strict-gate failures while Railway services were `BUILDING`; resolved after rollout convergence to `SUCCESS`.
+- Follow-ups:
+  - next pass: optionally extract an `AdminUxPageLoadState` helper (`ok/error`) to keep page-level branching fully declarative.
+
 ### 2026-03-04 - admin UX page layout wrapper extraction pass
 
 - Scope: keep `admin/ux/page.tsx` focused on orchestration by extracting the page-level `<main>` shell wrapper into a dedicated render component.
