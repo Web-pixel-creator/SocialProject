@@ -13,36 +13,11 @@ import {
 import {
   deriveAiRuntimeHealthLevel,
   deriveGatewayHealthLevel,
-  deriveReleaseHealthAlertRiskLevel,
   healthBadgeClass,
   healthLabel,
-  normalizeBreakdownItems,
-  normalizeGatewayCompactionHourlyTrendItems,
-  normalizeGatewayTelemetryFilters,
-  normalizeGatewayTelemetryThresholds,
-  normalizeHourlyTrendItems,
-  normalizePredictionCohortByOutcomeItems,
-  normalizePredictionCohortByStakeBandItems,
-  normalizePredictionCohortRiskThresholds,
-  normalizePredictionFilterScopeFilterItems,
-  normalizePredictionHistoryScopeStateItems,
-  normalizePredictionHourlyTrendItems,
-  normalizePredictionResolutionWindow,
-  normalizePredictionResolutionWindowThresholds,
-  normalizePredictionSortScopeSortItems,
-  normalizeReleaseHealthAlertHourlyTrendItems,
-  normalizeStyleFusionMetrics,
-  pickFirstFiniteRate,
-  resolveGatewaySessionScope,
-  resolveGatewayTelemetryHealthLevel,
   resolveHealthLevel,
-  resolvePredictionCohortHealthLevel,
-  resolvePredictionResolutionWindowHealthLevel,
-  resolveRiskHealthLevel,
   toDurationText,
   toFixedText,
-  toHealthLevelValue,
-  toNullableIsoTimestamp,
   toNumber,
   toRateText,
   toStringValue,
@@ -50,33 +25,15 @@ import {
 import {
   type AdminUxPanel,
   buildEventsCsv,
-  formatPredictionOutcomeMetricLabel,
   resolveAdminUxPanel,
 } from './components/admin-ux-page-utils';
 import { AdminUxPanelChrome } from './components/admin-ux-panel-chrome';
+import { prepareAdminUxSectionData } from './components/admin-ux-section-prep';
 import {
   buildDebugContextRows,
   buildDebugPayloadText,
-  buildEngagementCompactionView,
-  buildEngagementHealthSignals,
-  buildGatewayEventCounters,
-  buildGatewayRiskSignalsView,
-  buildGatewayScopeRows,
-  buildGatewayTelemetryStatCards,
-  buildGatewayTelemetryView,
-  buildMultimodalBreakdownRows,
-  buildMultimodalStatCards,
-  buildMultimodalTelemetryView,
   buildPanelTabsView,
-  buildPredictionCohortsByOutcomeView,
-  buildPredictionCohortsByStakeBandView,
-  buildPredictionMarketTelemetryView,
-  buildPredictionStatCards,
-  buildPredictionWindowView,
-  buildReleaseBreakdownRows,
-  buildReleaseHealthAlertsView,
   buildStickyKpisView,
-  buildTopSegmentsView,
 } from './components/admin-ux-view-models';
 import {
   AI_RUNTIME_ROLES,
@@ -231,19 +188,45 @@ export default async function AdminUxObserverEngagementPage({
     toStringValue,
   });
 
-  const kpis = data?.kpis ?? {};
-  const predictionMarket = data?.predictionMarket ?? {};
-  const predictionFilterTelemetry = data?.predictionFilterTelemetry ?? {};
-  const predictionSortTelemetry = data?.predictionSortTelemetry ?? {};
-  const predictionHistoryStateTelemetry =
-    data?.predictionHistoryStateTelemetry ?? {};
   const {
+    appliedGatewayChannelFilter,
+    appliedGatewayProviderFilter,
+    appliedGatewaySessionChannelFilter,
+    appliedGatewaySessionProviderFilter,
+    appliedGatewaySessionStatusInputValue,
+    appliedGatewaySessionStatusLabel,
+    density,
+    densityTotal,
+    engagementAvgSessionSeconds,
+    engagementHealthSignals,
+    engagementSessionCount,
+    gatewayCompactionHourlyTrend,
+    gatewayEventCounters,
+    gatewayRiskSignalsView,
+    gatewayScopeOverridesApplied,
+    gatewayScopeRows,
+    gatewaySessionScopeLabel,
+    gatewayTelemetryChannelUsage,
+    gatewayTelemetryProviderUsage,
+    gatewayTelemetrySessions,
+    gatewayTelemetryStatCards,
+    gatewayTelemetryThresholds,
+    hint,
+    hintInteractionTotal,
+    kpis,
+    multimodalBreakdownRows,
+    multimodalGuardrails,
+    multimodalHourlyTrend,
+    multimodalOverallLevel,
+    multimodalStatCards,
+    predictionAccuracyLevel,
     predictionCohortThresholdSummary,
-    predictionCohortsByOutcomeWithRisk,
-    predictionCohortsByStakeBandWithRisk,
+    predictionCohortsByOutcomeView,
+    predictionCohortsByStakeBandView,
     predictionFilterByFilterBreakdown,
     predictionFilterByScopeAndFilter,
     predictionFilterByScopeBreakdown,
+    predictionFilterTelemetry,
     predictionHistoryScopeStates,
     predictionHourlyTrend,
     predictionOutcomesBreakdown,
@@ -251,54 +234,12 @@ export default async function AdminUxObserverEngagementPage({
     predictionSortByScopeAndSort,
     predictionSortByScopeBreakdown,
     predictionSortBySortBreakdown,
-    predictionTotals,
-    predictionWindow30d,
-    predictionWindow30dRiskLevel,
-    predictionWindow7d,
-    predictionWindow7dRiskLevel,
-  } = buildPredictionMarketTelemetryView({
-    formatPredictionOutcomeMetricLabel,
-    normalizeBreakdownItems,
-    normalizePredictionCohortByOutcomeItems,
-    normalizePredictionCohortByStakeBandItems,
-    normalizePredictionCohortRiskThresholds,
-    normalizePredictionFilterScopeFilterItems,
-    normalizePredictionHistoryScopeStateItems,
-    normalizePredictionHourlyTrendItems,
-    normalizePredictionResolutionWindow,
-    normalizePredictionResolutionWindowThresholds,
-    normalizePredictionSortScopeSortItems,
-    predictionFilterTelemetry,
-    predictionHistoryStateTelemetry,
-    predictionMarket,
     predictionSortTelemetry,
-    resolvePredictionCohortHealthLevel,
-    resolvePredictionResolutionWindowHealthLevel,
-    toRateText,
-  });
-  const multimodal = data?.multimodal ?? {};
-  const {
-    multimodalCoverageRate,
-    multimodalEmptyReasonBreakdown,
-    multimodalErrorRate,
-    multimodalErrorReasonBreakdown,
-    multimodalGuardrails,
-    multimodalHourlyTrend,
-    multimodalOverallLevel,
-    multimodalProviderBreakdown,
-  } = buildMultimodalTelemetryView({
-    kpis,
-    multimodal,
-    normalizeBreakdownItems,
-    normalizeHourlyTrendItems,
-    pickFirstFiniteRate,
-    resolveHealthLevel,
-    resolveRiskHealthLevel,
-  });
-  const releaseHealthAlerts = data?.releaseHealthAlerts ?? {};
-  const {
-    releaseHealthAlertByChannel,
-    releaseHealthAlertByFailureMode,
+    predictionStatCards,
+    predictionTotals,
+    predictionWindow30dView,
+    predictionWindow7dView,
+    releaseBreakdownRows,
     releaseHealthAlertCount,
     releaseHealthAlertFirstAppearanceCount,
     releaseHealthAlertHourlyTrend,
@@ -307,90 +248,27 @@ export default async function AdminUxObserverEngagementPage({
     releaseHealthAlertLatestRunLabel,
     releaseHealthAlertRiskLevel,
     releaseHealthAlertedRunCount,
-  } = buildReleaseHealthAlertsView({
-    deriveReleaseHealthAlertRiskLevel,
-    kpis,
-    normalizeBreakdownItems,
-    normalizeReleaseHealthAlertHourlyTrendItems,
-    releaseHealthAlerts,
-    toNullableIsoTimestamp,
-    toNumber,
-  });
-  const feedPreferences = data?.feedPreferences ?? {};
-  const viewMode = feedPreferences.viewMode ?? {};
-  const density = feedPreferences.density ?? {};
-  const hint = feedPreferences.hint ?? {};
-  const {
-    densityTotal,
-    engagementAvgSessionSeconds,
-    engagementSessionCount,
-    hintInteractionTotal,
+    resolvedGatewayTelemetryHealthLevel,
     shouldCompactEngagementOverview,
     shouldCompactFeedPreferenceEvents,
     shouldCompactFeedPreferenceKpis,
+    styleFusionCopyRiskLevel,
+    styleFusionMetrics,
+    styleFusionRiskLevel,
+    topGatewayProvider,
+    topSegmentsView,
+    viewMode,
     viewModeTotal,
-  } = buildEngagementCompactionView({
-    feedPreferences,
-    kpis,
-    toNumber,
-  });
-  const segments = Array.isArray(data?.segments) ? data?.segments : [];
-  const styleFusionMetrics = normalizeStyleFusionMetrics(similarSearchMetrics);
-  const styleFusionRiskLevel = resolveHealthLevel(
-    styleFusionMetrics.successRate,
-    {
-      criticalBelow: 0.5,
-      watchBelow: 0.7,
-    },
-  );
-  const styleFusionCopyRiskLevel = resolveHealthLevel(
-    styleFusionMetrics.copy.successRate,
-    {
-      criticalBelow: 0.6,
-      watchBelow: 0.8,
-    },
-  );
-  const topSegmentsView = buildTopSegmentsView({ segments, toNumber });
-  const gatewayProviders = gatewayOverview
-    ? Object.entries(gatewayOverview.summary.providerUsage).sort(
-        (left, right) => right[1] - left[1],
-      )
-    : [];
-  const {
-    appliedGatewayChannelFilter,
-    appliedGatewayProviderFilter,
-    appliedGatewaySessionChannelFilter,
-    appliedGatewaySessionProviderFilter,
-    appliedGatewaySessionStatusInputValue,
-    appliedGatewaySessionStatusLabel,
-    gatewayAutoCompactionShareLevel,
-    gatewayCompactionHourlyTrend,
-    gatewayCooldownSkipLevel,
-    gatewayFailedStepLevel,
-    gatewayRuntimeSuccessLevel,
-    gatewaySessionScopeLabel,
-    gatewayTelemetryAttempts,
-    gatewayTelemetryChannelUsage,
-    gatewayTelemetryEvents,
-    gatewayTelemetryProviderUsage,
-    gatewayTelemetrySessions,
-    gatewayTelemetryThresholds,
-    resolvedGatewayTelemetryHealthLevel,
-  } = buildGatewayTelemetryView({
+  } = prepareAdminUxSectionData({
+    data,
     gatewayChannelFilter,
+    gatewayOverview,
     gatewayProviderFilter,
     gatewaySessionFilters,
+    gatewaySourceFilter,
     gatewayStatusFilter,
     gatewayTelemetry,
-    normalizeBreakdownItems,
-    normalizeGatewayCompactionHourlyTrendItems,
-    normalizeGatewayTelemetryFilters,
-    normalizeGatewayTelemetryThresholds,
-    resolveGatewaySessionScope,
-    resolveGatewayTelemetryHealthLevel,
-    resolveHealthLevel,
-    resolveRiskHealthLevel,
-    toHealthLevelValue,
+    similarSearchMetrics,
   });
   const aiRuntimeDryRunState = await resolveAiRuntimeDryRunState({
     adminToken: resolveAdminToken,
@@ -413,15 +291,7 @@ export default async function AdminUxObserverEngagementPage({
     providers: aiRuntimeProviders,
   });
   const aiRuntimeHealthLevel = deriveAiRuntimeHealthLevel(aiRuntimeSummary);
-  const topGatewayProvider = gatewayProviders[0] ?? null;
   const gatewayHealthLevel = deriveGatewayHealthLevel(gatewayOverview);
-  const engagementHealthSignals = buildEngagementHealthSignals({
-    healthBadgeClass,
-    healthLabel,
-    kpis,
-    resolveHealthLevel,
-    toRateText,
-  });
   const panelTabs: Array<{
     id: AdminUxPanel;
     label: string;
@@ -450,22 +320,6 @@ export default async function AdminUxObserverEngagementPage({
     healthLabel,
     kpis,
     resolveHealthLevel,
-    toRateText,
-  });
-  const releaseBreakdownRows = buildReleaseBreakdownRows({
-    byChannel: releaseHealthAlertByChannel,
-    byFailureMode: releaseHealthAlertByFailureMode,
-  });
-  const multimodalBreakdownRows = buildMultimodalBreakdownRows({
-    emptyReasonBreakdown: multimodalEmptyReasonBreakdown,
-    errorReasonBreakdown: multimodalErrorReasonBreakdown,
-    providerBreakdown: multimodalProviderBreakdown,
-  });
-  const multimodalStatCards = buildMultimodalStatCards({
-    multimodal,
-    multimodalCoverageRate,
-    multimodalErrorRate,
-    toNumber,
     toRateText,
   });
   const gatewayDebugStatusLabel = toStringValue(
@@ -502,77 +356,6 @@ export default async function AdminUxObserverEngagementPage({
   const debugEventsSampleCount = Array.isArray(gatewayRecentEvents)
     ? gatewayRecentEvents.slice(0, 10).length
     : 0;
-  const gatewayRiskSignalsView = buildGatewayRiskSignalsView({
-    autoCompactionLevel: gatewayAutoCompactionShareLevel,
-    cooldownSkipLevel: gatewayCooldownSkipLevel,
-    failedStepLevel: gatewayFailedStepLevel,
-    healthBadgeClass,
-    healthLabel,
-    runtimeSuccessLevel: gatewayRuntimeSuccessLevel,
-  });
-  const gatewayScopeOverridesApplied =
-    (gatewaySourceFilter ?? '').length > 0 ||
-    (appliedGatewayChannelFilter ?? '').length > 0 ||
-    (appliedGatewayProviderFilter ?? '').length > 0 ||
-    (appliedGatewaySessionStatusInputValue ?? '').length > 0;
-  const gatewayScopeRows = buildGatewayScopeRows({
-    appliedGatewayChannelFilter,
-    appliedGatewayProviderFilter,
-    appliedGatewaySessionStatusLabel,
-    gatewaySourceFilter,
-  });
-  const gatewayTelemetryStatCards = buildGatewayTelemetryStatCards({
-    attempts: gatewayTelemetryAttempts,
-    events: gatewayTelemetryEvents,
-    sessions: gatewayTelemetrySessions,
-    toNumber,
-    toRateText,
-  });
-  const gatewayEventCounters = buildGatewayEventCounters({
-    events: gatewayTelemetryEvents,
-    toNumber,
-  });
-  const predictionAccuracyLevel = resolveHealthLevel(
-    kpis.predictionAccuracyRate,
-    {
-      criticalBelow: 0.45,
-      watchBelow: 0.6,
-    },
-  );
-  const predictionStatCards = buildPredictionStatCards({
-    kpis,
-    predictionTotals,
-    toNumber,
-    toRateText,
-  });
-  const predictionWindow7dView = buildPredictionWindowView({
-    healthBadgeClass,
-    healthLabel,
-    riskLevel: predictionWindow7dRiskLevel,
-    toRateText,
-    window: predictionWindow7d,
-  });
-  const predictionWindow30dView = buildPredictionWindowView({
-    healthBadgeClass,
-    healthLabel,
-    riskLevel: predictionWindow30dRiskLevel,
-    toRateText,
-    window: predictionWindow30d,
-  });
-  const predictionCohortsByOutcomeView = buildPredictionCohortsByOutcomeView({
-    healthBadgeClass,
-    healthLabel,
-    rows: predictionCohortsByOutcomeWithRisk,
-    toOutcomeLabel: formatPredictionOutcomeMetricLabel,
-    toRateText,
-  });
-  const predictionCohortsByStakeBandView =
-    buildPredictionCohortsByStakeBandView({
-      healthBadgeClass,
-      healthLabel,
-      rows: predictionCohortsByStakeBandWithRisk,
-      toRateText,
-    });
   const gatewayLiveBodyProps = {
     activePanel,
     appliedGatewaySessionChannelFilter,
