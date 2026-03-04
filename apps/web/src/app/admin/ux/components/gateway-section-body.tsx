@@ -419,7 +419,7 @@ export const GatewaySectionBody = ({
           </span>
         </p>
       </details>
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
           hint="persisted gateway status"
           label="Session status"

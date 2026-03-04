@@ -101,7 +101,7 @@ export const GatewayTelemetrySectionBody = ({
               {signal.label}
             </p>
             <span
-              className={`${signal.badgeClassName} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[11px] uppercase tracking-wide`}
+              className={`${signal.badgeClassName} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
             >
               {signal.badgeLabel}
             </span>

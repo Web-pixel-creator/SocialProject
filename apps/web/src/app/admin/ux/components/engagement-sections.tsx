@@ -107,7 +107,7 @@ export const EngagementOverviewSection = ({
   }
 
   return (
-    <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+    <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
       <article className="card grid gap-1 p-4">
         <p className="text-muted-foreground text-xs uppercase tracking-wide">
           Session count

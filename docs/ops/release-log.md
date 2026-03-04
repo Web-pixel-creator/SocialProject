@@ -33,6 +33,30 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX hierarchy and compaction pass
+
+- Scope: reduce cognitive load on `/admin/ux` in `All metrics` mode via collapsible secondary sections, clearer KPI hierarchy, and less dense metric rows.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 17:55 -> 2026-03-04 18:32.
+- Changes:
+  - Updated `apps/web/src/app/admin/ux/components/admin-ux-main-panels.tsx`:
+    - added `CollapsiblePanelGroup`,
+    - wrapped secondary sections in `All metrics` mode (`release`, `prediction`, `style`, feed-preference/counters/segments) to avoid the single long telemetry wall.
+  - Updated `apps/web/src/app/admin/ux/components/admin-ux-panel-chrome.tsx`:
+    - promoted sticky KPI strip into a dedicated `Key signals` card block with stronger typography hierarchy.
+  - Updated metric density across key sections:
+    - `engagement-sections.tsx`, `gateway-section-body.tsx`, `runtime-section-body.tsx` changed `xl:grid-cols-5` -> `xl:grid-cols-4`.
+  - Updated typography consistency:
+    - `gateway-telemetry-section-body.tsx` changed status badge font from `text-[11px]` to `text-xs`.
+- Validation:
+  - `npx ultracite check apps/web/src/app/admin/ux/components/admin-ux-main-panels.tsx apps/web/src/app/admin/ux/components/admin-ux-panel-chrome.tsx apps/web/src/app/admin/ux/components/engagement-sections.tsx apps/web/src/app/admin/ux/components/gateway-section-body.tsx apps/web/src/app/admin/ux/components/gateway-telemetry-section-body.tsx apps/web/src/app/admin/ux/components/runtime-section-body.tsx`: pass.
+  - `npm run test:web -- --runInBand apps/web/src/__tests__/admin-ux-page.spec.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Incidents:
+  - one targeted test initially failed due duplicate headings introduced by collapsible wrappers; resolved by renaming wrapper titles to avoid collisions with section `<h2>` labels.
+- Follow-ups:
+  - optional: add per-section item counters in `CollapsiblePanelGroup` summary (for example, active cards/rows) so operators can decide what to open without expanding each block.
+
 ### 2026-03-04 - admin UX n/a noise compaction pass
 
 - Scope: reduce visual noise in `/admin/ux` by hiding low-signal `n/a` stat cards inside engagement-adjacent telemetry sections.

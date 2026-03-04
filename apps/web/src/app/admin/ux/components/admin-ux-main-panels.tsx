@@ -1,4 +1,4 @@
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 
 import type { AdminUxPanel } from './admin-ux-page-utils';
 import { DebugDiagnosticsSection } from './debug-diagnostics-section';
@@ -14,6 +14,31 @@ import { MultimodalTelemetrySection } from './multimodal-telemetry-section';
 import { PredictionMarketSection } from './prediction-market-section';
 import { ReleaseHealthSection } from './release-health-section';
 import { StyleFusionMetricsSection } from './style-fusion-metrics-section';
+
+const CollapsiblePanelGroup = ({
+  children,
+  defaultOpen = false,
+  description,
+  title,
+}: {
+  children: ReactNode;
+  defaultOpen?: boolean;
+  description: string;
+  title: string;
+}) => (
+  <details className="card p-4 sm:p-5" open={defaultOpen}>
+    <summary className="flex cursor-pointer list-none items-start justify-between gap-3">
+      <div className="grid gap-1">
+        <h3 className="font-semibold text-base text-foreground">{title}</h3>
+        <p className="text-muted-foreground text-sm">{description}</p>
+      </div>
+      <span className="rounded-full border border-border/45 bg-background/55 px-2 py-0.5 font-semibold text-muted-foreground text-xs uppercase tracking-wide">
+        toggle
+      </span>
+    </summary>
+    <div className="mt-3 grid gap-3">{children}</div>
+  </details>
+);
 
 export const AdminUxMainPanels = ({
   activePanel,
@@ -65,6 +90,26 @@ export const AdminUxMainPanels = ({
 }) => {
   const isPanelVisible = (panel: Exclude<AdminUxPanel, 'all'>) =>
     activePanel === 'all' || activePanel === panel;
+  const isAllMetricsPanel = activePanel === 'all';
+  const isEngagementVisible = isPanelVisible('engagement');
+  const renderAllMetricsGroup = ({
+    children,
+    description,
+    title,
+  }: {
+    children: ReactNode;
+    description: string;
+    title: string;
+  }) => {
+    if (!isAllMetricsPanel) {
+      return children;
+    }
+    return (
+      <CollapsiblePanelGroup description={description} title={title}>
+        {children}
+      </CollapsiblePanelGroup>
+    );
+  };
 
   return (
     <>
@@ -79,39 +124,86 @@ export const AdminUxMainPanels = ({
 
       <EngagementOverviewSection
         {...engagementOverviewProps}
-        isVisible={isPanelVisible('engagement')}
+        isVisible={isEngagementVisible}
       />
       <EngagementHealthSection
         {...engagementHealthProps}
-        isVisible={isPanelVisible('engagement')}
+        isVisible={isEngagementVisible}
       />
-      {isPanelVisible('release') ? (
-        <ReleaseHealthSection {...releaseHealthSectionProps} />
-      ) : null}
-      <FeedPreferenceKpisSection
-        {...feedPreferenceKpisProps}
-        isVisible={isPanelVisible('engagement')}
-      />
-      {isPanelVisible('style') ? (
-        <MultimodalTelemetrySection {...multimodalTelemetrySectionProps} />
-      ) : null}
-      {isPanelVisible('prediction') ? (
-        <PredictionMarketSection {...predictionMarketSectionProps} />
-      ) : null}
-      {isPanelVisible('style') ? (
-        <StyleFusionMetricsSection {...styleFusionMetricsSectionProps} />
-      ) : null}
+      {isPanelVisible('release')
+        ? renderAllMetricsGroup({
+            description:
+              'Release alert distribution, latest run context, and failure-mode flow.',
+            title: 'Release health telemetry',
+            children: <ReleaseHealthSection {...releaseHealthSectionProps} />,
+          })
+        : null}
+      {isEngagementVisible
+        ? renderAllMetricsGroup({
+            description: 'Mode, density, and hint behavior KPIs.',
+            title: 'Feed preference summary',
+            children: (
+              <FeedPreferenceKpisSection
+                {...feedPreferenceKpisProps}
+                isVisible
+              />
+            ),
+          })
+        : null}
+      {isPanelVisible('style')
+        ? renderAllMetricsGroup({
+            description:
+              'Coverage/error rates, provider mix, and multimodal guardrails.',
+            title: 'Multimodal summary',
+            children: (
+              <MultimodalTelemetrySection
+                {...multimodalTelemetrySectionProps}
+              />
+            ),
+          })
+        : null}
+      {isPanelVisible('prediction')
+        ? renderAllMetricsGroup({
+            description:
+              'Prediction quality, cohort risk, and filter/sort behavior.',
+            title: 'Prediction telemetry summary',
+            children: (
+              <PredictionMarketSection {...predictionMarketSectionProps} />
+            ),
+          })
+        : null}
+      {isPanelVisible('style')
+        ? renderAllMetricsGroup({
+            description: 'Style-fusion and copy-action success/error rates.',
+            title: 'Style fusion summary',
+            children: (
+              <StyleFusionMetricsSection {...styleFusionMetricsSectionProps} />
+            ),
+          })
+        : null}
       {activePanel === 'debug' ? (
         <DebugDiagnosticsSection {...debugDiagnosticsSectionProps} />
       ) : null}
-      <FeedInteractionCountersSection
-        {...feedInteractionCountersProps}
-        isVisible={isPanelVisible('engagement')}
-      />
-      <TopSegmentsSection
-        {...topSegmentsProps}
-        isVisible={isPanelVisible('engagement')}
-      />
+      {isEngagementVisible
+        ? renderAllMetricsGroup({
+            description: 'Raw event totals for mode/density/hint actions.',
+            title: 'Feed interaction counters',
+            children: (
+              <FeedInteractionCountersSection
+                {...feedInteractionCountersProps}
+                isVisible
+              />
+            ),
+          })
+        : null}
+      {isEngagementVisible
+        ? renderAllMetricsGroup({
+            description:
+              'Highest-volume observer segments in the selected window.',
+            title: 'Top segments',
+            children: <TopSegmentsSection {...topSegmentsProps} isVisible />,
+          })
+        : null}
     </>
   );
 };

@@ -183,7 +183,7 @@ export const RuntimeSectionBody = ({
           </p>
         </article>
       ) : null}
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           hint="roles configured in runtime chain"
           label="Roles"
