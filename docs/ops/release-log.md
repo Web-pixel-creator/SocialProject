@@ -33,6 +33,29 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX page context helper extraction pass
+
+- Scope: improve testability and separation of concerns by introducing a dedicated page-context builder for the admin UX entry layer.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 15:32 -> 2026-03-04 15:39.
+- Changes:
+  - Updated `apps/web/src/app/admin/ux/components/admin-ux-page-entry.tsx`:
+    - added `AdminUxPageContext` interface,
+    - added `createAdminUxPageContext(...)` to centralize query-state resolution + data loading,
+    - switched `renderAdminUxObserverEngagementPage(...)` to consume context helper output.
+- Validation:
+  - `npx ultracite fix apps/web/src/app/admin/ux/components/admin-ux-page-entry.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+  - `npm run release:alert-risk:reassess -- --apply`: `status=already_enabled` (`RELEASE_HEALTH_ALERT_RISK_STRICT=true`).
+  - `npm run release:railway:gate:strict`: pass (after Railway deployment reached `SUCCESS` for `web` and `api`).
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: `status=pass` (`generatedAtUtc=2026-03-04T15:38:39.581Z`).
+- Execution:
+  - Commit: `096bef46add8856855b0ceef7748ded11732129c` pushed to `main`.
+- Incidents:
+  - transient strict-gate failures while Railway services were `BUILDING`/`DEPLOYING`; resolved after rollout convergence to `SUCCESS`.
+- Follow-ups:
+  - next pass: optionally add unit tests around `createAdminUxPageContext(...)` with mocked fetch clients.
+
 ### 2026-03-04 - admin UX page contract extraction pass
 
 - Scope: decouple page-entry/query consumers from ad-hoc `searchParams` shapes by introducing a shared admin UX page contract.
