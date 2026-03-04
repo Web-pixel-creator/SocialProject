@@ -1,3 +1,4 @@
+import { DebugDiagnosticsSection } from './components/debug-diagnostics-section';
 import {
   EngagementHealthSection,
   EngagementOverviewSection,
@@ -5374,80 +5375,14 @@ export default async function AdminUxObserverEngagementPage({
       ) : null}
 
       {isDebugPanelVisible ? (
-        <section className="card grid gap-4 p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="font-semibold text-foreground text-lg">
-              Debug diagnostics
-            </h2>
-            <span className="inline-flex items-center rounded-full border border-border/45 bg-background/45 px-2 py-0.5 font-semibold text-muted-foreground text-xs uppercase tracking-wide">
-              raw telemetry
-            </span>
-          </div>
-          <p className="text-muted-foreground text-sm">
-            Raw context moved here to keep operational tabs clean. Use this tab
-            only for investigations.
-          </p>
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <StatCard
-              hint="events sampled from selected session in debug payload"
-              label="Events sample"
-              value={`${debugPayload.gateway.eventsSample.length}`}
-            />
-            <StatCard
-              hint="gateway alert sessions in sampled telemetry"
-              label="Attention sessions"
-              value={`${toNumber(gatewayTelemetrySessions.attention)}`}
-            />
-            <StatCard
-              hint="runtime providers returned by health snapshot"
-              label="Runtime providers"
-              value={`${aiRuntimeProviders.length}`}
-            />
-            <StatCard
-              hint="release-health webhook events in current window"
-              label="Release alerts"
-              value={`${releaseHealthAlertCount}`}
-            />
-          </div>
-          <article className="card grid gap-2 p-4">
-            <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-              Context snapshot
-            </h3>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-left text-xs">
-                <thead>
-                  <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
-                    <th className="py-2 pr-3">Key</th>
-                    <th className="px-3 py-2">Value</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {debugContextRows.map((entry) => (
-                    <tr
-                      className="border-border/25 border-b last:border-b-0"
-                      key={entry.label}
-                    >
-                      <td className="py-2 pr-3 font-medium text-foreground">
-                        {entry.label}
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground">
-                        {entry.value}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </article>
-          <details className="rounded-xl border border-border/30 bg-background/45 p-3">
-            <summary className="cursor-pointer font-semibold text-foreground text-xs uppercase tracking-wide">
-              Raw payload snapshot (JSON)
-            </summary>
-            <pre className="mt-3 overflow-x-auto whitespace-pre-wrap rounded-lg border border-border/30 bg-background/80 p-3 text-muted-foreground text-xs">
-              {debugPayloadText}
-            </pre>
-          </details>
-        </section>
+        <DebugDiagnosticsSection
+          attentionSessionsCount={`${toNumber(gatewayTelemetrySessions.attention)}`}
+          debugContextRows={debugContextRows}
+          debugPayloadText={debugPayloadText}
+          eventsSampleCount={debugPayload.gateway.eventsSample.length}
+          releaseAlertsCount={`${releaseHealthAlertCount}`}
+          runtimeProvidersCount={aiRuntimeProviders.length}
+        />
       ) : null}
 
       <FeedInteractionCountersSection
