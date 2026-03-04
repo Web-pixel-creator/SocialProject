@@ -33,6 +33,33 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX page shell extraction pass
+
+- Scope: finish the next `admin/ux/page.tsx` minimization step by extracting static shell UI metadata and fallback/header rendering into dedicated shared helpers.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 12:15 -> 2026-03-04 12:23.
+- Changes:
+  - Added `apps/web/src/app/admin/ux/components/admin-ux-page-shell.tsx`:
+    - `ADMIN_UX_PANEL_TABS`,
+    - `buildAdminUxPanelHref(...)`,
+    - `AdminUxPageErrorState`,
+    - `AdminUxPageHeader`.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - removed local panel-tab metadata and panel-href composition,
+    - removed inline header/error rendering and switched to `admin-ux-page-shell` exports.
+- Validation:
+  - `npx ultracite fix apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/admin-ux-page-shell.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+  - `npm run release:alert-risk:reassess -- --apply`: `status=already_enabled` (`RELEASE_HEALTH_ALERT_RISK_STRICT=true`).
+  - `npm run release:railway:gate:strict`: pass (after Railway deployment reached `SUCCESS` for `web` and `api`).
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: `status=pass` (`generatedAtUtc=2026-03-04T12:21:28.315Z`).
+- Execution:
+  - Commit: `5e4eb91209fa17d9f78b124e3372a3d088b14924` pushed to `main`.
+- Incidents:
+  - transient strict-gate failures while Railway services were `BUILDING`/`DEPLOYING`; resolved after rollout convergence to `SUCCESS`.
+- Follow-ups:
+  - next pass: move remaining page-level view-model wiring (`panelTabsView`/`stickyKpisView`) into one composition helper so `page.tsx` stays pure orchestration + render.
+
 ### 2026-03-04 - admin UX page orchestration extraction pass
 
 - Scope: split entrypoint concerns by extracting admin UX query parsing + data loading orchestration into dedicated `load*` helpers.
