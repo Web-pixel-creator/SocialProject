@@ -33,6 +33,31 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX final helper cleanup pass
+
+- Scope: keep `admin/ux/page.tsx` composition-focused by removing remaining top-level helper implementations.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 10:35 -> 2026-03-04 10:38.
+- Changes:
+  - Updated `apps/web/src/app/admin/ux/components/admin-ux-page-utils.ts`:
+    - added `formatPredictionOutcomeMetricLabel`.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - removed local `formatPredictionOutcomeMetricLabel` and switched to shared util import,
+    - removed local `resolveGatewaySessionMutationsWithApi` wrapper and inlined mutation resolver callback.
+  - `admin/ux/page.tsx` reduced to `919` lines.
+- Validation:
+  - `npx ultracite fix apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/admin-ux-page-utils.ts`: pass.
+  - `npm --workspace apps/web run build`: pass.
+  - `npm run release:alert-risk:reassess -- --apply`: `status=already_enabled` (`RELEASE_HEALTH_ALERT_RISK_STRICT=true`).
+  - `npm run release:railway:gate:strict`: pass (after deployment reached `SUCCESS`).
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: `status=pass` (`generatedAtUtc=2026-03-04T10:38:37.761Z`).
+- Execution:
+  - Commit: `438837db8b85e0f7ea2d2fb85346962a3120f4a3` pushed to `main`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: start section-level extraction from `page.tsx` (gateway/prediction/release section prep blocks) into dedicated composition helpers.
+
 ### 2026-03-04 - admin UX page-utils extraction pass
 
 - Scope: continue shrinking `admin/ux/page.tsx` by extracting page-level panel parsing and CSV export helpers into a dedicated utility module.
