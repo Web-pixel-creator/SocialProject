@@ -33,6 +33,26 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX summary severity badges pass
+
+- Scope: make collapsed `All metrics` groups more scannable by adding risk-aware color tones to summary counters (`critical/watch/healthy/neutral`).
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 19:07 -> 2026-03-04 19:13.
+- Changes:
+  - Updated `apps/web/src/app/admin/ux/components/admin-ux-main-panels.tsx`:
+    - added `MetaTone` support (`critical`, `watch`, `healthy`, `neutral`) to `CollapsiblePanelGroup`,
+    - introduced risk-label to tone resolver for release/multimodal/prediction/style summaries,
+    - styled summary counter badge color by derived severity,
+    - kept neutral metadata for generic counts and watch/healthy states for feed counters and segment presence.
+- Validation:
+  - `npx ultracite check apps/web/src/app/admin/ux/components/admin-ux-main-panels.tsx`: pass.
+  - `npm run test:web -- --runInBand apps/web/src/__tests__/admin-ux-page.spec.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add `critical/watch/healthy` icon markers next to each summary label (not only color) for additional accessibility.
+
 ### 2026-03-04 - admin UX collapsible summary counters pass
 
 - Scope: improve scan speed in `/admin/ux` (`All metrics`) by showing signal counters directly in collapsible section headers.

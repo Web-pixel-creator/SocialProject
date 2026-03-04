@@ -15,17 +15,29 @@ import { PredictionMarketSection } from './prediction-market-section';
 import { ReleaseHealthSection } from './release-health-section';
 import { StyleFusionMetricsSection } from './style-fusion-metrics-section';
 
+type MetaTone = 'critical' | 'healthy' | 'neutral' | 'watch';
+
+const metaToneClassName: Record<MetaTone, string> = {
+  critical:
+    'border-destructive/45 bg-destructive/10 text-destructive-foreground',
+  healthy: 'border-emerald-500/35 bg-emerald-500/10 text-emerald-200',
+  neutral: 'border-primary/30 bg-primary/10 text-primary',
+  watch: 'border-amber-500/40 bg-amber-500/12 text-amber-200',
+};
+
 const CollapsiblePanelGroup = ({
   children,
   defaultOpen = false,
   description,
   metaLabel,
+  metaTone = 'neutral',
   title,
 }: {
   children: ReactNode;
   defaultOpen?: boolean;
   description: string;
   metaLabel?: string;
+  metaTone?: MetaTone;
   title: string;
 }) => (
   <details className="card p-4 sm:p-5" open={defaultOpen}>
@@ -36,7 +48,9 @@ const CollapsiblePanelGroup = ({
       </div>
       <div className="flex items-center gap-2">
         {metaLabel ? (
-          <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 font-semibold text-primary text-xs uppercase tracking-wide">
+          <span
+            className={`${metaToneClassName[metaTone]} rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
+          >
             {metaLabel}
           </span>
         ) : null}
@@ -56,6 +70,33 @@ const isNaLikeValue = (value: string): boolean => {
 
 const toSignalLabel = (count: number): string =>
   `${count} signal${count === 1 ? '' : 's'}`;
+
+const resolveMetaToneFromRiskLabel = (label: string): MetaTone => {
+  const normalized = label.trim().toLowerCase();
+  if (normalized.includes('critical')) {
+    return 'critical';
+  }
+  if (normalized.includes('watch')) {
+    return 'watch';
+  }
+  if (normalized.includes('healthy')) {
+    return 'healthy';
+  }
+  return 'neutral';
+};
+
+const resolveMoreSevereMetaTone = (
+  left: MetaTone,
+  right: MetaTone,
+): MetaTone => {
+  const rank: Record<MetaTone, number> = {
+    neutral: 0,
+    healthy: 1,
+    watch: 2,
+    critical: 3,
+  };
+  return rank[left] >= rank[right] ? left : right;
+};
 
 export const AdminUxMainPanels = ({
   activePanel,
@@ -112,12 +153,14 @@ export const AdminUxMainPanels = ({
   const renderAllMetricsGroup = ({
     children,
     metaLabel,
+    metaTone,
     description,
     title,
   }: {
     children: ReactNode;
     description: string;
     metaLabel?: string;
+    metaTone?: MetaTone;
     title: string;
   }) => {
     if (!isAllMetricsPanel) {
@@ -127,6 +170,7 @@ export const AdminUxMainPanels = ({
       <CollapsiblePanelGroup
         description={description}
         metaLabel={metaLabel}
+        metaTone={metaTone}
         title={title}
       >
         {children}
@@ -173,6 +217,12 @@ export const AdminUxMainPanels = ({
   const styleSignalCount =
     styleFusionMetricsSectionProps.metrics.total +
     styleFusionMetricsSectionProps.metrics.copy.total;
+  const styleMetaTone = resolveMoreSevereMetaTone(
+    resolveMetaToneFromRiskLabel(
+      styleFusionMetricsSectionProps.fusionRiskLabel,
+    ),
+    resolveMetaToneFromRiskLabel(styleFusionMetricsSectionProps.copyRiskLabel),
+  );
   const feedInteractionTotalCount =
     feedInteractionCountersProps.viewMode.total +
     feedInteractionCountersProps.density.total +
@@ -203,6 +253,9 @@ export const AdminUxMainPanels = ({
             description:
               'Release alert distribution, latest run context, and failure-mode flow.',
             metaLabel: toSignalLabel(releaseSignalCount),
+            metaTone: resolveMetaToneFromRiskLabel(
+              releaseHealthSectionProps.releaseRiskLabel,
+            ),
             title: 'Release health telemetry',
             children: <ReleaseHealthSection {...releaseHealthSectionProps} />,
           })
@@ -213,6 +266,9 @@ export const AdminUxMainPanels = ({
             metaLabel: feedPreferenceKpisProps.shouldCompact
               ? 'low signal'
               : '5 kpis',
+            metaTone: feedPreferenceKpisProps.shouldCompact
+              ? 'watch'
+              : 'healthy',
             title: 'Feed preference summary',
             children: (
               <FeedPreferenceKpisSection
@@ -227,6 +283,9 @@ export const AdminUxMainPanels = ({
             description:
               'Coverage/error rates, provider mix, and multimodal guardrails.',
             metaLabel: toSignalLabel(multimodalSignalCount),
+            metaTone: resolveMetaToneFromRiskLabel(
+              multimodalTelemetrySectionProps.coverageRiskLabel,
+            ),
             title: 'Multimodal summary',
             children: (
               <MultimodalTelemetrySection
@@ -240,6 +299,9 @@ export const AdminUxMainPanels = ({
             description:
               'Prediction quality, cohort risk, and filter/sort behavior.',
             metaLabel: toSignalLabel(predictionSignalCount),
+            metaTone: resolveMetaToneFromRiskLabel(
+              predictionMarketSectionProps.accuracyLabel,
+            ),
             title: 'Prediction telemetry summary',
             children: (
               <PredictionMarketSection {...predictionMarketSectionProps} />
@@ -250,6 +312,7 @@ export const AdminUxMainPanels = ({
         ? renderAllMetricsGroup({
             description: 'Style-fusion and copy-action success/error rates.',
             metaLabel: `${styleSignalCount} events`,
+            metaTone: styleMetaTone,
             title: 'Style fusion summary',
             children: (
               <StyleFusionMetricsSection {...styleFusionMetricsSectionProps} />
@@ -263,6 +326,7 @@ export const AdminUxMainPanels = ({
         ? renderAllMetricsGroup({
             description: 'Raw event totals for mode/density/hint actions.',
             metaLabel: `${feedInteractionTotalCount} events`,
+            metaTone: feedInteractionTotalCount > 0 ? 'healthy' : 'watch',
             title: 'Feed interaction counters',
             children: (
               <FeedInteractionCountersSection
@@ -277,6 +341,7 @@ export const AdminUxMainPanels = ({
             description:
               'Highest-volume observer segments in the selected window.',
             metaLabel: `${topSegmentsCount} segments`,
+            metaTone: topSegmentsCount > 0 ? 'healthy' : 'watch',
             title: 'Top segments',
             children: <TopSegmentsSection {...topSegmentsProps} isVisible />,
           })
