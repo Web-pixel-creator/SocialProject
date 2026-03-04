@@ -8,6 +8,7 @@ import {
   buildGatewayRiskSignalsView,
   buildGatewayScopeRows,
   buildGatewayTelemetryStatCards,
+  buildGatewayTelemetryView,
   buildMultimodalBreakdownRows,
   buildMultimodalStatCards,
   buildMultimodalTelemetryView,
@@ -3229,44 +3230,41 @@ export default async function AdminUxObserverEngagementPage({
         (left, right) => right[1] - left[1],
       )
     : [];
-  const gatewayTelemetrySessions = gatewayTelemetry?.sessions ?? {};
-  const gatewayTelemetryEvents = gatewayTelemetry?.events ?? {};
-  const gatewayTelemetryAttempts = gatewayTelemetry?.attempts ?? {};
-  const gatewayTelemetryHealth = gatewayTelemetry?.health ?? {};
-  const gatewayTelemetryThresholds = normalizeGatewayTelemetryThresholds(
-    gatewayTelemetry?.thresholds,
-  );
-  const gatewayTelemetryFilters = normalizeGatewayTelemetryFilters(
-    gatewayTelemetry?.filters,
-  );
-  const appliedGatewayChannelFilter =
-    gatewayTelemetryFilters.channel ?? gatewayChannelFilter;
-  const appliedGatewayProviderFilter =
-    gatewayTelemetryFilters.provider ?? gatewayProviderFilter;
   const {
-    channel: appliedGatewaySessionChannelFilter,
-    provider: appliedGatewaySessionProviderFilter,
-    statusInputValue: appliedGatewaySessionStatusInputValue,
-    statusLabel: appliedGatewaySessionStatusLabel,
-    label: gatewaySessionScopeLabel,
-  } = resolveGatewaySessionScope({
-    queryChannel: gatewayChannelFilter,
-    queryProvider: gatewayProviderFilter,
-    queryStatus: gatewayStatusFilter,
-    sessionFilters: gatewaySessionFilters,
-  });
-  const gatewayCompactionHourlyTrend =
-    normalizeGatewayCompactionHourlyTrendItems(
-      gatewayTelemetryEvents.compactionHourlyTrend,
-      gatewayTelemetryThresholds.autoCompactionShare,
-    );
-  const gatewayTelemetryProviderUsage = normalizeBreakdownItems({
-    items: gatewayTelemetry?.providerUsage,
-    keyName: 'provider',
-  });
-  const gatewayTelemetryChannelUsage = normalizeBreakdownItems({
-    items: gatewayTelemetry?.channelUsage,
-    keyName: 'channel',
+    appliedGatewayChannelFilter,
+    appliedGatewayProviderFilter,
+    appliedGatewaySessionChannelFilter,
+    appliedGatewaySessionProviderFilter,
+    appliedGatewaySessionStatusInputValue,
+    appliedGatewaySessionStatusLabel,
+    gatewayAutoCompactionShareLevel,
+    gatewayCompactionHourlyTrend,
+    gatewayCooldownSkipLevel,
+    gatewayFailedStepLevel,
+    gatewayRuntimeSuccessLevel,
+    gatewaySessionScopeLabel,
+    gatewayTelemetryAttempts,
+    gatewayTelemetryChannelUsage,
+    gatewayTelemetryEvents,
+    gatewayTelemetryProviderUsage,
+    gatewayTelemetrySessions,
+    gatewayTelemetryThresholds,
+    resolvedGatewayTelemetryHealthLevel,
+  } = buildGatewayTelemetryView({
+    gatewayChannelFilter,
+    gatewayProviderFilter,
+    gatewaySessionFilters,
+    gatewayStatusFilter,
+    gatewayTelemetry,
+    normalizeBreakdownItems,
+    normalizeGatewayCompactionHourlyTrendItems,
+    normalizeGatewayTelemetryFilters,
+    normalizeGatewayTelemetryThresholds,
+    resolveGatewaySessionScope,
+    resolveGatewayTelemetryHealthLevel,
+    resolveHealthLevel,
+    resolveRiskHealthLevel,
+    toHealthLevelValue,
   });
   const aiRuntimeDryRunState = await resolveAiRuntimeDryRunState({
     requested: aiDryRunRequested,
@@ -3288,44 +3286,6 @@ export default async function AdminUxObserverEngagementPage({
   const aiRuntimeHealthLevel = deriveAiRuntimeHealthLevel(aiRuntimeSummary);
   const topGatewayProvider = gatewayProviders[0] ?? null;
   const gatewayHealthLevel = deriveGatewayHealthLevel(gatewayOverview);
-  const gatewayAutoCompactionShareLevel =
-    toHealthLevelValue(gatewayTelemetryEvents.autoCompactionRiskLevel) ??
-    resolveRiskHealthLevel(
-      gatewayTelemetryEvents.autoCompactionShare,
-      gatewayTelemetryThresholds.autoCompactionShare,
-    );
-  const gatewayFailedStepLevel =
-    toHealthLevelValue(gatewayTelemetryHealth.failedStepLevel) ??
-    resolveRiskHealthLevel(
-      gatewayTelemetryEvents.failedStepRate,
-      gatewayTelemetryThresholds.failedStepRate,
-    );
-  const gatewayRuntimeSuccessLevel =
-    toHealthLevelValue(gatewayTelemetryHealth.runtimeSuccessLevel) ??
-    resolveHealthLevel(
-      gatewayTelemetryAttempts.successRate,
-      gatewayTelemetryThresholds.runtimeSuccessRate,
-    );
-  const gatewayCooldownSkipLevel =
-    toHealthLevelValue(gatewayTelemetryHealth.cooldownSkipLevel) ??
-    resolveRiskHealthLevel(
-      gatewayTelemetryAttempts.skippedRate,
-      gatewayTelemetryThresholds.cooldownSkipRate,
-    );
-  const gatewayTelemetryHealthLevel = resolveGatewayTelemetryHealthLevel({
-    autoCompactionRiskLevel:
-      toHealthLevelValue(gatewayTelemetryHealth.autoCompactionLevel) ??
-      gatewayAutoCompactionShareLevel,
-    failedStepRate: gatewayTelemetryEvents.failedStepRate,
-    runtimeSuccessRate: gatewayTelemetryAttempts.successRate,
-    skippedRate: gatewayTelemetryAttempts.skippedRate,
-    thresholds: gatewayTelemetryThresholds,
-  });
-  const gatewayTelemetryHealthLevelFromApi = toHealthLevelValue(
-    gatewayTelemetryHealth.level,
-  );
-  const resolvedGatewayTelemetryHealthLevel =
-    gatewayTelemetryHealthLevelFromApi ?? gatewayTelemetryHealthLevel;
   const engagementHealthSignals = buildEngagementHealthSignals({
     healthBadgeClass,
     healthLabel,

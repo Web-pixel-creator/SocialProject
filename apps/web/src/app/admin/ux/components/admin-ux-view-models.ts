@@ -265,7 +265,9 @@ interface GatewayTelemetrySessionsInput {
 
 interface GatewayTelemetryEventsInput {
   autoCompactionEvents?: unknown;
+  autoCompactionRiskLevel?: unknown;
   autoCompactionShare?: unknown;
+  compactionHourlyTrend?: unknown;
   compactionEvents?: unknown;
   draftCycleStepEvents?: unknown;
   failedStepEvents?: unknown;
@@ -278,6 +280,37 @@ interface GatewayTelemetryEventsInput {
 interface GatewayTelemetryAttemptsInput {
   skippedRate?: unknown;
   successRate?: unknown;
+}
+
+interface GatewayTelemetryHealthInput {
+  autoCompactionLevel?: unknown;
+  cooldownSkipLevel?: unknown;
+  failedStepLevel?: unknown;
+  level?: unknown;
+  runtimeSuccessLevel?: unknown;
+}
+
+interface GatewayRiskAboveThresholdsInput {
+  criticalAbove: number;
+  watchAbove: number;
+}
+
+interface GatewayRiskBelowThresholdsInput {
+  criticalBelow: number;
+  watchBelow: number;
+}
+
+interface GatewayTelemetryThresholdsInput {
+  autoCompactionShare: GatewayRiskAboveThresholdsInput;
+  cooldownSkipRate: GatewayRiskAboveThresholdsInput;
+  failedStepRate: GatewayRiskAboveThresholdsInput;
+  runtimeSuccessRate: GatewayRiskBelowThresholdsInput;
+}
+
+interface GatewaySessionFiltersInput {
+  channel: string | null;
+  provider: string | null;
+  status: string | null;
 }
 
 interface PredictionTotalsInput {
@@ -603,6 +636,188 @@ export const buildGatewayEventCounters = ({
     value: `${toNumber(events.prunedEventCount)}`,
   },
 ];
+
+export const buildGatewayTelemetryView = <TGatewayCompactionHourlyTrendItem>({
+  gatewayChannelFilter,
+  gatewayProviderFilter,
+  gatewaySessionFilters,
+  gatewayStatusFilter,
+  gatewayTelemetry,
+  normalizeBreakdownItems,
+  normalizeGatewayCompactionHourlyTrendItems,
+  normalizeGatewayTelemetryFilters,
+  normalizeGatewayTelemetryThresholds,
+  resolveGatewaySessionScope,
+  resolveGatewayTelemetryHealthLevel,
+  resolveHealthLevel,
+  resolveRiskHealthLevel,
+  toHealthLevelValue,
+}: {
+  gatewayChannelFilter: string | null;
+  gatewayProviderFilter: string | null;
+  gatewaySessionFilters: GatewaySessionFiltersInput;
+  gatewayStatusFilter: string | null;
+  gatewayTelemetry: unknown;
+  normalizeBreakdownItems: (
+    args: BreakdownNormalizeArgs,
+  ) => Array<{ count: number; key: string }>;
+  normalizeGatewayCompactionHourlyTrendItems: (
+    items: unknown,
+    thresholds: GatewayRiskAboveThresholdsInput,
+  ) => TGatewayCompactionHourlyTrendItem[];
+  normalizeGatewayTelemetryFilters: (value: unknown) => {
+    channel: string | null;
+    provider: string | null;
+  };
+  normalizeGatewayTelemetryThresholds: (
+    value: unknown,
+  ) => GatewayTelemetryThresholdsInput;
+  resolveGatewaySessionScope: (args: {
+    queryChannel: string | null;
+    queryProvider: string | null;
+    queryStatus: string | null;
+    sessionFilters: GatewaySessionFiltersInput;
+  }) => {
+    channel: string | null;
+    label: string;
+    provider: string | null;
+    status: string | null;
+    statusInputValue: string;
+    statusLabel: string;
+  };
+  resolveGatewayTelemetryHealthLevel: (args: {
+    autoCompactionRiskLevel: HealthLevel;
+    failedStepRate: unknown;
+    runtimeSuccessRate: unknown;
+    skippedRate: unknown;
+    thresholds: GatewayTelemetryThresholdsInput;
+  }) => HealthLevel;
+  resolveHealthLevel: (
+    value: unknown,
+    thresholds: GatewayRiskBelowThresholdsInput,
+  ) => HealthLevel;
+  resolveRiskHealthLevel: (
+    value: unknown,
+    thresholds: GatewayRiskAboveThresholdsInput,
+  ) => HealthLevel;
+  toHealthLevelValue: (value: unknown) => HealthLevel | null;
+}) => {
+  const telemetry =
+    gatewayTelemetry && typeof gatewayTelemetry === 'object'
+      ? (gatewayTelemetry as Record<string, unknown>)
+      : {};
+  const gatewayTelemetrySessions =
+    telemetry.sessions && typeof telemetry.sessions === 'object'
+      ? (telemetry.sessions as GatewayTelemetrySessionsInput)
+      : {};
+  const gatewayTelemetryEvents =
+    telemetry.events && typeof telemetry.events === 'object'
+      ? (telemetry.events as GatewayTelemetryEventsInput)
+      : {};
+  const gatewayTelemetryAttempts =
+    telemetry.attempts && typeof telemetry.attempts === 'object'
+      ? (telemetry.attempts as GatewayTelemetryAttemptsInput)
+      : {};
+  const gatewayTelemetryHealth =
+    telemetry.health && typeof telemetry.health === 'object'
+      ? (telemetry.health as GatewayTelemetryHealthInput)
+      : {};
+  const gatewayTelemetryThresholds = normalizeGatewayTelemetryThresholds(
+    telemetry.thresholds,
+  );
+  const gatewayTelemetryFilters = normalizeGatewayTelemetryFilters(
+    telemetry.filters,
+  );
+  const appliedGatewayChannelFilter =
+    gatewayTelemetryFilters.channel ?? gatewayChannelFilter;
+  const appliedGatewayProviderFilter =
+    gatewayTelemetryFilters.provider ?? gatewayProviderFilter;
+  const {
+    channel: appliedGatewaySessionChannelFilter,
+    provider: appliedGatewaySessionProviderFilter,
+    statusInputValue: appliedGatewaySessionStatusInputValue,
+    statusLabel: appliedGatewaySessionStatusLabel,
+    label: gatewaySessionScopeLabel,
+  } = resolveGatewaySessionScope({
+    queryChannel: gatewayChannelFilter,
+    queryProvider: gatewayProviderFilter,
+    queryStatus: gatewayStatusFilter,
+    sessionFilters: gatewaySessionFilters,
+  });
+  const gatewayCompactionHourlyTrend =
+    normalizeGatewayCompactionHourlyTrendItems(
+      gatewayTelemetryEvents.compactionHourlyTrend,
+      gatewayTelemetryThresholds.autoCompactionShare,
+    );
+  const gatewayTelemetryProviderUsage = normalizeBreakdownItems({
+    items: telemetry.providerUsage,
+    keyName: 'provider',
+  });
+  const gatewayTelemetryChannelUsage = normalizeBreakdownItems({
+    items: telemetry.channelUsage,
+    keyName: 'channel',
+  });
+  const gatewayAutoCompactionShareLevel =
+    toHealthLevelValue(gatewayTelemetryEvents.autoCompactionRiskLevel) ??
+    resolveRiskHealthLevel(
+      gatewayTelemetryEvents.autoCompactionShare,
+      gatewayTelemetryThresholds.autoCompactionShare,
+    );
+  const gatewayFailedStepLevel =
+    toHealthLevelValue(gatewayTelemetryHealth.failedStepLevel) ??
+    resolveRiskHealthLevel(
+      gatewayTelemetryEvents.failedStepRate,
+      gatewayTelemetryThresholds.failedStepRate,
+    );
+  const gatewayRuntimeSuccessLevel =
+    toHealthLevelValue(gatewayTelemetryHealth.runtimeSuccessLevel) ??
+    resolveHealthLevel(
+      gatewayTelemetryAttempts.successRate,
+      gatewayTelemetryThresholds.runtimeSuccessRate,
+    );
+  const gatewayCooldownSkipLevel =
+    toHealthLevelValue(gatewayTelemetryHealth.cooldownSkipLevel) ??
+    resolveRiskHealthLevel(
+      gatewayTelemetryAttempts.skippedRate,
+      gatewayTelemetryThresholds.cooldownSkipRate,
+    );
+  const gatewayTelemetryHealthLevel = resolveGatewayTelemetryHealthLevel({
+    autoCompactionRiskLevel:
+      toHealthLevelValue(gatewayTelemetryHealth.autoCompactionLevel) ??
+      gatewayAutoCompactionShareLevel,
+    failedStepRate: gatewayTelemetryEvents.failedStepRate,
+    runtimeSuccessRate: gatewayTelemetryAttempts.successRate,
+    skippedRate: gatewayTelemetryAttempts.skippedRate,
+    thresholds: gatewayTelemetryThresholds,
+  });
+  const gatewayTelemetryHealthLevelFromApi = toHealthLevelValue(
+    gatewayTelemetryHealth.level,
+  );
+  const resolvedGatewayTelemetryHealthLevel =
+    gatewayTelemetryHealthLevelFromApi ?? gatewayTelemetryHealthLevel;
+
+  return {
+    appliedGatewayChannelFilter,
+    appliedGatewayProviderFilter,
+    appliedGatewaySessionChannelFilter,
+    appliedGatewaySessionProviderFilter,
+    appliedGatewaySessionStatusInputValue,
+    appliedGatewaySessionStatusLabel,
+    gatewayAutoCompactionShareLevel,
+    gatewayCompactionHourlyTrend,
+    gatewayCooldownSkipLevel,
+    gatewayFailedStepLevel,
+    gatewayRuntimeSuccessLevel,
+    gatewaySessionScopeLabel,
+    gatewayTelemetryAttempts,
+    gatewayTelemetryChannelUsage,
+    gatewayTelemetryEvents,
+    gatewayTelemetryProviderUsage,
+    gatewayTelemetrySessions,
+    gatewayTelemetryThresholds,
+    resolvedGatewayTelemetryHealthLevel,
+  };
+};
 
 export const buildPredictionStatCards = ({
   kpis,
