@@ -33,6 +33,29 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX section-prep extraction pass
+
+- Scope: continue shrinking `admin/ux/page.tsx` by extracting section-level data composition into a dedicated helper.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 10:49 -> 2026-03-04 10:56.
+- Changes:
+  - Added `apps/web/src/app/admin/ux/components/admin-ux-section-prep.ts`:
+    - `prepareAdminUxSectionData(...)` for prediction/multimodal/release/gateway/style-fusion section prep.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - replaced large inline section-prep block with helper call and destructuring.
+  - `admin/ux/page.tsx` reduced to `685` lines.
+- Validation:
+  - `npm --workspace apps/web run build`: pass.
+  - `npm run release:alert-risk:reassess -- --apply`: `status=already_enabled` (`RELEASE_HEALTH_ALERT_RISK_STRICT=true`).
+  - `npm run release:railway:gate:strict`: pass (after deployment reached `SUCCESS` for `web` and `api`).
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: `status=pass` (`generatedAtUtc=2026-03-04T10:56:07.929Z`).
+- Execution:
+  - Commit: `8ca3bf6ff5265f53f6d7473cc26e9ef2579050a4` pushed to `main`.
+- Incidents:
+  - transient `railway status --json` timeout against Railway GraphQL; retry succeeded.
+- Follow-ups:
+  - next pass: continue splitting section renderer fragments from `page.tsx` (gateway/engagement/release widgets) into focused presentational modules.
+
 ### 2026-03-04 - admin UX final helper cleanup pass
 
 - Scope: keep `admin/ux/page.tsx` composition-focused by removing remaining top-level helper implementations.
