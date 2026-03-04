@@ -10,6 +10,7 @@ import {
   resolveAdminApiBaseUrl,
   resolveAdminToken,
 } from './components/admin-ux-data-client';
+import { AdminUxMainPanels } from './components/admin-ux-main-panels';
 import {
   deriveAiRuntimeHealthLevel,
   deriveGatewayHealthLevel,
@@ -42,28 +43,12 @@ import {
   resolveAiRuntimeDryRunState,
   resolveAiRuntimeQueryState,
 } from './components/ai-runtime-orchestration';
-import { DebugDiagnosticsSection } from './components/debug-diagnostics-section';
-import {
-  EngagementHealthSection,
-  EngagementOverviewSection,
-  FeedInteractionCountersSection,
-  FeedPreferenceKpisSection,
-  TopSegmentsSection,
-} from './components/engagement-sections';
 import {
   resolveGatewayEventsRequestFilters,
   resolveGatewayQueryState,
   resolveGatewaySessionMutations,
 } from './components/gateway-query-state';
-import {
-  GatewayPanels,
-  RuntimePanel,
-} from './components/gateway-runtime-panels';
 import { resolveGatewaySessionOrchestrationState } from './components/gateway-session-orchestration';
-import { MultimodalTelemetrySection } from './components/multimodal-telemetry-section';
-import { PredictionMarketSection } from './components/prediction-market-section';
-import { ReleaseHealthSection } from './components/release-health-section';
-import { StyleFusionMetricsSection } from './components/style-fusion-metrics-section';
 import {
   BreakdownListCard,
   GatewayCompactionHourlyTrendCard,
@@ -307,9 +292,6 @@ export default async function AdminUxObserverEngagementPage({
   ];
   const buildPanelHref = (panel: AdminUxPanel) =>
     `/admin/ux?hours=${hours}&panel=${panel}`;
-  const isPanelVisible = (panel: Exclude<AdminUxPanel, 'all'>) =>
-    activePanel === 'all' || activePanel === panel;
-  const isDebugPanelVisible = activePanel === 'debug';
   const panelTabsView = buildPanelTabsView({
     activePanel,
     buildPanelHref,
@@ -454,6 +436,196 @@ export default async function AdminUxObserverEngagementPage({
       sessionProviderFilter: appliedGatewaySessionProviderFilter,
     },
   };
+  const gatewayPanelsProps = {
+    gatewayHealthBadgeClassName: healthBadgeClass(gatewayHealthLevel),
+    gatewayHealthLabel: healthLabel(gatewayHealthLevel),
+    liveBodyProps: gatewayLiveBodyProps,
+    showGatewayHealthBadge: gatewayOverview !== null,
+    telemetryBodyProps: gatewayTelemetryBodyProps,
+    telemetryHealthBadgeClassName: healthBadgeClass(
+      resolvedGatewayTelemetryHealthLevel,
+    ),
+    telemetryHealthLabel: healthLabel(resolvedGatewayTelemetryHealthLevel),
+  };
+  const runtimePanelProps = {
+    bodyProps: runtimeBodyProps,
+    runtimeHealthBadgeClassName: healthBadgeClass(aiRuntimeHealthLevel),
+    runtimeHealthLabel: healthLabel(aiRuntimeHealthLevel),
+  };
+  const engagementOverviewProps = {
+    digestOpenRateText: toRateText(kpis.digestOpenRate),
+    engagementAvgSessionSeconds,
+    engagementSessionCount,
+    followRateText: toRateText(kpis.followRate),
+    return24hRateText: toRateText(kpis.return24h),
+    shouldCompact: shouldCompactEngagementOverview,
+  };
+  const engagementHealthProps = {
+    signals: engagementHealthSignals,
+  };
+  const releaseHealthSectionProps = {
+    breakdownRows: releaseBreakdownRows,
+    hourlyTrendCard: (
+      <ReleaseHealthAlertHourlyTrendCard
+        compactEmptyState
+        emptyLabel="No release-health alert hourly trend data in current window."
+        items={releaseHealthAlertHourlyTrend}
+        title="Release-health alert hourly trend (UTC)"
+      />
+    ),
+    releaseAlertsCount: `${releaseHealthAlertCount}`,
+    releaseFirstAppearancesCount: `${releaseHealthAlertFirstAppearanceCount}`,
+    releaseLatestReceivedAt: releaseHealthAlertLatestReceivedAt,
+    releaseLatestRunLabel: releaseHealthAlertLatestRunLabel,
+    releaseLatestRunUrl:
+      typeof releaseHealthAlertLatest?.runUrl === 'string'
+        ? releaseHealthAlertLatest.runUrl
+        : null,
+    releaseRiskBadgeClassName: healthBadgeClass(releaseHealthAlertRiskLevel),
+    releaseRiskLabel: healthLabel(releaseHealthAlertRiskLevel),
+    releaseRunsCount: `${releaseHealthAlertedRunCount}`,
+  };
+  const feedPreferenceKpisProps = {
+    comfortDensityShareText: toRateText(kpis.densityComfortRate),
+    compactDensityShareText: toRateText(kpis.densityCompactRate),
+    hintDismissRateText: toRateText(kpis.hintDismissRate),
+    legacyFocusShareText: toRateText(kpis.viewModeFocusRate),
+    observerModeShareText: toRateText(kpis.viewModeObserverRate),
+    shouldCompact: shouldCompactFeedPreferenceKpis,
+  };
+  const multimodalTelemetrySectionProps = {
+    breakdownRows: multimodalBreakdownRows,
+    coverageRiskBadgeClassName: healthBadgeClass(multimodalOverallLevel),
+    coverageRiskLabel: healthLabel(multimodalOverallLevel),
+    hourlyTrendCard: (
+      <HourlyTrendCard
+        compactEmptyState
+        emptyLabel="No hourly multimodal trend data in current window."
+        items={multimodalHourlyTrend}
+        title="Hourly trend (UTC)"
+      />
+    ),
+    invalidQueryErrorsValue: `${toNumber(multimodalGuardrails.invalidQueryErrors)}`,
+    invalidQueryShareText: toRateText(multimodalGuardrails.invalidQueryRate),
+    multimodalStatCards,
+  };
+  const predictionMarketSectionProps = {
+    accuracyBadgeClassName: healthBadgeClass(predictionAccuracyLevel),
+    accuracyLabel: healthLabel(predictionAccuracyLevel),
+    averageStakeText: toFixedText(predictionTotals.averageStakePoints),
+    cohortsByOutcomeRows: predictionCohortsByOutcomeView,
+    cohortsByStakeBandRows: predictionCohortsByStakeBandView,
+    cohortThresholdSummary: predictionCohortThresholdSummary,
+    correctPredictions: toNumber(predictionTotals.correctPredictions),
+    filterScopeMixCard: (
+      <BreakdownListCard
+        compactEmptyState
+        emptyLabel="No scope-switch data in current window."
+        items={predictionFilterByScopeBreakdown}
+        title="Filter scope mix"
+      />
+    ),
+    filterSwitchesValue: `${toNumber(predictionFilterTelemetry.totalSwitches)}`,
+    filterSwitchShareText: toRateText(kpis.predictionFilterSwitchShare),
+    filterValueMixCard: (
+      <BreakdownListCard
+        compactEmptyState
+        emptyLabel="No filter-value data in current window."
+        items={predictionFilterByFilterBreakdown}
+        title="Filter value mix"
+      />
+    ),
+    historyScopeRows: predictionHistoryScopeStates,
+    hourlyTrendCard: (
+      <PredictionHourlyTrendCard
+        compactEmptyState
+        emptyLabel="No hourly prediction trend data in current window."
+        items={predictionHourlyTrend}
+        title="Prediction hourly trend (UTC)"
+      />
+    ),
+    nonDefaultSortShareText: toRateText(kpis.predictionNonDefaultSortRate),
+    outcomeMixCard: (
+      <BreakdownListCard
+        compactEmptyState
+        emptyLabel="No prediction outcomes in current window."
+        items={predictionOutcomesBreakdown}
+        title="Outcome mix"
+      />
+    ),
+    participationRateText: toRateText(kpis.predictionParticipationRate),
+    predictionStatCards,
+    resolvedPredictions: toNumber(predictionTotals.resolvedPredictions),
+    scopeFilterMatrixRows: predictionFilterByScopeAndFilter,
+    scopeSortMatrixRows: predictionSortByScopeAndSort,
+    sortScopeMixCard: (
+      <BreakdownListCard
+        compactEmptyState
+        emptyLabel="No sort scope data in current window."
+        items={predictionSortByScopeBreakdown}
+        title="Sort scope mix"
+      />
+    ),
+    sortSwitchesValue: `${toNumber(predictionSortTelemetry.totalSwitches)}`,
+    sortSwitchShareText: toRateText(kpis.predictionSortSwitchShare),
+    sortValueMixCard: (
+      <BreakdownListCard
+        compactEmptyState
+        emptyLabel="No sort-value data in current window."
+        items={predictionSortBySortBreakdown}
+        title="Sort value mix"
+      />
+    ),
+    window30d: predictionWindow30dView,
+    window7d: predictionWindow7dView,
+    windowThresholdCriticalText: toRateText(
+      predictionResolutionWindowThresholds.accuracyRate.criticalBelow,
+    ),
+    windowThresholdMinSample:
+      predictionResolutionWindowThresholds.minResolvedPredictions,
+    windowThresholdWatchText: toRateText(
+      predictionResolutionWindowThresholds.accuracyRate.watchBelow,
+    ),
+  };
+  const styleFusionMetricsSectionProps = {
+    copyRiskBadgeClassName: healthBadgeClass(styleFusionCopyRiskLevel),
+    copyRiskLabel: healthLabel(styleFusionCopyRiskLevel),
+    fusionRiskBadgeClassName: healthBadgeClass(styleFusionRiskLevel),
+    fusionRiskLabel: healthLabel(styleFusionRiskLevel),
+    metrics: styleFusionMetrics,
+  };
+  const debugDiagnosticsSectionProps = {
+    attentionSessionsCount: `${toNumber(gatewayTelemetrySessions.attention)}`,
+    debugContextRows,
+    debugPayloadText,
+    eventsSampleCount: debugEventsSampleCount,
+    releaseAlertsCount: `${releaseHealthAlertCount}`,
+    runtimeProvidersCount: aiRuntimeProviders.length,
+  };
+  const feedInteractionCountersProps = {
+    density: {
+      comfort: toNumber(density.comfort),
+      compact: toNumber(density.compact),
+      total: densityTotal,
+      unknown: toNumber(density.unknown),
+    },
+    hint: {
+      dismissCount: toNumber(hint.dismissCount),
+      switchCount: toNumber(hint.switchCount),
+      total: hintInteractionTotal,
+    },
+    shouldCompact: shouldCompactFeedPreferenceEvents,
+    viewMode: {
+      focus: toNumber(viewMode.focus),
+      observer: toNumber(viewMode.observer),
+      total: viewModeTotal,
+      unknown: toNumber(viewMode.unknown),
+    },
+  };
+  const topSegmentsProps = {
+    shouldCompactFeedPreferenceEvents,
+    topSegments: topSegmentsView,
+  };
 
   return (
     <main className="mx-auto grid w-full max-w-7xl gap-4" id="main-content">
@@ -472,230 +644,20 @@ export default async function AdminUxObserverEngagementPage({
         panelTabs={panelTabsView}
         stickyKpis={stickyKpisView}
       />
-
-      <GatewayPanels
-        gatewayHealthBadgeClassName={healthBadgeClass(gatewayHealthLevel)}
-        gatewayHealthLabel={healthLabel(gatewayHealthLevel)}
-        isVisible={isPanelVisible('gateway')}
-        liveBodyProps={gatewayLiveBodyProps}
-        showGatewayHealthBadge={gatewayOverview !== null}
-        telemetryBodyProps={gatewayTelemetryBodyProps}
-        telemetryHealthBadgeClassName={healthBadgeClass(
-          resolvedGatewayTelemetryHealthLevel,
-        )}
-        telemetryHealthLabel={healthLabel(resolvedGatewayTelemetryHealthLevel)}
-      />
-
-      <RuntimePanel
-        bodyProps={runtimeBodyProps}
-        isVisible={isPanelVisible('runtime')}
-        runtimeHealthBadgeClassName={healthBadgeClass(aiRuntimeHealthLevel)}
-        runtimeHealthLabel={healthLabel(aiRuntimeHealthLevel)}
-      />
-
-      <EngagementOverviewSection
-        digestOpenRateText={toRateText(kpis.digestOpenRate)}
-        engagementAvgSessionSeconds={engagementAvgSessionSeconds}
-        engagementSessionCount={engagementSessionCount}
-        followRateText={toRateText(kpis.followRate)}
-        isVisible={isPanelVisible('engagement')}
-        return24hRateText={toRateText(kpis.return24h)}
-        shouldCompact={shouldCompactEngagementOverview}
-      />
-
-      <EngagementHealthSection
-        isVisible={isPanelVisible('engagement')}
-        signals={engagementHealthSignals}
-      />
-      {isPanelVisible('release') ? (
-        <ReleaseHealthSection
-          breakdownRows={releaseBreakdownRows}
-          hourlyTrendCard={
-            <ReleaseHealthAlertHourlyTrendCard
-              compactEmptyState
-              emptyLabel="No release-health alert hourly trend data in current window."
-              items={releaseHealthAlertHourlyTrend}
-              title="Release-health alert hourly trend (UTC)"
-            />
-          }
-          releaseAlertsCount={`${releaseHealthAlertCount}`}
-          releaseFirstAppearancesCount={`${releaseHealthAlertFirstAppearanceCount}`}
-          releaseLatestReceivedAt={releaseHealthAlertLatestReceivedAt}
-          releaseLatestRunLabel={releaseHealthAlertLatestRunLabel}
-          releaseLatestRunUrl={
-            typeof releaseHealthAlertLatest?.runUrl === 'string'
-              ? releaseHealthAlertLatest.runUrl
-              : null
-          }
-          releaseRiskBadgeClassName={healthBadgeClass(
-            releaseHealthAlertRiskLevel,
-          )}
-          releaseRiskLabel={healthLabel(releaseHealthAlertRiskLevel)}
-          releaseRunsCount={`${releaseHealthAlertedRunCount}`}
-        />
-      ) : null}
-
-      <FeedPreferenceKpisSection
-        comfortDensityShareText={toRateText(kpis.densityComfortRate)}
-        compactDensityShareText={toRateText(kpis.densityCompactRate)}
-        hintDismissRateText={toRateText(kpis.hintDismissRate)}
-        isVisible={isPanelVisible('engagement')}
-        legacyFocusShareText={toRateText(kpis.viewModeFocusRate)}
-        observerModeShareText={toRateText(kpis.viewModeObserverRate)}
-        shouldCompact={shouldCompactFeedPreferenceKpis}
-      />
-
-      {isPanelVisible('style') ? (
-        <MultimodalTelemetrySection
-          breakdownRows={multimodalBreakdownRows}
-          coverageRiskBadgeClassName={healthBadgeClass(multimodalOverallLevel)}
-          coverageRiskLabel={healthLabel(multimodalOverallLevel)}
-          hourlyTrendCard={
-            <HourlyTrendCard
-              compactEmptyState
-              emptyLabel="No hourly multimodal trend data in current window."
-              items={multimodalHourlyTrend}
-              title="Hourly trend (UTC)"
-            />
-          }
-          invalidQueryErrorsValue={`${toNumber(multimodalGuardrails.invalidQueryErrors)}`}
-          invalidQueryShareText={toRateText(
-            multimodalGuardrails.invalidQueryRate,
-          )}
-          multimodalStatCards={multimodalStatCards}
-        />
-      ) : null}
-
-      {isPanelVisible('prediction') ? (
-        <PredictionMarketSection
-          accuracyBadgeClassName={healthBadgeClass(predictionAccuracyLevel)}
-          accuracyLabel={healthLabel(predictionAccuracyLevel)}
-          averageStakeText={toFixedText(predictionTotals.averageStakePoints)}
-          cohortsByOutcomeRows={predictionCohortsByOutcomeView}
-          cohortsByStakeBandRows={predictionCohortsByStakeBandView}
-          cohortThresholdSummary={predictionCohortThresholdSummary}
-          correctPredictions={toNumber(predictionTotals.correctPredictions)}
-          filterScopeMixCard={
-            <BreakdownListCard
-              compactEmptyState
-              emptyLabel="No scope-switch data in current window."
-              items={predictionFilterByScopeBreakdown}
-              title="Filter scope mix"
-            />
-          }
-          filterSwitchesValue={`${toNumber(predictionFilterTelemetry.totalSwitches)}`}
-          filterSwitchShareText={toRateText(kpis.predictionFilterSwitchShare)}
-          filterValueMixCard={
-            <BreakdownListCard
-              compactEmptyState
-              emptyLabel="No filter-value data in current window."
-              items={predictionFilterByFilterBreakdown}
-              title="Filter value mix"
-            />
-          }
-          historyScopeRows={predictionHistoryScopeStates}
-          hourlyTrendCard={
-            <PredictionHourlyTrendCard
-              compactEmptyState
-              emptyLabel="No hourly prediction trend data in current window."
-              items={predictionHourlyTrend}
-              title="Prediction hourly trend (UTC)"
-            />
-          }
-          nonDefaultSortShareText={toRateText(
-            kpis.predictionNonDefaultSortRate,
-          )}
-          outcomeMixCard={
-            <BreakdownListCard
-              compactEmptyState
-              emptyLabel="No prediction outcomes in current window."
-              items={predictionOutcomesBreakdown}
-              title="Outcome mix"
-            />
-          }
-          participationRateText={toRateText(kpis.predictionParticipationRate)}
-          predictionStatCards={predictionStatCards}
-          resolvedPredictions={toNumber(predictionTotals.resolvedPredictions)}
-          scopeFilterMatrixRows={predictionFilterByScopeAndFilter}
-          scopeSortMatrixRows={predictionSortByScopeAndSort}
-          sortScopeMixCard={
-            <BreakdownListCard
-              compactEmptyState
-              emptyLabel="No sort scope data in current window."
-              items={predictionSortByScopeBreakdown}
-              title="Sort scope mix"
-            />
-          }
-          sortSwitchesValue={`${toNumber(predictionSortTelemetry.totalSwitches)}`}
-          sortSwitchShareText={toRateText(kpis.predictionSortSwitchShare)}
-          sortValueMixCard={
-            <BreakdownListCard
-              compactEmptyState
-              emptyLabel="No sort-value data in current window."
-              items={predictionSortBySortBreakdown}
-              title="Sort value mix"
-            />
-          }
-          window7d={predictionWindow7dView}
-          window30d={predictionWindow30dView}
-          windowThresholdCriticalText={toRateText(
-            predictionResolutionWindowThresholds.accuracyRate.criticalBelow,
-          )}
-          windowThresholdMinSample={
-            predictionResolutionWindowThresholds.minResolvedPredictions
-          }
-          windowThresholdWatchText={toRateText(
-            predictionResolutionWindowThresholds.accuracyRate.watchBelow,
-          )}
-        />
-      ) : null}
-      {isPanelVisible('style') ? (
-        <StyleFusionMetricsSection
-          copyRiskBadgeClassName={healthBadgeClass(styleFusionCopyRiskLevel)}
-          copyRiskLabel={healthLabel(styleFusionCopyRiskLevel)}
-          fusionRiskBadgeClassName={healthBadgeClass(styleFusionRiskLevel)}
-          fusionRiskLabel={healthLabel(styleFusionRiskLevel)}
-          metrics={styleFusionMetrics}
-        />
-      ) : null}
-
-      {isDebugPanelVisible ? (
-        <DebugDiagnosticsSection
-          attentionSessionsCount={`${toNumber(gatewayTelemetrySessions.attention)}`}
-          debugContextRows={debugContextRows}
-          debugPayloadText={debugPayloadText}
-          eventsSampleCount={debugEventsSampleCount}
-          releaseAlertsCount={`${releaseHealthAlertCount}`}
-          runtimeProvidersCount={aiRuntimeProviders.length}
-        />
-      ) : null}
-
-      <FeedInteractionCountersSection
-        density={{
-          comfort: toNumber(density.comfort),
-          compact: toNumber(density.compact),
-          total: densityTotal,
-          unknown: toNumber(density.unknown),
-        }}
-        hint={{
-          dismissCount: toNumber(hint.dismissCount),
-          switchCount: toNumber(hint.switchCount),
-          total: hintInteractionTotal,
-        }}
-        isVisible={isPanelVisible('engagement')}
-        shouldCompact={shouldCompactFeedPreferenceEvents}
-        viewMode={{
-          focus: toNumber(viewMode.focus),
-          observer: toNumber(viewMode.observer),
-          total: viewModeTotal,
-          unknown: toNumber(viewMode.unknown),
-        }}
-      />
-
-      <TopSegmentsSection
-        isVisible={isPanelVisible('engagement')}
-        shouldCompactFeedPreferenceEvents={shouldCompactFeedPreferenceEvents}
-        topSegments={topSegmentsView}
+      <AdminUxMainPanels
+        activePanel={activePanel}
+        debugDiagnosticsSectionProps={debugDiagnosticsSectionProps}
+        engagementHealthProps={engagementHealthProps}
+        engagementOverviewProps={engagementOverviewProps}
+        feedInteractionCountersProps={feedInteractionCountersProps}
+        feedPreferenceKpisProps={feedPreferenceKpisProps}
+        gatewayPanelsProps={gatewayPanelsProps}
+        multimodalTelemetrySectionProps={multimodalTelemetrySectionProps}
+        predictionMarketSectionProps={predictionMarketSectionProps}
+        releaseHealthSectionProps={releaseHealthSectionProps}
+        runtimePanelProps={runtimePanelProps}
+        styleFusionMetricsSectionProps={styleFusionMetricsSectionProps}
+        topSegmentsProps={topSegmentsProps}
       />
     </main>
   );
