@@ -236,13 +236,15 @@ export const buildStickyKpisView = ({
     },
   ];
 
-  return stickyKpis.map((kpi) => ({
-    badgeClassName: healthBadgeClass(kpi.level),
-    badgeLabel: healthLabel(kpi.level),
-    id: kpi.id,
-    label: kpi.label,
-    value: kpi.value,
-  }));
+  return stickyKpis
+    .filter((kpi) => kpi.level !== 'unknown')
+    .map((kpi) => ({
+      badgeClassName: healthBadgeClass(kpi.level),
+      badgeLabel: healthLabel(kpi.level),
+      id: kpi.id,
+      label: kpi.label,
+      value: kpi.value,
+    }));
 };
 
 interface BreakdownEntry {
