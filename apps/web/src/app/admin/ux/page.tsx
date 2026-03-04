@@ -1,7 +1,18 @@
 import { AdminUxPanelChrome } from './components/admin-ux-panel-chrome';
 import {
   buildEngagementHealthSignals,
+  buildGatewayEventCounters,
+  buildGatewayRiskSignalsView,
+  buildGatewayScopeRows,
+  buildGatewayTelemetryStatCards,
+  buildMultimodalBreakdownRows,
+  buildMultimodalStatCards,
   buildPanelTabsView,
+  buildPredictionCohortsByOutcomeView,
+  buildPredictionCohortsByStakeBandView,
+  buildPredictionStatCards,
+  buildPredictionWindowView,
+  buildReleaseBreakdownRows,
   buildStickyKpisView,
   buildTopSegmentsView,
 } from './components/admin-ux-view-models';
@@ -3494,62 +3505,22 @@ export default async function AdminUxObserverEngagementPage({
     resolveHealthLevel,
     toRateText,
   });
-  const releaseBreakdownRows = [
-    ...releaseHealthAlertByChannel.map((entry) => ({
-      category: 'channel',
-      key: entry.key,
-      count: entry.count,
-    })),
-    ...releaseHealthAlertByFailureMode.map((entry) => ({
-      category: 'failure mode',
-      key: entry.key,
-      count: entry.count,
-    })),
-  ];
-  const multimodalBreakdownRows = [
-    ...multimodalProviderBreakdown.map((entry) => ({
-      category: 'provider',
-      key: entry.key,
-      count: entry.count,
-    })),
-    ...multimodalEmptyReasonBreakdown.map((entry) => ({
-      category: 'empty reason',
-      key: entry.key,
-      count: entry.count,
-    })),
-    ...multimodalErrorReasonBreakdown.map((entry) => ({
-      category: 'error reason',
-      key: entry.key,
-      count: entry.count,
-    })),
-  ];
-  const multimodalStatCards = [
-    {
-      hint: 'draft detail panels with multimodal score loaded',
-      label: 'Views',
-      value: `${toNumber(multimodal.views)}`,
-    },
-    {
-      hint: 'draft detail panels where multimodal score is unavailable',
-      label: 'Empty states',
-      value: `${toNumber(multimodal.emptyStates)}`,
-    },
-    {
-      hint: 'draft detail multimodal load errors',
-      label: 'Errors',
-      value: `${toNumber(multimodal.errors)}`,
-    },
-    {
-      hint: 'view / (view + empty)',
-      label: 'Coverage rate',
-      value: toRateText(multimodalCoverageRate),
-    },
-    {
-      hint: 'error / (view + empty + error)',
-      label: 'Error rate',
-      value: toRateText(multimodalErrorRate),
-    },
-  ];
+  const releaseBreakdownRows = buildReleaseBreakdownRows({
+    byChannel: releaseHealthAlertByChannel,
+    byFailureMode: releaseHealthAlertByFailureMode,
+  });
+  const multimodalBreakdownRows = buildMultimodalBreakdownRows({
+    emptyReasonBreakdown: multimodalEmptyReasonBreakdown,
+    errorReasonBreakdown: multimodalErrorReasonBreakdown,
+    providerBreakdown: multimodalProviderBreakdown,
+  });
+  const multimodalStatCards = buildMultimodalStatCards({
+    multimodal,
+    multimodalCoverageRate,
+    multimodalErrorRate,
+    toNumber,
+    toRateText,
+  });
   const debugPayload = {
     activePanel,
     filters: {
@@ -3600,129 +3571,36 @@ export default async function AdminUxObserverEngagementPage({
     },
     { label: 'Release risk', value: healthLabel(releaseHealthAlertRiskLevel) },
   ];
-  const gatewayRiskSignals = [
-    {
-      id: 'gateway-auto-compaction',
-      label: 'Auto compaction risk',
-      level: gatewayAutoCompactionShareLevel,
-    },
-    {
-      id: 'gateway-failed-step',
-      label: 'Failed-step risk',
-      level: gatewayFailedStepLevel,
-    },
-    {
-      id: 'gateway-runtime-success',
-      label: 'Runtime success',
-      level: gatewayRuntimeSuccessLevel,
-    },
-    {
-      id: 'gateway-cooldown-skip',
-      label: 'Cooldown skip risk',
-      level: gatewayCooldownSkipLevel,
-    },
-  ];
-  const gatewayRiskSignalsView = gatewayRiskSignals.map((signal) => ({
-    badgeClassName: healthBadgeClass(signal.level),
-    badgeLabel: healthLabel(signal.level),
-    id: signal.id,
-    label: signal.label,
-  }));
+  const gatewayRiskSignalsView = buildGatewayRiskSignalsView({
+    autoCompactionLevel: gatewayAutoCompactionShareLevel,
+    cooldownSkipLevel: gatewayCooldownSkipLevel,
+    failedStepLevel: gatewayFailedStepLevel,
+    healthBadgeClass,
+    healthLabel,
+    runtimeSuccessLevel: gatewayRuntimeSuccessLevel,
+  });
   const gatewayScopeOverridesApplied =
     (gatewaySourceFilter ?? '').length > 0 ||
     (appliedGatewayChannelFilter ?? '').length > 0 ||
     (appliedGatewayProviderFilter ?? '').length > 0 ||
     (appliedGatewaySessionStatusInputValue ?? '').length > 0;
-  const gatewayScopeRows: Array<{ key: string; value: string }> = [
-    {
-      key: 'Source',
-      value: gatewaySourceFilter === 'memory' ? 'memory' : 'db',
-    },
-    {
-      key: 'Channel',
-      value: appliedGatewayChannelFilter ?? 'all',
-    },
-    {
-      key: 'Provider',
-      value: appliedGatewayProviderFilter ?? 'all',
-    },
-    {
-      key: 'Status',
-      value: appliedGatewaySessionStatusLabel,
-    },
-  ];
-  const gatewayTelemetryStatCards = [
-    {
-      hint: 'sessions sampled in current window',
-      label: 'Sessions',
-      value: `${toNumber(gatewayTelemetrySessions.total)}`,
-    },
-    {
-      hint: 'sessions with failed steps or failed cycles',
-      label: 'Attention sessions',
-      value: `${toNumber(gatewayTelemetrySessions.attention)}`,
-    },
-    {
-      hint: 'sessions with at least one compaction event',
-      label: 'Compacted sessions',
-      value: `${toNumber(gatewayTelemetrySessions.compacted)}`,
-    },
-    {
-      hint: 'sessions compacted by auto buffer guardrail',
-      label: 'Auto compacted sessions',
-      value: `${toNumber(gatewayTelemetrySessions.autoCompacted)}`,
-    },
-    {
-      hint: 'auto compactions / total compactions',
-      label: 'Auto compaction share',
-      value: toRateText(gatewayTelemetryEvents.autoCompactionShare),
-    },
-    {
-      hint: 'failed steps / cycle step events',
-      label: 'Failed step rate',
-      value: toRateText(gatewayTelemetryEvents.failedStepRate),
-    },
-    {
-      hint: 'successful provider attempts / total attempts',
-      label: 'Runtime success rate',
-      value: toRateText(gatewayTelemetryAttempts.successRate),
-    },
-    {
-      hint: 'cooldown-skipped attempts / total attempts',
-      label: 'Cooldown skip rate',
-      value: toRateText(gatewayTelemetryAttempts.skippedRate),
-    },
-  ];
-  const gatewayEventCounters: Array<{ key: string; value: string }> = [
-    {
-      key: 'Total events',
-      value: `${toNumber(gatewayTelemetryEvents.total)}`,
-    },
-    {
-      key: 'Cycle steps',
-      value: `${toNumber(gatewayTelemetryEvents.draftCycleStepEvents)}`,
-    },
-    {
-      key: 'Failed steps',
-      value: `${toNumber(gatewayTelemetryEvents.failedStepEvents)}`,
-    },
-    {
-      key: 'Compactions',
-      value: `${toNumber(gatewayTelemetryEvents.compactionEvents)}`,
-    },
-    {
-      key: 'Auto compactions',
-      value: `${toNumber(gatewayTelemetryEvents.autoCompactionEvents)}`,
-    },
-    {
-      key: 'Manual compactions',
-      value: `${toNumber(gatewayTelemetryEvents.manualCompactionEvents)}`,
-    },
-    {
-      key: 'Pruned events',
-      value: `${toNumber(gatewayTelemetryEvents.prunedEventCount)}`,
-    },
-  ];
+  const gatewayScopeRows = buildGatewayScopeRows({
+    appliedGatewayChannelFilter,
+    appliedGatewayProviderFilter,
+    appliedGatewaySessionStatusLabel,
+    gatewaySourceFilter,
+  });
+  const gatewayTelemetryStatCards = buildGatewayTelemetryStatCards({
+    attempts: gatewayTelemetryAttempts,
+    events: gatewayTelemetryEvents,
+    sessions: gatewayTelemetrySessions,
+    toNumber,
+    toRateText,
+  });
+  const gatewayEventCounters = buildGatewayEventCounters({
+    events: gatewayTelemetryEvents,
+    toNumber,
+  });
   const predictionAccuracyLevel = resolveHealthLevel(
     kpis.predictionAccuracyRate,
     {
@@ -3730,88 +3608,40 @@ export default async function AdminUxObserverEngagementPage({
       watchBelow: 0.6,
     },
   );
-  const predictionStatCards = [
-    {
-      hint: 'submitted predictions in current window',
-      label: 'Predictions',
-      value: `${toNumber(predictionTotals.predictions)}`,
-    },
-    {
-      hint: 'unique observers placing predictions',
-      label: 'Predictors',
-      value: `${toNumber(predictionTotals.predictors)}`,
-    },
-    {
-      hint: 'unique PR markets with predictions',
-      label: 'Markets',
-      value: `${toNumber(predictionTotals.markets)}`,
-    },
-    {
-      hint: 'total FIN points staked',
-      label: 'Stake pool',
-      value: `${toNumber(predictionTotals.stakePoints)}`,
-    },
-    {
-      hint: 'correct / resolved predictions',
-      label: 'Accuracy rate',
-      value: toRateText(kpis.predictionAccuracyRate),
-    },
-    {
-      hint: 'payout points / stake points',
-      label: 'Payout ratio',
-      value: toRateText(kpis.payoutToStakeRatio),
-    },
-    {
-      hint: 'resolved prediction settlements / submitted predictions',
-      label: 'Settlement rate',
-      value: toRateText(kpis.predictionSettlementRate),
-    },
-  ];
-  const predictionWindow7dView = {
-    accuracyText: toRateText(predictionWindow7d.accuracyRate),
-    correctPredictions: predictionWindow7d.correctPredictions,
-    days: predictionWindow7d.days,
-    netPoints: predictionWindow7d.netPoints,
-    predictors: predictionWindow7d.predictors,
-    resolvedPredictions: predictionWindow7d.resolvedPredictions,
-    riskBadgeClassName: healthBadgeClass(predictionWindow7dRiskLevel),
-    riskLabel: healthLabel(predictionWindow7dRiskLevel),
-  };
-  const predictionWindow30dView = {
-    accuracyText: toRateText(predictionWindow30d.accuracyRate),
-    correctPredictions: predictionWindow30d.correctPredictions,
-    days: predictionWindow30d.days,
-    netPoints: predictionWindow30d.netPoints,
-    predictors: predictionWindow30d.predictors,
-    resolvedPredictions: predictionWindow30d.resolvedPredictions,
-    riskBadgeClassName: healthBadgeClass(predictionWindow30dRiskLevel),
-    riskLabel: healthLabel(predictionWindow30dRiskLevel),
-  };
-  const predictionCohortsByOutcomeView = predictionCohortsByOutcomeWithRisk.map(
-    (entry) => ({
-      accuracyRateText: toRateText(entry.accuracyRate),
-      netPoints: entry.netPoints,
-      predictedOutcomeLabel: formatPredictionOutcomeMetricLabel(
-        entry.predictedOutcome,
-      ),
-      predictions: entry.predictions,
-      resolvedPredictions: entry.resolvedPredictions,
-      riskBadgeClassName: healthBadgeClass(entry.riskLevel),
-      riskLabel: healthLabel(entry.riskLevel),
-      settlementRateText: toRateText(entry.settlementRate),
-    }),
-  );
+  const predictionStatCards = buildPredictionStatCards({
+    kpis,
+    predictionTotals,
+    toNumber,
+    toRateText,
+  });
+  const predictionWindow7dView = buildPredictionWindowView({
+    healthBadgeClass,
+    healthLabel,
+    riskLevel: predictionWindow7dRiskLevel,
+    toRateText,
+    window: predictionWindow7d,
+  });
+  const predictionWindow30dView = buildPredictionWindowView({
+    healthBadgeClass,
+    healthLabel,
+    riskLevel: predictionWindow30dRiskLevel,
+    toRateText,
+    window: predictionWindow30d,
+  });
+  const predictionCohortsByOutcomeView = buildPredictionCohortsByOutcomeView({
+    healthBadgeClass,
+    healthLabel,
+    rows: predictionCohortsByOutcomeWithRisk,
+    toOutcomeLabel: formatPredictionOutcomeMetricLabel,
+    toRateText,
+  });
   const predictionCohortsByStakeBandView =
-    predictionCohortsByStakeBandWithRisk.map((entry) => ({
-      accuracyRateText: toRateText(entry.accuracyRate),
-      netPoints: entry.netPoints,
-      predictions: entry.predictions,
-      resolvedPredictions: entry.resolvedPredictions,
-      riskBadgeClassName: healthBadgeClass(entry.riskLevel),
-      riskLabel: healthLabel(entry.riskLevel),
-      settlementRateText: toRateText(entry.settlementRate),
-      stakeBand: entry.stakeBand,
-    }));
+    buildPredictionCohortsByStakeBandView({
+      healthBadgeClass,
+      healthLabel,
+      rows: predictionCohortsByStakeBandWithRisk,
+      toRateText,
+    });
   const gatewayLiveBodyProps = {
     activePanel,
     appliedGatewaySessionChannelFilter,
