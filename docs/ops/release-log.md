@@ -33,6 +33,36 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX top view-model builder extraction pass
+
+- Scope: continue reducing SSR page complexity by moving top-level admin UX view-model builders out of `admin/ux/page.tsx`.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 06:57 -> 2026-03-04 06:59.
+- Changes:
+  - Added `apps/web/src/app/admin/ux/components/admin-ux-view-models.ts`:
+    - `buildTopSegmentsView`,
+    - `buildEngagementHealthSignals`,
+    - `buildPanelTabsView`,
+    - `buildStickyKpisView`.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - replaced inline mapping logic for top segments, engagement health signals, panel tabs view, and sticky KPI view with helper calls.
+  - `admin/ux/page.tsx` reduced to `4001` lines.
+- Validation:
+  - `npx ultracite fix apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/admin-ux-view-models.ts`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Execution:
+  - Commit: `512362b4861a9aea8af34586b051557ecb4db2e4` pushed to `main`.
+  - Railway production deployments:
+    - `SocialProject`: `2fe7d542-7758-48c6-9003-f49d0c4d5fcc` (`SUCCESS`).
+    - `api`: `ea4093c1-eca5-45bb-bbf4-61ad90ec27b9` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-04T06:59:42.550Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: extract remaining mid-page data shaping blocks (gateway/prediction/multimodal/release row builders) into dedicated mappers and continue shrinking `page.tsx`.
+
 ### 2026-03-04 - admin UX gateway/runtime panel wrapper extraction pass
 
 - Scope: continue page decomposition by extracting inline `gateway` and `runtime` panel wrappers from `admin/ux/page.tsx`.
