@@ -33,6 +33,36 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX multimodal section extraction pass
+
+- Scope: continue panel decomposition by extracting the `multimodal glowup telemetry` section from `page.tsx`.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 05:22 -> 2026-03-04 05:38.
+- Changes:
+  - Added `apps/web/src/app/admin/ux/components/multimodal-telemetry-section.tsx`:
+    - multimodal KPI cards,
+    - advanced diagnostics block,
+    - breakdown table rendering.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - replaced inline multimodal section with `<MultimodalTelemetrySection ... />`.
+    - introduced explicit `multimodalStatCards` view-model array.
+  - Preserved behavior while removing another large inline render block from the monolith page.
+- Validation:
+  - `npx ultracite check apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/multimodal-telemetry-section.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Execution:
+  - Commit: `adc9aafebf3de75e84e5061658e74043ae6f72d3` pushed to `main`.
+  - Railway production deployments:
+    - `SocialProject`: `da33a71b-cfff-4adc-b837-243f25c0fd6e` (`SUCCESS`).
+    - `api`: `2202da6a-dd77-441e-9e82-4bfa38d98b92` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-04T05:37:17.969Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: finish by extracting shared table/list primitives used by prediction/multimodal/release cards.
+
 ### 2026-03-04 - admin UX prediction market section extraction pass
 
 - Scope: continue page decomposition by extracting the `prediction market telemetry` panel out of monolithic `page.tsx`.
