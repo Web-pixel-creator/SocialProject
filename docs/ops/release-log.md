@@ -33,6 +33,35 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX page shell layering split pass
+
+- Scope: enforce cleaner layering by splitting `admin-ux-page-shell` into dedicated render and view-model modules.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 14:08 -> 2026-03-04 14:15.
+- Changes:
+  - Added `apps/web/src/app/admin/ux/components/admin-ux-page-shell-render.tsx`:
+    - `AdminUxPageErrorState`,
+    - `AdminUxPageHeader`.
+  - Renamed/refocused `apps/web/src/app/admin/ux/components/admin-ux-page-shell-view-model.ts` (from `admin-ux-page-shell.tsx`):
+    - `ADMIN_UX_PANEL_TABS`,
+    - `buildAdminUxPanelHref(...)`,
+    - `buildAdminUxPanelChromeView(...)`,
+    - `resolveAdminUxWindowHours(...)`.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - switched imports to `...shell-render` + `...shell-view-model`.
+- Validation:
+  - `npx ultracite fix apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/admin-ux-page-shell-render.tsx apps/web/src/app/admin/ux/components/admin-ux-page-shell-view-model.ts`: pass.
+  - `npm --workspace apps/web run build`: pass.
+  - `npm run release:alert-risk:reassess -- --apply`: `status=already_enabled` (`RELEASE_HEALTH_ALERT_RISK_STRICT=true`).
+  - `npm run release:railway:gate:strict`: pass (after Railway deployment reached `SUCCESS` for `web` and `api`).
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: `status=pass` (`generatedAtUtc=2026-03-04T14:14:13.584Z`).
+- Execution:
+  - Commit: `fc545f0db59a41695f4bb70461e5503ab512805a` pushed to `main`.
+- Incidents:
+  - transient strict-gate failures while Railway services were `BUILDING`/`DEPLOYING`; resolved after rollout convergence to `SUCCESS`.
+- Follow-ups:
+  - next pass: optionally move page-level `<main>` shell wrapper into a tiny layout component to make `page.tsx` only query/delegate.
+
 ### 2026-03-04 - admin UX panel chrome view extraction pass
 
 - Scope: keep `admin/ux/page.tsx` orchestration-only by moving panel-tabs/sticky-kpi view-model wiring and window-hours fallback resolution into `admin-ux-page-shell`.
