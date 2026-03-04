@@ -33,6 +33,32 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX page orchestration extraction pass
+
+- Scope: split entrypoint concerns by extracting admin UX query parsing + data loading orchestration into dedicated `load*` helpers.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 11:59 -> 2026-03-04 12:07.
+- Changes:
+  - Added `apps/web/src/app/admin/ux/components/admin-ux-page-orchestration.ts`:
+    - `resolveAdminUxPageQueryState(...)`,
+    - `loadAdminUxPageData(...)` for full data-fetch/runtime/gateway orchestration.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - removed direct query/data orchestration and switched to helper usage,
+    - retained only declarative view assembly (`panelTabs`, sticky KPIs, render).
+  - `admin/ux/page.tsx` reduced to `90` lines.
+- Validation:
+  - `npx ultracite fix apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/admin-ux-page-orchestration.ts apps/web/src/app/admin/ux/components/admin-ux-main-panel-builder-types.ts apps/web/src/app/admin/ux/components/admin-ux-gateway-runtime-prop-builders.tsx apps/web/src/app/admin/ux/components/admin-ux-engagement-prop-builders.tsx apps/web/src/app/admin/ux/components/admin-ux-main-panel-prop-builders.tsx apps/web/src/app/admin/ux/components/admin-ux-section-prep.ts`: pass.
+  - `npm --workspace apps/web run build`: pass.
+  - `npm run release:alert-risk:reassess -- --apply`: `status=already_enabled` (`RELEASE_HEALTH_ALERT_RISK_STRICT=true`).
+  - `npm run release:railway:gate:strict`: pass (after Railway deployment reached `SUCCESS`).
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: `status=pass` (`generatedAtUtc=2026-03-04T12:07:33.268Z`).
+- Execution:
+  - Commit: `036b08a53c99a9eded0932d3c193ba070bc224bd` pushed to `main`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: move static panel-tab metadata and fallback-error shell into shared UI helpers for final page-entrypoint minimization.
+
 ### 2026-03-04 - admin UX domain builder split + contract tightening pass
 
 - Scope: complete the next cleanup phase by splitting `AdminUxMainPanels` prop builders by domain and tightening builder contracts around shared section-data types.
