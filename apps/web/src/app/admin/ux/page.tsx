@@ -1,4 +1,10 @@
 import { AdminUxPanelChrome } from './components/admin-ux-panel-chrome';
+import {
+  buildEngagementHealthSignals,
+  buildPanelTabsView,
+  buildStickyKpisView,
+  buildTopSegmentsView,
+} from './components/admin-ux-view-models';
 import { DebugDiagnosticsSection } from './components/debug-diagnostics-section';
 import {
   EngagementHealthSection,
@@ -3348,16 +3354,7 @@ export default async function AdminUxObserverEngagementPage({
       watchBelow: 0.8,
     },
   );
-  const topSegments = [...segments]
-    .sort((left, right) => toNumber(right.count) - toNumber(left.count))
-    .slice(0, 8);
-  const topSegmentsView = topSegments.map((segment, index) => ({
-    count: toNumber(segment.count),
-    draftStatus: segment.draftStatus ?? 'unknown',
-    eventType: segment.eventType ?? 'unknown',
-    key: `${segment.mode ?? 'unknown'}:${segment.eventType ?? 'event'}:${index + 1}`,
-    mode: segment.mode ?? 'unknown',
-  }));
+  const topSegmentsView = buildTopSegmentsView({ segments, toNumber });
   const gatewayProviders = gatewayOverview
     ? Object.entries(gatewayOverview.summary.providerUsage).sort(
         (left, right) => right[1] - left[1],
@@ -3460,81 +3457,13 @@ export default async function AdminUxObserverEngagementPage({
   );
   const resolvedGatewayTelemetryHealthLevel =
     gatewayTelemetryHealthLevelFromApi ?? gatewayTelemetryHealthLevel;
-  const healthSignals = [
-    {
-      id: 'return24h',
-      label: '24h retention',
-      note: 'observer returns within 24 hours',
-      value: kpis.return24h,
-      thresholds: {
-        criticalBelow: 0.1,
-        watchBelow: 0.2,
-      },
-    },
-    {
-      id: 'followRate',
-      label: 'Follow rate',
-      note: 'watchlist follow events per viewed draft arc',
-      value: kpis.followRate,
-      thresholds: {
-        criticalBelow: 0.15,
-        watchBelow: 0.3,
-      },
-    },
-    {
-      id: 'digestOpenRate',
-      label: 'Digest open rate',
-      note: 'digest_open per watchlist_follow',
-      value: kpis.digestOpenRate,
-      thresholds: {
-        criticalBelow: 0.2,
-        watchBelow: 0.35,
-      },
-    },
-    {
-      id: 'observerModeShare',
-      label: 'Observer mode share',
-      note: 'share of view-mode switches into Observer',
-      value: kpis.viewModeObserverRate,
-      thresholds: {
-        criticalBelow: 0.25,
-        watchBelow: 0.4,
-      },
-    },
-    {
-      id: 'predictionSortSwitchShare',
-      label: 'Prediction sort share',
-      note: 'sort switches among prediction-history controls',
-      value: kpis.predictionSortSwitchShare,
-      thresholds: {
-        criticalBelow: 0.25,
-        watchBelow: 0.4,
-      },
-    },
-    {
-      id: 'predictionNonDefaultSortRate',
-      label: 'Non-default sort share',
-      note: 'share of sort switches away from recency',
-      value: kpis.predictionNonDefaultSortRate,
-      thresholds: {
-        criticalBelow: 0.15,
-        watchBelow: 0.3,
-      },
-    },
-  ].map((signal) => ({
-    ...signal,
-    level: resolveHealthLevel(signal.value, signal.thresholds),
-  }));
-  const engagementHealthSignals = healthSignals
-    .filter((signal) => signal.level !== 'unknown')
-    .map((signal) => ({
-      badgeClassName: healthBadgeClass(signal.level),
-      badgeLabel: healthLabel(signal.level),
-      id: signal.id,
-      label: signal.label,
-      note: signal.note,
-      valueText: toRateText(signal.value),
-    }));
+  const engagementHealthSignals = buildEngagementHealthSignals({
+    healthBadgeClass,
+    healthLabel,
+    kpis,
+    resolveHealthLevel,
+    toRateText,
+  });
   const panelTabs: Array<{
     id: AdminUxPanel;
     label: string;
@@ -3553,57 +3482,18 @@ export default async function AdminUxObserverEngagementPage({
   const isPanelVisible = (panel: Exclude<AdminUxPanel, 'all'>) =>
     activePanel === 'all' || activePanel === panel;
   const isDebugPanelVisible = activePanel === 'debug';
-  const stickyKpis = [
-    {
-      id: 'kpi-return24h',
-      label: '24h retention',
-      value: toRateText(kpis.return24h),
-      level: resolveHealthLevel(kpis.return24h, {
-        criticalBelow: 0.1,
-        watchBelow: 0.2,
-      }),
-    },
-    {
-      id: 'kpi-follow-rate',
-      label: 'Follow rate',
-      value: toRateText(kpis.followRate),
-      level: resolveHealthLevel(kpis.followRate, {
-        criticalBelow: 0.15,
-        watchBelow: 0.3,
-      }),
-    },
-    {
-      id: 'kpi-digest-open-rate',
-      label: 'Digest open',
-      value: toRateText(kpis.digestOpenRate),
-      level: resolveHealthLevel(kpis.digestOpenRate, {
-        criticalBelow: 0.2,
-        watchBelow: 0.35,
-      }),
-    },
-    {
-      id: 'kpi-prediction-accuracy',
-      label: 'Prediction accuracy',
-      value: toRateText(kpis.predictionAccuracyRate),
-      level: resolveHealthLevel(kpis.predictionAccuracyRate, {
-        criticalBelow: 0.45,
-        watchBelow: 0.6,
-      }),
-    },
-  ];
-  const panelTabsView = panelTabs.map((tab) => ({
-    active: activePanel === tab.id,
-    href: buildPanelHref(tab.id),
-    id: tab.id,
-    label: tab.label,
-  }));
-  const stickyKpisView = stickyKpis.map((kpi) => ({
-    badgeClassName: healthBadgeClass(kpi.level),
-    badgeLabel: healthLabel(kpi.level),
-    id: kpi.id,
-    label: kpi.label,
-    value: kpi.value,
-  }));
+  const panelTabsView = buildPanelTabsView({
+    activePanel,
+    buildPanelHref,
+    panelTabs,
+  });
+  const stickyKpisView = buildStickyKpisView({
+    healthBadgeClass,
+    healthLabel,
+    kpis,
+    resolveHealthLevel,
+    toRateText,
+  });
   const releaseBreakdownRows = [
     ...releaseHealthAlertByChannel.map((entry) => ({
       category: 'channel',
