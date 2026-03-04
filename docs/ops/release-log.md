@@ -33,6 +33,37 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX style fusion section extraction pass
+
+- Scope: continue decomposition of monolithic `admin/ux` page by extracting `Style fusion metrics` into a dedicated component file.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 05:42 -> 2026-03-04 05:50.
+- Changes:
+  - Added `apps/web/src/app/admin/ux/components/style-fusion-metrics-section.tsx`:
+    - style-fusion KPI cards,
+    - advanced diagnostics details block,
+    - fusion/copy error breakdown rendering.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - replaced inline style-fusion section with `<StyleFusionMetricsSection ... />`,
+    - moved risk-level evaluation to page-level view-model prep and passed badge class/label props,
+    - imported `StyleFusionMetricsView` type from the new component.
+  - Reduced inline render footprint in `page.tsx` while preserving output behavior.
+- Validation:
+  - `npx ultracite fix apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/style-fusion-metrics-section.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Execution:
+  - Commit: `68f6af384dc6b062c948726d7f4db05e3f864ec2` pushed to `main`.
+  - Railway production deployments:
+    - `SocialProject`: `8e50c4e2-a8cf-466d-8a82-233b3eacfcc4` (`SUCCESS`).
+    - `api`: `86fdd165-36e2-49b6-a4ac-8988ab5f2e3c` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-04T05:50:01.629Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: extract shared KPI/list primitives from `page.tsx` and align duplicated card primitives across extracted section components.
+
 ### 2026-03-04 - admin UX multimodal section extraction pass
 
 - Scope: continue panel decomposition by extracting the `multimodal glowup telemetry` section from `page.tsx`.
