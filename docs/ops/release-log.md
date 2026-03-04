@@ -53,6 +53,7 @@ Copy this block for each release:
   - `npm --workspace apps/web run build`: pass.
   - `npm run release:alert-risk:reassess -- --apply`: `status=already_enabled` (`RELEASE_HEALTH_ALERT_RISK_STRICT=true`).
   - `npm run release:launch:gate:production:json -- --required-external-channels all`: `status=pass` (`generatedAtUtc=2026-03-04T09:46:35.966Z`).
+  - `npm run release:railway:gate:strict`: pass (both services `deployment=SUCCESS`, `/feed` and `/ready` healthy).
 - Execution:
   - Commit: `6a59fccca6f9e6f0087085cd66d11ad6b92af6c7` pushed to `main`.
 - Incidents:
