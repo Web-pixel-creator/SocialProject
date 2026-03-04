@@ -33,6 +33,35 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX telemetry and prediction mapper extraction pass
+
+- Scope: continue shrinking `admin/ux/page.tsx` by extracting mid-page telemetry/prediction view-model builders into shared helpers.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 07:12 -> 2026-03-04 07:15.
+- Changes:
+  - Extended `apps/web/src/app/admin/ux/components/admin-ux-view-models.ts` with dedicated builders:
+    - release/multimodal rows and stat cards,
+    - gateway risk signals, scope rows, telemetry stat cards, event counters,
+    - prediction stat cards, resolution-window views, cohort views.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - replaced large inline data-shaping blocks with builder function calls.
+  - `admin/ux/page.tsx` reduced to `3831` lines.
+- Validation:
+  - `npx ultracite fix apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/admin-ux-view-models.ts`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Execution:
+  - Commit: `1f6ca19d705ff8bc159e6a7c14ce87f09170bc12` pushed to `main`.
+  - Railway production deployments:
+    - `SocialProject`: `286b7d1d-c238-4818-bac1-afe908179bd3` (`SUCCESS`).
+    - `api`: `33913ff2-9e1e-4571-8b2b-194701e272c7` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-04T07:15:22.891Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: isolate remaining debug/runtime payload assembly from the page body and keep server entrypoint focused on orchestration only.
+
 ### 2026-03-04 - admin UX top view-model builder extraction pass
 
 - Scope: continue reducing SSR page complexity by moving top-level admin UX view-model builders out of `admin/ux/page.tsx`.
