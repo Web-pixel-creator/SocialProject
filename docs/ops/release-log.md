@@ -33,6 +33,36 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX multimodal/release compaction builder extraction pass
+
+- Scope: continue shrinking `admin/ux/page.tsx` by extracting multimodal telemetry, release alert shaping, and engagement/feed compaction logic into shared builders.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 07:33 -> 2026-03-04 07:40.
+- Changes:
+  - Extended `apps/web/src/app/admin/ux/components/admin-ux-view-models.ts` with:
+    - `buildMultimodalTelemetryView`,
+    - `buildReleaseHealthAlertsView`,
+    - `buildEngagementCompactionView`.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - replaced large inline multimodal/release/engagement shaping blocks with helper calls.
+  - `admin/ux/page.tsx` reduced to `3737` lines.
+- Validation:
+  - `npx ultracite fix apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/admin-ux-view-models.ts`: pass (warning-only on existing unused suppression).
+  - `npm --workspace apps/web run build`: pass.
+  - `npm run release:railway:gate:strict`: pass.
+- Execution:
+  - Commit: `4b4c7155ed8ac3a41e4e223b9383486c4baecabe` pushed to `main`.
+  - Railway production deployments:
+    - `SocialProject`: `b47227d2-0e0a-43ab-94a9-0b1070d7fac9` (`SUCCESS`).
+    - `api`: `ba2cd885-5ba0-4e03-bd9a-082fb3ab82dd` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-04T07:40:30.005Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: extract prediction-market normalization and threshold/risk derivation into one dedicated builder to keep SSR page focused on orchestration/render only.
+
 ### 2026-03-04 - admin UX debug payload mapper extraction pass
 
 - Scope: continue reducing `admin/ux/page.tsx` by moving debug/runtime payload shaping into shared view-model helpers.
