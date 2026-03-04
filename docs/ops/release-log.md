@@ -33,6 +33,38 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX gateway telemetry section extraction pass
+
+- Scope: continue panel decomposition by moving `gateway telemetry` rendering out of monolithic `page.tsx` into a dedicated component module.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 04:26 -> 2026-03-04 04:33.
+- Changes:
+  - Added `apps/web/src/app/admin/ux/components/gateway-telemetry-section-body.tsx`:
+    - risk signal badges,
+    - scope/source controls form,
+    - applied-scope summary,
+    - telemetry stat cards and event counters,
+    - trend/threshold/breakdown slots.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - replaced large inline telemetry block with `<GatewayTelemetrySectionBody ... />`.
+    - introduced explicit view-model props (`gatewayRiskSignalsView`, `gatewayTelemetryStatCards`) and passed composed cards as nodes.
+  - Preserved gateway telemetry behavior while reducing `page.tsx` inline render complexity.
+- Validation:
+  - `npx ultracite check apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/gateway-telemetry-section-body.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Execution:
+  - Commit: `60c44c5315d9a722320a0f05d363aa607d1fe495` pushed to `main`.
+  - Railway production deployments:
+    - `SocialProject`: `5c35868f-2365-45d8-9696-499a1ba568c2` (`SUCCESS`).
+    - `api`: `46557f21-216f-4b5d-8ced-0d9bf4470036` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-04T04:32:41.178Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: split remaining debug payload/render and isolate prediction/release sub-sections into component modules.
+
 ### 2026-03-04 - admin UX gateway session section extraction pass
 
 - Scope: continue panel-level decomposition by moving `gateway` session/control rendering out of monolithic `page.tsx` into a dedicated component module.
