@@ -33,6 +33,35 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX gateway telemetry builder extraction pass
+
+- Scope: continue shrinking `admin/ux/page.tsx` by extracting gateway telemetry normalization, applied scope/filter resolution, and risk/health derivation into a dedicated helper.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 08:02 -> 2026-03-04 08:09.
+- Changes:
+  - Extended `apps/web/src/app/admin/ux/components/admin-ux-view-models.ts` with:
+    - `buildGatewayTelemetryView`,
+    - gateway telemetry input/threshold/session filter model interfaces.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - replaced inline gateway telemetry shaping and health-level calculations with `buildGatewayTelemetryView(...)`.
+  - `admin/ux/page.tsx` reduced to `3633` lines.
+- Validation:
+  - `npx ultracite fix apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/admin-ux-view-models.ts`: pass (warning-only on existing unused suppression).
+  - `npm --workspace apps/web run build`: pass.
+  - `npm run release:railway:gate:strict`: pass.
+- Execution:
+  - Commit: `75549bc35cc02e161137ce97f4a73087fd290319` pushed to `main`.
+  - Railway production deployments:
+    - `SocialProject`: `7ee9f82a-16d9-482a-adb0-174a5d86c3a4` (`SUCCESS`).
+    - `api`: `df215c00-21b0-41cf-8d04-e784b6a5fc00` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-04T08:09:58.980Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: extract remaining gateway/session orchestration block (selected session derivation + mutation/event request assembly) into a dedicated page-local orchestration helper.
+
 ### 2026-03-04 - admin UX prediction normalization builder extraction pass
 
 - Scope: continue shrinking `admin/ux/page.tsx` by extracting prediction-market normalization, thresholds, and risk derivation into a dedicated helper.
