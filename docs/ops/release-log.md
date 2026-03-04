@@ -33,6 +33,36 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX debug diagnostics extraction pass
+
+- Scope: continue admin UX decomposition by moving the `debug diagnostics` panel out of monolithic `page.tsx`.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 04:36 -> 2026-03-04 04:42.
+- Changes:
+  - Added `apps/web/src/app/admin/ux/components/debug-diagnostics-section.tsx`:
+    - debug KPI cards,
+    - context snapshot table,
+    - raw JSON payload details block.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - replaced inline debug section with `<DebugDiagnosticsSection ... />`.
+    - passed explicit values for events sample, attention sessions, runtime providers, release alerts, and context rows.
+  - Kept debug tab behavior unchanged while reducing inline render volume.
+- Validation:
+  - `npx ultracite check apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/debug-diagnostics-section.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Execution:
+  - Commit: `eadb2dbf604d695c42155a6aecaa020bfc4898b5` pushed to `main`.
+  - Railway production deployments:
+    - `SocialProject`: `9f82ed62-8fa1-4c75-a901-a8b246bc10dc` (`SUCCESS`).
+    - `api`: `47a198e5-d442-4fe0-bf7a-cb685170acd3` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-04T04:41:43.713Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: extract prediction/release sub-panels (starting with prediction summary/control blocks) to continue shrinking `admin/ux/page.tsx`.
+
 ### 2026-03-04 - admin UX gateway telemetry section extraction pass
 
 - Scope: continue panel decomposition by moving `gateway telemetry` rendering out of monolithic `page.tsx` into a dedicated component module.
