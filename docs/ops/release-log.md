@@ -33,6 +33,31 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX page-entry unit test coverage pass
+
+- Scope: add focused unit coverage for admin UX page-entry orchestration helpers (`createAdminUxPageContext` and render mapping).
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 15:44 -> 2026-03-04 15:52.
+- Changes:
+  - Added `apps/web/src/app/admin/ux/components/admin-ux-page-entry.spec.ts`:
+    - verifies `createAdminUxPageContext(...)` resolves promised params and passes query/data flow to orchestration helpers,
+    - verifies `undefined` search params branch,
+    - verifies `renderAdminUxObserverEngagementPage(...)` maps context into `AdminUxPageLoadState` props.
+  - Imported Jest globals from `@jest/globals` to satisfy lint globals in colocated component test path.
+- Validation:
+  - `npx ultracite fix apps/web/src/app/admin/ux/components/admin-ux-page-entry.spec.ts`: pass.
+  - `npx jest --runInBand apps/web/src/app/admin/ux/components/admin-ux-page-entry.spec.ts`: pass (3 tests).
+  - `npm --workspace apps/web run build`: pass.
+  - `npm run release:alert-risk:reassess -- --apply`: `status=already_enabled` (`RELEASE_HEALTH_ALERT_RISK_STRICT=true`).
+  - `npm run release:railway:gate:strict`: pass (after Railway deployment reached `SUCCESS` for `web` and `api`).
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: `status=pass` (`generatedAtUtc=2026-03-04T15:51:17.146Z`).
+- Execution:
+  - Commit: `9b44ae16baf44502780537c586dc73c58edecf83` pushed to `main`.
+- Incidents:
+  - none in targeted test path; transient strict-gate failures during rollout while Railway services were `BUILDING`.
+- Follow-ups:
+  - optional: align `npm run test:web` script to support truly targeted runs without forcing full `apps/web/src/__tests__` suite for component-co-located tests.
+
 ### 2026-03-04 - admin UX page context helper extraction pass
 
 - Scope: improve testability and separation of concerns by introducing a dedicated page-context builder for the admin UX entry layer.
