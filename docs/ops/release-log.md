@@ -33,6 +33,29 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX n/a noise compaction pass
+
+- Scope: reduce visual noise in `/admin/ux` by hiding low-signal `n/a` stat cards inside engagement-adjacent telemetry sections.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 17:46 -> 2026-03-04 17:54.
+- Changes:
+  - Updated `apps/web/src/app/admin/ux/components/prediction-market-section.tsx`:
+    - hide top prediction stat cards when `value` is `n/a`,
+    - hide advanced share cards (`Filter switch share`, `Sort switch share`, `Non-default sort share`) when values are `n/a`.
+  - Updated `apps/web/src/app/admin/ux/components/multimodal-telemetry-section.tsx`:
+    - hide top multimodal KPI cards and advanced guardrail cards when values are `n/a`,
+    - show compact fallback message only when all top cards are low-signal.
+  - Updated `apps/web/src/app/admin/ux/components/release-health-section.tsx`:
+    - hide low-signal `n/a` release stat cards (for example, `Latest alerted run` in empty windows) while preserving count/risk cards.
+- Validation:
+  - `npx ultracite check apps/web/src/app/admin/ux/components/release-health-section.tsx apps/web/src/app/admin/ux/components/multimodal-telemetry-section.tsx apps/web/src/app/admin/ux/components/prediction-market-section.tsx`: pass.
+  - `npm run test:web -- --runInBand apps/web/src/__tests__/admin-ux-page.spec.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: apply the same `n/a` card compaction pattern to `runtime`/`gateway` secondary metric cards if operators confirm similar noise there.
+
 ### 2026-03-04 - web test runner targeted-mode fix pass
 
 - Scope: make `test:web` support real targeted execution (without forcing full `apps/web/src/__tests__` suite on every run).
