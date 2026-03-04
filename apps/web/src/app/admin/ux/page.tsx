@@ -7,12 +7,13 @@ import {
   FeedPreferenceKpisSection,
   TopSegmentsSection,
 } from './components/engagement-sections';
-import { GatewaySectionBody } from './components/gateway-section-body';
-import { GatewayTelemetrySectionBody } from './components/gateway-telemetry-section-body';
+import {
+  GatewayPanels,
+  RuntimePanel,
+} from './components/gateway-runtime-panels';
 import { MultimodalTelemetrySection } from './components/multimodal-telemetry-section';
 import { PredictionMarketSection } from './components/prediction-market-section';
 import { ReleaseHealthSection } from './components/release-health-section';
-import { RuntimeSectionBody } from './components/runtime-section-body';
 import {
   StyleFusionMetricsSection,
   type StyleFusionMetricsView,
@@ -3921,6 +3922,104 @@ export default async function AdminUxObserverEngagementPage({
       settlementRateText: toRateText(entry.settlementRate),
       stakeBand: entry.stakeBand,
     }));
+  const gatewayLiveBodyProps = {
+    activePanel,
+    appliedGatewaySessionChannelFilter,
+    appliedGatewaySessionProviderFilter,
+    appliedGatewaySessionStatusInputValue,
+    buildEventsCsv,
+    closeInfoMessage,
+    compactInfoMessage,
+    eventQuery,
+    eventsLimit,
+    eventTypeFilter,
+    gatewayError,
+    gatewayOverview,
+    gatewayRecentEvents,
+    gatewaySessionScopeLabel,
+    gatewaySessions,
+    gatewaySessionsSource,
+    gatewaySourceFilter,
+    hours,
+    keepRecentValue,
+    selectedSession,
+    selectedSessionClosed,
+    selectedSessionId,
+    toDurationText,
+    topGatewayProvider,
+  };
+  const gatewayTelemetryBodyProps = {
+    activePanel,
+    appliedGatewayChannelFilter,
+    appliedGatewayProviderFilter,
+    appliedGatewaySessionStatusInputValue,
+    channelUsageCard: (
+      <BreakdownListCard
+        emptyLabel="No channel usage in current sample."
+        items={gatewayTelemetryChannelUsage}
+        title="Channel usage (sample)"
+      />
+    ),
+    compactionTrendCard: (
+      <GatewayCompactionHourlyTrendCard
+        compactEmptyState
+        emptyLabel="No compaction events in current sample."
+        items={gatewayCompactionHourlyTrend}
+        title="Gateway compaction trend (UTC)"
+      />
+    ),
+    eventCounters: gatewayEventCounters,
+    eventQuery,
+    eventsLimit,
+    eventTypeFilter,
+    gatewayScopeOverridesApplied,
+    gatewayScopeRows,
+    gatewaySourceFilter,
+    hours,
+    providerUsageCard: (
+      <BreakdownListCard
+        emptyLabel="No provider usage in current sample."
+        items={gatewayTelemetryProviderUsage}
+        title="Provider usage (sample)"
+      />
+    ),
+    resetScopeHref: buildPanelHref(activePanel),
+    riskSignals: gatewayRiskSignalsView,
+    selectedSessionId,
+    statCards: gatewayTelemetryStatCards,
+    telemetryError: gatewayTelemetryError,
+    thresholdsCard: (
+      <GatewayTelemetryThresholdsCard thresholds={gatewayTelemetryThresholds} />
+    ),
+  };
+  const runtimeBodyProps = {
+    aiFailuresCsv,
+    aiPrompt,
+    aiProvidersCsv,
+    aiRole,
+    aiRuntimeDryRunErrorMessage,
+    aiRuntimeDryRunInfoMessage,
+    aiRuntimeDryRunResult,
+    aiRuntimeHealthError,
+    aiRuntimeHealthGeneratedAt,
+    aiRuntimeProviders,
+    aiRuntimeRoleStates: aiRuntimeRoleStatesBase,
+    aiRuntimeSummary,
+    aiTimeoutMs,
+    hours,
+    panel: activePanel,
+    roleOptions: [...AI_RUNTIME_ROLES],
+    scopeFields: {
+      eventQuery,
+      eventTypeFilter,
+      eventsLimit,
+      gatewaySessionStatusInputValue: appliedGatewaySessionStatusInputValue,
+      gatewaySourceFilter,
+      selectedSessionId,
+      sessionChannelFilter: appliedGatewaySessionChannelFilter,
+      sessionProviderFilter: appliedGatewaySessionProviderFilter,
+    },
+  };
 
   return (
     <main className="mx-auto grid w-full max-w-7xl gap-4" id="main-content">
@@ -3940,162 +4039,25 @@ export default async function AdminUxObserverEngagementPage({
         stickyKpis={stickyKpisView}
       />
 
-      {isPanelVisible('gateway') ? (
-        <section className="card grid gap-3 p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="font-semibold text-foreground text-lg">
-              Agent gateway live session
-            </h2>
-            {gatewayOverview ? (
-              <span
-                className={`${healthBadgeClass(gatewayHealthLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
-              >
-                {healthLabel(gatewayHealthLevel)}
-              </span>
-            ) : null}
-          </div>
-          <GatewaySectionBody
-            activePanel={activePanel}
-            appliedGatewaySessionChannelFilter={
-              appliedGatewaySessionChannelFilter
-            }
-            appliedGatewaySessionProviderFilter={
-              appliedGatewaySessionProviderFilter
-            }
-            appliedGatewaySessionStatusInputValue={
-              appliedGatewaySessionStatusInputValue
-            }
-            buildEventsCsv={buildEventsCsv}
-            closeInfoMessage={closeInfoMessage}
-            compactInfoMessage={compactInfoMessage}
-            eventQuery={eventQuery}
-            eventsLimit={eventsLimit}
-            eventTypeFilter={eventTypeFilter}
-            gatewayError={gatewayError}
-            gatewayOverview={gatewayOverview}
-            gatewayRecentEvents={gatewayRecentEvents}
-            gatewaySessionScopeLabel={gatewaySessionScopeLabel}
-            gatewaySessions={gatewaySessions}
-            gatewaySessionsSource={gatewaySessionsSource}
-            gatewaySourceFilter={gatewaySourceFilter}
-            hours={hours}
-            keepRecentValue={keepRecentValue}
-            selectedSession={selectedSession}
-            selectedSessionClosed={selectedSessionClosed}
-            selectedSessionId={selectedSessionId}
-            toDurationText={toDurationText}
-            topGatewayProvider={topGatewayProvider}
-          />
-        </section>
-      ) : null}
+      <GatewayPanels
+        gatewayHealthBadgeClassName={healthBadgeClass(gatewayHealthLevel)}
+        gatewayHealthLabel={healthLabel(gatewayHealthLevel)}
+        isVisible={isPanelVisible('gateway')}
+        liveBodyProps={gatewayLiveBodyProps}
+        showGatewayHealthBadge={gatewayOverview !== null}
+        telemetryBodyProps={gatewayTelemetryBodyProps}
+        telemetryHealthBadgeClassName={healthBadgeClass(
+          resolvedGatewayTelemetryHealthLevel,
+        )}
+        telemetryHealthLabel={healthLabel(resolvedGatewayTelemetryHealthLevel)}
+      />
 
-      {isPanelVisible('gateway') ? (
-        <section className="card grid gap-4 p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="font-semibold text-foreground text-lg">
-              Agent gateway control-plane telemetry
-            </h2>
-            <span
-              className={`${healthBadgeClass(resolvedGatewayTelemetryHealthLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
-            >
-              Telemetry health:{' '}
-              {healthLabel(resolvedGatewayTelemetryHealthLevel)}
-            </span>
-          </div>
-          <GatewayTelemetrySectionBody
-            activePanel={activePanel}
-            appliedGatewayChannelFilter={appliedGatewayChannelFilter}
-            appliedGatewayProviderFilter={appliedGatewayProviderFilter}
-            appliedGatewaySessionStatusInputValue={
-              appliedGatewaySessionStatusInputValue
-            }
-            channelUsageCard={
-              <BreakdownListCard
-                emptyLabel="No channel usage in current sample."
-                items={gatewayTelemetryChannelUsage}
-                title="Channel usage (sample)"
-              />
-            }
-            compactionTrendCard={
-              <GatewayCompactionHourlyTrendCard
-                compactEmptyState
-                emptyLabel="No compaction events in current sample."
-                items={gatewayCompactionHourlyTrend}
-                title="Gateway compaction trend (UTC)"
-              />
-            }
-            eventCounters={gatewayEventCounters}
-            eventQuery={eventQuery}
-            eventsLimit={eventsLimit}
-            eventTypeFilter={eventTypeFilter}
-            gatewayScopeOverridesApplied={gatewayScopeOverridesApplied}
-            gatewayScopeRows={gatewayScopeRows}
-            gatewaySourceFilter={gatewaySourceFilter}
-            hours={hours}
-            providerUsageCard={
-              <BreakdownListCard
-                emptyLabel="No provider usage in current sample."
-                items={gatewayTelemetryProviderUsage}
-                title="Provider usage (sample)"
-              />
-            }
-            resetScopeHref={buildPanelHref(activePanel)}
-            riskSignals={gatewayRiskSignalsView}
-            selectedSessionId={selectedSessionId}
-            statCards={gatewayTelemetryStatCards}
-            telemetryError={gatewayTelemetryError}
-            thresholdsCard={
-              <GatewayTelemetryThresholdsCard
-                thresholds={gatewayTelemetryThresholds}
-              />
-            }
-          />
-        </section>
-      ) : null}
-
-      {isPanelVisible('runtime') ? (
-        <section className="card grid gap-3 p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="font-semibold text-foreground text-lg">
-              AI runtime failover
-            </h2>
-            <span
-              className={`${healthBadgeClass(aiRuntimeHealthLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
-            >
-              {healthLabel(aiRuntimeHealthLevel)}
-            </span>
-          </div>
-          <RuntimeSectionBody
-            aiFailuresCsv={aiFailuresCsv}
-            aiPrompt={aiPrompt}
-            aiProvidersCsv={aiProvidersCsv}
-            aiRole={aiRole}
-            aiRuntimeDryRunErrorMessage={aiRuntimeDryRunErrorMessage}
-            aiRuntimeDryRunInfoMessage={aiRuntimeDryRunInfoMessage}
-            aiRuntimeDryRunResult={aiRuntimeDryRunResult}
-            aiRuntimeHealthError={aiRuntimeHealthError}
-            aiRuntimeHealthGeneratedAt={aiRuntimeHealthGeneratedAt}
-            aiRuntimeProviders={aiRuntimeProviders}
-            aiRuntimeRoleStates={aiRuntimeRoleStatesBase}
-            aiRuntimeSummary={aiRuntimeSummary}
-            aiTimeoutMs={aiTimeoutMs}
-            hours={hours}
-            panel={activePanel}
-            roleOptions={[...AI_RUNTIME_ROLES]}
-            scopeFields={{
-              eventQuery,
-              eventTypeFilter,
-              eventsLimit,
-              gatewaySessionStatusInputValue:
-                appliedGatewaySessionStatusInputValue,
-              gatewaySourceFilter,
-              selectedSessionId,
-              sessionChannelFilter: appliedGatewaySessionChannelFilter,
-              sessionProviderFilter: appliedGatewaySessionProviderFilter,
-            }}
-          />
-        </section>
-      ) : null}
+      <RuntimePanel
+        bodyProps={runtimeBodyProps}
+        isVisible={isPanelVisible('runtime')}
+        runtimeHealthBadgeClassName={healthBadgeClass(aiRuntimeHealthLevel)}
+        runtimeHealthLabel={healthLabel(aiRuntimeHealthLevel)}
+      />
 
       <EngagementOverviewSection
         digestOpenRateText={toRateText(kpis.digestOpenRate)}
