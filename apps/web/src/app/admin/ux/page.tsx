@@ -1,18 +1,9 @@
-import { AdminUxMainPanels } from './components/admin-ux-main-panels';
+import { AdminUxPageContent } from './components/admin-ux-page-content';
 import {
   loadAdminUxPageData,
   resolveAdminUxPageQueryState,
 } from './components/admin-ux-page-orchestration';
-import {
-  AdminUxPageErrorState,
-  AdminUxPageHeader,
-  AdminUxPageLayout,
-} from './components/admin-ux-page-shell-render';
-import {
-  buildAdminUxPanelChromeView,
-  resolveAdminUxWindowHours,
-} from './components/admin-ux-page-shell-view-model';
-import { AdminUxPanelChrome } from './components/admin-ux-panel-chrome';
+import { AdminUxPageErrorState } from './components/admin-ux-page-shell-render';
 
 export default async function AdminUxObserverEngagementPage({
   searchParams,
@@ -32,28 +23,13 @@ export default async function AdminUxObserverEngagementPage({
     );
   }
 
-  const { mainPanelsProps, observerData } = dataLoadResult;
-  const panelChromeView = buildAdminUxPanelChromeView({
-    activePanel,
-    hours,
-    kpis: dataLoadResult.kpis,
-  });
-
   return (
-    <AdminUxPageLayout>
-      <AdminUxPageHeader
-        windowHours={resolveAdminUxWindowHours({
-          windowHours: observerData?.windowHours,
-          fallbackHours: hours,
-        })}
-      />
-
-      <AdminUxPanelChrome
-        activePanel={activePanel}
-        panelTabs={panelChromeView.panelTabs}
-        stickyKpis={panelChromeView.stickyKpis}
-      />
-      <AdminUxMainPanels activePanel={activePanel} {...mainPanelsProps} />
-    </AdminUxPageLayout>
+    <AdminUxPageContent
+      activePanel={activePanel}
+      hours={hours}
+      kpis={dataLoadResult.kpis}
+      mainPanelsProps={dataLoadResult.mainPanelsProps}
+      windowHours={dataLoadResult.observerData?.windowHours}
+    />
   );
 }
