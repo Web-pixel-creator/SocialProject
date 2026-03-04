@@ -33,6 +33,36 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX gateway/runtime panel wrapper extraction pass
+
+- Scope: continue page decomposition by extracting inline `gateway` and `runtime` panel wrappers from `admin/ux/page.tsx`.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 06:40 -> 2026-03-04 06:43.
+- Changes:
+  - Added `apps/web/src/app/admin/ux/components/gateway-runtime-panels.tsx`:
+    - `GatewayPanels` wrapper (live session + control-plane telemetry headers and badges),
+    - `RuntimePanel` wrapper (runtime failover header and badge),
+    - direct composition with existing body components (`GatewaySectionBody`, `GatewayTelemetrySectionBody`, `RuntimeSectionBody`).
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - replaced large inline conditional sections with `<GatewayPanels ... />` and `<RuntimePanel ... />`,
+    - introduced panel body prop view-model objects (`gatewayLiveBodyProps`, `gatewayTelemetryBodyProps`, `runtimeBodyProps`).
+  - `admin/ux/page.tsx` reduced to `4111` lines.
+- Validation:
+  - `npx ultracite fix apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/gateway-runtime-panels.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Execution:
+  - Commit: `37afc8bb74af0a8b9d0a5394b53fb24b12057d5d` pushed to `main`.
+  - Railway production deployments:
+    - `SocialProject`: `80df0a0e-6d07-42f8-ad5b-cc8489b9d3a8` (`SUCCESS`).
+    - `api`: `0fca31b4-e707-45a1-84e1-df46e6187d2d` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-04T06:43:17.207Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: split residual page-level data/view-model assembly into focused mapper helpers to keep the SSR entrypoint thin.
+
 ### 2026-03-04 - admin UX panel chrome extraction pass
 
 - Scope: continue admin UX decomposition by extracting the top panel chrome (focus tabs + sticky KPI strip) from the monolithic page.
