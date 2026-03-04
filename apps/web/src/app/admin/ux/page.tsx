@@ -14,6 +14,7 @@ import {
   buildPanelTabsView,
   buildPredictionCohortsByOutcomeView,
   buildPredictionCohortsByStakeBandView,
+  buildPredictionMarketTelemetryView,
   buildPredictionStatCards,
   buildPredictionWindowView,
   buildReleaseBreakdownRows,
@@ -3105,114 +3106,49 @@ export default async function AdminUxObserverEngagementPage({
 
   const kpis = data?.kpis ?? {};
   const predictionMarket = data?.predictionMarket ?? {};
-  const predictionTotals = predictionMarket.totals ?? {};
-  const predictionOutcomesBreakdown = normalizeBreakdownItems({
-    countName: 'predictions',
-    items: predictionMarket.outcomes,
-    keyName: 'predictedOutcome',
-  }).map((entry) => ({
-    ...entry,
-    key: formatPredictionOutcomeMetricLabel(entry.key),
-  }));
-  const predictionCohorts =
-    (predictionMarket as Record<string, unknown>).cohorts ?? {};
-  const predictionCohortsByOutcome = normalizePredictionCohortByOutcomeItems(
-    (predictionCohorts as Record<string, unknown>).byOutcome,
-  );
-  const predictionCohortsByStakeBand =
-    normalizePredictionCohortByStakeBandItems(
-      (predictionCohorts as Record<string, unknown>).byStakeBand,
-    );
-  const predictionHourlyTrend = normalizePredictionHourlyTrendItems(
-    predictionMarket.hourlyTrend,
-  );
-  const predictionResolutionWindows = predictionMarket.resolutionWindows ?? {};
-  const predictionMarketThresholds =
-    (predictionMarket as Record<string, unknown>).thresholds &&
-    typeof (predictionMarket as Record<string, unknown>).thresholds === 'object'
-      ? ((predictionMarket as Record<string, unknown>).thresholds as Record<
-          string,
-          unknown
-        >)
-      : {};
-  const predictionResolutionWindowThresholds =
-    normalizePredictionResolutionWindowThresholds(
-      predictionMarketThresholds.resolutionWindows,
-    );
-  const predictionCohortRiskThresholds =
-    normalizePredictionCohortRiskThresholds(predictionMarketThresholds.cohorts);
-  const predictionCohortThresholdSummary = `settlement watch < ${toRateText(predictionCohortRiskThresholds.settlementRate.watchBelow)} | settlement critical < ${toRateText(predictionCohortRiskThresholds.settlementRate.criticalBelow)} | accuracy watch < ${toRateText(predictionCohortRiskThresholds.accuracyRate.watchBelow)} | accuracy critical < ${toRateText(predictionCohortRiskThresholds.accuracyRate.criticalBelow)} | min sample: ${predictionCohortRiskThresholds.minResolvedPredictions}`;
-  const predictionCohortsByOutcomeWithRisk = predictionCohortsByOutcome.map(
-    (entry) => ({
-      ...entry,
-      riskLevel: resolvePredictionCohortHealthLevel({
-        accuracyRate: entry.accuracyRate,
-        resolvedPredictions: entry.resolvedPredictions,
-        settlementRate: entry.settlementRate,
-        thresholds: predictionCohortRiskThresholds,
-      }),
-    }),
-  );
-  const predictionCohortsByStakeBandWithRisk = predictionCohortsByStakeBand.map(
-    (entry) => ({
-      ...entry,
-      riskLevel: resolvePredictionCohortHealthLevel({
-        accuracyRate: entry.accuracyRate,
-        resolvedPredictions: entry.resolvedPredictions,
-        settlementRate: entry.settlementRate,
-        thresholds: predictionCohortRiskThresholds,
-      }),
-    }),
-  );
-  const predictionWindow7d = normalizePredictionResolutionWindow(
-    (predictionResolutionWindows as Record<string, unknown>).d7,
-    7,
-  );
-  const predictionWindow30d = normalizePredictionResolutionWindow(
-    (predictionResolutionWindows as Record<string, unknown>).d30,
-    30,
-  );
-  const predictionWindow7dRiskLevel =
-    resolvePredictionResolutionWindowHealthLevel(
-      predictionWindow7d,
-      predictionResolutionWindowThresholds,
-    );
-  const predictionWindow30dRiskLevel =
-    resolvePredictionResolutionWindowHealthLevel(
-      predictionWindow30d,
-      predictionResolutionWindowThresholds,
-    );
   const predictionFilterTelemetry = data?.predictionFilterTelemetry ?? {};
-  const predictionFilterByScopeBreakdown = normalizeBreakdownItems({
-    items: predictionFilterTelemetry.byScope,
-    keyName: 'scope',
-  });
-  const predictionFilterByFilterBreakdown = normalizeBreakdownItems({
-    items: predictionFilterTelemetry.byFilter,
-    keyName: 'filter',
-  });
-  const predictionFilterByScopeAndFilter =
-    normalizePredictionFilterScopeFilterItems(
-      predictionFilterTelemetry.byScopeAndFilter,
-    );
   const predictionSortTelemetry = data?.predictionSortTelemetry ?? {};
-  const predictionSortByScopeBreakdown = normalizeBreakdownItems({
-    items: predictionSortTelemetry.byScope,
-    keyName: 'scope',
-  });
-  const predictionSortBySortBreakdown = normalizeBreakdownItems({
-    items: predictionSortTelemetry.bySort,
-    keyName: 'sort',
-  });
-  const predictionSortByScopeAndSort = normalizePredictionSortScopeSortItems(
-    predictionSortTelemetry.byScopeAndSort,
-  );
   const predictionHistoryStateTelemetry =
     data?.predictionHistoryStateTelemetry ?? {};
-  const predictionHistoryScopeStates =
-    normalizePredictionHistoryScopeStateItems(
-      predictionHistoryStateTelemetry.byScope,
-    );
+  const {
+    predictionCohortThresholdSummary,
+    predictionCohortsByOutcomeWithRisk,
+    predictionCohortsByStakeBandWithRisk,
+    predictionFilterByFilterBreakdown,
+    predictionFilterByScopeAndFilter,
+    predictionFilterByScopeBreakdown,
+    predictionHistoryScopeStates,
+    predictionHourlyTrend,
+    predictionOutcomesBreakdown,
+    predictionResolutionWindowThresholds,
+    predictionSortByScopeAndSort,
+    predictionSortByScopeBreakdown,
+    predictionSortBySortBreakdown,
+    predictionTotals,
+    predictionWindow30d,
+    predictionWindow30dRiskLevel,
+    predictionWindow7d,
+    predictionWindow7dRiskLevel,
+  } = buildPredictionMarketTelemetryView({
+    formatPredictionOutcomeMetricLabel,
+    normalizeBreakdownItems,
+    normalizePredictionCohortByOutcomeItems,
+    normalizePredictionCohortByStakeBandItems,
+    normalizePredictionCohortRiskThresholds,
+    normalizePredictionFilterScopeFilterItems,
+    normalizePredictionHistoryScopeStateItems,
+    normalizePredictionHourlyTrendItems,
+    normalizePredictionResolutionWindow,
+    normalizePredictionResolutionWindowThresholds,
+    normalizePredictionSortScopeSortItems,
+    predictionFilterTelemetry,
+    predictionHistoryStateTelemetry,
+    predictionMarket,
+    predictionSortTelemetry,
+    resolvePredictionCohortHealthLevel,
+    resolvePredictionResolutionWindowHealthLevel,
+    toRateText,
+  });
   const multimodal = data?.multimodal ?? {};
   const {
     multimodalCoverageRate,
