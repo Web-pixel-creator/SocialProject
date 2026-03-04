@@ -8,6 +8,7 @@ import {
 } from './components/engagement-sections';
 import { GatewaySectionBody } from './components/gateway-section-body';
 import { GatewayTelemetrySectionBody } from './components/gateway-telemetry-section-body';
+import { ReleaseHealthSection } from './components/release-health-section';
 import { RuntimeSectionBody } from './components/runtime-section-body';
 
 interface ObserverEngagementResponse {
@@ -4650,116 +4651,31 @@ export default async function AdminUxObserverEngagementPage({
         signals={engagementHealthSignals}
       />
       {isPanelVisible('release') ? (
-        <section className="card grid gap-4 p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="font-semibold text-foreground text-lg">
-              Release health alert telemetry
-            </h2>
-            <span
-              className={`${healthBadgeClass(releaseHealthAlertRiskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
-            >
-              Alert risk: {healthLabel(releaseHealthAlertRiskLevel)}
-            </span>
-          </div>
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            <article className="rounded-xl border border-border/25 bg-background/60 p-3">
-              <p className="font-semibold text-foreground text-sm">
-                Alert risk
-              </p>
-              <p className="mt-2 font-semibold text-base text-foreground">
-                {healthLabel(releaseHealthAlertRiskLevel)}
-              </p>
-              <p className="text-muted-foreground text-xs">
-                Critical at first appearances &gt;= 3, alert events &gt;= 3, or
-                alerted runs &gt;= 2.
-              </p>
-            </article>
-            <StatCard
-              hint="release-health webhook events in current window"
-              label="Alert events"
-              value={`${releaseHealthAlertCount}`}
+        <ReleaseHealthSection
+          breakdownRows={releaseBreakdownRows}
+          hourlyTrendCard={
+            <ReleaseHealthAlertHourlyTrendCard
+              compactEmptyState
+              emptyLabel="No release-health alert hourly trend data in current window."
+              items={releaseHealthAlertHourlyTrend}
+              title="Release-health alert hourly trend (UTC)"
             />
-            <StatCard
-              hint="sum of first-appearance entries across alert events"
-              label="First appearances"
-              value={`${releaseHealthAlertFirstAppearanceCount}`}
-            />
-            <StatCard
-              hint="unique launch-gate run ids represented in alert events"
-              label="Alerted runs"
-              value={`${releaseHealthAlertedRunCount}`}
-            />
-            <StatCard
-              hint="latest run that generated a release-health alert event"
-              label="Latest alerted run"
-              value={releaseHealthAlertLatestRunLabel}
-            />
-          </div>
-          <p className="text-muted-foreground text-xs">
-            Latest received:{' '}
-            <span className="font-semibold text-foreground">
-              {releaseHealthAlertLatestReceivedAt ?? 'n/a'}
-            </span>
-            {' | '}Run URL:{' '}
-            {typeof releaseHealthAlertLatest?.runUrl === 'string' &&
-            releaseHealthAlertLatest.runUrl.length > 0 ? (
-              <a
-                className="font-semibold text-foreground underline-offset-2 hover:underline"
-                href={releaseHealthAlertLatest.runUrl}
-              >
-                {releaseHealthAlertLatest.runUrl}
-              </a>
-            ) : (
-              <span className="font-semibold text-foreground">n/a</span>
-            )}
-          </p>
-          <article className="card grid gap-2 p-4">
-            <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-              Alert breakdowns
-            </h3>
-            {releaseBreakdownRows.length === 0 ? (
-              <p className="text-muted-foreground text-xs">
-                No alert channel or failure-mode distribution in current window.
-              </p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-left text-xs">
-                  <thead>
-                    <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
-                      <th className="py-2 pr-3">Category</th>
-                      <th className="px-3 py-2">Key</th>
-                      <th className="px-3 py-2 text-right">Count</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {releaseBreakdownRows.map((entry, index) => (
-                      <tr
-                        className="border-border/25 border-b last:border-b-0"
-                        key={`${entry.category}:${entry.key}:${index + 1}`}
-                      >
-                        <td className="py-2 pr-3 text-muted-foreground">
-                          {entry.category}
-                        </td>
-                        <td className="px-3 py-2 text-muted-foreground">
-                          {entry.key}
-                        </td>
-                        <td className="px-3 py-2 text-right font-semibold text-foreground">
-                          {entry.count}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </article>
-          <ReleaseHealthAlertHourlyTrendCard
-            compactEmptyState
-            emptyLabel="No release-health alert hourly trend data in current window."
-            items={releaseHealthAlertHourlyTrend}
-            title="Release-health alert hourly trend (UTC)"
-          />
-        </section>
+          }
+          releaseAlertsCount={`${releaseHealthAlertCount}`}
+          releaseFirstAppearancesCount={`${releaseHealthAlertFirstAppearanceCount}`}
+          releaseLatestReceivedAt={releaseHealthAlertLatestReceivedAt}
+          releaseLatestRunLabel={releaseHealthAlertLatestRunLabel}
+          releaseLatestRunUrl={
+            typeof releaseHealthAlertLatest?.runUrl === 'string'
+              ? releaseHealthAlertLatest.runUrl
+              : null
+          }
+          releaseRiskBadgeClassName={healthBadgeClass(
+            releaseHealthAlertRiskLevel,
+          )}
+          releaseRiskLabel={healthLabel(releaseHealthAlertRiskLevel)}
+          releaseRunsCount={`${releaseHealthAlertedRunCount}`}
+        />
       ) : null}
 
       <FeedPreferenceKpisSection
