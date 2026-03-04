@@ -50,7 +50,7 @@ Copy this block for each release:
   - `npm run release:railway:gate:strict`: pass (after deployment reached `SUCCESS` for `web` and `api`).
   - `npm run release:launch:gate:production:json -- --required-external-channels all`: `status=pass` (`generatedAtUtc=2026-03-04T10:56:07.929Z`).
 - Execution:
-  - Commit: `8ca3bf6ff5265f53f6d7473cc26e9ef2579050a4` pushed to `main`.
+  - Commit: `8ca3bf62161ed21632ffcf845bc14bb015f9d8b7` pushed to `main`.
 - Incidents:
   - transient `railway status --json` timeout against Railway GraphQL; retry succeeded.
 - Follow-ups:
