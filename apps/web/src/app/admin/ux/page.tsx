@@ -1,24 +1,12 @@
-import { AdminUxPageLoadState } from './components/admin-ux-page-load-state';
 import {
-  loadAdminUxPageData,
-  resolveAdminUxPageQueryState,
-} from './components/admin-ux-page-orchestration';
+  type AdminUxPageSearchParams,
+  renderAdminUxObserverEngagementPage,
+} from './components/admin-ux-page-entry';
 
 export default async function AdminUxObserverEngagementPage({
   searchParams,
 }: {
-  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+  searchParams?: AdminUxPageSearchParams;
 }) {
-  const resolvedSearchParams = searchParams ? await searchParams : undefined;
-  const queryState = resolveAdminUxPageQueryState(resolvedSearchParams);
-  const { activePanel, hours } = queryState;
-  const dataLoadResult = await loadAdminUxPageData(queryState);
-
-  return (
-    <AdminUxPageLoadState
-      activePanel={activePanel}
-      dataLoadResult={dataLoadResult}
-      hours={hours}
-    />
-  );
+  return await renderAdminUxObserverEngagementPage(searchParams);
 }
