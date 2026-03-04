@@ -48,8 +48,12 @@ Copy this block for each release:
 - Validation:
   - `npm run test:web -- --runInBand apps/web/src/__tests__/admin-ux-page.spec.tsx`: pass (single targeted suite executed).
   - `npm --workspace apps/web run build`: pass.
+  - `npm run release:railway:gate:strict`: pass (after Railway rollout converged to `SUCCESS` for `web` and `api`).
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: `status=pass` (`generatedAtUtc=2026-03-04T16:40:56.717Z`).
+- Execution:
+  - Commit: `2ec99efecb010f4573e18fa08a11785ad2921c18` pushed to `main`.
 - Incidents:
-  - none.
+  - transient strict-gate failures while Railway services were `INITIALIZING/BUILDING`; resolved automatically after deployment convergence.
 - Follow-ups:
   - optional: add `--help` output to `run-web-tests.mjs` if more runner flags are needed by operators.
 
