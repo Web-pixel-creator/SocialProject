@@ -33,6 +33,40 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX shared telemetry cards extraction pass
+
+- Scope: continue monolith reduction by extracting shared telemetry/list/table cards from `admin/ux/page.tsx`.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 05:55 -> 2026-03-04 06:03.
+- Changes:
+  - Added `apps/web/src/app/admin/ux/components/telemetry-shared-cards.tsx`:
+    - `BreakdownListCard`,
+    - `HourlyTrendCard`,
+    - `ReleaseHealthAlertHourlyTrendCard`,
+    - `PredictionHourlyTrendCard`,
+    - `GatewayCompactionHourlyTrendCard`,
+    - `GatewayTelemetryThresholdsCard`,
+    - and their shared empty/table shells.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - removed inline implementations above and imported the shared card components,
+    - removed now-unused hour-bucket helpers.
+  - `admin/ux/page.tsx` reduced to `4177` lines after this pass.
+- Validation:
+  - `npx ultracite fix apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/telemetry-shared-cards.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Execution:
+  - Commit: `3eb2a50282888fd86a470560a08b05c1e550188e` pushed to `main`.
+  - Railway production deployments:
+    - `SocialProject`: `4a1c7511-36e1-4d0d-875f-831ea3ecf0fb` (`SUCCESS`).
+    - `api`: `ad30a65f-91d9-4824-b594-9ff069c62b29` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-04T06:03:19.475Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: split the remaining top-level panel chrome/sticky KPI strip from `page.tsx` and continue reducing SSR page responsibilities.
+
 ### 2026-03-04 - admin UX style fusion section extraction pass
 
 - Scope: continue decomposition of monolithic `admin/ux` page by extracting `Style fusion metrics` into a dedicated component file.
