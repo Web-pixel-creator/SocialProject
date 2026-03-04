@@ -566,6 +566,7 @@ describe('admin ux observer engagement page', () => {
       await AdminUxObserverEngagementPage({
         searchParams: Promise.resolve({
           hours: '24',
+          panel: 'all',
           gatewayChannel: 'ws-control-plane',
           gatewayProvider: 'gpt-4.1',
           gatewayStatus: 'active',
@@ -599,9 +600,12 @@ describe('admin ux observer engagement page', () => {
     );
     expect(screen.getByText(/^Alerted runs$/i)).toBeInTheDocument();
     expect(screen.getByText(/^Latest alerted run$/i)).toBeInTheDocument();
-    expect(screen.getByText(/First-appearance channels/i)).toBeInTheDocument();
+    expect(releaseHealthScoped.getByText(/Alert breakdowns/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/First-appearance failure modes/i),
+      releaseHealthScoped.getByRole('columnheader', { name: /Category/i }),
+    ).toBeInTheDocument();
+    expect(
+      releaseHealthScoped.getByRole('columnheader', { name: /Key/i }),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/Release-health alert hourly trend \(UTC\)/i),
@@ -616,11 +620,29 @@ describe('admin ux observer engagement page', () => {
         name: /https:\/\/github\.com\/Web-pixel-creator\/SocialProject\/actions\/runs\/22548544748/i,
       }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/^Provider usage$/i)).toBeInTheDocument();
+    const multimodalSectionHeading = screen.getByText(
+      /Multimodal GlowUp telemetry/i,
+    );
+    const multimodalSection = multimodalSectionHeading.closest('section');
+    expect(multimodalSection).not.toBeNull();
+    if (!multimodalSection) {
+      throw new Error('Multimodal section should be present');
+    }
+    const multimodalSectionScoped = within(multimodalSection);
+    expect(
+      multimodalSectionScoped.getByText(/Multimodal breakdown/i),
+    ).toBeInTheDocument();
+    expect(
+      multimodalSectionScoped.getAllByText(/^provider$/i).length,
+    ).toBeGreaterThan(0);
+    expect(
+      multimodalSectionScoped.getByText(/^empty reason$/i),
+    ).toBeInTheDocument();
+    expect(
+      multimodalSectionScoped.getByText(/^error reason$/i),
+    ).toBeInTheDocument();
     expect(screen.getByText(/gemini-2/i)).toBeInTheDocument();
-    expect(screen.getByText(/Empty-state reasons/i)).toBeInTheDocument();
     expect(screen.getByText(/not_available/i)).toBeInTheDocument();
-    expect(screen.getByText(/Error reasons/i)).toBeInTheDocument();
     expect(screen.getByText(/network/i)).toBeInTheDocument();
     expect(screen.getByText(/Invalid query errors/i)).toBeInTheDocument();
     expect(screen.getByText(/Invalid query share/i)).toBeInTheDocument();
@@ -762,18 +784,29 @@ describe('admin ux observer engagement page', () => {
     expect(
       screen.getAllByText(/Auto compaction share/i).length,
     ).toBeGreaterThan(0);
+    const gatewayRiskSignalsHeading = screen.getByText(/^Risk signals$/i);
+    const gatewayRiskSignalsCard = gatewayRiskSignalsHeading.closest('article');
+    expect(gatewayRiskSignalsCard).not.toBeNull();
+    if (!gatewayRiskSignalsCard) {
+      throw new Error('Gateway risk signals card should be present');
+    }
+    const gatewayRiskSignalsScoped = within(gatewayRiskSignalsCard);
     expect(
-      screen.getByText(/Auto compaction risk:\s*Critical/i),
+      gatewayRiskSignalsScoped.getByText(/^Auto compaction risk$/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Failed-step risk:\s*Critical/i),
+      gatewayRiskSignalsScoped.getByText(/^Failed-step risk$/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Runtime success:\s*Critical/i),
+      gatewayRiskSignalsScoped.getByText(/^Runtime success$/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Cooldown skip risk:\s*Watch/i),
+      gatewayRiskSignalsScoped.getByText(/^Cooldown skip risk$/i),
     ).toBeInTheDocument();
+    expect(
+      gatewayRiskSignalsScoped.getAllByText(/^Critical$/i).length,
+    ).toBeGreaterThanOrEqual(3);
+    expect(gatewayRiskSignalsScoped.getByText(/^Watch$/i)).toBeInTheDocument();
     expect(
       screen.getByText(/Telemetry health:\s*Critical/i),
     ).toBeInTheDocument();
@@ -1574,6 +1607,7 @@ describe('admin ux observer engagement page', () => {
       await AdminUxObserverEngagementPage({
         searchParams: Promise.resolve({
           hours: '24',
+          panel: 'runtime',
           aiDryRun: '1',
           aiRole: 'critic',
           aiPrompt: 'runtime health check',
@@ -1590,7 +1624,17 @@ describe('admin ux observer engagement page', () => {
     expect(
       screen.getByText(/Dry-run completed via gpt-4.1\./i),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Runtime health: ok/i)).toBeInTheDocument();
+    const runtimeSnapshotHeading = screen.getByText(/Runtime snapshot/i);
+    const runtimeSnapshotCard = runtimeSnapshotHeading.closest('article');
+    expect(runtimeSnapshotCard).not.toBeNull();
+    if (!runtimeSnapshotCard) {
+      throw new Error('Runtime snapshot card should be present');
+    }
+    const runtimeSnapshotScoped = within(runtimeSnapshotCard);
+    expect(
+      runtimeSnapshotScoped.getByText(/^Runtime health$/i),
+    ).toBeInTheDocument();
+    expect(runtimeSnapshotScoped.getByText(/^ok$/i)).toBeInTheDocument();
     expect(
       screen.getByText(/provider\(s\) are in cooldown/i),
     ).toBeInTheDocument();
@@ -1695,7 +1739,7 @@ describe('admin ux observer engagement page', () => {
 
     render(
       await AdminUxObserverEngagementPage({
-        searchParams: Promise.resolve({ hours: '24' }),
+        searchParams: Promise.resolve({ hours: '24', panel: 'runtime' }),
       }),
     );
 
