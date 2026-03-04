@@ -8,6 +8,7 @@ import {
 } from './components/engagement-sections';
 import { GatewaySectionBody } from './components/gateway-section-body';
 import { GatewayTelemetrySectionBody } from './components/gateway-telemetry-section-body';
+import { PredictionMarketSection } from './components/prediction-market-section';
 import { ReleaseHealthSection } from './components/release-health-section';
 import { RuntimeSectionBody } from './components/runtime-section-body';
 
@@ -4416,6 +4417,88 @@ export default async function AdminUxObserverEngagementPage({
       watchBelow: 0.6,
     },
   );
+  const predictionStatCards = [
+    {
+      hint: 'submitted predictions in current window',
+      label: 'Predictions',
+      value: `${toNumber(predictionTotals.predictions)}`,
+    },
+    {
+      hint: 'unique observers placing predictions',
+      label: 'Predictors',
+      value: `${toNumber(predictionTotals.predictors)}`,
+    },
+    {
+      hint: 'unique PR markets with predictions',
+      label: 'Markets',
+      value: `${toNumber(predictionTotals.markets)}`,
+    },
+    {
+      hint: 'total FIN points staked',
+      label: 'Stake pool',
+      value: `${toNumber(predictionTotals.stakePoints)}`,
+    },
+    {
+      hint: 'correct / resolved predictions',
+      label: 'Accuracy rate',
+      value: toRateText(kpis.predictionAccuracyRate),
+    },
+    {
+      hint: 'payout points / stake points',
+      label: 'Payout ratio',
+      value: toRateText(kpis.payoutToStakeRatio),
+    },
+    {
+      hint: 'resolved prediction settlements / submitted predictions',
+      label: 'Settlement rate',
+      value: toRateText(kpis.predictionSettlementRate),
+    },
+  ];
+  const predictionWindow7dView = {
+    accuracyText: toRateText(predictionWindow7d.accuracyRate),
+    correctPredictions: predictionWindow7d.correctPredictions,
+    days: predictionWindow7d.days,
+    netPoints: predictionWindow7d.netPoints,
+    predictors: predictionWindow7d.predictors,
+    resolvedPredictions: predictionWindow7d.resolvedPredictions,
+    riskBadgeClassName: healthBadgeClass(predictionWindow7dRiskLevel),
+    riskLabel: healthLabel(predictionWindow7dRiskLevel),
+  };
+  const predictionWindow30dView = {
+    accuracyText: toRateText(predictionWindow30d.accuracyRate),
+    correctPredictions: predictionWindow30d.correctPredictions,
+    days: predictionWindow30d.days,
+    netPoints: predictionWindow30d.netPoints,
+    predictors: predictionWindow30d.predictors,
+    resolvedPredictions: predictionWindow30d.resolvedPredictions,
+    riskBadgeClassName: healthBadgeClass(predictionWindow30dRiskLevel),
+    riskLabel: healthLabel(predictionWindow30dRiskLevel),
+  };
+  const predictionCohortsByOutcomeView = predictionCohortsByOutcomeWithRisk.map(
+    (entry) => ({
+      accuracyRateText: toRateText(entry.accuracyRate),
+      netPoints: entry.netPoints,
+      predictedOutcomeLabel: formatPredictionOutcomeMetricLabel(
+        entry.predictedOutcome,
+      ),
+      predictions: entry.predictions,
+      resolvedPredictions: entry.resolvedPredictions,
+      riskBadgeClassName: healthBadgeClass(entry.riskLevel),
+      riskLabel: healthLabel(entry.riskLevel),
+      settlementRateText: toRateText(entry.settlementRate),
+    }),
+  );
+  const predictionCohortsByStakeBandView =
+    predictionCohortsByStakeBandWithRisk.map((entry) => ({
+      accuracyRateText: toRateText(entry.accuracyRate),
+      netPoints: entry.netPoints,
+      predictions: entry.predictions,
+      resolvedPredictions: entry.resolvedPredictions,
+      riskBadgeClassName: healthBadgeClass(entry.riskLevel),
+      riskLabel: healthLabel(entry.riskLevel),
+      settlementRateText: toRateText(entry.settlementRate),
+      stakeBand: entry.stakeBand,
+    }));
 
   return (
     <main className="mx-auto grid w-full max-w-7xl gap-4" id="main-content">
@@ -4797,495 +4880,88 @@ export default async function AdminUxObserverEngagementPage({
       ) : null}
 
       {isPanelVisible('prediction') ? (
-        <section className="card grid gap-4 p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="font-semibold text-foreground text-lg">
-              Prediction market telemetry
-            </h2>
-            <span
-              className={`${healthBadgeClass(predictionAccuracyLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
-            >
-              Accuracy risk: {healthLabel(predictionAccuracyLevel)}
-            </span>
-          </div>
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <StatCard
-              hint="submitted predictions in current window"
-              label="Predictions"
-              value={`${toNumber(predictionTotals.predictions)}`}
+        <PredictionMarketSection
+          accuracyBadgeClassName={healthBadgeClass(predictionAccuracyLevel)}
+          accuracyLabel={healthLabel(predictionAccuracyLevel)}
+          averageStakeText={toFixedText(predictionTotals.averageStakePoints)}
+          cohortsByOutcomeRows={predictionCohortsByOutcomeView}
+          cohortsByStakeBandRows={predictionCohortsByStakeBandView}
+          cohortThresholdSummary={predictionCohortThresholdSummary}
+          correctPredictions={toNumber(predictionTotals.correctPredictions)}
+          filterScopeMixCard={
+            <BreakdownListCard
+              compactEmptyState
+              emptyLabel="No scope-switch data in current window."
+              items={predictionFilterByScopeBreakdown}
+              title="Filter scope mix"
             />
-            <StatCard
-              hint="unique observers placing predictions"
-              label="Predictors"
-              value={`${toNumber(predictionTotals.predictors)}`}
+          }
+          filterSwitchesValue={`${toNumber(predictionFilterTelemetry.totalSwitches)}`}
+          filterSwitchShareText={toRateText(kpis.predictionFilterSwitchShare)}
+          filterValueMixCard={
+            <BreakdownListCard
+              compactEmptyState
+              emptyLabel="No filter-value data in current window."
+              items={predictionFilterByFilterBreakdown}
+              title="Filter value mix"
             />
-            <StatCard
-              hint="unique PR markets with predictions"
-              label="Markets"
-              value={`${toNumber(predictionTotals.markets)}`}
+          }
+          historyScopeRows={predictionHistoryScopeStates}
+          hourlyTrendCard={
+            <PredictionHourlyTrendCard
+              compactEmptyState
+              emptyLabel="No hourly prediction trend data in current window."
+              items={predictionHourlyTrend}
+              title="Prediction hourly trend (UTC)"
             />
-            <StatCard
-              hint="total FIN points staked"
-              label="Stake pool"
-              value={`${toNumber(predictionTotals.stakePoints)}`}
-            />
-            <StatCard
-              hint="correct / resolved predictions"
-              label="Accuracy rate"
-              value={toRateText(kpis.predictionAccuracyRate)}
-            />
-            <StatCard
-              hint="payout points / stake points"
-              label="Payout ratio"
-              value={toRateText(kpis.payoutToStakeRatio)}
-            />
-            <StatCard
-              hint="resolved prediction settlements / submitted predictions"
-              label="Settlement rate"
-              value={toRateText(kpis.predictionSettlementRate)}
-            />
-          </div>
-          <div className="grid gap-4 lg:grid-cols-3">
+          }
+          nonDefaultSortShareText={toRateText(
+            kpis.predictionNonDefaultSortRate,
+          )}
+          outcomeMixCard={
             <BreakdownListCard
               compactEmptyState
               emptyLabel="No prediction outcomes in current window."
               items={predictionOutcomesBreakdown}
               title="Outcome mix"
             />
-            <article className="card grid gap-2 p-4">
-              <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-                Participation snapshot
-              </h3>
-              <p className="text-muted-foreground text-xs">
-                Participation rate:{' '}
-                <span className="font-semibold text-foreground">
-                  {toRateText(kpis.predictionParticipationRate)}
-                </span>
-              </p>
-              <p className="text-muted-foreground text-xs">
-                Average stake:{' '}
-                <span className="font-semibold text-foreground">
-                  {toFixedText(predictionTotals.averageStakePoints)}
-                </span>
-              </p>
-              <p className="text-muted-foreground text-xs">
-                Resolved:{' '}
-                <span className="font-semibold text-foreground">
-                  {toNumber(predictionTotals.resolvedPredictions)}
-                </span>{' '}
-                | Correct:{' '}
-                <span className="font-semibold text-foreground">
-                  {toNumber(predictionTotals.correctPredictions)}
-                </span>
-              </p>
-            </article>
-            <article className="card grid gap-2 p-4">
-              <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-                Resolved windows
-              </h3>
-              <div className="flex flex-wrap items-center gap-2">
-                <span
-                  className={`${healthBadgeClass(predictionWindow7dRiskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
-                >
-                  7d risk: {healthLabel(predictionWindow7dRiskLevel)}
-                </span>
-                <span
-                  className={`${healthBadgeClass(predictionWindow30dRiskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
-                >
-                  30d risk: {healthLabel(predictionWindow30dRiskLevel)}
-                </span>
-              </div>
-              <p className="text-muted-foreground text-xs">
-                Thresholds: watch &lt;{' '}
-                {toRateText(
-                  predictionResolutionWindowThresholds.accuracyRate.watchBelow,
-                )}{' '}
-                | critical &lt;{' '}
-                {toRateText(
-                  predictionResolutionWindowThresholds.accuracyRate
-                    .criticalBelow,
-                )}{' '}
-                | min sample:{' '}
-                {predictionResolutionWindowThresholds.minResolvedPredictions}
-              </p>
-              <p className="text-muted-foreground text-xs">
-                {predictionWindow7d.days}d:{' '}
-                <span className="font-semibold text-foreground">
-                  {toRateText(predictionWindow7d.accuracyRate)}
-                </span>{' '}
-                ({predictionWindow7d.correctPredictions}/
-                {predictionWindow7d.resolvedPredictions}) | Net:{' '}
-                <span className="font-semibold text-foreground">
-                  {predictionWindow7d.netPoints >= 0 ? '+' : ''}
-                  {predictionWindow7d.netPoints}
-                </span>{' '}
-                | Predictors:{' '}
-                <span className="font-semibold text-foreground">
-                  {predictionWindow7d.predictors}
-                </span>
-              </p>
-              <p className="text-muted-foreground text-xs">
-                {predictionWindow30d.days}d:{' '}
-                <span className="font-semibold text-foreground">
-                  {toRateText(predictionWindow30d.accuracyRate)}
-                </span>{' '}
-                ({predictionWindow30d.correctPredictions}/
-                {predictionWindow30d.resolvedPredictions}) | Net:{' '}
-                <span className="font-semibold text-foreground">
-                  {predictionWindow30d.netPoints >= 0 ? '+' : ''}
-                  {predictionWindow30d.netPoints}
-                </span>{' '}
-                | Predictors:{' '}
-                <span className="font-semibold text-foreground">
-                  {predictionWindow30d.predictors}
-                </span>
-              </p>
-            </article>
-          </div>
-          <details className="rounded-xl border border-border/30 bg-background/45 p-3">
-            <summary className="cursor-pointer font-semibold text-foreground text-xs uppercase tracking-wide">
-              Advanced prediction telemetry
-            </summary>
-            <div className="mt-3 grid gap-4">
-              <div className="grid gap-4 lg:grid-cols-3">
-                <StatCard
-                  hint="observer prediction-history filter changes"
-                  label="Filter switches"
-                  value={`${toNumber(predictionFilterTelemetry.totalSwitches)}`}
-                />
-                <BreakdownListCard
-                  compactEmptyState
-                  emptyLabel="No scope-switch data in current window."
-                  items={predictionFilterByScopeBreakdown}
-                  title="Filter scope mix"
-                />
-                <BreakdownListCard
-                  compactEmptyState
-                  emptyLabel="No filter-value data in current window."
-                  items={predictionFilterByFilterBreakdown}
-                  title="Filter value mix"
-                />
-              </div>
-              <div className="grid gap-4 lg:grid-cols-2">
-                <article className="card grid gap-2 p-4">
-                  <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-                    Resolution cohorts by outcome
-                  </h3>
-                  <p className="text-muted-foreground text-xs">
-                    Cohort thresholds: {predictionCohortThresholdSummary}
-                  </p>
-                  {predictionCohortsByOutcomeWithRisk.length === 0 ? (
-                    <CompactEmptyState
-                      message="No outcome cohort data in current window."
-                      size="xs"
-                    />
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse text-left text-xs">
-                        <thead>
-                          <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
-                            <th className="py-2 pr-3">Outcome</th>
-                            <th className="px-3 py-2 text-right">
-                              Predictions
-                            </th>
-                            <th className="px-3 py-2 text-right">Settled</th>
-                            <th className="px-3 py-2 text-right">Settlement</th>
-                            <th className="px-3 py-2 text-right">Accuracy</th>
-                            <th className="px-3 py-2 text-right">Risk</th>
-                            <th className="px-3 py-2 text-right">Net</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {predictionCohortsByOutcomeWithRisk.map(
-                            (entry, index) => (
-                              <tr
-                                className="border-border/25 border-b last:border-b-0"
-                                key={`${entry.predictedOutcome}:${index + 1}`}
-                              >
-                                <td className="py-2 pr-3 text-muted-foreground">
-                                  {formatPredictionOutcomeMetricLabel(
-                                    entry.predictedOutcome,
-                                  )}
-                                </td>
-                                <td className="px-3 py-2 text-right font-medium text-foreground">
-                                  {entry.predictions}
-                                </td>
-                                <td className="px-3 py-2 text-right text-muted-foreground">
-                                  {entry.resolvedPredictions}
-                                </td>
-                                <td className="px-3 py-2 text-right text-muted-foreground">
-                                  {toRateText(entry.settlementRate)}
-                                </td>
-                                <td className="px-3 py-2 text-right text-muted-foreground">
-                                  {toRateText(entry.accuracyRate)}
-                                </td>
-                                <td className="px-3 py-2 text-right">
-                                  <span
-                                    className={`${healthBadgeClass(entry.riskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
-                                  >
-                                    {healthLabel(entry.riskLevel)}
-                                  </span>
-                                </td>
-                                <td className="px-3 py-2 text-right font-semibold text-foreground">
-                                  {entry.netPoints >= 0 ? '+' : ''}
-                                  {entry.netPoints}
-                                </td>
-                              </tr>
-                            ),
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </article>
-                <article className="card grid gap-2 p-4">
-                  <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-                    Resolution cohorts by stake band
-                  </h3>
-                  <p className="text-muted-foreground text-xs">
-                    Cohort thresholds: {predictionCohortThresholdSummary}
-                  </p>
-                  {predictionCohortsByStakeBandWithRisk.length === 0 ? (
-                    <CompactEmptyState
-                      message="No stake-band cohort data in current window."
-                      size="xs"
-                    />
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse text-left text-xs">
-                        <thead>
-                          <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
-                            <th className="py-2 pr-3">Stake band</th>
-                            <th className="px-3 py-2 text-right">
-                              Predictions
-                            </th>
-                            <th className="px-3 py-2 text-right">Settled</th>
-                            <th className="px-3 py-2 text-right">Settlement</th>
-                            <th className="px-3 py-2 text-right">Accuracy</th>
-                            <th className="px-3 py-2 text-right">Risk</th>
-                            <th className="px-3 py-2 text-right">Net</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {predictionCohortsByStakeBandWithRisk.map(
-                            (entry, index) => (
-                              <tr
-                                className="border-border/25 border-b last:border-b-0"
-                                key={`${entry.stakeBand}:${index + 1}`}
-                              >
-                                <td className="py-2 pr-3 text-muted-foreground">
-                                  {entry.stakeBand}
-                                </td>
-                                <td className="px-3 py-2 text-right font-medium text-foreground">
-                                  {entry.predictions}
-                                </td>
-                                <td className="px-3 py-2 text-right text-muted-foreground">
-                                  {entry.resolvedPredictions}
-                                </td>
-                                <td className="px-3 py-2 text-right text-muted-foreground">
-                                  {toRateText(entry.settlementRate)}
-                                </td>
-                                <td className="px-3 py-2 text-right text-muted-foreground">
-                                  {toRateText(entry.accuracyRate)}
-                                </td>
-                                <td className="px-3 py-2 text-right">
-                                  <span
-                                    className={`${healthBadgeClass(entry.riskLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
-                                  >
-                                    {healthLabel(entry.riskLevel)}
-                                  </span>
-                                </td>
-                                <td className="px-3 py-2 text-right font-semibold text-foreground">
-                                  {entry.netPoints >= 0 ? '+' : ''}
-                                  {entry.netPoints}
-                                </td>
-                              </tr>
-                            ),
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </article>
-              </div>
-              <article className="card grid gap-2 p-4">
-                <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-                  Scope x filter matrix
-                </h3>
-                {predictionFilterByScopeAndFilter.length === 0 ? (
-                  <CompactEmptyState
-                    message="No scope/filter matrix data in current window."
-                    size="xs"
-                  />
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse text-left text-xs">
-                      <thead>
-                        <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
-                          <th className="py-2 pr-3">Scope</th>
-                          <th className="px-3 py-2">Filter</th>
-                          <th className="px-3 py-2 text-right">Count</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {predictionFilterByScopeAndFilter.map(
-                          (entry, index) => (
-                            <tr
-                              className="border-border/25 border-b last:border-b-0"
-                              key={`${entry.scope}:${entry.filter}:${index + 1}`}
-                            >
-                              <td className="py-2 pr-3 text-muted-foreground">
-                                {entry.scope}
-                              </td>
-                              <td className="px-3 py-2 text-muted-foreground">
-                                {entry.filter}
-                              </td>
-                              <td className="px-3 py-2 text-right font-semibold text-foreground">
-                                {entry.count}
-                              </td>
-                            </tr>
-                          ),
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </article>
-              <div className="grid gap-4 lg:grid-cols-3">
-                <StatCard
-                  hint="observer prediction-history sort changes"
-                  label="Sort switches"
-                  value={`${toNumber(predictionSortTelemetry.totalSwitches)}`}
-                />
-                <BreakdownListCard
-                  compactEmptyState
-                  emptyLabel="No sort scope data in current window."
-                  items={predictionSortByScopeBreakdown}
-                  title="Sort scope mix"
-                />
-                <BreakdownListCard
-                  compactEmptyState
-                  emptyLabel="No sort-value data in current window."
-                  items={predictionSortBySortBreakdown}
-                  title="Sort value mix"
-                />
-              </div>
-              <article className="card grid gap-2 p-4">
-                <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-                  Scope x sort matrix
-                </h3>
-                {predictionSortByScopeAndSort.length === 0 ? (
-                  <CompactEmptyState
-                    message="No scope/sort matrix data in current window."
-                    size="xs"
-                  />
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse text-left text-xs">
-                      <thead>
-                        <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
-                          <th className="py-2 pr-3">Scope</th>
-                          <th className="px-3 py-2">Sort</th>
-                          <th className="px-3 py-2 text-right">Count</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {predictionSortByScopeAndSort.map((entry, index) => (
-                          <tr
-                            className="border-border/25 border-b last:border-b-0"
-                            key={`${entry.scope}:${entry.sort}:${index + 1}`}
-                          >
-                            <td className="py-2 pr-3 text-muted-foreground">
-                              {entry.scope}
-                            </td>
-                            <td className="px-3 py-2 text-muted-foreground">
-                              {entry.sort}
-                            </td>
-                            <td className="px-3 py-2 text-right font-semibold text-foreground">
-                              {entry.count}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </article>
-              <article className="card grid gap-2 p-4">
-                <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-                  Active prediction controls by scope
-                </h3>
-                {predictionHistoryScopeStates.length === 0 ? (
-                  <CompactEmptyState
-                    message="No active prediction-history control state in current window."
-                    size="xs"
-                  />
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse text-left text-xs">
-                      <thead>
-                        <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
-                          <th className="py-2 pr-3">Scope</th>
-                          <th className="px-3 py-2">Active filter</th>
-                          <th className="px-3 py-2">Active sort</th>
-                          <th className="px-3 py-2 text-right">
-                            Last changed (UTC)
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {predictionHistoryScopeStates.map((entry, index) => (
-                          <tr
-                            className="border-border/25 border-b last:border-b-0"
-                            key={`${entry.scope}:${index + 1}`}
-                          >
-                            <td className="py-2 pr-3 text-muted-foreground">
-                              {entry.scope}
-                            </td>
-                            <td className="px-3 py-2 text-muted-foreground">
-                              {entry.activeFilter ?? 'n/a'}
-                            </td>
-                            <td className="px-3 py-2 text-muted-foreground">
-                              {entry.activeSort ?? 'n/a'}
-                            </td>
-                            <td className="px-3 py-2 text-right font-medium text-foreground">
-                              {entry.lastChangedAt ?? 'n/a'}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </article>
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <StatCard
-                  hint="filter switches / (filter + sort switches)"
-                  label="Filter switch share"
-                  value={toRateText(kpis.predictionFilterSwitchShare)}
-                />
-                <StatCard
-                  hint="sort switches / (filter + sort switches)"
-                  label="Sort switch share"
-                  value={toRateText(kpis.predictionSortSwitchShare)}
-                />
-                <StatCard
-                  hint="non-recency sort switches / all sort switches"
-                  label="Non-default sort share"
-                  value={toRateText(kpis.predictionNonDefaultSortRate)}
-                />
-              </div>
-            </div>
-          </details>
-          <PredictionHourlyTrendCard
-            compactEmptyState
-            emptyLabel="No hourly prediction trend data in current window."
-            items={predictionHourlyTrend}
-            title="Prediction hourly trend (UTC)"
-          />
-        </section>
+          }
+          participationRateText={toRateText(kpis.predictionParticipationRate)}
+          predictionStatCards={predictionStatCards}
+          resolvedPredictions={toNumber(predictionTotals.resolvedPredictions)}
+          scopeFilterMatrixRows={predictionFilterByScopeAndFilter}
+          scopeSortMatrixRows={predictionSortByScopeAndSort}
+          sortScopeMixCard={
+            <BreakdownListCard
+              compactEmptyState
+              emptyLabel="No sort scope data in current window."
+              items={predictionSortByScopeBreakdown}
+              title="Sort scope mix"
+            />
+          }
+          sortSwitchesValue={`${toNumber(predictionSortTelemetry.totalSwitches)}`}
+          sortSwitchShareText={toRateText(kpis.predictionSortSwitchShare)}
+          sortValueMixCard={
+            <BreakdownListCard
+              compactEmptyState
+              emptyLabel="No sort-value data in current window."
+              items={predictionSortBySortBreakdown}
+              title="Sort value mix"
+            />
+          }
+          window7d={predictionWindow7dView}
+          window30d={predictionWindow30dView}
+          windowThresholdCriticalText={toRateText(
+            predictionResolutionWindowThresholds.accuracyRate.criticalBelow,
+          )}
+          windowThresholdMinSample={
+            predictionResolutionWindowThresholds.minResolvedPredictions
+          }
+          windowThresholdWatchText={toRateText(
+            predictionResolutionWindowThresholds.accuracyRate.watchBelow,
+          )}
+        />
       ) : null}
-
       {isPanelVisible('style') ? (
         <StyleFusionMetricsSection metrics={styleFusionMetrics} />
       ) : null}
