@@ -33,6 +33,38 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX release health section extraction pass
+
+- Scope: continue admin UX page decomposition by extracting the `release health alert telemetry` section from `page.tsx`.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 04:45 -> 2026-03-04 05:02.
+- Changes:
+  - Added `apps/web/src/app/admin/ux/components/release-health-section.tsx`:
+    - release risk badge + summary block,
+    - release KPI cards,
+    - latest run metadata row,
+    - breakdown table,
+    - hourly trend slot.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - replaced inline release section JSX with `<ReleaseHealthSection ... />`.
+    - passed derived labels/classes/count strings and trend card node.
+  - Behavior unchanged; render complexity in monolithic page reduced.
+- Validation:
+  - `npx ultracite check apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/release-health-section.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Execution:
+  - Commit: `ab8fec253c1864d4f56f39ae3a1bfea22e5d9116` pushed to `main`.
+  - Railway production deployments:
+    - `SocialProject`: `177251c8-7ace-45cf-b980-d812f8d944b4` (`SUCCESS`).
+    - `api`: `822abefb-444b-4a97-8d70-089791abf2b3` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-04T05:01:37.897Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: split `prediction market telemetry` into dedicated components (top summary + advanced telemetry block) to continue reducing `page.tsx`.
+
 ### 2026-03-04 - admin UX debug diagnostics extraction pass
 
 - Scope: continue admin UX decomposition by moving the `debug diagnostics` panel out of monolithic `page.tsx`.
