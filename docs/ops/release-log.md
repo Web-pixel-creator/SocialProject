@@ -33,6 +33,31 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX page entry helper extraction pass
+
+- Scope: minimize page entrypoint surface by centralizing query/data/render glue into a dedicated page-entry helper.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 15:00 -> 2026-03-04 15:07.
+- Changes:
+  - Added `apps/web/src/app/admin/ux/components/admin-ux-page-entry.tsx`:
+    - `renderAdminUxObserverEngagementPage(...)` combines query-state resolution, data load, and load-state rendering.
+    - `AdminUxPageSearchParams` type alias for page prop contract.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - delegates entirely to `renderAdminUxObserverEngagementPage(...)`.
+  - `admin/ux/page.tsx` reduced to `12` lines.
+- Validation:
+  - `npx ultracite fix apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/admin-ux-page-entry.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+  - `npm run release:alert-risk:reassess -- --apply`: `status=already_enabled` (`RELEASE_HEALTH_ALERT_RISK_STRICT=true`).
+  - `npm run release:railway:gate:strict`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: `status=pass` (`generatedAtUtc=2026-03-04T15:06:03.889Z`).
+- Execution:
+  - Commit: `e2ada6ce9b4c035eb2bd5161e2c844a76eece63f` pushed to `main`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: optionally move `AdminUxPageSearchParams`/query parsing contract into a shared `admin-ux-page-contract.ts` to decouple entry from orchestration internals.
+
 ### 2026-03-04 - admin UX page load-state extraction pass
 
 - Scope: finalize page-entrypoint simplification by extracting success/error branching into a dedicated load-state component.
