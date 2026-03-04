@@ -33,6 +33,38 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX prediction market section extraction pass
+
+- Scope: continue page decomposition by extracting the `prediction market telemetry` panel out of monolithic `page.tsx`.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 05:06 -> 2026-03-04 05:18.
+- Changes:
+  - Added `apps/web/src/app/admin/ux/components/prediction-market-section.tsx`:
+    - prediction summary KPI cards and accuracy badge,
+    - participation and resolved-window summaries,
+    - advanced telemetry details (cohort tables, scope matrices, active controls),
+    - filter/sort switch and share metrics,
+    - hourly trend slot.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - replaced large inline prediction JSX with `<PredictionMarketSection ... />`.
+    - added explicit prediction view-model mappings for cohort/window risk badge labels/classes and formatted rate fields.
+  - Behavior unchanged while substantially reducing inline rendering complexity.
+- Validation:
+  - `npx ultracite check apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/prediction-market-section.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Execution:
+  - Commit: `7fd2250341e966b764cc5e8e2fe6c625f188613f` pushed to `main`.
+  - Railway production deployments:
+    - `SocialProject`: `c7890624-1f27-4134-be7e-9a9eafa6ea6b` (`SUCCESS`).
+    - `api`: `765ab65d-3c81-4f33-87b3-5d926a412277` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-04T05:17:46.305Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: extract remaining style/multimodal section and shared card primitives to finish panel-level split.
+
 ### 2026-03-04 - admin UX release health section extraction pass
 
 - Scope: continue admin UX page decomposition by extracting the `release health alert telemetry` section from `page.tsx`.
