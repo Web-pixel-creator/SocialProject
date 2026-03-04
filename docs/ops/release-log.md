@@ -33,6 +33,40 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX data-client helper extraction pass
+
+- Scope: continue shrinking `admin/ux/page.tsx` by extracting admin API adapters and related response contracts into a dedicated data-client module.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 09:06 -> 2026-03-04 09:13.
+- Changes:
+  - Added `apps/web/src/app/admin/ux/components/admin-ux-data-client.ts`:
+    - admin API base/token resolvers,
+    - observer engagement + similar search fetchers,
+    - gateway sessions/telemetry/events/overview fetchers,
+    - gateway close/compact mutators,
+    - exported response/view contracts consumed by the page.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - switched all admin data calls to the new data-client helper,
+    - removed inline admin API adapter implementations and duplicated response interfaces,
+    - wired AI runtime helper through `resolveAdminApiBaseUrl` and `resolveAdminToken`.
+  - `admin/ux/page.tsx` reduced to `1956` lines.
+- Validation:
+  - `npx ultracite fix apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/admin-ux-data-client.ts`: pass (warning-only on existing unused suppression).
+  - `npm --workspace apps/web run build`: pass.
+  - `npm run release:railway:gate:strict`: pass (after deploy completion).
+- Execution:
+  - Commit: `06374e8fc2d3dcc889113f9cc822a1d16d57da7b` pushed to `main`.
+  - Railway production deployments:
+    - `SocialProject`: `cfe9b6f5-32a5-4f9c-b306-65e0258a77cc` (`SUCCESS`).
+    - `api`: `b852eccd-7fb7-4c85-8254-b5cfc2bbfd35` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-04T09:13:46.162Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: split remaining normalization/derivation utilities (`normalize*`, `resolve*Health*`) from `page.tsx` into dedicated mappers to keep SSR entrypoint composition-only.
+
 ### 2026-03-04 - admin UX gateway query-state helper extraction pass
 
 - Scope: continue shrinking `admin/ux/page.tsx` by extracting gateway query parsing, filter sanitization constants, and session mutation decision logic into a dedicated helper module.
