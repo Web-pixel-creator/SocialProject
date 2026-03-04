@@ -1,5 +1,7 @@
 import { AdminUxPanelChrome } from './components/admin-ux-panel-chrome';
 import {
+  buildDebugContextRows,
+  buildDebugPayloadText,
   buildEngagementHealthSignals,
   buildGatewayEventCounters,
   buildGatewayRiskSignalsView,
@@ -3521,56 +3523,40 @@ export default async function AdminUxObserverEngagementPage({
     toNumber,
     toRateText,
   });
-  const debugPayload = {
+  const gatewayDebugStatusLabel = toStringValue(
+    gatewayOverview?.session.status ?? selectedSession?.status,
+    appliedGatewaySessionStatusLabel,
+  );
+  const debugPayloadText = buildDebugPayloadText({
     activePanel,
-    filters: {
-      gatewayChannelFilter,
-      gatewayProviderFilter,
-      gatewaySourceFilter,
-      gatewayStatusFilter,
-    },
-    gateway: {
-      overview: gatewayOverview,
-      telemetry: gatewayTelemetry,
-      eventsSample: (gatewayRecentEvents ?? []).slice(0, 10),
-    },
-    runtime: {
-      summary: aiRuntimeSummary,
-      providers: aiRuntimeProviders,
-      dryRun: aiRuntimeDryRunResult,
-    },
-    release: {
-      latest: releaseHealthAlertLatest,
-      counts: {
-        releaseHealthAlertCount,
-        releaseHealthAlertFirstAppearanceCount,
-        releaseHealthAlertedRunCount,
-      },
-    },
-  };
-  const debugPayloadText = JSON.stringify(debugPayload, null, 2);
-  const debugContextRows: Array<{ label: string; value: string }> = [
-    { label: 'Panel', value: activePanel },
-    { label: 'Hours', value: `${hours}` },
-    {
-      label: 'Gateway source',
-      value: toStringValue(gatewaySessionsSource, 'n/a'),
-    },
-    { label: 'Session id', value: selectedSessionId ?? 'n/a' },
-    { label: 'Session scope', value: gatewaySessionScopeLabel },
-    {
-      label: 'Gateway status',
-      value: toStringValue(
-        gatewayOverview?.session.status ?? selectedSession?.status,
-        appliedGatewaySessionStatusLabel,
-      ),
-    },
-    {
-      label: 'Runtime health',
-      value: toStringValue(aiRuntimeSummary.health, 'n/a'),
-    },
-    { label: 'Release risk', value: healthLabel(releaseHealthAlertRiskLevel) },
-  ];
+    aiRuntimeDryRunResult,
+    aiRuntimeProviders,
+    aiRuntimeSummary,
+    gatewayChannelFilter,
+    gatewayOverview,
+    gatewayProviderFilter,
+    gatewayRecentEvents,
+    gatewaySourceFilter,
+    gatewayStatusFilter,
+    gatewayTelemetry,
+    releaseHealthAlertCount,
+    releaseHealthAlertFirstAppearanceCount,
+    releaseHealthAlertLatest,
+    releaseHealthAlertedRunCount,
+  });
+  const debugContextRows = buildDebugContextRows({
+    activePanel,
+    gatewaySessionScopeLabel,
+    gatewaySessionsSource: toStringValue(gatewaySessionsSource, 'n/a'),
+    gatewayStatusLabel: gatewayDebugStatusLabel,
+    hours,
+    releaseRiskLabel: healthLabel(releaseHealthAlertRiskLevel),
+    runtimeHealthLabel: toStringValue(aiRuntimeSummary.health, 'n/a'),
+    selectedSessionId,
+  });
+  const debugEventsSampleCount = Array.isArray(gatewayRecentEvents)
+    ? gatewayRecentEvents.slice(0, 10).length
+    : 0;
   const gatewayRiskSignalsView = buildGatewayRiskSignalsView({
     autoCompactionLevel: gatewayAutoCompactionShareLevel,
     cooldownSkipLevel: gatewayCooldownSkipLevel,
@@ -3950,7 +3936,7 @@ export default async function AdminUxObserverEngagementPage({
           attentionSessionsCount={`${toNumber(gatewayTelemetrySessions.attention)}`}
           debugContextRows={debugContextRows}
           debugPayloadText={debugPayloadText}
-          eventsSampleCount={debugPayload.gateway.eventsSample.length}
+          eventsSampleCount={debugEventsSampleCount}
           releaseAlertsCount={`${releaseHealthAlertCount}`}
           runtimeProvidersCount={aiRuntimeProviders.length}
         />

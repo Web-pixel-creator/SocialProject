@@ -692,3 +692,107 @@ export const buildPredictionCohortsByStakeBandView = ({
     settlementRateText: toRateText(entry.settlementRate),
     stakeBand: entry.stakeBand,
   }));
+
+export const buildDebugPayloadText = ({
+  activePanel,
+  aiRuntimeDryRunResult,
+  aiRuntimeProviders,
+  aiRuntimeSummary,
+  gatewayChannelFilter,
+  gatewayOverview,
+  gatewayProviderFilter,
+  gatewayRecentEvents,
+  gatewaySourceFilter,
+  gatewayStatusFilter,
+  gatewayTelemetry,
+  releaseHealthAlertCount,
+  releaseHealthAlertFirstAppearanceCount,
+  releaseHealthAlertLatest,
+  releaseHealthAlertedRunCount,
+}: {
+  activePanel: string;
+  aiRuntimeDryRunResult: unknown;
+  aiRuntimeProviders: unknown[];
+  aiRuntimeSummary: unknown;
+  gatewayChannelFilter: string | null;
+  gatewayOverview: unknown;
+  gatewayProviderFilter: string | null;
+  gatewayRecentEvents: unknown[] | null;
+  gatewaySourceFilter: string | null;
+  gatewayStatusFilter: string | null;
+  gatewayTelemetry: unknown;
+  releaseHealthAlertCount: number;
+  releaseHealthAlertFirstAppearanceCount: number;
+  releaseHealthAlertLatest: unknown;
+  releaseHealthAlertedRunCount: number;
+}): string => {
+  const eventsSample = Array.isArray(gatewayRecentEvents)
+    ? gatewayRecentEvents.slice(0, 10)
+    : [];
+  const payload = {
+    activePanel,
+    filters: {
+      gatewayChannelFilter,
+      gatewayProviderFilter,
+      gatewaySourceFilter,
+      gatewayStatusFilter,
+    },
+    gateway: {
+      overview: gatewayOverview,
+      telemetry: gatewayTelemetry,
+      eventsSample,
+    },
+    runtime: {
+      summary: aiRuntimeSummary,
+      providers: aiRuntimeProviders,
+      dryRun: aiRuntimeDryRunResult,
+    },
+    release: {
+      latest: releaseHealthAlertLatest,
+      counts: {
+        releaseHealthAlertCount,
+        releaseHealthAlertFirstAppearanceCount,
+        releaseHealthAlertedRunCount,
+      },
+    },
+  };
+  return JSON.stringify(payload, null, 2);
+};
+
+export const buildDebugContextRows = ({
+  activePanel,
+  gatewaySessionScopeLabel,
+  gatewaySessionsSource,
+  gatewayStatusLabel,
+  hours,
+  releaseRiskLabel,
+  runtimeHealthLabel,
+  selectedSessionId,
+}: {
+  activePanel: string;
+  gatewaySessionScopeLabel: string;
+  gatewaySessionsSource: string;
+  gatewayStatusLabel: string;
+  hours: number;
+  releaseRiskLabel: string;
+  runtimeHealthLabel: string;
+  selectedSessionId: string | null;
+}): Array<{ label: string; value: string }> => [
+  { label: 'Panel', value: activePanel },
+  { label: 'Hours', value: `${hours}` },
+  {
+    label: 'Gateway source',
+    value: gatewaySessionsSource,
+  },
+  { label: 'Session id', value: selectedSessionId ?? 'n/a' },
+  { label: 'Session scope', value: gatewaySessionScopeLabel },
+  {
+    label: 'Gateway status',
+    value: gatewayStatusLabel,
+  },
+  {
+    label: 'Runtime health',
+    value: runtimeHealthLabel,
+  },
+  { label: 'Release risk', value: releaseRiskLabel },
+];
