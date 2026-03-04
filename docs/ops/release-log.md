@@ -33,6 +33,31 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX main panels layout extraction pass
+
+- Scope: continue page decomposition by moving the remaining multi-section render block from `admin/ux/page.tsx` into a dedicated presentational layout component.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 11:10 -> 2026-03-04 11:18.
+- Changes:
+  - Added `apps/web/src/app/admin/ux/components/admin-ux-main-panels.tsx`:
+    - centralized visibility-gated rendering for gateway/runtime/engagement/prediction/release/style/debug panels.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - replaced inline multi-section JSX with `<AdminUxMainPanels />`,
+    - kept page responsibility focused on orchestration and prop composition.
+  - `admin/ux/page.tsx` reduced to `657` lines.
+- Validation:
+  - `npx ultracite fix apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/admin-ux-main-panels.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+  - `npm run release:alert-risk:reassess -- --apply`: `status=already_enabled` (`RELEASE_HEALTH_ALERT_RISK_STRICT=true`).
+  - `npm run release:railway:gate:strict`: pass (after Railway deployment reached `SUCCESS`).
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: `status=pass` (`generatedAtUtc=2026-03-04T11:18:22.496Z`).
+- Execution:
+  - Commit: `caa0a121ffc6f78ce72d3d552f32049c5a62b8bf` pushed to `main`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: move remaining heavy prop-object assembly from `page.tsx` into focused section-prop builders (runtime/gateway/prediction) to keep SSR entrypoint minimal.
+
 ### 2026-03-04 - admin UX section-prep extraction pass
 
 - Scope: continue shrinking `admin/ux/page.tsx` by extracting section-level data composition into a dedicated helper.
