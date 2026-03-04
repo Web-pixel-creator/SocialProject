@@ -33,6 +33,35 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX mapper full extraction pass
+
+- Scope: finish the current mapper refactor step by moving all remaining normalization/health-derivation helpers out of `admin/ux/page.tsx` into `admin-ux-mappers.ts`.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 10:03 -> 2026-03-04 10:10.
+- Changes:
+  - Expanded `apps/web/src/app/admin/ux/components/admin-ux-mappers.ts` with:
+    - prediction/multimodal/release/gateway normalizers,
+    - shared health/risk resolvers and badge/label helpers,
+    - gateway session scope resolver,
+    - style-fusion metrics normalization,
+    - AI runtime and gateway/release health derivations.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - removed in-file duplicated helper implementations,
+    - switched to mapper imports for normalization and health derivations.
+  - `admin/ux/page.tsx` reduced to `981` lines.
+- Validation:
+  - `npx ultracite fix apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/admin-ux-mappers.ts`: pass.
+  - `npm --workspace apps/web run build`: pass.
+  - `npm run release:alert-risk:reassess -- --apply`: `status=already_enabled` (`RELEASE_HEALTH_ALERT_RISK_STRICT=true`).
+  - `npm run release:railway:gate:strict`: pass (after deployment reached `SUCCESS`).
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: `status=pass` (`generatedAtUtc=2026-03-04T10:10:04.723Z`).
+- Execution:
+  - Commit: `00515b2284fd19ec0886f6c38fdf5f42f56063ce` pushed to `main`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - keep `page.tsx` focused on SSR composition only; next pass can split remaining panel/UI-specific helpers (`resolveAdminUxPanel`, CSV export helper) into a tiny `admin-ux-page-utils.ts`.
+
 ### 2026-03-04 - admin UX mapper baseline extraction pass
 
 - Scope: continue shrinking `admin/ux/page.tsx` by extracting baseline mapper types and shared normalizers into a dedicated helper module.
