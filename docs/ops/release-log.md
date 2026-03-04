@@ -33,6 +33,33 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX mapper baseline extraction pass
+
+- Scope: continue shrinking `admin/ux/page.tsx` by extracting baseline mapper types and shared normalizers into a dedicated helper module.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 09:34 -> 2026-03-04 09:47.
+- Changes:
+  - Added `apps/web/src/app/admin/ux/components/admin-ux-mappers.ts`:
+    - shared contracts for gateway/prediction/multimodal/release rows,
+    - shared numeric/string/rate/timestamp coercion helpers,
+    - gateway telemetry filter/threshold normalizers,
+    - generic breakdown normalizer and exported prediction threshold defaults.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - switched duplicated local type/normalizer definitions to mapper imports,
+    - removed inline duplicated telemetry filter/threshold helpers.
+  - `admin/ux/page.tsx` reduced to `1734` lines.
+- Validation:
+  - `npx ultracite fix apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/admin-ux-mappers.ts`: pass.
+  - `npm --workspace apps/web run build`: pass.
+  - `npm run release:alert-risk:reassess -- --apply`: `status=already_enabled` (`RELEASE_HEALTH_ALERT_RISK_STRICT=true`).
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: `status=pass` (`generatedAtUtc=2026-03-04T09:46:35.966Z`).
+- Execution:
+  - Commit: `6a59fccca6f9e6f0087085cd66d11ad6b92af6c7` pushed to `main`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: move remaining normalization/derivation helpers (`normalize*`, `resolve*Health*`, `derive*`, style-fusion normalizers) from `page.tsx` into `admin-ux-mappers.ts`.
+
 ### 2026-03-04 - admin UX data-client helper extraction pass
 
 - Scope: continue shrinking `admin/ux/page.tsx` by extracting admin API adapters and related response contracts into a dedicated data-client module.
