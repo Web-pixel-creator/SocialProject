@@ -10,6 +10,7 @@ import {
   resolveAdminApiBaseUrl,
   resolveAdminToken,
 } from './components/admin-ux-data-client';
+import { buildAdminUxMainPanelsProps } from './components/admin-ux-main-panel-prop-builders';
 import { AdminUxMainPanels } from './components/admin-ux-main-panels';
 import {
   deriveAiRuntimeHealthLevel,
@@ -17,27 +18,21 @@ import {
   healthBadgeClass,
   healthLabel,
   resolveHealthLevel,
-  toDurationText,
-  toFixedText,
   toNumber,
   toRateText,
   toStringValue,
 } from './components/admin-ux-mappers';
 import {
   type AdminUxPanel,
-  buildEventsCsv,
   resolveAdminUxPanel,
 } from './components/admin-ux-page-utils';
 import { AdminUxPanelChrome } from './components/admin-ux-panel-chrome';
 import { prepareAdminUxSectionData } from './components/admin-ux-section-prep';
 import {
-  buildDebugContextRows,
-  buildDebugPayloadText,
   buildPanelTabsView,
   buildStickyKpisView,
 } from './components/admin-ux-view-models';
 import {
-  AI_RUNTIME_ROLES,
   fetchAiRuntimeHealth,
   recomputeAiRuntimeSummary,
   resolveAiRuntimeDryRunState,
@@ -49,14 +44,6 @@ import {
   resolveGatewaySessionMutations,
 } from './components/gateway-query-state';
 import { resolveGatewaySessionOrchestrationState } from './components/gateway-session-orchestration';
-import {
-  BreakdownListCard,
-  GatewayCompactionHourlyTrendCard,
-  GatewayTelemetryThresholdsCard,
-  HourlyTrendCard,
-  PredictionHourlyTrendCard,
-  ReleaseHealthAlertHourlyTrendCard,
-} from './components/telemetry-shared-cards';
 
 export default async function AdminUxObserverEngagementPage({
   searchParams,
@@ -304,111 +291,8 @@ export default async function AdminUxObserverEngagementPage({
     resolveHealthLevel,
     toRateText,
   });
-  const gatewayDebugStatusLabel = toStringValue(
-    gatewayOverview?.session.status ?? selectedSession?.status,
-    appliedGatewaySessionStatusLabel,
-  );
-  const debugPayloadText = buildDebugPayloadText({
+  const mainPanelsProps = buildAdminUxMainPanelsProps({
     activePanel,
-    aiRuntimeDryRunResult,
-    aiRuntimeProviders,
-    aiRuntimeSummary,
-    gatewayChannelFilter,
-    gatewayOverview,
-    gatewayProviderFilter,
-    gatewayRecentEvents,
-    gatewaySourceFilter,
-    gatewayStatusFilter,
-    gatewayTelemetry,
-    releaseHealthAlertCount,
-    releaseHealthAlertFirstAppearanceCount,
-    releaseHealthAlertLatest,
-    releaseHealthAlertedRunCount,
-  });
-  const debugContextRows = buildDebugContextRows({
-    activePanel,
-    gatewaySessionScopeLabel,
-    gatewaySessionsSource: toStringValue(gatewaySessionsSource, 'n/a'),
-    gatewayStatusLabel: gatewayDebugStatusLabel,
-    hours,
-    releaseRiskLabel: healthLabel(releaseHealthAlertRiskLevel),
-    runtimeHealthLabel: toStringValue(aiRuntimeSummary.health, 'n/a'),
-    selectedSessionId,
-  });
-  const debugEventsSampleCount = Array.isArray(gatewayRecentEvents)
-    ? gatewayRecentEvents.slice(0, 10).length
-    : 0;
-  const gatewayLiveBodyProps = {
-    activePanel,
-    appliedGatewaySessionChannelFilter,
-    appliedGatewaySessionProviderFilter,
-    appliedGatewaySessionStatusInputValue,
-    buildEventsCsv,
-    closeInfoMessage,
-    compactInfoMessage,
-    eventQuery,
-    eventsLimit,
-    eventTypeFilter,
-    gatewayError,
-    gatewayOverview,
-    gatewayRecentEvents,
-    gatewaySessionScopeLabel,
-    gatewaySessions,
-    gatewaySessionsSource,
-    gatewaySourceFilter,
-    hours,
-    keepRecentValue,
-    selectedSession,
-    selectedSessionClosed,
-    selectedSessionId,
-    toDurationText,
-    topGatewayProvider,
-  };
-  const gatewayTelemetryBodyProps = {
-    activePanel,
-    appliedGatewayChannelFilter,
-    appliedGatewayProviderFilter,
-    appliedGatewaySessionStatusInputValue,
-    channelUsageCard: (
-      <BreakdownListCard
-        emptyLabel="No channel usage in current sample."
-        items={gatewayTelemetryChannelUsage}
-        title="Channel usage (sample)"
-      />
-    ),
-    compactionTrendCard: (
-      <GatewayCompactionHourlyTrendCard
-        compactEmptyState
-        emptyLabel="No compaction events in current sample."
-        items={gatewayCompactionHourlyTrend}
-        title="Gateway compaction trend (UTC)"
-      />
-    ),
-    eventCounters: gatewayEventCounters,
-    eventQuery,
-    eventsLimit,
-    eventTypeFilter,
-    gatewayScopeOverridesApplied,
-    gatewayScopeRows,
-    gatewaySourceFilter,
-    hours,
-    providerUsageCard: (
-      <BreakdownListCard
-        emptyLabel="No provider usage in current sample."
-        items={gatewayTelemetryProviderUsage}
-        title="Provider usage (sample)"
-      />
-    ),
-    resetScopeHref: buildPanelHref(activePanel),
-    riskSignals: gatewayRiskSignalsView,
-    selectedSessionId,
-    statCards: gatewayTelemetryStatCards,
-    telemetryError: gatewayTelemetryError,
-    thresholdsCard: (
-      <GatewayTelemetryThresholdsCard thresholds={gatewayTelemetryThresholds} />
-    ),
-  };
-  const runtimeBodyProps = {
     aiFailuresCsv,
     aiPrompt,
     aiProvidersCsv,
@@ -418,214 +302,104 @@ export default async function AdminUxObserverEngagementPage({
     aiRuntimeDryRunResult,
     aiRuntimeHealthError,
     aiRuntimeHealthGeneratedAt,
+    aiRuntimeHealthLevel,
     aiRuntimeProviders,
-    aiRuntimeRoleStates: aiRuntimeRoleStatesBase,
+    aiRuntimeRoleStatesBase,
     aiRuntimeSummary,
     aiTimeoutMs,
-    hours,
-    panel: activePanel,
-    roleOptions: [...AI_RUNTIME_ROLES],
-    scopeFields: {
-      eventQuery,
-      eventTypeFilter,
-      eventsLimit,
-      gatewaySessionStatusInputValue: appliedGatewaySessionStatusInputValue,
-      gatewaySourceFilter,
-      selectedSessionId,
-      sessionChannelFilter: appliedGatewaySessionChannelFilter,
-      sessionProviderFilter: appliedGatewaySessionProviderFilter,
-    },
-  };
-  const gatewayPanelsProps = {
-    gatewayHealthBadgeClassName: healthBadgeClass(gatewayHealthLevel),
-    gatewayHealthLabel: healthLabel(gatewayHealthLevel),
-    liveBodyProps: gatewayLiveBodyProps,
-    showGatewayHealthBadge: gatewayOverview !== null,
-    telemetryBodyProps: gatewayTelemetryBodyProps,
-    telemetryHealthBadgeClassName: healthBadgeClass(
-      resolvedGatewayTelemetryHealthLevel,
-    ),
-    telemetryHealthLabel: healthLabel(resolvedGatewayTelemetryHealthLevel),
-  };
-  const runtimePanelProps = {
-    bodyProps: runtimeBodyProps,
-    runtimeHealthBadgeClassName: healthBadgeClass(aiRuntimeHealthLevel),
-    runtimeHealthLabel: healthLabel(aiRuntimeHealthLevel),
-  };
-  const engagementOverviewProps = {
-    digestOpenRateText: toRateText(kpis.digestOpenRate),
+    appliedGatewayChannelFilter,
+    appliedGatewayProviderFilter,
+    appliedGatewaySessionChannelFilter,
+    appliedGatewaySessionProviderFilter,
+    appliedGatewaySessionStatusInputValue,
+    appliedGatewaySessionStatusLabel,
+    closeInfoMessage,
+    compactInfoMessage,
+    density,
+    densityTotal,
     engagementAvgSessionSeconds,
+    engagementHealthSignals,
     engagementSessionCount,
-    followRateText: toRateText(kpis.followRate),
-    return24hRateText: toRateText(kpis.return24h),
-    shouldCompact: shouldCompactEngagementOverview,
-  };
-  const engagementHealthProps = {
-    signals: engagementHealthSignals,
-  };
-  const releaseHealthSectionProps = {
-    breakdownRows: releaseBreakdownRows,
-    hourlyTrendCard: (
-      <ReleaseHealthAlertHourlyTrendCard
-        compactEmptyState
-        emptyLabel="No release-health alert hourly trend data in current window."
-        items={releaseHealthAlertHourlyTrend}
-        title="Release-health alert hourly trend (UTC)"
-      />
-    ),
-    releaseAlertsCount: `${releaseHealthAlertCount}`,
-    releaseFirstAppearancesCount: `${releaseHealthAlertFirstAppearanceCount}`,
-    releaseLatestReceivedAt: releaseHealthAlertLatestReceivedAt,
-    releaseLatestRunLabel: releaseHealthAlertLatestRunLabel,
-    releaseLatestRunUrl:
-      typeof releaseHealthAlertLatest?.runUrl === 'string'
-        ? releaseHealthAlertLatest.runUrl
-        : null,
-    releaseRiskBadgeClassName: healthBadgeClass(releaseHealthAlertRiskLevel),
-    releaseRiskLabel: healthLabel(releaseHealthAlertRiskLevel),
-    releaseRunsCount: `${releaseHealthAlertedRunCount}`,
-  };
-  const feedPreferenceKpisProps = {
-    comfortDensityShareText: toRateText(kpis.densityComfortRate),
-    compactDensityShareText: toRateText(kpis.densityCompactRate),
-    hintDismissRateText: toRateText(kpis.hintDismissRate),
-    legacyFocusShareText: toRateText(kpis.viewModeFocusRate),
-    observerModeShareText: toRateText(kpis.viewModeObserverRate),
-    shouldCompact: shouldCompactFeedPreferenceKpis,
-  };
-  const multimodalTelemetrySectionProps = {
-    breakdownRows: multimodalBreakdownRows,
-    coverageRiskBadgeClassName: healthBadgeClass(multimodalOverallLevel),
-    coverageRiskLabel: healthLabel(multimodalOverallLevel),
-    hourlyTrendCard: (
-      <HourlyTrendCard
-        compactEmptyState
-        emptyLabel="No hourly multimodal trend data in current window."
-        items={multimodalHourlyTrend}
-        title="Hourly trend (UTC)"
-      />
-    ),
-    invalidQueryErrorsValue: `${toNumber(multimodalGuardrails.invalidQueryErrors)}`,
-    invalidQueryShareText: toRateText(multimodalGuardrails.invalidQueryRate),
+    eventQuery,
+    eventsLimit,
+    eventTypeFilter,
+    gatewayChannelFilter,
+    gatewayCompactionHourlyTrend,
+    gatewayError,
+    gatewayEventCounters,
+    gatewayHealthLevel,
+    gatewayOverview,
+    gatewayProviderFilter,
+    gatewayRecentEvents,
+    gatewayRiskSignalsView,
+    gatewayScopeOverridesApplied,
+    gatewayScopeRows,
+    gatewaySessionScopeLabel,
+    gatewaySessions,
+    gatewaySessionsSource,
+    gatewaySourceFilter,
+    gatewayStatusFilter,
+    gatewayTelemetry,
+    gatewayTelemetryChannelUsage,
+    gatewayTelemetryError,
+    gatewayTelemetryProviderUsage,
+    gatewayTelemetrySessions,
+    gatewayTelemetryStatCards,
+    gatewayTelemetryThresholds,
+    hint,
+    hintInteractionTotal,
+    hours,
+    keepRecentValue,
+    kpis,
+    multimodalBreakdownRows,
+    multimodalGuardrails,
+    multimodalHourlyTrend,
+    multimodalOverallLevel,
     multimodalStatCards,
-  };
-  const predictionMarketSectionProps = {
-    accuracyBadgeClassName: healthBadgeClass(predictionAccuracyLevel),
-    accuracyLabel: healthLabel(predictionAccuracyLevel),
-    averageStakeText: toFixedText(predictionTotals.averageStakePoints),
-    cohortsByOutcomeRows: predictionCohortsByOutcomeView,
-    cohortsByStakeBandRows: predictionCohortsByStakeBandView,
-    cohortThresholdSummary: predictionCohortThresholdSummary,
-    correctPredictions: toNumber(predictionTotals.correctPredictions),
-    filterScopeMixCard: (
-      <BreakdownListCard
-        compactEmptyState
-        emptyLabel="No scope-switch data in current window."
-        items={predictionFilterByScopeBreakdown}
-        title="Filter scope mix"
-      />
-    ),
-    filterSwitchesValue: `${toNumber(predictionFilterTelemetry.totalSwitches)}`,
-    filterSwitchShareText: toRateText(kpis.predictionFilterSwitchShare),
-    filterValueMixCard: (
-      <BreakdownListCard
-        compactEmptyState
-        emptyLabel="No filter-value data in current window."
-        items={predictionFilterByFilterBreakdown}
-        title="Filter value mix"
-      />
-    ),
-    historyScopeRows: predictionHistoryScopeStates,
-    hourlyTrendCard: (
-      <PredictionHourlyTrendCard
-        compactEmptyState
-        emptyLabel="No hourly prediction trend data in current window."
-        items={predictionHourlyTrend}
-        title="Prediction hourly trend (UTC)"
-      />
-    ),
-    nonDefaultSortShareText: toRateText(kpis.predictionNonDefaultSortRate),
-    outcomeMixCard: (
-      <BreakdownListCard
-        compactEmptyState
-        emptyLabel="No prediction outcomes in current window."
-        items={predictionOutcomesBreakdown}
-        title="Outcome mix"
-      />
-    ),
-    participationRateText: toRateText(kpis.predictionParticipationRate),
+    predictionAccuracyLevel,
+    predictionCohortThresholdSummary,
+    predictionCohortsByOutcomeView,
+    predictionCohortsByStakeBandView,
+    predictionFilterByFilterBreakdown,
+    predictionFilterByScopeAndFilter,
+    predictionFilterByScopeBreakdown,
+    predictionFilterTelemetry,
+    predictionHistoryScopeStates,
+    predictionHourlyTrend,
+    predictionOutcomesBreakdown,
+    predictionResolutionWindowThresholds,
+    predictionSortByScopeAndSort,
+    predictionSortByScopeBreakdown,
+    predictionSortBySortBreakdown,
+    predictionSortTelemetry,
     predictionStatCards,
-    resolvedPredictions: toNumber(predictionTotals.resolvedPredictions),
-    scopeFilterMatrixRows: predictionFilterByScopeAndFilter,
-    scopeSortMatrixRows: predictionSortByScopeAndSort,
-    sortScopeMixCard: (
-      <BreakdownListCard
-        compactEmptyState
-        emptyLabel="No sort scope data in current window."
-        items={predictionSortByScopeBreakdown}
-        title="Sort scope mix"
-      />
-    ),
-    sortSwitchesValue: `${toNumber(predictionSortTelemetry.totalSwitches)}`,
-    sortSwitchShareText: toRateText(kpis.predictionSortSwitchShare),
-    sortValueMixCard: (
-      <BreakdownListCard
-        compactEmptyState
-        emptyLabel="No sort-value data in current window."
-        items={predictionSortBySortBreakdown}
-        title="Sort value mix"
-      />
-    ),
-    window30d: predictionWindow30dView,
-    window7d: predictionWindow7dView,
-    windowThresholdCriticalText: toRateText(
-      predictionResolutionWindowThresholds.accuracyRate.criticalBelow,
-    ),
-    windowThresholdMinSample:
-      predictionResolutionWindowThresholds.minResolvedPredictions,
-    windowThresholdWatchText: toRateText(
-      predictionResolutionWindowThresholds.accuracyRate.watchBelow,
-    ),
-  };
-  const styleFusionMetricsSectionProps = {
-    copyRiskBadgeClassName: healthBadgeClass(styleFusionCopyRiskLevel),
-    copyRiskLabel: healthLabel(styleFusionCopyRiskLevel),
-    fusionRiskBadgeClassName: healthBadgeClass(styleFusionRiskLevel),
-    fusionRiskLabel: healthLabel(styleFusionRiskLevel),
-    metrics: styleFusionMetrics,
-  };
-  const debugDiagnosticsSectionProps = {
-    attentionSessionsCount: `${toNumber(gatewayTelemetrySessions.attention)}`,
-    debugContextRows,
-    debugPayloadText,
-    eventsSampleCount: debugEventsSampleCount,
-    releaseAlertsCount: `${releaseHealthAlertCount}`,
-    runtimeProvidersCount: aiRuntimeProviders.length,
-  };
-  const feedInteractionCountersProps = {
-    density: {
-      comfort: toNumber(density.comfort),
-      compact: toNumber(density.compact),
-      total: densityTotal,
-      unknown: toNumber(density.unknown),
-    },
-    hint: {
-      dismissCount: toNumber(hint.dismissCount),
-      switchCount: toNumber(hint.switchCount),
-      total: hintInteractionTotal,
-    },
-    shouldCompact: shouldCompactFeedPreferenceEvents,
-    viewMode: {
-      focus: toNumber(viewMode.focus),
-      observer: toNumber(viewMode.observer),
-      total: viewModeTotal,
-      unknown: toNumber(viewMode.unknown),
-    },
-  };
-  const topSegmentsProps = {
+    predictionTotals,
+    predictionWindow30dView,
+    predictionWindow7dView,
+    releaseBreakdownRows,
+    releaseHealthAlertCount,
+    releaseHealthAlertFirstAppearanceCount,
+    releaseHealthAlertHourlyTrend,
+    releaseHealthAlertLatest,
+    releaseHealthAlertLatestReceivedAt,
+    releaseHealthAlertLatestRunLabel,
+    releaseHealthAlertRiskLevel,
+    releaseHealthAlertedRunCount,
+    resolvedGatewayTelemetryHealthLevel,
+    selectedSession,
+    selectedSessionClosed,
+    selectedSessionId,
+    shouldCompactEngagementOverview,
     shouldCompactFeedPreferenceEvents,
-    topSegments: topSegmentsView,
-  };
+    shouldCompactFeedPreferenceKpis,
+    styleFusionCopyRiskLevel,
+    styleFusionMetrics,
+    styleFusionRiskLevel,
+    topGatewayProvider,
+    topSegmentsView,
+    viewMode,
+    viewModeTotal,
+  });
 
   return (
     <main className="mx-auto grid w-full max-w-7xl gap-4" id="main-content">
@@ -644,21 +418,7 @@ export default async function AdminUxObserverEngagementPage({
         panelTabs={panelTabsView}
         stickyKpis={stickyKpisView}
       />
-      <AdminUxMainPanels
-        activePanel={activePanel}
-        debugDiagnosticsSectionProps={debugDiagnosticsSectionProps}
-        engagementHealthProps={engagementHealthProps}
-        engagementOverviewProps={engagementOverviewProps}
-        feedInteractionCountersProps={feedInteractionCountersProps}
-        feedPreferenceKpisProps={feedPreferenceKpisProps}
-        gatewayPanelsProps={gatewayPanelsProps}
-        multimodalTelemetrySectionProps={multimodalTelemetrySectionProps}
-        predictionMarketSectionProps={predictionMarketSectionProps}
-        releaseHealthSectionProps={releaseHealthSectionProps}
-        runtimePanelProps={runtimePanelProps}
-        styleFusionMetricsSectionProps={styleFusionMetricsSectionProps}
-        topSegmentsProps={topSegmentsProps}
-      />
+      <AdminUxMainPanels activePanel={activePanel} {...mainPanelsProps} />
     </main>
   );
 }
