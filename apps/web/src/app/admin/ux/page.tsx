@@ -1,9 +1,8 @@
-import { AdminUxPageContent } from './components/admin-ux-page-content';
+import { AdminUxPageLoadState } from './components/admin-ux-page-load-state';
 import {
   loadAdminUxPageData,
   resolveAdminUxPageQueryState,
 } from './components/admin-ux-page-orchestration';
-import { AdminUxPageErrorState } from './components/admin-ux-page-shell-render';
 
 export default async function AdminUxObserverEngagementPage({
   searchParams,
@@ -15,21 +14,11 @@ export default async function AdminUxObserverEngagementPage({
   const { activePanel, hours } = queryState;
   const dataLoadResult = await loadAdminUxPageData(queryState);
 
-  if (dataLoadResult.error || dataLoadResult.mainPanelsProps === null) {
-    return (
-      <AdminUxPageErrorState
-        message={dataLoadResult.error ?? 'Unable to load admin UX metrics.'}
-      />
-    );
-  }
-
   return (
-    <AdminUxPageContent
+    <AdminUxPageLoadState
       activePanel={activePanel}
+      dataLoadResult={dataLoadResult}
       hours={hours}
-      kpis={dataLoadResult.kpis}
-      mainPanelsProps={dataLoadResult.mainPanelsProps}
-      windowHours={dataLoadResult.observerData?.windowHours}
     />
   );
 }
