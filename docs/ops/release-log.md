@@ -33,6 +33,39 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX domain builder split + contract tightening pass
+
+- Scope: complete the next cleanup phase by splitting `AdminUxMainPanels` prop builders by domain and tightening builder contracts around shared section-data types.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 11:43 -> 2026-03-04 11:53.
+- Changes:
+  - Added `apps/web/src/app/admin/ux/components/admin-ux-main-panel-builder-types.ts`:
+    - shared builder contracts and panel-prop aliases for domain builders.
+  - Added `apps/web/src/app/admin/ux/components/admin-ux-gateway-runtime-prop-builders.tsx`:
+    - gateway/runtime/debug prop assembly.
+  - Added `apps/web/src/app/admin/ux/components/admin-ux-engagement-prop-builders.tsx`:
+    - engagement/prediction/release/style prop assembly.
+  - Updated `apps/web/src/app/admin/ux/components/admin-ux-main-panel-prop-builders.tsx`:
+    - reduced to a thin orchestrator that merges both domain builders.
+  - Updated `apps/web/src/app/admin/ux/components/admin-ux-section-prep.ts`:
+    - exported `AdminUxSectionData` type alias for shared contracts.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - switched from large field-by-field payload to shared `sectionData` handoff,
+    - reduced orchestration surface and removed duplicated prop plumbing.
+  - `admin/ux/page.tsx` reduced to `278` lines.
+- Validation:
+  - `npx ultracite fix apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/admin-ux-section-prep.ts apps/web/src/app/admin/ux/components/admin-ux-main-panel-builder-types.ts apps/web/src/app/admin/ux/components/admin-ux-gateway-runtime-prop-builders.tsx apps/web/src/app/admin/ux/components/admin-ux-engagement-prop-builders.tsx apps/web/src/app/admin/ux/components/admin-ux-main-panel-prop-builders.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+  - `npm run release:alert-risk:reassess -- --apply`: `status=already_enabled` (`RELEASE_HEALTH_ALERT_RISK_STRICT=true`).
+  - `npm run release:railway:gate:strict`: pass (after Railway deployment reached `SUCCESS`).
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: `status=pass` (`generatedAtUtc=2026-03-04T11:53:16.164Z`).
+- Execution:
+  - Commit: `bace0b37d8167d96dfd7eba2c696f31f6bb28332` pushed to `main`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: split remaining `page.tsx` orchestration into `load*` helpers (query-state parsing vs data-fetching) to make entrypoint mostly declarative.
+
 ### 2026-03-04 - admin UX panel-prop builder extraction pass
 
 - Scope: continue SSR entrypoint cleanup by moving heavy `AdminUxMainPanels` prop assembly from `admin/ux/page.tsx` into a dedicated builder module.
