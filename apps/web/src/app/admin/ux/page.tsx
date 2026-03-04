@@ -6,9 +6,11 @@ import {
 import {
   AdminUxPageErrorState,
   AdminUxPageHeader,
+} from './components/admin-ux-page-shell-render';
+import {
   buildAdminUxPanelChromeView,
   resolveAdminUxWindowHours,
-} from './components/admin-ux-page-shell';
+} from './components/admin-ux-page-shell-view-model';
 import { AdminUxPanelChrome } from './components/admin-ux-panel-chrome';
 
 export default async function AdminUxObserverEngagementPage({
