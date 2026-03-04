@@ -39,6 +39,16 @@ import {
   TopSegmentsSection,
 } from './components/engagement-sections';
 import {
+  GATEWAY_CHANNEL_QUERY_PATTERN,
+  GATEWAY_PROVIDER_QUERY_PATTERN,
+  GATEWAY_SESSION_STATUS_QUERY_PATTERN,
+  GATEWAY_SESSION_STATUS_VALUES,
+  parseOptionalFilteredQueryString,
+  resolveGatewayEventsRequestFilters,
+  resolveGatewayQueryState,
+  resolveGatewaySessionMutations,
+} from './components/gateway-query-state';
+import {
   GatewayPanels,
   RuntimePanel,
 } from './components/gateway-runtime-panels';
@@ -665,13 +675,6 @@ interface ReleaseHealthAlertHourlyTrendItem {
 const DEFAULT_API_BASE = 'http://localhost:4000/api';
 const TRAILING_SLASH_REGEX = /\/$/;
 const PREDICTION_OUTCOME_LABEL_SEGMENT_PATTERN = /[_\s-]+/;
-const GATEWAY_CHANNEL_QUERY_PATTERN = /^[a-z0-9][a-z0-9._:-]{1,63}$/;
-const GATEWAY_PROVIDER_QUERY_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
-const GATEWAY_SOURCE_QUERY_PATTERN = /^[a-z]+$/;
-const GATEWAY_SESSION_STATUS_QUERY_PATTERN = /^[a-z]+$/;
-const GATEWAY_EVENT_TYPE_QUERY_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,119}$/;
-const GATEWAY_SOURCE_VALUES = new Set(['db', 'memory']);
-const GATEWAY_SESSION_STATUS_VALUES = new Set(['active', 'closed']);
 const ADMIN_UX_PANELS = [
   'all',
   'gateway',
@@ -1351,48 +1354,6 @@ const toDurationText = (value: number | null): string => {
   return `${(value / 1000).toFixed(1)}s`;
 };
 
-const parseOptionalFilteredQueryString = (
-  value: unknown,
-  {
-    maxLength,
-    pattern,
-  }: {
-    maxLength: number;
-    pattern: RegExp;
-  },
-): string | null => {
-  if (typeof value !== 'string') {
-    return null;
-  }
-  const normalized = value.trim().toLowerCase();
-  if (normalized.length === 0 || normalized.length > maxLength) {
-    return null;
-  }
-  return pattern.test(normalized) ? normalized : null;
-};
-
-const parseOptionalGatewayStatusScope = (value: unknown): string | null => {
-  const parsed = parseOptionalFilteredQueryString(value, {
-    maxLength: 16,
-    pattern: GATEWAY_SESSION_STATUS_QUERY_PATTERN,
-  });
-  if (!(parsed && GATEWAY_SESSION_STATUS_VALUES.has(parsed))) {
-    return null;
-  }
-  return parsed;
-};
-
-const parseOptionalGatewaySourceScope = (value: unknown): string | null => {
-  const parsed = parseOptionalFilteredQueryString(value, {
-    maxLength: 16,
-    pattern: GATEWAY_SOURCE_QUERY_PATTERN,
-  });
-  if (!(parsed && GATEWAY_SOURCE_VALUES.has(parsed))) {
-    return null;
-  }
-  return parsed;
-};
-
 const formatGatewayScopeLabel = ({
   channel,
   provider,
@@ -1448,24 +1409,6 @@ const resolveGatewaySessionScope = ({
   };
 };
 
-const resolveGatewayEventsRequestFilters = ({
-  eventType,
-  sessionFilters,
-  queryProvider,
-}: {
-  eventType: string;
-  sessionFilters: {
-    provider: string | null;
-  };
-  queryProvider: string | null;
-}): {
-  eventType: string | null;
-  provider: string | null;
-} => ({
-  eventType: eventType === 'all' ? null : eventType,
-  provider: sessionFilters.provider ?? queryProvider,
-});
-
 const resolveAdminUxPanel = (value: unknown): AdminUxPanel => {
   if (typeof value !== 'string') {
     return 'gateway';
@@ -1476,91 +1419,6 @@ const resolveAdminUxPanel = (value: unknown): AdminUxPanel => {
   }
   return normalized as AdminUxPanel;
 };
-
-type AdminUxPageSearchParams =
-  | Record<string, string | string[] | undefined>
-  | undefined;
-
-const resolveGatewayQueryState = (
-  resolvedSearchParams: AdminUxPageSearchParams,
-) => {
-  const gatewayChannelFilter = parseOptionalFilteredQueryString(
-    resolvedSearchParams?.gatewayChannel,
-    {
-      maxLength: 64,
-      pattern: GATEWAY_CHANNEL_QUERY_PATTERN,
-    },
-  );
-  const gatewayProviderFilter = parseOptionalFilteredQueryString(
-    resolvedSearchParams?.gatewayProvider,
-    {
-      maxLength: 64,
-      pattern: GATEWAY_PROVIDER_QUERY_PATTERN,
-    },
-  );
-  const gatewaySourceFilter = parseOptionalGatewaySourceScope(
-    resolvedSearchParams?.gatewaySource,
-  );
-  const gatewayStatusFilter = parseOptionalGatewayStatusScope(
-    resolvedSearchParams?.gatewayStatus,
-  );
-
-  const rawSessionId = resolvedSearchParams?.session;
-  const sessionIdFromQuery =
-    typeof rawSessionId === 'string' && rawSessionId.trim().length > 0
-      ? rawSessionId.trim()
-      : null;
-  const compactRequested = isTruthyQueryFlag(resolvedSearchParams?.compact);
-  const closeRequested = isTruthyQueryFlag(resolvedSearchParams?.close);
-
-  const rawKeepRecent = resolvedSearchParams?.keepRecent;
-  const keepRecentFromQuery =
-    typeof rawKeepRecent === 'string'
-      ? Number.parseInt(rawKeepRecent, 10)
-      : Number.NaN;
-  const keepRecent =
-    Number.isFinite(keepRecentFromQuery) && keepRecentFromQuery > 0
-      ? Math.min(Math.max(keepRecentFromQuery, 5), 500)
-      : undefined;
-
-  const rawEventsLimit = resolvedSearchParams?.eventsLimit;
-  const eventsLimitFromQuery =
-    typeof rawEventsLimit === 'string'
-      ? Number.parseInt(rawEventsLimit, 10)
-      : Number.NaN;
-  const eventsLimit =
-    Number.isFinite(eventsLimitFromQuery) &&
-    [8, 20, 50].includes(eventsLimitFromQuery)
-      ? eventsLimitFromQuery
-      : 8;
-
-  const rawEventType = resolvedSearchParams?.eventType;
-  const eventTypeFilter =
-    parseOptionalFilteredQueryString(rawEventType, {
-      maxLength: 120,
-      pattern: GATEWAY_EVENT_TYPE_QUERY_PATTERN,
-    }) ?? 'all';
-  const rawEventQuery = resolvedSearchParams?.eventQuery;
-  const eventQuery =
-    typeof rawEventQuery === 'string' ? rawEventQuery.trim() : '';
-
-  return {
-    gatewayChannelFilter,
-    gatewayProviderFilter,
-    gatewaySourceFilter,
-    gatewayStatusFilter,
-    sessionIdFromQuery,
-    compactRequested,
-    closeRequested,
-    keepRecent,
-    eventsLimit,
-    eventTypeFilter,
-    eventQuery,
-  };
-};
-
-const isTruthyQueryFlag = (value: unknown): boolean =>
-  value === '1' || value === 'true' || value === 'yes';
 
 const toCsvCell = (value: string): string => `"${value.replace(/"/g, '""')}"`;
 
@@ -1801,51 +1659,6 @@ const deriveReleaseHealthAlertRiskLevel = ({
     return 'watch';
   }
   return 'healthy';
-};
-
-const resolveGatewaySessionMutations = async ({
-  closeRequested,
-  compactRequested,
-  selectedSessionClosed,
-  selectedSessionId,
-  keepRecent,
-}: {
-  closeRequested: boolean;
-  compactRequested: boolean;
-  selectedSessionClosed: boolean;
-  selectedSessionId: string | null;
-  keepRecent?: number;
-}) => {
-  let compactInfoMessage: string | null = null;
-  let compactErrorMessage: string | null = null;
-  let closeInfoMessage: string | null = null;
-  let closeErrorMessage: string | null = null;
-
-  if (closeRequested && selectedSessionId && selectedSessionClosed) {
-    closeInfoMessage = 'Session already closed.';
-  } else if (closeRequested && selectedSessionId) {
-    const closeResult = await closeAgentGatewaySession(selectedSessionId);
-    closeInfoMessage = closeResult.message;
-    closeErrorMessage = closeResult.error;
-  }
-
-  if (compactRequested && selectedSessionId && selectedSessionClosed) {
-    compactErrorMessage = 'Compaction is disabled for closed sessions.';
-  } else if (compactRequested && selectedSessionId && !closeRequested) {
-    const compactResult = await compactAgentGatewaySession(
-      selectedSessionId,
-      keepRecent,
-    );
-    compactInfoMessage = compactResult.message;
-    compactErrorMessage = compactResult.error;
-  }
-
-  return {
-    compactInfoMessage,
-    compactErrorMessage,
-    closeInfoMessage,
-    closeErrorMessage,
-  };
 };
 
 const apiBaseUrl = (): string =>
@@ -2212,6 +2025,19 @@ const closeAgentGatewaySession = async (
     };
   }
 };
+
+const resolveGatewaySessionMutationsWithApi = (args: {
+  closeRequested: boolean;
+  compactRequested: boolean;
+  selectedSessionClosed: boolean;
+  selectedSessionId: string | null;
+  keepRecent?: number;
+}) =>
+  resolveGatewaySessionMutations({
+    ...args,
+    closeAgentGatewaySession,
+    compactAgentGatewaySession,
+  });
 
 const fetchAgentGatewayRecentEvents = async (
   sessionId: string,
@@ -2588,7 +2414,7 @@ export default async function AdminUxObserverEngagementPage({
     gatewaySessionsSource,
     keepRecent,
     resolveGatewayEventsRequestFilters,
-    resolveGatewaySessionMutations,
+    resolveGatewaySessionMutations: resolveGatewaySessionMutationsWithApi,
     sessionIdFromQuery,
     toStringValue,
   });
