@@ -33,6 +33,29 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX page layout wrapper extraction pass
+
+- Scope: keep `admin/ux/page.tsx` focused on orchestration by extracting the page-level `<main>` shell wrapper into a dedicated render component.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 14:23 -> 2026-03-04 14:31.
+- Changes:
+  - Updated `apps/web/src/app/admin/ux/components/admin-ux-page-shell-render.tsx`:
+    - added `AdminUxPageLayout` wrapper (`<main id="main-content" className="mx-auto grid w-full max-w-7xl gap-4">` layout shell).
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - replaced inline `<main ...>` with `<AdminUxPageLayout>...</AdminUxPageLayout>`.
+- Validation:
+  - `npx ultracite fix apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/admin-ux-page-shell-render.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+  - `npm run release:alert-risk:reassess -- --apply`: `status=already_enabled` (`RELEASE_HEALTH_ALERT_RISK_STRICT=true`).
+  - `npm run release:railway:gate:strict`: pass (after Railway deployment reached `SUCCESS` for `web` and `api`).
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: `status=pass` (`generatedAtUtc=2026-03-04T14:30:37.911Z`) after one transient network retry.
+- Execution:
+  - Commit: `326f8b3da4d376d3744b5cca0742258ea617d861` pushed to `main`.
+- Incidents:
+  - transient `launch-gate` failure while fetching Railway GraphQL (`os error 10054`); immediate retry succeeded.
+- Follow-ups:
+  - next pass: optionally extract a small `AdminUxPageContent` render component to fully hide header/chrome/panels composition from `page.tsx`.
+
 ### 2026-03-04 - admin UX page shell layering split pass
 
 - Scope: enforce cleaner layering by splitting `admin-ux-page-shell` into dedicated render and view-model modules.
