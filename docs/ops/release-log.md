@@ -33,6 +33,37 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX debug payload mapper extraction pass
+
+- Scope: continue reducing `admin/ux/page.tsx` by moving debug/runtime payload shaping into shared view-model helpers.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 07:22 -> 2026-03-04 07:27.
+- Changes:
+  - Extended `apps/web/src/app/admin/ux/components/admin-ux-view-models.ts` with:
+    - `buildDebugPayloadText`,
+    - `buildDebugContextRows`.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - replaced inline debug payload object + JSON serialization with helper call,
+    - replaced inline debug context row assembly with helper call,
+    - replaced payload-derived sample length access with explicit `debugEventsSampleCount`.
+  - `admin/ux/page.tsx` reduced to `3817` lines.
+- Validation:
+  - `npx ultracite fix apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/admin-ux-view-models.ts`: pass.
+  - `npm --workspace apps/web run build`: pass.
+  - `npm run release:railway:gate:strict`: pass.
+- Execution:
+  - Commit: `0d90800d985acb8a6f5746b053b1eee396c26746` pushed to `main`.
+  - Railway production deployments:
+    - `SocialProject`: `a9714495-6ead-4eae-93f7-12d7d2aee661` (`SUCCESS`).
+    - `api`: `de2d2c39-cf92-4ba0-95b0-03b7041834bb` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-04T07:27:10.778Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - continue extracting remaining admin UX page orchestration blocks into dedicated helper modules until server entrypoint is mapper-free.
+
 ### 2026-03-04 - admin UX telemetry and prediction mapper extraction pass
 
 - Scope: continue shrinking `admin/ux/page.tsx` by extracting mid-page telemetry/prediction view-model builders into shared helpers.
