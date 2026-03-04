@@ -19,11 +19,13 @@ const CollapsiblePanelGroup = ({
   children,
   defaultOpen = false,
   description,
+  metaLabel,
   title,
 }: {
   children: ReactNode;
   defaultOpen?: boolean;
   description: string;
+  metaLabel?: string;
   title: string;
 }) => (
   <details className="card p-4 sm:p-5" open={defaultOpen}>
@@ -32,13 +34,28 @@ const CollapsiblePanelGroup = ({
         <h3 className="font-semibold text-base text-foreground">{title}</h3>
         <p className="text-muted-foreground text-sm">{description}</p>
       </div>
-      <span className="rounded-full border border-border/45 bg-background/55 px-2 py-0.5 font-semibold text-muted-foreground text-xs uppercase tracking-wide">
-        toggle
-      </span>
+      <div className="flex items-center gap-2">
+        {metaLabel ? (
+          <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 font-semibold text-primary text-xs uppercase tracking-wide">
+            {metaLabel}
+          </span>
+        ) : null}
+        <span className="rounded-full border border-border/45 bg-background/55 px-2 py-0.5 font-semibold text-muted-foreground text-xs uppercase tracking-wide">
+          toggle
+        </span>
+      </div>
     </summary>
     <div className="mt-3 grid gap-3">{children}</div>
   </details>
 );
+
+const isNaLikeValue = (value: string): boolean => {
+  const normalized = value.trim().toLowerCase();
+  return normalized === 'n/a' || normalized === 'na';
+};
+
+const toSignalLabel = (count: number): string =>
+  `${count} signal${count === 1 ? '' : 's'}`;
 
 export const AdminUxMainPanels = ({
   activePanel,
@@ -94,22 +111,73 @@ export const AdminUxMainPanels = ({
   const isEngagementVisible = isPanelVisible('engagement');
   const renderAllMetricsGroup = ({
     children,
+    metaLabel,
     description,
     title,
   }: {
     children: ReactNode;
     description: string;
+    metaLabel?: string;
     title: string;
   }) => {
     if (!isAllMetricsPanel) {
       return children;
     }
     return (
-      <CollapsiblePanelGroup description={description} title={title}>
+      <CollapsiblePanelGroup
+        description={description}
+        metaLabel={metaLabel}
+        title={title}
+      >
         {children}
       </CollapsiblePanelGroup>
     );
   };
+  const releaseVisibleCardCount = [
+    releaseHealthSectionProps.releaseAlertsCount,
+    releaseHealthSectionProps.releaseFirstAppearancesCount,
+    releaseHealthSectionProps.releaseRunsCount,
+    releaseHealthSectionProps.releaseLatestRunLabel,
+  ].filter((value) => !isNaLikeValue(value)).length;
+  const releaseSignalCount =
+    releaseVisibleCardCount + releaseHealthSectionProps.breakdownRows.length;
+  const multimodalVisibleTopCount =
+    multimodalTelemetrySectionProps.multimodalStatCards.filter(
+      (card) => !isNaLikeValue(card.value),
+    ).length;
+  const multimodalVisibleGuardrailCount = [
+    multimodalTelemetrySectionProps.invalidQueryErrorsValue,
+    multimodalTelemetrySectionProps.invalidQueryShareText,
+  ].filter((value) => !isNaLikeValue(value)).length;
+  const multimodalSignalCount =
+    multimodalVisibleTopCount +
+    multimodalVisibleGuardrailCount +
+    multimodalTelemetrySectionProps.breakdownRows.length;
+  const predictionVisibleTopCount =
+    predictionMarketSectionProps.predictionStatCards.filter(
+      (card) => !isNaLikeValue(card.value),
+    ).length;
+  const predictionVisibleShareCount = [
+    predictionMarketSectionProps.filterSwitchShareText,
+    predictionMarketSectionProps.sortSwitchShareText,
+    predictionMarketSectionProps.nonDefaultSortShareText,
+  ].filter((value) => !isNaLikeValue(value)).length;
+  const predictionSignalCount =
+    predictionVisibleTopCount +
+    predictionVisibleShareCount +
+    predictionMarketSectionProps.cohortsByOutcomeRows.length +
+    predictionMarketSectionProps.cohortsByStakeBandRows.length +
+    predictionMarketSectionProps.historyScopeRows.length +
+    predictionMarketSectionProps.scopeFilterMatrixRows.length +
+    predictionMarketSectionProps.scopeSortMatrixRows.length;
+  const styleSignalCount =
+    styleFusionMetricsSectionProps.metrics.total +
+    styleFusionMetricsSectionProps.metrics.copy.total;
+  const feedInteractionTotalCount =
+    feedInteractionCountersProps.viewMode.total +
+    feedInteractionCountersProps.density.total +
+    feedInteractionCountersProps.hint.total;
+  const topSegmentsCount = topSegmentsProps.topSegments.length;
 
   return (
     <>
@@ -134,6 +202,7 @@ export const AdminUxMainPanels = ({
         ? renderAllMetricsGroup({
             description:
               'Release alert distribution, latest run context, and failure-mode flow.',
+            metaLabel: toSignalLabel(releaseSignalCount),
             title: 'Release health telemetry',
             children: <ReleaseHealthSection {...releaseHealthSectionProps} />,
           })
@@ -141,6 +210,9 @@ export const AdminUxMainPanels = ({
       {isEngagementVisible
         ? renderAllMetricsGroup({
             description: 'Mode, density, and hint behavior KPIs.',
+            metaLabel: feedPreferenceKpisProps.shouldCompact
+              ? 'low signal'
+              : '5 kpis',
             title: 'Feed preference summary',
             children: (
               <FeedPreferenceKpisSection
@@ -154,6 +226,7 @@ export const AdminUxMainPanels = ({
         ? renderAllMetricsGroup({
             description:
               'Coverage/error rates, provider mix, and multimodal guardrails.',
+            metaLabel: toSignalLabel(multimodalSignalCount),
             title: 'Multimodal summary',
             children: (
               <MultimodalTelemetrySection
@@ -166,6 +239,7 @@ export const AdminUxMainPanels = ({
         ? renderAllMetricsGroup({
             description:
               'Prediction quality, cohort risk, and filter/sort behavior.',
+            metaLabel: toSignalLabel(predictionSignalCount),
             title: 'Prediction telemetry summary',
             children: (
               <PredictionMarketSection {...predictionMarketSectionProps} />
@@ -175,6 +249,7 @@ export const AdminUxMainPanels = ({
       {isPanelVisible('style')
         ? renderAllMetricsGroup({
             description: 'Style-fusion and copy-action success/error rates.',
+            metaLabel: `${styleSignalCount} events`,
             title: 'Style fusion summary',
             children: (
               <StyleFusionMetricsSection {...styleFusionMetricsSectionProps} />
@@ -187,6 +262,7 @@ export const AdminUxMainPanels = ({
       {isEngagementVisible
         ? renderAllMetricsGroup({
             description: 'Raw event totals for mode/density/hint actions.',
+            metaLabel: `${feedInteractionTotalCount} events`,
             title: 'Feed interaction counters',
             children: (
               <FeedInteractionCountersSection
@@ -200,6 +276,7 @@ export const AdminUxMainPanels = ({
         ? renderAllMetricsGroup({
             description:
               'Highest-volume observer segments in the selected window.',
+            metaLabel: `${topSegmentsCount} segments`,
             title: 'Top segments',
             children: <TopSegmentsSection {...topSegmentsProps} isVisible />,
           })

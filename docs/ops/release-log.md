@@ -33,6 +33,25 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX collapsible summary counters pass
+
+- Scope: improve scan speed in `/admin/ux` (`All metrics`) by showing signal counters directly in collapsible section headers.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 18:46 -> 2026-03-04 19:02.
+- Changes:
+  - Updated `apps/web/src/app/admin/ux/components/admin-ux-main-panels.tsx`:
+    - added `metaLabel` support in `CollapsiblePanelGroup`,
+    - added per-section summary counters in header pills (`signals`, `events`, `segments`, `low signal`),
+    - derived signal counts from already prepared section props (release, multimodal, prediction, style, feed counters, top segments).
+- Validation:
+  - `npx ultracite check apps/web/src/app/admin/ux/components/admin-ux-main-panels.tsx`: pass.
+  - `npm run test:web -- --runInBand apps/web/src/__tests__/admin-ux-page.spec.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add severity-color mapping for summary counters (for example, `critical/watch/healthy`) based on risk badges to make collapsed scanning even faster.
+
 ### 2026-03-04 - admin UX hierarchy and compaction pass
 
 - Scope: reduce cognitive load on `/admin/ux` in `All metrics` mode via collapsible secondary sections, clearer KPI hierarchy, and less dense metric rows.
