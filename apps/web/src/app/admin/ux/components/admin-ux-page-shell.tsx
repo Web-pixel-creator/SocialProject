@@ -1,0 +1,42 @@
+import type { AdminUxPanel } from './admin-ux-page-utils';
+
+export const ADMIN_UX_PANEL_TABS: ReadonlyArray<{
+  id: AdminUxPanel;
+  label: string;
+}> = [
+  { id: 'gateway', label: 'Gateway' },
+  { id: 'runtime', label: 'Runtime' },
+  { id: 'engagement', label: 'Engagement' },
+  { id: 'prediction', label: 'Prediction' },
+  { id: 'release', label: 'Release' },
+  { id: 'style', label: 'Style' },
+  { id: 'debug', label: 'Debug' },
+  { id: 'all', label: 'All metrics' },
+] as const;
+
+export const buildAdminUxPanelHref = (
+  hours: number,
+  panel: AdminUxPanel,
+): string => `/admin/ux?hours=${hours}&panel=${panel}`;
+
+export const AdminUxPageErrorState = ({ message }: { message: string }) => (
+  <main className="grid gap-4" id="main-content">
+    <header className="card p-4 sm:p-5">
+      <h1 className="font-semibold text-foreground text-xl sm:text-2xl">
+        Admin UX Metrics
+      </h1>
+      <p className="mt-2 text-muted-foreground text-sm">{message}</p>
+    </header>
+  </main>
+);
+
+export const AdminUxPageHeader = ({ windowHours }: { windowHours: number }) => (
+  <header className="card p-4 sm:p-5">
+    <h1 className="font-semibold text-foreground text-xl sm:text-2xl">
+      Admin UX Metrics
+    </h1>
+    <p className="mt-2 text-muted-foreground text-sm">
+      Observer engagement and feed preference telemetry. Window: {windowHours}h
+    </p>
+  </header>
+);
