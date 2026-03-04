@@ -1,3 +1,4 @@
+import { AdminUxPanelChrome } from './components/admin-ux-panel-chrome';
 import { DebugDiagnosticsSection } from './components/debug-diagnostics-section';
 import {
   EngagementHealthSection,
@@ -3589,6 +3590,19 @@ export default async function AdminUxObserverEngagementPage({
       }),
     },
   ];
+  const panelTabsView = panelTabs.map((tab) => ({
+    active: activePanel === tab.id,
+    href: buildPanelHref(tab.id),
+    id: tab.id,
+    label: tab.label,
+  }));
+  const stickyKpisView = stickyKpis.map((kpi) => ({
+    badgeClassName: healthBadgeClass(kpi.level),
+    badgeLabel: healthLabel(kpi.level),
+    id: kpi.id,
+    label: kpi.label,
+    value: kpi.value,
+  }));
   const releaseBreakdownRows = [
     ...releaseHealthAlertByChannel.map((entry) => ({
       category: 'channel',
@@ -3920,55 +3934,11 @@ export default async function AdminUxObserverEngagementPage({
         </p>
       </header>
 
-      <section className="card grid gap-3 p-4 sm:p-5">
-        <div className="flex flex-wrap items-center gap-2">
-          {panelTabs.map((tab) => {
-            const active = activePanel === tab.id;
-            return (
-              <a
-                className={`inline-flex items-center rounded-full border px-3 py-1.5 font-semibold text-xs transition-colors ${
-                  active
-                    ? 'border-primary/70 bg-primary/15 text-primary'
-                    : 'border-border/45 bg-background/40 text-muted-foreground hover:border-primary/40 hover:text-foreground'
-                }`}
-                href={buildPanelHref(tab.id)}
-                key={tab.id}
-              >
-                {tab.label}
-              </a>
-            );
-          })}
-        </div>
-        <p className="text-muted-foreground text-xs">
-          Focus view: <span className="text-foreground">{activePanel}</span>.
-          Use tabs to reduce noise and scan one domain at a time.
-        </p>
-      </section>
-
-      <section className="sticky top-2 z-10 rounded-2xl border border-border/45 bg-card/95 px-3 py-2 backdrop-blur">
-        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-          {stickyKpis.map((kpi) => (
-            <article
-              className="flex items-center justify-between gap-2 rounded-lg border border-border/35 bg-background/45 px-3 py-2"
-              key={kpi.id}
-            >
-              <div className="min-w-0">
-                <p className="truncate text-muted-foreground text-xs uppercase tracking-wide">
-                  {kpi.label}
-                </p>
-                <p className="font-semibold text-foreground text-sm">
-                  {kpi.value}
-                </p>
-              </div>
-              <span
-                className={`${healthBadgeClass(kpi.level)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[11px] uppercase tracking-wide`}
-              >
-                {healthLabel(kpi.level)}
-              </span>
-            </article>
-          ))}
-        </div>
-      </section>
+      <AdminUxPanelChrome
+        activePanel={activePanel}
+        panelTabs={panelTabsView}
+        stickyKpis={stickyKpisView}
+      />
 
       {isPanelVisible('gateway') ? (
         <section className="card grid gap-3 p-4 sm:p-5">
