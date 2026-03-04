@@ -35,6 +35,7 @@ import {
   GatewayPanels,
   RuntimePanel,
 } from './components/gateway-runtime-panels';
+import { resolveGatewaySessionOrchestrationState } from './components/gateway-session-orchestration';
 import { MultimodalTelemetrySection } from './components/multimodal-telemetry-section';
 import { PredictionMarketSection } from './components/prediction-market-section';
 import { ReleaseHealthSection } from './components/release-health-section';
@@ -3046,64 +3047,35 @@ export default async function AdminUxObserverEngagementPage({
     providers: aiRuntimeProvidersBase,
     error: aiRuntimeHealthError,
   } = await fetchAiRuntimeHealth();
-  const selectedSession =
-    (sessionIdFromQuery
-      ? gatewaySessions.find(
-          (session) =>
-            typeof session.id === 'string' && session.id === sessionIdFromQuery,
-        )
-      : null) ??
-    gatewaySessions[0] ??
-    null;
-  const selectedSessionId =
-    selectedSession && typeof selectedSession.id === 'string'
-      ? selectedSession.id
-      : null;
-  const selectedSessionStatus = toStringValue(selectedSession?.status, '')
-    .toLowerCase()
-    .trim();
-  const selectedSessionClosed = selectedSessionStatus === 'closed';
-  const keepRecentValue = keepRecent ?? 40;
-  const gatewaySessionSource =
-    gatewaySessionsSource === 'memory' ? 'memory' : 'db';
-  const gatewayEventsRequestFilters = resolveGatewayEventsRequestFilters({
-    eventType: eventTypeFilter,
-    sessionFilters: gatewaySessionFilters,
-    queryProvider: gatewayProviderFilter,
-  });
-
   const {
-    compactInfoMessage,
-    compactErrorMessage,
     closeInfoMessage,
-    closeErrorMessage,
-  } = await resolveGatewaySessionMutations({
-    closeRequested,
-    compactRequested,
+    compactInfoMessage,
+    gatewayError,
+    gatewayOverview,
+    gatewayRecentEvents,
+    keepRecentValue,
+    selectedSession,
     selectedSessionClosed,
     selectedSessionId,
+  } = await resolveGatewaySessionOrchestrationState({
+    closeRequested,
+    compactRequested,
+    eventQuery,
+    eventTypeFilter,
+    eventsLimit,
+    fetchAgentGatewayOverview,
+    fetchAgentGatewayRecentEvents,
+    gatewayProviderFilter,
+    gatewaySessionFilters,
+    gatewaySessions,
+    gatewaySessionsError,
+    gatewaySessionsSource,
     keepRecent,
+    resolveGatewayEventsRequestFilters,
+    resolveGatewaySessionMutations,
+    sessionIdFromQuery,
+    toStringValue,
   });
-
-  const { data: gatewayOverview, error: gatewayOverviewError } =
-    selectedSessionId !== null
-      ? await fetchAgentGatewayOverview(selectedSessionId, gatewaySessionSource)
-      : { data: null, error: null };
-  const { data: gatewayRecentEvents, error: gatewayEventsError } =
-    selectedSessionId !== null
-      ? await fetchAgentGatewayRecentEvents(selectedSessionId, eventsLimit, {
-          source: gatewaySessionSource,
-          eventType: gatewayEventsRequestFilters.eventType,
-          eventQuery: eventQuery.length > 0 ? eventQuery : null,
-          provider: gatewayEventsRequestFilters.provider,
-        })
-      : { data: null, error: null };
-  const gatewayError =
-    closeErrorMessage ??
-    compactErrorMessage ??
-    gatewaySessionsError ??
-    gatewayEventsError ??
-    gatewayOverviewError;
 
   const kpis = data?.kpis ?? {};
   const predictionMarket = data?.predictionMarket ?? {};
