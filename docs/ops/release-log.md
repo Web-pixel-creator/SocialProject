@@ -33,6 +33,26 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - web test runner targeted-mode fix pass
+
+- Scope: make `test:web` support real targeted execution (without forcing full `apps/web/src/__tests__` suite on every run).
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 16:27 -> 2026-03-04 16:35.
+- Changes:
+  - Added `scripts/ci/run-web-tests.mjs`:
+    - runs Jest with default scope `apps/web/src/__tests__` only when no extra args are provided,
+    - forwards explicit CLI args as-is for targeted runs (for example a single spec path),
+    - applies minimal test env defaults (`NODE_ENV=test`, `ADMIN_API_TOKEN=test-admin-token`) when absent.
+  - Updated `package.json`:
+    - switched `test:web` from hardcoded `jest apps/web/src/__tests__` to `node scripts/ci/run-web-tests.mjs`.
+- Validation:
+  - `npm run test:web -- --runInBand apps/web/src/__tests__/admin-ux-page.spec.tsx`: pass (single targeted suite executed).
+  - `npm --workspace apps/web run build`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add `--help` output to `run-web-tests.mjs` if more runner flags are needed by operators.
+
 ### 2026-03-04 - admin UX page-entry unit test coverage pass
 
 - Scope: add focused unit coverage for admin UX page-entry orchestration helpers (`createAdminUxPageContext` and render mapping).
