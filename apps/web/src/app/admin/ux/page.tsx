@@ -50,6 +50,7 @@ import {
 import {
   type AdminUxPanel,
   buildEventsCsv,
+  formatPredictionOutcomeMetricLabel,
   resolveAdminUxPanel,
 } from './components/admin-ux-page-utils';
 import { AdminUxPanelChrome } from './components/admin-ux-panel-chrome';
@@ -114,39 +115,6 @@ import {
   PredictionHourlyTrendCard,
   ReleaseHealthAlertHourlyTrendCard,
 } from './components/telemetry-shared-cards';
-
-const PREDICTION_OUTCOME_LABEL_SEGMENT_PATTERN = /[_\s-]+/;
-
-const formatPredictionOutcomeMetricLabel = (value: string): string => {
-  const normalized = value.trim().toLowerCase();
-  if (normalized === 'merge') {
-    return 'Merge';
-  }
-  if (normalized === 'reject') {
-    return 'Reject';
-  }
-  if (normalized.length === 0) {
-    return 'Unknown';
-  }
-  return normalized
-    .split(PREDICTION_OUTCOME_LABEL_SEGMENT_PATTERN)
-    .filter((segment) => segment.length > 0)
-    .map((segment) => `${segment.charAt(0).toUpperCase()}${segment.slice(1)}`)
-    .join(' ');
-};
-
-const resolveGatewaySessionMutationsWithApi = (args: {
-  closeRequested: boolean;
-  compactRequested: boolean;
-  selectedSessionClosed: boolean;
-  selectedSessionId: string | null;
-  keepRecent?: number;
-}) =>
-  resolveGatewaySessionMutations({
-    ...args,
-    closeAgentGatewaySession,
-    compactAgentGatewaySession,
-  });
 
 export default async function AdminUxObserverEngagementPage({
   searchParams,
@@ -253,7 +221,12 @@ export default async function AdminUxObserverEngagementPage({
     gatewaySessionsSource,
     keepRecent,
     resolveGatewayEventsRequestFilters,
-    resolveGatewaySessionMutations: resolveGatewaySessionMutationsWithApi,
+    resolveGatewaySessionMutations: (args) =>
+      resolveGatewaySessionMutations({
+        ...args,
+        closeAgentGatewaySession,
+        compactAgentGatewaySession,
+      }),
     sessionIdFromQuery,
     toStringValue,
   });

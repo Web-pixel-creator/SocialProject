@@ -14,6 +14,7 @@ export const ADMIN_UX_PANELS = [
 export type AdminUxPanel = (typeof ADMIN_UX_PANELS)[number];
 
 const ADMIN_UX_PANEL_VALUES = new Set<string>(ADMIN_UX_PANELS);
+const PREDICTION_OUTCOME_LABEL_SEGMENT_PATTERN = /[_\s-]+/;
 
 export const resolveAdminUxPanel = (value: unknown): AdminUxPanel => {
   if (typeof value !== 'string') {
@@ -24,6 +25,24 @@ export const resolveAdminUxPanel = (value: unknown): AdminUxPanel => {
     return 'gateway';
   }
   return normalized as AdminUxPanel;
+};
+
+export const formatPredictionOutcomeMetricLabel = (value: string): string => {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'merge') {
+    return 'Merge';
+  }
+  if (normalized === 'reject') {
+    return 'Reject';
+  }
+  if (normalized.length === 0) {
+    return 'Unknown';
+  }
+  return normalized
+    .split(PREDICTION_OUTCOME_LABEL_SEGMENT_PATTERN)
+    .filter((segment) => segment.length > 0)
+    .map((segment) => `${segment.charAt(0).toUpperCase()}${segment.slice(1)}`)
+    .join(' ');
 };
 
 const toCsvCell = (value: string): string => `"${value.replace(/"/g, '""')}"`;
