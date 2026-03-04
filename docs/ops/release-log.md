@@ -33,6 +33,34 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX gateway session orchestration helper extraction pass
+
+- Scope: continue shrinking `admin/ux/page.tsx` by moving gateway session selection, mutation flow, and recent-event request assembly into a dedicated helper module.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 08:18 -> 2026-03-04 08:25.
+- Changes:
+  - Added `apps/web/src/app/admin/ux/components/gateway-session-orchestration.ts`:
+    - `resolveGatewaySessionOrchestrationState`.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - replaced inline gateway session orchestration block with helper call.
+  - `admin/ux/page.tsx` reduced to `3607` lines.
+- Validation:
+  - `npx ultracite fix apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/gateway-session-orchestration.ts`: pass (warning-only on existing unused suppression).
+  - `npm --workspace apps/web run build`: pass.
+  - `npm run release:railway:gate:strict`: pass.
+- Execution:
+  - Commit: `c4501b40be8c58c7c11316828f809a472f0dbda0` pushed to `main`.
+  - Railway production deployments:
+    - `SocialProject`: `24836c09-b5b4-4362-a11d-75a3303366aa` (`SUCCESS`).
+    - `api`: `7e8d4f58-984d-4ab5-a480-287a3ddfa4da` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-04T08:25:42.952Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: extract AI runtime dry-run orchestration from `page.tsx` (query-state to providers/summary hydration path) into a dedicated helper.
+
 ### 2026-03-04 - admin UX gateway telemetry builder extraction pass
 
 - Scope: continue shrinking `admin/ux/page.tsx` by extracting gateway telemetry normalization, applied scope/filter resolution, and risk/health derivation into a dedicated helper.
