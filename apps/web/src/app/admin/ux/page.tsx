@@ -8,6 +8,7 @@ import {
 } from './components/engagement-sections';
 import { GatewaySectionBody } from './components/gateway-section-body';
 import { GatewayTelemetrySectionBody } from './components/gateway-telemetry-section-body';
+import { MultimodalTelemetrySection } from './components/multimodal-telemetry-section';
 import { PredictionMarketSection } from './components/prediction-market-section';
 import { ReleaseHealthSection } from './components/release-health-section';
 import { RuntimeSectionBody } from './components/runtime-section-body';
@@ -4237,6 +4238,33 @@ export default async function AdminUxObserverEngagementPage({
       count: entry.count,
     })),
   ];
+  const multimodalStatCards = [
+    {
+      hint: 'draft detail panels with multimodal score loaded',
+      label: 'Views',
+      value: `${toNumber(multimodal.views)}`,
+    },
+    {
+      hint: 'draft detail panels where multimodal score is unavailable',
+      label: 'Empty states',
+      value: `${toNumber(multimodal.emptyStates)}`,
+    },
+    {
+      hint: 'draft detail multimodal load errors',
+      label: 'Errors',
+      value: `${toNumber(multimodal.errors)}`,
+    },
+    {
+      hint: 'view / (view + empty)',
+      label: 'Coverage rate',
+      value: toRateText(multimodalCoverageRate),
+    },
+    {
+      hint: 'error / (view + empty + error)',
+      label: 'Error rate',
+      value: toRateText(multimodalErrorRate),
+    },
+  ];
   const debugPayload = {
     activePanel,
     filters: {
@@ -4772,111 +4800,24 @@ export default async function AdminUxObserverEngagementPage({
       />
 
       {isPanelVisible('style') ? (
-        <section className="card grid gap-4 p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="font-semibold text-foreground text-lg">
-              Multimodal GlowUp telemetry
-            </h2>
-            <span
-              className={`${healthBadgeClass(multimodalOverallLevel)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
-            >
-              Coverage risk: {healthLabel(multimodalOverallLevel)}
-            </span>
-          </div>
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <StatCard
-              hint="draft detail panels with multimodal score loaded"
-              label="Views"
-              value={`${toNumber(multimodal.views)}`}
+        <MultimodalTelemetrySection
+          breakdownRows={multimodalBreakdownRows}
+          coverageRiskBadgeClassName={healthBadgeClass(multimodalOverallLevel)}
+          coverageRiskLabel={healthLabel(multimodalOverallLevel)}
+          hourlyTrendCard={
+            <HourlyTrendCard
+              compactEmptyState
+              emptyLabel="No hourly multimodal trend data in current window."
+              items={multimodalHourlyTrend}
+              title="Hourly trend (UTC)"
             />
-            <StatCard
-              hint="draft detail panels where multimodal score is unavailable"
-              label="Empty states"
-              value={`${toNumber(multimodal.emptyStates)}`}
-            />
-            <StatCard
-              hint="draft detail multimodal load errors"
-              label="Errors"
-              value={`${toNumber(multimodal.errors)}`}
-            />
-            <StatCard
-              hint="view / (view + empty)"
-              label="Coverage rate"
-              value={toRateText(multimodalCoverageRate)}
-            />
-            <StatCard
-              hint="error / (view + empty + error)"
-              label="Error rate"
-              value={toRateText(multimodalErrorRate)}
-            />
-          </div>
-          <HourlyTrendCard
-            compactEmptyState
-            emptyLabel="No hourly multimodal trend data in current window."
-            items={multimodalHourlyTrend}
-            title="Hourly trend (UTC)"
-          />
-          <details className="rounded-xl border border-border/30 bg-background/45 p-3">
-            <summary className="cursor-pointer font-semibold text-foreground text-xs uppercase tracking-wide">
-              Advanced multimodal diagnostics
-            </summary>
-            <div className="mt-3 grid gap-4">
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                <StatCard
-                  hint="query validation rejects for multimodal read requests"
-                  label="Invalid query errors"
-                  value={`${toNumber(multimodalGuardrails.invalidQueryErrors)}`}
-                />
-                <StatCard
-                  hint="invalid-query errors / all multimodal error signals"
-                  label="Invalid query share"
-                  value={toRateText(multimodalGuardrails.invalidQueryRate)}
-                />
-              </div>
-              <article className="card grid gap-2 p-4">
-                <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-                  Multimodal breakdown
-                </h3>
-                {multimodalBreakdownRows.length === 0 ? (
-                  <CompactEmptyState
-                    message="No provider/empty/error breakdown data in current window."
-                    size="xs"
-                  />
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse text-left text-xs">
-                      <thead>
-                        <tr className="border-border/25 border-b text-muted-foreground uppercase tracking-wide">
-                          <th className="py-2 pr-3">Category</th>
-                          <th className="px-3 py-2">Key</th>
-                          <th className="px-3 py-2 text-right">Count</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {multimodalBreakdownRows.map((entry, index) => (
-                          <tr
-                            className="border-border/25 border-b last:border-b-0"
-                            key={`${entry.category}:${entry.key}:${index + 1}`}
-                          >
-                            <td className="py-2 pr-3 text-muted-foreground">
-                              {entry.category}
-                            </td>
-                            <td className="px-3 py-2 text-muted-foreground">
-                              {entry.key}
-                            </td>
-                            <td className="px-3 py-2 text-right font-semibold text-foreground">
-                              {entry.count}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </article>
-            </div>
-          </details>
-        </section>
+          }
+          invalidQueryErrorsValue={`${toNumber(multimodalGuardrails.invalidQueryErrors)}`}
+          invalidQueryShareText={toRateText(
+            multimodalGuardrails.invalidQueryRate,
+          )}
+          multimodalStatCards={multimodalStatCards}
+        />
       ) : null}
 
       {isPanelVisible('prediction') ? (
