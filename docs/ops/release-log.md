@@ -33,6 +33,38 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX page contract extraction pass
+
+- Scope: decouple page-entry/query consumers from ad-hoc `searchParams` shapes by introducing a shared admin UX page contract.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 15:15 -> 2026-03-04 15:23.
+- Changes:
+  - Added `apps/web/src/app/admin/ux/components/admin-ux-page-contract.ts`:
+    - `AdminUxResolvedSearchParams`,
+    - `AdminUxPageSearchParams`,
+    - `AdminUxPageProps`.
+  - Updated `apps/web/src/app/admin/ux/components/admin-ux-page-entry.tsx`:
+    - switched to shared `AdminUxPageSearchParams` import.
+  - Updated `apps/web/src/app/admin/ux/components/admin-ux-page-orchestration.ts`:
+    - switched `resolveAdminUxPageQueryState(...)` input to shared `AdminUxResolvedSearchParams`.
+  - Updated `apps/web/src/app/admin/ux/components/gateway-query-state.ts`:
+    - switched query-state resolver input to shared contract type.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - switched page prop typing to shared `AdminUxPageProps`.
+  - `admin/ux/page.tsx` reduced to `8` lines.
+- Validation:
+  - `npx ultracite fix apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/admin-ux-page-entry.tsx apps/web/src/app/admin/ux/components/admin-ux-page-orchestration.ts apps/web/src/app/admin/ux/components/gateway-query-state.ts apps/web/src/app/admin/ux/components/admin-ux-page-contract.ts`: pass.
+  - `npm --workspace apps/web run build`: pass.
+  - `npm run release:alert-risk:reassess -- --apply`: `status=already_enabled` (`RELEASE_HEALTH_ALERT_RISK_STRICT=true`).
+  - `npm run release:railway:gate:strict`: pass (after Railway deployment reached `SUCCESS` for `web` and `api`).
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: `status=pass` (`generatedAtUtc=2026-03-04T15:22:15.479Z`).
+- Execution:
+  - Commit: `5e3574e6294b5975a4eb8e93149dc9d377712150` pushed to `main`.
+- Incidents:
+  - transient strict-gate failures while Railway services were `BUILDING`/`DEPLOYING`; resolved after rollout convergence to `SUCCESS`.
+- Follow-ups:
+  - next pass: optionally extract a `createAdminUxPageContext(...)` helper (query + load + derived render inputs) for easier unit testing.
+
 ### 2026-03-04 - admin UX page entry helper extraction pass
 
 - Scope: minimize page entrypoint surface by centralizing query/data/render glue into a dedicated page-entry helper.
