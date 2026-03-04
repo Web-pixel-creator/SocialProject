@@ -33,6 +33,31 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX page load-state extraction pass
+
+- Scope: finalize page-entrypoint simplification by extracting success/error branching into a dedicated load-state component.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 14:48 -> 2026-03-04 14:55.
+- Changes:
+  - Added `apps/web/src/app/admin/ux/components/admin-ux-page-load-state.tsx`:
+    - handles `error/success` branch resolution from `AdminUxPageDataLoadResult`,
+    - delegates to `AdminUxPageErrorState` or `AdminUxPageContent`.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - removed inline branch logic and switched to `<AdminUxPageLoadState ... />`.
+  - `admin/ux/page.tsx` reduced to `24` lines.
+- Validation:
+  - `npx ultracite fix apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/admin-ux-page-load-state.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+  - `npm run release:alert-risk:reassess -- --apply`: `status=already_enabled` (`RELEASE_HEALTH_ALERT_RISK_STRICT=true`).
+  - `npm run release:railway:gate:strict`: pass (after Railway deployment reached `SUCCESS` for `web` and `api`).
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: `status=pass` (`generatedAtUtc=2026-03-04T14:54:33.003Z`).
+- Execution:
+  - Commit: `a901bb7a9d770c90185f4679b4a911f4a804f757` pushed to `main`.
+- Incidents:
+  - transient strict-gate failures while Railway services were `BUILDING`/`DEPLOYING`; resolved after rollout convergence to `SUCCESS`.
+- Follow-ups:
+  - next pass: optionally collapse `page.tsx` to a tiny wrapper over a single `loadAndRenderAdminUxPage(...)` helper for near-zero top-level branching.
+
 ### 2026-03-04 - admin UX page content extraction pass
 
 - Scope: finish the next `admin/ux/page.tsx` thinning step by extracting header/panel/main composition into a dedicated page-content component.
