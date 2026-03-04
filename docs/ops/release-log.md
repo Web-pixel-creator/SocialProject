@@ -33,6 +33,37 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX gateway session section extraction pass
+
+- Scope: continue panel-level decomposition by moving `gateway` session/control rendering out of monolithic `page.tsx` into a dedicated component module.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 04:14 -> 2026-03-04 04:21.
+- Changes:
+  - Added `apps/web/src/app/admin/ux/components/gateway-section-body.tsx`:
+    - session selector and control toolbar (`keepRecent`, events filter/search, compact/close actions),
+    - session/source details blocks,
+    - gateway summary stat cards and export actions,
+    - recent events table + no-data states.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - replaced inline `renderGatewaySectionBody` block with `<GatewaySectionBody ... />`.
+    - removed duplicated inline gateway JSX and passed explicit scope/session props.
+  - Preserved existing gateway behavior while reducing `page.tsx` size and branching complexity.
+- Validation:
+  - `npx ultracite check apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/gateway-section-body.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Execution:
+  - Commit: `a13576c616cd617cac6accefbe3ef5f3ff7c4fb4` pushed to `main`.
+  - Railway production deployments:
+    - `SocialProject`: `361f71c3-fd3d-4364-8fc2-77108398e204` (`SUCCESS`).
+    - `api`: `09b2ac91-5836-4bc5-bef5-2c18f357addd` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-04T04:21:01.946Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: extract gateway telemetry block (`Gateway telemetry` + event counters/trend/threshold cards) into a sibling section component and then split debug panel payload rendering.
+
 ### 2026-03-04 - admin UX runtime panel extraction pass
 
 - Scope: continue panel-level decomposition by moving `runtime` rendering out of monolithic `page.tsx` into a dedicated component module.
