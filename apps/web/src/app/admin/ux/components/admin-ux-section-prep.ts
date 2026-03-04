@@ -417,3 +417,5 @@ export const prepareAdminUxSectionData = ({
     gatewayCompactionHourlyTrend,
   };
 };
+
+export type AdminUxSectionData = ReturnType<typeof prepareAdminUxSectionData>;
