@@ -33,6 +33,33 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX page-utils extraction pass
+
+- Scope: continue shrinking `admin/ux/page.tsx` by extracting page-level panel parsing and CSV export helpers into a dedicated utility module.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 10:22 -> 2026-03-04 10:26.
+- Changes:
+  - Added `apps/web/src/app/admin/ux/components/admin-ux-page-utils.ts`:
+    - `ADMIN_UX_PANELS` / `AdminUxPanel`,
+    - `resolveAdminUxPanel`,
+    - `buildEventsCsv`.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - switched panel and CSV helper usage to the new module,
+    - removed duplicated in-file page helpers.
+  - `admin/ux/page.tsx` reduced to `946` lines.
+- Validation:
+  - `npx ultracite fix apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/admin-ux-page-utils.ts`: pass.
+  - `npm --workspace apps/web run build`: pass.
+  - `npm run release:alert-risk:reassess -- --apply`: `status=already_enabled` (`RELEASE_HEALTH_ALERT_RISK_STRICT=true`).
+  - `npm run release:railway:gate:strict`: pass (after deployment reached `SUCCESS`).
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: `status=pass` (`generatedAtUtc=2026-03-04T10:25:57.871Z`).
+- Execution:
+  - Commit: `d1223856638e2a68b7ca55d6de2fe35d9f5f3d4c` pushed to `main`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: split `formatPredictionOutcomeMetricLabel` into shared helper and start section-level composition extraction from `page.tsx` into small presentational/data-prep modules.
+
 ### 2026-03-04 - admin UX mapper full extraction pass
 
 - Scope: finish the current mapper refactor step by moving all remaining normalization/health-derivation helpers out of `admin/ux/page.tsx` into `admin-ux-mappers.ts`.
