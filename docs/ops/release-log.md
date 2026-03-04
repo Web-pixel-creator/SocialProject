@@ -33,6 +33,36 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX prediction normalization builder extraction pass
+
+- Scope: continue shrinking `admin/ux/page.tsx` by extracting prediction-market normalization, thresholds, and risk derivation into a dedicated helper.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 07:48 -> 2026-03-04 07:55.
+- Changes:
+  - Extended `apps/web/src/app/admin/ux/components/admin-ux-view-models.ts` with:
+    - `buildPredictionMarketTelemetryView`,
+    - supporting prediction threshold/window/cohort input models.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - replaced large inline prediction-market shaping block with `buildPredictionMarketTelemetryView(...)`,
+    - kept SSR page focused on orchestration and render composition.
+  - `admin/ux/page.tsx` reduced to `3673` lines.
+- Validation:
+  - `npx ultracite fix apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/admin-ux-view-models.ts`: pass (warning-only on existing unused suppression).
+  - `npm --workspace apps/web run build`: pass.
+  - `npm run release:railway:gate:strict`: pass.
+- Execution:
+  - Commit: `5f051858cdb220edea93a35a809d52487a3e0dd0` pushed to `main`.
+  - Railway production deployments:
+    - `SocialProject`: `fd5cab47-375c-4866-89f2-b5357505dd89` (`SUCCESS`).
+    - `api`: `06317568-826d-426a-a657-5c37ad1688ca` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-04T07:55:18.206Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: extract gateway telemetry normalization (filters/thresholds/risk-level derivation) into a single helper to further shrink SSR page body.
+
 ### 2026-03-04 - admin UX multimodal/release compaction builder extraction pass
 
 - Scope: continue shrinking `admin/ux/page.tsx` by extracting multimodal telemetry, release alert shaping, and engagement/feed compaction logic into shared builders.
