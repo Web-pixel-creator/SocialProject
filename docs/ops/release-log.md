@@ -33,6 +33,38 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX gateway query-state helper extraction pass
+
+- Scope: continue shrinking `admin/ux/page.tsx` by extracting gateway query parsing, filter sanitization constants, and session mutation decision logic into a dedicated helper module.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 08:49 -> 2026-03-04 08:57.
+- Changes:
+  - Added `apps/web/src/app/admin/ux/components/gateway-query-state.ts`:
+    - shared gateway query patterns and filter parser,
+    - `resolveGatewayQueryState`,
+    - `resolveGatewayEventsRequestFilters`,
+    - `resolveGatewaySessionMutations`.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - switched gateway query/state parsing to helper imports,
+    - replaced inline session mutation resolver with adapter `resolveGatewaySessionMutationsWithApi`.
+  - `admin/ux/page.tsx` reduced to `2999` lines.
+- Validation:
+  - `npx ultracite fix apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/gateway-query-state.ts`: pass (warning-only on existing unused suppression).
+  - `npm --workspace apps/web run build`: pass.
+  - `npm run release:railway:gate:strict`: pass (after deploy completed).
+- Execution:
+  - Commit: `89b85cbc9426e550c19a19b8b1aa3a47979b6224` pushed to `main`.
+  - Railway production deployments:
+    - `SocialProject`: `373b0093-3b3a-4c2a-a5c9-becdb8b38e25` (`SUCCESS`).
+    - `api`: `819015f3-f251-4c47-8938-4f9e013c1c52` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-04T08:57:59.617Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: extract remaining admin API fetch adapters (`observer-engagement`, `similar-search`, `agent-gateway sessions/telemetry/events/overview`) into a dedicated data-client helper.
+
 ### 2026-03-04 - admin UX AI runtime orchestration helper extraction pass
 
 - Scope: continue shrinking `admin/ux/page.tsx` by extracting AI runtime query parsing, health fetch normalization, dry-run orchestration, and runtime summary recomputation into a dedicated helper.
