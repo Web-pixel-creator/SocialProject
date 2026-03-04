@@ -6,6 +6,7 @@ import {
 import {
   AdminUxPageErrorState,
   AdminUxPageHeader,
+  AdminUxPageLayout,
 } from './components/admin-ux-page-shell-render';
 import {
   buildAdminUxPanelChromeView,
@@ -39,7 +40,7 @@ export default async function AdminUxObserverEngagementPage({
   });
 
   return (
-    <main className="mx-auto grid w-full max-w-7xl gap-4" id="main-content">
+    <AdminUxPageLayout>
       <AdminUxPageHeader
         windowHours={resolveAdminUxWindowHours({
           windowHours: observerData?.windowHours,
@@ -53,6 +54,6 @@ export default async function AdminUxObserverEngagementPage({
         stickyKpis={panelChromeView.stickyKpis}
       />
       <AdminUxMainPanels activePanel={activePanel} {...mainPanelsProps} />
-    </main>
+    </AdminUxPageLayout>
   );
 }

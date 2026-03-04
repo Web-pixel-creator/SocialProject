@@ -1,3 +1,11 @@
+import type { ReactNode } from 'react';
+
+export const AdminUxPageLayout = ({ children }: { children: ReactNode }) => (
+  <main className="mx-auto grid w-full max-w-7xl gap-4" id="main-content">
+    {children}
+  </main>
+);
+
 export const AdminUxPageErrorState = ({ message }: { message: string }) => (
   <main className="grid gap-4" id="main-content">
     <header className="card p-4 sm:p-5">
