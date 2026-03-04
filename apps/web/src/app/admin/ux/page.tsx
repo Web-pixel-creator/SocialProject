@@ -23,6 +23,13 @@ import {
   buildStickyKpisView,
   buildTopSegmentsView,
 } from './components/admin-ux-view-models';
+import {
+  AI_RUNTIME_ROLES,
+  fetchAiRuntimeHealth,
+  recomputeAiRuntimeSummary,
+  resolveAiRuntimeDryRunState,
+  resolveAiRuntimeQueryState,
+} from './components/ai-runtime-orchestration';
 import { DebugDiagnosticsSection } from './components/debug-diagnostics-section';
 import {
   EngagementHealthSection,
@@ -500,55 +507,6 @@ interface AgentGatewayStatusResponse {
   };
 }
 
-interface AIRuntimeProviderStateItem {
-  provider?: unknown;
-  cooldownUntil?: unknown;
-  coolingDown?: unknown;
-}
-
-interface AIRuntimeHealthRoleStateItem {
-  role?: unknown;
-  providers?: unknown;
-  availableProviders?: unknown;
-  blockedProviders?: unknown;
-  hasAvailableProvider?: unknown;
-}
-
-interface AIRuntimeHealthSummary {
-  roleCount?: unknown;
-  providerCount?: unknown;
-  rolesBlocked?: unknown;
-  providersCoolingDown?: unknown;
-  providersReady?: unknown;
-  health?: unknown;
-}
-
-interface AIRuntimeHealthResponse {
-  generatedAt?: unknown;
-  roleStates?: AIRuntimeHealthRoleStateItem[];
-  providers?: AIRuntimeProviderStateItem[];
-  summary?: AIRuntimeHealthSummary;
-}
-
-interface AIRuntimeDryRunAttemptItem {
-  provider?: unknown;
-  status?: unknown;
-  latencyMs?: unknown;
-  errorCode?: unknown;
-  errorMessage?: unknown;
-}
-
-interface AIRuntimeDryRunResponse {
-  result?: {
-    role?: unknown;
-    selectedProvider?: unknown;
-    output?: unknown;
-    failed?: unknown;
-    attempts?: AIRuntimeDryRunAttemptItem[];
-  };
-  providers?: AIRuntimeProviderStateItem[];
-}
-
 interface AgentGatewayOverview {
   source: string;
   session: {
@@ -714,8 +672,6 @@ const GATEWAY_SESSION_STATUS_QUERY_PATTERN = /^[a-z]+$/;
 const GATEWAY_EVENT_TYPE_QUERY_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,119}$/;
 const GATEWAY_SOURCE_VALUES = new Set(['db', 'memory']);
 const GATEWAY_SESSION_STATUS_VALUES = new Set(['active', 'closed']);
-const AI_RUNTIME_ROLES = ['author', 'critic', 'maker', 'judge'] as const;
-type AIRuntimeRoleOption = (typeof AI_RUNTIME_ROLES)[number];
 const ADMIN_UX_PANELS = [
   'all',
   'gateway',
@@ -1395,16 +1351,6 @@ const toDurationText = (value: number | null): string => {
   return `${(value / 1000).toFixed(1)}s`;
 };
 
-const parseCsvQuery = (value: unknown): string[] => {
-  if (typeof value !== 'string') {
-    return [];
-  }
-  return value
-    .split(',')
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0);
-};
-
 const parseOptionalFilteredQueryString = (
   value: unknown,
   {
@@ -1610,53 +1556,6 @@ const resolveGatewayQueryState = (
     eventsLimit,
     eventTypeFilter,
     eventQuery,
-  };
-};
-
-const resolveAiRuntimeQueryState = (
-  resolvedSearchParams: AdminUxPageSearchParams,
-) => {
-  const rawAiRole = resolvedSearchParams?.aiRole;
-  const aiRole = AI_RUNTIME_ROLES.includes(rawAiRole as AIRuntimeRoleOption)
-    ? (rawAiRole as AIRuntimeRoleOption)
-    : 'critic';
-
-  const rawAiPrompt = resolvedSearchParams?.aiPrompt;
-  const aiPrompt =
-    typeof rawAiPrompt === 'string' && rawAiPrompt.trim().length > 0
-      ? rawAiPrompt.trim()
-      : 'Summarize runtime health for current failover chain.';
-
-  const rawAiProviders = resolvedSearchParams?.aiProviders;
-  const aiProvidersCsv =
-    typeof rawAiProviders === 'string' ? rawAiProviders.trim() : '';
-  const aiProvidersOverride = parseCsvQuery(rawAiProviders);
-
-  const rawAiFailures = resolvedSearchParams?.aiFailures;
-  const aiFailuresCsv =
-    typeof rawAiFailures === 'string' ? rawAiFailures.trim() : '';
-  const aiSimulateFailures = parseCsvQuery(rawAiFailures);
-
-  const rawAiTimeoutMs = resolvedSearchParams?.aiTimeoutMs;
-  const aiTimeoutParsed =
-    typeof rawAiTimeoutMs === 'string'
-      ? Number.parseInt(rawAiTimeoutMs, 10)
-      : Number.NaN;
-  const aiTimeoutMs =
-    Number.isFinite(aiTimeoutParsed) && aiTimeoutParsed > 0
-      ? Math.min(Math.max(aiTimeoutParsed, 250), 120_000)
-      : undefined;
-  const aiDryRunRequested = isTruthyQueryFlag(resolvedSearchParams?.aiDryRun);
-
-  return {
-    aiRole,
-    aiPrompt,
-    aiProvidersCsv,
-    aiProvidersOverride,
-    aiFailuresCsv,
-    aiSimulateFailures,
-    aiTimeoutMs,
-    aiDryRunRequested,
   };
 };
 
@@ -2527,394 +2426,6 @@ const fetchAgentGatewayOverview = async (
   }
 };
 
-const fetchAiRuntimeHealth = async (): Promise<{
-  generatedAt: string | null;
-  roleStates: Array<{
-    role: string;
-    providers: string[];
-    availableProviders: string[];
-    blockedProviders: string[];
-    hasAvailableProvider: boolean;
-  }>;
-  providers: Array<{
-    provider: string;
-    cooldownUntil: string | null;
-    coolingDown: boolean;
-  }>;
-  summary: {
-    roleCount: number;
-    providerCount: number;
-    rolesBlocked: number;
-    providersCoolingDown: number;
-    providersReady: number;
-    health: string;
-  };
-  error: string | null;
-}> => {
-  const token = adminToken();
-  if (!token) {
-    return {
-      generatedAt: null,
-      roleStates: [],
-      providers: [],
-      summary: {
-        roleCount: 0,
-        providerCount: 0,
-        rolesBlocked: 0,
-        providersCoolingDown: 0,
-        providersReady: 0,
-        health: 'unknown',
-      },
-      error:
-        'Missing admin token. Set ADMIN_API_TOKEN (or NEXT_ADMIN_API_TOKEN) in apps/web environment.',
-    };
-  }
-
-  try {
-    const response = await fetch(`${apiBaseUrl()}/admin/ai-runtime/health`, {
-      cache: 'no-store',
-      headers: {
-        'x-admin-token': token,
-      },
-    });
-    if (!response.ok) {
-      return {
-        generatedAt: null,
-        roleStates: [],
-        providers: [],
-        summary: {
-          roleCount: 0,
-          providerCount: 0,
-          rolesBlocked: 0,
-          providersCoolingDown: 0,
-          providersReady: 0,
-          health: 'unknown',
-        },
-        error: `AI runtime health request failed with ${response.status}.`,
-      };
-    }
-
-    const payload = (await response.json()) as AIRuntimeHealthResponse;
-    const roleStatesRaw = Array.isArray(payload.roleStates)
-      ? payload.roleStates
-      : [];
-    const roleStates = roleStatesRaw.map((roleState, index) => {
-      const providersRaw = Array.isArray(roleState.providers)
-        ? roleState.providers
-        : [];
-      const providers = providersRaw
-        .filter((provider): provider is string => typeof provider === 'string')
-        .map((provider) => provider.trim())
-        .filter((provider) => provider.length > 0);
-      const availableProvidersRaw = Array.isArray(roleState.availableProviders)
-        ? roleState.availableProviders
-        : [];
-      const availableProviders = availableProvidersRaw
-        .filter((provider): provider is string => typeof provider === 'string')
-        .map((provider) => provider.trim())
-        .filter((provider) => provider.length > 0);
-      const blockedProvidersRaw = Array.isArray(roleState.blockedProviders)
-        ? roleState.blockedProviders
-        : [];
-      const blockedProviders = blockedProvidersRaw
-        .filter((provider): provider is string => typeof provider === 'string')
-        .map((provider) => provider.trim())
-        .filter((provider) => provider.length > 0);
-      return {
-        role: toStringValue(roleState.role, `role-${index + 1}`),
-        providers,
-        availableProviders,
-        blockedProviders,
-        hasAvailableProvider: roleState.hasAvailableProvider === true,
-      };
-    });
-
-    const providersRaw = Array.isArray(payload.providers)
-      ? payload.providers
-      : [];
-    const providers = providersRaw.map((provider, index) => ({
-      provider: toStringValue(provider.provider, `provider-${index + 1}`),
-      cooldownUntil:
-        typeof provider.cooldownUntil === 'string'
-          ? provider.cooldownUntil
-          : null,
-      coolingDown:
-        provider.coolingDown === true ||
-        (typeof provider.cooldownUntil === 'string' &&
-          provider.cooldownUntil.length > 0),
-    }));
-    const summaryRaw =
-      payload.summary && typeof payload.summary === 'object'
-        ? payload.summary
-        : {};
-    const summary = {
-      roleCount: toNumber(summaryRaw.roleCount, roleStates.length),
-      providerCount: toNumber(summaryRaw.providerCount, providers.length),
-      rolesBlocked: toNumber(summaryRaw.rolesBlocked),
-      providersCoolingDown: toNumber(summaryRaw.providersCoolingDown),
-      providersReady: toNumber(
-        summaryRaw.providersReady,
-        Math.max(
-          0,
-          providers.length - toNumber(summaryRaw.providersCoolingDown),
-        ),
-      ),
-      health: toStringValue(summaryRaw.health, 'unknown'),
-    };
-
-    return {
-      generatedAt:
-        typeof payload.generatedAt === 'string' ? payload.generatedAt : null,
-      roleStates,
-      providers,
-      summary,
-      error: null,
-    };
-  } catch {
-    return {
-      generatedAt: null,
-      roleStates: [],
-      providers: [],
-      summary: {
-        roleCount: 0,
-        providerCount: 0,
-        rolesBlocked: 0,
-        providersCoolingDown: 0,
-        providersReady: 0,
-        health: 'unknown',
-      },
-      error: 'Unable to load AI runtime health from admin API.',
-    };
-  }
-};
-
-const recomputeAiRuntimeSummary = (input: {
-  roleStates: Array<{
-    role: string;
-    providers: string[];
-    hasAvailableProvider: boolean;
-  }>;
-  providers: Array<{
-    provider: string;
-    coolingDown: boolean;
-  }>;
-}) => {
-  const providerStateByName = new Map(
-    input.providers.map((providerState) => [
-      providerState.provider,
-      providerState.coolingDown,
-    ]),
-  );
-  const providersCoolingDown = input.providers.filter(
-    (providerState) => providerState.coolingDown,
-  ).length;
-  const rolesBlocked = input.roleStates.filter((roleState) => {
-    if (roleState.providers.length === 0) {
-      return !roleState.hasAvailableProvider;
-    }
-    return roleState.providers.every(
-      (provider) => providerStateByName.get(provider) === true,
-    );
-  }).length;
-
-  return {
-    roleCount: input.roleStates.length,
-    providerCount: input.providers.length,
-    rolesBlocked,
-    providersCoolingDown,
-    providersReady: Math.max(0, input.providers.length - providersCoolingDown),
-    health: rolesBlocked > 0 ? 'degraded' : 'ok',
-  };
-};
-
-const runAiRuntimeDryRun = async (input: {
-  role: AIRuntimeRoleOption;
-  prompt: string;
-  providersOverride: string[];
-  simulateFailures: string[];
-  timeoutMs?: number;
-}): Promise<{
-  result: {
-    role: string;
-    selectedProvider: string | null;
-    output: string | null;
-    failed: boolean;
-    attempts: Array<{
-      provider: string;
-      status: string;
-      latencyMs: number | null;
-      errorCode: string | null;
-      errorMessage: string | null;
-    }>;
-  } | null;
-  providers: Array<{
-    provider: string;
-    cooldownUntil: string | null;
-  }>;
-  error: string | null;
-}> => {
-  const token = adminToken();
-  if (!token) {
-    return {
-      result: null,
-      providers: [],
-      error:
-        'Missing admin token. Set ADMIN_API_TOKEN (or NEXT_ADMIN_API_TOKEN) in apps/web environment.',
-    };
-  }
-
-  const body: Record<string, unknown> = {
-    role: input.role,
-    prompt: input.prompt,
-  };
-  if (input.providersOverride.length > 0) {
-    body.providersOverride = input.providersOverride;
-  }
-  if (input.simulateFailures.length > 0) {
-    body.simulateFailures = input.simulateFailures;
-  }
-  if (typeof input.timeoutMs === 'number' && Number.isFinite(input.timeoutMs)) {
-    body.timeoutMs = Math.max(250, Math.floor(input.timeoutMs));
-  }
-
-  try {
-    const response = await fetch(`${apiBaseUrl()}/admin/ai-runtime/dry-run`, {
-      method: 'POST',
-      cache: 'no-store',
-      headers: {
-        'content-type': 'application/json',
-        'x-admin-token': token,
-      },
-      body: JSON.stringify(body),
-    });
-    if (!response.ok) {
-      return {
-        result: null,
-        providers: [],
-        error: `AI runtime dry-run failed with ${response.status}.`,
-      };
-    }
-
-    const payload = (await response.json()) as AIRuntimeDryRunResponse;
-    const resultRaw = payload.result;
-    const attemptsRaw = Array.isArray(resultRaw?.attempts)
-      ? resultRaw.attempts
-      : [];
-    const attempts = attemptsRaw.map((attempt, index) => ({
-      provider: toStringValue(attempt.provider, `provider-${index + 1}`),
-      status: toStringValue(attempt.status),
-      latencyMs:
-        typeof attempt.latencyMs === 'number' &&
-        Number.isFinite(attempt.latencyMs)
-          ? attempt.latencyMs
-          : null,
-      errorCode: toStringValue(attempt.errorCode, ''),
-      errorMessage: toStringValue(attempt.errorMessage, ''),
-    }));
-    const result = resultRaw
-      ? {
-          role: toStringValue(resultRaw.role),
-          selectedProvider:
-            typeof resultRaw.selectedProvider === 'string'
-              ? resultRaw.selectedProvider
-              : null,
-          output:
-            typeof resultRaw.output === 'string' ? resultRaw.output : null,
-          failed: resultRaw.failed === true,
-          attempts,
-        }
-      : null;
-
-    const providersRaw = Array.isArray(payload.providers)
-      ? payload.providers
-      : [];
-    const providers = providersRaw.map((provider, index) => ({
-      provider: toStringValue(provider.provider, `provider-${index + 1}`),
-      cooldownUntil:
-        typeof provider.cooldownUntil === 'string'
-          ? provider.cooldownUntil
-          : null,
-    }));
-
-    return {
-      result,
-      providers,
-      error: null,
-    };
-  } catch {
-    return {
-      result: null,
-      providers: [],
-      error: 'Unable to run AI runtime dry-run via admin API.',
-    };
-  }
-};
-
-interface AIRuntimeProviderViewState {
-  provider: string;
-  cooldownUntil: string | null;
-  coolingDown: boolean;
-}
-
-const resolveAiRuntimeDryRunState = async (input: {
-  requested: boolean;
-  role: AIRuntimeRoleOption;
-  prompt: string;
-  providersOverride: string[];
-  simulateFailures: string[];
-  timeoutMs?: number;
-  providersBase: AIRuntimeProviderViewState[];
-}): Promise<{
-  providers: AIRuntimeProviderViewState[];
-  infoMessage: string | null;
-  errorMessage: string | null;
-  result: Awaited<ReturnType<typeof runAiRuntimeDryRun>>['result'];
-}> => {
-  if (!input.requested) {
-    return {
-      providers: input.providersBase,
-      infoMessage: null,
-      errorMessage: null,
-      result: null,
-    };
-  }
-
-  const dryRun = await runAiRuntimeDryRun({
-    role: input.role,
-    prompt: input.prompt,
-    providersOverride: input.providersOverride,
-    simulateFailures: input.simulateFailures,
-    timeoutMs: input.timeoutMs,
-  });
-
-  const providers =
-    dryRun.providers.length > 0
-      ? dryRun.providers.map((providerState) => ({
-          provider: providerState.provider,
-          cooldownUntil: providerState.cooldownUntil,
-          coolingDown:
-            typeof providerState.cooldownUntil === 'string' &&
-            providerState.cooldownUntil.length > 0,
-        }))
-      : input.providersBase;
-
-  let infoMessage: string | null = null;
-  if (!dryRun.error && dryRun.result) {
-    if (dryRun.result.failed) {
-      infoMessage = 'Dry-run failed for all providers in chain.';
-    } else {
-      infoMessage = `Dry-run completed via ${dryRun.result.selectedProvider ?? 'n/a'}.`;
-    }
-  }
-
-  return {
-    providers,
-    infoMessage,
-    errorMessage: dryRun.error,
-    result: dryRun.result,
-  };
-};
-
 const normalizeStyleFusionErrorBreakdown = (
   items: unknown,
 ): Array<{ count: number; errorCode: string }> => {
@@ -3046,7 +2557,12 @@ export default async function AdminUxObserverEngagementPage({
     roleStates: aiRuntimeRoleStatesBase,
     providers: aiRuntimeProvidersBase,
     error: aiRuntimeHealthError,
-  } = await fetchAiRuntimeHealth();
+  } = await fetchAiRuntimeHealth({
+    adminToken,
+    apiBaseUrl,
+    toNumber,
+    toStringValue,
+  });
   const {
     closeInfoMessage,
     compactInfoMessage,
@@ -3239,6 +2755,9 @@ export default async function AdminUxObserverEngagementPage({
     toHealthLevelValue,
   });
   const aiRuntimeDryRunState = await resolveAiRuntimeDryRunState({
+    adminToken,
+    apiBaseUrl,
+    toStringValue,
     requested: aiDryRunRequested,
     role: aiRole,
     prompt: aiPrompt,
