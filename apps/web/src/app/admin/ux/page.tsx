@@ -6,6 +6,7 @@ import {
   TopSegmentsSection,
 } from './components/engagement-sections';
 import { GatewaySectionBody } from './components/gateway-section-body';
+import { GatewayTelemetrySectionBody } from './components/gateway-telemetry-section-body';
 import { RuntimeSectionBody } from './components/runtime-section-body';
 
 interface ObserverEngagementResponse {
@@ -4305,6 +4306,12 @@ export default async function AdminUxObserverEngagementPage({
       level: gatewayCooldownSkipLevel,
     },
   ];
+  const gatewayRiskSignalsView = gatewayRiskSignals.map((signal) => ({
+    badgeClassName: healthBadgeClass(signal.level),
+    badgeLabel: healthLabel(signal.level),
+    id: signal.id,
+    label: signal.label,
+  }));
   const gatewayScopeOverridesApplied =
     (gatewaySourceFilter ?? '').length > 0 ||
     (appliedGatewayChannelFilter ?? '').length > 0 ||
@@ -4326,6 +4333,48 @@ export default async function AdminUxObserverEngagementPage({
     {
       key: 'Status',
       value: appliedGatewaySessionStatusLabel,
+    },
+  ];
+  const gatewayTelemetryStatCards = [
+    {
+      hint: 'sessions sampled in current window',
+      label: 'Sessions',
+      value: `${toNumber(gatewayTelemetrySessions.total)}`,
+    },
+    {
+      hint: 'sessions with failed steps or failed cycles',
+      label: 'Attention sessions',
+      value: `${toNumber(gatewayTelemetrySessions.attention)}`,
+    },
+    {
+      hint: 'sessions with at least one compaction event',
+      label: 'Compacted sessions',
+      value: `${toNumber(gatewayTelemetrySessions.compacted)}`,
+    },
+    {
+      hint: 'sessions compacted by auto buffer guardrail',
+      label: 'Auto compacted sessions',
+      value: `${toNumber(gatewayTelemetrySessions.autoCompacted)}`,
+    },
+    {
+      hint: 'auto compactions / total compactions',
+      label: 'Auto compaction share',
+      value: toRateText(gatewayTelemetryEvents.autoCompactionShare),
+    },
+    {
+      hint: 'failed steps / cycle step events',
+      label: 'Failed step rate',
+      value: toRateText(gatewayTelemetryEvents.failedStepRate),
+    },
+    {
+      hint: 'successful provider attempts / total attempts',
+      label: 'Runtime success rate',
+      value: toRateText(gatewayTelemetryAttempts.successRate),
+    },
+    {
+      hint: 'cooldown-skipped attempts / total attempts',
+      label: 'Cooldown skip rate',
+      value: toRateText(gatewayTelemetryAttempts.skippedRate),
     },
   ];
   const gatewayEventCounters: Array<{ key: string; value: string }> = [
@@ -4490,243 +4539,54 @@ export default async function AdminUxObserverEngagementPage({
               {healthLabel(resolvedGatewayTelemetryHealthLevel)}
             </span>
           </div>
-          <article className="card grid gap-2 p-3">
-            <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-              Risk signals
-            </h3>
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-              {gatewayRiskSignals.map((signal) => (
-                <div
-                  className="flex items-center justify-between gap-2 rounded-lg border border-border/30 bg-background/55 px-3 py-2"
-                  key={signal.id}
-                >
-                  <p className="font-medium text-foreground text-xs">
-                    {signal.label}
-                  </p>
-                  <span
-                    className={`${healthBadgeClass(signal.level)} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-[11px] uppercase tracking-wide`}
-                  >
-                    {healthLabel(signal.level)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </article>
-          {gatewayTelemetryError ? (
-            <p className="text-muted-foreground text-sm">
-              {gatewayTelemetryError}
-            </p>
-          ) : (
-            <>
-              <details
-                className="rounded-xl border border-border/30 bg-background/45 p-3"
-                open={gatewayScopeOverridesApplied}
-              >
-                <summary className="cursor-pointer font-semibold text-foreground text-xs uppercase tracking-wide">
-                  Scope and source controls
-                </summary>
-                <form
-                  className="mt-3 flex flex-wrap items-end gap-2"
-                  method="get"
-                >
-                  <input name="hours" type="hidden" value={`${hours}`} />
-                  <input name="panel" type="hidden" value={activePanel} />
-                  <label
-                    className="grid gap-1 text-muted-foreground text-xs uppercase tracking-wide"
-                    htmlFor="gateway-source-scope-select"
-                  >
-                    Source
-                    <select
-                      className="w-32 rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm normal-case tracking-normal"
-                      defaultValue={gatewaySourceFilter ?? ''}
-                      id="gateway-source-scope-select"
-                      name="gatewaySource"
-                    >
-                      <option value="">db</option>
-                      <option value="memory">memory</option>
-                    </select>
-                  </label>
-                  {selectedSessionId ? (
-                    <input
-                      name="session"
-                      type="hidden"
-                      value={selectedSessionId}
-                    />
-                  ) : null}
-                  <input
-                    name="eventsLimit"
-                    type="hidden"
-                    value={`${eventsLimit}`}
-                  />
-                  <input
-                    name="eventType"
-                    type="hidden"
-                    value={eventTypeFilter}
-                  />
-                  <input name="eventQuery" type="hidden" value={eventQuery} />
-                  <label
-                    className="grid gap-1 text-muted-foreground text-xs uppercase tracking-wide"
-                    htmlFor="gateway-channel-scope-input"
-                  >
-                    Channel scope
-                    <input
-                      className="w-48 rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm normal-case tracking-normal"
-                      defaultValue={appliedGatewayChannelFilter ?? ''}
-                      id="gateway-channel-scope-input"
-                      name="gatewayChannel"
-                      placeholder="all channels"
-                      type="text"
-                    />
-                  </label>
-                  <label
-                    className="grid gap-1 text-muted-foreground text-xs uppercase tracking-wide"
-                    htmlFor="gateway-provider-scope-input"
-                  >
-                    Provider scope
-                    <input
-                      className="w-44 rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm normal-case tracking-normal"
-                      defaultValue={appliedGatewayProviderFilter ?? ''}
-                      id="gateway-provider-scope-input"
-                      name="gatewayProvider"
-                      placeholder="all providers"
-                      type="text"
-                    />
-                  </label>
-                  <label
-                    className="grid gap-1 text-muted-foreground text-xs uppercase tracking-wide"
-                    htmlFor="gateway-status-scope-select"
-                  >
-                    Session status
-                    <select
-                      className="w-36 rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm normal-case tracking-normal"
-                      defaultValue={appliedGatewaySessionStatusInputValue}
-                      id="gateway-status-scope-select"
-                      name="gatewayStatus"
-                    >
-                      <option value="">all statuses</option>
-                      <option value="active">active</option>
-                      <option value="closed">closed</option>
-                    </select>
-                  </label>
-                  <button
-                    className="rounded-md border border-border bg-background px-3 py-1 text-foreground text-sm hover:bg-accent"
-                    type="submit"
-                  >
-                    Apply scope
-                  </button>
-                  <a
-                    className="rounded-md border border-border bg-background px-3 py-1 text-foreground text-sm hover:bg-accent"
-                    href={buildPanelHref(activePanel)}
-                  >
-                    Reset scope
-                  </a>
-                </form>
-              </details>
-              <article className="card grid gap-2 p-3">
-                <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-                  Applied scope
-                </h3>
-                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                  {gatewayScopeRows.map((row) => (
-                    <div
-                      className="rounded-lg border border-border/30 bg-background/55 px-3 py-2"
-                      key={row.key}
-                    >
-                      <p className="text-muted-foreground text-xs uppercase tracking-wide">
-                        {row.key}
-                      </p>
-                      <p className="font-semibold text-foreground text-sm">
-                        {row.value}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </article>
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                <StatCard
-                  hint="sessions sampled in current window"
-                  label="Sessions"
-                  value={`${toNumber(gatewayTelemetrySessions.total)}`}
-                />
-                <StatCard
-                  hint="sessions with failed steps or failed cycles"
-                  label="Attention sessions"
-                  value={`${toNumber(gatewayTelemetrySessions.attention)}`}
-                />
-                <StatCard
-                  hint="sessions with at least one compaction event"
-                  label="Compacted sessions"
-                  value={`${toNumber(gatewayTelemetrySessions.compacted)}`}
-                />
-                <StatCard
-                  hint="sessions compacted by auto buffer guardrail"
-                  label="Auto compacted sessions"
-                  value={`${toNumber(gatewayTelemetrySessions.autoCompacted)}`}
-                />
-                <StatCard
-                  hint="auto compactions / total compactions"
-                  label="Auto compaction share"
-                  value={toRateText(gatewayTelemetryEvents.autoCompactionShare)}
-                />
-                <StatCard
-                  hint="failed steps / cycle step events"
-                  label="Failed step rate"
-                  value={toRateText(gatewayTelemetryEvents.failedStepRate)}
-                />
-                <StatCard
-                  hint="successful provider attempts / total attempts"
-                  label="Runtime success rate"
-                  value={toRateText(gatewayTelemetryAttempts.successRate)}
-                />
-                <StatCard
-                  hint="cooldown-skipped attempts / total attempts"
-                  label="Cooldown skip rate"
-                  value={toRateText(gatewayTelemetryAttempts.skippedRate)}
-                />
-              </div>
-              <article className="card grid gap-2 p-3">
-                <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
-                  Event counters
-                </h3>
-                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                  {gatewayEventCounters.map((counter) => (
-                    <div
-                      className="rounded-lg border border-border/30 bg-background/55 px-3 py-2"
-                      key={counter.key}
-                    >
-                      <p className="text-muted-foreground text-xs uppercase tracking-wide">
-                        {counter.key}
-                      </p>
-                      <p className="font-semibold text-foreground text-sm">
-                        {counter.value}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </article>
+          <GatewayTelemetrySectionBody
+            activePanel={activePanel}
+            appliedGatewayChannelFilter={appliedGatewayChannelFilter}
+            appliedGatewayProviderFilter={appliedGatewayProviderFilter}
+            appliedGatewaySessionStatusInputValue={
+              appliedGatewaySessionStatusInputValue
+            }
+            channelUsageCard={
+              <BreakdownListCard
+                emptyLabel="No channel usage in current sample."
+                items={gatewayTelemetryChannelUsage}
+                title="Channel usage (sample)"
+              />
+            }
+            compactionTrendCard={
               <GatewayCompactionHourlyTrendCard
                 compactEmptyState
                 emptyLabel="No compaction events in current sample."
                 items={gatewayCompactionHourlyTrend}
                 title="Gateway compaction trend (UTC)"
               />
-              <div className="grid gap-3 lg:grid-cols-3">
-                <GatewayTelemetryThresholdsCard
-                  thresholds={gatewayTelemetryThresholds}
-                />
-                <BreakdownListCard
-                  emptyLabel="No provider usage in current sample."
-                  items={gatewayTelemetryProviderUsage}
-                  title="Provider usage (sample)"
-                />
-                <BreakdownListCard
-                  emptyLabel="No channel usage in current sample."
-                  items={gatewayTelemetryChannelUsage}
-                  title="Channel usage (sample)"
-                />
-              </div>
-            </>
-          )}
+            }
+            eventCounters={gatewayEventCounters}
+            eventQuery={eventQuery}
+            eventsLimit={eventsLimit}
+            eventTypeFilter={eventTypeFilter}
+            gatewayScopeOverridesApplied={gatewayScopeOverridesApplied}
+            gatewayScopeRows={gatewayScopeRows}
+            gatewaySourceFilter={gatewaySourceFilter}
+            hours={hours}
+            providerUsageCard={
+              <BreakdownListCard
+                emptyLabel="No provider usage in current sample."
+                items={gatewayTelemetryProviderUsage}
+                title="Provider usage (sample)"
+              />
+            }
+            resetScopeHref={buildPanelHref(activePanel)}
+            riskSignals={gatewayRiskSignalsView}
+            selectedSessionId={selectedSessionId}
+            statCards={gatewayTelemetryStatCards}
+            telemetryError={gatewayTelemetryError}
+            thresholdsCard={
+              <GatewayTelemetryThresholdsCard
+                thresholds={gatewayTelemetryThresholds}
+              />
+            }
+          />
         </section>
       ) : null}
 
