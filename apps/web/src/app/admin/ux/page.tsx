@@ -13,6 +13,35 @@ import {
   resolveAdminToken,
   type SimilarSearchMetricsResponse,
 } from './components/admin-ux-data-client';
+import {
+  DEFAULT_PREDICTION_COHORT_RISK_THRESHOLDS,
+  DEFAULT_PREDICTION_RESOLUTION_WINDOW_THRESHOLDS,
+  type GatewayCompactionHourlyTrendItem,
+  type GatewayRiskAboveThresholds,
+  type GatewayTelemetryThresholds,
+  type HealthLevel,
+  type MultimodalHourlyTrendItem,
+  normalizeBreakdownItems,
+  normalizeGatewayTelemetryFilters,
+  normalizeGatewayTelemetryThresholds,
+  type PredictionCohortByOutcomeItem,
+  type PredictionCohortByStakeBandItem,
+  type PredictionCohortRiskThresholds,
+  type PredictionFilterScopeFilterItem,
+  type PredictionHistoryScopeStateItem,
+  type PredictionHourlyTrendItem,
+  type PredictionResolutionWindowItem,
+  type PredictionResolutionWindowThresholds,
+  type PredictionSortScopeSortItem,
+  pickFirstFiniteRate,
+  type ReleaseHealthAlertHourlyTrendItem,
+  toFixedText,
+  toHealthLevelValue,
+  toNullableIsoTimestamp,
+  toNumber,
+  toRateText,
+  toStringValue,
+} from './components/admin-ux-mappers';
 import { AdminUxPanelChrome } from './components/admin-ux-panel-chrome';
 import {
   buildDebugContextRows,
@@ -54,9 +83,6 @@ import {
   TopSegmentsSection,
 } from './components/engagement-sections';
 import {
-  GATEWAY_CHANNEL_QUERY_PATTERN,
-  GATEWAY_PROVIDER_QUERY_PATTERN,
-  parseOptionalFilteredQueryString,
   resolveGatewayEventsRequestFilters,
   resolveGatewayQueryState,
   resolveGatewaySessionMutations,
@@ -82,122 +108,6 @@ import {
   ReleaseHealthAlertHourlyTrendCard,
 } from './components/telemetry-shared-cards';
 
-type HealthLevel = 'critical' | 'healthy' | 'unknown' | 'watch';
-interface GatewayRiskAboveThresholds {
-  criticalAbove: number;
-  watchAbove: number;
-}
-interface GatewayRiskBelowThresholds {
-  criticalBelow: number;
-  watchBelow: number;
-}
-interface GatewayTelemetryThresholds {
-  autoCompactionShare: GatewayRiskAboveThresholds;
-  failedStepRate: GatewayRiskAboveThresholds;
-  runtimeSuccessRate: GatewayRiskBelowThresholds;
-  cooldownSkipRate: GatewayRiskAboveThresholds;
-}
-interface MultimodalHourlyTrendItem {
-  attempts: number;
-  coverageRate: number | null;
-  emptyStates: number;
-  errorRate: number | null;
-  errors: number;
-  hour: string;
-  totalEvents: number;
-  views: number;
-}
-interface PredictionHourlyTrendItem {
-  accuracyRate: number | null;
-  avgStakePoints: number;
-  correctPredictions: number;
-  hour: string;
-  markets: number;
-  payoutPoints: number;
-  payoutToStakeRatio: number | null;
-  predictions: number;
-  predictors: number;
-  resolvedPredictions: number;
-  stakePoints: number;
-}
-interface PredictionResolutionWindowItem {
-  accuracyRate: number | null;
-  correctPredictions: number;
-  days: number;
-  netPoints: number;
-  predictors: number;
-  resolvedPredictions: number;
-  riskLevel: HealthLevel | null;
-}
-interface PredictionResolutionWindowThresholds {
-  accuracyRate: {
-    criticalBelow: number;
-    watchBelow: number;
-  };
-  minResolvedPredictions: number;
-}
-interface PredictionCohortRiskThresholds {
-  accuracyRate: {
-    criticalBelow: number;
-    watchBelow: number;
-  };
-  minResolvedPredictions: number;
-  settlementRate: {
-    criticalBelow: number;
-    watchBelow: number;
-  };
-}
-interface PredictionFilterScopeFilterItem {
-  count: number;
-  filter: string;
-  scope: string;
-}
-interface PredictionSortScopeSortItem {
-  count: number;
-  scope: string;
-  sort: string;
-}
-interface PredictionHistoryScopeStateItem {
-  activeFilter: string | null;
-  activeSort: string | null;
-  filterChangedAt: string | null;
-  lastChangedAt: string | null;
-  scope: string;
-  sortChangedAt: string | null;
-}
-interface PredictionCohortByOutcomeItem {
-  accuracyRate: number | null;
-  correctPredictions: number;
-  netPoints: number;
-  predictedOutcome: string;
-  predictions: number;
-  resolvedPredictions: number;
-  settlementRate: number | null;
-}
-interface PredictionCohortByStakeBandItem {
-  accuracyRate: number | null;
-  correctPredictions: number;
-  netPoints: number;
-  predictions: number;
-  resolvedPredictions: number;
-  settlementRate: number | null;
-  stakeBand: string;
-}
-interface GatewayCompactionHourlyTrendItem {
-  autoCompactionShare: number | null;
-  autoCompactionRiskLevel: HealthLevel;
-  autoCompactions: number;
-  compactions: number;
-  hour: string;
-  manualCompactions: number;
-  prunedEventCount: number;
-}
-interface ReleaseHealthAlertHourlyTrendItem {
-  alerts: number;
-  firstAppearances: number;
-  hour: string;
-}
-
 const PREDICTION_OUTCOME_LABEL_SEGMENT_PATTERN = /[_\s-]+/;
 const ADMIN_UX_PANELS = [
   'all',
@@ -211,200 +121,6 @@ const ADMIN_UX_PANELS = [
 ] as const;
 type AdminUxPanel = (typeof ADMIN_UX_PANELS)[number];
 const ADMIN_UX_PANEL_VALUES = new Set<string>(ADMIN_UX_PANELS);
-const DEFAULT_GATEWAY_TELEMETRY_THRESHOLDS: GatewayTelemetryThresholds = {
-  autoCompactionShare: {
-    criticalAbove: 0.8,
-    watchAbove: 0.5,
-  },
-  failedStepRate: {
-    criticalAbove: 0.5,
-    watchAbove: 0.25,
-  },
-  runtimeSuccessRate: {
-    criticalBelow: 0.5,
-    watchBelow: 0.75,
-  },
-  cooldownSkipRate: {
-    criticalAbove: 0.4,
-    watchAbove: 0.2,
-  },
-};
-const DEFAULT_PREDICTION_RESOLUTION_WINDOW_THRESHOLDS: PredictionResolutionWindowThresholds =
-  {
-    accuracyRate: {
-      criticalBelow: 0.45,
-      watchBelow: 0.6,
-    },
-    minResolvedPredictions: 3,
-  };
-const DEFAULT_PREDICTION_COHORT_RISK_THRESHOLDS: PredictionCohortRiskThresholds =
-  {
-    accuracyRate: {
-      criticalBelow: 0.45,
-      watchBelow: 0.6,
-    },
-    minResolvedPredictions: 1,
-    settlementRate: {
-      criticalBelow: 0.4,
-      watchBelow: 0.6,
-    },
-  };
-
-const toNumber = (value: unknown, fallback = 0): number =>
-  typeof value === 'number' && Number.isFinite(value) ? value : fallback;
-
-const toStringValue = (value: unknown, fallback = 'n/a'): string =>
-  typeof value === 'string' && value.trim().length > 0 ? value : fallback;
-
-const toRateText = (value: unknown): string => {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return 'n/a';
-  }
-  return `${(value * 100).toFixed(1)}%`;
-};
-
-const toHealthLevelValue = (value: unknown): HealthLevel | null => {
-  if (
-    value === 'healthy' ||
-    value === 'watch' ||
-    value === 'critical' ||
-    value === 'unknown'
-  ) {
-    return value;
-  }
-  return null;
-};
-
-const toFixedText = (value: unknown, digits = 2): string => {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return 'n/a';
-  }
-  return value.toFixed(digits);
-};
-
-const pickFirstFiniteRate = (...values: unknown[]): number | null => {
-  for (const value of values) {
-    if (typeof value === 'number' && Number.isFinite(value)) {
-      return value;
-    }
-  }
-  return null;
-};
-const toNullableIsoTimestamp = (value: unknown): string | null => {
-  if (typeof value !== 'string') {
-    return null;
-  }
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.valueOf()) ? null : parsed.toISOString();
-};
-
-const normalizeAboveThresholds = (
-  value: unknown,
-  fallback: GatewayRiskAboveThresholds,
-): GatewayRiskAboveThresholds => {
-  const row = value && typeof value === 'object' ? value : {};
-  const criticalAbove = pickFirstFiniteRate(
-    (row as Record<string, unknown>).criticalAbove,
-    fallback.criticalAbove,
-  );
-  const watchAbove = pickFirstFiniteRate(
-    (row as Record<string, unknown>).watchAbove,
-    fallback.watchAbove,
-  );
-  return {
-    criticalAbove: criticalAbove ?? fallback.criticalAbove,
-    watchAbove: watchAbove ?? fallback.watchAbove,
-  };
-};
-
-const normalizeBelowThresholds = (
-  value: unknown,
-  fallback: GatewayRiskBelowThresholds,
-): GatewayRiskBelowThresholds => {
-  const row = value && typeof value === 'object' ? value : {};
-  const criticalBelow = pickFirstFiniteRate(
-    (row as Record<string, unknown>).criticalBelow,
-    fallback.criticalBelow,
-  );
-  const watchBelow = pickFirstFiniteRate(
-    (row as Record<string, unknown>).watchBelow,
-    fallback.watchBelow,
-  );
-  return {
-    criticalBelow: criticalBelow ?? fallback.criticalBelow,
-    watchBelow: watchBelow ?? fallback.watchBelow,
-  };
-};
-
-const normalizeGatewayTelemetryThresholds = (
-  value: unknown,
-): GatewayTelemetryThresholds => {
-  const row = value && typeof value === 'object' ? value : {};
-  return {
-    autoCompactionShare: normalizeAboveThresholds(
-      (row as Record<string, unknown>).autoCompactionShare,
-      DEFAULT_GATEWAY_TELEMETRY_THRESHOLDS.autoCompactionShare,
-    ),
-    failedStepRate: normalizeAboveThresholds(
-      (row as Record<string, unknown>).failedStepRate,
-      DEFAULT_GATEWAY_TELEMETRY_THRESHOLDS.failedStepRate,
-    ),
-    runtimeSuccessRate: normalizeBelowThresholds(
-      (row as Record<string, unknown>).runtimeSuccessRate,
-      DEFAULT_GATEWAY_TELEMETRY_THRESHOLDS.runtimeSuccessRate,
-    ),
-    cooldownSkipRate: normalizeAboveThresholds(
-      (row as Record<string, unknown>).cooldownSkipRate,
-      DEFAULT_GATEWAY_TELEMETRY_THRESHOLDS.cooldownSkipRate,
-    ),
-  };
-};
-
-const normalizeGatewayTelemetryFilters = (
-  value: unknown,
-): { channel: string | null; provider: string | null } => {
-  const row = value && typeof value === 'object' ? value : {};
-  return {
-    channel: parseOptionalFilteredQueryString(
-      (row as Record<string, unknown>).channel,
-      {
-        maxLength: 64,
-        pattern: GATEWAY_CHANNEL_QUERY_PATTERN,
-      },
-    ),
-    provider: parseOptionalFilteredQueryString(
-      (row as Record<string, unknown>).provider,
-      {
-        maxLength: 64,
-        pattern: GATEWAY_PROVIDER_QUERY_PATTERN,
-      },
-    ),
-  };
-};
-
-const normalizeBreakdownItems = ({
-  items,
-  countName,
-  keyName,
-}: {
-  countName?: string;
-  items: unknown;
-  keyName: string;
-}): Array<{ count: number; key: string }> => {
-  if (!Array.isArray(items)) {
-    return [];
-  }
-  const resolvedCountName = countName ?? 'count';
-  return items.map((item, index) => {
-    const row = item && typeof item === 'object' ? item : {};
-    const key = toStringValue(
-      (row as Record<string, unknown>)[keyName],
-      `unknown-${index + 1}`,
-    );
-    const count = toNumber((row as Record<string, unknown>)[resolvedCountName]);
-    return { key, count };
-  });
-};
 
 const formatPredictionOutcomeMetricLabel = (value: string): string => {
   const normalized = value.trim().toLowerCase();
@@ -1220,7 +936,6 @@ const normalizeStyleFusionMetrics = (
   };
 };
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: The page intentionally aggregates multiple admin datasets in one SSR entrypoint.
 export default async function AdminUxObserverEngagementPage({
   searchParams,
 }: {
