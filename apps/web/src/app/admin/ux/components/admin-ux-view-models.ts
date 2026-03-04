@@ -693,6 +693,302 @@ export const buildPredictionCohortsByStakeBandView = ({
     stakeBand: entry.stakeBand,
   }));
 
+interface BreakdownNormalizeArgs {
+  countName?: string;
+  items: unknown;
+  keyName: string;
+}
+
+interface MultimodalTelemetryInput {
+  coverageRate?: unknown;
+  emptyReasonBreakdown?: unknown;
+  errorRate?: unknown;
+  errorReasonBreakdown?: unknown;
+  guardrails?: unknown;
+  hourlyTrend?: unknown;
+  providerBreakdown?: unknown;
+}
+
+interface MultimodalKpisInput {
+  multimodalCoverageRate?: unknown;
+  multimodalErrorRate?: unknown;
+}
+
+export const buildMultimodalTelemetryView = <THourlyTrendItem>({
+  kpis,
+  multimodal,
+  normalizeBreakdownItems,
+  normalizeHourlyTrendItems,
+  pickFirstFiniteRate,
+  resolveHealthLevel,
+  resolveRiskHealthLevel,
+}: {
+  kpis: MultimodalKpisInput;
+  multimodal: MultimodalTelemetryInput;
+  normalizeBreakdownItems: (
+    args: BreakdownNormalizeArgs,
+  ) => Array<{ count: number; key: string }>;
+  normalizeHourlyTrendItems: (items: unknown) => THourlyTrendItem[];
+  pickFirstFiniteRate: (...values: unknown[]) => number | null;
+  resolveHealthLevel: (
+    value: unknown,
+    thresholds: { criticalBelow: number; watchBelow: number },
+  ) => HealthLevel;
+  resolveRiskHealthLevel: (
+    value: unknown,
+    thresholds: { criticalAbove: number; watchAbove: number },
+  ) => HealthLevel;
+}) => {
+  const multimodalCoverageRate = pickFirstFiniteRate(
+    multimodal.coverageRate,
+    kpis.multimodalCoverageRate,
+  );
+  const multimodalErrorRate = pickFirstFiniteRate(
+    multimodal.errorRate,
+    kpis.multimodalErrorRate,
+  );
+  const multimodalCoverageLevel = resolveHealthLevel(multimodalCoverageRate, {
+    criticalBelow: 0.45,
+    watchBelow: 0.65,
+  });
+  const multimodalErrorLevel = resolveRiskHealthLevel(multimodalErrorRate, {
+    criticalAbove: 0.2,
+    watchAbove: 0.1,
+  });
+
+  let multimodalOverallLevel: HealthLevel = 'healthy';
+  if (
+    multimodalCoverageLevel === 'critical' ||
+    multimodalErrorLevel === 'critical'
+  ) {
+    multimodalOverallLevel = 'critical';
+  } else if (
+    multimodalCoverageLevel === 'watch' ||
+    multimodalErrorLevel === 'watch'
+  ) {
+    multimodalOverallLevel = 'watch';
+  } else if (
+    multimodalCoverageLevel === 'unknown' &&
+    multimodalErrorLevel === 'unknown'
+  ) {
+    multimodalOverallLevel = 'unknown';
+  }
+
+  return {
+    multimodalCoverageLevel,
+    multimodalCoverageRate,
+    multimodalEmptyReasonBreakdown: normalizeBreakdownItems({
+      items: multimodal.emptyReasonBreakdown,
+      keyName: 'reason',
+    }),
+    multimodalErrorLevel,
+    multimodalErrorRate,
+    multimodalErrorReasonBreakdown: normalizeBreakdownItems({
+      items: multimodal.errorReasonBreakdown,
+      keyName: 'reason',
+    }),
+    multimodalGuardrails:
+      multimodal.guardrails && typeof multimodal.guardrails === 'object'
+        ? (multimodal.guardrails as Record<string, unknown>)
+        : {},
+    multimodalHourlyTrend: normalizeHourlyTrendItems(multimodal.hourlyTrend),
+    multimodalOverallLevel,
+    multimodalProviderBreakdown: normalizeBreakdownItems({
+      items: multimodal.providerBreakdown,
+      keyName: 'provider',
+    }),
+  };
+};
+
+interface ReleaseHealthAlertsInput {
+  byChannel?: unknown;
+  byFailureMode?: unknown;
+  firstAppearanceCount?: unknown;
+  hourlyTrend?: unknown;
+  latest?: unknown;
+  totalAlerts?: unknown;
+  uniqueRuns?: unknown;
+}
+
+interface ReleaseHealthKpisInput {
+  releaseHealthAlertCount?: unknown;
+  releaseHealthAlertedRunCount?: unknown;
+  releaseHealthFirstAppearanceCount?: unknown;
+}
+
+export const buildReleaseHealthAlertsView = <THourlyTrendItem>({
+  deriveReleaseHealthAlertRiskLevel,
+  kpis,
+  normalizeBreakdownItems,
+  normalizeReleaseHealthAlertHourlyTrendItems,
+  releaseHealthAlerts,
+  toNullableIsoTimestamp,
+  toNumber,
+}: {
+  deriveReleaseHealthAlertRiskLevel: (args: {
+    alertedRuns: number;
+    firstAppearances: number;
+    totalAlerts: number;
+  }) => HealthLevel;
+  kpis: ReleaseHealthKpisInput;
+  normalizeBreakdownItems: (
+    args: BreakdownNormalizeArgs,
+  ) => Array<{ count: number; key: string }>;
+  normalizeReleaseHealthAlertHourlyTrendItems: (
+    items: unknown,
+  ) => THourlyTrendItem[];
+  releaseHealthAlerts: ReleaseHealthAlertsInput;
+  toNullableIsoTimestamp: (value: unknown) => string | null;
+  toNumber: (value: unknown, fallback?: number) => number;
+}) => {
+  const releaseHealthAlertByChannel = normalizeBreakdownItems({
+    items: releaseHealthAlerts.byChannel,
+    keyName: 'channel',
+  });
+  const releaseHealthAlertByFailureMode = normalizeBreakdownItems({
+    items: releaseHealthAlerts.byFailureMode,
+    keyName: 'failureMode',
+  });
+  const releaseHealthAlertHourlyTrend =
+    normalizeReleaseHealthAlertHourlyTrendItems(
+      releaseHealthAlerts.hourlyTrend,
+    );
+  const releaseHealthAlertCount = toNumber(
+    releaseHealthAlerts.totalAlerts,
+    toNumber(kpis.releaseHealthAlertCount),
+  );
+  const releaseHealthAlertFirstAppearanceCount = toNumber(
+    releaseHealthAlerts.firstAppearanceCount,
+    toNumber(kpis.releaseHealthFirstAppearanceCount),
+  );
+  const releaseHealthAlertedRunCount = toNumber(
+    releaseHealthAlerts.uniqueRuns,
+    toNumber(kpis.releaseHealthAlertedRunCount),
+  );
+  const releaseHealthAlertRiskLevel = deriveReleaseHealthAlertRiskLevel({
+    alertedRuns: releaseHealthAlertedRunCount,
+    firstAppearances: releaseHealthAlertFirstAppearanceCount,
+    totalAlerts: releaseHealthAlertCount,
+  });
+  const releaseHealthAlertLatest =
+    releaseHealthAlerts.latest && typeof releaseHealthAlerts.latest === 'object'
+      ? (releaseHealthAlerts.latest as {
+          receivedAtUtc?: string | null;
+          runId?: number | null;
+          runNumber?: number | null;
+          runUrl?: string | null;
+        })
+      : null;
+  const releaseHealthAlertLatestReceivedAt = toNullableIsoTimestamp(
+    releaseHealthAlertLatest?.receivedAtUtc,
+  );
+  const releaseHealthAlertLatestRunNumber =
+    typeof releaseHealthAlertLatest?.runNumber === 'number' &&
+    Number.isInteger(releaseHealthAlertLatest.runNumber) &&
+    releaseHealthAlertLatest.runNumber > 0
+      ? releaseHealthAlertLatest.runNumber
+      : null;
+  const releaseHealthAlertLatestRunId =
+    typeof releaseHealthAlertLatest?.runId === 'number' &&
+    Number.isInteger(releaseHealthAlertLatest.runId) &&
+    releaseHealthAlertLatest.runId > 0
+      ? releaseHealthAlertLatest.runId
+      : null;
+  let releaseHealthAlertLatestRunLabel = 'n/a';
+  if (releaseHealthAlertLatestRunNumber !== null) {
+    releaseHealthAlertLatestRunLabel = `#${releaseHealthAlertLatestRunNumber}`;
+  } else if (releaseHealthAlertLatestRunId !== null) {
+    releaseHealthAlertLatestRunLabel = String(releaseHealthAlertLatestRunId);
+  }
+
+  return {
+    releaseHealthAlertByChannel,
+    releaseHealthAlertByFailureMode,
+    releaseHealthAlertCount,
+    releaseHealthAlertFirstAppearanceCount,
+    releaseHealthAlertHourlyTrend,
+    releaseHealthAlertLatest,
+    releaseHealthAlertLatestReceivedAt,
+    releaseHealthAlertLatestRunLabel,
+    releaseHealthAlertRiskLevel,
+    releaseHealthAlertedRunCount,
+  };
+};
+
+interface FeedPreferencesInput {
+  density?: {
+    total?: unknown;
+  };
+  hint?: {
+    totalInteractions?: unknown;
+  };
+  viewMode?: {
+    total?: unknown;
+  };
+}
+
+interface EngagementCompactionKpisInput {
+  densityComfortRate?: unknown;
+  densityCompactRate?: unknown;
+  digestOpenRate?: unknown;
+  followRate?: unknown;
+  hintDismissRate?: unknown;
+  observerSessionTimeSec?: unknown;
+  return24h?: unknown;
+  sessionCount?: unknown;
+  viewModeFocusRate?: unknown;
+  viewModeObserverRate?: unknown;
+}
+
+export const buildEngagementCompactionView = ({
+  feedPreferences,
+  kpis,
+  toNumber,
+}: {
+  feedPreferences: FeedPreferencesInput;
+  kpis: EngagementCompactionKpisInput;
+  toNumber: (value: unknown, fallback?: number) => number;
+}) => {
+  const viewModeTotal = toNumber(feedPreferences.viewMode?.total);
+  const densityTotal = toNumber(feedPreferences.density?.total);
+  const hintInteractionTotal = toNumber(
+    feedPreferences.hint?.totalInteractions,
+  );
+  const feedPreferenceInteractionTotal =
+    viewModeTotal + densityTotal + hintInteractionTotal;
+
+  const engagementSessionCount = toNumber(kpis.sessionCount);
+  const engagementAvgSessionSeconds = toNumber(kpis.observerSessionTimeSec);
+  const hasEngagementRateSample = [
+    kpis.followRate,
+    kpis.digestOpenRate,
+    kpis.return24h,
+  ].some((rate) => typeof rate === 'number' && Number.isFinite(rate));
+
+  const hasFeedPreferenceRateSample = [
+    kpis.viewModeObserverRate,
+    kpis.viewModeFocusRate,
+    kpis.densityComfortRate,
+    kpis.densityCompactRate,
+    kpis.hintDismissRate,
+  ].some((rate) => typeof rate === 'number' && Number.isFinite(rate));
+
+  return {
+    densityTotal,
+    engagementAvgSessionSeconds,
+    engagementSessionCount,
+    hintInteractionTotal,
+    shouldCompactEngagementOverview:
+      engagementSessionCount === 0 &&
+      engagementAvgSessionSeconds === 0 &&
+      !hasEngagementRateSample,
+    shouldCompactFeedPreferenceEvents: feedPreferenceInteractionTotal === 0,
+    shouldCompactFeedPreferenceKpis:
+      feedPreferenceInteractionTotal === 0 && !hasFeedPreferenceRateSample,
+    viewModeTotal,
+  };
+};
+
 export const buildDebugPayloadText = ({
   activePanel,
   aiRuntimeDryRunResult,

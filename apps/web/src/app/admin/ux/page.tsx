@@ -2,6 +2,7 @@ import { AdminUxPanelChrome } from './components/admin-ux-panel-chrome';
 import {
   buildDebugContextRows,
   buildDebugPayloadText,
+  buildEngagementCompactionView,
   buildEngagementHealthSignals,
   buildGatewayEventCounters,
   buildGatewayRiskSignalsView,
@@ -9,12 +10,14 @@ import {
   buildGatewayTelemetryStatCards,
   buildMultimodalBreakdownRows,
   buildMultimodalStatCards,
+  buildMultimodalTelemetryView,
   buildPanelTabsView,
   buildPredictionCohortsByOutcomeView,
   buildPredictionCohortsByStakeBandView,
   buildPredictionStatCards,
   buildPredictionWindowView,
   buildReleaseBreakdownRows,
+  buildReleaseHealthAlertsView,
   buildStickyKpisView,
   buildTopSegmentsView,
 } from './components/admin-ux-view-models';
@@ -3211,146 +3214,63 @@ export default async function AdminUxObserverEngagementPage({
       predictionHistoryStateTelemetry.byScope,
     );
   const multimodal = data?.multimodal ?? {};
-  const multimodalCoverageRate = pickFirstFiniteRate(
-    multimodal.coverageRate,
-    kpis.multimodalCoverageRate,
-  );
-  const multimodalErrorRate = pickFirstFiniteRate(
-    multimodal.errorRate,
-    kpis.multimodalErrorRate,
-  );
-  const multimodalCoverageLevel = resolveHealthLevel(multimodalCoverageRate, {
-    criticalBelow: 0.45,
-    watchBelow: 0.65,
+  const {
+    multimodalCoverageRate,
+    multimodalEmptyReasonBreakdown,
+    multimodalErrorRate,
+    multimodalErrorReasonBreakdown,
+    multimodalGuardrails,
+    multimodalHourlyTrend,
+    multimodalOverallLevel,
+    multimodalProviderBreakdown,
+  } = buildMultimodalTelemetryView({
+    kpis,
+    multimodal,
+    normalizeBreakdownItems,
+    normalizeHourlyTrendItems,
+    pickFirstFiniteRate,
+    resolveHealthLevel,
+    resolveRiskHealthLevel,
   });
-  const multimodalErrorLevel = resolveRiskHealthLevel(multimodalErrorRate, {
-    criticalAbove: 0.2,
-    watchAbove: 0.1,
-  });
-  let multimodalOverallLevel: HealthLevel = 'healthy';
-  if (
-    multimodalCoverageLevel === 'critical' ||
-    multimodalErrorLevel === 'critical'
-  ) {
-    multimodalOverallLevel = 'critical';
-  } else if (
-    multimodalCoverageLevel === 'watch' ||
-    multimodalErrorLevel === 'watch'
-  ) {
-    multimodalOverallLevel = 'watch';
-  } else if (
-    multimodalCoverageLevel === 'unknown' &&
-    multimodalErrorLevel === 'unknown'
-  ) {
-    multimodalOverallLevel = 'unknown';
-  }
-  const multimodalProviderBreakdown = normalizeBreakdownItems({
-    items: multimodal.providerBreakdown,
-    keyName: 'provider',
-  });
-  const multimodalEmptyReasonBreakdown = normalizeBreakdownItems({
-    items: multimodal.emptyReasonBreakdown,
-    keyName: 'reason',
-  });
-  const multimodalErrorReasonBreakdown = normalizeBreakdownItems({
-    items: multimodal.errorReasonBreakdown,
-    keyName: 'reason',
-  });
-  const multimodalGuardrails = multimodal.guardrails ?? {};
-  const multimodalHourlyTrend = normalizeHourlyTrendItems(
-    multimodal.hourlyTrend,
-  );
   const releaseHealthAlerts = data?.releaseHealthAlerts ?? {};
-  const releaseHealthAlertByChannel = normalizeBreakdownItems({
-    items: releaseHealthAlerts.byChannel,
-    keyName: 'channel',
+  const {
+    releaseHealthAlertByChannel,
+    releaseHealthAlertByFailureMode,
+    releaseHealthAlertCount,
+    releaseHealthAlertFirstAppearanceCount,
+    releaseHealthAlertHourlyTrend,
+    releaseHealthAlertLatest,
+    releaseHealthAlertLatestReceivedAt,
+    releaseHealthAlertLatestRunLabel,
+    releaseHealthAlertRiskLevel,
+    releaseHealthAlertedRunCount,
+  } = buildReleaseHealthAlertsView({
+    deriveReleaseHealthAlertRiskLevel,
+    kpis,
+    normalizeBreakdownItems,
+    normalizeReleaseHealthAlertHourlyTrendItems,
+    releaseHealthAlerts,
+    toNullableIsoTimestamp,
+    toNumber,
   });
-  const releaseHealthAlertByFailureMode = normalizeBreakdownItems({
-    items: releaseHealthAlerts.byFailureMode,
-    keyName: 'failureMode',
-  });
-  const releaseHealthAlertHourlyTrend =
-    normalizeReleaseHealthAlertHourlyTrendItems(
-      releaseHealthAlerts.hourlyTrend,
-    );
-  const releaseHealthAlertCount = toNumber(
-    releaseHealthAlerts.totalAlerts,
-    toNumber(kpis.releaseHealthAlertCount),
-  );
-  const releaseHealthAlertFirstAppearanceCount = toNumber(
-    releaseHealthAlerts.firstAppearanceCount,
-    toNumber(kpis.releaseHealthFirstAppearanceCount),
-  );
-  const releaseHealthAlertedRunCount = toNumber(
-    releaseHealthAlerts.uniqueRuns,
-    toNumber(kpis.releaseHealthAlertedRunCount),
-  );
-  const releaseHealthAlertRiskLevel = deriveReleaseHealthAlertRiskLevel({
-    alertedRuns: releaseHealthAlertedRunCount,
-    firstAppearances: releaseHealthAlertFirstAppearanceCount,
-    totalAlerts: releaseHealthAlertCount,
-  });
-  const releaseHealthAlertLatest =
-    releaseHealthAlerts.latest && typeof releaseHealthAlerts.latest === 'object'
-      ? (releaseHealthAlerts.latest as {
-          receivedAtUtc?: string | null;
-          runId?: number | null;
-          runNumber?: number | null;
-          runUrl?: string | null;
-        })
-      : null;
-  const releaseHealthAlertLatestReceivedAt = toNullableIsoTimestamp(
-    releaseHealthAlertLatest?.receivedAtUtc,
-  );
-  const releaseHealthAlertLatestRunNumber =
-    typeof releaseHealthAlertLatest?.runNumber === 'number' &&
-    Number.isInteger(releaseHealthAlertLatest.runNumber) &&
-    releaseHealthAlertLatest.runNumber > 0
-      ? releaseHealthAlertLatest.runNumber
-      : null;
-  const releaseHealthAlertLatestRunId =
-    typeof releaseHealthAlertLatest?.runId === 'number' &&
-    Number.isInteger(releaseHealthAlertLatest.runId) &&
-    releaseHealthAlertLatest.runId > 0
-      ? releaseHealthAlertLatest.runId
-      : null;
-  let releaseHealthAlertLatestRunLabel = 'n/a';
-  if (releaseHealthAlertLatestRunNumber !== null) {
-    releaseHealthAlertLatestRunLabel = `#${releaseHealthAlertLatestRunNumber}`;
-  } else if (releaseHealthAlertLatestRunId !== null) {
-    releaseHealthAlertLatestRunLabel = String(releaseHealthAlertLatestRunId);
-  }
   const feedPreferences = data?.feedPreferences ?? {};
   const viewMode = feedPreferences.viewMode ?? {};
   const density = feedPreferences.density ?? {};
   const hint = feedPreferences.hint ?? {};
-  const engagementSessionCount = toNumber(kpis.sessionCount);
-  const engagementAvgSessionSeconds = toNumber(kpis.observerSessionTimeSec);
-  const hasEngagementRateSample = [
-    kpis.followRate,
-    kpis.digestOpenRate,
-    kpis.return24h,
-  ].some((rate) => typeof rate === 'number' && Number.isFinite(rate));
-  const shouldCompactEngagementOverview =
-    engagementSessionCount === 0 &&
-    engagementAvgSessionSeconds === 0 &&
-    !hasEngagementRateSample;
-  const viewModeTotal = toNumber(viewMode.total);
-  const densityTotal = toNumber(density.total);
-  const hintInteractionTotal = toNumber(hint.totalInteractions);
-  const feedPreferenceInteractionTotal =
-    viewModeTotal + densityTotal + hintInteractionTotal;
-  const hasFeedPreferenceRateSample = [
-    kpis.viewModeObserverRate,
-    kpis.viewModeFocusRate,
-    kpis.densityComfortRate,
-    kpis.densityCompactRate,
-    kpis.hintDismissRate,
-  ].some((rate) => typeof rate === 'number' && Number.isFinite(rate));
-  const shouldCompactFeedPreferenceKpis =
-    feedPreferenceInteractionTotal === 0 && !hasFeedPreferenceRateSample;
-  const shouldCompactFeedPreferenceEvents =
-    feedPreferenceInteractionTotal === 0;
+  const {
+    densityTotal,
+    engagementAvgSessionSeconds,
+    engagementSessionCount,
+    hintInteractionTotal,
+    shouldCompactEngagementOverview,
+    shouldCompactFeedPreferenceEvents,
+    shouldCompactFeedPreferenceKpis,
+    viewModeTotal,
+  } = buildEngagementCompactionView({
+    feedPreferences,
+    kpis,
+    toNumber,
+  });
   const segments = Array.isArray(data?.segments) ? data?.segments : [];
   const styleFusionMetrics = normalizeStyleFusionMetrics(similarSearchMetrics);
   const styleFusionRiskLevel = resolveHealthLevel(
