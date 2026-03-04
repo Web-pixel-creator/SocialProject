@@ -33,6 +33,36 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX runtime panel extraction pass
+
+- Scope: continue panel-level decomposition by moving `runtime` rendering out of monolithic `page.tsx` into a dedicated component module.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 03:59 -> 2026-03-04 04:10.
+- Changes:
+  - Added `apps/web/src/app/admin/ux/components/runtime-section-body.tsx` with extracted runtime failover body:
+    - runtime snapshot and health notices
+    - role/provider matrix
+    - dry-run simulator with preserved hidden scope fields and result table
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - replaced inline runtime body render call with `<RuntimeSectionBody ... />`.
+    - passed explicit runtime/query scope props (`ai*`, session scope fields, panel/hours).
+  - Kept runtime panel behavior and strict-gate semantics unchanged while reducing inline JSX in `page.tsx`.
+- Validation:
+  - `npx ultracite check apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/runtime-section-body.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Execution:
+  - Commit: `6cf67b6e7454c04c3e62b8a93abc6234f61e4d9a` pushed to `main`.
+  - Railway production deployments:
+    - `SocialProject`: `dac423c1-ed8a-4123-b495-d313edb71f6c` (`SUCCESS`).
+    - `api`: `fd3bdc3e-c035-470b-803c-3992b5235ce7` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-04T04:09:54.206Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: extract `gateway` section body from `page.tsx` into `components/gateway-sections.tsx` and keep the same explicit view-model pattern.
+
 ### 2026-03-03 - admin UX engagement panel extraction pass
 
 - Scope: start panel-level decomposition by moving `engagement` rendering out of monolithic `page.tsx` into dedicated component module.
