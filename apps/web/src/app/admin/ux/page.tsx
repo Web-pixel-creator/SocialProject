@@ -1,12 +1,8 @@
-import {
-  type AdminUxPageSearchParams,
-  renderAdminUxObserverEngagementPage,
-} from './components/admin-ux-page-entry';
+import type { AdminUxPageProps } from './components/admin-ux-page-contract';
+import { renderAdminUxObserverEngagementPage } from './components/admin-ux-page-entry';
 
 export default async function AdminUxObserverEngagementPage({
   searchParams,
-}: {
-  searchParams?: AdminUxPageSearchParams;
-}) {
+}: AdminUxPageProps) {
   return await renderAdminUxObserverEngagementPage(searchParams);
 }

@@ -1,12 +1,9 @@
+import type { AdminUxPageSearchParams } from './admin-ux-page-contract';
 import { AdminUxPageLoadState } from './admin-ux-page-load-state';
 import {
   loadAdminUxPageData,
   resolveAdminUxPageQueryState,
 } from './admin-ux-page-orchestration';
-
-export type AdminUxPageSearchParams =
-  | Promise<Record<string, string | string[] | undefined>>
-  | undefined;
 
 export const renderAdminUxObserverEngagementPage = async (
   searchParams: AdminUxPageSearchParams,

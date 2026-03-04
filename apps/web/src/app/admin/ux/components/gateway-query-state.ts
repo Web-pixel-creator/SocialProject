@@ -1,6 +1,4 @@
-export type AdminUxPageSearchParams =
-  | Record<string, string | string[] | undefined>
-  | undefined;
+import type { AdminUxResolvedSearchParams } from './admin-ux-page-contract';
 
 export const GATEWAY_CHANNEL_QUERY_PATTERN = /^[a-z0-9][a-z0-9._:-]{1,63}$/;
 export const GATEWAY_PROVIDER_QUERY_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
@@ -74,7 +72,7 @@ export const resolveGatewayEventsRequestFilters = ({
 });
 
 export const resolveGatewayQueryState = (
-  resolvedSearchParams: AdminUxPageSearchParams,
+  resolvedSearchParams: AdminUxResolvedSearchParams | undefined,
 ) => {
   const gatewayChannelFilter = parseOptionalFilteredQueryString(
     resolvedSearchParams?.gatewayChannel,

@@ -19,6 +19,7 @@ import {
   toNumber,
   toStringValue,
 } from './admin-ux-mappers';
+import type { AdminUxResolvedSearchParams } from './admin-ux-page-contract';
 import { resolveAdminUxPanel } from './admin-ux-page-utils';
 import {
   type AdminUxSectionData,
@@ -37,10 +38,8 @@ import {
 } from './gateway-query-state';
 import { resolveGatewaySessionOrchestrationState } from './gateway-session-orchestration';
 
-type AdminUxSearchParams = Record<string, string | string[] | undefined>;
-
 export const resolveAdminUxPageQueryState = (
-  resolvedSearchParams?: AdminUxSearchParams,
+  resolvedSearchParams?: AdminUxResolvedSearchParams,
 ) => {
   const rawHours = resolvedSearchParams?.hours;
   const parsedHours =
