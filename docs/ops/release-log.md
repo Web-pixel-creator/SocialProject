@@ -33,6 +33,35 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-04 - admin UX panel chrome extraction pass
+
+- Scope: continue admin UX decomposition by extracting the top panel chrome (focus tabs + sticky KPI strip) from the monolithic page.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-04 06:24 -> 2026-03-04 06:26.
+- Changes:
+  - Added `apps/web/src/app/admin/ux/components/admin-ux-panel-chrome.tsx`:
+    - focus panel tabs section,
+    - sticky KPI strip with health badges.
+  - Updated `apps/web/src/app/admin/ux/page.tsx`:
+    - replaced inline top chrome JSX with `<AdminUxPanelChrome ... />`,
+    - introduced view-model mappers `panelTabsView` and `stickyKpisView`.
+  - `admin/ux/page.tsx` reduced to `4148` lines.
+- Validation:
+  - `npx ultracite fix apps/web/src/app/admin/ux/page.tsx apps/web/src/app/admin/ux/components/admin-ux-panel-chrome.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Execution:
+  - Commit: `21f050b5ca7ca64ffc0f5f15787aad94da5fcfec` pushed to `main`.
+  - Railway production deployments:
+    - `SocialProject`: `5377b067-bdb0-43f7-bdbd-9d3ecf582c7b` (`SUCCESS`).
+    - `api`: `0f002b77-ac90-40e6-98a3-0698595c558e` (`SUCCESS`).
+  - Strict launch-gate:
+    - `npm run release:launch:gate:production:json -- --required-external-channels all`
+    - Result: `status=pass` (`generatedAtUtc=2026-03-04T06:26:12.746Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next pass: extract the remaining top-level `AdminUxPanel`/visibility plumbing into a compact presentation wrapper to further reduce `page.tsx` cognitive load.
+
 ### 2026-03-04 - admin UX shared telemetry cards extraction pass
 
 - Scope: continue monolith reduction by extracting shared telemetry/list/table cards from `admin/ux/page.tsx`.
