@@ -25,6 +25,20 @@ const metaToneClassName: Record<MetaTone, string> = {
   watch: 'border-amber-500/40 bg-amber-500/12 text-amber-200',
 };
 
+const metaToneMarker: Record<MetaTone, string> = {
+  critical: '[!]',
+  healthy: '[+]',
+  neutral: '[i]',
+  watch: '[~]',
+};
+
+const metaToneText: Record<MetaTone, string> = {
+  critical: 'critical',
+  healthy: 'healthy',
+  neutral: 'info',
+  watch: 'watch',
+};
+
 const CollapsiblePanelGroup = ({
   children,
   defaultOpen = false,
@@ -51,6 +65,10 @@ const CollapsiblePanelGroup = ({
           <span
             className={`${metaToneClassName[metaTone]} rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
           >
+            <span className="sr-only">{metaToneText[metaTone]} status:</span>
+            <span aria-hidden="true" className="mr-1">
+              {metaToneMarker[metaTone]}
+            </span>
             {metaLabel}
           </span>
         ) : null}

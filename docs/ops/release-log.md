@@ -33,6 +33,25 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - admin UX summary badge accessibility marker pass
+
+- Scope: improve collapsed-section accessibility by adding explicit text markers to summary risk badges (not color-only).
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 03:44 -> 2026-03-05 03:52.
+- Changes:
+  - Updated `apps/web/src/app/admin/ux/components/admin-ux-main-panels.tsx`:
+    - added marker mapping for summary tones (`[!]`, `[~]`, `[+]`, `[i]`),
+    - added hidden status text (`sr-only`) so badge tone is announced to assistive tech,
+    - kept existing severity color mapping and counter labels.
+- Validation:
+  - `npx ultracite check apps/web/src/app/admin/ux/components/admin-ux-main-panels.tsx`: pass.
+  - `npm run test:web -- --runInBand apps/web/src/__tests__/admin-ux-page.spec.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add keyboard shortcut hint for expanding/collapsing all summary groups in `All metrics`.
+
 ### 2026-03-04 - admin UX summary severity badges pass
 
 - Scope: make collapsed `All metrics` groups more scannable by adding risk-aware color tones to summary counters (`critical/watch/healthy/neutral`).
