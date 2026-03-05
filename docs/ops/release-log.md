@@ -33,6 +33,27 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - strict production launch-gate regression pass after inline artifact gating (phase 20)
+
+- Scope: verify strict production launch-gate remains green after phase 18/19 inline artifact gate and stabilization changes.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 09:46 -> 2026-03-05 09:49.
+- Validation:
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass.
+  - Gate status: `pass` (`generatedAtUtc=2026-03-05T09:48:52.379Z`).
+  - Confirmed checks:
+    - `sandboxExecutionMetrics.pass=true`
+    - `sandboxExecutionModeConsistency.pass=true` (`expectedMode=fallback_only`, `expectedModeCount=63`, `otherModeCount=0`, `total=63`)
+    - `sandboxExecutionAuditPolicy.pass=true`
+    - `sandboxExecutionEgressPolicy.pass=true`
+    - `sandboxExecutionLimitsPolicy.pass=true`
+    - `ingestExternalChannelFallback.pass=true`
+    - `ingestExternalChannelFailureModes.pass=true`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add dedicated CI assertion that run `Production Launch Gate` with `require_inline_health_artifacts=true` at least once per day and alert on regressions.
+
 ### 2026-03-05 - stabilize inline health strict gate after live failure drill (phase 19)
 
 - Scope: ensure `require_inline_health_artifacts=true` is resilient when inline health check exits non-zero (best-effort mode) by always emitting summary artifacts before step exit.
