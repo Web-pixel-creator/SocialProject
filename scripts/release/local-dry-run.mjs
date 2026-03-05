@@ -1,6 +1,6 @@
-import { spawn } from 'node:child_process';
 import net from 'node:net';
-import { sleep } from './release-runtime-utils.mjs';
+import { spawnWithReleasePolicy } from './release-command-policy.mjs';
+import { sleep, toErrorMessage } from './release-runtime-utils.mjs';
 
 const NPM_BIN = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const DEFAULT_API_BASE_URL = 'http://127.0.0.1:4000';
@@ -71,13 +71,14 @@ const runCommand = ({ command, args, name, env, shell }) => {
   return new Promise((resolve, reject) => {
     let child;
     try {
-      child = spawn(command, args, {
-        env: { ...process.env, ...(env ?? {}) },
+      child = spawnWithReleasePolicy(command, args, {
+        env,
+        profileName: 'no_network_workspace_write',
         stdio: 'inherit',
         shell: shell ?? false,
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = toErrorMessage(error);
       reject(
         new Error(
           `${name} failed to spawn (${command} ${args.join(' ')}): ${message}`,
@@ -108,8 +109,9 @@ const checkCommand = ({ command, args, env, shell }) => {
   return new Promise((resolve) => {
     let child;
     try {
-      child = spawn(command, args, {
-        env: { ...process.env, ...(env ?? {}) },
+      child = spawnWithReleasePolicy(command, args, {
+        env,
+        profileName: 'no_network_workspace_write',
         stdio: 'ignore',
         shell: shell ?? false,
       });
@@ -199,10 +201,15 @@ const probeWebHealth = async (baseUrl, timeoutMs) => {
 
 const taskKill = (pid) => {
   return new Promise((resolve) => {
-    const killer = spawn('taskkill', ['/PID', String(pid), '/T', '/F'], {
-      stdio: 'ignore',
-      shell: false,
-    });
+    const killer = spawnWithReleasePolicy(
+      'taskkill',
+      ['/PID', String(pid), '/T', '/F'],
+      {
+        profileName: 'system_process',
+        stdio: 'ignore',
+        shell: false,
+      },
+    );
     killer.on('close', () => resolve());
     killer.on('error', () => resolve());
   });
@@ -236,21 +243,22 @@ const stopProcess = async (child) => {
 const startService = ({ command, args, name, env, shell }) => {
   let child;
   try {
-    child = spawn(command, args, {
-      env: { ...process.env, ...(env ?? {}) },
+    child = spawnWithReleasePolicy(command, args, {
+      env,
+      profileName: 'no_network_workspace_write',
       stdio: 'inherit',
       shell: shell ?? false,
     });
   } catch (error) {
     process.stderr.write(
-      `${name} failed to spawn (${command} ${args.join(' ')}): ${String(error)}\n`,
+      `${name} failed to spawn (${command} ${args.join(' ')}): ${toErrorMessage(error)}\n`,
     );
     throw error;
   }
 
   child.on('error', (error) => {
     process.stderr.write(
-      `${name} start error (${command} ${args.join(' ')}): ${String(error)}\n`,
+      `${name} start error (${command} ${args.join(' ')}): ${toErrorMessage(error)}\n`,
     );
   });
 

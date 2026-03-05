@@ -1,7 +1,11 @@
-import { execFileSync, spawn } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import {
+  execFileSyncWithReleasePolicy,
+  resolveWorkspaceSafePath,
+  spawnWithReleasePolicy,
+} from './release-command-policy.mjs';
 import {
   RELEASE_HEALTH_REPORT_JSON_SCHEMA_PATH,
   RELEASE_HEALTH_REPORT_JSON_SCHEMA_VERSION,
@@ -728,8 +732,9 @@ const getNpmInvocation = (args) => {
 const runNpmCommand = ({ args, env }) =>
   new Promise((resolve, reject) => {
     const invocation = getNpmInvocation(args);
-    const child = spawn(invocation.command, invocation.args, {
-      env: { ...process.env, ...(env ?? {}) },
+    const child = spawnWithReleasePolicy(invocation.command, invocation.args, {
+      env,
+      profileName: 'workspace_write',
       stdio: 'inherit',
       shell: invocation.shell,
     });
@@ -759,7 +764,10 @@ const escapePowerShellLiteral = (value) => `'${value.replace(/'/gu, "''")}'`;
 
 const tryExtract = (command, args, extractDir) => {
   try {
-    execFileSync(command, args, { stdio: 'pipe' });
+    execFileSyncWithReleasePolicy(command, args, {
+      profileName: 'workspace_write',
+      stdio: 'pipe',
+    });
     return { ok: true };
   } catch (error) {
     const message = toErrorMessage(error);
@@ -2215,10 +2223,16 @@ const main = async () => {
     launchGateSandboxChecks,
   };
 
-  await mkdir(outputDir, { recursive: true });
-  const outputPath = path.resolve(
-    path.join(outputDir, `post-release-health-run-${runId}.json`),
-  );
+  const resolvedOutputDir = resolveWorkspaceSafePath({
+    label: 'release health report output directory',
+    targetPath: outputDir,
+  });
+  await mkdir(resolvedOutputDir, { recursive: true });
+  const outputPath = resolveWorkspaceSafePath({
+    baseDir: resolvedOutputDir,
+    label: 'release health report output path',
+    targetPath: `post-release-health-run-${runId}.json`,
+  });
   await writeFile(outputPath, JSON.stringify(report, null, 2));
 
   const strictMode =

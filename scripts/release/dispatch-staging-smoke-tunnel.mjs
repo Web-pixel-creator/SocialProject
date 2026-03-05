@@ -1,9 +1,12 @@
-import { spawn } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import {
+  resolveWorkspaceSafePath,
+  spawnWithReleasePolicy,
+} from './release-command-policy.mjs';
 import { githubApiRequestWithTransientRetry } from './github-api-request-with-transient-retry.mjs';
 import { resolveToken } from './github-token-repo-resolution.mjs';
-import { sleep } from './release-runtime-utils.mjs';
+import { sleep, toErrorMessage } from './release-runtime-utils.mjs';
 import {
   cleanupRetryFailureLogs,
   formatRetryLogsCleanupSummary,
@@ -103,13 +106,14 @@ const runCommand = ({ command, args, name, env, shell, captureOutput = false }) 
     let stdoutText = '';
     let stderrText = '';
     try {
-      child = spawn(command, args, {
-        env: { ...process.env, ...(env ?? {}) },
+      child = spawnWithReleasePolicy(command, args, {
+        env,
+        profileName: 'workspace_write',
         stdio: captureOutput ? ['ignore', 'pipe', 'pipe'] : 'inherit',
         shell: shell ?? false,
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = toErrorMessage(error);
       reject(
         new Error(
           `${name} failed to spawn (${command} ${args.join(' ')}): ${message}`,
@@ -180,10 +184,15 @@ const waitForUrl = async (url, timeoutMs, intervalMs) => {
 
 const taskKill = (pid) => {
   return new Promise((resolve) => {
-    const killer = spawn('taskkill', ['/PID', String(pid), '/T', '/F'], {
-      stdio: 'ignore',
-      shell: false,
-    });
+    const killer = spawnWithReleasePolicy(
+      'taskkill',
+      ['/PID', String(pid), '/T', '/F'],
+      {
+        profileName: 'system_process',
+        stdio: 'ignore',
+        shell: false,
+      },
+    );
     killer.on('close', () => resolve());
     killer.on('error', () => resolve());
   });
@@ -217,21 +226,22 @@ const stopProcess = async (child) => {
 const startService = ({ command, args, name, env, shell }) => {
   let child;
   try {
-    child = spawn(command, args, {
-      env: { ...process.env, ...(env ?? {}) },
+    child = spawnWithReleasePolicy(command, args, {
+      env,
+      profileName: 'workspace_write',
       stdio: 'inherit',
       shell: shell ?? false,
     });
   } catch (error) {
     process.stderr.write(
-      `${name} failed to spawn (${command} ${args.join(' ')}): ${String(error)}\n`,
+      `${name} failed to spawn (${command} ${args.join(' ')}): ${toErrorMessage(error)}\n`,
     );
     throw error;
   }
 
   child.on('error', (error) => {
     process.stderr.write(
-      `${name} start error (${command} ${args.join(' ')}): ${String(error)}\n`,
+      `${name} start error (${command} ${args.join(' ')}): ${toErrorMessage(error)}\n`,
     );
   });
 
@@ -389,7 +399,11 @@ const captureRetryFailureLogs = async ({
     return;
   }
 
-  await mkdir(outputDir, { recursive: true });
+  const resolvedOutputDir = resolveWorkspaceSafePath({
+    label: 'retry diagnostics output directory',
+    targetPath: outputDir,
+  });
+  await mkdir(resolvedOutputDir, { recursive: true });
   const runTag = runNumber ?? runId;
   const metadata = {
     generatedAtUtc: new Date().toISOString(),
@@ -404,7 +418,7 @@ const captureRetryFailureLogs = async ({
     const jobName = String(job.name ?? `job-${jobId}`);
     const safeJobName = sanitizeFilePart(jobName);
     const logFilePath = path.join(
-      outputDir,
+      resolvedOutputDir,
       `run-${runTag}-runid-${runId}-job-${jobId}-${safeJobName}.log`,
     );
     const logUrl = `https://api.github.com/repos/${repoSlug}/actions/jobs/${jobId}/logs`;
@@ -436,7 +450,7 @@ const captureRetryFailureLogs = async ({
   }
 
   const metadataPath = path.join(
-    outputDir,
+    resolvedOutputDir,
     `run-${runTag}-runid-${runId}-retry-metadata.json`,
   );
   await writeFile(metadataPath, JSON.stringify(metadata, null, 2), 'utf8');
@@ -661,14 +675,20 @@ const waitForTunnelPreflight = async ({
 };
 
 const writePreflightSummary = async ({ summary, outputPath }) => {
-  const resolvedPath = path.resolve(outputPath);
+  const resolvedPath = resolveWorkspaceSafePath({
+    label: 'tunnel preflight summary path',
+    targetPath: outputPath,
+  });
   await mkdir(path.dirname(resolvedPath), { recursive: true });
   await writeFile(resolvedPath, JSON.stringify(summary, null, 2), 'utf8');
   process.stdout.write(`Tunnel preflight summary written to ${resolvedPath}\n`);
 };
 
 const writeRetrySummary = async ({ summary, outputPath }) => {
-  const resolvedPath = path.resolve(outputPath);
+  const resolvedPath = resolveWorkspaceSafePath({
+    label: 'tunnel retry summary path',
+    targetPath: outputPath,
+  });
   await mkdir(path.dirname(resolvedPath), { recursive: true });
   await writeFile(resolvedPath, JSON.stringify(summary, null, 2), 'utf8');
   process.stdout.write(`Tunnel dispatch retry summary written to ${resolvedPath}\n`);
@@ -724,8 +744,8 @@ const startTunnel = ({ port, name }) => {
     DEFAULT_WEB_HOST,
   ]);
 
-  const child = spawn(invocation.command, invocation.args, {
-    env: { ...process.env },
+  const child = spawnWithReleasePolicy(invocation.command, invocation.args, {
+    profileName: 'workspace_write',
     stdio: ['ignore', 'pipe', 'pipe'],
     shell: invocation.shell ?? false,
   });

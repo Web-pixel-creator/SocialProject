@@ -33,6 +33,46 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add shared release command policy runner and hardening roadmap (phase 122)
+
+- Scope: start the next operational hardening track by introducing a shared release command policy layer for high-risk release runners and by recording the follow-on production hardening roadmap.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 18:46 -> 2026-03-05 18:52.
+- Changes:
+  - Added shared release command policy module:
+    - `scripts/release/release-command-policy.mjs`
+    - enforces workspace-bounded `cwd`,
+    - blocks protected path segments (`.git`, `.codex`, `.agents`) for persistent workspace paths,
+    - applies shell allowlist by profile,
+    - strips proxy env keys for no-network profiles,
+    - exposes structured error payloads with stable error codes.
+  - Integrated shared policy layer into key release runners:
+    - `scripts/release/local-dry-run.mjs`
+    - `scripts/release/dispatch-staging-smoke-tunnel.mjs`
+    - `scripts/release/post-release-health-report.mjs`
+  - Added workspace-safe path enforcement for persistent outputs:
+    - tunnel retry/preflight summaries,
+    - tunnel retry diagnostics output directory,
+    - post-release health report output directory/file.
+  - Added unit coverage:
+    - `apps/api/src/__tests__/release-command-policy.unit.spec.ts`
+    - covers outside-workspace rejection, protected-path rejection, shell allowlist, no-network env sanitization, and sync spawn behavior.
+  - Added follow-on roadmap:
+    - `docs/plans/2026-03-05-production-hardening-roadmap.md`
+- Validation:
+  - `node --check scripts/release/release-command-policy.mjs`: pass.
+  - `node --check scripts/release/local-dry-run.mjs`: pass.
+  - `node --check scripts/release/dispatch-staging-smoke-tunnel.mjs`: pass.
+  - `node --check scripts/release/post-release-health-report.mjs`: pass.
+  - `npm run test -- apps/api/src/__tests__/release-command-policy.unit.spec.ts apps/api/src/__tests__/release-runtime-utils.unit.spec.ts`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - next: propagate the same policy/error model across remaining sync release runners and start the correlation/audit phase.
+
 ### 2026-03-05 - complete `toErrorMessage` helper migration across release scripts (phase 121)
 
 - Scope: finish error-message helper deduplication by migrating remaining release scripts to shared `toErrorMessage` from `release-runtime-utils`.
