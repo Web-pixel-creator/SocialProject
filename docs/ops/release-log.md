@@ -33,6 +33,34 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - harden credential-store resolver for git lookup failures (phase 112)
+
+- Scope: make token resolution resilient when `git credential fill` exits with error (missing credentials/prompt-disabled), while preserving explicit `allowMissing` semantics.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 17:33 -> 2026-03-05 17:36.
+- Changes:
+  - Updated shared resolver:
+    - `scripts/release/github-token-repo-resolution.mjs`
+    - wrapped `git credential fill` with `try/catch` in `readTokenFromGitCredentialStore`:
+      - `allowMissing: true` now returns empty token even when command fails,
+      - `allowMissing: false` now throws stable guidance error (`Set GITHUB_TOKEN or GH_TOKEN`).
+  - Expanded tests:
+    - `apps/api/src/__tests__/release-github-token-repo-resolution.unit.spec.ts`
+    - added credential command failure scenarios with isolated temporary git credential fixture:
+      - empty-store failure + `allowMissing: true` -> empty token,
+      - empty-store failure + `allowMissing: false` -> stable error message.
+- Validation:
+  - `node --check scripts/release/github-token-repo-resolution.mjs`: pass.
+  - `npm run test -- apps/api/src/__tests__/release-github-token-repo-resolution.unit.spec.ts`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T17:35:08.042Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: reuse the shared resolver in remaining standalone release token helpers (if any are introduced later) instead of adding new local credential logic.
+
 ### 2026-03-05 - add non-GitHub fallback failure coverage for resolver (phase 111)
 
 - Scope: finalize resolver integration coverage by asserting stable failure behavior when `resolveRepoSlug` fallback reads a non-GitHub `remote.origin.url`.

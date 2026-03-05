@@ -41,10 +41,23 @@ export const resolveRepoSlug = ({
 };
 
 export const readTokenFromGitCredentialStore = ({ allowMissing = false } = {}) => {
-  const output = execFileSync('git', ['credential', 'fill'], {
-    encoding: 'utf8',
-    input: CREDENTIAL_STORE_INPUT,
-  });
+  let output;
+  try {
+    output = execFileSync('git', ['credential', 'fill'], {
+      encoding: 'utf8',
+      input: CREDENTIAL_STORE_INPUT,
+    });
+  } catch (error) {
+    if (allowMissing) {
+      return '';
+    }
+    throw new Error(
+      'Unable to resolve GitHub token from credential store. Set GITHUB_TOKEN or GH_TOKEN.',
+      {
+        cause: error instanceof Error ? error : undefined,
+      },
+    );
+  }
 
   const tokenLine = output
     .split(/\r?\n/u)

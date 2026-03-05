@@ -260,6 +260,52 @@ describe('release github token/repo resolution helper', () => {
     }
   });
 
+  test('returns empty token when allowMissing=true and credential lookup command fails', () => {
+    const fixture = createCredentialFixture('');
+    try {
+      const result = runResolverScenarioWithEnv(
+        `
+          const value = readTokenFromGitCredentialStore({ allowMissing: true });
+          emit({ ok: true, result: value, error: '' });
+        `,
+        { env: fixture.env },
+      );
+
+      expect(result.output.status).toBe(0);
+      expect(result.payload.ok).toBe(true);
+      expect(result.payload.result).toBe('');
+    } finally {
+      rmSync(fixture.tempDir, {
+        force: true,
+        recursive: true,
+      });
+    }
+  });
+
+  test('throws stable error when credential lookup command fails and allowMissing=false', () => {
+    const fixture = createCredentialFixture('');
+    try {
+      const result = runResolverScenarioWithEnv(
+        `
+          const value = readTokenFromGitCredentialStore();
+          emit({ ok: true, result: value, error: '' });
+        `,
+        { env: fixture.env },
+      );
+
+      expect(result.output.status).toBe(1);
+      expect(result.payload.ok).toBe(false);
+      expect(result.payload.error).toContain(
+        'Unable to resolve GitHub token from credential store',
+      );
+    } finally {
+      rmSync(fixture.tempDir, {
+        force: true,
+        recursive: true,
+      });
+    }
+  });
+
   test('resolveRepoSlug falls back to git origin remote when explicit input is empty', () => {
     const tempDir = mkdtempSync(path.join(os.tmpdir(), 'release-git-repo-'));
     try {
