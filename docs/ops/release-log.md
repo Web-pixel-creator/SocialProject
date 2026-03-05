@@ -33,6 +33,34 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - strict boolean validation for all dispatch env toggles (phase 56)
+
+- Scope: complete boolean-env hardening in dispatch helper by removing silent fallback behavior for remaining toggle env vars.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 11:40 -> 2026-03-05 11:43.
+- Changes:
+  - Updated `scripts/release/dispatch-production-launch-gate.mjs`:
+    - switched env boolean parsing for these toggles to strict `parseBooleanEnv`:
+      - `RELEASE_REQUIRE_SKILL_MARKERS`
+      - `RELEASE_REQUIRE_NATURAL_CRON_WINDOW`
+      - `RELEASE_REQUIRE_INLINE_HEALTH_ARTIFACTS`
+      - `RELEASE_ALLOW_FAILURE_DRILL`
+    - invalid values now fail with explicit accepted-form diagnostics.
+  - Updated `apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts`:
+    - added matrix test for invalid `maybe` value across all toggles above.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-external-channels.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-help-snapshot.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - live dispatch regression:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --print-artifact-links --artifact-link-names all`
+    - run `#78` (`22716264796`): success with expected summary and artifact-link output.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: evaluate strict boolean parsing for link-option env toggles in `dispatch-production-launch-gate-link-options.mjs` to complete consistency end-to-end.
+
 ### 2026-03-05 - strict boolean validation for dispatch wait-completion env toggle (phase 55)
 
 - Scope: remove silent fallback behavior for invalid `RELEASE_WAIT_FOR_COMPLETION` values and fail with explicit diagnostics.

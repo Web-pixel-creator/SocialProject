@@ -206,4 +206,21 @@ describe('launch-gate dispatch helper cli argument validation', () => {
       'Invalid value for RELEASE_WAIT_FOR_COMPLETION: maybe',
     );
   });
+
+  test('fails fast on invalid dispatch boolean env toggles', () => {
+    const invalidToggleEnvs = [
+      'RELEASE_REQUIRE_SKILL_MARKERS',
+      'RELEASE_REQUIRE_NATURAL_CRON_WINDOW',
+      'RELEASE_REQUIRE_INLINE_HEALTH_ARTIFACTS',
+      'RELEASE_ALLOW_FAILURE_DRILL',
+    ];
+
+    for (const envName of invalidToggleEnvs) {
+      const result = runDispatchScript([], {
+        [envName]: 'maybe',
+      });
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain(`Invalid value for ${envName}: maybe`);
+    }
+  });
 });

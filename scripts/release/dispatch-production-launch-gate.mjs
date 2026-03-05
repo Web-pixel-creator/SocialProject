@@ -563,11 +563,19 @@ const main = async () => {
   const requireSkillMarkers =
     typeof cli.requireSkillMarkers === 'boolean'
       ? cli.requireSkillMarkers
-      : parseBoolean(process.env.RELEASE_REQUIRE_SKILL_MARKERS, false);
+      : parseBooleanEnv(
+          process.env.RELEASE_REQUIRE_SKILL_MARKERS,
+          false,
+          'RELEASE_REQUIRE_SKILL_MARKERS',
+        );
   const requireNaturalCronWindow =
     typeof cli.requireNaturalCronWindow === 'boolean'
       ? cli.requireNaturalCronWindow
-      : parseBoolean(process.env.RELEASE_REQUIRE_NATURAL_CRON_WINDOW, false);
+      : parseBooleanEnv(
+          process.env.RELEASE_REQUIRE_NATURAL_CRON_WINDOW,
+          false,
+          'RELEASE_REQUIRE_NATURAL_CRON_WINDOW',
+        );
   const requiredExternalChannels =
     cli.requiredExternalChannels ||
     parseDispatchExternalChannels(
@@ -577,7 +585,11 @@ const main = async () => {
   const requireInlineHealthArtifacts =
     typeof cli.requireInlineHealthArtifacts === 'boolean'
       ? cli.requireInlineHealthArtifacts
-      : parseBoolean(process.env.RELEASE_REQUIRE_INLINE_HEALTH_ARTIFACTS, false);
+      : parseBooleanEnv(
+          process.env.RELEASE_REQUIRE_INLINE_HEALTH_ARTIFACTS,
+          false,
+          'RELEASE_REQUIRE_INLINE_HEALTH_ARTIFACTS',
+        );
   const {
     includeStepSummaryLink,
     printArtifactLinks,
@@ -594,7 +606,11 @@ const main = async () => {
   const allowFailureDrill =
     typeof cli.allowFailureDrill === 'boolean'
       ? cli.allowFailureDrill
-      : parseBoolean(process.env.RELEASE_ALLOW_FAILURE_DRILL, false);
+      : parseBooleanEnv(
+          process.env.RELEASE_ALLOW_FAILURE_DRILL,
+          false,
+          'RELEASE_ALLOW_FAILURE_DRILL',
+        );
   const webhookSecretOverride =
     cli.webhookSecretOverride ||
     String(process.env.RELEASE_WEBHOOK_SECRET_OVERRIDE ?? '');
