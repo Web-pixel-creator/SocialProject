@@ -19,6 +19,7 @@ const DEFAULT_WORKFLOW_FILE = 'production-launch-gate.yml';
 const DEFAULT_WORKFLOW_REF = 'main';
 const DEFAULT_WAIT_TIMEOUT_MS = 20 * 60 * 1000;
 const DEFAULT_WAIT_POLL_MS = 5000;
+const DEFAULT_FAILURE_SUMMARY_MAX_JOBS = 5;
 const RUN_DISCOVERY_GRACE_MS = 2 * 60 * 1000;
 const ARTIFACT_DISCOVERY_ATTEMPTS = 6;
 const ARTIFACT_DISCOVERY_POLL_MS = 1000;
@@ -33,6 +34,7 @@ Options:
   --require-inline-health-artifacts      workflow input require_inline_health_artifacts=true
   --allow-failure-drill                  workflow input allow_failure_drill=true
   --webhook-secret-override <value>      workflow input webhook_secret_override (requires allow_failure_drill)
+  --failure-summary-max-jobs <n>         cap failed-job diagnostics entries (default: ${DEFAULT_FAILURE_SUMMARY_MAX_JOBS})
   --print-artifact-links                 print links for additional high-signal artifacts after success
   --artifact-link-names <csv|all>        override artifact link set (allowed: ${ALLOWED_ARTIFACT_LINK_NAMES.join(', ')}, or all)
   --no-step-summary-link                 suppress default step-summary artifact link output
@@ -86,6 +88,7 @@ const toErrorMessage = (error) =>
 const parseCliArgs = (argv) => {
   let tokenFromArg = '';
   let runtimeDraftId = '';
+  let failureSummaryMaxJobsRaw = '';
   let requireSkillMarkers;
   let requireNaturalCronWindow;
   let requiredExternalChannels = '';
@@ -135,6 +138,14 @@ const parseCliArgs = (argv) => {
       runtimeDraftId = value;
       continue;
     }
+    if (arg.startsWith('--failure-summary-max-jobs=')) {
+      const value = arg.slice('--failure-summary-max-jobs='.length).trim();
+      if (!value) {
+        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
+      }
+      failureSummaryMaxJobsRaw = value;
+      continue;
+    }
     if (arg.startsWith('--required-external-channels=')) {
       const value = arg.slice('--required-external-channels='.length).trim();
       if (!value) {
@@ -168,6 +179,15 @@ const parseCliArgs = (argv) => {
         throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
       }
       runtimeDraftId = value;
+      index += 1;
+      continue;
+    }
+    if (arg === '--failure-summary-max-jobs') {
+      const value = (argv[index + 1] ?? '').trim();
+      if (!value) {
+        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
+      }
+      failureSummaryMaxJobsRaw = value;
       index += 1;
       continue;
     }
@@ -248,6 +268,7 @@ const parseCliArgs = (argv) => {
     printArtifactLinks,
     requiredExternalChannels,
     runtimeDraftId,
+    failureSummaryMaxJobsRaw,
     tokenFromArg,
     webhookSecretOverride,
   };
@@ -383,14 +404,21 @@ const listRunJobs = async ({ baseApiUrl, runId, token }) => {
   return Array.isArray(jobsResponse?.jobs) ? jobsResponse.jobs : [];
 };
 
-const resolveRunFailureSummary = async ({ baseApiUrl, runId, token }) => {
+const resolveRunFailureSummary = async ({
+  baseApiUrl,
+  runId,
+  token,
+  failureSummaryMaxJobs,
+}) => {
   try {
     const jobs = await listRunJobs({
       baseApiUrl,
       runId,
       token,
     });
-    return buildDispatchRunFailureSummary(jobs);
+    return buildDispatchRunFailureSummary(jobs, {
+      maxFailedJobDetails: failureSummaryMaxJobs,
+    });
   } catch (error) {
     return `Failure details unavailable: ${toErrorMessage(error)}`;
   }
@@ -555,6 +583,13 @@ const main = async () => {
     DEFAULT_WAIT_POLL_MS,
     'RELEASE_WAIT_POLL_MS',
   );
+  const failureSummaryMaxJobs = parseReleasePositiveIntegerEnv(
+    cli.failureSummaryMaxJobsRaw || process.env.RELEASE_FAILURE_SUMMARY_MAX_JOBS,
+    DEFAULT_FAILURE_SUMMARY_MAX_JOBS,
+    cli.failureSummaryMaxJobsRaw
+      ? '--failure-summary-max-jobs'
+      : 'RELEASE_FAILURE_SUMMARY_MAX_JOBS',
+  );
   const runtimeDraftId =
     cli.runtimeDraftId || (process.env.RELEASE_RUNTIME_DRAFT_ID ?? '').trim();
   const requireSkillMarkers =
@@ -703,6 +738,7 @@ const main = async () => {
     requireSkillMarkers,
     runtimeDraftId,
     selectedArtifactLinkNames,
+    failureSummaryMaxJobs,
     webhookSecretOverride,
   });
   for (const line of summaryLines) {
@@ -781,6 +817,7 @@ const main = async () => {
       }
       const failureSummary = await resolveRunFailureSummary({
         baseApiUrl,
+        failureSummaryMaxJobs,
         runId: Number(current.id),
         token,
       });

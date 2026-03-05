@@ -228,6 +228,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
         - [ ] `--print-artifact-links` (optional: print additional artifact URLs in helper stdout)
         - [ ] `--artifact-link-names <csv|all>` (optional: select artifact URL subset in helper stdout)
         - [ ] `--no-step-summary-link` (optional: suppress default step-summary artifact URL)
+        - [ ] `--failure-summary-max-jobs <n>` (optional: cap failed-job diagnostics entries in helper errors)
         - [ ] `--allow-failure-drill`
         - [ ] `--webhook-secret-override <value>` (requires `--allow-failure-drill`; drill-only)
       - [ ] Optional runtime draft input: `RELEASE_RUNTIME_DRAFT_ID=<uuid>`
@@ -238,6 +239,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
       - [ ] Optional artifact-link verbosity: `RELEASE_PRINT_ARTIFACT_LINKS=true`
       - [ ] Optional artifact-link subset: `RELEASE_ARTIFACT_LINK_NAMES=<csv|all>`
       - [ ] Optional step-summary link suppression: `RELEASE_NO_STEP_SUMMARY_LINK=true`
+      - [ ] Optional failed-job diagnostics cap: `RELEASE_FAILURE_SUMMARY_MAX_JOBS=<n>`
       - [ ] Optional controlled drill toggles:
         - [ ] `RELEASE_ALLOW_FAILURE_DRILL=true`
         - [ ] `RELEASE_WEBHOOK_SECRET_OVERRIDE=<value>` (requires `RELEASE_ALLOW_FAILURE_DRILL=true`)

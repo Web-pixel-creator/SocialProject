@@ -52,6 +52,18 @@ describe('launch-gate dispatch helper cli argument validation', () => {
     );
   });
 
+  test('fails fast when failure-summary-max-jobs value is missing', () => {
+    const result = runDispatchScript(['--failure-summary-max-jobs']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Missing value for --failure-summary-max-jobs',
+    );
+    expect(result.stderr).toContain(
+      'Usage: npm run release:launch:gate:dispatch',
+    );
+  });
+
   test('fails fast on unknown argument', () => {
     const result = runDispatchScript(['--unknown-flag']);
 
@@ -101,6 +113,18 @@ describe('launch-gate dispatch helper cli argument validation', () => {
     expect(result.status).toBe(1);
     expect(result.stderr).toContain(
       'Missing value for --required-external-channels=',
+    );
+    expect(result.stderr).toContain(
+      'Usage: npm run release:launch:gate:dispatch',
+    );
+  });
+
+  test('fails fast when inline failure-summary-max-jobs value is empty', () => {
+    const result = runDispatchScript(['--failure-summary-max-jobs=']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Missing value for --failure-summary-max-jobs=',
     );
     expect(result.stderr).toContain(
       'Usage: npm run release:launch:gate:dispatch',
@@ -193,6 +217,26 @@ describe('launch-gate dispatch helper cli argument validation', () => {
     expect(result.status).toBe(1);
     expect(result.stderr).toContain(
       'Invalid value for RELEASE_WAIT_POLL_MS: 0',
+    );
+  });
+
+  test('fails fast on invalid RELEASE_FAILURE_SUMMARY_MAX_JOBS env value', () => {
+    const result = runDispatchScript([], {
+      RELEASE_FAILURE_SUMMARY_MAX_JOBS: 'abc',
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Invalid value for RELEASE_FAILURE_SUMMARY_MAX_JOBS: abc',
+    );
+  });
+
+  test('fails fast on invalid --failure-summary-max-jobs cli value', () => {
+    const result = runDispatchScript(['--failure-summary-max-jobs', '0']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Invalid value for --failure-summary-max-jobs: 0',
     );
   });
 

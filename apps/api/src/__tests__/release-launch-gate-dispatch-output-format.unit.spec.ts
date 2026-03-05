@@ -63,6 +63,7 @@ describe('launch-gate dispatch summary output formatter', () => {
       requireNaturalCronWindow: false,
       requireSkillMarkers: false,
       runtimeDraftId: '',
+      failureSummaryMaxJobs: 5,
       selectedArtifactLinkNames: [],
       webhookSecretOverride: '',
     });
@@ -73,6 +74,7 @@ describe('launch-gate dispatch summary output formatter', () => {
       'Require natural cron window input: false',
       'Required external channels input: none',
       'Require inline health artifacts input: true',
+      'Failure summary max jobs: 5',
       'Allow failure drill input: false',
       'Print artifact links option: false',
       'Include step summary link: true',
@@ -89,6 +91,7 @@ describe('launch-gate dispatch summary output formatter', () => {
       requireNaturalCronWindow: true,
       requireSkillMarkers: true,
       runtimeDraftId: 'draft-123',
+      failureSummaryMaxJobs: 12,
       selectedArtifactLinkNames: ['production-launch-gate-summary'],
       webhookSecretOverride: 'dummy-secret',
     });
@@ -100,6 +103,7 @@ describe('launch-gate dispatch summary output formatter', () => {
       'Require natural cron window input: true',
       'Required external channels input: all',
       'Require inline health artifacts input: true',
+      'Failure summary max jobs: 12',
       'Allow failure drill input: true',
       'Print artifact links option: true',
       'Include step summary link: false',

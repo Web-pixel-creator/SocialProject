@@ -18,12 +18,16 @@ interface ModuleActionResult<T> {
   result: T;
 }
 
-const runBuildSummary = (jobs: unknown) => {
+const runBuildSummary = (
+  jobs: unknown,
+  options: { maxFailedJobDetails?: number } = {},
+) => {
   const script = `
     import { buildDispatchRunFailureSummary } from ${JSON.stringify(moduleHref)};
     const jobs = ${JSON.stringify(jobs)};
+    const options = ${JSON.stringify(options)};
     try {
-      const result = buildDispatchRunFailureSummary(jobs);
+      const result = buildDispatchRunFailureSummary(jobs, options);
       process.stdout.write(JSON.stringify({ ok: true, result, error: '' }));
     } catch (error) {
       process.stdout.write(
@@ -134,6 +138,22 @@ describe('launch-gate dispatch failure summary formatter', () => {
     expect(result.output.status).toBe(0);
     expect(result.payload.result).toBe(
       'Failed jobs: job-1 [failure]; job-2 [failure]; job-3 [failure]; job-4 [failure]; job-5 [failure]; +2 more failed jobs',
+    );
+  });
+
+  test('supports caller-provided max failed-job details override', () => {
+    const result = runBuildSummary(
+      [
+        { conclusion: 'failure', name: 'job-1' },
+        { conclusion: 'failure', name: 'job-2' },
+        { conclusion: 'failure', name: 'job-3' },
+      ],
+      { maxFailedJobDetails: 2 },
+    );
+
+    expect(result.output.status).toBe(0);
+    expect(result.payload.result).toBe(
+      'Failed jobs: job-1 [failure]; job-2 [failure]; +1 more failed job',
     );
   });
 });

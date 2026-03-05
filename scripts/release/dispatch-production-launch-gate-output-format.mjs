@@ -9,6 +9,7 @@ export const buildDispatchInputSummaryLines = ({
   requireNaturalCronWindow,
   requireSkillMarkers,
   runtimeDraftId,
+  failureSummaryMaxJobs,
   selectedArtifactLinkNames,
   webhookSecretOverride,
 }) => {
@@ -21,6 +22,7 @@ export const buildDispatchInputSummaryLines = ({
     `Require natural cron window input: ${toBooleanText(requireNaturalCronWindow)}`,
     `Required external channels input: ${requiredExternalChannels || 'none'}`,
     `Require inline health artifacts input: ${toBooleanText(requireInlineHealthArtifacts)}`,
+    `Failure summary max jobs: ${failureSummaryMaxJobs}`,
     `Allow failure drill input: ${toBooleanText(allowFailureDrill)}`,
     `Print artifact links option: ${toBooleanText(printArtifactLinks)}`,
     `Include step summary link: ${toBooleanText(includeStepSummaryLink)}`,

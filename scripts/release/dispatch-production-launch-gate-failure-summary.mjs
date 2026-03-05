@@ -5,7 +5,7 @@ const FAILURE_CONCLUSIONS = new Set([
   'startup_failure',
   'timed_out',
 ]);
-const MAX_FAILED_JOB_DETAILS = 5;
+const DEFAULT_MAX_FAILED_JOB_DETAILS = 5;
 
 const toNormalizedText = (value, fallback) =>
   typeof value === 'string' && value.trim().length > 0 ? value.trim() : fallback;
@@ -19,7 +19,16 @@ const pickFirstFailedStepName = (steps) => {
   return toNormalizedText(failedStep?.name, '');
 };
 
-export const buildDispatchRunFailureSummary = (jobs) => {
+const resolveMaxFailedJobDetails = (options) => {
+  const candidate = Number(options?.maxFailedJobDetails);
+  if (Number.isInteger(candidate) && candidate > 0) {
+    return candidate;
+  }
+  return DEFAULT_MAX_FAILED_JOB_DETAILS;
+};
+
+export const buildDispatchRunFailureSummary = (jobs, options = {}) => {
+  const maxFailedJobDetails = resolveMaxFailedJobDetails(options);
   const normalizedJobs = Array.isArray(jobs) ? jobs : [];
   const failedJobs = normalizedJobs.filter((job) => {
     const conclusion = toNormalizedText(job?.conclusion, '').toLowerCase();
@@ -29,7 +38,7 @@ export const buildDispatchRunFailureSummary = (jobs) => {
     return '';
   }
 
-  const details = failedJobs.slice(0, MAX_FAILED_JOB_DETAILS).map((job) => {
+  const details = failedJobs.slice(0, maxFailedJobDetails).map((job) => {
     const name = toNormalizedText(job?.name, 'unnamed-job');
     const conclusion = toNormalizedText(job?.conclusion, 'unknown').toLowerCase();
     const failedStepName = pickFirstFailedStepName(job?.steps);

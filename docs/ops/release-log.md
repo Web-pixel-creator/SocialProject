@@ -33,6 +33,48 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add configurable cap for dispatch failed-job diagnostics (phase 72)
+
+- Scope: make dispatch failure-summary verbosity tunable for incident response by introducing strict CLI/env control over maximum rendered failed-job entries.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 12:42 -> 2026-03-05 12:50.
+- Changes:
+  - Updated `scripts/release/dispatch-production-launch-gate.mjs`:
+    - added CLI flag `--failure-summary-max-jobs <n>`,
+    - added env fallback `RELEASE_FAILURE_SUMMARY_MAX_JOBS`,
+    - strict parsing via `parseReleasePositiveIntegerEnv` with source-aware diagnostics,
+    - plumbed value into failure-summary builder and dispatch input summary output.
+  - Updated `scripts/release/dispatch-production-launch-gate-failure-summary.mjs`:
+    - added optional options arg with `maxFailedJobDetails` override support,
+    - retained safe default (`5`) when override is missing/invalid at module boundary.
+  - Updated `scripts/release/dispatch-production-launch-gate-output-format.mjs`:
+    - includes `Failure summary max jobs: <n>` in helper stdout summary lines.
+  - Updated tests:
+    - `apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts`
+      - missing/inline-empty/invalid value coverage for new CLI/env controls.
+    - `apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts`
+      - summary-line coverage for `failureSummaryMaxJobs`.
+    - `apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts`
+      - usage snapshot includes new CLI option.
+    - `apps/api/src/__tests__/release-launch-gate-dispatch-failure-summary.unit.spec.ts`
+      - caller-provided max override path (`maxFailedJobDetails`).
+  - Updated operator docs:
+    - `docs/ops/release-runbook.md` (CLI/env examples for failure-summary cap).
+    - `docs/ops/release-checklist.md` (post-release optional controls list).
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-dispatch-failure-summary.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-external-channels.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts apps/api/src/__tests__/release-production-config-resolvers.unit.spec.ts apps/api/src/__tests__/release-env-parse-utils.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T12:49:10.633Z`).
+  - live dispatch regression:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --print-artifact-links --artifact-link-names all`
+    - run `#88` (`22718699301`): success with expected summary and artifact-link output.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add parity option to production-launch-gate helper for capped presentation of multi-check failure groups in strict JSON/CLI mixed modes.
+
 ### 2026-03-05 - cap dispatch failed-job diagnostics output to top 5 entries (phase 71)
 
 - Scope: keep operator error output concise on large workflow failures by limiting rendered failed-job detail count while preserving signal.

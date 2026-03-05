@@ -67,6 +67,7 @@ Use this map when a release helper fails fast on argument/env validation and you
         - `npm run release:launch:gate:dispatch -- --print-artifact-links`
         - `npm run release:launch:gate:dispatch -- --artifact-link-names production-launch-gate-summary,post-release-health-inline-artifacts-schema-check`
         - `npm run release:launch:gate:dispatch -- --artifact-link-names production-launch-gate-summary --no-step-summary-link`
+        - `npm run release:launch:gate:dispatch -- --failure-summary-max-jobs 10`
          - controlled negative drill: `npm run release:launch:gate:dispatch -- --required-external-channels all --allow-failure-drill --webhook-secret-override <dummy-value>`
        - Token resolution order: `-Token/--token` -> `GITHUB_TOKEN/GH_TOKEN` -> `gh auth token`
        - Optional inputs via env: `RELEASE_RUNTIME_DRAFT_ID=<uuid> RELEASE_REQUIRE_SKILL_MARKERS=true RELEASE_REQUIRE_NATURAL_CRON_WINDOW=true`
@@ -74,6 +75,7 @@ Use this map when a release helper fails fast on argument/env validation and you
       - Optional strict inline health artifact requirement via env: `RELEASE_REQUIRE_INLINE_HEALTH_ARTIFACTS=true`
       - Optional artifact link names via env: `RELEASE_ARTIFACT_LINK_NAMES=production-launch-gate-summary,post-release-health-inline-artifacts-schema-check` (or `all`)
       - Optional step-summary link suppression via env: `RELEASE_NO_STEP_SUMMARY_LINK=true`
+      - Optional failed-job diagnostics cap via env: `RELEASE_FAILURE_SUMMARY_MAX_JOBS=10`
        - Optional strict inline health artifact assertion via workflow input:
          - `require_inline_health_artifacts=true`
        - Optional drill inputs via env (drill-only): `RELEASE_ALLOW_FAILURE_DRILL=true RELEASE_WEBHOOK_SECRET_OVERRIDE=<value>`

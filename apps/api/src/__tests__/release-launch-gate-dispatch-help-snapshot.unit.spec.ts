@@ -40,6 +40,7 @@ describe('launch-gate dispatch helper help output', () => {
   --require-inline-health-artifacts      workflow input require_inline_health_artifacts=true
   --allow-failure-drill                  workflow input allow_failure_drill=true
   --webhook-secret-override <value>      workflow input webhook_secret_override (requires allow_failure_drill)
+  --failure-summary-max-jobs <n>         cap failed-job diagnostics entries (default: 5)
   --print-artifact-links                 print links for additional high-signal artifacts after success
   --artifact-link-names <csv|all>        override artifact link set (allowed: production-launch-gate-step-summary, production-launch-gate-summary, post-release-health-inline-artifacts-schema-check, post-release-health-inline-artifacts-summary, or all)
   --no-step-summary-link                 suppress default step-summary artifact link output
