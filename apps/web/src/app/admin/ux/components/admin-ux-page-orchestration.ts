@@ -20,7 +20,10 @@ import {
   toStringValue,
 } from './admin-ux-mappers';
 import type { AdminUxResolvedSearchParams } from './admin-ux-page-contract';
-import { resolveAdminUxPanel } from './admin-ux-page-utils';
+import {
+  resolveAdminUxAllMetricsView,
+  resolveAdminUxPanel,
+} from './admin-ux-page-utils';
 import {
   type AdminUxSectionData,
   prepareAdminUxSectionData,
@@ -48,6 +51,9 @@ export const resolveAdminUxPageQueryState = (
     ? Math.min(Math.max(parsedHours, 1), 720)
     : 24;
   const activePanel = resolveAdminUxPanel(resolvedSearchParams?.panel);
+  const allMetricsView = resolveAdminUxAllMetricsView(
+    resolvedSearchParams?.allView,
+  );
   const rawExpandValue = resolvedSearchParams?.expand;
   const expandValue = Array.isArray(rawExpandValue)
     ? rawExpandValue[0]
@@ -57,9 +63,10 @@ export const resolveAdminUxPageQueryState = (
     ['1', 'all', 'expanded', 'true'].includes(expandValue.trim().toLowerCase());
 
   return {
-    hours,
     activePanel,
+    allMetricsView,
     expandAllGroups,
+    hours,
     ...resolveGatewayQueryState(resolvedSearchParams),
     ...resolveAiRuntimeQueryState(resolvedSearchParams),
   };
@@ -93,6 +100,7 @@ export const loadAdminUxPageData = async ({
   aiRole,
   aiSimulateFailures,
   aiTimeoutMs,
+  allMetricsView,
   closeRequested,
   compactRequested,
   eventQuery,
@@ -219,6 +227,7 @@ export const loadAdminUxPageData = async ({
 
   const mainPanelsProps = buildAdminUxMainPanelsProps({
     activePanel,
+    allMetricsView,
     aiFailuresCsv,
     aiPrompt,
     aiProvidersCsv,

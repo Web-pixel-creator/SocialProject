@@ -33,6 +33,42 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - admin UX all-metrics focus tabs pass
+
+- Scope: add a second-level focus switch inside `panel=all` so operators can inspect one domain slice (`Operations`, `Engagement`, `Quality`, `Debug`) without leaving all-metrics mode.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 04:31 -> 2026-03-05 04:44.
+- Changes:
+  - Added `allView` query-state support and enum resolver:
+    - `apps/web/src/app/admin/ux/components/admin-ux-page-utils.ts`
+    - `apps/web/src/app/admin/ux/components/admin-ux-page-orchestration.ts`
+  - Propagated `allMetricsView` through page context/load/content:
+    - `admin-ux-page-entry.tsx`
+    - `admin-ux-page-load-state.tsx`
+    - `admin-ux-page-content.tsx`
+  - Extended panel chrome view model + UI:
+    - `admin-ux-page-shell-view-model.ts` now builds `allMetricsViewTabs` and preserves `allView` in panel/all-controls hrefs,
+    - `admin-ux-panel-chrome.tsx` renders `All metrics focus` tabs.
+  - Updated all-metrics visibility logic:
+    - `admin-ux-main-panels.tsx` now filters grouped sections by selected `allView` while keeping focused panel behavior unchanged.
+  - Preserved `allView` across form submits in all-mode:
+    - `gateway-section-body.tsx`
+    - `gateway-telemetry-section-body.tsx`
+    - `runtime-section-body.tsx`
+  - Updated type contracts and unit test fixtures:
+    - `admin-ux-main-panel-builder-types.ts`
+    - `admin-ux-gateway-runtime-prop-builders.tsx`
+    - `admin-ux-page-entry.spec.ts`
+- Validation:
+  - `npx ultracite check` on 14 touched admin-ux files: pass.
+  - `npx jest --runInBand apps/web/src/app/admin/ux/components/admin-ux-page-entry.spec.ts`: pass.
+  - `npm run test:web -- --runInBand apps/web/src/__tests__/admin-ux-page.spec.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: reorder all-metrics groups by severity score (critical-first) inside each focus tab.
+
 ### 2026-03-05 - admin UX all-metrics overload reduction pass
 
 - Scope: reduce vertical overload in `/admin/ux?panel=all` by collapsing the heavy top sections (`Gateway`, `Runtime`, `Engagement`) into summary-first groups, consistent with lower telemetry blocks.

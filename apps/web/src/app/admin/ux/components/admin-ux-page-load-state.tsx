@@ -1,15 +1,20 @@
 import { AdminUxPageContent } from './admin-ux-page-content';
 import type { AdminUxPageDataLoadResult } from './admin-ux-page-orchestration';
 import { AdminUxPageErrorState } from './admin-ux-page-shell-render';
-import type { AdminUxPanel } from './admin-ux-page-utils';
+import type {
+  AdminUxAllMetricsView,
+  AdminUxPanel,
+} from './admin-ux-page-utils';
 
 export const AdminUxPageLoadState = ({
   activePanel,
+  allMetricsView,
   dataLoadResult,
   expandAllGroups,
   hours,
 }: {
   activePanel: AdminUxPanel;
+  allMetricsView: AdminUxAllMetricsView;
   dataLoadResult: AdminUxPageDataLoadResult;
   expandAllGroups: boolean;
   hours: number;
@@ -25,6 +30,7 @@ export const AdminUxPageLoadState = ({
   return (
     <AdminUxPageContent
       activePanel={activePanel}
+      allMetricsView={allMetricsView}
       expandAllGroups={expandAllGroups}
       hours={hours}
       kpis={dataLoadResult.kpis}

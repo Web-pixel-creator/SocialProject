@@ -28,6 +28,7 @@ type GatewayRuntimeAndDebugPanelsProps = Pick<
 
 export const buildGatewayRuntimeAndDebugPanelsProps = ({
   activePanel,
+  allMetricsView,
   aiFailuresCsv,
   aiPrompt,
   aiProvidersCsv,
@@ -68,8 +69,10 @@ export const buildGatewayRuntimeAndDebugPanelsProps = ({
   selectedSessionId,
 }: GatewayRuntimePanelsBuilderInput): GatewayRuntimeAndDebugPanelsProps => {
   const buildPanelHref = (panel: string) =>
-    panel === 'all' && expandAllGroups
-      ? `/admin/ux?hours=${hours}&panel=${panel}&expand=all`
+    panel === 'all'
+      ? `/admin/ux?hours=${hours}&panel=${panel}${
+          allMetricsView !== 'overview' ? `&allView=${allMetricsView}` : ''
+        }${expandAllGroups ? '&expand=all' : ''}`
       : `/admin/ux?hours=${hours}&panel=${panel}`;
   const gatewayDebugStatusLabel = toStringValue(
     gatewayOverview?.session.status ?? selectedSession?.status,
@@ -113,6 +116,7 @@ export const buildGatewayRuntimeAndDebugPanelsProps = ({
       gatewayHealthLabel: healthLabel(gatewayHealthLevel),
       liveBodyProps: {
         activePanel,
+        allMetricsView,
         appliedGatewaySessionChannelFilter:
           sectionData.appliedGatewaySessionChannelFilter,
         appliedGatewaySessionProviderFilter:
@@ -144,6 +148,7 @@ export const buildGatewayRuntimeAndDebugPanelsProps = ({
       showGatewayHealthBadge: gatewayOverview !== null,
       telemetryBodyProps: {
         activePanel,
+        allMetricsView,
         appliedGatewayChannelFilter: sectionData.appliedGatewayChannelFilter,
         appliedGatewayProviderFilter: sectionData.appliedGatewayProviderFilter,
         appliedGatewaySessionStatusInputValue:
@@ -212,6 +217,7 @@ export const buildGatewayRuntimeAndDebugPanelsProps = ({
         aiRuntimeRoleStates: aiRuntimeRoleStatesBase,
         aiRuntimeSummary,
         aiTimeoutMs,
+        allMetricsView,
         hours,
         panel: activePanel,
         expandAllGroups,

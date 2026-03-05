@@ -13,7 +13,20 @@ export const ADMIN_UX_PANELS = [
 
 export type AdminUxPanel = (typeof ADMIN_UX_PANELS)[number];
 
+export const ADMIN_UX_ALL_METRICS_VIEWS = [
+  'overview',
+  'operations',
+  'engagement',
+  'quality',
+  'debug',
+] as const;
+
+export type AdminUxAllMetricsView = (typeof ADMIN_UX_ALL_METRICS_VIEWS)[number];
+
 const ADMIN_UX_PANEL_VALUES = new Set<string>(ADMIN_UX_PANELS);
+const ADMIN_UX_ALL_METRICS_VIEW_VALUES = new Set<string>(
+  ADMIN_UX_ALL_METRICS_VIEWS,
+);
 const PREDICTION_OUTCOME_LABEL_SEGMENT_PATTERN = /[_\s-]+/;
 
 export const resolveAdminUxPanel = (value: unknown): AdminUxPanel => {
@@ -25,6 +38,19 @@ export const resolveAdminUxPanel = (value: unknown): AdminUxPanel => {
     return 'gateway';
   }
   return normalized as AdminUxPanel;
+};
+
+export const resolveAdminUxAllMetricsView = (
+  value: unknown,
+): AdminUxAllMetricsView => {
+  if (typeof value !== 'string') {
+    return 'overview';
+  }
+  const normalized = value.trim().toLowerCase();
+  if (!ADMIN_UX_ALL_METRICS_VIEW_VALUES.has(normalized)) {
+    return 'overview';
+  }
+  return normalized as AdminUxAllMetricsView;
 };
 
 export const formatPredictionOutcomeMetricLabel = (value: string): string => {

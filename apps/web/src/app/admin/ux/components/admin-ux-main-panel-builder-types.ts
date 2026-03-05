@@ -8,7 +8,10 @@ import type {
 } from './admin-ux-data-client';
 import type { AdminUxMainPanels } from './admin-ux-main-panels';
 import type { HealthLevel } from './admin-ux-mappers';
-import type { AdminUxPanel } from './admin-ux-page-utils';
+import type {
+  AdminUxAllMetricsView,
+  AdminUxPanel,
+} from './admin-ux-page-utils';
 import type { AdminUxSectionData } from './admin-ux-section-prep';
 import type {
   AIRuntimeDryRunResultViewState,
@@ -43,6 +46,7 @@ export type TopSegmentsProps = MainPanelsProps['topSegmentsProps'];
 
 export interface GatewayRuntimePanelsBuilderInput {
   activePanel: AdminUxPanel;
+  allMetricsView: AdminUxAllMetricsView;
   aiFailuresCsv: string;
   aiPrompt: string;
   aiProvidersCsv: string;

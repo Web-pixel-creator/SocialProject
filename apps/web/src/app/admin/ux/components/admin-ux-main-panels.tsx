@@ -1,6 +1,9 @@
 import type { ComponentProps, ReactNode } from 'react';
 
-import type { AdminUxPanel } from './admin-ux-page-utils';
+import type {
+  AdminUxAllMetricsView,
+  AdminUxPanel,
+} from './admin-ux-page-utils';
 import { DebugDiagnosticsSection } from './debug-diagnostics-section';
 import {
   EngagementHealthSection,
@@ -118,6 +121,7 @@ const resolveMoreSevereMetaTone = (
 
 export const AdminUxMainPanels = ({
   activePanel,
+  allMetricsView = 'overview',
   debugDiagnosticsSectionProps,
   engagementHealthProps,
   engagementOverviewProps,
@@ -133,6 +137,7 @@ export const AdminUxMainPanels = ({
   topSegmentsProps,
 }: {
   activePanel: AdminUxPanel;
+  allMetricsView?: AdminUxAllMetricsView;
   debugDiagnosticsSectionProps: ComponentProps<typeof DebugDiagnosticsSection>;
   engagementHealthProps: Omit<
     ComponentProps<typeof EngagementHealthSection>,
@@ -168,8 +173,37 @@ export const AdminUxMainPanels = ({
 }) => {
   const isPanelVisible = (panel: Exclude<AdminUxPanel, 'all'>) =>
     activePanel === 'all' || activePanel === panel;
+  const isAllMetricsSubviewVisible = (...views: AdminUxAllMetricsView[]) =>
+    allMetricsView === 'overview' || views.includes(allMetricsView);
   const isAllMetricsPanel = activePanel === 'all';
-  const isEngagementVisible = isPanelVisible('engagement');
+  const isGatewayVisible =
+    activePanel === 'all'
+      ? isAllMetricsSubviewVisible('operations')
+      : isPanelVisible('gateway');
+  const isRuntimeVisible =
+    activePanel === 'all'
+      ? isAllMetricsSubviewVisible('operations')
+      : isPanelVisible('runtime');
+  const isEngagementVisible =
+    activePanel === 'all'
+      ? isAllMetricsSubviewVisible('engagement')
+      : isPanelVisible('engagement');
+  const isReleaseVisible =
+    activePanel === 'all'
+      ? isAllMetricsSubviewVisible('quality')
+      : isPanelVisible('release');
+  const isPredictionVisible =
+    activePanel === 'all'
+      ? isAllMetricsSubviewVisible('quality')
+      : isPanelVisible('prediction');
+  const isStyleVisible =
+    activePanel === 'all'
+      ? isAllMetricsSubviewVisible('quality')
+      : isPanelVisible('style');
+  const isDebugVisible =
+    activePanel === 'all'
+      ? isAllMetricsSubviewVisible('debug')
+      : activePanel === 'debug';
   const renderAllMetricsGroup = ({
     children,
     metaLabel,
@@ -272,7 +306,7 @@ export const AdminUxMainPanels = ({
 
   return (
     <>
-      {isPanelVisible('gateway')
+      {isGatewayVisible
         ? renderAllMetricsGroup({
             description:
               'Live session control plane, retained events, and gateway risk telemetry.',
@@ -284,7 +318,7 @@ export const AdminUxMainPanels = ({
             children: <GatewayPanels {...gatewayPanelsProps} isVisible />,
           })
         : null}
-      {isPanelVisible('runtime')
+      {isRuntimeVisible
         ? renderAllMetricsGroup({
             description:
               'Failover chain health, role/provider matrix, and dry-run simulator.',
@@ -319,7 +353,7 @@ export const AdminUxMainPanels = ({
             ),
           })
         : null}
-      {isPanelVisible('release')
+      {isReleaseVisible
         ? renderAllMetricsGroup({
             description:
               'Release alert distribution, latest run context, and failure-mode flow.',
@@ -349,7 +383,7 @@ export const AdminUxMainPanels = ({
             ),
           })
         : null}
-      {isPanelVisible('style')
+      {isStyleVisible
         ? renderAllMetricsGroup({
             description:
               'Coverage/error rates, provider mix, and multimodal guardrails.',
@@ -365,7 +399,7 @@ export const AdminUxMainPanels = ({
             ),
           })
         : null}
-      {isPanelVisible('prediction')
+      {isPredictionVisible
         ? renderAllMetricsGroup({
             description:
               'Prediction quality, cohort risk, and filter/sort behavior.',
@@ -379,7 +413,7 @@ export const AdminUxMainPanels = ({
             ),
           })
         : null}
-      {isPanelVisible('style')
+      {isStyleVisible
         ? renderAllMetricsGroup({
             description: 'Style-fusion and copy-action success/error rates.',
             metaLabel: `${styleSignalCount} events`,
@@ -390,7 +424,7 @@ export const AdminUxMainPanels = ({
             ),
           })
         : null}
-      {activePanel === 'debug' ? (
+      {isDebugVisible ? (
         <DebugDiagnosticsSection {...debugDiagnosticsSectionProps} />
       ) : null}
       {isEngagementVisible
