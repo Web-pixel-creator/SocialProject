@@ -234,6 +234,10 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
       - [ ] If `RELEASE_REQUIRE_SKILL_MARKERS=true`, `RELEASE_RUNTIME_DRAFT_ID` is mandatory.
   - [ ] Confirm summary artifact: `artifacts/release/production-launch-gate-summary.json`
   - [ ] Confirm health summary artifact: `artifacts/release/production-launch-gate-health-summary.json`
+  - [ ] For CI `Production Launch Gate` runs, confirm inline post-release health artifacts are uploaded:
+    - [ ] `post-release-health-report-inline`
+    - [ ] `post-release-health-summary-inline`
+    - [ ] `post-release-health-schema-summary-inline`
   - [ ] Confirm `sandboxExecutionMetrics.pass=true` in launch gate summary.
   - [ ] Confirm `sandboxExecutionModeConsistency.pass=true` in launch gate summary.
   - [ ] Optional artifact drill: inspect `artifacts/release/production-sandbox-execution-metrics.json` for `total > 0` and `successCount > 0`.
@@ -318,6 +322,10 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
   - [ ] Confirm `Release Health Gate` workflow passed for this run (`workflow_run` automation after `CI` `workflow_dispatch`).
     - [ ] For `Production Launch Gate` source runs, confirm `workflow.profile=launch_gate` in `post-release-health-summary` artifact.
   - [ ] Confirm artifacts from `Release Health Gate`: `post-release-health-report`, `post-release-health-summary`, `post-release-health-schema-summary`.
+  - [ ] For CI `Production Launch Gate` runs, also confirm inline counterparts from the same run:
+    - [ ] `post-release-health-report-inline`
+    - [ ] `post-release-health-summary-inline`
+    - [ ] `post-release-health-schema-summary-inline`
   - [ ] Save/attach `artifacts/release/post-release-health-run-<run_id>.json` to release ticket.
 - [ ] API error rate within threshold.
 - [ ] API latency p95 within threshold.

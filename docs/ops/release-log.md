@@ -33,6 +33,28 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - document inline post-release health artifacts in ops runbooks (phase 16)
+
+- Scope: align release docs with new CI behavior where `Production Launch Gate` uploads inline post-release health artifacts.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 10:00 -> 2026-03-05 10:03.
+- Changes:
+  - Updated `docs/ops/release-checklist.md`:
+    - added checks for inline artifacts on CI launch-gate runs:
+      - `post-release-health-report-inline`
+      - `post-release-health-summary-inline`
+      - `post-release-health-schema-summary-inline`.
+  - Updated `docs/ops/release-runbook.md`:
+    - documented inline post-release health step/artifacts in `Production Launch Gate`,
+    - clarified that inline artifacts are immediate triage source while `Release Health Gate` remains corroborating automation.
+- Validation:
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add a short decision table (`inline` vs `workflow_run`) for incident responders in release runbook.
+
 ### 2026-03-05 - inline post-release health generation in production launch-gate (phase 15)
 
 - Scope: keep post-release health/provenance artifacts synchronized with the same launch-gate run by generating them inline inside `production-launch-gate` workflow.
