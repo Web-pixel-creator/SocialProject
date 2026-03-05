@@ -33,6 +33,23 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add parity-log retention guidance to runbook (phase 85)
+
+- Scope: close retention-hygiene follow-up by documenting expected lifecycle for parity-log CI artifact.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 13:45 -> 2026-03-05 13:47.
+- Changes:
+  - Updated `docs/ops/release-runbook.md`:
+    - added retention note that parity log is troubleshooting-only and should remain short-lived/compact.
+- Validation:
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: if repo-wide artifact retention policy is formalized, cross-link that policy from this runbook note.
+
 ### 2026-03-05 - document parity-log artifact usage and retention hygiene (phase 84)
 
 - Scope: close phase 83 follow-up by documenting how to consume parity-log CI artifact and keeping expectations around artifact size explicit.
