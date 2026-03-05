@@ -221,7 +221,9 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
       - [ ] Secrets: `RELEASE_ADMIN_API_TOKEN`, `RELEASE_CSRF_TOKEN`, `RELEASE_AGENT_GATEWAY_WEBHOOK_SECRET`
       - [ ] Optional Railway compatibility context: `RAILWAY_API_TOKEN`/`RAILWAY_TOKEN`, `RAILWAY_PROJECT_ID`, `RAILWAY_ENVIRONMENT_ID`
     - [ ] Optional inputs: `runtime_draft_id`, `require_skill_markers`, `require_natural_cron_window`, `required_external_channels`, `allow_failure_drill`, `webhook_secret_override`.
-    - [ ] Optional smoke timeout retry inputs: `smoke_timeout_retries`, `smoke_timeout_retry_delay_ms`.
+    - [ ] Optional smoke timeout retry inputs:
+      - [ ] `smoke_timeout_retries` (workflow default `1`; set `0` to disable timeout-only retry)
+      - [ ] `smoke_timeout_retry_delay_ms` (workflow default `5000`)
     - [ ] Optional strict inline health artifact assertion:
       - [ ] `require_inline_health_artifacts=true` (fails CI launch-gate run when inline health artifacts are missing).
     - [ ] Optional terminal dispatch helper (token resolution: `-Token/--token` -> `GITHUB_TOKEN/GH_TOKEN` -> `gh auth token`): `npm run release:launch:gate:dispatch`

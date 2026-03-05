@@ -28,14 +28,14 @@ on:
         default: false
         type: boolean
       smoke_timeout_retries:
-        description: 'Optional timeout-only smoke retry count (0 disables retry).'
+        description: 'Timeout-only smoke retry count (0 disables retry).'
         required: false
-        default: ''
+        default: '1'
         type: string
       smoke_timeout_retry_delay_ms:
-        description: 'Optional delay in milliseconds between timeout-only smoke retries.'
+        description: 'Delay in milliseconds between timeout-only smoke retries.'
         required: false
-        default: ''
+        default: '5000'
         type: string
       allow_failure_drill:
         description: 'Allow controlled negative drill inputs (for operator validation only).'

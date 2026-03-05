@@ -33,6 +33,30 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - set workflow UI defaults for smoke timeout retry inputs (phase 92)
+
+- Scope: close phase 91 follow-up by mirroring production smoke timeout-retry defaults into `Production Launch Gate` `workflow_dispatch` form presets.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 14:31 -> 2026-03-05 14:39.
+- Changes:
+  - Updated workflow input defaults in `.github/workflows/production-launch-gate.yml`:
+    - `smoke_timeout_retries`: default now `'1'`
+    - `smoke_timeout_retry_delay_ms`: default now `'5000'`
+  - Updated docs for explicit workflow-default visibility:
+    - `docs/ops/release-runbook.md`
+    - `docs/ops/release-checklist.md`
+- Validation:
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T14:38:13.274Z`).
+  - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --print-artifact-links --artifact-link-names all`: pass on rerun.
+    - success run `#104` (`22722826349`) with expected artifact-link output.
+- Incidents:
+  - first dispatch attempt in this phase failed while polling run status due transient GitHub API `502 Bad Gateway` response; immediate rerun succeeded.
+- Follow-ups:
+  - optional: add bounded retry for transient GitHub API `5xx` run-status polling in `dispatch-production-launch-gate.mjs` to reduce false-red helper exits.
+
 ### 2026-03-05 - expose smoke timeout retry controls in production launch-gate workflow/dispatch (phase 91)
 
 - Scope: make timeout-retry tuning one-click in CI by wiring new production smoke retry controls through `workflow_dispatch` inputs and terminal dispatch helper.

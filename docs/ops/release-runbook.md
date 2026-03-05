@@ -102,8 +102,8 @@ Use this map when a release helper fails fast on argument/env validation and you
        - Optional strict inline health artifact assertion via workflow input:
          - `require_inline_health_artifacts=true`
         - Optional smoke timeout retry tuning via workflow input:
-          - `smoke_timeout_retries=<n>`
-          - `smoke_timeout_retry_delay_ms=<ms>`
+          - `smoke_timeout_retries=<n>` (default `1`, set `0` to disable timeout-only retry)
+          - `smoke_timeout_retry_delay_ms=<ms>` (default `5000`)
        - Optional drill inputs via env (drill-only): `RELEASE_ALLOW_FAILURE_DRILL=true RELEASE_WEBHOOK_SECRET_OVERRIDE=<value>`
        - When `RELEASE_REQUIRE_SKILL_MARKERS=true`, `RELEASE_RUNTIME_DRAFT_ID` is required and must point to a draft with skill markers.
       - Validation implementation references (for quick triage when a helper fails fast on env/arg parsing):
