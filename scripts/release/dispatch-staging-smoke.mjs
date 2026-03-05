@@ -1,6 +1,10 @@
 import { resolveDispatchTokenCandidates } from './dispatch-production-launch-gate-token-resolution.mjs';
 import { selectDispatchTokenCandidate } from './dispatch-github-token-selection.mjs';
 import { readGitHubTokenFromGhAuth } from './github-gh-auth-token.mjs';
+import {
+  assertDispatchTokenNotPlaceholder,
+  parseDispatchTokenCliArg,
+} from './dispatch-token-arg-utils.mjs';
 import { resolveRepoSlug } from './github-token-repo-resolution.mjs';
 import { githubApiRequestWithTransientRetry } from './github-api-request-with-transient-retry.mjs';
 
@@ -51,41 +55,22 @@ const parseCliArgs = (argv) => {
       process.exit(0);
     }
 
-    if (arg === '--token' || arg === '--Token' || arg === '-Token' || arg === '-token') {
-      const value = (argv[index + 1] ?? '').trim();
-      if (!value) {
-        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
-      }
-      tokenFromArg = value;
-      index += 1;
-      continue;
-    }
-
-    if (
-      arg.startsWith('--token=') ||
-      arg.startsWith('--Token=') ||
-      arg.startsWith('-Token=') ||
-      arg.startsWith('-token=')
-    ) {
-      const value = arg.slice(arg.indexOf('=') + 1).trim();
-      if (!value) {
-        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
-      }
-      tokenFromArg = value;
+    const parsedTokenArg = parseDispatchTokenCliArg({
+      arg,
+      argv,
+      index,
+      usage: USAGE,
+    });
+    if (parsedTokenArg.matched) {
+      tokenFromArg = parsedTokenArg.tokenFromArg;
+      index = parsedTokenArg.nextIndex;
       continue;
     }
 
     throw new Error(`Unknown argument: ${arg}\n\n${USAGE}`);
   }
 
-  if (
-    tokenFromArg &&
-    (/^<[^>]+>$/u.test(tokenFromArg) || /NEW_GITHUB_PAT|YOUR_TOKEN|TOKEN_HERE/u.test(tokenFromArg))
-  ) {
-    throw new Error(
-      `Token argument looks like a placeholder ('${tokenFromArg}'). Pass a real PAT value without angle brackets.`,
-    );
-  }
+  assertDispatchTokenNotPlaceholder(tokenFromArg);
 
   return {
     tokenFromArg,

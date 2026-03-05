@@ -33,6 +33,40 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - centralize dispatch token cli-arg parsing and placeholder checks (phase 118)
+
+- Scope: remove duplicated `--token` alias parsing and placeholder token validation from staging/production dispatch scripts by introducing a shared parser utility.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 17:56 -> 2026-03-05 18:05.
+- Changes:
+  - Added shared utility:
+    - `scripts/release/dispatch-token-arg-utils.mjs`
+    - exports:
+      - `parseDispatchTokenCliArg` (handles `--token/--Token/-Token/-token` and inline `=value` aliases),
+      - `assertDispatchTokenNotPlaceholder` (shared placeholder guard).
+  - Migrated callers:
+    - `scripts/release/dispatch-staging-smoke.mjs`
+    - `scripts/release/dispatch-production-launch-gate.mjs`
+    - both now consume shared token-arg parser and placeholder assertion.
+  - Added tests:
+    - `apps/api/src/__tests__/release-dispatch-token-arg-utils.unit.spec.ts`
+    - covers alias parsing, missing-value errors, unmatched sentinel behavior, placeholder rejection, and valid-token acceptance.
+- Validation:
+  - `node --check scripts/release/dispatch-token-arg-utils.mjs`: pass.
+  - `node --check scripts/release/dispatch-staging-smoke.mjs`: pass.
+  - `node --check scripts/release/dispatch-production-launch-gate.mjs`: pass.
+  - `npm run test -- apps/api/src/__tests__/release-dispatch-token-arg-utils.unit.spec.ts apps/api/src/__tests__/release-staging-smoke-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-staging-smoke-dispatch-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts`: pass.
+  - `npm run release:smoke:dispatch -- --help`: pass.
+  - `npm run release:launch:gate:dispatch -- --help`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass on rerun (`status: pass`, `generatedAtUtc: 2026-03-05T18:04:14.868Z`).
+- Incidents:
+  - first strict production gate attempt in this phase failed transiently with `Railway strict gate failed`; immediate rerun passed without code changes.
+- Follow-ups:
+  - optional: centralize shared parse patterns for other frequently duplicated CLI options (if additional dispatch helpers are introduced).
+
 ### 2026-03-05 - add staging dispatch cli/help unit coverage (phase 117)
 
 - Scope: strengthen regression safety for `dispatch-staging-smoke` by adding dedicated CLI argument validation and help snapshot tests.
