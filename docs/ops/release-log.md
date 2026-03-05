@@ -33,6 +33,30 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - migrate smoke artifact fetcher to shared GitHub transient retry helper (phase 98)
+
+- Scope: harden smoke-artifact retrieval used by release-health automation against transient GitHub API failures by migrating `fetch-smoke-report-artifact` to shared request+retry helper.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 15:24 -> 2026-03-05 15:27.
+- Changes:
+  - Updated `scripts/release/fetch-smoke-report-artifact.mjs`:
+    - replaced local GitHub request implementation with `githubApiRequestWithTransientRetry` from shared module,
+    - retained API version/header behavior and binary artifact download support,
+    - added retry label context for better stderr diagnostics (`[release:smoke:artifact] ...`).
+- Validation:
+  - `node --check scripts/release/fetch-smoke-report-artifact.mjs`: pass.
+  - `npm run release:smoke:artifact -- 22724704242 production-smoke-postdeploy`: pass.
+    - resolved artifact `production-smoke-postdeploy` for run `#108` (`22724704242`) and extracted archive locally.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:runbook:failure-snippet:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T15:26:25.647Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: migrate remaining local GitHub request wrappers in `dispatch-staging-smoke*.mjs`, `manage-staging-inputs.mjs`, and `collect-retry-failure-logs.mjs` to the same shared helper.
+
 ### 2026-03-05 - extract shared GitHub API transient retry request helper (phase 97)
 
 - Scope: remove duplicated GitHub request/retry loops across release helpers by introducing one shared request+retry module and wiring current dispatch/health-report callers to it without behavior regressions.

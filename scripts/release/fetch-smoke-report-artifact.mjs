@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { githubApiRequestWithTransientRetry } from './github-api-request-with-transient-retry.mjs';
 
 const GITHUB_API_VERSION = '2022-11-28';
 const DEFAULT_ARTIFACT_NAME = 'release-smoke-report';
@@ -97,42 +98,16 @@ const githubRequest = async ({
   url,
   body,
   expectBinary = false,
-}) => {
-  const response = await fetch(url, {
+}) =>
+  githubApiRequestWithTransientRetry({
+    apiVersion: GITHUB_API_VERSION,
+    body,
+    expectBinary,
     method,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': GITHUB_API_VERSION,
-      'Content-Type': 'application/json',
-    },
-    body: body ? JSON.stringify(body) : undefined,
+    retryLabel: `[release:smoke:artifact] ${method} ${url}`,
+    token,
+    url,
   });
-
-  if (response.ok) {
-    if (expectBinary) {
-      return Buffer.from(await response.arrayBuffer());
-    }
-    if (response.status === 204) {
-      return null;
-    }
-    const text = await response.text();
-    return text ? JSON.parse(text) : null;
-  }
-
-  const errorText = await response.text();
-  let details = errorText;
-  try {
-    const json = JSON.parse(errorText);
-    details = json.message ? `${json.message}` : errorText;
-  } catch {
-    // keep raw response text
-  }
-
-  throw new Error(
-    `GitHub API ${method} ${url} failed: ${response.status} ${response.statusText}. ${details}`,
-  );
-};
 
 const parseRunId = (raw) => {
   if (!raw) {
