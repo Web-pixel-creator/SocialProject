@@ -33,6 +33,28 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - strict production launch-gate confirmation after provenance rollout (phase 12)
+
+- Scope: confirm strict production launch-gate remains green after provenance rollout in post-release health/reporting scripts.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 09:16 -> 2026-03-05 09:19.
+- Validation:
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass.
+  - Gate status: `pass` (`generatedAtUtc=2026-03-05T09:18:46.295Z`).
+  - Confirmed checks:
+    - `sandboxExecutionMetrics.pass=true`
+    - `sandboxExecutionModeConsistency.pass=true` (`expectedMode=fallback_only`, `expectedModeCount=63`, `otherModeCount=0`, `total=63`)
+    - `sandboxExecutionAuditPolicy.pass=true`
+    - `sandboxExecutionEgressPolicy.pass=true`
+    - `sandboxExecutionLimitsPolicy.pass=true`
+    - `adapterMatrixProbe.pass=true`
+    - `ingestExternalChannelFallback.pass=true`
+    - `ingestExternalChannelFailureModes.pass=true`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: regenerate post-release health report immediately after strict gate in CI to keep provenance summaries aligned with latest gate run counters.
+
 ### 2026-03-05 - propagate provenance fields to appended health log entries (phase 11)
 
 - Scope: ensure `release:health:log` output includes provenance lines (`source`) for external-channel trend, release-health alert telemetry, and launch-gate sandbox checks.
