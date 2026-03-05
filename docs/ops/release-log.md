@@ -33,6 +33,37 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - extract shared release env parsers and reuse in dispatch modules (phase 58)
+
+- Scope: reduce duplicated env parsing logic and keep boolean/integer validation behavior identical across dispatch runtime and link-option resolvers.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 11:46 -> 2026-03-05 11:50.
+- Changes:
+  - Added shared parser module:
+    - `scripts/release/release-env-parse-utils.mjs`
+    - exports:
+      - `parseReleaseBooleanEnv`
+      - `parseReleasePositiveIntegerEnv`.
+  - Updated `scripts/release/dispatch-production-launch-gate.mjs`:
+    - replaced local strict env parsers with shared imports.
+  - Updated `scripts/release/dispatch-production-launch-gate-link-options.mjs`:
+    - replaced local strict boolean env parser with shared import.
+  - Added unit coverage:
+    - `apps/api/src/__tests__/release-env-parse-utils.unit.spec.ts`
+    - validates fallback, accepted forms, and invalid diagnostics for both boolean and positive-integer env parsing.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-env-parse-utils.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-external-channels.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-help-snapshot.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - live dispatch regression:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --print-artifact-links --artifact-link-names all`
+    - run `#80` (`22716529242`): success with expected summary and artifact-link output.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: apply shared env parser utilities to other release scripts (for example `production-launch-gate.mjs`) where strict env parsing rules should stay aligned.
+
 ### 2026-03-05 - strict boolean validation for dispatch artifact-link env toggles (phase 57)
 
 - Scope: complete strict boolean-env policy in dispatch helper by validating artifact-link env toggles with explicit diagnostics.

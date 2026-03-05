@@ -8,6 +8,10 @@ import {
 import { parseDispatchExternalChannels } from './dispatch-production-launch-gate-external-channels.mjs';
 import { buildDispatchInputSummaryLines } from './dispatch-production-launch-gate-output-format.mjs';
 import { resolveDispatchTokenCandidates } from './dispatch-production-launch-gate-token-resolution.mjs';
+import {
+  parseReleaseBooleanEnv,
+  parseReleasePositiveIntegerEnv,
+} from './release-env-parse-utils.mjs';
 
 const GITHUB_API_VERSION = '2022-11-28';
 const DEFAULT_WORKFLOW_FILE = 'production-launch-gate.yml';
@@ -38,28 +42,6 @@ Token resolution order:
 2) GITHUB_TOKEN / GH_TOKEN
 3) gh auth token
 `;
-
-const parsePositiveIntegerEnv = (raw, fallback, sourceLabel) => {
-  if (typeof raw !== 'string' || raw.trim().length === 0) return fallback;
-  const value = raw.trim();
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0 || `${parsed}` !== value) {
-    throw new Error(
-      `Invalid value for ${sourceLabel}: ${value}. Expected a positive integer.`,
-    );
-  }
-  return parsed;
-};
-
-const parseBooleanEnv = (raw, fallback, sourceLabel) => {
-  if (typeof raw !== 'string' || raw.trim().length === 0) return fallback;
-  const normalized = raw.trim().toLowerCase();
-  if (['1', 'true', 'yes', 'y'].includes(normalized)) return true;
-  if (['0', 'false', 'no', 'n'].includes(normalized)) return false;
-  throw new Error(
-    `Invalid value for ${sourceLabel}: ${raw.trim()}. Expected boolean true/false (accepted: 1,0,yes,no,y,n).`,
-  );
-};
 
 const readOriginRemote = () => {
   const remote = execFileSync('git', ['config', '--get', 'remote.origin.url'], {
@@ -535,17 +517,17 @@ const main = async () => {
   const workflowRef = (
     process.env.RELEASE_WORKFLOW_REF ?? DEFAULT_WORKFLOW_REF
   ).trim();
-  const waitForCompletion = parseBooleanEnv(
+  const waitForCompletion = parseReleaseBooleanEnv(
     process.env.RELEASE_WAIT_FOR_COMPLETION,
     true,
     'RELEASE_WAIT_FOR_COMPLETION',
   );
-  const waitTimeoutMs = parsePositiveIntegerEnv(
+  const waitTimeoutMs = parseReleasePositiveIntegerEnv(
     process.env.RELEASE_WAIT_TIMEOUT_MS,
     DEFAULT_WAIT_TIMEOUT_MS,
     'RELEASE_WAIT_TIMEOUT_MS',
   );
-  const waitPollMs = parsePositiveIntegerEnv(
+  const waitPollMs = parseReleasePositiveIntegerEnv(
     process.env.RELEASE_WAIT_POLL_MS,
     DEFAULT_WAIT_POLL_MS,
     'RELEASE_WAIT_POLL_MS',
@@ -555,7 +537,7 @@ const main = async () => {
   const requireSkillMarkers =
     typeof cli.requireSkillMarkers === 'boolean'
       ? cli.requireSkillMarkers
-      : parseBooleanEnv(
+      : parseReleaseBooleanEnv(
           process.env.RELEASE_REQUIRE_SKILL_MARKERS,
           false,
           'RELEASE_REQUIRE_SKILL_MARKERS',
@@ -563,7 +545,7 @@ const main = async () => {
   const requireNaturalCronWindow =
     typeof cli.requireNaturalCronWindow === 'boolean'
       ? cli.requireNaturalCronWindow
-      : parseBooleanEnv(
+      : parseReleaseBooleanEnv(
           process.env.RELEASE_REQUIRE_NATURAL_CRON_WINDOW,
           false,
           'RELEASE_REQUIRE_NATURAL_CRON_WINDOW',
@@ -577,7 +559,7 @@ const main = async () => {
   const requireInlineHealthArtifacts =
     typeof cli.requireInlineHealthArtifacts === 'boolean'
       ? cli.requireInlineHealthArtifacts
-      : parseBooleanEnv(
+      : parseReleaseBooleanEnv(
           process.env.RELEASE_REQUIRE_INLINE_HEALTH_ARTIFACTS,
           false,
           'RELEASE_REQUIRE_INLINE_HEALTH_ARTIFACTS',
@@ -597,7 +579,7 @@ const main = async () => {
   const allowFailureDrill =
     typeof cli.allowFailureDrill === 'boolean'
       ? cli.allowFailureDrill
-      : parseBooleanEnv(
+      : parseReleaseBooleanEnv(
           process.env.RELEASE_ALLOW_FAILURE_DRILL,
           false,
           'RELEASE_ALLOW_FAILURE_DRILL',

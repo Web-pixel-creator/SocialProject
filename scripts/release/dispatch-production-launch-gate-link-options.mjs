@@ -1,3 +1,5 @@
+import { parseReleaseBooleanEnv } from './release-env-parse-utils.mjs';
+
 export const LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME =
   'production-launch-gate-step-summary';
 export const OPTIONAL_ARTIFACT_LINK_NAMES = [
@@ -9,16 +11,6 @@ export const ALLOWED_ARTIFACT_LINK_NAMES = [
   LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME,
   ...OPTIONAL_ARTIFACT_LINK_NAMES,
 ];
-
-const parseBooleanEnv = (raw, fallback, sourceLabel) => {
-  if (typeof raw !== 'string' || raw.trim().length === 0) return fallback;
-  const normalized = raw.trim().toLowerCase();
-  if (['1', 'true', 'yes', 'y'].includes(normalized)) return true;
-  if (['0', 'false', 'no', 'n'].includes(normalized)) return false;
-  throw new Error(
-    `Invalid value for ${sourceLabel}: ${raw.trim()}. Expected boolean true/false (accepted: 1,0,yes,no,y,n).`,
-  );
-};
 
 export const parseArtifactLinkNames = (raw, sourceLabel) => {
   if (typeof raw !== 'string') return [];
@@ -65,7 +57,7 @@ export const resolveDispatchArtifactLinkOptions = ({
   const explicitPrintArtifactLinks =
     typeof cliPrintArtifactLinks === 'boolean'
       ? cliPrintArtifactLinks
-      : parseBooleanEnv(
+      : parseReleaseBooleanEnv(
           envPrintArtifactLinksRaw,
           false,
           'RELEASE_PRINT_ARTIFACT_LINKS',
@@ -83,7 +75,7 @@ export const resolveDispatchArtifactLinkOptions = ({
   const includeStepSummaryLink =
     typeof cliNoStepSummaryLink === 'boolean'
       ? !cliNoStepSummaryLink
-      : !parseBooleanEnv(
+      : !parseReleaseBooleanEnv(
           envNoStepSummaryLinkRaw,
           false,
           'RELEASE_NO_STEP_SUMMARY_LINK',
