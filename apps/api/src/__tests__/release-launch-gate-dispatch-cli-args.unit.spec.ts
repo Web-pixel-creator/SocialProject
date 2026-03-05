@@ -18,6 +18,16 @@ const runDispatchScript = (args: string[]) =>
   );
 
 describe('launch-gate dispatch helper cli argument validation', () => {
+  test('prints usage on --help and exits zero', () => {
+    const result = runDispatchScript(['--help']);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain(
+      'Usage: npm run release:launch:gate:dispatch',
+    );
+    expect(result.stderr).toBe('');
+  });
+
   test('fails fast when artifact-link-names value is missing', () => {
     const result = runDispatchScript(['--artifact-link-names']);
 
@@ -40,6 +50,22 @@ describe('launch-gate dispatch helper cli argument validation', () => {
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('Token argument looks like a placeholder');
+  });
+
+  test('rejects placeholder token across token flag aliases', () => {
+    const variants = [
+      ['--Token', '<YOUR_TOKEN>'],
+      ['-Token', '<YOUR_TOKEN>'],
+      ['--token=<YOUR_TOKEN>'],
+      ['-token=<YOUR_TOKEN>'],
+    ];
+    for (const variant of variants) {
+      const result = runDispatchScript(variant);
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain(
+        'Token argument looks like a placeholder',
+      );
+    }
   });
 
   test('requires allow-failure-drill when webhook override is provided', () => {

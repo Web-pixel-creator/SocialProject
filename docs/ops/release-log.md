@@ -33,6 +33,29 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - extend dispatch cli tests for help output and token-flag aliases (phase 37)
+
+- Scope: lock CLI compatibility and diagnostics for legacy/current token flag aliases and help rendering.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 10:58 -> 2026-03-05 11:01.
+- Changes:
+  - Updated `apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts`:
+    - added `--help` case (usage text + zero exit),
+    - added token alias coverage for placeholder rejection:
+      - `--Token <value>`
+      - `-Token <value>`
+      - `--token=<value>`
+      - `-token=<value>`.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add coverage for `--help`/`-h` parity and mixed-case `--Token=<value>` inline form.
+
 ### 2026-03-05 - token-source fallback resolver extraction and unit coverage (phase 36)
 
 - Scope: harden and document token-source fallback behavior by extracting candidate resolution into a dedicated module and adding unit tests for ordering/dedup/error cases.
