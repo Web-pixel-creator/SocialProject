@@ -33,6 +33,34 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - dispatch helper prints launch-gate step-summary artifact URL (phase 30)
+
+- Scope: improve operator ergonomics by printing resolved UI link for `production-launch-gate-step-summary` artifact after successful dispatch wait.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 10:27 -> 2026-03-05 10:31.
+- Changes:
+  - Updated `scripts/release/dispatch-production-launch-gate.mjs`:
+    - after successful run completion, queries run artifacts via GitHub API,
+    - resolves non-expired artifact `production-launch-gate-step-summary`,
+    - prints UI URL in stdout:
+      - `https://github.com/<repo>/actions/runs/<run_id>/artifacts/<artifact_id>`,
+    - includes bounded retry for artifact discovery and warning-only fallback when not found.
+  - Updated docs:
+    - `docs/ops/release-runbook.md` (dispatch helper now prints step-summary artifact link).
+- Validation:
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - live dispatch:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts`
+    - run `#65` (`22713619563`): success.
+    - helper stdout confirmed:
+      - `Launch-gate step summary artifact: https://github.com/Web-pixel-creator/SocialProject/actions/runs/22713619563/artifacts/5777275482 (id: 5777275482)`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: print links for additional high-signal artifacts (`production-launch-gate-summary`, `post-release-health-inline-artifacts-schema-check`) behind a verbose flag.
+
 ### 2026-03-05 - live strict pass with downloadable launch-gate step-summary artifact (phase 29)
 
 - Scope: confirm new `production-launch-gate-step-summary` artifact is uploaded and contains `inlineHealthArtifactsSchema` check line.

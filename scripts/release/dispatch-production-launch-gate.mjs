@@ -6,6 +6,10 @@ const DEFAULT_WORKFLOW_REF = 'main';
 const DEFAULT_WAIT_TIMEOUT_MS = 20 * 60 * 1000;
 const DEFAULT_WAIT_POLL_MS = 5000;
 const RUN_DISCOVERY_GRACE_MS = 2 * 60 * 1000;
+const ARTIFACT_DISCOVERY_ATTEMPTS = 6;
+const ARTIFACT_DISCOVERY_POLL_MS = 1000;
+const LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME =
+  'production-launch-gate-step-summary';
 const EXTERNAL_CHANNELS = ['telegram', 'slack', 'discord'];
 const USAGE = `Usage: npm run release:launch:gate:dispatch -- [options]
 
@@ -364,6 +368,85 @@ const githubRequest = async ({ token, method, url, body }) => {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const toArtifactUiUrl = ({ repoSlug, runId, artifactId }) =>
+  `https://github.com/${repoSlug}/actions/runs/${runId}/artifacts/${artifactId}`;
+
+const findRunArtifactByName = async ({
+  artifactName,
+  baseApiUrl,
+  runId,
+  token,
+}) => {
+  for (let attempt = 1; attempt <= ARTIFACT_DISCOVERY_ATTEMPTS; attempt += 1) {
+    const artifactsResponse = await githubRequest({
+      token,
+      method: 'GET',
+      url: `${baseApiUrl}/actions/runs/${runId}/artifacts?per_page=100`,
+    });
+    const artifacts = Array.isArray(artifactsResponse?.artifacts)
+      ? artifactsResponse.artifacts
+      : [];
+    const matching = artifacts.filter(
+      (artifact) =>
+        artifact &&
+        typeof artifact === 'object' &&
+        artifact.name === artifactName &&
+        artifact.expired !== true &&
+        Number.isFinite(Number(artifact.id)),
+    );
+    if (matching.length > 0) {
+      const [first] = matching.sort((left, right) => {
+        const leftCreatedAt = Date.parse(String(left?.created_at ?? ''));
+        const rightCreatedAt = Date.parse(String(right?.created_at ?? ''));
+        if (Number.isNaN(leftCreatedAt) || Number.isNaN(rightCreatedAt)) {
+          return 0;
+        }
+        return rightCreatedAt - leftCreatedAt;
+      });
+      return first;
+    }
+    if (attempt < ARTIFACT_DISCOVERY_ATTEMPTS) {
+      await sleep(ARTIFACT_DISCOVERY_POLL_MS);
+    }
+  }
+  return null;
+};
+
+const printLaunchGateStepSummaryArtifactLink = async ({
+  baseApiUrl,
+  repoSlug,
+  runId,
+  token,
+}) => {
+  try {
+    const artifact = await findRunArtifactByName({
+      artifactName: LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME,
+      baseApiUrl,
+      runId,
+      token,
+    });
+    if (!artifact) {
+      process.stderr.write(
+        `Warning: artifact '${LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME}' not found for run ${runId} after ${ARTIFACT_DISCOVERY_ATTEMPTS} attempts.\n`,
+      );
+      return;
+    }
+    const artifactId = Number(artifact.id);
+    const artifactUrl = toArtifactUiUrl({
+      repoSlug,
+      runId,
+      artifactId,
+    });
+    process.stdout.write(
+      `Launch-gate step summary artifact: ${artifactUrl} (id: ${artifactId})\n`,
+    );
+  } catch (error) {
+    process.stderr.write(
+      `Warning: unable to resolve launch-gate step summary artifact link: ${toErrorMessage(error)}\n`,
+    );
+  }
+};
+
 const main = async () => {
   const cli = parseCliArgs(process.argv.slice(2));
   const workflowFile = (
@@ -581,6 +664,12 @@ const main = async () => {
     if (status === 'completed') {
       if (conclusion === 'success') {
         process.stdout.write(`Run succeeded: ${current.html_url}\n`);
+        await printLaunchGateStepSummaryArtifactLink({
+          baseApiUrl,
+          repoSlug,
+          runId: Number(current.id),
+          token,
+        });
         return;
       }
       throw new Error(
