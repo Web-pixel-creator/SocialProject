@@ -33,6 +33,32 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add unit coverage for shared GitHub transient retry helper (phase 104)
+
+- Scope: lock in expected behavior of shared GitHub request/retry helper with focused unit tests after broad release-script migration.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 15:46 -> 2026-03-05 15:51.
+- Changes:
+  - Added test suite:
+    - `apps/api/src/__tests__/release-github-api-request-with-transient-retry.unit.spec.ts`
+    - coverage includes:
+      - `allowStatusCodes` (`404 -> null`),
+      - transient `GET` retry success path with warning emission,
+      - non-`GET` no-retry behavior,
+      - retry config normalization bounds (`maxAttempts/delay/backoff/maxDelay/jitter`).
+  - No runtime behavior changes in production scripts in this phase.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-github-api-request-with-transient-retry.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-transient-retry-utils.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:runbook:failure-snippet:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass on rerun (`status: pass`, `generatedAtUtc: 2026-03-05T15:51:24.560Z`).
+- Incidents:
+  - first production gate validation attempt in this phase failed transiently with `Railway strict gate failed`; immediate rerun passed without code changes.
+- Follow-ups:
+  - optional: extend helper tests to cover binary response branch and network pre-response exception path.
+
 ### 2026-03-05 - migrate retry failure collector GitHub JSON calls to shared retry helper (phase 103)
 
 - Scope: complete release-script shared helper migration by moving retry-failure collector JSON GitHub calls to shared transient-retry request helper.
