@@ -33,6 +33,25 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add empty inline required-external-channels diagnostics test (phase 40)
+
+- Scope: keep missing-value diagnostics consistent for inline `--required-external-channels=` form.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 11:10 -> 2026-03-05 11:12.
+- Changes:
+  - Updated `apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts`:
+    - added case for `--required-external-channels=` (empty inline value),
+    - asserts non-zero exit + expected missing-value diagnostic + usage line.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add empty inline-value diagnostics tests for `--runtime-draft-id=` and `--webhook-secret-override=` for complete parity.
+
 ### 2026-03-05 - add empty inline token-alias diagnostics tests (phase 39)
 
 - Scope: ensure missing-value diagnostics are consistent for inline token alias forms.
