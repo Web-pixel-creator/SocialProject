@@ -179,6 +179,50 @@ describe('release github api request with transient retry helper', () => {
     expect(result.payload.result).toEqual({ ok: true, calls: 2 });
   });
 
+  test('includes retry label and attempt counters in warning output', () => {
+    const result = runHelperScenario(`
+      globalThis.fetch = async () => {
+        state.calls += 1;
+        if (state.calls === 1) {
+          return {
+            ok: false,
+            status: 503,
+            statusText: 'Service Unavailable',
+            text: async () => '{"message":"temporary outage"}',
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          text: async () => JSON.stringify({ ok: true, calls: state.calls }),
+        };
+      };
+      await githubApiRequestWithTransientRetry({
+        method: 'GET',
+        retryConfig: {
+          backoffFactor: 1,
+          delayMs: 1,
+          jitterPercent: 0,
+          maxAttempts: 2,
+          maxDelayMs: 1,
+        },
+        retryLabel: 'probe-list-runs',
+        token: 'token',
+        url: 'https://example.invalid/warn-format',
+        writeRetryWarning: (message) => warnings.push(message),
+      });
+      emit({ ok: true, result: null, calls: state.calls, warnings, error: '' });
+    `);
+
+    expect(result.output.status).toBe(0);
+    expect(result.payload.ok).toBe(true);
+    expect(result.payload.warnings).toHaveLength(1);
+    expect(result.payload.warnings?.[0]).toContain('probe-list-runs');
+    expect(result.payload.warnings?.[0]).toContain('(1/2)');
+    expect(result.payload.warnings?.[0]).toContain('retrying in');
+  });
+
   test('does not retry transient failures for non-GET methods', () => {
     const result = runHelperScenario(`
       globalThis.fetch = async () => {

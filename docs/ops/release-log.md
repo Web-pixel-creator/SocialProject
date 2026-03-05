@@ -33,6 +33,29 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add warning-format coverage for shared GitHub retry helper (phase 106)
+
+- Scope: stabilize operator-facing retry diagnostics by asserting warning format content (`label`, attempt counters, retry phrasing) in shared helper tests.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 15:57 -> 2026-03-05 15:59.
+- Changes:
+  - Updated `apps/api/src/__tests__/release-github-api-request-with-transient-retry.unit.spec.ts`:
+    - added warning-format assertion scenario that validates retry warning includes:
+      - custom `retryLabel`,
+      - attempt ratio marker `(1/2)`,
+      - retry delay phrase (`retrying in ...`).
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-github-api-request-with-transient-retry.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:runbook:failure-snippet:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T15:59:00.667Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: if warning template changes in future, snapshot-style assertions can be added to capture full line format across scripts.
+
 ### 2026-03-05 - extend shared GitHub retry helper tests for binary and network-error paths (phase 105)
 
 - Scope: complete test hardening follow-up by validating binary payload handling and network pre-response retry behavior in shared GitHub request helper.
