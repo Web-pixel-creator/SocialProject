@@ -33,6 +33,25 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - admin UX severity-order annotation pass
+
+- Scope: make severity-based ordering in `panel=all` explicit by adding a short operator hint in panel chrome.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 05:20 -> 2026-03-05 05:25.
+- Changes:
+  - Updated `apps/web/src/app/admin/ux/components/admin-ux-panel-chrome.tsx`:
+    - added helper caption under `All metrics focus` tabs:
+      - `Section order: severity first (critical -> watch -> healthy -> info).`
+- Validation:
+  - `npx ultracite check apps/web/src/app/admin/ux/components/admin-ux-panel-chrome.tsx`: pass.
+  - `npx jest --runInBand apps/web/src/app/admin/ux/components/admin-ux-page-entry.spec.ts`: pass.
+  - `npm run test:web -- --runInBand apps/web/src/__tests__/admin-ux-page.spec.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: localize this hint via i18n once admin locale switching lands.
+
 ### 2026-03-05 - admin UX severity-first all-metrics ordering pass
 
 - Scope: improve scan priority in `/admin/ux?panel=all` by automatically ordering visible groups by severity (`critical -> watch -> healthy -> neutral`) instead of fixed visual order.

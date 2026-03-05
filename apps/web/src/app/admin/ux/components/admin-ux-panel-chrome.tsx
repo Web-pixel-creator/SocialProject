@@ -80,6 +80,10 @@ export const AdminUxPanelChrome = ({
               </a>
             ))}
           </div>
+          <p className="text-muted-foreground/90 text-xs">
+            Section order: severity first (critical -&gt; watch -&gt; healthy
+            -&gt; info).
+          </p>
         </div>
       ) : null}
       {allMetricsControls ? (
