@@ -10,12 +10,14 @@ export const ALLOWED_ARTIFACT_LINK_NAMES = [
   ...OPTIONAL_ARTIFACT_LINK_NAMES,
 ];
 
-const parseBooleanDefault = (raw, fallback) => {
-  if (!raw) return fallback;
+const parseBooleanEnv = (raw, fallback, sourceLabel) => {
+  if (typeof raw !== 'string' || raw.trim().length === 0) return fallback;
   const normalized = raw.trim().toLowerCase();
   if (['1', 'true', 'yes', 'y'].includes(normalized)) return true;
   if (['0', 'false', 'no', 'n'].includes(normalized)) return false;
-  return fallback;
+  throw new Error(
+    `Invalid value for ${sourceLabel}: ${raw.trim()}. Expected boolean true/false (accepted: 1,0,yes,no,y,n).`,
+  );
 };
 
 export const parseArtifactLinkNames = (raw, sourceLabel) => {
@@ -48,7 +50,6 @@ export const resolveDispatchArtifactLinkOptions = ({
   envArtifactLinkNamesRaw,
   envNoStepSummaryLinkRaw,
   envPrintArtifactLinksRaw,
-  parseBoolean = parseBooleanDefault,
 }) => {
   const normalizedCliArtifactLinkNames = Array.isArray(cliArtifactLinkNames)
     ? cliArtifactLinkNames
@@ -64,7 +65,11 @@ export const resolveDispatchArtifactLinkOptions = ({
   const explicitPrintArtifactLinks =
     typeof cliPrintArtifactLinks === 'boolean'
       ? cliPrintArtifactLinks
-      : parseBoolean(envPrintArtifactLinksRaw, false);
+      : parseBooleanEnv(
+          envPrintArtifactLinksRaw,
+          false,
+          'RELEASE_PRINT_ARTIFACT_LINKS',
+        );
   const printArtifactLinks =
     explicitPrintArtifactLinks ||
     normalizedCliArtifactLinkNames.length > 0 ||
@@ -78,7 +83,11 @@ export const resolveDispatchArtifactLinkOptions = ({
   const includeStepSummaryLink =
     typeof cliNoStepSummaryLink === 'boolean'
       ? !cliNoStepSummaryLink
-      : !parseBoolean(envNoStepSummaryLinkRaw, false);
+      : !parseBooleanEnv(
+          envNoStepSummaryLinkRaw,
+          false,
+          'RELEASE_NO_STEP_SUMMARY_LINK',
+        );
   return {
     includeStepSummaryLink,
     printArtifactLinks,

@@ -225,4 +225,46 @@ describe('launch-gate dispatch link options resolver', () => {
       'post-release-health-inline-artifacts-schema-check',
     ]);
   });
+
+  test('throws on invalid RELEASE_PRINT_ARTIFACT_LINKS env boolean', () => {
+    const resolved = runModuleAction<{
+      includeStepSummaryLink: boolean;
+      printArtifactLinks: boolean;
+      selectedArtifactLinkNames: string[];
+    }>({
+      action: 'resolve',
+      input: {
+        cliArtifactLinkNames: [],
+        envArtifactLinkNamesRaw: '',
+        envNoStepSummaryLinkRaw: '',
+        envPrintArtifactLinksRaw: 'maybe',
+      },
+    });
+    expect(resolved.output.status).toBe(1);
+    expect(resolved.payload.ok).toBe(false);
+    expect(resolved.payload.error).toContain(
+      'Invalid value for RELEASE_PRINT_ARTIFACT_LINKS: maybe',
+    );
+  });
+
+  test('throws on invalid RELEASE_NO_STEP_SUMMARY_LINK env boolean', () => {
+    const resolved = runModuleAction<{
+      includeStepSummaryLink: boolean;
+      printArtifactLinks: boolean;
+      selectedArtifactLinkNames: string[];
+    }>({
+      action: 'resolve',
+      input: {
+        cliArtifactLinkNames: [],
+        envArtifactLinkNamesRaw: '',
+        envNoStepSummaryLinkRaw: 'maybe',
+        envPrintArtifactLinksRaw: '',
+      },
+    });
+    expect(resolved.output.status).toBe(1);
+    expect(resolved.payload.ok).toBe(false);
+    expect(resolved.payload.error).toContain(
+      'Invalid value for RELEASE_NO_STEP_SUMMARY_LINK: maybe',
+    );
+  });
 });

@@ -33,6 +33,37 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - strict boolean validation for dispatch artifact-link env toggles (phase 57)
+
+- Scope: complete strict boolean-env policy in dispatch helper by validating artifact-link env toggles with explicit diagnostics.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 11:43 -> 2026-03-05 11:46.
+- Changes:
+  - Updated `scripts/release/dispatch-production-launch-gate-link-options.mjs`:
+    - switched env boolean parsing to strict validation for:
+      - `RELEASE_PRINT_ARTIFACT_LINKS`
+      - `RELEASE_NO_STEP_SUMMARY_LINK`
+    - invalid values now fail with explicit accepted-form diagnostics.
+  - Updated `scripts/release/dispatch-production-launch-gate.mjs`:
+    - removed unused legacy parser wiring from artifact-link resolver call.
+  - Updated tests:
+    - `apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts`
+      - added invalid-env matrix for artifact-link boolean toggles.
+    - `apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts`
+      - added direct resolver negative tests for both invalid env booleans.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-external-channels.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-help-snapshot.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - live dispatch regression:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --print-artifact-links --artifact-link-names all`
+    - run `#79` (`22716388459`): success with expected summary and artifact-link output.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: extract shared strict boolean env parser into a tiny utility module to avoid duplicating accepted-value sets across dispatch modules.
+
 ### 2026-03-05 - strict boolean validation for all dispatch env toggles (phase 56)
 
 - Scope: complete boolean-env hardening in dispatch helper by removing silent fallback behavior for remaining toggle env vars.

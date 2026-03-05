@@ -223,4 +223,19 @@ describe('launch-gate dispatch helper cli argument validation', () => {
       expect(result.stderr).toContain(`Invalid value for ${envName}: maybe`);
     }
   });
+
+  test('fails fast on invalid dispatch artifact-link boolean env toggles', () => {
+    const invalidArtifactToggleEnvs = [
+      'RELEASE_PRINT_ARTIFACT_LINKS',
+      'RELEASE_NO_STEP_SUMMARY_LINK',
+    ];
+
+    for (const envName of invalidArtifactToggleEnvs) {
+      const result = runDispatchScript([], {
+        [envName]: 'maybe',
+      });
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain(`Invalid value for ${envName}: maybe`);
+    }
+  });
 });

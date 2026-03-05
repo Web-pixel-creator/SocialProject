@@ -51,14 +51,6 @@ const parsePositiveIntegerEnv = (raw, fallback, sourceLabel) => {
   return parsed;
 };
 
-const parseBoolean = (raw, fallback) => {
-  if (!raw) return fallback;
-  const normalized = raw.trim().toLowerCase();
-  if (['1', 'true', 'yes', 'y'].includes(normalized)) return true;
-  if (['0', 'false', 'no', 'n'].includes(normalized)) return false;
-  return fallback;
-};
-
 const parseBooleanEnv = (raw, fallback, sourceLabel) => {
   if (typeof raw !== 'string' || raw.trim().length === 0) return fallback;
   const normalized = raw.trim().toLowerCase();
@@ -601,7 +593,6 @@ const main = async () => {
     envArtifactLinkNamesRaw: process.env.RELEASE_ARTIFACT_LINK_NAMES ?? '',
     envNoStepSummaryLinkRaw: process.env.RELEASE_NO_STEP_SUMMARY_LINK ?? '',
     envPrintArtifactLinksRaw: process.env.RELEASE_PRINT_ARTIFACT_LINKS ?? '',
-    parseBoolean,
   });
   const allowFailureDrill =
     typeof cli.allowFailureDrill === 'boolean'
