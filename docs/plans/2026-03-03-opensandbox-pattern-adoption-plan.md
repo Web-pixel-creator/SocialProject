@@ -251,6 +251,41 @@ Exit criteria:
       - `sandboxExecutionAuditPolicy.pass=true`
       - `sandboxExecutionEgressPolicy.pass=true`
       - `sandboxExecutionLimitsPolicy.pass=true`.
+- Completed metrics contract hardening + mode-scoped release probes (`2026-03-05`):
+  - centralized sandbox execution error-code contract:
+    - `apps/api/src/services/sandboxExecution/errorCodes.ts`,
+  - centralized validation/redaction helpers:
+    - `apps/api/src/services/sandboxExecution/validation.ts`,
+  - `SandboxExecutionService` now uses shared validators/types for:
+    - provider normalization/validation,
+    - sandbox-id normalization,
+    - root-bounded path validation,
+    - telemetry error/audit sanitization,
+  - added unit coverage:
+    - `apps/api/src/__tests__/sandbox-execution-validation.unit.spec.ts`,
+    - extended `apps/api/src/__tests__/sandbox-execution.unit.spec.ts` for audit + error redaction.
+- Extended admin metrics query for execution-mode scoping (`2026-03-05`):
+  - `GET /api/admin/sandbox-execution/metrics` now supports:
+    - `mode` filter (`fallback_only | sandbox_enabled`),
+  - updated API integration assertions:
+    - `apps/api/src/__tests__/admin.integration.spec.ts`.
+- Extended launch-gate runtime probes with mode-awareness + mode-consistency assertion (`2026-03-05`):
+  - `scripts/release/production-launch-gate.mjs` now:
+    - resolves expected mode from `SANDBOX_EXECUTION_ENABLED`,
+    - applies `mode` filter to runtime scoped sandbox metrics/egress/limits probes,
+    - emits `sandboxExecutionModeConsistency` strict check.
+  - runbooks/checklists updated for mode-scoped probe commands:
+    - `docs/ops/agent-gateway-ai-runtime-runbook.md`
+    - `docs/ops/release-checklist.md`
+    - `docs/ops/release-runbook.md`.
+- Validation (`2026-03-05`):
+  - `npm run lint` passed,
+  - `npm run ultracite:check` passed,
+  - `npx jest --runInBand apps/api/src/__tests__/sandbox-execution.unit.spec.ts apps/api/src/__tests__/sandbox-execution-validation.unit.spec.ts apps/api/src/__tests__/sandbox-execution-egress-profile.unit.spec.ts apps/api/src/__tests__/sandbox-execution-limits-profile.unit.spec.ts --config jest.config.cjs` passed,
+  - `npm --workspace apps/api run build` passed,
+  - `node --check scripts/release/production-launch-gate.mjs` passed.
+- Current local evidence gap:
+  - `apps/api/src/__tests__/admin.integration.spec.ts` remains environment-blocked when local Postgres/Redis are unavailable (Docker daemon is not running in current execution context).
 
 ## Risks
 
