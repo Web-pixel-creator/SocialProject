@@ -101,6 +101,25 @@ const isNaLikeValue = (value: string): boolean => {
 const toSignalLabel = (count: number): string =>
   `${count} signal${count === 1 ? '' : 's'}`;
 
+const resolveRiskToneLabel = (tone: AdminUxAllMetricsRiskTone): string => {
+  if (tone === 'all') {
+    return 'all tones';
+  }
+  if (tone === 'neutral') {
+    return 'info tone';
+  }
+  return `${tone} tone`;
+};
+
+const resolveSeverityScopeLabel = (
+  riskFilter: AdminUxAllMetricsRiskFilter,
+): string => {
+  if (riskFilter === 'high') {
+    return 'high-risk only';
+  }
+  return 'all severities';
+};
+
 const resolveMetaToneFromRiskLabel = (label: string): MetaTone => {
   const normalized = label.trim().toLowerCase();
   if (normalized.includes('critical')) {
@@ -552,10 +571,14 @@ export const AdminUxMainPanels = ({
         : toneScopedGroups;
 
     if (riskScopedGroups.length === 0) {
+      const severityScopeLabel =
+        resolveSeverityScopeLabel(allMetricsRiskFilter);
+      const toneScopeLabel = resolveRiskToneLabel(allMetricsRiskTone);
       return (
         <section className="card p-4 sm:p-5">
           <p className="text-muted-foreground text-sm">
-            No sections match the current risk filter.
+            No sections match current filters: {severityScopeLabel},{' '}
+            {toneScopeLabel}.
           </p>
         </section>
       );

@@ -33,6 +33,31 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - admin UX risk-tone guidance polish pass
+
+- Scope: improve operator clarity in `panel=all` by making risk-tone interactions self-explanatory and by clarifying empty states when tone/severity filters are combined.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 06:40 -> 2026-03-05 06:46.
+- Changes:
+  - Updated `admin-ux-panel-chrome.tsx`:
+    - added explicit `aria-label` for each risk-tone pill with count + action hint,
+    - added interaction hint text below tone pills:
+      - `Click a tone to focus matching sections. Click the active tone to reset.`,
+    - improved `title` text for active/inactive tone actions.
+  - Updated `admin-ux-main-panels.tsx`:
+    - improved all-metrics empty state message to include active filter scope:
+      - severity scope (`all severities` / `high-risk only`),
+      - tone scope (`all tones` / specific tone).
+- Validation:
+  - `npx ultracite check apps/web/src/app/admin/ux/components/admin-ux-panel-chrome.tsx apps/web/src/app/admin/ux/components/admin-ux-main-panels.tsx`: pass.
+  - `npx jest --runInBand apps/web/src/app/admin/ux/components/admin-ux-page-entry.spec.ts`: pass.
+  - `npm run test:web -- --runInBand apps/web/src/__tests__/admin-ux-page.spec.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Incidents:
+  - one JSX fragment syntax error during initial edit in `admin-ux-panel-chrome.tsx`; fixed in same pass.
+- Follow-ups:
+  - optional: replace native `title` hints with design-system tooltip component for richer hover behavior.
+
 ### 2026-03-05 - admin UX risk-tone clickable snapshot pass
 
 - Scope: make risk snapshot badges in `panel=all` clickable and stateful, so operators can filter sections by tone (`critical/watch/healthy/info`) directly from the snapshot strip.

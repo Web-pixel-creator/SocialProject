@@ -85,6 +85,19 @@ const resolveRiskSnapshotClassName = (
   return 'border-primary/30 bg-primary/10 text-primary';
 };
 
+const resolveRiskSnapshotActionHint = (
+  tone: 'all' | 'critical' | 'watch' | 'healthy' | 'neutral',
+  isActive: boolean,
+): string => {
+  if (isActive) {
+    return 'Active tone filter. Click to reset to all tones.';
+  }
+  if (tone === 'all') {
+    return 'Show all tones.';
+  }
+  return `Filter sections by ${tone} tone.`;
+};
+
 export const AdminUxPanelChrome = ({
   activePanel,
   allMetricsControls,
@@ -154,32 +167,40 @@ export const AdminUxPanelChrome = ({
             ))}
           </div>
           {allMetricsRiskSnapshot ? (
-            <div className="flex flex-wrap items-center gap-2">
-              {allMetricsRiskSnapshot.toneHrefs.map((tone) => {
-                const isActive = allMetricsRiskSnapshot.activeTone === tone.id;
-                const count = resolveRiskSnapshotCount(
-                  allMetricsRiskSnapshot,
-                  tone.id,
-                );
-                const className = resolveRiskSnapshotClassName(tone.id);
-                return (
-                  <a
-                    className={`${className} rounded-full border px-2 py-0.5 font-semibold text-[11px] uppercase tracking-wide ${
-                      isActive ? 'ring-1 ring-ring/65' : ''
-                    }`}
-                    href={tone.href}
-                    key={tone.id}
-                    title={
-                      isActive
-                        ? 'Currently filtered by this tone. Click to reset tone filter.'
-                        : `Filter by ${tone.label} tone`
-                    }
-                  >
-                    {tone.label} {count}
-                  </a>
-                );
-              })}
-            </div>
+            <>
+              <div className="flex flex-wrap items-center gap-2">
+                {allMetricsRiskSnapshot.toneHrefs.map((tone) => {
+                  const isActive =
+                    allMetricsRiskSnapshot.activeTone === tone.id;
+                  const count = resolveRiskSnapshotCount(
+                    allMetricsRiskSnapshot,
+                    tone.id,
+                  );
+                  const className = resolveRiskSnapshotClassName(tone.id);
+                  const actionHint = resolveRiskSnapshotActionHint(
+                    tone.id,
+                    isActive,
+                  );
+                  return (
+                    <a
+                      aria-label={`${tone.label} ${count}. ${actionHint}`}
+                      className={`${className} rounded-full border px-2 py-0.5 font-semibold text-[11px] uppercase tracking-wide ${
+                        isActive ? 'ring-1 ring-ring/65' : ''
+                      }`}
+                      href={tone.href}
+                      key={tone.id}
+                      title={actionHint}
+                    >
+                      {tone.label} {count}
+                    </a>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-muted-foreground/90">
+                Click a tone to focus matching sections. Click the active tone
+                to reset.
+              </p>
+            </>
           ) : null}
         </div>
       ) : null}
