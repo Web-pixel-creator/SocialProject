@@ -6,6 +6,7 @@ import {
   ALLOWED_EXTERNAL_CHANNELS,
   parseExternalChannelsList,
 } from './dispatch-production-launch-gate-external-channels.mjs';
+import { parseReleaseBooleanEnv } from './release-env-parse-utils.mjs';
 
 const DEFAULTS = {
   apiService: process.env.RAILWAY_API_SERVICE || 'api',
@@ -638,8 +639,10 @@ const parseArgs = (argv) => {
       'RELEASE_REQUIRED_EXTERNAL_CHANNELS',
     ),
     requireSkillMarkers: false,
-    requireNaturalCronWindow: parseBoolean(
+    requireNaturalCronWindow: parseReleaseBooleanEnv(
       process.env.RELEASE_REQUIRE_NATURAL_CRON_WINDOW,
+      false,
+      'RELEASE_REQUIRE_NATURAL_CRON_WINDOW',
     ),
     runtimeChannel: DEFAULTS.runtimeChannel,
     runtimeDraftId: process.env.RELEASE_RUNTIME_PROBE_DRAFT_ID || '',

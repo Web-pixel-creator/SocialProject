@@ -137,4 +137,15 @@ describe('production launch-gate cli argument validation', () => {
     expect(result.stderr).toContain('contains unsupported channels');
     expect(result.stderr).toContain('telegram, slack, discord');
   });
+
+  test('fails fast on invalid RELEASE_REQUIRE_NATURAL_CRON_WINDOW env value', () => {
+    const result = runProductionLaunchGate([], {
+      RELEASE_REQUIRE_NATURAL_CRON_WINDOW: 'maybe',
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Invalid value for RELEASE_REQUIRE_NATURAL_CRON_WINDOW: maybe',
+    );
+  });
 });

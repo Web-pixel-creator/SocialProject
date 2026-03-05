@@ -33,6 +33,28 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - strict parse RELEASE_REQUIRE_NATURAL_CRON_WINDOW in production gate (phase 59)
+
+- Scope: align production launch-gate env parsing with strict dispatch behavior by failing fast on invalid natural-cron-window env toggle values.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 11:50 -> 2026-03-05 11:53.
+- Changes:
+  - Updated `scripts/release/production-launch-gate.mjs`:
+    - now parses `RELEASE_REQUIRE_NATURAL_CRON_WINDOW` via shared `parseReleaseBooleanEnv` utility.
+  - Updated `apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts`:
+    - added negative coverage for invalid env value:
+      - `RELEASE_REQUIRE_NATURAL_CRON_WINDOW=maybe`.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-env-parse-utils.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-external-channels.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T11:52:19.608Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: gradually migrate other production gate env toggles to shared strict parser where fallback-to-false masking is undesirable.
+
 ### 2026-03-05 - extract shared release env parsers and reuse in dispatch modules (phase 58)
 
 - Scope: reduce duplicated env parsing logic and keep boolean/integer validation behavior identical across dispatch runtime and link-option resolvers.
