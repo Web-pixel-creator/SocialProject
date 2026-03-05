@@ -358,6 +358,39 @@ const resolveSandboxExecutionLimitsEnforceConfig = (apiServiceVars) => {
     value: false,
   };
 };
+const resolveSandboxExecutionEnabledConfig = (apiServiceVars) => {
+  const candidates = [
+    {
+      raw: process.env.RELEASE_SANDBOX_EXECUTION_ENABLED,
+      source: 'RELEASE_SANDBOX_EXECUTION_ENABLED',
+    },
+    {
+      raw: process.env.SANDBOX_EXECUTION_ENABLED,
+      source: 'SANDBOX_EXECUTION_ENABLED',
+    },
+    {
+      raw:
+        apiServiceVars && typeof apiServiceVars === 'object'
+          ? apiServiceVars.SANDBOX_EXECUTION_ENABLED
+          : '',
+      source: 'Railway api service variable SANDBOX_EXECUTION_ENABLED',
+    },
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate.raw === 'string' && candidate.raw.trim().length > 0) {
+      return {
+        source: candidate.source,
+        value: parseBoolean(candidate.raw),
+      };
+    }
+  }
+  return {
+    source: 'unset',
+    value: false,
+  };
+};
+const resolveSandboxExecutionMode = (sandboxExecutionEnabled) =>
+  sandboxExecutionEnabled ? 'sandbox_enabled' : 'fallback_only';
 
 const quote = (v) =>
   /^[a-z0-9_./:=@+-]+$/i.test(v) ? v : `"${v.replace(/"/g, '\\"')}"`;
@@ -860,6 +893,11 @@ const main = async () => {
     );
     const sandboxExecutionLimitsEnforceConfig =
       resolveSandboxExecutionLimitsEnforceConfig(apiServiceVars);
+    const sandboxExecutionEnabledConfig =
+      resolveSandboxExecutionEnabledConfig(apiServiceVars);
+    const runtimeDryRunExpectedMode = resolveSandboxExecutionMode(
+      sandboxExecutionEnabledConfig.value,
+    );
 
     if (!o.skipSmoke) {
       run('node', [path.resolve('scripts/release/smoke-check.mjs')], {
@@ -1001,12 +1039,26 @@ const main = async () => {
         timeoutMs: o.httpTimeoutMs,
         useAdmin: true,
       });
+      const buildRuntimeSandboxMetricsPath = (overrides = {}) => {
+        const query = new URLSearchParams({
+          hours: '24',
+          limit: '20',
+          mode: runtimeDryRunExpectedMode,
+          operation: SANDBOX_RUNTIME_PROBE_OPERATION,
+        });
+        for (const [key, value] of Object.entries(overrides)) {
+          if (typeof value === 'string' && value.length > 0) {
+            query.set(key, value);
+          }
+        }
+        return `/api/admin/sandbox-execution/metrics?${query.toString()}`;
+      };
+      const sandboxExecutionMetricsPath = buildRuntimeSandboxMetricsPath();
       const sandboxExecutionMetrics = await postOrGet({
         adminToken,
         apiBaseUrl,
         csrfToken,
-        pathName:
-          '/api/admin/sandbox-execution/metrics?hours=24&operation=ai_runtime_dry_run&limit=20',
+        pathName: sandboxExecutionMetricsPath,
         timeoutMs: o.httpTimeoutMs,
         useAdmin: true,
       });
@@ -1082,9 +1134,9 @@ const main = async () => {
           adminToken,
           apiBaseUrl,
           csrfToken,
-          pathName: `/api/admin/sandbox-execution/metrics?hours=24&operation=${encodeURIComponent(
-            SANDBOX_RUNTIME_PROBE_OPERATION,
-          )}&egressProfile=${encodeURIComponent(runtimeDryRunEgressProfile)}&limit=20`,
+          pathName: buildRuntimeSandboxMetricsPath({
+            egressProfile: runtimeDryRunEgressProfile,
+          }),
           timeoutMs: o.httpTimeoutMs,
           useAdmin: true,
         });
@@ -1092,9 +1144,9 @@ const main = async () => {
           adminToken,
           apiBaseUrl,
           csrfToken,
-          pathName: `/api/admin/sandbox-execution/metrics?hours=24&operation=${encodeURIComponent(
-            SANDBOX_RUNTIME_PROBE_OPERATION,
-          )}&egressProfile=${encodeURIComponent(deniedProfile)}&limit=20`,
+          pathName: buildRuntimeSandboxMetricsPath({
+            egressProfile: deniedProfile,
+          }),
           timeoutMs: o.httpTimeoutMs,
           useAdmin: true,
         });
@@ -1104,9 +1156,10 @@ const main = async () => {
                 adminToken,
                 apiBaseUrl,
                 csrfToken,
-                pathName: `/api/admin/sandbox-execution/metrics?hours=24&operation=${encodeURIComponent(
-                  SANDBOX_RUNTIME_PROBE_OPERATION,
-                )}&egressProfile=${encodeURIComponent(runtimeDryRunEgressProfile)}&egressDecision=allow&limit=20`,
+                pathName: buildRuntimeSandboxMetricsPath({
+                  egressDecision: 'allow',
+                  egressProfile: runtimeDryRunEgressProfile,
+                }),
                 timeoutMs: o.httpTimeoutMs,
                 useAdmin: true,
               })
@@ -1117,9 +1170,10 @@ const main = async () => {
                 adminToken,
                 apiBaseUrl,
                 csrfToken,
-                pathName: `/api/admin/sandbox-execution/metrics?hours=24&operation=${encodeURIComponent(
-                  SANDBOX_RUNTIME_PROBE_OPERATION,
-                )}&egressProfile=${encodeURIComponent(runtimeDryRunEgressProfile)}&egressDecision=deny&limit=20`,
+                pathName: buildRuntimeSandboxMetricsPath({
+                  egressDecision: 'deny',
+                  egressProfile: runtimeDryRunEgressProfile,
+                }),
                 timeoutMs: o.httpTimeoutMs,
                 useAdmin: true,
               })
@@ -1194,9 +1248,9 @@ const main = async () => {
           adminToken,
           apiBaseUrl,
           csrfToken,
-          pathName: `/api/admin/sandbox-execution/metrics?hours=24&operation=${encodeURIComponent(
-            SANDBOX_RUNTIME_PROBE_OPERATION,
-          )}&limitsProfile=${encodeURIComponent(runtimeDryRunLimitProfile)}&limit=20`,
+          pathName: buildRuntimeSandboxMetricsPath({
+            limitsProfile: runtimeDryRunLimitProfile,
+          }),
           timeoutMs: o.httpTimeoutMs,
           useAdmin: true,
         });
@@ -1204,9 +1258,9 @@ const main = async () => {
           adminToken,
           apiBaseUrl,
           csrfToken,
-          pathName: `/api/admin/sandbox-execution/metrics?hours=24&operation=${encodeURIComponent(
-            SANDBOX_RUNTIME_PROBE_OPERATION,
-          )}&limitsProfile=${encodeURIComponent(deniedProfile)}&limit=20`,
+          pathName: buildRuntimeSandboxMetricsPath({
+            limitsProfile: deniedProfile,
+          }),
           timeoutMs: o.httpTimeoutMs,
           useAdmin: true,
         });
@@ -1216,9 +1270,10 @@ const main = async () => {
                 adminToken,
                 apiBaseUrl,
                 csrfToken,
-                pathName: `/api/admin/sandbox-execution/metrics?hours=24&operation=${encodeURIComponent(
-                  SANDBOX_RUNTIME_PROBE_OPERATION,
-                )}&limitsProfile=${encodeURIComponent(runtimeDryRunLimitProfile)}&limitsDecision=allow&limit=20`,
+                pathName: buildRuntimeSandboxMetricsPath({
+                  limitsDecision: 'allow',
+                  limitsProfile: runtimeDryRunLimitProfile,
+                }),
                 timeoutMs: o.httpTimeoutMs,
                 useAdmin: true,
               })
@@ -1229,9 +1284,10 @@ const main = async () => {
                 adminToken,
                 apiBaseUrl,
                 csrfToken,
-                pathName: `/api/admin/sandbox-execution/metrics?hours=24&operation=${encodeURIComponent(
-                  SANDBOX_RUNTIME_PROBE_OPERATION,
-                )}&limitsProfile=${encodeURIComponent(runtimeDryRunLimitProfile)}&limitsDecision=deny&limit=20`,
+                pathName: buildRuntimeSandboxMetricsPath({
+                  limitsDecision: 'deny',
+                  limitsProfile: runtimeDryRunLimitProfile,
+                }),
                 timeoutMs: o.httpTimeoutMs,
                 useAdmin: true,
               })
@@ -1325,6 +1381,8 @@ const main = async () => {
           status: runtimeDryRun.status,
         },
         sandboxExecutionMetrics: {
+          expectedMode: runtimeDryRunExpectedMode,
+          expectedModeSource: sandboxExecutionEnabledConfig.source,
           ok: sandboxExecutionMetrics.ok,
           status: sandboxExecutionMetrics.status,
           total: sandboxExecutionMetricsTotal,
@@ -1953,6 +2011,8 @@ const main = async () => {
         limitsConfigSource: sandboxExecutionOperationLimitProfilesConfig.source,
         limitsEnforcementEnabled: sandboxExecutionLimitsEnforceConfig.value,
         limitsEnforcementSource: sandboxExecutionLimitsEnforceConfig.source,
+        runtimeDryRunExpectedMode,
+        runtimeDryRunExpectedModeSource: sandboxExecutionEnabledConfig.source,
         failedCount:
           health['/api/admin/sandbox-execution/metrics?hours=24&limit=20'].json
             ?.summary?.failedCount ?? null,

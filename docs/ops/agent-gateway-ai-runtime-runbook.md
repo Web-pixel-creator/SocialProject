@@ -84,9 +84,11 @@ curl -s "$API_BASE_URL/api/admin/sandbox-execution/metrics?hours=24&limit=20" \
 Optional filtered probe:
 
 ```bash
-curl -s "$API_BASE_URL/api/admin/sandbox-execution/metrics?hours=24&operation=ai_runtime_dry_run&status=failed" \
+curl -s "$API_BASE_URL/api/admin/sandbox-execution/metrics?hours=24&operation=ai_runtime_dry_run&mode=fallback_only&status=failed" \
   -H "x-admin-token: $ADMIN_API_TOKEN"
 ```
+
+Use `mode=sandbox_enabled` when execution-plane path is enabled in target env.
 
 ## Operational SLO Checks
 
@@ -111,7 +113,7 @@ Actions:
 1. Pull scoped metrics for the failing operation:
 
 ```bash
-curl -s "$API_BASE_URL/api/admin/sandbox-execution/metrics?hours=24&operation=<operation>&limit=50" \
+curl -s "$API_BASE_URL/api/admin/sandbox-execution/metrics?hours=24&operation=<operation>&mode=<fallback_only|sandbox_enabled>&limit=50" \
   -H "x-admin-token: $ADMIN_API_TOKEN"
 ```
 
@@ -131,13 +133,13 @@ curl -s "$API_BASE_URL/api/admin/sandbox-execution/metrics?hours=24&operation=<o
 Optional deny/allow filter probe for a mapped operation profile:
 
 ```bash
-curl -s "$API_BASE_URL/api/admin/sandbox-execution/metrics?hours=24&operation=ai_runtime_dry_run&egressProfile=<expected_profile>&limit=20" \
+curl -s "$API_BASE_URL/api/admin/sandbox-execution/metrics?hours=24&operation=ai_runtime_dry_run&mode=<fallback_only|sandbox_enabled>&egressProfile=<expected_profile>&limit=20" \
   -H "x-admin-token: $ADMIN_API_TOKEN"
-curl -s "$API_BASE_URL/api/admin/sandbox-execution/metrics?hours=24&operation=ai_runtime_dry_run&egressProfile=probe_not_configured&limit=20" \
+curl -s "$API_BASE_URL/api/admin/sandbox-execution/metrics?hours=24&operation=ai_runtime_dry_run&mode=<fallback_only|sandbox_enabled>&egressProfile=probe_not_configured&limit=20" \
   -H "x-admin-token: $ADMIN_API_TOKEN"
-curl -s "$API_BASE_URL/api/admin/sandbox-execution/metrics?hours=24&operation=ai_runtime_dry_run&limitsProfile=<expected_profile>&limit=20" \
+curl -s "$API_BASE_URL/api/admin/sandbox-execution/metrics?hours=24&operation=ai_runtime_dry_run&mode=<fallback_only|sandbox_enabled>&limitsProfile=<expected_profile>&limit=20" \
   -H "x-admin-token: $ADMIN_API_TOKEN"
-curl -s "$API_BASE_URL/api/admin/sandbox-execution/metrics?hours=24&operation=ai_runtime_dry_run&limitsProfile=probe_not_configured&limit=20" \
+curl -s "$API_BASE_URL/api/admin/sandbox-execution/metrics?hours=24&operation=ai_runtime_dry_run&mode=<fallback_only|sandbox_enabled>&limitsProfile=probe_not_configured&limit=20" \
   -H "x-admin-token: $ADMIN_API_TOKEN"
 ```
 

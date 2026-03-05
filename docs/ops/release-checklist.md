@@ -179,7 +179,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
     - [ ] `SANDBOX_EXECUTION_OPERATION_LIMIT_PROFILES` mapping for `ai_runtime_dry_run` (or `*`).
     - [ ] `SANDBOX_EXECUTION_LIMIT_PROFILES` entry for resolved limit profile.
   - [ ] `GET /api/admin/sandbox-execution/metrics?hours=24&limit=20` returns healthy telemetry snapshot for wrapped execution operations.
-  - [ ] Optional scoped drill for active path: `GET /api/admin/sandbox-execution/metrics?hours=24&operation=ai_runtime_dry_run`.
+  - [ ] Optional scoped drill for active path: `GET /api/admin/sandbox-execution/metrics?hours=24&operation=ai_runtime_dry_run&mode=<fallback_only|sandbox_enabled>`.
   - [ ] Scoped telemetry includes non-empty audit envelope coverage for runtime dry-run:
     - [ ] `auditCoverage.totalWithAudit > 0`
     - [ ] `auditCoverage.actorTypeCount > 0`

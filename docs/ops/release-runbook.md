@@ -121,7 +121,7 @@ Canonical references:
    - `GET /api/admin/ai-runtime/health` reports `summary.health = "ok"` and `rolesBlocked = 0`.
    - `POST /api/admin/ai-runtime/dry-run` succeeds for at least one critical role probe.
    - `GET /api/admin/sandbox-execution/metrics?hours=24&limit=20` is reachable and telemetry summary is present.
-   - Optional scoped check: `GET /api/admin/sandbox-execution/metrics?hours=24&operation=ai_runtime_dry_run`.
+   - Optional scoped check: `GET /api/admin/sandbox-execution/metrics?hours=24&operation=ai_runtime_dry_run&mode=<fallback_only|sandbox_enabled>`.
    - Scoped audit envelope coverage should be present for runtime dry-run telemetry:
      - `auditCoverage.totalWithAudit > 0`
      - `auditCoverage.actorTypeCount > 0`

@@ -33,6 +33,30 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - sandbox execution mode-scoped release-gate probes (phase 3)
+
+- Scope: apply sandbox execution `mode` filtering end-to-end in release operations so runtime probes evaluate the active path (`fallback_only` vs `sandbox_enabled`) deterministically.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 08:39 -> 2026-03-05 08:52.
+- Changes:
+  - Updated launch-gate runtime probe script `scripts/release/production-launch-gate.mjs`:
+    - resolved `SANDBOX_EXECUTION_ENABLED` config (env/Railway var sources),
+    - derived expected runtime mode (`fallback_only` or `sandbox_enabled`),
+    - applied `mode` query filter to runtime sandbox metrics + egress/limits allow/deny probes,
+    - persisted expected mode/source into runtime probe/admin-health artifacts.
+  - Synced operator docs with mode-aware commands:
+    - `docs/ops/agent-gateway-ai-runtime-runbook.md`
+    - `docs/ops/release-checklist.md`
+    - `docs/ops/release-runbook.md`.
+- Validation:
+  - `node --check scripts/release/production-launch-gate.mjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: extend strict launch-gate summary with explicit mode-consistency assertion (`modeBreakdown` dominant mode equals expected mode).
+
 ### 2026-03-05 - sandbox execution metrics mode-filter hardening (phase 2)
 
 - Scope: improve sandbox telemetry triage by adding explicit execution `mode` filtering (`fallback_only | sandbox_enabled`) to admin metrics API.
