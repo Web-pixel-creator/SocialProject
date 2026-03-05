@@ -32,7 +32,11 @@ export const ADMIN_UX_PANEL_TABS: ReadonlyArray<{
 
 interface AllMetricsRiskCounts {
   all: number;
+  critical: number;
+  healthy: number;
   high: number;
+  neutral: number;
+  watch: number;
 }
 
 const ADMIN_UX_ALL_METRICS_VIEW_TABS: ReadonlyArray<{
@@ -115,6 +119,15 @@ export const buildAdminUxPanelChromeView = ({
                 : `${tab.label} (${allMetricsRiskCounts?.all ?? 0})`,
           })),
         })
+      : null,
+  allMetricsRiskSnapshot:
+    activePanel === 'all' && allMetricsRiskCounts
+      ? {
+          critical: allMetricsRiskCounts.critical,
+          healthy: allMetricsRiskCounts.healthy,
+          neutral: allMetricsRiskCounts.neutral,
+          watch: allMetricsRiskCounts.watch,
+        }
       : null,
   allMetricsViewTabs:
     activePanel === 'all'

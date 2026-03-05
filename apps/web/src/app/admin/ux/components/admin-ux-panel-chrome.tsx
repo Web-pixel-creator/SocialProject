@@ -33,10 +33,18 @@ interface AllMetricsRiskFilterTab {
   label: string;
 }
 
+interface AllMetricsRiskSnapshot {
+  critical: number;
+  healthy: number;
+  neutral: number;
+  watch: number;
+}
+
 export const AdminUxPanelChrome = ({
   activePanel,
   allMetricsControls,
   allMetricsRiskFilterTabs,
+  allMetricsRiskSnapshot,
   allMetricsViewTabs,
   panelTabs,
   stickyKpis,
@@ -44,6 +52,7 @@ export const AdminUxPanelChrome = ({
   activePanel: string;
   allMetricsControls: AllMetricsControlsView | null;
   allMetricsRiskFilterTabs: AllMetricsRiskFilterTab[] | null;
+  allMetricsRiskSnapshot: AllMetricsRiskSnapshot | null;
   allMetricsViewTabs: AllMetricsViewTab[] | null;
   panelTabs: PanelTabView[];
   stickyKpis: StickyKpiView[];
@@ -99,6 +108,22 @@ export const AdminUxPanelChrome = ({
               </a>
             ))}
           </div>
+          {allMetricsRiskSnapshot ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-destructive/45 bg-destructive/10 px-2 py-0.5 font-semibold text-[11px] text-destructive-foreground uppercase tracking-wide">
+                critical {allMetricsRiskSnapshot.critical}
+              </span>
+              <span className="rounded-full border border-amber-500/40 bg-amber-500/12 px-2 py-0.5 font-semibold text-[11px] text-amber-200 uppercase tracking-wide">
+                watch {allMetricsRiskSnapshot.watch}
+              </span>
+              <span className="rounded-full border border-emerald-500/35 bg-emerald-500/10 px-2 py-0.5 font-semibold text-[11px] text-emerald-200 uppercase tracking-wide">
+                healthy {allMetricsRiskSnapshot.healthy}
+              </span>
+              <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 font-semibold text-[11px] text-primary uppercase tracking-wide">
+                info {allMetricsRiskSnapshot.neutral}
+              </span>
+            </div>
+          ) : null}
         </div>
       ) : null}
       {allMetricsViewTabs ? (

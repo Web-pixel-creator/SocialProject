@@ -51,7 +51,14 @@ const computeAllMetricsRiskCounts = ({
 }: {
   allMetricsView: AdminUxAllMetricsView;
   mainPanelsProps: BuiltMainPanelsProps;
-}): { all: number; high: number } => {
+}): {
+  all: number;
+  critical: number;
+  healthy: number;
+  high: number;
+  neutral: number;
+  watch: number;
+} => {
   const isSubviewVisible = (...views: AdminUxAllMetricsView[]) =>
     allMetricsView === 'overview' || views.includes(allMetricsView);
   const tones: MetaTone[] = [];
@@ -128,8 +135,12 @@ const computeAllMetricsRiskCounts = ({
 
   return {
     all: tones.length,
+    critical: tones.filter((tone) => tone === 'critical').length,
+    healthy: tones.filter((tone) => tone === 'healthy').length,
     high: tones.filter((tone) => tone === 'critical' || tone === 'watch')
       .length,
+    neutral: tones.filter((tone) => tone === 'neutral').length,
+    watch: tones.filter((tone) => tone === 'watch').length,
   };
 };
 
@@ -182,6 +193,7 @@ export const AdminUxPageContent = ({
         activePanel={activePanel}
         allMetricsControls={panelChromeView.allMetricsControls}
         allMetricsRiskFilterTabs={panelChromeView.allMetricsRiskFilterTabs}
+        allMetricsRiskSnapshot={panelChromeView.allMetricsRiskSnapshot}
         allMetricsViewTabs={panelChromeView.allMetricsViewTabs}
         panelTabs={panelChromeView.panelTabs}
         stickyKpis={panelChromeView.stickyKpis}

@@ -33,6 +33,32 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - admin UX risk snapshot strip pass
+
+- Scope: expose at-a-glance risk composition in `panel=all` by adding a compact snapshot strip (`critical/watch/healthy/info`) near severity controls.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 06:12 -> 2026-03-05 06:16.
+- Changes:
+  - Updated `admin-ux-page-content.tsx`:
+    - extended risk counter derivation to include tone-specific counts:
+      - `critical`, `watch`, `healthy`, `neutral`,
+    - still keeps existing `all/high` counters for severity tabs.
+  - Updated `admin-ux-page-shell-view-model.ts`:
+    - extended `AllMetricsRiskCounts` model,
+    - exposed `allMetricsRiskSnapshot` for panel chrome.
+  - Updated `admin-ux-panel-chrome.tsx`:
+    - rendered small tone badges in `Severity filter` block:
+      - `critical X`, `watch Y`, `healthy Z`, `info K`.
+- Validation:
+  - `npx ultracite check` on touched files: pass.
+  - `npx jest --runInBand apps/web/src/app/admin/ux/components/admin-ux-page-entry.spec.ts`: pass.
+  - `npm run test:web -- --runInBand apps/web/src/__tests__/admin-ux-page.spec.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: make the risk snapshot badges clickable to pre-select matching filter/scope.
+
 ### 2026-03-05 - admin UX severity-filter tooltip pass
 
 - Scope: explain `Severity filter` counters by adding hover tooltips on risk pills in `panel=all`.
