@@ -79,6 +79,18 @@ describe('launch-gate dispatch helper cli argument validation', () => {
     }
   });
 
+  test('fails fast when inline token alias value is empty', () => {
+    const variants = ['--token=', '--Token=', '-token=', '-Token='];
+    for (const variant of variants) {
+      const result = runDispatchScript([variant]);
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain(`Missing value for ${variant}`);
+      expect(result.stderr).toContain(
+        'Usage: npm run release:launch:gate:dispatch',
+      );
+    }
+  });
+
   test('requires allow-failure-drill when webhook override is provided', () => {
     const result = runDispatchScript([
       '--webhook-secret-override',

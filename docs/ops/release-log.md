@@ -33,6 +33,31 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add empty inline token-alias diagnostics tests (phase 39)
+
+- Scope: ensure missing-value diagnostics are consistent for inline token alias forms.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 11:06 -> 2026-03-05 11:09.
+- Changes:
+  - Updated `apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts`:
+    - added coverage for empty inline token values:
+      - `--token=`
+      - `--Token=`
+      - `-token=`
+      - `-Token=`
+    - asserts helper exits non-zero and prints:
+      - `Missing value for <flag>`
+      - usage text.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add negative case for `--required-external-channels=` empty inline form to ensure usage parity with positional missing-value checks.
+
 ### 2026-03-05 - complete help/token-alias diagnostics matrix in cli tests (phase 38)
 
 - Scope: close remaining CLI diagnostics gaps for short help flag and inline mixed-case token alias form.
