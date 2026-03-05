@@ -33,6 +33,33 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - launch-gate sandbox check provenance field (`source`) in health reports (phase 8)
+
+- Scope: add explicit provenance marker for sandbox-check highlights in post-release health outputs.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 09:32 -> 2026-03-05 09:37.
+- Changes:
+  - Updated `scripts/release/post-release-health-report.mjs`:
+    - `launchGateSandboxChecks` now includes `source` (`artifact`, `local`, `unavailable`),
+    - console output includes provenance for sandbox-check block.
+  - Updated `scripts/release/render-post-release-health-step-summary.mjs`:
+    - markdown summary now prints `source` for launch-gate sandbox checks.
+  - Updated release health schema contract:
+    - `scripts/release/release-health-schema-contracts.mjs` bumped to `1.8.0`,
+    - `docs/ops/schemas/release-health-report-output.schema.json` includes `launchGateSandboxChecks.source`,
+    - sample updated in `docs/ops/schemas/samples/release-health-report-output.sample.json`.
+- Validation:
+  - `node --check scripts/release/post-release-health-report.mjs`: pass.
+  - `node --check scripts/release/render-post-release-health-step-summary.mjs`: pass.
+  - `npm run release:health:report:launch-gate:json`: pass (`launchGateSandboxChecks.source=local`).
+  - `npm run release:health:schema:check:json`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+- Incidents:
+  - one transient schema-check fail when executed concurrently with report generation; rerun sequentially passed.
+- Follow-ups:
+  - optional: add `source` provenance to external-channel trend block for symmetry.
+
 ### 2026-03-05 - post-release health report local-summary fallback for sandbox checks (phase 7)
 
 - Scope: ensure `launchGateSandboxChecks` remains actionable when latest workflow artifact is legacy or missing new check keys by falling back to local launch-gate summary output.

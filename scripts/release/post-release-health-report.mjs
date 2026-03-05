@@ -942,7 +942,10 @@ const extractArtifactJsonFile = async ({
   return JSON.parse(await readFile(payloadFilePath, 'utf8'));
 };
 
-const summarizeLaunchGateSandboxChecks = ({ launchGateSummary }) => {
+const summarizeLaunchGateSandboxChecks = ({
+  launchGateSummary,
+  source = 'artifact',
+}) => {
   const checks =
     launchGateSummary?.checks && typeof launchGateSummary.checks === 'object'
       ? launchGateSummary.checks
@@ -1034,6 +1037,7 @@ const summarizeLaunchGateSandboxChecks = ({ launchGateSummary }) => {
     pass:
       checksAvailable === false ||
       (missingChecks.length === 0 && failedChecks.length === 0),
+    source,
     summaryPass:
       typeof launchGateSummary?.pass === 'boolean' ? launchGateSummary.pass : null,
     summaryStatus:
@@ -1054,6 +1058,7 @@ const analyzeLaunchGateSandboxChecks = async ({
       const localPayload = JSON.parse(await readFile(localSummaryPath, 'utf8'));
       const summary = summarizeLaunchGateSandboxChecks({
         launchGateSummary: localPayload,
+        source: 'local',
       });
       return summary.available === true ? summary : null;
     } catch {
@@ -1134,6 +1139,7 @@ const analyzeLaunchGateSandboxChecks = async ({
         'sandboxExecutionLimitsPolicy',
       ],
       pass: true,
+      source: 'unavailable',
       summaryPass: null,
       summaryStatus: null,
     };
@@ -1151,6 +1157,7 @@ const analyzeLaunchGateSandboxChecks = async ({
     });
     const artifactSummary = summarizeLaunchGateSandboxChecks({
       launchGateSummary: payload,
+      source: 'artifact',
     });
     if (artifactSummary.available === true) {
       return artifactSummary;
@@ -1226,6 +1233,7 @@ const analyzeLaunchGateSandboxChecks = async ({
         'sandboxExecutionLimitsPolicy',
       ],
       pass: true,
+      source: 'unavailable',
       summaryPass: null,
       summaryStatus: null,
     };
@@ -1884,6 +1892,10 @@ const toJsonSummaryPayload = ({ report, outputPath, strict }) => ({
             typeof report.launchGateSandboxChecks.artifactName === 'string'
               ? report.launchGateSandboxChecks.artifactName
               : LAUNCH_GATE_SUMMARY_ARTIFACT_NAME,
+          source:
+            typeof report.launchGateSandboxChecks.source === 'string'
+              ? report.launchGateSandboxChecks.source
+              : 'unavailable',
           checkedAtUtc:
             typeof report.launchGateSandboxChecks.checkedAtUtc === 'string'
               ? report.launchGateSandboxChecks.checkedAtUtc
@@ -2325,7 +2337,9 @@ const main = async () => {
       process.stdout.write(
         `Launch-gate sandbox checks: available=${String(
           report.launchGateSandboxChecks.available === true,
-        )} pass=${String(report.launchGateSandboxChecks.pass === true)} summaryStatus=${String(
+        )} pass=${String(report.launchGateSandboxChecks.pass === true)} source=${String(
+          report.launchGateSandboxChecks.source ?? 'unavailable',
+        )} summaryStatus=${String(
           report.launchGateSandboxChecks.summaryStatus ?? 'unknown',
         )} summaryPass=${String(report.launchGateSandboxChecks.summaryPass)}\n`,
       );

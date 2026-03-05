@@ -196,7 +196,7 @@ const main = () => {
     ) {
       const sandbox = payload.launchGateSandboxChecks;
       lines.push(
-        `- launch-gate sandbox checks: \`${sandbox?.pass === true ? 'pass' : 'fail'}\` (available \`${sandbox?.available === true ? 'yes' : 'no'}\`)`,
+        `- launch-gate sandbox checks: \`${sandbox?.pass === true ? 'pass' : 'fail'}\` (available \`${sandbox?.available === true ? 'yes' : 'no'}\`, source \`${String(sandbox?.source ?? 'unavailable')}\`)`,
         `- launch-gate sandbox checks missing: \`${Array.isArray(sandbox?.missingChecks) && sandbox.missingChecks.length > 0 ? sandbox.missingChecks.join(', ') : 'none'}\``,
         `- launch-gate sandbox checks failed: \`${Array.isArray(sandbox?.failedChecks) && sandbox.failedChecks.length > 0 ? sandbox.failedChecks.join(', ') : 'none'}\``,
       );

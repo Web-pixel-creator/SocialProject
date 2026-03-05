@@ -22,7 +22,7 @@
       "const": "docs/ops/schemas/release-health-report-output.schema.json"
     },
     "schemaVersion": {
-      "const": "1.7.0"
+      "const": "1.8.0"
     },
     "generatedAtUtc": {
       "type": "string",
@@ -1054,6 +1054,7 @@
         "fetchError",
         "missingChecks",
         "pass",
+        "source",
         "summaryPass",
         "summaryStatus"
       ],
@@ -1064,6 +1065,14 @@
         },
         "available": {
           "type": "boolean"
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "artifact",
+            "local",
+            "unavailable"
+          ]
         },
         "checkedAtUtc": {
           "$ref": "#/$defs/nullableDateTime"
