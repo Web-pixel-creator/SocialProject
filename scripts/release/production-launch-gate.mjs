@@ -7,6 +7,7 @@ import {
   parseExternalChannelsList,
 } from './dispatch-production-launch-gate-external-channels.mjs';
 import { parseReleaseBooleanEnv } from './release-env-parse-utils.mjs';
+import { resolveProductionBooleanConfig } from './production-launch-gate-boolean-config.mjs';
 
 const DEFAULTS = {
   apiService: process.env.RAILWAY_API_SERVICE || 'api',
@@ -100,13 +101,6 @@ const sortDeep = (value) => {
   return out;
 };
 
-const parseBoolean = (value) => {
-  if (typeof value !== 'string') {
-    return false;
-  }
-  const normalized = value.trim().toLowerCase();
-  return normalized === 'true' || normalized === '1' || normalized === 'yes';
-};
 const normalizeLower = (value) => value.trim().toLowerCase();
 const parseSandboxExecutionEgressProfiles = (rawValue, sourceLabel) => {
   const raw = String(rawValue || '').trim();
@@ -211,18 +205,10 @@ const resolveSandboxExecutionEgressEnforceConfig = (apiServiceVars) => {
       source: 'Railway api service variable SANDBOX_EXECUTION_EGRESS_ENFORCE',
     },
   ];
-  for (const candidate of candidates) {
-    if (typeof candidate.raw === 'string' && candidate.raw.trim().length > 0) {
-      return {
-        source: candidate.source,
-        value: parseBoolean(candidate.raw),
-      };
-    }
-  }
-  return {
-    source: 'unset',
-    value: false,
-  };
+  return resolveProductionBooleanConfig({
+    candidates,
+    fallback: false,
+  });
 };
 const parseSandboxExecutionOperationLimitProfiles = (rawValue, sourceLabel) => {
   const raw = String(rawValue || '').trim();
@@ -328,18 +314,10 @@ const resolveSandboxExecutionLimitsEnforceConfig = (apiServiceVars) => {
       source: 'Railway api service variable SANDBOX_EXECUTION_LIMITS_ENFORCE',
     },
   ];
-  for (const candidate of candidates) {
-    if (typeof candidate.raw === 'string' && candidate.raw.trim().length > 0) {
-      return {
-        source: candidate.source,
-        value: parseBoolean(candidate.raw),
-      };
-    }
-  }
-  return {
-    source: 'unset',
-    value: false,
-  };
+  return resolveProductionBooleanConfig({
+    candidates,
+    fallback: false,
+  });
 };
 const resolveSandboxExecutionEnabledConfig = (apiServiceVars) => {
   const candidates = [
@@ -359,18 +337,10 @@ const resolveSandboxExecutionEnabledConfig = (apiServiceVars) => {
       source: 'Railway api service variable SANDBOX_EXECUTION_ENABLED',
     },
   ];
-  for (const candidate of candidates) {
-    if (typeof candidate.raw === 'string' && candidate.raw.trim().length > 0) {
-      return {
-        source: candidate.source,
-        value: parseBoolean(candidate.raw),
-      };
-    }
-  }
-  return {
-    source: 'unset',
-    value: false,
-  };
+  return resolveProductionBooleanConfig({
+    candidates,
+    fallback: false,
+  });
 };
 const resolveSandboxExecutionMode = (sandboxExecutionEnabled) =>
   sandboxExecutionEnabled ? 'sandbox_enabled' : 'fallback_only';

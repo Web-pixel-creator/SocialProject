@@ -33,6 +33,43 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - extract shared production boolean-config resolver (phase 60)
+
+- Scope: reduce duplication in production launch-gate sandbox boolean config resolution and align parsing behavior with shared strict env parser.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 11:53 -> 2026-03-05 12:01.
+- Changes:
+  - Added module:
+    - `scripts/release/production-launch-gate-boolean-config.mjs`
+    - exports `resolveProductionBooleanConfig`:
+      - candidate precedence handling,
+      - blank-candidate skipping,
+      - strict boolean parsing via shared `parseReleaseBooleanEnv`,
+      - fallback behavior (`source: unset`).
+  - Updated `scripts/release/production-launch-gate.mjs`:
+    - replaced repeated boolean-candidate loops with shared resolver for:
+      - `resolveSandboxExecutionEgressEnforceConfig`
+      - `resolveSandboxExecutionLimitsEnforceConfig`
+      - `resolveSandboxExecutionEnabledConfig`
+    - removed now-unused local `parseBoolean` helper.
+  - Added unit coverage:
+    - `apps/api/src/__tests__/release-production-boolean-config.unit.spec.ts`
+    - validates:
+      - first-candidate precedence,
+      - blank-candidate skip behavior,
+      - unset fallback behavior,
+      - invalid-boolean diagnostics with source labels.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-production-boolean-config.unit.spec.ts apps/api/src/__tests__/release-env-parse-utils.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-external-channels.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T12:00:39.704Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: apply shared candidate-resolver pattern to profile string resolvers in production gate to further reduce local duplication.
+
 ### 2026-03-05 - strict parse RELEASE_REQUIRE_NATURAL_CRON_WINDOW in production gate (phase 59)
 
 - Scope: align production launch-gate env parsing with strict dispatch behavior by failing fast on invalid natural-cron-window env toggle values.
