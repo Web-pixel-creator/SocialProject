@@ -33,6 +33,33 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - extract launch-gate step-summary renderer and lock inline schema check visibility (phase 26)
+
+- Scope: replace ad-hoc workflow bash markdown rendering with a dedicated script and add regression test asserting `inlineHealthArtifactsSchema` visibility in `### Checks`.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 10:23 -> 2026-03-05 10:33.
+- Changes:
+  - Added renderer script:
+    - `scripts/release/render-production-launch-gate-step-summary.mjs`
+    - renders launch-gate markdown summary from JSON artifacts.
+  - Updated `.github/workflows/production-launch-gate.yml`:
+    - `Render launch gate step summary markdown` step now calls renderer script instead of inline bash/jq template.
+  - Added unit coverage:
+    - `apps/api/src/__tests__/release-launch-gate-step-summary-render.unit.spec.ts`
+    - validates:
+      - `### Checks` includes `inlineHealthArtifactsSchema: PASS`,
+      - `inline post-release health artifacts` + `inline artifact summary schema check` lines render as expected,
+      - explicit `summary artifact missing` fallback line.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-step-summary-render.unit.spec.ts apps/api/src/__tests__/release-launch-gate-inline-schema-annotation.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add fixture asserting stable order for selected high-signal checks in markdown output if ordering becomes operationally important.
+
 ### 2026-03-05 - live strict pass with annotated inline schema check in summary JSON (phase 25)
 
 - Scope: validate end-to-end that launch workflow writes `checks.inlineHealthArtifactsSchema` into `production-launch-gate-summary.json` and keeps strict gate green.
