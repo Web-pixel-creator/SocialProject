@@ -103,6 +103,28 @@ describe('launch-gate dispatch helper cli argument validation', () => {
     );
   });
 
+  test('fails fast when inline runtime-draft-id value is empty', () => {
+    const result = runDispatchScript(['--runtime-draft-id=']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('Missing value for --runtime-draft-id=');
+    expect(result.stderr).toContain(
+      'Usage: npm run release:launch:gate:dispatch',
+    );
+  });
+
+  test('fails fast when inline webhook-secret-override value is empty', () => {
+    const result = runDispatchScript(['--webhook-secret-override=']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Missing value for --webhook-secret-override=',
+    );
+    expect(result.stderr).toContain(
+      'Usage: npm run release:launch:gate:dispatch',
+    );
+  });
+
   test('requires allow-failure-drill when webhook override is provided', () => {
     const result = runDispatchScript([
       '--webhook-secret-override',

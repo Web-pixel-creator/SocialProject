@@ -33,6 +33,27 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add empty inline diagnostics for runtime-draft and webhook override args (phase 41)
+
+- Scope: complete missing-value diagnostics parity for key inline-value CLI arguments.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 11:13 -> 2026-03-05 11:16.
+- Changes:
+  - Updated `apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts`:
+    - added empty inline value checks for:
+      - `--runtime-draft-id=`
+      - `--webhook-secret-override=`
+    - asserts non-zero exit + explicit missing-value message + usage line.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add missing-value test for `--required-external-channels` (space-separated form) to mirror inline form coverage.
+
 ### 2026-03-05 - add empty inline required-external-channels diagnostics test (phase 40)
 
 - Scope: keep missing-value diagnostics consistent for inline `--required-external-channels=` form.
