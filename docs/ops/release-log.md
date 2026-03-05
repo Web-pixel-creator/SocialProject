@@ -33,6 +33,25 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - admin UX severity-filter tooltip pass
+
+- Scope: explain `Severity filter` counters by adding hover tooltips on risk pills in `panel=all`.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 06:06 -> 2026-03-05 06:08.
+- Changes:
+  - Updated `apps/web/src/app/admin/ux/components/admin-ux-panel-chrome.tsx`:
+    - added `title` + `aria-label` hints for severity tabs:
+      - `All severities`: includes all tones in current focus.
+      - `Risk only`: includes only `critical/watch` sections in current focus.
+- Validation:
+  - `npx ultracite check apps/web/src/app/admin/ux/components/admin-ux-panel-chrome.tsx apps/web/src/app/admin/ux/components/admin-ux-page-content.tsx apps/web/src/app/admin/ux/components/admin-ux-page-shell-view-model.ts`: pass.
+  - `npm run test:web -- --runInBand apps/web/src/__tests__/admin-ux-page.spec.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: replace native title tooltip with styled tooltip component once design system variant is approved.
+
 ### 2026-03-05 - admin UX severity-filter counts pass
 
 - Scope: make `Severity filter` actionable at a glance by showing dynamic counts for `All severities` and `Risk only` tabs in `panel=all`.

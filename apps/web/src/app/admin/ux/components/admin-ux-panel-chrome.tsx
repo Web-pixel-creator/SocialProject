@@ -77,6 +77,11 @@ export const AdminUxPanelChrome = ({
           <div className="flex flex-wrap items-center gap-2">
             {allMetricsRiskFilterTabs.map((tab) => (
               <a
+                aria-label={`${tab.label}. ${
+                  tab.id === 'high'
+                    ? 'Shows only sections currently marked critical or watch in selected focus.'
+                    : 'Shows all section severities in selected focus.'
+                }`}
                 className={`inline-flex items-center rounded-full border px-3 py-1 font-semibold text-xs transition-colors ${
                   tab.active
                     ? 'border-primary/70 bg-primary/15 text-primary'
@@ -84,6 +89,11 @@ export const AdminUxPanelChrome = ({
                 }`}
                 href={tab.href}
                 key={tab.id}
+                title={
+                  tab.id === 'high'
+                    ? 'Shows only sections currently marked critical or watch in selected focus.'
+                    : 'Shows all section severities in selected focus.'
+                }
               >
                 {tab.label}
               </a>
