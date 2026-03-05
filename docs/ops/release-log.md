@@ -33,6 +33,29 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - propagate provenance fields to appended health log entries (phase 11)
+
+- Scope: ensure `release:health:log` output includes provenance lines (`source`) for external-channel trend, release-health alert telemetry, and launch-gate sandbox checks.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 09:31 -> 2026-03-05 09:36.
+- Changes:
+  - Updated `scripts/release/append-post-release-health-log.mjs`:
+    - appended release-log block now includes:
+      - external-channel trend pass/source/analyzed-runs,
+      - release-health alert telemetry status/risk/source/evaluated/escalation,
+      - launch-gate sandbox checks pass/source/availability.
+- Validation:
+  - `node --check scripts/release/append-post-release-health-log.mjs`: pass.
+  - `npm run release:health:log -- --dry-run`: pass (generated block includes new provenance lines).
+  - `npm run release:health:report:launch-gate:json`: pass.
+  - `npm run release:health:schema:check:json`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add small fixture-based test for `append-post-release-health-log.mjs` block rendering stability.
+
 ### 2026-03-05 - release-health alert telemetry provenance (`source`) in health reports (phase 10)
 
 - Scope: add explicit provenance marker for release-health alert telemetry block to align with existing `source` coverage in sandbox/external-channel summaries.

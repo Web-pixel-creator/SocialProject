@@ -158,6 +158,21 @@ const buildEntry = ({ report, reportPath }) => {
     smokeSummary && typeof smokeSummary === 'object'
       ? `pass=${String(smokeSummary.pass)} totalSteps=${String(smokeSummary.totalSteps)} failedSteps=${String(smokeSummary.failedSteps)}`
       : 'unavailable';
+  const externalChannelTrend =
+    report?.externalChannelFailureModes &&
+    typeof report.externalChannelFailureModes === 'object'
+      ? report.externalChannelFailureModes
+      : null;
+  const releaseHealthAlertTelemetry =
+    report?.releaseHealthAlertTelemetry &&
+    typeof report.releaseHealthAlertTelemetry === 'object'
+      ? report.releaseHealthAlertTelemetry
+      : null;
+  const launchGateSandboxChecks =
+    report?.launchGateSandboxChecks &&
+    typeof report.launchGateSandboxChecks === 'object'
+      ? report.launchGateSandboxChecks
+      : null;
 
   const heading = `### ${date} - post-release health run #${runNumber ?? '<unknown>'} (id ${runId ?? '<unknown>'})`;
   const lines = [
@@ -174,6 +189,21 @@ const buildEntry = ({ report, reportPath }) => {
 
   if (reasons.length > 0) {
     lines.push(`- Reasons: ${escapeMarkdown(reasons.join('; '))}.`);
+  }
+  if (externalChannelTrend) {
+    lines.push(
+      `- External-channel trend: pass=${String(externalChannelTrend.pass === true)} source=${String(externalChannelTrend.source ?? 'unavailable')} analyzedRuns=${String(Array.isArray(externalChannelTrend.analyzedRuns) ? externalChannelTrend.analyzedRuns.length : 0)}.`,
+    );
+  }
+  if (releaseHealthAlertTelemetry) {
+    lines.push(
+      `- Release-health alert telemetry: status=${String(releaseHealthAlertTelemetry.status ?? 'unknown')} risk=${String(releaseHealthAlertTelemetry.riskLevel ?? 'unknown')} source=${String(releaseHealthAlertTelemetry.source ?? 'unavailable')} evaluated=${String(releaseHealthAlertTelemetry.evaluated === true)} escalation=${String(releaseHealthAlertTelemetry.escalationTriggered === true)}.`,
+    );
+  }
+  if (launchGateSandboxChecks) {
+    lines.push(
+      `- Launch-gate sandbox checks: pass=${String(launchGateSandboxChecks.pass === true)} source=${String(launchGateSandboxChecks.source ?? 'unavailable')} available=${String(launchGateSandboxChecks.available === true)}.`,
+    );
   }
 
   return {
