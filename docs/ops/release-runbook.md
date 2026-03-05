@@ -99,6 +99,9 @@ Use this map when a release helper fails fast on argument/env validation and you
       - Optional failed-job diagnostics cap via env: `RELEASE_FAILURE_SUMMARY_MAX_JOBS=10`
       - Optional transient GitHub API retry attempts during dispatch polling: `RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_ATTEMPTS=<n>` (default `3`)
       - Optional transient GitHub API retry delay during dispatch polling: `RELEASE_GITHUB_API_TRANSIENT_RETRY_DELAY_MS=<ms>` (default `2000`)
+      - Optional transient retry exponential factor during dispatch polling: `RELEASE_GITHUB_API_TRANSIENT_RETRY_BACKOFF_FACTOR=<n>` (default `2`)
+      - Optional transient retry max delay during dispatch polling: `RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_DELAY_MS=<ms>` (default `10000`)
+      - Optional transient retry jitter percent during dispatch polling: `RELEASE_GITHUB_API_TRANSIENT_RETRY_JITTER_PERCENT=<0..100>` (default `20`)
       - Optional smoke timeout retry count via env: `RELEASE_SMOKE_TIMEOUT_RETRIES=<n>` (`0` disables timeout-only retry)
       - Optional smoke timeout retry delay via env: `RELEASE_SMOKE_TIMEOUT_RETRY_DELAY_MS=<ms>`
        - Optional strict inline health artifact assertion via workflow input:

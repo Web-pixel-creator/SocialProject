@@ -290,6 +290,39 @@ describe('launch-gate dispatch helper cli argument validation', () => {
     );
   });
 
+  test('fails fast on invalid RELEASE_GITHUB_API_TRANSIENT_RETRY_BACKOFF_FACTOR env value', () => {
+    const result = runDispatchScript([], {
+      RELEASE_GITHUB_API_TRANSIENT_RETRY_BACKOFF_FACTOR: '0',
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Invalid value for RELEASE_GITHUB_API_TRANSIENT_RETRY_BACKOFF_FACTOR: 0',
+    );
+  });
+
+  test('fails fast on invalid RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_DELAY_MS env value', () => {
+    const result = runDispatchScript([], {
+      RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_DELAY_MS: 'abc',
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Invalid value for RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_DELAY_MS: abc',
+    );
+  });
+
+  test('fails fast on invalid RELEASE_GITHUB_API_TRANSIENT_RETRY_JITTER_PERCENT env value', () => {
+    const result = runDispatchScript([], {
+      RELEASE_GITHUB_API_TRANSIENT_RETRY_JITTER_PERCENT: '101',
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Invalid value for RELEASE_GITHUB_API_TRANSIENT_RETRY_JITTER_PERCENT: 101',
+    );
+  });
+
   test('fails fast on invalid RELEASE_FAILURE_SUMMARY_MAX_JOBS env value', () => {
     const result = runDispatchScript([], {
       RELEASE_FAILURE_SUMMARY_MAX_JOBS: 'abc',

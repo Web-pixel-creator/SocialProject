@@ -13,7 +13,10 @@ import {
   parseReleaseBooleanEnv,
   parseReleasePositiveIntegerEnv,
 } from './release-env-parse-utils.mjs';
-import { buildGitHubApiRetryDecision } from './dispatch-production-launch-gate-transient-retry-utils.mjs';
+import {
+  buildGitHubApiRetryDecision,
+  computeGitHubApiRetryDelayMs,
+} from './dispatch-production-launch-gate-transient-retry-utils.mjs';
 
 const GITHUB_API_VERSION = '2022-11-28';
 const DEFAULT_WORKFLOW_FILE = 'production-launch-gate.yml';
@@ -23,6 +26,9 @@ const DEFAULT_WAIT_POLL_MS = 5000;
 const DEFAULT_FAILURE_SUMMARY_MAX_JOBS = 5;
 const DEFAULT_GITHUB_API_TRANSIENT_RETRY_MAX_ATTEMPTS = 3;
 const DEFAULT_GITHUB_API_TRANSIENT_RETRY_DELAY_MS = 2000;
+const DEFAULT_GITHUB_API_TRANSIENT_RETRY_BACKOFF_FACTOR = 2;
+const DEFAULT_GITHUB_API_TRANSIENT_RETRY_MAX_DELAY_MS = 10000;
+const DEFAULT_GITHUB_API_TRANSIENT_RETRY_JITTER_PERCENT = 20;
 const NON_NEGATIVE_INTEGER_PATTERN = /^(0|[1-9]\d*)$/;
 const RUN_DISCOVERY_GRACE_MS = 2 * 60 * 1000;
 const ARTIFACT_DISCOVERY_ATTEMPTS = 6;
@@ -439,8 +445,11 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const githubRequestWithTransientRetry = async ({
   body,
   method,
+  retryBackoffFactor,
   retryDelayMs,
+  retryJitterPercent,
   retryLabel,
+  retryMaxDelayMs,
   retryMaxAttempts,
   token,
   url,
@@ -451,6 +460,15 @@ const githubRequestWithTransientRetry = async ({
   const safeRetryDelayMs = Number.isFinite(retryDelayMs)
     ? Math.max(1, Math.floor(retryDelayMs))
     : DEFAULT_GITHUB_API_TRANSIENT_RETRY_DELAY_MS;
+  const safeRetryBackoffFactor = Number.isFinite(retryBackoffFactor)
+    ? Math.max(1, Math.floor(retryBackoffFactor))
+    : DEFAULT_GITHUB_API_TRANSIENT_RETRY_BACKOFF_FACTOR;
+  const safeRetryMaxDelayMs = Number.isFinite(retryMaxDelayMs)
+    ? Math.max(1, Math.floor(retryMaxDelayMs))
+    : DEFAULT_GITHUB_API_TRANSIENT_RETRY_MAX_DELAY_MS;
+  const safeRetryJitterPercent = Number.isFinite(retryJitterPercent)
+    ? Math.max(0, Math.min(100, Math.floor(retryJitterPercent)))
+    : DEFAULT_GITHUB_API_TRANSIENT_RETRY_JITTER_PERCENT;
 
   for (let attempt = 1; attempt <= safeRetryMaxAttempts; attempt += 1) {
     try {
@@ -470,11 +488,18 @@ const githubRequestWithTransientRetry = async ({
       if (method !== 'GET' || !retryDecision.shouldRetry) {
         throw error;
       }
+      const retryDelayForAttemptMs = computeGitHubApiRetryDelayMs({
+        attempt,
+        backoffFactor: safeRetryBackoffFactor,
+        baseDelayMs: safeRetryDelayMs,
+        jitterPercent: safeRetryJitterPercent,
+        maxDelayMs: safeRetryMaxDelayMs,
+      });
       const label = retryLabel || `${method} ${url}`;
       process.stderr.write(
-        `Warning: transient GitHub API error on ${label}; retrying in ${safeRetryDelayMs}ms (${attempt}/${safeRetryMaxAttempts}).\n`,
+        `Warning: transient GitHub API error on ${label}; retrying in ${retryDelayForAttemptMs}ms (${attempt}/${safeRetryMaxAttempts}).\n`,
       );
-      await sleep(safeRetryDelayMs);
+      await sleep(retryDelayForAttemptMs);
     }
   }
 
@@ -486,7 +511,10 @@ const toArtifactUiUrl = ({ repoSlug, runId, artifactId }) =>
 
 const listRunArtifacts = async ({
   baseApiUrl,
+  githubApiRetryBackoffFactor,
   githubApiRetryDelayMs,
+  githubApiRetryJitterPercent,
+  githubApiRetryMaxDelayMs,
   githubApiRetryMaxAttempts,
   runId,
   token,
@@ -496,8 +524,11 @@ const listRunArtifacts = async ({
     method: 'GET',
     url: `${baseApiUrl}/actions/runs/${runId}/artifacts?per_page=100`,
     retryLabel: `list run artifacts for run ${runId}`,
+    retryBackoffFactor: githubApiRetryBackoffFactor,
     retryMaxAttempts: githubApiRetryMaxAttempts,
     retryDelayMs: githubApiRetryDelayMs,
+    retryJitterPercent: githubApiRetryJitterPercent,
+    retryMaxDelayMs: githubApiRetryMaxDelayMs,
   });
   return Array.isArray(artifactsResponse?.artifacts)
     ? artifactsResponse.artifacts
@@ -506,7 +537,10 @@ const listRunArtifacts = async ({
 
 const listRunJobs = async ({
   baseApiUrl,
+  githubApiRetryBackoffFactor,
   githubApiRetryDelayMs,
+  githubApiRetryJitterPercent,
+  githubApiRetryMaxDelayMs,
   githubApiRetryMaxAttempts,
   runId,
   token,
@@ -516,15 +550,21 @@ const listRunJobs = async ({
     method: 'GET',
     url: `${baseApiUrl}/actions/runs/${runId}/jobs?per_page=100`,
     retryLabel: `list run jobs for run ${runId}`,
+    retryBackoffFactor: githubApiRetryBackoffFactor,
     retryMaxAttempts: githubApiRetryMaxAttempts,
     retryDelayMs: githubApiRetryDelayMs,
+    retryJitterPercent: githubApiRetryJitterPercent,
+    retryMaxDelayMs: githubApiRetryMaxDelayMs,
   });
   return Array.isArray(jobsResponse?.jobs) ? jobsResponse.jobs : [];
 };
 
 const resolveRunFailureSummary = async ({
   baseApiUrl,
+  githubApiRetryBackoffFactor,
   githubApiRetryDelayMs,
+  githubApiRetryJitterPercent,
+  githubApiRetryMaxDelayMs,
   githubApiRetryMaxAttempts,
   runId,
   token,
@@ -533,7 +573,10 @@ const resolveRunFailureSummary = async ({
   try {
     const jobs = await listRunJobs({
       baseApiUrl,
+      githubApiRetryBackoffFactor,
       githubApiRetryDelayMs,
+      githubApiRetryJitterPercent,
+      githubApiRetryMaxDelayMs,
       githubApiRetryMaxAttempts,
       runId,
       token,
@@ -576,7 +619,10 @@ const pickLatestArtifactsByName = ({ artifactNames, artifacts }) => {
 const findRunArtifactsByNames = async ({
   artifactNames,
   baseApiUrl,
+  githubApiRetryBackoffFactor,
   githubApiRetryDelayMs,
+  githubApiRetryJitterPercent,
+  githubApiRetryMaxDelayMs,
   githubApiRetryMaxAttempts,
   requiredArtifactNames,
   runId,
@@ -585,7 +631,10 @@ const findRunArtifactsByNames = async ({
   for (let attempt = 1; attempt <= ARTIFACT_DISCOVERY_ATTEMPTS; attempt += 1) {
     const artifacts = await listRunArtifacts({
       baseApiUrl,
+      githubApiRetryBackoffFactor,
       githubApiRetryDelayMs,
+      githubApiRetryJitterPercent,
+      githubApiRetryMaxDelayMs,
       githubApiRetryMaxAttempts,
       runId,
       token,
@@ -610,7 +659,10 @@ const findRunArtifactsByNames = async ({
 const printLaunchGateArtifactLinks = async ({
   artifactLinkNames,
   baseApiUrl,
+  githubApiRetryBackoffFactor,
   githubApiRetryDelayMs,
+  githubApiRetryJitterPercent,
+  githubApiRetryMaxDelayMs,
   githubApiRetryMaxAttempts,
   includeStepSummaryLink,
   printArtifactLinks,
@@ -635,7 +687,10 @@ const printLaunchGateArtifactLinks = async ({
     const artifacts = await findRunArtifactsByNames({
       artifactNames,
       baseApiUrl,
+      githubApiRetryBackoffFactor,
       githubApiRetryDelayMs,
+      githubApiRetryJitterPercent,
+      githubApiRetryMaxDelayMs,
       githubApiRetryMaxAttempts,
       requiredArtifactNames,
       runId,
@@ -723,6 +778,26 @@ const main = async () => {
     DEFAULT_GITHUB_API_TRANSIENT_RETRY_DELAY_MS,
     'RELEASE_GITHUB_API_TRANSIENT_RETRY_DELAY_MS',
   );
+  const githubApiRetryBackoffFactor = parseReleasePositiveIntegerEnv(
+    process.env.RELEASE_GITHUB_API_TRANSIENT_RETRY_BACKOFF_FACTOR,
+    DEFAULT_GITHUB_API_TRANSIENT_RETRY_BACKOFF_FACTOR,
+    'RELEASE_GITHUB_API_TRANSIENT_RETRY_BACKOFF_FACTOR',
+  );
+  const githubApiRetryMaxDelayMs = parseReleasePositiveIntegerEnv(
+    process.env.RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_DELAY_MS,
+    DEFAULT_GITHUB_API_TRANSIENT_RETRY_MAX_DELAY_MS,
+    'RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_DELAY_MS',
+  );
+  const githubApiRetryJitterPercent = parseReleaseNonNegativeIntegerEnv(
+    process.env.RELEASE_GITHUB_API_TRANSIENT_RETRY_JITTER_PERCENT,
+    DEFAULT_GITHUB_API_TRANSIENT_RETRY_JITTER_PERCENT,
+    'RELEASE_GITHUB_API_TRANSIENT_RETRY_JITTER_PERCENT',
+  );
+  if (githubApiRetryJitterPercent > 100) {
+    throw new Error(
+      `Invalid value for RELEASE_GITHUB_API_TRANSIENT_RETRY_JITTER_PERCENT: ${githubApiRetryJitterPercent}`,
+    );
+  }
   const failureSummaryMaxJobs = parseReleasePositiveIntegerEnv(
     cli.failureSummaryMaxJobsRaw || process.env.RELEASE_FAILURE_SUMMARY_MAX_JOBS,
     DEFAULT_FAILURE_SUMMARY_MAX_JOBS,
@@ -847,8 +922,11 @@ const main = async () => {
       method: 'GET',
       url: listRunsUrl,
       retryLabel: 'read baseline workflow runs',
+      retryBackoffFactor: githubApiRetryBackoffFactor,
       retryMaxAttempts: githubApiRetryMaxAttempts,
       retryDelayMs: githubApiRetryDelayMs,
+      retryJitterPercent: githubApiRetryJitterPercent,
+      retryMaxDelayMs: githubApiRetryMaxDelayMs,
     });
     const baselineRuns = Array.isArray(baseline?.workflow_runs)
       ? baseline.workflow_runs
@@ -937,8 +1015,11 @@ const main = async () => {
       method: 'GET',
       url: listRunsUrl,
       retryLabel: 'discover dispatched workflow run',
+      retryBackoffFactor: githubApiRetryBackoffFactor,
       retryMaxAttempts: githubApiRetryMaxAttempts,
       retryDelayMs: githubApiRetryDelayMs,
+      retryJitterPercent: githubApiRetryJitterPercent,
+      retryMaxDelayMs: githubApiRetryMaxDelayMs,
     });
     const runs = Array.isArray(data?.workflow_runs) ? data.workflow_runs : [];
     for (const run of runs) {
@@ -981,8 +1062,11 @@ const main = async () => {
       method: 'GET',
       url: runUrl,
       retryLabel: `poll workflow run ${run.id} status`,
+      retryBackoffFactor: githubApiRetryBackoffFactor,
       retryMaxAttempts: githubApiRetryMaxAttempts,
       retryDelayMs: githubApiRetryDelayMs,
+      retryJitterPercent: githubApiRetryJitterPercent,
+      retryMaxDelayMs: githubApiRetryMaxDelayMs,
     });
     const status = current?.status ?? 'unknown';
     const conclusion = current?.conclusion ?? 'none';
@@ -994,8 +1078,11 @@ const main = async () => {
         await printLaunchGateArtifactLinks({
           artifactLinkNames: selectedArtifactLinkNames,
           baseApiUrl,
-          githubApiRetryDelayMs: githubApiRetryDelayMs,
-          githubApiRetryMaxAttempts: githubApiRetryMaxAttempts,
+          githubApiRetryBackoffFactor,
+          githubApiRetryDelayMs,
+          githubApiRetryJitterPercent,
+          githubApiRetryMaxAttempts,
+          githubApiRetryMaxDelayMs,
           includeStepSummaryLink,
           printArtifactLinks,
           repoSlug,
@@ -1006,8 +1093,11 @@ const main = async () => {
       }
       const failureSummary = await resolveRunFailureSummary({
         baseApiUrl,
-        githubApiRetryDelayMs: githubApiRetryDelayMs,
-        githubApiRetryMaxAttempts: githubApiRetryMaxAttempts,
+        githubApiRetryBackoffFactor,
+        githubApiRetryDelayMs,
+        githubApiRetryJitterPercent,
+        githubApiRetryMaxAttempts,
+        githubApiRetryMaxDelayMs,
         failureSummaryMaxJobs,
         runId: Number(current.id),
         token,

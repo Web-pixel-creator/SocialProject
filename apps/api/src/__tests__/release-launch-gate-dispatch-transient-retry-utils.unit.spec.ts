@@ -13,6 +13,7 @@ const runTransientRetryDecision = (input: unknown) => {
   const script = `
     import {
       buildGitHubApiRetryDecision,
+      computeGitHubApiRetryDelayMs,
       isTransientGitHubApiPollingErrorMessage,
       parseGitHubApiStatusCodeFromErrorMessage,
     } from ${JSON.stringify(moduleHref)};
@@ -21,10 +22,11 @@ const runTransientRetryDecision = (input: unknown) => {
       const statusCode = parseGitHubApiStatusCodeFromErrorMessage(input.errorMessage);
       const transient = isTransientGitHubApiPollingErrorMessage(input.errorMessage);
       const decision = buildGitHubApiRetryDecision(input.decisionInput);
+      const retryDelayMs = computeGitHubApiRetryDelayMs(input.delayInput || {});
       process.stdout.write(
         JSON.stringify({
           ok: true,
-          result: { decision, statusCode, transient },
+          result: { decision, retryDelayMs, statusCode, transient },
           error: '',
         }),
       );
@@ -46,6 +48,7 @@ const runTransientRetryDecision = (input: unknown) => {
       statusCode: number | null;
       transient: boolean;
     };
+    retryDelayMs: number;
     statusCode: number | null;
     transient: boolean;
   }>(script);
@@ -61,6 +64,13 @@ describe('launch-gate dispatch transient retry utils', () => {
         errorMessage,
         maxAttempts: 3,
       },
+      delayInput: {
+        attempt: 1,
+        backoffFactor: 2,
+        baseDelayMs: 2000,
+        jitterPercent: 0,
+        maxDelayMs: 10_000,
+      },
       errorMessage,
     });
 
@@ -68,6 +78,7 @@ describe('launch-gate dispatch transient retry utils', () => {
     expect(result.payload.ok).toBe(true);
     expect(result.payload.result.statusCode).toBe(502);
     expect(result.payload.result.transient).toBe(true);
+    expect(result.payload.result.retryDelayMs).toBe(2000);
     expect(result.payload.result.decision).toEqual({
       attemptsRemaining: 2,
       shouldRetry: true,
@@ -85,6 +96,13 @@ describe('launch-gate dispatch transient retry utils', () => {
         errorMessage,
         maxAttempts: 2,
       },
+      delayInput: {
+        attempt: 2,
+        backoffFactor: 2,
+        baseDelayMs: 2000,
+        jitterPercent: 0,
+        maxDelayMs: 10_000,
+      },
       errorMessage,
     });
 
@@ -92,6 +110,7 @@ describe('launch-gate dispatch transient retry utils', () => {
     expect(result.payload.ok).toBe(true);
     expect(result.payload.result.statusCode).toBeNull();
     expect(result.payload.result.transient).toBe(true);
+    expect(result.payload.result.retryDelayMs).toBe(4000);
     expect(result.payload.result.decision).toEqual({
       attemptsRemaining: 1,
       shouldRetry: true,
@@ -109,6 +128,13 @@ describe('launch-gate dispatch transient retry utils', () => {
         errorMessage,
         maxAttempts: 3,
       },
+      delayInput: {
+        attempt: 2,
+        backoffFactor: 3,
+        baseDelayMs: 2000,
+        jitterPercent: 0,
+        maxDelayMs: 5000,
+      },
       errorMessage,
     });
 
@@ -116,6 +142,7 @@ describe('launch-gate dispatch transient retry utils', () => {
     expect(result.payload.ok).toBe(true);
     expect(result.payload.result.statusCode).toBe(422);
     expect(result.payload.result.transient).toBe(false);
+    expect(result.payload.result.retryDelayMs).toBe(5000);
     expect(result.payload.result.decision).toEqual({
       attemptsRemaining: 2,
       shouldRetry: false,
@@ -133,6 +160,14 @@ describe('launch-gate dispatch transient retry utils', () => {
         errorMessage,
         maxAttempts: 3,
       },
+      delayInput: {
+        attempt: 3,
+        backoffFactor: 2,
+        baseDelayMs: 2000,
+        jitterPercent: 25,
+        maxDelayMs: 10_000,
+        randomValue: 0,
+      },
       errorMessage,
     });
 
@@ -144,5 +179,6 @@ describe('launch-gate dispatch transient retry utils', () => {
       statusCode: 503,
       transient: true,
     });
+    expect(result.payload.result.retryDelayMs).toBe(6000);
   });
 });

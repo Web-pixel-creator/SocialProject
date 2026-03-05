@@ -33,6 +33,44 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add exponential backoff+jitter for dispatch polling transient retries (phase 94)
+
+- Scope: harden launch-gate dispatch polling under bursty GitHub API instability by evolving fixed-delay transient retries into bounded exponential backoff with jitter.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 14:45 -> 2026-03-05 14:52.
+- Changes:
+  - Updated helper module:
+    - `scripts/release/dispatch-production-launch-gate-transient-retry-utils.mjs`
+    - added:
+      - `computeGitHubApiRetryDelayMs`
+  - Updated `scripts/release/dispatch-production-launch-gate.mjs`:
+    - transient `GET` retries now use exponential backoff + jitter (bounded),
+    - added env controls:
+      - `RELEASE_GITHUB_API_TRANSIENT_RETRY_BACKOFF_FACTOR` (default `2`)
+      - `RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_DELAY_MS` (default `10000`)
+      - `RELEASE_GITHUB_API_TRANSIENT_RETRY_JITTER_PERCENT` (default `20`)
+    - retained existing controls:
+      - `RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_ATTEMPTS` (default `3`)
+      - `RELEASE_GITHUB_API_TRANSIENT_RETRY_DELAY_MS` (default `2000`)
+  - Added/updated tests:
+    - updated: `apps/api/src/__tests__/release-launch-gate-dispatch-transient-retry-utils.unit.spec.ts` (delay/backoff/jitter coverage)
+    - updated: `apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts` (new env validation coverage)
+  - Updated docs:
+    - `docs/ops/release-runbook.md`
+    - `docs/ops/release-checklist.md`
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-transient-retry-utils.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --print-artifact-links --artifact-link-names all`: pass.
+    - run `#106` (`22723410093`): success with expected artifact-link output.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass on rerun (`status: pass`, `generatedAtUtc: 2026-03-05T14:51:55.901Z`).
+- Incidents:
+  - first production gate validation attempt in this phase failed transiently with `Railway strict gate failed`; immediate rerun passed without code changes.
+- Follow-ups:
+  - optional: if needed, expose backoff/jitter controls as explicit dispatch CLI flags (not env-only) for faster ad-hoc operator tuning.
+
 ### 2026-03-05 - add transient GitHub API retry for launch-gate dispatch polling (phase 93)
 
 - Scope: reduce false-red dispatch failures from temporary GitHub API instability by adding bounded retry for polling/listing GET calls in launch-gate dispatch helper.
