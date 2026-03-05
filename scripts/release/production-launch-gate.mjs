@@ -7,7 +7,10 @@ import {
   parseExternalChannelsList,
 } from './dispatch-production-launch-gate-external-channels.mjs';
 import { parseReleaseBooleanEnv } from './release-env-parse-utils.mjs';
-import { resolveProductionBooleanConfig } from './production-launch-gate-boolean-config.mjs';
+import {
+  resolveProductionBooleanConfig,
+  resolveProductionStringConfig,
+} from './production-launch-gate-boolean-config.mjs';
 
 const DEFAULTS = {
   apiService: process.env.RAILWAY_API_SERVICE || 'api',
@@ -174,18 +177,10 @@ const resolveSandboxExecutionEgressProfilesConfig = (apiServiceVars) => {
       source: 'Railway api service variable SANDBOX_EXECUTION_EGRESS_PROFILES',
     },
   ];
-  for (const candidate of candidates) {
-    if (typeof candidate.raw === 'string' && candidate.raw.trim().length > 0) {
-      return {
-        source: candidate.source,
-        value: candidate.raw.trim(),
-      };
-    }
-  }
-  return {
-    source: 'unset',
-    value: '',
-  };
+  return resolveProductionStringConfig({
+    candidates,
+    fallback: '',
+  });
 };
 const resolveSandboxExecutionEgressEnforceConfig = (apiServiceVars) => {
   const candidates = [
@@ -283,18 +278,10 @@ const resolveSandboxExecutionOperationLimitProfilesConfig = (apiServiceVars) => 
         'Railway api service variable SANDBOX_EXECUTION_OPERATION_LIMIT_PROFILES',
     },
   ];
-  for (const candidate of candidates) {
-    if (typeof candidate.raw === 'string' && candidate.raw.trim().length > 0) {
-      return {
-        source: candidate.source,
-        value: candidate.raw.trim(),
-      };
-    }
-  }
-  return {
-    source: 'unset',
-    value: '',
-  };
+  return resolveProductionStringConfig({
+    candidates,
+    fallback: '',
+  });
 };
 const resolveSandboxExecutionLimitsEnforceConfig = (apiServiceVars) => {
   const candidates = [

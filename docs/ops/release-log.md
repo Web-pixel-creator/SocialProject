@@ -33,6 +33,34 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - reuse shared string candidate resolver for production sandbox profile configs (phase 61)
+
+- Scope: reduce duplicated candidate-scanning logic for production sandbox profile config source resolution.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 12:01 -> 2026-03-05 12:04.
+- Changes:
+  - Updated `scripts/release/production-launch-gate-boolean-config.mjs`:
+    - added `resolveProductionStringConfig` for first-non-empty string candidate resolution with trim + source tracking.
+  - Updated `scripts/release/production-launch-gate.mjs`:
+    - switched these resolvers to shared string candidate resolver:
+      - `resolveSandboxExecutionEgressProfilesConfig`
+      - `resolveSandboxExecutionOperationLimitProfilesConfig`.
+  - Expanded unit coverage:
+    - `apps/api/src/__tests__/release-production-boolean-config.unit.spec.ts`
+    - added string-resolver tests for:
+      - first-candidate precedence with trimming,
+      - unset fallback when all candidates are blank.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-production-boolean-config.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts apps/api/src/__tests__/release-env-parse-utils.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T12:02:45.310Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: move file name from `production-launch-gate-boolean-config.mjs` to a neutral `...config-resolvers.mjs` since it now hosts both boolean and string resolvers.
+
 ### 2026-03-05 - extract shared production boolean-config resolver (phase 60)
 
 - Scope: reduce duplication in production launch-gate sandbox boolean config resolution and align parsing behavior with shared strict env parser.
