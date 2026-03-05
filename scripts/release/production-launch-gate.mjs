@@ -663,8 +663,8 @@ const parseArgs = (argv) => {
     else if (a === '--skip-ingest-probe') o.skipIngestProbe = true;
     else if (a === '--skip-railway-gate') o.skipRailwayGate = true;
     else if (a === '--required-external-channels') {
-      const value = argv[++i];
-      if (value === undefined) {
+      const value = (argv[++i] || '').trim();
+      if (!value) {
         throw new Error('Missing value for --required-external-channels');
       }
       o.requiredExternalChannels = parseExternalChannelsList(
@@ -672,7 +672,10 @@ const parseArgs = (argv) => {
         '--required-external-channels',
       );
     } else if (a.startsWith('--required-external-channels=')) {
-      const value = a.slice('--required-external-channels='.length);
+      const value = a.slice('--required-external-channels='.length).trim();
+      if (!value) {
+        throw new Error(`Missing value for ${a}`);
+      }
       o.requiredExternalChannels = parseExternalChannelsList(
         value,
         '--required-external-channels',

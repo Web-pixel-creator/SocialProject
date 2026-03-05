@@ -33,6 +33,34 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - harden production launch-gate required-external-channels diagnostics (phase 50)
+
+- Scope: prevent silent acceptance of empty `--required-external-channels` values in production launch-gate CLI and add focused parser regression coverage.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 11:20 -> 2026-03-05 11:24.
+- Changes:
+  - Updated `scripts/release/production-launch-gate.mjs`:
+    - positional `--required-external-channels` now fails when value is missing or empty after trim,
+    - inline `--required-external-channels=` now fails fast with explicit missing-value message,
+    - parsing still delegates to shared `parseExternalChannelsList`.
+  - Added unit test suite:
+    - `apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts`
+    - validates:
+      - `--help` / `-h`,
+      - unknown arg diagnostics,
+      - missing/empty required-external-channels diagnostics,
+      - unsupported channel diagnostics from CLI and env (`RELEASE_REQUIRED_EXTERNAL_CHANNELS`).
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-external-channels.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T11:22:09.693Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add a tiny `--required-external-channels=` negative case in operator runbook snippets to document expected fast-fail behavior.
+
 ### 2026-03-05 - reuse shared external-channel parser in production launch gate path (phase 49)
 
 - Scope: remove duplicated required external channel parsing logic from production launch-gate script and reuse the shared parser module across both dispatch and production gate flows.
