@@ -33,6 +33,26 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add non-json failure output example to release runbook (phase 76)
+
+- Scope: improve operator onboarding by adding a concrete non-JSON failure output snippet to production launch-gate runbook guidance.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 13:02 -> 2026-03-05 13:04.
+- Changes:
+  - Updated `docs/ops/release-runbook.md`:
+    - added a `text` code-block example showing:
+      - top-level fail status line,
+      - failed checks section with compact/truncated arrays,
+      - terminal error line.
+- Validation:
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: align snippet keys/values with a periodically refreshed synthetic fixture to prevent wording drift as formatter evolves.
+
 ### 2026-03-05 - document non-json compact failure diagnostics behavior (phase 75)
 
 - Scope: close phase 74 follow-up by documenting non-JSON compact failure diagnostics behavior and operator expectation in release docs.

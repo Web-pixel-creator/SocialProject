@@ -49,6 +49,16 @@ Use this map when a release helper fails fast on argument/env validation and you
    - Optional JSON output: `npm run release:launch:gate:production:json`
    - Optional non-JSON failure detail cap: `npm run release:launch:gate:production -- --failure-detail-max-items 10` (or env `RELEASE_FAILURE_DETAIL_MAX_ITEMS=10`).
    - Non-JSON failure mode now prints failed-check diagnostics and truncates long arrays with `+N more`; tune truncation via `--failure-detail-max-items`.
+   - Example non-JSON failure snippet:
+     ```text
+     Production launch gate: FAIL
+     Failed checks (2):
+     - smokeRequiredSteps
+       details: {"pass":false,"missing":["web.search","web.draft.detail","+1 more"],"failed":["web.search"],"required":["api.health","api.ready","+10 more"],"skipped":false}
+     - ingestExternalChannelFailureModes
+       details: {"pass":false,"skipped":false,"failedChannels":[{"channel":"slack","connectorId":"slack_default","failureMode":"telemetry_zero_accepted"}],"requiredFailedChannels":[{"channel":"slack","connectorId":"slack_default","failureMode":"telemetry_zero_accepted"}]}
+     Error: Ingest probe failed
+     ```
    - Optional CI workflow_dispatch alternative: `Production Launch Gate` (`.github/workflows/production-launch-gate.yml`)
    - CI run now uploads markdown audit artifact `production-launch-gate-step-summary` (`artifacts/release/production-launch-gate-step-summary.md`) in addition to JSON artifacts.
   - `npm run release:launch:gate:dispatch` now prints resolved UI link for artifact `production-launch-gate-step-summary` after successful run completion.
