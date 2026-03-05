@@ -33,6 +33,41 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - token-source fallback resolver extraction and unit coverage (phase 36)
+
+- Scope: harden and document token-source fallback behavior by extracting candidate resolution into a dedicated module and adding unit tests for ordering/dedup/error cases.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 10:54 -> 2026-03-05 10:57.
+- Changes:
+  - Added module:
+    - `scripts/release/dispatch-production-launch-gate-token-resolution.mjs`
+    - provides `resolveDispatchTokenCandidates`.
+  - Refactored `scripts/release/dispatch-production-launch-gate.mjs`:
+    - now delegates token candidate collection to shared resolver while preserving source order:
+      - `cli-arg` -> `env:GITHUB_TOKEN` -> `env:GH_TOKEN` -> `gh-auth`.
+  - Added unit coverage:
+    - `apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts`
+    - validates:
+      - source priority order,
+      - duplicate token deduplication,
+      - empty-source result,
+      - non-ASCII token rejection.
+  - Kept CLI-args and link-options suites green:
+    - `release-launch-gate-dispatch-cli-args.unit.spec.ts`
+    - `release-launch-gate-dispatch-link-options.unit.spec.ts`.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - live dispatch regression:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --print-artifact-links`
+    - run `#70` (`22714438169`): success with expected artifact URL output lines.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add tiny parser module for CLI args and cover `--help`/usage and mixed short/long token flags with snapshot-style tests.
+
 ### 2026-03-05 - add cli-argument validation tests for dispatch helper (phase 35)
 
 - Scope: lock early-fail CLI diagnostics for dispatch helper so invalid option combinations fail deterministically before network operations.
