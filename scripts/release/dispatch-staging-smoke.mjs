@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { resolveRepoSlug } from './github-token-repo-resolution.mjs';
 import { githubApiRequestWithTransientRetry } from './github-api-request-with-transient-retry.mjs';
 
 const GITHUB_API_VERSION = '2022-11-28';
@@ -35,38 +36,6 @@ const parseBoolean = (raw, fallback) => {
     return false;
   }
   return fallback;
-};
-
-const readOriginRemote = () => {
-  const remote = execFileSync('git', ['config', '--get', 'remote.origin.url'], {
-    encoding: 'utf8',
-  }).trim();
-  if (!remote) {
-    throw new Error('Git remote origin is not configured.');
-  }
-  return remote;
-};
-
-const parseRepoSlugFromRemote = (remote) => {
-  const httpsMatch = remote.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+?)(?:\.git)?$/u);
-  if (httpsMatch) {
-    return `${httpsMatch[1]}/${httpsMatch[2]}`;
-  }
-
-  const sshMatch = remote.match(/^git@github\.com:([^/]+)\/([^/]+?)(?:\.git)?$/u);
-  if (sshMatch) {
-    return `${sshMatch[1]}/${sshMatch[2]}`;
-  }
-
-  throw new Error(`Unsupported remote URL format: ${remote}. Expected GitHub https/ssh remote.`);
-};
-
-const resolveRepoSlug = () => {
-  const fromEnv = process.env.GITHUB_REPOSITORY?.trim();
-  if (fromEnv) {
-    return fromEnv;
-  }
-  return parseRepoSlugFromRemote(readOriginRemote());
 };
 
 const toErrorMessage = (error) => (error instanceof Error ? error.message : String(error));

@@ -2,81 +2,16 @@ import { execFileSync } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { githubApiRequestWithTransientRetry } from './github-api-request-with-transient-retry.mjs';
+import {
+  resolveRepoSlug,
+  resolveToken,
+} from './github-token-repo-resolution.mjs';
 
 const GITHUB_API_VERSION = '2022-11-28';
 const DEFAULT_ARTIFACT_NAME = 'release-smoke-report';
 const DEFAULT_OUTPUT_DIR = 'artifacts/release';
 const DEFAULT_WORKFLOW_FILE = 'ci.yml';
 const DEFAULT_EXTRACT_ENABLED = true;
-
-const readOriginRemote = () => {
-  const remote = execFileSync('git', ['config', '--get', 'remote.origin.url'], {
-    encoding: 'utf8',
-  }).trim();
-  if (!remote) {
-    throw new Error('Git remote origin is not configured.');
-  }
-  return remote;
-};
-
-const parseRepoSlugFromRemote = (remote) => {
-  const httpsMatch = remote.match(
-    /^https:\/\/github\.com\/([^/]+)\/([^/]+?)(?:\.git)?$/u,
-  );
-  if (httpsMatch) {
-    return `${httpsMatch[1]}/${httpsMatch[2]}`;
-  }
-
-  const sshMatch = remote.match(/^git@github\.com:([^/]+)\/([^/]+?)(?:\.git)?$/u);
-  if (sshMatch) {
-    return `${sshMatch[1]}/${sshMatch[2]}`;
-  }
-
-  throw new Error(
-    `Unsupported remote URL format: ${remote}. Expected GitHub https/ssh remote.`,
-  );
-};
-
-const resolveRepoSlug = () => {
-  const fromEnv = process.env.GITHUB_REPOSITORY?.trim();
-  if (fromEnv) {
-    return fromEnv;
-  }
-  return parseRepoSlugFromRemote(readOriginRemote());
-};
-
-const readTokenFromGitCredentialStore = () => {
-  const output = execFileSync('git', ['credential', 'fill'], {
-    encoding: 'utf8',
-    input: 'protocol=https\nhost=github.com\n\n',
-  });
-
-  const tokenLine = output
-    .split(/\r?\n/u)
-    .find((line) => line.startsWith('password='));
-  if (!tokenLine) {
-    throw new Error(
-      'Unable to resolve GitHub token from credential store. Set GITHUB_TOKEN or GH_TOKEN.',
-    );
-  }
-
-  const token = tokenLine.slice('password='.length).trim();
-  if (!token) {
-    throw new Error(
-      'Git credential store returned empty password. Set GITHUB_TOKEN or GH_TOKEN.',
-    );
-  }
-
-  return token;
-};
-
-const resolveToken = () => {
-  const fromEnv = (process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN ?? '').trim();
-  if (fromEnv) {
-    return fromEnv;
-  }
-  return readTokenFromGitCredentialStore();
-};
 
 const parseBoolean = (raw, fallback) => {
   if (!raw) {

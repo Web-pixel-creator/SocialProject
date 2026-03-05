@@ -22,6 +22,7 @@ import {
   githubApiRequest,
   githubApiRequestWithTransientRetry,
 } from './github-api-request-with-transient-retry.mjs';
+import { resolveRepoSlug } from './github-token-repo-resolution.mjs';
 
 const GITHUB_API_VERSION = '2022-11-28';
 const DEFAULT_WORKFLOW_FILE = 'production-launch-gate.yml';
@@ -72,42 +73,6 @@ const parseReleaseNonNegativeIntegerEnv = (raw, fallback, sourceLabel) => {
     throw new Error(`Invalid value for ${sourceLabel}: ${value}`);
   }
   return Number(value);
-};
-
-const readOriginRemote = () => {
-  const remote = execFileSync('git', ['config', '--get', 'remote.origin.url'], {
-    encoding: 'utf8',
-  }).trim();
-  if (!remote) {
-    throw new Error('Git remote origin is not configured.');
-  }
-  return remote;
-};
-
-const parseRepoSlugFromRemote = (remote) => {
-  const httpsMatch = remote.match(
-    /^https:\/\/github\.com\/([^/]+)\/([^/]+?)(?:\.git)?$/u,
-  );
-  if (httpsMatch) {
-    return `${httpsMatch[1]}/${httpsMatch[2]}`;
-  }
-
-  const sshMatch = remote.match(/^git@github\.com:([^/]+)\/([^/]+?)(?:\.git)?$/u);
-  if (sshMatch) {
-    return `${sshMatch[1]}/${sshMatch[2]}`;
-  }
-
-  throw new Error(
-    `Unsupported remote URL format: ${remote}. Expected GitHub https/ssh remote.`,
-  );
-};
-
-const resolveRepoSlug = () => {
-  const fromEnv = process.env.GITHUB_REPOSITORY?.trim();
-  if (fromEnv) {
-    return fromEnv;
-  }
-  return parseRepoSlugFromRemote(readOriginRemote());
 };
 
 const toErrorMessage = (error) =>

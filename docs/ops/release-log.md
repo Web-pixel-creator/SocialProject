@@ -33,6 +33,50 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - centralize GitHub repo/token resolution across release scripts (phase 108)
+
+- Scope: remove duplicated `remote.origin`/credential-store resolver logic across release scripts by introducing one shared module and migrating existing callers without behavior drift.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 17:10 -> 2026-03-05 17:16.
+- Changes:
+  - Added shared resolver module:
+    - `scripts/release/github-token-repo-resolution.mjs`
+    - exports:
+      - `readOriginRemote`, `parseRepoSlugFromRemote`, `resolveRepoSlug`,
+      - `readTokenFromGitCredentialStore`, `resolveToken` (`allowMissing` support).
+  - Migrated release scripts to shared resolver:
+    - `scripts/release/collect-retry-failure-logs.mjs`
+    - `scripts/release/fetch-smoke-report-artifact.mjs`
+    - `scripts/release/manage-staging-inputs.mjs`
+    - `scripts/release/post-release-health-report.mjs`
+    - `scripts/release/dispatch-staging-smoke-auto.mjs`
+    - `scripts/release/dispatch-staging-smoke.mjs`
+    - `scripts/release/dispatch-production-launch-gate.mjs`
+  - Preserved auto-dispatch compatibility by keeping optional token path:
+    - `dispatch-staging-smoke-auto.mjs` now calls `resolveToken({ allowMissing: true })`.
+- Validation:
+  - `node --check scripts/release/github-token-repo-resolution.mjs`: pass.
+  - `node --check scripts/release/collect-retry-failure-logs.mjs`: pass.
+  - `node --check scripts/release/fetch-smoke-report-artifact.mjs`: pass.
+  - `node --check scripts/release/manage-staging-inputs.mjs`: pass.
+  - `node --check scripts/release/post-release-health-report.mjs`: pass.
+  - `node --check scripts/release/dispatch-staging-smoke-auto.mjs`: pass.
+  - `node --check scripts/release/dispatch-staging-smoke.mjs`: pass.
+  - `node --check scripts/release/dispatch-production-launch-gate.mjs`: pass.
+  - `npm run test -- apps/api/src/__tests__/release-github-api-request-with-transient-retry.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-transient-retry-utils.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts`: pass.
+  - `npm run test -- apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-failure-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-smoke-timeout-retry-utils.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-failure-runbook-check-script.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-failure-runbook-example.unit.spec.ts`: pass.
+  - `npm run release:smoke:dispatch:auto -- --dry-run`: pass (`Mode: repo-url-input`, `Token configured: yes`).
+  - `npm run release:smoke:inputs -- show`: pass (repository variable read succeeded).
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:runbook:failure-snippet:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T17:15:32.287Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add focused unit tests for `github-token-repo-resolution.mjs` pure helpers (`parseRepoSlugFromRemote`, token resolution priority) to lock behavior explicitly.
+
 ### 2026-03-05 - migrate text GitHub log fetch paths to shared helper via expectText (phase 107)
 
 - Scope: finish shared-helper migration by removing remaining direct text log fetch wrappers and routing them through `githubApiRequestWithTransientRetry` with explicit text mode.
