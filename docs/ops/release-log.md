@@ -33,6 +33,28 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add golden help snapshot for production launch-gate CLI (phase 51)
+
+- Scope: lock `production-launch-gate` help text against accidental option drift by adding a dedicated snapshot-based regression test.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 11:24 -> 2026-03-05 11:25.
+- Changes:
+  - Added test suite:
+    - `apps/api/src/__tests__/release-launch-gate-production-help-snapshot.unit.spec.ts`
+    - validates:
+      - `--help` exits zero with empty stderr,
+      - key high-signal options are present (`--required-external-channels`, `--require-natural-cron-window`),
+      - full normalized help output matches inline golden snapshot.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-production-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-external-channels.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: split production help snapshot into section-level assertions if options block starts changing frequently.
+
 ### 2026-03-05 - harden production launch-gate required-external-channels diagnostics (phase 50)
 
 - Scope: prevent silent acceptance of empty `--required-external-channels` values in production launch-gate CLI and add focused parser regression coverage.
