@@ -33,6 +33,28 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - migrate tunnel staging smoke dispatcher GitHub JSON calls to shared retry helper (phase 102)
+
+- Scope: reduce transient GitHub API flaps in tunnel-assisted staging smoke retry inspection by migrating JSON GitHub calls in tunnel dispatcher to shared request+retry helper.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 15:39 -> 2026-03-05 15:42.
+- Changes:
+  - Updated `scripts/release/dispatch-staging-smoke-tunnel.mjs`:
+    - replaced local JSON `githubRequest` implementation with `githubApiRequestWithTransientRetry`,
+    - retained existing text-log download path (`githubRequestText`) unchanged,
+    - added retry label context (`[release:smoke:dispatch:tunnel] ...`) for transient diagnostics.
+- Validation:
+  - `node --check scripts/release/dispatch-staging-smoke-tunnel.mjs`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:runbook:failure-snippet:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T15:42:20.641Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: migrate `collect-retry-failure-logs.mjs` to shared helper to complete this migration stream.
+
 ### 2026-03-05 - migrate auto staging smoke dispatcher to shared GitHub transient retry helper (phase 101)
 
 - Scope: harden repo-variable lookup used by auto mode selection in staging smoke dispatch helper by migrating GitHub variable read calls to shared request+retry helper.
