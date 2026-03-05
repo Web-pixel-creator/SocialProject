@@ -243,6 +243,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
     - [ ] `post-release-health-summary-inline`
     - [ ] `post-release-health-schema-summary-inline`
     - [ ] `post-release-health-inline-artifacts-summary`
+    - [ ] `post-release-health-inline-artifacts-schema-check`
   - [ ] Confirm `sandboxExecutionMetrics.pass=true` in launch gate summary.
   - [ ] Confirm `sandboxExecutionModeConsistency.pass=true` in launch gate summary.
   - [ ] Optional artifact drill: inspect `artifacts/release/production-sandbox-execution-metrics.json` for `total > 0` and `successCount > 0`.

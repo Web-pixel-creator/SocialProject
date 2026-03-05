@@ -33,6 +33,47 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add inline artifact summary schema validation gate in launch workflow (phase 22)
+
+- Scope: enforce JSON Schema contract for inline launch-gate artifact summary payloads and publish schema-check evidence per run.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 09:51 -> 2026-03-05 10:05.
+- Changes:
+  - Added schema contract module:
+    - `scripts/release/inline-health-artifacts-schema-contracts.mjs`.
+  - Added validator script:
+    - `scripts/release/validate-inline-post-release-health-artifacts-summary-schema.mjs`.
+    - validates sample payload + runtime summary payload against
+      `docs/ops/schemas/release-inline-health-artifacts-summary-output.schema.json`.
+  - Updated `scripts/release/validate-inline-post-release-health-artifacts.mjs`:
+    - now reads `schemaPath` / `schemaVersion` / `label` from shared contract constants.
+  - Updated `package.json`:
+    - `release:health:inline-artifacts:schema:check`
+    - `release:health:inline-artifacts:schema:check:json`.
+  - Updated `.github/workflows/production-launch-gate.yml`:
+    - new step validates
+      `post-release-health-inline-artifacts-summary-<run_id>.json`
+      against schema,
+    - writes `post-release-health-inline-artifacts-schema-check-<run_id>.json`,
+    - surfaces schema-check status in step summary,
+    - uploads new artifact `post-release-health-inline-artifacts-schema-check`.
+  - Added unit coverage:
+    - `apps/api/src/__tests__/release-inline-health-artifacts-schema-check.unit.spec.ts`
+    - pass and fail scenarios for runtime summary validation.
+  - Updated docs:
+    - `docs/ops/release-runbook.md`
+    - `docs/ops/release-checklist.md`.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-inline-health-artifacts-check.unit.spec.ts apps/api/src/__tests__/release-inline-health-artifacts-schema-check.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run release:health:inline-artifacts:schema:check:json -- docs/ops/schemas/samples/release-inline-health-artifacts-summary-output.sample.json`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: include schema-check verdict as dedicated top-level check node in `production-launch-gate-summary.json`.
+
 ### 2026-03-05 - formalize inline artifact summary output schema contract (phase 21)
 
 - Scope: make `release:health:inline-artifacts:check` output explicitly versioned and self-describing for downstream consumers.

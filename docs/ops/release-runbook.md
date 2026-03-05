@@ -69,11 +69,12 @@ Canonical references:
    - For each configured external channel probe, launch gate also verifies connector telemetry counters (`ingestConnectors.accepted/total`) via admin telemetry API before passing fallback checks.
    - Launch gate now exposes per-channel fallback failure-mode diagnostics in summary check `ingestExternalChannelFailureModes` and trace artifact `artifacts/release/production-agent-gateway-external-channel-traces.json` (uploaded as workflow artifact `production-external-channel-traces`).
    - Optional strict channel requirement can be enabled with `--required-external-channels telegram,slack` (or workflow input/env equivalent); in this mode, launch gate fails if required channels are not configured or fallback probe validation fails.
-   - CI `Production Launch Gate` workflow now runs inline post-release health generation in best-effort mode for same-run parity and uploads:
-     - `post-release-health-report-inline`
-     - `post-release-health-summary-inline`
-     - `post-release-health-schema-summary-inline`
-     - `post-release-health-inline-artifacts-summary` (machine-readable presence check result; `status=fail` does not fail run unless `require_inline_health_artifacts=true`).
+  - CI `Production Launch Gate` workflow now runs inline post-release health generation in best-effort mode for same-run parity and uploads:
+    - `post-release-health-report-inline`
+    - `post-release-health-summary-inline`
+    - `post-release-health-schema-summary-inline`
+    - `post-release-health-inline-artifacts-summary` (machine-readable presence check result; `status=fail` does not fail run unless `require_inline_health_artifacts=true`).
+    - `post-release-health-inline-artifacts-schema-check` (JSON Schema validation result for inline artifact summary payload contract).
    - Recommended rollout to move from `skipped` to active external-channel verification:
      - set production `AGENT_GATEWAY_INGEST_CONNECTOR_PROFILES` (see `docs/ops/examples/agent-gateway-ingest-connector-profiles.example.json`),
      - deploy API with new env,
@@ -87,8 +88,9 @@ Canonical references:
    - If any channel appears in `ingestExternalChannelFailureModes.failedChannels`, route by failure class using `docs/ops/agent-gateway-ai-runtime-runbook.md` (`External-channel failure-mode routing` section) before re-dispatching.
    - Rollout stop condition: if `requiredFailedChannels` remains non-empty across two consecutive strict runs, pause rollout and apply rollback decision thresholds.
 1. Generate and validate health report:
-   - `npm run release:health:report`
-   - `Release Health Gate` workflow auto-runs on completed `workflow_dispatch` runs from both `CI` and `Production Launch Gate` workflows (`workflow_run` trigger).
+  - `npm run release:health:report`
+  - Optional inline summary contract check (local/CI parity): `npm run release:health:inline-artifacts:schema:check`
+  - `Release Health Gate` workflow auto-runs on completed `workflow_dispatch` runs from both `CI` and `Production Launch Gate` workflows (`workflow_run` trigger).
    - For CI `Production Launch Gate` runs, inline post-release health artifacts from the same run are available immediately; use them for zero-lag triage and keep `Release Health Gate` as corroborating automation.
    - Triage source selection quick guide:
 

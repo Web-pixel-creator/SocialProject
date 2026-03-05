@@ -1,15 +1,19 @@
 import { mkdir, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  INLINE_HEALTH_ARTIFACTS_SUMMARY_JSON_SCHEMA_PATH,
+  INLINE_HEALTH_ARTIFACTS_SUMMARY_JSON_SCHEMA_VERSION,
+  INLINE_HEALTH_ARTIFACTS_SUMMARY_LABEL,
+} from './inline-health-artifacts-schema-contracts.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..', '..');
 
-const OUTPUT_LABEL = 'release:health:inline-artifacts:check';
-const OUTPUT_SCHEMA_PATH =
-  'docs/ops/schemas/release-inline-health-artifacts-summary-output.schema.json';
-const OUTPUT_SCHEMA_VERSION = '1.0.0';
+const OUTPUT_LABEL = INLINE_HEALTH_ARTIFACTS_SUMMARY_LABEL;
+const OUTPUT_SCHEMA_PATH = INLINE_HEALTH_ARTIFACTS_SUMMARY_JSON_SCHEMA_PATH;
+const OUTPUT_SCHEMA_VERSION = INLINE_HEALTH_ARTIFACTS_SUMMARY_JSON_SCHEMA_VERSION;
 const REQUIRED_ARTIFACT_RELATIVE_PATHS = [
   'artifacts/release/post-release-health-run-<run_id>.json',
   'artifacts/release/post-release-health-summary-<run_id>.json',

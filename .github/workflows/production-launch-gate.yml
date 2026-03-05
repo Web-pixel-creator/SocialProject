@@ -149,6 +149,16 @@ jobs:
           fi
           node scripts/release/validate-inline-post-release-health-artifacts.mjs "${args[@]}"
 
+      - name: Validate inline post-release health artifact summary schema
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/release/validate-inline-post-release-health-artifacts-summary-schema.mjs \
+            "artifacts/release/post-release-health-inline-artifacts-summary-${{ github.run_id }}.json" \
+            --json \
+            > "artifacts/release/post-release-health-inline-artifacts-schema-check-${{ github.run_id }}.json"
+
       - name: Render launch gate step summary markdown
         if: always()
         shell: bash
@@ -178,6 +188,12 @@ jobs:
                 echo "- inline post-release health artifacts: \`$(jq -r '.status // "unknown"' "${inline_health_summary}")\` (present \`$(jq -r '.presentTotal // 0' "${inline_health_summary}")/$(jq -r '.requiredTotal // 0' "${inline_health_summary}")\`, strict \`$(jq -r '.strict // false' "${inline_health_summary}")\`)"
               else
                 echo "- inline post-release health artifacts summary: \`missing\`"
+              fi
+              inline_health_schema_check="artifacts/release/post-release-health-inline-artifacts-schema-check-${{ github.run_id }}.json"
+              if [[ -f "${inline_health_schema_check}" ]]; then
+                echo "- inline artifact summary schema check: \`$(jq -r '.status // "unknown"' "${inline_health_schema_check}")\`"
+              else
+                echo "- inline artifact summary schema check: \`missing\`"
               fi
               echo ""
               echo "### Checks"
@@ -245,3 +261,10 @@ jobs:
           artifact_3_path: artifacts/release/post-release-health-schema-summary-${{ github.run_id }}.json
           artifact_4_name: post-release-health-inline-artifacts-summary
           artifact_4_path: artifacts/release/post-release-health-inline-artifacts-summary-${{ github.run_id }}.json
+
+      - name: Upload inline post-release health schema check artifact
+        if: always()
+        uses: ./.github/actions/release-artifacts-upload
+        with:
+          artifact_1_name: post-release-health-inline-artifacts-schema-check
+          artifact_1_path: artifacts/release/post-release-health-inline-artifacts-schema-check-${{ github.run_id }}.json
