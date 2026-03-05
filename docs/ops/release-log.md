@@ -33,6 +33,29 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - migrate tunnel dispatch token resolution to shared resolver (phase 113)
+
+- Scope: remove remaining local `git credential fill` token logic from tunnel dispatch helper and reuse shared release resolver module for consistent credential behavior.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 17:36 -> 2026-03-05 17:38.
+- Changes:
+  - Updated `scripts/release/dispatch-staging-smoke-tunnel.mjs`:
+    - removed local async `readGithubTokenFromCredentialStore` implementation,
+    - imported and used `resolveToken()` from `scripts/release/github-token-repo-resolution.mjs`,
+    - retained existing fail-fast semantics when token is unavailable.
+- Validation:
+  - `node --check scripts/release/dispatch-staging-smoke-tunnel.mjs`: pass.
+  - `node --check scripts/release/github-token-repo-resolution.mjs`: pass.
+  - `npm run test -- apps/api/src/__tests__/release-github-token-repo-resolution.unit.spec.ts apps/api/src/__tests__/release-github-api-request-with-transient-retry.unit.spec.ts`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T17:37:35.374Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: if tunnel dispatch gains dedicated unit tests later, add a token-resolution snapshot/assertion path to lock CLI error wording.
+
 ### 2026-03-05 - harden credential-store resolver for git lookup failures (phase 112)
 
 - Scope: make token resolution resilient when `git credential fill` exits with error (missing credentials/prompt-disabled), while preserving explicit `allowMissing` semantics.

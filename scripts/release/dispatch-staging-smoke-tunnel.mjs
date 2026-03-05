@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { githubApiRequestWithTransientRetry } from './github-api-request-with-transient-retry.mjs';
+import { resolveToken } from './github-token-repo-resolution.mjs';
 import {
   cleanupRetryFailureLogs,
   formatRetryLogsCleanupSummary,
@@ -236,71 +237,6 @@ const startService = ({ command, args, name, env, shell }) => {
   });
 
   return child;
-};
-
-const readGithubTokenFromCredentialStore = () => {
-  return new Promise((resolve, reject) => {
-    const child = spawn('git', ['credential', 'fill'], {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      shell: false,
-    });
-
-    let output = '';
-    let errors = '';
-
-    child.stdout.on('data', (chunk) => {
-      output += chunk.toString();
-    });
-    child.stderr.on('data', (chunk) => {
-      errors += chunk.toString();
-    });
-
-    child.on('error', (error) => {
-      reject(
-        new Error(
-          `Failed to run git credential fill: ${error.message}. ${errors}`.trim(),
-        ),
-      );
-    });
-
-    child.on('close', (code) => {
-      if (code !== 0) {
-        reject(
-          new Error(
-            `git credential fill exited with code ${code ?? 'unknown'}. ${errors}`.trim(),
-          ),
-        );
-        return;
-      }
-
-      const tokenLine = output
-        .split(/\r?\n/u)
-        .find((line) => line.startsWith('password='));
-      if (!tokenLine) {
-        reject(
-          new Error(
-            'Unable to resolve GitHub token from credential store. Set GITHUB_TOKEN or GH_TOKEN.',
-          ),
-        );
-        return;
-      }
-
-      const token = tokenLine.slice('password='.length).trim();
-      if (!token) {
-        reject(
-          new Error(
-            'Git credential store returned an empty password. Set GITHUB_TOKEN or GH_TOKEN.',
-          ),
-        );
-        return;
-      }
-
-      resolve(token);
-    });
-
-    child.stdin.write('protocol=https\nhost=github.com\n\n');
-    child.stdin.end();
-  });
 };
 
 const githubRequest = async ({ token, method, url, body }) => {
@@ -890,9 +826,7 @@ const main = async () => {
   const retryLogsCleanupConfig = resolveRetryLogsCleanupConfig(process.env);
 
   const csrfToken = process.env.RELEASE_CSRF_TOKEN ?? DEFAULT_CSRF_TOKEN;
-  const githubToken =
-    (process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN ?? '').trim() ||
-    (await readGithubTokenFromCredentialStore());
+  const githubToken = resolveToken();
 
   await runCommand({
     command: 'docker',
