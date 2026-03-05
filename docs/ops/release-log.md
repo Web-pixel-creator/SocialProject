@@ -33,6 +33,26 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - document parity-log artifact usage and retention hygiene (phase 84)
+
+- Scope: close phase 83 follow-up by documenting how to consume parity-log CI artifact and keeping expectations around artifact size explicit.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 13:43 -> 2026-03-05 13:45.
+- Changes:
+  - Updated `docs/ops/release-runbook.md`:
+    - added note that CI uploads `runbook-snippet-parity-log` from `artifacts/release/runbook-snippet-parity.log`,
+    - added guidance to keep parity log output compact.
+  - Updated `docs/ops/release-checklist.md`:
+    - added post-release checklist item to inspect `runbook-snippet-parity-log` when parity check fails in CI.
+- Validation:
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: if desired, add artifact expiration policy notes in engineering docs for long-lived CI retention hygiene.
+
 ### 2026-03-05 - upload runbook parity log as CI artifact (phase 83)
 
 - Scope: improve post-failure observability by retaining the runbook snippet parity checker output as downloadable CI artifact.
