@@ -49,12 +49,12 @@ Use this map when a release helper fails fast on argument/env validation and you
    - Optional JSON output: `npm run release:launch:gate:production:json`
    - Optional non-JSON failure detail cap: `npm run release:launch:gate:production -- --failure-detail-max-items 10` (or env `RELEASE_FAILURE_DETAIL_MAX_ITEMS=10`).
    - Non-JSON failure mode now prints failed-check diagnostics and truncates long arrays with `+N more`; tune truncation via `--failure-detail-max-items`.
-   - Example non-JSON failure snippet:
+   - Example non-JSON failure snippet (generated from fixture `docs/ops/examples/production-launch-gate-non-json-failure-example.json`):
      ```text
      Production launch gate: FAIL
      Failed checks (2):
      - smokeRequiredSteps
-       details: {"pass":false,"missing":["web.search","web.draft.detail","+1 more"],"failed":["web.search"],"required":["api.health","api.ready","+10 more"],"skipped":false}
+       details: {"pass":false,"missing":["web.search","web.draft.detail","+1 more"],"failed":["web.search"],"required":["api.health","api.ready","+2 more"],"skipped":false}
      - ingestExternalChannelFailureModes
        details: {"pass":false,"skipped":false,"failedChannels":[{"channel":"slack","connectorId":"slack_default","failureMode":"telemetry_zero_accepted"}],"requiredFailedChannels":[{"channel":"slack","connectorId":"slack_default","failureMode":"telemetry_zero_accepted"}]}
      Error: Ingest probe failed

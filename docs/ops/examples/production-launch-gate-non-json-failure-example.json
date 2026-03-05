@@ -1,0 +1,44 @@
+{
+  "checks": {
+    "smokeRequiredSteps": {
+      "pass": false,
+      "missing": [
+        "web.search",
+        "web.draft.detail",
+        "web.feed"
+      ],
+      "failed": [
+        "web.search"
+      ],
+      "required": [
+        "api.health",
+        "api.ready",
+        "api.draft.create",
+        "api.draft.get"
+      ],
+      "skipped": false
+    },
+    "ingestExternalChannelFailureModes": {
+      "pass": false,
+      "skipped": false,
+      "failedChannels": [
+        {
+          "channel": "slack",
+          "connectorId": "slack_default",
+          "failureMode": "telemetry_zero_accepted"
+        }
+      ],
+      "requiredFailedChannels": [
+        {
+          "channel": "slack",
+          "connectorId": "slack_default",
+          "failureMode": "telemetry_zero_accepted"
+        }
+      ]
+    }
+  },
+  "error": {
+    "message": "Ingest probe failed"
+  },
+  "maxArrayItems": 2
+}

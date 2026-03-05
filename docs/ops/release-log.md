@@ -33,6 +33,35 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - enforce runbook non-json failure snippet parity via fixture test (phase 77)
+
+- Scope: prevent drift between operator documentation and actual failure formatter output by introducing a fixture-backed parity test for the runbook snippet.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 13:04 -> 2026-03-05 13:14.
+- Changes:
+  - Added fixture payload:
+    - `docs/ops/examples/production-launch-gate-non-json-failure-example.json`
+    - defines synthetic failed-check payload and truncation setting (`maxArrayItems=2`).
+  - Updated `docs/ops/release-runbook.md`:
+    - failure snippet now explicitly references the fixture path,
+    - snippet content aligned with generated formatter output from fixture.
+  - Added test:
+    - `apps/api/src/__tests__/release-launch-gate-production-failure-runbook-example.unit.spec.ts`
+    - loads fixture, runs `buildProductionLaunchGateFailureLines`, extracts runbook code block, and asserts exact parity (with markdown dedent normalization).
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-production-failure-runbook-example.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-failure-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T13:12:47.278Z`).
+  - live dispatch regression:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --print-artifact-links --artifact-link-names all`
+    - run `#91` (`22719565943`): success with expected summary and artifact-link output.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: wire a tiny docs-check script to validate this parity test target in pre-commit hooks for faster local feedback.
+
 ### 2026-03-05 - add non-json failure output example to release runbook (phase 76)
 
 - Scope: improve operator onboarding by adding a concrete non-JSON failure output snippet to production launch-gate runbook guidance.
