@@ -50,12 +50,12 @@ const main = async () => {
 
   if (!actualSnippet) {
     throw new Error(
-      `Runbook snippet marker/code block not found: ${RUNBOOK_SNIPPET_MARKER}`,
+      `Runbook snippet marker/code block not found.\nMarker: ${RUNBOOK_SNIPPET_MARKER}\nFixture: ${FIXTURE_PATH}\nRunbook: ${RUNBOOK_PATH}`,
     );
   }
   if (actualSnippet !== expectedSnippet) {
     throw new Error(
-      `Runbook snippet mismatch.\nExpected:\n${expectedSnippet}\n\nActual:\n${actualSnippet}`,
+      `Runbook snippet mismatch.\nFixture: ${FIXTURE_PATH}\nRunbook: ${RUNBOOK_PATH}\n\nExpected:\n${expectedSnippet}\n\nActual:\n${actualSnippet}\n\nHint: update the runbook snippet to match formatter output from fixture, then rerun: npm run release:runbook:failure-snippet:check`,
     );
   }
 
