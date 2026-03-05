@@ -159,6 +159,15 @@ jobs:
             --json \
             > "artifacts/release/post-release-health-inline-artifacts-schema-check-${{ github.run_id }}.json"
 
+      - name: Annotate launch gate summary with inline schema check
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/release/annotate-launch-gate-summary-inline-schema-check.mjs \
+            --summary "artifacts/release/production-launch-gate-summary.json" \
+            --schema-check "artifacts/release/post-release-health-inline-artifacts-schema-check-${{ github.run_id }}.json"
+
       - name: Render launch gate step summary markdown
         if: always()
         shell: bash

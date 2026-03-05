@@ -33,6 +33,33 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add inline schema-check node into launch-gate summary checks (phase 24)
+
+- Scope: include inline artifact summary schema-validation verdict directly in `production-launch-gate-summary.json` and make it part of top-level `pass/status`.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 10:12 -> 2026-03-05 10:21.
+- Changes:
+  - Added post-processing script:
+    - `scripts/release/annotate-launch-gate-summary-inline-schema-check.mjs`
+    - writes `checks.inlineHealthArtifactsSchema` into launch-gate summary and recomputes `pass/status`.
+  - Added unit coverage:
+    - `apps/api/src/__tests__/release-launch-gate-inline-schema-annotation.unit.spec.ts`
+    - validates both pass and fail annotation paths.
+  - Updated workflow `.github/workflows/production-launch-gate.yml`:
+    - after inline schema validation step, now runs summary annotation step so `checks` contains `inlineHealthArtifactsSchema`.
+  - Updated ops docs:
+    - `docs/ops/release-runbook.md`
+    - `docs/ops/release-checklist.md`.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-inline-schema-annotation.unit.spec.ts apps/api/src/__tests__/release-inline-health-artifacts-schema-check.unit.spec.ts apps/api/src/__tests__/release-inline-health-artifacts-check.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: expose `inlineHealthArtifactsSchema` in additional alerting/reporting surfaces that consume launch summary JSON.
+
 ### 2026-03-05 - live strict launch-gate pass with inline summary schema validation (phase 23)
 
 - Scope: confirm `Production Launch Gate` succeeds in live CI with both strict inline artifact presence assertion and new inline summary schema-validation step.

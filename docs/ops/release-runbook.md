@@ -75,6 +75,7 @@ Canonical references:
     - `post-release-health-schema-summary-inline`
     - `post-release-health-inline-artifacts-summary` (machine-readable presence check result; `status=fail` does not fail run unless `require_inline_health_artifacts=true`).
     - `post-release-health-inline-artifacts-schema-check` (JSON Schema validation result for inline artifact summary payload contract).
+  - Launch-gate summary JSON now includes `checks.inlineHealthArtifactsSchema` (derived from inline schema-check artifact) and this check participates in top-level `pass/status` calculation.
    - Recommended rollout to move from `skipped` to active external-channel verification:
      - set production `AGENT_GATEWAY_INGEST_CONNECTOR_PROFILES` (see `docs/ops/examples/agent-gateway-ingest-connector-profiles.example.json`),
      - deploy API with new env,
