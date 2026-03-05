@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { githubApiRequestWithTransientRetry } from './github-api-request-with-transient-retry.mjs';
 
 const GITHUB_API_VERSION = '2022-11-28';
 const DEFAULT_WORKFLOW_FILE = 'ci.yml';
@@ -208,37 +209,14 @@ const selectToken = async ({ candidates, baseApiUrl }) => {
 };
 
 const githubRequest = async ({ token, method, url, body }) => {
-  const response = await fetch(url, {
+  return githubApiRequestWithTransientRetry({
+    apiVersion: GITHUB_API_VERSION,
+    body,
     method,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': GITHUB_API_VERSION,
-      'Content-Type': 'application/json',
-    },
-    body: body ? JSON.stringify(body) : undefined,
+    retryLabel: `[release:smoke:dispatch] ${method} ${url}`,
+    token,
+    url,
   });
-
-  if (response.ok) {
-    if (response.status === 204) {
-      return null;
-    }
-    const text = await response.text();
-    return text ? JSON.parse(text) : null;
-  }
-
-  const errorText = await response.text();
-  let details = errorText;
-  try {
-    const json = JSON.parse(errorText);
-    details = json.message ? `${json.message}` : errorText;
-  } catch {
-    // keep raw response text
-  }
-
-  throw new Error(
-    `GitHub API ${method} ${url} failed: ${response.status} ${response.statusText}. ${details}`,
-  );
 };
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

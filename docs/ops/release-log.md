@@ -33,6 +33,29 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - migrate staging smoke dispatcher to shared GitHub transient retry helper (phase 100)
+
+- Scope: reduce transient GitHub API flaps during staging smoke workflow dispatch/polling by migrating `dispatch-staging-smoke` onto shared request+retry helper.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 15:31 -> 2026-03-05 15:35.
+- Changes:
+  - Updated `scripts/release/dispatch-staging-smoke.mjs`:
+    - replaced local GitHub request implementation with `githubApiRequestWithTransientRetry`,
+    - retained existing token fallback behavior and dispatch flow,
+    - added retry label context (`[release:smoke:dispatch] ...`) for clearer transient diagnostics.
+- Validation:
+  - `node --check scripts/release/dispatch-staging-smoke.mjs`: pass.
+  - `npm run release:smoke:dispatch` with `RELEASE_WAIT_FOR_COMPLETION=false`: pass (dispatch-only smoke run trigger succeeded).
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:runbook:failure-snippet:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass on rerun (`status: pass`, `generatedAtUtc: 2026-03-05T15:35:08.471Z`).
+- Incidents:
+  - first production gate validation attempt in this phase failed transiently with `Railway strict gate failed`; immediate rerun passed without code changes.
+- Follow-ups:
+  - optional: migrate `dispatch-staging-smoke-auto.mjs`, `dispatch-staging-smoke-tunnel.mjs`, and `collect-retry-failure-logs.mjs` to shared helper to complete the migration set.
+
 ### 2026-03-05 - migrate staging input manager to shared GitHub transient retry helper (phase 99)
 
 - Scope: harden staging input management workflow against transient GitHub API read failures by migrating `manage-staging-inputs` to shared request+retry helper while preserving `allow404` behavior.
