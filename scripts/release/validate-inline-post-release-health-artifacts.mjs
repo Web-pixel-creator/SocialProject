@@ -7,6 +7,9 @@ const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..', '..');
 
 const OUTPUT_LABEL = 'release:health:inline-artifacts:check';
+const OUTPUT_SCHEMA_PATH =
+  'docs/ops/schemas/release-inline-health-artifacts-summary-output.schema.json';
+const OUTPUT_SCHEMA_VERSION = '1.0.0';
 const REQUIRED_ARTIFACT_RELATIVE_PATHS = [
   'artifacts/release/post-release-health-run-<run_id>.json',
   'artifacts/release/post-release-health-summary-<run_id>.json',
@@ -127,6 +130,8 @@ const main = async () => {
   const status = missing.length === 0 ? 'pass' : 'fail';
 
   const summary = {
+    schemaPath: OUTPUT_SCHEMA_PATH,
+    schemaVersion: OUTPUT_SCHEMA_VERSION,
     label: OUTPUT_LABEL,
     status,
     strict: options.strict,

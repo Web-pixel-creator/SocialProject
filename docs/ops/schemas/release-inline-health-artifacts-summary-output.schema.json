@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Web-pixel-creator/SocialProject/blob/main/docs/ops/schemas/release-inline-health-artifacts-summary-output.schema.json",
+  "title": "Release Inline Health Artifacts Summary Output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaPath",
+    "schemaVersion",
+    "label",
+    "status",
+    "strict",
+    "runId",
+    "requiredTotal",
+    "presentTotal",
+    "present",
+    "missing",
+    "checks",
+    "generatedAtUtc"
+  ],
+  "properties": {
+    "schemaPath": {
+      "const": "docs/ops/schemas/release-inline-health-artifacts-summary-output.schema.json"
+    },
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "label": {
+      "const": "release:health:inline-artifacts:check"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail"
+      ]
+    },
+    "strict": {
+      "type": "boolean"
+    },
+    "runId": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "requiredTotal": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "presentTotal": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "present": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "missing": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/checkEntry"
+      }
+    },
+    "generatedAtUtc": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "$defs": {
+    "checkEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "present",
+        "sizeBytes",
+        "reason"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "present": {
+          "type": "boolean"
+        },
+        "sizeBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reason": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "enum": [
+                "not_found",
+                "stat_error",
+                "empty_or_not_file"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

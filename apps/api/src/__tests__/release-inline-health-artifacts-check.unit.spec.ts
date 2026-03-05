@@ -5,6 +5,9 @@ import path from 'node:path';
 const projectRoot = path.resolve(__dirname, '..', '..', '..', '..');
 const successRunId = 999_999_021;
 const missingRunId = 999_999_022;
+const outputSchemaPath =
+  'docs/ops/schemas/release-inline-health-artifacts-summary-output.schema.json';
+const outputSchemaVersion = '1.0.0';
 
 const requiredRelativePaths = (runId: number) => [
   `artifacts/release/post-release-health-run-${String(runId)}.json`,
@@ -58,6 +61,8 @@ describe('inline post-release health artifacts validator', () => {
 
     expect(result.status).toBe(0);
     const payload = JSON.parse(result.stdout);
+    expect(payload.schemaPath).toBe(outputSchemaPath);
+    expect(payload.schemaVersion).toBe(outputSchemaVersion);
     expect(payload.status).toBe('pass');
     expect(payload.presentTotal).toBe(3);
     expect(payload.missing).toEqual([]);
@@ -81,6 +86,8 @@ describe('inline post-release health artifacts validator', () => {
 
     expect(result.status).toBe(1);
     const payload = JSON.parse(result.stdout);
+    expect(payload.schemaPath).toBe(outputSchemaPath);
+    expect(payload.schemaVersion).toBe(outputSchemaVersion);
     expect(payload.status).toBe('fail');
     expect(payload.presentTotal).toBe(2);
     expect(payload.missing).toEqual([
@@ -105,6 +112,8 @@ describe('inline post-release health artifacts validator', () => {
 
     expect(result.status).toBe(0);
     const payload = JSON.parse(result.stdout);
+    expect(payload.schemaPath).toBe(outputSchemaPath);
+    expect(payload.schemaVersion).toBe(outputSchemaVersion);
     expect(payload.status).toBe('fail');
     expect(payload.strict).toBe(false);
     expect(payload.missing.length).toBe(1);

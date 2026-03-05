@@ -33,6 +33,29 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - formalize inline artifact summary output schema contract (phase 21)
+
+- Scope: make `release:health:inline-artifacts:check` output explicitly versioned and self-describing for downstream consumers.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 10:31 -> 2026-03-05 10:36.
+- Changes:
+  - Added schema:
+    - `docs/ops/schemas/release-inline-health-artifacts-summary-output.schema.json`.
+  - Added sample payload:
+    - `docs/ops/schemas/samples/release-inline-health-artifacts-summary-output.sample.json`.
+  - Updated `scripts/release/validate-inline-post-release-health-artifacts.mjs`:
+    - output now includes `schemaPath` and `schemaVersion`.
+  - Extended `apps/api/src/__tests__/release-inline-health-artifacts-check.unit.spec.ts`:
+    - assertions cover `schemaPath` and `schemaVersion` in strict/non-strict scenarios.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-inline-health-artifacts-check.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add CI JSON Schema validation for generated inline artifact summaries against this contract.
+
 ### 2026-03-05 - strict production launch-gate regression pass after inline artifact gating (phase 20)
 
 - Scope: verify strict production launch-gate remains green after phase 18/19 inline artifact gate and stabilization changes.

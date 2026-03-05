@@ -1,0 +1,37 @@
+{
+  "schemaPath": "docs/ops/schemas/release-inline-health-artifacts-summary-output.schema.json",
+  "schemaVersion": "1.0.0",
+  "label": "release:health:inline-artifacts:check",
+  "status": "pass",
+  "strict": true,
+  "runId": 22712013489,
+  "requiredTotal": 3,
+  "presentTotal": 3,
+  "present": [
+    "artifacts/release/post-release-health-run-22712013489.json",
+    "artifacts/release/post-release-health-summary-22712013489.json",
+    "artifacts/release/post-release-health-schema-summary-22712013489.json"
+  ],
+  "missing": [],
+  "checks": [
+    {
+      "path": "artifacts/release/post-release-health-run-22712013489.json",
+      "present": true,
+      "sizeBytes": 9997,
+      "reason": null
+    },
+    {
+      "path": "artifacts/release/post-release-health-summary-22712013489.json",
+      "present": true,
+      "sizeBytes": 4500,
+      "reason": null
+    },
+    {
+      "path": "artifacts/release/post-release-health-schema-summary-22712013489.json",
+      "present": true,
+      "sizeBytes": 1142,
+      "reason": null
+    }
+  ],
+  "generatedAtUtc": "2026-03-05T09:44:12.000Z"
+}
