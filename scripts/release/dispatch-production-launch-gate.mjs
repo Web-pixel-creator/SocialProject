@@ -59,6 +59,16 @@ const parseBoolean = (raw, fallback) => {
   return fallback;
 };
 
+const parseBooleanEnv = (raw, fallback, sourceLabel) => {
+  if (typeof raw !== 'string' || raw.trim().length === 0) return fallback;
+  const normalized = raw.trim().toLowerCase();
+  if (['1', 'true', 'yes', 'y'].includes(normalized)) return true;
+  if (['0', 'false', 'no', 'n'].includes(normalized)) return false;
+  throw new Error(
+    `Invalid value for ${sourceLabel}: ${raw.trim()}. Expected boolean true/false (accepted: 1,0,yes,no,y,n).`,
+  );
+};
+
 const readOriginRemote = () => {
   const remote = execFileSync('git', ['config', '--get', 'remote.origin.url'], {
     encoding: 'utf8',
@@ -533,9 +543,10 @@ const main = async () => {
   const workflowRef = (
     process.env.RELEASE_WORKFLOW_REF ?? DEFAULT_WORKFLOW_REF
   ).trim();
-  const waitForCompletion = parseBoolean(
+  const waitForCompletion = parseBooleanEnv(
     process.env.RELEASE_WAIT_FOR_COMPLETION,
     true,
+    'RELEASE_WAIT_FOR_COMPLETION',
   );
   const waitTimeoutMs = parsePositiveIntegerEnv(
     process.env.RELEASE_WAIT_TIMEOUT_MS,

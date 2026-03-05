@@ -15,8 +15,8 @@ const runDispatchScript = (
       encoding: 'utf8',
       env: {
         ...process.env,
-        ...envOverrides,
         RELEASE_WAIT_FOR_COMPLETION: 'false',
+        ...envOverrides,
       },
     },
   );
@@ -193,6 +193,17 @@ describe('launch-gate dispatch helper cli argument validation', () => {
     expect(result.status).toBe(1);
     expect(result.stderr).toContain(
       'Invalid value for RELEASE_WAIT_POLL_MS: 0',
+    );
+  });
+
+  test('fails fast on invalid RELEASE_WAIT_FOR_COMPLETION env value', () => {
+    const result = runDispatchScript([], {
+      RELEASE_WAIT_FOR_COMPLETION: 'maybe',
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Invalid value for RELEASE_WAIT_FOR_COMPLETION: maybe',
     );
   });
 });

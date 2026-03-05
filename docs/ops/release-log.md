@@ -33,6 +33,32 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - strict boolean validation for dispatch wait-completion env toggle (phase 55)
+
+- Scope: remove silent fallback behavior for invalid `RELEASE_WAIT_FOR_COMPLETION` values and fail with explicit diagnostics.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 11:37 -> 2026-03-05 11:40.
+- Changes:
+  - Updated `scripts/release/dispatch-production-launch-gate.mjs`:
+    - added strict boolean env parser `parseBooleanEnv`,
+    - switched `RELEASE_WAIT_FOR_COMPLETION` parsing from permissive fallback to strict validation,
+    - invalid values now fail with clear accepted-forms guidance.
+  - Updated `apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts`:
+    - fixed env override merge order in harness so per-test overrides can replace default `RELEASE_WAIT_FOR_COMPLETION=false`,
+    - added negative coverage for invalid `RELEASE_WAIT_FOR_COMPLETION=maybe`.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-external-channels.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-help-snapshot.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - live dispatch regression:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --print-artifact-links --artifact-link-names all`
+    - run `#77` (`22716167316`): success with expected summary and artifact-link output.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: apply the same strict boolean parser to other dispatch env booleans (`RELEASE_REQUIRE_SKILL_MARKERS`, `RELEASE_REQUIRE_NATURAL_CRON_WINDOW`, `RELEASE_REQUIRE_INLINE_HEALTH_ARTIFACTS`, `RELEASE_ALLOW_FAILURE_DRILL`) for full consistency.
+
 ### 2026-03-05 - fail fast on invalid dispatch wait env timing values (phase 54)
 
 - Scope: prevent silent fallback to defaults for dispatch wait timing env vars by enforcing explicit validation errors on invalid values.
