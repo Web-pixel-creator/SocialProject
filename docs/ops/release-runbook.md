@@ -42,6 +42,7 @@ Canonical references:
    - CI run now uploads markdown audit artifact `production-launch-gate-step-summary` (`artifacts/release/production-launch-gate-step-summary.md`) in addition to JSON artifacts.
   - `npm run release:launch:gate:dispatch` now prints resolved UI link for artifact `production-launch-gate-step-summary` after successful run completion.
   - Optional helper verbosity for extra artifact links: `npm run release:launch:gate:dispatch -- --print-artifact-links` (or env `RELEASE_PRINT_ARTIFACT_LINKS=true`).
+  - Optional artifact link subset override: `npm run release:launch:gate:dispatch -- --artifact-link-names production-launch-gate-summary,post-release-health-inline-artifacts-schema-check` (or env `RELEASE_ARTIFACT_LINK_NAMES=<csv|all>`).
    - CI launch-gate workflow uses `RELEASE_*` context for production probes:
      - `RELEASE_API_BASE_URL`, `RELEASE_WEB_BASE_URL` (repo variables)
      - `RELEASE_ADMIN_API_TOKEN`, `RELEASE_CSRF_TOKEN`, `RELEASE_AGENT_GATEWAY_WEBHOOK_SECRET` (repo secrets)
@@ -54,11 +55,13 @@ Canonical references:
         - `npm run release:launch:gate:dispatch -- --required-external-channels telegram,slack`
         - `npm run release:launch:gate:dispatch -- --require-inline-health-artifacts`
         - `npm run release:launch:gate:dispatch -- --print-artifact-links`
+        - `npm run release:launch:gate:dispatch -- --artifact-link-names production-launch-gate-summary,post-release-health-inline-artifacts-schema-check`
          - controlled negative drill: `npm run release:launch:gate:dispatch -- --required-external-channels all --allow-failure-drill --webhook-secret-override <dummy-value>`
        - Token resolution order: `-Token/--token` -> `GITHUB_TOKEN/GH_TOKEN` -> `gh auth token`
        - Optional inputs via env: `RELEASE_RUNTIME_DRAFT_ID=<uuid> RELEASE_REQUIRE_SKILL_MARKERS=true RELEASE_REQUIRE_NATURAL_CRON_WINDOW=true`
        - Optional required external channels via env: `RELEASE_REQUIRED_EXTERNAL_CHANNELS=telegram,slack` (or `all`)
-       - Optional strict inline health artifact requirement via env: `RELEASE_REQUIRE_INLINE_HEALTH_ARTIFACTS=true`
+      - Optional strict inline health artifact requirement via env: `RELEASE_REQUIRE_INLINE_HEALTH_ARTIFACTS=true`
+      - Optional artifact link names via env: `RELEASE_ARTIFACT_LINK_NAMES=production-launch-gate-summary,post-release-health-inline-artifacts-schema-check` (or `all`)
        - Optional strict inline health artifact assertion via workflow input:
          - `require_inline_health_artifacts=true`
        - Optional drill inputs via env (drill-only): `RELEASE_ALLOW_FAILURE_DRILL=true RELEASE_WEBHOOK_SECRET_OVERRIDE=<value>`

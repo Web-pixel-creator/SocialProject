@@ -15,6 +15,10 @@ const OPTIONAL_ARTIFACT_LINK_NAMES = [
   'post-release-health-inline-artifacts-schema-check',
   'post-release-health-inline-artifacts-summary',
 ];
+const ALLOWED_ARTIFACT_LINK_NAMES = [
+  LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME,
+  ...OPTIONAL_ARTIFACT_LINK_NAMES,
+];
 const EXTERNAL_CHANNELS = ['telegram', 'slack', 'discord'];
 const USAGE = `Usage: npm run release:launch:gate:dispatch -- [options]
 
@@ -28,6 +32,7 @@ Options:
   --allow-failure-drill                  workflow input allow_failure_drill=true
   --webhook-secret-override <value>      workflow input webhook_secret_override (requires allow_failure_drill)
   --print-artifact-links                 print links for additional high-signal artifacts after success
+  --artifact-link-names <csv|all>        override artifact link set (allowed: ${ALLOWED_ARTIFACT_LINK_NAMES.join(', ')}, or all)
   --help|-h
 
 Token resolution order:
@@ -106,6 +111,29 @@ const parseExternalChannels = (raw, sourceLabel) => {
   return [...new Set(normalized)].join(',');
 };
 
+const parseArtifactLinkNames = (raw, sourceLabel) => {
+  if (typeof raw !== 'string') return [];
+  const normalized = raw
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+  if (normalized.length === 0) return [];
+  if (normalized.includes('all')) {
+    return [...OPTIONAL_ARTIFACT_LINK_NAMES];
+  }
+  const invalid = normalized.filter(
+    (entry) => !ALLOWED_ARTIFACT_LINK_NAMES.includes(entry),
+  );
+  if (invalid.length > 0) {
+    throw new Error(
+      `${sourceLabel} contains unsupported artifact names: ${invalid.join(', ')}. Allowed: ${ALLOWED_ARTIFACT_LINK_NAMES.join(', ')} or all.`,
+    );
+  }
+  return [...new Set(normalized)].filter(
+    (entry) => entry !== LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME,
+  );
+};
+
 const parseCliArgs = (argv) => {
   let tokenFromArg = '';
   let runtimeDraftId = '';
@@ -115,6 +143,7 @@ const parseCliArgs = (argv) => {
   let requireInlineHealthArtifacts;
   let allowFailureDrill;
   let printArtifactLinks;
+  let artifactLinkNames = [];
   let webhookSecretOverride = '';
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -175,6 +204,14 @@ const parseCliArgs = (argv) => {
       webhookSecretOverride = value;
       continue;
     }
+    if (arg.startsWith('--artifact-link-names=')) {
+      const value = arg.slice('--artifact-link-names='.length);
+      if (!value) {
+        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
+      }
+      artifactLinkNames = parseArtifactLinkNames(value, '--artifact-link-names');
+      continue;
+    }
     if (arg === '--runtime-draft-id') {
       const value = (argv[index + 1] ?? '').trim();
       if (!value) {
@@ -216,6 +253,15 @@ const parseCliArgs = (argv) => {
       printArtifactLinks = true;
       continue;
     }
+    if (arg === '--artifact-link-names') {
+      const value = (argv[index + 1] ?? '').trim();
+      if (!value) {
+        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
+      }
+      artifactLinkNames = parseArtifactLinkNames(value, '--artifact-link-names');
+      index += 1;
+      continue;
+    }
     if (arg === '--webhook-secret-override') {
       const value = argv[index + 1] ?? '';
       if (!value) {
@@ -240,6 +286,7 @@ const parseCliArgs = (argv) => {
 
   return {
     allowFailureDrill,
+    artifactLinkNames,
     requireInlineHealthArtifacts,
     requireNaturalCronWindow,
     requireSkillMarkers,
@@ -452,15 +499,20 @@ const findRunArtifactsByNames = async ({
 };
 
 const printLaunchGateArtifactLinks = async ({
+  artifactLinkNames,
   baseApiUrl,
   printArtifactLinks,
   repoSlug,
   runId,
   token,
 }) => {
-  const artifactNames = printArtifactLinks
-    ? [LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME, ...OPTIONAL_ARTIFACT_LINK_NAMES]
-    : [LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME];
+  const requestedArtifactNames = printArtifactLinks
+    ? artifactLinkNames
+    : [];
+  const artifactNames = [
+    LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME,
+    ...requestedArtifactNames,
+  ];
 
   try {
     const artifacts = await findRunArtifactsByNames({
@@ -492,7 +544,7 @@ const printLaunchGateArtifactLinks = async ({
     if (!printArtifactLinks) {
       return;
     }
-    for (const artifactName of OPTIONAL_ARTIFACT_LINK_NAMES) {
+    for (const artifactName of requestedArtifactNames) {
       const artifact = artifacts.get(artifactName);
       if (!artifact) {
         process.stderr.write(
@@ -557,10 +609,26 @@ const main = async () => {
     typeof cli.requireInlineHealthArtifacts === 'boolean'
       ? cli.requireInlineHealthArtifacts
       : parseBoolean(process.env.RELEASE_REQUIRE_INLINE_HEALTH_ARTIFACTS, false);
-  const printArtifactLinks =
+  const envArtifactLinkNames = parseArtifactLinkNames(
+    process.env.RELEASE_ARTIFACT_LINK_NAMES ?? '',
+    'RELEASE_ARTIFACT_LINK_NAMES',
+  );
+  const artifactLinkNames =
+    cli.artifactLinkNames.length > 0 ? cli.artifactLinkNames : envArtifactLinkNames;
+  const explicitPrintArtifactLinks =
     typeof cli.printArtifactLinks === 'boolean'
       ? cli.printArtifactLinks
       : parseBoolean(process.env.RELEASE_PRINT_ARTIFACT_LINKS, false);
+  const printArtifactLinks =
+    explicitPrintArtifactLinks ||
+    cli.artifactLinkNames.length > 0 ||
+    envArtifactLinkNames.length > 0;
+  const selectedArtifactLinkNames =
+    artifactLinkNames.length > 0
+      ? artifactLinkNames
+      : printArtifactLinks
+        ? OPTIONAL_ARTIFACT_LINK_NAMES
+        : [];
   const allowFailureDrill =
     typeof cli.allowFailureDrill === 'boolean'
       ? cli.allowFailureDrill
@@ -678,6 +746,15 @@ const main = async () => {
   process.stdout.write(
     `Print artifact links option: ${printArtifactLinks ? 'true' : 'false'}\n`,
   );
+  if (printArtifactLinks) {
+    process.stdout.write(
+      `Artifact link names: ${
+        selectedArtifactLinkNames.length > 0
+          ? selectedArtifactLinkNames.join(',')
+          : 'none'
+      }\n`,
+    );
+  }
   if (webhookSecretOverride) {
     process.stdout.write('Webhook secret override input: [provided]\n');
   }
@@ -742,6 +819,7 @@ const main = async () => {
       if (conclusion === 'success') {
         process.stdout.write(`Run succeeded: ${current.html_url}\n`);
         await printLaunchGateArtifactLinks({
+          artifactLinkNames: selectedArtifactLinkNames,
           baseApiUrl,
           printArtifactLinks,
           repoSlug,
