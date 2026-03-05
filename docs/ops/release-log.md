@@ -33,6 +33,30 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - wire runbook snippet parity check into CI test job (phase 79)
+
+- Scope: enforce runbook/formatter snippet parity on every PR/CI run by integrating parity command into the main CI workflow.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 13:18 -> 2026-03-05 13:22.
+- Changes:
+  - Updated `.github/workflows/ci.yml`:
+    - in `test` job, added step `Check production launch-gate runbook snippet parity`,
+    - step command: `npm run release:runbook:failure-snippet:check`.
+- Validation:
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run release:runbook:failure-snippet:check`: pass.
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-production-failure-runbook-example.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-failure-runbook-check-script.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T13:20:53.642Z`).
+  - live dispatch regression:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --print-artifact-links --artifact-link-names all`
+    - run `#93` (`22719917774`): success with expected summary and artifact-link output.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add a short CI job-summary line that points maintainers to the exact fixture file when parity fails.
+
 ### 2026-03-05 - add one-command runbook snippet parity check script (phase 78)
 
 - Scope: speed up local/CI feedback for docs/formatter drift by adding a standalone parity-check command for production non-JSON failure snippet.

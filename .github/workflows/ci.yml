@@ -160,6 +160,9 @@ jobs:
       - name: Validate retry diagnostics JSON schemas
         run: npm run release:smoke:retry:schema:check
 
+      - name: Check production launch-gate runbook snippet parity
+        run: npm run release:runbook:failure-snippet:check
+
       - name: Generate retry schema gate JSON summary
         shell: bash
         run: mkdir -p artifacts/release && node scripts/release/validate-retry-schema-gate.mjs --json > artifacts/release/retry-schema-gate-summary.json
