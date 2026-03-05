@@ -8,6 +8,15 @@ Canonical references:
 - `docs/ops/rollback-playbook.md`
 - `docs/ops/agent-gateway-ai-runtime-runbook.md`
 
+## Helper Diagnostics Map
+
+Use this map when a release helper fails fast on argument/env validation and you need to find the enforcing code quickly.
+
+| Helper path | Primary validation modules |
+| --- | --- |
+| `scripts/release/dispatch-production-launch-gate.mjs` | `scripts/release/release-env-parse-utils.mjs`, `scripts/release/dispatch-production-launch-gate-link-options.mjs`, `scripts/release/dispatch-production-launch-gate-external-channels.mjs` |
+| `scripts/release/production-launch-gate.mjs` | `scripts/release/release-env-parse-utils.mjs`, `scripts/release/production-launch-gate-config-resolvers.mjs`, `scripts/release/dispatch-production-launch-gate-external-channels.mjs` |
+
 ## 1. Preflight (must pass before rollout)
 
 1. Validate required release environment variables in the target environment:

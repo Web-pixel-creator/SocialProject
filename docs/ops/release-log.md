@@ -33,6 +33,27 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add helper diagnostics map section to release runbook (phase 66)
+
+- Scope: speed up on-call/operator triage by documenting direct script-to-validator module mapping in one place.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 12:15 -> 2026-03-05 12:16.
+- Changes:
+  - Updated `docs/ops/release-runbook.md`:
+    - added top-level `Helper Diagnostics Map` section,
+    - added quick mapping table for:
+      - `dispatch-production-launch-gate.mjs`
+      - `production-launch-gate.mjs`
+    - includes primary parser/resolver modules used for fast-fail validation.
+- Validation:
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: keep this table synchronized whenever validation logic is moved to new modules.
+
 ### 2026-03-05 - extend shared integer parser tests for partial/decimal invalid inputs (phase 65)
 
 - Scope: lock strict numeric parsing contract in shared release env parser by explicitly covering partial and decimal invalid forms.
