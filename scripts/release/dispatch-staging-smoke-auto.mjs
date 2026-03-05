@@ -1,4 +1,5 @@
 import { execFileSync, spawn } from 'node:child_process';
+import { githubApiRequestWithTransientRetry } from './github-api-request-with-transient-retry.mjs';
 
 const GITHUB_API_VERSION = '2022-11-28';
 const USAGE = `Usage: npm run release:smoke:dispatch:auto -- [--help] [--dry-run] [--prefer-tunnel]
@@ -72,37 +73,14 @@ const resolveToken = () => {
   return readTokenFromGitCredentialStore();
 };
 
-const githubRequest = async ({ token, method, url }) => {
-  const response = await fetch(url, {
+const githubRequest = async ({ token, method, url }) =>
+  githubApiRequestWithTransientRetry({
+    apiVersion: GITHUB_API_VERSION,
     method,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': GITHUB_API_VERSION,
-      'Content-Type': 'application/json',
-    },
+    retryLabel: `[release:smoke:dispatch:auto] ${method} ${url}`,
+    token,
+    url,
   });
-
-  if (response.ok) {
-    if (response.status === 204) {
-      return null;
-    }
-    const text = await response.text();
-    return text ? JSON.parse(text) : null;
-  }
-
-  const errorText = await response.text();
-  let details = errorText;
-  try {
-    const json = JSON.parse(errorText);
-    details = json.message ? `${json.message}` : errorText;
-  } catch {
-    // keep raw response text
-  }
-  throw new Error(
-    `GitHub API ${method} ${url} failed: ${response.status} ${response.statusText}. ${details}`,
-  );
-};
 
 const readRepoReleaseVariables = async ({ token, repoSlug }) => {
   if (!token) {
