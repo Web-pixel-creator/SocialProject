@@ -33,6 +33,34 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - optional suppression of default step-summary link in dispatch helper (phase 33)
+
+- Scope: support artifact-only helper output by suppressing default step-summary URL when operators need fully custom link selection.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 10:41 -> 2026-03-05 10:45.
+- Changes:
+  - Updated `scripts/release/dispatch-production-launch-gate.mjs`:
+    - new CLI flag: `--no-step-summary-link`,
+    - new env toggle: `RELEASE_NO_STEP_SUMMARY_LINK=true`,
+    - when enabled, helper omits default `production-launch-gate-step-summary` URL and prints only selected artifact links.
+  - Updated docs:
+    - `docs/ops/release-runbook.md`
+    - `docs/ops/release-checklist.md`.
+- Validation:
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - live dispatch (artifact-only mode):
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --artifact-link-names production-launch-gate-summary --no-step-summary-link`
+    - run `#68` (`22714047603`): success.
+    - helper stdout confirmed:
+      - `Include step summary link: false`
+      - printed only `Launch-gate artifact (production-launch-gate-summary): .../artifacts/5777464406`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add a small unit test harness around helper argument resolution to lock combinations of `--print-artifact-links`, `--artifact-link-names`, and `--no-step-summary-link`.
+
 ### 2026-03-05 - selectable artifact-link subsets in dispatch helper (phase 32)
 
 - Scope: allow operators to choose which artifact URLs helper prints after successful launch-gate dispatch.

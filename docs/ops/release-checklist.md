@@ -227,6 +227,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
         - [ ] `--require-inline-health-artifacts`
         - [ ] `--print-artifact-links` (optional: print additional artifact URLs in helper stdout)
         - [ ] `--artifact-link-names <csv|all>` (optional: select artifact URL subset in helper stdout)
+        - [ ] `--no-step-summary-link` (optional: suppress default step-summary artifact URL)
         - [ ] `--allow-failure-drill`
         - [ ] `--webhook-secret-override <value>` (requires `--allow-failure-drill`; drill-only)
       - [ ] Optional runtime draft input: `RELEASE_RUNTIME_DRAFT_ID=<uuid>`
@@ -236,6 +237,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
       - [ ] Optional inline artifact strict requirement: `RELEASE_REQUIRE_INLINE_HEALTH_ARTIFACTS=true`
       - [ ] Optional artifact-link verbosity: `RELEASE_PRINT_ARTIFACT_LINKS=true`
       - [ ] Optional artifact-link subset: `RELEASE_ARTIFACT_LINK_NAMES=<csv|all>`
+      - [ ] Optional step-summary link suppression: `RELEASE_NO_STEP_SUMMARY_LINK=true`
       - [ ] Optional controlled drill toggles:
         - [ ] `RELEASE_ALLOW_FAILURE_DRILL=true`
         - [ ] `RELEASE_WEBHOOK_SECRET_OVERRIDE=<value>` (requires `RELEASE_ALLOW_FAILURE_DRILL=true`)

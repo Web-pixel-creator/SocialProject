@@ -33,6 +33,7 @@ Options:
   --webhook-secret-override <value>      workflow input webhook_secret_override (requires allow_failure_drill)
   --print-artifact-links                 print links for additional high-signal artifacts after success
   --artifact-link-names <csv|all>        override artifact link set (allowed: ${ALLOWED_ARTIFACT_LINK_NAMES.join(', ')}, or all)
+  --no-step-summary-link                 suppress default step-summary artifact link output
   --help|-h
 
 Token resolution order:
@@ -144,6 +145,7 @@ const parseCliArgs = (argv) => {
   let allowFailureDrill;
   let printArtifactLinks;
   let artifactLinkNames = [];
+  let noStepSummaryLink;
   let webhookSecretOverride = '';
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -253,6 +255,10 @@ const parseCliArgs = (argv) => {
       printArtifactLinks = true;
       continue;
     }
+    if (arg === '--no-step-summary-link') {
+      noStepSummaryLink = true;
+      continue;
+    }
     if (arg === '--artifact-link-names') {
       const value = (argv[index + 1] ?? '').trim();
       if (!value) {
@@ -287,6 +293,7 @@ const parseCliArgs = (argv) => {
   return {
     allowFailureDrill,
     artifactLinkNames,
+    noStepSummaryLink,
     requireInlineHealthArtifacts,
     requireNaturalCronWindow,
     requireSkillMarkers,
@@ -501,6 +508,7 @@ const findRunArtifactsByNames = async ({
 const printLaunchGateArtifactLinks = async ({
   artifactLinkNames,
   baseApiUrl,
+  includeStepSummaryLink,
   printArtifactLinks,
   repoSlug,
   runId,
@@ -509,37 +517,44 @@ const printLaunchGateArtifactLinks = async ({
   const requestedArtifactNames = printArtifactLinks
     ? artifactLinkNames
     : [];
-  const artifactNames = [
-    LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME,
-    ...requestedArtifactNames,
-  ];
+  const artifactNames = includeStepSummaryLink
+    ? [LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME, ...requestedArtifactNames]
+    : [...requestedArtifactNames];
+  if (artifactNames.length === 0) {
+    return;
+  }
+  const requiredArtifactNames = includeStepSummaryLink
+    ? [LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME]
+    : [...requestedArtifactNames];
 
   try {
     const artifacts = await findRunArtifactsByNames({
       artifactNames,
       baseApiUrl,
-      requiredArtifactNames: [LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME],
+      requiredArtifactNames,
       runId,
       token,
     });
-    const stepSummaryArtifact = artifacts.get(
-      LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME,
-    );
-    if (!stepSummaryArtifact) {
-      process.stderr.write(
-        `Warning: artifact '${LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME}' not found for run ${runId} after ${ARTIFACT_DISCOVERY_ATTEMPTS} attempts.\n`,
+    if (includeStepSummaryLink) {
+      const stepSummaryArtifact = artifacts.get(
+        LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME,
       );
-      return;
+      if (!stepSummaryArtifact) {
+        process.stderr.write(
+          `Warning: artifact '${LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME}' not found for run ${runId} after ${ARTIFACT_DISCOVERY_ATTEMPTS} attempts.\n`,
+        );
+        return;
+      }
+      const stepSummaryArtifactId = Number(stepSummaryArtifact.id);
+      const stepSummaryArtifactUrl = toArtifactUiUrl({
+        repoSlug,
+        runId,
+        artifactId: stepSummaryArtifactId,
+      });
+      process.stdout.write(
+        `Launch-gate step summary artifact: ${stepSummaryArtifactUrl} (id: ${stepSummaryArtifactId})\n`,
+      );
     }
-    const stepSummaryArtifactId = Number(stepSummaryArtifact.id);
-    const stepSummaryArtifactUrl = toArtifactUiUrl({
-      repoSlug,
-      runId,
-      artifactId: stepSummaryArtifactId,
-    });
-    process.stdout.write(
-      `Launch-gate step summary artifact: ${stepSummaryArtifactUrl} (id: ${stepSummaryArtifactId})\n`,
-    );
 
     if (!printArtifactLinks) {
       return;
@@ -629,6 +644,10 @@ const main = async () => {
       : printArtifactLinks
         ? OPTIONAL_ARTIFACT_LINK_NAMES
         : [];
+  const includeStepSummaryLink =
+    typeof cli.noStepSummaryLink === 'boolean'
+      ? !cli.noStepSummaryLink
+      : !parseBoolean(process.env.RELEASE_NO_STEP_SUMMARY_LINK, false);
   const allowFailureDrill =
     typeof cli.allowFailureDrill === 'boolean'
       ? cli.allowFailureDrill
@@ -746,6 +765,9 @@ const main = async () => {
   process.stdout.write(
     `Print artifact links option: ${printArtifactLinks ? 'true' : 'false'}\n`,
   );
+  process.stdout.write(
+    `Include step summary link: ${includeStepSummaryLink ? 'true' : 'false'}\n`,
+  );
   if (printArtifactLinks) {
     process.stdout.write(
       `Artifact link names: ${
@@ -821,6 +843,7 @@ const main = async () => {
         await printLaunchGateArtifactLinks({
           artifactLinkNames: selectedArtifactLinkNames,
           baseApiUrl,
+          includeStepSummaryLink,
           printArtifactLinks,
           repoSlug,
           runId: Number(current.id),
