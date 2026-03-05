@@ -33,6 +33,34 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - release-health alert telemetry provenance (`source`) in health reports (phase 10)
+
+- Scope: add explicit provenance marker for release-health alert telemetry block to align with existing `source` coverage in sandbox/external-channel summaries.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 09:22 -> 2026-03-05 09:29.
+- Changes:
+  - Updated `scripts/release/post-release-health-report.mjs`:
+    - `releaseHealthAlertTelemetry` now includes `source` (`api`, `disabled`, `unavailable`),
+    - JSON summary mapping now returns telemetry `source`,
+    - console summary output now prints telemetry `source`.
+  - Updated `scripts/release/render-post-release-health-step-summary.mjs`:
+    - markdown step summary now prints telemetry `source`.
+  - Updated release health schema contract:
+    - `scripts/release/release-health-schema-contracts.mjs` bumped to `1.10.0`,
+    - `docs/ops/schemas/release-health-report-output.schema.json` now requires `releaseHealthAlertTelemetry.source`,
+    - sample updated in `docs/ops/schemas/samples/release-health-report-output.sample.json`.
+- Validation:
+  - `node --check scripts/release/post-release-health-report.mjs`: pass.
+  - `node --check scripts/release/render-post-release-health-step-summary.mjs`: pass.
+  - `npm run release:health:report:launch-gate:json`: pass.
+  - `npm run release:health:schema:check:json`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: expose telemetry `source` in any downstream alerting payloads if that block is forwarded externally.
+
 ### 2026-03-05 - external-channel trend provenance (`source`) in health reports (phase 9)
 
 - Scope: add explicit provenance marker for external-channel trend block in post-release health outputs for parity with launch-gate sandbox checks.

@@ -319,6 +319,7 @@ const fetchReleaseHealthAlertTelemetryCheck = async ({
   ).trim();
 
   const payloadBase = {
+    source: enabled ? 'unavailable' : 'disabled',
     enabled,
     strict,
     windowHours,
@@ -516,6 +517,7 @@ const fetchReleaseHealthAlertTelemetryCheck = async ({
 
   return {
     ...payloadBase,
+    source: 'api',
     endpointUrl,
     status: riskLevel,
     evaluated: true,
@@ -1834,6 +1836,10 @@ const toJsonSummaryPayload = ({ report, outputPath, strict }) => ({
     report.releaseHealthAlertTelemetry &&
     typeof report.releaseHealthAlertTelemetry === 'object'
       ? {
+          source:
+            typeof report.releaseHealthAlertTelemetry.source === 'string'
+              ? report.releaseHealthAlertTelemetry.source
+              : 'unavailable',
           enabled: report.releaseHealthAlertTelemetry.enabled === true,
           strict: report.releaseHealthAlertTelemetry.strict === true,
           windowHours: report.releaseHealthAlertTelemetry.windowHours,
@@ -2307,7 +2313,9 @@ const main = async () => {
       process.stdout.write(
         `Release-health alert telemetry: status=${String(
           report.releaseHealthAlertTelemetry.status,
-        )} risk=${String(report.releaseHealthAlertTelemetry.riskLevel)} evaluated=${String(
+        )} risk=${String(report.releaseHealthAlertTelemetry.riskLevel)} source=${String(
+          report.releaseHealthAlertTelemetry.source ?? 'unavailable',
+        )} evaluated=${String(
           report.releaseHealthAlertTelemetry.evaluated === true,
         )} escalation=${String(
           report.releaseHealthAlertTelemetry.escalationTriggered === true,

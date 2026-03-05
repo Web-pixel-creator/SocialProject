@@ -22,7 +22,7 @@
       "const": "docs/ops/schemas/release-health-report-output.schema.json"
     },
     "schemaVersion": {
-      "const": "1.9.0"
+      "const": "1.10.0"
     },
     "generatedAtUtc": {
       "type": "string",
@@ -882,6 +882,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "source",
         "enabled",
         "strict",
         "windowHours",
@@ -903,6 +904,14 @@
         "reasons"
       ],
       "properties": {
+        "source": {
+          "type": "string",
+          "enum": [
+            "api",
+            "disabled",
+            "unavailable"
+          ]
+        },
         "enabled": {
           "type": "boolean"
         },

@@ -165,7 +165,7 @@ const main = () => {
     ) {
       const telemetry = payload.releaseHealthAlertTelemetry;
       lines.push(
-        `- release-health alert risk: \`${String(telemetry?.riskLevel ?? 'unknown')}\` (status \`${String(telemetry?.status ?? 'unknown')}\`)`,
+        `- release-health alert risk: \`${String(telemetry?.riskLevel ?? 'unknown')}\` (status \`${String(telemetry?.status ?? 'unknown')}\`, source \`${String(telemetry?.source ?? 'unavailable')}\`)`,
         `- release-health alert evaluated: \`${telemetry?.evaluated === true ? 'yes' : 'no'}\``,
         `- release-health alert counts: \`events=${String(telemetry?.counts?.alertEvents ?? 0)} firstAppearances=${String(telemetry?.counts?.firstAppearances ?? 0)} alertedRuns=${String(telemetry?.counts?.alertedRuns ?? 0)}\``,
         `- release-health alert consecutive successful runs: \`${String(telemetry?.consecutiveSuccessfulRunStreak ?? 0)}\``,
