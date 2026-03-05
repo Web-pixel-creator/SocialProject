@@ -3,7 +3,10 @@ import path from 'node:path';
 
 const projectRoot = path.resolve(__dirname, '..', '..', '..', '..');
 
-const runDispatchScript = (args: string[]) =>
+const runDispatchScript = (
+  args: string[],
+  envOverrides: Record<string, string> = {},
+) =>
   spawnSync(
     process.execPath,
     ['scripts/release/dispatch-production-launch-gate.mjs', ...args],
@@ -12,6 +15,7 @@ const runDispatchScript = (args: string[]) =>
       encoding: 'utf8',
       env: {
         ...process.env,
+        ...envOverrides,
         RELEASE_WAIT_FOR_COMPLETION: 'false',
       },
     },
@@ -168,5 +172,27 @@ describe('launch-gate dispatch helper cli argument validation', () => {
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('contains unsupported artifact names');
+  });
+
+  test('fails fast on invalid RELEASE_WAIT_TIMEOUT_MS env value', () => {
+    const result = runDispatchScript([], {
+      RELEASE_WAIT_TIMEOUT_MS: 'abc',
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Invalid value for RELEASE_WAIT_TIMEOUT_MS: abc',
+    );
+  });
+
+  test('fails fast on invalid RELEASE_WAIT_POLL_MS env value', () => {
+    const result = runDispatchScript([], {
+      RELEASE_WAIT_POLL_MS: '0',
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Invalid value for RELEASE_WAIT_POLL_MS: 0',
+    );
   });
 });

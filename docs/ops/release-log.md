@@ -33,6 +33,36 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - fail fast on invalid dispatch wait env timing values (phase 54)
+
+- Scope: prevent silent fallback to defaults for dispatch wait timing env vars by enforcing explicit validation errors on invalid values.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 11:33 -> 2026-03-05 11:37.
+- Changes:
+  - Updated `scripts/release/dispatch-production-launch-gate.mjs`:
+    - replaced permissive `parseNumber` fallback with strict `parsePositiveIntegerEnv` validator,
+    - now validates:
+      - `RELEASE_WAIT_TIMEOUT_MS`
+      - `RELEASE_WAIT_POLL_MS`
+    - invalid values now fail with clear diagnostics (`Expected a positive integer`) instead of silently using defaults.
+  - Updated `apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts`:
+    - added env override helper support in test harness,
+    - added regression cases for invalid:
+      - `RELEASE_WAIT_TIMEOUT_MS=abc`
+      - `RELEASE_WAIT_POLL_MS=0`.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-external-channels.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-help-snapshot.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - live dispatch regression:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --print-artifact-links --artifact-link-names all`
+    - run `#75` (`22716058312`): success with expected summary and artifact-link output.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: align `RELEASE_WAIT_FOR_COMPLETION` parsing to strict true/false diagnostics if we want the same no-silent-fallback policy for booleans.
+
 ### 2026-03-05 - add inline `--flag=value` support for production launch-gate value flags (phase 53)
 
 - Scope: improve operator ergonomics while preserving strict validation by supporting inline value syntax across production launch-gate value options.

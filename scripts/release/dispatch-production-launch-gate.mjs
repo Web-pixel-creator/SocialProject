@@ -39,10 +39,16 @@ Token resolution order:
 3) gh auth token
 `;
 
-const parseNumber = (raw, fallback) => {
-  if (!raw) return fallback;
-  const parsed = Number(raw);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+const parsePositiveIntegerEnv = (raw, fallback, sourceLabel) => {
+  if (typeof raw !== 'string' || raw.trim().length === 0) return fallback;
+  const value = raw.trim();
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0 || `${parsed}` !== value) {
+    throw new Error(
+      `Invalid value for ${sourceLabel}: ${value}. Expected a positive integer.`,
+    );
+  }
+  return parsed;
 };
 
 const parseBoolean = (raw, fallback) => {
@@ -531,13 +537,15 @@ const main = async () => {
     process.env.RELEASE_WAIT_FOR_COMPLETION,
     true,
   );
-  const waitTimeoutMs = parseNumber(
+  const waitTimeoutMs = parsePositiveIntegerEnv(
     process.env.RELEASE_WAIT_TIMEOUT_MS,
     DEFAULT_WAIT_TIMEOUT_MS,
+    'RELEASE_WAIT_TIMEOUT_MS',
   );
-  const waitPollMs = parseNumber(
+  const waitPollMs = parsePositiveIntegerEnv(
     process.env.RELEASE_WAIT_POLL_MS,
     DEFAULT_WAIT_POLL_MS,
+    'RELEASE_WAIT_POLL_MS',
   );
   const runtimeDraftId =
     cli.runtimeDraftId || (process.env.RELEASE_RUNTIME_DRAFT_ID ?? '').trim();
