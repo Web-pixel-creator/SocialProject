@@ -24,6 +24,7 @@ import {
   resolveRepoSlug,
   resolveToken,
 } from './github-token-repo-resolution.mjs';
+import { normalizeReleaseCorrelationContext } from './release-correlation-utils.mjs';
 import { toErrorMessage } from './release-runtime-utils.mjs';
 
 const GITHUB_API_VERSION = '2022-11-28';
@@ -1018,6 +1019,7 @@ const summarizeLaunchGateSandboxChecks = ({
         ? launchGateSummary.generatedAtUtc
         : null,
     checks: normalizedChecks,
+    correlation: normalizeReleaseCorrelationContext(launchGateSummary?.correlation),
     failedChecks,
     fetchError: null,
     missingChecks,
@@ -1113,6 +1115,7 @@ const analyzeLaunchGateSandboxChecks = async ({
           total: null,
         },
       },
+      correlation: null,
       failedChecks: [],
       fetchError:
         `missing ${LAUNCH_GATE_SUMMARY_ARTIFACT_NAME} for current run ${String(
@@ -1210,6 +1213,7 @@ const analyzeLaunchGateSandboxChecks = async ({
           total: null,
         },
       },
+      correlation: null,
       failedChecks: [],
       fetchError: toErrorMessage(error),
       missingChecks: [
@@ -1732,6 +1736,10 @@ const toJsonSummaryPayload = ({ report, outputPath, strict }) => ({
   label: RELEASE_HEALTH_REPORT_LABEL,
   status: report.summary.pass ? 'pass' : 'fail',
   strict,
+  correlation:
+    report.correlation && typeof report.correlation === 'object'
+      ? report.correlation
+      : null,
   workflow: {
     file: report.workflow.file,
     profile: report.workflow.profile,
@@ -1895,6 +1903,11 @@ const toJsonSummaryPayload = ({ report, outputPath, strict }) => ({
           checkedAtUtc:
             typeof report.launchGateSandboxChecks.checkedAtUtc === 'string'
               ? report.launchGateSandboxChecks.checkedAtUtc
+              : null,
+          correlation:
+            report.launchGateSandboxChecks.correlation &&
+            typeof report.launchGateSandboxChecks.correlation === 'object'
+              ? report.launchGateSandboxChecks.correlation
               : null,
           pass: report.launchGateSandboxChecks.pass === true,
           summaryPass:
@@ -2070,6 +2083,10 @@ const main = async () => {
           currentRunArtifacts: artifacts,
         })
       : null;
+  const correlation =
+    launchGateSandboxChecks && typeof launchGateSandboxChecks === 'object'
+      ? launchGateSandboxChecks.correlation ?? null
+      : null;
   let smokeSummary = await readLocalSmokeSummary({
     runId,
     smokeFetchMode: workflowProfile.smokeFetchMode,
@@ -2173,6 +2190,7 @@ const main = async () => {
     schemaVersion: RELEASE_HEALTH_REPORT_JSON_SCHEMA_VERSION,
     generatedAtUtc: new Date().toISOString(),
     repository: repoSlug,
+    correlation,
     workflow: {
       file: workflowFile,
       profile: workflowProfile.profileKey,

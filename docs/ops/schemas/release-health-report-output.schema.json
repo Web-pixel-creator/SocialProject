@@ -22,7 +22,7 @@
       "const": "docs/ops/schemas/release-health-report-output.schema.json"
     },
     "schemaVersion": {
-      "const": "1.10.0"
+      "const": "1.11.0"
     },
     "generatedAtUtc": {
       "type": "string",
@@ -31,6 +31,16 @@
     "repository": {
       "type": "string",
       "minLength": 1
+    },
+    "correlation": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/correlationContext"
+        }
+      ]
     },
     "workflow": {
       "$ref": "#/$defs/workflow"
@@ -94,6 +104,29 @@
         "null"
       ],
       "format": "date-time"
+    },
+    "correlationContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "auditSessionId",
+        "correlationId",
+        "releaseRunId"
+      ],
+      "properties": {
+        "auditSessionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "correlationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "releaseRunId": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
     },
     "workflow": {
       "type": "object",
@@ -1068,6 +1101,7 @@
         "available",
         "checkedAtUtc",
         "checks",
+        "correlation",
         "failedChecks",
         "fetchError",
         "missingChecks",
@@ -1094,6 +1128,16 @@
         },
         "checkedAtUtc": {
           "$ref": "#/$defs/nullableDateTime"
+        },
+        "correlation": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/correlationContext"
+            }
+          ]
         },
         "checks": {
           "type": "object",

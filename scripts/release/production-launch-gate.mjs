@@ -16,6 +16,7 @@ import {
 } from './production-launch-gate-config-resolvers.mjs';
 import { buildProductionLaunchGateFailureLines } from './production-launch-gate-failure-output-format.mjs';
 import { buildSmokeTimeoutRetryDecision } from './production-launch-gate-smoke-timeout-retry-utils.mjs';
+import { createReleaseCorrelationContext } from './release-correlation-utils.mjs';
 import { sleep } from './release-runtime-utils.mjs';
 
 const DEFAULT_FAILURE_DETAIL_MAX_ITEMS = 10;
@@ -109,6 +110,9 @@ const SANDBOX_LIMIT_PROFILE_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 const SANDBOX_RUNTIME_PROBE_OPERATION = 'ai_runtime_dry_run';
 const SANDBOX_RUNTIME_REQUIRED_AUDIT_FIELDS = [
   'actorType',
+  'correlationId',
+  'releaseRunId',
+  'sessionId',
   'sourceRoute',
   'toolName',
 ];
@@ -852,10 +856,14 @@ const main = async () => {
   const o = parseArgs(process.argv.slice(2));
   if (o.help) return printHelp();
   await mkdir(path.resolve(DEFAULTS.artifactsDir), { recursive: true });
+  const correlation = createReleaseCorrelationContext({
+    scope: 'production-launch-gate',
+  });
 
   const summary = {
     artifacts: { ...ARTIFACTS, smoke: o.smokeResultsPath },
     checks: {},
+    correlation,
     config: { ...o, help: undefined },
     generatedAtUtc: new Date().toISOString(),
     pass: false,
@@ -1179,6 +1187,7 @@ const main = async () => {
         rows: naturalCronRows,
         utcDateKey,
       },
+      correlation,
       generatedAtUtc: new Date().toISOString(),
     };
     healthSummary.pass = Object.values(healthSummary.checks).every(Boolean);
@@ -1199,8 +1208,11 @@ const main = async () => {
         adminToken,
         apiBaseUrl,
         body: {
+          auditSessionId: correlation.auditSessionId,
+          correlationId: correlation.correlationId,
           role: 'critic',
           prompt: `production launch gate runtime dry run ${runtimeDraftId}`,
+          releaseRunId: correlation.releaseRunId,
         },
         csrfToken,
         method: 'POST',
@@ -1210,10 +1222,12 @@ const main = async () => {
       });
       const buildRuntimeSandboxMetricsPath = (overrides = {}) => {
         const query = new URLSearchParams({
+          correlationId: correlation.correlationId,
           hours: '24',
           limit: '20',
           mode: runtimeDryRunExpectedMode,
           operation: SANDBOX_RUNTIME_PROBE_OPERATION,
+          releaseRunId: correlation.releaseRunId,
         });
         for (const [key, value] of Object.entries(overrides)) {
           if (typeof value === 'string' && value.length > 0) {
@@ -1248,6 +1262,17 @@ const main = async () => {
       const sandboxExecutionAuditActorTypeCount =
         Number(sandboxExecutionMetrics.json?.auditCoverage?.actorTypeCount ?? 0) ||
         0;
+      const sandboxExecutionAuditCorrelationIdCount =
+        Number(
+          sandboxExecutionMetrics.json?.auditCoverage?.correlationIdCount ?? 0,
+        ) || 0;
+      const sandboxExecutionAuditReleaseRunIdCount =
+        Number(
+          sandboxExecutionMetrics.json?.auditCoverage?.releaseRunIdCount ?? 0,
+        ) || 0;
+      const sandboxExecutionAuditSessionIdCount =
+        Number(sandboxExecutionMetrics.json?.auditCoverage?.sessionIdCount ?? 0) ||
+        0;
       const sandboxExecutionAuditSourceRouteCount =
         Number(
           sandboxExecutionMetrics.json?.auditCoverage?.sourceRouteCount ?? 0,
@@ -1255,16 +1280,30 @@ const main = async () => {
       const sandboxExecutionAuditToolNameCount =
         Number(sandboxExecutionMetrics.json?.auditCoverage?.toolNameCount ?? 0) ||
         0;
+      const sandboxExecutionTelemetryExecutionSessionIdCount =
+        Number(
+          sandboxExecutionMetrics.json?.auditCoverage?.executionSessionIdCount ??
+            0,
+        ) || 0;
       const sandboxExecutionAuditPolicy = {
         actorTypeCount: sandboxExecutionAuditActorTypeCount,
+        correlation,
+        correlationIdCount: sandboxExecutionAuditCorrelationIdCount,
+        executionSessionIdCount: sandboxExecutionTelemetryExecutionSessionIdCount,
         pass:
           sandboxExecutionMetrics.ok &&
           sandboxExecutionMetricsTotal > 0 &&
           sandboxExecutionAuditTotalWithAudit > 0 &&
           sandboxExecutionAuditActorTypeCount > 0 &&
+          sandboxExecutionAuditCorrelationIdCount > 0 &&
+          sandboxExecutionAuditReleaseRunIdCount > 0 &&
+          sandboxExecutionAuditSessionIdCount > 0 &&
           sandboxExecutionAuditSourceRouteCount > 0 &&
-          sandboxExecutionAuditToolNameCount > 0,
+          sandboxExecutionAuditToolNameCount > 0 &&
+          sandboxExecutionTelemetryExecutionSessionIdCount > 0,
         requiredFields: SANDBOX_RUNTIME_REQUIRED_AUDIT_FIELDS,
+        releaseRunIdCount: sandboxExecutionAuditReleaseRunIdCount,
+        sessionIdCount: sandboxExecutionAuditSessionIdCount,
         sourceRouteCount: sandboxExecutionAuditSourceRouteCount,
         status: sandboxExecutionMetrics.status,
         toolNameCount: sandboxExecutionAuditToolNameCount,
@@ -1547,8 +1586,13 @@ const main = async () => {
       const rtArtifact = {
         baseUrl: apiBaseUrl,
         checkedAtUtc: new Date().toISOString(),
+        correlation,
         draftId: runtimeDraftId,
         runtimeDryRun: {
+          correlation:
+            runtimeDryRun.json?.correlation && typeof runtimeDryRun.json.correlation === 'object'
+              ? runtimeDryRun.json.correlation
+              : null,
           failed: runtimeDryRun.json?.result?.failed ?? null,
           ok: runtimeDryRun.ok,
           selectedProvider: runtimeDryRun.json?.result?.selectedProvider ?? null,
@@ -1645,6 +1689,7 @@ const main = async () => {
       summary.checks.sandboxExecutionAuditPolicy = {
         pass: rtArtifact.auditPolicy.pass,
         skipped: false,
+        correlation,
         requiredFields: rtArtifact.auditPolicy.requiredFields,
       };
       summary.checks.sandboxExecutionEgressPolicy = {

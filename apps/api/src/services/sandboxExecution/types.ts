@@ -16,6 +16,8 @@ export interface SandboxExecutionLimits {
 export interface SandboxExecutionAuditContext {
   actorId?: string;
   actorType?: string;
+  correlationId?: string;
+  releaseRunId?: string;
   sessionId?: string;
   sourceRoute?: string;
   toolName?: string;
@@ -24,6 +26,8 @@ export interface SandboxExecutionAuditContext {
 export interface SandboxExecutionTelemetryAuditMetadata {
   actorId: string | null;
   actorType: string | null;
+  correlationId: string | null;
+  releaseRunId: string | null;
   sessionId: string | null;
   sourceRoute: string | null;
   toolName: string | null;

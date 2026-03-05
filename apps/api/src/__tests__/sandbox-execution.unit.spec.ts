@@ -11,6 +11,8 @@ describe('sandbox execution service phase-a fallback', () => {
       audit: {
         actorId: string | null;
         actorType: string | null;
+        correlationId: string | null;
+        releaseRunId: string | null;
         sessionId: string | null;
         sourceRoute: string | null;
         toolName: string | null;
@@ -348,6 +350,9 @@ describe('sandbox execution service phase-a fallback', () => {
       audit: {
         actorId: 'admin-user-1',
         actorType: 'admin',
+        correlationId:
+          'rel.production-launch-gate.20260305190000.abcd1234.corr',
+        releaseRunId: 'rel.production-launch-gate.20260305190000.abcd1234',
         sessionId: 'session-123',
         sourceRoute: '/api/admin/ai-runtime/dry-run',
         toolName: 'aiRuntime.runWithFailover',
@@ -359,14 +364,21 @@ describe('sandbox execution service phase-a fallback', () => {
       audit: {
         actorId: string | null;
         actorType: string | null;
+        correlationId: string | null;
+        releaseRunId: string | null;
         sessionId: string | null;
         sourceRoute: string | null;
         toolName: string | null;
       } | null;
+      executionSessionId: string;
+      finishedAtUtc: string;
+      startedAtUtc: string;
     };
     expect(metadata.audit).toEqual({
       actorId: 'admin-user-1',
       actorType: 'admin',
+      correlationId: 'rel.production-launch-gate.20260305190000.abcd1234.corr',
+      releaseRunId: 'rel.production-launch-gate.20260305190000.abcd1234',
       sessionId: 'session-123',
       sourceRoute: '/api/admin/ai-runtime/dry-run',
       toolName: 'aiRuntime.runWithFailover',

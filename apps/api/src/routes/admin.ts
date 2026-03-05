@@ -105,6 +105,9 @@ const AI_RUNTIME_DRY_RUN_ALLOWED_FIELDS = new Set([
   'providersOverride',
   'simulateFailures',
   'timeoutMs',
+  'correlationId',
+  'releaseRunId',
+  'auditSessionId',
 ]);
 const AI_RUNTIME_DRY_RUN_MAX_ARRAY_ITEMS = 10;
 const AI_RUNTIME_DRY_RUN_MAX_ARRAY_ITEM_LENGTH = 64;
@@ -139,6 +142,7 @@ const AGENT_GATEWAY_CONNECTOR_ID_PATTERN = /^[a-z0-9][a-z0-9._:-]{1,63}$/;
 const ADMIN_UX_EVENT_TYPE_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,119}$/;
 const ADMIN_ERROR_CODE_PATTERN = /^[a-z0-9][a-z0-9_.-]{0,119}$/i;
 const ADMIN_ERROR_ROUTE_PATTERN = /^\/[a-z0-9/_:.-]{0,239}$/i;
+const RELEASE_CORRELATION_ID_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,119}$/;
 
 const parseBoundedQueryInt = (
   value: unknown,
@@ -874,6 +878,32 @@ const parseOptionalSandboxExecutionLimitProfileQuery = (
   return normalized;
 };
 
+const parseOptionalReleaseCorrelationQueryString = (
+  value: unknown,
+  {
+    fieldName,
+  }: {
+    fieldName: string;
+  },
+): string | null => {
+  const parsed = parseOptionalBoundedQueryString(value, {
+    fieldName,
+    maxLength: 120,
+  });
+  if (!parsed) {
+    return null;
+  }
+  const normalized = parsed.toLowerCase();
+  if (!RELEASE_CORRELATION_ID_PATTERN.test(normalized)) {
+    throw new ServiceError(
+      'ADMIN_INVALID_QUERY',
+      `${fieldName} must use a valid correlation identifier format.`,
+      400,
+    );
+  }
+  return normalized;
+};
+
 const parseOptionalGatewayEventTypeQueryString = (
   value: unknown,
   {
@@ -1410,6 +1440,32 @@ const parseOptionalStringArrayStrict = (
     normalized.push(identifier);
   }
   return normalized.length > 0 ? Array.from(new Set(normalized)) : undefined;
+};
+
+const parseOptionalRuntimeCorrelationBodyString = (
+  value: unknown,
+  {
+    fieldName,
+  }: {
+    fieldName: string;
+  },
+): string | undefined => {
+  const parsed = parseOptionalBoundedBodyString(value, {
+    fieldName,
+    maxLength: 120,
+  });
+  if (!parsed) {
+    return undefined;
+  }
+  const normalized = parsed.toLowerCase();
+  if (!RELEASE_CORRELATION_ID_PATTERN.test(normalized)) {
+    throw new ServiceError(
+      'AI_RUNTIME_INVALID_INPUT',
+      `${fieldName} must use a valid correlation identifier format.`,
+      400,
+    );
+  }
+  return normalized;
 };
 
 const parseOptionalRuntimeTimeout = (value: unknown): number | undefined => {
@@ -2836,6 +2892,9 @@ router.post(
       const providersOverrideRaw = body.providersOverride;
       const simulateFailuresRaw = body.simulateFailures;
       const timeoutMsRaw = body.timeoutMs;
+      const correlationIdRaw = body.correlationId;
+      const releaseRunIdRaw = body.releaseRunId;
+      const auditSessionIdRaw = body.auditSessionId;
 
       if (
         typeof roleRaw !== 'string' ||
@@ -2879,6 +2938,24 @@ router.post(
         { fieldName: 'simulateFailures' },
       );
       const timeoutMs = parseOptionalRuntimeTimeout(timeoutMsRaw);
+      const correlationId = parseOptionalRuntimeCorrelationBodyString(
+        correlationIdRaw,
+        {
+          fieldName: 'correlationId',
+        },
+      );
+      const releaseRunId = parseOptionalRuntimeCorrelationBodyString(
+        releaseRunIdRaw,
+        {
+          fieldName: 'releaseRunId',
+        },
+      );
+      const auditSessionId = parseOptionalRuntimeCorrelationBodyString(
+        auditSessionIdRaw,
+        {
+          fieldName: 'auditSessionId',
+        },
+      );
       const role = roleRaw as AIRuntimeRole;
       const roleProfile = aiRuntimeService
         .getProfiles()
@@ -2905,6 +2982,9 @@ router.post(
             typeof timeoutMs === 'number' ? { timeoutMs } : undefined,
           audit: {
             actorType: 'admin',
+            correlationId,
+            releaseRunId,
+            sessionId: auditSessionId,
             sourceRoute: '/api/admin/ai-runtime/dry-run',
             toolName: 'aiRuntime.runWithFailover',
           },
@@ -2912,6 +2992,14 @@ router.post(
       );
 
       res.json({
+        correlation:
+          correlationId || releaseRunId || auditSessionId
+            ? {
+                auditSessionId: auditSessionId ?? null,
+                correlationId: correlationId ?? null,
+                releaseRunId: releaseRunId ?? null,
+              }
+            : null,
         result,
         providers: aiRuntimeService.getProviderStates(),
       });
@@ -4608,6 +4696,9 @@ router.get(
           'egressDecision',
           'limitsProfile',
           'limitsDecision',
+          'correlationId',
+          'releaseRunId',
+          'executionSessionId',
         ],
         endpoint: '/api/admin/sandbox-execution/metrics',
       });
@@ -4651,6 +4742,24 @@ router.get(
         query.limitsDecision,
         {
           fieldName: 'limitsDecision',
+        },
+      );
+      const correlationId = parseOptionalReleaseCorrelationQueryString(
+        query.correlationId,
+        {
+          fieldName: 'correlationId',
+        },
+      );
+      const releaseRunId = parseOptionalReleaseCorrelationQueryString(
+        query.releaseRunId,
+        {
+          fieldName: 'releaseRunId',
+        },
+      );
+      const executionSessionId = parseOptionalReleaseCorrelationQueryString(
+        query.executionSessionId,
+        {
+          fieldName: 'executionSessionId',
         },
       );
       const limit = parseBoundedQueryInt(query.limit, {
@@ -4709,6 +4818,24 @@ router.get(
         params.push(limitsDecision);
         filters.push(
           `LOWER(COALESCE(metadata->>'limitsDecision', 'not_enforced')) = $${params.length}`,
+        );
+      }
+      if (correlationId) {
+        params.push(correlationId);
+        filters.push(
+          `LOWER(COALESCE(metadata #>> '{audit,correlationId}', '')) = $${params.length}`,
+        );
+      }
+      if (releaseRunId) {
+        params.push(releaseRunId);
+        filters.push(
+          `LOWER(COALESCE(metadata #>> '{audit,releaseRunId}', '')) = $${params.length}`,
+        );
+      }
+      if (executionSessionId) {
+        params.push(executionSessionId);
+        filters.push(
+          `LOWER(COALESCE(metadata->>'executionSessionId', '')) = $${params.length}`,
         );
       }
 
@@ -4780,6 +4907,8 @@ router.get(
                   WHERE
                     NULLIF(BTRIM(COALESCE(metadata #>> '{audit,actorId}', '')), '') IS NOT NULL
                     OR NULLIF(BTRIM(COALESCE(metadata #>> '{audit,actorType}', '')), '') IS NOT NULL
+                    OR NULLIF(BTRIM(COALESCE(metadata #>> '{audit,correlationId}', '')), '') IS NOT NULL
+                    OR NULLIF(BTRIM(COALESCE(metadata #>> '{audit,releaseRunId}', '')), '') IS NOT NULL
                     OR NULLIF(BTRIM(COALESCE(metadata #>> '{audit,sessionId}', '')), '') IS NOT NULL
                     OR NULLIF(BTRIM(COALESCE(metadata #>> '{audit,sourceRoute}', '')), '') IS NOT NULL
                     OR NULLIF(BTRIM(COALESCE(metadata #>> '{audit,toolName}', '')), '') IS NOT NULL
@@ -4791,6 +4920,12 @@ router.get(
                   WHERE NULLIF(BTRIM(COALESCE(metadata #>> '{audit,actorType}', '')), '') IS NOT NULL
                 )::int AS actor_type_count,
                 COUNT(*) FILTER (
+                  WHERE NULLIF(BTRIM(COALESCE(metadata #>> '{audit,correlationId}', '')), '') IS NOT NULL
+                )::int AS correlation_id_count,
+                COUNT(*) FILTER (
+                  WHERE NULLIF(BTRIM(COALESCE(metadata #>> '{audit,releaseRunId}', '')), '') IS NOT NULL
+                )::int AS release_run_id_count,
+                COUNT(*) FILTER (
                   WHERE NULLIF(BTRIM(COALESCE(metadata #>> '{audit,sessionId}', '')), '') IS NOT NULL
                 )::int AS session_id_count,
                 COUNT(*) FILTER (
@@ -4798,7 +4933,10 @@ router.get(
                 )::int AS source_route_count,
                 COUNT(*) FILTER (
                   WHERE NULLIF(BTRIM(COALESCE(metadata #>> '{audit,toolName}', '')), '') IS NOT NULL
-                )::int AS tool_name_count
+                )::int AS tool_name_count,
+                COUNT(*) FILTER (
+                  WHERE NULLIF(BTRIM(COALESCE(metadata->>'executionSessionId', '')), '') IS NOT NULL
+                )::int AS execution_session_id_count
          FROM ux_events
          WHERE ${filters.join(' AND ')}`,
         params,
@@ -4816,9 +4954,12 @@ router.get(
         total_with_audit: 0,
         actor_id_count: 0,
         actor_type_count: 0,
+        correlation_id_count: 0,
+        release_run_id_count: 0,
         session_id_count: 0,
         source_route_count: 0,
         tool_name_count: 0,
+        execution_session_id_count: 0,
       };
       const totalEvents = Number(summaryRow.total ?? 0);
       const totalWithAudit = Number(auditCoverageRow.total_with_audit ?? 0);
@@ -4833,6 +4974,9 @@ router.get(
           egressDecision,
           limitsProfile,
           limitsDecision,
+          correlationId,
+          releaseRunId,
+          executionSessionId,
           limit,
           source: SANDBOX_EXECUTION_TELEMETRY_SOURCE,
           eventType: SANDBOX_EXECUTION_TELEMETRY_EVENT_TYPE,
@@ -4855,9 +4999,16 @@ router.get(
           totalWithAudit,
           actorIdCount: Number(auditCoverageRow.actor_id_count ?? 0),
           actorTypeCount: Number(auditCoverageRow.actor_type_count ?? 0),
+          correlationIdCount: Number(
+            auditCoverageRow.correlation_id_count ?? 0,
+          ),
+          releaseRunIdCount: Number(auditCoverageRow.release_run_id_count ?? 0),
           sessionIdCount: Number(auditCoverageRow.session_id_count ?? 0),
           sourceRouteCount: Number(auditCoverageRow.source_route_count ?? 0),
           toolNameCount: Number(auditCoverageRow.tool_name_count ?? 0),
+          executionSessionIdCount: Number(
+            auditCoverageRow.execution_session_id_count ?? 0,
+          ),
           coverageRate:
             totalEvents > 0
               ? Number((totalWithAudit / totalEvents).toFixed(3))

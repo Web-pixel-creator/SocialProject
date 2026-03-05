@@ -1231,6 +1231,8 @@ export class SandboxExecutionServiceImpl implements SandboxExecutionService {
     const audit = {
       actorId: this.normalizeAuditValue(input.actorId),
       actorType: this.normalizeAuditValue(input.actorType),
+      correlationId: this.normalizeAuditValue(input.correlationId),
+      releaseRunId: this.normalizeAuditValue(input.releaseRunId),
       sessionId: this.normalizeAuditValue(input.sessionId),
       sourceRoute: this.normalizeAuditValue(input.sourceRoute),
       toolName: this.normalizeAuditValue(input.toolName),

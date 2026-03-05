@@ -106,6 +106,7 @@ describe('Admin API routes', () => {
         'sandbox_execution_attempt',
         'sandbox_execution',
         JSON.stringify({
+          executionSessionId: 'exec-session-1',
           operation: 'ai_runtime_dry_run',
           mode: 'fallback_only',
           egressProfile: 'openai_api',
@@ -116,6 +117,9 @@ describe('Admin API routes', () => {
           limitsDecision: 'allow',
           audit: {
             actorType: 'admin',
+            correlationId:
+              'rel.production-launch-gate.20260305190000.abcd1234.corr',
+            releaseRunId: 'rel.production-launch-gate.20260305190000.abcd1234',
             sourceRoute: '/api/admin/ai-runtime/dry-run',
             toolName: 'aiRuntime.runWithFailover',
           },
@@ -125,6 +129,7 @@ describe('Admin API routes', () => {
           errorMessage: null,
         }),
         JSON.stringify({
+          executionSessionId: 'exec-session-2',
           operation: 'ai_runtime_dry_run',
           mode: 'fallback_only',
           egressProfile: 'openai_api',
@@ -136,6 +141,9 @@ describe('Admin API routes', () => {
           audit: {
             actorId: 'admin-user-1',
             actorType: 'admin',
+            correlationId:
+              'rel.production-launch-gate.20260305190000.abcd1234.corr',
+            releaseRunId: 'rel.production-launch-gate.20260305190000.abcd1234',
             sessionId: 'session-123',
             sourceRoute: '/api/admin/ai-runtime/dry-run',
             toolName: 'aiRuntime.runWithFailover',
@@ -146,6 +154,7 @@ describe('Admin API routes', () => {
           errorMessage: 'provider timed out',
         }),
         JSON.stringify({
+          executionSessionId: 'exec-session-3',
           operation: 'live_session_tool',
           mode: 'fallback_only',
           egressProfile: 'internal_webhook',
@@ -176,6 +185,9 @@ describe('Admin API routes', () => {
       egressDecision: null,
       limitsProfile: null,
       limitsDecision: null,
+      correlationId: null,
+      releaseRunId: null,
+      executionSessionId: null,
       limit: 10,
       source: 'sandbox_execution',
       eventType: 'sandbox_execution_attempt',
@@ -189,9 +201,12 @@ describe('Admin API routes', () => {
       totalWithAudit: 2,
       actorIdCount: 1,
       actorTypeCount: 2,
+      correlationIdCount: 2,
+      releaseRunIdCount: 2,
       sessionIdCount: 1,
       sourceRouteCount: 2,
       toolNameCount: 2,
+      executionSessionIdCount: 3,
       coverageRate: 0.667,
     });
 
@@ -237,27 +252,39 @@ describe('Admin API routes', () => {
         'sandbox_execution_attempt',
         'sandbox_execution',
         JSON.stringify({
+          executionSessionId: 'exec-session-allow',
           operation: 'ai_runtime_dry_run',
           mode: 'fallback_only',
           egressProfile: 'openai_api',
           egressDecision: 'allow',
           limitsProfile: 'runtime_default',
           limitsDecision: 'allow',
+          audit: {
+            correlationId:
+              'rel.production-launch-gate.20260305190500.efgh5678.corr',
+            releaseRunId: 'rel.production-launch-gate.20260305190500.efgh5678',
+          },
         }),
         JSON.stringify({
+          executionSessionId: 'exec-session-deny',
           operation: 'live_session_tool',
           mode: 'fallback_only',
           egressProfile: 'internal_webhook',
           egressDecision: 'deny',
           limitsProfile: 'global_default',
           limitsDecision: 'deny',
+          audit: {
+            correlationId:
+              'rel.production-launch-gate.20260305190500.ijkl9012.corr',
+            releaseRunId: 'rel.production-launch-gate.20260305190500.ijkl9012',
+          },
         }),
       ],
     );
 
     const response = await request(app)
       .get(
-        '/api/admin/sandbox-execution/metrics?hours=24&operation=live_session_tool&mode=fallback_only&status=failed&egressProfile=internal_webhook&egressDecision=deny&limitsProfile=global_default&limitsDecision=deny',
+        '/api/admin/sandbox-execution/metrics?hours=24&operation=live_session_tool&mode=fallback_only&status=failed&egressProfile=internal_webhook&egressDecision=deny&limitsProfile=global_default&limitsDecision=deny&correlationId=rel.production-launch-gate.20260305190500.ijkl9012.corr&releaseRunId=rel.production-launch-gate.20260305190500.ijkl9012&executionSessionId=exec-session-deny',
       )
       .set('x-admin-token', env.ADMIN_API_TOKEN);
 
@@ -270,6 +297,9 @@ describe('Admin API routes', () => {
       egressDecision: 'deny',
       limitsProfile: 'global_default',
       limitsDecision: 'deny',
+      correlationId: 'rel.production-launch-gate.20260305190500.ijkl9012.corr',
+      releaseRunId: 'rel.production-launch-gate.20260305190500.ijkl9012',
+      executionSessionId: 'exec-session-deny',
     });
     expect(response.body.summary.total).toBe(1);
     expect(response.body.summary.successCount).toBe(0);
@@ -324,6 +354,12 @@ describe('Admin API routes', () => {
       .set('x-admin-token', env.ADMIN_API_TOKEN);
     expect(invalidMode.status).toBe(400);
     expect(invalidMode.body.error).toBe('ADMIN_INVALID_QUERY');
+
+    const invalidCorrelationId = await request(app)
+      .get('/api/admin/sandbox-execution/metrics?correlationId=bad%20id')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+    expect(invalidCorrelationId.status).toBe(400);
+    expect(invalidCorrelationId.body.error).toBe('ADMIN_INVALID_QUERY');
   });
 
   test('sandbox pilot run-code rejects unsupported language', async () => {
@@ -485,6 +521,11 @@ describe('Admin API routes', () => {
       .send({
         role: 'critic',
         prompt: 'Review draft coherence and suggest next action',
+        correlationId:
+          'rel.production-launch-gate.20260305191000.testcorr.corr',
+        releaseRunId: 'rel.production-launch-gate.20260305191000.testcorr',
+        auditSessionId:
+          'rel.production-launch-gate.20260305191000.testcorr.audit',
         providersOverride: ['claude-4', 'gemini-2'],
         simulateFailures: ['claude-4'],
       });
@@ -501,6 +542,12 @@ describe('Admin API routes', () => {
       provider: 'gemini-2',
       status: 'success',
       errorCode: null,
+    });
+    expect(response.body.correlation).toEqual({
+      auditSessionId:
+        'rel.production-launch-gate.20260305191000.testcorr.audit',
+      correlationId: 'rel.production-launch-gate.20260305191000.testcorr.corr',
+      releaseRunId: 'rel.production-launch-gate.20260305191000.testcorr',
     });
   });
 
@@ -592,6 +639,18 @@ describe('Admin API routes', () => {
 
     expect(invalidTimeoutRes.status).toBe(400);
     expect(invalidTimeoutRes.body.error).toBe('AI_RUNTIME_INVALID_TIMEOUT');
+
+    const invalidCorrelationRes = await request(app)
+      .post('/api/admin/ai-runtime/dry-run')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        role: 'critic',
+        prompt: 'Validate correlation format',
+        correlationId: 'invalid correlation',
+      });
+
+    expect(invalidCorrelationRes.status).toBe(400);
+    expect(invalidCorrelationRes.body.error).toBe('AI_RUNTIME_INVALID_INPUT');
 
     const invalidBodyShapeRes = await request(app)
       .post('/api/admin/ai-runtime/dry-run')
