@@ -33,6 +33,32 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - expose default value in production failure-detail help flag (phase 74)
+
+- Scope: improve operator UX by making the default value of `--failure-detail-max-items` explicit in production launch-gate help output.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 12:56 -> 2026-03-05 13:00.
+- Changes:
+  - Updated `scripts/release/production-launch-gate.mjs`:
+    - introduced constant `DEFAULT_FAILURE_DETAIL_MAX_ITEMS = 10`,
+    - reused it for env fallback parsing (`RELEASE_FAILURE_DETAIL_MAX_ITEMS`) and help rendering,
+    - help line now prints: `--failure-detail-max-items <n> (default: 10)`.
+  - Updated `apps/api/src/__tests__/release-launch-gate-production-help-snapshot.unit.spec.ts`:
+    - updated contains assertion and inline snapshot for default-bearing help line.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-production-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-failure-output-format.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T12:58:50.112Z`).
+  - live dispatch regression:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --print-artifact-links --artifact-link-names all`
+    - run `#90` (`22719110014`): success with expected summary and artifact-link output.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add one short runbook note that non-JSON failure details now auto-truncate arrays and can be tuned with `--failure-detail-max-items`.
+
 ### 2026-03-05 - add capped non-json failure details for production launch gate (phase 73)
 
 - Scope: improve operator triage in non-JSON production launch-gate runs by printing failed-check diagnostics with bounded array verbosity.

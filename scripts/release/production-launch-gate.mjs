@@ -16,13 +16,15 @@ import {
 } from './production-launch-gate-config-resolvers.mjs';
 import { buildProductionLaunchGateFailureLines } from './production-launch-gate-failure-output-format.mjs';
 
+const DEFAULT_FAILURE_DETAIL_MAX_ITEMS = 10;
+
 const DEFAULTS = {
   apiService: process.env.RAILWAY_API_SERVICE || 'api',
   artifactsDir: 'artifacts/release',
   environment: process.env.RAILWAY_ENVIRONMENT_NAME || 'production',
   failureDetailMaxItems: parseReleasePositiveIntegerEnv(
     process.env.RELEASE_FAILURE_DETAIL_MAX_ITEMS,
-    10,
+    DEFAULT_FAILURE_DETAIL_MAX_ITEMS,
     'RELEASE_FAILURE_DETAIL_MAX_ITEMS',
   ),
   gateIntervalMs: 15_000,
@@ -745,7 +747,7 @@ const printHelp = () => {
       '  --web-base-url <url> --api-base-url <url>',
       '  --runtime-draft-id <uuid> --runtime-channel <name>',
       '  --skip-railway-gate --skip-smoke --skip-runtime-probes --skip-ingest-probe',
-      '  --failure-detail-max-items <n>',
+      `  --failure-detail-max-items <n> (default: ${DEFAULT_FAILURE_DETAIL_MAX_ITEMS})`,
       '  --required-external-channels <telegram,slack,discord|all>',
       '  --require-skill-markers',
       '  --require-natural-cron-window',
