@@ -33,6 +33,29 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - reuse shared dispatch token candidate resolver in staging smoke dispatch (phase 114)
+
+- Scope: remove duplicated token-candidate normalization/validation logic in staging smoke dispatch by reusing the shared dispatch token resolver module.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 17:39 -> 2026-03-05 17:41.
+- Changes:
+  - Updated `scripts/release/dispatch-staging-smoke.mjs`:
+    - imported `resolveDispatchTokenCandidates` from `scripts/release/dispatch-production-launch-gate-token-resolution.mjs`,
+    - replaced local candidate-building implementation with shared resolver call,
+    - preserved existing source order (`cli-arg -> GITHUB_TOKEN -> GH_TOKEN -> gh-auth`) and fallback behavior.
+- Validation:
+  - `node --check scripts/release/dispatch-staging-smoke.mjs`: pass.
+  - `npm run release:smoke:dispatch -- --help`: pass.
+  - `npm run test -- apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T17:40:47.003Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: if staging dispatch receives dedicated test coverage, add a focused suite for token-fallback stderr messaging parity.
+
 ### 2026-03-05 - migrate tunnel dispatch token resolution to shared resolver (phase 113)
 
 - Scope: remove remaining local `git credential fill` token logic from tunnel dispatch helper and reuse shared release resolver module for consistent credential behavior.

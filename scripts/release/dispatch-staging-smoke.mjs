@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { resolveDispatchTokenCandidates } from './dispatch-production-launch-gate-token-resolution.mjs';
 import { resolveRepoSlug } from './github-token-repo-resolution.mjs';
 import { githubApiRequestWithTransientRetry } from './github-api-request-with-transient-retry.mjs';
 
@@ -103,35 +104,13 @@ const readTokenFromGhAuth = () => {
   }
 };
 
-const resolveTokenCandidates = ({ tokenFromArg }) => {
-  const candidates = [];
-  const isAsciiVisible = (value) => /^[\x21-\x7E]+$/u.test(value);
-  const addCandidate = (token, source) => {
-    const normalized = token?.trim();
-    if (!normalized) {
-      return;
-    }
-    if (!isAsciiVisible(normalized)) {
-      throw new Error(
-        `Token from '${source}' contains unsupported characters. Use the exact GitHub token value (ASCII only), without placeholders, spaces, or localized text.`,
-      );
-    }
-    if (candidates.some((entry) => entry.token === normalized)) {
-      return;
-    }
-    candidates.push({
-      token: normalized,
-      source,
-    });
-  };
-
-  addCandidate(tokenFromArg, 'cli-arg');
-  addCandidate(process.env.GITHUB_TOKEN, 'env:GITHUB_TOKEN');
-  addCandidate(process.env.GH_TOKEN, 'env:GH_TOKEN');
-  addCandidate(readTokenFromGhAuth(), 'gh-auth');
-
-  return candidates;
-};
+const resolveTokenCandidates = ({ tokenFromArg }) =>
+  resolveDispatchTokenCandidates({
+    envGithubToken: process.env.GITHUB_TOKEN,
+    envGhToken: process.env.GH_TOKEN,
+    ghAuthToken: readTokenFromGhAuth(),
+    tokenFromArg,
+  });
 
 const isAuthenticationError = (message) =>
   message.includes(' 401 ') ||
