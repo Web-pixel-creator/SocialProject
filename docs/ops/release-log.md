@@ -33,6 +33,36 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - harden production CLI numeric parsing against partial/decimal inputs (phase 63)
+
+- Scope: prevent accidental acceptance of malformed numeric CLI values (`12abc`, `3.5`) in production launch-gate timing flags.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 12:10 -> 2026-03-05 12:13.
+- Changes:
+  - Updated `scripts/release/production-launch-gate.mjs`:
+    - switched local numeric CLI parsing to shared strict parser:
+      - `parseReleasePositiveIntegerEnv`
+    - affected flags:
+      - `--gate-wait-ms`
+      - `--gate-poll-interval-ms`
+      - `--http-timeout-ms`
+      - and their inline forms (`--flag=value`).
+    - now rejects partially numeric and decimal values instead of accepting `parseInt` prefixes.
+  - Updated `apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts`:
+    - added negative cases for:
+      - `--gate-wait-ms 12abc`
+      - `--gate-poll-interval-ms=3.5`.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts apps/api/src/__tests__/release-production-config-resolvers.unit.spec.ts apps/api/src/__tests__/release-env-parse-utils.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-external-channels.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T12:11:31.946Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: if operators rely on human-friendly shorthand (for example `10s`), consider adding explicit duration syntax support rather than permissive parseInt behavior.
+
 ### 2026-03-05 - rename production config resolver module and align references (phase 62)
 
 - Scope: improve naming clarity after resolver expansion (boolean + string) by moving from boolean-only module naming to neutral config-resolver naming.

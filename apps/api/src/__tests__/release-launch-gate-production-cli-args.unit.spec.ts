@@ -112,11 +112,27 @@ describe('production launch-gate cli argument validation', () => {
     expect(result.stderr).toContain('Invalid value for --gate-wait-ms: abc');
   });
 
+  test('fails fast when --gate-wait-ms contains non-numeric suffix', () => {
+    const result = runProductionLaunchGate(['--gate-wait-ms', '12abc']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('Invalid value for --gate-wait-ms: 12abc');
+  });
+
   test('fails fast when inline --gate-wait-ms is not a positive integer', () => {
     const result = runProductionLaunchGate(['--gate-wait-ms=abc']);
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('Invalid value for --gate-wait-ms=: abc');
+  });
+
+  test('fails fast when inline --gate-poll-interval-ms contains decimal', () => {
+    const result = runProductionLaunchGate(['--gate-poll-interval-ms=3.5']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Invalid value for --gate-poll-interval-ms=: 3.5',
+    );
   });
 
   test('fails fast when --gate-poll-interval-ms is zero', () => {

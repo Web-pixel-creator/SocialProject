@@ -6,7 +6,10 @@ import {
   ALLOWED_EXTERNAL_CHANNELS,
   parseExternalChannelsList,
 } from './dispatch-production-launch-gate-external-channels.mjs';
-import { parseReleaseBooleanEnv } from './release-env-parse-utils.mjs';
+import {
+  parseReleaseBooleanEnv,
+  parseReleasePositiveIntegerEnv,
+} from './release-env-parse-utils.mjs';
 import {
   resolveProductionBooleanConfig,
   resolveProductionStringConfig,
@@ -621,13 +624,7 @@ const parseArgs = (argv) => {
   };
   const parsePositiveIntegerValue = (flag, nextValue) => {
     const value = readRequiredValue(flag, nextValue);
-    const parsed = Number.parseInt(value, 10);
-    if (!Number.isFinite(parsed) || parsed <= 0) {
-      throw new Error(
-        `Invalid value for ${flag}: ${value}. Expected a positive integer.`,
-      );
-    }
-    return parsed;
+    return parseReleasePositiveIntegerEnv(value, 0, flag);
   };
   const readInlineValue = (arg, flag) =>
     readRequiredValue(`${flag}=`, arg.slice(`${flag}=`.length));
