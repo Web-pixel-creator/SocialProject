@@ -33,6 +33,36 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - reuse shared external-channel parser in production launch gate path (phase 49)
+
+- Scope: remove duplicated required external channel parsing logic from production launch-gate script and reuse the shared parser module across both dispatch and production gate flows.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 11:13 -> 2026-03-05 11:20.
+- Changes:
+  - Updated shared parser module:
+    - `scripts/release/dispatch-production-launch-gate-external-channels.mjs`
+    - added `parseExternalChannelsList` export to resolve list form with `all` expansion.
+  - Updated `scripts/release/production-launch-gate.mjs`:
+    - removed local `parseExternalChannels` implementation,
+    - imported shared parser and channel constants from `dispatch-production-launch-gate-external-channels.mjs`,
+    - switched env/CLI parsing of `--required-external-channels` to shared list parser.
+  - Updated tests:
+    - `apps/api/src/__tests__/release-launch-gate-dispatch-external-channels.unit.spec.ts`
+    - added coverage for list parser `all` expansion behavior.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-dispatch-external-channels.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T11:15:33.359Z`).
+  - live dispatch regression:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --print-artifact-links --artifact-link-names all`
+    - run `#74` (`22715452444`): success with expected summary + artifact-link output.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add focused unit coverage for `production-launch-gate.mjs` CLI parsing path to guard future argument parsing regressions without full gate execution.
+
 ### 2026-03-05 - extract required-external-channels parser into shared module with unit coverage (phase 48)
 
 - Scope: harden and simplify dispatch CLI parsing by extracting required external channels normalization/validation into a dedicated module with direct unit tests.

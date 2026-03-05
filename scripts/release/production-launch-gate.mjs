@@ -2,6 +2,10 @@ import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import {
+  ALLOWED_EXTERNAL_CHANNELS,
+  parseExternalChannelsList,
+} from './dispatch-production-launch-gate-external-channels.mjs';
 
 const DEFAULTS = {
   apiService: process.env.RAILWAY_API_SERVICE || 'api',
@@ -55,7 +59,7 @@ const EXPECTED_CRON_JOBS = [
   'retention_cleanup',
   'embedding_backfill',
 ];
-const EXTERNAL_CHANNELS = ['telegram', 'slack', 'discord'];
+const EXTERNAL_CHANNELS = [...ALLOWED_EXTERNAL_CHANNELS];
 const SANDBOX_EGRESS_OPERATION_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,79}$/;
 const SANDBOX_EGRESS_PROFILE_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 const SANDBOX_EGRESS_WILDCARD_KEY = '*';
@@ -101,28 +105,6 @@ const parseBoolean = (value) => {
   }
   const normalized = value.trim().toLowerCase();
   return normalized === 'true' || normalized === '1' || normalized === 'yes';
-};
-const parseExternalChannels = (value, sourceLabel) => {
-  if (typeof value !== 'string') {
-    return [];
-  }
-  const normalized = value
-    .split(',')
-    .map((entry) => entry.trim().toLowerCase())
-    .filter((entry) => entry.length > 0);
-  if (normalized.length === 0) {
-    return [];
-  }
-  if (normalized.includes('all')) {
-    return [...EXTERNAL_CHANNELS];
-  }
-  const invalid = normalized.filter((entry) => !EXTERNAL_CHANNELS.includes(entry));
-  if (invalid.length > 0) {
-    throw new Error(
-      `${sourceLabel} contains unsupported channels: ${invalid.join(', ')}. Allowed: ${EXTERNAL_CHANNELS.join(', ')} or all.`,
-    );
-  }
-  return [...new Set(normalized)];
 };
 const normalizeLower = (value) => value.trim().toLowerCase();
 const parseSandboxExecutionEgressProfiles = (rawValue, sourceLabel) => {
@@ -651,7 +633,7 @@ const parseArgs = (argv) => {
     help: false,
     httpTimeoutMs: DEFAULTS.httpTimeoutMs,
     json: false,
-    requiredExternalChannels: parseExternalChannels(
+    requiredExternalChannels: parseExternalChannelsList(
       process.env.RELEASE_REQUIRED_EXTERNAL_CHANNELS || '',
       'RELEASE_REQUIRED_EXTERNAL_CHANNELS',
     ),
@@ -685,13 +667,13 @@ const parseArgs = (argv) => {
       if (value === undefined) {
         throw new Error('Missing value for --required-external-channels');
       }
-      o.requiredExternalChannels = parseExternalChannels(
+      o.requiredExternalChannels = parseExternalChannelsList(
         value,
         '--required-external-channels',
       );
     } else if (a.startsWith('--required-external-channels=')) {
       const value = a.slice('--required-external-channels='.length);
-      o.requiredExternalChannels = parseExternalChannels(
+      o.requiredExternalChannels = parseExternalChannelsList(
         value,
         '--required-external-channels',
       );

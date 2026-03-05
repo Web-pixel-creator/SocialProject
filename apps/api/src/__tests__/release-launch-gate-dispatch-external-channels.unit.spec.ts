@@ -22,13 +22,14 @@ const runModuleAction = <T>({
   action,
   input,
 }: {
-  action: 'constants' | 'parse';
+  action: 'constants' | 'parse' | 'parseList';
   input: unknown;
 }) => {
   const script = `
     import {
       ALLOWED_EXTERNAL_CHANNELS,
       parseDispatchExternalChannels,
+      parseExternalChannelsList,
     } from ${JSON.stringify(externalChannelsModuleHref)};
 
     const action = ${JSON.stringify(action)};
@@ -38,6 +39,8 @@ const runModuleAction = <T>({
       let result;
       if (action === 'constants') {
         result = { ALLOWED_EXTERNAL_CHANNELS };
+      } else if (action === 'parseList') {
+        result = parseExternalChannelsList(input.raw, input.sourceLabel);
       } else {
         result = parseDispatchExternalChannels(input.raw, input.sourceLabel);
       }
@@ -108,6 +111,26 @@ describe('launch-gate dispatch external-channels parser', () => {
 
     expect(result.output.status).toBe(0);
     expect(result.payload.result).toBe('all');
+  });
+
+  test('expands all keyword to full list in list parser mode', () => {
+    const constants = runModuleAction<{ ALLOWED_EXTERNAL_CHANNELS: string[] }>({
+      action: 'constants',
+      input: {},
+    });
+    const result = runModuleAction<string[]>({
+      action: 'parseList',
+      input: {
+        raw: 'all',
+        sourceLabel: '--required-external-channels',
+      },
+    });
+
+    expect(constants.output.status).toBe(0);
+    expect(result.output.status).toBe(0);
+    expect(result.payload.result).toEqual(
+      constants.payload.result.ALLOWED_EXTERNAL_CHANNELS,
+    );
   });
 
   test('returns empty string for blank values', () => {
