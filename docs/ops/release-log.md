@@ -33,6 +33,26 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - admin UX all-metrics overload reduction pass
+
+- Scope: reduce vertical overload in `/admin/ux?panel=all` by collapsing the heavy top sections (`Gateway`, `Runtime`, `Engagement`) into summary-first groups, consistent with lower telemetry blocks.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 04:18 -> 2026-03-05 04:21.
+- Changes:
+  - Updated `apps/web/src/app/admin/ux/components/admin-ux-main-panels.tsx`:
+    - wrapped `Gateway`, `Runtime`, and combined `Engagement` sections in `renderAllMetricsGroup(...)` when `panel=all`,
+    - added summary metadata for each group (`signal` counters / role-provider snapshot / low-signal indicator),
+    - mapped runtime blocked roles to critical tone,
+    - kept behavior unchanged for focused panels (`gateway`, `runtime`, `engagement`) by preserving direct rendering outside `panel=all`.
+- Validation:
+  - `npx ultracite check apps/web/src/app/admin/ux/components/admin-ux-main-panels.tsx`: pass.
+  - `npm run test:web -- --runInBand apps/web/src/__tests__/admin-ux-page.spec.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Incidents:
+  - one test assertion conflict due duplicate text match (`Engagement health`) from new group description; resolved by adjusting summary copy.
+- Follow-ups:
+  - next: add an optional compact tab-strip (`Operations / Engagement / Quality / Debug`) inside `panel=all` to filter visible groups without leaving all-metrics context.
+
 ### 2026-03-05 - admin UX expand state persistence pass
 
 - Scope: preserve `panel=all&expand=all` state after gateway/runtime form submissions so operators stay in expanded all-metrics mode after applying filters or dry-runs.

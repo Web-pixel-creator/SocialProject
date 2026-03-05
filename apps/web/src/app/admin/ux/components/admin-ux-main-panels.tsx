@@ -249,26 +249,76 @@ export const AdminUxMainPanels = ({
     feedInteractionCountersProps.density.total +
     feedInteractionCountersProps.hint.total;
   const topSegmentsCount = topSegmentsProps.topSegments.length;
+  const gatewaySessionCount =
+    gatewayPanelsProps.liveBodyProps.gatewaySessions.length;
+  const gatewayRetainedEventsCount = (
+    gatewayPanelsProps.liveBodyProps.gatewayRecentEvents ?? []
+  ).length;
+  const gatewaySignalCount = gatewaySessionCount + gatewayRetainedEventsCount;
+  const runtimeRoleCount =
+    runtimePanelProps.bodyProps.aiRuntimeSummary.roleCount;
+  const runtimeProviderCount =
+    runtimePanelProps.bodyProps.aiRuntimeSummary.providerCount;
+  const runtimeBlockedCount =
+    runtimePanelProps.bodyProps.aiRuntimeSummary.rolesBlocked;
+  const engagementSignalCount = engagementHealthProps.signals.length;
+  const engagementLowSignal = engagementOverviewProps.shouldCompact;
+  let engagementMetaTone: MetaTone = 'neutral';
+  if (engagementLowSignal) {
+    engagementMetaTone = 'watch';
+  } else if (engagementSignalCount > 0) {
+    engagementMetaTone = 'healthy';
+  }
 
   return (
     <>
-      <GatewayPanels
-        {...gatewayPanelsProps}
-        isVisible={isPanelVisible('gateway')}
-      />
-      <RuntimePanel
-        {...runtimePanelProps}
-        isVisible={isPanelVisible('runtime')}
-      />
-
-      <EngagementOverviewSection
-        {...engagementOverviewProps}
-        isVisible={isEngagementVisible}
-      />
-      <EngagementHealthSection
-        {...engagementHealthProps}
-        isVisible={isEngagementVisible}
-      />
+      {isPanelVisible('gateway')
+        ? renderAllMetricsGroup({
+            description:
+              'Live session control plane, retained events, and gateway risk telemetry.',
+            metaLabel: toSignalLabel(gatewaySignalCount),
+            metaTone: resolveMetaToneFromRiskLabel(
+              gatewayPanelsProps.gatewayHealthLabel,
+            ),
+            title: 'Gateway operations',
+            children: <GatewayPanels {...gatewayPanelsProps} isVisible />,
+          })
+        : null}
+      {isPanelVisible('runtime')
+        ? renderAllMetricsGroup({
+            description:
+              'Failover chain health, role/provider matrix, and dry-run simulator.',
+            metaLabel: `${runtimeRoleCount} roles / ${runtimeProviderCount} providers`,
+            metaTone:
+              runtimeBlockedCount > 0
+                ? 'critical'
+                : resolveMetaToneFromRiskLabel(
+                    runtimePanelProps.runtimeHealthLabel,
+                  ),
+            title: 'Runtime orchestration',
+            children: <RuntimePanel {...runtimePanelProps} isVisible />,
+          })
+        : null}
+      {isEngagementVisible
+        ? renderAllMetricsGroup({
+            description:
+              'Session quality, retention/follow signals, and alert scoring.',
+            metaLabel: engagementLowSignal
+              ? 'low signal'
+              : toSignalLabel(engagementSignalCount),
+            metaTone: engagementMetaTone,
+            title: 'Engagement signals',
+            children: (
+              <>
+                <EngagementOverviewSection
+                  {...engagementOverviewProps}
+                  isVisible
+                />
+                <EngagementHealthSection {...engagementHealthProps} isVisible />
+              </>
+            ),
+          })
+        : null}
       {isPanelVisible('release')
         ? renderAllMetricsGroup({
             description:
