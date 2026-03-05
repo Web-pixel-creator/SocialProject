@@ -33,6 +33,23 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - cross-link parity-log retention note to release checklist (phase 86)
+
+- Scope: complete retention follow-up by linking parity-log retention guidance to canonical release checklist triage section.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 13:47 -> 2026-03-05 13:49.
+- Changes:
+  - Updated `docs/ops/release-runbook.md`:
+    - added cross-reference to `docs/ops/release-checklist.md` near parity-log retention note.
+- Validation:
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - none.
+
 ### 2026-03-05 - add parity-log retention guidance to runbook (phase 85)
 
 - Scope: close retention-hygiene follow-up by documenting expected lifecycle for parity-log CI artifact.
