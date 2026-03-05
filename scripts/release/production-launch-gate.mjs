@@ -669,6 +669,10 @@ const parseArgs = (argv) => {
     }
     return parsed;
   };
+  const readInlineValue = (arg, flag) =>
+    readRequiredValue(`${flag}=`, arg.slice(`${flag}=`.length));
+  const parseInlinePositiveIntegerValue = (arg, flag) =>
+    parsePositiveIntegerValue(`${flag}=`, arg.slice(`${flag}=`.length));
 
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
@@ -695,6 +699,31 @@ const parseArgs = (argv) => {
         '--required-external-channels',
       );
     }
+    else if (a.startsWith('--environment='))
+      o.environment = readInlineValue(a, '--environment');
+    else if (a.startsWith('--web-service='))
+      o.webService = readInlineValue(a, '--web-service');
+    else if (a.startsWith('--api-service='))
+      o.apiService = readInlineValue(a, '--api-service');
+    else if (a.startsWith('--web-base-url='))
+      o.webBaseUrl = readInlineValue(a, '--web-base-url');
+    else if (a.startsWith('--api-base-url='))
+      o.apiBaseUrl = readInlineValue(a, '--api-base-url');
+    else if (a.startsWith('--runtime-draft-id='))
+      o.runtimeDraftId = readInlineValue(a, '--runtime-draft-id');
+    else if (a.startsWith('--runtime-channel='))
+      o.runtimeChannel = readInlineValue(a, '--runtime-channel');
+    else if (a.startsWith('--smoke-results-path='))
+      o.smokeResultsPath = readInlineValue(a, '--smoke-results-path');
+    else if (a.startsWith('--gate-wait-ms='))
+      o.gateWaitMs = parseInlinePositiveIntegerValue(a, '--gate-wait-ms');
+    else if (a.startsWith('--gate-poll-interval-ms='))
+      o.gateIntervalMs = parseInlinePositiveIntegerValue(
+        a,
+        '--gate-poll-interval-ms',
+      );
+    else if (a.startsWith('--http-timeout-ms='))
+      o.httpTimeoutMs = parseInlinePositiveIntegerValue(a, '--http-timeout-ms');
     else if (a === '--require-skill-markers') o.requireSkillMarkers = true;
     else if (a === '--require-natural-cron-window')
       o.requireNaturalCronWindow = true;

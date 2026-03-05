@@ -33,6 +33,45 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add inline `--flag=value` support for production launch-gate value flags (phase 53)
+
+- Scope: improve operator ergonomics while preserving strict validation by supporting inline value syntax across production launch-gate value options.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 11:29 -> 2026-03-05 11:33.
+- Changes:
+  - Updated `scripts/release/production-launch-gate.mjs`:
+    - added inline parsing helpers:
+      - `readInlineValue`
+      - `parseInlinePositiveIntegerValue`
+    - added inline support with strict validation for:
+      - `--environment=`
+      - `--web-service=`
+      - `--api-service=`
+      - `--web-base-url=`
+      - `--api-base-url=`
+      - `--runtime-draft-id=`
+      - `--runtime-channel=`
+      - `--smoke-results-path=`
+      - `--gate-wait-ms=`
+      - `--gate-poll-interval-ms=`
+      - `--http-timeout-ms=`.
+  - Updated tests:
+    - `apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts`
+    - added coverage for:
+      - inline value acceptance in help mode,
+      - empty inline `--environment=`,
+      - invalid inline `--gate-wait-ms=abc`.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-external-channels.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T11:31:35.818Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: extend the same inline-value style to dispatch helper long options for consistency where not yet supported.
+
 ### 2026-03-05 - enforce required values for production launch-gate value flags (phase 52)
 
 - Scope: reduce operator misconfiguration risk by failing fast on missing/invalid values for key value-based `production-launch-gate` CLI options.

@@ -55,6 +55,20 @@ describe('production launch-gate cli argument validation', () => {
     expect(result.stderr).toContain('Missing value for --environment');
   });
 
+  test('accepts inline value flags in help mode', () => {
+    const result = runProductionLaunchGate([
+      '--environment=production',
+      '--gate-wait-ms=120000',
+      '--help',
+    ]);
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe('');
+    expect(result.stdout).toContain(
+      'Usage: node scripts/release/production-launch-gate.mjs',
+    );
+  });
+
   test('fails fast when required-external-channels value is missing', () => {
     const result = runProductionLaunchGate(['--required-external-channels']);
 
@@ -73,6 +87,13 @@ describe('production launch-gate cli argument validation', () => {
     );
   });
 
+  test('fails fast when inline --environment value is empty', () => {
+    const result = runProductionLaunchGate(['--environment=']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('Missing value for --environment=');
+  });
+
   test('fails fast on unsupported required-external-channels values', () => {
     const result = runProductionLaunchGate([
       '--required-external-channels',
@@ -89,6 +110,13 @@ describe('production launch-gate cli argument validation', () => {
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('Invalid value for --gate-wait-ms: abc');
+  });
+
+  test('fails fast when inline --gate-wait-ms is not a positive integer', () => {
+    const result = runProductionLaunchGate(['--gate-wait-ms=abc']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('Invalid value for --gate-wait-ms=: abc');
   });
 
   test('fails fast when --gate-poll-interval-ms is zero', () => {
