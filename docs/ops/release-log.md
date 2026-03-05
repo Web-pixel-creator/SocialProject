@@ -33,6 +33,25 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - live strict launch-gate pass with inline summary schema validation (phase 23)
+
+- Scope: confirm `Production Launch Gate` succeeds in live CI with both strict inline artifact presence assertion and new inline summary schema-validation step.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 10:06 -> 2026-03-05 10:07.
+- Validation:
+  - Dispatch command:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts`.
+  - Live CI run:
+    - run `#61` (`22712765220`) completed with `success`.
+  - Confirmed step outcomes:
+    - `Validate inline post-release health artifacts`: `success`
+    - `Validate inline post-release health artifact summary schema`: `success`
+    - `Upload inline post-release health schema check artifact`: `success`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add scheduled nightly dispatch to continuously verify strict inline artifact + schema contract path.
+
 ### 2026-03-05 - add inline artifact summary schema validation gate in launch workflow (phase 22)
 
 - Scope: enforce JSON Schema contract for inline launch-gate artifact summary payloads and publish schema-check evidence per run.
