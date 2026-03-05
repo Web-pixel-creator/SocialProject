@@ -33,6 +33,28 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - live strict pass with downloadable launch-gate step-summary artifact (phase 29)
+
+- Scope: confirm new `production-launch-gate-step-summary` artifact is uploaded and contains `inlineHealthArtifactsSchema` check line.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 10:24 -> 2026-03-05 10:27.
+- Validation:
+  - Dispatch command:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts`.
+  - Live CI run:
+    - run `#64` (`22713475509`) completed with `success`.
+  - Confirmed workflow steps:
+    - `Upload launch gate step summary artifact`: `success`
+    - `Post Upload launch gate step summary artifact`: `success`.
+  - Downloaded artifact by name:
+    - `production-launch-gate-step-summary`
+    - local path: `artifacts/release/ci-run-22713475509-step-summary/production-launch-gate-step-summary.md`
+    - confirmed markdown includes line: `- inlineHealthArtifactsSchema: \`PASS\`` under `### Checks`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: wire artifact URL into dispatch helper stdout for single-click operator access.
+
 ### 2026-03-05 - upload launch-gate step-summary markdown artifact (phase 28)
 
 - Scope: make launch-gate markdown summary downloadable as a dedicated workflow artifact for audit trail convenience.
