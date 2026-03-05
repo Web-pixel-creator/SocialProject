@@ -110,6 +110,75 @@ describe('release github api request with transient retry helper', () => {
     expect(result.payload.result).toEqual({ ok: true, calls: 2 });
   });
 
+  test('returns binary payload when expectBinary is enabled', () => {
+    const result = runHelperScenario(`
+      globalThis.fetch = async () => {
+        state.calls += 1;
+        return {
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          arrayBuffer: async () => Uint8Array.from([1, 2, 3, 255]).buffer,
+        };
+      };
+      const value = await githubApiRequest({
+        expectBinary: true,
+        method: 'GET',
+        token: 'token',
+        url: 'https://example.invalid/binary',
+      });
+      emit({
+        ok: true,
+        result: { hex: value.toString('hex'), length: value.length },
+        calls: state.calls,
+        warnings,
+        error: '',
+      });
+    `);
+
+    expect(result.output.status).toBe(0);
+    expect(result.payload.ok).toBe(true);
+    expect(result.payload.calls).toBe(1);
+    expect(result.payload.result).toEqual({ hex: '010203ff', length: 4 });
+  });
+
+  test('retries network pre-response errors for GET and succeeds', () => {
+    const result = runHelperScenario(`
+      globalThis.fetch = async () => {
+        state.calls += 1;
+        if (state.calls === 1) {
+          throw new Error('connect ETIMEDOUT');
+        }
+        return {
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          text: async () => JSON.stringify({ ok: true, calls: state.calls }),
+        };
+      };
+      const value = await githubApiRequestWithTransientRetry({
+        method: 'GET',
+        retryConfig: {
+          backoffFactor: 1,
+          delayMs: 1,
+          jitterPercent: 0,
+          maxAttempts: 2,
+          maxDelayMs: 1,
+        },
+        token: 'token',
+        url: 'https://example.invalid/network',
+        writeRetryWarning: (message) => warnings.push(message),
+      });
+      emit({ ok: true, result: value, calls: state.calls, warnings, error: '' });
+    `);
+
+    expect(result.output.status).toBe(0);
+    expect(result.payload.ok).toBe(true);
+    expect(result.payload.calls).toBe(2);
+    expect(result.payload.warnings).toHaveLength(1);
+    expect(result.payload.result).toEqual({ ok: true, calls: 2 });
+  });
+
   test('does not retry transient failures for non-GET methods', () => {
     const result = runHelperScenario(`
       globalThis.fetch = async () => {

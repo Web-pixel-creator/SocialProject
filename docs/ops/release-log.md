@@ -33,6 +33,27 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - extend shared GitHub retry helper tests for binary and network-error paths (phase 105)
+
+- Scope: complete test hardening follow-up by validating binary payload handling and network pre-response retry behavior in shared GitHub request helper.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 15:52 -> 2026-03-05 15:56.
+- Changes:
+  - Updated `apps/api/src/__tests__/release-github-api-request-with-transient-retry.unit.spec.ts`:
+    - added `expectBinary` scenario asserting binary branch output integrity (`hex`/`length`),
+    - added `GET` network pre-response retry scenario (`fetch` throws once, helper retries and succeeds).
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-github-api-request-with-transient-retry.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-transient-retry-utils.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:runbook:failure-snippet:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T15:56:43.541Z`).
+- Incidents:
+  - first strict production gate command attempt in this phase timed out in local CLI session; rerun with extended timeout passed.
+- Follow-ups:
+  - optional: add dedicated tests for warning message formatting if operator log UX changes.
+
 ### 2026-03-05 - add unit coverage for shared GitHub transient retry helper (phase 104)
 
 - Scope: lock in expected behavior of shared GitHub request/retry helper with focused unit tests after broad release-script migration.
