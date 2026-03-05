@@ -33,6 +33,36 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - stabilize inline health strict gate after live failure drill (phase 19)
+
+- Scope: ensure `require_inline_health_artifacts=true` is resilient when inline health check exits non-zero (best-effort mode) by always emitting summary artifacts before step exit.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 10:20 -> 2026-03-05 10:25.
+- Changes:
+  - Updated `scripts/release/run-post-release-health-gate.sh`:
+    - now captures exit codes per sub-step (`report`, `schema text`, `schema json`),
+    - always writes/keeps:
+      - `post-release-health-summary-<run_id>.json`
+      - `post-release-health-schema-summary-<run_id>.json`
+    - returns non-zero only after artifact outputs are materialized.
+- Validation:
+  - local quality checks:
+    - `npx jest --runInBand apps/api/src/__tests__/release-inline-health-artifacts-check.unit.spec.ts apps/api/src/__tests__/release-health-log-render.unit.spec.ts --config jest.config.cjs`: pass.
+    - `npm run lint`: pass.
+    - `npm run ultracite:check`: pass.
+  - live CI verification:
+    - dispatch with strict inline artifact assertion:
+      - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts`
+    - run `#60` (`22712013489`) completed with `success`.
+    - confirmed step outcomes:
+      - `Run post-release health checks inline (best effort)`: `success`
+      - `Validate inline post-release health artifacts`: `success`
+      - `Upload inline post-release health artifacts`: `success`.
+- Incidents:
+  - predecessor run `#59` (`22711808121`) failed as expected during initial rollout because `post-release-health-schema-summary-<run_id>.json` was not emitted when inline health command exited early.
+- Follow-ups:
+  - optional: add explicit `inlineHealthArtifacts` check block into `production-launch-gate-summary.json` for top-level gate visibility.
+
 ### 2026-03-05 - inline health artifact presence gate for production launch-gate (phase 18)
 
 - Scope: add machine-readable validation of inline post-release health artifacts in CI launch-gate runs with optional strict failure mode.
