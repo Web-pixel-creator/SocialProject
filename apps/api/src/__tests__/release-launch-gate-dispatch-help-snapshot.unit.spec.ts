@@ -1,0 +1,49 @@
+import { spawnSync } from 'node:child_process';
+import path from 'node:path';
+
+const projectRoot = path.resolve(__dirname, '..', '..', '..', '..');
+
+const runHelp = () =>
+  spawnSync(
+    process.execPath,
+    ['scripts/release/dispatch-production-launch-gate.mjs', '--help'],
+    {
+      cwd: projectRoot,
+      encoding: 'utf8',
+    },
+  );
+
+const normalizeLineEndings = (value: string) => value.replace(/\r\n/gu, '\n');
+
+describe('launch-gate dispatch helper help output', () => {
+  test('matches golden usage snapshot', () => {
+    const result = runHelp();
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe('');
+    expect(
+      normalizeLineEndings(result.stdout).trimEnd(),
+    ).toMatchInlineSnapshot(`
+"Usage: npm run release:launch:gate:dispatch -- [options]
+
+Options:
+  --token|-Token <value>                 GitHub token override
+  --runtime-draft-id <uuid>              workflow input runtime_draft_id
+  --require-skill-markers                workflow input require_skill_markers=true
+  --require-natural-cron-window          workflow input require_natural_cron_window=true
+  --required-external-channels <csv|all> workflow input required_external_channels
+  --require-inline-health-artifacts      workflow input require_inline_health_artifacts=true
+  --allow-failure-drill                  workflow input allow_failure_drill=true
+  --webhook-secret-override <value>      workflow input webhook_secret_override (requires allow_failure_drill)
+  --print-artifact-links                 print links for additional high-signal artifacts after success
+  --artifact-link-names <csv|all>        override artifact link set (allowed: production-launch-gate-step-summary, production-launch-gate-summary, post-release-health-inline-artifacts-schema-check, post-release-health-inline-artifacts-summary, or all)
+  --no-step-summary-link                 suppress default step-summary artifact link output
+  --help|-h
+
+Token resolution order:
+1) --token / -Token argument
+2) GITHUB_TOKEN / GH_TOKEN
+3) gh auth token"
+`);
+  });
+});

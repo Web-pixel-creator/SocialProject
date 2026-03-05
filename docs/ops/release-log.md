@@ -33,6 +33,26 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add golden snapshot test for dispatch helper usage output (phase 43)
+
+- Scope: guard dispatch CLI help text against accidental drift via a dedicated snapshot-based regression test.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 11:20 -> 2026-03-05 11:24.
+- Changes:
+  - Added test suite:
+    - `apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts`
+    - validates `--help` output against an inline golden snapshot with normalized line endings.
+  - Existing dispatch helper CLI suites remained green.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: if usage text becomes frequently edited, switch to block-level snapshot assertions (token/header/options sections) to reduce churn while keeping signal.
+
 ### 2026-03-05 - add missing-value diagnostics test for positional required-external-channels arg (phase 42)
 
 - Scope: align coverage for positional and inline forms of required external channels argument.
