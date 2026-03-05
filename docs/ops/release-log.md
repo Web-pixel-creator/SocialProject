@@ -33,6 +33,29 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - live strict pass with annotated inline schema check in summary JSON (phase 25)
+
+- Scope: validate end-to-end that launch workflow writes `checks.inlineHealthArtifactsSchema` into `production-launch-gate-summary.json` and keeps strict gate green.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 10:16 -> 2026-03-05 10:18.
+- Validation:
+  - Dispatch command:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts`.
+  - Live CI run:
+    - run `#62` (`22713152118`) completed with `success`.
+  - Confirmed workflow steps:
+    - `Validate inline post-release health artifact summary schema`: `success`
+    - `Annotate launch gate summary with inline schema check`: `success`
+    - `Upload launch gate artifacts (core)`: `success`.
+  - Confirmed summary artifact payload (`production-launch-gate-summary.json`) includes:
+    - `checks.inlineHealthArtifactsSchema.pass=true`
+    - `checks.inlineHealthArtifactsSchema.status=\"pass\"`
+    - `inlineHealthArtifactsSchemaAnnotatedAtUtc` timestamp.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add regression unit test for step-summary markdown rendering to assert `inlineHealthArtifactsSchema` visibility in `### Checks`.
+
 ### 2026-03-05 - add inline schema-check node into launch-gate summary checks (phase 24)
 
 - Scope: include inline artifact summary schema-validation verdict directly in `production-launch-gate-summary.json` and make it part of top-level `pass/status`.
