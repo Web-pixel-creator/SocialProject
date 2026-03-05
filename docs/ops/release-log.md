@@ -33,6 +33,25 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - document non-json compact failure diagnostics behavior (phase 75)
+
+- Scope: close phase 74 follow-up by documenting non-JSON compact failure diagnostics behavior and operator expectation in release docs.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 13:00 -> 2026-03-05 13:02.
+- Changes:
+  - Updated `docs/ops/release-runbook.md`:
+    - added explicit note that non-JSON production launch-gate failures print failed-check diagnostics and truncate long arrays with `+N more`.
+  - Updated `docs/ops/release-checklist.md`:
+    - added post-release verification checkbox to confirm compact non-JSON failed-check diagnostics readability.
+- Validation:
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add a short screenshot snippet in runbook from a representative non-JSON failure output for quicker operator onboarding.
+
 ### 2026-03-05 - expose default value in production failure-detail help flag (phase 74)
 
 - Scope: improve operator UX by making the default value of `--failure-detail-max-items` explicit in production launch-gate help output.
