@@ -33,6 +33,30 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - admin UX severity-filter counts pass
+
+- Scope: make `Severity filter` actionable at a glance by showing dynamic counts for `All severities` and `Risk only` tabs in `panel=all`.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 05:56 -> 2026-03-05 06:02.
+- Changes:
+  - Updated `admin-ux-page-content.tsx`:
+    - added `computeAllMetricsRiskCounts(...)` helper deriving visible group tones for current `allView`,
+    - computes `all` and `high` counters and passes them into panel chrome view model.
+  - Updated `admin-ux-page-shell-view-model.ts`:
+    - `buildAdminUxPanelChromeView(...)` now accepts `allMetricsRiskCounts`,
+    - renders dynamic labels:
+      - `All severities (N)`
+      - `Risk only (M)`
+- Validation:
+  - `npx ultracite check apps/web/src/app/admin/ux/components/admin-ux-page-content.tsx apps/web/src/app/admin/ux/components/admin-ux-page-shell-view-model.ts`: pass.
+  - `npx jest --runInBand apps/web/src/app/admin/ux/components/admin-ux-page-entry.spec.ts`: pass.
+  - `npm run test:web -- --runInBand apps/web/src/__tests__/admin-ux-page.spec.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: expose per-tab tooltip explaining which section groups are included in each count.
+
 ### 2026-03-05 - admin UX all-metrics risk-only filter pass
 
 - Scope: add a focused risk filter in `panel=all` so operators can switch between all severities and high-risk-only sections (`critical/watch`) without leaving all-metrics mode.

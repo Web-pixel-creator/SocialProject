@@ -30,6 +30,11 @@ export const ADMIN_UX_PANEL_TABS: ReadonlyArray<{
   { id: 'all', label: 'All metrics' },
 ] as const;
 
+interface AllMetricsRiskCounts {
+  all: number;
+  high: number;
+}
+
 const ADMIN_UX_ALL_METRICS_VIEW_TABS: ReadonlyArray<{
   id: AdminUxAllMetricsView;
   label: string;
@@ -78,6 +83,7 @@ export const buildAdminUxPanelHref = (
 export const buildAdminUxPanelChromeView = ({
   activePanel,
   allMetricsRiskFilter,
+  allMetricsRiskCounts,
   allMetricsView,
   expandAllGroups,
   hours,
@@ -85,6 +91,7 @@ export const buildAdminUxPanelChromeView = ({
 }: {
   activePanel: AdminUxPanel;
   allMetricsRiskFilter: AdminUxAllMetricsRiskFilter;
+  allMetricsRiskCounts?: AllMetricsRiskCounts;
   allMetricsView: AdminUxAllMetricsView;
   expandAllGroups: boolean;
   hours: number;
@@ -100,7 +107,13 @@ export const buildAdminUxPanelChromeView = ({
               allMetricsView,
               expandAllGroups,
             }),
-          panelTabs: [...ADMIN_UX_ALL_METRICS_RISK_FILTER_TABS],
+          panelTabs: ADMIN_UX_ALL_METRICS_RISK_FILTER_TABS.map((tab) => ({
+            ...tab,
+            label:
+              tab.id === 'high'
+                ? `${tab.label} (${allMetricsRiskCounts?.high ?? 0})`
+                : `${tab.label} (${allMetricsRiskCounts?.all ?? 0})`,
+          })),
         })
       : null,
   allMetricsViewTabs:
