@@ -2,7 +2,7 @@
 
 Date: 2026-03-03  
 Owner: FinishIt Platform  
-Status: in progress
+Status: completed (pilot fallback path + strict gate coverage)
 
 ## Goal
 
@@ -284,8 +284,19 @@ Exit criteria:
   - `npx jest --runInBand apps/api/src/__tests__/sandbox-execution.unit.spec.ts apps/api/src/__tests__/sandbox-execution-validation.unit.spec.ts apps/api/src/__tests__/sandbox-execution-egress-profile.unit.spec.ts apps/api/src/__tests__/sandbox-execution-limits-profile.unit.spec.ts --config jest.config.cjs` passed,
   - `npm --workspace apps/api run build` passed,
   - `node --check scripts/release/production-launch-gate.mjs` passed.
-- Current local evidence gap:
-  - `apps/api/src/__tests__/admin.integration.spec.ts` remains environment-blocked when local Postgres/Redis are unavailable (Docker daemon is not running in current execution context).
+- Local integration evidence closure (`2026-03-05`, Docker-ready):
+  - started local dependencies:
+    - `docker compose up -d postgres redis`,
+  - applied migration baseline:
+    - `npm --workspace apps/api run migrate:up` (`No migrations to run!`),
+  - reran integration suite:
+    - `npx jest --runInBand apps/api/src/__tests__/admin.integration.spec.ts --config jest.config.cjs` passed (`50/50`),
+  - corroborated full local green checks for this checkpoint:
+    - `npm run lint` passed,
+    - `npm run ultracite:check` passed,
+    - `npm --workspace apps/api run build` passed,
+    - `npm --workspace apps/web run build` passed,
+    - `npm run test:web -- --runInBand apps/web/src/__tests__/admin-ux-page.spec.tsx apps/web/src/app/admin/ux/components/admin-ux-page-entry.spec.ts` passed.
 
 ## Risks
 

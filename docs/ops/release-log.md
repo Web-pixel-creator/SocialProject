@@ -33,6 +33,32 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - sandbox execution integration evidence closure in Docker-ready environment
+
+- Scope: close phase-2 integration evidence gap for sandbox execution metrics/admin coverage in a local environment with running Postgres/Redis.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 09:02 -> 2026-03-05 09:09.
+- Changes:
+  - Started local dependencies for integration bootstrap:
+    - `docker compose up -d postgres redis`
+    - `node scripts/ci/wait-for-services.mjs --ports 5432,6379 --timeout-ms 120000`
+  - Applied migration baseline:
+    - `npm --workspace apps/api run migrate:up` (`No migrations to run!`)
+  - Closed previously blocked suite:
+    - `npx jest --runInBand apps/api/src/__tests__/admin.integration.spec.ts --config jest.config.cjs` passed (`50/50`).
+  - Synced progress docs:
+    - `docs/plans/2026-03-03-opensandbox-pattern-adoption-plan.md` status/evidence updated.
+- Validation:
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm --workspace apps/api run build`: pass.
+  - `npm --workspace apps/web run build`: pass.
+  - `npm run test:web -- --runInBand apps/web/src/__tests__/admin-ux-page.spec.tsx apps/web/src/app/admin/ux/components/admin-ux-page-entry.spec.ts`: pass (`2/2` suites).
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: mirror this DB-ready integration rerun in CI job documentation to make local evidence closure steps one-command reproducible.
+
 ### 2026-03-05 - launch-gate sandbox check provenance field (`source`) in health reports (phase 8)
 
 - Scope: add explicit provenance marker for sandbox-check highlights in post-release health outputs.
