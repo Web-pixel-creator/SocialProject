@@ -33,6 +33,32 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - allow leading-zero integer env values while keeping strict numeric validation (phase 67)
+
+- Scope: relax strict integer parser to accept digit-only values with leading zeros (for practical env/CLI compatibility) while still rejecting partial and decimal inputs.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 12:16 -> 2026-03-05 12:22.
+- Changes:
+  - Updated `scripts/release/release-env-parse-utils.mjs`:
+    - `parseReleasePositiveIntegerEnv` now accepts digit-only strings with leading zeros (e.g. `00015`),
+    - continues to reject non-digit forms (`12abc`, `3.5`) and non-positive values.
+  - Updated `apps/api/src/__tests__/release-env-parse-utils.unit.spec.ts`:
+    - added positive case for `00015 -> 15`,
+    - retained/extended invalid matrix including `12abc` and `3.5`.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-env-parse-utils.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts apps/api/src/__tests__/release-production-config-resolvers.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T12:18:51.674Z`).
+  - live dispatch regression:
+    - initial run `#81` (`22717604252`): workflow failure (transient external signal, helper behavior unchanged up to run tracking).
+    - immediate rerun `#82` (`22717651262`): success with expected summary and artifact-link output.
+- Incidents:
+  - transient launch-gate workflow failure on run `#81`; rerun `#82` succeeded without code changes.
+- Follow-ups:
+  - optional: when a dispatch rerun is needed, capture `#81` failure mode class from workflow summary into release-health trend notes for postmortem hygiene.
+
 ### 2026-03-05 - add helper diagnostics map section to release runbook (phase 66)
 
 - Scope: speed up on-call/operator triage by documenting direct script-to-validator module mapping in one place.

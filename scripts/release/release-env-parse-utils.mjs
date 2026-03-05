@@ -14,8 +14,13 @@ export const parseReleaseBooleanEnv = (raw, fallback, sourceLabel) => {
 export const parseReleasePositiveIntegerEnv = (raw, fallback, sourceLabel) => {
   if (typeof raw !== 'string' || raw.trim().length === 0) return fallback;
   const value = raw.trim();
+  if (!/^\d+$/u.test(value)) {
+    throw new Error(
+      `Invalid value for ${sourceLabel}: ${value}. Expected a positive integer.`,
+    );
+  }
   const parsed = Number.parseInt(value, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0 || `${parsed}` !== value) {
+  if (!Number.isFinite(parsed) || parsed <= 0) {
     throw new Error(
       `Invalid value for ${sourceLabel}: ${value}. Expected a positive integer.`,
     );

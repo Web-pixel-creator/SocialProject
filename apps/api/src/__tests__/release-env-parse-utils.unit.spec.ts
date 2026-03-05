@@ -133,11 +133,21 @@ describe('release env parse utils', () => {
         sourceLabel: 'RELEASE_SAMPLE_MS',
       },
     });
+    const leadingZeroResult = runModuleAction<number>({
+      action: 'parsePositiveInteger',
+      input: {
+        fallback: 5000,
+        raw: '00015',
+        sourceLabel: 'RELEASE_SAMPLE_MS',
+      },
+    });
 
     expect(fallbackResult.output.status).toBe(0);
     expect(fallbackResult.payload.result).toBe(5000);
     expect(valueResult.output.status).toBe(0);
     expect(valueResult.payload.result).toBe(12_000);
+    expect(leadingZeroResult.output.status).toBe(0);
+    expect(leadingZeroResult.payload.result).toBe(15);
   });
 
   test('positive integer parser throws on unsupported values', () => {
