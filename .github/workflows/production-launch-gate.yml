@@ -42,6 +42,7 @@ jobs:
     name: Production Launch Gate
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
     env:
       RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN || secrets.RAILWAY_TOKEN }}
@@ -113,6 +114,24 @@ jobs:
           fi
           RELEASE_AGENT_GATEWAY_WEBHOOK_SECRET="${webhook_secret}" node scripts/release/production-launch-gate.mjs "${args[@]}" \
             | tee artifacts/release/production-launch-gate-workflow-output.json
+
+      - name: Run post-release health checks inline (best effort)
+        if: always()
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TARGET_RUN_ID: ${{ github.run_id }}
+          RELEASE_WORKFLOW_FILE: production-launch-gate.yml
+          RELEASE_HEALTH_REPORT_PROFILE: launch-gate
+          RELEASE_HEALTH_ALERT_RISK_ENABLED: ${{ vars.RELEASE_HEALTH_ALERT_RISK_ENABLED }}
+          RELEASE_HEALTH_ALERT_RISK_WINDOW_HOURS: ${{ vars.RELEASE_HEALTH_ALERT_RISK_WINDOW_HOURS }}
+          RELEASE_HEALTH_ALERT_RISK_ESCALATION_STREAK: ${{ vars.RELEASE_HEALTH_ALERT_RISK_ESCALATION_STREAK }}
+          RELEASE_HEALTH_ALERT_RISK_STRICT: ${{ vars.RELEASE_HEALTH_ALERT_RISK_STRICT }}
+          RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_URL: ${{ secrets.RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_URL }}
+          RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_ADMIN_TOKEN: ${{ secrets.RELEASE_ADMIN_API_TOKEN }}
+          RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_CSRF_TOKEN: ${{ secrets.RELEASE_CSRF_TOKEN }}
+        shell: bash
+        run: bash scripts/release/run-post-release-health-gate.sh
 
       - name: Render launch gate step summary markdown
         if: always()
@@ -190,3 +209,14 @@ jobs:
           artifact_3_path: artifacts/release/production-admin-health-summary.json
           artifact_4_name: production-external-channel-traces
           artifact_4_path: artifacts/release/production-agent-gateway-external-channel-traces.json
+
+      - name: Upload inline post-release health artifacts
+        if: always()
+        uses: ./.github/actions/release-artifacts-upload
+        with:
+          artifact_1_name: post-release-health-report-inline
+          artifact_1_path: artifacts/release/post-release-health-run-${{ github.run_id }}.json
+          artifact_2_name: post-release-health-summary-inline
+          artifact_2_path: artifacts/release/post-release-health-summary-${{ github.run_id }}.json
+          artifact_3_name: post-release-health-schema-summary-inline
+          artifact_3_path: artifacts/release/post-release-health-schema-summary-${{ github.run_id }}.json

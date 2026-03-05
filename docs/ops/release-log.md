@@ -33,6 +33,30 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - inline post-release health generation in production launch-gate (phase 15)
+
+- Scope: keep post-release health/provenance artifacts synchronized with the same launch-gate run by generating them inline inside `production-launch-gate` workflow.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 09:51 -> 2026-03-05 09:56.
+- Changes:
+  - Updated `.github/workflows/production-launch-gate.yml`:
+    - job permissions now include `actions: read` (needed for release-health artifact lookups),
+    - added inline best-effort step:
+      - `bash scripts/release/run-post-release-health-gate.sh`
+      - with `RELEASE_TARGET_RUN_ID=${{ github.run_id }}` + launch-gate profile env,
+    - added artifact upload step for inline health outputs:
+      - `post-release-health-report-inline`,
+      - `post-release-health-summary-inline`,
+      - `post-release-health-schema-summary-inline`.
+- Validation:
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: if inline health artifacts become primary source, simplify `release-health-gate` trigger scope to avoid duplicate processing.
+
 ### 2026-03-05 - negative fixture coverage for health-log fallback rendering (phase 14)
 
 - Scope: extend fixture coverage so `release:health:log` fallback output remains stable when optional blocks are missing.
