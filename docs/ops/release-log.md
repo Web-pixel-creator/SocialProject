@@ -33,6 +33,27 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - upload launch-gate step-summary markdown artifact (phase 28)
+
+- Scope: make launch-gate markdown summary downloadable as a dedicated workflow artifact for audit trail convenience.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 10:36 -> 2026-03-05 10:39.
+- Changes:
+  - Updated `.github/workflows/production-launch-gate.yml`:
+    - added `Upload launch gate step summary artifact` step,
+    - uploads `artifacts/release/production-launch-gate-step-summary.md` as artifact `production-launch-gate-step-summary`.
+  - Updated docs:
+    - `docs/ops/release-runbook.md`
+    - `docs/ops/release-checklist.md`.
+- Validation:
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: include artifact URL in dispatch helper output when run id is detected.
+
 ### 2026-03-05 - live strict pass after step-summary renderer extraction (phase 27)
 
 - Scope: verify extracted launch-gate step-summary renderer works in live CI strict dispatch path.

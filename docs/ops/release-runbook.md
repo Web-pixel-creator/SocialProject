@@ -39,6 +39,7 @@ Canonical references:
    - `npm run release:launch:gate:production`
    - Optional JSON output: `npm run release:launch:gate:production:json`
    - Optional CI workflow_dispatch alternative: `Production Launch Gate` (`.github/workflows/production-launch-gate.yml`)
+   - CI run now uploads markdown audit artifact `production-launch-gate-step-summary` (`artifacts/release/production-launch-gate-step-summary.md`) in addition to JSON artifacts.
    - CI launch-gate workflow uses `RELEASE_*` context for production probes:
      - `RELEASE_API_BASE_URL`, `RELEASE_WEB_BASE_URL` (repo variables)
      - `RELEASE_ADMIN_API_TOKEN`, `RELEASE_CSRF_TOKEN`, `RELEASE_AGENT_GATEWAY_WEBHOOK_SECRET` (repo secrets)

@@ -237,6 +237,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
         - [ ] `RELEASE_WEBHOOK_SECRET_OVERRIDE=<value>` (requires `RELEASE_ALLOW_FAILURE_DRILL=true`)
       - [ ] If `RELEASE_REQUIRE_SKILL_MARKERS=true`, `RELEASE_RUNTIME_DRAFT_ID` is mandatory.
   - [ ] Confirm summary artifact: `artifacts/release/production-launch-gate-summary.json`
+  - [ ] Confirm step-summary markdown artifact: `artifacts/release/production-launch-gate-step-summary.md` (workflow artifact: `production-launch-gate-step-summary`)
   - [ ] Confirm health summary artifact: `artifacts/release/production-launch-gate-health-summary.json`
   - [ ] For CI `Production Launch Gate` runs, confirm inline post-release health artifacts are uploaded:
     - [ ] `post-release-health-report-inline`

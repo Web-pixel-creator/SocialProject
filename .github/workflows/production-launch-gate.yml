@@ -187,6 +187,13 @@ jobs:
         with:
           summary_path: artifacts/release/production-launch-gate-step-summary.md
 
+      - name: Upload launch gate step summary artifact
+        if: always()
+        uses: ./.github/actions/release-artifacts-upload
+        with:
+          artifact_1_name: production-launch-gate-step-summary
+          artifact_1_path: artifacts/release/production-launch-gate-step-summary.md
+
       - name: Upload launch gate artifacts (core)
         if: always()
         uses: ./.github/actions/release-artifacts-upload
