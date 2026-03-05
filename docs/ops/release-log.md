@@ -33,6 +33,29 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - migrate retry failure collector GitHub JSON calls to shared retry helper (phase 103)
+
+- Scope: complete release-script shared helper migration by moving retry-failure collector JSON GitHub calls to shared transient-retry request helper.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 15:43 -> 2026-03-05 15:46.
+- Changes:
+  - Updated `scripts/release/collect-retry-failure-logs.mjs`:
+    - replaced local JSON `githubRequest` wrapper with `githubApiRequestWithTransientRetry`,
+    - preserved log-download text fetch path (`githubRequestText`) and output schema behavior,
+    - added retry label context (`[release:smoke:retry:collect] ...`) for transient diagnostics.
+- Validation:
+  - `node --check scripts/release/collect-retry-failure-logs.mjs`: pass.
+  - `npm run release:smoke:retry:collect -- 22724704242 --json`: pass (`selectedJobs: 0`, expected for successful run).
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:runbook:failure-snippet:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass on rerun (`status: pass`, `generatedAtUtc: 2026-03-05T15:45:56.565Z`).
+- Incidents:
+  - first production gate validation attempt in this phase failed transiently with `Railway strict gate failed`; immediate rerun passed without code changes.
+- Follow-ups:
+  - optional: add focused unit tests for `github-api-request-with-transient-retry.mjs` (`allowStatusCodes`, GET-only retry behavior) to guard future refactors.
+
 ### 2026-03-05 - migrate tunnel staging smoke dispatcher GitHub JSON calls to shared retry helper (phase 102)
 
 - Scope: reduce transient GitHub API flaps in tunnel-assisted staging smoke retry inspection by migrating JSON GitHub calls in tunnel dispatcher to shared request+retry helper.

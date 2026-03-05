@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { githubApiRequestWithTransientRetry } from './github-api-request-with-transient-retry.mjs';
 import {
   cleanupRetryFailureLogs,
   formatRetryLogsCleanupSummary,
@@ -142,29 +143,14 @@ const resolveToken = () => {
   return readTokenFromGitCredentialStore();
 };
 
-const githubRequest = async ({ token, method, url }) => {
-  const response = await fetch(url, {
+const githubRequest = async ({ token, method, url }) =>
+  githubApiRequestWithTransientRetry({
+    apiVersion: GITHUB_API_VERSION,
     method,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': GITHUB_API_VERSION,
-    },
+    retryLabel: `[release:smoke:retry:collect] ${method} ${url}`,
+    token,
+    url,
   });
-
-  if (response.ok) {
-    if (response.status === 204) {
-      return null;
-    }
-    const text = await response.text();
-    return text ? JSON.parse(text) : null;
-  }
-
-  const errorText = await response.text();
-  throw new Error(
-    `GitHub API ${method} ${url} failed: ${response.status} ${response.statusText}. ${errorText}`,
-  );
-};
 
 const githubRequestText = async ({ token, url }) => {
   const response = await fetch(url, {
