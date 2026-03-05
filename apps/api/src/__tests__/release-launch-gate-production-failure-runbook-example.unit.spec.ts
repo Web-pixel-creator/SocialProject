@@ -1,41 +1,29 @@
-import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import {
+  resolveProjectModuleHref,
+  resolveProjectPath,
+  runInlineModuleScript,
+} from './module-runner.util';
 
-const projectRoot = path.resolve(__dirname, '..', '..', '..', '..');
-const formatterModuleHref = pathToFileURL(
-  path.join(
-    projectRoot,
-    'scripts',
-    'release',
-    'production-launch-gate-failure-output-format.mjs',
-  ),
-).href;
-const snippetUtilsModuleHref = pathToFileURL(
-  path.join(
-    projectRoot,
-    'scripts',
-    'release',
-    'release-runbook-snippet-utils.mjs',
-  ),
-).href;
-const fixturePath = path.join(
-  projectRoot,
+const formatterModuleHref = resolveProjectModuleHref(
+  'scripts',
+  'release',
+  'production-launch-gate-failure-output-format.mjs',
+);
+const snippetUtilsModuleHref = resolveProjectModuleHref(
+  'scripts',
+  'release',
+  'release-runbook-snippet-utils.mjs',
+);
+const fixturePath = resolveProjectPath(
   'docs',
   'ops',
   'examples',
   'production-launch-gate-non-json-failure-example.json',
 );
-const runbookPath = path.join(projectRoot, 'docs', 'ops', 'release-runbook.md');
+const runbookPath = resolveProjectPath('docs', 'ops', 'release-runbook.md');
 const runbookSnippetMarker =
   'Example non-JSON failure snippet (generated from fixture `docs/ops/examples/production-launch-gate-non-json-failure-example.json`):';
-
-interface ModuleActionResult<T> {
-  error: string;
-  ok: boolean;
-  result: T;
-}
 
 const runBuildFailureLines = (input: unknown) => {
   const script = `
@@ -55,19 +43,7 @@ const runBuildFailureLines = (input: unknown) => {
       process.exitCode = 1;
     }
   `;
-  const output = spawnSync(
-    process.execPath,
-    ['--input-type=module', '-e', script],
-    {
-      cwd: projectRoot,
-      encoding: 'utf8',
-    },
-  );
-  const payload = JSON.parse(output.stdout) as ModuleActionResult<string[]>;
-  return {
-    output,
-    payload,
-  };
+  return runInlineModuleScript<string[]>(script);
 };
 
 const runExtractRunbookSnippet = (runbookMarkdown: string) => {
@@ -90,19 +66,7 @@ const runExtractRunbookSnippet = (runbookMarkdown: string) => {
       process.exitCode = 1;
     }
   `;
-  const output = spawnSync(
-    process.execPath,
-    ['--input-type=module', '-e', script],
-    {
-      cwd: projectRoot,
-      encoding: 'utf8',
-    },
-  );
-  const payload = JSON.parse(output.stdout) as ModuleActionResult<string>;
-  return {
-    output,
-    payload,
-  };
+  return runInlineModuleScript<string>(script);
 };
 
 describe('production launch-gate runbook failure snippet', () => {

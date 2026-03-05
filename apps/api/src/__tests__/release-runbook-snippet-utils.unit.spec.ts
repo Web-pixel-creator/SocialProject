@@ -1,22 +1,13 @@
-import { spawnSync } from 'node:child_process';
-import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import {
+  resolveProjectModuleHref,
+  runInlineModuleScript,
+} from './module-runner.util';
 
-const projectRoot = path.resolve(__dirname, '..', '..', '..', '..');
-const moduleHref = pathToFileURL(
-  path.join(
-    projectRoot,
-    'scripts',
-    'release',
-    'release-runbook-snippet-utils.mjs',
-  ),
-).href;
-
-interface ModuleActionResult<T> {
-  error: string;
-  ok: boolean;
-  result: T;
-}
+const moduleHref = resolveProjectModuleHref(
+  'scripts',
+  'release',
+  'release-runbook-snippet-utils.mjs',
+);
 
 const runSnippetUtils = (input: unknown) => {
   const script = `
@@ -51,23 +42,11 @@ const runSnippetUtils = (input: unknown) => {
       process.exitCode = 1;
     }
   `;
-  const output = spawnSync(
-    process.execPath,
-    ['--input-type=module', '-e', script],
-    {
-      cwd: projectRoot,
-      encoding: 'utf8',
-    },
-  );
-  const payload = JSON.parse(output.stdout) as ModuleActionResult<{
+  return runInlineModuleScript<{
     dedented: string;
     extracted: string;
     normalized: string;
-  }>;
-  return {
-    output,
-    payload,
-  };
+  }>(script);
 };
 
 describe('release runbook snippet utils', () => {

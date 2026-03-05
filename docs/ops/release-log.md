@@ -33,6 +33,40 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add shared mjs test runner helper for release parity suites (phase 89)
+
+- Scope: reduce duplicated spawn/inline-module boilerplate across release parity tests by introducing a shared test utility.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 13:59 -> 2026-03-05 14:07.
+- Changes:
+  - Added test utility:
+    - `apps/api/src/__tests__/module-runner.util.ts`
+    - exports:
+      - `resolveProjectModuleHref`
+      - `resolveProjectPath`
+      - `runInlineModuleScript`
+      - `ModuleActionResult` interface.
+  - Refactored tests to use utility:
+    - `apps/api/src/__tests__/release-launch-gate-production-failure-runbook-example.unit.spec.ts`
+    - `apps/api/src/__tests__/release-runbook-snippet-utils.unit.spec.ts`
+  - Kept parity behavior unchanged; refactor is internal test harness simplification.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-runbook-snippet-utils.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-failure-runbook-example.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-failure-runbook-check-script.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run release:runbook:failure-snippet:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - production gate validation:
+    - first attempt: fail (`generatedAtUtc: 2026-03-05T14:05:11.487Z`) due transient smoke timeout (`api.health` aborted at 10s).
+    - immediate rerun: pass (`generatedAtUtc: 2026-03-05T14:06:40.318Z`).
+  - live dispatch regression:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --print-artifact-links --artifact-link-names all`
+    - run `#100` (`22721645290`): success with expected summary and artifact-link output.
+- Incidents:
+  - transient production smoke timeout on first validation attempt; rerun passed without code changes.
+- Follow-ups:
+  - optional: consider extending `release:launch:gate:production` with one bounded retry for smoke timeout-only failures to reduce false-red operator noise.
+
 ### 2026-03-05 - add unit coverage for shared runbook snippet utils module (phase 88)
 
 - Scope: harden newly extracted snippet utility module with direct edge-case tests (CRLF normalization, dedent, marker-missing behavior).
