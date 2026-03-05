@@ -33,6 +33,29 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - post-release health report local-summary fallback for sandbox checks (phase 7)
+
+- Scope: ensure `launchGateSandboxChecks` remains actionable when latest workflow artifact is legacy or missing new check keys by falling back to local launch-gate summary output.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 09:27 -> 2026-03-05 09:31.
+- Changes:
+  - Updated `scripts/release/post-release-health-report.mjs`:
+    - added fallback reader for local `artifacts/release/production-launch-gate-summary.json`,
+    - uses local summary when current run artifact is missing sandbox check keys or fetch fails,
+    - preserves schema-compatible `launchGateSandboxChecks` output.
+- Validation:
+  - `node --check scripts/release/post-release-health-report.mjs`: pass.
+  - `npm run release:health:report:launch-gate:json`: pass.
+    - confirms `launchGateSandboxChecks.available=true`
+    - confirms `sandboxExecutionModeConsistency` counters (`expectedMode=fallback_only`, `expectedModeCount=67`, `otherModeCount=0`, `total=67`).
+  - `npm run release:health:schema:check:json`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add explicit `source` field (`artifact|local`) to `launchGateSandboxChecks` schema for operator provenance clarity.
+
 ### 2026-03-05 - post-release health report sandbox-check highlights (phase 6)
 
 - Scope: expose sandbox execution launch-gate check visibility (`metrics`, `mode consistency`, `audit`, `egress`, `limits`) in post-release health outputs for faster operator triage.

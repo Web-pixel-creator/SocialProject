@@ -1046,11 +1046,30 @@ const analyzeLaunchGateSandboxChecks = async ({
   currentRun,
   currentRunArtifacts,
 }) => {
+  const localSummaryPath = path.resolve(
+    'artifacts/release/production-launch-gate-summary.json',
+  );
+  const tryReadLocalSummary = async () => {
+    try {
+      const localPayload = JSON.parse(await readFile(localSummaryPath, 'utf8'));
+      const summary = summarizeLaunchGateSandboxChecks({
+        launchGateSummary: localPayload,
+      });
+      return summary.available === true ? summary : null;
+    } catch {
+      return null;
+    }
+  };
+
   const summaryArtifact = findActiveArtifactByName({
     artifacts: currentRunArtifacts,
     name: LAUNCH_GATE_SUMMARY_ARTIFACT_NAME,
   });
   if (!summaryArtifact) {
+    const localSummary = await tryReadLocalSummary();
+    if (localSummary) {
+      return localSummary;
+    }
     return {
       artifactName: LAUNCH_GATE_SUMMARY_ARTIFACT_NAME,
       available: false,
@@ -1130,10 +1149,22 @@ const analyzeLaunchGateSandboxChecks = async ({
       tempRoot,
       runId: currentRun.id,
     });
-    return summarizeLaunchGateSandboxChecks({
+    const artifactSummary = summarizeLaunchGateSandboxChecks({
       launchGateSummary: payload,
     });
+    if (artifactSummary.available === true) {
+      return artifactSummary;
+    }
+    const localSummary = await tryReadLocalSummary();
+    if (localSummary) {
+      return localSummary;
+    }
+    return artifactSummary;
   } catch (error) {
+    const localSummary = await tryReadLocalSummary();
+    if (localSummary) {
+      return localSummary;
+    }
     return {
       artifactName: LAUNCH_GATE_SUMMARY_ARTIFACT_NAME,
       available: false,
