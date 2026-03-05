@@ -33,6 +33,30 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - launch-gate strict confirmation for sandbox mode-consistency (phase 5)
+
+- Scope: validate new `sandboxExecutionModeConsistency` check in real strict production launch-gate flow.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 08:38 -> 2026-03-05 08:41.
+- Validation:
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass.
+  - Gate status: `pass`.
+  - Confirmed checks:
+    - `sandboxExecutionMetrics.pass=true`
+    - `sandboxExecutionModeConsistency.pass=true`
+    - `sandboxExecutionAuditPolicy.pass=true`
+    - `sandboxExecutionEgressPolicy.pass=true`
+    - `sandboxExecutionLimitsPolicy.pass=true`.
+  - Mode consistency evidence from summary:
+    - `expectedMode=fallback_only`
+    - `expectedModeCount=67`
+    - `otherModeCount=0`
+    - `total=67`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: include `sandboxExecutionModeConsistency` in post-release health report highlights for quicker operator scanning.
+
 ### 2026-03-05 - launch-gate sandbox mode-consistency assertion (phase 4)
 
 - Scope: strengthen strict runtime gate by explicitly asserting that sandbox telemetry rows used for runtime probe belong only to the expected execution mode.
