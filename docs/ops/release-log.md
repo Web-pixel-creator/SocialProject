@@ -33,6 +33,27 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add high-signal option assertions on top of help section snapshots (phase 45)
+
+- Scope: improve failure readability for CLI help regressions by explicitly asserting presence of key recently added options.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 11:29 -> 2026-03-05 11:31.
+- Changes:
+  - Updated `apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts`:
+    - added explicit `toContain` checks for:
+      - `--artifact-link-names <csv|all>`
+      - `--no-step-summary-link`
+    - keeps section-level snapshots unchanged.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: mirror this pattern for dispatch helper stdout summary lines (`Print artifact links option`, `Include step summary link`) in a lightweight formatter test.
+
 ### 2026-03-05 - split dispatch help snapshot into section-level golden checks (phase 44)
 
 - Scope: reduce snapshot churn while preserving signal by validating dispatch helper usage output in independent sections.

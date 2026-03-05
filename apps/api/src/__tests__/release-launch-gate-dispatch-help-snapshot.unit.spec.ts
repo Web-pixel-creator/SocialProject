@@ -28,6 +28,8 @@ describe('launch-gate dispatch helper help output', () => {
     expect(sections[0]).toMatchInlineSnapshot(
       `"Usage: npm run release:launch:gate:dispatch -- [options]"`,
     );
+    expect(sections[1]).toContain('--artifact-link-names <csv|all>');
+    expect(sections[1]).toContain('--no-step-summary-link');
     expect(sections[1]).toMatchInlineSnapshot(`
 "Options:
   --token|-Token <value>                 GitHub token override
