@@ -33,6 +33,34 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add unit coverage for shared runbook snippet utils module (phase 88)
+
+- Scope: harden newly extracted snippet utility module with direct edge-case tests (CRLF normalization, dedent, marker-missing behavior).
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 13:53 -> 2026-03-05 13:59.
+- Changes:
+  - Added test suite:
+    - `apps/api/src/__tests__/release-runbook-snippet-utils.unit.spec.ts`
+    - validates:
+      - CRLF -> LF normalization path,
+      - dedent behavior on indented multi-line content,
+      - fenced snippet extraction after marker,
+      - empty-string result when marker is absent.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-runbook-snippet-utils.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-failure-runbook-example.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-failure-runbook-check-script.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run release:runbook:failure-snippet:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T13:58:36.726Z`).
+  - live dispatch regression:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --print-artifact-links --artifact-link-names all`
+    - run `#99` (`22721369657`): success with expected summary and artifact-link output.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: if more docs parity checks are introduced, consider a small shared test harness helper for mjs utility invocation to reduce test boilerplate.
+
 ### 2026-03-05 - share markdown snippet extraction helpers across parity script and tests (phase 87)
 
 - Scope: reduce duplication and drift risk in parity tooling by centralizing markdown snippet normalization/extraction utilities.
