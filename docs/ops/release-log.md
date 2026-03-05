@@ -33,6 +33,40 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add transient GitHub API retry hardening to post-release health report (phase 96)
+
+- Scope: reduce false-red post-release health failures under transient GitHub API instability by applying bounded retry/backoff/jitter policy to `release:health:report` GitHub calls.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 15:07 -> 2026-03-05 15:17.
+- Changes:
+  - Updated `scripts/release/post-release-health-report.mjs`:
+    - added transient retry loop for GitHub API requests (including pre-response network failures),
+    - reuse existing retry decision/delay policy via:
+      - `buildGitHubApiRetryDecision`
+      - `computeGitHubApiRetryDelayMs`
+    - wired retry tuning via existing env knobs:
+      - `RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_ATTEMPTS` (default `3`)
+      - `RELEASE_GITHUB_API_TRANSIENT_RETRY_DELAY_MS` (default `2000`)
+      - `RELEASE_GITHUB_API_TRANSIENT_RETRY_BACKOFF_FACTOR` (default `2`)
+      - `RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_DELAY_MS` (default `10000`)
+      - `RELEASE_GITHUB_API_TRANSIENT_RETRY_JITTER_PERCENT` (default `20`, bounded `0..100`)
+    - added stderr retry trace line with attempt/status/delay for easier incident triage.
+  - Updated docs:
+    - `docs/ops/release-runbook.md`
+    - `docs/ops/release-checklist.md`
+    - clarified that transient GitHub API retry env knobs now apply to release-helper polling in both dispatch and post-release health report flows.
+- Validation:
+  - `node --check scripts/release/post-release-health-report.mjs`: pass.
+  - `npm run release:health:report:launch-gate:json -- 22723836211 --strict --skip-smoke-fetch`: pass (`status: pass`, `runNumber: 107`).
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:runbook:failure-snippet:check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: extract a shared `github-request-with-transient-retry` helper module and migrate remaining release scripts that call GitHub API directly.
+
 ### 2026-03-05 - expose GitHub API transient retry tuning via dispatch CLI flags (phase 95)
 
 - Scope: make transient GitHub API retry tuning operator-friendly during live release windows by exposing retry controls as first-class `release:launch:gate:dispatch` CLI options (not env-only).
