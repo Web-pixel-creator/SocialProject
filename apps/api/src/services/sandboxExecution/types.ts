@@ -1,3 +1,5 @@
+import type { SandboxExecutionErrorCode } from './errorCodes';
+
 export type SandboxExecutionMode = 'fallback_only' | 'sandbox_enabled';
 export type SandboxExecutionTelemetryStatus = 'ok' | 'failed';
 export type SandboxExecutionEgressDecision = 'allow' | 'deny' | 'not_enforced';
@@ -54,7 +56,7 @@ export interface SandboxExecutionTelemetryMetadata {
   audit: SandboxExecutionTelemetryAuditMetadata | null;
   sandboxExecutionEnabled: boolean;
   fallbackPathUsed: boolean;
-  errorCode: string | null;
+  errorCode: SandboxExecutionErrorCode | null;
   errorMessage: string | null;
 }
 

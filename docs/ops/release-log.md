@@ -33,6 +33,37 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - sandbox execution validation/error-code hardening (phase 1)
+
+- Scope: harden sandbox execution policy/input handling by centralizing validation/error-code semantics and redacting sensitive telemetry fields.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 08:05 -> 2026-03-05 08:24.
+- Changes:
+  - Added centralized sandbox error-code contract:
+    - `apps/api/src/services/sandboxExecution/errorCodes.ts`
+    - typed constants + `isSandboxExecutionErrorCode` guard.
+  - Added reusable validation/sanitization layer:
+    - `apps/api/src/services/sandboxExecution/validation.ts`
+    - provider normalization/validation, sandbox-id normalization, root-bounded path validation (including symlink escape checks), audit/error redaction helpers.
+  - Integrated helpers into `SandboxExecutionService`:
+    - replaced inline validation logic with shared helpers,
+    - replaced hardcoded error-code strings with shared constants,
+    - tightened telemetry error code typing and unknown-error fallback.
+  - Extended tests:
+    - `apps/api/src/__tests__/sandbox-execution-validation.unit.spec.ts`
+    - `apps/api/src/__tests__/sandbox-execution.unit.spec.ts` (audit + error-message redaction assertions).
+  - Stabilized local quality gates in presence of research clones:
+    - added `.tmp-research` ignore to `eslint.config.cjs` and `jest.config.cjs`.
+- Validation:
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npx jest --runInBand apps/api/src/__tests__/sandbox-execution.unit.spec.ts apps/api/src/__tests__/sandbox-execution-validation.unit.spec.ts apps/api/src/__tests__/sandbox-execution-egress-profile.unit.spec.ts apps/api/src/__tests__/sandbox-execution-limits-profile.unit.spec.ts --config jest.config.cjs`: pass (4 suites, 36 tests).
+  - `npm --workspace apps/api run build`: pass.
+- Incidents:
+  - local `lint`/`jest` initially failed on unrelated `.tmp-research` fixtures/snapshots; resolved by explicit ignore patterns in project configs.
+- Follow-ups:
+  - optional: propagate shared redaction helper to other telemetry producers that currently sanitize independently.
+
 ### 2026-03-05 - admin UX all-metrics domain-tab navigation pass
 
 - Scope: reduce long-scroll navigation in `panel=all` by adding direct focus tabs for domain blocks (`Gateway`, `Runtime`, `Engagement`, `Quality`, `Debug`) while keeping an `All` view.

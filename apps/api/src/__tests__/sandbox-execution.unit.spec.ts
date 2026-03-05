@@ -22,6 +22,7 @@ describe('sandbox execution service phase-a fallback', () => {
       egressDeniedProviders: string[] | null;
       egressEnforced: boolean;
       egressProfile: string | null;
+      errorMessage: string | null;
       limitsApplied: Record<string, number> | null;
       limitsDecision: string;
       limitsEnforced: boolean;
@@ -398,6 +399,51 @@ describe('sandbox execution service phase-a fallback', () => {
       toolName: 'aiRuntime.runWithFailover',
       sessionId: metadata.executionSessionId,
     });
+  });
+
+  test('redacts sensitive audit metadata values before telemetry is stored', async () => {
+    const queryable = createQueryable();
+    const service = new SandboxExecutionServiceImpl(false, queryable);
+
+    await service.executeWithFallback('ai_runtime_dry_run', async () => 'ok', {
+      audit: {
+        actorId: 'admin-user-1',
+        sourceRoute:
+          '/api/admin/ai-runtime/dry-run?token=secret-token-value-123456',
+        toolName: 'Authorization=Bearer eyJhbGciOiJub25lIn0.payload.signature',
+      },
+    });
+
+    const metadata = getLastTelemetryMetadata(queryable);
+    expect(metadata.audit).toMatchObject({
+      actorId: 'admin-user-1',
+      sourceRoute: '/api/admin/ai-runtime/dry-run?token=<redacted>',
+    });
+    expect(metadata.audit?.toolName).toContain('Authorization=<redacted>');
+    expect(metadata.audit?.toolName).not.toContain('payload.signature');
+  });
+
+  test('redacts sensitive values in telemetry error message', async () => {
+    const queryable = createQueryable();
+    const service = new SandboxExecutionServiceImpl(false, queryable);
+
+    await expect(
+      service.executeWithFallback('ai_runtime_dry_run', () => {
+        throw new ServiceError(
+          'SANDBOX_EXECUTION_LIMITS_EXCEEDED',
+          'Provider request failed token=abc12345 apiKey=xyz98765',
+          400,
+        );
+      }),
+    ).rejects.toMatchObject({
+      code: 'SANDBOX_EXECUTION_LIMITS_EXCEEDED',
+    });
+
+    const metadata = getLastTelemetryMetadata(queryable);
+    expect(metadata.errorMessage).toContain('token=<redacted>');
+    expect(metadata.errorMessage).toContain('apiKey=<redacted>');
+    expect(metadata.errorMessage).not.toContain('abc12345');
+    expect(metadata.errorMessage).not.toContain('xyz98765');
   });
 
   test('enforces provider allowlist and blocks denied provider execution', async () => {

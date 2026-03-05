@@ -23,6 +23,11 @@ import {
   type SandboxExecutionEgressProviderAllowlistMap,
 } from './egressProfile';
 import {
+  isSandboxExecutionErrorCode,
+  SANDBOX_EXECUTION_ERROR_CODES,
+  type SandboxExecutionErrorCode,
+} from './errorCodes';
+import {
   parseSandboxExecutionLimitProfileMap,
   parseSandboxExecutionOperationLimitProfileMap,
   resolveSandboxExecutionLimitProfile,
@@ -52,6 +57,14 @@ import type {
   SandboxUploadFilesInput,
   SandboxUploadFilesResult,
 } from './types';
+import {
+  findInvalidProviderIdentifiers,
+  normalizeAuditField,
+  normalizeProviderIdentifiers,
+  normalizeSandboxId,
+  sanitizeErrorMessage,
+  validateSandboxPathWithinRoot,
+} from './validation';
 
 interface SandboxExecutionQueryable {
   query(text: string, values?: unknown[]): Promise<unknown>;
@@ -66,10 +79,6 @@ interface LocalSandboxState {
 
 const parseBooleanFlag = (value: string | undefined): boolean =>
   value?.trim().toLowerCase() === 'true';
-const PROVIDER_IDENTIFIER_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
-const normalizeProviderIdentifier = (value: string) =>
-  value.trim().toLowerCase();
-const SANDBOX_ID_PATTERN = /^sbx_[a-f0-9]{32}$/;
 const DEFAULT_SANDBOX_LIMITS = {
   maxArtifactBytes: 5_242_880,
   timeoutMs: 15_000,
@@ -108,25 +117,25 @@ export const SANDBOX_EXECUTION_TELEMETRY_EVENT_TYPE =
 
 const createOperationInvalidError = () =>
   new ServiceError(
-    'SANDBOX_EXECUTION_OPERATION_INVALID',
+    SANDBOX_EXECUTION_ERROR_CODES.OPERATION_INVALID,
     'operation is required.',
     400,
   );
 const createSandboxInputInvalidError = (message: string) =>
-  new ServiceError('SANDBOX_EXECUTION_INVALID_INPUT', message, 400);
+  new ServiceError(SANDBOX_EXECUTION_ERROR_CODES.INVALID_INPUT, message, 400);
 const createSandboxIdInvalidError = () =>
   createSandboxInputInvalidError(
     'sandboxId must use the expected sandbox identifier format.',
   );
 const createSandboxNotFoundError = (sandboxId: string) =>
   new ServiceError(
-    'SANDBOX_EXECUTION_SANDBOX_NOT_FOUND',
+    SANDBOX_EXECUTION_ERROR_CODES.SANDBOX_NOT_FOUND,
     `Sandbox "${sandboxId}" was not found.`,
     404,
   );
 const createSandboxExpiredError = (sandboxId: string) =>
   new ServiceError(
-    'SANDBOX_EXECUTION_SANDBOX_EXPIRED',
+    SANDBOX_EXECUTION_ERROR_CODES.SANDBOX_EXPIRED,
     `Sandbox "${sandboxId}" has expired.`,
     410,
   );
@@ -136,7 +145,7 @@ const createSandboxPathInvalidError = (pathValue: string) =>
   );
 const createSandboxPathNotFoundError = (pathValue: string) =>
   new ServiceError(
-    'SANDBOX_EXECUTION_PATH_NOT_FOUND',
+    SANDBOX_EXECUTION_ERROR_CODES.PATH_NOT_FOUND,
     `Sandbox path "${pathValue}" does not exist.`,
     404,
   );
@@ -145,7 +154,7 @@ const createSandboxProcessFailedError = (
   errorMessage: string,
 ) =>
   new ServiceError(
-    'SANDBOX_EXECUTION_PROCESS_FAILED',
+    SANDBOX_EXECUTION_ERROR_CODES.PROCESS_FAILED,
     `Sandbox process execution failed for ${operation}: ${errorMessage}.`,
     502,
   );
@@ -167,19 +176,19 @@ const createSandboxArtifactTooLargeError = (
   );
 const createEgressProfileRequiredError = (operation: string) =>
   new ServiceError(
-    'SANDBOX_EXECUTION_EGRESS_PROFILE_REQUIRED',
+    SANDBOX_EXECUTION_ERROR_CODES.EGRESS_PROFILE_REQUIRED,
     `No egress profile is configured for operation "${operation}".`,
     503,
   );
 const createEgressProfileAllowlistMissingError = (profile: string) =>
   new ServiceError(
-    'SANDBOX_EXECUTION_EGRESS_PROFILE_UNCONFIGURED',
+    SANDBOX_EXECUTION_ERROR_CODES.EGRESS_PROFILE_UNCONFIGURED,
     `No provider allowlist is configured for egress profile "${profile}".`,
     503,
   );
 const createEgressProviderInvalidError = (providers: string[]) =>
   new ServiceError(
-    'SANDBOX_EXECUTION_EGRESS_PROVIDER_INVALID',
+    SANDBOX_EXECUTION_ERROR_CODES.EGRESS_PROVIDER_INVALID,
     `Provider identifiers are invalid for egress policy enforcement: ${providers.join(', ')}.`,
     400,
   );
@@ -189,25 +198,25 @@ const createEgressPolicyDeniedError = (
   allowlist: string[],
 ) =>
   new ServiceError(
-    'SANDBOX_EXECUTION_EGRESS_POLICY_DENY',
+    SANDBOX_EXECUTION_ERROR_CODES.EGRESS_POLICY_DENY,
     `Egress policy denied providers for profile "${profile}": ${providers.join(', ')}. Allowed providers: ${allowlist.join(', ')}.`,
     403,
   );
 const createLimitProfileRequiredError = (operation: string) =>
   new ServiceError(
-    'SANDBOX_EXECUTION_LIMIT_PROFILE_REQUIRED',
+    SANDBOX_EXECUTION_ERROR_CODES.LIMIT_PROFILE_REQUIRED,
     `No execution-limit profile is configured for operation "${operation}".`,
     503,
   );
 const createLimitProfileUnconfiguredError = (profile: string) =>
   new ServiceError(
-    'SANDBOX_EXECUTION_LIMIT_PROFILE_UNCONFIGURED',
+    SANDBOX_EXECUTION_ERROR_CODES.LIMIT_PROFILE_UNCONFIGURED,
     `No execution limits are configured for profile "${profile}".`,
     503,
   );
 const createLimitInputInvalidError = (reasons: string[]) =>
   new ServiceError(
-    'SANDBOX_EXECUTION_LIMITS_INVALID_REQUEST',
+    SANDBOX_EXECUTION_ERROR_CODES.LIMITS_INVALID_REQUEST,
     `Invalid execution limit request payload: ${reasons.join('; ')}.`,
     400,
   );
@@ -217,7 +226,7 @@ const createLimitExceededError = (
   appliedLimits: SandboxExecutionLimits,
 ) =>
   new ServiceError(
-    'SANDBOX_EXECUTION_LIMITS_EXCEEDED',
+    SANDBOX_EXECUTION_ERROR_CODES.LIMITS_EXCEEDED,
     `Execution limit profile "${profile}" denied requested limits: ${violations.join('; ')}. Applied limits: ${JSON.stringify(
       appliedLimits,
     )}.`,
@@ -225,7 +234,7 @@ const createLimitExceededError = (
   );
 const createExecutionTimeoutError = (operation: string, timeoutMs: number) =>
   new ServiceError(
-    'SANDBOX_EXECUTION_TIMEOUT',
+    SANDBOX_EXECUTION_ERROR_CODES.TIMEOUT,
     `Sandbox execution operation "${operation}" timed out after ${timeoutMs}ms.`,
     504,
   );
@@ -259,16 +268,19 @@ const toJsonString = (value: unknown, fallback: '{}' | '[]' = '{}') => {
 };
 
 const toSafeErrorMessage = (error: unknown): string | null => {
-  if (!(error instanceof Error)) {
-    return null;
+  return sanitizeErrorMessage(error, 237);
+};
+
+const resolveTelemetryErrorCode = (
+  error: unknown,
+): SandboxExecutionErrorCode => {
+  if (
+    error instanceof ServiceError &&
+    isSandboxExecutionErrorCode(error.code)
+  ) {
+    return error.code;
   }
-  const normalized = error.message.trim();
-  if (normalized.length < 1) {
-    return null;
-  }
-  return normalized.length > 240
-    ? `${normalized.slice(0, 237)}...`
-    : normalized;
+  return SANDBOX_EXECUTION_ERROR_CODES.UNKNOWN_ERROR;
 };
 
 export class SandboxExecutionServiceImpl implements SandboxExecutionService {
@@ -365,7 +377,7 @@ export class SandboxExecutionServiceImpl implements SandboxExecutionService {
         executionSessionId,
         startedAtUtc,
         finishedAtUtc,
-        errorCode: policyError.code,
+        errorCode: resolveTelemetryErrorCode(policyError),
         errorMessage: toSafeErrorMessage(policyError),
         egressPolicy,
         limitsPolicy,
@@ -405,7 +417,7 @@ export class SandboxExecutionServiceImpl implements SandboxExecutionService {
         executionSessionId,
         startedAtUtc,
         finishedAtUtc: new Date(finishedAtTimestamp).toISOString(),
-        errorCode: error instanceof ServiceError ? error.code : 'UNKNOWN',
+        errorCode: resolveTelemetryErrorCode(error),
         errorMessage: toSafeErrorMessage(error),
         egressPolicy,
         limitsPolicy,
@@ -622,11 +634,8 @@ export class SandboxExecutionServiceImpl implements SandboxExecutionService {
   }
 
   private normalizeSandboxId(value: unknown): string {
-    if (typeof value !== 'string') {
-      throw createSandboxIdInvalidError();
-    }
-    const normalized = value.trim().toLowerCase();
-    if (!SANDBOX_ID_PATTERN.test(normalized)) {
+    const normalized = normalizeSandboxId(value);
+    if (normalized === null) {
       throw createSandboxIdInvalidError();
     }
     return normalized;
@@ -725,34 +734,34 @@ export class SandboxExecutionServiceImpl implements SandboxExecutionService {
       requireExisting,
     }: { requireExisting: boolean; requireDirectory: boolean },
   ): Promise<string> {
-    if (!(typeof sandboxPath === 'string' && sandboxPath.trim().length > 0)) {
+    const validation = await validateSandboxPathWithinRoot({
+      requireDirectory,
+      requireExisting,
+      rootDir: state.rootDir,
+      sandboxPath,
+    });
+    if (validation.ok) {
+      return validation.resolvedPath;
+    }
+
+    if (
+      validation.reason === 'empty_path' ||
+      validation.reason === 'control_chars'
+    ) {
       throw createSandboxInputInvalidError(
-        'sandbox path must be a non-empty string.',
+        'sandbox path must be a non-empty string without control characters.',
       );
     }
-    const resolvedPath = path.resolve(state.rootDir, sandboxPath.trim());
-    const relativePath = path.relative(state.rootDir, resolvedPath);
-    if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
-      throw createSandboxPathInvalidError(sandboxPath.trim());
+    if (validation.reason === 'not_found') {
+      throw createSandboxPathNotFoundError(validation.normalizedPath ?? '');
     }
-    if (!(requireExisting || requireDirectory)) {
-      return resolvedPath;
+    if (
+      validation.reason === 'outside_root' ||
+      validation.reason === 'not_directory'
+    ) {
+      throw createSandboxPathInvalidError(validation.normalizedPath ?? '');
     }
-    try {
-      const fileStats = await stat(resolvedPath);
-      if (requireDirectory && !fileStats.isDirectory()) {
-        throw createSandboxPathInvalidError(sandboxPath.trim());
-      }
-      return resolvedPath;
-    } catch (error) {
-      if (error instanceof ServiceError) {
-        throw error;
-      }
-      if (requireExisting) {
-        throw createSandboxPathNotFoundError(sandboxPath.trim());
-      }
-      return resolvedPath;
-    }
+    throw createSandboxPathInvalidError(validation.normalizedPath ?? '');
   }
 
   private executeProcess({
@@ -847,7 +856,7 @@ export class SandboxExecutionServiceImpl implements SandboxExecutionService {
     executionSessionId: string;
     startedAtUtc: string;
     finishedAtUtc: string;
-    errorCode?: string;
+    errorCode?: SandboxExecutionErrorCode;
     errorMessage?: string | null;
     egressPolicy: EgressPolicyEvaluation;
     limitsPolicy: LimitsPolicyEvaluation;
@@ -875,7 +884,7 @@ export class SandboxExecutionServiceImpl implements SandboxExecutionService {
     executionSessionId: string;
     startedAtUtc: string;
     finishedAtUtc: string;
-    errorCode?: string;
+    errorCode?: SandboxExecutionErrorCode;
     errorMessage?: string | null;
     egressPolicy: EgressPolicyEvaluation;
     limitsPolicy: LimitsPolicyEvaluation;
@@ -940,12 +949,8 @@ export class SandboxExecutionServiceImpl implements SandboxExecutionService {
       this.egressProfiles,
       operation,
     );
-    const providers = Array.from(
-      new Set(
-        (policyContext?.providerIdentifiers ?? [])
-          .map((provider) => normalizeProviderIdentifier(provider))
-          .filter((provider) => provider.length > 0),
-      ),
+    const providers = normalizeProviderIdentifiers(
+      policyContext?.providerIdentifiers,
     );
 
     if (!this.egressEnforced) {
@@ -972,9 +977,7 @@ export class SandboxExecutionServiceImpl implements SandboxExecutionService {
       };
     }
 
-    const invalidProviders = providers.filter(
-      (provider) => !PROVIDER_IDENTIFIER_PATTERN.test(provider),
-    );
+    const invalidProviders = findInvalidProviderIdentifiers(providers);
     if (invalidProviders.length > 0) {
       return {
         egressProfile,
@@ -1216,16 +1219,7 @@ export class SandboxExecutionServiceImpl implements SandboxExecutionService {
   }
 
   private normalizeAuditValue(value: unknown): string | null {
-    if (typeof value !== 'string') {
-      return null;
-    }
-    const trimmed = value.trim();
-    if (trimmed.length < 1) {
-      return null;
-    }
-    return trimmed.length > MAX_AUDIT_FIELD_LENGTH
-      ? trimmed.slice(0, MAX_AUDIT_FIELD_LENGTH)
-      : trimmed;
+    return normalizeAuditField(value, MAX_AUDIT_FIELD_LENGTH);
   }
 
   private normalizeAuditContext(

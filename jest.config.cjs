@@ -10,6 +10,7 @@ module.exports = {
     '<rootDir>/apps/web/e2e/',
     '<rootDir>/.external/',
     '<rootDir>/.tmp/',
+    '<rootDir>/.tmp-research/',
   ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/apps/web/src/$1',

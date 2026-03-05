@@ -14,6 +14,7 @@ module.exports = [
       '**/storybook-static/**',
       '.external/**',
       '.tmp/**',
+      '.tmp-research/**',
       '.agent/**',
     ]
   },
