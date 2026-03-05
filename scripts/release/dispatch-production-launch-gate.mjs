@@ -8,6 +8,7 @@ import { parseDispatchExternalChannels } from './dispatch-production-launch-gate
 import { buildDispatchRunFailureSummary } from './dispatch-production-launch-gate-failure-summary.mjs';
 import { buildDispatchInputSummaryLines } from './dispatch-production-launch-gate-output-format.mjs';
 import { resolveDispatchTokenCandidates } from './dispatch-production-launch-gate-token-resolution.mjs';
+import { selectDispatchTokenCandidate } from './dispatch-github-token-selection.mjs';
 import {
   parseReleaseBooleanEnv,
   parseReleasePositiveIntegerEnv,
@@ -409,51 +410,6 @@ const resolveTokenCandidates = ({ tokenFromArg }) =>
     ghAuthToken: readGitHubTokenFromGhAuth(),
     tokenFromArg,
   });
-
-const isAuthenticationError = (message) =>
-  message.includes(' 401 ') ||
-  message.includes('Bad credentials') ||
-  message.includes('Requires authentication') ||
-  message.includes('Resource not accessible by integration');
-
-const selectToken = async ({ candidates, baseApiUrl }) => {
-  if (candidates.length === 0) {
-    throw new Error(
-      'Missing GitHub token. Provide --token/-Token, or set GITHUB_TOKEN/GH_TOKEN, or run gh auth login.',
-    );
-  }
-
-  const probeUrl = `${baseApiUrl}`;
-
-  for (let index = 0; index < candidates.length; index += 1) {
-    const candidate = candidates[index];
-    try {
-      await githubApiRequest({
-        apiVersion: GITHUB_API_VERSION,
-        token: candidate.token,
-        method: 'GET',
-        url: probeUrl,
-      });
-      if (index > 0) {
-        process.stderr.write(
-          `GitHub auth fallback: using token source '${candidate.source}'.\n`,
-        );
-      }
-      return candidate;
-    } catch (error) {
-      const message = toErrorMessage(error);
-      const hasNextCandidate = index + 1 < candidates.length;
-      if (!hasNextCandidate || !isAuthenticationError(message)) {
-        throw error;
-      }
-      process.stderr.write(
-        `GitHub token source '${candidate.source}' failed auth, trying next source.\n`,
-      );
-    }
-  }
-
-  throw new Error('Unable to resolve a working GitHub token.');
-};
 
 const toArtifactUiUrl = ({ repoSlug, runId, artifactId }) =>
   `https://github.com/${repoSlug}/actions/runs/${runId}/artifacts/${artifactId}`;
@@ -876,9 +832,16 @@ const main = async () => {
 
   const repoSlug = resolveRepoSlug();
   const baseApiUrl = `https://api.github.com/repos/${repoSlug}`;
-  const selectedToken = await selectToken({
+  const selectedToken = await selectDispatchTokenCandidate({
     candidates: resolveTokenCandidates(cli),
-    baseApiUrl,
+    probeUrl: `${baseApiUrl}`,
+    probeAuth: ({ token, url }) =>
+      githubApiRequest({
+        apiVersion: GITHUB_API_VERSION,
+        token,
+        method: 'GET',
+        url,
+      }),
   });
   const token = selectedToken.token;
   const dispatchUrl = `${baseApiUrl}/actions/workflows/${encodeURIComponent(

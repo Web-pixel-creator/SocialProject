@@ -33,6 +33,45 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - centralize dispatch token selection fallback loop (phase 116)
+
+- Scope: remove duplicated token-auth probe/fallback loop from staging and production dispatch scripts by reusing one shared helper with preserved warning/error behavior.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 17:49 -> 2026-03-05 17:52.
+- Changes:
+  - Added shared helper:
+    - `scripts/release/dispatch-github-token-selection.mjs`
+    - exports:
+      - `isGitHubAuthenticationError`
+      - `selectDispatchTokenCandidate` (auth-probe fallback loop with warning output).
+  - Migrated callers:
+    - `scripts/release/dispatch-staging-smoke.mjs`
+    - `scripts/release/dispatch-production-launch-gate.mjs`
+    - both now provide `probeAuth` callback and shared candidate list handling.
+  - Added tests:
+    - `apps/api/src/__tests__/release-dispatch-github-token-selection.unit.spec.ts`
+    - covers:
+      - auth-error marker detection,
+      - empty-candidate failure message,
+      - immediate success path,
+      - auth fallback to next token with warning lines,
+      - non-auth error pass-through (no fallback).
+- Validation:
+  - `node --check scripts/release/dispatch-github-token-selection.mjs`: pass.
+  - `node --check scripts/release/dispatch-staging-smoke.mjs`: pass.
+  - `node --check scripts/release/dispatch-production-launch-gate.mjs`: pass.
+  - `npm run test -- apps/api/src/__tests__/release-dispatch-github-token-selection.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-transient-retry-utils.unit.spec.ts`: pass.
+  - `npm run release:smoke:dispatch -- --help`: pass.
+  - `npm run release:launch:gate:dispatch -- --help`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T17:51:25.531Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: if future dispatch commands use token probing, wire them directly to `selectDispatchTokenCandidate` to keep fallback semantics centralized.
+
 ### 2026-03-05 - centralize gh-auth token reader for release dispatch scripts (phase 115)
 
 - Scope: remove duplicated `gh auth token` reading logic from release dispatch scripts and reuse one shared helper with stable fallback behavior.
