@@ -33,6 +33,30 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add staging dispatch cli/help unit coverage (phase 117)
+
+- Scope: strengthen regression safety for `dispatch-staging-smoke` by adding dedicated CLI argument validation and help snapshot tests.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 17:53 -> 2026-03-05 17:56.
+- Changes:
+  - Added test suites:
+    - `apps/api/src/__tests__/release-staging-smoke-dispatch-cli-args.unit.spec.ts`
+      - covers help aliases, unknown argument failure, placeholder token rejection (all aliases), empty inline token alias values, and non-ASCII env token rejection.
+    - `apps/api/src/__tests__/release-staging-smoke-dispatch-help-snapshot.unit.spec.ts`
+      - locks usage + token-resolution-order help sections as inline snapshots.
+- Validation:
+  - `npm run test -- apps/api/src/__tests__/release-staging-smoke-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-staging-smoke-dispatch-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-dispatch-github-token-selection.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts`: pass.
+  - `npm run release:smoke:dispatch -- --help`: pass.
+  - `npm run release:launch:gate:dispatch -- --help`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T17:55:14.697Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add focused dispatch-only smoke runtime test (`RELEASE_WAIT_FOR_COMPLETION=false`) in CI when stable non-network fixture mode is available.
+
 ### 2026-03-05 - centralize dispatch token selection fallback loop (phase 116)
 
 - Scope: remove duplicated token-auth probe/fallback loop from staging and production dispatch scripts by reusing one shared helper with preserved warning/error behavior.
