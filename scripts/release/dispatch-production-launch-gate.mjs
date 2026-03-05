@@ -15,6 +15,7 @@ Options:
   --require-skill-markers                workflow input require_skill_markers=true
   --require-natural-cron-window          workflow input require_natural_cron_window=true
   --required-external-channels <csv|all> workflow input required_external_channels
+  --require-inline-health-artifacts      workflow input require_inline_health_artifacts=true
   --allow-failure-drill                  workflow input allow_failure_drill=true
   --webhook-secret-override <value>      workflow input webhook_secret_override (requires allow_failure_drill)
   --help|-h
@@ -101,6 +102,7 @@ const parseCliArgs = (argv) => {
   let requireSkillMarkers;
   let requireNaturalCronWindow;
   let requiredExternalChannels = '';
+  let requireInlineHealthArtifacts;
   let allowFailureDrill;
   let webhookSecretOverride = '';
 
@@ -191,6 +193,10 @@ const parseCliArgs = (argv) => {
       index += 1;
       continue;
     }
+    if (arg === '--require-inline-health-artifacts') {
+      requireInlineHealthArtifacts = true;
+      continue;
+    }
     if (arg === '--allow-failure-drill') {
       allowFailureDrill = true;
       continue;
@@ -219,6 +225,7 @@ const parseCliArgs = (argv) => {
 
   return {
     allowFailureDrill,
+    requireInlineHealthArtifacts,
     requireNaturalCronWindow,
     requireSkillMarkers,
     requiredExternalChannels,
@@ -393,6 +400,10 @@ const main = async () => {
       process.env.RELEASE_REQUIRED_EXTERNAL_CHANNELS ?? '',
       'RELEASE_REQUIRED_EXTERNAL_CHANNELS',
     );
+  const requireInlineHealthArtifacts =
+    typeof cli.requireInlineHealthArtifacts === 'boolean'
+      ? cli.requireInlineHealthArtifacts
+      : parseBoolean(process.env.RELEASE_REQUIRE_INLINE_HEALTH_ARTIFACTS, false);
   const allowFailureDrill =
     typeof cli.allowFailureDrill === 'boolean'
       ? cli.allowFailureDrill
@@ -461,6 +472,9 @@ const main = async () => {
   if (requiredExternalChannels) {
     inputs.required_external_channels = requiredExternalChannels;
   }
+  if (requireInlineHealthArtifacts) {
+    inputs.require_inline_health_artifacts = 'true';
+  }
   if (allowFailureDrill) {
     inputs.allow_failure_drill = 'true';
   }
@@ -494,6 +508,11 @@ const main = async () => {
   process.stdout.write(
     `Required external channels input: ${
       requiredExternalChannels || 'none'
+    }\n`,
+  );
+  process.stdout.write(
+    `Require inline health artifacts input: ${
+      requireInlineHealthArtifacts ? 'true' : 'false'
     }\n`,
   );
   process.stdout.write(

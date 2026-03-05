@@ -49,10 +49,14 @@ Canonical references:
        - Optional explicit workflow inputs via CLI args:
          - `npm run release:launch:gate:dispatch -- --runtime-draft-id <uuid> --require-skill-markers --require-natural-cron-window`
          - `npm run release:launch:gate:dispatch -- --required-external-channels telegram,slack`
+         - `npm run release:launch:gate:dispatch -- --require-inline-health-artifacts`
          - controlled negative drill: `npm run release:launch:gate:dispatch -- --required-external-channels all --allow-failure-drill --webhook-secret-override <dummy-value>`
        - Token resolution order: `-Token/--token` -> `GITHUB_TOKEN/GH_TOKEN` -> `gh auth token`
        - Optional inputs via env: `RELEASE_RUNTIME_DRAFT_ID=<uuid> RELEASE_REQUIRE_SKILL_MARKERS=true RELEASE_REQUIRE_NATURAL_CRON_WINDOW=true`
        - Optional required external channels via env: `RELEASE_REQUIRED_EXTERNAL_CHANNELS=telegram,slack` (or `all`)
+       - Optional strict inline health artifact requirement via env: `RELEASE_REQUIRE_INLINE_HEALTH_ARTIFACTS=true`
+       - Optional strict inline health artifact assertion via workflow input:
+         - `require_inline_health_artifacts=true`
        - Optional drill inputs via env (drill-only): `RELEASE_ALLOW_FAILURE_DRILL=true RELEASE_WEBHOOK_SECRET_OVERRIDE=<value>`
        - When `RELEASE_REQUIRE_SKILL_MARKERS=true`, `RELEASE_RUNTIME_DRAFT_ID` is required and must point to a draft with skill markers.
    - Review summary: `artifacts/release/production-launch-gate-summary.json`
@@ -69,6 +73,7 @@ Canonical references:
      - `post-release-health-report-inline`
      - `post-release-health-summary-inline`
      - `post-release-health-schema-summary-inline`
+     - `post-release-health-inline-artifacts-summary` (machine-readable presence check result; `status=fail` does not fail run unless `require_inline_health_artifacts=true`).
    - Recommended rollout to move from `skipped` to active external-channel verification:
      - set production `AGENT_GATEWAY_INGEST_CONNECTOR_PROFILES` (see `docs/ops/examples/agent-gateway-ingest-connector-profiles.example.json`),
      - deploy API with new env,

@@ -215,6 +215,8 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
       - [ ] Secrets: `RELEASE_ADMIN_API_TOKEN`, `RELEASE_CSRF_TOKEN`, `RELEASE_AGENT_GATEWAY_WEBHOOK_SECRET`
       - [ ] Optional Railway compatibility context: `RAILWAY_API_TOKEN`/`RAILWAY_TOKEN`, `RAILWAY_PROJECT_ID`, `RAILWAY_ENVIRONMENT_ID`
     - [ ] Optional inputs: `runtime_draft_id`, `require_skill_markers`, `require_natural_cron_window`, `required_external_channels`, `allow_failure_drill`, `webhook_secret_override`.
+    - [ ] Optional strict inline health artifact assertion:
+      - [ ] `require_inline_health_artifacts=true` (fails CI launch-gate run when inline health artifacts are missing).
     - [ ] Optional terminal dispatch helper (token resolution: `-Token/--token` -> `GITHUB_TOKEN/GH_TOKEN` -> `gh auth token`): `npm run release:launch:gate:dispatch`
       - [ ] Optional explicit token argument: `npm run release:launch:gate:dispatch -- -Token <github_pat>`
       - [ ] Optional explicit workflow inputs via CLI args:
@@ -222,12 +224,14 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
         - [ ] `--require-skill-markers`
         - [ ] `--require-natural-cron-window`
         - [ ] `--required-external-channels <telegram,slack|all>`
+        - [ ] `--require-inline-health-artifacts`
         - [ ] `--allow-failure-drill`
         - [ ] `--webhook-secret-override <value>` (requires `--allow-failure-drill`; drill-only)
       - [ ] Optional runtime draft input: `RELEASE_RUNTIME_DRAFT_ID=<uuid>`
       - [ ] Optional skill marker requirement: `RELEASE_REQUIRE_SKILL_MARKERS=true`
       - [ ] Optional natural cron requirement: `RELEASE_REQUIRE_NATURAL_CRON_WINDOW=true`
       - [ ] Optional required external channels: `RELEASE_REQUIRED_EXTERNAL_CHANNELS=telegram,slack` (or `all`)
+      - [ ] Optional inline artifact strict requirement: `RELEASE_REQUIRE_INLINE_HEALTH_ARTIFACTS=true`
       - [ ] Optional controlled drill toggles:
         - [ ] `RELEASE_ALLOW_FAILURE_DRILL=true`
         - [ ] `RELEASE_WEBHOOK_SECRET_OVERRIDE=<value>` (requires `RELEASE_ALLOW_FAILURE_DRILL=true`)
@@ -238,6 +242,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
     - [ ] `post-release-health-report-inline`
     - [ ] `post-release-health-summary-inline`
     - [ ] `post-release-health-schema-summary-inline`
+    - [ ] `post-release-health-inline-artifacts-summary`
   - [ ] Confirm `sandboxExecutionMetrics.pass=true` in launch gate summary.
   - [ ] Confirm `sandboxExecutionModeConsistency.pass=true` in launch gate summary.
   - [ ] Optional artifact drill: inspect `artifacts/release/production-sandbox-execution-metrics.json` for `total > 0` and `successCount > 0`.

@@ -22,6 +22,11 @@ on:
         required: false
         default: ''
         type: string
+      require_inline_health_artifacts:
+        description: 'Fail workflow when inline post-release health artifacts are missing.'
+        required: false
+        default: false
+        type: boolean
       allow_failure_drill:
         description: 'Allow controlled negative drill inputs (for operator validation only).'
         required: false
@@ -133,6 +138,17 @@ jobs:
         shell: bash
         run: bash scripts/release/run-post-release-health-gate.sh
 
+      - name: Validate inline post-release health artifacts
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(--run-id "${{ github.run_id }}" --json --output "artifacts/release/post-release-health-inline-artifacts-summary-${{ github.run_id }}.json")
+          if [[ "${{ inputs.require_inline_health_artifacts }}" == "true" ]]; then
+            args+=(--strict)
+          fi
+          node scripts/release/validate-inline-post-release-health-artifacts.mjs "${args[@]}"
+
       - name: Render launch gate step summary markdown
         if: always()
         shell: bash
@@ -151,11 +167,18 @@ jobs:
               echo "- runtime_draft_id: \`$(jq -r '.config.runtimeDraftId // "auto-from-smoke"' "${summary_json}")\`"
               echo "- require_skill_markers: \`$(jq -r '.config.requireSkillMarkers // false' "${summary_json}")\`"
               echo "- require_natural_cron_window: \`$(jq -r '.config.requireNaturalCronWindow // false' "${summary_json}")\`"
+              echo "- require_inline_health_artifacts: \`${{ inputs.require_inline_health_artifacts }}\`"
               required_external_channels="$(jq -r '(.config.requiredExternalChannels // []) | join(",")' "${summary_json}")"
               if [[ -z "${required_external_channels}" ]]; then
                 required_external_channels="none"
               fi
               echo "- required_external_channels: \`${required_external_channels}\`"
+              inline_health_summary="artifacts/release/post-release-health-inline-artifacts-summary-${{ github.run_id }}.json"
+              if [[ -f "${inline_health_summary}" ]]; then
+                echo "- inline post-release health artifacts: \`$(jq -r '.status // "unknown"' "${inline_health_summary}")\` (present \`$(jq -r '.presentTotal // 0' "${inline_health_summary}")/$(jq -r '.requiredTotal // 0' "${inline_health_summary}")\`, strict \`$(jq -r '.strict // false' "${inline_health_summary}")\`)"
+              else
+                echo "- inline post-release health artifacts summary: \`missing\`"
+              fi
               echo ""
               echo "### Checks"
               jq -r '.checks | to_entries[] | "- \(.key): `\((if .value.skipped then "SKIPPED" elif .value.pass then "PASS" else "FAIL" end))`"' "${summary_json}"
@@ -220,3 +243,5 @@ jobs:
           artifact_2_path: artifacts/release/post-release-health-summary-${{ github.run_id }}.json
           artifact_3_name: post-release-health-schema-summary-inline
           artifact_3_path: artifacts/release/post-release-health-schema-summary-${{ github.run_id }}.json
+          artifact_4_name: post-release-health-inline-artifacts-summary
+          artifact_4_path: artifacts/release/post-release-health-inline-artifacts-summary-${{ github.run_id }}.json

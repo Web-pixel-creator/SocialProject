@@ -33,6 +33,49 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - inline health artifact presence gate for production launch-gate (phase 18)
+
+- Scope: add machine-readable validation of inline post-release health artifacts in CI launch-gate runs with optional strict failure mode.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 10:11 -> 2026-03-05 10:18.
+- Changes:
+  - Added validator script:
+    - `scripts/release/validate-inline-post-release-health-artifacts.mjs`
+    - checks required inline files for `<run_id>`:
+      - `post-release-health-run-<run_id>.json`
+      - `post-release-health-summary-<run_id>.json`
+      - `post-release-health-schema-summary-<run_id>.json`
+    - emits machine-readable summary (`status`, `presentTotal`, `missing`, `checks`) and supports `--strict`.
+  - Added npm command:
+    - `release:health:inline-artifacts:check`.
+  - Updated workflow `.github/workflows/production-launch-gate.yml`:
+    - new workflow input `require_inline_health_artifacts` (boolean, default `false`),
+    - added validation step writing summary:
+      - `artifacts/release/post-release-health-inline-artifacts-summary-<run_id>.json`,
+    - step summary now surfaces inline artifact check status/presence counters,
+    - added uploaded artifact:
+      - `post-release-health-inline-artifacts-summary`.
+  - Updated dispatch helper `scripts/release/dispatch-production-launch-gate.mjs`:
+    - added CLI flag `--require-inline-health-artifacts`,
+    - added env override `RELEASE_REQUIRE_INLINE_HEALTH_ARTIFACTS=true`,
+    - forwards workflow input `require_inline_health_artifacts=true`.
+  - Added unit coverage:
+    - `apps/api/src/__tests__/release-inline-health-artifacts-check.unit.spec.ts`
+    - strict pass, strict fail, and non-strict fail/exit-zero scenarios.
+  - Updated ops docs:
+    - `docs/ops/release-checklist.md`
+    - `docs/ops/release-runbook.md`.
+- Validation:
+  - `npm run release:health:inline-artifacts:check -- --run-id 22589333396 --json`: pass (non-strict status emitted; missing summary/schema files reported as expected in current local context).
+  - `npx jest --runInBand apps/api/src/__tests__/release-inline-health-artifacts-check.unit.spec.ts apps/api/src/__tests__/release-health-log-render.unit.spec.ts --config jest.config.cjs`: pass (`5/5` tests).
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add `--require-inline-health-artifacts` support to `npm run release:launch:gate:production` wrapper for CLI parity without workflow dispatch.
+
 ### 2026-03-05 - add triage source decision table for inline vs workflow-run health artifacts (phase 17)
 
 - Scope: reduce operator ambiguity by documenting when to use inline launch-gate health artifacts vs `Release Health Gate` artifacts.
