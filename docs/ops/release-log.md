@@ -33,6 +33,33 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - migrate staging input manager to shared GitHub transient retry helper (phase 99)
+
+- Scope: harden staging input management workflow against transient GitHub API read failures by migrating `manage-staging-inputs` to shared request+retry helper while preserving `allow404` behavior.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 15:27 -> 2026-03-05 15:31.
+- Changes:
+  - Updated shared helper:
+    - `scripts/release/github-api-request-with-transient-retry.mjs`
+    - added `allowStatusCodes` support to `githubApiRequest` / `githubApiRequestWithTransientRetry` so callers can treat selected non-2xx statuses (e.g., `404`) as non-fatal.
+  - Updated `scripts/release/manage-staging-inputs.mjs`:
+    - replaced local GitHub request wrapper with shared helper,
+    - preserved existing `allow404` semantics via `allowStatusCodes: [404]`,
+    - added retry label context (`[release:staging:inputs] ...`) for transient stderr diagnostics.
+- Validation:
+  - `node --check scripts/release/github-api-request-with-transient-retry.mjs`: pass.
+  - `node --check scripts/release/manage-staging-inputs.mjs`: pass.
+  - `npm run release:smoke:inputs -- show`: pass (read-only staging input listing succeeded).
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:runbook:failure-snippet:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass on rerun (`status: pass`, `generatedAtUtc: 2026-03-05T15:30:37.805Z`).
+- Incidents:
+  - two initial production gate validation attempts in this phase failed transiently with `Railway strict gate failed`; third immediate rerun passed without code changes.
+- Follow-ups:
+  - optional: migrate `dispatch-staging-smoke*.mjs` and `collect-retry-failure-logs.mjs` to shared helper for full release-script parity.
+
 ### 2026-03-05 - migrate smoke artifact fetcher to shared GitHub transient retry helper (phase 98)
 
 - Scope: harden smoke-artifact retrieval used by release-health automation against transient GitHub API failures by migrating `fetch-smoke-report-artifact` to shared request+retry helper.

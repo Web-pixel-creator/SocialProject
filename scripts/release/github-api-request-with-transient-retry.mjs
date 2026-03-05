@@ -17,6 +17,7 @@ const toErrorMessage = (error) =>
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const githubApiRequest = async ({
+  allowStatusCodes = [],
   apiVersion = DEFAULT_GITHUB_API_VERSION,
   body,
   expectBinary = false,
@@ -55,6 +56,13 @@ export const githubApiRequest = async ({
     return text ? JSON.parse(text) : null;
   }
 
+  if (
+    Array.isArray(allowStatusCodes) &&
+    allowStatusCodes.some((statusCode) => statusCode === response.status)
+  ) {
+    return null;
+  }
+
   const errorText = await response.text();
   let details = errorText;
   try {
@@ -87,6 +95,7 @@ export const normalizeGitHubApiTransientRetryConfig = (retryConfig = {}) => ({
 });
 
 export const githubApiRequestWithTransientRetry = async ({
+  allowStatusCodes,
   apiVersion = DEFAULT_GITHUB_API_VERSION,
   body,
   expectBinary = false,
@@ -102,6 +111,7 @@ export const githubApiRequestWithTransientRetry = async ({
   for (let attempt = 1; attempt <= safeRetryConfig.maxAttempts; attempt += 1) {
     try {
       return await githubApiRequest({
+        allowStatusCodes,
         apiVersion,
         body,
         expectBinary,
