@@ -33,6 +33,25 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - live strict pass after step-summary renderer extraction (phase 27)
+
+- Scope: verify extracted launch-gate step-summary renderer works in live CI strict dispatch path.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 10:22 -> 2026-03-05 10:23.
+- Validation:
+  - Dispatch command:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts`.
+  - Live CI run:
+    - run `#63` (`22713369695`) completed with `success`.
+  - Confirmed workflow steps:
+    - `Annotate launch gate summary with inline schema check`: `success`
+    - `Render launch gate step summary markdown`: `success`
+    - `Append launch gate summary to step summary`: `success`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: upload rendered `production-launch-gate-step-summary.md` as artifact for easier out-of-band audit trail checks.
+
 ### 2026-03-05 - extract launch-gate step-summary renderer and lock inline schema check visibility (phase 26)
 
 - Scope: replace ad-hoc workflow bash markdown rendering with a dedicated script and add regression test asserting `inlineHealthArtifactsSchema` visibility in `### Checks`.
