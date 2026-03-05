@@ -73,6 +73,7 @@ export const GatewaySectionBody = ({
   eventQuery,
   eventsLimit,
   eventTypeFilter,
+  expandAllGroups = false,
   gatewayError,
   gatewayOverview,
   gatewayRecentEvents,
@@ -98,6 +99,7 @@ export const GatewaySectionBody = ({
   eventQuery: string;
   eventsLimit: number;
   eventTypeFilter: string;
+  expandAllGroups?: boolean;
   gatewayError: string | null;
   gatewayOverview: GatewayOverview | null;
   gatewayRecentEvents: GatewayRecentEventView[] | null;
@@ -133,6 +135,7 @@ export const GatewaySectionBody = ({
   }
 
   const currentSessionStatus = toStringValue(selectedSession?.status, 'n/a');
+  const shouldPersistExpandedGroups = activePanel === 'all' && expandAllGroups;
   const currentDraftId = toStringValue(
     selectedSession?.draftId ?? selectedSession?.draft_id,
     'n/a',
@@ -228,6 +231,9 @@ export const GatewaySectionBody = ({
           <form className="flex flex-wrap items-center gap-2" method="get">
             <input name="hours" type="hidden" value={`${hours}`} />
             <input name="panel" type="hidden" value={activePanel} />
+            {shouldPersistExpandedGroups ? (
+              <input name="expand" type="hidden" value="all" />
+            ) : null}
             <input
               name="gatewaySource"
               type="hidden"

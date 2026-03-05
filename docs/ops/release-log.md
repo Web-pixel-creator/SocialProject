@@ -33,6 +33,34 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - admin UX expand state persistence pass
+
+- Scope: preserve `panel=all&expand=all` state after gateway/runtime form submissions so operators stay in expanded all-metrics mode after applying filters or dry-runs.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 04:05 -> 2026-03-05 04:14.
+- Changes:
+  - Updated `apps/web/src/app/admin/ux/components/admin-ux-main-panel-builder-types.ts`:
+    - added `expandAllGroups` to `GatewayRuntimePanelsBuilderInput`.
+  - Updated `apps/web/src/app/admin/ux/components/admin-ux-page-orchestration.ts`:
+    - propagated `expandAllGroups` from query-state into main panel props builder.
+  - Updated `apps/web/src/app/admin/ux/components/admin-ux-gateway-runtime-prop-builders.tsx`:
+    - preserved `expand=all` in generated `panel` links when active panel is `all`,
+    - passed `expandAllGroups` into gateway live/telemetry/runtime body props.
+  - Updated form bodies:
+    - `gateway-section-body.tsx`
+    - `gateway-telemetry-section-body.tsx`
+    - `runtime-section-body.tsx`
+    - each now adds hidden `expand=all` input when current state is `panel=all` with expanded groups.
+- Validation:
+  - `npx ultracite check` on touched admin-ux files: pass.
+  - `npx jest --runInBand apps/web/src/app/admin/ux/components/admin-ux-page-entry.spec.ts`: pass.
+  - `npm run test:web -- --runInBand apps/web/src/__tests__/admin-ux-page.spec.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Incidents:
+  - one TypeScript regression surfaced during build (`expandAllGroups` required in `AdminUxMainPanels`); fixed by making prop optional with default `false`.
+- Follow-ups:
+  - optional: include `expand=all` persistence in any new future admin-ux form blocks by default via shared helper.
+
 ### 2026-03-05 - admin UX expand/collapse all controls pass
 
 - Scope: speed up navigation in `/admin/ux?panel=all` by adding explicit Expand all / Collapse all controls and wiring section-open state through query params.

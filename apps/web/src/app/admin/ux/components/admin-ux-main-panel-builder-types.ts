@@ -62,6 +62,7 @@ export interface GatewayRuntimePanelsBuilderInput {
   eventQuery: string;
   eventsLimit: number;
   eventTypeFilter: string;
+  expandAllGroups: boolean;
   gatewayChannelFilter: string | null;
   gatewayError: string | null;
   gatewayHealthLevel: HealthLevel;

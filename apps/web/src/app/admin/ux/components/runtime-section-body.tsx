@@ -79,6 +79,7 @@ export const RuntimeSectionBody = ({
   aiRuntimeRoleStates,
   aiRuntimeSummary,
   aiTimeoutMs,
+  expandAllGroups = false,
   hours,
   panel,
   roleOptions,
@@ -97,6 +98,7 @@ export const RuntimeSectionBody = ({
   aiRuntimeRoleStates: RuntimeRoleProfile[];
   aiRuntimeSummary: RuntimeSummary;
   aiTimeoutMs: number | undefined;
+  expandAllGroups?: boolean;
   hours: number;
   panel: string;
   roleOptions: string[];
@@ -309,6 +311,9 @@ export const RuntimeSectionBody = ({
         <form className="mt-3 grid gap-2" method="get">
           <input name="hours" type="hidden" value={`${hours}`} />
           <input name="panel" type="hidden" value={panel} />
+          {panel === 'all' && expandAllGroups ? (
+            <input name="expand" type="hidden" value="all" />
+          ) : null}
           <input
             name="gatewaySource"
             type="hidden"

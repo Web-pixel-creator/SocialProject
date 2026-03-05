@@ -47,6 +47,7 @@ export const buildGatewayRuntimeAndDebugPanelsProps = ({
   eventQuery,
   eventsLimit,
   eventTypeFilter,
+  expandAllGroups,
   gatewayChannelFilter,
   gatewayError,
   gatewayHealthLevel,
@@ -67,7 +68,9 @@ export const buildGatewayRuntimeAndDebugPanelsProps = ({
   selectedSessionId,
 }: GatewayRuntimePanelsBuilderInput): GatewayRuntimeAndDebugPanelsProps => {
   const buildPanelHref = (panel: string) =>
-    `/admin/ux?hours=${hours}&panel=${panel}`;
+    panel === 'all' && expandAllGroups
+      ? `/admin/ux?hours=${hours}&panel=${panel}&expand=all`
+      : `/admin/ux?hours=${hours}&panel=${panel}`;
   const gatewayDebugStatusLabel = toStringValue(
     gatewayOverview?.session.status ?? selectedSession?.status,
     sectionData.appliedGatewaySessionStatusLabel,
@@ -122,6 +125,7 @@ export const buildGatewayRuntimeAndDebugPanelsProps = ({
         eventQuery,
         eventsLimit,
         eventTypeFilter,
+        expandAllGroups,
         gatewayError,
         gatewayOverview,
         gatewayRecentEvents,
@@ -163,6 +167,7 @@ export const buildGatewayRuntimeAndDebugPanelsProps = ({
         eventQuery,
         eventsLimit,
         eventTypeFilter,
+        expandAllGroups,
         gatewayScopeOverridesApplied: sectionData.gatewayScopeOverridesApplied,
         gatewayScopeRows: sectionData.gatewayScopeRows,
         gatewaySourceFilter,
@@ -209,6 +214,7 @@ export const buildGatewayRuntimeAndDebugPanelsProps = ({
         aiTimeoutMs,
         hours,
         panel: activePanel,
+        expandAllGroups,
         roleOptions: [...AI_RUNTIME_ROLES],
         scopeFields: {
           eventQuery,

@@ -52,6 +52,7 @@ export const GatewayTelemetrySectionBody = ({
   eventQuery,
   eventsLimit,
   eventTypeFilter,
+  expandAllGroups = false,
   gatewayScopeOverridesApplied,
   gatewayScopeRows,
   gatewaySourceFilter,
@@ -74,6 +75,7 @@ export const GatewayTelemetrySectionBody = ({
   eventQuery: string;
   eventsLimit: number;
   eventTypeFilter: string;
+  expandAllGroups?: boolean;
   gatewayScopeOverridesApplied: boolean;
   gatewayScopeRows: GatewayScopeRow[];
   gatewaySourceFilter: string | null;
@@ -123,6 +125,9 @@ export const GatewayTelemetrySectionBody = ({
           <form className="mt-3 flex flex-wrap items-end gap-2" method="get">
             <input name="hours" type="hidden" value={`${hours}`} />
             <input name="panel" type="hidden" value={activePanel} />
+            {activePanel === 'all' && expandAllGroups ? (
+              <input name="expand" type="hidden" value="all" />
+            ) : null}
             <label
               className="grid gap-1 text-muted-foreground text-xs uppercase tracking-wide"
               htmlFor="gateway-source-scope-select"
