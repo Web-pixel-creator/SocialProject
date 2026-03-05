@@ -1,3 +1,5 @@
+import { toErrorMessage } from './release-runtime-utils.mjs';
+
 const AUTH_ERROR_MARKERS = [
   ' 401 ',
   'Bad credentials',
@@ -9,9 +11,6 @@ const DEFAULT_MISSING_TOKEN_MESSAGE =
   'Missing GitHub token. Provide --token/-Token, or set GITHUB_TOKEN/GH_TOKEN, or run gh auth login.';
 const DEFAULT_UNABLE_TO_RESOLVE_MESSAGE =
   'Unable to resolve a working GitHub token.';
-
-const toErrorMessage = (error) =>
-  error instanceof Error ? error.message : String(error);
 
 export const isGitHubAuthenticationError = (message) =>
   AUTH_ERROR_MARKERS.some((marker) => message.includes(marker));

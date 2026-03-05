@@ -4,6 +4,7 @@ import {
   resolveRepoSlug,
   resolveToken,
 } from './github-token-repo-resolution.mjs';
+import { toErrorMessage } from './release-runtime-utils.mjs';
 
 const GITHUB_API_VERSION = '2022-11-28';
 const USAGE = `Usage: npm run release:smoke:dispatch:auto -- [--help] [--dry-run] [--prefer-tunnel]
@@ -13,9 +14,6 @@ Flags:
   --dry-run        Resolve and print selected mode without dispatching.
   --prefer-tunnel  Force tunnel-helper mode (same as RELEASE_AUTO_PREFER_TUNNEL=true).
 `;
-
-const toErrorMessage = (error) =>
-  error instanceof Error ? error.message : String(error);
 
 const githubRequest = async ({ token, method, url }) =>
   githubApiRequestWithTransientRetry({

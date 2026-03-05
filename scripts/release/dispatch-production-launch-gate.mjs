@@ -28,6 +28,7 @@ import {
 } from './github-api-request-with-transient-retry.mjs';
 import { readGitHubTokenFromGhAuth } from './github-gh-auth-token.mjs';
 import { resolveRepoSlug } from './github-token-repo-resolution.mjs';
+import { sleep, toErrorMessage } from './release-runtime-utils.mjs';
 
 const GITHUB_API_VERSION = '2022-11-28';
 const DEFAULT_WORKFLOW_FILE = 'production-launch-gate.yml';
@@ -79,9 +80,6 @@ const parseReleaseNonNegativeIntegerEnv = (raw, fallback, sourceLabel) => {
   }
   return Number(value);
 };
-
-const toErrorMessage = (error) =>
-  error instanceof Error ? error.message : String(error);
 
 const parseCliArgs = (argv) => {
   let tokenFromArg = '';
@@ -399,8 +397,6 @@ const resolveTokenCandidates = ({ tokenFromArg }) =>
 
 const toArtifactUiUrl = ({ repoSlug, runId, artifactId }) =>
   `https://github.com/${repoSlug}/actions/runs/${runId}/artifacts/${artifactId}`;
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const listRunArtifacts = async ({
   baseApiUrl,

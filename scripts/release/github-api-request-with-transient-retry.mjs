@@ -2,6 +2,7 @@ import {
   buildGitHubApiRetryDecision,
   computeGitHubApiRetryDelayMs,
 } from './dispatch-production-launch-gate-transient-retry-utils.mjs';
+import { sleep, toErrorMessage } from './release-runtime-utils.mjs';
 
 export const DEFAULT_GITHUB_API_TRANSIENT_RETRY_MAX_ATTEMPTS = 3;
 export const DEFAULT_GITHUB_API_TRANSIENT_RETRY_DELAY_MS = 2000;
@@ -10,11 +11,6 @@ export const DEFAULT_GITHUB_API_TRANSIENT_RETRY_MAX_DELAY_MS = 10000;
 export const DEFAULT_GITHUB_API_TRANSIENT_RETRY_JITTER_PERCENT = 20;
 
 const DEFAULT_GITHUB_API_VERSION = '2022-11-28';
-
-const toErrorMessage = (error) =>
-  error instanceof Error ? error.message : String(error);
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const githubApiRequest = async ({
   acceptHeader = 'application/vnd.github+json',

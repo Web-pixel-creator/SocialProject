@@ -7,6 +7,7 @@ import {
 } from './dispatch-token-arg-utils.mjs';
 import { resolveRepoSlug } from './github-token-repo-resolution.mjs';
 import { githubApiRequestWithTransientRetry } from './github-api-request-with-transient-retry.mjs';
+import { sleep } from './release-runtime-utils.mjs';
 
 const GITHUB_API_VERSION = '2022-11-28';
 const DEFAULT_WORKFLOW_FILE = 'ci.yml';
@@ -95,8 +96,6 @@ const githubRequest = async ({ token, method, url, body }) => {
     url,
   });
 };
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const main = async () => {
   const cli = parseCliArgs(process.argv.slice(2));

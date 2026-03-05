@@ -33,6 +33,46 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - centralize release runtime helpers (`sleep`, `toErrorMessage`) (phase 119)
+
+- Scope: reduce repeated runtime helper snippets across release scripts by introducing shared `sleep` and error-normalization helpers and migrating active dispatch/API helper paths.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 18:06 -> 2026-03-05 18:11.
+- Changes:
+  - Added shared runtime utility:
+    - `scripts/release/release-runtime-utils.mjs`
+    - exports:
+      - `sleep(ms)`
+      - `toErrorMessage(error)`
+  - Migrated call sites:
+    - `scripts/release/dispatch-github-token-selection.mjs`
+    - `scripts/release/dispatch-production-launch-gate.mjs`
+    - `scripts/release/dispatch-staging-smoke.mjs`
+    - `scripts/release/dispatch-staging-smoke-auto.mjs`
+    - `scripts/release/github-api-request-with-transient-retry.mjs`
+    - removed equivalent local helper definitions where applicable.
+  - Added tests:
+    - `apps/api/src/__tests__/release-runtime-utils.unit.spec.ts`
+    - covers `toErrorMessage` normalization and `sleep` async resolution behavior.
+- Validation:
+  - `node --check scripts/release/release-runtime-utils.mjs`: pass.
+  - `node --check scripts/release/dispatch-github-token-selection.mjs`: pass.
+  - `node --check scripts/release/dispatch-staging-smoke.mjs`: pass.
+  - `node --check scripts/release/dispatch-staging-smoke-auto.mjs`: pass.
+  - `node --check scripts/release/dispatch-production-launch-gate.mjs`: pass.
+  - `node --check scripts/release/github-api-request-with-transient-retry.mjs`: pass.
+  - `npm run test -- apps/api/src/__tests__/release-runtime-utils.unit.spec.ts apps/api/src/__tests__/release-dispatch-github-token-selection.unit.spec.ts apps/api/src/__tests__/release-github-api-request-with-transient-retry.unit.spec.ts apps/api/src/__tests__/release-dispatch-token-arg-utils.unit.spec.ts apps/api/src/__tests__/release-staging-smoke-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts`: pass.
+  - `npm run release:smoke:dispatch -- --help`: pass.
+  - `npm run release:launch:gate:dispatch -- --help`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T18:10:42.661Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: gradually migrate remaining release scripts still carrying local `sleep`/`toErrorMessage` helpers as they are touched.
+
 ### 2026-03-05 - centralize dispatch token cli-arg parsing and placeholder checks (phase 118)
 
 - Scope: remove duplicated `--token` alias parsing and placeholder token validation from staging/production dispatch scripts by introducing a shared parser utility.
