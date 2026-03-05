@@ -33,6 +33,26 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - negative fixture coverage for health-log fallback rendering (phase 14)
+
+- Scope: extend fixture coverage so `release:health:log` fallback output remains stable when optional blocks are missing.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 09:46 -> 2026-03-05 09:49.
+- Changes:
+  - Updated unit test:
+    - `apps/api/src/__tests__/release-health-log-render.unit.spec.ts`
+    - added sparse fixture (`post-release-health-run-999999014.json`) and assertions that:
+      - smoke summary renders `unavailable`,
+      - optional provenance lines are omitted when corresponding blocks are absent.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-health-log-render.unit.spec.ts --config jest.config.cjs`: pass (`2/2` tests).
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: move fixture writer/runner into a tiny shared helper if more release-script snapshot tests are added.
+
 ### 2026-03-05 - fixture test for appended health log provenance rendering (phase 13)
 
 - Scope: lock `release:health:log` output format with a fixture-based unit test that asserts provenance lines are present.
