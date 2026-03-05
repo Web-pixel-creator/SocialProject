@@ -33,6 +33,32 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add cli-argument validation tests for dispatch helper (phase 35)
+
+- Scope: lock early-fail CLI diagnostics for dispatch helper so invalid option combinations fail deterministically before network operations.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 10:50 -> 2026-03-05 10:54.
+- Changes:
+  - Added test suite:
+    - `apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts`
+    - covers:
+      - missing value for `--artifact-link-names`,
+      - unknown argument handling,
+      - placeholder token rejection,
+      - `--webhook-secret-override` guard without `--allow-failure-drill`,
+      - invalid artifact subset names.
+  - Existing link-option resolver suite remains active:
+    - `apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts`.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add lightweight tests for token-source fallback order (`--token` -> `GITHUB_TOKEN` -> `GH_TOKEN` -> `gh auth token`) with mocked `execFileSync`.
+
 ### 2026-03-05 - unit-test harness for dispatch helper link-option combinations (phase 34)
 
 - Scope: harden helper behavior by extracting artifact-link option resolution into a dedicated module and covering key flag/env combinations with unit tests.
