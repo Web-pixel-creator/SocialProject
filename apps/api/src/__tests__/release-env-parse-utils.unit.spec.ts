@@ -141,7 +141,7 @@ describe('release env parse utils', () => {
   });
 
   test('positive integer parser throws on unsupported values', () => {
-    const invalidCases = ['0', 'abc'];
+    const invalidCases = ['0', 'abc', '12abc', '3.5'];
     for (const value of invalidCases) {
       const result = runModuleAction<number>({
         action: 'parsePositiveInteger',

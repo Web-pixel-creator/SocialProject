@@ -33,6 +33,27 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - extend shared integer parser tests for partial/decimal invalid inputs (phase 65)
+
+- Scope: lock strict numeric parsing contract in shared release env parser by explicitly covering partial and decimal invalid forms.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 12:14 -> 2026-03-05 12:15.
+- Changes:
+  - Updated `apps/api/src/__tests__/release-env-parse-utils.unit.spec.ts`:
+    - expanded invalid-case matrix for `parseReleasePositiveIntegerEnv` to include:
+      - `12abc`
+      - `3.5`
+    - keeps existing invalid cases (`0`, `abc`).
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-env-parse-utils.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts apps/api/src/__tests__/release-production-config-resolvers.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: if numeric shorthand syntax is later introduced, update both parser and this test matrix in the same change to avoid silent contract drift.
+
 ### 2026-03-05 - document shared release parser/resolver modules in runbook (phase 64)
 
 - Scope: improve operational discoverability by documenting where release helper env/arg validation rules live in code.
