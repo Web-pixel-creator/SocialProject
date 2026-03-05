@@ -8,6 +8,7 @@ import {
 import type {
   AdminUxAllMetricsRiskFilter,
   AdminUxAllMetricsRiskTone,
+  AdminUxAllMetricsSignalFilter,
   AdminUxAllMetricsView,
   AdminUxPanel,
 } from './admin-ux-page-utils';
@@ -40,6 +41,11 @@ interface AllMetricsRiskCounts {
   watch: number;
 }
 
+interface AllMetricsSignalCounts {
+  active: number;
+  all: number;
+}
+
 const ALL_METRICS_RISK_SNAPSHOT_TONES: ReadonlyArray<{
   id: AdminUxAllMetricsRiskTone;
   label: string;
@@ -69,16 +75,26 @@ const ADMIN_UX_ALL_METRICS_RISK_FILTER_TABS: ReadonlyArray<{
   { id: 'high', label: 'Risk only' },
 ] as const;
 
+const ADMIN_UX_ALL_METRICS_SIGNAL_FILTER_TABS: ReadonlyArray<{
+  id: AdminUxAllMetricsSignalFilter;
+  label: string;
+}> = [
+  { id: 'all', label: 'All sections' },
+  { id: 'active', label: 'Signal only' },
+] as const;
+
 export const buildAdminUxPanelHref = (
   hours: number,
   panel: AdminUxPanel,
   {
     allMetricsRiskFilter = 'all',
+    allMetricsSignalFilter = 'all',
     allMetricsRiskTone = 'all',
     allMetricsView = 'overview',
     expandAllGroups = false,
   }: {
     allMetricsRiskFilter?: AdminUxAllMetricsRiskFilter;
+    allMetricsSignalFilter?: AdminUxAllMetricsSignalFilter;
     allMetricsRiskTone?: AdminUxAllMetricsRiskTone;
     allMetricsView?: AdminUxAllMetricsView;
     expandAllGroups?: boolean;
@@ -90,6 +106,9 @@ export const buildAdminUxPanelHref = (
   }
   if (panel === 'all' && allMetricsRiskFilter !== 'all') {
     href += `&risk=${allMetricsRiskFilter}`;
+  }
+  if (panel === 'all' && allMetricsSignalFilter !== 'all') {
+    href += `&signal=${allMetricsSignalFilter}`;
   }
   if (panel === 'all' && allMetricsRiskTone !== 'all') {
     href += `&riskTone=${allMetricsRiskTone}`;
@@ -103,8 +122,10 @@ export const buildAdminUxPanelHref = (
 export const buildAdminUxPanelChromeView = ({
   activePanel,
   allMetricsRiskFilter,
+  allMetricsSignalFilter,
   allMetricsRiskTone,
   allMetricsRiskCounts,
+  allMetricsSignalCounts,
   allMetricsView,
   expandAllGroups,
   hours,
@@ -112,8 +133,10 @@ export const buildAdminUxPanelChromeView = ({
 }: {
   activePanel: AdminUxPanel;
   allMetricsRiskFilter: AdminUxAllMetricsRiskFilter;
+  allMetricsSignalFilter: AdminUxAllMetricsSignalFilter;
   allMetricsRiskTone: AdminUxAllMetricsRiskTone;
   allMetricsRiskCounts?: AllMetricsRiskCounts;
+  allMetricsSignalCounts?: AllMetricsSignalCounts;
   allMetricsView: AdminUxAllMetricsView;
   expandAllGroups: boolean;
   hours: number;
@@ -126,6 +149,7 @@ export const buildAdminUxPanelChromeView = ({
           buildPanelHref: (riskFilter) =>
             buildAdminUxPanelHref(hours, 'all', {
               allMetricsRiskFilter: riskFilter,
+              allMetricsSignalFilter,
               allMetricsRiskTone,
               allMetricsView,
               expandAllGroups,
@@ -136,6 +160,27 @@ export const buildAdminUxPanelChromeView = ({
               tab.id === 'high'
                 ? `${tab.label} (${allMetricsRiskCounts?.high ?? 0})`
                 : `${tab.label} (${allMetricsRiskCounts?.all ?? 0})`,
+          })),
+        })
+      : null,
+  allMetricsSignalFilterTabs:
+    activePanel === 'all'
+      ? buildPanelTabsView({
+          activePanel: allMetricsSignalFilter,
+          buildPanelHref: (signalFilter) =>
+            buildAdminUxPanelHref(hours, 'all', {
+              allMetricsRiskFilter,
+              allMetricsSignalFilter: signalFilter,
+              allMetricsRiskTone,
+              allMetricsView,
+              expandAllGroups,
+            }),
+          panelTabs: ADMIN_UX_ALL_METRICS_SIGNAL_FILTER_TABS.map((tab) => ({
+            ...tab,
+            label:
+              tab.id === 'active'
+                ? `${tab.label} (${allMetricsSignalCounts?.active ?? 0})`
+                : `${tab.label} (${allMetricsSignalCounts?.all ?? 0})`,
           })),
         })
       : null,
@@ -150,6 +195,7 @@ export const buildAdminUxPanelChromeView = ({
             id: tone.id,
             href: buildAdminUxPanelHref(hours, 'all', {
               allMetricsRiskFilter: 'all',
+              allMetricsSignalFilter,
               allMetricsRiskTone:
                 allMetricsRiskTone === tone.id ? 'all' : tone.id,
               allMetricsView,
@@ -167,6 +213,7 @@ export const buildAdminUxPanelChromeView = ({
           buildPanelHref: (view) =>
             buildAdminUxPanelHref(hours, 'all', {
               allMetricsRiskFilter,
+              allMetricsSignalFilter,
               allMetricsRiskTone,
               allMetricsView: view,
               expandAllGroups,
@@ -179,11 +226,13 @@ export const buildAdminUxPanelChromeView = ({
       ? {
           collapseHref: buildAdminUxPanelHref(hours, 'all', {
             allMetricsRiskFilter,
+            allMetricsSignalFilter,
             allMetricsRiskTone,
             allMetricsView,
           }),
           expandHref: buildAdminUxPanelHref(hours, 'all', {
             allMetricsRiskFilter,
+            allMetricsSignalFilter,
             allMetricsRiskTone,
             allMetricsView,
             expandAllGroups: true,
@@ -196,6 +245,7 @@ export const buildAdminUxPanelChromeView = ({
     buildPanelHref: (panel) =>
       buildAdminUxPanelHref(hours, panel, {
         allMetricsRiskFilter,
+        allMetricsSignalFilter,
         allMetricsRiskTone,
         allMetricsView,
         expandAllGroups,

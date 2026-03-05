@@ -80,6 +80,7 @@ export const RuntimeSectionBody = ({
   aiRuntimeSummary,
   aiTimeoutMs,
   allMetricsRiskFilter = 'all',
+  allMetricsSignalFilter = 'all',
   allMetricsRiskTone = 'all',
   allMetricsView = 'overview',
   expandAllGroups = false,
@@ -102,6 +103,7 @@ export const RuntimeSectionBody = ({
   aiRuntimeSummary: RuntimeSummary;
   aiTimeoutMs: number | undefined;
   allMetricsRiskFilter?: string;
+  allMetricsSignalFilter?: string;
   allMetricsRiskTone?: string;
   allMetricsView?: string;
   expandAllGroups?: boolean;
@@ -319,6 +321,9 @@ export const RuntimeSectionBody = ({
           <input name="panel" type="hidden" value={panel} />
           {panel === 'all' && allMetricsRiskFilter !== 'all' ? (
             <input name="risk" type="hidden" value={allMetricsRiskFilter} />
+          ) : null}
+          {panel === 'all' && allMetricsSignalFilter !== 'all' ? (
+            <input name="signal" type="hidden" value={allMetricsSignalFilter} />
           ) : null}
           {panel === 'all' && allMetricsRiskTone !== 'all' ? (
             <input name="riskTone" type="hidden" value={allMetricsRiskTone} />

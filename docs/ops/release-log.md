@@ -33,6 +33,40 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - admin UX signal-scope filter pass
+
+- Scope: reduce `panel=all` visual noise by adding signal-scope filtering (`all` vs `active`) so operators can hide low-signal sections.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 06:46 -> 2026-03-05 07:00.
+- Changes:
+  - Added new query state `signal` (`all | active`) and resolver plumbing:
+    - `admin-ux-page-utils.ts`
+    - `admin-ux-page-orchestration.ts`
+    - `admin-ux-page-entry.tsx`
+    - `admin-ux-page-load-state.tsx`
+    - `admin-ux-page-content.tsx`
+  - Extended panel chrome view model and UI:
+    - `admin-ux-page-shell-view-model.ts` now builds `Signal scope` tabs and keeps `signal` in panel/view/risk/riskTone hrefs.
+    - `admin-ux-panel-chrome.tsx` now renders `All sections (N)` / `Signal only (M)` tabs.
+  - Propagated `signal` through all gateway/runtime action links and forms:
+    - `admin-ux-main-panel-builder-types.ts`
+    - `admin-ux-gateway-runtime-prop-builders.tsx`
+    - `gateway-section-body.tsx`
+    - `gateway-telemetry-section-body.tsx`
+    - `runtime-section-body.tsx`
+  - Updated all-metrics filtering pipeline:
+    - `admin-ux-main-panels.tsx` now filters by signal after risk-tone + severity filters and reports scope in empty state.
+  - Updated fixture/test wiring:
+    - `admin-ux-page-entry.spec.ts`
+- Validation:
+  - `npm run ultracite:check`: pass.
+  - `npm run test:web -- --runInBand apps/web/src/app/admin/ux/components/admin-ux-page-entry.spec.ts apps/web/src/__tests__/admin-ux-page.spec.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add top-level tab navigation for major all-metrics blocks (`Gateway / Runtime / Engagement / Quality / Debug`) to reduce long-scroll navigation.
+
 ### 2026-03-05 - admin UX risk-tone guidance polish pass
 
 - Scope: improve operator clarity in `panel=all` by making risk-tone interactions self-explanatory and by clarifying empty states when tone/severity filters are combined.

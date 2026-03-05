@@ -11,6 +11,7 @@ import type { HealthLevel } from './admin-ux-mappers';
 import type {
   AdminUxAllMetricsRiskFilter,
   AdminUxAllMetricsRiskTone,
+  AdminUxAllMetricsSignalFilter,
   AdminUxAllMetricsView,
   AdminUxPanel,
 } from './admin-ux-page-utils';
@@ -49,6 +50,7 @@ export type TopSegmentsProps = MainPanelsProps['topSegmentsProps'];
 export interface GatewayRuntimePanelsBuilderInput {
   activePanel: AdminUxPanel;
   allMetricsRiskFilter: AdminUxAllMetricsRiskFilter;
+  allMetricsSignalFilter: AdminUxAllMetricsSignalFilter;
   allMetricsRiskTone: AdminUxAllMetricsRiskTone;
   allMetricsView: AdminUxAllMetricsView;
   aiFailuresCsv: string;

@@ -11,6 +11,7 @@ import {
 import type {
   AdminUxAllMetricsRiskFilter,
   AdminUxAllMetricsRiskTone,
+  AdminUxAllMetricsSignalFilter,
   AdminUxAllMetricsView,
   AdminUxPanel,
 } from './admin-ux-page-utils';
@@ -145,9 +146,132 @@ const computeAllMetricsRiskCounts = ({
   };
 };
 
+const computeAllMetricsSignalCounts = ({
+  allMetricsView,
+  mainPanelsProps,
+}: {
+  allMetricsView: AdminUxAllMetricsView;
+  mainPanelsProps: BuiltMainPanelsProps;
+}): {
+  active: number;
+  all: number;
+} => {
+  const isSubviewVisible = (...views: AdminUxAllMetricsView[]) =>
+    allMetricsView === 'overview' || views.includes(allMetricsView);
+
+  let all = 0;
+  let active = 0;
+
+  const includeGroup = (signalCount: number) => {
+    all += 1;
+    if (signalCount > 0) {
+      active += 1;
+    }
+  };
+
+  if (isSubviewVisible('operations')) {
+    const gatewaySignalCount =
+      mainPanelsProps.gatewayPanelsProps.liveBodyProps.gatewaySessions.length +
+      (mainPanelsProps.gatewayPanelsProps.liveBodyProps.gatewayRecentEvents
+        ?.length ?? 0);
+    const runtimeSignalCount =
+      mainPanelsProps.runtimePanelProps.bodyProps.aiRuntimeSummary.roleCount +
+      mainPanelsProps.runtimePanelProps.bodyProps.aiRuntimeSummary
+        .providerCount;
+    includeGroup(gatewaySignalCount);
+    includeGroup(runtimeSignalCount);
+  }
+
+  if (isSubviewVisible('engagement')) {
+    const engagementSignalCount = mainPanelsProps.engagementOverviewProps
+      .shouldCompact
+      ? 0
+      : mainPanelsProps.engagementHealthProps.signals.length;
+    const feedPreferenceSignalCount = mainPanelsProps.feedPreferenceKpisProps
+      .shouldCompact
+      ? 0
+      : 5;
+    const feedInteractionSignalCount =
+      mainPanelsProps.feedInteractionCountersProps.viewMode.total +
+      mainPanelsProps.feedInteractionCountersProps.density.total +
+      mainPanelsProps.feedInteractionCountersProps.hint.total;
+    const topSegmentsSignalCount =
+      mainPanelsProps.topSegmentsProps.topSegments.length;
+    includeGroup(engagementSignalCount);
+    includeGroup(feedPreferenceSignalCount);
+    includeGroup(feedInteractionSignalCount);
+    includeGroup(topSegmentsSignalCount);
+  }
+
+  if (isSubviewVisible('quality')) {
+    const releaseSignalCount =
+      [
+        mainPanelsProps.releaseHealthSectionProps.releaseAlertsCount,
+        mainPanelsProps.releaseHealthSectionProps.releaseFirstAppearancesCount,
+        mainPanelsProps.releaseHealthSectionProps.releaseRunsCount,
+        mainPanelsProps.releaseHealthSectionProps.releaseLatestRunLabel,
+      ].filter((value) => {
+        const normalized = value.trim().toLowerCase();
+        return normalized !== 'n/a' && normalized !== 'na';
+      }).length +
+      mainPanelsProps.releaseHealthSectionProps.breakdownRows.length;
+    const multimodalSignalCount =
+      mainPanelsProps.multimodalTelemetrySectionProps.multimodalStatCards.filter(
+        (card) => {
+          const normalized = card.value.trim().toLowerCase();
+          return normalized !== 'n/a' && normalized !== 'na';
+        },
+      ).length +
+      [
+        mainPanelsProps.multimodalTelemetrySectionProps.invalidQueryErrorsValue,
+        mainPanelsProps.multimodalTelemetrySectionProps.invalidQueryShareText,
+      ].filter((value) => {
+        const normalized = value.trim().toLowerCase();
+        return normalized !== 'n/a' && normalized !== 'na';
+      }).length +
+      mainPanelsProps.multimodalTelemetrySectionProps.breakdownRows.length;
+    const predictionSignalCount =
+      mainPanelsProps.predictionMarketSectionProps.predictionStatCards.filter(
+        (card) => {
+          const normalized = card.value.trim().toLowerCase();
+          return normalized !== 'n/a' && normalized !== 'na';
+        },
+      ).length +
+      [
+        mainPanelsProps.predictionMarketSectionProps.filterSwitchShareText,
+        mainPanelsProps.predictionMarketSectionProps.sortSwitchShareText,
+        mainPanelsProps.predictionMarketSectionProps.nonDefaultSortShareText,
+      ].filter((value) => {
+        const normalized = value.trim().toLowerCase();
+        return normalized !== 'n/a' && normalized !== 'na';
+      }).length +
+      mainPanelsProps.predictionMarketSectionProps.cohortsByOutcomeRows.length +
+      mainPanelsProps.predictionMarketSectionProps.cohortsByStakeBandRows
+        .length +
+      mainPanelsProps.predictionMarketSectionProps.historyScopeRows.length +
+      mainPanelsProps.predictionMarketSectionProps.scopeFilterMatrixRows
+        .length +
+      mainPanelsProps.predictionMarketSectionProps.scopeSortMatrixRows.length;
+    const styleSignalCount =
+      mainPanelsProps.styleFusionMetricsSectionProps.metrics.total +
+      mainPanelsProps.styleFusionMetricsSectionProps.metrics.copy.total;
+    includeGroup(releaseSignalCount);
+    includeGroup(multimodalSignalCount);
+    includeGroup(predictionSignalCount);
+    includeGroup(styleSignalCount);
+  }
+
+  if (isSubviewVisible('debug')) {
+    all += 1;
+  }
+
+  return { active, all };
+};
+
 export const AdminUxPageContent = ({
   activePanel,
   allMetricsRiskFilter,
+  allMetricsSignalFilter,
   allMetricsRiskTone,
   allMetricsView,
   expandAllGroups,
@@ -158,6 +282,7 @@ export const AdminUxPageContent = ({
 }: {
   activePanel: AdminUxPanel;
   allMetricsRiskFilter: AdminUxAllMetricsRiskFilter;
+  allMetricsSignalFilter: AdminUxAllMetricsSignalFilter;
   allMetricsRiskTone: AdminUxAllMetricsRiskTone;
   allMetricsView: AdminUxAllMetricsView;
   expandAllGroups: boolean;
@@ -173,11 +298,20 @@ export const AdminUxPageContent = ({
           mainPanelsProps,
         })
       : undefined;
+  const allMetricsSignalCounts =
+    activePanel === 'all'
+      ? computeAllMetricsSignalCounts({
+          allMetricsView,
+          mainPanelsProps,
+        })
+      : undefined;
   const panelChromeView = buildAdminUxPanelChromeView({
     activePanel,
     allMetricsRiskFilter,
+    allMetricsSignalFilter,
     allMetricsRiskTone,
     allMetricsRiskCounts,
+    allMetricsSignalCounts,
     allMetricsView,
     expandAllGroups,
     hours,
@@ -198,6 +332,7 @@ export const AdminUxPageContent = ({
         allMetricsControls={panelChromeView.allMetricsControls}
         allMetricsRiskFilterTabs={panelChromeView.allMetricsRiskFilterTabs}
         allMetricsRiskSnapshot={panelChromeView.allMetricsRiskSnapshot}
+        allMetricsSignalFilterTabs={panelChromeView.allMetricsSignalFilterTabs}
         allMetricsViewTabs={panelChromeView.allMetricsViewTabs}
         panelTabs={panelChromeView.panelTabs}
         stickyKpis={panelChromeView.stickyKpis}
@@ -206,6 +341,7 @@ export const AdminUxPageContent = ({
         activePanel={activePanel}
         allMetricsRiskFilter={allMetricsRiskFilter}
         allMetricsRiskTone={allMetricsRiskTone}
+        allMetricsSignalFilter={allMetricsSignalFilter}
         allMetricsView={allMetricsView}
         expandAllGroups={expandAllGroups}
         {...mainPanelsProps}

@@ -33,6 +33,13 @@ interface AllMetricsRiskFilterTab {
   label: string;
 }
 
+interface AllMetricsSignalFilterTab {
+  active: boolean;
+  href: string;
+  id: string;
+  label: string;
+}
+
 interface AllMetricsRiskSnapshot {
   activeTone: 'all' | 'critical' | 'watch' | 'healthy' | 'neutral';
   critical: number;
@@ -102,6 +109,7 @@ export const AdminUxPanelChrome = ({
   activePanel,
   allMetricsControls,
   allMetricsRiskFilterTabs,
+  allMetricsSignalFilterTabs,
   allMetricsRiskSnapshot,
   allMetricsViewTabs,
   panelTabs,
@@ -110,6 +118,7 @@ export const AdminUxPanelChrome = ({
   activePanel: string;
   allMetricsControls: AllMetricsControlsView | null;
   allMetricsRiskFilterTabs: AllMetricsRiskFilterTab[] | null;
+  allMetricsSignalFilterTabs: AllMetricsSignalFilterTab[] | null;
   allMetricsRiskSnapshot: AllMetricsRiskSnapshot | null;
   allMetricsViewTabs: AllMetricsViewTab[] | null;
   panelTabs: PanelTabView[];
@@ -202,6 +211,38 @@ export const AdminUxPanelChrome = ({
               </p>
             </>
           ) : null}
+        </div>
+      ) : null}
+      {allMetricsSignalFilterTabs ? (
+        <div className="grid gap-2 border-border/30 border-t pt-2">
+          <p className="text-muted-foreground text-xs uppercase tracking-wide">
+            Signal scope
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {allMetricsSignalFilterTabs.map((tab) => (
+              <a
+                aria-label={`${tab.label}. ${
+                  tab.id === 'active'
+                    ? 'Shows only sections with current signal/data.'
+                    : 'Shows all sections including low-signal sections.'
+                }`}
+                className={`inline-flex items-center rounded-full border px-3 py-1 font-semibold text-xs transition-colors ${
+                  tab.active
+                    ? 'border-primary/70 bg-primary/15 text-primary'
+                    : 'border-border/45 bg-background/40 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                }`}
+                href={tab.href}
+                key={tab.id}
+                title={
+                  tab.id === 'active'
+                    ? 'Shows only sections with current signal/data.'
+                    : 'Shows all sections including low-signal sections.'
+                }
+              >
+                {tab.label}
+              </a>
+            ))}
+          </div>
         </div>
       ) : null}
       {allMetricsViewTabs ? (

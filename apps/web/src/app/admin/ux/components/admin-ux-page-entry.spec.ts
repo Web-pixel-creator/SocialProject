@@ -31,6 +31,7 @@ describe('admin ux page entry', () => {
     const queryState = {
       activePanel: 'runtime',
       allMetricsRiskFilter: 'all',
+      allMetricsSignalFilter: 'all',
       allMetricsRiskTone: 'all',
       allMetricsView: 'overview',
       expandAllGroups: false,
@@ -61,6 +62,7 @@ describe('admin ux page entry', () => {
     expect(context).toEqual({
       activePanel: 'runtime',
       allMetricsRiskFilter: 'all',
+      allMetricsSignalFilter: 'all',
       allMetricsRiskTone: 'all',
       allMetricsView: 'overview',
       dataLoadResult,
@@ -73,6 +75,7 @@ describe('admin ux page entry', () => {
     const queryState = {
       activePanel: 'all',
       allMetricsRiskFilter: 'high',
+      allMetricsSignalFilter: 'active',
       allMetricsRiskTone: 'watch',
       allMetricsView: 'quality',
       expandAllGroups: false,
@@ -97,6 +100,7 @@ describe('admin ux page entry', () => {
     const queryState = {
       activePanel: 'gateway',
       allMetricsRiskFilter: 'all',
+      allMetricsSignalFilter: 'all',
       allMetricsRiskTone: 'all',
       allMetricsView: 'overview',
       expandAllGroups: false,
@@ -117,6 +121,7 @@ describe('admin ux page entry', () => {
     expect((element as { props: unknown }).props).toEqual({
       activePanel: 'gateway',
       allMetricsRiskFilter: 'all',
+      allMetricsSignalFilter: 'all',
       allMetricsRiskTone: 'all',
       allMetricsView: 'overview',
       dataLoadResult,

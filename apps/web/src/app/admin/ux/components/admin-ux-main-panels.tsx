@@ -3,6 +3,7 @@ import { type ComponentProps, Fragment, type ReactNode } from 'react';
 import type {
   AdminUxAllMetricsRiskFilter,
   AdminUxAllMetricsRiskTone,
+  AdminUxAllMetricsSignalFilter,
   AdminUxAllMetricsView,
   AdminUxPanel,
 } from './admin-ux-page-utils';
@@ -120,6 +121,15 @@ const resolveSeverityScopeLabel = (
   return 'all severities';
 };
 
+const resolveSignalScopeLabel = (
+  signalFilter: AdminUxAllMetricsSignalFilter,
+): string => {
+  if (signalFilter === 'active') {
+    return 'signal-only sections';
+  }
+  return 'all sections';
+};
+
 const resolveMetaToneFromRiskLabel = (label: string): MetaTone => {
   const normalized = label.trim().toLowerCase();
   if (normalized.includes('critical')) {
@@ -150,6 +160,7 @@ const resolveMoreSevereMetaTone = (
 export const AdminUxMainPanels = ({
   activePanel,
   allMetricsRiskFilter = 'all',
+  allMetricsSignalFilter = 'all',
   allMetricsRiskTone = 'all',
   allMetricsView = 'overview',
   debugDiagnosticsSectionProps,
@@ -168,6 +179,7 @@ export const AdminUxMainPanels = ({
 }: {
   activePanel: AdminUxPanel;
   allMetricsRiskFilter?: AdminUxAllMetricsRiskFilter;
+  allMetricsSignalFilter?: AdminUxAllMetricsSignalFilter;
   allMetricsRiskTone?: AdminUxAllMetricsRiskTone;
   allMetricsView?: AdminUxAllMetricsView;
   debugDiagnosticsSectionProps: ComponentProps<typeof DebugDiagnosticsSection>;
@@ -364,6 +376,7 @@ export const AdminUxMainPanels = ({
       key: string;
       node: ReactNode;
       order: number;
+      signalCount: number;
       tone: MetaTone;
     }> = [];
 
@@ -379,6 +392,7 @@ export const AdminUxMainPanels = ({
           children: <GatewayPanels {...gatewayPanelsProps} isVisible />,
         }),
         order: 10,
+        signalCount: gatewaySignalCount,
         tone: gatewayMetaTone,
       });
     }
@@ -395,6 +409,7 @@ export const AdminUxMainPanels = ({
           children: <RuntimePanel {...runtimePanelProps} isVisible />,
         }),
         order: 20,
+        signalCount: runtimeRoleCount + runtimeProviderCount,
         tone: runtimeMetaTone,
       });
     }
@@ -421,6 +436,7 @@ export const AdminUxMainPanels = ({
           ),
         }),
         order: 30,
+        signalCount: engagementLowSignal ? 0 : engagementSignalCount,
         tone: engagementMetaTone,
       });
     }
@@ -437,6 +453,7 @@ export const AdminUxMainPanels = ({
           children: <ReleaseHealthSection {...releaseHealthSectionProps} />,
         }),
         order: 40,
+        signalCount: releaseSignalCount,
         tone: releaseMetaTone,
       });
     }
@@ -455,6 +472,7 @@ export const AdminUxMainPanels = ({
           ),
         }),
         order: 50,
+        signalCount: multimodalSignalCount,
         tone: multimodalMetaTone,
       });
     }
@@ -473,6 +491,7 @@ export const AdminUxMainPanels = ({
           ),
         }),
         order: 60,
+        signalCount: predictionSignalCount,
         tone: predictionMetaTone,
       });
     }
@@ -490,6 +509,7 @@ export const AdminUxMainPanels = ({
           ),
         }),
         order: 70,
+        signalCount: styleSignalCount,
         tone: styleMetaTone,
       });
     }
@@ -509,11 +529,9 @@ export const AdminUxMainPanels = ({
           ),
         }),
         order: 80,
+        signalCount: feedPreferenceKpisProps.shouldCompact ? 0 : 5,
         tone: feedPreferenceMetaTone,
       });
-    }
-
-    if (isEngagementVisible) {
       allMetricsGroups.push({
         key: 'feed-interaction-counters',
         node: renderAllMetricsGroup({
@@ -529,11 +547,9 @@ export const AdminUxMainPanels = ({
           ),
         }),
         order: 90,
+        signalCount: feedInteractionTotalCount,
         tone: feedInteractionMetaTone,
       });
-    }
-
-    if (isEngagementVisible) {
       allMetricsGroups.push({
         key: 'top-segments',
         node: renderAllMetricsGroup({
@@ -545,6 +561,7 @@ export const AdminUxMainPanels = ({
           children: <TopSegmentsSection {...topSegmentsProps} isVisible />,
         }),
         order: 100,
+        signalCount: topSegmentsCount,
         tone: topSegmentsMetaTone,
       });
     }
@@ -554,6 +571,7 @@ export const AdminUxMainPanels = ({
         key: 'debug-diagnostics',
         node: <DebugDiagnosticsSection {...debugDiagnosticsSectionProps} />,
         order: 110,
+        signalCount: 0,
         tone: 'neutral',
       });
     }
@@ -569,16 +587,21 @@ export const AdminUxMainPanels = ({
             (group) => group.tone === 'critical' || group.tone === 'watch',
           )
         : toneScopedGroups;
+    const signalScopedGroups =
+      allMetricsSignalFilter === 'active'
+        ? riskScopedGroups.filter((group) => group.signalCount > 0)
+        : riskScopedGroups;
 
-    if (riskScopedGroups.length === 0) {
+    if (signalScopedGroups.length === 0) {
       const severityScopeLabel =
         resolveSeverityScopeLabel(allMetricsRiskFilter);
       const toneScopeLabel = resolveRiskToneLabel(allMetricsRiskTone);
+      const signalScopeLabel = resolveSignalScopeLabel(allMetricsSignalFilter);
       return (
         <section className="card p-4 sm:p-5">
           <p className="text-muted-foreground text-sm">
             No sections match current filters: {severityScopeLabel},{' '}
-            {toneScopeLabel}.
+            {toneScopeLabel}, {signalScopeLabel}.
           </p>
         </section>
       );
@@ -586,7 +609,7 @@ export const AdminUxMainPanels = ({
 
     return (
       <>
-        {riskScopedGroups
+        {signalScopedGroups
           .sort((left, right) => {
             const toneDiff =
               metaToneSortRank[left.tone] - metaToneSortRank[right.tone];

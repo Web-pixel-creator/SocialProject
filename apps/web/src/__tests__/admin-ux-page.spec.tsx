@@ -600,7 +600,9 @@ describe('admin ux observer engagement page', () => {
     );
     expect(screen.getByText(/^Alerted runs$/i)).toBeInTheDocument();
     expect(screen.getByText(/^Latest alerted run$/i)).toBeInTheDocument();
-    expect(releaseHealthScoped.getByText(/Alert breakdowns/i)).toBeInTheDocument();
+    expect(
+      releaseHealthScoped.getByText(/Alert breakdowns/i),
+    ).toBeInTheDocument();
     expect(
       releaseHealthScoped.getByRole('columnheader', { name: /Category/i }),
     ).toBeInTheDocument();

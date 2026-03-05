@@ -4,6 +4,7 @@ import { AdminUxPageErrorState } from './admin-ux-page-shell-render';
 import type {
   AdminUxAllMetricsRiskFilter,
   AdminUxAllMetricsRiskTone,
+  AdminUxAllMetricsSignalFilter,
   AdminUxAllMetricsView,
   AdminUxPanel,
 } from './admin-ux-page-utils';
@@ -11,6 +12,7 @@ import type {
 export const AdminUxPageLoadState = ({
   activePanel,
   allMetricsRiskFilter,
+  allMetricsSignalFilter,
   allMetricsRiskTone,
   allMetricsView,
   dataLoadResult,
@@ -19,6 +21,7 @@ export const AdminUxPageLoadState = ({
 }: {
   activePanel: AdminUxPanel;
   allMetricsRiskFilter: AdminUxAllMetricsRiskFilter;
+  allMetricsSignalFilter: AdminUxAllMetricsSignalFilter;
   allMetricsRiskTone: AdminUxAllMetricsRiskTone;
   allMetricsView: AdminUxAllMetricsView;
   dataLoadResult: AdminUxPageDataLoadResult;
@@ -38,6 +41,7 @@ export const AdminUxPageLoadState = ({
       activePanel={activePanel}
       allMetricsRiskFilter={allMetricsRiskFilter}
       allMetricsRiskTone={allMetricsRiskTone}
+      allMetricsSignalFilter={allMetricsSignalFilter}
       allMetricsView={allMetricsView}
       expandAllGroups={expandAllGroups}
       hours={hours}
