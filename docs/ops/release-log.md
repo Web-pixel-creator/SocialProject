@@ -33,6 +33,28 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - admin UX severity-first all-metrics ordering pass
+
+- Scope: improve scan priority in `/admin/ux?panel=all` by automatically ordering visible groups by severity (`critical -> watch -> healthy -> neutral`) instead of fixed visual order.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 05:02 -> 2026-03-05 05:11.
+- Changes:
+  - Updated `apps/web/src/app/admin/ux/components/admin-ux-main-panels.tsx`:
+    - added `metaToneSortRank` severity ranking map,
+    - added all-metrics rendering pipeline that collects visible groups with tone + fallback order,
+    - sorts all-metrics groups by tone rank and then stable fallback order,
+    - preserves focused panel behavior (`gateway/runtime/engagement/prediction/release/style/debug`) without sorting side-effects.
+  - `Debug diagnostics` remains neutral and naturally appears after higher-risk groups.
+- Validation:
+  - `npx ultracite check apps/web/src/app/admin/ux/components/admin-ux-main-panels.tsx`: pass.
+  - `npx jest --runInBand apps/web/src/app/admin/ux/components/admin-ux-page-entry.spec.ts`: pass.
+  - `npm run test:web -- --runInBand apps/web/src/__tests__/admin-ux-page.spec.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: show a small caption in all-metrics header that sections are sorted by severity.
+
 ### 2026-03-05 - admin UX all-metrics focus tabs pass
 
 - Scope: add a second-level focus switch inside `panel=all` so operators can inspect one domain slice (`Operations`, `Engagement`, `Quality`, `Debug`) without leaving all-metrics mode.

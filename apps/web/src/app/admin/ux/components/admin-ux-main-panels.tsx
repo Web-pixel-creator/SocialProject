@@ -1,4 +1,4 @@
-import type { ComponentProps, ReactNode } from 'react';
+import { type ComponentProps, Fragment, type ReactNode } from 'react';
 
 import type {
   AdminUxAllMetricsView,
@@ -40,6 +40,13 @@ const metaToneText: Record<MetaTone, string> = {
   healthy: 'healthy',
   neutral: 'info',
   watch: 'watch',
+};
+
+const metaToneSortRank: Record<MetaTone, number> = {
+  critical: 0,
+  watch: 1,
+  healthy: 2,
+  neutral: 3,
 };
 
 const CollapsiblePanelGroup = ({
@@ -303,154 +310,288 @@ export const AdminUxMainPanels = ({
   } else if (engagementSignalCount > 0) {
     engagementMetaTone = 'healthy';
   }
+  const gatewayMetaTone = resolveMetaToneFromRiskLabel(
+    gatewayPanelsProps.gatewayHealthLabel,
+  );
+  const runtimeMetaTone: MetaTone =
+    runtimeBlockedCount > 0
+      ? 'critical'
+      : resolveMetaToneFromRiskLabel(runtimePanelProps.runtimeHealthLabel);
+  const releaseMetaTone = resolveMetaToneFromRiskLabel(
+    releaseHealthSectionProps.releaseRiskLabel,
+  );
+  const multimodalMetaTone = resolveMetaToneFromRiskLabel(
+    multimodalTelemetrySectionProps.coverageRiskLabel,
+  );
+  const predictionMetaTone = resolveMetaToneFromRiskLabel(
+    predictionMarketSectionProps.accuracyLabel,
+  );
+  const feedPreferenceMetaTone: MetaTone = feedPreferenceKpisProps.shouldCompact
+    ? 'watch'
+    : 'healthy';
+  const feedInteractionMetaTone: MetaTone =
+    feedInteractionTotalCount > 0 ? 'healthy' : 'watch';
+  const topSegmentsMetaTone: MetaTone =
+    topSegmentsCount > 0 ? 'healthy' : 'watch';
+
+  if (isAllMetricsPanel) {
+    const allMetricsGroups: Array<{
+      key: string;
+      node: ReactNode;
+      order: number;
+      tone: MetaTone;
+    }> = [];
+
+    if (isGatewayVisible) {
+      allMetricsGroups.push({
+        key: 'gateway-operations',
+        node: renderAllMetricsGroup({
+          description:
+            'Live session control plane, retained events, and gateway risk telemetry.',
+          metaLabel: toSignalLabel(gatewaySignalCount),
+          metaTone: gatewayMetaTone,
+          title: 'Gateway operations',
+          children: <GatewayPanels {...gatewayPanelsProps} isVisible />,
+        }),
+        order: 10,
+        tone: gatewayMetaTone,
+      });
+    }
+
+    if (isRuntimeVisible) {
+      allMetricsGroups.push({
+        key: 'runtime-orchestration',
+        node: renderAllMetricsGroup({
+          description:
+            'Failover chain health, role/provider matrix, and dry-run simulator.',
+          metaLabel: `${runtimeRoleCount} roles / ${runtimeProviderCount} providers`,
+          metaTone: runtimeMetaTone,
+          title: 'Runtime orchestration',
+          children: <RuntimePanel {...runtimePanelProps} isVisible />,
+        }),
+        order: 20,
+        tone: runtimeMetaTone,
+      });
+    }
+
+    if (isEngagementVisible) {
+      allMetricsGroups.push({
+        key: 'engagement-signals',
+        node: renderAllMetricsGroup({
+          description:
+            'Session quality, retention/follow signals, and alert scoring.',
+          metaLabel: engagementLowSignal
+            ? 'low signal'
+            : toSignalLabel(engagementSignalCount),
+          metaTone: engagementMetaTone,
+          title: 'Engagement signals',
+          children: (
+            <>
+              <EngagementOverviewSection
+                {...engagementOverviewProps}
+                isVisible
+              />
+              <EngagementHealthSection {...engagementHealthProps} isVisible />
+            </>
+          ),
+        }),
+        order: 30,
+        tone: engagementMetaTone,
+      });
+    }
+
+    if (isReleaseVisible) {
+      allMetricsGroups.push({
+        key: 'release-telemetry',
+        node: renderAllMetricsGroup({
+          description:
+            'Release alert distribution, latest run context, and failure-mode flow.',
+          metaLabel: toSignalLabel(releaseSignalCount),
+          metaTone: releaseMetaTone,
+          title: 'Release health telemetry',
+          children: <ReleaseHealthSection {...releaseHealthSectionProps} />,
+        }),
+        order: 40,
+        tone: releaseMetaTone,
+      });
+    }
+
+    if (isStyleVisible) {
+      allMetricsGroups.push({
+        key: 'multimodal-summary',
+        node: renderAllMetricsGroup({
+          description:
+            'Coverage/error rates, provider mix, and multimodal guardrails.',
+          metaLabel: toSignalLabel(multimodalSignalCount),
+          metaTone: multimodalMetaTone,
+          title: 'Multimodal summary',
+          children: (
+            <MultimodalTelemetrySection {...multimodalTelemetrySectionProps} />
+          ),
+        }),
+        order: 50,
+        tone: multimodalMetaTone,
+      });
+    }
+
+    if (isPredictionVisible) {
+      allMetricsGroups.push({
+        key: 'prediction-summary',
+        node: renderAllMetricsGroup({
+          description:
+            'Prediction quality, cohort risk, and filter/sort behavior.',
+          metaLabel: toSignalLabel(predictionSignalCount),
+          metaTone: predictionMetaTone,
+          title: 'Prediction telemetry summary',
+          children: (
+            <PredictionMarketSection {...predictionMarketSectionProps} />
+          ),
+        }),
+        order: 60,
+        tone: predictionMetaTone,
+      });
+    }
+
+    if (isStyleVisible) {
+      allMetricsGroups.push({
+        key: 'style-fusion-summary',
+        node: renderAllMetricsGroup({
+          description: 'Style-fusion and copy-action success/error rates.',
+          metaLabel: `${styleSignalCount} events`,
+          metaTone: styleMetaTone,
+          title: 'Style fusion summary',
+          children: (
+            <StyleFusionMetricsSection {...styleFusionMetricsSectionProps} />
+          ),
+        }),
+        order: 70,
+        tone: styleMetaTone,
+      });
+    }
+
+    if (isEngagementVisible) {
+      allMetricsGroups.push({
+        key: 'feed-preference-summary',
+        node: renderAllMetricsGroup({
+          description: 'Mode, density, and hint behavior KPIs.',
+          metaLabel: feedPreferenceKpisProps.shouldCompact
+            ? 'low signal'
+            : '5 kpis',
+          metaTone: feedPreferenceMetaTone,
+          title: 'Feed preference summary',
+          children: (
+            <FeedPreferenceKpisSection {...feedPreferenceKpisProps} isVisible />
+          ),
+        }),
+        order: 80,
+        tone: feedPreferenceMetaTone,
+      });
+    }
+
+    if (isEngagementVisible) {
+      allMetricsGroups.push({
+        key: 'feed-interaction-counters',
+        node: renderAllMetricsGroup({
+          description: 'Raw event totals for mode/density/hint actions.',
+          metaLabel: `${feedInteractionTotalCount} events`,
+          metaTone: feedInteractionMetaTone,
+          title: 'Feed interaction counters',
+          children: (
+            <FeedInteractionCountersSection
+              {...feedInteractionCountersProps}
+              isVisible
+            />
+          ),
+        }),
+        order: 90,
+        tone: feedInteractionMetaTone,
+      });
+    }
+
+    if (isEngagementVisible) {
+      allMetricsGroups.push({
+        key: 'top-segments',
+        node: renderAllMetricsGroup({
+          description:
+            'Highest-volume observer segments in the selected window.',
+          metaLabel: `${topSegmentsCount} segments`,
+          metaTone: topSegmentsMetaTone,
+          title: 'Top segments',
+          children: <TopSegmentsSection {...topSegmentsProps} isVisible />,
+        }),
+        order: 100,
+        tone: topSegmentsMetaTone,
+      });
+    }
+
+    if (isDebugVisible) {
+      allMetricsGroups.push({
+        key: 'debug-diagnostics',
+        node: <DebugDiagnosticsSection {...debugDiagnosticsSectionProps} />,
+        order: 110,
+        tone: 'neutral',
+      });
+    }
+
+    return (
+      <>
+        {allMetricsGroups
+          .sort((left, right) => {
+            const toneDiff =
+              metaToneSortRank[left.tone] - metaToneSortRank[right.tone];
+            if (toneDiff !== 0) {
+              return toneDiff;
+            }
+            return left.order - right.order;
+          })
+          .map((group) => (
+            <Fragment key={group.key}>{group.node}</Fragment>
+          ))}
+      </>
+    );
+  }
 
   return (
     <>
-      {isGatewayVisible
-        ? renderAllMetricsGroup({
-            description:
-              'Live session control plane, retained events, and gateway risk telemetry.',
-            metaLabel: toSignalLabel(gatewaySignalCount),
-            metaTone: resolveMetaToneFromRiskLabel(
-              gatewayPanelsProps.gatewayHealthLabel,
-            ),
-            title: 'Gateway operations',
-            children: <GatewayPanels {...gatewayPanelsProps} isVisible />,
-          })
-        : null}
-      {isRuntimeVisible
-        ? renderAllMetricsGroup({
-            description:
-              'Failover chain health, role/provider matrix, and dry-run simulator.',
-            metaLabel: `${runtimeRoleCount} roles / ${runtimeProviderCount} providers`,
-            metaTone:
-              runtimeBlockedCount > 0
-                ? 'critical'
-                : resolveMetaToneFromRiskLabel(
-                    runtimePanelProps.runtimeHealthLabel,
-                  ),
-            title: 'Runtime orchestration',
-            children: <RuntimePanel {...runtimePanelProps} isVisible />,
-          })
-        : null}
-      {isEngagementVisible
-        ? renderAllMetricsGroup({
-            description:
-              'Session quality, retention/follow signals, and alert scoring.',
-            metaLabel: engagementLowSignal
-              ? 'low signal'
-              : toSignalLabel(engagementSignalCount),
-            metaTone: engagementMetaTone,
-            title: 'Engagement signals',
-            children: (
-              <>
-                <EngagementOverviewSection
-                  {...engagementOverviewProps}
-                  isVisible
-                />
-                <EngagementHealthSection {...engagementHealthProps} isVisible />
-              </>
-            ),
-          })
-        : null}
-      {isReleaseVisible
-        ? renderAllMetricsGroup({
-            description:
-              'Release alert distribution, latest run context, and failure-mode flow.',
-            metaLabel: toSignalLabel(releaseSignalCount),
-            metaTone: resolveMetaToneFromRiskLabel(
-              releaseHealthSectionProps.releaseRiskLabel,
-            ),
-            title: 'Release health telemetry',
-            children: <ReleaseHealthSection {...releaseHealthSectionProps} />,
-          })
-        : null}
-      {isEngagementVisible
-        ? renderAllMetricsGroup({
-            description: 'Mode, density, and hint behavior KPIs.',
-            metaLabel: feedPreferenceKpisProps.shouldCompact
-              ? 'low signal'
-              : '5 kpis',
-            metaTone: feedPreferenceKpisProps.shouldCompact
-              ? 'watch'
-              : 'healthy',
-            title: 'Feed preference summary',
-            children: (
-              <FeedPreferenceKpisSection
-                {...feedPreferenceKpisProps}
-                isVisible
-              />
-            ),
-          })
-        : null}
-      {isStyleVisible
-        ? renderAllMetricsGroup({
-            description:
-              'Coverage/error rates, provider mix, and multimodal guardrails.',
-            metaLabel: toSignalLabel(multimodalSignalCount),
-            metaTone: resolveMetaToneFromRiskLabel(
-              multimodalTelemetrySectionProps.coverageRiskLabel,
-            ),
-            title: 'Multimodal summary',
-            children: (
-              <MultimodalTelemetrySection
-                {...multimodalTelemetrySectionProps}
-              />
-            ),
-          })
-        : null}
-      {isPredictionVisible
-        ? renderAllMetricsGroup({
-            description:
-              'Prediction quality, cohort risk, and filter/sort behavior.',
-            metaLabel: toSignalLabel(predictionSignalCount),
-            metaTone: resolveMetaToneFromRiskLabel(
-              predictionMarketSectionProps.accuracyLabel,
-            ),
-            title: 'Prediction telemetry summary',
-            children: (
-              <PredictionMarketSection {...predictionMarketSectionProps} />
-            ),
-          })
-        : null}
-      {isStyleVisible
-        ? renderAllMetricsGroup({
-            description: 'Style-fusion and copy-action success/error rates.',
-            metaLabel: `${styleSignalCount} events`,
-            metaTone: styleMetaTone,
-            title: 'Style fusion summary',
-            children: (
-              <StyleFusionMetricsSection {...styleFusionMetricsSectionProps} />
-            ),
-          })
-        : null}
-      {isDebugVisible ? (
+      {activePanel === 'gateway' ? (
+        <GatewayPanels {...gatewayPanelsProps} isVisible />
+      ) : null}
+      {activePanel === 'runtime' ? (
+        <RuntimePanel {...runtimePanelProps} isVisible />
+      ) : null}
+      {activePanel === 'engagement' ? (
+        <>
+          <EngagementOverviewSection {...engagementOverviewProps} isVisible />
+          <EngagementHealthSection {...engagementHealthProps} isVisible />
+        </>
+      ) : null}
+      {activePanel === 'release' ? (
+        <ReleaseHealthSection {...releaseHealthSectionProps} />
+      ) : null}
+      {activePanel === 'style' ? (
+        <>
+          <MultimodalTelemetrySection {...multimodalTelemetrySectionProps} />
+          <StyleFusionMetricsSection {...styleFusionMetricsSectionProps} />
+        </>
+      ) : null}
+      {activePanel === 'prediction' ? (
+        <PredictionMarketSection {...predictionMarketSectionProps} />
+      ) : null}
+      {activePanel === 'debug' ? (
         <DebugDiagnosticsSection {...debugDiagnosticsSectionProps} />
       ) : null}
-      {isEngagementVisible
-        ? renderAllMetricsGroup({
-            description: 'Raw event totals for mode/density/hint actions.',
-            metaLabel: `${feedInteractionTotalCount} events`,
-            metaTone: feedInteractionTotalCount > 0 ? 'healthy' : 'watch',
-            title: 'Feed interaction counters',
-            children: (
-              <FeedInteractionCountersSection
-                {...feedInteractionCountersProps}
-                isVisible
-              />
-            ),
-          })
-        : null}
-      {isEngagementVisible
-        ? renderAllMetricsGroup({
-            description:
-              'Highest-volume observer segments in the selected window.',
-            metaLabel: `${topSegmentsCount} segments`,
-            metaTone: topSegmentsCount > 0 ? 'healthy' : 'watch',
-            title: 'Top segments',
-            children: <TopSegmentsSection {...topSegmentsProps} isVisible />,
-          })
-        : null}
+      {activePanel === 'engagement' ? (
+        <FeedPreferenceKpisSection {...feedPreferenceKpisProps} isVisible />
+      ) : null}
+      {activePanel === 'engagement' ? (
+        <FeedInteractionCountersSection
+          {...feedInteractionCountersProps}
+          isVisible
+        />
+      ) : null}
+      {activePanel === 'engagement' ? (
+        <TopSegmentsSection {...topSegmentsProps} isVisible />
+      ) : null}
     </>
   );
 };
