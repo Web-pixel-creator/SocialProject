@@ -33,6 +33,65 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - extract required-external-channels parser into shared module with unit coverage (phase 48)
+
+- Scope: harden and simplify dispatch CLI parsing by extracting required external channels normalization/validation into a dedicated module with direct unit tests.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 11:10 -> 2026-03-05 11:13.
+- Changes:
+  - Added module:
+    - `scripts/release/dispatch-production-launch-gate-external-channels.mjs`
+    - exports:
+      - `ALLOWED_EXTERNAL_CHANNELS`
+      - `parseDispatchExternalChannels`.
+  - Updated `scripts/release/dispatch-production-launch-gate.mjs`:
+    - replaced inline `parseExternalChannels` logic with shared module import/use for both CLI and env paths.
+  - Added unit coverage:
+    - `apps/api/src/__tests__/release-launch-gate-dispatch-external-channels.unit.spec.ts`
+    - validates:
+      - allowed channel constants,
+      - trim/lowercase/dedup normalization,
+      - `all` keyword behavior,
+      - empty-input behavior,
+      - unsupported-channel diagnostics.
+  - Extended CLI validation coverage:
+    - `apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts`
+    - adds fast-fail case for unsupported `--required-external-channels` values.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-dispatch-external-channels.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - live dispatch regression:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --print-artifact-links --artifact-link-names all`
+    - run `#73` (`22715189751`): success with expected summary + artifact-link output lines.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: reuse shared external-channel parser in any future release helper scripts to keep validation behavior identical.
+
+### 2026-03-05 - live dispatch regression after stdout formatter extraction (phase 47)
+
+- Scope: confirm helper runtime behavior remained unchanged after summary formatter extraction by running a real launch-gate dispatch with artifact-link options enabled.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 11:08 -> 2026-03-05 11:09.
+- Validation:
+  - Live dispatch regression:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --print-artifact-links --artifact-link-names all`
+    - run `#72` (`22715072591`): success.
+    - helper stdout confirmed expected summary and artifact link output:
+      - `Print artifact links option: true`
+      - `Include step summary link: true`
+      - step summary artifact: `https://github.com/Web-pixel-creator/SocialProject/actions/runs/22715072591/artifacts/5777897405`
+      - optional artifact links:
+        - `production-launch-gate-summary`: `.../artifacts/5777897608`
+        - `post-release-health-inline-artifacts-schema-check`: `.../artifacts/5777900234`
+        - `post-release-health-inline-artifacts-summary`: `.../artifacts/5777900055`
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add a compact snapshot test for dispatch summary stdout lines to lock wording used by runbook parsers.
+
 ### 2026-03-05 - extract dispatch stdout summary formatter and add unit coverage (phase 46)
 
 - Scope: reduce coupling between dispatch runtime flow and stdout formatting by moving summary line rendering into a pure function with dedicated tests.

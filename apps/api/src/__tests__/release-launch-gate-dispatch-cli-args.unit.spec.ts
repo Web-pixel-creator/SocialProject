@@ -115,6 +115,17 @@ describe('launch-gate dispatch helper cli argument validation', () => {
     );
   });
 
+  test('fails fast on unsupported required-external-channels values', () => {
+    const result = runDispatchScript([
+      '--required-external-channels',
+      'telegram,teams',
+    ]);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('contains unsupported channels');
+    expect(result.stderr).toContain('telegram, slack, discord');
+  });
+
   test('fails fast when inline runtime-draft-id value is empty', () => {
     const result = runDispatchScript(['--runtime-draft-id=']);
 

@@ -5,6 +5,7 @@ import {
   parseArtifactLinkNames,
   resolveDispatchArtifactLinkOptions,
 } from './dispatch-production-launch-gate-link-options.mjs';
+import { parseDispatchExternalChannels } from './dispatch-production-launch-gate-external-channels.mjs';
 import { buildDispatchInputSummaryLines } from './dispatch-production-launch-gate-output-format.mjs';
 import { resolveDispatchTokenCandidates } from './dispatch-production-launch-gate-token-resolution.mjs';
 
@@ -16,7 +17,6 @@ const DEFAULT_WAIT_POLL_MS = 5000;
 const RUN_DISCOVERY_GRACE_MS = 2 * 60 * 1000;
 const ARTIFACT_DISCOVERY_ATTEMPTS = 6;
 const ARTIFACT_DISCOVERY_POLL_MS = 1000;
-const EXTERNAL_CHANNELS = ['telegram', 'slack', 'discord'];
 const USAGE = `Usage: npm run release:launch:gate:dispatch -- [options]
 
 Options:
@@ -92,23 +92,6 @@ const resolveRepoSlug = () => {
 const toErrorMessage = (error) =>
   error instanceof Error ? error.message : String(error);
 
-const parseExternalChannels = (raw, sourceLabel) => {
-  if (typeof raw !== 'string') return '';
-  const normalized = raw
-    .split(',')
-    .map((entry) => entry.trim().toLowerCase())
-    .filter((entry) => entry.length > 0);
-  if (normalized.length === 0) return '';
-  if (normalized.includes('all')) return 'all';
-  const invalid = normalized.filter((entry) => !EXTERNAL_CHANNELS.includes(entry));
-  if (invalid.length > 0) {
-    throw new Error(
-      `${sourceLabel} contains unsupported channels: ${invalid.join(', ')}. Allowed: ${EXTERNAL_CHANNELS.join(', ')} or all.`,
-    );
-  }
-  return [...new Set(normalized)].join(',');
-};
-
 const parseCliArgs = (argv) => {
   let tokenFromArg = '';
   let runtimeDraftId = '';
@@ -166,7 +149,7 @@ const parseCliArgs = (argv) => {
       if (!value) {
         throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
       }
-      requiredExternalChannels = parseExternalChannels(
+      requiredExternalChannels = parseDispatchExternalChannels(
         value,
         '--required-external-channels',
       );
@@ -210,7 +193,7 @@ const parseCliArgs = (argv) => {
       if (!value) {
         throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
       }
-      requiredExternalChannels = parseExternalChannels(
+      requiredExternalChannels = parseDispatchExternalChannels(
         value,
         '--required-external-channels',
       );
@@ -568,7 +551,7 @@ const main = async () => {
       : parseBoolean(process.env.RELEASE_REQUIRE_NATURAL_CRON_WINDOW, false);
   const requiredExternalChannels =
     cli.requiredExternalChannels ||
-    parseExternalChannels(
+    parseDispatchExternalChannels(
       process.env.RELEASE_REQUIRED_EXTERNAL_CHANNELS ?? '',
       'RELEASE_REQUIRED_EXTERNAL_CHANNELS',
     );
