@@ -5,6 +5,7 @@ const FAILURE_CONCLUSIONS = new Set([
   'startup_failure',
   'timed_out',
 ]);
+const MAX_FAILED_JOB_DETAILS = 5;
 
 const toNormalizedText = (value, fallback) =>
   typeof value === 'string' && value.trim().length > 0 ? value.trim() : fallback;
@@ -28,7 +29,7 @@ export const buildDispatchRunFailureSummary = (jobs) => {
     return '';
   }
 
-  const details = failedJobs.map((job) => {
+  const details = failedJobs.slice(0, MAX_FAILED_JOB_DETAILS).map((job) => {
     const name = toNormalizedText(job?.name, 'unnamed-job');
     const conclusion = toNormalizedText(job?.conclusion, 'unknown').toLowerCase();
     const failedStepName = pickFirstFailedStepName(job?.steps);
@@ -42,5 +43,12 @@ export const buildDispatchRunFailureSummary = (jobs) => {
       ? `${name} [${conclusion}] logs: ${jobLogUrl}`
       : `${name} [${conclusion}]`;
   });
-  return `Failed jobs: ${details.join('; ')}`;
+  const remainingFailedJobsCount = failedJobs.length - details.length;
+  const remainingFailedJobsHint =
+    remainingFailedJobsCount > 0
+      ? `; +${remainingFailedJobsCount} more failed job${
+          remainingFailedJobsCount === 1 ? '' : 's'
+        }`
+      : '';
+  return `Failed jobs: ${details.join('; ')}${remainingFailedJobsHint}`;
 };

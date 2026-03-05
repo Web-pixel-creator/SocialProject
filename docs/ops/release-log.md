@@ -33,6 +33,32 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - cap dispatch failed-job diagnostics output to top 5 entries (phase 71)
+
+- Scope: keep operator error output concise on large workflow failures by limiting rendered failed-job detail count while preserving signal.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 12:38 -> 2026-03-05 12:42.
+- Changes:
+  - Updated `scripts/release/dispatch-production-launch-gate-failure-summary.mjs`:
+    - caps rendered failed-job entries to first 5 (`MAX_FAILED_JOB_DETAILS`),
+    - appends overflow hint in form `+N more failed jobs`,
+    - preserves per-job `step` and `logs` annotations for included entries.
+  - Updated `apps/api/src/__tests__/release-launch-gate-dispatch-failure-summary.unit.spec.ts`:
+    - added overflow coverage asserting top-5 rendering with `+2 more failed jobs` suffix.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-dispatch-failure-summary.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-external-channels.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts apps/api/src/__tests__/release-production-config-resolvers.unit.spec.ts apps/api/src/__tests__/release-env-parse-utils.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T12:40:21.674Z`).
+  - live dispatch regression:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --print-artifact-links --artifact-link-names all`
+    - run `#86` (`22718411646`): success with expected summary and artifact-link output.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add env/CLI override for max failed-job detail count when incident response needs expanded context.
+
 ### 2026-03-05 - render per-job log URL hints in dispatch failure summaries (phase 70)
 
 - Scope: improve multi-failure triage by attaching `logs: <job html_url>` to each failed job entry instead of only one global URL hint.

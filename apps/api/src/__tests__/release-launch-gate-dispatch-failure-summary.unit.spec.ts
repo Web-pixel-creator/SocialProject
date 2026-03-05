@@ -119,4 +119,21 @@ describe('launch-gate dispatch failure summary formatter', () => {
       'Failed jobs: compile [failure]; publish [cancelled] logs: https://github.com/Web-pixel-creator/SocialProject/actions/runs/22717781874/job/456',
     );
   });
+
+  test('caps failed-job details and appends remaining count hint', () => {
+    const result = runBuildSummary([
+      { conclusion: 'failure', name: 'job-1' },
+      { conclusion: 'failure', name: 'job-2' },
+      { conclusion: 'failure', name: 'job-3' },
+      { conclusion: 'failure', name: 'job-4' },
+      { conclusion: 'failure', name: 'job-5' },
+      { conclusion: 'failure', name: 'job-6' },
+      { conclusion: 'failure', name: 'job-7' },
+    ]);
+
+    expect(result.output.status).toBe(0);
+    expect(result.payload.result).toBe(
+      'Failed jobs: job-1 [failure]; job-2 [failure]; job-3 [failure]; job-4 [failure]; job-5 [failure]; +2 more failed jobs',
+    );
+  });
 });
