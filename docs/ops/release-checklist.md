@@ -235,6 +235,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
   - [ ] Confirm summary artifact: `artifacts/release/production-launch-gate-summary.json`
   - [ ] Confirm health summary artifact: `artifacts/release/production-launch-gate-health-summary.json`
   - [ ] Confirm `sandboxExecutionMetrics.pass=true` in launch gate summary.
+  - [ ] Confirm `sandboxExecutionModeConsistency.pass=true` in launch gate summary.
   - [ ] Optional artifact drill: inspect `artifacts/release/production-sandbox-execution-metrics.json` for `total > 0` and `successCount > 0`.
   - [ ] Confirm `sandboxExecutionAuditPolicy.pass=true` in launch gate summary.
   - [ ] Optional artifact drill: inspect `artifacts/release/production-sandbox-execution-audit-policy.json` (`totalWithAudit > 0`, `actorTypeCount > 0`, `sourceRouteCount > 0`, `toolNameCount > 0`).

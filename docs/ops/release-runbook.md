@@ -141,6 +141,8 @@ Canonical references:
      - `sandboxExecutionLimitsPolicy.skipped=true` when no `SANDBOX_EXECUTION_OPERATION_LIMIT_PROFILES` mapping exists for runtime dry-run path.
    - Launch gate audit-policy probe should be green:
      - `sandboxExecutionAuditPolicy.pass=true` with required fields `actorType`, `sourceRoute`, `toolName`.
+   - Launch gate mode-consistency probe should be green:
+     - `sandboxExecutionModeConsistency.pass=true` for runtime dry-run scoped telemetry.
    - `GET /api/admin/agent-gateway/sessions?source=db&limit=20` shows no abnormal stale active session growth.
 4. Record outcome in release log.
 

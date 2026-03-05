@@ -33,6 +33,26 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - launch-gate sandbox mode-consistency assertion (phase 4)
+
+- Scope: strengthen strict runtime gate by explicitly asserting that sandbox telemetry rows used for runtime probe belong only to the expected execution mode.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 09:00 -> 2026-03-05 09:06.
+- Changes:
+  - Updated `scripts/release/production-launch-gate.mjs`:
+    - added mode-consistency summarizer over `modeBreakdown`,
+    - added `modeConsistency` block to runtime probe artifact,
+    - included mode-consistency in `rtArtifact.pass` gating logic,
+    - added new summary check `sandboxExecutionModeConsistency` (with `skip-runtime-probes` handling).
+- Validation:
+  - `node --check scripts/release/production-launch-gate.mjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: surface `sandboxExecutionModeConsistency` in release checklist strict-check bullets.
+
 ### 2026-03-05 - sandbox execution mode-scoped release-gate probes (phase 3)
 
 - Scope: apply sandbox execution `mode` filtering end-to-end in release operations so runtime probes evaluate the active path (`fallback_only` vs `sandbox_enabled`) deterministically.

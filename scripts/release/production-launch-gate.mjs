@@ -391,6 +391,40 @@ const resolveSandboxExecutionEnabledConfig = (apiServiceVars) => {
 };
 const resolveSandboxExecutionMode = (sandboxExecutionEnabled) =>
   sandboxExecutionEnabled ? 'sandbox_enabled' : 'fallback_only';
+const summarizeSandboxExecutionModeConsistency = (
+  modeBreakdown,
+  expectedMode,
+) => {
+  const rows = Array.isArray(modeBreakdown) ? modeBreakdown : [];
+  let expectedModeCount = 0;
+  let otherModeCount = 0;
+  let total = 0;
+
+  for (const row of rows) {
+    const mode =
+      row && typeof row === 'object' && typeof row.mode === 'string'
+        ? row.mode.trim().toLowerCase()
+        : 'unknown';
+    const countRaw = Number(
+      row && typeof row === 'object' ? row.count ?? 0 : 0,
+    );
+    const count = Number.isFinite(countRaw) ? Math.max(0, countRaw) : 0;
+    total += count;
+    if (mode === expectedMode) {
+      expectedModeCount += count;
+    } else {
+      otherModeCount += count;
+    }
+  }
+
+  return {
+    expectedMode,
+    expectedModeCount,
+    otherModeCount,
+    pass: total > 0 && expectedModeCount === total && otherModeCount === 0,
+    total,
+  };
+};
 
 const quote = (v) =>
   /^[a-z0-9_./:=@+-]+$/i.test(v) ? v : `"${v.replace(/"/g, '\\"')}"`;
@@ -1068,6 +1102,11 @@ const main = async () => {
         Number(sandboxExecutionMetrics.json?.summary?.successCount ?? 0) || 0;
       const sandboxExecutionMetricsFailedCount =
         Number(sandboxExecutionMetrics.json?.summary?.failedCount ?? 0) || 0;
+      const sandboxExecutionModeConsistency =
+        summarizeSandboxExecutionModeConsistency(
+          sandboxExecutionMetrics.json?.modeBreakdown,
+          runtimeDryRunExpectedMode,
+        );
       const sandboxExecutionAuditTotalWithAudit =
         Number(sandboxExecutionMetrics.json?.auditCoverage?.totalWithAudit ?? 0) ||
         0;
@@ -1391,6 +1430,10 @@ const main = async () => {
           lastEventAt:
             sandboxExecutionMetrics.json?.summary?.lastEventAt ?? null,
         },
+        modeConsistency: {
+          ...sandboxExecutionModeConsistency,
+          expectedModeSource: sandboxExecutionEnabledConfig.source,
+        },
         auditPolicy: sandboxExecutionAuditPolicy,
         egressPolicy: sandboxExecutionEgressPolicy,
         limitsPolicy: sandboxExecutionLimitsPolicy,
@@ -1422,6 +1465,7 @@ const main = async () => {
         rtArtifact.sandboxExecutionMetrics.ok &&
         rtArtifact.sandboxExecutionMetrics.total > 0 &&
         rtArtifact.sandboxExecutionMetrics.successCount > 0 &&
+        rtArtifact.modeConsistency.pass &&
         rtArtifact.auditPolicy.pass &&
         (rtArtifact.egressPolicy.skipped || rtArtifact.egressPolicy.pass) &&
         (rtArtifact.limitsPolicy.skipped || rtArtifact.limitsPolicy.pass) &&
@@ -1453,6 +1497,15 @@ const main = async () => {
           rtArtifact.sandboxExecutionMetrics.total > 0 &&
           rtArtifact.sandboxExecutionMetrics.successCount > 0,
         skipped: false,
+      };
+      summary.checks.sandboxExecutionModeConsistency = {
+        pass: rtArtifact.modeConsistency.pass,
+        skipped: false,
+        expectedMode: rtArtifact.modeConsistency.expectedMode,
+        expectedModeSource: rtArtifact.modeConsistency.expectedModeSource,
+        expectedModeCount: rtArtifact.modeConsistency.expectedModeCount,
+        otherModeCount: rtArtifact.modeConsistency.otherModeCount,
+        total: rtArtifact.modeConsistency.total,
       };
       summary.checks.sandboxExecutionAuditPolicy = {
         pass: rtArtifact.auditPolicy.pass,
@@ -1602,6 +1655,10 @@ const main = async () => {
     } else {
       summary.checks.runtimeProbe = { pass: true, skipped: true };
       summary.checks.sandboxExecutionMetrics = {
+        pass: true,
+        skipped: true,
+      };
+      summary.checks.sandboxExecutionModeConsistency = {
         pass: true,
         skipped: true,
       };
