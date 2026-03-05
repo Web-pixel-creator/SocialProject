@@ -33,6 +33,51 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - expose smoke timeout retry controls in production launch-gate workflow/dispatch (phase 91)
+
+- Scope: make timeout-retry tuning one-click in CI by wiring new production smoke retry controls through `workflow_dispatch` inputs and terminal dispatch helper.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 14:19 -> 2026-03-05 14:31.
+- Changes:
+  - Updated workflow:
+    - `.github/workflows/production-launch-gate.yml`
+    - added `workflow_dispatch` inputs:
+      - `smoke_timeout_retries`
+      - `smoke_timeout_retry_delay_ms`
+    - added input validation in CI context step (non-negative retries, positive delay).
+    - wired new inputs into launch-gate args:
+      - `--smoke-timeout-retries`
+      - `--smoke-timeout-retry-delay-ms`
+  - Updated dispatch helper:
+    - `scripts/release/dispatch-production-launch-gate.mjs`
+    - added CLI/env support for new workflow inputs:
+      - CLI: `--smoke-timeout-retries`, `--smoke-timeout-retry-delay-ms`
+      - env: `RELEASE_SMOKE_TIMEOUT_RETRIES`, `RELEASE_SMOKE_TIMEOUT_RETRY_DELAY_MS`
+    - added strict validation for values before dispatch API call.
+  - Updated dispatch output formatter:
+    - `scripts/release/dispatch-production-launch-gate-output-format.mjs`
+    - summary now prints resolved smoke retry input values (`default` when unset).
+  - Added/updated tests:
+    - `apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts`
+    - `apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts`
+    - `apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts`
+  - Updated docs:
+    - `docs/ops/release-runbook.md` (dispatch CLI/env + workflow input coverage)
+    - `docs/ops/release-checklist.md` (post-release checklist coverage)
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run release:runbook:failure-snippet:check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T14:27:20.185Z`).
+  - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --smoke-timeout-retries 1 --smoke-timeout-retry-delay-ms 5000 --print-artifact-links --artifact-link-names all`: pass.
+    - run `#102` (`22722561846`): success with expected input-summary and artifact-link output.
+- Incidents:
+  - pre-push dry dispatch with new inputs failed once with `422 Unexpected inputs` (workflow on remote ref had not yet been updated); rerun after push passed.
+- Follow-ups:
+  - optional: add mirror defaults for `smoke_timeout_retries` / `smoke_timeout_retry_delay_ms` to release dashboard presets if operators commonly tweak these from UI.
+
 ### 2026-03-05 - add bounded timeout-only smoke retry in production launch gate (phase 90)
 
 - Scope: reduce false-red release noise by auto-retrying production smoke only when failures are timeout-class and bounded by explicit retry controls.
