@@ -161,7 +161,20 @@ jobs:
         run: npm run release:smoke:retry:schema:check
 
       - name: Check production launch-gate runbook snippet parity
+        id: runbook_snippet_parity
         run: npm run release:runbook:failure-snippet:check
+
+      - name: Append runbook parity troubleshooting summary
+        if: always() && steps.runbook_snippet_parity.outcome == 'failure'
+        shell: bash
+        run: |
+          {
+            echo "### Runbook Snippet Parity Troubleshooting"
+            echo ""
+            echo "- Command: \`npm run release:runbook:failure-snippet:check\`"
+            echo "- Fixture: \`docs/ops/examples/production-launch-gate-non-json-failure-example.json\`"
+            echo "- Runbook target: \`docs/ops/release-runbook.md\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Generate retry schema gate JSON summary
         shell: bash

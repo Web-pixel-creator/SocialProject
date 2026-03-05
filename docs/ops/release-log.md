@@ -33,6 +33,32 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add CI troubleshooting step-summary for runbook parity failures (phase 81)
+
+- Scope: improve in-browser CI triage by appending targeted troubleshooting guidance when the runbook snippet parity step fails.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 13:27 -> 2026-03-05 13:31.
+- Changes:
+  - Updated `.github/workflows/ci.yml`:
+    - assigned id `runbook_snippet_parity` to parity step,
+    - added conditional summary step:
+      - runs with `if: always() && steps.runbook_snippet_parity.outcome == 'failure'`,
+      - appends quick troubleshooting block to `$GITHUB_STEP_SUMMARY` with command + fixture + runbook paths.
+- Validation:
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run release:runbook:failure-snippet:check`: pass.
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-production-failure-runbook-check-script.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-failure-runbook-example.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T13:29:33.277Z`).
+  - live dispatch regression:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --print-artifact-links --artifact-link-names all`
+    - run `#95` (`22720256211`): success with expected summary and artifact-link output.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: emit a compact expected-vs-actual first-diff line in CI summary when parity mismatch occurs.
+
 ### 2026-03-05 - improve parity-check error diagnostics with fixture/runbook hints (phase 80)
 
 - Scope: make runbook snippet parity failures in CI immediately actionable by enriching checker error messages with direct fixture/runbook paths and fix guidance.
