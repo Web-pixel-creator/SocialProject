@@ -33,6 +33,27 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - document shared release parser/resolver modules in runbook (phase 64)
+
+- Scope: improve operational discoverability by documenting where release helper env/arg validation rules live in code.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 12:13 -> 2026-03-05 12:14.
+- Changes:
+  - Updated `docs/ops/release-runbook.md`:
+    - added a concise "Validation implementation references" block under launch-gate dispatch guidance, covering:
+      - `scripts/release/release-env-parse-utils.mjs`
+      - `scripts/release/dispatch-production-launch-gate.mjs`
+      - `scripts/release/dispatch-production-launch-gate-link-options.mjs`
+      - `scripts/release/production-launch-gate-config-resolvers.mjs`.
+- Validation:
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add a direct anchor/section in runbook for "helper diagnostics map" if more validator modules are introduced.
+
 ### 2026-03-05 - harden production CLI numeric parsing against partial/decimal inputs (phase 63)
 
 - Scope: prevent accidental acceptance of malformed numeric CLI values (`12abc`, `3.5`) in production launch-gate timing flags.

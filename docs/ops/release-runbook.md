@@ -69,6 +69,11 @@ Canonical references:
          - `require_inline_health_artifacts=true`
        - Optional drill inputs via env (drill-only): `RELEASE_ALLOW_FAILURE_DRILL=true RELEASE_WEBHOOK_SECRET_OVERRIDE=<value>`
        - When `RELEASE_REQUIRE_SKILL_MARKERS=true`, `RELEASE_RUNTIME_DRAFT_ID` is required and must point to a draft with skill markers.
+      - Validation implementation references (for quick triage when a helper fails fast on env/arg parsing):
+        - shared strict env parsers: `scripts/release/release-env-parse-utils.mjs`
+        - dispatch helper entrypoint + CLI parsing: `scripts/release/dispatch-production-launch-gate.mjs`
+        - dispatch artifact-link option resolver: `scripts/release/dispatch-production-launch-gate-link-options.mjs`
+        - production gate config candidate resolvers: `scripts/release/production-launch-gate-config-resolvers.mjs`
    - Review summary: `artifacts/release/production-launch-gate-summary.json`
    - Launch gate now asserts required smoke step set (`api.health`, draft/PR/search API path, `web.home`, `web.feed`, `web.search`, `web.draft.detail`) via `smokeRequiredSteps.pass=true`.
    - With `require_skill_markers=true`, launch gate asserts multi-step marker coverage (`skillMarkerMultiStep.pass=true`):
