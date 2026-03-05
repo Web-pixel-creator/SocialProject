@@ -29,6 +29,7 @@ type GatewayRuntimeAndDebugPanelsProps = Pick<
 export const buildGatewayRuntimeAndDebugPanelsProps = ({
   activePanel,
   allMetricsRiskFilter,
+  allMetricsRiskTone,
   allMetricsView,
   aiFailuresCsv,
   aiPrompt,
@@ -75,6 +76,8 @@ export const buildGatewayRuntimeAndDebugPanelsProps = ({
           allMetricsView !== 'overview' ? `&allView=${allMetricsView}` : ''
         }${
           allMetricsRiskFilter !== 'all' ? `&risk=${allMetricsRiskFilter}` : ''
+        }${
+          allMetricsRiskTone !== 'all' ? `&riskTone=${allMetricsRiskTone}` : ''
         }${expandAllGroups ? '&expand=all' : ''}`
       : `/admin/ux?hours=${hours}&panel=${panel}`;
   const gatewayDebugStatusLabel = toStringValue(
@@ -120,6 +123,7 @@ export const buildGatewayRuntimeAndDebugPanelsProps = ({
       liveBodyProps: {
         activePanel,
         allMetricsRiskFilter,
+        allMetricsRiskTone,
         allMetricsView,
         appliedGatewaySessionChannelFilter:
           sectionData.appliedGatewaySessionChannelFilter,
@@ -153,6 +157,7 @@ export const buildGatewayRuntimeAndDebugPanelsProps = ({
       telemetryBodyProps: {
         activePanel,
         allMetricsRiskFilter,
+        allMetricsRiskTone,
         allMetricsView,
         appliedGatewayChannelFilter: sectionData.appliedGatewayChannelFilter,
         appliedGatewayProviderFilter: sectionData.appliedGatewayProviderFilter,
@@ -223,6 +228,7 @@ export const buildGatewayRuntimeAndDebugPanelsProps = ({
         aiRuntimeSummary,
         aiTimeoutMs,
         allMetricsRiskFilter,
+        allMetricsRiskTone,
         allMetricsView,
         hours,
         panel: activePanel,

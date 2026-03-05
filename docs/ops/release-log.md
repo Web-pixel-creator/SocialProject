@@ -33,6 +33,41 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - admin UX risk-tone clickable snapshot pass
+
+- Scope: make risk snapshot badges in `panel=all` clickable and stateful, so operators can filter sections by tone (`critical/watch/healthy/info`) directly from the snapshot strip.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 06:24 -> 2026-03-05 06:31.
+- Changes:
+  - Added new query state `riskTone` (`all | critical | watch | healthy | neutral`) and resolver plumbing:
+    - `admin-ux-page-utils.ts`
+    - `admin-ux-page-orchestration.ts`
+    - `admin-ux-page-entry.tsx`
+    - `admin-ux-page-load-state.tsx`
+    - `admin-ux-page-content.tsx`
+  - Propagated `riskTone` through panel builders and action links/forms so state survives scope/session/dry-run actions:
+    - `admin-ux-main-panel-builder-types.ts`
+    - `admin-ux-gateway-runtime-prop-builders.tsx`
+    - `gateway-section-body.tsx`
+    - `gateway-telemetry-section-body.tsx`
+    - `runtime-section-body.tsx`
+  - Updated all-metrics filtering pipeline:
+    - `admin-ux-main-panels.tsx` now applies tone filtering first, then existing severity (`risk=high`) filtering.
+  - Updated shell view model and chrome:
+    - `admin-ux-page-shell-view-model.ts` now emits snapshot tone hrefs and active tone state.
+    - `admin-ux-panel-chrome.tsx` now renders clickable tone pills with active highlight and reset behavior on second click.
+  - Updated unit fixture wiring:
+    - `admin-ux-page-entry.spec.ts`.
+- Validation:
+  - `npx ultracite check` on 14 touched admin-ux files: pass.
+  - `npx jest --runInBand apps/web/src/app/admin/ux/components/admin-ux-page-entry.spec.ts`: pass.
+  - `npm run test:web -- --runInBand apps/web/src/__tests__/admin-ux-page.spec.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Incidents:
+  - one TypeScript mismatch during build (`toneHrefs` union missing `all`) in `admin-ux-panel-chrome.tsx`; fixed in the same pass.
+- Follow-ups:
+  - optional: add small tooltip text on tone pills describing click behavior (`click to filter`, `click active to reset`).
+
 ### 2026-03-05 - admin UX risk snapshot strip pass
 
 - Scope: expose at-a-glance risk composition in `panel=all` by adding a compact snapshot strip (`critical/watch/healthy/info`) near severity controls.

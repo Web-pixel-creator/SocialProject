@@ -34,11 +34,56 @@ interface AllMetricsRiskFilterTab {
 }
 
 interface AllMetricsRiskSnapshot {
+  activeTone: 'all' | 'critical' | 'watch' | 'healthy' | 'neutral';
   critical: number;
   healthy: number;
   neutral: number;
+  toneHrefs: Array<{
+    href: string;
+    id: 'all' | 'critical' | 'watch' | 'healthy' | 'neutral';
+    label: string;
+  }>;
   watch: number;
 }
+
+const resolveRiskSnapshotCount = (
+  snapshot: AllMetricsRiskSnapshot,
+  tone: 'all' | 'critical' | 'watch' | 'healthy' | 'neutral',
+): number => {
+  if (tone === 'all') {
+    return (
+      snapshot.critical + snapshot.watch + snapshot.healthy + snapshot.neutral
+    );
+  }
+  if (tone === 'critical') {
+    return snapshot.critical;
+  }
+  if (tone === 'watch') {
+    return snapshot.watch;
+  }
+  if (tone === 'healthy') {
+    return snapshot.healthy;
+  }
+  return snapshot.neutral;
+};
+
+const resolveRiskSnapshotClassName = (
+  tone: 'all' | 'critical' | 'watch' | 'healthy' | 'neutral',
+): string => {
+  if (tone === 'all') {
+    return 'border-border/60 bg-background/50 text-foreground';
+  }
+  if (tone === 'critical') {
+    return 'border-destructive/45 bg-destructive/10 text-destructive-foreground';
+  }
+  if (tone === 'watch') {
+    return 'border-amber-500/40 bg-amber-500/12 text-amber-200';
+  }
+  if (tone === 'healthy') {
+    return 'border-emerald-500/35 bg-emerald-500/10 text-emerald-200';
+  }
+  return 'border-primary/30 bg-primary/10 text-primary';
+};
 
 export const AdminUxPanelChrome = ({
   activePanel,
@@ -110,18 +155,30 @@ export const AdminUxPanelChrome = ({
           </div>
           {allMetricsRiskSnapshot ? (
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-destructive/45 bg-destructive/10 px-2 py-0.5 font-semibold text-[11px] text-destructive-foreground uppercase tracking-wide">
-                critical {allMetricsRiskSnapshot.critical}
-              </span>
-              <span className="rounded-full border border-amber-500/40 bg-amber-500/12 px-2 py-0.5 font-semibold text-[11px] text-amber-200 uppercase tracking-wide">
-                watch {allMetricsRiskSnapshot.watch}
-              </span>
-              <span className="rounded-full border border-emerald-500/35 bg-emerald-500/10 px-2 py-0.5 font-semibold text-[11px] text-emerald-200 uppercase tracking-wide">
-                healthy {allMetricsRiskSnapshot.healthy}
-              </span>
-              <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 font-semibold text-[11px] text-primary uppercase tracking-wide">
-                info {allMetricsRiskSnapshot.neutral}
-              </span>
+              {allMetricsRiskSnapshot.toneHrefs.map((tone) => {
+                const isActive = allMetricsRiskSnapshot.activeTone === tone.id;
+                const count = resolveRiskSnapshotCount(
+                  allMetricsRiskSnapshot,
+                  tone.id,
+                );
+                const className = resolveRiskSnapshotClassName(tone.id);
+                return (
+                  <a
+                    className={`${className} rounded-full border px-2 py-0.5 font-semibold text-[11px] uppercase tracking-wide ${
+                      isActive ? 'ring-1 ring-ring/65' : ''
+                    }`}
+                    href={tone.href}
+                    key={tone.id}
+                    title={
+                      isActive
+                        ? 'Currently filtered by this tone. Click to reset tone filter.'
+                        : `Filter by ${tone.label} tone`
+                    }
+                  >
+                    {tone.label} {count}
+                  </a>
+                );
+              })}
             </div>
           ) : null}
         </div>

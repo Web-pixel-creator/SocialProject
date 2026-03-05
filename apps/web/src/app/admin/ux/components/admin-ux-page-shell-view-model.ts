@@ -7,6 +7,7 @@ import {
 } from './admin-ux-mappers';
 import type {
   AdminUxAllMetricsRiskFilter,
+  AdminUxAllMetricsRiskTone,
   AdminUxAllMetricsView,
   AdminUxPanel,
 } from './admin-ux-page-utils';
@@ -39,6 +40,16 @@ interface AllMetricsRiskCounts {
   watch: number;
 }
 
+const ALL_METRICS_RISK_SNAPSHOT_TONES: ReadonlyArray<{
+  id: AdminUxAllMetricsRiskTone;
+  label: string;
+}> = [
+  { id: 'critical', label: 'critical' },
+  { id: 'watch', label: 'watch' },
+  { id: 'healthy', label: 'healthy' },
+  { id: 'neutral', label: 'info' },
+] as const;
+
 const ADMIN_UX_ALL_METRICS_VIEW_TABS: ReadonlyArray<{
   id: AdminUxAllMetricsView;
   label: string;
@@ -63,10 +74,12 @@ export const buildAdminUxPanelHref = (
   panel: AdminUxPanel,
   {
     allMetricsRiskFilter = 'all',
+    allMetricsRiskTone = 'all',
     allMetricsView = 'overview',
     expandAllGroups = false,
   }: {
     allMetricsRiskFilter?: AdminUxAllMetricsRiskFilter;
+    allMetricsRiskTone?: AdminUxAllMetricsRiskTone;
     allMetricsView?: AdminUxAllMetricsView;
     expandAllGroups?: boolean;
   } = {},
@@ -78,6 +91,9 @@ export const buildAdminUxPanelHref = (
   if (panel === 'all' && allMetricsRiskFilter !== 'all') {
     href += `&risk=${allMetricsRiskFilter}`;
   }
+  if (panel === 'all' && allMetricsRiskTone !== 'all') {
+    href += `&riskTone=${allMetricsRiskTone}`;
+  }
   if (panel === 'all' && expandAllGroups) {
     href += '&expand=all';
   }
@@ -87,6 +103,7 @@ export const buildAdminUxPanelHref = (
 export const buildAdminUxPanelChromeView = ({
   activePanel,
   allMetricsRiskFilter,
+  allMetricsRiskTone,
   allMetricsRiskCounts,
   allMetricsView,
   expandAllGroups,
@@ -95,6 +112,7 @@ export const buildAdminUxPanelChromeView = ({
 }: {
   activePanel: AdminUxPanel;
   allMetricsRiskFilter: AdminUxAllMetricsRiskFilter;
+  allMetricsRiskTone: AdminUxAllMetricsRiskTone;
   allMetricsRiskCounts?: AllMetricsRiskCounts;
   allMetricsView: AdminUxAllMetricsView;
   expandAllGroups: boolean;
@@ -108,6 +126,7 @@ export const buildAdminUxPanelChromeView = ({
           buildPanelHref: (riskFilter) =>
             buildAdminUxPanelHref(hours, 'all', {
               allMetricsRiskFilter: riskFilter,
+              allMetricsRiskTone,
               allMetricsView,
               expandAllGroups,
             }),
@@ -123,9 +142,21 @@ export const buildAdminUxPanelChromeView = ({
   allMetricsRiskSnapshot:
     activePanel === 'all' && allMetricsRiskCounts
       ? {
+          activeTone: allMetricsRiskTone,
           critical: allMetricsRiskCounts.critical,
           healthy: allMetricsRiskCounts.healthy,
           neutral: allMetricsRiskCounts.neutral,
+          toneHrefs: ALL_METRICS_RISK_SNAPSHOT_TONES.map((tone) => ({
+            id: tone.id,
+            href: buildAdminUxPanelHref(hours, 'all', {
+              allMetricsRiskFilter: 'all',
+              allMetricsRiskTone:
+                allMetricsRiskTone === tone.id ? 'all' : tone.id,
+              allMetricsView,
+              expandAllGroups,
+            }),
+            label: tone.label,
+          })),
           watch: allMetricsRiskCounts.watch,
         }
       : null,
@@ -136,6 +167,7 @@ export const buildAdminUxPanelChromeView = ({
           buildPanelHref: (view) =>
             buildAdminUxPanelHref(hours, 'all', {
               allMetricsRiskFilter,
+              allMetricsRiskTone,
               allMetricsView: view,
               expandAllGroups,
             }),
@@ -147,10 +179,12 @@ export const buildAdminUxPanelChromeView = ({
       ? {
           collapseHref: buildAdminUxPanelHref(hours, 'all', {
             allMetricsRiskFilter,
+            allMetricsRiskTone,
             allMetricsView,
           }),
           expandHref: buildAdminUxPanelHref(hours, 'all', {
             allMetricsRiskFilter,
+            allMetricsRiskTone,
             allMetricsView,
             expandAllGroups: true,
           }),
@@ -162,6 +196,7 @@ export const buildAdminUxPanelChromeView = ({
     buildPanelHref: (panel) =>
       buildAdminUxPanelHref(hours, panel, {
         allMetricsRiskFilter,
+        allMetricsRiskTone,
         allMetricsView,
         expandAllGroups,
       }),

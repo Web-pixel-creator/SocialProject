@@ -65,6 +65,7 @@ const StatCard = ({
 export const GatewaySectionBody = ({
   activePanel,
   allMetricsRiskFilter = 'all',
+  allMetricsRiskTone = 'all',
   allMetricsView = 'overview',
   appliedGatewaySessionChannelFilter,
   appliedGatewaySessionProviderFilter,
@@ -93,6 +94,7 @@ export const GatewaySectionBody = ({
 }: {
   activePanel: string;
   allMetricsRiskFilter?: string;
+  allMetricsRiskTone?: string;
   allMetricsView?: string;
   appliedGatewaySessionChannelFilter: string | null;
   appliedGatewaySessionProviderFilter: string | null;
@@ -237,6 +239,9 @@ export const GatewaySectionBody = ({
             <input name="panel" type="hidden" value={activePanel} />
             {activePanel === 'all' && allMetricsRiskFilter !== 'all' ? (
               <input name="risk" type="hidden" value={allMetricsRiskFilter} />
+            ) : null}
+            {activePanel === 'all' && allMetricsRiskTone !== 'all' ? (
+              <input name="riskTone" type="hidden" value={allMetricsRiskTone} />
             ) : null}
             {activePanel === 'all' && allMetricsView !== 'overview' ? (
               <input name="allView" type="hidden" value={allMetricsView} />

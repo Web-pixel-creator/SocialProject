@@ -10,6 +10,7 @@ import {
 } from './admin-ux-page-shell-view-model';
 import type {
   AdminUxAllMetricsRiskFilter,
+  AdminUxAllMetricsRiskTone,
   AdminUxAllMetricsView,
   AdminUxPanel,
 } from './admin-ux-page-utils';
@@ -147,6 +148,7 @@ const computeAllMetricsRiskCounts = ({
 export const AdminUxPageContent = ({
   activePanel,
   allMetricsRiskFilter,
+  allMetricsRiskTone,
   allMetricsView,
   expandAllGroups,
   hours,
@@ -156,6 +158,7 @@ export const AdminUxPageContent = ({
 }: {
   activePanel: AdminUxPanel;
   allMetricsRiskFilter: AdminUxAllMetricsRiskFilter;
+  allMetricsRiskTone: AdminUxAllMetricsRiskTone;
   allMetricsView: AdminUxAllMetricsView;
   expandAllGroups: boolean;
   hours: number;
@@ -173,6 +176,7 @@ export const AdminUxPageContent = ({
   const panelChromeView = buildAdminUxPanelChromeView({
     activePanel,
     allMetricsRiskFilter,
+    allMetricsRiskTone,
     allMetricsRiskCounts,
     allMetricsView,
     expandAllGroups,
@@ -201,6 +205,7 @@ export const AdminUxPageContent = ({
       <AdminUxMainPanels
         activePanel={activePanel}
         allMetricsRiskFilter={allMetricsRiskFilter}
+        allMetricsRiskTone={allMetricsRiskTone}
         allMetricsView={allMetricsView}
         expandAllGroups={expandAllGroups}
         {...mainPanelsProps}

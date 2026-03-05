@@ -2,6 +2,7 @@ import { type ComponentProps, Fragment, type ReactNode } from 'react';
 
 import type {
   AdminUxAllMetricsRiskFilter,
+  AdminUxAllMetricsRiskTone,
   AdminUxAllMetricsView,
   AdminUxPanel,
 } from './admin-ux-page-utils';
@@ -130,6 +131,7 @@ const resolveMoreSevereMetaTone = (
 export const AdminUxMainPanels = ({
   activePanel,
   allMetricsRiskFilter = 'all',
+  allMetricsRiskTone = 'all',
   allMetricsView = 'overview',
   debugDiagnosticsSectionProps,
   engagementHealthProps,
@@ -147,6 +149,7 @@ export const AdminUxMainPanels = ({
 }: {
   activePanel: AdminUxPanel;
   allMetricsRiskFilter?: AdminUxAllMetricsRiskFilter;
+  allMetricsRiskTone?: AdminUxAllMetricsRiskTone;
   allMetricsView?: AdminUxAllMetricsView;
   debugDiagnosticsSectionProps: ComponentProps<typeof DebugDiagnosticsSection>;
   engagementHealthProps: Omit<
@@ -536,18 +539,23 @@ export const AdminUxMainPanels = ({
       });
     }
 
+    const toneScopedGroups =
+      allMetricsRiskTone === 'all'
+        ? allMetricsGroups
+        : allMetricsGroups.filter((group) => group.tone === allMetricsRiskTone);
+
     const riskScopedGroups =
       allMetricsRiskFilter === 'high'
-        ? allMetricsGroups.filter(
+        ? toneScopedGroups.filter(
             (group) => group.tone === 'critical' || group.tone === 'watch',
           )
-        : allMetricsGroups;
+        : toneScopedGroups;
 
     if (riskScopedGroups.length === 0) {
       return (
         <section className="card p-4 sm:p-5">
           <p className="text-muted-foreground text-sm">
-            No critical or watch sections in the current selection.
+            No sections match the current risk filter.
           </p>
         </section>
       );

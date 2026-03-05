@@ -28,12 +28,26 @@ export const ADMIN_UX_ALL_METRICS_RISK_FILTERS = ['all', 'high'] as const;
 export type AdminUxAllMetricsRiskFilter =
   (typeof ADMIN_UX_ALL_METRICS_RISK_FILTERS)[number];
 
+export const ADMIN_UX_ALL_METRICS_RISK_TONES = [
+  'all',
+  'critical',
+  'watch',
+  'healthy',
+  'neutral',
+] as const;
+
+export type AdminUxAllMetricsRiskTone =
+  (typeof ADMIN_UX_ALL_METRICS_RISK_TONES)[number];
+
 const ADMIN_UX_PANEL_VALUES = new Set<string>(ADMIN_UX_PANELS);
 const ADMIN_UX_ALL_METRICS_VIEW_VALUES = new Set<string>(
   ADMIN_UX_ALL_METRICS_VIEWS,
 );
 const ADMIN_UX_ALL_METRICS_RISK_FILTER_VALUES = new Set<string>(
   ADMIN_UX_ALL_METRICS_RISK_FILTERS,
+);
+const ADMIN_UX_ALL_METRICS_RISK_TONE_VALUES = new Set<string>(
+  ADMIN_UX_ALL_METRICS_RISK_TONES,
 );
 const PREDICTION_OUTCOME_LABEL_SEGMENT_PATTERN = /[_\s-]+/;
 
@@ -72,6 +86,19 @@ export const resolveAdminUxAllMetricsRiskFilter = (
     return 'all';
   }
   return normalized as AdminUxAllMetricsRiskFilter;
+};
+
+export const resolveAdminUxAllMetricsRiskTone = (
+  value: unknown,
+): AdminUxAllMetricsRiskTone => {
+  if (typeof value !== 'string') {
+    return 'all';
+  }
+  const normalized = value.trim().toLowerCase();
+  if (!ADMIN_UX_ALL_METRICS_RISK_TONE_VALUES.has(normalized)) {
+    return 'all';
+  }
+  return normalized as AdminUxAllMetricsRiskTone;
 };
 
 export const formatPredictionOutcomeMetricLabel = (value: string): string => {

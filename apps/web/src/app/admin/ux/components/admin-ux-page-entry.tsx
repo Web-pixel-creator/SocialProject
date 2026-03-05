@@ -7,6 +7,7 @@ import {
 } from './admin-ux-page-orchestration';
 import type {
   AdminUxAllMetricsRiskFilter,
+  AdminUxAllMetricsRiskTone,
   AdminUxAllMetricsView,
   AdminUxPanel,
 } from './admin-ux-page-utils';
@@ -14,6 +15,7 @@ import type {
 export interface AdminUxPageContext {
   activePanel: AdminUxPanel;
   allMetricsRiskFilter: AdminUxAllMetricsRiskFilter;
+  allMetricsRiskTone: AdminUxAllMetricsRiskTone;
   allMetricsView: AdminUxAllMetricsView;
   dataLoadResult: AdminUxPageDataLoadResult;
   expandAllGroups: boolean;
@@ -28,6 +30,7 @@ export const createAdminUxPageContext = async (
   const {
     activePanel,
     allMetricsRiskFilter,
+    allMetricsRiskTone,
     allMetricsView,
     expandAllGroups,
     hours,
@@ -37,6 +40,7 @@ export const createAdminUxPageContext = async (
   return {
     activePanel,
     allMetricsRiskFilter,
+    allMetricsRiskTone,
     allMetricsView,
     dataLoadResult,
     expandAllGroups,
@@ -50,6 +54,7 @@ export const renderAdminUxObserverEngagementPage = async (
   const {
     activePanel,
     allMetricsRiskFilter,
+    allMetricsRiskTone,
     allMetricsView,
     dataLoadResult,
     expandAllGroups,
@@ -60,6 +65,7 @@ export const renderAdminUxObserverEngagementPage = async (
     <AdminUxPageLoadState
       activePanel={activePanel}
       allMetricsRiskFilter={allMetricsRiskFilter}
+      allMetricsRiskTone={allMetricsRiskTone}
       allMetricsView={allMetricsView}
       dataLoadResult={dataLoadResult}
       expandAllGroups={expandAllGroups}
