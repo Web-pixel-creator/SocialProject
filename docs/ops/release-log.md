@@ -33,6 +33,24 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add triage source decision table for inline vs workflow-run health artifacts (phase 17)
+
+- Scope: reduce operator ambiguity by documenting when to use inline launch-gate health artifacts vs `Release Health Gate` artifacts.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 10:05 -> 2026-03-05 10:07.
+- Changes:
+  - Updated `docs/ops/release-runbook.md`:
+    - added compact decision table under post-release health section:
+      - inline (`Production Launch Gate`) artifacts for immediate same-run triage,
+      - `Release Health Gate` artifacts for corroborating asynchronous evidence.
+- Validation:
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: mirror this decision table in onboarding docs for new release commanders.
+
 ### 2026-03-05 - document inline post-release health artifacts in ops runbooks (phase 16)
 
 - Scope: align release docs with new CI behavior where `Production Launch Gate` uploads inline post-release health artifacts.

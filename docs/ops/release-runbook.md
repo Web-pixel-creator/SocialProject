@@ -85,6 +85,13 @@ Canonical references:
    - `npm run release:health:report`
    - `Release Health Gate` workflow auto-runs on completed `workflow_dispatch` runs from both `CI` and `Production Launch Gate` workflows (`workflow_run` trigger).
    - For CI `Production Launch Gate` runs, inline post-release health artifacts from the same run are available immediately; use them for zero-lag triage and keep `Release Health Gate` as corroborating automation.
+   - Triage source selection quick guide:
+
+     | Source | Use When | Artifact names |
+     | --- | --- | --- |
+     | Inline (`Production Launch Gate` run) | Immediate same-run triage right after strict gate completion | `post-release-health-report-inline`, `post-release-health-summary-inline`, `post-release-health-schema-summary-inline` |
+     | `Release Health Gate` (`workflow_run`) | Corroborating asynchronous automation evidence and standard post-run reporting | `post-release-health-report`, `post-release-health-summary`, `post-release-health-schema-summary` |
+
    - Optional launch-gate workflow profile:
      - `npm run release:health:report -- --workflow-file production-launch-gate.yml --profile launch-gate`
      - Shortcut: `npm run release:health:report:launch-gate`
