@@ -212,6 +212,8 @@ jobs:
           artifact_1_path: artifacts/release/retry-schema-gate-summary.json
           artifact_2_name: release-smoke-preflight-schema-summary
           artifact_2_path: artifacts/release/release-smoke-preflight-schema-summary.json
+          artifact_3_name: runbook-snippet-parity-log
+          artifact_3_path: artifacts/release/runbook-snippet-parity.log
 
       - name: Wait for services
         run: node scripts/ci/wait-for-services.mjs --ports 5432,6379
