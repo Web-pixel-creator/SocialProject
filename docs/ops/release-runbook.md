@@ -15,7 +15,7 @@ Use this map when a release helper fails fast on argument/env validation and you
 | Helper path | Primary validation modules |
 | --- | --- |
 | `scripts/release/dispatch-production-launch-gate.mjs` | `scripts/release/release-env-parse-utils.mjs`, `scripts/release/dispatch-production-launch-gate-link-options.mjs`, `scripts/release/dispatch-production-launch-gate-external-channels.mjs` |
-| `scripts/release/production-launch-gate.mjs` | `scripts/release/release-env-parse-utils.mjs`, `scripts/release/production-launch-gate-config-resolvers.mjs`, `scripts/release/dispatch-production-launch-gate-external-channels.mjs` |
+| `scripts/release/production-launch-gate.mjs` | `scripts/release/release-env-parse-utils.mjs`, `scripts/release/production-launch-gate-config-resolvers.mjs`, `scripts/release/dispatch-production-launch-gate-external-channels.mjs`, `scripts/release/production-launch-gate-smoke-timeout-retry-utils.mjs` |
 
 ## 1. Preflight (must pass before rollout)
 
@@ -48,6 +48,9 @@ Use this map when a release helper fails fast on argument/env validation and you
    - `npm run release:launch:gate:production`
    - Optional JSON output: `npm run release:launch:gate:production:json`
    - Optional non-JSON failure detail cap: `npm run release:launch:gate:production -- --failure-detail-max-items 10` (or env `RELEASE_FAILURE_DETAIL_MAX_ITEMS=10`).
+   - Optional timeout-only smoke retry controls:
+     - `--smoke-timeout-retries <n>` (env `RELEASE_SMOKE_TIMEOUT_RETRIES`, default `1`)
+     - `--smoke-timeout-retry-delay-ms <ms>` (env `RELEASE_SMOKE_TIMEOUT_RETRY_DELAY_MS`, default `5000`)
    - Non-JSON failure mode now prints failed-check diagnostics and truncates long arrays with `+N more`; tune truncation via `--failure-detail-max-items`.
    - Example non-JSON failure snippet (generated from fixture `docs/ops/examples/production-launch-gate-non-json-failure-example.json`):
      ```text

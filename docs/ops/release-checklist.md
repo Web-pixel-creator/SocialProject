@@ -203,6 +203,8 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
   - [ ] `npm run release:launch:gate:production`
   - [ ] Optional machine-readable output: `npm run release:launch:gate:production:json`
   - [ ] Optional compact non-JSON failure output cap: `npm run release:launch:gate:production -- --failure-detail-max-items <n>` (or `RELEASE_FAILURE_DETAIL_MAX_ITEMS=<n>`).
+  - [ ] Optional timeout-only smoke retry count override: `npm run release:launch:gate:production -- --smoke-timeout-retries <n>` (or `RELEASE_SMOKE_TIMEOUT_RETRIES=<n>`, default `1`).
+  - [ ] Optional timeout-only smoke retry delay override: `npm run release:launch:gate:production -- --smoke-timeout-retry-delay-ms <ms>` (or `RELEASE_SMOKE_TIMEOUT_RETRY_DELAY_MS=<ms>`, default `5000`).
   - [ ] In non-JSON mode, confirm failed-check diagnostics are readable and compact (`+N more` markers appear for long arrays when applicable).
   - [ ] Optional docs parity check: `npm run release:runbook:failure-snippet:check`.
   - [ ] If parity fails in CI, inspect artifact `runbook-snippet-parity-log` before retrying.

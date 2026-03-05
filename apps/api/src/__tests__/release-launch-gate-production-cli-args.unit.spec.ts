@@ -87,6 +87,24 @@ describe('production launch-gate cli argument validation', () => {
     );
   });
 
+  test('fails fast when smoke-timeout-retries value is missing', () => {
+    const result = runProductionLaunchGate(['--smoke-timeout-retries']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Missing value for --smoke-timeout-retries',
+    );
+  });
+
+  test('fails fast when smoke-timeout-retry-delay-ms value is missing', () => {
+    const result = runProductionLaunchGate(['--smoke-timeout-retry-delay-ms']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Missing value for --smoke-timeout-retry-delay-ms',
+    );
+  });
+
   test('fails fast when inline required-external-channels value is empty', () => {
     const result = runProductionLaunchGate(['--required-external-channels=']);
 
@@ -102,6 +120,15 @@ describe('production launch-gate cli argument validation', () => {
     expect(result.status).toBe(1);
     expect(result.stderr).toContain(
       'Missing value for --failure-detail-max-items=',
+    );
+  });
+
+  test('fails fast when inline smoke-timeout-retries value is empty', () => {
+    const result = runProductionLaunchGate(['--smoke-timeout-retries=']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Missing value for --smoke-timeout-retries=',
     );
   });
 
@@ -171,6 +198,28 @@ describe('production launch-gate cli argument validation', () => {
     );
   });
 
+  test('accepts zero smoke-timeout-retries in help mode', () => {
+    const result = runProductionLaunchGate([
+      '--smoke-timeout-retries=0',
+      '--help',
+    ]);
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe('');
+    expect(result.stdout).toContain(
+      'Usage: node scripts/release/production-launch-gate.mjs',
+    );
+  });
+
+  test('fails fast when --smoke-timeout-retries is not a non-negative integer', () => {
+    const result = runProductionLaunchGate(['--smoke-timeout-retries', '-1']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Invalid value for --smoke-timeout-retries: -1',
+    );
+  });
+
   test('fails fast on unsupported RELEASE_REQUIRED_EXTERNAL_CHANNELS env value', () => {
     const result = runProductionLaunchGate([], {
       RELEASE_REQUIRED_EXTERNAL_CHANNELS: 'telegram,teams',
@@ -200,6 +249,28 @@ describe('production launch-gate cli argument validation', () => {
     expect(result.status).toBe(1);
     expect(result.stderr).toContain(
       'Invalid value for RELEASE_FAILURE_DETAIL_MAX_ITEMS: abc',
+    );
+  });
+
+  test('fails fast on invalid RELEASE_SMOKE_TIMEOUT_RETRIES env value', () => {
+    const result = runProductionLaunchGate([], {
+      RELEASE_SMOKE_TIMEOUT_RETRIES: '1.5',
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Invalid value for RELEASE_SMOKE_TIMEOUT_RETRIES: 1.5',
+    );
+  });
+
+  test('fails fast on invalid RELEASE_SMOKE_TIMEOUT_RETRY_DELAY_MS env value', () => {
+    const result = runProductionLaunchGate([], {
+      RELEASE_SMOKE_TIMEOUT_RETRY_DELAY_MS: '0',
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Invalid value for RELEASE_SMOKE_TIMEOUT_RETRY_DELAY_MS: 0',
     );
   });
 });

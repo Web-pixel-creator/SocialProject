@@ -25,6 +25,10 @@ describe('production launch-gate help output', () => {
     expect(result.stdout).toContain(
       '--failure-detail-max-items <n> (default: 10)',
     );
+    expect(result.stdout).toContain('--smoke-timeout-retries <n> (default: 1)');
+    expect(result.stdout).toContain(
+      '--smoke-timeout-retry-delay-ms <ms> (default: 5000)',
+    );
     expect(result.stdout).toContain('--require-natural-cron-window');
     expect(result.stdout.replace(/\r\n/g, '\n')).toMatchInlineSnapshot(`
 "Usage: node scripts/release/production-launch-gate.mjs [options]
@@ -36,6 +40,8 @@ Options:
   --runtime-draft-id <uuid> --runtime-channel <name>
   --skip-railway-gate --skip-smoke --skip-runtime-probes --skip-ingest-probe
   --failure-detail-max-items <n> (default: 10)
+  --smoke-timeout-retries <n> (default: 1)
+  --smoke-timeout-retry-delay-ms <ms> (default: 5000)
   --required-external-channels <telegram,slack,discord|all>
   --require-skill-markers
   --require-natural-cron-window

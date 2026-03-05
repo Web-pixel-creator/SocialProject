@@ -15,8 +15,23 @@ import {
   resolveProductionStringConfig,
 } from './production-launch-gate-config-resolvers.mjs';
 import { buildProductionLaunchGateFailureLines } from './production-launch-gate-failure-output-format.mjs';
+import { buildSmokeTimeoutRetryDecision } from './production-launch-gate-smoke-timeout-retry-utils.mjs';
 
 const DEFAULT_FAILURE_DETAIL_MAX_ITEMS = 10;
+const DEFAULT_SMOKE_TIMEOUT_RETRIES = 1;
+const DEFAULT_SMOKE_TIMEOUT_RETRY_DELAY_MS = 5_000;
+const NON_NEGATIVE_INTEGER_PATTERN = /^(0|[1-9]\d*)$/;
+
+const parseReleaseNonNegativeIntegerEnv = (raw, fallback, sourceLabel) => {
+  const value = String(raw || '').trim();
+  if (!value) {
+    return fallback;
+  }
+  if (!NON_NEGATIVE_INTEGER_PATTERN.test(value)) {
+    throw new Error(`Invalid value for ${sourceLabel}: ${value}`);
+  }
+  return Number(value);
+};
 
 const DEFAULTS = {
   apiService: process.env.RAILWAY_API_SERVICE || 'api',
@@ -31,6 +46,16 @@ const DEFAULTS = {
   gateWaitMs: 300_000,
   httpTimeoutMs: 10_000,
   runtimeChannel: process.env.RELEASE_RUNTIME_CHANNEL || 'release_runtime_probe',
+  smokeTimeoutRetries: parseReleaseNonNegativeIntegerEnv(
+    process.env.RELEASE_SMOKE_TIMEOUT_RETRIES,
+    DEFAULT_SMOKE_TIMEOUT_RETRIES,
+    'RELEASE_SMOKE_TIMEOUT_RETRIES',
+  ),
+  smokeTimeoutRetryDelayMs: parseReleasePositiveIntegerEnv(
+    process.env.RELEASE_SMOKE_TIMEOUT_RETRY_DELAY_MS,
+    DEFAULT_SMOKE_TIMEOUT_RETRY_DELAY_MS,
+    'RELEASE_SMOKE_TIMEOUT_RETRY_DELAY_MS',
+  ),
   smokeResultsPath:
     process.env.RELEASE_RESULTS_PATH ||
     'artifacts/release/smoke-results-production-postdeploy.json',
@@ -620,6 +645,8 @@ const parseArgs = (argv) => {
     skipRuntimeProbes: false,
     skipSmoke: false,
     smokeResultsPath: DEFAULTS.smokeResultsPath,
+    smokeTimeoutRetries: DEFAULTS.smokeTimeoutRetries,
+    smokeTimeoutRetryDelayMs: DEFAULTS.smokeTimeoutRetryDelayMs,
     strict: false,
     webBaseUrl: '',
     webService: DEFAULTS.webService,
@@ -635,10 +662,16 @@ const parseArgs = (argv) => {
     const value = readRequiredValue(flag, nextValue);
     return parseReleasePositiveIntegerEnv(value, 0, flag);
   };
+  const parseNonNegativeIntegerValue = (flag, nextValue) => {
+    const value = readRequiredValue(flag, nextValue);
+    return parseReleaseNonNegativeIntegerEnv(value, 0, flag);
+  };
   const readInlineValue = (arg, flag) =>
     readRequiredValue(`${flag}=`, arg.slice(`${flag}=`.length));
   const parseInlinePositiveIntegerValue = (arg, flag) =>
     parsePositiveIntegerValue(`${flag}=`, arg.slice(`${flag}=`.length));
+  const parseInlineNonNegativeIntegerValue = (arg, flag) =>
+    parseNonNegativeIntegerValue(`${flag}=`, arg.slice(`${flag}=`.length));
 
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
@@ -690,6 +723,16 @@ const parseArgs = (argv) => {
       );
     else if (a.startsWith('--http-timeout-ms='))
       o.httpTimeoutMs = parseInlinePositiveIntegerValue(a, '--http-timeout-ms');
+    else if (a.startsWith('--smoke-timeout-retry-delay-ms='))
+      o.smokeTimeoutRetryDelayMs = parseInlinePositiveIntegerValue(
+        a,
+        '--smoke-timeout-retry-delay-ms',
+      );
+    else if (a.startsWith('--smoke-timeout-retries='))
+      o.smokeTimeoutRetries = parseInlineNonNegativeIntegerValue(
+        a,
+        '--smoke-timeout-retries',
+      );
     else if (a.startsWith('--failure-detail-max-items='))
       o.failureDetailMaxItems = parseInlinePositiveIntegerValue(
         a,
@@ -726,6 +769,16 @@ const parseArgs = (argv) => {
         '--http-timeout-ms',
         argv[++i],
       );
+    else if (a === '--smoke-timeout-retry-delay-ms')
+      o.smokeTimeoutRetryDelayMs = parsePositiveIntegerValue(
+        '--smoke-timeout-retry-delay-ms',
+        argv[++i],
+      );
+    else if (a === '--smoke-timeout-retries')
+      o.smokeTimeoutRetries = parseNonNegativeIntegerValue(
+        '--smoke-timeout-retries',
+        argv[++i],
+      );
     else if (a === '--failure-detail-max-items')
       o.failureDetailMaxItems = parsePositiveIntegerValue(
         '--failure-detail-max-items',
@@ -748,6 +801,8 @@ const printHelp = () => {
       '  --runtime-draft-id <uuid> --runtime-channel <name>',
       '  --skip-railway-gate --skip-smoke --skip-runtime-probes --skip-ingest-probe',
       `  --failure-detail-max-items <n> (default: ${DEFAULT_FAILURE_DETAIL_MAX_ITEMS})`,
+      `  --smoke-timeout-retries <n> (default: ${DEFAULT_SMOKE_TIMEOUT_RETRIES})`,
+      `  --smoke-timeout-retry-delay-ms <ms> (default: ${DEFAULT_SMOKE_TIMEOUT_RETRY_DELAY_MS})`,
       '  --required-external-channels <telegram,slack,discord|all>',
       '  --require-skill-markers',
       '  --require-natural-cron-window',
@@ -953,17 +1008,68 @@ const main = async () => {
       sandboxExecutionEnabledConfig.value,
     );
 
-    if (!o.skipSmoke) {
-      run('node', [path.resolve('scripts/release/smoke-check.mjs')], {
-        ...process.env,
-        RELEASE_API_BASE_URL: apiBaseUrl,
-        RELEASE_WEB_BASE_URL: webBaseUrl,
-        RELEASE_CSRF_TOKEN: csrfToken,
-        RELEASE_RESULTS_PATH: path.resolve(o.smokeResultsPath),
+    let smoke = null;
+    let smokeAttempts = 0;
+    let smokeRetriesUsed = 0;
+    const smokeMaxAttempts = 1 + o.smokeTimeoutRetries;
+    const smokeResultsPath = path.resolve(o.smokeResultsPath);
+
+    while (smokeAttempts < smokeMaxAttempts) {
+      smokeAttempts += 1;
+      let smokeCommandError = null;
+      if (!o.skipSmoke) {
+        try {
+          run('node', [path.resolve('scripts/release/smoke-check.mjs')], {
+            ...process.env,
+            RELEASE_API_BASE_URL: apiBaseUrl,
+            RELEASE_WEB_BASE_URL: webBaseUrl,
+            RELEASE_CSRF_TOKEN: csrfToken,
+            RELEASE_RESULTS_PATH: smokeResultsPath,
+          });
+        } catch (error) {
+          smokeCommandError =
+            error instanceof Error ? error : new Error(String(error));
+        }
+      }
+      try {
+        smoke = await readJson(smokeResultsPath);
+      } catch (error) {
+        if (smokeCommandError) {
+          throw smokeCommandError;
+        }
+        throw error;
+      }
+      if (smoke.summary?.pass) {
+        if (smokeCommandError) {
+          throw smokeCommandError;
+        }
+        break;
+      }
+      const retryDecision = buildSmokeTimeoutRetryDecision({
+        attempt: smokeAttempts,
+        maxRetries: o.smokeTimeoutRetries,
+        smokeReport: smoke,
       });
+      const shouldRetry =
+        !o.skipSmoke &&
+        retryDecision.shouldRetry &&
+        smokeAttempts < smokeMaxAttempts;
+      if (!shouldRetry) {
+        if (smokeCommandError) {
+          throw smokeCommandError;
+        }
+        throw new Error('Production smoke failed');
+      }
+      smokeRetriesUsed += 1;
+      if (!o.json) {
+        process.stdout.write(
+          `Smoke check timeout-only failure detected (attempt ${smokeAttempts}/${smokeMaxAttempts}); retrying in ${o.smokeTimeoutRetryDelayMs}ms.\n`,
+        );
+      }
+      await sleep(o.smokeTimeoutRetryDelayMs);
     }
-    const smoke = await readJson(path.resolve(o.smokeResultsPath));
-    if (!smoke.summary?.pass) throw new Error('Production smoke failed');
+
+    if (!smoke || !smoke.summary?.pass) throw new Error('Production smoke failed');
     const smokeStepStatus = buildSmokeStepStatus(smoke);
     summary.checks.smokeRequiredSteps = {
       ...smokeStepStatus,
@@ -974,7 +1080,17 @@ const main = async () => {
         `Production smoke required steps failed (missing: ${smokeStepStatus.missing.join(', ') || 'none'}; failed: ${smokeStepStatus.failed.join(', ') || 'none'}).`,
       );
     }
-    summary.checks.smoke = { pass: true, skipped: o.skipSmoke };
+    summary.checks.smoke = {
+      attempts: smokeAttempts,
+      pass: true,
+      skipped: o.skipSmoke,
+      timeoutRetry: {
+        delayMs: o.smokeTimeoutRetryDelayMs,
+        enabled: !o.skipSmoke && o.smokeTimeoutRetries > 0,
+        maxRetries: o.smokeTimeoutRetries,
+        retriesUsed: smokeRetriesUsed,
+      },
+    };
 
     const runtimeDraftId = o.runtimeDraftId || smoke.context?.draftId;
     if (o.requireSkillMarkers && !o.runtimeDraftId) {

@@ -33,6 +33,46 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add bounded timeout-only smoke retry in production launch gate (phase 90)
+
+- Scope: reduce false-red release noise by auto-retrying production smoke only when failures are timeout-class and bounded by explicit retry controls.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 14:07 -> 2026-03-05 14:19.
+- Changes:
+  - Added helper module:
+    - `scripts/release/production-launch-gate-smoke-timeout-retry-utils.mjs`
+    - exports:
+      - `isSmokeTimeoutErrorMessage`
+      - `isSmokeTimeoutOnlyFailureReport`
+      - `buildSmokeTimeoutRetryDecision`
+  - Updated `scripts/release/production-launch-gate.mjs`:
+    - smoke path now supports bounded retry loop for timeout-only failures before failing gate,
+    - added retry config surface:
+      - CLI: `--smoke-timeout-retries <n>`, `--smoke-timeout-retry-delay-ms <ms>`
+      - env: `RELEASE_SMOKE_TIMEOUT_RETRIES`, `RELEASE_SMOKE_TIMEOUT_RETRY_DELAY_MS`
+    - launch-gate summary now reports smoke retry telemetry in `checks.smoke.timeoutRetry` plus `checks.smoke.attempts`.
+  - Added/updated tests:
+    - new: `apps/api/src/__tests__/release-launch-gate-production-smoke-timeout-retry-utils.unit.spec.ts`
+    - updated: `apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts`
+    - updated: `apps/api/src/__tests__/release-launch-gate-production-help-snapshot.unit.spec.ts`
+  - Updated docs:
+    - `docs/ops/release-runbook.md` (timeout-retry controls + helper map)
+    - `docs/ops/release-checklist.md` (post-release optional retry controls)
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-smoke-timeout-retry-utils.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-failure-runbook-example.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-failure-runbook-check-script.unit.spec.ts apps/api/src/__tests__/release-runbook-snippet-utils.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run release:runbook:failure-snippet:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T14:17:00.470Z`).
+  - live dispatch regression:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --print-artifact-links --artifact-link-names all`
+    - run `#101` (`22722071261`): success with expected artifact-link output.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: expose new smoke timeout retry controls as explicit `workflow_dispatch` inputs in `.github/workflows/production-launch-gate.yml` for one-click tuning in CI runs.
+
 ### 2026-03-05 - add shared mjs test runner helper for release parity suites (phase 89)
 
 - Scope: reduce duplicated spawn/inline-module boilerplate across release parity tests by introducing a shared test utility.
