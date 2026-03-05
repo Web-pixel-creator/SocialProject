@@ -183,6 +183,33 @@ Exit criteria:
   - `node --check` on changed release scripts: pass
   - targeted `jest` suite for release command policy: pass
 
+### 2026-03-05 - Phase 2 completed
+
+- Added shared release correlation helper:
+  - `scripts/release/release-correlation-utils.mjs`
+- Propagated `releaseRunId`, `correlationId`, and audit-session linkage through:
+  - `scripts/release/production-launch-gate.mjs`
+  - `scripts/release/post-release-health-report.mjs`
+  - `apps/api/src/routes/admin.ts`
+  - `apps/api/src/services/sandboxExecution/*`
+- Extended sandbox metrics filters/coverage for:
+  - `correlationId`
+  - `releaseRunId`
+  - `executionSessionId`
+- Updated release-health report schema/sample to `1.11.0`.
+- Added unit/integration coverage:
+  - `apps/api/src/__tests__/release-correlation-utils.unit.spec.ts`
+  - expanded `admin.integration.spec.ts`
+  - expanded `sandbox-execution.unit.spec.ts`
+- Validation:
+  - `node --check` on changed release scripts: pass
+  - targeted `jest` suites for correlation/audit path: pass
+  - `ci:workflow:inline-node-check`: pass
+  - `lint`: pass
+  - `ultracite:check`: pass
+  - `node scripts/release/validate-release-health-report-schema.mjs docs/ops/schemas/samples/release-health-report-output.sample.json --json`: pass
+  - `release:launch:gate:production:json -- --required-external-channels all`: pass after deploy
+
 ## Hard Rule
 
 Do not spend another release cycle on helper-only cleanup unless it directly

@@ -33,6 +33,51 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add phase 2 correlation and audit linkage (phase 123)
+
+- Scope: complete the next hardening step by making release/runtime correlation deterministic across launch-gate probes, sandbox telemetry, metrics drill-down, and post-release health reporting.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 19:00 -> 2026-03-05 19:18.
+- Changes:
+  - Added shared release correlation helper:
+    - `scripts/release/release-correlation-utils.mjs`
+    - generates normalized `releaseRunId`, `correlationId`, and `auditSessionId`.
+  - Extended sandbox audit metadata and telemetry normalization:
+    - `apps/api/src/services/sandboxExecution/types.ts`
+    - `apps/api/src/services/sandboxExecution/sandboxExecutionService.ts`
+  - Propagated correlation through admin runtime dry-run and sandbox metrics:
+    - `apps/api/src/routes/admin.ts`
+    - dry-run now accepts `correlationId`, `releaseRunId`, `auditSessionId`
+    - sandbox metrics now support `correlationId`, `releaseRunId`, `executionSessionId` filters
+    - audit coverage now reports correlation/release/execution-session counts
+  - Updated launch-gate and post-release reporting:
+    - `scripts/release/production-launch-gate.mjs`
+    - `scripts/release/post-release-health-report.mjs`
+    - production launch-gate now records one shared correlation context and validates exact runtime-probe telemetry by that context
+    - post-release health report now persists correlation context in the JSON payload
+  - Updated release health schema contract to `1.11.0`:
+    - `scripts/release/release-health-schema-contracts.mjs`
+    - `docs/ops/schemas/release-health-report-output.schema.json`
+    - `docs/ops/schemas/samples/release-health-report-output.sample.json`
+  - Added test coverage:
+    - `apps/api/src/__tests__/release-correlation-utils.unit.spec.ts`
+    - expanded `apps/api/src/__tests__/admin.integration.spec.ts`
+    - expanded `apps/api/src/__tests__/sandbox-execution.unit.spec.ts`
+- Validation:
+  - `node --check scripts/release/release-correlation-utils.mjs`: pass.
+  - `node --check scripts/release/production-launch-gate.mjs`: pass.
+  - `node --check scripts/release/post-release-health-report.mjs`: pass.
+  - `npm run test -- apps/api/src/__tests__/sandbox-execution.unit.spec.ts apps/api/src/__tests__/admin.integration.spec.ts apps/api/src/__tests__/release-correlation-utils.unit.spec.ts`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `node scripts/release/validate-release-health-report-schema.mjs docs/ops/schemas/samples/release-health-report-output.sample.json --json`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T19:18:06.015Z`).
+- Incidents:
+  - Initial strict gate run before Railway finished deploying `196c223` returned `400` on the newly extended runtime dry-run / sandbox-metrics contract; rerun passed once the production API rollout completed.
+- Follow-ups:
+  - next: implement Phase 3 last-known-good config snapshots and safe rollback path.
+
 ### 2026-03-05 - add shared release command policy runner and hardening roadmap (phase 122)
 
 - Scope: start the next operational hardening track by introducing a shared release command policy layer for high-risk release runners and by recording the follow-on production hardening roadmap.
