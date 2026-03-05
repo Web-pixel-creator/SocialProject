@@ -33,6 +33,30 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - extract dispatch stdout summary formatter and add unit coverage (phase 46)
+
+- Scope: reduce coupling between dispatch runtime flow and stdout formatting by moving summary line rendering into a pure function with dedicated tests.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 11:32 -> 2026-03-05 11:35.
+- Changes:
+  - Added formatter module:
+    - `scripts/release/dispatch-production-launch-gate-output-format.mjs`
+    - exports `buildDispatchInputSummaryLines`.
+  - Updated `scripts/release/dispatch-production-launch-gate.mjs`:
+    - now uses formatter output for dispatch input summary lines instead of inline string writes.
+  - Added unit coverage:
+    - `apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts`
+    - validates baseline and option-enabled output ordering/content.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: reuse formatter in docs/examples generation to keep helper output and runbook snippets synchronized.
+
 ### 2026-03-05 - add high-signal option assertions on top of help section snapshots (phase 45)
 
 - Scope: improve failure readability for CLI help regressions by explicitly asserting presence of key recently added options.

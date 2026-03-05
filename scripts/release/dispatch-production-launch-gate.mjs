@@ -5,6 +5,7 @@ import {
   parseArtifactLinkNames,
   resolveDispatchArtifactLinkOptions,
 } from './dispatch-production-launch-gate-link-options.mjs';
+import { buildDispatchInputSummaryLines } from './dispatch-production-launch-gate-output-format.mjs';
 import { resolveDispatchTokenCandidates } from './dispatch-production-launch-gate-token-resolution.mjs';
 
 const GITHUB_API_VERSION = '2022-11-28';
@@ -678,47 +679,20 @@ const main = async () => {
   });
 
   process.stdout.write(`Dispatched ${workflowFile} on ${workflowRef} for ${repoSlug}.\n`);
-  if (runtimeDraftId) {
-    process.stdout.write(`Runtime draft id input: ${runtimeDraftId}\n`);
-  }
-  process.stdout.write(
-    `Require skill markers input: ${requireSkillMarkers ? 'true' : 'false'}\n`,
-  );
-  process.stdout.write(
-    `Require natural cron window input: ${
-      requireNaturalCronWindow ? 'true' : 'false'
-    }\n`,
-  );
-  process.stdout.write(
-    `Required external channels input: ${
-      requiredExternalChannels || 'none'
-    }\n`,
-  );
-  process.stdout.write(
-    `Require inline health artifacts input: ${
-      requireInlineHealthArtifacts ? 'true' : 'false'
-    }\n`,
-  );
-  process.stdout.write(
-    `Allow failure drill input: ${allowFailureDrill ? 'true' : 'false'}\n`,
-  );
-  process.stdout.write(
-    `Print artifact links option: ${printArtifactLinks ? 'true' : 'false'}\n`,
-  );
-  process.stdout.write(
-    `Include step summary link: ${includeStepSummaryLink ? 'true' : 'false'}\n`,
-  );
-  if (printArtifactLinks) {
-    process.stdout.write(
-      `Artifact link names: ${
-        selectedArtifactLinkNames.length > 0
-          ? selectedArtifactLinkNames.join(',')
-          : 'none'
-      }\n`,
-    );
-  }
-  if (webhookSecretOverride) {
-    process.stdout.write('Webhook secret override input: [provided]\n');
+  const summaryLines = buildDispatchInputSummaryLines({
+    allowFailureDrill,
+    includeStepSummaryLink,
+    printArtifactLinks,
+    requiredExternalChannels,
+    requireInlineHealthArtifacts,
+    requireNaturalCronWindow,
+    requireSkillMarkers,
+    runtimeDraftId,
+    selectedArtifactLinkNames,
+    webhookSecretOverride,
+  });
+  for (const line of summaryLines) {
+    process.stdout.write(`${line}\n`);
   }
 
   if (!waitForCompletion) {
