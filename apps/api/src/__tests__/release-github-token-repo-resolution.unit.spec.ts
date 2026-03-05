@@ -302,4 +302,52 @@ describe('release github token/repo resolution helper', () => {
       });
     }
   });
+
+  test('resolveRepoSlug fallback rejects non-GitHub origin remotes', () => {
+    const tempDir = mkdtempSync(path.join(os.tmpdir(), 'release-git-repo-'));
+    try {
+      const initOutput = spawnSync('git', ['init'], {
+        cwd: tempDir,
+        encoding: 'utf8',
+      });
+      expect(initOutput.status).toBe(0);
+
+      const addRemoteOutput = spawnSync(
+        'git',
+        [
+          'remote',
+          'add',
+          'origin',
+          'https://gitlab.com/acme/fallback-repo.git',
+        ],
+        {
+          cwd: tempDir,
+          encoding: 'utf8',
+        },
+      );
+      expect(addRemoteOutput.status).toBe(0);
+
+      const result = runResolverScenarioWithEnv(
+        `
+          const value = resolveRepoSlug({ githubRepository: ' ' });
+          emit({ ok: true, result: value, error: '' });
+        `,
+        {
+          cwd: tempDir,
+          env: {
+            GITHUB_REPOSITORY: '',
+          },
+        },
+      );
+
+      expect(result.output.status).toBe(1);
+      expect(result.payload.ok).toBe(false);
+      expect(result.payload.error).toContain('Unsupported remote URL format');
+    } finally {
+      rmSync(tempDir, {
+        force: true,
+        recursive: true,
+      });
+    }
+  });
 });

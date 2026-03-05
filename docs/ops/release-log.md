@@ -33,6 +33,27 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add non-GitHub fallback failure coverage for resolver (phase 111)
+
+- Scope: finalize resolver integration coverage by asserting stable failure behavior when `resolveRepoSlug` fallback reads a non-GitHub `remote.origin.url`.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 17:28 -> 2026-03-05 17:31.
+- Changes:
+  - Updated `apps/api/src/__tests__/release-github-token-repo-resolution.unit.spec.ts`:
+    - added integration-style scenario with temporary git repository where:
+      - `remote.origin.url` is set to non-GitHub (`https://gitlab.com/...`),
+      - `resolveRepoSlug({ githubRepository: ' ' })` is expected to fail with `Unsupported remote URL format`.
+- Validation:
+  - `npm run test -- apps/api/src/__tests__/release-github-token-repo-resolution.unit.spec.ts`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T17:30:30.696Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - none.
+
 ### 2026-03-05 - extend resolver tests with git-origin fallback integration path (phase 110)
 
 - Scope: complete shared resolver hardening by adding integration coverage for `resolveRepoSlug` fallback behavior when explicit/env repository input is absent.
