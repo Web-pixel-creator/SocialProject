@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import net from 'node:net';
+import { sleep } from './release-runtime-utils.mjs';
 
 const NPM_BIN = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const DEFAULT_API_BASE_URL = 'http://127.0.0.1:4000';
@@ -19,8 +20,6 @@ const parseNumber = (raw, fallback) => {
   const parsed = Number(raw);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 };
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const resolvePortNumber = (raw, fallback) => {
   const resolved = raw || fallback;

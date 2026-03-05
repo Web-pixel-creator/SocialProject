@@ -33,6 +33,37 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - complete sleep-helper migration across release scripts (phase 120)
+
+- Scope: finish `sleep` deduplication by migrating remaining release scripts to shared runtime helper and eliminating local timer wrappers.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 18:11 -> 2026-03-05 18:14.
+- Changes:
+  - Migrated remaining scripts to shared `sleep` helper from `scripts/release/release-runtime-utils.mjs`:
+    - `scripts/release/dispatch-staging-smoke-tunnel.mjs`
+    - `scripts/release/local-dry-run.mjs`
+    - `scripts/release/preflight-smoke-targets.mjs`
+    - `scripts/release/production-launch-gate.mjs`
+  - Removed local `const sleep = ...` definitions from those scripts.
+  - Result: local `sleep` definitions in `scripts/release/*` are now fully centralized in the shared runtime utility module.
+- Validation:
+  - `node --check scripts/release/dispatch-staging-smoke-tunnel.mjs`: pass.
+  - `node --check scripts/release/local-dry-run.mjs`: pass.
+  - `node --check scripts/release/preflight-smoke-targets.mjs`: pass.
+  - `node --check scripts/release/production-launch-gate.mjs`: pass.
+  - `node --check scripts/release/release-runtime-utils.mjs`: pass.
+  - `npm run test -- apps/api/src/__tests__/release-runtime-utils.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-failure-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-smoke-timeout-retry-utils.unit.spec.ts`: pass.
+  - `npm run release:smoke:dispatch -- --help`: pass.
+  - `npm run release:launch:gate:dispatch -- --help`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T18:13:51.070Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: migrate remaining local `toErrorMessage` helpers in non-dispatch release render/report scripts to `release-runtime-utils` as they are modified.
+
 ### 2026-03-05 - centralize release runtime helpers (`sleep`, `toErrorMessage`) (phase 119)
 
 - Scope: reduce repeated runtime helper snippets across release scripts by introducing shared `sleep` and error-normalization helpers and migrating active dispatch/API helper paths.

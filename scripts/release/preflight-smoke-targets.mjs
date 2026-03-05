@@ -4,6 +4,7 @@ import {
   RELEASE_SMOKE_PREFLIGHT_JSON_SCHEMA_PATH,
   RELEASE_SMOKE_PREFLIGHT_JSON_SCHEMA_VERSION,
 } from './retry-json-schema-contracts.mjs';
+import { sleep } from './release-runtime-utils.mjs';
 
 const DEFAULT_TIMEOUT_MS = 45_000;
 const DEFAULT_INTERVAL_MS = 1000;
@@ -31,8 +32,6 @@ const parseInteger = (raw, fallback) => {
   }
   return parsed;
 };
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const parseArguments = (argv) => {
   const options = {

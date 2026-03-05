@@ -3,6 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { githubApiRequestWithTransientRetry } from './github-api-request-with-transient-retry.mjs';
 import { resolveToken } from './github-token-repo-resolution.mjs';
+import { sleep } from './release-runtime-utils.mjs';
 import {
   cleanupRetryFailureLogs,
   formatRetryLogsCleanupSummary,
@@ -79,8 +80,6 @@ const parseBoolean = (raw, fallback) => {
   }
   return fallback;
 };
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const getNpmInvocation = (args) => {
   const npmExecPath = process.env.npm_execpath;

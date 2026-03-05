@@ -16,6 +16,7 @@ import {
 } from './production-launch-gate-config-resolvers.mjs';
 import { buildProductionLaunchGateFailureLines } from './production-launch-gate-failure-output-format.mjs';
 import { buildSmokeTimeoutRetryDecision } from './production-launch-gate-smoke-timeout-retry-utils.mjs';
+import { sleep } from './release-runtime-utils.mjs';
 
 const DEFAULT_FAILURE_DETAIL_MAX_ITEMS = 10;
 const DEFAULT_SMOKE_TIMEOUT_RETRIES = 1;
@@ -450,8 +451,6 @@ const runRailway = (args, env = process.env) => {
   }
   return fallback.stdout;
 };
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const writeJson = async (file, data) => {
   await mkdir(path.dirname(file), { recursive: true });
