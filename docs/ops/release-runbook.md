@@ -116,6 +116,7 @@ Use this map when a release helper fails fast on argument/env validation and you
        - When `RELEASE_REQUIRE_SKILL_MARKERS=true`, `RELEASE_RUNTIME_DRAFT_ID` is required and must point to a draft with skill markers.
       - Validation implementation references (for quick triage when a helper fails fast on env/arg parsing):
         - shared strict env parsers: `scripts/release/release-env-parse-utils.mjs`
+        - shared GitHub request + transient retry helper: `scripts/release/github-api-request-with-transient-retry.mjs`
         - dispatch helper entrypoint + CLI parsing: `scripts/release/dispatch-production-launch-gate.mjs`
         - dispatch artifact-link option resolver: `scripts/release/dispatch-production-launch-gate-link-options.mjs`
         - production gate config candidate resolvers: `scripts/release/production-launch-gate-config-resolvers.mjs`

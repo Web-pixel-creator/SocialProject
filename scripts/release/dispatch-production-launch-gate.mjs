@@ -14,9 +14,14 @@ import {
   parseReleasePositiveIntegerEnv,
 } from './release-env-parse-utils.mjs';
 import {
-  buildGitHubApiRetryDecision,
-  computeGitHubApiRetryDelayMs,
-} from './dispatch-production-launch-gate-transient-retry-utils.mjs';
+  DEFAULT_GITHUB_API_TRANSIENT_RETRY_BACKOFF_FACTOR,
+  DEFAULT_GITHUB_API_TRANSIENT_RETRY_DELAY_MS,
+  DEFAULT_GITHUB_API_TRANSIENT_RETRY_JITTER_PERCENT,
+  DEFAULT_GITHUB_API_TRANSIENT_RETRY_MAX_ATTEMPTS,
+  DEFAULT_GITHUB_API_TRANSIENT_RETRY_MAX_DELAY_MS,
+  githubApiRequest,
+  githubApiRequestWithTransientRetry,
+} from './github-api-request-with-transient-retry.mjs';
 
 const GITHUB_API_VERSION = '2022-11-28';
 const DEFAULT_WORKFLOW_FILE = 'production-launch-gate.yml';
@@ -24,11 +29,6 @@ const DEFAULT_WORKFLOW_REF = 'main';
 const DEFAULT_WAIT_TIMEOUT_MS = 20 * 60 * 1000;
 const DEFAULT_WAIT_POLL_MS = 5000;
 const DEFAULT_FAILURE_SUMMARY_MAX_JOBS = 5;
-const DEFAULT_GITHUB_API_TRANSIENT_RETRY_MAX_ATTEMPTS = 3;
-const DEFAULT_GITHUB_API_TRANSIENT_RETRY_DELAY_MS = 2000;
-const DEFAULT_GITHUB_API_TRANSIENT_RETRY_BACKOFF_FACTOR = 2;
-const DEFAULT_GITHUB_API_TRANSIENT_RETRY_MAX_DELAY_MS = 10000;
-const DEFAULT_GITHUB_API_TRANSIENT_RETRY_JITTER_PERCENT = 20;
 const NON_NEGATIVE_INTEGER_PATTERN = /^(0|[1-9]\d*)$/;
 const RUN_DISCOVERY_GRACE_MS = 2 * 60 * 1000;
 const ARTIFACT_DISCOVERY_ATTEMPTS = 6;
@@ -474,7 +474,8 @@ const selectToken = async ({ candidates, baseApiUrl }) => {
   for (let index = 0; index < candidates.length; index += 1) {
     const candidate = candidates[index];
     try {
-      await githubRequest({
+      await githubApiRequest({
+        apiVersion: GITHUB_API_VERSION,
         token: candidate.token,
         method: 'GET',
         url: probeUrl,
@@ -500,116 +501,10 @@ const selectToken = async ({ candidates, baseApiUrl }) => {
   throw new Error('Unable to resolve a working GitHub token.');
 };
 
-const githubRequest = async ({ token, method, url, body }) => {
-  let response;
-  try {
-    response = await fetch(url, {
-      method,
-      headers: {
-        Accept: 'application/vnd.github+json',
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'X-GitHub-Api-Version': GITHUB_API_VERSION,
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-  } catch (error) {
-    throw new Error(
-      `GitHub API ${method} ${url} request failed before response: ${toErrorMessage(
-        error,
-      )}`,
-    );
-  }
-
-  if (response.ok) {
-    if (response.status === 204) {
-      return null;
-    }
-    const text = await response.text();
-    return text ? JSON.parse(text) : null;
-  }
-
-  const errorText = await response.text();
-  let details = errorText;
-  try {
-    const parsed = JSON.parse(errorText);
-    details = parsed.message ? `${parsed.message}` : errorText;
-  } catch {
-    // keep raw response
-  }
-  throw new Error(
-    `GitHub API ${method} ${url} failed: ${response.status} ${response.statusText}. ${details}`,
-  );
-};
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const githubRequestWithTransientRetry = async ({
-  body,
-  method,
-  retryBackoffFactor,
-  retryDelayMs,
-  retryJitterPercent,
-  retryLabel,
-  retryMaxDelayMs,
-  retryMaxAttempts,
-  token,
-  url,
-}) => {
-  const safeRetryMaxAttempts = Number.isFinite(retryMaxAttempts)
-    ? Math.max(1, Math.floor(retryMaxAttempts))
-    : 1;
-  const safeRetryDelayMs = Number.isFinite(retryDelayMs)
-    ? Math.max(1, Math.floor(retryDelayMs))
-    : DEFAULT_GITHUB_API_TRANSIENT_RETRY_DELAY_MS;
-  const safeRetryBackoffFactor = Number.isFinite(retryBackoffFactor)
-    ? Math.max(1, Math.floor(retryBackoffFactor))
-    : DEFAULT_GITHUB_API_TRANSIENT_RETRY_BACKOFF_FACTOR;
-  const safeRetryMaxDelayMs = Number.isFinite(retryMaxDelayMs)
-    ? Math.max(1, Math.floor(retryMaxDelayMs))
-    : DEFAULT_GITHUB_API_TRANSIENT_RETRY_MAX_DELAY_MS;
-  const safeRetryJitterPercent = Number.isFinite(retryJitterPercent)
-    ? Math.max(0, Math.min(100, Math.floor(retryJitterPercent)))
-    : DEFAULT_GITHUB_API_TRANSIENT_RETRY_JITTER_PERCENT;
-
-  for (let attempt = 1; attempt <= safeRetryMaxAttempts; attempt += 1) {
-    try {
-      return await githubRequest({
-        body,
-        method,
-        token,
-        url,
-      });
-    } catch (error) {
-      const errorMessage = toErrorMessage(error);
-      const retryDecision = buildGitHubApiRetryDecision({
-        attempt,
-        errorMessage,
-        maxAttempts: safeRetryMaxAttempts,
-      });
-      if (method !== 'GET' || !retryDecision.shouldRetry) {
-        throw error;
-      }
-      const retryDelayForAttemptMs = computeGitHubApiRetryDelayMs({
-        attempt,
-        backoffFactor: safeRetryBackoffFactor,
-        baseDelayMs: safeRetryDelayMs,
-        jitterPercent: safeRetryJitterPercent,
-        maxDelayMs: safeRetryMaxDelayMs,
-      });
-      const label = retryLabel || `${method} ${url}`;
-      process.stderr.write(
-        `Warning: transient GitHub API error on ${label}; retrying in ${retryDelayForAttemptMs}ms (${attempt}/${safeRetryMaxAttempts}).\n`,
-      );
-      await sleep(retryDelayForAttemptMs);
-    }
-  }
-
-  return null;
-};
-
 const toArtifactUiUrl = ({ repoSlug, runId, artifactId }) =>
   `https://github.com/${repoSlug}/actions/runs/${runId}/artifacts/${artifactId}`;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const listRunArtifacts = async ({
   baseApiUrl,
@@ -621,16 +516,19 @@ const listRunArtifacts = async ({
   runId,
   token,
 }) => {
-  const artifactsResponse = await githubRequestWithTransientRetry({
+  const artifactsResponse = await githubApiRequestWithTransientRetry({
+    apiVersion: GITHUB_API_VERSION,
     token,
     method: 'GET',
     url: `${baseApiUrl}/actions/runs/${runId}/artifacts?per_page=100`,
     retryLabel: `list run artifacts for run ${runId}`,
-    retryBackoffFactor: githubApiRetryBackoffFactor,
-    retryMaxAttempts: githubApiRetryMaxAttempts,
-    retryDelayMs: githubApiRetryDelayMs,
-    retryJitterPercent: githubApiRetryJitterPercent,
-    retryMaxDelayMs: githubApiRetryMaxDelayMs,
+    retryConfig: {
+      backoffFactor: githubApiRetryBackoffFactor,
+      delayMs: githubApiRetryDelayMs,
+      jitterPercent: githubApiRetryJitterPercent,
+      maxAttempts: githubApiRetryMaxAttempts,
+      maxDelayMs: githubApiRetryMaxDelayMs,
+    },
   });
   return Array.isArray(artifactsResponse?.artifacts)
     ? artifactsResponse.artifacts
@@ -647,16 +545,19 @@ const listRunJobs = async ({
   runId,
   token,
 }) => {
-  const jobsResponse = await githubRequestWithTransientRetry({
+  const jobsResponse = await githubApiRequestWithTransientRetry({
+    apiVersion: GITHUB_API_VERSION,
     token,
     method: 'GET',
     url: `${baseApiUrl}/actions/runs/${runId}/jobs?per_page=100`,
     retryLabel: `list run jobs for run ${runId}`,
-    retryBackoffFactor: githubApiRetryBackoffFactor,
-    retryMaxAttempts: githubApiRetryMaxAttempts,
-    retryDelayMs: githubApiRetryDelayMs,
-    retryJitterPercent: githubApiRetryJitterPercent,
-    retryMaxDelayMs: githubApiRetryMaxDelayMs,
+    retryConfig: {
+      backoffFactor: githubApiRetryBackoffFactor,
+      delayMs: githubApiRetryDelayMs,
+      jitterPercent: githubApiRetryJitterPercent,
+      maxAttempts: githubApiRetryMaxAttempts,
+      maxDelayMs: githubApiRetryMaxDelayMs,
+    },
   });
   return Array.isArray(jobsResponse?.jobs) ? jobsResponse.jobs : [];
 };
@@ -1035,16 +936,19 @@ const main = async () => {
 
   let baselineRunIds = new Set();
   try {
-    const baseline = await githubRequestWithTransientRetry({
+    const baseline = await githubApiRequestWithTransientRetry({
+      apiVersion: GITHUB_API_VERSION,
       token,
       method: 'GET',
       url: listRunsUrl,
       retryLabel: 'read baseline workflow runs',
-      retryBackoffFactor: githubApiRetryBackoffFactor,
-      retryMaxAttempts: githubApiRetryMaxAttempts,
-      retryDelayMs: githubApiRetryDelayMs,
-      retryJitterPercent: githubApiRetryJitterPercent,
-      retryMaxDelayMs: githubApiRetryMaxDelayMs,
+      retryConfig: {
+        backoffFactor: githubApiRetryBackoffFactor,
+        delayMs: githubApiRetryDelayMs,
+        jitterPercent: githubApiRetryJitterPercent,
+        maxAttempts: githubApiRetryMaxAttempts,
+        maxDelayMs: githubApiRetryMaxDelayMs,
+      },
     });
     const baselineRuns = Array.isArray(baseline?.workflow_runs)
       ? baseline.workflow_runs
@@ -1092,7 +996,8 @@ const main = async () => {
   }
 
   const dispatchStartedAtMs = Date.now();
-  await githubRequest({
+  await githubApiRequest({
+    apiVersion: GITHUB_API_VERSION,
     token,
     method: 'POST',
     url: dispatchUrl,
@@ -1133,16 +1038,19 @@ const main = async () => {
   }
 
   const findRun = async () => {
-    const data = await githubRequestWithTransientRetry({
+    const data = await githubApiRequestWithTransientRetry({
+      apiVersion: GITHUB_API_VERSION,
       token,
       method: 'GET',
       url: listRunsUrl,
       retryLabel: 'discover dispatched workflow run',
-      retryBackoffFactor: githubApiRetryBackoffFactor,
-      retryMaxAttempts: githubApiRetryMaxAttempts,
-      retryDelayMs: githubApiRetryDelayMs,
-      retryJitterPercent: githubApiRetryJitterPercent,
-      retryMaxDelayMs: githubApiRetryMaxDelayMs,
+      retryConfig: {
+        backoffFactor: githubApiRetryBackoffFactor,
+        delayMs: githubApiRetryDelayMs,
+        jitterPercent: githubApiRetryJitterPercent,
+        maxAttempts: githubApiRetryMaxAttempts,
+        maxDelayMs: githubApiRetryMaxDelayMs,
+      },
     });
     const runs = Array.isArray(data?.workflow_runs) ? data.workflow_runs : [];
     for (const run of runs) {
@@ -1180,16 +1088,19 @@ const main = async () => {
 
   const runUrl = `${baseApiUrl}/actions/runs/${run.id}`;
   while (Date.now() < waitDeadline) {
-    const current = await githubRequestWithTransientRetry({
+    const current = await githubApiRequestWithTransientRetry({
+      apiVersion: GITHUB_API_VERSION,
       token,
       method: 'GET',
       url: runUrl,
       retryLabel: `poll workflow run ${run.id} status`,
-      retryBackoffFactor: githubApiRetryBackoffFactor,
-      retryMaxAttempts: githubApiRetryMaxAttempts,
-      retryDelayMs: githubApiRetryDelayMs,
-      retryJitterPercent: githubApiRetryJitterPercent,
-      retryMaxDelayMs: githubApiRetryMaxDelayMs,
+      retryConfig: {
+        backoffFactor: githubApiRetryBackoffFactor,
+        delayMs: githubApiRetryDelayMs,
+        jitterPercent: githubApiRetryJitterPercent,
+        maxAttempts: githubApiRetryMaxAttempts,
+        maxDelayMs: githubApiRetryMaxDelayMs,
+      },
     });
     const status = current?.status ?? 'unknown';
     const conclusion = current?.conclusion ?? 'none';

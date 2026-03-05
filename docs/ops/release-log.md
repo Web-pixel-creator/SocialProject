@@ -33,6 +33,46 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - extract shared GitHub API transient retry request helper (phase 97)
+
+- Scope: remove duplicated GitHub request/retry loops across release helpers by introducing one shared request+retry module and wiring current dispatch/health-report callers to it without behavior regressions.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 15:18 -> 2026-03-05 15:23.
+- Changes:
+  - Added shared helper module:
+    - `scripts/release/github-api-request-with-transient-retry.mjs`
+    - exports:
+      - `githubApiRequest`
+      - `githubApiRequestWithTransientRetry`
+      - `normalizeGitHubApiTransientRetryConfig`
+      - retry default constants (`MAX_ATTEMPTS`, `DELAY_MS`, `BACKOFF_FACTOR`, `MAX_DELAY_MS`, `JITTER_PERCENT`)
+  - Updated `scripts/release/dispatch-production-launch-gate.mjs`:
+    - replaced local `githubRequest` and `githubRequestWithTransientRetry` implementations with shared helper imports,
+    - preserved existing GET-only transient retry behavior and warning output semantics,
+    - preserved CLI/env retry overrides and summary output.
+  - Updated `scripts/release/post-release-health-report.mjs`:
+    - replaced local GitHub request+retry loop with shared helper,
+    - retained env-based retry tuning and `0..100` jitter validation.
+  - Updated docs:
+    - `docs/ops/release-runbook.md` validation references now include shared helper path.
+- Validation:
+  - `node --check scripts/release/github-api-request-with-transient-retry.mjs`: pass.
+  - `node --check scripts/release/dispatch-production-launch-gate.mjs`: pass.
+  - `node --check scripts/release/post-release-health-report.mjs`: pass.
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-transient-retry-utils.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --print-artifact-links --artifact-link-names all --github-api-retry-jitter-percent 30`: pass.
+    - run `#108` (`22724704242`): success with expected artifact links and retry summary lines.
+  - `npm run release:health:report:launch-gate:json -- 22724704242 --strict --skip-smoke-fetch`: pass (`status: pass`, `runNumber: 108`).
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:runbook:failure-snippet:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T15:22:36.470Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: migrate remaining release scripts with local `githubRequest` implementations (`dispatch-staging-*`, `fetch-smoke-report-artifact.mjs`, `manage-staging-inputs.mjs`, `collect-retry-failure-logs.mjs`) onto the shared helper in a batch.
+
 ### 2026-03-05 - add transient GitHub API retry hardening to post-release health report (phase 96)
 
 - Scope: reduce false-red post-release health failures under transient GitHub API instability by applying bounded retry/backoff/jitter policy to `release:health:report` GitHub calls.

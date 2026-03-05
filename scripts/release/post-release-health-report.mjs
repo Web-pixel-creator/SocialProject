@@ -9,9 +9,13 @@ import {
 } from './release-health-schema-contracts.mjs';
 import { parseReleasePositiveIntegerEnv } from './release-env-parse-utils.mjs';
 import {
-  buildGitHubApiRetryDecision,
-  computeGitHubApiRetryDelayMs,
-} from './dispatch-production-launch-gate-transient-retry-utils.mjs';
+  DEFAULT_GITHUB_API_TRANSIENT_RETRY_BACKOFF_FACTOR,
+  DEFAULT_GITHUB_API_TRANSIENT_RETRY_DELAY_MS,
+  DEFAULT_GITHUB_API_TRANSIENT_RETRY_JITTER_PERCENT,
+  DEFAULT_GITHUB_API_TRANSIENT_RETRY_MAX_ATTEMPTS,
+  DEFAULT_GITHUB_API_TRANSIENT_RETRY_MAX_DELAY_MS,
+  githubApiRequestWithTransientRetry,
+} from './github-api-request-with-transient-retry.mjs';
 
 const GITHUB_API_VERSION = '2022-11-28';
 const DEFAULT_WORKFLOW_FILE = 'ci.yml';
@@ -27,11 +31,6 @@ const DEFAULT_EXTERNAL_CHANNEL_TREND_MIN_RUNS = 1;
 const DEFAULT_EXTERNAL_CHANNEL_ALERT_TIMEOUT_MS = 10000;
 const DEFAULT_RELEASE_HEALTH_ALERT_RISK_WINDOW_HOURS = 24;
 const DEFAULT_RELEASE_HEALTH_ALERT_RISK_ESCALATION_STREAK = 2;
-const DEFAULT_GITHUB_API_TRANSIENT_RETRY_MAX_ATTEMPTS = 3;
-const DEFAULT_GITHUB_API_TRANSIENT_RETRY_DELAY_MS = 2000;
-const DEFAULT_GITHUB_API_TRANSIENT_RETRY_BACKOFF_FACTOR = 2;
-const DEFAULT_GITHUB_API_TRANSIENT_RETRY_MAX_DELAY_MS = 10000;
-const DEFAULT_GITHUB_API_TRANSIENT_RETRY_JITTER_PERCENT = 20;
 const NON_NEGATIVE_INTEGER_PATTERN = /^(0|[1-9]\d*)$/;
 const RELEASE_HEALTH_ALERT_RISK_THRESHOLDS = {
   alertedRuns: {
@@ -102,11 +101,6 @@ Options:
 
 const toErrorMessage = (error) =>
   error instanceof Error ? error.message : String(error);
-
-const sleepMs = (ms) =>
-  new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
 
 const parseReleaseNonNegativeIntegerEnv = (raw, fallback, sourceLabel) => {
   if (typeof raw !== 'string' || raw.trim().length === 0) return fallback;
@@ -234,76 +228,15 @@ const resolveToken = () => {
 };
 
 const githubRequest = async ({ token, method, url, expectBinary = false }) => {
-  const retryConfig = resolveGitHubApiTransientRetryConfig();
-  for (let attempt = 1; attempt <= retryConfig.maxAttempts; attempt += 1) {
-    try {
-      let response;
-      try {
-        response = await fetch(url, {
-          method,
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: 'application/vnd.github+json',
-            'X-GitHub-Api-Version': GITHUB_API_VERSION,
-            'Content-Type': 'application/json',
-          },
-        });
-      } catch (error) {
-        throw new Error(
-          `GitHub API ${method} ${url} request failed before response: ${toErrorMessage(
-            error,
-          )}`,
-        );
-      }
-
-      if (response.ok) {
-        if (expectBinary) {
-          return Buffer.from(await response.arrayBuffer());
-        }
-        if (response.status === 204) {
-          return null;
-        }
-        const text = await response.text();
-        return text ? JSON.parse(text) : null;
-      }
-
-      const errorText = await response.text();
-      let details = errorText;
-      try {
-        const json = JSON.parse(errorText);
-        details = json.message ? `${json.message}` : errorText;
-      } catch {
-        // keep raw response text
-      }
-      throw new Error(
-        `GitHub API ${method} ${url} failed: ${response.status} ${response.statusText}. ${details}`,
-      );
-    } catch (error) {
-      const message = toErrorMessage(error);
-      const decision = buildGitHubApiRetryDecision({
-        attempt,
-        errorMessage: message,
-        maxAttempts: retryConfig.maxAttempts,
-      });
-      if (!decision.shouldRetry) {
-        throw error;
-      }
-      const retryDelayMs = computeGitHubApiRetryDelayMs({
-        attempt,
-        backoffFactor: retryConfig.backoffFactor,
-        baseDelayMs: retryConfig.delayMs,
-        jitterPercent: retryConfig.jitterPercent,
-        maxDelayMs: retryConfig.maxDelayMs,
-      });
-      process.stderr.write(
-        `[release:health:report] transient GitHub API error (attempt ${attempt}/${retryConfig.maxAttempts}, status: ${
-          decision.statusCode ?? 'network'
-        }); retrying in ${retryDelayMs}ms.\n`,
-      );
-      await sleepMs(retryDelayMs);
-    }
-  }
-  throw new Error(`GitHub API ${method} ${url} failed after retry attempts.`);
+  return githubApiRequestWithTransientRetry({
+    apiVersion: GITHUB_API_VERSION,
+    expectBinary,
+    method,
+    retryConfig: resolveGitHubApiTransientRetryConfig(),
+    retryLabel: `[release:health:report] ${method} ${url}`,
+    token,
+    url,
+  });
 };
 
 const parseRunId = (raw) => {
