@@ -238,6 +238,11 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
         - [ ] `--artifact-link-names <csv|all>` (optional: select artifact URL subset in helper stdout)
         - [ ] `--no-step-summary-link` (optional: suppress default step-summary artifact URL)
         - [ ] `--failure-summary-max-jobs <n>` (optional: cap failed-job diagnostics entries in helper errors)
+        - [ ] `--github-api-retry-max-attempts <n>` (optional: override transient GitHub API retry attempts for polling/listing GET calls)
+        - [ ] `--github-api-retry-delay-ms <ms>` (optional: override transient GitHub API retry base delay)
+        - [ ] `--github-api-retry-backoff-factor <n>` (optional: override transient GitHub API retry exponential factor)
+        - [ ] `--github-api-retry-max-delay-ms <ms>` (optional: override transient GitHub API retry max delay cap)
+        - [ ] `--github-api-retry-jitter-percent <n>` (optional: override transient GitHub API retry jitter percent; `0..100`)
         - [ ] `--smoke-timeout-retries <n>` (optional: pass timeout-only smoke retry count to workflow input)
         - [ ] `--smoke-timeout-retry-delay-ms <ms>` (optional: pass timeout-only smoke retry delay to workflow input)
         - [ ] `--allow-failure-drill`

@@ -47,6 +47,11 @@ Options:
   --allow-failure-drill                  workflow input allow_failure_drill=true
   --webhook-secret-override <value>      workflow input webhook_secret_override (requires allow_failure_drill)
   --failure-summary-max-jobs <n>         cap failed-job diagnostics entries (default: ${DEFAULT_FAILURE_SUMMARY_MAX_JOBS})
+  --github-api-retry-max-attempts <n>    transient GitHub API polling retry attempts override
+  --github-api-retry-delay-ms <ms>       transient GitHub API base retry delay override
+  --github-api-retry-backoff-factor <n>  transient GitHub API retry backoff factor override
+  --github-api-retry-max-delay-ms <ms>   transient GitHub API retry max delay override
+  --github-api-retry-jitter-percent <n>  transient GitHub API retry jitter percent override (0-100)
   --print-artifact-links                 print links for additional high-signal artifacts after success
   --artifact-link-names <csv|all>        override artifact link set (allowed: ${ALLOWED_ARTIFACT_LINK_NAMES.join(', ')}, or all)
   --no-step-summary-link                 suppress default step-summary artifact link output
@@ -114,6 +119,11 @@ const parseCliArgs = (argv) => {
   let failureSummaryMaxJobsRaw = '';
   let smokeTimeoutRetriesRaw = '';
   let smokeTimeoutRetryDelayMsRaw = '';
+  let githubApiRetryMaxAttemptsRaw = '';
+  let githubApiRetryDelayMsRaw = '';
+  let githubApiRetryBackoffFactorRaw = '';
+  let githubApiRetryMaxDelayMsRaw = '';
+  let githubApiRetryJitterPercentRaw = '';
   let requireSkillMarkers;
   let requireNaturalCronWindow;
   let requiredExternalChannels = '';
@@ -187,6 +197,48 @@ const parseCliArgs = (argv) => {
       smokeTimeoutRetryDelayMsRaw = value;
       continue;
     }
+    if (arg.startsWith('--github-api-retry-max-attempts=')) {
+      const value = arg.slice('--github-api-retry-max-attempts='.length).trim();
+      if (!value) {
+        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
+      }
+      githubApiRetryMaxAttemptsRaw = value;
+      continue;
+    }
+    if (arg.startsWith('--github-api-retry-delay-ms=')) {
+      const value = arg.slice('--github-api-retry-delay-ms='.length).trim();
+      if (!value) {
+        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
+      }
+      githubApiRetryDelayMsRaw = value;
+      continue;
+    }
+    if (arg.startsWith('--github-api-retry-backoff-factor=')) {
+      const value = arg
+        .slice('--github-api-retry-backoff-factor='.length)
+        .trim();
+      if (!value) {
+        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
+      }
+      githubApiRetryBackoffFactorRaw = value;
+      continue;
+    }
+    if (arg.startsWith('--github-api-retry-max-delay-ms=')) {
+      const value = arg.slice('--github-api-retry-max-delay-ms='.length).trim();
+      if (!value) {
+        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
+      }
+      githubApiRetryMaxDelayMsRaw = value;
+      continue;
+    }
+    if (arg.startsWith('--github-api-retry-jitter-percent=')) {
+      const value = arg.slice('--github-api-retry-jitter-percent='.length).trim();
+      if (!value) {
+        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
+      }
+      githubApiRetryJitterPercentRaw = value;
+      continue;
+    }
     if (arg.startsWith('--required-external-channels=')) {
       const value = arg.slice('--required-external-channels='.length).trim();
       if (!value) {
@@ -247,6 +299,51 @@ const parseCliArgs = (argv) => {
         throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
       }
       smokeTimeoutRetryDelayMsRaw = value;
+      index += 1;
+      continue;
+    }
+    if (arg === '--github-api-retry-max-attempts') {
+      const value = (argv[index + 1] ?? '').trim();
+      if (!value) {
+        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
+      }
+      githubApiRetryMaxAttemptsRaw = value;
+      index += 1;
+      continue;
+    }
+    if (arg === '--github-api-retry-delay-ms') {
+      const value = (argv[index + 1] ?? '').trim();
+      if (!value) {
+        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
+      }
+      githubApiRetryDelayMsRaw = value;
+      index += 1;
+      continue;
+    }
+    if (arg === '--github-api-retry-backoff-factor') {
+      const value = (argv[index + 1] ?? '').trim();
+      if (!value) {
+        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
+      }
+      githubApiRetryBackoffFactorRaw = value;
+      index += 1;
+      continue;
+    }
+    if (arg === '--github-api-retry-max-delay-ms') {
+      const value = (argv[index + 1] ?? '').trim();
+      if (!value) {
+        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
+      }
+      githubApiRetryMaxDelayMsRaw = value;
+      index += 1;
+      continue;
+    }
+    if (arg === '--github-api-retry-jitter-percent') {
+      const value = (argv[index + 1] ?? '').trim();
+      if (!value) {
+        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
+      }
+      githubApiRetryJitterPercentRaw = value;
       index += 1;
       continue;
     }
@@ -328,6 +425,11 @@ const parseCliArgs = (argv) => {
     requiredExternalChannels,
     runtimeDraftId,
     failureSummaryMaxJobsRaw,
+    githubApiRetryBackoffFactorRaw,
+    githubApiRetryDelayMsRaw,
+    githubApiRetryJitterPercentRaw,
+    githubApiRetryMaxAttemptsRaw,
+    githubApiRetryMaxDelayMsRaw,
     smokeTimeoutRetriesRaw,
     smokeTimeoutRetryDelayMsRaw,
     tokenFromArg,
@@ -769,33 +871,49 @@ const main = async () => {
     'RELEASE_WAIT_POLL_MS',
   );
   const githubApiRetryMaxAttempts = parseReleasePositiveIntegerEnv(
-    process.env.RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_ATTEMPTS,
+    cli.githubApiRetryMaxAttemptsRaw ||
+      process.env.RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_ATTEMPTS,
     DEFAULT_GITHUB_API_TRANSIENT_RETRY_MAX_ATTEMPTS,
-    'RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_ATTEMPTS',
+    cli.githubApiRetryMaxAttemptsRaw
+      ? '--github-api-retry-max-attempts'
+      : 'RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_ATTEMPTS',
   );
   const githubApiRetryDelayMs = parseReleasePositiveIntegerEnv(
-    process.env.RELEASE_GITHUB_API_TRANSIENT_RETRY_DELAY_MS,
+    cli.githubApiRetryDelayMsRaw ||
+      process.env.RELEASE_GITHUB_API_TRANSIENT_RETRY_DELAY_MS,
     DEFAULT_GITHUB_API_TRANSIENT_RETRY_DELAY_MS,
-    'RELEASE_GITHUB_API_TRANSIENT_RETRY_DELAY_MS',
+    cli.githubApiRetryDelayMsRaw
+      ? '--github-api-retry-delay-ms'
+      : 'RELEASE_GITHUB_API_TRANSIENT_RETRY_DELAY_MS',
   );
   const githubApiRetryBackoffFactor = parseReleasePositiveIntegerEnv(
-    process.env.RELEASE_GITHUB_API_TRANSIENT_RETRY_BACKOFF_FACTOR,
+    cli.githubApiRetryBackoffFactorRaw ||
+      process.env.RELEASE_GITHUB_API_TRANSIENT_RETRY_BACKOFF_FACTOR,
     DEFAULT_GITHUB_API_TRANSIENT_RETRY_BACKOFF_FACTOR,
-    'RELEASE_GITHUB_API_TRANSIENT_RETRY_BACKOFF_FACTOR',
+    cli.githubApiRetryBackoffFactorRaw
+      ? '--github-api-retry-backoff-factor'
+      : 'RELEASE_GITHUB_API_TRANSIENT_RETRY_BACKOFF_FACTOR',
   );
   const githubApiRetryMaxDelayMs = parseReleasePositiveIntegerEnv(
-    process.env.RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_DELAY_MS,
+    cli.githubApiRetryMaxDelayMsRaw ||
+      process.env.RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_DELAY_MS,
     DEFAULT_GITHUB_API_TRANSIENT_RETRY_MAX_DELAY_MS,
-    'RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_DELAY_MS',
+    cli.githubApiRetryMaxDelayMsRaw
+      ? '--github-api-retry-max-delay-ms'
+      : 'RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_DELAY_MS',
   );
+  const githubApiRetryJitterPercentSource = cli.githubApiRetryJitterPercentRaw
+    ? '--github-api-retry-jitter-percent'
+    : 'RELEASE_GITHUB_API_TRANSIENT_RETRY_JITTER_PERCENT';
   const githubApiRetryJitterPercent = parseReleaseNonNegativeIntegerEnv(
-    process.env.RELEASE_GITHUB_API_TRANSIENT_RETRY_JITTER_PERCENT,
+    cli.githubApiRetryJitterPercentRaw ||
+      process.env.RELEASE_GITHUB_API_TRANSIENT_RETRY_JITTER_PERCENT,
     DEFAULT_GITHUB_API_TRANSIENT_RETRY_JITTER_PERCENT,
-    'RELEASE_GITHUB_API_TRANSIENT_RETRY_JITTER_PERCENT',
+    githubApiRetryJitterPercentSource,
   );
   if (githubApiRetryJitterPercent > 100) {
     throw new Error(
-      `Invalid value for RELEASE_GITHUB_API_TRANSIENT_RETRY_JITTER_PERCENT: ${githubApiRetryJitterPercent}`,
+      `Invalid value for ${githubApiRetryJitterPercentSource}: ${githubApiRetryJitterPercent}`,
     );
   }
   const failureSummaryMaxJobs = parseReleasePositiveIntegerEnv(
@@ -987,6 +1105,11 @@ const main = async () => {
   process.stdout.write(`Dispatched ${workflowFile} on ${workflowRef} for ${repoSlug}.\n`);
   const summaryLines = buildDispatchInputSummaryLines({
     allowFailureDrill,
+    githubApiRetryBackoffFactor,
+    githubApiRetryDelayMs,
+    githubApiRetryJitterPercent,
+    githubApiRetryMaxAttempts,
+    githubApiRetryMaxDelayMs,
     includeStepSummaryLink,
     printArtifactLinks,
     requiredExternalChannels,

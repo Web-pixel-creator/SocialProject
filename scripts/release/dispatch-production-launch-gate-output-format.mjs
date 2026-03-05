@@ -2,6 +2,11 @@ const toBooleanText = (value) => (value ? 'true' : 'false');
 
 export const buildDispatchInputSummaryLines = ({
   allowFailureDrill,
+  githubApiRetryBackoffFactor,
+  githubApiRetryDelayMs,
+  githubApiRetryJitterPercent,
+  githubApiRetryMaxAttempts,
+  githubApiRetryMaxDelayMs,
   includeStepSummaryLink,
   printArtifactLinks,
   requiredExternalChannels,
@@ -30,6 +35,11 @@ export const buildDispatchInputSummaryLines = ({
     `Smoke timeout retry delay ms input: ${
       smokeTimeoutRetryDelayMs === null ? 'default' : smokeTimeoutRetryDelayMs
     }`,
+    `GitHub API retry max attempts: ${githubApiRetryMaxAttempts}`,
+    `GitHub API retry base delay ms: ${githubApiRetryDelayMs}`,
+    `GitHub API retry backoff factor: ${githubApiRetryBackoffFactor}`,
+    `GitHub API retry max delay ms: ${githubApiRetryMaxDelayMs}`,
+    `GitHub API retry jitter percent: ${githubApiRetryJitterPercent}`,
     `Failure summary max jobs: ${failureSummaryMaxJobs}`,
     `Allow failure drill input: ${toBooleanText(allowFailureDrill)}`,
     `Print artifact links option: ${toBooleanText(printArtifactLinks)}`,

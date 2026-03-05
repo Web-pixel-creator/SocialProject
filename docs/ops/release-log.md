@@ -33,6 +33,45 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - expose GitHub API transient retry tuning via dispatch CLI flags (phase 95)
+
+- Scope: make transient GitHub API retry tuning operator-friendly during live release windows by exposing retry controls as first-class `release:launch:gate:dispatch` CLI options (not env-only).
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 14:54 -> 2026-03-05 15:02.
+- Changes:
+  - Updated `scripts/release/dispatch-production-launch-gate.mjs`:
+    - added CLI options:
+      - `--github-api-retry-max-attempts`
+      - `--github-api-retry-delay-ms`
+      - `--github-api-retry-backoff-factor`
+      - `--github-api-retry-max-delay-ms`
+      - `--github-api-retry-jitter-percent`
+    - added parsing/validation for both `--flag=value` and `--flag value` forms,
+    - wired CLI values to take precedence over env values for the same retry knobs,
+    - aligned validation error source labels so CLI-origin errors report CLI flag names.
+  - Updated `scripts/release/dispatch-production-launch-gate-output-format.mjs`:
+    - dispatch input summary now prints effective GitHub API retry settings (max attempts/base delay/backoff/max delay/jitter).
+  - Added/updated tests:
+    - updated: `apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts` (new CLI validation coverage for retry knobs)
+    - updated: `apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts` (help text snapshot includes new flags)
+    - updated: `apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts` (summary lines include retry settings)
+  - Updated docs:
+    - `docs/ops/release-runbook.md`
+    - `docs/ops/release-checklist.md`
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-transient-retry-utils.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:runbook:failure-snippet:check`: pass.
+  - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --print-artifact-links --artifact-link-names all --github-api-retry-jitter-percent 30`: pass.
+    - run `#107` (`22723836211`): success and dispatch summary reflected CLI override (`GitHub API retry jitter percent: 30`).
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T15:01:54.947Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: mirror these retry options into `Production Launch Gate` `workflow_dispatch` inputs when interactive GitHub UI dispatching needs parity with CLI controls.
+
 ### 2026-03-05 - add exponential backoff+jitter for dispatch polling transient retries (phase 94)
 
 - Scope: harden launch-gate dispatch polling under bursty GitHub API instability by evolving fixed-delay transient retries into bounded exponential backoff with jitter.

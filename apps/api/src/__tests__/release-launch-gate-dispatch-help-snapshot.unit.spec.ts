@@ -43,6 +43,11 @@ describe('launch-gate dispatch helper help output', () => {
   --allow-failure-drill                  workflow input allow_failure_drill=true
   --webhook-secret-override <value>      workflow input webhook_secret_override (requires allow_failure_drill)
   --failure-summary-max-jobs <n>         cap failed-job diagnostics entries (default: 5)
+  --github-api-retry-max-attempts <n>    transient GitHub API polling retry attempts override
+  --github-api-retry-delay-ms <ms>       transient GitHub API base retry delay override
+  --github-api-retry-backoff-factor <n>  transient GitHub API retry backoff factor override
+  --github-api-retry-max-delay-ms <ms>   transient GitHub API retry max delay override
+  --github-api-retry-jitter-percent <n>  transient GitHub API retry jitter percent override (0-100)
   --print-artifact-links                 print links for additional high-signal artifacts after success
   --artifact-link-names <csv|all>        override artifact link set (allowed: production-launch-gate-step-summary, production-launch-gate-summary, post-release-health-inline-artifacts-schema-check, post-release-health-inline-artifacts-summary, or all)
   --no-step-summary-link                 suppress default step-summary artifact link output

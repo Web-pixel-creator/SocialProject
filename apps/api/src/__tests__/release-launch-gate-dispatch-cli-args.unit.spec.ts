@@ -88,6 +88,42 @@ describe('launch-gate dispatch helper cli argument validation', () => {
     );
   });
 
+  test('fails fast when github-api-retry-max-attempts value is missing', () => {
+    const result = runDispatchScript(['--github-api-retry-max-attempts']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Missing value for --github-api-retry-max-attempts',
+    );
+    expect(result.stderr).toContain(
+      'Usage: npm run release:launch:gate:dispatch',
+    );
+  });
+
+  test('fails fast when github-api-retry-delay-ms value is missing', () => {
+    const result = runDispatchScript(['--github-api-retry-delay-ms']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Missing value for --github-api-retry-delay-ms',
+    );
+    expect(result.stderr).toContain(
+      'Usage: npm run release:launch:gate:dispatch',
+    );
+  });
+
+  test('fails fast when github-api-retry-jitter-percent value is missing', () => {
+    const result = runDispatchScript(['--github-api-retry-jitter-percent']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Missing value for --github-api-retry-jitter-percent',
+    );
+    expect(result.stderr).toContain(
+      'Usage: npm run release:launch:gate:dispatch',
+    );
+  });
+
   test('fails fast on unknown argument', () => {
     const result = runDispatchScript(['--unknown-flag']);
 
@@ -173,6 +209,30 @@ describe('launch-gate dispatch helper cli argument validation', () => {
     expect(result.status).toBe(1);
     expect(result.stderr).toContain(
       'Missing value for --smoke-timeout-retry-delay-ms=',
+    );
+    expect(result.stderr).toContain(
+      'Usage: npm run release:launch:gate:dispatch',
+    );
+  });
+
+  test('fails fast when inline github-api-retry-max-attempts value is empty', () => {
+    const result = runDispatchScript(['--github-api-retry-max-attempts=']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Missing value for --github-api-retry-max-attempts=',
+    );
+    expect(result.stderr).toContain(
+      'Usage: npm run release:launch:gate:dispatch',
+    );
+  });
+
+  test('fails fast when inline github-api-retry-jitter-percent value is empty', () => {
+    const result = runDispatchScript(['--github-api-retry-jitter-percent=']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Missing value for --github-api-retry-jitter-percent=',
     );
     expect(result.stderr).toContain(
       'Usage: npm run release:launch:gate:dispatch',
@@ -380,6 +440,51 @@ describe('launch-gate dispatch helper cli argument validation', () => {
     expect(result.status).toBe(1);
     expect(result.stderr).toContain(
       'Invalid value for --smoke-timeout-retry-delay-ms: 0',
+    );
+  });
+
+  test('fails fast on invalid --github-api-retry-max-attempts cli value', () => {
+    const result = runDispatchScript(['--github-api-retry-max-attempts', '0']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Invalid value for --github-api-retry-max-attempts: 0',
+    );
+  });
+
+  test('fails fast on invalid --github-api-retry-backoff-factor cli value', () => {
+    const result = runDispatchScript([
+      '--github-api-retry-backoff-factor',
+      '0',
+    ]);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Invalid value for --github-api-retry-backoff-factor: 0',
+    );
+  });
+
+  test('fails fast on invalid --github-api-retry-max-delay-ms cli value', () => {
+    const result = runDispatchScript([
+      '--github-api-retry-max-delay-ms',
+      'abc',
+    ]);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Invalid value for --github-api-retry-max-delay-ms: abc',
+    );
+  });
+
+  test('fails fast on invalid --github-api-retry-jitter-percent cli value', () => {
+    const result = runDispatchScript([
+      '--github-api-retry-jitter-percent',
+      '101',
+    ]);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Invalid value for --github-api-retry-jitter-percent: 101',
     );
   });
 

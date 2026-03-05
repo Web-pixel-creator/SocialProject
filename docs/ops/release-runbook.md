@@ -87,6 +87,9 @@ Use this map when a release helper fails fast on argument/env validation and you
         - `npm run release:launch:gate:dispatch -- --artifact-link-names production-launch-gate-summary,post-release-health-inline-artifacts-schema-check`
         - `npm run release:launch:gate:dispatch -- --artifact-link-names production-launch-gate-summary --no-step-summary-link`
         - `npm run release:launch:gate:dispatch -- --failure-summary-max-jobs 10`
+        - `npm run release:launch:gate:dispatch -- --github-api-retry-max-attempts 5`
+        - `npm run release:launch:gate:dispatch -- --github-api-retry-delay-ms 2000 --github-api-retry-backoff-factor 2`
+        - `npm run release:launch:gate:dispatch -- --github-api-retry-max-delay-ms 10000 --github-api-retry-jitter-percent 20`
         - `npm run release:launch:gate:dispatch -- --smoke-timeout-retries 0`
         - `npm run release:launch:gate:dispatch -- --smoke-timeout-retry-delay-ms 7000`
          - controlled negative drill: `npm run release:launch:gate:dispatch -- --required-external-channels all --allow-failure-drill --webhook-secret-override <dummy-value>`
