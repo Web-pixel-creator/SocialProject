@@ -130,7 +130,7 @@ const main = () => {
     ) {
       const trend = payload.externalChannelFailureModes;
       lines.push(
-        `- external-channel trend: \`${trend?.pass === true ? 'pass' : 'fail'}\``,
+        `- external-channel trend: \`${trend?.pass === true ? 'pass' : 'fail'}\` (source \`${String(trend?.source ?? 'unavailable')}\`)`,
         `- external-channel analyzed runs: \`${String(trend?.analyzedRuns ?? 0)}\` (window \`${String(trend?.windowSize ?? 0)}\`)`,
         `- external-channel non-pass modes: \`${Array.isArray(trend?.nonPassModes) && trend.nonPassModes.length > 0 ? trend.nonPassModes.join(', ') : 'none'}\``,
         `- external-channel required-failure runs: \`${Array.isArray(trend?.runsWithRequiredFailures) && trend.runsWithRequiredFailures.length > 0 ? trend.runsWithRequiredFailures.join(', ') : 'none'}\``,

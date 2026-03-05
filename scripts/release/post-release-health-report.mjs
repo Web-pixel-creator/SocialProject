@@ -1481,6 +1481,7 @@ const analyzeExternalChannelFailureModeTrend = async ({
 
   const trend = {
     artifactName: EXTERNAL_CHANNEL_TRACE_ARTIFACT_NAME,
+    source: 'artifact',
     currentRunId: Number(currentRun.id),
     pass: true,
     reasons: [],
@@ -1777,6 +1778,10 @@ const toJsonSummaryPayload = ({ report, outputPath, strict }) => ({
   externalChannelFailureModes:
     report.externalChannelFailureModes && typeof report.externalChannelFailureModes === 'object'
       ? {
+          source:
+            typeof report.externalChannelFailureModes.source === 'string'
+              ? report.externalChannelFailureModes.source
+              : 'unavailable',
           pass: report.externalChannelFailureModes.pass,
           windowSize: report.externalChannelFailureModes.windowSize,
           minimumRuns: report.externalChannelFailureModes.minimumRuns,
@@ -2281,7 +2286,9 @@ const main = async () => {
           report.externalChannelFailureModes.pass,
         )} analyzedRuns=${String(
           report.externalChannelFailureModes.analyzedRuns.length,
-        )}/${String(report.externalChannelFailureModes.windowSize)} nonPassModes=${
+        )}/${String(report.externalChannelFailureModes.windowSize)} source=${String(
+          report.externalChannelFailureModes.source ?? 'unavailable',
+        )} nonPassModes=${
           report.externalChannelFailureModes.nonPassModes.length > 0
             ? report.externalChannelFailureModes.nonPassModes.join(',')
             : 'none'

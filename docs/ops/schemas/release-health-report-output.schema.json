@@ -22,7 +22,7 @@
       "const": "docs/ops/schemas/release-health-report-output.schema.json"
     },
     "schemaVersion": {
-      "const": "1.8.0"
+      "const": "1.9.0"
     },
     "generatedAtUtc": {
       "type": "string",
@@ -711,6 +711,7 @@
       "additionalProperties": false,
       "required": [
         "artifactName",
+        "source",
         "currentRunId",
         "pass",
         "reasons",
@@ -731,6 +732,14 @@
         "artifactName": {
           "type": "string",
           "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "artifact",
+            "local",
+            "unavailable"
+          ]
         },
         "currentRunId": {
           "type": "integer",

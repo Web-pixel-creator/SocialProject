@@ -33,6 +33,33 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - external-channel trend provenance (`source`) in health reports (phase 9)
+
+- Scope: add explicit provenance marker for external-channel trend block in post-release health outputs for parity with launch-gate sandbox checks.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 09:14 -> 2026-03-05 09:20.
+- Changes:
+  - Updated `scripts/release/post-release-health-report.mjs`:
+    - external-channel trend payload now includes `source`,
+    - summary output prints external-channel `source`.
+  - Updated `scripts/release/render-post-release-health-step-summary.mjs`:
+    - markdown step summary now prints external-channel trend `source`.
+  - Updated release health schema contract:
+    - `scripts/release/release-health-schema-contracts.mjs` bumped to `1.9.0`,
+    - `docs/ops/schemas/release-health-report-output.schema.json` now requires `externalChannelFailureModes.source`,
+    - sample updated in `docs/ops/schemas/samples/release-health-report-output.sample.json`.
+- Validation:
+  - `node --check scripts/release/post-release-health-report.mjs`: pass.
+  - `node --check scripts/release/render-post-release-health-step-summary.mjs`: pass.
+  - `npm run release:health:report:launch-gate:json`: pass.
+  - `npm run release:health:schema:check:json`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add provenance to release-health alert telemetry block if future local fallback source is introduced.
+
 ### 2026-03-05 - sandbox execution integration evidence closure in Docker-ready environment
 
 - Scope: close phase-2 integration evidence gap for sandbox execution metrics/admin coverage in a local environment with running Postgres/Redis.
