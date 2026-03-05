@@ -48,6 +48,13 @@ describe('production launch-gate cli argument validation', () => {
     expect(result.stderr).toContain('Unknown argument: --unknown-flag');
   });
 
+  test('fails fast when --environment value is missing', () => {
+    const result = runProductionLaunchGate(['--environment']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('Missing value for --environment');
+  });
+
   test('fails fast when required-external-channels value is missing', () => {
     const result = runProductionLaunchGate(['--required-external-channels']);
 
@@ -75,6 +82,22 @@ describe('production launch-gate cli argument validation', () => {
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('contains unsupported channels');
     expect(result.stderr).toContain('telegram, slack, discord');
+  });
+
+  test('fails fast when --gate-wait-ms is not a positive integer', () => {
+    const result = runProductionLaunchGate(['--gate-wait-ms', 'abc']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('Invalid value for --gate-wait-ms: abc');
+  });
+
+  test('fails fast when --gate-poll-interval-ms is zero', () => {
+    const result = runProductionLaunchGate(['--gate-poll-interval-ms', '0']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Invalid value for --gate-poll-interval-ms: 0',
+    );
   });
 
   test('fails fast on unsupported RELEASE_REQUIRED_EXTERNAL_CHANNELS env value', () => {

@@ -33,6 +33,44 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - enforce required values for production launch-gate value flags (phase 52)
+
+- Scope: reduce operator misconfiguration risk by failing fast on missing/invalid values for key value-based `production-launch-gate` CLI options.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 11:25 -> 2026-03-05 11:29.
+- Changes:
+  - Updated `scripts/release/production-launch-gate.mjs`:
+    - added shared helpers inside argument parser:
+      - `readRequiredValue` (rejects empty/missing values),
+      - `parsePositiveIntegerValue` (rejects non-positive/non-numeric values).
+    - applied required-value validation to:
+      - `--environment`,
+      - `--web-service`,
+      - `--api-service`,
+      - `--web-base-url`,
+      - `--api-base-url`,
+      - `--runtime-draft-id`,
+      - `--runtime-channel`,
+      - `--smoke-results-path`,
+      - `--required-external-channels` (positional),
+      - numeric flags `--gate-wait-ms`, `--gate-poll-interval-ms`, `--http-timeout-ms`.
+  - Updated tests:
+    - `apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts`
+    - added cases for:
+      - missing `--environment` value,
+      - invalid `--gate-wait-ms` value,
+      - zero `--gate-poll-interval-ms` value.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-external-channels.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T11:27:26.418Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add inline-value forms for the same value flags if we decide to support `--flag=value` syntax broadly in production gate CLI.
+
 ### 2026-03-05 - add golden help snapshot for production launch-gate CLI (phase 51)
 
 - Scope: lock `production-launch-gate` help text against accidental option drift by adding a dedicated snapshot-based regression test.

@@ -652,6 +652,23 @@ const parseArgs = (argv) => {
     webBaseUrl: '',
     webService: DEFAULTS.webService,
   };
+  const readRequiredValue = (flag, nextValue) => {
+    const value = String(nextValue || '').trim();
+    if (!value) {
+      throw new Error(`Missing value for ${flag}`);
+    }
+    return value;
+  };
+  const parsePositiveIntegerValue = (flag, nextValue) => {
+    const value = readRequiredValue(flag, nextValue);
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      throw new Error(
+        `Invalid value for ${flag}: ${value}. Expected a positive integer.`,
+      );
+    }
+    return parsed;
+  };
 
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
@@ -663,10 +680,7 @@ const parseArgs = (argv) => {
     else if (a === '--skip-ingest-probe') o.skipIngestProbe = true;
     else if (a === '--skip-railway-gate') o.skipRailwayGate = true;
     else if (a === '--required-external-channels') {
-      const value = (argv[++i] || '').trim();
-      if (!value) {
-        throw new Error('Missing value for --required-external-channels');
-      }
+      const value = readRequiredValue('--required-external-channels', argv[++i]);
       o.requiredExternalChannels = parseExternalChannelsList(
         value,
         '--required-external-channels',
@@ -684,19 +698,34 @@ const parseArgs = (argv) => {
     else if (a === '--require-skill-markers') o.requireSkillMarkers = true;
     else if (a === '--require-natural-cron-window')
       o.requireNaturalCronWindow = true;
-    else if (a === '--environment') o.environment = argv[++i] || '';
-    else if (a === '--web-service') o.webService = argv[++i] || '';
-    else if (a === '--api-service') o.apiService = argv[++i] || '';
-    else if (a === '--web-base-url') o.webBaseUrl = argv[++i] || '';
-    else if (a === '--api-base-url') o.apiBaseUrl = argv[++i] || '';
-    else if (a === '--runtime-draft-id') o.runtimeDraftId = argv[++i] || '';
-    else if (a === '--runtime-channel') o.runtimeChannel = argv[++i] || '';
-    else if (a === '--smoke-results-path') o.smokeResultsPath = argv[++i] || '';
-    else if (a === '--gate-wait-ms') o.gateWaitMs = Number.parseInt(argv[++i] || '', 10);
+    else if (a === '--environment')
+      o.environment = readRequiredValue('--environment', argv[++i]);
+    else if (a === '--web-service')
+      o.webService = readRequiredValue('--web-service', argv[++i]);
+    else if (a === '--api-service')
+      o.apiService = readRequiredValue('--api-service', argv[++i]);
+    else if (a === '--web-base-url')
+      o.webBaseUrl = readRequiredValue('--web-base-url', argv[++i]);
+    else if (a === '--api-base-url')
+      o.apiBaseUrl = readRequiredValue('--api-base-url', argv[++i]);
+    else if (a === '--runtime-draft-id')
+      o.runtimeDraftId = readRequiredValue('--runtime-draft-id', argv[++i]);
+    else if (a === '--runtime-channel')
+      o.runtimeChannel = readRequiredValue('--runtime-channel', argv[++i]);
+    else if (a === '--smoke-results-path')
+      o.smokeResultsPath = readRequiredValue('--smoke-results-path', argv[++i]);
+    else if (a === '--gate-wait-ms')
+      o.gateWaitMs = parsePositiveIntegerValue('--gate-wait-ms', argv[++i]);
     else if (a === '--gate-poll-interval-ms')
-      o.gateIntervalMs = Number.parseInt(argv[++i] || '', 10);
+      o.gateIntervalMs = parsePositiveIntegerValue(
+        '--gate-poll-interval-ms',
+        argv[++i],
+      );
     else if (a === '--http-timeout-ms')
-      o.httpTimeoutMs = Number.parseInt(argv[++i] || '', 10);
+      o.httpTimeoutMs = parsePositiveIntegerValue(
+        '--http-timeout-ms',
+        argv[++i],
+      );
     else throw new Error(`Unknown argument: ${a}`);
   }
   return o;
