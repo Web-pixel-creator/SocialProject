@@ -37,7 +37,7 @@ Copy this block for each release:
 
 - Scope: start the next operational hardening track by introducing a shared release command policy layer for high-risk release runners and by recording the follow-on production hardening roadmap.
 - Release commander: Codex automation.
-- Window (UTC): 2026-03-05 18:46 -> 2026-03-05 18:52.
+- Window (UTC): 2026-03-05 18:46 -> 2026-03-05 18:53.
 - Changes:
   - Added shared release command policy module:
     - `scripts/release/release-command-policy.mjs`
@@ -68,6 +68,7 @@ Copy this block for each release:
   - `npm run ci:workflow:inline-node-check`: pass.
   - `npm run lint`: pass.
   - `npm run ultracite:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T18:53:01.982Z`).
 - Incidents:
   - none.
 - Follow-ups:
