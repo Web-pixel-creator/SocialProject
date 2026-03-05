@@ -33,6 +33,28 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - split dispatch help snapshot into section-level golden checks (phase 44)
+
+- Scope: reduce snapshot churn while preserving signal by validating dispatch helper usage output in independent sections.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 11:25 -> 2026-03-05 11:28.
+- Changes:
+  - Updated `apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts`:
+    - replaced single full-text snapshot with section snapshots:
+      - usage header block,
+      - options block,
+      - token-resolution block.
+    - keeps line-ending normalization and explicit section count assertion.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: assert high-signal option lines (`--artifact-link-names`, `--no-step-summary-link`) with targeted `toContain` checks in addition to snapshots.
+
 ### 2026-03-05 - add golden snapshot test for dispatch helper usage output (phase 43)
 
 - Scope: guard dispatch CLI help text against accidental drift via a dedicated snapshot-based regression test.

@@ -16,17 +16,20 @@ const runHelp = () =>
 const normalizeLineEndings = (value: string) => value.replace(/\r\n/gu, '\n');
 
 describe('launch-gate dispatch helper help output', () => {
-  test('matches golden usage snapshot', () => {
+  test('matches golden usage snapshots by section', () => {
     const result = runHelp();
 
     expect(result.status).toBe(0);
     expect(result.stderr).toBe('');
-    expect(
-      normalizeLineEndings(result.stdout).trimEnd(),
-    ).toMatchInlineSnapshot(`
-"Usage: npm run release:launch:gate:dispatch -- [options]
+    const normalized = normalizeLineEndings(result.stdout).trimEnd();
+    const sections = normalized.split('\n\n');
 
-Options:
+    expect(sections).toHaveLength(3);
+    expect(sections[0]).toMatchInlineSnapshot(
+      `"Usage: npm run release:launch:gate:dispatch -- [options]"`,
+    );
+    expect(sections[1]).toMatchInlineSnapshot(`
+"Options:
   --token|-Token <value>                 GitHub token override
   --runtime-draft-id <uuid>              workflow input runtime_draft_id
   --require-skill-markers                workflow input require_skill_markers=true
@@ -38,9 +41,10 @@ Options:
   --print-artifact-links                 print links for additional high-signal artifacts after success
   --artifact-link-names <csv|all>        override artifact link set (allowed: production-launch-gate-step-summary, production-launch-gate-summary, post-release-health-inline-artifacts-schema-check, post-release-health-inline-artifacts-summary, or all)
   --no-step-summary-link                 suppress default step-summary artifact link output
-  --help|-h
-
-Token resolution order:
+  --help|-h"
+`);
+    expect(sections[2]).toMatchInlineSnapshot(`
+"Token resolution order:
 1) --token / -Token argument
 2) GITHUB_TOKEN / GH_TOKEN
 3) gh auth token"
