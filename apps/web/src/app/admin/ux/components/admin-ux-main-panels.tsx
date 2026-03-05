@@ -222,11 +222,11 @@ export const AdminUxMainPanels = ({
   const isAllMetricsPanel = activePanel === 'all';
   const isGatewayVisible =
     activePanel === 'all'
-      ? isAllMetricsSubviewVisible('operations')
+      ? isAllMetricsSubviewVisible('operations', 'gateway')
       : isPanelVisible('gateway');
   const isRuntimeVisible =
     activePanel === 'all'
-      ? isAllMetricsSubviewVisible('operations')
+      ? isAllMetricsSubviewVisible('operations', 'runtime')
       : isPanelVisible('runtime');
   const isEngagementVisible =
     activePanel === 'all'

@@ -577,6 +577,18 @@ describe('admin ux observer engagement page', () => {
     await waitFor(() =>
       expect(screen.getByText(/Feed preference KPIs/i)).toBeInTheDocument(),
     );
+    const gatewayFocusLink = screen
+      .getAllByRole('link', { name: /^Gateway$/i })
+      .find((link) =>
+        link.getAttribute('href')?.includes('panel=all&allView=gateway'),
+      );
+    const runtimeFocusLink = screen
+      .getAllByRole('link', { name: /^Runtime$/i })
+      .find((link) =>
+        link.getAttribute('href')?.includes('panel=all&allView=runtime'),
+      );
+    expect(gatewayFocusLink?.getAttribute('href')).toContain('allView=gateway');
+    expect(runtimeFocusLink?.getAttribute('href')).toContain('allView=runtime');
     expect(
       screen.getByText(/Multimodal GlowUp telemetry/i),
     ).toBeInTheDocument();

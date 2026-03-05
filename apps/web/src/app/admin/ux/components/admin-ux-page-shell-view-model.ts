@@ -56,16 +56,28 @@ const ALL_METRICS_RISK_SNAPSHOT_TONES: ReadonlyArray<{
   { id: 'neutral', label: 'info' },
 ] as const;
 
+type AdminUxAllMetricsViewTabId = Exclude<AdminUxAllMetricsView, 'operations'>;
+
 const ADMIN_UX_ALL_METRICS_VIEW_TABS: ReadonlyArray<{
-  id: AdminUxAllMetricsView;
+  id: AdminUxAllMetricsViewTabId;
   label: string;
 }> = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'operations', label: 'Operations' },
+  { id: 'overview', label: 'All' },
+  { id: 'gateway', label: 'Gateway' },
+  { id: 'runtime', label: 'Runtime' },
   { id: 'engagement', label: 'Engagement' },
   { id: 'quality', label: 'Quality' },
   { id: 'debug', label: 'Debug' },
 ] as const;
+
+const resolveAllMetricsViewTabId = (
+  view: AdminUxAllMetricsView,
+): AdminUxAllMetricsViewTabId => {
+  if (view === 'operations') {
+    return 'overview';
+  }
+  return view;
+};
 
 const ADMIN_UX_ALL_METRICS_RISK_FILTER_TABS: ReadonlyArray<{
   id: AdminUxAllMetricsRiskFilter;
@@ -209,7 +221,7 @@ export const buildAdminUxPanelChromeView = ({
   allMetricsViewTabs:
     activePanel === 'all'
       ? buildPanelTabsView({
-          activePanel: allMetricsView,
+          activePanel: resolveAllMetricsViewTabId(allMetricsView),
           buildPanelHref: (view) =>
             buildAdminUxPanelHref(hours, 'all', {
               allMetricsRiskFilter,

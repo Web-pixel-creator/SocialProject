@@ -15,6 +15,8 @@ export type AdminUxPanel = (typeof ADMIN_UX_PANELS)[number];
 
 export const ADMIN_UX_ALL_METRICS_VIEWS = [
   'overview',
+  'gateway',
+  'runtime',
   'operations',
   'engagement',
   'quality',

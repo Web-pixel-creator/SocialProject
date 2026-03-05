@@ -33,6 +33,31 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - admin UX all-metrics domain-tab navigation pass
+
+- Scope: reduce long-scroll navigation in `panel=all` by adding direct focus tabs for domain blocks (`Gateway`, `Runtime`, `Engagement`, `Quality`, `Debug`) while keeping an `All` view.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 07:05 -> 2026-03-05 07:10.
+- Changes:
+  - Extended all-metrics view state to support dedicated focus values:
+    - added `gateway` and `runtime` to `allView` resolver/type in `admin-ux-page-utils.ts`,
+    - kept legacy `operations` value for backward compatibility.
+  - Updated all-metrics focus tab model in `admin-ux-page-shell-view-model.ts`:
+    - tabs now render as `All / Gateway / Runtime / Engagement / Quality / Debug`,
+    - legacy `allView=operations` maps to `All` tab highlight.
+  - Updated all-metrics visibility/filter counting:
+    - `admin-ux-main-panels.tsx` now scopes gateway/runtime independently via `allView=gateway|runtime` (with `operations` still showing both),
+    - `admin-ux-page-content.tsx` risk/signal counters now compute gateway/runtime independently.
+  - Added integration assertions in `apps/web/src/__tests__/admin-ux-page.spec.tsx` for `allView=gateway` and `allView=runtime` focus links.
+- Validation:
+  - `npm run ultracite:check`: pass.
+  - `npm run test:web -- --runInBand apps/web/src/app/admin/ux/components/admin-ux-page-entry.spec.ts apps/web/src/__tests__/admin-ux-page.spec.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add a compact "next/prev domain" keyboard hint for operators who triage exclusively in `panel=all`.
+
 ### 2026-03-05 - admin UX signal-scope filter pass
 
 - Scope: reduce `panel=all` visual noise by adding signal-scope filtering (`all` vs `active`) so operators can hide low-signal sections.

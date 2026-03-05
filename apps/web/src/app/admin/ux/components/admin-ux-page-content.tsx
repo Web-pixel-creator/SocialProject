@@ -117,8 +117,11 @@ const computeAllMetricsRiskCounts = ({
     ),
   );
 
-  if (isSubviewVisible('operations')) {
-    tones.push(gatewayTone, runtimeTone);
+  if (isSubviewVisible('operations', 'gateway')) {
+    tones.push(gatewayTone);
+  }
+  if (isSubviewVisible('operations', 'runtime')) {
+    tones.push(runtimeTone);
   }
   if (isSubviewVisible('engagement')) {
     tones.push(
@@ -169,16 +172,18 @@ const computeAllMetricsSignalCounts = ({
     }
   };
 
-  if (isSubviewVisible('operations')) {
+  if (isSubviewVisible('operations', 'gateway')) {
     const gatewaySignalCount =
       mainPanelsProps.gatewayPanelsProps.liveBodyProps.gatewaySessions.length +
       (mainPanelsProps.gatewayPanelsProps.liveBodyProps.gatewayRecentEvents
         ?.length ?? 0);
+    includeGroup(gatewaySignalCount);
+  }
+  if (isSubviewVisible('operations', 'runtime')) {
     const runtimeSignalCount =
       mainPanelsProps.runtimePanelProps.bodyProps.aiRuntimeSummary.roleCount +
       mainPanelsProps.runtimePanelProps.bodyProps.aiRuntimeSummary
         .providerCount;
-    includeGroup(gatewaySignalCount);
     includeGroup(runtimeSignalCount);
   }
 
