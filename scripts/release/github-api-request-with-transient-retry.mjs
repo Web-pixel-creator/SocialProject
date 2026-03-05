@@ -17,10 +17,12 @@ const toErrorMessage = (error) =>
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const githubApiRequest = async ({
+  acceptHeader = 'application/vnd.github+json',
   allowStatusCodes = [],
   apiVersion = DEFAULT_GITHUB_API_VERSION,
   body,
   expectBinary = false,
+  expectText = false,
   method,
   token,
   url,
@@ -30,7 +32,7 @@ export const githubApiRequest = async ({
     response = await fetch(url, {
       method,
       headers: {
-        Accept: 'application/vnd.github+json',
+        Accept: acceptHeader,
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
         'X-GitHub-Api-Version': apiVersion,
@@ -50,9 +52,12 @@ export const githubApiRequest = async ({
       return Buffer.from(await response.arrayBuffer());
     }
     if (response.status === 204) {
-      return null;
+      return expectText ? '' : null;
     }
     const text = await response.text();
+    if (expectText) {
+      return text;
+    }
     return text ? JSON.parse(text) : null;
   }
 
@@ -95,10 +100,12 @@ export const normalizeGitHubApiTransientRetryConfig = (retryConfig = {}) => ({
 });
 
 export const githubApiRequestWithTransientRetry = async ({
+  acceptHeader,
   allowStatusCodes,
   apiVersion = DEFAULT_GITHUB_API_VERSION,
   body,
   expectBinary = false,
+  expectText = false,
   method,
   retryConfig,
   retryLabel,
@@ -111,10 +118,12 @@ export const githubApiRequestWithTransientRetry = async ({
   for (let attempt = 1; attempt <= safeRetryConfig.maxAttempts; attempt += 1) {
     try {
       return await githubApiRequest({
+        acceptHeader,
         allowStatusCodes,
         apiVersion,
         body,
         expectBinary,
+        expectText,
         method,
         token,
         url,

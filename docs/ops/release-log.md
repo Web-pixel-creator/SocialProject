@@ -33,6 +33,41 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - migrate text GitHub log fetch paths to shared helper via expectText (phase 107)
+
+- Scope: finish shared-helper migration by removing remaining direct text log fetch wrappers and routing them through `githubApiRequestWithTransientRetry` with explicit text mode.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 16:00 -> 2026-03-05 16:06.
+- Changes:
+  - Updated shared helper:
+    - `scripts/release/github-api-request-with-transient-retry.mjs`
+    - added:
+      - `acceptHeader` override
+      - `expectText` response mode (returns plain text body; `204` -> empty string)
+  - Updated callers:
+    - `scripts/release/collect-retry-failure-logs.mjs`
+      - migrated `githubRequestText` to shared helper (`expectText: true`, `acceptHeader: '*/*'`)
+    - `scripts/release/dispatch-staging-smoke-tunnel.mjs`
+      - migrated `githubRequestText` to shared helper (`expectText: true`, `acceptHeader: '*/*'`)
+  - Updated tests:
+    - `apps/api/src/__tests__/release-github-api-request-with-transient-retry.unit.spec.ts`
+    - added plain-text response scenario for `expectText`.
+- Validation:
+  - `node --check scripts/release/github-api-request-with-transient-retry.mjs`: pass.
+  - `node --check scripts/release/collect-retry-failure-logs.mjs`: pass.
+  - `node --check scripts/release/dispatch-staging-smoke-tunnel.mjs`: pass.
+  - `npx jest --runInBand apps/api/src/__tests__/release-github-api-request-with-transient-retry.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-transient-retry-utils.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run release:smoke:retry:collect -- 22725224327 --json` with `RELEASE_RETRY_LOGS_INCLUDE_NON_FAILED=true`: pass (`selectedJobs: 1`, `capturedJobs: 1`), confirming shared text-fetch path captured release-smoke job log.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:runbook:failure-snippet:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T16:05:31.184Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: centralize repeated token/repo resolution helpers in release scripts now that transport/retry logic is unified.
+
 ### 2026-03-05 - add warning-format coverage for shared GitHub retry helper (phase 106)
 
 - Scope: stabilize operator-facing retry diagnostics by asserting warning format content (`label`, attempt counters, retry phrasing) in shared helper tests.

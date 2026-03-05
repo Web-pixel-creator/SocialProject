@@ -314,25 +314,16 @@ const githubRequest = async ({ token, method, url, body }) => {
   });
 };
 
-const githubRequestText = async ({ token, url }) => {
-  const response = await fetch(url, {
+const githubRequestText = async ({ token, url }) =>
+  githubApiRequestWithTransientRetry({
+    acceptHeader: '*/*',
+    apiVersion: GITHUB_API_VERSION,
+    expectText: true,
     method: 'GET',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: '*/*',
-      'X-GitHub-Api-Version': GITHUB_API_VERSION,
-    },
+    retryLabel: `[release:smoke:dispatch:tunnel:text] GET ${url}`,
+    token,
+    url,
   });
-
-  if (response.ok) {
-    return await response.text();
-  }
-
-  const errorText = await response.text();
-  throw new Error(
-    `GitHub API GET ${url} failed: ${response.status} ${response.statusText}. ${errorText}`,
-  );
-};
 
 const getLatestRunContextFromOutput = (output) => {
   const matches = [

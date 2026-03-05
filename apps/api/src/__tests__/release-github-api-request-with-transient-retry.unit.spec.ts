@@ -142,6 +142,33 @@ describe('release github api request with transient retry helper', () => {
     expect(result.payload.result).toEqual({ hex: '010203ff', length: 4 });
   });
 
+  test('returns plain text payload when expectText is enabled', () => {
+    const result = runHelperScenario(`
+      globalThis.fetch = async () => {
+        state.calls += 1;
+        return {
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          text: async () => 'plain text body',
+        };
+      };
+      const value = await githubApiRequest({
+        acceptHeader: '*/*',
+        expectText: true,
+        method: 'GET',
+        token: 'token',
+        url: 'https://example.invalid/text',
+      });
+      emit({ ok: true, result: value, calls: state.calls, warnings, error: '' });
+    `);
+
+    expect(result.output.status).toBe(0);
+    expect(result.payload.ok).toBe(true);
+    expect(result.payload.calls).toBe(1);
+    expect(result.payload.result).toBe('plain text body');
+  });
+
   test('retries network pre-response errors for GET and succeeds', () => {
     const result = runHelperScenario(`
       globalThis.fetch = async () => {
