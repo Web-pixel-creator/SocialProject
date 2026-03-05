@@ -33,6 +33,29 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - fixture test for appended health log provenance rendering (phase 13)
+
+- Scope: lock `release:health:log` output format with a fixture-based unit test that asserts provenance lines are present.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 09:41 -> 2026-03-05 09:45.
+- Changes:
+  - Added unit test:
+    - `apps/api/src/__tests__/release-health-log-render.unit.spec.ts`
+    - writes fixture report (`post-release-health-run-<id>.json`), runs
+      `scripts/release/append-post-release-health-log.mjs --dry-run`,
+      validates rendered lines for:
+      - external-channel trend `source`,
+      - release-health alert telemetry `source`,
+      - launch-gate sandbox checks `source`.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-health-log-render.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add a negative case fixture for missing optional blocks to guard fallback wording.
+
 ### 2026-03-05 - strict production launch-gate confirmation after provenance rollout (phase 12)
 
 - Scope: confirm strict production launch-gate remains green after provenance rollout in post-release health/reporting scripts.
