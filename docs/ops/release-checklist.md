@@ -225,6 +225,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
         - [ ] `--require-natural-cron-window`
         - [ ] `--required-external-channels <telegram,slack|all>`
         - [ ] `--require-inline-health-artifacts`
+        - [ ] `--print-artifact-links` (optional: print additional artifact URLs in helper stdout)
         - [ ] `--allow-failure-drill`
         - [ ] `--webhook-secret-override <value>` (requires `--allow-failure-drill`; drill-only)
       - [ ] Optional runtime draft input: `RELEASE_RUNTIME_DRAFT_ID=<uuid>`
@@ -232,6 +233,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
       - [ ] Optional natural cron requirement: `RELEASE_REQUIRE_NATURAL_CRON_WINDOW=true`
       - [ ] Optional required external channels: `RELEASE_REQUIRED_EXTERNAL_CHANNELS=telegram,slack` (or `all`)
       - [ ] Optional inline artifact strict requirement: `RELEASE_REQUIRE_INLINE_HEALTH_ARTIFACTS=true`
+      - [ ] Optional artifact-link verbosity: `RELEASE_PRINT_ARTIFACT_LINKS=true`
       - [ ] Optional controlled drill toggles:
         - [ ] `RELEASE_ALLOW_FAILURE_DRILL=true`
         - [ ] `RELEASE_WEBHOOK_SECRET_OVERRIDE=<value>` (requires `RELEASE_ALLOW_FAILURE_DRILL=true`)

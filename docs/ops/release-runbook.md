@@ -40,7 +40,8 @@ Canonical references:
    - Optional JSON output: `npm run release:launch:gate:production:json`
    - Optional CI workflow_dispatch alternative: `Production Launch Gate` (`.github/workflows/production-launch-gate.yml`)
    - CI run now uploads markdown audit artifact `production-launch-gate-step-summary` (`artifacts/release/production-launch-gate-step-summary.md`) in addition to JSON artifacts.
-   - `npm run release:launch:gate:dispatch` now prints resolved UI link for artifact `production-launch-gate-step-summary` after successful run completion.
+  - `npm run release:launch:gate:dispatch` now prints resolved UI link for artifact `production-launch-gate-step-summary` after successful run completion.
+  - Optional helper verbosity for extra artifact links: `npm run release:launch:gate:dispatch -- --print-artifact-links` (or env `RELEASE_PRINT_ARTIFACT_LINKS=true`).
    - CI launch-gate workflow uses `RELEASE_*` context for production probes:
      - `RELEASE_API_BASE_URL`, `RELEASE_WEB_BASE_URL` (repo variables)
      - `RELEASE_ADMIN_API_TOKEN`, `RELEASE_CSRF_TOKEN`, `RELEASE_AGENT_GATEWAY_WEBHOOK_SECRET` (repo secrets)
@@ -50,8 +51,9 @@ Canonical references:
        - Optional explicit token argument: `npm run release:launch:gate:dispatch -- -Token <github_pat>`
        - Optional explicit workflow inputs via CLI args:
          - `npm run release:launch:gate:dispatch -- --runtime-draft-id <uuid> --require-skill-markers --require-natural-cron-window`
-         - `npm run release:launch:gate:dispatch -- --required-external-channels telegram,slack`
-         - `npm run release:launch:gate:dispatch -- --require-inline-health-artifacts`
+        - `npm run release:launch:gate:dispatch -- --required-external-channels telegram,slack`
+        - `npm run release:launch:gate:dispatch -- --require-inline-health-artifacts`
+        - `npm run release:launch:gate:dispatch -- --print-artifact-links`
          - controlled negative drill: `npm run release:launch:gate:dispatch -- --required-external-channels all --allow-failure-drill --webhook-secret-override <dummy-value>`
        - Token resolution order: `-Token/--token` -> `GITHUB_TOKEN/GH_TOKEN` -> `gh auth token`
        - Optional inputs via env: `RELEASE_RUNTIME_DRAFT_ID=<uuid> RELEASE_REQUIRE_SKILL_MARKERS=true RELEASE_REQUIRE_NATURAL_CRON_WINDOW=true`

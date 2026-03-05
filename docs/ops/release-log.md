@@ -33,6 +33,40 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - optional verbose artifact links in dispatch helper (phase 31)
+
+- Scope: add optional helper verbosity to print direct URLs for additional high-signal launch-gate artifacts after success.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 10:31 -> 2026-03-05 10:35.
+- Changes:
+  - Updated `scripts/release/dispatch-production-launch-gate.mjs`:
+    - new CLI flag: `--print-artifact-links`,
+    - new env toggle: `RELEASE_PRINT_ARTIFACT_LINKS=true`,
+    - helper always prints `production-launch-gate-step-summary` link,
+    - in verbose mode additionally prints links for:
+      - `production-launch-gate-summary`,
+      - `post-release-health-inline-artifacts-schema-check`,
+      - `post-release-health-inline-artifacts-summary`.
+  - Updated docs:
+    - `docs/ops/release-runbook.md`
+    - `docs/ops/release-checklist.md`.
+- Validation:
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - live dispatch (verbose mode):
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --print-artifact-links`
+    - run `#66` (`22713783276`): success.
+    - helper stdout confirmed artifact links:
+      - step summary: `.../artifacts/5777354656`
+      - launch summary: `.../artifacts/5777355007`
+      - inline schema check: `.../artifacts/5777359988`
+      - inline summary: `.../artifacts/5777359678`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add `--artifact-link-names <csv>` for operator-selectable artifact link subsets.
+
 ### 2026-03-05 - dispatch helper prints launch-gate step-summary artifact URL (phase 30)
 
 - Scope: improve operator ergonomics by printing resolved UI link for `production-launch-gate-step-summary` artifact after successful dispatch wait.

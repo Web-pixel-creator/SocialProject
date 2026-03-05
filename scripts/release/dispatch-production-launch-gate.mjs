@@ -10,6 +10,11 @@ const ARTIFACT_DISCOVERY_ATTEMPTS = 6;
 const ARTIFACT_DISCOVERY_POLL_MS = 1000;
 const LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME =
   'production-launch-gate-step-summary';
+const OPTIONAL_ARTIFACT_LINK_NAMES = [
+  'production-launch-gate-summary',
+  'post-release-health-inline-artifacts-schema-check',
+  'post-release-health-inline-artifacts-summary',
+];
 const EXTERNAL_CHANNELS = ['telegram', 'slack', 'discord'];
 const USAGE = `Usage: npm run release:launch:gate:dispatch -- [options]
 
@@ -22,6 +27,7 @@ Options:
   --require-inline-health-artifacts      workflow input require_inline_health_artifacts=true
   --allow-failure-drill                  workflow input allow_failure_drill=true
   --webhook-secret-override <value>      workflow input webhook_secret_override (requires allow_failure_drill)
+  --print-artifact-links                 print links for additional high-signal artifacts after success
   --help|-h
 
 Token resolution order:
@@ -108,6 +114,7 @@ const parseCliArgs = (argv) => {
   let requiredExternalChannels = '';
   let requireInlineHealthArtifacts;
   let allowFailureDrill;
+  let printArtifactLinks;
   let webhookSecretOverride = '';
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -205,6 +212,10 @@ const parseCliArgs = (argv) => {
       allowFailureDrill = true;
       continue;
     }
+    if (arg === '--print-artifact-links') {
+      printArtifactLinks = true;
+      continue;
+    }
     if (arg === '--webhook-secret-override') {
       const value = argv[index + 1] ?? '';
       if (!value) {
@@ -232,6 +243,7 @@ const parseCliArgs = (argv) => {
     requireInlineHealthArtifacts,
     requireNaturalCronWindow,
     requireSkillMarkers,
+    printArtifactLinks,
     requiredExternalChannels,
     runtimeDraftId,
     tokenFromArg,
@@ -371,21 +383,20 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const toArtifactUiUrl = ({ repoSlug, runId, artifactId }) =>
   `https://github.com/${repoSlug}/actions/runs/${runId}/artifacts/${artifactId}`;
 
-const findRunArtifactByName = async ({
-  artifactName,
-  baseApiUrl,
-  runId,
-  token,
-}) => {
-  for (let attempt = 1; attempt <= ARTIFACT_DISCOVERY_ATTEMPTS; attempt += 1) {
-    const artifactsResponse = await githubRequest({
-      token,
-      method: 'GET',
-      url: `${baseApiUrl}/actions/runs/${runId}/artifacts?per_page=100`,
-    });
-    const artifacts = Array.isArray(artifactsResponse?.artifacts)
-      ? artifactsResponse.artifacts
-      : [];
+const listRunArtifacts = async ({ baseApiUrl, runId, token }) => {
+  const artifactsResponse = await githubRequest({
+    token,
+    method: 'GET',
+    url: `${baseApiUrl}/actions/runs/${runId}/artifacts?per_page=100`,
+  });
+  return Array.isArray(artifactsResponse?.artifacts)
+    ? artifactsResponse.artifacts
+    : [];
+};
+
+const pickLatestArtifactsByName = ({ artifactNames, artifacts }) => {
+  const byName = new Map();
+  for (const artifactName of artifactNames) {
     const matching = artifacts.filter(
       (artifact) =>
         artifact &&
@@ -394,55 +405,114 @@ const findRunArtifactByName = async ({
         artifact.expired !== true &&
         Number.isFinite(Number(artifact.id)),
     );
-    if (matching.length > 0) {
-      const [first] = matching.sort((left, right) => {
-        const leftCreatedAt = Date.parse(String(left?.created_at ?? ''));
-        const rightCreatedAt = Date.parse(String(right?.created_at ?? ''));
-        if (Number.isNaN(leftCreatedAt) || Number.isNaN(rightCreatedAt)) {
-          return 0;
-        }
-        return rightCreatedAt - leftCreatedAt;
-      });
-      return first;
+    if (matching.length === 0) {
+      continue;
+    }
+    const [first] = matching.sort((left, right) => {
+      const leftCreatedAt = Date.parse(String(left?.created_at ?? ''));
+      const rightCreatedAt = Date.parse(String(right?.created_at ?? ''));
+      if (Number.isNaN(leftCreatedAt) || Number.isNaN(rightCreatedAt)) {
+        return 0;
+      }
+      return rightCreatedAt - leftCreatedAt;
+    });
+    byName.set(artifactName, first);
+  }
+  return byName;
+};
+
+const findRunArtifactsByNames = async ({
+  artifactNames,
+  baseApiUrl,
+  requiredArtifactNames,
+  runId,
+  token,
+}) => {
+  for (let attempt = 1; attempt <= ARTIFACT_DISCOVERY_ATTEMPTS; attempt += 1) {
+    const artifacts = await listRunArtifacts({
+      baseApiUrl,
+      runId,
+      token,
+    });
+    const picked = pickLatestArtifactsByName({
+      artifactNames,
+      artifacts,
+    });
+    const requiredResolved = requiredArtifactNames.every((name) =>
+      picked.has(name),
+    );
+    if (requiredResolved) {
+      return picked;
     }
     if (attempt < ARTIFACT_DISCOVERY_ATTEMPTS) {
       await sleep(ARTIFACT_DISCOVERY_POLL_MS);
     }
   }
-  return null;
+  return new Map();
 };
 
-const printLaunchGateStepSummaryArtifactLink = async ({
+const printLaunchGateArtifactLinks = async ({
   baseApiUrl,
+  printArtifactLinks,
   repoSlug,
   runId,
   token,
 }) => {
+  const artifactNames = printArtifactLinks
+    ? [LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME, ...OPTIONAL_ARTIFACT_LINK_NAMES]
+    : [LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME];
+
   try {
-    const artifact = await findRunArtifactByName({
-      artifactName: LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME,
+    const artifacts = await findRunArtifactsByNames({
+      artifactNames,
       baseApiUrl,
+      requiredArtifactNames: [LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME],
       runId,
       token,
     });
-    if (!artifact) {
+    const stepSummaryArtifact = artifacts.get(
+      LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME,
+    );
+    if (!stepSummaryArtifact) {
       process.stderr.write(
         `Warning: artifact '${LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME}' not found for run ${runId} after ${ARTIFACT_DISCOVERY_ATTEMPTS} attempts.\n`,
       );
       return;
     }
-    const artifactId = Number(artifact.id);
-    const artifactUrl = toArtifactUiUrl({
+    const stepSummaryArtifactId = Number(stepSummaryArtifact.id);
+    const stepSummaryArtifactUrl = toArtifactUiUrl({
       repoSlug,
       runId,
-      artifactId,
+      artifactId: stepSummaryArtifactId,
     });
     process.stdout.write(
-      `Launch-gate step summary artifact: ${artifactUrl} (id: ${artifactId})\n`,
+      `Launch-gate step summary artifact: ${stepSummaryArtifactUrl} (id: ${stepSummaryArtifactId})\n`,
     );
+
+    if (!printArtifactLinks) {
+      return;
+    }
+    for (const artifactName of OPTIONAL_ARTIFACT_LINK_NAMES) {
+      const artifact = artifacts.get(artifactName);
+      if (!artifact) {
+        process.stderr.write(
+          `Warning: artifact '${artifactName}' not found for run ${runId}.\n`,
+        );
+        continue;
+      }
+      const artifactId = Number(artifact.id);
+      const artifactUrl = toArtifactUiUrl({
+        repoSlug,
+        runId,
+        artifactId,
+      });
+      process.stdout.write(
+        `Launch-gate artifact (${artifactName}): ${artifactUrl} (id: ${artifactId})\n`,
+      );
+    }
   } catch (error) {
     process.stderr.write(
-      `Warning: unable to resolve launch-gate step summary artifact link: ${toErrorMessage(error)}\n`,
+      `Warning: unable to resolve launch-gate artifact link(s): ${toErrorMessage(error)}\n`,
     );
   }
 };
@@ -487,6 +557,10 @@ const main = async () => {
     typeof cli.requireInlineHealthArtifacts === 'boolean'
       ? cli.requireInlineHealthArtifacts
       : parseBoolean(process.env.RELEASE_REQUIRE_INLINE_HEALTH_ARTIFACTS, false);
+  const printArtifactLinks =
+    typeof cli.printArtifactLinks === 'boolean'
+      ? cli.printArtifactLinks
+      : parseBoolean(process.env.RELEASE_PRINT_ARTIFACT_LINKS, false);
   const allowFailureDrill =
     typeof cli.allowFailureDrill === 'boolean'
       ? cli.allowFailureDrill
@@ -601,6 +675,9 @@ const main = async () => {
   process.stdout.write(
     `Allow failure drill input: ${allowFailureDrill ? 'true' : 'false'}\n`,
   );
+  process.stdout.write(
+    `Print artifact links option: ${printArtifactLinks ? 'true' : 'false'}\n`,
+  );
   if (webhookSecretOverride) {
     process.stdout.write('Webhook secret override input: [provided]\n');
   }
@@ -664,8 +741,9 @@ const main = async () => {
     if (status === 'completed') {
       if (conclusion === 'success') {
         process.stdout.write(`Run succeeded: ${current.html_url}\n`);
-        await printLaunchGateStepSummaryArtifactLink({
+        await printLaunchGateArtifactLinks({
           baseApiUrl,
+          printArtifactLinks,
           repoSlug,
           runId: Number(current.id),
           token,
