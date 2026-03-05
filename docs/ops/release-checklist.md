@@ -221,6 +221,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
       - [ ] Secrets: `RELEASE_ADMIN_API_TOKEN`, `RELEASE_CSRF_TOKEN`, `RELEASE_AGENT_GATEWAY_WEBHOOK_SECRET`
       - [ ] Optional Railway compatibility context: `RAILWAY_API_TOKEN`/`RAILWAY_TOKEN`, `RAILWAY_PROJECT_ID`, `RAILWAY_ENVIRONMENT_ID`
     - [ ] Optional inputs: `runtime_draft_id`, `require_skill_markers`, `require_natural_cron_window`, `required_external_channels`, `allow_failure_drill`, `webhook_secret_override`.
+    - [ ] Optional smoke timeout retry inputs: `smoke_timeout_retries`, `smoke_timeout_retry_delay_ms`.
     - [ ] Optional strict inline health artifact assertion:
       - [ ] `require_inline_health_artifacts=true` (fails CI launch-gate run when inline health artifacts are missing).
     - [ ] Optional terminal dispatch helper (token resolution: `-Token/--token` -> `GITHUB_TOKEN/GH_TOKEN` -> `gh auth token`): `npm run release:launch:gate:dispatch`
@@ -235,6 +236,8 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
         - [ ] `--artifact-link-names <csv|all>` (optional: select artifact URL subset in helper stdout)
         - [ ] `--no-step-summary-link` (optional: suppress default step-summary artifact URL)
         - [ ] `--failure-summary-max-jobs <n>` (optional: cap failed-job diagnostics entries in helper errors)
+        - [ ] `--smoke-timeout-retries <n>` (optional: pass timeout-only smoke retry count to workflow input)
+        - [ ] `--smoke-timeout-retry-delay-ms <ms>` (optional: pass timeout-only smoke retry delay to workflow input)
         - [ ] `--allow-failure-drill`
         - [ ] `--webhook-secret-override <value>` (requires `--allow-failure-drill`; drill-only)
       - [ ] Optional runtime draft input: `RELEASE_RUNTIME_DRAFT_ID=<uuid>`
@@ -246,6 +249,8 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
       - [ ] Optional artifact-link subset: `RELEASE_ARTIFACT_LINK_NAMES=<csv|all>`
       - [ ] Optional step-summary link suppression: `RELEASE_NO_STEP_SUMMARY_LINK=true`
       - [ ] Optional failed-job diagnostics cap: `RELEASE_FAILURE_SUMMARY_MAX_JOBS=<n>`
+      - [ ] Optional smoke timeout retry count: `RELEASE_SMOKE_TIMEOUT_RETRIES=<n>` (`0` disables timeout-only retry)
+      - [ ] Optional smoke timeout retry delay: `RELEASE_SMOKE_TIMEOUT_RETRY_DELAY_MS=<ms>`
       - [ ] Optional controlled drill toggles:
         - [ ] `RELEASE_ALLOW_FAILURE_DRILL=true`
         - [ ] `RELEASE_WEBHOOK_SECRET_OVERRIDE=<value>` (requires `RELEASE_ALLOW_FAILURE_DRILL=true`)

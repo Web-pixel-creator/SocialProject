@@ -87,6 +87,8 @@ Use this map when a release helper fails fast on argument/env validation and you
         - `npm run release:launch:gate:dispatch -- --artifact-link-names production-launch-gate-summary,post-release-health-inline-artifacts-schema-check`
         - `npm run release:launch:gate:dispatch -- --artifact-link-names production-launch-gate-summary --no-step-summary-link`
         - `npm run release:launch:gate:dispatch -- --failure-summary-max-jobs 10`
+        - `npm run release:launch:gate:dispatch -- --smoke-timeout-retries 0`
+        - `npm run release:launch:gate:dispatch -- --smoke-timeout-retry-delay-ms 7000`
          - controlled negative drill: `npm run release:launch:gate:dispatch -- --required-external-channels all --allow-failure-drill --webhook-secret-override <dummy-value>`
        - Token resolution order: `-Token/--token` -> `GITHUB_TOKEN/GH_TOKEN` -> `gh auth token`
        - Optional inputs via env: `RELEASE_RUNTIME_DRAFT_ID=<uuid> RELEASE_REQUIRE_SKILL_MARKERS=true RELEASE_REQUIRE_NATURAL_CRON_WINDOW=true`
@@ -95,8 +97,13 @@ Use this map when a release helper fails fast on argument/env validation and you
       - Optional artifact link names via env: `RELEASE_ARTIFACT_LINK_NAMES=production-launch-gate-summary,post-release-health-inline-artifacts-schema-check` (or `all`)
       - Optional step-summary link suppression via env: `RELEASE_NO_STEP_SUMMARY_LINK=true`
       - Optional failed-job diagnostics cap via env: `RELEASE_FAILURE_SUMMARY_MAX_JOBS=10`
+      - Optional smoke timeout retry count via env: `RELEASE_SMOKE_TIMEOUT_RETRIES=<n>` (`0` disables timeout-only retry)
+      - Optional smoke timeout retry delay via env: `RELEASE_SMOKE_TIMEOUT_RETRY_DELAY_MS=<ms>`
        - Optional strict inline health artifact assertion via workflow input:
          - `require_inline_health_artifacts=true`
+        - Optional smoke timeout retry tuning via workflow input:
+          - `smoke_timeout_retries=<n>`
+          - `smoke_timeout_retry_delay_ms=<ms>`
        - Optional drill inputs via env (drill-only): `RELEASE_ALLOW_FAILURE_DRILL=true RELEASE_WEBHOOK_SECRET_OVERRIDE=<value>`
        - When `RELEASE_REQUIRE_SKILL_MARKERS=true`, `RELEASE_RUNTIME_DRAFT_ID` is required and must point to a draft with skill markers.
       - Validation implementation references (for quick triage when a helper fails fast on env/arg parsing):

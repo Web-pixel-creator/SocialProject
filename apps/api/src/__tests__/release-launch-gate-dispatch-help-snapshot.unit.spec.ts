@@ -38,6 +38,8 @@ describe('launch-gate dispatch helper help output', () => {
   --require-natural-cron-window          workflow input require_natural_cron_window=true
   --required-external-channels <csv|all> workflow input required_external_channels
   --require-inline-health-artifacts      workflow input require_inline_health_artifacts=true
+  --smoke-timeout-retries <n>            workflow input smoke_timeout_retries (0 disables timeout-only retry)
+  --smoke-timeout-retry-delay-ms <ms>    workflow input smoke_timeout_retry_delay_ms
   --allow-failure-drill                  workflow input allow_failure_drill=true
   --webhook-secret-override <value>      workflow input webhook_secret_override (requires allow_failure_drill)
   --failure-summary-max-jobs <n>         cap failed-job diagnostics entries (default: 5)

@@ -9,6 +9,8 @@ export const buildDispatchInputSummaryLines = ({
   requireNaturalCronWindow,
   requireSkillMarkers,
   runtimeDraftId,
+  smokeTimeoutRetries,
+  smokeTimeoutRetryDelayMs,
   failureSummaryMaxJobs,
   selectedArtifactLinkNames,
   webhookSecretOverride,
@@ -22,6 +24,12 @@ export const buildDispatchInputSummaryLines = ({
     `Require natural cron window input: ${toBooleanText(requireNaturalCronWindow)}`,
     `Required external channels input: ${requiredExternalChannels || 'none'}`,
     `Require inline health artifacts input: ${toBooleanText(requireInlineHealthArtifacts)}`,
+    `Smoke timeout retries input: ${
+      smokeTimeoutRetries === null ? 'default' : smokeTimeoutRetries
+    }`,
+    `Smoke timeout retry delay ms input: ${
+      smokeTimeoutRetryDelayMs === null ? 'default' : smokeTimeoutRetryDelayMs
+    }`,
     `Failure summary max jobs: ${failureSummaryMaxJobs}`,
     `Allow failure drill input: ${toBooleanText(allowFailureDrill)}`,
     `Print artifact links option: ${toBooleanText(printArtifactLinks)}`,

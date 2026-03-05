@@ -20,6 +20,7 @@ const DEFAULT_WORKFLOW_REF = 'main';
 const DEFAULT_WAIT_TIMEOUT_MS = 20 * 60 * 1000;
 const DEFAULT_WAIT_POLL_MS = 5000;
 const DEFAULT_FAILURE_SUMMARY_MAX_JOBS = 5;
+const NON_NEGATIVE_INTEGER_PATTERN = /^(0|[1-9]\d*)$/;
 const RUN_DISCOVERY_GRACE_MS = 2 * 60 * 1000;
 const ARTIFACT_DISCOVERY_ATTEMPTS = 6;
 const ARTIFACT_DISCOVERY_POLL_MS = 1000;
@@ -32,6 +33,8 @@ Options:
   --require-natural-cron-window          workflow input require_natural_cron_window=true
   --required-external-channels <csv|all> workflow input required_external_channels
   --require-inline-health-artifacts      workflow input require_inline_health_artifacts=true
+  --smoke-timeout-retries <n>            workflow input smoke_timeout_retries (0 disables timeout-only retry)
+  --smoke-timeout-retry-delay-ms <ms>    workflow input smoke_timeout_retry_delay_ms
   --allow-failure-drill                  workflow input allow_failure_drill=true
   --webhook-secret-override <value>      workflow input webhook_secret_override (requires allow_failure_drill)
   --failure-summary-max-jobs <n>         cap failed-job diagnostics entries (default: ${DEFAULT_FAILURE_SUMMARY_MAX_JOBS})
@@ -45,6 +48,17 @@ Token resolution order:
 2) GITHUB_TOKEN / GH_TOKEN
 3) gh auth token
 `;
+
+const parseReleaseNonNegativeIntegerEnv = (raw, fallback, sourceLabel) => {
+  const value = String(raw || '').trim();
+  if (!value) {
+    return fallback;
+  }
+  if (!NON_NEGATIVE_INTEGER_PATTERN.test(value)) {
+    throw new Error(`Invalid value for ${sourceLabel}: ${value}`);
+  }
+  return Number(value);
+};
 
 const readOriginRemote = () => {
   const remote = execFileSync('git', ['config', '--get', 'remote.origin.url'], {
@@ -89,6 +103,8 @@ const parseCliArgs = (argv) => {
   let tokenFromArg = '';
   let runtimeDraftId = '';
   let failureSummaryMaxJobsRaw = '';
+  let smokeTimeoutRetriesRaw = '';
+  let smokeTimeoutRetryDelayMsRaw = '';
   let requireSkillMarkers;
   let requireNaturalCronWindow;
   let requiredExternalChannels = '';
@@ -146,6 +162,22 @@ const parseCliArgs = (argv) => {
       failureSummaryMaxJobsRaw = value;
       continue;
     }
+    if (arg.startsWith('--smoke-timeout-retries=')) {
+      const value = arg.slice('--smoke-timeout-retries='.length).trim();
+      if (!value) {
+        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
+      }
+      smokeTimeoutRetriesRaw = value;
+      continue;
+    }
+    if (arg.startsWith('--smoke-timeout-retry-delay-ms=')) {
+      const value = arg.slice('--smoke-timeout-retry-delay-ms='.length).trim();
+      if (!value) {
+        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
+      }
+      smokeTimeoutRetryDelayMsRaw = value;
+      continue;
+    }
     if (arg.startsWith('--required-external-channels=')) {
       const value = arg.slice('--required-external-channels='.length).trim();
       if (!value) {
@@ -188,6 +220,24 @@ const parseCliArgs = (argv) => {
         throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
       }
       failureSummaryMaxJobsRaw = value;
+      index += 1;
+      continue;
+    }
+    if (arg === '--smoke-timeout-retries') {
+      const value = (argv[index + 1] ?? '').trim();
+      if (!value) {
+        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
+      }
+      smokeTimeoutRetriesRaw = value;
+      index += 1;
+      continue;
+    }
+    if (arg === '--smoke-timeout-retry-delay-ms') {
+      const value = (argv[index + 1] ?? '').trim();
+      if (!value) {
+        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
+      }
+      smokeTimeoutRetryDelayMsRaw = value;
       index += 1;
       continue;
     }
@@ -269,6 +319,8 @@ const parseCliArgs = (argv) => {
     requiredExternalChannels,
     runtimeDraftId,
     failureSummaryMaxJobsRaw,
+    smokeTimeoutRetriesRaw,
+    smokeTimeoutRetryDelayMsRaw,
     tokenFromArg,
     webhookSecretOverride,
   };
@@ -590,6 +642,36 @@ const main = async () => {
       ? '--failure-summary-max-jobs'
       : 'RELEASE_FAILURE_SUMMARY_MAX_JOBS',
   );
+  const smokeTimeoutRetries = (() => {
+    const rawValue = cli.smokeTimeoutRetriesRaw
+      ? cli.smokeTimeoutRetriesRaw
+      : String(process.env.RELEASE_SMOKE_TIMEOUT_RETRIES || '').trim();
+    if (!rawValue) {
+      return null;
+    }
+    return parseReleaseNonNegativeIntegerEnv(
+      rawValue,
+      0,
+      cli.smokeTimeoutRetriesRaw
+        ? '--smoke-timeout-retries'
+        : 'RELEASE_SMOKE_TIMEOUT_RETRIES',
+    );
+  })();
+  const smokeTimeoutRetryDelayMs = (() => {
+    const rawValue = cli.smokeTimeoutRetryDelayMsRaw
+      ? cli.smokeTimeoutRetryDelayMsRaw
+      : String(process.env.RELEASE_SMOKE_TIMEOUT_RETRY_DELAY_MS || '').trim();
+    if (!rawValue) {
+      return null;
+    }
+    return parseReleasePositiveIntegerEnv(
+      rawValue,
+      0,
+      cli.smokeTimeoutRetryDelayMsRaw
+        ? '--smoke-timeout-retry-delay-ms'
+        : 'RELEASE_SMOKE_TIMEOUT_RETRY_DELAY_MS',
+    );
+  })();
   const runtimeDraftId =
     cli.runtimeDraftId || (process.env.RELEASE_RUNTIME_DRAFT_ID ?? '').trim();
   const requireSkillMarkers =
@@ -709,6 +791,12 @@ const main = async () => {
   if (requireInlineHealthArtifacts) {
     inputs.require_inline_health_artifacts = 'true';
   }
+  if (smokeTimeoutRetries !== null) {
+    inputs.smoke_timeout_retries = String(smokeTimeoutRetries);
+  }
+  if (smokeTimeoutRetryDelayMs !== null) {
+    inputs.smoke_timeout_retry_delay_ms = String(smokeTimeoutRetryDelayMs);
+  }
   if (allowFailureDrill) {
     inputs.allow_failure_drill = 'true';
   }
@@ -738,6 +826,8 @@ const main = async () => {
     requireSkillMarkers,
     runtimeDraftId,
     selectedArtifactLinkNames,
+    smokeTimeoutRetries,
+    smokeTimeoutRetryDelayMs,
     failureSummaryMaxJobs,
     webhookSecretOverride,
   });

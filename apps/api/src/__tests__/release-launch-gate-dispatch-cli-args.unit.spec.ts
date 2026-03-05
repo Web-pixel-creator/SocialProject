@@ -64,6 +64,30 @@ describe('launch-gate dispatch helper cli argument validation', () => {
     );
   });
 
+  test('fails fast when smoke-timeout-retries value is missing', () => {
+    const result = runDispatchScript(['--smoke-timeout-retries']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Missing value for --smoke-timeout-retries',
+    );
+    expect(result.stderr).toContain(
+      'Usage: npm run release:launch:gate:dispatch',
+    );
+  });
+
+  test('fails fast when smoke-timeout-retry-delay-ms value is missing', () => {
+    const result = runDispatchScript(['--smoke-timeout-retry-delay-ms']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Missing value for --smoke-timeout-retry-delay-ms',
+    );
+    expect(result.stderr).toContain(
+      'Usage: npm run release:launch:gate:dispatch',
+    );
+  });
+
   test('fails fast on unknown argument', () => {
     const result = runDispatchScript(['--unknown-flag']);
 
@@ -125,6 +149,30 @@ describe('launch-gate dispatch helper cli argument validation', () => {
     expect(result.status).toBe(1);
     expect(result.stderr).toContain(
       'Missing value for --failure-summary-max-jobs=',
+    );
+    expect(result.stderr).toContain(
+      'Usage: npm run release:launch:gate:dispatch',
+    );
+  });
+
+  test('fails fast when inline smoke-timeout-retries value is empty', () => {
+    const result = runDispatchScript(['--smoke-timeout-retries=']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Missing value for --smoke-timeout-retries=',
+    );
+    expect(result.stderr).toContain(
+      'Usage: npm run release:launch:gate:dispatch',
+    );
+  });
+
+  test('fails fast when inline smoke-timeout-retry-delay-ms value is empty', () => {
+    const result = runDispatchScript(['--smoke-timeout-retry-delay-ms=']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Missing value for --smoke-timeout-retry-delay-ms=',
     );
     expect(result.stderr).toContain(
       'Usage: npm run release:launch:gate:dispatch',
@@ -231,12 +279,52 @@ describe('launch-gate dispatch helper cli argument validation', () => {
     );
   });
 
+  test('fails fast on invalid RELEASE_SMOKE_TIMEOUT_RETRIES env value', () => {
+    const result = runDispatchScript([], {
+      RELEASE_SMOKE_TIMEOUT_RETRIES: '1.5',
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Invalid value for RELEASE_SMOKE_TIMEOUT_RETRIES: 1.5',
+    );
+  });
+
+  test('fails fast on invalid RELEASE_SMOKE_TIMEOUT_RETRY_DELAY_MS env value', () => {
+    const result = runDispatchScript([], {
+      RELEASE_SMOKE_TIMEOUT_RETRY_DELAY_MS: '0',
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Invalid value for RELEASE_SMOKE_TIMEOUT_RETRY_DELAY_MS: 0',
+    );
+  });
+
   test('fails fast on invalid --failure-summary-max-jobs cli value', () => {
     const result = runDispatchScript(['--failure-summary-max-jobs', '0']);
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain(
       'Invalid value for --failure-summary-max-jobs: 0',
+    );
+  });
+
+  test('fails fast on invalid --smoke-timeout-retries cli value', () => {
+    const result = runDispatchScript(['--smoke-timeout-retries', '-1']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Invalid value for --smoke-timeout-retries: -1',
+    );
+  });
+
+  test('fails fast on invalid --smoke-timeout-retry-delay-ms cli value', () => {
+    const result = runDispatchScript(['--smoke-timeout-retry-delay-ms', '0']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Invalid value for --smoke-timeout-retry-delay-ms: 0',
     );
   });
 

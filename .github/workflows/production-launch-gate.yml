@@ -27,6 +27,16 @@ on:
         required: false
         default: false
         type: boolean
+      smoke_timeout_retries:
+        description: 'Optional timeout-only smoke retry count (0 disables retry).'
+        required: false
+        default: ''
+        type: string
+      smoke_timeout_retry_delay_ms:
+        description: 'Optional delay in milliseconds between timeout-only smoke retries.'
+        required: false
+        default: ''
+        type: string
       allow_failure_drill:
         description: 'Allow controlled negative drill inputs (for operator validation only).'
         required: false
@@ -90,6 +100,14 @@ jobs:
             echo "require_skill_markers=true requires runtime_draft_id input (draft with skill markers)."
             exit 1
           fi
+          if [[ -n "${{ inputs.smoke_timeout_retries }}" && ! "${{ inputs.smoke_timeout_retries }}" =~ ^[0-9]+$ ]]; then
+            echo "smoke_timeout_retries must be a non-negative integer when provided."
+            exit 1
+          fi
+          if [[ -n "${{ inputs.smoke_timeout_retry_delay_ms }}" && ! "${{ inputs.smoke_timeout_retry_delay_ms }}" =~ ^[1-9][0-9]*$ ]]; then
+            echo "smoke_timeout_retry_delay_ms must be a positive integer when provided."
+            exit 1
+          fi
           if [[ -n "${{ inputs.webhook_secret_override }}" && "${{ inputs.allow_failure_drill }}" != "true" ]]; then
             echo "webhook_secret_override requires allow_failure_drill=true."
             exit 1
@@ -113,6 +131,12 @@ jobs:
           fi
           if [[ -n "${{ inputs.required_external_channels }}" ]]; then
             args+=(--required-external-channels "${{ inputs.required_external_channels }}")
+          fi
+          if [[ -n "${{ inputs.smoke_timeout_retries }}" ]]; then
+            args+=(--smoke-timeout-retries "${{ inputs.smoke_timeout_retries }}")
+          fi
+          if [[ -n "${{ inputs.smoke_timeout_retry_delay_ms }}" ]]; then
+            args+=(--smoke-timeout-retry-delay-ms "${{ inputs.smoke_timeout_retry_delay_ms }}")
           fi
           if [[ -n "${{ inputs.runtime_draft_id }}" ]]; then
             args+=(--runtime-draft-id "${{ inputs.runtime_draft_id }}")
