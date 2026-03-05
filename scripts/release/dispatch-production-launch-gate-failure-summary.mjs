@@ -18,21 +18,6 @@ const pickFirstFailedStepName = (steps) => {
   return toNormalizedText(failedStep?.name, '');
 };
 
-const pickFirstFailedJobLogUrl = (jobs) => {
-  const normalizedJobs = Array.isArray(jobs) ? jobs : [];
-  for (const job of normalizedJobs) {
-    const conclusion = toNormalizedText(job?.conclusion, '').toLowerCase();
-    if (!FAILURE_CONCLUSIONS.has(conclusion)) {
-      continue;
-    }
-    const url = toNormalizedText(job?.html_url, '');
-    if (url) {
-      return url;
-    }
-  }
-  return '';
-};
-
 export const buildDispatchRunFailureSummary = (jobs) => {
   const normalizedJobs = Array.isArray(jobs) ? jobs : [];
   const failedJobs = normalizedJobs.filter((job) => {
@@ -47,14 +32,15 @@ export const buildDispatchRunFailureSummary = (jobs) => {
     const name = toNormalizedText(job?.name, 'unnamed-job');
     const conclusion = toNormalizedText(job?.conclusion, 'unknown').toLowerCase();
     const failedStepName = pickFirstFailedStepName(job?.steps);
+    const jobLogUrl = toNormalizedText(job?.html_url, '');
     if (failedStepName) {
-      return `${name} [${conclusion}] step: ${failedStepName}`;
+      return jobLogUrl
+        ? `${name} [${conclusion}] step: ${failedStepName} logs: ${jobLogUrl}`
+        : `${name} [${conclusion}] step: ${failedStepName}`;
     }
-    return `${name} [${conclusion}]`;
+    return jobLogUrl
+      ? `${name} [${conclusion}] logs: ${jobLogUrl}`
+      : `${name} [${conclusion}]`;
   });
-  const failureLogUrl = pickFirstFailedJobLogUrl(failedJobs);
-  const failureLogHint = failureLogUrl
-    ? ` First failed job logs: ${failureLogUrl}`
-    : '';
-  return `Failed jobs: ${details.join('; ')}${failureLogHint}`;
+  return `Failed jobs: ${details.join('; ')}`;
 };

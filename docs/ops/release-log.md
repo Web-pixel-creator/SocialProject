@@ -33,6 +33,33 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - render per-job log URL hints in dispatch failure summaries (phase 70)
+
+- Scope: improve multi-failure triage by attaching `logs: <job html_url>` to each failed job entry instead of only one global URL hint.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 12:33 -> 2026-03-05 12:38.
+- Changes:
+  - Updated `scripts/release/dispatch-production-launch-gate-failure-summary.mjs`:
+    - failure formatter now appends `logs: <url>` per failed job when `html_url` exists,
+    - blank/missing `html_url` values are skipped,
+    - retained failed-step summary rendering (`step: ...`) when available.
+  - Updated `apps/api/src/__tests__/release-launch-gate-dispatch-failure-summary.unit.spec.ts`:
+    - adjusted failed-step expectation to include per-job logs hint,
+    - updated blank-url behavior test to assert logs hint only on jobs with non-empty URL.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-dispatch-failure-summary.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-external-channels.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts apps/api/src/__tests__/release-production-config-resolvers.unit.spec.ts apps/api/src/__tests__/release-env-parse-utils.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T12:35:16.588Z`).
+  - live dispatch regression:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --print-artifact-links --artifact-link-names all`
+    - run `#85` (`22718249558`): success with expected summary and artifact-link output.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: cap rendered failed-job details to first N entries when unusually large workflows fail simultaneously.
+
 ### 2026-03-05 - append first failed job log URL hint to dispatch failure diagnostics (phase 69)
 
 - Scope: complete phase 68 follow-up by including an actionable failed-job log URL hint (`html_url`) in dispatch helper failure summaries.

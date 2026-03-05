@@ -84,7 +84,7 @@ describe('launch-gate dispatch failure summary formatter', () => {
 
     expect(result.output.status).toBe(0);
     expect(result.payload.result).toBe(
-      'Failed jobs: production launch gate [failure] step: Run strict gate; post-health-report [cancelled] First failed job logs: https://github.com/Web-pixel-creator/SocialProject/actions/runs/22717781874/job/123',
+      'Failed jobs: production launch gate [failure] step: Run strict gate logs: https://github.com/Web-pixel-creator/SocialProject/actions/runs/22717781874/job/123; post-health-report [cancelled]',
     );
   });
 
@@ -99,7 +99,7 @@ describe('launch-gate dispatch failure summary formatter', () => {
     expect(result.payload.result).toBe('Failed jobs: unnamed-job [timed_out]');
   });
 
-  test('skips empty failed-job log urls and picks first non-empty hint', () => {
+  test('skips empty failed-job log urls and renders per-job log hints', () => {
     const result = runBuildSummary([
       {
         conclusion: 'failure',
@@ -116,7 +116,7 @@ describe('launch-gate dispatch failure summary formatter', () => {
 
     expect(result.output.status).toBe(0);
     expect(result.payload.result).toBe(
-      'Failed jobs: compile [failure]; publish [cancelled] First failed job logs: https://github.com/Web-pixel-creator/SocialProject/actions/runs/22717781874/job/456',
+      'Failed jobs: compile [failure]; publish [cancelled] logs: https://github.com/Web-pixel-creator/SocialProject/actions/runs/22717781874/job/456',
     );
   });
 });
