@@ -1,4 +1,10 @@
 import { execFileSync } from 'node:child_process';
+import {
+  ALLOWED_ARTIFACT_LINK_NAMES,
+  LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME,
+  parseArtifactLinkNames,
+  resolveDispatchArtifactLinkOptions,
+} from './dispatch-production-launch-gate-link-options.mjs';
 
 const GITHUB_API_VERSION = '2022-11-28';
 const DEFAULT_WORKFLOW_FILE = 'production-launch-gate.yml';
@@ -8,17 +14,6 @@ const DEFAULT_WAIT_POLL_MS = 5000;
 const RUN_DISCOVERY_GRACE_MS = 2 * 60 * 1000;
 const ARTIFACT_DISCOVERY_ATTEMPTS = 6;
 const ARTIFACT_DISCOVERY_POLL_MS = 1000;
-const LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME =
-  'production-launch-gate-step-summary';
-const OPTIONAL_ARTIFACT_LINK_NAMES = [
-  'production-launch-gate-summary',
-  'post-release-health-inline-artifacts-schema-check',
-  'post-release-health-inline-artifacts-summary',
-];
-const ALLOWED_ARTIFACT_LINK_NAMES = [
-  LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME,
-  ...OPTIONAL_ARTIFACT_LINK_NAMES,
-];
 const EXTERNAL_CHANNELS = ['telegram', 'slack', 'discord'];
 const USAGE = `Usage: npm run release:launch:gate:dispatch -- [options]
 
@@ -110,29 +105,6 @@ const parseExternalChannels = (raw, sourceLabel) => {
     );
   }
   return [...new Set(normalized)].join(',');
-};
-
-const parseArtifactLinkNames = (raw, sourceLabel) => {
-  if (typeof raw !== 'string') return [];
-  const normalized = raw
-    .split(',')
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0);
-  if (normalized.length === 0) return [];
-  if (normalized.includes('all')) {
-    return [...OPTIONAL_ARTIFACT_LINK_NAMES];
-  }
-  const invalid = normalized.filter(
-    (entry) => !ALLOWED_ARTIFACT_LINK_NAMES.includes(entry),
-  );
-  if (invalid.length > 0) {
-    throw new Error(
-      `${sourceLabel} contains unsupported artifact names: ${invalid.join(', ')}. Allowed: ${ALLOWED_ARTIFACT_LINK_NAMES.join(', ')} or all.`,
-    );
-  }
-  return [...new Set(normalized)].filter(
-    (entry) => entry !== LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME,
-  );
 };
 
 const parseCliArgs = (argv) => {
@@ -624,30 +596,19 @@ const main = async () => {
     typeof cli.requireInlineHealthArtifacts === 'boolean'
       ? cli.requireInlineHealthArtifacts
       : parseBoolean(process.env.RELEASE_REQUIRE_INLINE_HEALTH_ARTIFACTS, false);
-  const envArtifactLinkNames = parseArtifactLinkNames(
-    process.env.RELEASE_ARTIFACT_LINK_NAMES ?? '',
-    'RELEASE_ARTIFACT_LINK_NAMES',
-  );
-  const artifactLinkNames =
-    cli.artifactLinkNames.length > 0 ? cli.artifactLinkNames : envArtifactLinkNames;
-  const explicitPrintArtifactLinks =
-    typeof cli.printArtifactLinks === 'boolean'
-      ? cli.printArtifactLinks
-      : parseBoolean(process.env.RELEASE_PRINT_ARTIFACT_LINKS, false);
-  const printArtifactLinks =
-    explicitPrintArtifactLinks ||
-    cli.artifactLinkNames.length > 0 ||
-    envArtifactLinkNames.length > 0;
-  const selectedArtifactLinkNames =
-    artifactLinkNames.length > 0
-      ? artifactLinkNames
-      : printArtifactLinks
-        ? OPTIONAL_ARTIFACT_LINK_NAMES
-        : [];
-  const includeStepSummaryLink =
-    typeof cli.noStepSummaryLink === 'boolean'
-      ? !cli.noStepSummaryLink
-      : !parseBoolean(process.env.RELEASE_NO_STEP_SUMMARY_LINK, false);
+  const {
+    includeStepSummaryLink,
+    printArtifactLinks,
+    selectedArtifactLinkNames,
+  } = resolveDispatchArtifactLinkOptions({
+    cliArtifactLinkNames: cli.artifactLinkNames,
+    cliNoStepSummaryLink: cli.noStepSummaryLink,
+    cliPrintArtifactLinks: cli.printArtifactLinks,
+    envArtifactLinkNamesRaw: process.env.RELEASE_ARTIFACT_LINK_NAMES ?? '',
+    envNoStepSummaryLinkRaw: process.env.RELEASE_NO_STEP_SUMMARY_LINK ?? '',
+    envPrintArtifactLinksRaw: process.env.RELEASE_PRINT_ARTIFACT_LINKS ?? '',
+    parseBoolean,
+  });
   const allowFailureDrill =
     typeof cli.allowFailureDrill === 'boolean'
       ? cli.allowFailureDrill

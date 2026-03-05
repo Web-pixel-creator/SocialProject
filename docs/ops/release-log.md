@@ -33,6 +33,43 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - unit-test harness for dispatch helper link-option combinations (phase 34)
+
+- Scope: harden helper behavior by extracting artifact-link option resolution into a dedicated module and covering key flag/env combinations with unit tests.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 10:45 -> 2026-03-05 10:49.
+- Changes:
+  - Added module:
+    - `scripts/release/dispatch-production-launch-gate-link-options.mjs`
+    - centralizes:
+      - `parseArtifactLinkNames`,
+      - `resolveDispatchArtifactLinkOptions`,
+      - artifact-link constants.
+  - Refactored `scripts/release/dispatch-production-launch-gate.mjs`:
+    - now imports and uses the shared link-options resolver (no behavior drift intended).
+  - Added unit coverage:
+    - `apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts`
+    - validates combinations:
+      - default behavior,
+      - `all` parsing,
+      - invalid names rejection,
+      - `--print-artifact-links` fallback set,
+      - explicit subset enabling verbose mode,
+      - env-driven subset + step-summary suppression.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts apps/api/src/__tests__/release-launch-gate-step-summary-render.unit.spec.ts apps/api/src/__tests__/release-launch-gate-inline-schema-annotation.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - live dispatch regression:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --artifact-link-names production-launch-gate-summary --no-step-summary-link`
+    - run `#69` (`22714264499`): success.
+    - helper stdout preserved expected output (`Include step summary link: false`, selected artifact link only).
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add lightweight fixture assertions for `parseCliArgs` (placeholder-token and missing-value errors) to lock CLI diagnostics.
+
 ### 2026-03-05 - optional suppression of default step-summary link in dispatch helper (phase 33)
 
 - Scope: support artifact-only helper output by suppressing default step-summary URL when operators need fully custom link selection.
