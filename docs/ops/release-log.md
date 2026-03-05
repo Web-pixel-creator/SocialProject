@@ -33,6 +33,32 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - rename production config resolver module and align references (phase 62)
+
+- Scope: improve naming clarity after resolver expansion (boolean + string) by moving from boolean-only module naming to neutral config-resolver naming.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 12:04 -> 2026-03-05 12:10.
+- Changes:
+  - Renamed module:
+    - `scripts/release/production-launch-gate-boolean-config.mjs`
+    - -> `scripts/release/production-launch-gate-config-resolvers.mjs`
+  - Renamed test suite:
+    - `apps/api/src/__tests__/release-production-boolean-config.unit.spec.ts`
+    - -> `apps/api/src/__tests__/release-production-config-resolvers.unit.spec.ts`
+  - Updated imports/references:
+    - `scripts/release/production-launch-gate.mjs`
+    - `apps/api/src/__tests__/release-production-config-resolvers.unit.spec.ts`
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-production-config-resolvers.unit.spec.ts apps/api/src/__tests__/release-env-parse-utils.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-external-channels.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T12:06:56.482Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: if desired, add a short architectural note in release runbook documenting shared resolver modules (`release-env-parse-utils`, production config resolvers) for future contributors.
+
 ### 2026-03-05 - reuse shared string candidate resolver for production sandbox profile configs (phase 61)
 
 - Scope: reduce duplicated candidate-scanning logic for production sandbox profile config source resolution.

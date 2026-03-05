@@ -8,7 +8,7 @@ const moduleHref = pathToFileURL(
     projectRoot,
     'scripts',
     'release',
-    'production-launch-gate-boolean-config.mjs',
+    'production-launch-gate-config-resolvers.mjs',
   ),
 ).href;
 

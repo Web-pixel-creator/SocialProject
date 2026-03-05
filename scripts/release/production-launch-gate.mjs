@@ -10,7 +10,7 @@ import { parseReleaseBooleanEnv } from './release-env-parse-utils.mjs';
 import {
   resolveProductionBooleanConfig,
   resolveProductionStringConfig,
-} from './production-launch-gate-boolean-config.mjs';
+} from './production-launch-gate-config-resolvers.mjs';
 
 const DEFAULTS = {
   apiService: process.env.RAILWAY_API_SERVICE || 'api',
