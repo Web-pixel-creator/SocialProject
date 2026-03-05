@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { toErrorMessage } from './release-runtime-utils.mjs';
 
 const USAGE = `Usage: node scripts/release/write-release-env-preflight-skipped-summary.mjs --output <summary.json>
 
@@ -33,9 +34,6 @@ const parseArgs = (argv) => {
 
   return options;
 };
-
-const toErrorMessage = (error) =>
-  error instanceof Error ? error.message : String(error);
 
 const main = () => {
   const options = parseArgs(process.argv.slice(2));

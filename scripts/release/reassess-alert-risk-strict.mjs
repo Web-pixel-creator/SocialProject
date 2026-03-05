@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { toErrorMessage } from './release-runtime-utils.mjs';
 
 const DEFAULT_REQUIRED_EXTERNAL_CHANNELS = 'all';
 const DEFAULT_OUTPUT_DIR = 'artifacts/release';
@@ -18,9 +19,6 @@ Options:
   --json                                  Print machine-readable JSON summary
   --help                                  Show this help
 `;
-
-const toErrorMessage = (error) =>
-  error instanceof Error ? error.message : String(error);
 
 const parseDateUtc = (value, label) => {
   const normalized = String(value ?? '').trim();

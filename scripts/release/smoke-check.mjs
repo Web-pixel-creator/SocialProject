@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
+import { toErrorMessage } from './release-runtime-utils.mjs';
 
 const DEFAULT_API_BASE_URL = 'http://127.0.0.1:4000';
 const DEFAULT_WEB_BASE_URL = 'http://127.0.0.1:3000';
@@ -75,9 +76,6 @@ const timedRequest = async ({ url, method, timeoutMs, headers, body }) => {
     clearTimeout(timeout);
   }
 };
-
-const toErrorMessage = (error) =>
-  error instanceof Error ? error.message : String(error);
 
 const isSensitiveField = (fieldName) => {
   const normalized = fieldName.toLowerCase();

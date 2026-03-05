@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { toErrorMessage } from './release-runtime-utils.mjs';
 
 const USAGE = `Usage: node scripts/release/render-release-smoke-step-summary.mjs --status <value> --mode <value> --api-url <value> --web-url <value> --csrf-configured <yes|no> --output <summary.md> [--smoke-results <path>] [--env-preflight <path>] [--title <text>]
 
@@ -91,9 +92,6 @@ const parseArgs = (argv) => {
 
   return options;
 };
-
-const toErrorMessage = (error) =>
-  error instanceof Error ? error.message : String(error);
 
 const readJsonIfPresent = (filePath) => {
   if (!filePath) {

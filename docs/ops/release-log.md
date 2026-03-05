@@ -33,6 +33,43 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - complete `toErrorMessage` helper migration across release scripts (phase 121)
+
+- Scope: finish error-message helper deduplication by migrating remaining release scripts to shared `toErrorMessage` from `release-runtime-utils`.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 18:15 -> 2026-03-05 18:18.
+- Changes:
+  - Migrated scripts to import `toErrorMessage` from `scripts/release/release-runtime-utils.mjs` and removed local definitions:
+    - `scripts/release/post-release-health-report.mjs`
+    - `scripts/release/reassess-alert-risk-strict.mjs`
+    - `scripts/release/render-post-release-health-step-summary.mjs`
+    - `scripts/release/render-production-launch-gate-step-summary.mjs`
+    - `scripts/release/render-release-smoke-preflight-schema-summary.mjs`
+    - `scripts/release/render-release-smoke-step-summary.mjs`
+    - `scripts/release/smoke-check.mjs`
+    - `scripts/release/write-release-env-preflight-skipped-summary.mjs`
+  - Result: local `const toErrorMessage = ...` definitions in `scripts/release/*` are now centralized in shared runtime utils.
+- Validation:
+  - `node --check scripts/release/post-release-health-report.mjs`: pass.
+  - `node --check scripts/release/reassess-alert-risk-strict.mjs`: pass.
+  - `node --check scripts/release/render-post-release-health-step-summary.mjs`: pass.
+  - `node --check scripts/release/render-production-launch-gate-step-summary.mjs`: pass.
+  - `node --check scripts/release/render-release-smoke-preflight-schema-summary.mjs`: pass.
+  - `node --check scripts/release/render-release-smoke-step-summary.mjs`: pass.
+  - `node --check scripts/release/smoke-check.mjs`: pass.
+  - `node --check scripts/release/write-release-env-preflight-skipped-summary.mjs`: pass.
+  - `npm run test -- apps/api/src/__tests__/release-runtime-utils.unit.spec.ts apps/api/src/__tests__/release-health-log-render.unit.spec.ts apps/api/src/__tests__/release-launch-gate-step-summary-render.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-smoke-timeout-retry-utils.unit.spec.ts`: pass.
+  - `npm run release:smoke:dispatch -- --help`: pass.
+  - `npm run release:launch:gate:dispatch -- --help`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T18:18:12.799Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - none.
+
 ### 2026-03-05 - complete sleep-helper migration across release scripts (phase 120)
 
 - Scope: finish `sleep` deduplication by migrating remaining release scripts to shared runtime helper and eliminating local timer wrappers.

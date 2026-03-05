@@ -20,6 +20,7 @@ import {
   resolveRepoSlug,
   resolveToken,
 } from './github-token-repo-resolution.mjs';
+import { toErrorMessage } from './release-runtime-utils.mjs';
 
 const GITHUB_API_VERSION = '2022-11-28';
 const DEFAULT_WORKFLOW_FILE = 'ci.yml';
@@ -102,9 +103,6 @@ Options:
   --skip-smoke-fetch Skip automatic local smoke-artifact fetch when missing.
   --help, -h         Show help.
 `;
-
-const toErrorMessage = (error) =>
-  error instanceof Error ? error.message : String(error);
 
 const parseReleaseNonNegativeIntegerEnv = (raw, fallback, sourceLabel) => {
   if (typeof raw !== 'string' || raw.trim().length === 0) return fallback;

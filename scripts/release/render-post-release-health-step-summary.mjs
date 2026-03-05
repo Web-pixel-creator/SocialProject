@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { toErrorMessage } from './release-runtime-utils.mjs';
 
 const USAGE = `Usage: node scripts/release/render-post-release-health-step-summary.mjs --run-id <id> --output <summary.md> [--health-summary <path>] [--schema-summary <path>] [--title <text>]
 
@@ -68,9 +69,6 @@ const parseArgs = (argv) => {
 
   return options;
 };
-
-const toErrorMessage = (error) =>
-  error instanceof Error ? error.message : String(error);
 
 const tryReadJson = (filePath) => {
   if (!existsSync(filePath)) {
