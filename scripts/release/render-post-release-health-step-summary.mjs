@@ -190,6 +190,32 @@ const main = () => {
         );
       }
     }
+    if (
+      payload?.launchGateSandboxChecks &&
+      typeof payload.launchGateSandboxChecks === 'object'
+    ) {
+      const sandbox = payload.launchGateSandboxChecks;
+      lines.push(
+        `- launch-gate sandbox checks: \`${sandbox?.pass === true ? 'pass' : 'fail'}\` (available \`${sandbox?.available === true ? 'yes' : 'no'}\`)`,
+        `- launch-gate sandbox checks missing: \`${Array.isArray(sandbox?.missingChecks) && sandbox.missingChecks.length > 0 ? sandbox.missingChecks.join(', ') : 'none'}\``,
+        `- launch-gate sandbox checks failed: \`${Array.isArray(sandbox?.failedChecks) && sandbox.failedChecks.length > 0 ? sandbox.failedChecks.join(', ') : 'none'}\``,
+      );
+      const modeConsistency =
+        sandbox?.checks &&
+        typeof sandbox.checks === 'object' &&
+        sandbox.checks.sandboxExecutionModeConsistency &&
+        typeof sandbox.checks.sandboxExecutionModeConsistency === 'object'
+          ? sandbox.checks.sandboxExecutionModeConsistency
+          : null;
+      if (modeConsistency) {
+        lines.push(
+          `- launch-gate sandbox mode consistency: \`${modeConsistency.pass === true ? 'pass' : 'fail'}\` expected=\`${String(modeConsistency.expectedMode ?? 'unknown')}\` expectedCount=\`${String(modeConsistency.expectedModeCount ?? 'n/a')}\` otherCount=\`${String(modeConsistency.otherModeCount ?? 'n/a')}\` total=\`${String(modeConsistency.total ?? 'n/a')}\``,
+        );
+      }
+      if (typeof sandbox?.fetchError === 'string' && sandbox.fetchError.length > 0) {
+        lines.push(`- launch-gate sandbox checks fetch error: \`${sandbox.fetchError}\``);
+      }
+    }
   } else if (healthSummary.status === 'missing') {
     lines.push('- health summary: `missing`');
   } else {

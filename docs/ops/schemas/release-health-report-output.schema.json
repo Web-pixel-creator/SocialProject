@@ -22,7 +22,7 @@
       "const": "docs/ops/schemas/release-health-report-output.schema.json"
     },
     "schemaVersion": {
-      "const": "1.6.0"
+      "const": "1.7.0"
     },
     "generatedAtUtc": {
       "type": "string",
@@ -73,6 +73,16 @@
         },
         {
           "$ref": "#/$defs/releaseHealthAlertTelemetry"
+        }
+      ]
+    },
+    "launchGateSandboxChecks": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/launchGateSandboxChecks"
         }
       ]
     }
@@ -972,6 +982,154 @@
             "type": "string",
             "minLength": 1
           }
+        }
+      }
+    },
+    "launchGateSandboxCheckState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "available",
+        "pass",
+        "skipped",
+        "expectedMode",
+        "expectedModeCount",
+        "otherModeCount",
+        "total"
+      ],
+      "properties": {
+        "available": {
+          "type": "boolean"
+        },
+        "pass": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "skipped": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "expectedMode": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "expectedModeCount": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "otherModeCount": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "total": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    },
+    "launchGateSandboxChecks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifactName",
+        "available",
+        "checkedAtUtc",
+        "checks",
+        "failedChecks",
+        "fetchError",
+        "missingChecks",
+        "pass",
+        "summaryPass",
+        "summaryStatus"
+      ],
+      "properties": {
+        "artifactName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "checkedAtUtc": {
+          "$ref": "#/$defs/nullableDateTime"
+        },
+        "checks": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sandboxExecutionMetrics",
+            "sandboxExecutionModeConsistency",
+            "sandboxExecutionAuditPolicy",
+            "sandboxExecutionEgressPolicy",
+            "sandboxExecutionLimitsPolicy"
+          ],
+          "properties": {
+            "sandboxExecutionMetrics": {
+              "$ref": "#/$defs/launchGateSandboxCheckState"
+            },
+            "sandboxExecutionModeConsistency": {
+              "$ref": "#/$defs/launchGateSandboxCheckState"
+            },
+            "sandboxExecutionAuditPolicy": {
+              "$ref": "#/$defs/launchGateSandboxCheckState"
+            },
+            "sandboxExecutionEgressPolicy": {
+              "$ref": "#/$defs/launchGateSandboxCheckState"
+            },
+            "sandboxExecutionLimitsPolicy": {
+              "$ref": "#/$defs/launchGateSandboxCheckState"
+            }
+          }
+        },
+        "failedChecks": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "fetchError": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "missingChecks": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "pass": {
+          "type": "boolean"
+        },
+        "summaryPass": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "summaryStatus": {
+          "type": [
+            "string",
+            "null"
+          ]
         }
       }
     },

@@ -33,6 +33,35 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - post-release health report sandbox-check highlights (phase 6)
+
+- Scope: expose sandbox execution launch-gate check visibility (`metrics`, `mode consistency`, `audit`, `egress`, `limits`) in post-release health outputs for faster operator triage.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 09:18 -> 2026-03-05 09:24.
+- Changes:
+  - Updated `scripts/release/post-release-health-report.mjs`:
+    - fetches and parses `production-launch-gate-summary` artifact for launch-gate profile,
+    - derives `launchGateSandboxChecks` summary block with compatibility handling for older artifacts.
+  - Updated machine-readable health summary mapping:
+    - `toJsonSummaryPayload` now includes `launchGateSandboxChecks`.
+  - Updated step summary renderer:
+    - `scripts/release/render-post-release-health-step-summary.mjs` now prints launch-gate sandbox check highlights (including mode-consistency counters when available).
+  - Updated release health schema contract/sample:
+    - `scripts/release/release-health-schema-contracts.mjs` version bump to `1.7.0`,
+    - `docs/ops/schemas/release-health-report-output.schema.json`,
+    - `docs/ops/schemas/samples/release-health-report-output.sample.json`.
+- Validation:
+  - `node --check scripts/release/post-release-health-report.mjs`: pass.
+  - `node --check scripts/release/render-post-release-health-step-summary.mjs`: pass.
+  - `npm run release:health:report:launch-gate:json`: pass.
+  - `npm run release:health:schema:check:json`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: after several fresh launch-gate runs, tighten compatibility branch once old summary artifacts age out.
+
 ### 2026-03-05 - launch-gate strict confirmation for sandbox mode-consistency (phase 5)
 
 - Scope: validate new `sandboxExecutionModeConsistency` check in real strict production launch-gate flow.

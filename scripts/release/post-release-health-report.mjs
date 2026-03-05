@@ -14,6 +14,8 @@ const DEFAULT_OUTPUT_DIR = 'artifacts/release';
 const EXTERNAL_CHANNEL_TRACE_ARTIFACT_NAME = 'production-external-channel-traces';
 const EXTERNAL_CHANNEL_TRACE_FILE_NAME =
   'production-agent-gateway-external-channel-traces.json';
+const LAUNCH_GATE_SUMMARY_ARTIFACT_NAME = 'production-launch-gate-summary';
+const LAUNCH_GATE_SUMMARY_FILE_NAME = 'production-launch-gate-summary.json';
 const EXTERNAL_CHANNEL_FAILURE_MODE_PASS_LABEL = 'pass_null';
 const DEFAULT_EXTERNAL_CHANNEL_TREND_WINDOW = 3;
 const DEFAULT_EXTERNAL_CHANNEL_TREND_MIN_RUNS = 1;
@@ -904,6 +906,305 @@ const fetchRunArtifacts = async ({ token, baseApiUrl, runId }) => {
 const findActiveArtifactByName = ({ artifacts, name }) =>
   artifacts.find((artifact) => artifact?.name === name && artifact?.expired === false);
 
+const extractArtifactJsonFile = async ({
+  token,
+  artifact,
+  fileName,
+  tempRoot,
+  runId,
+}) => {
+  const archiveBuffer = await githubRequest({
+    token,
+    method: 'GET',
+    url: artifact.archive_download_url,
+    expectBinary: true,
+  });
+  const runDir = path.join(
+    tempRoot,
+    `${String(runId)}-${String(Number(artifact.id) || 'artifact')}`,
+  );
+  const zipPath = path.join(runDir, `${String(artifact.id)}.zip`);
+  const extractDir = path.join(runDir, 'extract');
+  await mkdir(runDir, { recursive: true });
+  await writeFile(zipPath, archiveBuffer);
+  await extractArtifactArchive({
+    zipPath,
+    extractDir,
+  });
+
+  const payloadFilePath = await findFileRecursive({
+    directory: extractDir,
+    fileName,
+  });
+  if (!payloadFilePath) {
+    throw new Error(`JSON file '${fileName}' not found in artifact archive.`);
+  }
+  return JSON.parse(await readFile(payloadFilePath, 'utf8'));
+};
+
+const summarizeLaunchGateSandboxChecks = ({ launchGateSummary }) => {
+  const checks =
+    launchGateSummary?.checks && typeof launchGateSummary.checks === 'object'
+      ? launchGateSummary.checks
+      : launchGateSummary?.summary?.checks &&
+          typeof launchGateSummary.summary.checks === 'object'
+        ? launchGateSummary.summary.checks
+        : {};
+  const checkNames = [
+    'sandboxExecutionMetrics',
+    'sandboxExecutionModeConsistency',
+    'sandboxExecutionAuditPolicy',
+    'sandboxExecutionEgressPolicy',
+    'sandboxExecutionLimitsPolicy',
+  ];
+
+  const normalizedChecks = {};
+  for (const checkName of checkNames) {
+    const rawCheckValue =
+      checkName in checks
+        ? checks[checkName]
+        : checkName in launchGateSummary
+          ? launchGateSummary[checkName]
+          : null;
+    const rawCheck =
+      rawCheckValue && typeof rawCheckValue === 'object' ? rawCheckValue : null;
+    normalizedChecks[checkName] = {
+      available: rawCheckValue !== null,
+      pass:
+        typeof rawCheckValue === 'boolean'
+          ? rawCheckValue
+          : rawCheck && typeof rawCheck.pass === 'boolean'
+            ? rawCheck.pass
+            : null,
+      skipped:
+        rawCheck && typeof rawCheck.skipped === 'boolean' ? rawCheck.skipped : null,
+      expectedMode:
+        checkName === 'sandboxExecutionModeConsistency' &&
+        rawCheck &&
+        typeof rawCheck.expectedMode === 'string'
+          ? rawCheck.expectedMode
+          : null,
+      expectedModeCount:
+        checkName === 'sandboxExecutionModeConsistency' &&
+        rawCheck &&
+        typeof rawCheck.expectedModeCount === 'number'
+          ? rawCheck.expectedModeCount
+          : null,
+      otherModeCount:
+        checkName === 'sandboxExecutionModeConsistency' &&
+        rawCheck &&
+        typeof rawCheck.otherModeCount === 'number'
+          ? rawCheck.otherModeCount
+          : null,
+      total:
+        checkName === 'sandboxExecutionModeConsistency' &&
+        rawCheck &&
+        typeof rawCheck.total === 'number'
+          ? rawCheck.total
+          : null,
+    };
+  }
+
+  const missingChecks = checkNames.filter(
+    (checkName) => normalizedChecks[checkName].available !== true,
+  );
+  const failedChecks = checkNames.filter((checkName) => {
+    const check = normalizedChecks[checkName];
+    if (check.available !== true) {
+      return false;
+    }
+    return !(check.pass === true || check.skipped === true);
+  });
+  const availableChecks = checkNames.filter(
+    (checkName) => normalizedChecks[checkName].available === true,
+  );
+  const checksAvailable = availableChecks.length > 0;
+
+  return {
+    artifactName: LAUNCH_GATE_SUMMARY_ARTIFACT_NAME,
+    available: checksAvailable,
+    checkedAtUtc:
+      typeof launchGateSummary?.generatedAtUtc === 'string'
+        ? launchGateSummary.generatedAtUtc
+        : null,
+    checks: normalizedChecks,
+    failedChecks,
+    fetchError: null,
+    missingChecks,
+    pass:
+      checksAvailable === false ||
+      (missingChecks.length === 0 && failedChecks.length === 0),
+    summaryPass:
+      typeof launchGateSummary?.pass === 'boolean' ? launchGateSummary.pass : null,
+    summaryStatus:
+      typeof launchGateSummary?.status === 'string' ? launchGateSummary.status : null,
+  };
+};
+
+const analyzeLaunchGateSandboxChecks = async ({
+  token,
+  currentRun,
+  currentRunArtifacts,
+}) => {
+  const summaryArtifact = findActiveArtifactByName({
+    artifacts: currentRunArtifacts,
+    name: LAUNCH_GATE_SUMMARY_ARTIFACT_NAME,
+  });
+  if (!summaryArtifact) {
+    return {
+      artifactName: LAUNCH_GATE_SUMMARY_ARTIFACT_NAME,
+      available: false,
+      checkedAtUtc: null,
+      checks: {
+        sandboxExecutionMetrics: {
+          available: false,
+          pass: null,
+          skipped: null,
+          expectedMode: null,
+          expectedModeCount: null,
+          otherModeCount: null,
+          total: null,
+        },
+        sandboxExecutionModeConsistency: {
+          available: false,
+          pass: null,
+          skipped: null,
+          expectedMode: null,
+          expectedModeCount: null,
+          otherModeCount: null,
+          total: null,
+        },
+        sandboxExecutionAuditPolicy: {
+          available: false,
+          pass: null,
+          skipped: null,
+          expectedMode: null,
+          expectedModeCount: null,
+          otherModeCount: null,
+          total: null,
+        },
+        sandboxExecutionEgressPolicy: {
+          available: false,
+          pass: null,
+          skipped: null,
+          expectedMode: null,
+          expectedModeCount: null,
+          otherModeCount: null,
+          total: null,
+        },
+        sandboxExecutionLimitsPolicy: {
+          available: false,
+          pass: null,
+          skipped: null,
+          expectedMode: null,
+          expectedModeCount: null,
+          otherModeCount: null,
+          total: null,
+        },
+      },
+      failedChecks: [],
+      fetchError:
+        `missing ${LAUNCH_GATE_SUMMARY_ARTIFACT_NAME} for current run ${String(
+          currentRun.id,
+        )}`,
+      missingChecks: [
+        'sandboxExecutionMetrics',
+        'sandboxExecutionModeConsistency',
+        'sandboxExecutionAuditPolicy',
+        'sandboxExecutionEgressPolicy',
+        'sandboxExecutionLimitsPolicy',
+      ],
+      pass: true,
+      summaryPass: null,
+      summaryStatus: null,
+    };
+  }
+
+  let tempRoot = '';
+  try {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), 'release-health-launch-gate-'));
+    const payload = await extractArtifactJsonFile({
+      token,
+      artifact: summaryArtifact,
+      fileName: LAUNCH_GATE_SUMMARY_FILE_NAME,
+      tempRoot,
+      runId: currentRun.id,
+    });
+    return summarizeLaunchGateSandboxChecks({
+      launchGateSummary: payload,
+    });
+  } catch (error) {
+    return {
+      artifactName: LAUNCH_GATE_SUMMARY_ARTIFACT_NAME,
+      available: false,
+      checkedAtUtc: null,
+      checks: {
+        sandboxExecutionMetrics: {
+          available: false,
+          pass: null,
+          skipped: null,
+          expectedMode: null,
+          expectedModeCount: null,
+          otherModeCount: null,
+          total: null,
+        },
+        sandboxExecutionModeConsistency: {
+          available: false,
+          pass: null,
+          skipped: null,
+          expectedMode: null,
+          expectedModeCount: null,
+          otherModeCount: null,
+          total: null,
+        },
+        sandboxExecutionAuditPolicy: {
+          available: false,
+          pass: null,
+          skipped: null,
+          expectedMode: null,
+          expectedModeCount: null,
+          otherModeCount: null,
+          total: null,
+        },
+        sandboxExecutionEgressPolicy: {
+          available: false,
+          pass: null,
+          skipped: null,
+          expectedMode: null,
+          expectedModeCount: null,
+          otherModeCount: null,
+          total: null,
+        },
+        sandboxExecutionLimitsPolicy: {
+          available: false,
+          pass: null,
+          skipped: null,
+          expectedMode: null,
+          expectedModeCount: null,
+          otherModeCount: null,
+          total: null,
+        },
+      },
+      failedChecks: [],
+      fetchError: toErrorMessage(error),
+      missingChecks: [
+        'sandboxExecutionMetrics',
+        'sandboxExecutionModeConsistency',
+        'sandboxExecutionAuditPolicy',
+        'sandboxExecutionEgressPolicy',
+        'sandboxExecutionLimitsPolicy',
+      ],
+      pass: true,
+      summaryPass: null,
+      summaryStatus: null,
+    };
+  } finally {
+    if (tempRoot) {
+      await rm(tempRoot, { recursive: true, force: true });
+    }
+  }
+};
+
 const summarizeExternalChannelTracePayload = ({ tracePayload }) => {
   const checks = Array.isArray(tracePayload?.checks) ? tracePayload.checks : [];
   const failedChannels = Array.isArray(tracePayload?.failedChannels)
@@ -1543,6 +1844,45 @@ const toJsonSummaryPayload = ({ report, outputPath, strict }) => ({
             : [],
         }
       : null,
+  launchGateSandboxChecks:
+    report.launchGateSandboxChecks &&
+    typeof report.launchGateSandboxChecks === 'object'
+      ? {
+          available: report.launchGateSandboxChecks.available === true,
+          artifactName:
+            typeof report.launchGateSandboxChecks.artifactName === 'string'
+              ? report.launchGateSandboxChecks.artifactName
+              : LAUNCH_GATE_SUMMARY_ARTIFACT_NAME,
+          checkedAtUtc:
+            typeof report.launchGateSandboxChecks.checkedAtUtc === 'string'
+              ? report.launchGateSandboxChecks.checkedAtUtc
+              : null,
+          pass: report.launchGateSandboxChecks.pass === true,
+          summaryPass:
+            typeof report.launchGateSandboxChecks.summaryPass === 'boolean'
+              ? report.launchGateSandboxChecks.summaryPass
+              : null,
+          summaryStatus:
+            typeof report.launchGateSandboxChecks.summaryStatus === 'string'
+              ? report.launchGateSandboxChecks.summaryStatus
+              : null,
+          missingChecks: Array.isArray(report.launchGateSandboxChecks.missingChecks)
+            ? report.launchGateSandboxChecks.missingChecks
+            : [],
+          failedChecks: Array.isArray(report.launchGateSandboxChecks.failedChecks)
+            ? report.launchGateSandboxChecks.failedChecks
+            : [],
+          checks:
+            report.launchGateSandboxChecks.checks &&
+            typeof report.launchGateSandboxChecks.checks === 'object'
+              ? report.launchGateSandboxChecks.checks
+              : {},
+          fetchError:
+            typeof report.launchGateSandboxChecks.fetchError === 'string'
+              ? report.launchGateSandboxChecks.fetchError
+              : null,
+        }
+      : null,
   outputPath,
 });
 
@@ -1681,6 +2021,14 @@ const main = async () => {
           baseApiUrl,
           workflowFile,
           currentRunId: run.id,
+        })
+      : null;
+  const launchGateSandboxChecks =
+    workflowProfile.profileKey === 'launch_gate'
+      ? await analyzeLaunchGateSandboxChecks({
+          token,
+          currentRun: run,
+          currentRunArtifacts: artifacts,
         })
       : null;
   let smokeSummary = await readLocalSmokeSummary({
@@ -1833,6 +2181,7 @@ const main = async () => {
     smokeReport: smokeSummary,
     externalChannelFailureModes: externalChannelFailureModeTrend,
     releaseHealthAlertTelemetry,
+    launchGateSandboxChecks,
   };
 
   await mkdir(outputDir, { recursive: true });
@@ -1938,6 +2287,36 @@ const main = async () => {
       ) {
         process.stdout.write(
           `Release-health alert telemetry fetch error: ${report.releaseHealthAlertTelemetry.fetchError}\n`,
+        );
+      }
+    }
+    if (report.launchGateSandboxChecks) {
+      process.stdout.write(
+        `Launch-gate sandbox checks: available=${String(
+          report.launchGateSandboxChecks.available === true,
+        )} pass=${String(report.launchGateSandboxChecks.pass === true)} summaryStatus=${String(
+          report.launchGateSandboxChecks.summaryStatus ?? 'unknown',
+        )} summaryPass=${String(report.launchGateSandboxChecks.summaryPass)}\n`,
+      );
+      const modeConsistencyCheck =
+        report.launchGateSandboxChecks.checks?.sandboxExecutionModeConsistency;
+      if (modeConsistencyCheck && typeof modeConsistencyCheck === 'object') {
+        process.stdout.write(
+          `Launch-gate sandbox mode consistency: pass=${String(
+            modeConsistencyCheck.pass === true,
+          )} expectedMode=${String(modeConsistencyCheck.expectedMode ?? 'unknown')} expectedModeCount=${String(
+            modeConsistencyCheck.expectedModeCount ?? 'n/a',
+          )} otherModeCount=${String(modeConsistencyCheck.otherModeCount ?? 'n/a')} total=${String(
+            modeConsistencyCheck.total ?? 'n/a',
+          )}\n`,
+        );
+      }
+      if (
+        report.launchGateSandboxChecks.fetchError &&
+        typeof report.launchGateSandboxChecks.fetchError === 'string'
+      ) {
+        process.stdout.write(
+          `Launch-gate sandbox checks fetch error: ${report.launchGateSandboxChecks.fetchError}\n`,
         );
       }
     }
