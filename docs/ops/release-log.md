@@ -33,6 +33,30 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add unit coverage for shared GitHub repo/token resolver (phase 109)
+
+- Scope: lock in expected behavior of the new shared repo/token resolution helper with deterministic unit coverage for remote parsing and token-source priority.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 17:22 -> 2026-03-05 17:24.
+- Changes:
+  - Added test suite:
+    - `apps/api/src/__tests__/release-github-token-repo-resolution.unit.spec.ts`
+    - covers:
+      - `parseRepoSlugFromRemote` for GitHub `https` and `ssh` remotes,
+      - unsupported remote rejection path,
+      - `resolveRepoSlug` explicit-input precedence,
+      - `resolveToken` source priority (`GITHUB_TOKEN` over `GH_TOKEN`) and fallback.
+- Validation:
+  - `npm run test -- apps/api/src/__tests__/release-github-token-repo-resolution.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T17:22:08.563Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add integration-style tests for credential-store fallback by running with isolated git credential helper fixtures.
+
 ### 2026-03-05 - centralize GitHub repo/token resolution across release scripts (phase 108)
 
 - Scope: remove duplicated `remote.origin`/credential-store resolver logic across release scripts by introducing one shared module and migrating existing callers without behavior drift.
