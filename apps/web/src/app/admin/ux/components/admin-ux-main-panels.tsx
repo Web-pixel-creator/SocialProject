@@ -121,6 +121,7 @@ export const AdminUxMainPanels = ({
   debugDiagnosticsSectionProps,
   engagementHealthProps,
   engagementOverviewProps,
+  expandAllGroups = false,
   feedInteractionCountersProps,
   feedPreferenceKpisProps,
   gatewayPanelsProps,
@@ -141,6 +142,7 @@ export const AdminUxMainPanels = ({
     ComponentProps<typeof EngagementOverviewSection>,
     'isVisible'
   >;
+  expandAllGroups?: boolean;
   feedInteractionCountersProps: Omit<
     ComponentProps<typeof FeedInteractionCountersSection>,
     'isVisible'
@@ -186,6 +188,7 @@ export const AdminUxMainPanels = ({
     }
     return (
       <CollapsiblePanelGroup
+        defaultOpen={expandAllGroups}
         description={description}
         metaLabel={metaLabel}
         metaTone={metaTone}

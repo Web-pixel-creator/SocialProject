@@ -33,6 +33,28 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - admin UX expand/collapse all controls pass
+
+- Scope: speed up navigation in `/admin/ux?panel=all` by adding explicit Expand all / Collapse all controls and wiring section-open state through query params.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 03:57 -> 2026-03-05 04:05.
+- Changes:
+  - Updated query-state flow (`resolveAdminUxPageQueryState`) to parse `expand` and expose `expandAllGroups`.
+  - Propagated `expandAllGroups` through page context/load/content into main panel rendering.
+  - Added `allMetricsControls` view model (`expandHref`, `collapseHref`, `expanded`) in panel chrome view model.
+  - Added `Expand all` / `Collapse all` controls in `AdminUxPanelChrome` when `panel=all`.
+  - Applied `defaultOpen={expandAllGroups}` for collapsible groups in `AdminUxMainPanels`.
+  - Updated `admin-ux-page-entry.spec.ts` expectations to include `expandAllGroups`.
+- Validation:
+  - `npx ultracite check` on touched admin-ux files: pass.
+  - `npx jest --runInBand apps/web/src/app/admin/ux/components/admin-ux-page-entry.spec.ts`: pass.
+  - `npm run test:web -- --runInBand apps/web/src/__tests__/admin-ux-page.spec.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Incidents:
+  - one transient TypeScript regression (`expandAllGroups` required in `AdminUxMainPanels`) detected during build and fixed by making prop optional with default value.
+- Follow-ups:
+  - optional: add `expand=all` hidden fields to heavy in-panel forms so expanded state always persists after form submissions.
+
 ### 2026-03-05 - admin UX summary badge accessibility marker pass
 
 - Scope: improve collapsed-section accessibility by adding explicit text markers to summary risk badges (not color-only).

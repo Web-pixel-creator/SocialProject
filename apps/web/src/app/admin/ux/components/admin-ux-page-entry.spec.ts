@@ -30,6 +30,7 @@ describe('admin ux page entry', () => {
   it('creates page context from resolved search params', async () => {
     const queryState = {
       activePanel: 'runtime',
+      expandAllGroups: false,
       hours: 48,
     } as ReturnType<typeof resolveAdminUxPageQueryState>;
     const dataLoadResult = {
@@ -57,6 +58,7 @@ describe('admin ux page entry', () => {
     expect(context).toEqual({
       activePanel: 'runtime',
       dataLoadResult,
+      expandAllGroups: false,
       hours: 48,
     });
   });
@@ -64,6 +66,7 @@ describe('admin ux page entry', () => {
   it('passes undefined search params to query-state resolver', async () => {
     const queryState = {
       activePanel: 'all',
+      expandAllGroups: false,
       hours: 24,
     } as ReturnType<typeof resolveAdminUxPageQueryState>;
     const dataLoadResult = {
@@ -84,6 +87,7 @@ describe('admin ux page entry', () => {
   it('returns load-state element with context-derived props', async () => {
     const queryState = {
       activePanel: 'gateway',
+      expandAllGroups: false,
       hours: 12,
     } as ReturnType<typeof resolveAdminUxPageQueryState>;
     const dataLoadResult = {
@@ -101,6 +105,7 @@ describe('admin ux page entry', () => {
     expect((element as { props: unknown }).props).toEqual({
       activePanel: 'gateway',
       dataLoadResult,
+      expandAllGroups: false,
       hours: 12,
     });
   });

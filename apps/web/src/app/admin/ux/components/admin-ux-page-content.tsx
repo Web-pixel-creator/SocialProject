@@ -14,12 +14,14 @@ import type { AdminUxSectionData } from './admin-ux-section-prep';
 
 export const AdminUxPageContent = ({
   activePanel,
+  expandAllGroups,
   hours,
   kpis,
   mainPanelsProps,
   windowHours,
 }: {
   activePanel: AdminUxPanel;
+  expandAllGroups: boolean;
   hours: number;
   kpis: AdminUxSectionData['kpis'] | null | undefined;
   mainPanelsProps: BuiltMainPanelsProps;
@@ -27,6 +29,7 @@ export const AdminUxPageContent = ({
 }) => {
   const panelChromeView = buildAdminUxPanelChromeView({
     activePanel,
+    expandAllGroups,
     hours,
     kpis,
   });
@@ -42,10 +45,15 @@ export const AdminUxPageContent = ({
 
       <AdminUxPanelChrome
         activePanel={activePanel}
+        allMetricsControls={panelChromeView.allMetricsControls}
         panelTabs={panelChromeView.panelTabs}
         stickyKpis={panelChromeView.stickyKpis}
       />
-      <AdminUxMainPanels activePanel={activePanel} {...mainPanelsProps} />
+      <AdminUxMainPanels
+        activePanel={activePanel}
+        expandAllGroups={expandAllGroups}
+        {...mainPanelsProps}
+      />
     </AdminUxPageLayout>
   );
 };

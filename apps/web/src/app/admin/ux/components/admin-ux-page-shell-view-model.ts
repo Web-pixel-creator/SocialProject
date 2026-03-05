@@ -29,20 +29,38 @@ export const ADMIN_UX_PANEL_TABS: ReadonlyArray<{
 export const buildAdminUxPanelHref = (
   hours: number,
   panel: AdminUxPanel,
-): string => `/admin/ux?hours=${hours}&panel=${panel}`;
+  expandAllGroups = false,
+): string => {
+  const href = `/admin/ux?hours=${hours}&panel=${panel}`;
+  if (panel === 'all' && expandAllGroups) {
+    return `${href}&expand=all`;
+  }
+  return href;
+};
 
 export const buildAdminUxPanelChromeView = ({
   activePanel,
+  expandAllGroups,
   hours,
   kpis,
 }: {
   activePanel: AdminUxPanel;
+  expandAllGroups: boolean;
   hours: number;
   kpis: AdminUxSectionData['kpis'] | null | undefined;
 }) => ({
+  allMetricsControls:
+    activePanel === 'all'
+      ? {
+          collapseHref: buildAdminUxPanelHref(hours, 'all'),
+          expandHref: buildAdminUxPanelHref(hours, 'all', true),
+          expanded: expandAllGroups,
+        }
+      : null,
   panelTabs: buildPanelTabsView({
     activePanel,
-    buildPanelHref: (panel) => buildAdminUxPanelHref(hours, panel),
+    buildPanelHref: (panel) =>
+      buildAdminUxPanelHref(hours, panel, expandAllGroups),
     panelTabs: [...ADMIN_UX_PANEL_TABS],
   }),
   stickyKpis: buildStickyKpisView({

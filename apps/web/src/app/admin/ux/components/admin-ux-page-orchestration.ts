@@ -48,10 +48,18 @@ export const resolveAdminUxPageQueryState = (
     ? Math.min(Math.max(parsedHours, 1), 720)
     : 24;
   const activePanel = resolveAdminUxPanel(resolvedSearchParams?.panel);
+  const rawExpandValue = resolvedSearchParams?.expand;
+  const expandValue = Array.isArray(rawExpandValue)
+    ? rawExpandValue[0]
+    : rawExpandValue;
+  const expandAllGroups =
+    typeof expandValue === 'string' &&
+    ['1', 'all', 'expanded', 'true'].includes(expandValue.trim().toLowerCase());
 
   return {
     hours,
     activePanel,
+    expandAllGroups,
     ...resolveGatewayQueryState(resolvedSearchParams),
     ...resolveAiRuntimeQueryState(resolvedSearchParams),
   };

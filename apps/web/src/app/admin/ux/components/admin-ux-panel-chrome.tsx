@@ -13,12 +13,20 @@ interface StickyKpiView {
   value: string;
 }
 
+interface AllMetricsControlsView {
+  collapseHref: string;
+  expandHref: string;
+  expanded: boolean;
+}
+
 export const AdminUxPanelChrome = ({
   activePanel,
+  allMetricsControls,
   panelTabs,
   stickyKpis,
 }: {
   activePanel: string;
+  allMetricsControls: AllMetricsControlsView | null;
   panelTabs: PanelTabView[];
   stickyKpis: StickyKpiView[];
 }) => (
@@ -43,6 +51,36 @@ export const AdminUxPanelChrome = ({
         Focus view: <span className="text-foreground">{activePanel}</span>. Use
         tabs to reduce noise and scan one domain at a time.
       </p>
+      {allMetricsControls ? (
+        <div className="flex flex-wrap items-center gap-2 border-border/30 border-t pt-2">
+          <a
+            className={`inline-flex items-center rounded-full border px-3 py-1 font-semibold text-xs transition-colors ${
+              allMetricsControls.expanded
+                ? 'border-primary/70 bg-primary/15 text-primary'
+                : 'border-border/45 bg-background/40 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+            }`}
+            href={allMetricsControls.expandHref}
+          >
+            Expand all
+          </a>
+          <a
+            className={`inline-flex items-center rounded-full border px-3 py-1 font-semibold text-xs transition-colors ${
+              allMetricsControls.expanded
+                ? 'border-border/45 bg-background/40 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                : 'border-primary/70 bg-primary/15 text-primary'
+            }`}
+            href={allMetricsControls.collapseHref}
+          >
+            Collapse all
+          </a>
+          <span className="text-muted-foreground text-xs">
+            State:{' '}
+            <span className="font-semibold text-foreground">
+              {allMetricsControls.expanded ? 'expanded' : 'collapsed'}
+            </span>
+          </span>
+        </div>
+      ) : null}
     </section>
 
     {stickyKpis.length > 0 ? (

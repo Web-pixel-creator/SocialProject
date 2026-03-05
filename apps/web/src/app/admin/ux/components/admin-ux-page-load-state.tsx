@@ -6,10 +6,12 @@ import type { AdminUxPanel } from './admin-ux-page-utils';
 export const AdminUxPageLoadState = ({
   activePanel,
   dataLoadResult,
+  expandAllGroups,
   hours,
 }: {
   activePanel: AdminUxPanel;
   dataLoadResult: AdminUxPageDataLoadResult;
+  expandAllGroups: boolean;
   hours: number;
 }) => {
   if (dataLoadResult.error || dataLoadResult.mainPanelsProps === null) {
@@ -23,6 +25,7 @@ export const AdminUxPageLoadState = ({
   return (
     <AdminUxPageContent
       activePanel={activePanel}
+      expandAllGroups={expandAllGroups}
       hours={hours}
       kpis={dataLoadResult.kpis}
       mainPanelsProps={dataLoadResult.mainPanelsProps}
