@@ -33,6 +33,32 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - surface first-difference hint in CI parity troubleshooting summary (phase 82)
+
+- Scope: complete phase 81 follow-up by surfacing a compact first-difference hint directly in CI step summary when runbook snippet parity fails.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 13:31 -> 2026-03-05 13:39.
+- Changes:
+  - Updated `.github/workflows/ci.yml`:
+    - parity step now captures command output to `artifacts/release/runbook-snippet-parity.log` via `tee` with `pipefail`,
+    - troubleshooting summary step now:
+      - includes log path,
+      - extracts and prints first `First difference:` line from log when present.
+- Validation:
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run release:runbook:failure-snippet:check`: pass.
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-production-failure-runbook-check-script.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-failure-runbook-example.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T13:38:33.415Z`).
+  - live dispatch regression:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --print-artifact-links --artifact-link-names all`
+    - run `#96` (`22720524317`): success with expected summary and artifact-link output.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: upload `runbook-snippet-parity.log` as CI artifact on failure for one-click download from Actions UI.
+
 ### 2026-03-05 - add CI troubleshooting step-summary for runbook parity failures (phase 81)
 
 - Scope: improve in-browser CI triage by appending targeted troubleshooting guidance when the runbook snippet parity step fails.
