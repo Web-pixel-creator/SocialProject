@@ -170,6 +170,7 @@ describe('Admin API routes', () => {
     expect(response.body.windowHours).toBe(24);
     expect(response.body.filters).toMatchObject({
       operation: null,
+      mode: null,
       status: null,
       egressProfile: null,
       egressDecision: null,
@@ -226,7 +227,7 @@ describe('Admin API routes', () => {
     expect(limitsProfileBreakdown.count).toBe(1);
   });
 
-  test('sandbox execution metrics applies operation and status filters', async () => {
+  test('sandbox execution metrics applies operation/mode/status filters', async () => {
     await db.query(
       `INSERT INTO ux_events (event_type, user_type, status, timing_ms, source, metadata)
        VALUES
@@ -256,13 +257,14 @@ describe('Admin API routes', () => {
 
     const response = await request(app)
       .get(
-        '/api/admin/sandbox-execution/metrics?hours=24&operation=live_session_tool&status=failed&egressProfile=internal_webhook&egressDecision=deny&limitsProfile=global_default&limitsDecision=deny',
+        '/api/admin/sandbox-execution/metrics?hours=24&operation=live_session_tool&mode=fallback_only&status=failed&egressProfile=internal_webhook&egressDecision=deny&limitsProfile=global_default&limitsDecision=deny',
       )
       .set('x-admin-token', env.ADMIN_API_TOKEN);
 
     expect(response.status).toBe(200);
     expect(response.body.filters).toMatchObject({
       operation: 'live_session_tool',
+      mode: 'fallback_only',
       status: 'failed',
       egressProfile: 'internal_webhook',
       egressDecision: 'deny',
@@ -316,6 +318,12 @@ describe('Admin API routes', () => {
       .set('x-admin-token', env.ADMIN_API_TOKEN);
     expect(invalidLimitsDecision.status).toBe(400);
     expect(invalidLimitsDecision.body.error).toBe('ADMIN_INVALID_QUERY');
+
+    const invalidMode = await request(app)
+      .get('/api/admin/sandbox-execution/metrics?mode=legacy')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+    expect(invalidMode.status).toBe(400);
+    expect(invalidMode.body.error).toBe('ADMIN_INVALID_QUERY');
   });
 
   test('sandbox pilot run-code rejects unsupported language', async () => {

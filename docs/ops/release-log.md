@@ -33,6 +33,32 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - sandbox execution metrics mode-filter hardening (phase 2)
+
+- Scope: improve sandbox telemetry triage by adding explicit execution `mode` filtering (`fallback_only | sandbox_enabled`) to admin metrics API.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 08:26 -> 2026-03-05 08:35.
+- Changes:
+  - Extended `GET /api/admin/sandbox-execution/metrics` query contract in `apps/api/src/routes/admin.ts`:
+    - new query param: `mode`,
+    - strict validation for allowed values (`fallback_only` / `sandbox_enabled`),
+    - SQL filter wiring for `metadata.mode`,
+    - response `filters` payload now returns active `mode`.
+  - Extended integration test coverage in `apps/api/src/__tests__/admin.integration.spec.ts`:
+    - filter contract assertions now include `mode`,
+    - scoped filter scenario now exercises `mode=fallback_only`,
+    - invalid query checks now reject unsupported `mode` values.
+- Validation:
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npx jest --runInBand apps/api/src/__tests__/sandbox-execution.unit.spec.ts apps/api/src/__tests__/sandbox-execution-validation.unit.spec.ts apps/api/src/__tests__/sandbox-execution-egress-profile.unit.spec.ts apps/api/src/__tests__/sandbox-execution-limits-profile.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm --workspace apps/api run build`: pass.
+  - `npx jest --runInBand apps/api/src/__tests__/admin.integration.spec.ts --config jest.config.cjs`: blocked in current environment (`AggregateError` at DB bootstrap; local Postgres not available).
+- Incidents:
+  - integration-suite bootstrap requires local DB dependencies not present in current runtime.
+- Follow-ups:
+  - rerun `apps/api/src/__tests__/admin.integration.spec.ts` in DB-ready environment to fully close integration evidence for this phase step.
+
 ### 2026-03-05 - sandbox execution validation/error-code hardening (phase 1)
 
 - Scope: harden sandbox execution policy/input handling by centralizing validation/error-code semantics and redacting sensitive telemetry fields.

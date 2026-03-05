@@ -684,6 +684,32 @@ const parseOptionalSandboxExecutionStatusQuery = (
   );
 };
 
+const parseOptionalSandboxExecutionModeQuery = (
+  value: unknown,
+  {
+    fieldName,
+  }: {
+    fieldName: string;
+  },
+): 'fallback_only' | 'sandbox_enabled' | null => {
+  const parsed = parseOptionalBoundedQueryString(value, {
+    fieldName,
+    maxLength: 32,
+  });
+  if (!parsed) {
+    return null;
+  }
+  const normalized = parsed.toLowerCase();
+  if (normalized === 'fallback_only' || normalized === 'sandbox_enabled') {
+    return normalized;
+  }
+  throw new ServiceError(
+    'ADMIN_INVALID_QUERY',
+    `${fieldName} must be either "fallback_only" or "sandbox_enabled".`,
+    400,
+  );
+};
+
 const parseOptionalGatewaySessionStatusQuery = (
   value: unknown,
   {
@@ -4575,6 +4601,7 @@ router.get(
         allowed: [
           'hours',
           'operation',
+          'mode',
           'status',
           'limit',
           'egressProfile',
@@ -4596,6 +4623,9 @@ router.get(
           fieldName: 'operation',
         },
       );
+      const mode = parseOptionalSandboxExecutionModeQuery(query.mode, {
+        fieldName: 'mode',
+      });
       const status = parseOptionalSandboxExecutionStatusQuery(query.status, {
         fieldName: 'status',
       });
@@ -4645,6 +4675,12 @@ router.get(
         params.push(operation);
         filters.push(
           `LOWER(COALESCE(metadata->>'operation', '')) = $${params.length}`,
+        );
+      }
+      if (mode) {
+        params.push(mode);
+        filters.push(
+          `LOWER(COALESCE(metadata->>'mode', 'unknown')) = $${params.length}`,
         );
       }
       if (status) {
@@ -4791,6 +4827,7 @@ router.get(
         windowHours: hours,
         filters: {
           operation,
+          mode,
           status,
           egressProfile,
           egressDecision,
