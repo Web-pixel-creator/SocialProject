@@ -33,6 +33,43 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add capped non-json failure details for production launch gate (phase 73)
+
+- Scope: improve operator triage in non-JSON production launch-gate runs by printing failed-check diagnostics with bounded array verbosity.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 12:50 -> 2026-03-05 12:56.
+- Changes:
+  - Added module:
+    - `scripts/release/production-launch-gate-failure-output-format.mjs`
+    - exports `buildProductionLaunchGateFailureLines` with recursive array truncation (`+N more` marker).
+  - Updated `scripts/release/production-launch-gate.mjs`:
+    - added env-backed default `RELEASE_FAILURE_DETAIL_MAX_ITEMS` (strict positive integer parse),
+    - added CLI flag `--failure-detail-max-items <n>` (+ inline form),
+    - extended `--help` output with new flag,
+    - on non-JSON failures, now prints compact failed-check diagnostics using new formatter.
+  - Added/updated tests:
+    - `apps/api/src/__tests__/release-launch-gate-production-failure-output-format.unit.spec.ts`
+      - verifies failed-check rendering, recursive array truncation, error line output, and no-failure fallback.
+    - `apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts`
+      - adds missing/inline-empty/zero and invalid env coverage for new cap controls.
+    - `apps/api/src/__tests__/release-launch-gate-production-help-snapshot.unit.spec.ts`
+      - updated help snapshot/contains assertions for new flag.
+  - Updated operator docs:
+    - `docs/ops/release-runbook.md` and `docs/ops/release-checklist.md` with CLI/env usage for capped non-JSON failure details.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-production-failure-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-failure-summary.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-external-channels.unit.spec.ts apps/api/src/__tests__/release-production-config-resolvers.unit.spec.ts apps/api/src/__tests__/release-env-parse-utils.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T12:54:54.519Z`).
+  - live dispatch regression:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --print-artifact-links --artifact-link-names all`
+    - run `#89` (`22718908766`): success with expected summary and artifact-link output.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add a lightweight non-JSON golden test that simulates a failed summary payload and snapshots compact console diagnostics end-to-end from `production-launch-gate.mjs`.
+
 ### 2026-03-05 - add configurable cap for dispatch failed-job diagnostics (phase 72)
 
 - Scope: make dispatch failure-summary verbosity tunable for incident response by introducing strict CLI/env control over maximum rendered failed-job entries.

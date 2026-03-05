@@ -47,6 +47,7 @@ Use this map when a release helper fails fast on argument/env validation and you
 1. Run the consolidated production launch gate:
    - `npm run release:launch:gate:production`
    - Optional JSON output: `npm run release:launch:gate:production:json`
+   - Optional non-JSON failure detail cap: `npm run release:launch:gate:production -- --failure-detail-max-items 10` (or env `RELEASE_FAILURE_DETAIL_MAX_ITEMS=10`).
    - Optional CI workflow_dispatch alternative: `Production Launch Gate` (`.github/workflows/production-launch-gate.yml`)
    - CI run now uploads markdown audit artifact `production-launch-gate-step-summary` (`artifacts/release/production-launch-gate-step-summary.md`) in addition to JSON artifacts.
   - `npm run release:launch:gate:dispatch` now prints resolved UI link for artifact `production-launch-gate-step-summary` after successful run completion.

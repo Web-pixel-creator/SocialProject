@@ -202,6 +202,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
 - [ ] Run one-command production launch gate (strict):
   - [ ] `npm run release:launch:gate:production`
   - [ ] Optional machine-readable output: `npm run release:launch:gate:production:json`
+  - [ ] Optional compact non-JSON failure output cap: `npm run release:launch:gate:production -- --failure-detail-max-items <n>` (or `RELEASE_FAILURE_DETAIL_MAX_ITEMS=<n>`).
   - [ ] Optional strict skills-runtime variant (requires skill markers in runtime prompt):
     - [ ] `npm run release:launch:gate:production:skills`
     - [ ] JSON variant: `npm run release:launch:gate:production:skills:json`

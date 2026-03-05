@@ -14,11 +14,17 @@ import {
   resolveProductionBooleanConfig,
   resolveProductionStringConfig,
 } from './production-launch-gate-config-resolvers.mjs';
+import { buildProductionLaunchGateFailureLines } from './production-launch-gate-failure-output-format.mjs';
 
 const DEFAULTS = {
   apiService: process.env.RAILWAY_API_SERVICE || 'api',
   artifactsDir: 'artifacts/release',
   environment: process.env.RAILWAY_ENVIRONMENT_NAME || 'production',
+  failureDetailMaxItems: parseReleasePositiveIntegerEnv(
+    process.env.RELEASE_FAILURE_DETAIL_MAX_ITEMS,
+    10,
+    'RELEASE_FAILURE_DETAIL_MAX_ITEMS',
+  ),
   gateIntervalMs: 15_000,
   gateWaitMs: 300_000,
   httpTimeoutMs: 10_000,
@@ -589,6 +595,7 @@ const parseArgs = (argv) => {
     apiBaseUrl: '',
     apiService: DEFAULTS.apiService,
     environment: DEFAULTS.environment,
+    failureDetailMaxItems: DEFAULTS.failureDetailMaxItems,
     gateIntervalMs: DEFAULTS.gateIntervalMs,
     gateWaitMs: DEFAULTS.gateWaitMs,
     help: false,
@@ -681,6 +688,11 @@ const parseArgs = (argv) => {
       );
     else if (a.startsWith('--http-timeout-ms='))
       o.httpTimeoutMs = parseInlinePositiveIntegerValue(a, '--http-timeout-ms');
+    else if (a.startsWith('--failure-detail-max-items='))
+      o.failureDetailMaxItems = parseInlinePositiveIntegerValue(
+        a,
+        '--failure-detail-max-items',
+      );
     else if (a === '--require-skill-markers') o.requireSkillMarkers = true;
     else if (a === '--require-natural-cron-window')
       o.requireNaturalCronWindow = true;
@@ -712,6 +724,11 @@ const parseArgs = (argv) => {
         '--http-timeout-ms',
         argv[++i],
       );
+    else if (a === '--failure-detail-max-items')
+      o.failureDetailMaxItems = parsePositiveIntegerValue(
+        '--failure-detail-max-items',
+        argv[++i],
+      );
     else throw new Error(`Unknown argument: ${a}`);
   }
   return o;
@@ -728,6 +745,7 @@ const printHelp = () => {
       '  --web-base-url <url> --api-base-url <url>',
       '  --runtime-draft-id <uuid> --runtime-channel <name>',
       '  --skip-railway-gate --skip-smoke --skip-runtime-probes --skip-ingest-probe',
+      '  --failure-detail-max-items <n>',
       '  --required-external-channels <telegram,slack,discord|all>',
       '  --require-skill-markers',
       '  --require-natural-cron-window',
@@ -2118,7 +2136,19 @@ const main = async () => {
 
   await writeJson(path.resolve(ARTIFACTS.summary), summary);
   if (o.json) process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
-  else process.stdout.write(`Production launch gate: ${summary.status.toUpperCase()}\n`);
+  else {
+    process.stdout.write(`Production launch gate: ${summary.status.toUpperCase()}\n`);
+    if (!summary.pass) {
+      const failureLines = buildProductionLaunchGateFailureLines({
+        checks: summary.checks,
+        error: summary.error,
+        maxArrayItems: o.failureDetailMaxItems,
+      });
+      for (const line of failureLines) {
+        process.stdout.write(`${line}\n`);
+      }
+    }
+  }
   if (!summary.pass) process.exit(1);
 };
 

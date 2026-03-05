@@ -78,12 +78,30 @@ describe('production launch-gate cli argument validation', () => {
     );
   });
 
+  test('fails fast when failure-detail-max-items value is missing', () => {
+    const result = runProductionLaunchGate(['--failure-detail-max-items']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Missing value for --failure-detail-max-items',
+    );
+  });
+
   test('fails fast when inline required-external-channels value is empty', () => {
     const result = runProductionLaunchGate(['--required-external-channels=']);
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain(
       'Missing value for --required-external-channels=',
+    );
+  });
+
+  test('fails fast when inline failure-detail-max-items value is empty', () => {
+    const result = runProductionLaunchGate(['--failure-detail-max-items=']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Missing value for --failure-detail-max-items=',
     );
   });
 
@@ -144,6 +162,15 @@ describe('production launch-gate cli argument validation', () => {
     );
   });
 
+  test('fails fast when --failure-detail-max-items is zero', () => {
+    const result = runProductionLaunchGate(['--failure-detail-max-items', '0']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Invalid value for --failure-detail-max-items: 0',
+    );
+  });
+
   test('fails fast on unsupported RELEASE_REQUIRED_EXTERNAL_CHANNELS env value', () => {
     const result = runProductionLaunchGate([], {
       RELEASE_REQUIRED_EXTERNAL_CHANNELS: 'telegram,teams',
@@ -162,6 +189,17 @@ describe('production launch-gate cli argument validation', () => {
     expect(result.status).toBe(1);
     expect(result.stderr).toContain(
       'Invalid value for RELEASE_REQUIRE_NATURAL_CRON_WINDOW: maybe',
+    );
+  });
+
+  test('fails fast on invalid RELEASE_FAILURE_DETAIL_MAX_ITEMS env value', () => {
+    const result = runProductionLaunchGate([], {
+      RELEASE_FAILURE_DETAIL_MAX_ITEMS: 'abc',
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Invalid value for RELEASE_FAILURE_DETAIL_MAX_ITEMS: abc',
     );
   });
 });
