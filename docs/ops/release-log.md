@@ -33,6 +33,28 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - extend resolver tests with git-origin fallback integration path (phase 110)
+
+- Scope: complete shared resolver hardening by adding integration coverage for `resolveRepoSlug` fallback behavior when explicit/env repository input is absent.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 17:25 -> 2026-03-05 17:27.
+- Changes:
+  - Updated `apps/api/src/__tests__/release-github-token-repo-resolution.unit.spec.ts`:
+    - added integration-style scenario that:
+      - creates an isolated temporary git repository,
+      - sets `remote.origin.url` to a GitHub SSH URL,
+      - verifies `resolveRepoSlug({ githubRepository: ' ' })` falls back to git remote and returns expected `owner/repo`.
+- Validation:
+  - `npm run test -- apps/api/src/__tests__/release-github-token-repo-resolution.unit.spec.ts`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T17:26:48.903Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add non-GitHub remote fixture assertion for fallback failure message stability if CLI UX wording changes.
+
 ### 2026-03-05 - add unit coverage for shared GitHub repo/token resolver (phase 109)
 
 - Scope: lock in expected behavior of the new shared repo/token resolution helper with deterministic unit coverage for remote parsing, token-source priority, and credential-store edge handling.

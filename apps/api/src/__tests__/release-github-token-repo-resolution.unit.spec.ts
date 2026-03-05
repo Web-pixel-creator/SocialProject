@@ -41,7 +41,13 @@ const runResolverScenario = (scriptBody: string) =>
 
 const runResolverScenarioWithEnv = (
   scriptBody: string,
-  env: NodeJS.ProcessEnv,
+  {
+    cwd = projectRoot,
+    env = {},
+  }: {
+    cwd?: string;
+    env?: NodeJS.ProcessEnv;
+  },
 ) => {
   const script = `
     import {
@@ -68,7 +74,7 @@ const runResolverScenarioWithEnv = (
     process.execPath,
     ['--input-type=module', '-e', script],
     {
-      cwd: projectRoot,
+      cwd,
       encoding: 'utf8',
       env: {
         ...process.env,
@@ -190,7 +196,7 @@ describe('release github token/repo resolution helper', () => {
           const value = readTokenFromGitCredentialStore();
           emit({ ok: true, result: value, error: '' });
         `,
-        fixture.env,
+        { env: fixture.env },
       );
 
       expect(result.output.status).toBe(0);
@@ -214,7 +220,7 @@ describe('release github token/repo resolution helper', () => {
           const value = readTokenFromGitCredentialStore({ allowMissing: true });
           emit({ ok: true, result: value, error: '' });
         `,
-        fixture.env,
+        { env: fixture.env },
       );
 
       expect(result.output.status).toBe(0);
@@ -238,7 +244,7 @@ describe('release github token/repo resolution helper', () => {
           const value = readTokenFromGitCredentialStore();
           emit({ ok: true, result: value, error: '' });
         `,
-        fixture.env,
+        { env: fixture.env },
       );
 
       expect(result.output.status).toBe(1);
@@ -248,6 +254,49 @@ describe('release github token/repo resolution helper', () => {
       );
     } finally {
       rmSync(fixture.tempDir, {
+        force: true,
+        recursive: true,
+      });
+    }
+  });
+
+  test('resolveRepoSlug falls back to git origin remote when explicit input is empty', () => {
+    const tempDir = mkdtempSync(path.join(os.tmpdir(), 'release-git-repo-'));
+    try {
+      const initOutput = spawnSync('git', ['init'], {
+        cwd: tempDir,
+        encoding: 'utf8',
+      });
+      expect(initOutput.status).toBe(0);
+
+      const addRemoteOutput = spawnSync(
+        'git',
+        ['remote', 'add', 'origin', 'git@github.com:acme/fallback-repo.git'],
+        {
+          cwd: tempDir,
+          encoding: 'utf8',
+        },
+      );
+      expect(addRemoteOutput.status).toBe(0);
+
+      const result = runResolverScenarioWithEnv(
+        `
+          const value = resolveRepoSlug({ githubRepository: ' ' });
+          emit({ ok: true, result: value, error: '' });
+        `,
+        {
+          cwd: tempDir,
+          env: {
+            GITHUB_REPOSITORY: '',
+          },
+        },
+      );
+
+      expect(result.output.status).toBe(0);
+      expect(result.payload.ok).toBe(true);
+      expect(result.payload.result).toBe('acme/fallback-repo');
+    } finally {
+      rmSync(tempDir, {
         force: true,
         recursive: true,
       });
