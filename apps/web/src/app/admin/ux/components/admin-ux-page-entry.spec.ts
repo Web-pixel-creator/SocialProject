@@ -30,6 +30,7 @@ describe('admin ux page entry', () => {
   it('creates page context from resolved search params', async () => {
     const queryState = {
       activePanel: 'runtime',
+      allMetricsRiskFilter: 'all',
       allMetricsView: 'overview',
       expandAllGroups: false,
       hours: 48,
@@ -58,6 +59,7 @@ describe('admin ux page entry', () => {
     expect(mockLoadAdminUxPageData).toHaveBeenCalledWith(queryState);
     expect(context).toEqual({
       activePanel: 'runtime',
+      allMetricsRiskFilter: 'all',
       allMetricsView: 'overview',
       dataLoadResult,
       expandAllGroups: false,
@@ -68,6 +70,7 @@ describe('admin ux page entry', () => {
   it('passes undefined search params to query-state resolver', async () => {
     const queryState = {
       activePanel: 'all',
+      allMetricsRiskFilter: 'high',
       allMetricsView: 'quality',
       expandAllGroups: false,
       hours: 24,
@@ -90,6 +93,7 @@ describe('admin ux page entry', () => {
   it('returns load-state element with context-derived props', async () => {
     const queryState = {
       activePanel: 'gateway',
+      allMetricsRiskFilter: 'all',
       allMetricsView: 'overview',
       expandAllGroups: false,
       hours: 12,
@@ -108,6 +112,7 @@ describe('admin ux page entry', () => {
 
     expect((element as { props: unknown }).props).toEqual({
       activePanel: 'gateway',
+      allMetricsRiskFilter: 'all',
       allMetricsView: 'overview',
       dataLoadResult,
       expandAllGroups: false,

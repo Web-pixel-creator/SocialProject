@@ -23,9 +23,17 @@ export const ADMIN_UX_ALL_METRICS_VIEWS = [
 
 export type AdminUxAllMetricsView = (typeof ADMIN_UX_ALL_METRICS_VIEWS)[number];
 
+export const ADMIN_UX_ALL_METRICS_RISK_FILTERS = ['all', 'high'] as const;
+
+export type AdminUxAllMetricsRiskFilter =
+  (typeof ADMIN_UX_ALL_METRICS_RISK_FILTERS)[number];
+
 const ADMIN_UX_PANEL_VALUES = new Set<string>(ADMIN_UX_PANELS);
 const ADMIN_UX_ALL_METRICS_VIEW_VALUES = new Set<string>(
   ADMIN_UX_ALL_METRICS_VIEWS,
+);
+const ADMIN_UX_ALL_METRICS_RISK_FILTER_VALUES = new Set<string>(
+  ADMIN_UX_ALL_METRICS_RISK_FILTERS,
 );
 const PREDICTION_OUTCOME_LABEL_SEGMENT_PATTERN = /[_\s-]+/;
 
@@ -51,6 +59,19 @@ export const resolveAdminUxAllMetricsView = (
     return 'overview';
   }
   return normalized as AdminUxAllMetricsView;
+};
+
+export const resolveAdminUxAllMetricsRiskFilter = (
+  value: unknown,
+): AdminUxAllMetricsRiskFilter => {
+  if (typeof value !== 'string') {
+    return 'all';
+  }
+  const normalized = value.trim().toLowerCase();
+  if (!ADMIN_UX_ALL_METRICS_RISK_FILTER_VALUES.has(normalized)) {
+    return 'all';
+  }
+  return normalized as AdminUxAllMetricsRiskFilter;
 };
 
 export const formatPredictionOutcomeMetricLabel = (value: string): string => {

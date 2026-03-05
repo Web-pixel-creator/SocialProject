@@ -21,6 +21,7 @@ import {
 } from './admin-ux-mappers';
 import type { AdminUxResolvedSearchParams } from './admin-ux-page-contract';
 import {
+  resolveAdminUxAllMetricsRiskFilter,
   resolveAdminUxAllMetricsView,
   resolveAdminUxPanel,
 } from './admin-ux-page-utils';
@@ -54,6 +55,9 @@ export const resolveAdminUxPageQueryState = (
   const allMetricsView = resolveAdminUxAllMetricsView(
     resolvedSearchParams?.allView,
   );
+  const allMetricsRiskFilter = resolveAdminUxAllMetricsRiskFilter(
+    resolvedSearchParams?.risk,
+  );
   const rawExpandValue = resolvedSearchParams?.expand;
   const expandValue = Array.isArray(rawExpandValue)
     ? rawExpandValue[0]
@@ -64,6 +68,7 @@ export const resolveAdminUxPageQueryState = (
 
   return {
     activePanel,
+    allMetricsRiskFilter,
     allMetricsView,
     expandAllGroups,
     hours,
@@ -100,6 +105,7 @@ export const loadAdminUxPageData = async ({
   aiRole,
   aiSimulateFailures,
   aiTimeoutMs,
+  allMetricsRiskFilter,
   allMetricsView,
   closeRequested,
   compactRequested,
@@ -227,6 +233,7 @@ export const loadAdminUxPageData = async ({
 
   const mainPanelsProps = buildAdminUxMainPanelsProps({
     activePanel,
+    allMetricsRiskFilter,
     allMetricsView,
     aiFailuresCsv,
     aiPrompt,

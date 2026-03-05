@@ -6,12 +6,14 @@ import {
   resolveAdminUxPageQueryState,
 } from './admin-ux-page-orchestration';
 import type {
+  AdminUxAllMetricsRiskFilter,
   AdminUxAllMetricsView,
   AdminUxPanel,
 } from './admin-ux-page-utils';
 
 export interface AdminUxPageContext {
   activePanel: AdminUxPanel;
+  allMetricsRiskFilter: AdminUxAllMetricsRiskFilter;
   allMetricsView: AdminUxAllMetricsView;
   dataLoadResult: AdminUxPageDataLoadResult;
   expandAllGroups: boolean;
@@ -23,11 +25,18 @@ export const createAdminUxPageContext = async (
 ): Promise<AdminUxPageContext> => {
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const queryState = resolveAdminUxPageQueryState(resolvedSearchParams);
-  const { activePanel, allMetricsView, expandAllGroups, hours } = queryState;
+  const {
+    activePanel,
+    allMetricsRiskFilter,
+    allMetricsView,
+    expandAllGroups,
+    hours,
+  } = queryState;
   const dataLoadResult = await loadAdminUxPageData(queryState);
 
   return {
     activePanel,
+    allMetricsRiskFilter,
     allMetricsView,
     dataLoadResult,
     expandAllGroups,
@@ -40,6 +49,7 @@ export const renderAdminUxObserverEngagementPage = async (
 ) => {
   const {
     activePanel,
+    allMetricsRiskFilter,
     allMetricsView,
     dataLoadResult,
     expandAllGroups,
@@ -49,6 +59,7 @@ export const renderAdminUxObserverEngagementPage = async (
   return (
     <AdminUxPageLoadState
       activePanel={activePanel}
+      allMetricsRiskFilter={allMetricsRiskFilter}
       allMetricsView={allMetricsView}
       dataLoadResult={dataLoadResult}
       expandAllGroups={expandAllGroups}

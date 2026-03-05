@@ -79,6 +79,7 @@ export const RuntimeSectionBody = ({
   aiRuntimeRoleStates,
   aiRuntimeSummary,
   aiTimeoutMs,
+  allMetricsRiskFilter = 'all',
   allMetricsView = 'overview',
   expandAllGroups = false,
   hours,
@@ -99,6 +100,7 @@ export const RuntimeSectionBody = ({
   aiRuntimeRoleStates: RuntimeRoleProfile[];
   aiRuntimeSummary: RuntimeSummary;
   aiTimeoutMs: number | undefined;
+  allMetricsRiskFilter?: string;
   allMetricsView?: string;
   expandAllGroups?: boolean;
   hours: number;
@@ -313,6 +315,9 @@ export const RuntimeSectionBody = ({
         <form className="mt-3 grid gap-2" method="get">
           <input name="hours" type="hidden" value={`${hours}`} />
           <input name="panel" type="hidden" value={panel} />
+          {panel === 'all' && allMetricsRiskFilter !== 'all' ? (
+            <input name="risk" type="hidden" value={allMetricsRiskFilter} />
+          ) : null}
           {panel === 'all' && allMetricsView !== 'overview' ? (
             <input name="allView" type="hidden" value={allMetricsView} />
           ) : null}

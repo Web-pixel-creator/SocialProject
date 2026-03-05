@@ -26,15 +26,24 @@ interface AllMetricsViewTab {
   label: string;
 }
 
+interface AllMetricsRiskFilterTab {
+  active: boolean;
+  href: string;
+  id: string;
+  label: string;
+}
+
 export const AdminUxPanelChrome = ({
   activePanel,
   allMetricsControls,
+  allMetricsRiskFilterTabs,
   allMetricsViewTabs,
   panelTabs,
   stickyKpis,
 }: {
   activePanel: string;
   allMetricsControls: AllMetricsControlsView | null;
+  allMetricsRiskFilterTabs: AllMetricsRiskFilterTab[] | null;
   allMetricsViewTabs: AllMetricsViewTab[] | null;
   panelTabs: PanelTabView[];
   stickyKpis: StickyKpiView[];
@@ -60,6 +69,28 @@ export const AdminUxPanelChrome = ({
         Focus view: <span className="text-foreground">{activePanel}</span>. Use
         tabs to reduce noise and scan one domain at a time.
       </p>
+      {allMetricsRiskFilterTabs ? (
+        <div className="grid gap-2 border-border/30 border-t pt-2">
+          <p className="text-muted-foreground text-xs uppercase tracking-wide">
+            Severity filter
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {allMetricsRiskFilterTabs.map((tab) => (
+              <a
+                className={`inline-flex items-center rounded-full border px-3 py-1 font-semibold text-xs transition-colors ${
+                  tab.active
+                    ? 'border-primary/70 bg-primary/15 text-primary'
+                    : 'border-border/45 bg-background/40 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                }`}
+                href={tab.href}
+                key={tab.id}
+              >
+                {tab.label}
+              </a>
+            ))}
+          </div>
+        </div>
+      ) : null}
       {allMetricsViewTabs ? (
         <div className="grid gap-2 border-border/30 border-t pt-2">
           <p className="text-muted-foreground text-xs uppercase tracking-wide">

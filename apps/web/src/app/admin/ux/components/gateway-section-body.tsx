@@ -64,6 +64,7 @@ const StatCard = ({
 
 export const GatewaySectionBody = ({
   activePanel,
+  allMetricsRiskFilter = 'all',
   allMetricsView = 'overview',
   appliedGatewaySessionChannelFilter,
   appliedGatewaySessionProviderFilter,
@@ -91,6 +92,7 @@ export const GatewaySectionBody = ({
   topGatewayProvider,
 }: {
   activePanel: string;
+  allMetricsRiskFilter?: string;
   allMetricsView?: string;
   appliedGatewaySessionChannelFilter: string | null;
   appliedGatewaySessionProviderFilter: string | null;
@@ -233,6 +235,9 @@ export const GatewaySectionBody = ({
           <form className="flex flex-wrap items-center gap-2" method="get">
             <input name="hours" type="hidden" value={`${hours}`} />
             <input name="panel" type="hidden" value={activePanel} />
+            {activePanel === 'all' && allMetricsRiskFilter !== 'all' ? (
+              <input name="risk" type="hidden" value={allMetricsRiskFilter} />
+            ) : null}
             {activePanel === 'all' && allMetricsView !== 'overview' ? (
               <input name="allView" type="hidden" value={allMetricsView} />
             ) : null}

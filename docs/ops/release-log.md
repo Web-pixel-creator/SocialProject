@@ -33,6 +33,44 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - admin UX all-metrics risk-only filter pass
+
+- Scope: add a focused risk filter in `panel=all` so operators can switch between all severities and high-risk-only sections (`critical/watch`) without leaving all-metrics mode.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 05:29 -> 2026-03-05 05:34.
+- Changes:
+  - Added new URL state `risk` (`all` | `high`) and resolver:
+    - `admin-ux-page-utils.ts`
+    - `admin-ux-page-orchestration.ts`
+  - Propagated `allMetricsRiskFilter` through page context and rendering:
+    - `admin-ux-page-entry.tsx`
+    - `admin-ux-page-load-state.tsx`
+    - `admin-ux-page-content.tsx`
+    - `admin-ux-main-panels.tsx`
+  - Extended panel chrome controls:
+    - `admin-ux-page-shell-view-model.ts` now builds `Severity filter` tabs and preserves `risk` in all relevant hrefs.
+    - `admin-ux-panel-chrome.tsx` renders `All severities` / `Risk only` toggle pills.
+  - Added all-metrics filtering logic:
+    - `admin-ux-main-panels.tsx` now filters visible groups to `critical/watch` when `risk=high`,
+    - shows compact empty state if no high-risk groups remain.
+  - Preserved `risk` on all key form submits in all-mode:
+    - `gateway-section-body.tsx`
+    - `gateway-telemetry-section-body.tsx`
+    - `runtime-section-body.tsx`
+  - Updated wiring/types/tests:
+    - `admin-ux-main-panel-builder-types.ts`
+    - `admin-ux-gateway-runtime-prop-builders.tsx`
+    - `admin-ux-page-entry.spec.ts`
+- Validation:
+  - `npx ultracite check` on 14 touched admin-ux files: pass.
+  - `npx jest --runInBand apps/web/src/app/admin/ux/components/admin-ux-page-entry.spec.ts`: pass.
+  - `npm run test:web -- --runInBand apps/web/src/__tests__/admin-ux-page.spec.tsx`: pass.
+  - `npm --workspace apps/web run build`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add count badges in `Severity filter` tabs (for example `Risk only (3)`).
+
 ### 2026-03-05 - admin UX severity-order annotation pass
 
 - Scope: make severity-based ordering in `panel=all` explicit by adding a short operator hint in panel chrome.

@@ -43,6 +43,7 @@ const StatCard = ({
 
 export const GatewayTelemetrySectionBody = ({
   activePanel,
+  allMetricsRiskFilter = 'all',
   allMetricsView = 'overview',
   appliedGatewayChannelFilter,
   appliedGatewayProviderFilter,
@@ -67,6 +68,7 @@ export const GatewayTelemetrySectionBody = ({
   thresholdsCard,
 }: {
   activePanel: string;
+  allMetricsRiskFilter?: string;
   allMetricsView?: string;
   appliedGatewayChannelFilter: string | null;
   appliedGatewayProviderFilter: string | null;
@@ -127,6 +129,9 @@ export const GatewayTelemetrySectionBody = ({
           <form className="mt-3 flex flex-wrap items-end gap-2" method="get">
             <input name="hours" type="hidden" value={`${hours}`} />
             <input name="panel" type="hidden" value={activePanel} />
+            {activePanel === 'all' && allMetricsRiskFilter !== 'all' ? (
+              <input name="risk" type="hidden" value={allMetricsRiskFilter} />
+            ) : null}
             {activePanel === 'all' && allMetricsView !== 'overview' ? (
               <input name="allView" type="hidden" value={allMetricsView} />
             ) : null}

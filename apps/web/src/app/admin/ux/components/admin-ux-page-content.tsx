@@ -9,6 +9,7 @@ import {
   resolveAdminUxWindowHours,
 } from './admin-ux-page-shell-view-model';
 import type {
+  AdminUxAllMetricsRiskFilter,
   AdminUxAllMetricsView,
   AdminUxPanel,
 } from './admin-ux-page-utils';
@@ -17,6 +18,7 @@ import type { AdminUxSectionData } from './admin-ux-section-prep';
 
 export const AdminUxPageContent = ({
   activePanel,
+  allMetricsRiskFilter,
   allMetricsView,
   expandAllGroups,
   hours,
@@ -25,6 +27,7 @@ export const AdminUxPageContent = ({
   windowHours,
 }: {
   activePanel: AdminUxPanel;
+  allMetricsRiskFilter: AdminUxAllMetricsRiskFilter;
   allMetricsView: AdminUxAllMetricsView;
   expandAllGroups: boolean;
   hours: number;
@@ -34,6 +37,7 @@ export const AdminUxPageContent = ({
 }) => {
   const panelChromeView = buildAdminUxPanelChromeView({
     activePanel,
+    allMetricsRiskFilter,
     allMetricsView,
     expandAllGroups,
     hours,
@@ -52,12 +56,14 @@ export const AdminUxPageContent = ({
       <AdminUxPanelChrome
         activePanel={activePanel}
         allMetricsControls={panelChromeView.allMetricsControls}
+        allMetricsRiskFilterTabs={panelChromeView.allMetricsRiskFilterTabs}
         allMetricsViewTabs={panelChromeView.allMetricsViewTabs}
         panelTabs={panelChromeView.panelTabs}
         stickyKpis={panelChromeView.stickyKpis}
       />
       <AdminUxMainPanels
         activePanel={activePanel}
+        allMetricsRiskFilter={allMetricsRiskFilter}
         allMetricsView={allMetricsView}
         expandAllGroups={expandAllGroups}
         {...mainPanelsProps}

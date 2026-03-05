@@ -9,6 +9,7 @@ import type {
 import type { AdminUxMainPanels } from './admin-ux-main-panels';
 import type { HealthLevel } from './admin-ux-mappers';
 import type {
+  AdminUxAllMetricsRiskFilter,
   AdminUxAllMetricsView,
   AdminUxPanel,
 } from './admin-ux-page-utils';
@@ -46,6 +47,7 @@ export type TopSegmentsProps = MainPanelsProps['topSegmentsProps'];
 
 export interface GatewayRuntimePanelsBuilderInput {
   activePanel: AdminUxPanel;
+  allMetricsRiskFilter: AdminUxAllMetricsRiskFilter;
   allMetricsView: AdminUxAllMetricsView;
   aiFailuresCsv: string;
   aiPrompt: string;

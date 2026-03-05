@@ -1,6 +1,7 @@
 import { type ComponentProps, Fragment, type ReactNode } from 'react';
 
 import type {
+  AdminUxAllMetricsRiskFilter,
   AdminUxAllMetricsView,
   AdminUxPanel,
 } from './admin-ux-page-utils';
@@ -128,6 +129,7 @@ const resolveMoreSevereMetaTone = (
 
 export const AdminUxMainPanels = ({
   activePanel,
+  allMetricsRiskFilter = 'all',
   allMetricsView = 'overview',
   debugDiagnosticsSectionProps,
   engagementHealthProps,
@@ -144,6 +146,7 @@ export const AdminUxMainPanels = ({
   topSegmentsProps,
 }: {
   activePanel: AdminUxPanel;
+  allMetricsRiskFilter?: AdminUxAllMetricsRiskFilter;
   allMetricsView?: AdminUxAllMetricsView;
   debugDiagnosticsSectionProps: ComponentProps<typeof DebugDiagnosticsSection>;
   engagementHealthProps: Omit<
@@ -533,9 +536,26 @@ export const AdminUxMainPanels = ({
       });
     }
 
+    const riskScopedGroups =
+      allMetricsRiskFilter === 'high'
+        ? allMetricsGroups.filter(
+            (group) => group.tone === 'critical' || group.tone === 'watch',
+          )
+        : allMetricsGroups;
+
+    if (riskScopedGroups.length === 0) {
+      return (
+        <section className="card p-4 sm:p-5">
+          <p className="text-muted-foreground text-sm">
+            No critical or watch sections in the current selection.
+          </p>
+        </section>
+      );
+    }
+
     return (
       <>
-        {allMetricsGroups
+        {riskScopedGroups
           .sort((left, right) => {
             const toneDiff =
               metaToneSortRank[left.tone] - metaToneSortRank[right.tone];

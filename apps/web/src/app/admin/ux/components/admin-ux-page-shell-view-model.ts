@@ -6,6 +6,7 @@ import {
   toRateText,
 } from './admin-ux-mappers';
 import type {
+  AdminUxAllMetricsRiskFilter,
   AdminUxAllMetricsView,
   AdminUxPanel,
 } from './admin-ux-page-utils';
@@ -40,13 +41,23 @@ const ADMIN_UX_ALL_METRICS_VIEW_TABS: ReadonlyArray<{
   { id: 'debug', label: 'Debug' },
 ] as const;
 
+const ADMIN_UX_ALL_METRICS_RISK_FILTER_TABS: ReadonlyArray<{
+  id: AdminUxAllMetricsRiskFilter;
+  label: string;
+}> = [
+  { id: 'all', label: 'All severities' },
+  { id: 'high', label: 'Risk only' },
+] as const;
+
 export const buildAdminUxPanelHref = (
   hours: number,
   panel: AdminUxPanel,
   {
+    allMetricsRiskFilter = 'all',
     allMetricsView = 'overview',
     expandAllGroups = false,
   }: {
+    allMetricsRiskFilter?: AdminUxAllMetricsRiskFilter;
     allMetricsView?: AdminUxAllMetricsView;
     expandAllGroups?: boolean;
   } = {},
@@ -54,6 +65,9 @@ export const buildAdminUxPanelHref = (
   let href = `/admin/ux?hours=${hours}&panel=${panel}`;
   if (panel === 'all' && allMetricsView !== 'overview') {
     href += `&allView=${allMetricsView}`;
+  }
+  if (panel === 'all' && allMetricsRiskFilter !== 'all') {
+    href += `&risk=${allMetricsRiskFilter}`;
   }
   if (panel === 'all' && expandAllGroups) {
     href += '&expand=all';
@@ -63,23 +77,39 @@ export const buildAdminUxPanelHref = (
 
 export const buildAdminUxPanelChromeView = ({
   activePanel,
+  allMetricsRiskFilter,
   allMetricsView,
   expandAllGroups,
   hours,
   kpis,
 }: {
   activePanel: AdminUxPanel;
+  allMetricsRiskFilter: AdminUxAllMetricsRiskFilter;
   allMetricsView: AdminUxAllMetricsView;
   expandAllGroups: boolean;
   hours: number;
   kpis: AdminUxSectionData['kpis'] | null | undefined;
 }) => ({
+  allMetricsRiskFilterTabs:
+    activePanel === 'all'
+      ? buildPanelTabsView({
+          activePanel: allMetricsRiskFilter,
+          buildPanelHref: (riskFilter) =>
+            buildAdminUxPanelHref(hours, 'all', {
+              allMetricsRiskFilter: riskFilter,
+              allMetricsView,
+              expandAllGroups,
+            }),
+          panelTabs: [...ADMIN_UX_ALL_METRICS_RISK_FILTER_TABS],
+        })
+      : null,
   allMetricsViewTabs:
     activePanel === 'all'
       ? buildPanelTabsView({
           activePanel: allMetricsView,
           buildPanelHref: (view) =>
             buildAdminUxPanelHref(hours, 'all', {
+              allMetricsRiskFilter,
               allMetricsView: view,
               expandAllGroups,
             }),
@@ -90,9 +120,11 @@ export const buildAdminUxPanelChromeView = ({
     activePanel === 'all'
       ? {
           collapseHref: buildAdminUxPanelHref(hours, 'all', {
+            allMetricsRiskFilter,
             allMetricsView,
           }),
           expandHref: buildAdminUxPanelHref(hours, 'all', {
+            allMetricsRiskFilter,
             allMetricsView,
             expandAllGroups: true,
           }),
@@ -103,6 +135,7 @@ export const buildAdminUxPanelChromeView = ({
     activePanel,
     buildPanelHref: (panel) =>
       buildAdminUxPanelHref(hours, panel, {
+        allMetricsRiskFilter,
         allMetricsView,
         expandAllGroups,
       }),
