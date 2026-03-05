@@ -28,6 +28,16 @@ describe('launch-gate dispatch helper cli argument validation', () => {
     expect(result.stderr).toBe('');
   });
 
+  test('prints usage on -h and exits zero', () => {
+    const result = runDispatchScript(['-h']);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain(
+      'Usage: npm run release:launch:gate:dispatch',
+    );
+    expect(result.stderr).toBe('');
+  });
+
   test('fails fast when artifact-link-names value is missing', () => {
     const result = runDispatchScript(['--artifact-link-names']);
 
@@ -56,6 +66,7 @@ describe('launch-gate dispatch helper cli argument validation', () => {
     const variants = [
       ['--Token', '<YOUR_TOKEN>'],
       ['-Token', '<YOUR_TOKEN>'],
+      ['--Token=<YOUR_TOKEN>'],
       ['--token=<YOUR_TOKEN>'],
       ['-token=<YOUR_TOKEN>'],
     ];

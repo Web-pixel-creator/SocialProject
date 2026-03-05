@@ -33,6 +33,25 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - complete help/token-alias diagnostics matrix in cli tests (phase 38)
+
+- Scope: close remaining CLI diagnostics gaps for short help flag and inline mixed-case token alias form.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 11:02 -> 2026-03-05 11:05.
+- Changes:
+  - Updated `apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts`:
+    - added `-h` parity check (usage output + zero exit),
+    - extended placeholder-token alias matrix with `--Token=<value>` inline form.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add negative test for `--token=` (empty inline value) to lock missing-value diagnostic parity.
+
 ### 2026-03-05 - extend dispatch cli tests for help output and token-flag aliases (phase 37)
 
 - Scope: lock CLI compatibility and diagnostics for legacy/current token flag aliases and help rendering.
