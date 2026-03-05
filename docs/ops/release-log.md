@@ -33,6 +33,38 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - centralize gh-auth token reader for release dispatch scripts (phase 115)
+
+- Scope: remove duplicated `gh auth token` reading logic from release dispatch scripts and reuse one shared helper with stable fallback behavior.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 17:42 -> 2026-03-05 17:45.
+- Changes:
+  - Added shared helper:
+    - `scripts/release/github-gh-auth-token.mjs`
+    - exports `readGitHubTokenFromGhAuth` (trimmed token on success, empty string on failure).
+  - Updated callers:
+    - `scripts/release/dispatch-staging-smoke.mjs`
+    - `scripts/release/dispatch-production-launch-gate.mjs`
+    - both now import shared helper instead of maintaining local `readTokenFromGhAuth`.
+  - Added tests:
+    - `apps/api/src/__tests__/release-github-gh-auth-token.unit.spec.ts`
+    - covers success trim, thrown-reader fallback, and undefined-reader fallback.
+- Validation:
+  - `node --check scripts/release/github-gh-auth-token.mjs`: pass.
+  - `node --check scripts/release/dispatch-staging-smoke.mjs`: pass.
+  - `node --check scripts/release/dispatch-production-launch-gate.mjs`: pass.
+  - `npm run test -- apps/api/src/__tests__/release-github-gh-auth-token.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts`: pass.
+  - `npm run release:smoke:dispatch -- --help`: pass.
+  - `npm run release:launch:gate:dispatch -- --help`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T17:45:02.149Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: if more dispatch scripts appear, consume shared helpers (`github-gh-auth-token`, token-candidate resolver) by default to keep drift low.
+
 ### 2026-03-05 - reuse shared dispatch token candidate resolver in staging smoke dispatch (phase 114)
 
 - Scope: remove duplicated token-candidate normalization/validation logic in staging smoke dispatch by reusing the shared dispatch token resolver module.

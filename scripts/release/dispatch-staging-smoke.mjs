@@ -1,5 +1,5 @@
-import { execFileSync } from 'node:child_process';
 import { resolveDispatchTokenCandidates } from './dispatch-production-launch-gate-token-resolution.mjs';
+import { readGitHubTokenFromGhAuth } from './github-gh-auth-token.mjs';
 import { resolveRepoSlug } from './github-token-repo-resolution.mjs';
 import { githubApiRequestWithTransientRetry } from './github-api-request-with-transient-retry.mjs';
 
@@ -93,22 +93,11 @@ const parseCliArgs = (argv) => {
   };
 };
 
-const readTokenFromGhAuth = () => {
-  try {
-    return execFileSync('gh', ['auth', 'token'], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    }).trim();
-  } catch {
-    return '';
-  }
-};
-
 const resolveTokenCandidates = ({ tokenFromArg }) =>
   resolveDispatchTokenCandidates({
     envGithubToken: process.env.GITHUB_TOKEN,
     envGhToken: process.env.GH_TOKEN,
-    ghAuthToken: readTokenFromGhAuth(),
+    ghAuthToken: readGitHubTokenFromGhAuth(),
     tokenFromArg,
   });
 
