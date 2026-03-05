@@ -33,6 +33,38 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - share markdown snippet extraction helpers across parity script and tests (phase 87)
+
+- Scope: reduce duplication and drift risk in parity tooling by centralizing markdown snippet normalization/extraction utilities.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 13:49 -> 2026-03-05 13:53.
+- Changes:
+  - Added helper module:
+    - `scripts/release/release-runbook-snippet-utils.mjs`
+    - exports:
+      - `normalizeLineEndings`
+      - `dedent`
+      - `extractTextFencedSnippetAfterMarker`
+  - Updated `scripts/release/verify-production-launch-gate-runbook-example.mjs`:
+    - now imports and reuses shared helper functions instead of inline duplicate implementations.
+  - Updated `apps/api/src/__tests__/release-launch-gate-production-failure-runbook-example.unit.spec.ts`:
+    - now resolves snippet extraction through shared helper module (spawned module path),
+    - removed local duplicate normalize/dedent/extract logic.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-production-failure-runbook-example.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-failure-runbook-check-script.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run release:runbook:failure-snippet:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T13:52:30.485Z`).
+  - live dispatch regression:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --print-artifact-links --artifact-link-names all`
+    - run `#98` (`22721142252`): success with expected summary and artifact-link output.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: reuse this helper in other docs-snippet parity checks if similar fenced-block validation is added later.
+
 ### 2026-03-05 - cross-link parity-log retention note to release checklist (phase 86)
 
 - Scope: complete retention follow-up by linking parity-log retention guidance to canonical release checklist triage section.

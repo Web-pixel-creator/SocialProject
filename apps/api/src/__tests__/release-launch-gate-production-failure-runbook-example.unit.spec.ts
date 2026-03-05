@@ -12,6 +12,14 @@ const formatterModuleHref = pathToFileURL(
     'production-launch-gate-failure-output-format.mjs',
   ),
 ).href;
+const snippetUtilsModuleHref = pathToFileURL(
+  path.join(
+    projectRoot,
+    'scripts',
+    'release',
+    'release-runbook-snippet-utils.mjs',
+  ),
+).href;
 const fixturePath = path.join(
   projectRoot,
   'docs',
@@ -62,30 +70,39 @@ const runBuildFailureLines = (input: unknown) => {
   };
 };
 
-const normalizeLineEndings = (value: string) => value.replace(/\r\n/gu, '\n');
-
-const dedent = (value: string) => {
-  const lines = value.split('\n');
-  const nonEmpty = lines.filter((line) => line.trim().length > 0);
-  if (nonEmpty.length === 0) {
-    return value;
-  }
-  const minIndent = nonEmpty.reduce((current, line) => {
-    const match = line.match(/^ */u);
-    const indent = match ? match[0].length : 0;
-    return Math.min(current, indent);
-  }, Number.POSITIVE_INFINITY);
-  return lines.map((line) => line.slice(minIndent)).join('\n');
-};
-
-const extractRunbookSnippet = (runbookMarkdown: string) => {
-  const markerIndex = runbookMarkdown.indexOf(runbookSnippetMarker);
-  if (markerIndex < 0) {
-    return '';
-  }
-  const trailing = runbookMarkdown.slice(markerIndex);
-  const match = trailing.match(/```text\n([\s\S]*?)\n\s*```/u);
-  return match ? dedent(match[1]).trim() : '';
+const runExtractRunbookSnippet = (runbookMarkdown: string) => {
+  const script = `
+    import { extractTextFencedSnippetAfterMarker, normalizeLineEndings } from ${JSON.stringify(snippetUtilsModuleHref)};
+    const runbook = ${JSON.stringify(runbookMarkdown)};
+    const marker = ${JSON.stringify(runbookSnippetMarker)};
+    try {
+      const normalized = normalizeLineEndings(runbook);
+      const snippet = extractTextFencedSnippetAfterMarker({ markdown: normalized, marker });
+      process.stdout.write(JSON.stringify({ ok: true, result: snippet, error: '' }));
+    } catch (error) {
+      process.stdout.write(
+        JSON.stringify({
+          ok: false,
+          result: '',
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
+      process.exitCode = 1;
+    }
+  `;
+  const output = spawnSync(
+    process.execPath,
+    ['--input-type=module', '-e', script],
+    {
+      cwd: projectRoot,
+      encoding: 'utf8',
+    },
+  );
+  const payload = JSON.parse(output.stdout) as ModuleActionResult<string>;
+  return {
+    output,
+    payload,
+  };
 };
 
 describe('production launch-gate runbook failure snippet', () => {
@@ -95,15 +112,18 @@ describe('production launch-gate runbook failure snippet', () => {
       unknown
     >;
     const formatterResult = runBuildFailureLines(fixture);
-    const runbook = normalizeLineEndings(readFileSync(runbookPath, 'utf8'));
+    const runbook = readFileSync(runbookPath, 'utf8');
+    const snippetResult = runExtractRunbookSnippet(runbook);
 
     expect(formatterResult.output.status).toBe(0);
     expect(formatterResult.payload.ok).toBe(true);
+    expect(snippetResult.output.status).toBe(0);
+    expect(snippetResult.payload.ok).toBe(true);
     const expectedSnippet = [
       'Production launch gate: FAIL',
       ...formatterResult.payload.result,
     ].join('\n');
 
-    expect(extractRunbookSnippet(runbook)).toBe(expectedSnippet);
+    expect(snippetResult.payload.result).toBe(expectedSnippet);
   });
 });
