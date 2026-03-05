@@ -67,6 +67,8 @@ describe('launch-gate dispatch failure summary formatter', () => {
     const result = runBuildSummary([
       {
         conclusion: 'failure',
+        html_url:
+          'https://github.com/Web-pixel-creator/SocialProject/actions/runs/22717781874/job/123',
         name: 'production launch gate',
         steps: [
           { conclusion: 'success', name: 'Checkout' },
@@ -82,7 +84,7 @@ describe('launch-gate dispatch failure summary formatter', () => {
 
     expect(result.output.status).toBe(0);
     expect(result.payload.result).toBe(
-      'Failed jobs: production launch gate [failure] step: Run strict gate; post-health-report [cancelled]',
+      'Failed jobs: production launch gate [failure] step: Run strict gate; post-health-report [cancelled] First failed job logs: https://github.com/Web-pixel-creator/SocialProject/actions/runs/22717781874/job/123',
     );
   });
 
@@ -95,5 +97,26 @@ describe('launch-gate dispatch failure summary formatter', () => {
 
     expect(result.output.status).toBe(0);
     expect(result.payload.result).toBe('Failed jobs: unnamed-job [timed_out]');
+  });
+
+  test('skips empty failed-job log urls and picks first non-empty hint', () => {
+    const result = runBuildSummary([
+      {
+        conclusion: 'failure',
+        html_url: '   ',
+        name: 'compile',
+      },
+      {
+        conclusion: 'cancelled',
+        html_url:
+          'https://github.com/Web-pixel-creator/SocialProject/actions/runs/22717781874/job/456',
+        name: 'publish',
+      },
+    ]);
+
+    expect(result.output.status).toBe(0);
+    expect(result.payload.result).toBe(
+      'Failed jobs: compile [failure]; publish [cancelled] First failed job logs: https://github.com/Web-pixel-creator/SocialProject/actions/runs/22717781874/job/456',
+    );
   });
 });
