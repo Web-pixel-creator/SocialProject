@@ -33,6 +33,38 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add failed-job/step summary to dispatch workflow failure diagnostics (phase 68)
+
+- Scope: improve operator diagnostics when dispatch run completes with non-success conclusion by including failed job/step details in helper error output.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 12:22 -> 2026-03-05 12:26.
+- Changes:
+  - Added module:
+    - `scripts/release/dispatch-production-launch-gate-failure-summary.mjs`
+    - exports `buildDispatchRunFailureSummary` for failed jobs/steps text rendering.
+  - Updated `scripts/release/dispatch-production-launch-gate.mjs`:
+    - fetches run jobs on non-success conclusion (`GET /actions/runs/{id}/jobs`),
+    - appends formatted failure summary to thrown error,
+    - falls back to `Failure details unavailable: ...` if jobs fetch fails.
+  - Added unit coverage:
+    - `apps/api/src/__tests__/release-launch-gate-dispatch-failure-summary.unit.spec.ts`
+    - validates:
+      - empty summary when no failed jobs,
+      - failed job rendering with first failed step name,
+      - fallback behavior for unnamed jobs.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-dispatch-failure-summary.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-link-options.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-token-resolution.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-external-channels.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts apps/api/src/__tests__/release-production-config-resolvers.unit.spec.ts apps/api/src/__tests__/release-env-parse-utils.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - live dispatch regression:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --print-artifact-links --artifact-link-names all`
+    - run `#83` (`22717781874`): success with expected summary and artifact-link output.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: include top failed log-url hint (job html_url) in formatter output if we decide to enrich error diagnostics further.
+
 ### 2026-03-05 - allow leading-zero integer env values while keeping strict numeric validation (phase 67)
 
 - Scope: relax strict integer parser to accept digit-only values with leading zeros (for practical env/CLI compatibility) while still rejecting partial and decimal inputs.

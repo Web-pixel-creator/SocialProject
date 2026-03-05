@@ -6,6 +6,7 @@ import {
   resolveDispatchArtifactLinkOptions,
 } from './dispatch-production-launch-gate-link-options.mjs';
 import { parseDispatchExternalChannels } from './dispatch-production-launch-gate-external-channels.mjs';
+import { buildDispatchRunFailureSummary } from './dispatch-production-launch-gate-failure-summary.mjs';
 import { buildDispatchInputSummaryLines } from './dispatch-production-launch-gate-output-format.mjs';
 import { resolveDispatchTokenCandidates } from './dispatch-production-launch-gate-token-resolution.mjs';
 import {
@@ -371,6 +372,28 @@ const listRunArtifacts = async ({ baseApiUrl, runId, token }) => {
   return Array.isArray(artifactsResponse?.artifacts)
     ? artifactsResponse.artifacts
     : [];
+};
+
+const listRunJobs = async ({ baseApiUrl, runId, token }) => {
+  const jobsResponse = await githubRequest({
+    token,
+    method: 'GET',
+    url: `${baseApiUrl}/actions/runs/${runId}/jobs?per_page=100`,
+  });
+  return Array.isArray(jobsResponse?.jobs) ? jobsResponse.jobs : [];
+};
+
+const resolveRunFailureSummary = async ({ baseApiUrl, runId, token }) => {
+  try {
+    const jobs = await listRunJobs({
+      baseApiUrl,
+      runId,
+      token,
+    });
+    return buildDispatchRunFailureSummary(jobs);
+  } catch (error) {
+    return `Failure details unavailable: ${toErrorMessage(error)}`;
+  }
 };
 
 const pickLatestArtifactsByName = ({ artifactNames, artifacts }) => {
@@ -756,8 +779,13 @@ const main = async () => {
         });
         return;
       }
+      const failureSummary = await resolveRunFailureSummary({
+        baseApiUrl,
+        runId: Number(current.id),
+        token,
+      });
       throw new Error(
-        `Run completed with conclusion '${conclusion}'. URL: ${current.html_url}`,
+        `Run completed with conclusion '${conclusion}'. URL: ${current.html_url}${failureSummary ? ` ${failureSummary}` : ''}`,
       );
     }
     await sleep(waitPollMs);
