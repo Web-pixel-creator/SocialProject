@@ -103,6 +103,18 @@ describe('launch-gate dispatch helper cli argument validation', () => {
     );
   });
 
+  test('fails fast when required-external-channels value is missing', () => {
+    const result = runDispatchScript(['--required-external-channels']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Missing value for --required-external-channels',
+    );
+    expect(result.stderr).toContain(
+      'Usage: npm run release:launch:gate:dispatch',
+    );
+  });
+
   test('fails fast when inline runtime-draft-id value is empty', () => {
     const result = runDispatchScript(['--runtime-draft-id=']);
 

@@ -33,6 +33,26 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add missing-value diagnostics test for positional required-external-channels arg (phase 42)
+
+- Scope: align coverage for positional and inline forms of required external channels argument.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 11:17 -> 2026-03-05 11:19.
+- Changes:
+  - Updated `apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts`:
+    - added case for positional missing value:
+      - `--required-external-channels` (without following value),
+    - asserts non-zero exit + missing-value message + usage text.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add a compact golden snapshot for `USAGE` string to catch accidental CLI help drift.
+
 ### 2026-03-05 - add empty inline diagnostics for runtime-draft and webhook override args (phase 41)
 
 - Scope: complete missing-value diagnostics parity for key inline-value CLI arguments.
