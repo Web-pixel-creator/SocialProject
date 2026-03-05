@@ -204,6 +204,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
   - [ ] Optional machine-readable output: `npm run release:launch:gate:production:json`
   - [ ] Optional compact non-JSON failure output cap: `npm run release:launch:gate:production -- --failure-detail-max-items <n>` (or `RELEASE_FAILURE_DETAIL_MAX_ITEMS=<n>`).
   - [ ] In non-JSON mode, confirm failed-check diagnostics are readable and compact (`+N more` markers appear for long arrays when applicable).
+  - [ ] Optional docs parity check: `npm run release:runbook:failure-snippet:check`.
   - [ ] Optional strict skills-runtime variant (requires skill markers in runtime prompt):
     - [ ] `npm run release:launch:gate:production:skills`
     - [ ] JSON variant: `npm run release:launch:gate:production:skills:json`

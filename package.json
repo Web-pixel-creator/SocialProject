@@ -50,6 +50,7 @@
     "release:health:inline-artifacts:schema:check": "node scripts/release/validate-inline-post-release-health-artifacts-summary-schema.mjs",
     "release:health:inline-artifacts:schema:check:json": "node scripts/release/validate-inline-post-release-health-artifacts-summary-schema.mjs --json",
     "release:health:log": "node scripts/release/append-post-release-health-log.mjs",
+    "release:runbook:failure-snippet:check": "node scripts/release/verify-production-launch-gate-runbook-example.mjs",
     "release:health:schema:check": "node scripts/release/validate-release-health-report-schema.mjs",
     "release:health:schema:check:json": "node scripts/release/validate-release-health-report-schema.mjs --json",
     "release:alert-risk:reassess": "node scripts/release/reassess-alert-risk-strict.mjs",

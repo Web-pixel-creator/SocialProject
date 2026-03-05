@@ -59,6 +59,7 @@ Use this map when a release helper fails fast on argument/env validation and you
        details: {"pass":false,"skipped":false,"failedChannels":[{"channel":"slack","connectorId":"slack_default","failureMode":"telemetry_zero_accepted"}],"requiredFailedChannels":[{"channel":"slack","connectorId":"slack_default","failureMode":"telemetry_zero_accepted"}]}
      Error: Ingest probe failed
      ```
+   - Optional parity check command for snippet/fixture drift: `npm run release:runbook:failure-snippet:check`
    - Optional CI workflow_dispatch alternative: `Production Launch Gate` (`.github/workflows/production-launch-gate.yml`)
    - CI run now uploads markdown audit artifact `production-launch-gate-step-summary` (`artifacts/release/production-launch-gate-step-summary.md`) in addition to JSON artifacts.
   - `npm run release:launch:gate:dispatch` now prints resolved UI link for artifact `production-launch-gate-step-summary` after successful run completion.

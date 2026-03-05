@@ -33,6 +33,38 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add one-command runbook snippet parity check script (phase 78)
+
+- Scope: speed up local/CI feedback for docs/formatter drift by adding a standalone parity-check command for production non-JSON failure snippet.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 13:14 -> 2026-03-05 13:18.
+- Changes:
+  - Added script:
+    - `scripts/release/verify-production-launch-gate-runbook-example.mjs`
+    - validates runbook snippet parity against fixture + formatter output and exits non-zero on mismatch.
+  - Added npm command:
+    - `release:runbook:failure-snippet:check` in `package.json`.
+  - Added test:
+    - `apps/api/src/__tests__/release-launch-gate-production-failure-runbook-check-script.unit.spec.ts`
+    - asserts new script passes for current fixture/runbook pair.
+  - Updated docs:
+    - `docs/ops/release-runbook.md`: added parity-check command reference.
+    - `docs/ops/release-checklist.md`: added optional checklist item for parity command.
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-production-failure-runbook-example.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-failure-runbook-check-script.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-failure-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run release:runbook:failure-snippet:check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T13:16:45.624Z`).
+  - live dispatch regression:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --print-artifact-links --artifact-link-names all`
+    - run `#92` (`22719737137`): success with expected summary and artifact-link output.
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: call `release:runbook:failure-snippet:check` from CI docs/check jobs to enforce parity on every PR.
+
 ### 2026-03-05 - enforce runbook non-json failure snippet parity via fixture test (phase 77)
 
 - Scope: prevent drift between operator documentation and actual failure formatter output by introducing a fixture-backed parity test for the runbook snippet.
