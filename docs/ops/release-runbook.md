@@ -97,6 +97,8 @@ Use this map when a release helper fails fast on argument/env validation and you
       - Optional artifact link names via env: `RELEASE_ARTIFACT_LINK_NAMES=production-launch-gate-summary,post-release-health-inline-artifacts-schema-check` (or `all`)
       - Optional step-summary link suppression via env: `RELEASE_NO_STEP_SUMMARY_LINK=true`
       - Optional failed-job diagnostics cap via env: `RELEASE_FAILURE_SUMMARY_MAX_JOBS=10`
+      - Optional transient GitHub API retry attempts during dispatch polling: `RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_ATTEMPTS=<n>` (default `3`)
+      - Optional transient GitHub API retry delay during dispatch polling: `RELEASE_GITHUB_API_TRANSIENT_RETRY_DELAY_MS=<ms>` (default `2000`)
       - Optional smoke timeout retry count via env: `RELEASE_SMOKE_TIMEOUT_RETRIES=<n>` (`0` disables timeout-only retry)
       - Optional smoke timeout retry delay via env: `RELEASE_SMOKE_TIMEOUT_RETRY_DELAY_MS=<ms>`
        - Optional strict inline health artifact assertion via workflow input:

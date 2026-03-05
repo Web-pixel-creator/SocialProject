@@ -13,6 +13,7 @@ import {
   parseReleaseBooleanEnv,
   parseReleasePositiveIntegerEnv,
 } from './release-env-parse-utils.mjs';
+import { buildGitHubApiRetryDecision } from './dispatch-production-launch-gate-transient-retry-utils.mjs';
 
 const GITHUB_API_VERSION = '2022-11-28';
 const DEFAULT_WORKFLOW_FILE = 'production-launch-gate.yml';
@@ -20,6 +21,8 @@ const DEFAULT_WORKFLOW_REF = 'main';
 const DEFAULT_WAIT_TIMEOUT_MS = 20 * 60 * 1000;
 const DEFAULT_WAIT_POLL_MS = 5000;
 const DEFAULT_FAILURE_SUMMARY_MAX_JOBS = 5;
+const DEFAULT_GITHUB_API_TRANSIENT_RETRY_MAX_ATTEMPTS = 3;
+const DEFAULT_GITHUB_API_TRANSIENT_RETRY_DELAY_MS = 2000;
 const NON_NEGATIVE_INTEGER_PATTERN = /^(0|[1-9]\d*)$/;
 const RUN_DISCOVERY_GRACE_MS = 2 * 60 * 1000;
 const ARTIFACT_DISCOVERY_ATTEMPTS = 6;
@@ -433,31 +436,96 @@ const githubRequest = async ({ token, method, url, body }) => {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const githubRequestWithTransientRetry = async ({
+  body,
+  method,
+  retryDelayMs,
+  retryLabel,
+  retryMaxAttempts,
+  token,
+  url,
+}) => {
+  const safeRetryMaxAttempts = Number.isFinite(retryMaxAttempts)
+    ? Math.max(1, Math.floor(retryMaxAttempts))
+    : 1;
+  const safeRetryDelayMs = Number.isFinite(retryDelayMs)
+    ? Math.max(1, Math.floor(retryDelayMs))
+    : DEFAULT_GITHUB_API_TRANSIENT_RETRY_DELAY_MS;
+
+  for (let attempt = 1; attempt <= safeRetryMaxAttempts; attempt += 1) {
+    try {
+      return await githubRequest({
+        body,
+        method,
+        token,
+        url,
+      });
+    } catch (error) {
+      const errorMessage = toErrorMessage(error);
+      const retryDecision = buildGitHubApiRetryDecision({
+        attempt,
+        errorMessage,
+        maxAttempts: safeRetryMaxAttempts,
+      });
+      if (method !== 'GET' || !retryDecision.shouldRetry) {
+        throw error;
+      }
+      const label = retryLabel || `${method} ${url}`;
+      process.stderr.write(
+        `Warning: transient GitHub API error on ${label}; retrying in ${safeRetryDelayMs}ms (${attempt}/${safeRetryMaxAttempts}).\n`,
+      );
+      await sleep(safeRetryDelayMs);
+    }
+  }
+
+  return null;
+};
+
 const toArtifactUiUrl = ({ repoSlug, runId, artifactId }) =>
   `https://github.com/${repoSlug}/actions/runs/${runId}/artifacts/${artifactId}`;
 
-const listRunArtifacts = async ({ baseApiUrl, runId, token }) => {
-  const artifactsResponse = await githubRequest({
+const listRunArtifacts = async ({
+  baseApiUrl,
+  githubApiRetryDelayMs,
+  githubApiRetryMaxAttempts,
+  runId,
+  token,
+}) => {
+  const artifactsResponse = await githubRequestWithTransientRetry({
     token,
     method: 'GET',
     url: `${baseApiUrl}/actions/runs/${runId}/artifacts?per_page=100`,
+    retryLabel: `list run artifacts for run ${runId}`,
+    retryMaxAttempts: githubApiRetryMaxAttempts,
+    retryDelayMs: githubApiRetryDelayMs,
   });
   return Array.isArray(artifactsResponse?.artifacts)
     ? artifactsResponse.artifacts
     : [];
 };
 
-const listRunJobs = async ({ baseApiUrl, runId, token }) => {
-  const jobsResponse = await githubRequest({
+const listRunJobs = async ({
+  baseApiUrl,
+  githubApiRetryDelayMs,
+  githubApiRetryMaxAttempts,
+  runId,
+  token,
+}) => {
+  const jobsResponse = await githubRequestWithTransientRetry({
     token,
     method: 'GET',
     url: `${baseApiUrl}/actions/runs/${runId}/jobs?per_page=100`,
+    retryLabel: `list run jobs for run ${runId}`,
+    retryMaxAttempts: githubApiRetryMaxAttempts,
+    retryDelayMs: githubApiRetryDelayMs,
   });
   return Array.isArray(jobsResponse?.jobs) ? jobsResponse.jobs : [];
 };
 
 const resolveRunFailureSummary = async ({
   baseApiUrl,
+  githubApiRetryDelayMs,
+  githubApiRetryMaxAttempts,
   runId,
   token,
   failureSummaryMaxJobs,
@@ -465,6 +533,8 @@ const resolveRunFailureSummary = async ({
   try {
     const jobs = await listRunJobs({
       baseApiUrl,
+      githubApiRetryDelayMs,
+      githubApiRetryMaxAttempts,
       runId,
       token,
     });
@@ -506,6 +576,8 @@ const pickLatestArtifactsByName = ({ artifactNames, artifacts }) => {
 const findRunArtifactsByNames = async ({
   artifactNames,
   baseApiUrl,
+  githubApiRetryDelayMs,
+  githubApiRetryMaxAttempts,
   requiredArtifactNames,
   runId,
   token,
@@ -513,6 +585,8 @@ const findRunArtifactsByNames = async ({
   for (let attempt = 1; attempt <= ARTIFACT_DISCOVERY_ATTEMPTS; attempt += 1) {
     const artifacts = await listRunArtifacts({
       baseApiUrl,
+      githubApiRetryDelayMs,
+      githubApiRetryMaxAttempts,
       runId,
       token,
     });
@@ -536,6 +610,8 @@ const findRunArtifactsByNames = async ({
 const printLaunchGateArtifactLinks = async ({
   artifactLinkNames,
   baseApiUrl,
+  githubApiRetryDelayMs,
+  githubApiRetryMaxAttempts,
   includeStepSummaryLink,
   printArtifactLinks,
   repoSlug,
@@ -559,6 +635,8 @@ const printLaunchGateArtifactLinks = async ({
     const artifacts = await findRunArtifactsByNames({
       artifactNames,
       baseApiUrl,
+      githubApiRetryDelayMs,
+      githubApiRetryMaxAttempts,
       requiredArtifactNames,
       runId,
       token,
@@ -634,6 +712,16 @@ const main = async () => {
     process.env.RELEASE_WAIT_POLL_MS,
     DEFAULT_WAIT_POLL_MS,
     'RELEASE_WAIT_POLL_MS',
+  );
+  const githubApiRetryMaxAttempts = parseReleasePositiveIntegerEnv(
+    process.env.RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_ATTEMPTS,
+    DEFAULT_GITHUB_API_TRANSIENT_RETRY_MAX_ATTEMPTS,
+    'RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_ATTEMPTS',
+  );
+  const githubApiRetryDelayMs = parseReleasePositiveIntegerEnv(
+    process.env.RELEASE_GITHUB_API_TRANSIENT_RETRY_DELAY_MS,
+    DEFAULT_GITHUB_API_TRANSIENT_RETRY_DELAY_MS,
+    'RELEASE_GITHUB_API_TRANSIENT_RETRY_DELAY_MS',
   );
   const failureSummaryMaxJobs = parseReleasePositiveIntegerEnv(
     cli.failureSummaryMaxJobsRaw || process.env.RELEASE_FAILURE_SUMMARY_MAX_JOBS,
@@ -754,10 +842,13 @@ const main = async () => {
 
   let baselineRunIds = new Set();
   try {
-    const baseline = await githubRequest({
+    const baseline = await githubRequestWithTransientRetry({
       token,
       method: 'GET',
       url: listRunsUrl,
+      retryLabel: 'read baseline workflow runs',
+      retryMaxAttempts: githubApiRetryMaxAttempts,
+      retryDelayMs: githubApiRetryDelayMs,
     });
     const baselineRuns = Array.isArray(baseline?.workflow_runs)
       ? baseline.workflow_runs
@@ -841,10 +932,13 @@ const main = async () => {
   }
 
   const findRun = async () => {
-    const data = await githubRequest({
+    const data = await githubRequestWithTransientRetry({
       token,
       method: 'GET',
       url: listRunsUrl,
+      retryLabel: 'discover dispatched workflow run',
+      retryMaxAttempts: githubApiRetryMaxAttempts,
+      retryDelayMs: githubApiRetryDelayMs,
     });
     const runs = Array.isArray(data?.workflow_runs) ? data.workflow_runs : [];
     for (const run of runs) {
@@ -882,10 +976,13 @@ const main = async () => {
 
   const runUrl = `${baseApiUrl}/actions/runs/${run.id}`;
   while (Date.now() < waitDeadline) {
-    const current = await githubRequest({
+    const current = await githubRequestWithTransientRetry({
       token,
       method: 'GET',
       url: runUrl,
+      retryLabel: `poll workflow run ${run.id} status`,
+      retryMaxAttempts: githubApiRetryMaxAttempts,
+      retryDelayMs: githubApiRetryDelayMs,
     });
     const status = current?.status ?? 'unknown';
     const conclusion = current?.conclusion ?? 'none';
@@ -897,6 +994,8 @@ const main = async () => {
         await printLaunchGateArtifactLinks({
           artifactLinkNames: selectedArtifactLinkNames,
           baseApiUrl,
+          githubApiRetryDelayMs: githubApiRetryDelayMs,
+          githubApiRetryMaxAttempts: githubApiRetryMaxAttempts,
           includeStepSummaryLink,
           printArtifactLinks,
           repoSlug,
@@ -907,6 +1006,8 @@ const main = async () => {
       }
       const failureSummary = await resolveRunFailureSummary({
         baseApiUrl,
+        githubApiRetryDelayMs: githubApiRetryDelayMs,
+        githubApiRetryMaxAttempts: githubApiRetryMaxAttempts,
         failureSummaryMaxJobs,
         runId: Number(current.id),
         token,

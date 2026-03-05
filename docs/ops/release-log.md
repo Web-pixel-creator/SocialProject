@@ -33,6 +33,47 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-05 - add transient GitHub API retry for launch-gate dispatch polling (phase 93)
+
+- Scope: reduce false-red dispatch failures from temporary GitHub API instability by adding bounded retry for polling/listing GET calls in launch-gate dispatch helper.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-05 14:39 -> 2026-03-05 14:45.
+- Changes:
+  - Added helper module:
+    - `scripts/release/dispatch-production-launch-gate-transient-retry-utils.mjs`
+    - exports:
+      - `parseGitHubApiStatusCodeFromErrorMessage`
+      - `isTransientGitHubApiPollingErrorMessage`
+      - `buildGitHubApiRetryDecision`
+  - Updated `scripts/release/dispatch-production-launch-gate.mjs`:
+    - added `githubRequestWithTransientRetry` wrapper for polling/listing `GET` requests,
+    - retry scope now covers:
+      - baseline run-list read,
+      - dispatched-run discovery polling,
+      - run-status polling,
+      - jobs/artifacts listing for failure summary and artifact links,
+    - retry controls (env):
+      - `RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_ATTEMPTS` (default `3`)
+      - `RELEASE_GITHUB_API_TRANSIENT_RETRY_DELAY_MS` (default `2000`)
+  - Added/updated tests:
+    - new: `apps/api/src/__tests__/release-launch-gate-dispatch-transient-retry-utils.unit.spec.ts`
+    - updated: `apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts` (env validation for new retry controls)
+  - Updated docs:
+    - `docs/ops/release-runbook.md`
+    - `docs/ops/release-checklist.md`
+- Validation:
+  - `npx jest --runInBand apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-output-format.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-transient-retry-utils.unit.spec.ts --config jest.config.cjs`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:launch:gate:dispatch -- --required-external-channels all --require-inline-health-artifacts --print-artifact-links --artifact-link-names all`: pass.
+    - run `#105` (`22723128633`): success with expected artifact-link output.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-05T14:44:52.631Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - optional: add exponential backoff/jitter policy for transient retry loop if GitHub API rate-limits increase in busy release windows.
+
 ### 2026-03-05 - set workflow UI defaults for smoke timeout retry inputs (phase 92)
 
 - Scope: close phase 91 follow-up by mirroring production smoke timeout-retry defaults into `Production Launch Gate` `workflow_dispatch` form presets.
