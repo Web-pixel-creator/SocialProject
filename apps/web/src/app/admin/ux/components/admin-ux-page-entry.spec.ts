@@ -34,8 +34,12 @@ describe('admin ux page entry', () => {
       allMetricsSignalFilter: 'all',
       allMetricsRiskTone: 'all',
       allMetricsView: 'overview',
+      correlationId: null,
       expandAllGroups: false,
+      executionSessionId: null,
       hours: 48,
+      releaseRunId: null,
+      routeKey: null,
     } as ReturnType<typeof resolveAdminUxPageQueryState>;
     const dataLoadResult = {
       error: null,
@@ -65,9 +69,13 @@ describe('admin ux page entry', () => {
       allMetricsSignalFilter: 'all',
       allMetricsRiskTone: 'all',
       allMetricsView: 'overview',
+      correlationId: null,
       dataLoadResult,
       expandAllGroups: false,
+      executionSessionId: null,
       hours: 48,
+      releaseRunId: null,
+      routeKey: null,
     });
   });
 
@@ -78,8 +86,12 @@ describe('admin ux page entry', () => {
       allMetricsSignalFilter: 'active',
       allMetricsRiskTone: 'watch',
       allMetricsView: 'quality',
+      correlationId: null,
       expandAllGroups: false,
+      executionSessionId: null,
       hours: 24,
+      releaseRunId: null,
+      routeKey: null,
     } as ReturnType<typeof resolveAdminUxPageQueryState>;
     const dataLoadResult = {
       error: 'load failed',
@@ -103,8 +115,12 @@ describe('admin ux page entry', () => {
       allMetricsSignalFilter: 'all',
       allMetricsRiskTone: 'all',
       allMetricsView: 'overview',
+      correlationId: null,
       expandAllGroups: false,
+      executionSessionId: null,
       hours: 12,
+      releaseRunId: null,
+      routeKey: null,
     } as ReturnType<typeof resolveAdminUxPageQueryState>;
     const dataLoadResult = {
       error: null,
@@ -124,9 +140,13 @@ describe('admin ux page entry', () => {
       allMetricsSignalFilter: 'all',
       allMetricsRiskTone: 'all',
       allMetricsView: 'overview',
+      correlationId: null,
       dataLoadResult,
       expandAllGroups: false,
+      executionSessionId: null,
       hours: 12,
+      releaseRunId: null,
+      routeKey: null,
     });
   });
 });

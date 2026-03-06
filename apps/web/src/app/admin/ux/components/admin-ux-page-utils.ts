@@ -46,6 +46,13 @@ export const ADMIN_UX_ALL_METRICS_RISK_TONES = [
 export type AdminUxAllMetricsRiskTone =
   (typeof ADMIN_UX_ALL_METRICS_RISK_TONES)[number];
 
+export interface AdminUxObservabilityScope {
+  correlationId: string | null;
+  executionSessionId: string | null;
+  releaseRunId: string | null;
+  routeKey: string | null;
+}
+
 const ADMIN_UX_PANEL_VALUES = new Set<string>(ADMIN_UX_PANELS);
 const ADMIN_UX_ALL_METRICS_VIEW_VALUES = new Set<string>(
   ADMIN_UX_ALL_METRICS_VIEWS,

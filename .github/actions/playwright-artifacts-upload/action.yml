@@ -1,5 +1,5 @@
 name: Playwright Artifacts Upload
-description: Upload Playwright report and optional results artifacts.
+description: Upload Playwright report/results artifacts and a guaranteed artifact-presence manifest.
 
 inputs:
   report_artifact_name:
@@ -12,21 +12,51 @@ inputs:
   results_artifact_name:
     description: Optional artifact name for Playwright results/screenshots directory.
     required: false
-    default: ""
+    default: ''
   results_path:
     description: Path to Playwright results/screenshots directory.
     required: false
     default: apps/web/test-results
+  manifest_json_path:
+    description: Path to generated JSON artifact manifest.
+    required: false
+    default: artifacts/ci/playwright-artifact-manifest.json
+  manifest_md_path:
+    description: Path to generated Markdown artifact manifest.
+    required: false
+    default: artifacts/ci/playwright-artifact-manifest.md
+  manifest_title:
+    description: Title used in generated artifact manifest markdown.
+    required: false
+    default: Playwright Artifact Presence Summary
 
 runs:
   using: composite
   steps:
+    - name: Generate Playwright artifact manifest
+      shell: bash
+      run: |
+        node scripts/ci/summarize-playwright-artifacts.mjs \
+          --report-path "${{ inputs.report_path }}" \
+          --results-path "${{ inputs.results_path }}" \
+          --output "${{ inputs.manifest_json_path }}" \
+          --markdown-output "${{ inputs.manifest_md_path }}" \
+          --title "${{ inputs.manifest_title }}"
+
+    - name: Append Playwright artifact manifest to step summary
+      uses: ./.github/actions/append-step-summary
+      with:
+        summary_path: ${{ inputs.manifest_md_path }}
+
     - name: Upload Playwright report artifact
       if: always()
       uses: ./.github/actions/artifact-upload
       with:
         artifact_name: ${{ inputs.report_artifact_name }}
-        artifact_path: ${{ inputs.report_path }}
+        artifact_path: |
+          ${{ inputs.report_path }}
+          ${{ inputs.manifest_json_path }}
+          ${{ inputs.manifest_md_path }}
 
     - name: Upload Playwright results artifact
       if: always() && inputs.results_artifact_name != ''

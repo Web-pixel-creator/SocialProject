@@ -6,6 +6,28 @@ interface ReleaseBreakdownRow {
   key: string;
 }
 
+interface ReleaseSavedViewLink {
+  description: string;
+  href: string;
+  label: string;
+}
+
+interface ReleaseIncidentMetric {
+  label: string;
+  value: string;
+}
+
+interface ReleaseLatestIncidentCard {
+  badgeClassName: string;
+  badgeLabel: string;
+  debugHref: string;
+  metrics: ReleaseIncidentMetric[];
+  qualityHref: string;
+  runHref: string | null;
+  summary: string;
+  title: string;
+}
+
 const StatCard = ({
   hint,
   label,
@@ -32,6 +54,7 @@ const isNaLikeValue = (value: string): boolean => {
 export const ReleaseHealthSection = ({
   breakdownRows,
   hourlyTrendCard,
+  latestIncidentCard,
   releaseAlertsCount,
   releaseFirstAppearancesCount,
   releaseLatestReceivedAt,
@@ -40,9 +63,11 @@ export const ReleaseHealthSection = ({
   releaseRiskBadgeClassName,
   releaseRiskLabel,
   releaseRunsCount,
+  savedViewLinks,
 }: {
   breakdownRows: ReleaseBreakdownRow[];
   hourlyTrendCard: ReactNode;
+  latestIncidentCard: ReleaseLatestIncidentCard | null;
   releaseAlertsCount: string;
   releaseFirstAppearancesCount: string;
   releaseLatestReceivedAt: string | null;
@@ -51,6 +76,7 @@ export const ReleaseHealthSection = ({
   releaseRiskBadgeClassName: string;
   releaseRiskLabel: string;
   releaseRunsCount: string;
+  savedViewLinks: ReleaseSavedViewLink[];
 }) => {
   const visibleStatCards = [
     {
@@ -125,6 +151,82 @@ export const ReleaseHealthSection = ({
           <span className="font-semibold text-foreground">n/a</span>
         )}
       </p>
+      <article className="card grid gap-3 p-4">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+            Operator saved views
+          </h3>
+          <span className="inline-flex items-center rounded-full border border-border/45 bg-background/45 px-2 py-0.5 font-semibold text-muted-foreground text-xs uppercase tracking-wide">
+            shortcuts
+          </span>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {savedViewLinks.map((view) => (
+            <a
+              className="rounded-xl border border-border/30 bg-background/55 p-3 transition-colors hover:border-primary/45 hover:text-foreground"
+              href={view.href}
+              key={view.label}
+            >
+              <p className="font-semibold text-foreground text-sm">
+                {view.label}
+              </p>
+              <p className="mt-1 text-muted-foreground text-xs">
+                {view.description}
+              </p>
+            </a>
+          ))}
+        </div>
+      </article>
+      {latestIncidentCard ? (
+        <article className="card grid gap-3 p-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="grid gap-1">
+              <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+                {latestIncidentCard.title}
+              </h3>
+              <p className="text-muted-foreground text-sm">
+                {latestIncidentCard.summary}
+              </p>
+            </div>
+            <span
+              className={`${latestIncidentCard.badgeClassName} inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-xs uppercase tracking-wide`}
+            >
+              {latestIncidentCard.badgeLabel}
+            </span>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {latestIncidentCard.metrics.map((metric) => (
+              <StatCard
+                key={metric.label}
+                label={metric.label}
+                value={metric.value}
+              />
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {latestIncidentCard.runHref ? (
+              <a
+                className="inline-flex items-center rounded-full border border-border/45 bg-background/45 px-3 py-1 font-semibold text-xs transition-colors hover:border-primary/45 hover:text-foreground"
+                href={latestIncidentCard.runHref}
+              >
+                Open GitHub run
+              </a>
+            ) : null}
+            <a
+              className="inline-flex items-center rounded-full border border-primary/45 bg-primary/10 px-3 py-1 font-semibold text-primary text-xs transition-colors hover:bg-primary/15"
+              href={latestIncidentCard.debugHref}
+            >
+              Open filtered debug view
+            </a>
+            <a
+              className="inline-flex items-center rounded-full border border-border/45 bg-background/45 px-3 py-1 font-semibold text-xs transition-colors hover:border-primary/45 hover:text-foreground"
+              href={latestIncidentCard.qualityHref}
+            >
+              Open quality risk view
+            </a>
+          </div>
+        </article>
+      ) : null}
       <article className="card grid gap-2 p-4">
         <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
           Alert breakdowns

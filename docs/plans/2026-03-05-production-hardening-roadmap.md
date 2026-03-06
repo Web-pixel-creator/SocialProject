@@ -2,7 +2,7 @@
 
 Date: 2026-03-05
 Owner: FinishIt Platform
-Status: in_progress
+Status: completed
 
 ## Goal
 
@@ -322,6 +322,115 @@ Exit criteria:
   - `ultracite:check`: pass
   - `release:launch:gate:production:json -- --required-external-channels all`: pass (`generatedAtUtc=2026-03-06T04:35:11.598Z`)
   - note: full `admin.integration.spec.ts` requires local postgres/redis; in this shell both localhost ports `5432` and `6379` were unavailable and Docker engine pipe was not reachable.
+
+### 2026-03-06 - Phase 6 completed
+
+- Added path-based Playwright/E2E scope classification:
+  - `scripts/ci/classify-web-e2e-changes-core.js`
+  - `scripts/ci/classify-web-e2e-changes.mjs`
+  - `.github/actions/playwright-change-scope/action.yml`
+- Updated CI/workflow gates to share the same local scope rules:
+  - `.github/workflows/ci.yml`
+  - `.github/workflows/web-pr-gate.yml`
+  - critical coverage now triggers on web/public/API-surface/CI-runtime changes,
+  - visual coverage is scoped separately,
+  - docs/release-only edits no longer fan out into full web E2E runs.
+- Added guaranteed Playwright artifact summary/manifest handling:
+  - `scripts/ci/summarize-playwright-artifacts-core.js`
+  - `scripts/ci/summarize-playwright-artifacts.mjs`
+  - `.github/actions/playwright-artifacts-upload/action.yml`
+  - failure runs now always publish a manifest JSON/Markdown summary,
+  - skip cases still leave a scope-summary artifact for operator review.
+- Added targeted CI coverage:
+  - `apps/api/src/__tests__/ci-web-e2e-change-scope.unit.spec.ts`
+  - `apps/api/src/__tests__/ci-playwright-artifacts-summary.unit.spec.ts`
+- Validation:
+  - targeted `jest` suites for change-scope and artifact-summary helpers: pass
+  - `node --check` on new CI scripts: pass
+  - `ci:workflow:inline-node-check`: pass
+  - `prettier --check` on changed workflow/script files: pass
+  - manual CLI sanity checks for classifier/artifact-summary wrappers: pass
+
+### 2026-03-06 - Phase 7 completed
+
+- Added operator saved-view shortcuts and latest-incident drill-down for release health:
+  - `apps/web/src/app/admin/ux/components/release-health-section.tsx`
+  - `apps/web/src/app/admin/ux/components/admin-ux-engagement-prop-builders.tsx`
+- Extended `admin/ux` query-state, panel chrome, and orchestration to preserve
+  observability scope across navigation:
+  - `correlationId`
+  - `executionSessionId`
+  - `releaseRunId`
+  - `routeKey`
+  - touched files include:
+    - `apps/web/src/app/admin/ux/components/admin-ux-page-orchestration.ts`
+    - `apps/web/src/app/admin/ux/components/admin-ux-page-shell-view-model.ts`
+    - `apps/web/src/app/admin/ux/components/admin-ux-page-entry.tsx`
+    - `apps/web/src/app/admin/ux/components/admin-ux-page-load-state.tsx`
+    - `apps/web/src/app/admin/ux/components/admin-ux-page-content.tsx`
+    - `apps/web/src/app/admin/ux/components/admin-ux-main-panel-builder-types.ts`
+    - `apps/web/src/app/admin/ux/components/admin-ux-page-utils.ts`
+- Added scoped observability context into runtime/debug operator surfaces:
+  - `apps/web/src/app/admin/ux/components/admin-ux-gateway-runtime-prop-builders.tsx`
+  - `apps/web/src/app/admin/ux/components/admin-ux-view-models.ts`
+  - operators can move from latest release alert to a filtered debug view without
+    re-entering the run id manually.
+- Expanded web coverage for the new navigation contract:
+  - `apps/web/src/app/admin/ux/components/admin-ux-page-entry.spec.ts`
+  - `apps/web/src/__tests__/admin-ux-page.spec.tsx`
+- Validation:
+  - targeted `jest` suites for `admin-ux-page-entry` and `admin-ux-page`: pass
+  - combined Phase 6/7 targeted `jest` suites: pass
+  - `prettier --write` on changed `admin/ux` component/test files: pass
+  - `npm --workspace apps/web run build`: pass
+    - note: required network-enabled rerun in this shell because `next/font` fetched Google Fonts during build.
+  - `npm --workspace apps/api run build`: pass
+  - `ci:workflow:inline-node-check`: pass
+  - `ultracite:check`: pass
+  - exit criteria met: operators can move from a failing release alert to scoped
+    debug evidence through saved views and incident cards without manual hunting.
+
+### 2026-03-06 - Post-completion validation hardening
+
+- Hardened release JSON readers for local Windows parity:
+  - `scripts/release/release-runtime-utils.mjs`
+  - tolerant decoding now handles:
+    - UTF-8 BOM
+    - UTF-16 LE BOM
+    - transient file-read locks (`EBUSY`, `EPERM`) with bounded retry
+- Updated release validators/annotator to use the shared tolerant reader:
+  - `scripts/release/validate-inline-post-release-health-artifacts-summary-schema.mjs`
+  - `scripts/release/validate-release-health-report-schema.mjs`
+  - `scripts/release/annotate-launch-gate-summary-inline-schema-check.mjs`
+- Aligned inline-artifact producer/consumer defaults for local parity:
+  - `scripts/release/validate-inline-post-release-health-artifacts.mjs`
+  - now writes `artifacts/release/post-release-health-inline-artifacts-summary-<run_id>.json` by default.
+- Removed shell-redirection dependence for post-release health summaries:
+  - `scripts/release/post-release-health-report.mjs`
+    - added `--summary-output <path>` for UTF-8 machine-readable summary persistence
+  - `scripts/release/validate-release-health-report-schema.mjs`
+    - added `--output <path>` for UTF-8 machine-readable schema-summary persistence
+  - `scripts/release/run-post-release-health-gate.sh`
+    - now uses the new output flags instead of `>` redirection
+  - `docs/ops/release-runbook.md`
+    - documents the cross-platform local commands
+- Cleared the remaining runtime `npm audit` advisory in the API storage dependency path:
+  - updated lockfile entries under the AWS XML subgraph:
+    - `@aws-sdk/xml-builder` `3.972.5 -> 3.972.10`
+    - `fast-xml-parser` `5.3.6 -> 5.4.1`
+  - `npm audit --omit=dev --audit-level=high`: pass with `0 vulnerabilities`
+- Expanded regression coverage:
+  - `apps/api/src/__tests__/release-runtime-utils.unit.spec.ts`
+  - `apps/api/src/__tests__/release-inline-health-artifacts-check.unit.spec.ts`
+  - `apps/api/src/__tests__/release-inline-health-artifacts-schema-check.unit.spec.ts`
+- Validation:
+  - targeted `jest` suites for release runtime utils and inline-artifact helpers: pass
+  - `release:health:report -- <run_id> --summary-output ...`: pass
+  - immediate `release:health:schema:check -- ... --output ...` on the freshly written runtime report: pass
+  - regenerated `post-release-health-summary-22549331429.json` and `post-release-health-schema-summary-22549331429.json` as UTF-8
+  - `release:health:inline-artifacts:schema:check -- --json`: pass
+  - `verify:local`: pass after dependency remediation
+  - `release:dry-run:local`: pass after dependency remediation
 
 ## Hard Rule
 

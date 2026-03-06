@@ -6,6 +6,7 @@ const projectRoot = path.resolve(__dirname, '..', '..', '..', '..');
 const runId = 999_999_023;
 const validSummaryRelativePath = `artifacts/release/post-release-health-inline-artifacts-summary-${String(runId)}.json`;
 const invalidSummaryRelativePath = `artifacts/release/post-release-health-inline-artifacts-summary-${String(runId + 1)}.json`;
+const utf16SummaryRelativePath = `artifacts/release/post-release-health-inline-artifacts-summary-${String(runId + 2)}.json`;
 
 const createValidSummaryPayload = (targetRunId: number) => ({
   schemaPath:
@@ -47,9 +48,11 @@ const createValidSummaryPayload = (targetRunId: number) => ({
 });
 
 const writeSummaryFixture = async ({
+  encoding = 'utf8',
   relativePath,
   payload,
 }: {
+  encoding?: BufferEncoding;
   relativePath: string;
   payload: unknown;
 }) => {
@@ -57,8 +60,8 @@ const writeSummaryFixture = async ({
   await mkdir(path.dirname(absolutePath), { recursive: true });
   await writeFile(
     absolutePath,
-    `${JSON.stringify(payload, null, 2)}\n`,
-    'utf8',
+    `${encoding === 'utf16le' ? '\uFEFF' : ''}${JSON.stringify(payload, null, 2)}\n`,
+    encoding,
   );
 };
 
@@ -82,11 +85,17 @@ describe('inline post-release health artifacts summary schema validator', () => 
       relativePath: invalidSummaryRelativePath,
       payload: invalidPayload,
     });
+    await writeSummaryFixture({
+      encoding: 'utf16le',
+      relativePath: utf16SummaryRelativePath,
+      payload: createValidSummaryPayload(runId + 2),
+    });
   });
 
   afterAll(async () => {
     await removeSummaryFixture(validSummaryRelativePath);
     await removeSummaryFixture(invalidSummaryRelativePath);
+    await removeSummaryFixture(utf16SummaryRelativePath);
   });
 
   test('passes with valid runtime summary payload', () => {
@@ -132,5 +141,27 @@ describe('inline post-release health artifacts summary schema validator', () => 
     expect(payload.totals.runtimePayloads).toBe(0);
     expect(payload.failures[0]).toContain('runtime summary');
     expect(payload.failures[0]).toContain('/schemaVersion');
+  });
+
+  test('passes with valid UTF-16 LE runtime summary payload', () => {
+    const result = spawnSync(
+      process.execPath,
+      [
+        'scripts/release/validate-inline-post-release-health-artifacts-summary-schema.mjs',
+        utf16SummaryRelativePath,
+        '--json',
+      ],
+      {
+        cwd: projectRoot,
+        encoding: 'utf8',
+      },
+    );
+
+    expect(result.status).toBe(0);
+    const payload = JSON.parse(result.stdout);
+    expect(payload.status).toBe('pass');
+    expect(payload.totals.fixturePayloads).toBe(1);
+    expect(payload.totals.runtimePayloads).toBe(1);
+    expect(payload.failures).toEqual([]);
   });
 });

@@ -15,7 +15,14 @@ const runHelperScenario = (scriptBody: string) =>
     ok: boolean;
     result: unknown;
   }>(`
-    import { sleep, toErrorMessage } from ${JSON.stringify(helperModuleHref)};
+    import {
+      decodeTextWithEncodingFallback,
+      isTransientFileReadError,
+      parseJsonWithEncodingFallback,
+      retryFileReadOperation,
+      sleep,
+      toErrorMessage,
+    } from ${JSON.stringify(helperModuleHref)};
     const emit = (payload) => {
       process.stdout.write(JSON.stringify(payload));
     };
@@ -64,5 +71,61 @@ describe('release runtime utils', () => {
     expect(
       (result.payload.result as { elapsedMs: number }).elapsedMs,
     ).toBeGreaterThanOrEqual(0);
+  });
+
+  test('decodes UTF-8 BOM and UTF-16 LE buffers before JSON parsing', () => {
+    const result = runHelperScenario(`
+      const utf8Bom = Buffer.from('\\uFEFF{"status":"pass","count":1}', 'utf8');
+      const utf16Bom = Buffer.from('\\uFEFF{"status":"pass","count":2}', 'utf16le');
+      const value = {
+        utf8Raw: decodeTextWithEncodingFallback(utf8Bom),
+        utf16Payload: parseJsonWithEncodingFallback(utf16Bom),
+      };
+      emit({ ok: true, result: value, error: '' });
+    `);
+
+    expect(result.output.status).toBe(0);
+    expect(result.payload.ok).toBe(true);
+    expect(result.payload.result).toEqual({
+      utf8Raw: '{"status":"pass","count":1}',
+      utf16Payload: { status: 'pass', count: 2 },
+    });
+  });
+
+  test('retries transient file read errors before succeeding', () => {
+    const result = runHelperScenario(`
+      let attempts = 0;
+      const value = await retryFileReadOperation(async () => {
+        attempts += 1;
+        if (attempts < 3) {
+          const error = new Error('busy');
+          error.code = attempts === 1 ? 'EBUSY' : 'EPERM';
+          throw error;
+        }
+        return Buffer.from('ready', 'utf8');
+      }, { delayMs: 1, maxAttempts: 4 });
+
+      emit({
+        ok: true,
+        result: {
+          attempts,
+          isBusyTransient: isTransientFileReadError({ code: 'EBUSY' }),
+          isPermTransient: isTransientFileReadError({ code: 'EPERM' }),
+          isMissingTransient: isTransientFileReadError({ code: 'ENOENT' }),
+          value: value.toString('utf8'),
+        },
+        error: '',
+      });
+    `);
+
+    expect(result.output.status).toBe(0);
+    expect(result.payload.ok).toBe(true);
+    expect(result.payload.result).toEqual({
+      attempts: 3,
+      isBusyTransient: true,
+      isPermTransient: true,
+      isMissingTransient: false,
+      value: 'ready',
+    });
   });
 });

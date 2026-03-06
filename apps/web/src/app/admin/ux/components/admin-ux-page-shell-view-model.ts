@@ -10,6 +10,7 @@ import type {
   AdminUxAllMetricsRiskTone,
   AdminUxAllMetricsSignalFilter,
   AdminUxAllMetricsView,
+  AdminUxObservabilityScope,
   AdminUxPanel,
 } from './admin-ux-page-utils';
 import type { AdminUxSectionData } from './admin-ux-section-prep';
@@ -103,32 +104,55 @@ export const buildAdminUxPanelHref = (
     allMetricsSignalFilter = 'all',
     allMetricsRiskTone = 'all',
     allMetricsView = 'overview',
+    correlationId = null,
     expandAllGroups = false,
+    executionSessionId = null,
+    releaseRunId = null,
+    routeKey = null,
   }: {
     allMetricsRiskFilter?: AdminUxAllMetricsRiskFilter;
     allMetricsSignalFilter?: AdminUxAllMetricsSignalFilter;
     allMetricsRiskTone?: AdminUxAllMetricsRiskTone;
     allMetricsView?: AdminUxAllMetricsView;
+    correlationId?: AdminUxObservabilityScope['correlationId'];
     expandAllGroups?: boolean;
+    executionSessionId?: AdminUxObservabilityScope['executionSessionId'];
+    releaseRunId?: AdminUxObservabilityScope['releaseRunId'];
+    routeKey?: AdminUxObservabilityScope['routeKey'];
   } = {},
 ): string => {
-  let href = `/admin/ux?hours=${hours}&panel=${panel}`;
+  const queryParams = new URLSearchParams({
+    hours: `${hours}`,
+    panel,
+  });
   if (panel === 'all' && allMetricsView !== 'overview') {
-    href += `&allView=${allMetricsView}`;
+    queryParams.set('allView', allMetricsView);
   }
   if (panel === 'all' && allMetricsRiskFilter !== 'all') {
-    href += `&risk=${allMetricsRiskFilter}`;
+    queryParams.set('risk', allMetricsRiskFilter);
   }
   if (panel === 'all' && allMetricsSignalFilter !== 'all') {
-    href += `&signal=${allMetricsSignalFilter}`;
+    queryParams.set('signal', allMetricsSignalFilter);
   }
   if (panel === 'all' && allMetricsRiskTone !== 'all') {
-    href += `&riskTone=${allMetricsRiskTone}`;
+    queryParams.set('riskTone', allMetricsRiskTone);
   }
   if (panel === 'all' && expandAllGroups) {
-    href += '&expand=all';
+    queryParams.set('expand', 'all');
   }
-  return href;
+  if (correlationId) {
+    queryParams.set('correlationId', correlationId);
+  }
+  if (executionSessionId) {
+    queryParams.set('executionSessionId', executionSessionId);
+  }
+  if (releaseRunId) {
+    queryParams.set('releaseRunId', releaseRunId);
+  }
+  if (routeKey) {
+    queryParams.set('routeKey', routeKey);
+  }
+  return `/admin/ux?${queryParams.toString()}`;
 };
 
 export const buildAdminUxPanelChromeView = ({
@@ -139,9 +163,13 @@ export const buildAdminUxPanelChromeView = ({
   allMetricsRiskCounts,
   allMetricsSignalCounts,
   allMetricsView,
+  correlationId,
   expandAllGroups,
+  executionSessionId,
   hours,
   kpis,
+  releaseRunId,
+  routeKey,
 }: {
   activePanel: AdminUxPanel;
   allMetricsRiskFilter: AdminUxAllMetricsRiskFilter;
@@ -150,9 +178,13 @@ export const buildAdminUxPanelChromeView = ({
   allMetricsRiskCounts?: AllMetricsRiskCounts;
   allMetricsSignalCounts?: AllMetricsSignalCounts;
   allMetricsView: AdminUxAllMetricsView;
+  correlationId: AdminUxObservabilityScope['correlationId'];
   expandAllGroups: boolean;
+  executionSessionId: AdminUxObservabilityScope['executionSessionId'];
   hours: number;
   kpis: AdminUxSectionData['kpis'] | null | undefined;
+  releaseRunId: AdminUxObservabilityScope['releaseRunId'];
+  routeKey: AdminUxObservabilityScope['routeKey'];
 }) => ({
   allMetricsRiskFilterTabs:
     activePanel === 'all'
@@ -164,7 +196,11 @@ export const buildAdminUxPanelChromeView = ({
               allMetricsSignalFilter,
               allMetricsRiskTone,
               allMetricsView,
+              correlationId,
               expandAllGroups,
+              executionSessionId,
+              releaseRunId,
+              routeKey,
             }),
           panelTabs: ADMIN_UX_ALL_METRICS_RISK_FILTER_TABS.map((tab) => ({
             ...tab,
@@ -185,7 +221,11 @@ export const buildAdminUxPanelChromeView = ({
               allMetricsSignalFilter: signalFilter,
               allMetricsRiskTone,
               allMetricsView,
+              correlationId,
               expandAllGroups,
+              executionSessionId,
+              releaseRunId,
+              routeKey,
             }),
           panelTabs: ADMIN_UX_ALL_METRICS_SIGNAL_FILTER_TABS.map((tab) => ({
             ...tab,
@@ -211,7 +251,11 @@ export const buildAdminUxPanelChromeView = ({
               allMetricsRiskTone:
                 allMetricsRiskTone === tone.id ? 'all' : tone.id,
               allMetricsView,
+              correlationId,
               expandAllGroups,
+              executionSessionId,
+              releaseRunId,
+              routeKey,
             }),
             label: tone.label,
           })),
@@ -228,7 +272,11 @@ export const buildAdminUxPanelChromeView = ({
               allMetricsSignalFilter,
               allMetricsRiskTone,
               allMetricsView: view,
+              correlationId,
               expandAllGroups,
+              executionSessionId,
+              releaseRunId,
+              routeKey,
             }),
           panelTabs: [...ADMIN_UX_ALL_METRICS_VIEW_TABS],
         })
@@ -241,13 +289,21 @@ export const buildAdminUxPanelChromeView = ({
             allMetricsSignalFilter,
             allMetricsRiskTone,
             allMetricsView,
+            correlationId,
+            executionSessionId,
+            releaseRunId,
+            routeKey,
           }),
           expandHref: buildAdminUxPanelHref(hours, 'all', {
             allMetricsRiskFilter,
             allMetricsSignalFilter,
             allMetricsRiskTone,
             allMetricsView,
+            correlationId,
             expandAllGroups: true,
+            executionSessionId,
+            releaseRunId,
+            routeKey,
           }),
           expanded: expandAllGroups,
         }
@@ -260,7 +316,11 @@ export const buildAdminUxPanelChromeView = ({
         allMetricsSignalFilter,
         allMetricsRiskTone,
         allMetricsView,
+        correlationId,
         expandAllGroups,
+        executionSessionId,
+        releaseRunId,
+        routeKey,
       }),
     panelTabs: [...ADMIN_UX_PANEL_TABS],
   }),

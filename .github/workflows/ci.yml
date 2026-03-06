@@ -60,7 +60,7 @@ jobs:
       - name: Bootstrap Node CI tooling
         uses: ./.github/actions/node-ci-bootstrap
         with:
-          fetch_depth: "0"
+          fetch_depth: '0'
 
       - name: Run Ultracite check (full scope)
         run: |
@@ -83,7 +83,7 @@ jobs:
       - name: Bootstrap Node CI tooling
         uses: ./.github/actions/node-ci-bootstrap
         with:
-          fetch_depth: "0"
+          fetch_depth: '0'
 
       - name: Run visual baseline policy gate
         uses: ./.github/actions/visual-policy-gate
@@ -102,6 +102,36 @@ jobs:
         shell: bash
         run: bash scripts/ci/run-ultracite-changed-files.sh
 
+  detect_web_e2e_scope:
+    name: Detect Web E2E Scope
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      run_critical: ${{ steps.scope.outputs.run_critical }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Classify Playwright critical scope
+        id: scope
+        uses: ./.github/actions/playwright-change-scope
+        with:
+          base_sha: ${{ github.event.pull_request.base.sha }}
+          head_sha: ${{ github.sha }}
+          summary_json_path: artifacts/ci/ci-pr-web-e2e-scope.json
+          summary_md_path: artifacts/ci/ci-pr-web-e2e-scope.md
+          summary_title: CI PR Web E2E Scope
+          artifact_name: ci-pr-web-e2e-scope
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -242,8 +272,8 @@ jobs:
 
   e2e_playwright:
     name: Playwright E2E (PR critical)
-    if: github.event_name == 'pull_request'
-    needs: test
+    if: github.event_name == 'pull_request' && needs.detect_web_e2e_scope.outputs.run_critical == 'true'
+    needs: [test, detect_web_e2e_scope]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -272,8 +302,8 @@ jobs:
           summary_title: CI Playwright E2E Critical Summary
           artifact_summary_name: ci-playwright-e2e-summary
           artifact_json_name: ci-playwright-e2e-json-report
-          top_slow: "15"
-          slow_threshold_ms: "5000"
+          top_slow: '15'
+          slow_threshold_ms: '5000'
 
       - name: Upload Playwright report and results artifacts
         if: always()

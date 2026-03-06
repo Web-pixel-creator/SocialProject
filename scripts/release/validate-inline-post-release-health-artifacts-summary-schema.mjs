@@ -1,4 +1,4 @@
-import { readdir, readFile, stat } from 'node:fs/promises';
+import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Ajv2020 from 'ajv/dist/2020.js';
@@ -7,6 +7,7 @@ import {
   INLINE_HEALTH_ARTIFACTS_SUMMARY_JSON_SCHEMA_PATH,
   INLINE_HEALTH_ARTIFACTS_SUMMARY_JSON_SAMPLE_PATH,
 } from './inline-health-artifacts-schema-contracts.mjs';
+import { readJsonFileWithEncodingFallback } from './release-runtime-utils.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -14,18 +15,14 @@ const projectRoot = path.resolve(__dirname, '..', '..');
 
 const OUTPUT_LABEL = 'release:health:inline-artifacts:schema:check';
 const DEFAULT_REPORT_DIR = 'artifacts/release';
-const REPORT_FILE_PATTERN =
-  /^post-release-health-inline-artifacts-summary-\d+\.json$/u;
+const REPORT_FILE_PATTERN = /^post-release-health-inline-artifacts-summary-\d+\.json$/u;
 const USAGE =
   'Usage: node scripts/release/validate-inline-post-release-health-artifacts-summary-schema.mjs [summary_path] [--json]\n';
 
 const resolvePath = (filePath) =>
   path.isAbsolute(filePath) ? filePath : path.resolve(projectRoot, filePath);
 
-const loadJson = async (filePath) => {
-  const raw = await readFile(filePath, 'utf8');
-  return JSON.parse(raw);
-};
+const loadJson = async (filePath) => readJsonFileWithEncodingFallback(filePath);
 
 const formatAjvErrors = (errors = []) =>
   errors
@@ -96,8 +93,7 @@ const findLatestSummaryPath = async () => {
   return candidates[0]?.fullPath ?? null;
 };
 
-const toRelative = (filePath) =>
-  path.relative(projectRoot, filePath).replace(/\\/gu, '/');
+const toRelative = (filePath) => path.relative(projectRoot, filePath).replace(/\\/gu, '/');
 
 const writeJsonSummary = ({
   status,

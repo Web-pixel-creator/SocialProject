@@ -628,7 +628,9 @@ describe('admin ux observer engagement page', () => {
     expect(screen.getByText(/telemetry_zero_accepted/i)).toBeInTheDocument();
     expect(screen.getByText(/2026-03-01 17:00 UTC/i)).toBeInTheDocument();
     expect(screen.getByText(/2026-03-01 18:00 UTC/i)).toBeInTheDocument();
-    expect(screen.getByText(/#49/i)).toBeInTheDocument();
+    expect(
+      releaseHealthScoped.getByText(/^Latest alerted run #49$/i),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('link', {
         name: /https:\/\/github\.com\/Web-pixel-creator\/SocialProject\/actions\/runs\/22548544748/i,
@@ -1905,6 +1907,191 @@ describe('admin ux observer engagement page', () => {
     expect(
       screen.getByText(/Top route admin.ai_runtime.health/i),
     ).toBeInTheDocument();
+  });
+
+  test('renders release saved views and latest alert drill-down', async () => {
+    const latestReleaseRunId = '22548544748';
+    const fetchMock = jest
+      .fn()
+      .mockImplementation((url: string, _init?: RequestInit) => {
+        if (url.includes('/admin/ux/observer-engagement')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({
+              windowHours: 24,
+              kpis: {},
+              feedPreferences: {},
+              predictionFilterTelemetry: {},
+              predictionHistoryStateTelemetry: { byScope: [] },
+              predictionMarket: {},
+              predictionSortTelemetry: {},
+              releaseHealthAlerts: {
+                totalAlerts: 1,
+                uniqueRuns: 1,
+                firstAppearanceCount: 3,
+                byChannel: [{ channel: 'telegram', count: 1, rate: 1 }],
+                byFailureMode: [
+                  {
+                    failureMode: 'ingest_http_error',
+                    count: 1,
+                    rate: 1,
+                  },
+                ],
+                hourlyTrend: [
+                  {
+                    hour: '2026-03-01T18:00:00Z',
+                    alerts: 1,
+                    firstAppearances: 3,
+                  },
+                ],
+                latest: {
+                  receivedAtUtc: '2026-03-01T18:12:34.000Z',
+                  runId: 22_548_544_748,
+                  runNumber: 49,
+                  runUrl:
+                    'https://github.com/Web-pixel-creator/SocialProject/actions/runs/22548544748',
+                },
+              },
+              segments: [],
+            }),
+          } as Response);
+        }
+        if (url.includes('/admin/agent-gateway/sessions?limit=25')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({
+              source: 'db',
+              sessions: [],
+            }),
+          } as Response);
+        }
+        if (url.includes('/admin/agent-gateway/telemetry')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({
+              windowHours: 24,
+              health: { level: 'healthy' },
+              sessions: { attention: 0, total: 0 },
+              events: { total: 0 },
+            }),
+          } as Response);
+        }
+        if (url.includes('/admin/ai-runtime/health')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({
+              generatedAt: '2026-03-06T06:00:00.000Z',
+              roleStates: [],
+              providers: [],
+              summary: {
+                roleCount: 0,
+                providerCount: 0,
+                rolesBlocked: 0,
+                providersCoolingDown: 0,
+                providersReady: 0,
+                health: 'ok',
+              },
+            }),
+          } as Response);
+        }
+        if (url.includes('/admin/observability/otel')) {
+          const isReleaseScoped = url.includes(
+            `releaseRunId=${latestReleaseRunId}`,
+          );
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({
+              generatedAt: '2026-03-06T06:05:00.000Z',
+              windowHours: 24,
+              http: {
+                summary: {
+                  total: isReleaseScoped ? 3 : 8,
+                  successCount: isReleaseScoped ? 2 : 7,
+                  failedCount: 1,
+                  p95TimingMs: isReleaseScoped ? 305 : 420,
+                  errorRate: isReleaseScoped ? 0.333 : 0.125,
+                  correlationCoverageRate: isReleaseScoped ? 1 : 0.75,
+                },
+                routes: [
+                  {
+                    routeKey: 'release.health.webhook',
+                    method: 'POST',
+                    total: isReleaseScoped ? 3 : 8,
+                    successCount: isReleaseScoped ? 2 : 7,
+                    failedCount: 1,
+                  },
+                ],
+              },
+              runtime: {
+                summary: {
+                  total: isReleaseScoped ? 2 : 4,
+                  successCount: isReleaseScoped ? 1 : 3,
+                  failedCount: 1,
+                  failureRate: isReleaseScoped ? 0.5 : 0.25,
+                  fallbackPathUsedRate: 1,
+                },
+              },
+              release: {
+                summary: {
+                  totalAlerts: 1,
+                },
+              },
+              health: {
+                level: isReleaseScoped ? 'critical' : 'watch',
+              },
+            }),
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: false,
+          status: 404,
+          json: async () => ({}),
+        } as Response);
+      });
+    global.fetch = fetchMock as typeof fetch;
+
+    render(
+      await AdminUxObserverEngagementPage({
+        searchParams: Promise.resolve({
+          hours: '24',
+          panel: 'release',
+        }),
+      }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByText(/Operator saved views/i)).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole('link', { name: /Release alerts/i }),
+    ).toHaveAttribute('href', '/admin/ux?hours=24&panel=release');
+    expect(
+      screen.getByRole('link', { name: /Latest alert drill-down/i }),
+    ).toHaveAttribute(
+      'href',
+      `/admin/ux?hours=24&panel=debug&releaseRunId=${latestReleaseRunId}`,
+    );
+    expect(
+      screen.getByRole('link', { name: /Open filtered debug view/i }),
+    ).toHaveAttribute(
+      'href',
+      `/admin/ux?hours=24&panel=debug&releaseRunId=${latestReleaseRunId}`,
+    );
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(
+          ([url]) =>
+            typeof url === 'string' &&
+            url.includes('/admin/observability/otel') &&
+            url.includes(`releaseRunId=${latestReleaseRunId}`),
+        ),
+      ).toBe(true),
+    );
   });
 
   test('renders API error state', async () => {
