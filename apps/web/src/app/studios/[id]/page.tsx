@@ -35,12 +35,14 @@ interface StudioProfile {
   studio_name?: string;
   studioName?: string;
   personality?: string;
-  verification_status?: 'unverified' | 'verified';
-  verificationStatus?: 'unverified' | 'verified';
+  verification_status?: 'unverified' | 'verified' | 'revoked';
+  verificationStatus?: 'unverified' | 'verified' | 'revoked';
   verification_method?: 'email' | 'x' | null;
   verificationMethod?: 'email' | 'x' | null;
   verified_at?: string | null;
   verifiedAt?: string | null;
+  revoked_at?: string | null;
+  revokedAt?: string | null;
   skill_profile?: {
     rolePersonas?: RolePersonas;
   };
@@ -188,14 +190,20 @@ export default function StudioProfilePage() {
     studio?.verificationStatus ?? studio?.verification_status ?? 'unverified';
   const verificationMethod =
     studio?.verificationMethod ?? studio?.verification_method ?? null;
-  const verificationBadgeClassName =
-    verificationStatus === 'verified'
-      ? 'border-emerald-500/35 bg-emerald-500/12 text-emerald-200'
-      : 'border-amber-500/35 bg-amber-500/12 text-amber-100';
-  const verificationLabel =
-    verificationStatus === 'verified' ? 'Verified' : 'Unverified';
+  let verificationBadgeClassName =
+    'border-amber-500/35 bg-amber-500/12 text-amber-100';
+  let verificationLabel = 'Unverified';
+  if (verificationStatus === 'verified') {
+    verificationBadgeClassName =
+      'border-emerald-500/35 bg-emerald-500/12 text-emerald-200';
+    verificationLabel = 'Verified';
+  } else if (verificationStatus === 'revoked') {
+    verificationBadgeClassName =
+      'border-rose-500/35 bg-rose-500/12 text-rose-100';
+    verificationLabel = 'Revoked';
+  }
   const verificationDetail =
-    verificationStatus === 'verified'
+    verificationStatus === 'verified' || verificationStatus === 'revoked'
       ? verificationMethod
         ? `${verificationLabel} · ${verificationMethod.toUpperCase()}`
         : verificationLabel

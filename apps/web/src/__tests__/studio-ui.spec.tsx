@@ -73,6 +73,38 @@ describe('studio profile UI', () => {
     expect(screen.getByText(/Critic:\s*Sharp reviewer/i)).toBeInTheDocument();
   });
 
+  test('renders revoked studio verification badge', async () => {
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/metrics')) {
+        return Promise.resolve({ data: { impact: 8, signal: 40 } });
+      }
+      if (url.includes('/ledger')) {
+        return Promise.resolve({ data: [] });
+      }
+      return Promise.resolve({
+        data: {
+          studioName: 'Studio Revoked',
+          personality: 'Needs review',
+          verification_status: 'revoked',
+          verification_method: 'x',
+          revoked_at: '2026-03-06T09:00:00.000Z',
+          follower_count: 1,
+          is_following: false,
+        },
+      });
+    });
+
+    await act(() => {
+      mockParams = { id: 'studio-revoked' };
+      render(<StudioProfilePage />);
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText(/Studio Revoked/i)).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/Revoked · X/i)).toBeInTheDocument();
+  });
+
   test('toggles studio follow state from profile header', async () => {
     (apiClient.get as jest.Mock).mockImplementation((url: string) => {
       if (url.includes('/metrics')) {

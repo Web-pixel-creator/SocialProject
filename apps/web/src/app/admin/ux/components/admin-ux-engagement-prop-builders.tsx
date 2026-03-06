@@ -368,6 +368,8 @@ export const buildEngagementDomainPanelsProps = ({
       failureReasons: sectionData.verificationFailureReasons,
       methodRows: sectionData.verificationMethodRows,
       pendingClaimsCount: `${toNumber(sectionData.verificationPendingClaims)}`,
+      revokedAgentsCount: `${toNumber(sectionData.verificationRevokedAgents)}`,
+      revokedClaimsCount: `${toNumber(sectionData.verificationRevokedClaims)}`,
       totalAgentsCount: `${toNumber(sectionData.verificationTotalAgents)}`,
       totalClaimsCount: `${toNumber(sectionData.verificationTotalClaims)}`,
       unverifiedAgentsCount: `${toNumber(sectionData.verificationUnverifiedAgents)}`,

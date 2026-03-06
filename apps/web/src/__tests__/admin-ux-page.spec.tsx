@@ -2116,10 +2116,12 @@ describe('admin ux observer engagement page', () => {
             summary: {
               totalAgents: 5,
               verifiedAgents: 2,
-              unverifiedAgents: 3,
-              totalClaims: 4,
+              revokedAgents: 1,
+              unverifiedAgents: 2,
+              totalClaims: 5,
               pendingClaims: 1,
               verifiedClaims: 2,
+              revokedClaims: 1,
               expiredClaims: 1,
               verificationRate: 0.4,
               avgHoursToVerify: 7.25,
@@ -2129,14 +2131,20 @@ describe('admin ux observer engagement page', () => {
                 totalClaims: 3,
                 pendingClaims: 1,
                 verifiedClaims: 1,
+                revokedClaims: 1,
                 expiredClaims: 1,
               },
               x: {
-                totalClaims: 1,
+                totalClaims: 2,
                 pendingClaims: 0,
                 verifiedClaims: 1,
-                expiredClaims: 0,
+                revokedClaims: 0,
+                expiredClaims: 1,
               },
+            },
+            failures: {
+              expiredClaims: 1,
+              revokedClaims: 1,
             },
             telemetry: {
               claimCreatedCount: 4,
@@ -2217,6 +2225,8 @@ describe('admin ux observer engagement page', () => {
     ).toBeInTheDocument();
     expect(verificationScoped.getByText(/^40\.0%$/i)).toBeInTheDocument();
     expect(verificationScoped.getByText(/^7\.25h$/i)).toBeInTheDocument();
+    expect(verificationScoped.getByText(/Revoked agents/i)).toBeInTheDocument();
+    expect(verificationScoped.getAllByText(/Revoked claims/i)).toHaveLength(2);
     expect(verificationScoped.getByText(/CLAIM_INVALID/i)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       'http://localhost:4000/api/admin/verification/metrics',

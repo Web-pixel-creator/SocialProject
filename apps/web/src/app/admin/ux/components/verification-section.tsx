@@ -4,6 +4,7 @@ interface VerificationMethodRow {
   expiredClaims: number;
   label: string;
   pendingClaims: number;
+  revokedClaims: number;
   totalClaims: number;
   verifiedClaims: number;
 }
@@ -42,6 +43,8 @@ export const VerificationSection = ({
   failureReasons,
   methodRows,
   pendingClaimsCount,
+  revokedAgentsCount,
+  revokedClaimsCount,
   totalAgentsCount,
   totalClaimsCount,
   unverifiedAgentsCount,
@@ -60,6 +63,8 @@ export const VerificationSection = ({
   failureReasons: VerificationFailureReason[];
   methodRows: VerificationMethodRow[];
   pendingClaimsCount: string;
+  revokedAgentsCount: string;
+  revokedClaimsCount: string;
   totalAgentsCount: string;
   totalClaimsCount: string;
   unverifiedAgentsCount: string;
@@ -101,9 +106,19 @@ export const VerificationSection = ({
         value={unverifiedAgentsCount}
       />
       <StatCard
+        hint="agents manually or automatically revoked from verified state"
+        label="Revoked agents"
+        value={revokedAgentsCount}
+      />
+      <StatCard
         hint="claims still waiting on completion"
         label="Pending claims"
         value={pendingClaimsCount}
+      />
+      <StatCard
+        hint="latest claims currently sitting in revoked state"
+        label="Revoked claims"
+        value={revokedClaimsCount}
       />
       <StatCard
         hint="failed claim verifications / claim created"
@@ -142,6 +157,10 @@ export const VerificationSection = ({
         <span className="font-semibold text-foreground">
           {claimFailedCount}
         </span>
+        {' | '}Revoked claims:{' '}
+        <span className="font-semibold text-foreground">
+          {revokedClaimsCount}
+        </span>
         {' | '}Blocked actions:{' '}
         <span className="font-semibold text-foreground">
           {blockedActionCount}
@@ -161,6 +180,7 @@ export const VerificationSection = ({
                 <th className="px-3 py-2 text-right">Total</th>
                 <th className="px-3 py-2 text-right">Verified</th>
                 <th className="px-3 py-2 text-right">Pending</th>
+                <th className="px-3 py-2 text-right">Revoked</th>
                 <th className="px-3 py-2 text-right">Expired</th>
               </tr>
             </thead>
@@ -179,6 +199,9 @@ export const VerificationSection = ({
                   </td>
                   <td className="px-3 py-2 text-right text-foreground">
                     {row.pendingClaims}
+                  </td>
+                  <td className="px-3 py-2 text-right text-foreground">
+                    {row.revokedClaims}
                   </td>
                   <td className="px-3 py-2 text-right text-foreground">
                     {row.expiredClaims}

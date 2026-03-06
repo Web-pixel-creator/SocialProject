@@ -207,6 +207,8 @@ const computeAllMetricsSignalCounts = ({
         mainPanelsProps.verificationSectionProps.claimVerifiedCount,
         mainPanelsProps.verificationSectionProps.failureRateText,
         mainPanelsProps.verificationSectionProps.pendingClaimsCount,
+        mainPanelsProps.verificationSectionProps.revokedAgentsCount,
+        mainPanelsProps.verificationSectionProps.revokedClaimsCount,
         mainPanelsProps.verificationSectionProps.totalAgentsCount,
         mainPanelsProps.verificationSectionProps.totalClaimsCount,
         mainPanelsProps.verificationSectionProps.unverifiedAgentsCount,

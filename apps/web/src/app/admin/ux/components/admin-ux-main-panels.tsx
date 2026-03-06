@@ -339,6 +339,8 @@ export const AdminUxMainPanels = ({
     verificationSectionProps.claimVerifiedCount,
     verificationSectionProps.failureRateText,
     verificationSectionProps.pendingClaimsCount,
+    verificationSectionProps.revokedAgentsCount,
+    verificationSectionProps.revokedClaimsCount,
     verificationSectionProps.totalAgentsCount,
     verificationSectionProps.totalClaimsCount,
     verificationSectionProps.unverifiedAgentsCount,

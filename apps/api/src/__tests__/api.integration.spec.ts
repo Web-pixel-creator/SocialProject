@@ -26,6 +26,7 @@ import { SearchServiceImpl } from '../services/search/searchService';
 
 const app = createApp();
 jest.setTimeout(30_000);
+env.ADMIN_API_TOKEN = env.ADMIN_API_TOKEN || 'test-admin-token';
 
 const resetDb = async () => {
   if (redis.isOpen) {
@@ -293,6 +294,137 @@ describe('API integration', () => {
     expect(claimAfter.status).toBe(200);
     expect(claimAfter.body.status).toBe('verified');
     expect(claimAfter.body.verifiedAt).toBeTruthy();
+  });
+
+  test('revoked verification surfaces require resend before re-verification', async () => {
+    const register = await request(app).post('/api/agents/register').send({
+      studioName: 'Revoked Claim Studio',
+      personality: 'Verifier',
+    });
+    expect(register.status).toBe(200);
+
+    const verify = await request(app).post('/api/agents/claim/verify').send({
+      claimToken: register.body.claimToken,
+      method: 'email',
+      emailToken: register.body.emailToken,
+    });
+    expect(verify.status).toBe(200);
+
+    const revoke = await request(app)
+      .post('/api/admin/verification/revoke')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        agentId: register.body.agentId,
+        reason: 'manual_review_failed',
+      });
+    expect(revoke.status).toBe(200);
+    expect(revoke.body).toMatchObject({
+      agentId: register.body.agentId,
+      verificationStatus: 'revoked',
+      verificationMethod: 'email',
+      verifiedAt: null,
+      badge: {
+        label: 'Revoked',
+        tone: 'alert',
+      },
+    });
+    expect(revoke.body.revokedAt).toBeTruthy();
+
+    const summaryAfterRevoke = await request(app).get(
+      `/api/agents/${register.body.agentId}`,
+    );
+    expect(summaryAfterRevoke.status).toBe(200);
+    expect(summaryAfterRevoke.body).toMatchObject({
+      verificationStatus: 'revoked',
+      verificationMethod: 'email',
+      verifiedAt: null,
+      badge: {
+        label: 'Revoked',
+        tone: 'alert',
+      },
+    });
+    expect(summaryAfterRevoke.body.revokedAt).toBeTruthy();
+
+    const studioAfterRevoke = await request(app).get(
+      `/api/studios/${register.body.agentId}`,
+    );
+    expect(studioAfterRevoke.status).toBe(200);
+    expect(studioAfterRevoke.body.verification_status).toBe('revoked');
+    expect(studioAfterRevoke.body.verification_method).toBe('email');
+    expect(studioAfterRevoke.body.verified_at).toBeNull();
+    expect(studioAfterRevoke.body.revoked_at).toBeTruthy();
+
+    const claimAfterRevoke = await request(app)
+      .get(`/api/agents/${register.body.agentId}/claim`)
+      .set('x-agent-id', register.body.agentId)
+      .set('x-api-key', register.body.apiKey);
+    expect(claimAfterRevoke.status).toBe(200);
+    expect(claimAfterRevoke.body).toMatchObject({
+      status: 'revoked',
+      verificationStatus: 'revoked',
+      method: 'email',
+    });
+    expect(claimAfterRevoke.body.revokedAt).toBeTruthy();
+
+    const blockedStudioUpdate = await request(app)
+      .put(`/api/studios/${register.body.agentId}`)
+      .set('x-agent-id', register.body.agentId)
+      .set('x-api-key', register.body.apiKey)
+      .send({ studioName: 'Should Stay Blocked' });
+    expect(blockedStudioUpdate.status).toBe(403);
+    expect(blockedStudioUpdate.body.error).toBe('AGENT_NOT_VERIFIED');
+
+    const directReverify = await request(app)
+      .post('/api/agents/claim/verify')
+      .send({
+        claimToken: register.body.claimToken,
+        method: 'email',
+        emailToken: register.body.emailToken,
+      });
+    expect(directReverify.status).toBe(400);
+    expect(directReverify.body.error).toBe('CLAIM_REVOKED');
+
+    const resend = await request(app).post('/api/agents/claim/resend').send({
+      claimToken: register.body.claimToken,
+    });
+    expect(resend.status).toBe(200);
+    expect(resend.body.agentId).toBe(register.body.agentId);
+    expect(resend.body.emailToken).not.toBe(register.body.emailToken);
+
+    const claimAfterResend = await request(app)
+      .get(`/api/agents/${register.body.agentId}/claim`)
+      .set('x-agent-id', register.body.agentId)
+      .set('x-api-key', register.body.apiKey);
+    expect(claimAfterResend.status).toBe(200);
+    expect(claimAfterResend.body).toMatchObject({
+      status: 'pending',
+      verificationStatus: 'revoked',
+      method: 'email',
+      verifiedAt: null,
+    });
+    expect(claimAfterResend.body.revokedAt).toBeTruthy();
+
+    const reverify = await request(app).post('/api/agents/claim/verify').send({
+      claimToken: register.body.claimToken,
+      method: 'email',
+      emailToken: resend.body.emailToken,
+    });
+    expect(reverify.status).toBe(200);
+
+    const summaryAfterReverify = await request(app).get(
+      `/api/agents/${register.body.agentId}`,
+    );
+    expect(summaryAfterReverify.status).toBe(200);
+    expect(summaryAfterReverify.body).toMatchObject({
+      verificationStatus: 'verified',
+      verificationMethod: 'email',
+      badge: {
+        label: 'Verified',
+        tone: 'success',
+      },
+      revokedAt: null,
+    });
+    expect(summaryAfterReverify.body.verifiedAt).toBeTruthy();
   });
 
   test('x claim verification accepts canonical status url with matching claim token query', async () => {

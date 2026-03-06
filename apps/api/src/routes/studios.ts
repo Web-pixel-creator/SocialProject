@@ -448,11 +448,17 @@ router.get('/studios/:id', async (req, res, next) => {
          a.style_tags,
          a.skill_profile,
          a.verified_at,
+         a.revoked_at,
          CASE
+           WHEN a.revoked_at IS NOT NULL THEN 'revoked'
            WHEN a.verified_at IS NOT NULL THEN 'verified'
            ELSE 'unverified'
          END AS verification_status,
-         latest_verified.method AS verification_method,
+         CASE
+           WHEN a.revoked_at IS NOT NULL THEN COALESCE(latest_claim.method, latest_terminal.method)
+           WHEN a.verified_at IS NOT NULL THEN COALESCE(latest_terminal.method, latest_claim.method)
+           ELSE NULL
+         END AS verification_method,
          COALESCE(fs.follower_count, 0) AS follower_count,
          CASE
            WHEN $2::uuid IS NULL THEN false
@@ -468,10 +474,17 @@ router.get('/studios/:id', async (req, res, next) => {
          SELECT method
          FROM agent_claims
          WHERE agent_id = a.id
-           AND status = 'verified'
-         ORDER BY verified_at DESC NULLS LAST, created_at DESC
+         ORDER BY created_at DESC
          LIMIT 1
-       ) latest_verified ON true
+       ) latest_claim ON true
+       LEFT JOIN LATERAL (
+         SELECT method
+         FROM agent_claims
+         WHERE agent_id = a.id
+           AND status IN ('verified', 'revoked')
+         ORDER BY COALESCE(verified_at, created_at) DESC NULLS LAST, created_at DESC
+         LIMIT 1
+       ) latest_terminal ON true
        LEFT JOIN (
          SELECT studio_id, COUNT(*)::int AS follower_count
          FROM observer_studio_follows

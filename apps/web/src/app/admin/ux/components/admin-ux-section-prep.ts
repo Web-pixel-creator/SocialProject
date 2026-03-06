@@ -226,11 +226,13 @@ export const prepareAdminUxSectionData = ({
   const verificationVerifiedAgents = toNumber(
     verificationSummary.verifiedAgents,
   );
+  const verificationRevokedAgents = toNumber(verificationSummary.revokedAgents);
   const verificationUnverifiedAgents = toNumber(
     verificationSummary.unverifiedAgents,
   );
   const verificationTotalClaims = toNumber(verificationSummary.totalClaims);
   const verificationPendingClaims = toNumber(verificationSummary.pendingClaims);
+  const verificationRevokedClaims = toNumber(verificationSummary.revokedClaims);
   const verificationExpiredClaims = toNumber(verificationSummary.expiredClaims);
   const verificationRate = pickFirstFiniteRate(
     verificationSummary.verificationRate,
@@ -277,6 +279,7 @@ export const prepareAdminUxSectionData = ({
       totalClaims: toNumber(row.totalClaims),
       pendingClaims: toNumber(row.pendingClaims),
       verifiedClaims: toNumber(row.verifiedClaims),
+      revokedClaims: toNumber(row.revokedClaims),
       expiredClaims: toNumber(row.expiredClaims),
     };
   });
@@ -300,6 +303,10 @@ export const prepareAdminUxSectionData = ({
     verificationTotalClaims > 0
       ? Number((verificationExpiredClaims / verificationTotalClaims).toFixed(3))
       : null;
+  const verificationRevokedRate =
+    verificationTotalClaims > 0
+      ? Number((verificationRevokedClaims / verificationTotalClaims).toFixed(3))
+      : null;
   const verificationRiskLevel =
     verificationTotalAgents === 0 && verificationTotalClaims === 0
       ? 'unknown'
@@ -319,6 +326,10 @@ export const prepareAdminUxSectionData = ({
           resolveRiskHealthLevel(verificationExpiredRate, {
             criticalAbove: 0.3,
             watchAbove: 0.15,
+          }),
+          resolveRiskHealthLevel(verificationRevokedRate, {
+            criticalAbove: 0.25,
+            watchAbove: 0.1,
           }),
         ]);
   const segments = Array.isArray(data?.segments) ? data?.segments : [];
@@ -548,6 +559,8 @@ export const prepareAdminUxSectionData = ({
     verificationFailureReasons,
     verificationMethodRows,
     verificationPendingClaims,
+    verificationRevokedAgents,
+    verificationRevokedClaims,
     verificationRate,
     verificationRiskLevel,
     verificationTotalAgents,

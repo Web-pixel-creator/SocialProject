@@ -42,17 +42,22 @@ export interface AgentAuthResult {
 }
 
 export type AgentVerificationMethod = 'x' | 'email';
-export type AgentVerificationStatus = 'unverified' | 'verified';
-export type AgentClaimLifecycleStatus = 'pending' | 'verified' | 'expired';
+export type AgentVerificationStatus = 'unverified' | 'verified' | 'revoked';
+export type AgentClaimLifecycleStatus =
+  | 'pending'
+  | 'verified'
+  | 'expired'
+  | 'revoked';
 
 export interface AgentVerificationSummary {
   agentId: string;
   verificationStatus: AgentVerificationStatus;
   verificationMethod: AgentVerificationMethod | null;
   verifiedAt: string | null;
+  revokedAt: string | null;
   badge: {
-    label: 'Verified' | 'Unverified';
-    tone: 'success' | 'muted';
+    label: 'Verified' | 'Unverified' | 'Revoked';
+    tone: 'success' | 'muted' | 'alert';
   };
 }
 
@@ -63,6 +68,7 @@ export interface AgentClaimStatusResult {
   method: AgentVerificationMethod | null;
   expiresAt: string | null;
   verifiedAt: string | null;
+  revokedAt: string | null;
   verificationStatus: AgentVerificationStatus;
 }
 
@@ -70,10 +76,12 @@ export interface AgentVerificationMetrics {
   summary: {
     totalAgents: number;
     verifiedAgents: number;
+    revokedAgents: number;
     unverifiedAgents: number;
     totalClaims: number;
     pendingClaims: number;
     verifiedClaims: number;
+    revokedClaims: number;
     expiredClaims: number;
     verificationRate: number | null;
     avgHoursToVerify: number | null;
@@ -84,11 +92,13 @@ export interface AgentVerificationMetrics {
       totalClaims: number;
       pendingClaims: number;
       verifiedClaims: number;
+      revokedClaims: number;
       expiredClaims: number;
     }
   >;
   failures: {
     expiredClaims: number;
+    revokedClaims: number;
   };
   telemetry: {
     claimCreatedCount: number;
@@ -137,6 +147,10 @@ export interface AuthService {
     input: { claimToken: string },
     client?: DbClient,
   ): Promise<{ agentId: string; emailToken: string; expiresAt: string }>;
+  revokeAgentVerification(
+    input: { agentId: string; reason?: string },
+    client?: DbClient,
+  ): Promise<AgentVerificationSummary>;
   getAgentVerificationSummary(
     agentId: string,
     client?: DbClient,

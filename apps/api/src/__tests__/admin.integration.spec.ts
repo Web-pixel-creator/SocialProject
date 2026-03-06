@@ -144,10 +144,12 @@ describe('Admin API routes', () => {
     expect(response.body.summary).toMatchObject({
       totalAgents: 3,
       verifiedAgents: 1,
+      revokedAgents: 0,
       unverifiedAgents: 2,
       totalClaims: 3,
       pendingClaims: 1,
       verifiedClaims: 1,
+      revokedClaims: 0,
       expiredClaims: 1,
       verificationRate: 0.333,
     });
@@ -156,16 +158,19 @@ describe('Admin API routes', () => {
       totalClaims: 3,
       pendingClaims: 1,
       verifiedClaims: 1,
+      revokedClaims: 0,
       expiredClaims: 1,
     });
     expect(response.body.byMethod.x).toMatchObject({
       totalClaims: 0,
       pendingClaims: 0,
       verifiedClaims: 0,
+      revokedClaims: 0,
       expiredClaims: 0,
     });
     expect(response.body.failures).toMatchObject({
       expiredClaims: 1,
+      revokedClaims: 0,
     });
     expect(response.body.telemetry).toMatchObject({
       claimCreatedCount: 3,
@@ -226,6 +231,84 @@ describe('Admin API routes', () => {
         count: 1,
       },
     ]);
+  });
+
+  test('verification revoke endpoint marks agent revoked and updates metrics', async () => {
+    const verified = await request(app).post('/api/agents/register').send({
+      studioName: 'Revoke Target Studio',
+      personality: 'Tester',
+    });
+    expect(verified.status).toBe(200);
+
+    const verify = await request(app).post('/api/agents/claim/verify').send({
+      claimToken: verified.body.claimToken,
+      method: 'email',
+      emailToken: verified.body.emailToken,
+    });
+    expect(verify.status).toBe(200);
+
+    const revoke = await request(app)
+      .post('/api/admin/verification/revoke')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        agentId: verified.body.agentId,
+        reason: 'manual_review_failed',
+      });
+    expect(revoke.status).toBe(200);
+    expect(revoke.body).toMatchObject({
+      agentId: verified.body.agentId,
+      verificationStatus: 'revoked',
+      verificationMethod: 'email',
+      verifiedAt: null,
+      badge: {
+        label: 'Revoked',
+        tone: 'alert',
+      },
+    });
+    expect(revoke.body.revokedAt).toBeTruthy();
+
+    const agentRow = await db.query(
+      'SELECT trust_tier, trust_reason, verified_at, revoked_at FROM agents WHERE id = $1',
+      [verified.body.agentId],
+    );
+    expect(Number(agentRow.rows[0]?.trust_tier ?? -1)).toBe(0);
+    expect(agentRow.rows[0]?.trust_reason).toBe('manual_review_failed');
+    expect(agentRow.rows[0]?.verified_at).toBeNull();
+    expect(agentRow.rows[0]?.revoked_at).toBeTruthy();
+
+    const claimRow = await db.query(
+      'SELECT status FROM agent_claims WHERE claim_token = $1',
+      [verified.body.claimToken],
+    );
+    expect(claimRow.rows[0]?.status).toBe('revoked');
+
+    const metrics = await request(app)
+      .get('/api/admin/verification/metrics')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+    expect(metrics.status).toBe(200);
+    expect(metrics.body.summary).toMatchObject({
+      totalAgents: 1,
+      verifiedAgents: 0,
+      revokedAgents: 1,
+      unverifiedAgents: 0,
+      totalClaims: 1,
+      pendingClaims: 0,
+      verifiedClaims: 0,
+      revokedClaims: 1,
+      expiredClaims: 0,
+      verificationRate: 0,
+    });
+    expect(metrics.body.byMethod.email).toMatchObject({
+      totalClaims: 1,
+      pendingClaims: 0,
+      verifiedClaims: 0,
+      revokedClaims: 1,
+      expiredClaims: 0,
+    });
+    expect(metrics.body.failures).toMatchObject({
+      expiredClaims: 0,
+      revokedClaims: 1,
+    });
   });
 
   test('sandbox execution metrics aggregates telemetry events', async () => {

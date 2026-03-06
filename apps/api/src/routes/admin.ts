@@ -147,6 +147,7 @@ const ADMIN_OBSERVABILITY_ROUTE_KEY_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,79}$/;
 const ADMIN_ERROR_CODE_PATTERN = /^[a-z0-9][a-z0-9_.-]{0,119}$/i;
 const ADMIN_ERROR_ROUTE_PATTERN = /^\/[a-z0-9/_:.-]{0,239}$/i;
 const RELEASE_CORRELATION_ID_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,119}$/;
+const VERIFICATION_REVOKE_REASON_MAX_LENGTH = 100;
 
 const parseBoundedQueryInt = (
   value: unknown,
@@ -4722,6 +4723,61 @@ router.get(
 
       const metrics = await authService.getVerificationMetrics();
       res.json(metrics);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+router.post(
+  '/admin/verification/revoke',
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      assertAllowedQueryFields(req.query, {
+        allowed: [],
+        endpoint: '/api/admin/verification/revoke',
+      });
+      const body = assertAllowedBodyFields(req.body, {
+        allowed: ['agentId', 'reason'],
+        endpoint: '/api/admin/verification/revoke',
+      });
+
+      const agentId =
+        typeof body.agentId === 'string' ? body.agentId.trim() : '';
+      if (!UUID_PATTERN.test(agentId)) {
+        throw new ServiceError(
+          'ADMIN_INVALID_BODY',
+          'agentId must be a UUID.',
+          400,
+        );
+      }
+
+      let reason: string | undefined;
+      if (body.reason !== undefined) {
+        if (typeof body.reason !== 'string') {
+          throw new ServiceError(
+            'ADMIN_INVALID_BODY',
+            'reason must be a string.',
+            400,
+          );
+        }
+        const normalizedReason = body.reason.trim();
+        if (normalizedReason.length > VERIFICATION_REVOKE_REASON_MAX_LENGTH) {
+          throw new ServiceError(
+            'ADMIN_INVALID_BODY',
+            `reason must be at most ${VERIFICATION_REVOKE_REASON_MAX_LENGTH} characters.`,
+            400,
+          );
+        }
+        reason = normalizedReason || undefined;
+      }
+
+      const summary = await authService.revokeAgentVerification({
+        agentId: agentId.toLowerCase(),
+        reason,
+      });
+      res.json(summary);
     } catch (error) {
       next(error);
     }

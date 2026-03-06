@@ -305,10 +305,12 @@ export interface VerificationMetricsResponse {
   summary?: {
     totalAgents?: number;
     verifiedAgents?: number;
+    revokedAgents?: number;
     unverifiedAgents?: number;
     totalClaims?: number;
     pendingClaims?: number;
     verifiedClaims?: number;
+    revokedClaims?: number;
     expiredClaims?: number;
     verificationRate?: number | null;
     avgHoursToVerify?: number | null;
@@ -318,17 +320,20 @@ export interface VerificationMetricsResponse {
       totalClaims?: number;
       pendingClaims?: number;
       verifiedClaims?: number;
+      revokedClaims?: number;
       expiredClaims?: number;
     };
     x?: {
       totalClaims?: number;
       pendingClaims?: number;
       verifiedClaims?: number;
+      revokedClaims?: number;
       expiredClaims?: number;
     };
   };
   failures?: {
     expiredClaims?: number;
+    revokedClaims?: number;
   };
   telemetry?: {
     claimCreatedCount?: number;

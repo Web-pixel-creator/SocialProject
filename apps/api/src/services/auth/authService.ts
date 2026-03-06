@@ -8,6 +8,7 @@ import { AuthError } from './errors';
 import type {
   AgentAuthResult,
   AgentClaimStatusResult,
+  AgentVerificationMethod,
   AgentVerificationMetrics,
   AgentVerificationSummary,
   AuthService,
@@ -164,15 +165,70 @@ const toNullableIsoTimestamp = (value: unknown): string | null => {
   return null;
 };
 
-const resolveVerificationStatus = (
-  verifiedAt: unknown,
-): AgentVerificationSummary['verificationStatus'] =>
-  toNullableIsoTimestamp(verifiedAt) ? 'verified' : 'unverified';
+const toVerificationMethod = (
+  value: unknown,
+): AgentVerificationMethod | null =>
+  value === 'x' || value === 'email' ? value : null;
+
+const resolveVerificationStatus = (params: {
+  revokedAt: unknown;
+  verifiedAt: unknown;
+}): AgentVerificationSummary['verificationStatus'] => {
+  if (toNullableIsoTimestamp(params.revokedAt)) {
+    return 'revoked';
+  }
+  if (toNullableIsoTimestamp(params.verifiedAt)) {
+    return 'verified';
+  }
+  return 'unverified';
+};
+
+const resolveVerificationMethod = (params: {
+  latestClaimMethod: unknown;
+  latestTerminalMethod: unknown;
+  verificationStatus: AgentVerificationSummary['verificationStatus'];
+}): AgentVerificationMethod | null => {
+  const latestClaimMethod = toVerificationMethod(params.latestClaimMethod);
+  const latestTerminalMethod = toVerificationMethod(
+    params.latestTerminalMethod,
+  );
+  if (params.verificationStatus === 'unverified') {
+    return null;
+  }
+  if (params.verificationStatus === 'revoked') {
+    return latestClaimMethod ?? latestTerminalMethod;
+  }
+  return latestTerminalMethod ?? latestClaimMethod;
+};
+
+const resolveVerificationBadge = (
+  verificationStatus: AgentVerificationSummary['verificationStatus'],
+): AgentVerificationSummary['badge'] => {
+  if (verificationStatus === 'verified') {
+    return {
+      label: 'Verified',
+      tone: 'success',
+    };
+  }
+  if (verificationStatus === 'revoked') {
+    return {
+      label: 'Revoked',
+      tone: 'alert',
+    };
+  }
+  return {
+    label: 'Unverified',
+    tone: 'muted',
+  };
+};
 
 const resolveClaimLifecycleStatus = (params: {
   status: unknown;
   expiresAt: unknown;
 }): AgentClaimStatusResult['status'] => {
+  if (params.status === 'revoked') {
+    return 'revoked';
+  }
   if (params.status === 'verified') {
     return 'verified';
   }
@@ -413,6 +469,13 @@ export class AuthServiceImpl implements AuthService {
           trustTier: Number(agent.rows[0]?.trust_tier ?? 1),
         };
       }
+      if (claim.status === 'revoked') {
+        throw new AuthError(
+          'CLAIM_REVOKED',
+          'Claim has been revoked. Request a resend before verifying again.',
+          400,
+        );
+      }
 
       const expiresAt = new Date(claim.expires_at);
       if (expiresAt < new Date()) {
@@ -460,6 +523,7 @@ export class AuthServiceImpl implements AuthService {
       const updated = await db.query(
         `UPDATE agents
          SET trust_tier = GREATEST(trust_tier, 1),
+             revoked_at = NULL,
              trust_reason = $1,
              verified_at = NOW()
          WHERE id = $2
@@ -533,8 +597,10 @@ export class AuthServiceImpl implements AuthService {
     await db.query(
       `UPDATE agent_claims
        SET verification_payload = $1,
+           method = 'email',
            expires_at = $2,
-           status = 'pending'
+           status = 'pending',
+           verified_at = NULL
        WHERE id = $3`,
       [emailToken, expiresAt, claim.id],
     );
@@ -544,6 +610,63 @@ export class AuthServiceImpl implements AuthService {
       emailToken,
       expiresAt: expiresAt.toISOString(),
     };
+  }
+
+  async revokeAgentVerification(
+    input: { agentId: string; reason?: string },
+    client?: DbClient,
+  ): Promise<AgentVerificationSummary> {
+    const db = getDb(this.pool, client);
+    const agentResult = await db.query(
+      'SELECT id, verified_at FROM agents WHERE id = $1',
+      [input.agentId],
+    );
+
+    if (agentResult.rows.length === 0) {
+      throw new AuthError('AGENT_NOT_FOUND', 'Agent not found.', 404);
+    }
+
+    if (!toNullableIsoTimestamp(agentResult.rows[0]?.verified_at)) {
+      throw new AuthError('AGENT_NOT_VERIFIED', 'Agent is not verified.', 409);
+    }
+
+    const claimResult = await db.query(
+      `SELECT id
+       FROM agent_claims
+       WHERE agent_id = $1
+         AND status = 'verified'
+       ORDER BY verified_at DESC NULLS LAST, created_at DESC
+       LIMIT 1`,
+      [input.agentId],
+    );
+
+    if (claimResult.rows.length === 0) {
+      throw new AuthError('CLAIM_NOT_FOUND', 'Claim not found.', 404);
+    }
+
+    await db.query(
+      `UPDATE agent_claims
+       SET status = 'revoked'
+       WHERE id = $1`,
+      [claimResult.rows[0].id],
+    );
+
+    await db.query(
+      `UPDATE agents
+       SET trust_tier = 0,
+           trust_reason = $1,
+           verified_at = NULL,
+           revoked_at = NOW()
+       WHERE id = $2`,
+      [input.reason?.trim() || 'claim_revoked', input.agentId],
+    );
+
+    const summary = await this.getAgentVerificationSummary(input.agentId, db);
+    if (!summary) {
+      throw new AuthError('AGENT_NOT_FOUND', 'Agent not found.', 404);
+    }
+
+    return summary;
   }
 
   async getAgentVerificationSummary(
@@ -556,16 +679,25 @@ export class AuthServiceImpl implements AuthService {
          a.id,
          a.trust_tier,
          a.verified_at,
-         latest_verified.method AS verification_method
+         a.revoked_at,
+         latest_claim.method AS latest_claim_method,
+         latest_terminal.method AS latest_terminal_method
        FROM agents a
        LEFT JOIN LATERAL (
          SELECT method
          FROM agent_claims
          WHERE agent_id = a.id
-           AND status = 'verified'
-         ORDER BY verified_at DESC NULLS LAST, created_at DESC
+         ORDER BY created_at DESC
          LIMIT 1
-       ) latest_verified ON true
+       ) latest_claim ON true
+       LEFT JOIN LATERAL (
+         SELECT method
+         FROM agent_claims
+         WHERE agent_id = a.id
+           AND status IN ('verified', 'revoked')
+         ORDER BY COALESCE(verified_at, created_at) DESC NULLS LAST, created_at DESC
+         LIMIT 1
+       ) latest_terminal ON true
        WHERE a.id = $1`,
       [agentId],
     );
@@ -575,20 +707,22 @@ export class AuthServiceImpl implements AuthService {
     }
 
     const row = result.rows[0];
-    const verificationStatus = resolveVerificationStatus(row.verified_at);
+    const verificationStatus = resolveVerificationStatus({
+      revokedAt: row.revoked_at,
+      verifiedAt: row.verified_at,
+    });
 
     return {
       agentId: row.id as string,
       verificationStatus,
-      verificationMethod:
-        row.verification_method === 'x' || row.verification_method === 'email'
-          ? (row.verification_method as AgentVerificationSummary['verificationMethod'])
-          : null,
+      verificationMethod: resolveVerificationMethod({
+        latestClaimMethod: row.latest_claim_method,
+        latestTerminalMethod: row.latest_terminal_method,
+        verificationStatus,
+      }),
       verifiedAt: toNullableIsoTimestamp(row.verified_at),
-      badge: {
-        label: verificationStatus === 'verified' ? 'Verified' : 'Unverified',
-        tone: verificationStatus === 'verified' ? 'success' : 'muted',
-      },
+      revokedAt: toNullableIsoTimestamp(row.revoked_at),
+      badge: resolveVerificationBadge(verificationStatus),
     };
   }
 
@@ -602,6 +736,7 @@ export class AuthServiceImpl implements AuthService {
          a.id,
          a.trust_tier,
          a.verified_at AS agent_verified_at,
+         a.revoked_at AS agent_revoked_at,
          latest_claim.claim_token,
          latest_claim.method,
          latest_claim.status,
@@ -635,13 +770,14 @@ export class AuthServiceImpl implements AuthService {
         status: row.status,
         expiresAt: row.expires_at,
       }),
-      method:
-        row.method === 'x' || row.method === 'email'
-          ? (row.method as AgentClaimStatusResult['method'])
-          : null,
+      method: toVerificationMethod(row.method),
       expiresAt: toNullableIsoTimestamp(row.expires_at),
       verifiedAt: toNullableIsoTimestamp(row.claim_verified_at),
-      verificationStatus: resolveVerificationStatus(row.agent_verified_at),
+      revokedAt: toNullableIsoTimestamp(row.agent_revoked_at),
+      verificationStatus: resolveVerificationStatus({
+        revokedAt: row.agent_revoked_at,
+        verifiedAt: row.agent_verified_at,
+      }),
     };
   }
 
@@ -666,7 +802,8 @@ export class AuthServiceImpl implements AuthService {
     const totalsResult = await db.query(
       `SELECT
          COUNT(*)::int AS total_agents,
-         COUNT(*) FILTER (WHERE verified_at IS NOT NULL)::int AS verified_agents
+         COUNT(*) FILTER (WHERE verified_at IS NOT NULL AND revoked_at IS NULL)::int AS verified_agents,
+         COUNT(*) FILTER (WHERE revoked_at IS NOT NULL)::int AS revoked_agents
        FROM agents`,
     );
     const telemetryTotalsResult = await db.query(
@@ -689,17 +826,20 @@ export class AuthServiceImpl implements AuthService {
 
     const totalAgents = Number(totalsResult.rows[0]?.total_agents ?? 0);
     const verifiedAgents = Number(totalsResult.rows[0]?.verified_agents ?? 0);
+    const revokedAgents = Number(totalsResult.rows[0]?.revoked_agents ?? 0);
     const byMethod: AgentVerificationMetrics['byMethod'] = {
       email: {
         totalClaims: 0,
         pendingClaims: 0,
         verifiedClaims: 0,
+        revokedClaims: 0,
         expiredClaims: 0,
       },
       x: {
         totalClaims: 0,
         pendingClaims: 0,
         verifiedClaims: 0,
+        revokedClaims: 0,
         expiredClaims: 0,
       },
     };
@@ -707,6 +847,7 @@ export class AuthServiceImpl implements AuthService {
     const verifyDurationsHours: number[] = [];
     let pendingClaims = 0;
     let verifiedClaims = 0;
+    let revokedClaims = 0;
     let expiredClaims = 0;
 
     for (const row of latestClaimsResult.rows) {
@@ -729,6 +870,9 @@ export class AuthServiceImpl implements AuthService {
             verifyDurationsHours.push(durationHours);
           }
         }
+      } else if (status === 'revoked') {
+        revokedClaims += 1;
+        byMethod[method].revokedClaims += 1;
       } else if (status === 'expired') {
         expiredClaims += 1;
         byMethod[method].expiredClaims += 1;
@@ -752,10 +896,15 @@ export class AuthServiceImpl implements AuthService {
       summary: {
         totalAgents,
         verifiedAgents,
-        unverifiedAgents: Math.max(totalAgents - verifiedAgents, 0),
+        revokedAgents,
+        unverifiedAgents: Math.max(
+          totalAgents - verifiedAgents - revokedAgents,
+          0,
+        ),
         totalClaims: latestClaimsResult.rows.length,
         pendingClaims,
         verifiedClaims,
+        revokedClaims,
         expiredClaims,
         verificationRate:
           totalAgents > 0
@@ -766,6 +915,7 @@ export class AuthServiceImpl implements AuthService {
       byMethod,
       failures: {
         expiredClaims,
+        revokedClaims,
       },
       telemetry: {
         claimCreatedCount: Number(
