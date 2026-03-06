@@ -33,6 +33,55 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-06 - add phase 4 trigger-based diagnostics bundles for launch gate failures (phase 125)
+
+- Scope: add automatic diagnostics capture for repeated smoke timeout retries, failed production launch-gate runs, and runtime degradation signals, with schema-validated bundle manifests and retention-safe storage.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-06 03:55 -> 2026-03-06 04:04.
+- Changes:
+  - Added diagnostics bundle schema contract:
+    - `scripts/release/release-diagnostics-schema-contracts.mjs`
+    - `docs/ops/schemas/release-diagnostics-bundle-output.schema.json`
+    - `docs/ops/schemas/samples/release-diagnostics-bundle-output.sample.json`
+  - Added diagnostics bundle capture + cleanup helper:
+    - `scripts/release/release-diagnostics-bundle-utils.mjs`
+    - writes bundle manifests plus copied evidence under `artifacts/release/diagnostics`
+    - enforces retention caps by age, bundle count, and file count
+    - protects the currently captured bundle during cleanup
+  - Added diagnostics schema validator and package scripts:
+    - `scripts/release/validate-release-diagnostics-bundle-schema.mjs`
+    - `package.json`
+    - new commands:
+      - `npm run release:diagnostics:schema:check`
+      - `npm run release:diagnostics:schema:check:json`
+  - Integrated trigger-based diagnostics into production launch-gate:
+    - `scripts/release/production-launch-gate.mjs`
+    - new triggers:
+      - `repeated_smoke_timeout_retry`
+      - `launch_gate_failed`
+      - `runtime_degradation`
+    - summary JSON now records `diagnostics.triggerCodes`, capture status, and bundle path when a bundle is produced
+  - Added synthetic drill coverage:
+    - `apps/api/src/__tests__/release-diagnostics-bundle.unit.spec.ts`
+    - verifies bundle capture, missing-artifact handling, and retention cleanup behavior
+    - `apps/api/src/__tests__/release-diagnostics-bundle-schema-check.unit.spec.ts`
+    - verifies runtime bundle schema validation pass/fail paths
+- Validation:
+  - `node --check scripts/release/release-diagnostics-schema-contracts.mjs`: pass.
+  - `node --check scripts/release/release-diagnostics-bundle-utils.mjs`: pass.
+  - `node --check scripts/release/validate-release-diagnostics-bundle-schema.mjs`: pass.
+  - `node --check scripts/release/production-launch-gate.mjs`: pass.
+  - `npm run test -- apps/api/src/__tests__/release-diagnostics-bundle.unit.spec.ts apps/api/src/__tests__/release-diagnostics-bundle-schema-check.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-help-snapshot.unit.spec.ts`: pass.
+  - `npm run release:diagnostics:schema:check -- docs/ops/schemas/samples/release-diagnostics-bundle-output.sample.json --json`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-06T04:04:10.005Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next: start Phase 5 OTEL-first observability for staging/runtime investigation.
+
 ### 2026-03-06 - add phase 3 last-known-good config fallback for production launch gate (phase 124)
 
 - Scope: protect strict production launch-gate execution from bad sandbox execution config by validating candidate config first, persisting the latest valid snapshot, and falling back to last-known-good state when needed.

@@ -238,6 +238,39 @@ Exit criteria:
   - `ultracite:check`: pass
   - `release:launch:gate:production:json -- --required-external-channels all`: pass
 
+### 2026-03-06 - Phase 4 completed
+
+- Added shared diagnostics bundle helper with retention-safe cleanup:
+  - `scripts/release/release-diagnostics-bundle-utils.mjs`
+  - captures bundle manifests plus copied artifacts under:
+    - `artifacts/release/diagnostics`
+  - supports cleanup caps by age, bundle count, and file count.
+- Added diagnostics bundle schema contract and validator:
+  - `scripts/release/release-diagnostics-schema-contracts.mjs`
+  - `scripts/release/validate-release-diagnostics-bundle-schema.mjs`
+  - `docs/ops/schemas/release-diagnostics-bundle-output.schema.json`
+  - `docs/ops/schemas/samples/release-diagnostics-bundle-output.sample.json`
+- Integrated trigger-based diagnostics into:
+  - `scripts/release/production-launch-gate.mjs`
+  - triggers now capture bundles for:
+    - repeated smoke timeout retries,
+    - failed launch-gate runs,
+    - runtime degradation (`runtimeProbe`, `sandboxExecutionMetrics`, `sandboxExecutionModeConsistency`).
+- Added synthetic drill/test coverage:
+  - `apps/api/src/__tests__/release-diagnostics-bundle.unit.spec.ts`
+  - `apps/api/src/__tests__/release-diagnostics-bundle-schema-check.unit.spec.ts`
+- Added package scripts:
+  - `release:diagnostics:schema:check`
+  - `release:diagnostics:schema:check:json`
+- Validation:
+  - `node --check` on changed release scripts: pass
+  - targeted `jest` suites for diagnostics bundle capture + schema validation: pass
+  - `release:diagnostics:schema:check -- docs/ops/schemas/samples/release-diagnostics-bundle-output.sample.json --json`: pass
+  - `ci:workflow:inline-node-check`: pass
+  - `lint`: pass
+  - `ultracite:check`: pass
+  - `release:launch:gate:production:json -- --required-external-channels all`: pass
+
 ## Hard Rule
 
 Do not spend another release cycle on helper-only cleanup unless it directly

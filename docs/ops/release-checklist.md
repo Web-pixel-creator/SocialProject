@@ -272,6 +272,8 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
   - [ ] Confirm health summary artifact: `artifacts/release/production-launch-gate-health-summary.json`
   - [ ] Confirm last-known-good config snapshot artifact: `artifacts/release/production-launch-gate-config-last-known-good.json`
   - [ ] Confirm config-resolution artifact: `artifacts/release/production-launch-gate-config-resolution.json`
+  - [ ] When `diagnostics.triggerCodes` is non-empty, confirm diagnostics bundle manifest exists under `artifacts/release/diagnostics/<bundle>/release-diagnostics-bundle.json`
+  - [ ] Validate diagnostics bundle schema when a bundle was captured: `npm run release:diagnostics:schema:check`
   - [ ] For CI `Production Launch Gate` runs, confirm inline post-release health artifacts are uploaded:
     - [ ] `post-release-health-report-inline`
     - [ ] `post-release-health-summary-inline`
@@ -282,6 +284,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
   - [ ] Confirm `sandboxExecutionModeConsistency.pass=true` in launch gate summary.
   - [ ] Confirm `lastKnownGoodConfig.pass=true` in launch gate summary.
   - [ ] If `lastKnownGoodConfig.fallbackUsed=true`, capture the fallback reason and attach both config artifacts before retrying any deploy/config apply.
+  - [ ] If `diagnostics.captured=true`, attach the diagnostics bundle manifest and copied artifacts to the incident/release evidence thread.
   - [ ] Confirm `inlineHealthArtifactsSchema.pass=true` in launch gate summary.
   - [ ] Optional artifact drill: inspect `artifacts/release/production-sandbox-execution-metrics.json` for `total > 0` and `successCount > 0`.
   - [ ] Confirm `sandboxExecutionAuditPolicy.pass=true` in launch gate summary.
