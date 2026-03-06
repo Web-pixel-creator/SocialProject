@@ -20,6 +20,26 @@ export const parseOptionalRunId = (raw) => {
   return parseRequiredRunId(raw);
 };
 
+export const parseRequiredPositiveInteger = (raw, label, { minimum = 1, message } = {}) => {
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed < minimum) {
+    throw new Error(message ?? `${label} must be an integer greater than or equal to ${minimum}.`);
+  }
+  return parsed;
+};
+
+export const parseOptionalPositiveInteger = (
+  raw,
+  fallback,
+  { label, minimum = 1, message } = {},
+) => {
+  if (typeof raw !== 'string' || raw.trim().length === 0) {
+    return fallback;
+  }
+
+  return parseRequiredPositiveInteger(raw, label, { minimum, message });
+};
+
 export const parseBooleanWithFallback = (raw, fallback) => {
   if (!raw) {
     return fallback;

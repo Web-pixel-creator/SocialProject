@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { toErrorMessage } from './release-runtime-utils.mjs';
+import { parseRequiredPositiveInteger, toErrorMessage } from './release-runtime-utils.mjs';
 
 const DEFAULT_REQUIRED_EXTERNAL_CHANNELS = 'all';
 const DEFAULT_OUTPUT_DIR = 'artifacts/release';
@@ -30,14 +30,6 @@ const parseDateUtc = (value, label) => {
     throw new Error(`${label} must be a valid ISO8601 timestamp.`);
   }
   return parsed;
-};
-
-const parsePositiveInteger = (value, label) => {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric) || numeric < 1 || !Number.isInteger(numeric)) {
-    throw new Error(`${label} must be a positive integer.`);
-  }
-  return numeric;
 };
 
 const parseCliArgs = (argv) => {
@@ -87,9 +79,10 @@ const parseCliArgs = (argv) => {
       continue;
     }
     if (arg.startsWith('--run-id=')) {
-      options.runId = parsePositiveInteger(
+      options.runId = parseRequiredPositiveInteger(
         arg.slice('--run-id='.length).trim(),
         '--run-id',
+        { message: '--run-id must be a positive integer.' },
       );
       continue;
     }
@@ -98,7 +91,9 @@ const parseCliArgs = (argv) => {
       if (!value) {
         throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
       }
-      options.runId = parsePositiveInteger(value, '--run-id');
+      options.runId = parseRequiredPositiveInteger(value, '--run-id', {
+        message: '--run-id must be a positive integer.',
+      });
       index += 1;
       continue;
     }
@@ -136,14 +131,10 @@ const quoteCmdArg = (value) => {
 const runCommand = ({ command, args, label }) => {
   const result =
     process.platform === 'win32'
-      ? spawnSync(
-          'cmd.exe',
-          ['/d', '/s', '/c', [command, ...args].map(quoteCmdArg).join(' ')],
-          {
-            encoding: 'utf8',
-            stdio: ['ignore', 'pipe', 'pipe'],
-          },
-        )
+      ? spawnSync('cmd.exe', ['/d', '/s', '/c', [command, ...args].map(quoteCmdArg).join(' ')], {
+          encoding: 'utf8',
+          stdio: ['ignore', 'pipe', 'pipe'],
+        })
       : spawnSync(command, args, {
           encoding: 'utf8',
           stdio: ['ignore', 'pipe', 'pipe'],
@@ -158,9 +149,7 @@ const runCommand = ({ command, args, label }) => {
   if (result.status !== 0) {
     const output = combined.trim();
     throw new Error(
-      `${label} exited with code ${String(result.status)}.${
-        output ? `\n${output}` : ''
-      }`,
+      `${label} exited with code ${String(result.status)}.${output ? `\n${output}` : ''}`,
     );
   }
 
@@ -172,8 +161,7 @@ const runCommand = ({ command, args, label }) => {
 };
 
 const extractLastRunMatch = (text) => {
-  const matcher =
-    /https:\/\/github\.com\/([^/\s]+)\/([^/\s]+)\/actions\/runs\/(\d+)/gu;
+  const matcher = /https:\/\/github\.com\/([^/\s]+)\/([^/\s]+)\/actions\/runs\/(\d+)/gu;
   let match = null;
   let current = matcher.exec(text);
   while (current) {
@@ -236,21 +224,13 @@ const listReleaseHealthWorkflowRuns = () => {
   const parsed = JSON.parse(response.stdout);
   const runs = Array.isArray(parsed) ? parsed : [];
   return runs
-    .filter(
-      (run) =>
-        run &&
-        run.event === 'workflow_run' &&
-        Number.isFinite(Number(run.databaseId)),
-    )
+    .filter((run) => run && run.event === 'workflow_run' && Number.isFinite(Number(run.databaseId)))
     .map((run) => ({
       databaseId: Number(run.databaseId),
       number: Number.isFinite(Number(run.number)) ? Number(run.number) : null,
       status: typeof run.status === 'string' ? run.status : 'unknown',
       conclusion: typeof run.conclusion === 'string' ? run.conclusion : null,
-      createdAt:
-        typeof run.createdAt === 'string' && run.createdAt
-          ? run.createdAt
-          : null,
+      createdAt: typeof run.createdAt === 'string' && run.createdAt ? run.createdAt : null,
       url: typeof run.url === 'string' ? run.url : null,
     }));
 };
@@ -341,7 +321,9 @@ const waitForReleaseHealthSummary = async ({ targetRunId }) => {
 };
 
 const normalizeBooleanString = (value) => {
-  const normalized = String(value ?? '').trim().toLowerCase();
+  const normalized = String(value ?? '')
+    .trim()
+    .toLowerCase();
   if (['1', 'true', 'yes', 'y'].includes(normalized)) {
     return true;
   }
@@ -355,7 +337,15 @@ const readRepoStrictVariable = () => {
   try {
     const response = runCommand({
       command: 'gh',
-      args: ['variable', 'get', 'RELEASE_HEALTH_ALERT_RISK_STRICT', '--json', 'value', '-q', '.value'],
+      args: [
+        'variable',
+        'get',
+        'RELEASE_HEALTH_ALERT_RISK_STRICT',
+        '--json',
+        'value',
+        '-q',
+        '.value',
+      ],
       label: 'gh variable get RELEASE_HEALTH_ALERT_RISK_STRICT',
     });
     const rawValue = String(response.stdout ?? '').trim();
@@ -411,9 +401,7 @@ const main = async () => {
         url: null,
       },
       releaseHealthAlertTelemetry: null,
-      outputPath: resolve(
-        `${DEFAULT_OUTPUT_DIR}/alert-risk-strict-reassessment-${runLabel}.json`,
-      ),
+      outputPath: resolve(`${DEFAULT_OUTPUT_DIR}/alert-risk-strict-reassessment-${runLabel}.json`),
     };
     writeFileSync(summary.outputPath, `${JSON.stringify(summary, null, 2)}\n`, 'utf8');
     if (options.json) {
@@ -495,7 +483,9 @@ const main = async () => {
         'Unable to extract workflow run id from release:launch:gate:dispatch output.',
       );
     }
-    runId = parsePositiveInteger(runMatch[3], 'dispatch run id');
+    runId = parseRequiredPositiveInteger(runMatch[3], 'dispatch run id', {
+      message: 'dispatch run id must be a positive integer.',
+    });
     runUrl = `https://github.com/${runMatch[1]}/${runMatch[2]}/actions/runs/${runMatch[3]}`;
   }
 
@@ -618,29 +608,27 @@ const main = async () => {
     healthReport: {
       status: parsedSummary?.status ?? 'unknown',
       strict: parsedSummary?.strict === true,
-      outputPath:
-        typeof parsedSummary?.outputPath === 'string' ? parsedSummary.outputPath : null,
+      outputPath: typeof parsedSummary?.outputPath === 'string' ? parsedSummary.outputPath : null,
     },
     releaseHealthAlertTelemetry: telemetry
       ? {
           enabled: telemetry.enabled === true,
           strict: telemetry.strict === true,
-          windowHours:
-            Number.isFinite(Number(telemetry.windowHours))
-              ? Number(telemetry.windowHours)
-              : null,
-          escalationStreak:
-            Number.isFinite(Number(telemetry.escalationStreak))
-              ? Number(telemetry.escalationStreak)
-              : null,
+          windowHours: Number.isFinite(Number(telemetry.windowHours))
+            ? Number(telemetry.windowHours)
+            : null,
+          escalationStreak: Number.isFinite(Number(telemetry.escalationStreak))
+            ? Number(telemetry.escalationStreak)
+            : null,
           status: telemetry.status ?? null,
           evaluated: telemetry.evaluated === true,
           riskLevel: telemetry.riskLevel ?? null,
           pass: telemetry.pass === true,
-          consecutiveSuccessfulRunStreak:
-            Number.isFinite(Number(telemetry.consecutiveSuccessfulRunStreak))
-              ? Number(telemetry.consecutiveSuccessfulRunStreak)
-              : null,
+          consecutiveSuccessfulRunStreak: Number.isFinite(
+            Number(telemetry.consecutiveSuccessfulRunStreak),
+          )
+            ? Number(telemetry.consecutiveSuccessfulRunStreak)
+            : null,
           latestAlertRun:
             telemetry.latestAlertRun && typeof telemetry.latestAlertRun === 'object'
               ? telemetry.latestAlertRun

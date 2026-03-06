@@ -27,6 +27,7 @@ import { resolveRepoSlug, resolveToken } from './github-token-repo-resolution.mj
 import { normalizeReleaseCorrelationContext } from './release-correlation-utils.mjs';
 import {
   parseBooleanWithFallback,
+  parseOptionalPositiveInteger,
   parseOptionalRunId,
   toErrorMessage,
 } from './release-runtime-utils.mjs';
@@ -160,17 +161,6 @@ const resolveGitHubApiTransientRetryConfig = () => {
   return githubApiRetryConfigCache;
 };
 
-const parsePositiveInteger = ({ raw, fallback, minimum, label }) => {
-  if (!raw) {
-    return fallback;
-  }
-  const parsed = Number(raw);
-  if (!Number.isInteger(parsed) || parsed < minimum) {
-    throw new Error(`${label} must be an integer greater than or equal to ${minimum}.`);
-  }
-  return parsed;
-};
-
 const toFiniteNumber = (value, fallback) =>
   typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 
@@ -230,18 +220,22 @@ const fetchReleaseHealthAlertTelemetryCheck = async ({
 }) => {
   const enabled = parseBooleanWithFallback(process.env.RELEASE_HEALTH_ALERT_RISK_ENABLED, true);
   const strict = parseBooleanWithFallback(process.env.RELEASE_HEALTH_ALERT_RISK_STRICT, false);
-  const windowHours = parsePositiveInteger({
-    raw: process.env.RELEASE_HEALTH_ALERT_RISK_WINDOW_HOURS,
-    fallback: DEFAULT_RELEASE_HEALTH_ALERT_RISK_WINDOW_HOURS,
-    minimum: 1,
-    label: 'RELEASE_HEALTH_ALERT_RISK_WINDOW_HOURS',
-  });
-  const escalationStreak = parsePositiveInteger({
-    raw: process.env.RELEASE_HEALTH_ALERT_RISK_ESCALATION_STREAK,
-    fallback: DEFAULT_RELEASE_HEALTH_ALERT_RISK_ESCALATION_STREAK,
-    minimum: 2,
-    label: 'RELEASE_HEALTH_ALERT_RISK_ESCALATION_STREAK',
-  });
+  const windowHours = parseOptionalPositiveInteger(
+    process.env.RELEASE_HEALTH_ALERT_RISK_WINDOW_HOURS,
+    DEFAULT_RELEASE_HEALTH_ALERT_RISK_WINDOW_HOURS,
+    {
+      label: 'RELEASE_HEALTH_ALERT_RISK_WINDOW_HOURS',
+      minimum: 1,
+    },
+  );
+  const escalationStreak = parseOptionalPositiveInteger(
+    process.env.RELEASE_HEALTH_ALERT_RISK_ESCALATION_STREAK,
+    DEFAULT_RELEASE_HEALTH_ALERT_RISK_ESCALATION_STREAK,
+    {
+      label: 'RELEASE_HEALTH_ALERT_RISK_ESCALATION_STREAK',
+      minimum: 2,
+    },
+  );
   const apiBaseUrlRaw = String(process.env.RELEASE_API_BASE_URL ?? '').trim();
   const adminToken = String(
     process.env.RELEASE_ADMIN_API_TOKEN ??
@@ -1897,18 +1891,22 @@ const main = async () => {
     artifacts,
     requiredArtifactNames: workflowProfile.requiredArtifactNames,
   });
-  const externalChannelTrendWindow = parsePositiveInteger({
-    raw: process.env.RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_WINDOW,
-    fallback: DEFAULT_EXTERNAL_CHANNEL_TREND_WINDOW,
-    minimum: 1,
-    label: 'RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_WINDOW',
-  });
-  const externalChannelTrendMinimumRuns = parsePositiveInteger({
-    raw: process.env.RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_MIN_RUNS,
-    fallback: DEFAULT_EXTERNAL_CHANNEL_TREND_MIN_RUNS,
-    minimum: 1,
-    label: 'RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_MIN_RUNS',
-  });
+  const externalChannelTrendWindow = parseOptionalPositiveInteger(
+    process.env.RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_WINDOW,
+    DEFAULT_EXTERNAL_CHANNEL_TREND_WINDOW,
+    {
+      label: 'RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_WINDOW',
+      minimum: 1,
+    },
+  );
+  const externalChannelTrendMinimumRuns = parseOptionalPositiveInteger(
+    process.env.RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_MIN_RUNS,
+    DEFAULT_EXTERNAL_CHANNEL_TREND_MIN_RUNS,
+    {
+      label: 'RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_MIN_RUNS',
+      minimum: 1,
+    },
+  );
   const externalChannelAlertEnabled = parseBooleanWithFallback(
     process.env.RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_ENABLED,
     true,
@@ -1918,12 +1916,14 @@ const main = async () => {
       process.env.RELEASE_EXTERNAL_CHANNEL_ALERT_WEBHOOK_URL ??
       '',
   ).trim();
-  const externalChannelAlertTimeoutMs = parsePositiveInteger({
-    raw: process.env.RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_TIMEOUT_MS,
-    fallback: DEFAULT_EXTERNAL_CHANNEL_ALERT_TIMEOUT_MS,
-    minimum: 1000,
-    label: 'RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_TIMEOUT_MS',
-  });
+  const externalChannelAlertTimeoutMs = parseOptionalPositiveInteger(
+    process.env.RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_TIMEOUT_MS,
+    DEFAULT_EXTERNAL_CHANNEL_ALERT_TIMEOUT_MS,
+    {
+      label: 'RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_TIMEOUT_MS',
+      minimum: 1000,
+    },
+  );
   const externalChannelAlertWebhookHeaders = resolveExternalChannelAlertWebhookHeaders();
   const externalChannelFailureModeTrendBase =
     workflowProfile.profileKey === 'launch_gate'

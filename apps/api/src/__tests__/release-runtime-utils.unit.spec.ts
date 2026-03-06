@@ -16,10 +16,12 @@ const runHelperScenario = (scriptBody: string) =>
       decodeTextWithEncodingFallback,
       isTransientFileReadError,
       parseBooleanWithFallback,
+      parseOptionalPositiveInteger,
       parseOptionalRunId,
       parseJsonWithEncodingFallback,
       parsePositiveIntegerWithFallback,
       parsePositiveNumberWithFallback,
+      parseRequiredPositiveInteger,
       parseRequiredRunId,
       retryFileReadOperation,
       sleep,
@@ -139,6 +141,39 @@ describe('release runtime utils', () => {
     expect(result.output.status).toBe(1);
     expect(result.payload.ok).toBe(false);
     expect(result.payload.error).toBe("Invalid run id '0'. Use a positive integer.");
+  });
+
+  test('parses required and optional positive integers', () => {
+    const result = runHelperScenario(`
+      const value = {
+        required: parseRequiredPositiveInteger('7', 'sample', { minimum: 2 }),
+        optionalFallback: parseOptionalPositiveInteger('', 5, { label: 'sample' }),
+        optionalValue: parseOptionalPositiveInteger('9', 5, { label: 'sample', minimum: 3 }),
+      };
+      emit({ ok: true, result: value, error: '' });
+    `);
+
+    expect(result.output.status).toBe(0);
+    expect(result.payload.ok).toBe(true);
+    expect(result.payload.result).toEqual({
+      required: 7,
+      optionalFallback: 5,
+      optionalValue: 9,
+    });
+  });
+
+  test('supports custom positive integer validation messages', () => {
+    const result = runHelperScenario(`
+      parseRequiredPositiveInteger('0', '--run-id', {
+        minimum: 1,
+        message: '--run-id must be a positive integer.',
+      });
+      emit({ ok: true, result: null, error: '' });
+    `);
+
+    expect(result.output.status).toBe(1);
+    expect(result.payload.ok).toBe(false);
+    expect(result.payload.error).toBe('--run-id must be a positive integer.');
   });
 
   test('decodes UTF-8 BOM and UTF-16 LE buffers before JSON parsing', () => {

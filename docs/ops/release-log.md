@@ -33,6 +33,31 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-06 - deduplicate positive integer runtime parsers (phase 133)
+
+- Scope: continue low-risk release-helper deduplication by centralizing required/optional positive integer parsing in the shared runtime util.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-06 17:04 -> 2026-03-06 17:10.
+- Changes:
+  - Added shared positive integer helpers in:
+    - `scripts/release/release-runtime-utils.mjs`
+    - `parseRequiredPositiveInteger`
+    - `parseOptionalPositiveInteger`
+  - Removed duplicated local helpers from:
+    - `scripts/release/post-release-health-report.mjs`
+    - `scripts/release/reassess-alert-risk-strict.mjs`
+  - Expanded unit coverage for runtime numeric parser behavior:
+    - `apps/api/src/__tests__/release-runtime-utils.unit.spec.ts`
+- Validation:
+  - `node --check` on touched release scripts: pass.
+  - `npx jest apps/api/src/__tests__/release-runtime-utils.unit.spec.ts apps/api/src/__tests__/release-health-log-render.unit.spec.ts --runInBand --silent=false`: pass.
+  - `npx prettier --check` on touched scripts/tests: pass.
+- Rollout result: phase 133 runtime parser dedup completed; no workflow dispatch executed in this window.
+- Incidents:
+  - none.
+- Follow-ups:
+  - none.
+
 ### 2026-03-06 - deduplicate non-negative release env parsers (phase 132)
 
 - Scope: continue low-risk release-helper deduplication by centralizing non-negative integer env parsing in the shared release env util.
