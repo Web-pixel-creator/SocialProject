@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
 import { db } from '../db/pool';
+import { logger } from '../logging/logger';
 import { AuthServiceImpl } from '../services/auth/authService';
 import { ServiceError } from '../services/common/errors';
 
@@ -18,6 +19,39 @@ declare module 'express-serve-static-core' {
 }
 
 const authService = new AuthServiceImpl(db);
+
+const writeBlockedActionTelemetry = async (params: {
+  agentId: string;
+  routePath: string;
+  method: string;
+}) => {
+  try {
+    await db.query(
+      `INSERT INTO ux_events
+       (event_type, user_type, user_id, source, status, metadata)
+       VALUES ('blocked_actions', 'agent', $1, 'api', 'blocked', $2)`,
+      [
+        params.agentId,
+        {
+          agentId: params.agentId,
+          routePath: params.routePath,
+          method: params.method,
+          errorCode: 'AGENT_NOT_VERIFIED',
+        },
+      ],
+    );
+  } catch (error) {
+    logger.warn(
+      {
+        err: error,
+        agentId: params.agentId,
+        routePath: params.routePath,
+        method: params.method,
+      },
+      'blocked action telemetry insert failed',
+    );
+  }
+};
 
 export const requireHuman = (
   req: Request,
@@ -97,6 +131,11 @@ export const requireVerifiedAgent = async (
       );
       const trustTier = Number(result.rows[0]?.trust_tier ?? 0);
       if (trustTier < 1) {
+        await writeBlockedActionTelemetry({
+          agentId,
+          routePath: req.originalUrl || req.url,
+          method: req.method,
+        });
         return next(
           new ServiceError('AGENT_NOT_VERIFIED', 'Agent is not verified.', 403),
         );

@@ -167,6 +167,13 @@ describe('Admin API routes', () => {
     expect(response.body.failures).toMatchObject({
       expiredClaims: 1,
     });
+    expect(response.body.telemetry).toMatchObject({
+      claimCreatedCount: 3,
+      claimVerifiedCount: 1,
+      claimFailedCount: 0,
+      blockedActionCount: 0,
+    });
+    expect(response.body.telemetry.failureReasons).toEqual([]);
   });
 
   test('verification metrics rejects unsupported query fields', async () => {
@@ -176,6 +183,49 @@ describe('Admin API routes', () => {
 
     expect(response.status).toBe(400);
     expect(response.body.error).toBe('ADMIN_INVALID_QUERY');
+  });
+
+  test('verification metrics includes claim failures and blocked actions telemetry', async () => {
+    const unverified = await request(app).post('/api/agents/register').send({
+      studioName: 'Telemetry Gap Studio',
+      personality: 'Tester',
+    });
+
+    const failedVerify = await request(app)
+      .post('/api/agents/claim/verify')
+      .send({
+        claimToken: unverified.body.claimToken,
+        method: 'email',
+        emailToken: 'wrong-token',
+      });
+    expect(failedVerify.status).toBe(400);
+    expect(failedVerify.body.error).toBe('CLAIM_INVALID');
+
+    const blocked = await request(app)
+      .put(`/api/studios/${unverified.body.agentId}`)
+      .set('x-agent-id', unverified.body.agentId)
+      .set('x-api-key', unverified.body.apiKey)
+      .send({ studioName: 'Blocked Rename Attempt' });
+    expect(blocked.status).toBe(403);
+    expect(blocked.body.error).toBe('AGENT_NOT_VERIFIED');
+
+    const response = await request(app)
+      .get('/api/admin/verification/metrics')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(response.status).toBe(200);
+    expect(response.body.telemetry).toMatchObject({
+      claimCreatedCount: 1,
+      claimVerifiedCount: 0,
+      claimFailedCount: 1,
+      blockedActionCount: 1,
+    });
+    expect(response.body.telemetry.failureReasons).toEqual([
+      {
+        errorCode: 'CLAIM_INVALID',
+        count: 1,
+      },
+    ]);
   });
 
   test('sandbox execution metrics aggregates telemetry events', async () => {

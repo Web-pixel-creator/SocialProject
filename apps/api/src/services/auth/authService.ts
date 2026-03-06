@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import type { Pool } from 'pg';
 import { env } from '../../config/env';
+import { logger } from '../../logging/logger';
 import { AuthError } from './errors';
 import type {
   AgentAuthResult,
@@ -59,6 +60,40 @@ const createToken = (userId: string, email: string) => {
 };
 
 const CLAIM_EXPIRES_HOURS = 24;
+
+const writeClaimTelemetry = async (params: {
+  db: DbClient;
+  eventType: 'claim_created' | 'claim_verified' | 'claim_failed';
+  userType: 'agent' | 'anonymous';
+  userId: string | null;
+  status: string;
+  metadata?: Record<string, unknown>;
+}) => {
+  try {
+    await params.db.query(
+      `INSERT INTO ux_events
+       (event_type, user_type, user_id, source, status, metadata)
+       VALUES ($1, $2, $3, 'api', $4, $5)`,
+      [
+        params.eventType,
+        params.userType,
+        params.userId,
+        params.status,
+        params.metadata ?? {},
+      ],
+    );
+  } catch (error) {
+    logger.warn(
+      {
+        err: error,
+        eventType: params.eventType,
+        userType: params.userType,
+        userId: params.userId,
+      },
+      'claim telemetry insert failed',
+    );
+  }
+};
 
 const toNullableIsoTimestamp = (value: unknown): string | null => {
   if (typeof value === 'string') {
@@ -231,6 +266,18 @@ export class AuthServiceImpl implements AuthService {
       [result.rows[0].id, 'email', claimToken, emailToken, expiresAt],
     );
 
+    await writeClaimTelemetry({
+      db,
+      eventType: 'claim_created',
+      userType: 'agent',
+      userId: result.rows[0].id as string,
+      status: 'pending',
+      metadata: {
+        agentId: result.rows[0].id,
+        method: 'email',
+      },
+    });
+
     return {
       agentId: result.rows[0].id,
       apiKey,
@@ -287,80 +334,109 @@ export class AuthServiceImpl implements AuthService {
     client?: DbClient,
   ): Promise<{ agentId: string; trustTier: number }> {
     const db = getDb(this.pool, client);
-
-    const claimResult = await db.query(
-      'SELECT * FROM agent_claims WHERE claim_token = $1 ORDER BY created_at DESC LIMIT 1',
-      [input.claimToken],
-    );
-
-    if (claimResult.rows.length === 0) {
-      throw new AuthError('CLAIM_NOT_FOUND', 'Claim not found.', 404);
-    }
-
-    const claim = claimResult.rows[0];
-    if (claim.status === 'verified') {
-      const agent = await db.query(
-        'SELECT trust_tier FROM agents WHERE id = $1',
-        [claim.agent_id],
+    try {
+      const claimResult = await db.query(
+        'SELECT * FROM agent_claims WHERE claim_token = $1 ORDER BY created_at DESC LIMIT 1',
+        [input.claimToken],
       );
+
+      if (claimResult.rows.length === 0) {
+        throw new AuthError('CLAIM_NOT_FOUND', 'Claim not found.', 404);
+      }
+
+      const claim = claimResult.rows[0];
+      if (claim.status === 'verified') {
+        const agent = await db.query(
+          'SELECT trust_tier FROM agents WHERE id = $1',
+          [claim.agent_id],
+        );
+        return {
+          agentId: claim.agent_id,
+          trustTier: Number(agent.rows[0]?.trust_tier ?? 1),
+        };
+      }
+
+      const expiresAt = new Date(claim.expires_at);
+      if (expiresAt < new Date()) {
+        await db.query('UPDATE agent_claims SET status = $1 WHERE id = $2', [
+          'expired',
+          claim.id,
+        ]);
+        throw new AuthError('CLAIM_EXPIRED', 'Claim token expired.', 400);
+      }
+
+      if (input.method === 'email') {
+        if (
+          !input.emailToken ||
+          input.emailToken !== claim.verification_payload
+        ) {
+          throw new AuthError('CLAIM_INVALID', 'Invalid email token.', 400);
+        }
+      } else if (!input.tweetUrl?.includes(input.claimToken)) {
+        throw new AuthError(
+          'CLAIM_INVALID',
+          'Tweet URL does not include claim token.',
+          400,
+        );
+      }
+
+      await db.query(
+        `UPDATE agent_claims
+         SET status = 'verified',
+             method = $1,
+             verification_payload = $2,
+             verified_at = NOW()
+         WHERE id = $3`,
+        [
+          input.method,
+          input.method === 'email' ? input.emailToken : input.tweetUrl,
+          claim.id,
+        ],
+      );
+
+      const updated = await db.query(
+        `UPDATE agents
+         SET trust_tier = GREATEST(trust_tier, 1),
+             trust_reason = $1,
+             verified_at = NOW()
+         WHERE id = $2
+         RETURNING trust_tier`,
+        ['claim_verified', claim.agent_id],
+      );
+
+      await writeClaimTelemetry({
+        db,
+        eventType: 'claim_verified',
+        userType: 'agent',
+        userId: claim.agent_id as string,
+        status: 'verified',
+        metadata: {
+          agentId: claim.agent_id,
+          method: input.method,
+          trustTier: Number(updated.rows[0].trust_tier),
+        },
+      });
+
       return {
         agentId: claim.agent_id,
-        trustTier: Number(agent.rows[0]?.trust_tier ?? 1),
+        trustTier: Number(updated.rows[0].trust_tier),
       };
-    }
-
-    const expiresAt = new Date(claim.expires_at);
-    if (expiresAt < new Date()) {
-      await db.query('UPDATE agent_claims SET status = $1 WHERE id = $2', [
-        'expired',
-        claim.id,
-      ]);
-      throw new AuthError('CLAIM_EXPIRED', 'Claim token expired.', 400);
-    }
-
-    if (input.method === 'email') {
-      if (
-        !input.emailToken ||
-        input.emailToken !== claim.verification_payload
-      ) {
-        throw new AuthError('CLAIM_INVALID', 'Invalid email token.', 400);
+    } catch (error) {
+      if (error instanceof AuthError) {
+        await writeClaimTelemetry({
+          db,
+          eventType: 'claim_failed',
+          userType: 'anonymous',
+          userId: null,
+          status: 'error',
+          metadata: {
+            errorCode: error.code,
+            method: input.method,
+          },
+        });
       }
-    } else if (!input.tweetUrl?.includes(input.claimToken)) {
-      throw new AuthError(
-        'CLAIM_INVALID',
-        'Tweet URL does not include claim token.',
-        400,
-      );
+      throw error;
     }
-
-    await db.query(
-      `UPDATE agent_claims
-       SET status = 'verified',
-           method = $1,
-           verification_payload = $2,
-           verified_at = NOW()
-       WHERE id = $3`,
-      [
-        input.method,
-        input.method === 'email' ? input.emailToken : input.tweetUrl,
-        claim.id,
-      ],
-    );
-
-    const updated = await db.query(
-      `UPDATE agents
-       SET trust_tier = GREATEST(trust_tier, 1),
-           trust_reason = $1,
-           verified_at = NOW()
-       WHERE id = $2
-       RETURNING trust_tier`,
-      ['claim_verified', claim.agent_id],
-    );
-
-    return {
-      agentId: claim.agent_id,
-      trustTier: Number(updated.rows[0].trust_tier),
-    };
   }
 
   async resendAgentClaim(
@@ -530,6 +606,23 @@ export class AuthServiceImpl implements AuthService {
          COUNT(*) FILTER (WHERE verified_at IS NOT NULL)::int AS verified_agents
        FROM agents`,
     );
+    const telemetryTotalsResult = await db.query(
+      `SELECT
+         COUNT(*) FILTER (WHERE event_type = 'claim_created')::int AS claim_created_count,
+         COUNT(*) FILTER (WHERE event_type = 'claim_verified')::int AS claim_verified_count,
+         COUNT(*) FILTER (WHERE event_type = 'claim_failed')::int AS claim_failed_count,
+         COUNT(*) FILTER (WHERE event_type = 'blocked_actions')::int AS blocked_action_count
+       FROM ux_events`,
+    );
+    const failureReasonResult = await db.query(
+      `SELECT
+         COALESCE(metadata->>'errorCode', 'unknown') AS error_code,
+         COUNT(*)::int AS count
+       FROM ux_events
+       WHERE event_type = 'claim_failed'
+       GROUP BY error_code
+       ORDER BY count DESC, error_code ASC`,
+    );
 
     const totalAgents = Number(totalsResult.rows[0]?.total_agents ?? 0);
     const verifiedAgents = Number(totalsResult.rows[0]?.verified_agents ?? 0);
@@ -610,6 +703,24 @@ export class AuthServiceImpl implements AuthService {
       byMethod,
       failures: {
         expiredClaims,
+      },
+      telemetry: {
+        claimCreatedCount: Number(
+          telemetryTotalsResult.rows[0]?.claim_created_count ?? 0,
+        ),
+        claimVerifiedCount: Number(
+          telemetryTotalsResult.rows[0]?.claim_verified_count ?? 0,
+        ),
+        claimFailedCount: Number(
+          telemetryTotalsResult.rows[0]?.claim_failed_count ?? 0,
+        ),
+        blockedActionCount: Number(
+          telemetryTotalsResult.rows[0]?.blocked_action_count ?? 0,
+        ),
+        failureReasons: failureReasonResult.rows.map((row) => ({
+          errorCode: row.error_code as string,
+          count: Number(row.count ?? 0),
+        })),
       },
     };
   }

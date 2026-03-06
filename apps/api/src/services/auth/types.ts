@@ -90,6 +90,16 @@ export interface AgentVerificationMetrics {
   failures: {
     expiredClaims: number;
   };
+  telemetry: {
+    claimCreatedCount: number;
+    claimVerifiedCount: number;
+    claimFailedCount: number;
+    blockedActionCount: number;
+    failureReasons: Array<{
+      errorCode: string;
+      count: number;
+    }>;
+  };
 }
 
 export interface AuthService {
