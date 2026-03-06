@@ -3,9 +3,11 @@ import type {
   AgentGatewayTelemetryResponse,
   ObserverEngagementResponse,
   SimilarSearchMetricsResponse,
+  VerificationMetricsResponse,
 } from './admin-ux-data-client';
 import {
   deriveReleaseHealthAlertRiskLevel,
+  type HealthLevel,
   healthBadgeClass,
   healthLabel,
   normalizeBreakdownItems,
@@ -74,7 +76,21 @@ export interface PrepareAdminUxSectionDataInput {
   gatewayStatusFilter: string | null;
   gatewayTelemetry: AgentGatewayTelemetryResponse | null;
   similarSearchMetrics: SimilarSearchMetricsResponse | null;
+  verificationMetrics: VerificationMetricsResponse | null;
 }
+
+const combineHealthLevels = (levels: HealthLevel[]): HealthLevel => {
+  if (levels.includes('critical')) {
+    return 'critical';
+  }
+  if (levels.includes('watch')) {
+    return 'watch';
+  }
+  if (levels.includes('healthy')) {
+    return 'healthy';
+  }
+  return 'unknown';
+};
 
 export const prepareAdminUxSectionData = ({
   data,
@@ -86,6 +102,7 @@ export const prepareAdminUxSectionData = ({
   gatewayStatusFilter,
   gatewayTelemetry,
   similarSearchMetrics,
+  verificationMetrics,
 }: PrepareAdminUxSectionDataInput) => {
   const kpis = data?.kpis ?? {};
   const predictionMarket = data?.predictionMarket ?? {};
@@ -190,6 +207,120 @@ export const prepareAdminUxSectionData = ({
     kpis,
     toNumber,
   });
+  const verificationSummary =
+    verificationMetrics?.summary &&
+    typeof verificationMetrics.summary === 'object'
+      ? verificationMetrics.summary
+      : {};
+  const verificationTelemetry =
+    verificationMetrics?.telemetry &&
+    typeof verificationMetrics.telemetry === 'object'
+      ? verificationMetrics.telemetry
+      : {};
+  const verificationByMethod =
+    verificationMetrics?.byMethod &&
+    typeof verificationMetrics.byMethod === 'object'
+      ? verificationMetrics.byMethod
+      : {};
+  const verificationTotalAgents = toNumber(verificationSummary.totalAgents);
+  const verificationVerifiedAgents = toNumber(
+    verificationSummary.verifiedAgents,
+  );
+  const verificationUnverifiedAgents = toNumber(
+    verificationSummary.unverifiedAgents,
+  );
+  const verificationTotalClaims = toNumber(verificationSummary.totalClaims);
+  const verificationPendingClaims = toNumber(verificationSummary.pendingClaims);
+  const verificationExpiredClaims = toNumber(verificationSummary.expiredClaims);
+  const verificationRate = pickFirstFiniteRate(
+    verificationSummary.verificationRate,
+  );
+  const verificationAvgHoursToVerify = pickFirstFiniteRate(
+    verificationSummary.avgHoursToVerify,
+  );
+  const verificationClaimCreatedCount = toNumber(
+    verificationTelemetry.claimCreatedCount,
+  );
+  const verificationClaimVerifiedCount = toNumber(
+    verificationTelemetry.claimVerifiedCount,
+  );
+  const verificationClaimFailedCount = toNumber(
+    verificationTelemetry.claimFailedCount,
+  );
+  const verificationBlockedActionCount = toNumber(
+    verificationTelemetry.blockedActionCount,
+  );
+  const verificationFailureReasons = Array.isArray(
+    verificationTelemetry.failureReasons,
+  )
+    ? verificationTelemetry.failureReasons.map((entry, index) => {
+        const row = entry && typeof entry === 'object' ? entry : {};
+        return {
+          errorCode:
+            typeof (row as { errorCode?: unknown }).errorCode === 'string' &&
+            (row as { errorCode: string }).errorCode.trim().length > 0
+              ? (row as { errorCode: string }).errorCode
+              : `unknown-${index + 1}`,
+          count: toNumber((row as { count?: unknown }).count),
+        };
+      })
+    : [];
+  const verificationMethodRows = (['email', 'x'] as const).map((method) => {
+    const row =
+      verificationByMethod[method] &&
+      typeof verificationByMethod[method] === 'object'
+        ? verificationByMethod[method]
+        : {};
+    return {
+      method,
+      label: method === 'email' ? 'Email' : 'X',
+      totalClaims: toNumber(row.totalClaims),
+      pendingClaims: toNumber(row.pendingClaims),
+      verifiedClaims: toNumber(row.verifiedClaims),
+      expiredClaims: toNumber(row.expiredClaims),
+    };
+  });
+  const verificationFailureRate =
+    verificationClaimCreatedCount > 0
+      ? Number(
+          (
+            verificationClaimFailedCount / verificationClaimCreatedCount
+          ).toFixed(3),
+        )
+      : null;
+  const verificationBlockedActionRate =
+    verificationClaimCreatedCount > 0
+      ? Number(
+          (
+            verificationBlockedActionCount / verificationClaimCreatedCount
+          ).toFixed(3),
+        )
+      : null;
+  const verificationExpiredRate =
+    verificationTotalClaims > 0
+      ? Number((verificationExpiredClaims / verificationTotalClaims).toFixed(3))
+      : null;
+  const verificationRiskLevel =
+    verificationTotalAgents === 0 && verificationTotalClaims === 0
+      ? 'unknown'
+      : combineHealthLevels([
+          resolveHealthLevel(verificationRate, {
+            criticalBelow: 0.35,
+            watchBelow: 0.55,
+          }),
+          resolveRiskHealthLevel(verificationFailureRate, {
+            criticalAbove: 0.35,
+            watchAbove: 0.15,
+          }),
+          resolveRiskHealthLevel(verificationBlockedActionRate, {
+            criticalAbove: 0.3,
+            watchAbove: 0.15,
+          }),
+          resolveRiskHealthLevel(verificationExpiredRate, {
+            criticalAbove: 0.3,
+            watchAbove: 0.15,
+          }),
+        ]);
   const segments = Array.isArray(data?.segments) ? data?.segments : [];
   const styleFusionMetrics = normalizeStyleFusionMetrics(similarSearchMetrics);
   const styleFusionRiskLevel = resolveHealthLevel(
@@ -406,6 +537,23 @@ export const prepareAdminUxSectionData = ({
     styleFusionRiskLevel,
     topGatewayProvider,
     topSegmentsView,
+    verificationAvgHoursToVerify,
+    verificationBlockedActionCount,
+    verificationBlockedActionRate,
+    verificationClaimCreatedCount,
+    verificationClaimFailedCount,
+    verificationClaimVerifiedCount,
+    verificationExpiredClaims,
+    verificationFailureRate,
+    verificationFailureReasons,
+    verificationMethodRows,
+    verificationPendingClaims,
+    verificationRate,
+    verificationRiskLevel,
+    verificationTotalAgents,
+    verificationTotalClaims,
+    verificationUnverifiedAgents,
+    verificationVerifiedAgents,
     viewMode,
     viewModeTotal,
     appliedGatewayChannelFilter,

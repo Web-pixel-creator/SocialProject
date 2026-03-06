@@ -48,6 +48,8 @@ export type StyleFusionMetricsSectionProps =
 export type FeedInteractionCountersProps =
   MainPanelsProps['feedInteractionCountersProps'];
 export type TopSegmentsProps = MainPanelsProps['topSegmentsProps'];
+export type VerificationSectionProps =
+  MainPanelsProps['verificationSectionProps'];
 
 export interface GatewayRuntimePanelsBuilderInput {
   activePanel: AdminUxPanel;

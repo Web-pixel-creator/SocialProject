@@ -2094,6 +2094,141 @@ describe('admin ux observer engagement page', () => {
     );
   });
 
+  test('renders verification funnel from admin verification metrics', async () => {
+    const fetchMock = jest.fn().mockImplementation((url: string) => {
+      if (url.includes('/admin/ux/observer-engagement')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            windowHours: 24,
+            kpis: {},
+            feedPreferences: {},
+            segments: [],
+          }),
+        } as Response);
+      }
+      if (url.includes('/admin/verification/metrics')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            summary: {
+              totalAgents: 5,
+              verifiedAgents: 2,
+              unverifiedAgents: 3,
+              totalClaims: 4,
+              pendingClaims: 1,
+              verifiedClaims: 2,
+              expiredClaims: 1,
+              verificationRate: 0.4,
+              avgHoursToVerify: 7.25,
+            },
+            byMethod: {
+              email: {
+                totalClaims: 3,
+                pendingClaims: 1,
+                verifiedClaims: 1,
+                expiredClaims: 1,
+              },
+              x: {
+                totalClaims: 1,
+                pendingClaims: 0,
+                verifiedClaims: 1,
+                expiredClaims: 0,
+              },
+            },
+            telemetry: {
+              claimCreatedCount: 4,
+              claimVerifiedCount: 2,
+              claimFailedCount: 1,
+              blockedActionCount: 1,
+              failureReasons: [
+                {
+                  errorCode: 'CLAIM_INVALID',
+                  count: 1,
+                },
+              ],
+            },
+          }),
+        } as Response);
+      }
+      if (url.includes('/admin/agent-gateway/sessions?limit=25')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            source: 'db',
+            sessions: [],
+          }),
+        } as Response);
+      }
+      if (url.includes('/admin/ai-runtime/health')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            generatedAt: '2026-03-06T06:00:00.000Z',
+            roleStates: [],
+            providers: [],
+            summary: {
+              roleCount: 0,
+              providerCount: 0,
+              rolesBlocked: 0,
+              providersCoolingDown: 0,
+              providersReady: 0,
+              health: 'ok',
+            },
+          }),
+        } as Response);
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+        json: async () => ({}),
+      } as Response);
+    });
+    global.fetch = fetchMock as typeof fetch;
+
+    render(
+      await AdminUxObserverEngagementPage({
+        searchParams: Promise.resolve({
+          hours: '24',
+          panel: 'engagement',
+        }),
+      }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Claim verification funnel/i),
+      ).toBeInTheDocument(),
+    );
+    const verificationSection = screen
+      .getByText(/Claim verification funnel/i)
+      .closest('section');
+    expect(verificationSection).not.toBeNull();
+    if (!verificationSection) {
+      throw new Error('Verification funnel section should be present');
+    }
+    const verificationScoped = within(verificationSection);
+    expect(
+      verificationScoped.getByText(/Funnel risk: Watch/i),
+    ).toBeInTheDocument();
+    expect(verificationScoped.getByText(/^40\.0%$/i)).toBeInTheDocument();
+    expect(verificationScoped.getByText(/^7\.25h$/i)).toBeInTheDocument();
+    expect(verificationScoped.getByText(/CLAIM_INVALID/i)).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:4000/api/admin/verification/metrics',
+      expect.objectContaining({
+        cache: 'no-store',
+        headers: expect.objectContaining({
+          'x-admin-token': 'test-admin-token',
+        }),
+      }),
+    );
+  });
+
   test('renders API error state', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: false,

@@ -301,6 +301,47 @@ export interface SimilarSearchMetricsResponse {
   };
 }
 
+export interface VerificationMetricsResponse {
+  summary?: {
+    totalAgents?: number;
+    verifiedAgents?: number;
+    unverifiedAgents?: number;
+    totalClaims?: number;
+    pendingClaims?: number;
+    verifiedClaims?: number;
+    expiredClaims?: number;
+    verificationRate?: number | null;
+    avgHoursToVerify?: number | null;
+  };
+  byMethod?: {
+    email?: {
+      totalClaims?: number;
+      pendingClaims?: number;
+      verifiedClaims?: number;
+      expiredClaims?: number;
+    };
+    x?: {
+      totalClaims?: number;
+      pendingClaims?: number;
+      verifiedClaims?: number;
+      expiredClaims?: number;
+    };
+  };
+  failures?: {
+    expiredClaims?: number;
+  };
+  telemetry?: {
+    claimCreatedCount?: number;
+    claimVerifiedCount?: number;
+    claimFailedCount?: number;
+    blockedActionCount?: number;
+    failureReasons?: Array<{
+      errorCode?: string;
+      count?: number;
+    }>;
+  };
+}
+
 export interface AgentGatewaySessionListItem {
   id?: unknown;
   channel?: unknown;
@@ -718,6 +759,41 @@ export const fetchSimilarSearchMetrics = async (
     }
 
     const payload = (await response.json()) as SimilarSearchMetricsResponse;
+    return { data: payload };
+  } catch {
+    return {
+      data: null,
+    };
+  }
+};
+
+export const fetchVerificationMetrics = async (): Promise<{
+  data: VerificationMetricsResponse | null;
+}> => {
+  const token = resolveAdminToken();
+  if (!token) {
+    return {
+      data: null,
+    };
+  }
+
+  const endpoint = `${resolveAdminApiBaseUrl()}/admin/verification/metrics`;
+
+  try {
+    const response = await fetch(endpoint, {
+      cache: 'no-store',
+      headers: {
+        'x-admin-token': token,
+      },
+    });
+
+    if (!response.ok) {
+      return {
+        data: null,
+      };
+    }
+
+    const payload = (await response.json()) as VerificationMetricsResponse;
     return { data: payload };
   } catch {
     return {

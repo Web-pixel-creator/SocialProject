@@ -8,6 +8,7 @@ import {
   fetchAgentGatewayTelemetry,
   fetchObserverEngagement,
   fetchSimilarSearchMetrics,
+  fetchVerificationMetrics,
   type ObserverEngagementResponse,
   resolveAdminApiBaseUrl,
   resolveAdminToken,
@@ -176,6 +177,7 @@ export const loadAdminUxPageData = async ({
 >): Promise<AdminUxPageDataLoadResult> => {
   const { data: observerData, error } = await fetchObserverEngagement(hours);
   const { data: similarSearchMetrics } = await fetchSimilarSearchMetrics(hours);
+  const { data: verificationMetrics } = await fetchVerificationMetrics();
 
   if (error) {
     return {
@@ -276,6 +278,7 @@ export const loadAdminUxPageData = async ({
     gatewayStatusFilter,
     gatewayTelemetry,
     similarSearchMetrics,
+    verificationMetrics,
   });
   const aiRuntimeDryRunState = await resolveAiRuntimeDryRunState({
     adminToken: resolveAdminToken,

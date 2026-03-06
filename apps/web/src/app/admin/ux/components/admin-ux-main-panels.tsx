@@ -20,6 +20,7 @@ import { MultimodalTelemetrySection } from './multimodal-telemetry-section';
 import { PredictionMarketSection } from './prediction-market-section';
 import { ReleaseHealthSection } from './release-health-section';
 import { StyleFusionMetricsSection } from './style-fusion-metrics-section';
+import { VerificationSection } from './verification-section';
 
 type MetaTone = 'critical' | 'healthy' | 'neutral' | 'watch';
 
@@ -176,6 +177,7 @@ export const AdminUxMainPanels = ({
   runtimePanelProps,
   styleFusionMetricsSectionProps,
   topSegmentsProps,
+  verificationSectionProps,
 }: {
   activePanel: AdminUxPanel;
   allMetricsRiskFilter?: AdminUxAllMetricsRiskFilter;
@@ -214,6 +216,7 @@ export const AdminUxMainPanels = ({
     ComponentProps<typeof TopSegmentsSection>,
     'isVisible'
   >;
+  verificationSectionProps: ComponentProps<typeof VerificationSection>;
 }) => {
   const isPanelVisible = (panel: Exclude<AdminUxPanel, 'all'>) =>
     activePanel === 'all' || activePanel === panel;
@@ -327,6 +330,25 @@ export const AdminUxMainPanels = ({
     feedInteractionCountersProps.density.total +
     feedInteractionCountersProps.hint.total;
   const topSegmentsCount = topSegmentsProps.topSegments.length;
+  const verificationVisibleStatCount = [
+    verificationSectionProps.avgHoursToVerifyText,
+    verificationSectionProps.blockedActionCount,
+    verificationSectionProps.blockedActionRateText,
+    verificationSectionProps.claimCreatedCount,
+    verificationSectionProps.claimFailedCount,
+    verificationSectionProps.claimVerifiedCount,
+    verificationSectionProps.failureRateText,
+    verificationSectionProps.pendingClaimsCount,
+    verificationSectionProps.totalAgentsCount,
+    verificationSectionProps.totalClaimsCount,
+    verificationSectionProps.unverifiedAgentsCount,
+    verificationSectionProps.verificationRateText,
+    verificationSectionProps.verifiedAgentsCount,
+  ].filter((value) => !isNaLikeValue(value)).length;
+  const verificationSignalCount =
+    verificationVisibleStatCount +
+    verificationSectionProps.methodRows.length +
+    verificationSectionProps.failureReasons.length;
   const gatewaySessionCount =
     gatewayPanelsProps.liveBodyProps.gatewaySessions.length;
   const gatewayRetainedEventsCount = (
@@ -370,6 +392,9 @@ export const AdminUxMainPanels = ({
     feedInteractionTotalCount > 0 ? 'healthy' : 'watch';
   const topSegmentsMetaTone: MetaTone =
     topSegmentsCount > 0 ? 'healthy' : 'watch';
+  const verificationMetaTone = resolveMetaToneFromRiskLabel(
+    verificationSectionProps.verificationRiskLabel,
+  );
 
   if (isAllMetricsPanel) {
     const allMetricsGroups: Array<{
@@ -438,6 +463,20 @@ export const AdminUxMainPanels = ({
         order: 30,
         signalCount: engagementLowSignal ? 0 : engagementSignalCount,
         tone: engagementMetaTone,
+      });
+      allMetricsGroups.push({
+        key: 'verification-funnel',
+        node: renderAllMetricsGroup({
+          description:
+            'Claim completion, guardrail pressure, and failure-reason mix.',
+          metaLabel: toSignalLabel(verificationSignalCount),
+          metaTone: verificationMetaTone,
+          title: 'Verification funnel',
+          children: <VerificationSection {...verificationSectionProps} />,
+        }),
+        order: 35,
+        signalCount: verificationSignalCount,
+        tone: verificationMetaTone,
       });
     }
 
@@ -637,6 +676,7 @@ export const AdminUxMainPanels = ({
         <>
           <EngagementOverviewSection {...engagementOverviewProps} isVisible />
           <EngagementHealthSection {...engagementHealthProps} isVisible />
+          <VerificationSection {...verificationSectionProps} />
         </>
       ) : null}
       {activePanel === 'release' ? (

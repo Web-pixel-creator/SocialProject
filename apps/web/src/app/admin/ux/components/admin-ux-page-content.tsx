@@ -100,6 +100,9 @@ const computeAllMetricsRiskCounts = ({
     mainPanelsProps.topSegmentsProps.topSegments.length > 0
       ? 'healthy'
       : 'watch';
+  const verificationTone = resolveMetaToneFromRiskLabel(
+    mainPanelsProps.verificationSectionProps.verificationRiskLabel,
+  );
   const releaseTone = resolveMetaToneFromRiskLabel(
     mainPanelsProps.releaseHealthSectionProps.releaseRiskLabel,
   );
@@ -127,6 +130,7 @@ const computeAllMetricsRiskCounts = ({
   if (isSubviewVisible('engagement')) {
     tones.push(
       engagementTone,
+      verificationTone,
       feedPreferenceTone,
       feedInteractionsTone,
       topSegmentsTone,
@@ -193,6 +197,27 @@ const computeAllMetricsSignalCounts = ({
       .shouldCompact
       ? 0
       : mainPanelsProps.engagementHealthProps.signals.length;
+    const verificationSignalCount =
+      [
+        mainPanelsProps.verificationSectionProps.avgHoursToVerifyText,
+        mainPanelsProps.verificationSectionProps.blockedActionCount,
+        mainPanelsProps.verificationSectionProps.blockedActionRateText,
+        mainPanelsProps.verificationSectionProps.claimCreatedCount,
+        mainPanelsProps.verificationSectionProps.claimFailedCount,
+        mainPanelsProps.verificationSectionProps.claimVerifiedCount,
+        mainPanelsProps.verificationSectionProps.failureRateText,
+        mainPanelsProps.verificationSectionProps.pendingClaimsCount,
+        mainPanelsProps.verificationSectionProps.totalAgentsCount,
+        mainPanelsProps.verificationSectionProps.totalClaimsCount,
+        mainPanelsProps.verificationSectionProps.unverifiedAgentsCount,
+        mainPanelsProps.verificationSectionProps.verificationRateText,
+        mainPanelsProps.verificationSectionProps.verifiedAgentsCount,
+      ].filter((value) => {
+        const normalized = value.trim().toLowerCase();
+        return normalized !== 'n/a' && normalized !== 'na';
+      }).length +
+      mainPanelsProps.verificationSectionProps.methodRows.length +
+      mainPanelsProps.verificationSectionProps.failureReasons.length;
     const feedPreferenceSignalCount = mainPanelsProps.feedPreferenceKpisProps
       .shouldCompact
       ? 0
@@ -204,6 +229,7 @@ const computeAllMetricsSignalCounts = ({
     const topSegmentsSignalCount =
       mainPanelsProps.topSegmentsProps.topSegments.length;
     includeGroup(engagementSignalCount);
+    includeGroup(verificationSignalCount);
     includeGroup(feedPreferenceSignalCount);
     includeGroup(feedInteractionSignalCount);
     includeGroup(topSegmentsSignalCount);

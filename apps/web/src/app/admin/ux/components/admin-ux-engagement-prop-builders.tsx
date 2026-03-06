@@ -29,6 +29,7 @@ type EngagementDomainPanelsProps = Pick<
   | 'releaseHealthSectionProps'
   | 'styleFusionMetricsSectionProps'
   | 'topSegmentsProps'
+  | 'verificationSectionProps'
 >;
 
 const resolveKnownHealthLevel = (
@@ -152,6 +153,10 @@ export const buildEngagementDomainPanelsProps = ({
         title: `Latest alerted run ${sectionData.releaseHealthAlertLatestRunLabel}`,
       }
     : null;
+  const formatHoursText = (value: number | null): string =>
+    typeof value === 'number' && Number.isFinite(value)
+      ? `${value.toFixed(2)}h`
+      : 'n/a';
 
   return {
     engagementOverviewProps: {
@@ -347,6 +352,31 @@ export const buildEngagementDomainPanelsProps = ({
       shouldCompactFeedPreferenceEvents:
         sectionData.shouldCompactFeedPreferenceEvents,
       topSegments: sectionData.topSegmentsView,
+    },
+    verificationSectionProps: {
+      avgHoursToVerifyText: formatHoursText(
+        sectionData.verificationAvgHoursToVerify,
+      ),
+      blockedActionCount: `${toNumber(sectionData.verificationBlockedActionCount)}`,
+      blockedActionRateText: toRateText(
+        sectionData.verificationBlockedActionRate,
+      ),
+      claimCreatedCount: `${toNumber(sectionData.verificationClaimCreatedCount)}`,
+      claimFailedCount: `${toNumber(sectionData.verificationClaimFailedCount)}`,
+      claimVerifiedCount: `${toNumber(sectionData.verificationClaimVerifiedCount)}`,
+      failureRateText: toRateText(sectionData.verificationFailureRate),
+      failureReasons: sectionData.verificationFailureReasons,
+      methodRows: sectionData.verificationMethodRows,
+      pendingClaimsCount: `${toNumber(sectionData.verificationPendingClaims)}`,
+      totalAgentsCount: `${toNumber(sectionData.verificationTotalAgents)}`,
+      totalClaimsCount: `${toNumber(sectionData.verificationTotalClaims)}`,
+      unverifiedAgentsCount: `${toNumber(sectionData.verificationUnverifiedAgents)}`,
+      verificationRateText: toRateText(sectionData.verificationRate),
+      verificationRiskBadgeClassName: healthBadgeClass(
+        sectionData.verificationRiskLevel,
+      ),
+      verificationRiskLabel: healthLabel(sectionData.verificationRiskLevel),
+      verifiedAgentsCount: `${toNumber(sectionData.verificationVerifiedAgents)}`,
     },
   };
 };
