@@ -137,6 +137,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
   - [ ] Confirm artifact `release-env-preflight-summary` is uploaded (`artifacts/release/env-preflight-summary.json` from `release_smoke_staging`).
   - [ ] Confirm artifact `retry-schema-gate-summary` is uploaded from CI `test` job (machine-readable retry schema gate status).
   - [ ] Confirm artifact `release-smoke-preflight-schema-summary` is uploaded from CI `test` job (machine-readable standalone preflight schema validator status).
+  - [ ] Inspect companion `*-presence-summary` artifacts / step-summary blocks for grouped release uploads; these should exist even when primary release payload files are missing.
   - [ ] Optional: confirm artifact `release-smoke-tunnel-dispatch-retry-summary` is uploaded when `artifacts/release/tunnel-dispatch-retry-summary.json` is present in CI run context.
   - [ ] Optional (when `release_run_tunnel_helper=true`): confirm tunnel-helper rehearsal artifacts are uploaded from `release_tunnel_helper_ci_rehearsal` job:
     - [ ] `release-smoke-tunnel-dispatch-retry-summary`
@@ -282,6 +283,7 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
     - [ ] `post-release-health-schema-summary-inline`
     - [ ] `post-release-health-inline-artifacts-summary`
     - [ ] `post-release-health-inline-artifacts-schema-check`
+  - [ ] If any grouped launch-gate artifact body is missing, inspect the companion `*-presence-summary` artifact before retrying the workflow.
   - [ ] Confirm `sandboxExecutionMetrics.pass=true` in launch gate summary.
   - [ ] Confirm `sandboxExecutionModeConsistency.pass=true` in launch gate summary.
   - [ ] Confirm `lastKnownGoodConfig.pass=true` in launch gate summary.

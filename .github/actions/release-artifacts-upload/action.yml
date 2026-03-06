@@ -32,10 +32,61 @@ inputs:
     description: Artifact 4 path.
     required: false
     default: ""
+  manifest_json_path:
+    description: Path to generated JSON artifact manifest.
+    required: false
+    default: artifacts/ci/release-artifact-manifest.json
+  manifest_md_path:
+    description: Path to generated Markdown artifact manifest.
+    required: false
+    default: artifacts/ci/release-artifact-manifest.md
+  manifest_title:
+    description: Optional title used in generated artifact manifest markdown.
+    required: false
+    default: ""
 
 runs:
   using: composite
   steps:
+    - name: Generate release artifact manifest
+      shell: bash
+      run: |
+        title="${{ inputs.manifest_title }}"
+        if [[ -z "$title" ]]; then
+          title="Release Artifact Presence Summary (${{ inputs.artifact_1_name }})"
+        fi
+        args=(
+          --output "${{ inputs.manifest_json_path }}"
+          --markdown-output "${{ inputs.manifest_md_path }}"
+          --title "$title"
+          --artifact-name "${{ inputs.artifact_1_name }}"
+          --artifact-path "${{ inputs.artifact_1_path }}"
+        )
+        if [[ "${{ inputs.artifact_2_name }}" != '' && "${{ inputs.artifact_2_path }}" != '' ]]; then
+          args+=(--artifact-name "${{ inputs.artifact_2_name }}" --artifact-path "${{ inputs.artifact_2_path }}")
+        fi
+        if [[ "${{ inputs.artifact_3_name }}" != '' && "${{ inputs.artifact_3_path }}" != '' ]]; then
+          args+=(--artifact-name "${{ inputs.artifact_3_name }}" --artifact-path "${{ inputs.artifact_3_path }}")
+        fi
+        if [[ "${{ inputs.artifact_4_name }}" != '' && "${{ inputs.artifact_4_path }}" != '' ]]; then
+          args+=(--artifact-name "${{ inputs.artifact_4_name }}" --artifact-path "${{ inputs.artifact_4_path }}")
+        fi
+        node scripts/ci/summarize-release-artifacts.mjs "${args[@]}"
+
+    - name: Append release artifact manifest to step summary
+      uses: ./.github/actions/append-step-summary
+      with:
+        summary_path: ${{ inputs.manifest_md_path }}
+
+    - name: Upload release artifact manifest
+      if: always()
+      uses: ./.github/actions/artifact-upload
+      with:
+        artifact_name: ${{ inputs.artifact_1_name }}-presence-summary
+        artifact_path: |
+          ${{ inputs.manifest_json_path }}
+          ${{ inputs.manifest_md_path }}
+
     - name: Upload artifact 1
       if: always()
       uses: ./.github/actions/artifact-upload

@@ -33,6 +33,35 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-06 - add guaranteed release artifact presence manifests (phase 129)
+
+- Scope: close the phase 6 failure-evidence gap for grouped release uploads by generating companion artifact-presence manifests even when primary release payloads are missing.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-06 16:29 -> 2026-03-06 16:33.
+- Changes:
+  - Added reusable release artifact summary generator:
+    - `scripts/ci/summarize-release-artifacts-core.js`
+    - `scripts/ci/summarize-release-artifacts.mjs`
+  - Added unit coverage:
+    - `apps/api/src/__tests__/ci-release-artifacts-summary.unit.spec.ts`
+  - Updated grouped release uploader:
+    - `.github/actions/release-artifacts-upload/action.yml`
+    - each invocation now:
+      - generates JSON + Markdown presence summaries for all configured artifact slots
+      - appends the Markdown summary to the job step summary
+      - uploads a guaranteed companion artifact named `<artifact_1_name>-presence-summary`
+  - Updated operator checklist guidance:
+    - `docs/ops/release-checklist.md`
+- Validation:
+  - `node --check scripts/ci/summarize-release-artifacts.mjs`: pass.
+  - `npx jest apps/api/src/__tests__/ci-release-artifacts-summary.unit.spec.ts apps/api/src/__tests__/ci-playwright-artifacts-summary.unit.spec.ts --runInBand --silent=false`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+- Rollout result: phase 129 artifact-manifest coverage completed; no workflow dispatch executed in this window.
+- Incidents:
+  - none.
+- Follow-ups:
+  - Phase 6 remainder: selective CI/E2E execution policy still open.
+
 ### 2026-03-06 - remove final github request wrapper from post-release health report (phase 128)
 
 - Scope: finish the remaining shared-helper migration in release tooling by removing the last local `githubRequest` passthrough from `post-release-health-report.mjs`.
