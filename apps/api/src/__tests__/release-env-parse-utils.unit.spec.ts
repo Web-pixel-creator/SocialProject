@@ -17,12 +17,13 @@ const runModuleAction = <T>({
   action,
   input,
 }: {
-  action: 'parseBoolean' | 'parsePositiveInteger';
+  action: 'parseBoolean' | 'parsePositiveInteger' | 'parseNonNegativeInteger';
   input: unknown;
 }) => {
   const script = `
     import {
       parseReleaseBooleanEnv,
+      parseReleaseNonNegativeIntegerEnv,
       parseReleasePositiveIntegerEnv,
     } from ${JSON.stringify(moduleHref)};
 
@@ -33,6 +34,8 @@ const runModuleAction = <T>({
       let result;
       if (action === 'parseBoolean') {
         result = parseReleaseBooleanEnv(input.raw, input.fallback, input.sourceLabel);
+      } else if (action === 'parseNonNegativeInteger') {
+        result = parseReleaseNonNegativeIntegerEnv(input.raw, input.fallback, input.sourceLabel);
       } else {
         result = parseReleasePositiveIntegerEnv(input.raw, input.fallback, input.sourceLabel);
       }
@@ -49,14 +52,10 @@ const runModuleAction = <T>({
     }
   `;
 
-  const output = spawnSync(
-    process.execPath,
-    ['--input-type=module', '-e', script],
-    {
-      cwd: projectRoot,
-      encoding: 'utf8',
-    },
-  );
+  const output = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
+    cwd: projectRoot,
+    encoding: 'utf8',
+  });
   const payload = JSON.parse(output.stdout) as ModuleActionResult<T>;
   return {
     output,
@@ -111,9 +110,7 @@ describe('release env parse utils', () => {
 
     expect(result.output.status).toBe(1);
     expect(result.payload.ok).toBe(false);
-    expect(result.payload.error).toContain(
-      'Invalid value for RELEASE_SAMPLE_BOOL: maybe',
-    );
+    expect(result.payload.error).toContain('Invalid value for RELEASE_SAMPLE_BOOL: maybe');
   });
 
   test('positive integer parser supports fallback and valid integers', () => {
@@ -164,9 +161,59 @@ describe('release env parse utils', () => {
 
       expect(result.output.status).toBe(1);
       expect(result.payload.ok).toBe(false);
-      expect(result.payload.error).toContain(
-        `Invalid value for RELEASE_SAMPLE_MS: ${value}`,
-      );
+      expect(result.payload.error).toContain(`Invalid value for RELEASE_SAMPLE_MS: ${value}`);
+    }
+  });
+
+  test('non-negative integer parser supports fallback, zero, and valid integers', () => {
+    const fallbackResult = runModuleAction<number>({
+      action: 'parseNonNegativeInteger',
+      input: {
+        fallback: 5,
+        raw: '',
+        sourceLabel: 'RELEASE_SAMPLE_COUNT',
+      },
+    });
+    const zeroResult = runModuleAction<number>({
+      action: 'parseNonNegativeInteger',
+      input: {
+        fallback: 5,
+        raw: '0',
+        sourceLabel: 'RELEASE_SAMPLE_COUNT',
+      },
+    });
+    const valueResult = runModuleAction<number>({
+      action: 'parseNonNegativeInteger',
+      input: {
+        fallback: 5,
+        raw: '12',
+        sourceLabel: 'RELEASE_SAMPLE_COUNT',
+      },
+    });
+
+    expect(fallbackResult.output.status).toBe(0);
+    expect(fallbackResult.payload.result).toBe(5);
+    expect(zeroResult.output.status).toBe(0);
+    expect(zeroResult.payload.result).toBe(0);
+    expect(valueResult.output.status).toBe(0);
+    expect(valueResult.payload.result).toBe(12);
+  });
+
+  test('non-negative integer parser throws on unsupported values', () => {
+    const invalidCases = ['-1', 'abc', '12abc', '3.5'];
+    for (const value of invalidCases) {
+      const result = runModuleAction<number>({
+        action: 'parseNonNegativeInteger',
+        input: {
+          fallback: 5,
+          raw: value,
+          sourceLabel: 'RELEASE_SAMPLE_COUNT',
+        },
+      });
+
+      expect(result.output.status).toBe(1);
+      expect(result.payload.ok).toBe(false);
+      expect(result.payload.error).toContain(`Invalid value for RELEASE_SAMPLE_COUNT: ${value}`);
     }
   });
 });

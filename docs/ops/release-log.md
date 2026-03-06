@@ -33,6 +33,31 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-06 - deduplicate non-negative release env parsers (phase 132)
+
+- Scope: continue low-risk release-helper deduplication by centralizing non-negative integer env parsing in the shared release env util.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-06 17:02 -> 2026-03-06 17:03.
+- Changes:
+  - Added shared helper in:
+    - `scripts/release/release-env-parse-utils.mjs`
+    - `parseReleaseNonNegativeIntegerEnv`
+  - Removed duplicated local helper implementations from:
+    - `scripts/release/production-launch-gate.mjs`
+    - `scripts/release/dispatch-production-launch-gate.mjs`
+    - `scripts/release/post-release-health-report.mjs`
+  - Expanded unit coverage for shared env parser behavior:
+    - `apps/api/src/__tests__/release-env-parse-utils.unit.spec.ts`
+- Validation:
+  - `node --check` on touched release scripts: pass.
+  - `npx jest apps/api/src/__tests__/release-env-parse-utils.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-health-log-render.unit.spec.ts --runInBand --silent=false`: pass.
+  - `npx prettier --check` on touched scripts/tests: pass.
+- Rollout result: phase 132 env-parser dedup completed; no workflow dispatch executed in this window.
+- Incidents:
+  - none.
+- Follow-ups:
+  - none.
+
 ### 2026-03-06 - deduplicate release run id parsing helpers (phase 131)
 
 - Scope: continue low-risk release-helper deduplication by centralizing shared GitHub Actions `run_id` parsing across release scripts.

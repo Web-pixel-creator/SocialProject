@@ -8,6 +8,7 @@ import {
 } from './dispatch-production-launch-gate-external-channels.mjs';
 import {
   parseReleaseBooleanEnv,
+  parseReleaseNonNegativeIntegerEnv,
   parseReleasePositiveIntegerEnv,
 } from './release-env-parse-utils.mjs';
 import {
@@ -29,19 +30,6 @@ import { sleep } from './release-runtime-utils.mjs';
 const DEFAULT_FAILURE_DETAIL_MAX_ITEMS = 10;
 const DEFAULT_SMOKE_TIMEOUT_RETRIES = 1;
 const DEFAULT_SMOKE_TIMEOUT_RETRY_DELAY_MS = 5_000;
-const NON_NEGATIVE_INTEGER_PATTERN = /^(0|[1-9]\d*)$/;
-
-const parseReleaseNonNegativeIntegerEnv = (raw, fallback, sourceLabel) => {
-  const value = String(raw || '').trim();
-  if (!value) {
-    return fallback;
-  }
-  if (!NON_NEGATIVE_INTEGER_PATTERN.test(value)) {
-    throw new Error(`Invalid value for ${sourceLabel}: ${value}`);
-  }
-  return Number(value);
-};
-
 const DEFAULTS = {
   apiService: process.env.RAILWAY_API_SERVICE || 'api',
   artifactsDir: 'artifacts/release',
@@ -83,26 +71,18 @@ const ARTIFACTS = {
   adapters: 'artifacts/release/production-agent-gateway-adapters.json',
   adminHealth: 'artifacts/release/production-admin-health-summary.json',
   diagnosticsBundlesDir: 'artifacts/release/diagnostics',
-  externalChannelTraces:
-    'artifacts/release/production-agent-gateway-external-channel-traces.json',
+  externalChannelTraces: 'artifacts/release/production-agent-gateway-external-channel-traces.json',
   healthSummary: 'artifacts/release/production-launch-gate-health-summary.json',
   ingestProbe: 'artifacts/release/production-agent-gateway-ingest-probe.json',
-  matrixProbe:
-    'artifacts/release/production-agent-gateway-adapter-matrix-probe.json',
-  lastKnownGoodConfig:
-    'artifacts/release/production-launch-gate-config-last-known-good.json',
-  lastKnownGoodConfigResolution:
-    'artifacts/release/production-launch-gate-config-resolution.json',
+  matrixProbe: 'artifacts/release/production-agent-gateway-adapter-matrix-probe.json',
+  lastKnownGoodConfig: 'artifacts/release/production-launch-gate-config-last-known-good.json',
+  lastKnownGoodConfigResolution: 'artifacts/release/production-launch-gate-config-resolution.json',
   railwayGate: 'artifacts/release/railway-gate-strict.json',
   runtimeProbe: 'artifacts/release/production-runtime-orchestration-probe.json',
-  sandboxExecutionAuditPolicy:
-    'artifacts/release/production-sandbox-execution-audit-policy.json',
-  sandboxExecutionEgressPolicy:
-    'artifacts/release/production-sandbox-execution-egress-policy.json',
-  sandboxExecutionLimitsPolicy:
-    'artifacts/release/production-sandbox-execution-limits-policy.json',
-  sandboxExecutionMetrics:
-    'artifacts/release/production-sandbox-execution-metrics.json',
+  sandboxExecutionAuditPolicy: 'artifacts/release/production-sandbox-execution-audit-policy.json',
+  sandboxExecutionEgressPolicy: 'artifacts/release/production-sandbox-execution-egress-policy.json',
+  sandboxExecutionLimitsPolicy: 'artifacts/release/production-sandbox-execution-limits-policy.json',
+  sandboxExecutionMetrics: 'artifacts/release/production-sandbox-execution-metrics.json',
   summary: 'artifacts/release/production-launch-gate-summary.json',
   telemetry: 'artifacts/release/production-agent-gateway-telemetry.json',
 };
@@ -151,10 +131,7 @@ const sortDeep = (value) => {
   }
   return out;
 };
-const summarizeSandboxExecutionModeConsistency = (
-  modeBreakdown,
-  expectedMode,
-) => {
+const summarizeSandboxExecutionModeConsistency = (modeBreakdown, expectedMode) => {
   const rows = Array.isArray(modeBreakdown) ? modeBreakdown : [];
   let expectedModeCount = 0;
   let otherModeCount = 0;
@@ -165,9 +142,7 @@ const summarizeSandboxExecutionModeConsistency = (
       row && typeof row === 'object' && typeof row.mode === 'string'
         ? row.mode.trim().toLowerCase()
         : 'unknown';
-    const countRaw = Number(
-      row && typeof row === 'object' ? row.count ?? 0 : 0,
-    );
+    const countRaw = Number(row && typeof row === 'object' ? (row.count ?? 0) : 0);
     const count = Number.isFinite(countRaw) ? Math.max(0, countRaw) : 0;
     total += count;
     if (mode === expectedMode) {
@@ -186,8 +161,7 @@ const summarizeSandboxExecutionModeConsistency = (
   };
 };
 
-const quote = (v) =>
-  /^[a-z0-9_./:=@+-]+$/i.test(v) ? v : `"${v.replace(/"/g, '\\"')}"`;
+const quote = (v) => (/^[a-z0-9_./:=@+-]+$/i.test(v) ? v : `"${v.replace(/"/g, '\\"')}"`);
 
 const runRaw = (command, args = [], env = process.env) => {
   const full = [command, ...args.map(quote)].join(' ');
@@ -221,16 +195,12 @@ const runRailway = (args, env = process.env) => {
     return primary.stdout;
   }
   if (!isMissingCommand(primary)) {
-    throw new Error(
-      primary.stderr.trim() || primary.stdout.trim() || 'railway command failed',
-    );
+    throw new Error(primary.stderr.trim() || primary.stdout.trim() || 'railway command failed');
   }
   const fallback = runRaw('npx', ['-y', '@railway/cli', ...args], env);
   if (fallback.error) throw fallback.error;
   if (fallback.status !== 0) {
-    throw new Error(
-      fallback.stderr.trim() || fallback.stdout.trim() || 'npx @railway/cli failed',
-    );
+    throw new Error(fallback.stderr.trim() || fallback.stdout.trim() || 'npx @railway/cli failed');
   }
   return fallback.stdout;
 };
@@ -244,9 +214,9 @@ const readJson = async (file) => JSON.parse(await readFile(file, 'utf8'));
 const hasConnectorProfilesSnapshot = (value) =>
   Boolean(
     value &&
-      typeof value === 'object' &&
-      Array.isArray(value.profiles) &&
-      Number.isFinite(value.total),
+    typeof value === 'object' &&
+    Array.isArray(value.profiles) &&
+    Number.isFinite(value.total),
   );
 const buildSmokeStepStatus = (smokeReport) => {
   const steps = Array.isArray(smokeReport?.steps) ? smokeReport.steps : [];
@@ -254,17 +224,12 @@ const buildSmokeStepStatus = (smokeReport) => {
     steps
       .filter(
         (step) =>
-          step &&
-          typeof step === 'object' &&
-          typeof step.name === 'string' &&
-          step.name.length > 0,
+          step && typeof step === 'object' && typeof step.name === 'string' && step.name.length > 0,
       )
       .map((step) => [step.name, step]),
   );
   const missing = REQUIRED_SMOKE_STEP_NAMES.filter((name) => !byName.has(name));
-  const failed = REQUIRED_SMOKE_STEP_NAMES.filter(
-    (name) => byName.get(name)?.pass !== true,
-  );
+  const failed = REQUIRED_SMOKE_STEP_NAMES.filter((name) => byName.get(name)?.pass !== true);
   return {
     failed,
     missing,
@@ -291,14 +256,10 @@ const buildStepPromptCoverage = (steps) =>
     : [];
 const buildSkillMarkerCoverage = (stepPromptCoverage) => {
   const hasRolePersonaAllSteps =
-    stepPromptCoverage.length > 0 &&
-    stepPromptCoverage.every((step) => step.hasRolePersona);
+    stepPromptCoverage.length > 0 && stepPromptCoverage.every((step) => step.hasRolePersona);
   const hasSkillCapsuleAllSteps =
-    stepPromptCoverage.length > 0 &&
-    stepPromptCoverage.every((step) => step.hasSkillCapsule);
-  const hasRoleSkillAnyStep = stepPromptCoverage.some(
-    (step) => step.hasRoleSkill,
-  );
+    stepPromptCoverage.length > 0 && stepPromptCoverage.every((step) => step.hasSkillCapsule);
+  const hasRoleSkillAnyStep = stepPromptCoverage.some((step) => step.hasRoleSkill);
   return {
     hasRolePersonaAllSteps,
     hasRoleSkillAnyStep,
@@ -501,30 +462,18 @@ const parseArgs = (argv) => {
     else if (a === '--skip-railway-gate') o.skipRailwayGate = true;
     else if (a === '--required-external-channels') {
       const value = readRequiredValue('--required-external-channels', argv[++i]);
-      o.requiredExternalChannels = parseExternalChannelsList(
-        value,
-        '--required-external-channels',
-      );
+      o.requiredExternalChannels = parseExternalChannelsList(value, '--required-external-channels');
     } else if (a.startsWith('--required-external-channels=')) {
       const value = a.slice('--required-external-channels='.length).trim();
       if (!value) {
         throw new Error(`Missing value for ${a}`);
       }
-      o.requiredExternalChannels = parseExternalChannelsList(
-        value,
-        '--required-external-channels',
-      );
-    }
-    else if (a.startsWith('--environment='))
-      o.environment = readInlineValue(a, '--environment');
-    else if (a.startsWith('--web-service='))
-      o.webService = readInlineValue(a, '--web-service');
-    else if (a.startsWith('--api-service='))
-      o.apiService = readInlineValue(a, '--api-service');
-    else if (a.startsWith('--web-base-url='))
-      o.webBaseUrl = readInlineValue(a, '--web-base-url');
-    else if (a.startsWith('--api-base-url='))
-      o.apiBaseUrl = readInlineValue(a, '--api-base-url');
+      o.requiredExternalChannels = parseExternalChannelsList(value, '--required-external-channels');
+    } else if (a.startsWith('--environment=')) o.environment = readInlineValue(a, '--environment');
+    else if (a.startsWith('--web-service=')) o.webService = readInlineValue(a, '--web-service');
+    else if (a.startsWith('--api-service=')) o.apiService = readInlineValue(a, '--api-service');
+    else if (a.startsWith('--web-base-url=')) o.webBaseUrl = readInlineValue(a, '--web-base-url');
+    else if (a.startsWith('--api-base-url=')) o.apiBaseUrl = readInlineValue(a, '--api-base-url');
     else if (a.startsWith('--runtime-draft-id='))
       o.runtimeDraftId = readInlineValue(a, '--runtime-draft-id');
     else if (a.startsWith('--runtime-channel='))
@@ -534,10 +483,7 @@ const parseArgs = (argv) => {
     else if (a.startsWith('--gate-wait-ms='))
       o.gateWaitMs = parseInlinePositiveIntegerValue(a, '--gate-wait-ms');
     else if (a.startsWith('--gate-poll-interval-ms='))
-      o.gateIntervalMs = parseInlinePositiveIntegerValue(
-        a,
-        '--gate-poll-interval-ms',
-      );
+      o.gateIntervalMs = parseInlinePositiveIntegerValue(a, '--gate-poll-interval-ms');
     else if (a.startsWith('--http-timeout-ms='))
       o.httpTimeoutMs = parseInlinePositiveIntegerValue(a, '--http-timeout-ms');
     else if (a.startsWith('--smoke-timeout-retry-delay-ms='))
@@ -546,28 +492,16 @@ const parseArgs = (argv) => {
         '--smoke-timeout-retry-delay-ms',
       );
     else if (a.startsWith('--smoke-timeout-retries='))
-      o.smokeTimeoutRetries = parseInlineNonNegativeIntegerValue(
-        a,
-        '--smoke-timeout-retries',
-      );
+      o.smokeTimeoutRetries = parseInlineNonNegativeIntegerValue(a, '--smoke-timeout-retries');
     else if (a.startsWith('--failure-detail-max-items='))
-      o.failureDetailMaxItems = parseInlinePositiveIntegerValue(
-        a,
-        '--failure-detail-max-items',
-      );
+      o.failureDetailMaxItems = parseInlinePositiveIntegerValue(a, '--failure-detail-max-items');
     else if (a === '--require-skill-markers') o.requireSkillMarkers = true;
-    else if (a === '--require-natural-cron-window')
-      o.requireNaturalCronWindow = true;
-    else if (a === '--environment')
-      o.environment = readRequiredValue('--environment', argv[++i]);
-    else if (a === '--web-service')
-      o.webService = readRequiredValue('--web-service', argv[++i]);
-    else if (a === '--api-service')
-      o.apiService = readRequiredValue('--api-service', argv[++i]);
-    else if (a === '--web-base-url')
-      o.webBaseUrl = readRequiredValue('--web-base-url', argv[++i]);
-    else if (a === '--api-base-url')
-      o.apiBaseUrl = readRequiredValue('--api-base-url', argv[++i]);
+    else if (a === '--require-natural-cron-window') o.requireNaturalCronWindow = true;
+    else if (a === '--environment') o.environment = readRequiredValue('--environment', argv[++i]);
+    else if (a === '--web-service') o.webService = readRequiredValue('--web-service', argv[++i]);
+    else if (a === '--api-service') o.apiService = readRequiredValue('--api-service', argv[++i]);
+    else if (a === '--web-base-url') o.webBaseUrl = readRequiredValue('--web-base-url', argv[++i]);
+    else if (a === '--api-base-url') o.apiBaseUrl = readRequiredValue('--api-base-url', argv[++i]);
     else if (a === '--runtime-draft-id')
       o.runtimeDraftId = readRequiredValue('--runtime-draft-id', argv[++i]);
     else if (a === '--runtime-channel')
@@ -577,30 +511,18 @@ const parseArgs = (argv) => {
     else if (a === '--gate-wait-ms')
       o.gateWaitMs = parsePositiveIntegerValue('--gate-wait-ms', argv[++i]);
     else if (a === '--gate-poll-interval-ms')
-      o.gateIntervalMs = parsePositiveIntegerValue(
-        '--gate-poll-interval-ms',
-        argv[++i],
-      );
+      o.gateIntervalMs = parsePositiveIntegerValue('--gate-poll-interval-ms', argv[++i]);
     else if (a === '--http-timeout-ms')
-      o.httpTimeoutMs = parsePositiveIntegerValue(
-        '--http-timeout-ms',
-        argv[++i],
-      );
+      o.httpTimeoutMs = parsePositiveIntegerValue('--http-timeout-ms', argv[++i]);
     else if (a === '--smoke-timeout-retry-delay-ms')
       o.smokeTimeoutRetryDelayMs = parsePositiveIntegerValue(
         '--smoke-timeout-retry-delay-ms',
         argv[++i],
       );
     else if (a === '--smoke-timeout-retries')
-      o.smokeTimeoutRetries = parseNonNegativeIntegerValue(
-        '--smoke-timeout-retries',
-        argv[++i],
-      );
+      o.smokeTimeoutRetries = parseNonNegativeIntegerValue('--smoke-timeout-retries', argv[++i]);
     else if (a === '--failure-detail-max-items')
-      o.failureDetailMaxItems = parsePositiveIntegerValue(
-        '--failure-detail-max-items',
-        argv[++i],
-      );
+      o.failureDetailMaxItems = parsePositiveIntegerValue('--failure-detail-max-items', argv[++i]);
     else throw new Error(`Unknown argument: ${a}`);
   }
   return o;
@@ -674,9 +596,7 @@ const main = async () => {
     scope: 'production-launch-gate',
   });
   const diagnosticsOutputDir = resolveReleaseDiagnosticsBundlesDir(process.env);
-  const diagnosticsCleanupConfig = resolveReleaseDiagnosticsCleanupConfig(
-    process.env,
-  );
+  const diagnosticsCleanupConfig = resolveReleaseDiagnosticsCleanupConfig(process.env);
 
   const summary = {
     artifacts: { ...ARTIFACTS, smoke: o.smokeResultsPath },
@@ -711,10 +631,7 @@ const main = async () => {
         }
         const payload = result.stdout.trim();
         if (!payload) {
-          throw new Error(
-            result.stderr.trim() ||
-              'railway production gate returned empty output',
-          );
+          throw new Error(result.stderr.trim() || 'railway production gate returned empty output');
         }
         gate = JSON.parse(payload);
         await writeJson(path.resolve(ARTIFACTS.railwayGate), gate);
@@ -725,9 +642,7 @@ const main = async () => {
           gate.failures.every((f) => f.code === 'DEPLOYMENT_NOT_SUCCESS') &&
           Array.isArray(gate.services) &&
           gate.services.some((s) =>
-            ['BUILDING', 'DEPLOYING', 'INITIALIZING'].includes(
-              s.deploymentStatus,
-            ),
+            ['BUILDING', 'DEPLOYING', 'INITIALIZING'].includes(s.deploymentStatus),
           );
         if (!transient || Date.now() - start > o.gateWaitMs) {
           throw new Error('Railway strict gate failed');
@@ -750,13 +665,9 @@ const main = async () => {
       findService(o.webService)?.publicBaseUrl;
     if (!apiBaseUrl || !webBaseUrl) throw new Error('Unable to resolve production base URLs');
 
-    let adminToken = String(
-      process.env[RELEASE_FALLBACK_ENV.adminToken] || '',
-    ).trim();
+    let adminToken = String(process.env[RELEASE_FALLBACK_ENV.adminToken] || '').trim();
     let csrfToken = String(process.env[RELEASE_FALLBACK_ENV.csrfToken] || '').trim();
-    let webhookSecret = String(
-      process.env[RELEASE_FALLBACK_ENV.webhookSecret] || '',
-    ).trim();
+    let webhookSecret = String(process.env[RELEASE_FALLBACK_ENV.webhookSecret] || '').trim();
     let apiServiceVars = null;
     if (!adminToken || !csrfToken || !webhookSecret) {
       const vars = JSON.parse(
@@ -850,8 +761,7 @@ const main = async () => {
             RELEASE_RESULTS_PATH: smokeResultsPath,
           });
         } catch (error) {
-          smokeCommandError =
-            error instanceof Error ? error : new Error(String(error));
+          smokeCommandError = error instanceof Error ? error : new Error(String(error));
         }
       }
       try {
@@ -874,9 +784,7 @@ const main = async () => {
         smokeReport: smoke,
       });
       const shouldRetry =
-        !o.skipSmoke &&
-        retryDecision.shouldRetry &&
-        smokeAttempts < smokeMaxAttempts;
+        !o.skipSmoke && retryDecision.shouldRetry && smokeAttempts < smokeMaxAttempts;
       if (!shouldRetry) {
         if (smokeCommandError) {
           throw smokeCommandError;
@@ -922,9 +830,7 @@ const main = async () => {
       );
     }
     if (o.skipIngestProbe && o.requiredExternalChannels.length > 0) {
-      throw new Error(
-        '--required-external-channels cannot be combined with --skip-ingest-probe.',
-      );
+      throw new Error('--required-external-channels cannot be combined with --skip-ingest-probe.');
     }
     if (!runtimeDraftId) throw new Error('Runtime draft id is missing');
 
@@ -957,12 +863,8 @@ const main = async () => {
     const cronByName = Object.fromEntries(rows.map((row) => [row.job_name, row]));
     const naturalCronRows = EXPECTED_CRON_JOBS.map((jobName) => {
       const row = cronByName[jobName] ?? {};
-      const lastRunAt =
-        typeof row.last_run_at === 'string' ? row.last_run_at : null;
-      const lastStatus =
-        typeof row.last_status === 'string'
-          ? row.last_status.toLowerCase()
-          : null;
+      const lastRunAt = typeof row.last_run_at === 'string' ? row.last_run_at : null;
+      const lastStatus = typeof row.last_status === 'string' ? row.last_status.toLowerCase() : null;
       const ranToday =
         typeof lastRunAt === 'string' &&
         lastRunAt.length >= 10 &&
@@ -987,14 +889,18 @@ const main = async () => {
           health['/ready'].json?.db === 'ok' &&
           health['/ready'].json?.redis === 'ok',
         telemetryNonEmpty:
-          Number(health['/api/admin/agent-gateway/telemetry?hours=24&limit=200'].json?.sessions?.total ?? 0) > 0 &&
-          Number(health['/api/admin/agent-gateway/telemetry?hours=24&limit=200'].json?.events?.total ?? 0) > 0,
+          Number(
+            health['/api/admin/agent-gateway/telemetry?hours=24&limit=200'].json?.sessions?.total ??
+              0,
+          ) > 0 &&
+          Number(
+            health['/api/admin/agent-gateway/telemetry?hours=24&limit=200'].json?.events?.total ??
+              0,
+          ) > 0,
         sandboxExecutionMetricsReachable:
-          health['/api/admin/sandbox-execution/metrics?hours=24&limit=20'].status ===
-            200 &&
-          typeof health[
-            '/api/admin/sandbox-execution/metrics?hours=24&limit=20'
-          ].json?.summary === 'object',
+          health['/api/admin/sandbox-execution/metrics?hours=24&limit=20'].status === 200 &&
+          typeof health['/api/admin/sandbox-execution/metrics?hours=24&limit=20'].json?.summary ===
+            'object',
         expectedCronJobsPresent: EXPECTED_CRON_JOBS.every((j) => names.has(j)),
         naturalCronWindow: o.requireNaturalCronWindow ? naturalCronComplete : true,
       },
@@ -1067,40 +973,26 @@ const main = async () => {
         Number(sandboxExecutionMetrics.json?.summary?.successCount ?? 0) || 0;
       const sandboxExecutionMetricsFailedCount =
         Number(sandboxExecutionMetrics.json?.summary?.failedCount ?? 0) || 0;
-      const sandboxExecutionModeConsistency =
-        summarizeSandboxExecutionModeConsistency(
-          sandboxExecutionMetrics.json?.modeBreakdown,
-          runtimeDryRunExpectedMode,
-        );
+      const sandboxExecutionModeConsistency = summarizeSandboxExecutionModeConsistency(
+        sandboxExecutionMetrics.json?.modeBreakdown,
+        runtimeDryRunExpectedMode,
+      );
       const sandboxExecutionAuditTotalWithAudit =
-        Number(sandboxExecutionMetrics.json?.auditCoverage?.totalWithAudit ?? 0) ||
-        0;
+        Number(sandboxExecutionMetrics.json?.auditCoverage?.totalWithAudit ?? 0) || 0;
       const sandboxExecutionAuditActorTypeCount =
-        Number(sandboxExecutionMetrics.json?.auditCoverage?.actorTypeCount ?? 0) ||
-        0;
+        Number(sandboxExecutionMetrics.json?.auditCoverage?.actorTypeCount ?? 0) || 0;
       const sandboxExecutionAuditCorrelationIdCount =
-        Number(
-          sandboxExecutionMetrics.json?.auditCoverage?.correlationIdCount ?? 0,
-        ) || 0;
+        Number(sandboxExecutionMetrics.json?.auditCoverage?.correlationIdCount ?? 0) || 0;
       const sandboxExecutionAuditReleaseRunIdCount =
-        Number(
-          sandboxExecutionMetrics.json?.auditCoverage?.releaseRunIdCount ?? 0,
-        ) || 0;
+        Number(sandboxExecutionMetrics.json?.auditCoverage?.releaseRunIdCount ?? 0) || 0;
       const sandboxExecutionAuditSessionIdCount =
-        Number(sandboxExecutionMetrics.json?.auditCoverage?.sessionIdCount ?? 0) ||
-        0;
+        Number(sandboxExecutionMetrics.json?.auditCoverage?.sessionIdCount ?? 0) || 0;
       const sandboxExecutionAuditSourceRouteCount =
-        Number(
-          sandboxExecutionMetrics.json?.auditCoverage?.sourceRouteCount ?? 0,
-        ) || 0;
+        Number(sandboxExecutionMetrics.json?.auditCoverage?.sourceRouteCount ?? 0) || 0;
       const sandboxExecutionAuditToolNameCount =
-        Number(sandboxExecutionMetrics.json?.auditCoverage?.toolNameCount ?? 0) ||
-        0;
+        Number(sandboxExecutionMetrics.json?.auditCoverage?.toolNameCount ?? 0) || 0;
       const sandboxExecutionTelemetryExecutionSessionIdCount =
-        Number(
-          sandboxExecutionMetrics.json?.auditCoverage?.executionSessionIdCount ??
-            0,
-        ) || 0;
+        Number(sandboxExecutionMetrics.json?.auditCoverage?.executionSessionIdCount ?? 0) || 0;
       const sandboxExecutionAuditPolicy = {
         actorTypeCount: sandboxExecutionAuditActorTypeCount,
         correlation,
@@ -1155,10 +1047,7 @@ const main = async () => {
         skipped: true,
       };
       if (runtimeDryRunEgressProfile) {
-        const deniedProfile = `probe_${crypto
-          .randomUUID()
-          .replace(/-/g, '')
-          .slice(0, 24)}`;
+        const deniedProfile = `probe_${crypto.randomUUID().replace(/-/g, '').slice(0, 24)}`;
         const allowProbeResponse = await postOrGet({
           adminToken,
           apiBaseUrl,
@@ -1179,49 +1068,41 @@ const main = async () => {
           timeoutMs: o.httpTimeoutMs,
           useAdmin: true,
         });
-        const allowDecisionProbeResponse =
-          sandboxExecutionEgressEnforceConfig.value
-            ? await postOrGet({
-                adminToken,
-                apiBaseUrl,
-                csrfToken,
-                pathName: buildRuntimeSandboxMetricsPath({
-                  egressDecision: 'allow',
-                  egressProfile: runtimeDryRunEgressProfile,
-                }),
-                timeoutMs: o.httpTimeoutMs,
-                useAdmin: true,
-              })
-            : null;
-        const denyDecisionProbeResponse =
-          sandboxExecutionEgressEnforceConfig.value
-            ? await postOrGet({
-                adminToken,
-                apiBaseUrl,
-                csrfToken,
-                pathName: buildRuntimeSandboxMetricsPath({
-                  egressDecision: 'deny',
-                  egressProfile: runtimeDryRunEgressProfile,
-                }),
-                timeoutMs: o.httpTimeoutMs,
-                useAdmin: true,
-              })
-            : null;
-        const allowTotal =
-          Number(allowProbeResponse.json?.summary?.total ?? 0) || 0;
-        const allowSuccessCount =
-          Number(allowProbeResponse.json?.summary?.successCount ?? 0) || 0;
-        const allowFailedCount =
-          Number(allowProbeResponse.json?.summary?.failedCount ?? 0) || 0;
+        const allowDecisionProbeResponse = sandboxExecutionEgressEnforceConfig.value
+          ? await postOrGet({
+              adminToken,
+              apiBaseUrl,
+              csrfToken,
+              pathName: buildRuntimeSandboxMetricsPath({
+                egressDecision: 'allow',
+                egressProfile: runtimeDryRunEgressProfile,
+              }),
+              timeoutMs: o.httpTimeoutMs,
+              useAdmin: true,
+            })
+          : null;
+        const denyDecisionProbeResponse = sandboxExecutionEgressEnforceConfig.value
+          ? await postOrGet({
+              adminToken,
+              apiBaseUrl,
+              csrfToken,
+              pathName: buildRuntimeSandboxMetricsPath({
+                egressDecision: 'deny',
+                egressProfile: runtimeDryRunEgressProfile,
+              }),
+              timeoutMs: o.httpTimeoutMs,
+              useAdmin: true,
+            })
+          : null;
+        const allowTotal = Number(allowProbeResponse.json?.summary?.total ?? 0) || 0;
+        const allowSuccessCount = Number(allowProbeResponse.json?.summary?.successCount ?? 0) || 0;
+        const allowFailedCount = Number(allowProbeResponse.json?.summary?.failedCount ?? 0) || 0;
         const denyTotal = Number(denyProbeResponse.json?.summary?.total ?? 0) || 0;
-        const denySuccessCount =
-          Number(denyProbeResponse.json?.summary?.successCount ?? 0) || 0;
-        const denyFailedCount =
-          Number(denyProbeResponse.json?.summary?.failedCount ?? 0) || 0;
+        const denySuccessCount = Number(denyProbeResponse.json?.summary?.successCount ?? 0) || 0;
+        const denyFailedCount = Number(denyProbeResponse.json?.summary?.failedCount ?? 0) || 0;
         const allowDecisionTotal =
           Number(allowDecisionProbeResponse?.json?.summary?.total ?? 0) || 0;
-        const denyDecisionTotal =
-          Number(denyDecisionProbeResponse?.json?.summary?.total ?? 0) || 0;
+        const denyDecisionTotal = Number(denyDecisionProbeResponse?.json?.summary?.total ?? 0) || 0;
         sandboxExecutionEgressPolicy = {
           allowProbe: {
             failedCount: allowFailedCount,
@@ -1269,10 +1150,7 @@ const main = async () => {
         };
       }
       if (runtimeDryRunLimitProfile) {
-        const deniedProfile = `probe_${crypto
-          .randomUUID()
-          .replace(/-/g, '')
-          .slice(0, 24)}`;
+        const deniedProfile = `probe_${crypto.randomUUID().replace(/-/g, '').slice(0, 24)}`;
         const allowProbeResponse = await postOrGet({
           adminToken,
           apiBaseUrl,
@@ -1293,49 +1171,41 @@ const main = async () => {
           timeoutMs: o.httpTimeoutMs,
           useAdmin: true,
         });
-        const allowDecisionProbeResponse =
-          sandboxExecutionLimitsEnforceConfig.value
-            ? await postOrGet({
-                adminToken,
-                apiBaseUrl,
-                csrfToken,
-                pathName: buildRuntimeSandboxMetricsPath({
-                  limitsDecision: 'allow',
-                  limitsProfile: runtimeDryRunLimitProfile,
-                }),
-                timeoutMs: o.httpTimeoutMs,
-                useAdmin: true,
-              })
-            : null;
-        const denyDecisionProbeResponse =
-          sandboxExecutionLimitsEnforceConfig.value
-            ? await postOrGet({
-                adminToken,
-                apiBaseUrl,
-                csrfToken,
-                pathName: buildRuntimeSandboxMetricsPath({
-                  limitsDecision: 'deny',
-                  limitsProfile: runtimeDryRunLimitProfile,
-                }),
-                timeoutMs: o.httpTimeoutMs,
-                useAdmin: true,
-              })
-            : null;
-        const allowTotal =
-          Number(allowProbeResponse.json?.summary?.total ?? 0) || 0;
-        const allowSuccessCount =
-          Number(allowProbeResponse.json?.summary?.successCount ?? 0) || 0;
-        const allowFailedCount =
-          Number(allowProbeResponse.json?.summary?.failedCount ?? 0) || 0;
+        const allowDecisionProbeResponse = sandboxExecutionLimitsEnforceConfig.value
+          ? await postOrGet({
+              adminToken,
+              apiBaseUrl,
+              csrfToken,
+              pathName: buildRuntimeSandboxMetricsPath({
+                limitsDecision: 'allow',
+                limitsProfile: runtimeDryRunLimitProfile,
+              }),
+              timeoutMs: o.httpTimeoutMs,
+              useAdmin: true,
+            })
+          : null;
+        const denyDecisionProbeResponse = sandboxExecutionLimitsEnforceConfig.value
+          ? await postOrGet({
+              adminToken,
+              apiBaseUrl,
+              csrfToken,
+              pathName: buildRuntimeSandboxMetricsPath({
+                limitsDecision: 'deny',
+                limitsProfile: runtimeDryRunLimitProfile,
+              }),
+              timeoutMs: o.httpTimeoutMs,
+              useAdmin: true,
+            })
+          : null;
+        const allowTotal = Number(allowProbeResponse.json?.summary?.total ?? 0) || 0;
+        const allowSuccessCount = Number(allowProbeResponse.json?.summary?.successCount ?? 0) || 0;
+        const allowFailedCount = Number(allowProbeResponse.json?.summary?.failedCount ?? 0) || 0;
         const denyTotal = Number(denyProbeResponse.json?.summary?.total ?? 0) || 0;
-        const denySuccessCount =
-          Number(denyProbeResponse.json?.summary?.successCount ?? 0) || 0;
-        const denyFailedCount =
-          Number(denyProbeResponse.json?.summary?.failedCount ?? 0) || 0;
+        const denySuccessCount = Number(denyProbeResponse.json?.summary?.successCount ?? 0) || 0;
+        const denyFailedCount = Number(denyProbeResponse.json?.summary?.failedCount ?? 0) || 0;
         const allowDecisionTotal =
           Number(allowDecisionProbeResponse?.json?.summary?.total ?? 0) || 0;
-        const denyDecisionTotal =
-          Number(denyDecisionProbeResponse?.json?.summary?.total ?? 0) || 0;
+        const denyDecisionTotal = Number(denyDecisionProbeResponse?.json?.summary?.total ?? 0) || 0;
         sandboxExecutionLimitsPolicy = {
           allowProbe: {
             failedCount: allowFailedCount,
@@ -1422,8 +1292,7 @@ const main = async () => {
           total: sandboxExecutionMetricsTotal,
           successCount: sandboxExecutionMetricsSuccessCount,
           failedCount: sandboxExecutionMetricsFailedCount,
-          lastEventAt:
-            sandboxExecutionMetrics.json?.summary?.lastEventAt ?? null,
+          lastEventAt: sandboxExecutionMetrics.json?.summary?.lastEventAt ?? null,
         },
         modeConsistency: {
           ...sandboxExecutionModeConsistency,
@@ -1473,10 +1342,7 @@ const main = async () => {
         path.resolve(ARTIFACTS.sandboxExecutionMetrics),
         rtArtifact.sandboxExecutionMetrics,
       );
-      await writeJson(
-        path.resolve(ARTIFACTS.sandboxExecutionAuditPolicy),
-        rtArtifact.auditPolicy,
-      );
+      await writeJson(path.resolve(ARTIFACTS.sandboxExecutionAuditPolicy), rtArtifact.auditPolicy);
       await writeJson(
         path.resolve(ARTIFACTS.sandboxExecutionEgressPolicy),
         rtArtifact.egressPolicy,
@@ -1576,9 +1442,7 @@ const main = async () => {
           },
           ok: m.ok,
           status: m.status,
-          stepRoles: Array.isArray(m.json?.steps)
-            ? m.json.steps.map((s) => s.role)
-            : [],
+          stepRoles: Array.isArray(m.json?.steps) ? m.json.steps.map((s) => s.role) : [],
         });
       }
       const matrixAdapters = await postOrGet({
@@ -1632,9 +1496,7 @@ const main = async () => {
       matrixArtifact.pass =
         matrixChannelFlowPass && matrixAdapterUsagePass && matrixMarkerCoveragePass;
       await writeJson(path.resolve(ARTIFACTS.matrixProbe), matrixArtifact);
-      const summaryMatrixFailedChannels = o.requireSkillMarkers
-        ? matrixMarkerFailedChannels
-        : [];
+      const summaryMatrixFailedChannels = o.requireSkillMarkers ? matrixMarkerFailedChannels : [];
       summary.checks.skillMarkerMatrixChannels = {
         pass: o.requireSkillMarkers ? matrixMarkerCoveragePass : true,
         skipped: !o.requireSkillMarkers,
@@ -1702,9 +1564,7 @@ const main = async () => {
       )
         ? adaptersBeforeIngest.json.connectorProfiles.profiles
         : [];
-      const externalChannelProfiles = resolveExternalChannelProfiles(
-        configuredProfiles,
-      );
+      const externalChannelProfiles = resolveExternalChannelProfiles(configuredProfiles);
       const ts = Math.floor(Date.now() / 1000);
       const payload = {
         adapter: 'external_webhook',
@@ -1797,24 +1657,18 @@ const main = async () => {
               timeoutMs: o.httpTimeoutMs,
               useAdmin: true,
             });
-            const telemetryTotal = Number(
-              connectorTelemetry.json?.ingestConnectors?.total ?? 0,
-            );
+            const telemetryTotal = Number(connectorTelemetry.json?.ingestConnectors?.total ?? 0);
             const telemetryAccepted = Number(
               connectorTelemetry.json?.ingestConnectors?.accepted ?? 0,
             );
             connectorTelemetryPass =
-              connectorTelemetry.ok &&
-              telemetryTotal > 0 &&
-              telemetryAccepted > 0;
+              connectorTelemetry.ok && telemetryTotal > 0 && telemetryAccepted > 0;
             if (connectorTelemetryPass) {
               break;
             }
             await sleep(500);
           }
-          const sessionRows = Array.isArray(sessions.json?.sessions)
-            ? sessions.json.sessions
-            : [];
+          const sessionRows = Array.isArray(sessions.json?.sessions) ? sessions.json.sessions : [];
           const matchedSession = sessionRows.find(
             (row) => row?.id === channelIngest.json?.sessionId,
           );
@@ -1823,8 +1677,7 @@ const main = async () => {
             channelIngest.json?.applied === true &&
             sessions.ok &&
             connectorTelemetryPass &&
-            matchedSession?.externalSessionId ===
-              channelProbe.expectedExternalSessionId;
+            matchedSession?.externalSessionId === channelProbe.expectedExternalSessionId;
           const check = {
             channel,
             connectorId,
@@ -1832,21 +1685,17 @@ const main = async () => {
             ingestStatus: channelIngest.status,
             ingestApplied: channelIngest.json?.applied ?? null,
             pass,
-            resolvedExternalSessionId:
-              matchedSession?.externalSessionId ?? null,
+            resolvedExternalSessionId: matchedSession?.externalSessionId ?? null,
             sessionId: channelIngest.json?.sessionId ?? null,
             sessionsStatus: sessions.status,
             telemetryAccepted:
-              Number(connectorTelemetry?.json?.ingestConnectors?.accepted ?? 0) ||
-              0,
+              Number(connectorTelemetry?.json?.ingestConnectors?.accepted ?? 0) || 0,
             telemetryAttempts: connectorTelemetryAttempts,
             telemetryPass: connectorTelemetryPass,
             telemetryRejected:
-              Number(connectorTelemetry?.json?.ingestConnectors?.rejected ?? 0) ||
-              0,
+              Number(connectorTelemetry?.json?.ingestConnectors?.rejected ?? 0) || 0,
             telemetryStatus: connectorTelemetry?.status ?? null,
-            telemetryTotal:
-              Number(connectorTelemetry?.json?.ingestConnectors?.total ?? 0) || 0,
+            telemetryTotal: Number(connectorTelemetry?.json?.ingestConnectors?.total ?? 0) || 0,
             trace: {
               probeEventId: probePayload.eventId,
               probeType: probePayload.type,
@@ -1857,72 +1706,70 @@ const main = async () => {
           channelFallbackChecks.push(check);
         }
       }
-      const externalChannelFallback =
-        (() => {
-          const configuredChannels = externalChannelProfiles.map((entry) =>
-            String(entry.channel || '').toLowerCase(),
-          );
-          const requiredChannels = o.requiredExternalChannels;
-          const missingRequiredChannels = requiredChannels.filter(
-            (entry) => !configuredChannels.includes(entry),
-          );
-          const requiredChecks = channelFallbackChecks.filter((entry) =>
-            requiredChannels.includes(entry.channel),
-          );
-          const failedChannels = channelFallbackChecks
-            .filter((entry) => !entry.pass)
-            .map((entry) => ({
-              channel: entry.channel,
-              connectorId: entry.connectorId,
-              failureMode: entry.failureMode,
-            }));
-          const requiredFailedChannels = requiredChecks
-            .filter((entry) => !entry.pass)
-            .map((entry) => ({
-              channel: entry.channel,
-              connectorId: entry.connectorId,
-              failureMode: entry.failureMode,
-            }));
-          const requiredChannelsPass =
-            requiredChannels.length === 0
-              ? true
-              : missingRequiredChannels.length === 0 &&
-                requiredChecks.length === requiredChannels.length &&
-                requiredChecks.every((entry) => entry.pass);
-          if (configuredChannels.length === 0 && requiredChannels.length === 0) {
-            return {
-              checks: [],
-              configuredChannels: [],
-              failedChannels: [],
-              missingRequiredChannels: [],
-              pass: true,
-              reason:
-                'No configured connector profiles for telegram/slack/discord.',
-              requiredChannels: [],
-              requiredFailedChannels: [],
-              requiredChannelsPass: true,
-              skipped: true,
-            };
-          }
+      const externalChannelFallback = (() => {
+        const configuredChannels = externalChannelProfiles.map((entry) =>
+          String(entry.channel || '').toLowerCase(),
+        );
+        const requiredChannels = o.requiredExternalChannels;
+        const missingRequiredChannels = requiredChannels.filter(
+          (entry) => !configuredChannels.includes(entry),
+        );
+        const requiredChecks = channelFallbackChecks.filter((entry) =>
+          requiredChannels.includes(entry.channel),
+        );
+        const failedChannels = channelFallbackChecks
+          .filter((entry) => !entry.pass)
+          .map((entry) => ({
+            channel: entry.channel,
+            connectorId: entry.connectorId,
+            failureMode: entry.failureMode,
+          }));
+        const requiredFailedChannels = requiredChecks
+          .filter((entry) => !entry.pass)
+          .map((entry) => ({
+            channel: entry.channel,
+            connectorId: entry.connectorId,
+            failureMode: entry.failureMode,
+          }));
+        const requiredChannelsPass =
+          requiredChannels.length === 0
+            ? true
+            : missingRequiredChannels.length === 0 &&
+              requiredChecks.length === requiredChannels.length &&
+              requiredChecks.every((entry) => entry.pass);
+        if (configuredChannels.length === 0 && requiredChannels.length === 0) {
           return {
-            checks: channelFallbackChecks,
-            configuredChannels,
-            failedChannels,
-            missingRequiredChannels,
-            pass:
-              requiredChannels.length > 0
-                ? requiredChannelsPass
-                : channelFallbackChecks.every((entry) => entry.pass),
-            reason:
-              missingRequiredChannels.length > 0
-                ? `Missing required external channels: ${missingRequiredChannels.join(', ')}.`
-                : null,
-            requiredChannels,
-            requiredFailedChannels,
-            requiredChannelsPass,
-            skipped: false,
+            checks: [],
+            configuredChannels: [],
+            failedChannels: [],
+            missingRequiredChannels: [],
+            pass: true,
+            reason: 'No configured connector profiles for telegram/slack/discord.',
+            requiredChannels: [],
+            requiredFailedChannels: [],
+            requiredChannelsPass: true,
+            skipped: true,
           };
-        })();
+        }
+        return {
+          checks: channelFallbackChecks,
+          configuredChannels,
+          failedChannels,
+          missingRequiredChannels,
+          pass:
+            requiredChannels.length > 0
+              ? requiredChannelsPass
+              : channelFallbackChecks.every((entry) => entry.pass),
+          reason:
+            missingRequiredChannels.length > 0
+              ? `Missing required external channels: ${missingRequiredChannels.join(', ')}.`
+              : null,
+          requiredChannels,
+          requiredFailedChannels,
+          requiredChannelsPass,
+          skipped: false,
+        };
+      })();
       const externalChannelTracesArtifact = {
         checkedAtUtc: new Date().toISOString(),
         configuredChannels: externalChannelFallback.configuredChannels,
@@ -1959,19 +1806,14 @@ const main = async () => {
         })),
         skipped: externalChannelFallback.skipped,
       };
-      await writeJson(
-        path.resolve(ARTIFACTS.externalChannelTraces),
-        externalChannelTracesArtifact,
-      );
+      await writeJson(path.resolve(ARTIFACTS.externalChannelTraces), externalChannelTracesArtifact);
       const ingestArtifact = {
         baseUrl: apiBaseUrl,
         checkedAtUtc: new Date().toISOString(),
         externalChannelFallback,
         ingest: { applied: ingest.json?.applied ?? null, status: ingest.status },
         pass:
-          ingest.status === 201 &&
-          ingest.json?.applied === true &&
-          externalChannelFallback.pass,
+          ingest.status === 201 && ingest.json?.applied === true && externalChannelFallback.pass,
       };
       await writeJson(path.resolve(ARTIFACTS.ingestProbe), ingestArtifact);
       summary.checks.ingestExternalChannelFallback = {
@@ -2050,10 +1892,8 @@ const main = async () => {
       timestampUtc: new Date().toISOString(),
       gateway: {
         adaptersTotal: adapters.json?.adapters?.total ?? null,
-        adaptersConnectorProfilesTotal:
-          adapters.json?.connectorProfiles?.total ?? null,
-        telemetryConnectorProfilesTotal:
-          telemetry.json?.connectorProfiles?.total ?? null,
+        adaptersConnectorProfilesTotal: adapters.json?.connectorProfiles?.total ?? null,
+        telemetryConnectorProfilesTotal: telemetry.json?.connectorProfiles?.total ?? null,
         telemetryEventsTotal: telemetry.json?.events?.total ?? null,
         telemetrySessionsTotal: telemetry.json?.sessions?.total ?? null,
       },
@@ -2061,8 +1901,7 @@ const main = async () => {
         configActiveSource: criticalConfigResolution.active?.source || 'unknown',
         configFallbackReason: criticalConfigResolution.fallback.reason,
         configFallbackUsed: criticalConfigResolution.fallback.used,
-        configLastKnownGoodSavedAtUtc:
-          criticalConfigResolution.active?.savedAtUtc || null,
+        configLastKnownGoodSavedAtUtc: criticalConfigResolution.active?.savedAtUtc || null,
         configResolutionArtifactPath: ARTIFACTS.lastKnownGoodConfigResolution,
         configSnapshotPath: ARTIFACTS.lastKnownGoodConfig,
         egressConfigSource: sandboxExecutionEgressConfig.source,
@@ -2074,31 +1913,29 @@ const main = async () => {
         runtimeDryRunExpectedMode,
         runtimeDryRunExpectedModeSource: sandboxExecutionEnabledConfig.source,
         failedCount:
-          health['/api/admin/sandbox-execution/metrics?hours=24&limit=20'].json
-            ?.summary?.failedCount ?? null,
+          health['/api/admin/sandbox-execution/metrics?hours=24&limit=20'].json?.summary
+            ?.failedCount ?? null,
         runtimeDryRunEgressProfile: runtimeDryRunEgressProfile ?? null,
         runtimeDryRunLimitProfile: runtimeDryRunLimitProfile ?? null,
-        status:
-          health['/api/admin/sandbox-execution/metrics?hours=24&limit=20']
-            .status,
+        status: health['/api/admin/sandbox-execution/metrics?hours=24&limit=20'].status,
         successCount:
-          health['/api/admin/sandbox-execution/metrics?hours=24&limit=20'].json
-            ?.summary?.successCount ?? null,
+          health['/api/admin/sandbox-execution/metrics?hours=24&limit=20'].json?.summary
+            ?.successCount ?? null,
         total:
-          health['/api/admin/sandbox-execution/metrics?hours=24&limit=20'].json
-            ?.summary?.total ?? null,
+          health['/api/admin/sandbox-execution/metrics?hours=24&limit=20'].json?.summary?.total ??
+          null,
         auditTotalWithAudit:
-          health['/api/admin/sandbox-execution/metrics?hours=24&limit=20'].json
-            ?.auditCoverage?.totalWithAudit ?? null,
+          health['/api/admin/sandbox-execution/metrics?hours=24&limit=20'].json?.auditCoverage
+            ?.totalWithAudit ?? null,
         auditActorTypeCount:
-          health['/api/admin/sandbox-execution/metrics?hours=24&limit=20'].json
-            ?.auditCoverage?.actorTypeCount ?? null,
+          health['/api/admin/sandbox-execution/metrics?hours=24&limit=20'].json?.auditCoverage
+            ?.actorTypeCount ?? null,
         auditSourceRouteCount:
-          health['/api/admin/sandbox-execution/metrics?hours=24&limit=20'].json
-            ?.auditCoverage?.sourceRouteCount ?? null,
+          health['/api/admin/sandbox-execution/metrics?hours=24&limit=20'].json?.auditCoverage
+            ?.sourceRouteCount ?? null,
         auditToolNameCount:
-          health['/api/admin/sandbox-execution/metrics?hours=24&limit=20'].json
-            ?.auditCoverage?.toolNameCount ?? null,
+          health['/api/admin/sandbox-execution/metrics?hours=24&limit=20'].json?.auditCoverage
+            ?.toolNameCount ?? null,
       },
       jobs: { expectedJobs: EXPECTED_CRON_JOBS, rows: rows.length },
     });

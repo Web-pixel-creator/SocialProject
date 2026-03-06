@@ -11,7 +11,10 @@ import {
   RELEASE_HEALTH_REPORT_JSON_SCHEMA_VERSION,
   RELEASE_HEALTH_REPORT_LABEL,
 } from './release-health-schema-contracts.mjs';
-import { parseReleasePositiveIntegerEnv } from './release-env-parse-utils.mjs';
+import {
+  parseReleaseNonNegativeIntegerEnv,
+  parseReleasePositiveIntegerEnv,
+} from './release-env-parse-utils.mjs';
 import {
   DEFAULT_GITHUB_API_TRANSIENT_RETRY_BACKOFF_FACTOR,
   DEFAULT_GITHUB_API_TRANSIENT_RETRY_DELAY_MS,
@@ -41,7 +44,6 @@ const DEFAULT_EXTERNAL_CHANNEL_TREND_MIN_RUNS = 1;
 const DEFAULT_EXTERNAL_CHANNEL_ALERT_TIMEOUT_MS = 10000;
 const DEFAULT_RELEASE_HEALTH_ALERT_RISK_WINDOW_HOURS = 24;
 const DEFAULT_RELEASE_HEALTH_ALERT_RISK_ESCALATION_STREAK = 2;
-const NON_NEGATIVE_INTEGER_PATTERN = /^(0|[1-9]\d*)$/;
 const RELEASE_HEALTH_ALERT_RISK_THRESHOLDS = {
   alertedRuns: {
     criticalAbove: 2,
@@ -109,15 +111,6 @@ Options:
   --skip-smoke-fetch Skip automatic local smoke-artifact fetch when missing.
   --help, -h         Show help.
 `;
-
-const parseReleaseNonNegativeIntegerEnv = (raw, fallback, sourceLabel) => {
-  if (typeof raw !== 'string' || raw.trim().length === 0) return fallback;
-  const value = raw.trim();
-  if (!NON_NEGATIVE_INTEGER_PATTERN.test(value)) {
-    throw new Error(`Invalid value for ${sourceLabel}: ${value}`);
-  }
-  return Number.parseInt(value, 10);
-};
 
 let githubApiRetryConfigCache = null;
 

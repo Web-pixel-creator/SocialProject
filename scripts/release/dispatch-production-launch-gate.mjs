@@ -15,6 +15,7 @@ import {
 } from './dispatch-token-arg-utils.mjs';
 import {
   parseReleaseBooleanEnv,
+  parseReleaseNonNegativeIntegerEnv,
   parseReleasePositiveIntegerEnv,
 } from './release-env-parse-utils.mjs';
 import {
@@ -36,7 +37,6 @@ const DEFAULT_WORKFLOW_REF = 'main';
 const DEFAULT_WAIT_TIMEOUT_MS = 20 * 60 * 1000;
 const DEFAULT_WAIT_POLL_MS = 5000;
 const DEFAULT_FAILURE_SUMMARY_MAX_JOBS = 5;
-const NON_NEGATIVE_INTEGER_PATTERN = /^(0|[1-9]\d*)$/;
 const RUN_DISCOVERY_GRACE_MS = 2 * 60 * 1000;
 const ARTIFACT_DISCOVERY_ATTEMPTS = 6;
 const ARTIFACT_DISCOVERY_POLL_MS = 1000;
@@ -69,17 +69,6 @@ Token resolution order:
 2) GITHUB_TOKEN / GH_TOKEN
 3) gh auth token
 `;
-
-const parseReleaseNonNegativeIntegerEnv = (raw, fallback, sourceLabel) => {
-  const value = String(raw || '').trim();
-  if (!value) {
-    return fallback;
-  }
-  if (!NON_NEGATIVE_INTEGER_PATTERN.test(value)) {
-    throw new Error(`Invalid value for ${sourceLabel}: ${value}`);
-  }
-  return Number(value);
-};
 
 const parseCliArgs = (argv) => {
   let tokenFromArg = '';
@@ -171,9 +160,7 @@ const parseCliArgs = (argv) => {
       continue;
     }
     if (arg.startsWith('--github-api-retry-backoff-factor=')) {
-      const value = arg
-        .slice('--github-api-retry-backoff-factor='.length)
-        .trim();
+      const value = arg.slice('--github-api-retry-backoff-factor='.length).trim();
       if (!value) {
         throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
       }
@@ -422,9 +409,7 @@ const listRunArtifacts = async ({
       maxDelayMs: githubApiRetryMaxDelayMs,
     },
   });
-  return Array.isArray(artifactsResponse?.artifacts)
-    ? artifactsResponse.artifacts
-    : [];
+  return Array.isArray(artifactsResponse?.artifacts) ? artifactsResponse.artifacts : [];
 };
 
 const listRunJobs = async ({
@@ -538,9 +523,7 @@ const findRunArtifactsByNames = async ({
       artifactNames,
       artifacts,
     });
-    const requiredResolved = requiredArtifactNames.every((name) =>
-      picked.has(name),
-    );
+    const requiredResolved = requiredArtifactNames.every((name) => picked.has(name));
     if (requiredResolved) {
       return picked;
     }
@@ -565,9 +548,7 @@ const printLaunchGateArtifactLinks = async ({
   runId,
   token,
 }) => {
-  const requestedArtifactNames = printArtifactLinks
-    ? artifactLinkNames
-    : [];
+  const requestedArtifactNames = printArtifactLinks ? artifactLinkNames : [];
   const artifactNames = includeStepSummaryLink
     ? [LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME, ...requestedArtifactNames]
     : [...requestedArtifactNames];
@@ -592,9 +573,7 @@ const printLaunchGateArtifactLinks = async ({
       token,
     });
     if (includeStepSummaryLink) {
-      const stepSummaryArtifact = artifacts.get(
-        LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME,
-      );
+      const stepSummaryArtifact = artifacts.get(LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME);
       if (!stepSummaryArtifact) {
         process.stderr.write(
           `Warning: artifact '${LAUNCH_GATE_STEP_SUMMARY_ARTIFACT_NAME}' not found for run ${runId} after ${ARTIFACT_DISCOVERY_ATTEMPTS} attempts.\n`,
@@ -618,9 +597,7 @@ const printLaunchGateArtifactLinks = async ({
     for (const artifactName of requestedArtifactNames) {
       const artifact = artifacts.get(artifactName);
       if (!artifact) {
-        process.stderr.write(
-          `Warning: artifact '${artifactName}' not found for run ${runId}.\n`,
-        );
+        process.stderr.write(`Warning: artifact '${artifactName}' not found for run ${runId}.\n`);
         continue;
       }
       const artifactId = Number(artifact.id);
@@ -642,12 +619,8 @@ const printLaunchGateArtifactLinks = async ({
 
 const main = async () => {
   const cli = parseCliArgs(process.argv.slice(2));
-  const workflowFile = (
-    process.env.RELEASE_WORKFLOW_FILE ?? DEFAULT_WORKFLOW_FILE
-  ).trim();
-  const workflowRef = (
-    process.env.RELEASE_WORKFLOW_REF ?? DEFAULT_WORKFLOW_REF
-  ).trim();
+  const workflowFile = (process.env.RELEASE_WORKFLOW_FILE ?? DEFAULT_WORKFLOW_FILE).trim();
+  const workflowRef = (process.env.RELEASE_WORKFLOW_REF ?? DEFAULT_WORKFLOW_REF).trim();
   const waitForCompletion = parseReleaseBooleanEnv(
     process.env.RELEASE_WAIT_FOR_COMPLETION,
     true,
@@ -664,16 +637,14 @@ const main = async () => {
     'RELEASE_WAIT_POLL_MS',
   );
   const githubApiRetryMaxAttempts = parseReleasePositiveIntegerEnv(
-    cli.githubApiRetryMaxAttemptsRaw ||
-      process.env.RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_ATTEMPTS,
+    cli.githubApiRetryMaxAttemptsRaw || process.env.RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_ATTEMPTS,
     DEFAULT_GITHUB_API_TRANSIENT_RETRY_MAX_ATTEMPTS,
     cli.githubApiRetryMaxAttemptsRaw
       ? '--github-api-retry-max-attempts'
       : 'RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_ATTEMPTS',
   );
   const githubApiRetryDelayMs = parseReleasePositiveIntegerEnv(
-    cli.githubApiRetryDelayMsRaw ||
-      process.env.RELEASE_GITHUB_API_TRANSIENT_RETRY_DELAY_MS,
+    cli.githubApiRetryDelayMsRaw || process.env.RELEASE_GITHUB_API_TRANSIENT_RETRY_DELAY_MS,
     DEFAULT_GITHUB_API_TRANSIENT_RETRY_DELAY_MS,
     cli.githubApiRetryDelayMsRaw
       ? '--github-api-retry-delay-ms'
@@ -688,8 +659,7 @@ const main = async () => {
       : 'RELEASE_GITHUB_API_TRANSIENT_RETRY_BACKOFF_FACTOR',
   );
   const githubApiRetryMaxDelayMs = parseReleasePositiveIntegerEnv(
-    cli.githubApiRetryMaxDelayMsRaw ||
-      process.env.RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_DELAY_MS,
+    cli.githubApiRetryMaxDelayMsRaw || process.env.RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_DELAY_MS,
     DEFAULT_GITHUB_API_TRANSIENT_RETRY_MAX_DELAY_MS,
     cli.githubApiRetryMaxDelayMsRaw
       ? '--github-api-retry-max-delay-ms'
@@ -726,9 +696,7 @@ const main = async () => {
     return parseReleaseNonNegativeIntegerEnv(
       rawValue,
       0,
-      cli.smokeTimeoutRetriesRaw
-        ? '--smoke-timeout-retries'
-        : 'RELEASE_SMOKE_TIMEOUT_RETRIES',
+      cli.smokeTimeoutRetriesRaw ? '--smoke-timeout-retries' : 'RELEASE_SMOKE_TIMEOUT_RETRIES',
     );
   })();
   const smokeTimeoutRetryDelayMs = (() => {
@@ -746,8 +714,7 @@ const main = async () => {
         : 'RELEASE_SMOKE_TIMEOUT_RETRY_DELAY_MS',
     );
   })();
-  const runtimeDraftId =
-    cli.runtimeDraftId || (process.env.RELEASE_RUNTIME_DRAFT_ID ?? '').trim();
+  const runtimeDraftId = cli.runtimeDraftId || (process.env.RELEASE_RUNTIME_DRAFT_ID ?? '').trim();
   const requireSkillMarkers =
     typeof cli.requireSkillMarkers === 'boolean'
       ? cli.requireSkillMarkers
@@ -778,18 +745,15 @@ const main = async () => {
           false,
           'RELEASE_REQUIRE_INLINE_HEALTH_ARTIFACTS',
         );
-  const {
-    includeStepSummaryLink,
-    printArtifactLinks,
-    selectedArtifactLinkNames,
-  } = resolveDispatchArtifactLinkOptions({
-    cliArtifactLinkNames: cli.artifactLinkNames,
-    cliNoStepSummaryLink: cli.noStepSummaryLink,
-    cliPrintArtifactLinks: cli.printArtifactLinks,
-    envArtifactLinkNamesRaw: process.env.RELEASE_ARTIFACT_LINK_NAMES ?? '',
-    envNoStepSummaryLinkRaw: process.env.RELEASE_NO_STEP_SUMMARY_LINK ?? '',
-    envPrintArtifactLinksRaw: process.env.RELEASE_PRINT_ARTIFACT_LINKS ?? '',
-  });
+  const { includeStepSummaryLink, printArtifactLinks, selectedArtifactLinkNames } =
+    resolveDispatchArtifactLinkOptions({
+      cliArtifactLinkNames: cli.artifactLinkNames,
+      cliNoStepSummaryLink: cli.noStepSummaryLink,
+      cliPrintArtifactLinks: cli.printArtifactLinks,
+      envArtifactLinkNamesRaw: process.env.RELEASE_ARTIFACT_LINK_NAMES ?? '',
+      envNoStepSummaryLinkRaw: process.env.RELEASE_NO_STEP_SUMMARY_LINK ?? '',
+      envPrintArtifactLinksRaw: process.env.RELEASE_PRINT_ARTIFACT_LINKS ?? '',
+    });
   const allowFailureDrill =
     typeof cli.allowFailureDrill === 'boolean'
       ? cli.allowFailureDrill
@@ -799,8 +763,7 @@ const main = async () => {
           'RELEASE_ALLOW_FAILURE_DRILL',
         );
   const webhookSecretOverride =
-    cli.webhookSecretOverride ||
-    String(process.env.RELEASE_WEBHOOK_SECRET_OVERRIDE ?? '');
+    cli.webhookSecretOverride || String(process.env.RELEASE_WEBHOOK_SECRET_OVERRIDE ?? '');
   if (requireSkillMarkers && !runtimeDraftId) {
     throw new Error(
       'RELEASE_REQUIRE_SKILL_MARKERS=true requires RELEASE_RUNTIME_DRAFT_ID to be set (draft with skill markers).',
@@ -849,13 +812,9 @@ const main = async () => {
         maxDelayMs: githubApiRetryMaxDelayMs,
       },
     });
-    const baselineRuns = Array.isArray(baseline?.workflow_runs)
-      ? baseline.workflow_runs
-      : [];
+    const baselineRuns = Array.isArray(baseline?.workflow_runs) ? baseline.workflow_runs : [];
     baselineRunIds = new Set(
-      baselineRuns
-        .map((run) => Number(run?.id))
-        .filter((id) => Number.isFinite(id)),
+      baselineRuns.map((run) => Number(run?.id)).filter((id) => Number.isFinite(id)),
     );
   } catch (error) {
     process.stderr.write(
@@ -978,9 +937,7 @@ const main = async () => {
   }
 
   if (!run) {
-    throw new Error(
-      `Unable to discover dispatched workflow run within ${waitTimeoutMs}ms.`,
-    );
+    throw new Error(`Unable to discover dispatched workflow run within ${waitTimeoutMs}ms.`);
   }
 
   process.stdout.write(`Detected run #${run.run_number}: ${run.html_url}\n`);
@@ -1042,9 +999,7 @@ const main = async () => {
     await sleep(waitPollMs);
   }
 
-  throw new Error(
-    `Timed out waiting for workflow completion after ${waitTimeoutMs}ms.`,
-  );
+  throw new Error(`Timed out waiting for workflow completion after ${waitTimeoutMs}ms.`);
 };
 
 main().catch((error) => {
