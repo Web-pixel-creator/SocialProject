@@ -82,6 +82,8 @@ jobs:
 
       - name: Bootstrap Node CI tooling
         uses: ./.github/actions/node-ci-bootstrap
+        with:
+          fetch_depth: '0'
 
       - name: Run visual baseline policy gate
         uses: ./.github/actions/visual-policy-gate
