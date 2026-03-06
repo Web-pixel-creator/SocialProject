@@ -104,6 +104,49 @@ const runResolveString = ({
   };
 };
 
+const runResolveRaw = ({
+  candidates,
+  fallback,
+}: {
+  candidates: Array<{ raw: unknown; source: unknown }>;
+  fallback?: string;
+}) => {
+  const script = `
+    import { resolveProductionRawConfig } from ${JSON.stringify(moduleHref)};
+    const input = ${JSON.stringify({ candidates, fallback })};
+    try {
+      const result = resolveProductionRawConfig(input);
+      process.stdout.write(JSON.stringify({ ok: true, result, error: '' }));
+    } catch (error) {
+      process.stdout.write(
+        JSON.stringify({
+          ok: false,
+          result: null,
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
+      process.exitCode = 1;
+    }
+  `;
+
+  const output = spawnSync(
+    process.execPath,
+    ['--input-type=module', '-e', script],
+    {
+      cwd: projectRoot,
+      encoding: 'utf8',
+    },
+  );
+  const payload = JSON.parse(output.stdout) as ModuleActionResult<{
+    source: string;
+    value: string;
+  }>;
+  return {
+    output,
+    payload,
+  };
+};
+
 describe('production launch-gate boolean config resolver', () => {
   test('uses first non-empty candidate and parses truthy value', () => {
     const result = runResolveBoolean({
@@ -187,6 +230,39 @@ describe('production launch-gate string config resolver', () => {
       candidates: [
         { raw: '', source: 'RELEASE_SANDBOX_EGRESS_JSON' },
         { raw: '   ', source: 'SANDBOX_EGRESS_JSON' },
+      ],
+      fallback: '',
+    });
+
+    expect(result.output.status).toBe(0);
+    expect(result.payload.result).toEqual({
+      source: 'unset',
+      value: '',
+    });
+  });
+});
+
+describe('production launch-gate raw config resolver', () => {
+  test('returns first non-empty raw value without parsing', () => {
+    const result = runResolveRaw({
+      candidates: [
+        { raw: ' maybe ', source: 'RELEASE_SANDBOX_EXECUTION_ENABLED' },
+        { raw: 'false', source: 'SANDBOX_EXECUTION_ENABLED' },
+      ],
+    });
+
+    expect(result.output.status).toBe(0);
+    expect(result.payload.result).toEqual({
+      source: 'RELEASE_SANDBOX_EXECUTION_ENABLED',
+      value: 'maybe',
+    });
+  });
+
+  test('returns unset fallback when no raw candidates are present', () => {
+    const result = runResolveRaw({
+      candidates: [
+        { raw: '', source: 'RELEASE_SANDBOX_EXECUTION_ENABLED' },
+        { raw: null, source: 'SANDBOX_EXECUTION_ENABLED' },
       ],
       fallback: '',
     });

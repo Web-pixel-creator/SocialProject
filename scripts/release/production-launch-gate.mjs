@@ -11,12 +11,14 @@ import {
   parseReleasePositiveIntegerEnv,
 } from './release-env-parse-utils.mjs';
 import {
-  resolveProductionBooleanConfig,
-  resolveProductionStringConfig,
-} from './production-launch-gate-config-resolvers.mjs';
+  resolveProductionLaunchGateCriticalConfigCandidateSnapshot,
+  SANDBOX_RUNTIME_PROBE_OPERATION,
+  validateProductionLaunchGateCriticalConfigSnapshot,
+} from './production-launch-gate-critical-config.mjs';
 import { buildProductionLaunchGateFailureLines } from './production-launch-gate-failure-output-format.mjs';
 import { buildSmokeTimeoutRetryDecision } from './production-launch-gate-smoke-timeout-retry-utils.mjs';
 import { createReleaseCorrelationContext } from './release-correlation-utils.mjs';
+import { resolveLastKnownGoodConfig } from './release-last-known-good-config.mjs';
 import { sleep } from './release-runtime-utils.mjs';
 
 const DEFAULT_FAILURE_DETAIL_MAX_ITEMS = 10;
@@ -81,6 +83,10 @@ const ARTIFACTS = {
   ingestProbe: 'artifacts/release/production-agent-gateway-ingest-probe.json',
   matrixProbe:
     'artifacts/release/production-agent-gateway-adapter-matrix-probe.json',
+  lastKnownGoodConfig:
+    'artifacts/release/production-launch-gate-config-last-known-good.json',
+  lastKnownGoodConfigResolution:
+    'artifacts/release/production-launch-gate-config-resolution.json',
   railwayGate: 'artifacts/release/railway-gate-strict.json',
   runtimeProbe: 'artifacts/release/production-runtime-orchestration-probe.json',
   sandboxExecutionAuditPolicy:
@@ -103,11 +109,6 @@ const EXPECTED_CRON_JOBS = [
   'embedding_backfill',
 ];
 const EXTERNAL_CHANNELS = [...ALLOWED_EXTERNAL_CHANNELS];
-const SANDBOX_EGRESS_OPERATION_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,79}$/;
-const SANDBOX_EGRESS_PROFILE_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
-const SANDBOX_EGRESS_WILDCARD_KEY = '*';
-const SANDBOX_LIMIT_PROFILE_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
-const SANDBOX_RUNTIME_PROBE_OPERATION = 'ai_runtime_dry_run';
 const SANDBOX_RUNTIME_REQUIRED_AUDIT_FIELDS = [
   'actorType',
   'correlationId',
@@ -144,234 +145,6 @@ const sortDeep = (value) => {
   }
   return out;
 };
-
-const normalizeLower = (value) => value.trim().toLowerCase();
-const parseSandboxExecutionEgressProfiles = (rawValue, sourceLabel) => {
-  const raw = String(rawValue || '').trim();
-  if (!raw) {
-    return new Map();
-  }
-  let parsed = null;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (error) {
-    throw new Error(
-      `${sourceLabel} has invalid JSON: ${
-        error instanceof Error ? error.message : 'unknown parse error'
-      }`,
-    );
-  }
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error(`${sourceLabel} must be a JSON object.`);
-  }
-  const map = new Map();
-  for (const [operationRaw, profileRaw] of Object.entries(parsed)) {
-    if (typeof profileRaw !== 'string') {
-      throw new Error(
-        `${sourceLabel} entry "${operationRaw}" must map to a string profile.`,
-      );
-    }
-    const operation = normalizeLower(operationRaw);
-    const profile = normalizeLower(profileRaw);
-    if (
-      operation !== SANDBOX_EGRESS_WILDCARD_KEY &&
-      !SANDBOX_EGRESS_OPERATION_PATTERN.test(operation)
-    ) {
-      throw new Error(
-        `${sourceLabel} entry "${operationRaw}" has invalid operation id.`,
-      );
-    }
-    if (!SANDBOX_EGRESS_PROFILE_PATTERN.test(profile)) {
-      throw new Error(
-        `${sourceLabel} entry "${operationRaw}" has invalid profile id.`,
-      );
-    }
-    map.set(operation, profile);
-  }
-  return map;
-};
-const resolveSandboxExecutionEgressProfile = (profiles, operation) => {
-  const normalized = normalizeLower(operation);
-  if (profiles.has(normalized)) {
-    return profiles.get(normalized) || null;
-  }
-  if (profiles.has(SANDBOX_EGRESS_WILDCARD_KEY)) {
-    return profiles.get(SANDBOX_EGRESS_WILDCARD_KEY) || null;
-  }
-  return null;
-};
-const resolveSandboxExecutionEgressProfilesConfig = (apiServiceVars) => {
-  const candidates = [
-    {
-      raw: process.env.RELEASE_SANDBOX_EXECUTION_EGRESS_PROFILES,
-      source: 'RELEASE_SANDBOX_EXECUTION_EGRESS_PROFILES',
-    },
-    {
-      raw: process.env.SANDBOX_EXECUTION_EGRESS_PROFILES,
-      source: 'SANDBOX_EXECUTION_EGRESS_PROFILES',
-    },
-    {
-      raw:
-        apiServiceVars && typeof apiServiceVars === 'object'
-          ? apiServiceVars.SANDBOX_EXECUTION_EGRESS_PROFILES
-          : '',
-      source: 'Railway api service variable SANDBOX_EXECUTION_EGRESS_PROFILES',
-    },
-  ];
-  return resolveProductionStringConfig({
-    candidates,
-    fallback: '',
-  });
-};
-const resolveSandboxExecutionEgressEnforceConfig = (apiServiceVars) => {
-  const candidates = [
-    {
-      raw: process.env.RELEASE_SANDBOX_EXECUTION_EGRESS_ENFORCE,
-      source: 'RELEASE_SANDBOX_EXECUTION_EGRESS_ENFORCE',
-    },
-    {
-      raw: process.env.SANDBOX_EXECUTION_EGRESS_ENFORCE,
-      source: 'SANDBOX_EXECUTION_EGRESS_ENFORCE',
-    },
-    {
-      raw:
-        apiServiceVars && typeof apiServiceVars === 'object'
-          ? apiServiceVars.SANDBOX_EXECUTION_EGRESS_ENFORCE
-          : '',
-      source: 'Railway api service variable SANDBOX_EXECUTION_EGRESS_ENFORCE',
-    },
-  ];
-  return resolveProductionBooleanConfig({
-    candidates,
-    fallback: false,
-  });
-};
-const parseSandboxExecutionOperationLimitProfiles = (rawValue, sourceLabel) => {
-  const raw = String(rawValue || '').trim();
-  if (!raw) {
-    return new Map();
-  }
-  let parsed = null;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (error) {
-    throw new Error(
-      `${sourceLabel} has invalid JSON: ${
-        error instanceof Error ? error.message : 'unknown parse error'
-      }`,
-    );
-  }
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error(`${sourceLabel} must be a JSON object.`);
-  }
-  const map = new Map();
-  for (const [operationRaw, profileRaw] of Object.entries(parsed)) {
-    if (typeof profileRaw !== 'string') {
-      throw new Error(
-        `${sourceLabel} entry "${operationRaw}" must map to a string profile.`,
-      );
-    }
-    const operation = normalizeLower(operationRaw);
-    const profile = normalizeLower(profileRaw);
-    if (
-      operation !== SANDBOX_EGRESS_WILDCARD_KEY &&
-      !SANDBOX_EGRESS_OPERATION_PATTERN.test(operation)
-    ) {
-      throw new Error(
-        `${sourceLabel} entry "${operationRaw}" has invalid operation id.`,
-      );
-    }
-    if (!SANDBOX_LIMIT_PROFILE_PATTERN.test(profile)) {
-      throw new Error(
-        `${sourceLabel} entry "${operationRaw}" has invalid profile id.`,
-      );
-    }
-    map.set(operation, profile);
-  }
-  return map;
-};
-const resolveSandboxExecutionOperationLimitProfile = (profiles, operation) => {
-  const normalized = normalizeLower(operation);
-  if (profiles.has(normalized)) {
-    return profiles.get(normalized) || null;
-  }
-  if (profiles.has(SANDBOX_EGRESS_WILDCARD_KEY)) {
-    return profiles.get(SANDBOX_EGRESS_WILDCARD_KEY) || null;
-  }
-  return null;
-};
-const resolveSandboxExecutionOperationLimitProfilesConfig = (apiServiceVars) => {
-  const candidates = [
-    {
-      raw: process.env.RELEASE_SANDBOX_EXECUTION_OPERATION_LIMIT_PROFILES,
-      source: 'RELEASE_SANDBOX_EXECUTION_OPERATION_LIMIT_PROFILES',
-    },
-    {
-      raw: process.env.SANDBOX_EXECUTION_OPERATION_LIMIT_PROFILES,
-      source: 'SANDBOX_EXECUTION_OPERATION_LIMIT_PROFILES',
-    },
-    {
-      raw:
-        apiServiceVars && typeof apiServiceVars === 'object'
-          ? apiServiceVars.SANDBOX_EXECUTION_OPERATION_LIMIT_PROFILES
-          : '',
-      source:
-        'Railway api service variable SANDBOX_EXECUTION_OPERATION_LIMIT_PROFILES',
-    },
-  ];
-  return resolveProductionStringConfig({
-    candidates,
-    fallback: '',
-  });
-};
-const resolveSandboxExecutionLimitsEnforceConfig = (apiServiceVars) => {
-  const candidates = [
-    {
-      raw: process.env.RELEASE_SANDBOX_EXECUTION_LIMITS_ENFORCE,
-      source: 'RELEASE_SANDBOX_EXECUTION_LIMITS_ENFORCE',
-    },
-    {
-      raw: process.env.SANDBOX_EXECUTION_LIMITS_ENFORCE,
-      source: 'SANDBOX_EXECUTION_LIMITS_ENFORCE',
-    },
-    {
-      raw:
-        apiServiceVars && typeof apiServiceVars === 'object'
-          ? apiServiceVars.SANDBOX_EXECUTION_LIMITS_ENFORCE
-          : '',
-      source: 'Railway api service variable SANDBOX_EXECUTION_LIMITS_ENFORCE',
-    },
-  ];
-  return resolveProductionBooleanConfig({
-    candidates,
-    fallback: false,
-  });
-};
-const resolveSandboxExecutionEnabledConfig = (apiServiceVars) => {
-  const candidates = [
-    {
-      raw: process.env.RELEASE_SANDBOX_EXECUTION_ENABLED,
-      source: 'RELEASE_SANDBOX_EXECUTION_ENABLED',
-    },
-    {
-      raw: process.env.SANDBOX_EXECUTION_ENABLED,
-      source: 'SANDBOX_EXECUTION_ENABLED',
-    },
-    {
-      raw:
-        apiServiceVars && typeof apiServiceVars === 'object'
-          ? apiServiceVars.SANDBOX_EXECUTION_ENABLED
-          : '',
-      source: 'Railway api service variable SANDBOX_EXECUTION_ENABLED',
-    },
-  ];
-  return resolveProductionBooleanConfig({
-    candidates,
-    fallback: false,
-  });
-};
-const resolveSandboxExecutionMode = (sandboxExecutionEnabled) =>
-  sandboxExecutionEnabled ? 'sandbox_enabled' : 'fallback_only';
 const summarizeSandboxExecutionModeConsistency = (
   modeBreakdown,
   expectedMode,
@@ -982,38 +755,36 @@ const main = async () => {
         apiServiceVars = null;
       }
     }
-    const sandboxExecutionEgressConfig = resolveSandboxExecutionEgressProfilesConfig(
-      apiServiceVars,
-    );
-    const sandboxExecutionEgressProfiles = parseSandboxExecutionEgressProfiles(
-      sandboxExecutionEgressConfig.value,
-      sandboxExecutionEgressConfig.source,
-    );
-    const runtimeDryRunEgressProfile = resolveSandboxExecutionEgressProfile(
-      sandboxExecutionEgressProfiles,
-      SANDBOX_RUNTIME_PROBE_OPERATION,
-    );
-    const sandboxExecutionEgressEnforceConfig = resolveSandboxExecutionEgressEnforceConfig(
-      apiServiceVars,
-    );
-    const sandboxExecutionOperationLimitProfilesConfig =
-      resolveSandboxExecutionOperationLimitProfilesConfig(apiServiceVars);
-    const sandboxExecutionOperationLimitProfiles =
-      parseSandboxExecutionOperationLimitProfiles(
-        sandboxExecutionOperationLimitProfilesConfig.value,
-        sandboxExecutionOperationLimitProfilesConfig.source,
-      );
-    const runtimeDryRunLimitProfile = resolveSandboxExecutionOperationLimitProfile(
-      sandboxExecutionOperationLimitProfiles,
-      SANDBOX_RUNTIME_PROBE_OPERATION,
-    );
-    const sandboxExecutionLimitsEnforceConfig =
-      resolveSandboxExecutionLimitsEnforceConfig(apiServiceVars);
-    const sandboxExecutionEnabledConfig =
-      resolveSandboxExecutionEnabledConfig(apiServiceVars);
-    const runtimeDryRunExpectedMode = resolveSandboxExecutionMode(
-      sandboxExecutionEnabledConfig.value,
-    );
+    const criticalConfigCandidateSnapshot =
+      resolveProductionLaunchGateCriticalConfigCandidateSnapshot(apiServiceVars);
+    const { resolution: criticalConfigResolution, validatedActiveSnapshot } =
+      await resolveLastKnownGoodConfig({
+        candidateSnapshot: criticalConfigCandidateSnapshot,
+        resolutionPath: path.resolve(ARTIFACTS.lastKnownGoodConfigResolution),
+        scope: 'production-launch-gate-critical-config',
+        snapshotPath: path.resolve(ARTIFACTS.lastKnownGoodConfig),
+        validateSnapshot: validateProductionLaunchGateCriticalConfigSnapshot,
+      });
+    const {
+      runtimeDryRunEgressProfile,
+      runtimeDryRunExpectedMode,
+      runtimeDryRunLimitProfile,
+      sandboxExecutionEgressConfig,
+      sandboxExecutionEgressEnforceConfig,
+      sandboxExecutionEnabledConfig,
+      sandboxExecutionLimitsEnforceConfig,
+      sandboxExecutionOperationLimitProfilesConfig,
+    } = validatedActiveSnapshot;
+    summary.checks.lastKnownGoodConfig = {
+      activeSource: criticalConfigResolution.active?.source || 'unknown',
+      candidateValid: criticalConfigResolution.candidate.valid,
+      fallbackUsed: criticalConfigResolution.fallback.used,
+      pass: true,
+      reason: criticalConfigResolution.fallback.reason,
+      savedAtUtc: criticalConfigResolution.active?.savedAtUtc || null,
+      skipped: false,
+      snapshotPath: ARTIFACTS.lastKnownGoodConfig,
+    };
 
     let smoke = null;
     let smokeAttempts = 0;
@@ -2242,6 +2013,13 @@ const main = async () => {
         telemetrySessionsTotal: telemetry.json?.sessions?.total ?? null,
       },
       sandboxExecution: {
+        configActiveSource: criticalConfigResolution.active?.source || 'unknown',
+        configFallbackReason: criticalConfigResolution.fallback.reason,
+        configFallbackUsed: criticalConfigResolution.fallback.used,
+        configLastKnownGoodSavedAtUtc:
+          criticalConfigResolution.active?.savedAtUtc || null,
+        configResolutionArtifactPath: ARTIFACTS.lastKnownGoodConfigResolution,
+        configSnapshotPath: ARTIFACTS.lastKnownGoodConfig,
         egressConfigSource: sandboxExecutionEgressConfig.source,
         egressEnforcementEnabled: sandboxExecutionEgressEnforceConfig.value,
         egressEnforcementSource: sandboxExecutionEgressEnforceConfig.source,
