@@ -60,7 +60,7 @@ Copy this block for each release:
 - Incidents:
   - none.
 - Follow-ups:
-  - Phase 6 remainder: selective CI/E2E execution policy still open.
+  - none.
 
 ### 2026-03-06 - remove final github request wrapper from post-release health report (phase 128)
 
