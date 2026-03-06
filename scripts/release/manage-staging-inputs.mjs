@@ -37,25 +37,15 @@ const SECRET_HINTS = [
 
 const readEnv = (name) => (process.env[name] ?? '').trim();
 
-const githubRequest = async ({ token, method, url, body, allow404 = false }) => {
-  return githubApiRequestWithTransientRetry({
-    allowStatusCodes: allow404 ? [404] : undefined,
-    apiVersion: GITHUB_API_VERSION,
-    body,
-    method,
-    retryLabel: `[release:staging:inputs] ${method} ${url}`,
-    token,
-    url,
-  });
-};
-
 const getVariable = async ({ token, baseApiUrl, name }) => {
   const url = `${baseApiUrl}/actions/variables/${encodeURIComponent(name)}`;
-  return githubRequest({
+  return githubApiRequestWithTransientRetry({
+    allowStatusCodes: [404],
+    apiVersion: GITHUB_API_VERSION,
     token,
     method: 'GET',
+    retryLabel: `[release:staging:inputs] GET ${url}`,
     url,
-    allow404: true,
   });
 };
 
@@ -63,9 +53,11 @@ const upsertVariable = async ({ token, baseApiUrl, name, value }) => {
   const existing = await getVariable({ token, baseApiUrl, name });
   if (!existing) {
     const createUrl = `${baseApiUrl}/actions/variables`;
-    await githubRequest({
+    await githubApiRequestWithTransientRetry({
+      apiVersion: GITHUB_API_VERSION,
       token,
       method: 'POST',
+      retryLabel: `[release:staging:inputs] POST ${createUrl}`,
       url: createUrl,
       body: { name, value },
     });
@@ -73,9 +65,11 @@ const upsertVariable = async ({ token, baseApiUrl, name, value }) => {
   }
 
   const updateUrl = `${baseApiUrl}/actions/variables/${encodeURIComponent(name)}`;
-  await githubRequest({
+  await githubApiRequestWithTransientRetry({
+    apiVersion: GITHUB_API_VERSION,
     token,
     method: 'PATCH',
+    retryLabel: `[release:staging:inputs] PATCH ${updateUrl}`,
     url: updateUrl,
     body: { name, value },
   });
@@ -88,9 +82,11 @@ const deleteVariableIfExists = async ({ token, baseApiUrl, name }) => {
     return 'skipped';
   }
   const url = `${baseApiUrl}/actions/variables/${encodeURIComponent(name)}`;
-  await githubRequest({
+  await githubApiRequestWithTransientRetry({
+    apiVersion: GITHUB_API_VERSION,
     token,
     method: 'DELETE',
+    retryLabel: `[release:staging:inputs] DELETE ${url}`,
     url,
   });
   return 'deleted';
@@ -98,9 +94,11 @@ const deleteVariableIfExists = async ({ token, baseApiUrl, name }) => {
 
 const showVariables = async ({ token, baseApiUrl }) => {
   const url = `${baseApiUrl}/actions/variables?per_page=100`;
-  const data = await githubRequest({
+  const data = await githubApiRequestWithTransientRetry({
+    apiVersion: GITHUB_API_VERSION,
     token,
     method: 'GET',
+    retryLabel: `[release:staging:inputs] GET ${url}`,
     url,
   });
 

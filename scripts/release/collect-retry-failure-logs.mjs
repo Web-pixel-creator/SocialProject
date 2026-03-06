@@ -77,26 +77,6 @@ const parseCollectArguments = (argv) => {
   };
 };
 
-const githubRequest = async ({ token, method, url }) =>
-  githubApiRequestWithTransientRetry({
-    apiVersion: GITHUB_API_VERSION,
-    method,
-    retryLabel: `[release:smoke:retry:collect] ${method} ${url}`,
-    token,
-    url,
-  });
-
-const githubRequestText = async ({ token, url }) =>
-  githubApiRequestWithTransientRetry({
-    acceptHeader: '*/*',
-    apiVersion: GITHUB_API_VERSION,
-    expectText: true,
-    method: 'GET',
-    retryLabel: `[release:smoke:retry:collect:text] GET ${url}`,
-    token,
-    url,
-  });
-
 const sanitizeFilePart = (value) => {
   return value
     .replace(/[^a-zA-Z0-9._-]/gu, '_')
@@ -139,8 +119,13 @@ const collectLogs = async ({
     const logUrl = `https://api.github.com/repos/${repoSlug}/actions/jobs/${jobId}/logs`;
 
     try {
-      const logText = await githubRequestText({
+      const logText = await githubApiRequestWithTransientRetry({
+        acceptHeader: '*/*',
+        apiVersion: GITHUB_API_VERSION,
+        expectText: true,
         token,
+        method: 'GET',
+        retryLabel: `[release:smoke:retry:collect:text] GET ${logUrl}`,
         url: logUrl,
       });
       await writeFile(logFilePath, logText, 'utf8');
@@ -211,14 +196,18 @@ const main = async () => {
     }
   };
 
-  const run = await githubRequest({
+  const run = await githubApiRequestWithTransientRetry({
+    apiVersion: GITHUB_API_VERSION,
     token,
     method: 'GET',
+    retryLabel: `[release:smoke:retry:collect] GET ${baseApiUrl}/actions/runs/${runId}`,
     url: `${baseApiUrl}/actions/runs/${runId}`,
   });
-  const jobsResponse = await githubRequest({
+  const jobsResponse = await githubApiRequestWithTransientRetry({
+    apiVersion: GITHUB_API_VERSION,
     token,
     method: 'GET',
+    retryLabel: `[release:smoke:retry:collect] GET ${baseApiUrl}/actions/runs/${runId}/jobs?per_page=100`,
     url: `${baseApiUrl}/actions/runs/${runId}/jobs?per_page=100`,
   });
   const jobs = Array.isArray(jobsResponse?.jobs) ? jobsResponse.jobs : [];

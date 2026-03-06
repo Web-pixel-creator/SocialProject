@@ -33,6 +33,34 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-06 - remove redundant github request wrappers from release helpers (phase 127)
+
+- Scope: finish the low-risk shared-helper migration for staging smoke/retry/artifact scripts by removing local `githubRequest` passthrough wrappers and calling `githubApiRequestWithTransientRetry` directly.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-06 16:18 -> 2026-03-06 16:24.
+- Changes:
+  - Removed redundant local GitHub request wrappers from:
+    - `scripts/release/dispatch-staging-smoke-auto.mjs`
+    - `scripts/release/manage-staging-inputs.mjs`
+    - `scripts/release/fetch-smoke-report-artifact.mjs`
+    - `scripts/release/collect-retry-failure-logs.mjs`
+    - `scripts/release/dispatch-staging-smoke.mjs`
+    - `scripts/release/dispatch-staging-smoke-tunnel.mjs`
+  - Preserved existing retry labels, API version usage, text/binary response handling, and allowed-status behavior while routing calls straight through the shared helper.
+- Validation:
+  - `node --check scripts/release/dispatch-staging-smoke-auto.mjs`: pass.
+  - `node --check scripts/release/manage-staging-inputs.mjs`: pass.
+  - `node --check scripts/release/fetch-smoke-report-artifact.mjs`: pass.
+  - `node --check scripts/release/collect-retry-failure-logs.mjs`: pass.
+  - `node --check scripts/release/dispatch-staging-smoke.mjs`: pass.
+  - `node --check scripts/release/dispatch-staging-smoke-tunnel.mjs`: pass.
+  - `npx jest apps/api/src/__tests__/release-github-api-request-with-transient-retry.unit.spec.ts apps/api/src/__tests__/release-staging-smoke-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-staging-smoke-dispatch-help-snapshot.unit.spec.ts --runInBand --silent=false`: pass.
+- Rollout result: phase 127 helper cleanup completed; no workflow dispatch executed in this window.
+- Incidents:
+  - none.
+- Follow-ups:
+  - Optional: migrate `scripts/release/post-release-health-report.mjs` off its remaining local GitHub request wrapper when that larger report path is next touched.
+
 ### 2026-03-06 - add phase 5 otel-first observability snapshot and admin ux debug dashboard (phase 126)
 
 - Scope: add lightweight HTTP observability telemetry, a correlated admin snapshot endpoint, and an operator-facing observability block in `/admin/ux` debug view.

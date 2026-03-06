@@ -86,17 +86,6 @@ const resolveTokenCandidates = ({ tokenFromArg }) =>
     tokenFromArg,
   });
 
-const githubRequest = async ({ token, method, url, body }) => {
-  return githubApiRequestWithTransientRetry({
-    apiVersion: GITHUB_API_VERSION,
-    body,
-    method,
-    retryLabel: `[release:smoke:dispatch] ${method} ${url}`,
-    token,
-    url,
-  });
-};
-
 const main = async () => {
   const cli = parseCliArgs(process.argv.slice(2));
   const apiBaseUrl = (process.env.RELEASE_API_BASE_URL ?? '').trim();
@@ -114,9 +103,11 @@ const main = async () => {
     candidates: resolveTokenCandidates(cli),
     probeUrl: `${baseApiUrl}`,
     probeAuth: ({ token, url }) =>
-      githubRequest({
+      githubApiRequestWithTransientRetry({
+        apiVersion: GITHUB_API_VERSION,
         token,
         method: 'GET',
+        retryLabel: `[release:smoke:dispatch] GET ${url}`,
         url,
       }),
   });
@@ -137,14 +128,16 @@ const main = async () => {
   }
 
   const dispatchStartedAtMs = Date.now();
-  await githubRequest({
-    token,
-    method: 'POST',
-    url: dispatchUrl,
+  await githubApiRequestWithTransientRetry({
+    apiVersion: GITHUB_API_VERSION,
     body: {
       ref: workflowRef,
       inputs: dispatchInputs,
     },
+    token,
+    method: 'POST',
+    retryLabel: `[release:smoke:dispatch] POST ${dispatchUrl}`,
+    url: dispatchUrl,
   });
 
   process.stdout.write(`Dispatched ${workflowFile} on ${workflowRef} for ${repoSlug}.\n`);
@@ -164,9 +157,11 @@ const main = async () => {
   )}/runs?event=workflow_dispatch&branch=${encodeURIComponent(workflowRef)}&per_page=20`;
 
   const findRun = async () => {
-    const data = await githubRequest({
+    const data = await githubApiRequestWithTransientRetry({
+      apiVersion: GITHUB_API_VERSION,
       token,
       method: 'GET',
+      retryLabel: `[release:smoke:dispatch] GET ${listRunsUrl}`,
       url: listRunsUrl,
     });
     const runs = Array.isArray(data?.workflow_runs) ? data.workflow_runs : [];
@@ -201,9 +196,11 @@ const main = async () => {
 
   const runUrl = `${baseApiUrl}/actions/runs/${run.id}`;
   while (Date.now() < waitDeadline) {
-    const current = await githubRequest({
+    const current = await githubApiRequestWithTransientRetry({
+      apiVersion: GITHUB_API_VERSION,
       token,
       method: 'GET',
+      retryLabel: `[release:smoke:dispatch] GET ${runUrl}`,
       url: runUrl,
     });
     const status = current?.status ?? 'unknown';

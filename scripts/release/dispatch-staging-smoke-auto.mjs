@@ -15,24 +15,17 @@ Flags:
   --prefer-tunnel  Force tunnel-helper mode (same as RELEASE_AUTO_PREFER_TUNNEL=true).
 `;
 
-const githubRequest = async ({ token, method, url }) =>
-  githubApiRequestWithTransientRetry({
-    apiVersion: GITHUB_API_VERSION,
-    method,
-    retryLabel: `[release:smoke:dispatch:auto] ${method} ${url}`,
-    token,
-    url,
-  });
-
 const readRepoReleaseVariables = async ({ token, repoSlug }) => {
   if (!token) {
     return null;
   }
 
   const url = `https://api.github.com/repos/${repoSlug}/actions/variables?per_page=100`;
-  const data = await githubRequest({
+  const data = await githubApiRequestWithTransientRetry({
+    apiVersion: GITHUB_API_VERSION,
     token,
     method: 'GET',
+    retryLabel: `[release:smoke:dispatch:auto] GET ${url}`,
     url,
   });
 

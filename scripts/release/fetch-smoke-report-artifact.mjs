@@ -27,23 +27,6 @@ const parseBoolean = (raw, fallback) => {
   return fallback;
 };
 
-const githubRequest = async ({
-  token,
-  method,
-  url,
-  body,
-  expectBinary = false,
-}) =>
-  githubApiRequestWithTransientRetry({
-    apiVersion: GITHUB_API_VERSION,
-    body,
-    expectBinary,
-    method,
-    retryLabel: `[release:smoke:artifact] ${method} ${url}`,
-    token,
-    url,
-  });
-
 const parseRunId = (raw) => {
   if (!raw) {
     return null;
@@ -59,9 +42,11 @@ const findLatestDispatchRunId = async ({ token, baseApiUrl, workflowFile }) => {
   const url = `${baseApiUrl}/actions/workflows/${encodeURIComponent(
     workflowFile,
   )}/runs?event=workflow_dispatch&status=completed&per_page=20`;
-  const data = await githubRequest({
+  const data = await githubApiRequestWithTransientRetry({
+    apiVersion: GITHUB_API_VERSION,
     token,
     method: 'GET',
+    retryLabel: `[release:smoke:artifact] GET ${url}`,
     url,
   });
   const runs = Array.isArray(data?.workflow_runs) ? data.workflow_runs : [];
@@ -154,17 +139,21 @@ const main = async () => {
     : await findLatestDispatchRunId({ token, baseApiUrl, workflowFile });
   const runId = resolvedRun.id;
 
-  const run = await githubRequest({
+  const run = await githubApiRequestWithTransientRetry({
+    apiVersion: GITHUB_API_VERSION,
     token,
     method: 'GET',
+    retryLabel: `[release:smoke:artifact] GET ${baseApiUrl}/actions/runs/${runId}`,
     url: `${baseApiUrl}/actions/runs/${runId}`,
   });
   const runNumber = run?.run_number ?? resolvedRun.runNumber ?? '<unknown>';
   const runUrl = run?.html_url ?? resolvedRun.htmlUrl ?? '<unknown>';
 
-  const artifactsResponse = await githubRequest({
+  const artifactsResponse = await githubApiRequestWithTransientRetry({
+    apiVersion: GITHUB_API_VERSION,
     token,
     method: 'GET',
+    retryLabel: `[release:smoke:artifact] GET ${baseApiUrl}/actions/runs/${runId}/artifacts?per_page=100`,
     url: `${baseApiUrl}/actions/runs/${runId}/artifacts?per_page=100`,
   });
   const artifacts = Array.isArray(artifactsResponse?.artifacts)
@@ -182,11 +171,13 @@ const main = async () => {
     );
   }
 
-  const zipContent = await githubRequest({
+  const zipContent = await githubApiRequestWithTransientRetry({
+    apiVersion: GITHUB_API_VERSION,
+    expectBinary: true,
     token,
     method: 'GET',
+    retryLabel: `[release:smoke:artifact] GET ${baseApiUrl}/actions/artifacts/${artifact.id}/zip`,
     url: `${baseApiUrl}/actions/artifacts/${artifact.id}/zip`,
-    expectBinary: true,
   });
 
   await mkdir(outputDir, { recursive: true });

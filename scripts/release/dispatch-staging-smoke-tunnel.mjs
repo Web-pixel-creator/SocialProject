@@ -248,28 +248,6 @@ const startService = ({ command, args, name, env, shell }) => {
   return child;
 };
 
-const githubRequest = async ({ token, method, url, body }) => {
-  return githubApiRequestWithTransientRetry({
-    apiVersion: GITHUB_API_VERSION,
-    body,
-    method,
-    retryLabel: `[release:smoke:dispatch:tunnel] ${method} ${url}`,
-    token,
-    url,
-  });
-};
-
-const githubRequestText = async ({ token, url }) =>
-  githubApiRequestWithTransientRetry({
-    acceptHeader: '*/*',
-    apiVersion: GITHUB_API_VERSION,
-    expectText: true,
-    method: 'GET',
-    retryLabel: `[release:smoke:dispatch:tunnel:text] GET ${url}`,
-    token,
-    url,
-  });
-
 const getLatestRunContextFromOutput = (output) => {
   const matches = [
     ...output.matchAll(
@@ -289,9 +267,11 @@ const getLatestRunContextFromOutput = (output) => {
 
 const inspectRetryableFailure = async ({ token, repoSlug, runId }) => {
   const baseApiUrl = `https://api.github.com/repos/${repoSlug}`;
-  const run = await githubRequest({
+  const run = await githubApiRequestWithTransientRetry({
+    apiVersion: GITHUB_API_VERSION,
     token,
     method: 'GET',
+    retryLabel: `[release:smoke:dispatch:tunnel] GET ${baseApiUrl}/actions/runs/${runId}`,
     url: `${baseApiUrl}/actions/runs/${runId}`,
   });
 
@@ -302,9 +282,11 @@ const inspectRetryableFailure = async ({ token, repoSlug, runId }) => {
     };
   }
 
-  const jobsResponse = await githubRequest({
+  const jobsResponse = await githubApiRequestWithTransientRetry({
+    apiVersion: GITHUB_API_VERSION,
     token,
     method: 'GET',
+    retryLabel: `[release:smoke:dispatch:tunnel] GET ${baseApiUrl}/actions/runs/${runId}/jobs?per_page=100`,
     url: `${baseApiUrl}/actions/runs/${runId}/jobs?per_page=100`,
   });
   const jobs = Array.isArray(jobsResponse?.jobs) ? jobsResponse.jobs : [];
@@ -424,8 +406,13 @@ const captureRetryFailureLogs = async ({
     const logUrl = `https://api.github.com/repos/${repoSlug}/actions/jobs/${jobId}/logs`;
 
     try {
-      const logText = await githubRequestText({
+      const logText = await githubApiRequestWithTransientRetry({
+        acceptHeader: '*/*',
+        apiVersion: GITHUB_API_VERSION,
+        expectText: true,
         token,
+        method: 'GET',
+        retryLabel: `[release:smoke:dispatch:tunnel:text] GET ${logUrl}`,
         url: logUrl,
       });
       await writeFile(logFilePath, logText, 'utf8');
