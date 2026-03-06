@@ -155,7 +155,7 @@ Copy this block for each release:
 - Incidents:
   - none.
 - Follow-ups:
-  - Phase 6: selective CI/E2E execution and guaranteed failure artifacts.
+  - Resolved later by phases 127-129: release-helper cleanup and guaranteed artifact-presence manifests closed the remaining CI/E2E discipline tail.
 
 ### 2026-03-06 - add phase 4 trigger-based diagnostics bundles for launch gate failures (phase 125)
 
