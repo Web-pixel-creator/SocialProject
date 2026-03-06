@@ -20,6 +20,7 @@ import {
   getUtcDateKey,
 } from '../services/budget/budgetService';
 import { ServiceError } from '../services/common/errors';
+import { adminObservabilityService } from '../services/observability/adminObservabilityService';
 import { draftOrchestrationService } from '../services/orchestration/draftOrchestrationService';
 import { PrivacyServiceImpl } from '../services/privacy/privacyService';
 import type { RealtimeService } from '../services/realtime/types';
@@ -140,6 +141,7 @@ const AGENT_GATEWAY_ROLE_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 const AGENT_GATEWAY_EVENT_TYPE_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,119}$/;
 const AGENT_GATEWAY_CONNECTOR_ID_PATTERN = /^[a-z0-9][a-z0-9._:-]{1,63}$/;
 const ADMIN_UX_EVENT_TYPE_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,119}$/;
+const ADMIN_OBSERVABILITY_ROUTE_KEY_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,79}$/;
 const ADMIN_ERROR_CODE_PATTERN = /^[a-z0-9][a-z0-9_.-]{0,119}$/i;
 const ADMIN_ERROR_ROUTE_PATTERN = /^\/[a-z0-9/_:.-]{0,239}$/i;
 const RELEASE_CORRELATION_ID_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,119}$/;
@@ -898,6 +900,32 @@ const parseOptionalReleaseCorrelationQueryString = (
     throw new ServiceError(
       'ADMIN_INVALID_QUERY',
       `${fieldName} must use a valid correlation identifier format.`,
+      400,
+    );
+  }
+  return normalized;
+};
+
+const parseOptionalObservabilityRouteKeyQueryString = (
+  value: unknown,
+  {
+    fieldName,
+  }: {
+    fieldName: string;
+  },
+): string | null => {
+  const parsed = parseOptionalBoundedQueryString(value, {
+    fieldName,
+    maxLength: 80,
+  });
+  if (!parsed) {
+    return null;
+  }
+  const normalized = parsed.toLowerCase();
+  if (!ADMIN_OBSERVABILITY_ROUTE_KEY_PATTERN.test(normalized)) {
+    throw new ServiceError(
+      'ADMIN_INVALID_QUERY',
+      `${fieldName} must use a valid observability route-key format.`,
       400,
     );
   }
@@ -5045,6 +5073,67 @@ router.get(
           count: Number(row.count ?? 0),
         })),
       });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+router.get(
+  '/admin/observability/otel',
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      const query = assertAllowedQueryFields(req.query, {
+        allowed: [
+          'hours',
+          'routeKey',
+          'correlationId',
+          'releaseRunId',
+          'executionSessionId',
+        ],
+        endpoint: '/api/admin/observability/otel',
+      });
+      const hours = parseBoundedQueryInt(query.hours, {
+        fieldName: 'hours',
+        defaultValue: 24,
+        min: 1,
+        max: 720,
+      });
+      const routeKey = parseOptionalObservabilityRouteKeyQueryString(
+        query.routeKey,
+        {
+          fieldName: 'routeKey',
+        },
+      );
+      const correlationId = parseOptionalReleaseCorrelationQueryString(
+        query.correlationId,
+        {
+          fieldName: 'correlationId',
+        },
+      );
+      const releaseRunId = parseOptionalReleaseCorrelationQueryString(
+        query.releaseRunId,
+        {
+          fieldName: 'releaseRunId',
+        },
+      );
+      const executionSessionId = parseOptionalReleaseCorrelationQueryString(
+        query.executionSessionId,
+        {
+          fieldName: 'executionSessionId',
+        },
+      );
+
+      const snapshot = await adminObservabilityService.getSnapshot({
+        correlationId,
+        executionSessionId,
+        hours,
+        releaseRunId,
+        routeKey,
+      });
+
+      res.json(snapshot);
     } catch (error) {
       next(error);
     }

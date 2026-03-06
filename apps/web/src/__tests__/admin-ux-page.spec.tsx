@@ -1767,6 +1767,146 @@ describe('admin ux observer engagement page', () => {
     expect(screen.getByText(/^Critical$/i)).toBeInTheDocument();
   });
 
+  test('renders observability snapshot in debug panel', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockImplementation((url: string, _init?: RequestInit) => {
+        if (url.includes('/admin/ux/observer-engagement')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({
+              windowHours: 24,
+              kpis: {},
+              feedPreferences: {},
+              segments: [],
+            }),
+          } as Response);
+        }
+        if (url.includes('/admin/agent-gateway/sessions?limit=25')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({
+              source: 'db',
+              sessions: [],
+            }),
+          } as Response);
+        }
+        if (url.includes('/admin/agent-gateway/telemetry')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({
+              windowHours: 24,
+              health: { level: 'healthy' },
+              sessions: { attention: 0, total: 0 },
+              events: { total: 0 },
+            }),
+          } as Response);
+        }
+        if (url.includes('/admin/ai-runtime/health')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({
+              generatedAt: '2026-03-06T06:00:00.000Z',
+              roleStates: [],
+              providers: [],
+              summary: {
+                roleCount: 0,
+                providerCount: 0,
+                rolesBlocked: 0,
+                providersCoolingDown: 0,
+                providersReady: 0,
+                health: 'ok',
+              },
+            }),
+          } as Response);
+        }
+        if (url.includes('/admin/observability/otel')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({
+              generatedAt: '2026-03-06T06:05:00.000Z',
+              windowHours: 24,
+              http: {
+                summary: {
+                  total: 8,
+                  successCount: 7,
+                  failedCount: 1,
+                  p95TimingMs: 420,
+                  errorRate: 0.125,
+                  correlationCoverageRate: 0.75,
+                },
+                routes: [
+                  {
+                    routeKey: 'admin.ai_runtime.health',
+                    method: 'GET',
+                    total: 4,
+                    successCount: 4,
+                    failedCount: 0,
+                  },
+                ],
+              },
+              runtime: {
+                summary: {
+                  total: 4,
+                  successCount: 3,
+                  failedCount: 1,
+                  failureRate: 0.25,
+                  fallbackPathUsedRate: 1,
+                },
+              },
+              release: {
+                summary: {
+                  totalAlerts: 1,
+                },
+              },
+              health: {
+                level: 'watch',
+              },
+            }),
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: false,
+          status: 404,
+          json: async () => ({}),
+        } as Response);
+      });
+    global.fetch = fetchMock as typeof fetch;
+
+    render(
+      await AdminUxObserverEngagementPage({
+        searchParams: Promise.resolve({
+          hours: '24',
+          panel: 'debug',
+        }),
+      }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByText(/Observability snapshot/i)).toBeInTheDocument(),
+    );
+    const observabilitySection = screen
+      .getByText(/Observability snapshot/i)
+      .closest('article');
+    expect(observabilitySection).not.toBeNull();
+    if (!observabilitySection) {
+      throw new Error('Observability snapshot section should be present');
+    }
+    const observabilityScoped = within(observabilitySection);
+    expect(observabilityScoped.getByText(/^420ms$/i)).toBeInTheDocument();
+    expect(observabilityScoped.getByText(/^13%$/i)).toBeInTheDocument();
+    expect(observabilityScoped.getByText(/^100%$/i)).toBeInTheDocument();
+    expect(observabilityScoped.getByText(/^75%$/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Top route admin.ai_runtime.health/i),
+    ).toBeInTheDocument();
+  });
+
   test('renders API error state', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: false,

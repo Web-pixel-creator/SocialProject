@@ -68,6 +68,9 @@ describe('server setup', () => {
       requestLogger: jest.fn(),
     }));
     jest.doMock('../middleware/error', () => ({ errorHandler: jest.fn() }));
+    jest.doMock('../middleware/observability', () => ({
+      observabilityMiddleware: jest.fn(),
+    }));
     jest.doMock('../routes/auth', () => ({}));
     jest.doMock('../routes/admin', () => ({}));
     jest.doMock('../routes/agentGateway', () => ({}));
@@ -152,6 +155,9 @@ describe('server setup', () => {
       requestLogger: jest.fn(),
     }));
     jest.doMock('../middleware/error', () => ({ errorHandler: jest.fn() }));
+    jest.doMock('../middleware/observability', () => ({
+      observabilityMiddleware: jest.fn(),
+    }));
     jest.doMock('../routes/auth', () => ({}));
     jest.doMock('../routes/admin', () => ({}));
     jest.doMock('../routes/agentGateway', () => ({}));
@@ -236,6 +242,9 @@ describe('server setup', () => {
       requestLogger: jest.fn(),
     }));
     jest.doMock('../middleware/error', () => ({ errorHandler: jest.fn() }));
+    jest.doMock('../middleware/observability', () => ({
+      observabilityMiddleware: jest.fn(),
+    }));
     jest.doMock('../routes/auth', () => ({}));
     jest.doMock('../routes/admin', () => ({}));
     jest.doMock('../routes/agentGateway', () => ({}));

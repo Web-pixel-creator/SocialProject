@@ -26,6 +26,8 @@ export const DebugDiagnosticsSection = ({
   debugContextRows,
   debugPayloadText,
   eventsSampleCount,
+  observabilityCards,
+  observabilityInfoMessage,
   releaseAlertsCount,
   runtimeProvidersCount,
 }: {
@@ -33,6 +35,12 @@ export const DebugDiagnosticsSection = ({
   debugContextRows: DebugContextRow[];
   debugPayloadText: string;
   eventsSampleCount: number;
+  observabilityCards: Array<{
+    hint?: string;
+    label: string;
+    value: string;
+  }>;
+  observabilityInfoMessage: string;
   releaseAlertsCount: string;
   runtimeProvidersCount: number;
 }) => (
@@ -71,6 +79,31 @@ export const DebugDiagnosticsSection = ({
         value={releaseAlertsCount}
       />
     </div>
+    <article className="card grid gap-3 p-4">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+          Observability snapshot
+        </h3>
+        <span className="inline-flex items-center rounded-full border border-border/45 bg-background/45 px-2 py-0.5 font-semibold text-muted-foreground text-xs uppercase tracking-wide">
+          otel-first
+        </span>
+      </div>
+      <p className="text-muted-foreground text-sm">
+        {observabilityInfoMessage}
+      </p>
+      {observabilityCards.length > 0 ? (
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {observabilityCards.map((card) => (
+            <StatCard
+              hint={card.hint}
+              key={card.label}
+              label={card.label}
+              value={card.value}
+            />
+          ))}
+        </div>
+      ) : null}
+    </article>
     <article className="card grid gap-2 p-4">
       <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
         Context snapshot

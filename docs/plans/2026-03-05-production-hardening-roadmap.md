@@ -271,6 +271,57 @@ Exit criteria:
   - `ultracite:check`: pass
   - `release:launch:gate:production:json -- --required-external-channels all`: pass
 
+### 2026-03-06 - Phase 5 completed
+
+- Added lightweight OTEL-first HTTP observability instrumentation:
+  - `apps/api/src/middleware/observability.ts`
+  - records `otel_http_server_request` telemetry into `ux_events` for:
+    - `/health`
+    - `/ready`
+    - `/api/admin/ai-runtime/health`
+    - `/api/admin/ai-runtime/dry-run`
+    - `/api/admin/agent-gateway/telemetry`
+    - `/api/admin/sandbox-execution/metrics`
+    - `/api/admin/release-health/external-channel-alerts`
+- Added aggregated observability snapshot service and admin endpoint:
+  - `apps/api/src/services/observability/adminObservabilityService.ts`
+  - `apps/api/src/routes/admin.ts`
+  - `GET /api/admin/observability/otel?hours=<n>`
+  - optional filters:
+    - `routeKey`
+    - `correlationId`
+    - `releaseRunId`
+    - `executionSessionId`
+  - snapshot correlates:
+    - API request latency/error telemetry,
+    - sandbox execution fallback/policy telemetry,
+    - release-health external-channel alert telemetry.
+- Added operator-facing observability block in `admin/ux` debug panel:
+  - `apps/web/src/app/admin/ux/components/admin-ux-data-client.ts`
+  - `apps/web/src/app/admin/ux/components/admin-ux-page-orchestration.ts`
+  - `apps/web/src/app/admin/ux/components/admin-ux-gateway-runtime-prop-builders.tsx`
+  - `apps/web/src/app/admin/ux/components/debug-diagnostics-section.tsx`
+  - shows:
+    - API p95,
+    - API error rate,
+    - runtime failure rate,
+    - fallback-path share,
+    - correlation coverage.
+- Added/expanded coverage:
+  - `apps/api/src/__tests__/observability.unit.spec.ts`
+  - `apps/api/src/__tests__/admin-observability-service.unit.spec.ts`
+  - `apps/api/src/__tests__/server.unit.spec.ts`
+  - `apps/api/src/__tests__/admin.integration.spec.ts`
+  - `apps/web/src/__tests__/admin-ux-page.spec.tsx`
+- Validation:
+  - targeted `jest` suites for observability middleware/service and admin UX debug panel: pass
+  - `npm --workspace apps/api run build`: pass
+  - `npm --workspace apps/web run build`: pass
+  - `ci:workflow:inline-node-check`: pass
+  - `lint`: pass
+  - `ultracite:check`: pass
+  - note: full `admin.integration.spec.ts` requires local postgres/redis; in this shell both localhost ports `5432` and `6379` were unavailable and Docker engine pipe was not reachable.
+
 ## Hard Rule
 
 Do not spend another release cycle on helper-only cleanup unless it directly

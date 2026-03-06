@@ -26,6 +26,28 @@ type GatewayRuntimeAndDebugPanelsProps = Pick<
   'debugDiagnosticsSectionProps' | 'gatewayPanelsProps' | 'runtimePanelProps'
 >;
 
+const toPercentText = (value: unknown): string =>
+  typeof value === 'number' && Number.isFinite(value)
+    ? `${Math.round(value * 100)}%`
+    : 'n/a';
+
+const toNullableNumber = (value: unknown): number | null =>
+  typeof value === 'number' && Number.isFinite(value) ? value : null;
+
+const normalizeHealthLevel = (
+  value: unknown,
+): 'critical' | 'healthy' | 'unknown' | 'watch' => {
+  if (
+    value === 'critical' ||
+    value === 'healthy' ||
+    value === 'unknown' ||
+    value === 'watch'
+  ) {
+    return value;
+  }
+  return 'unknown';
+};
+
 export const buildGatewayRuntimeAndDebugPanelsProps = ({
   activePanel,
   allMetricsRiskFilter,
@@ -65,6 +87,8 @@ export const buildGatewayRuntimeAndDebugPanelsProps = ({
   gatewayTelemetry,
   gatewayTelemetryError,
   hours,
+  observabilityError,
+  observabilitySnapshot,
   keepRecentValue,
   sectionData,
   selectedSession,
@@ -89,6 +113,69 @@ export const buildGatewayRuntimeAndDebugPanelsProps = ({
     gatewayOverview?.session.status ?? selectedSession?.status,
     sectionData.appliedGatewaySessionStatusLabel,
   );
+  const observabilityHealthLevel = normalizeHealthLevel(
+    observabilitySnapshot?.health?.level,
+  );
+  const observabilityHttpSummary = observabilitySnapshot?.http?.summary;
+  const observabilityRuntimeSummary = observabilitySnapshot?.runtime?.summary;
+  const observabilityTopRoute = Array.isArray(
+    observabilitySnapshot?.http?.routes,
+  )
+    ? observabilitySnapshot.http.routes[0]
+    : null;
+  const observabilityApiP95TimingMs = toNullableNumber(
+    observabilityHttpSummary?.p95TimingMs,
+  );
+  const observabilityApiErrorRate = observabilityHttpSummary?.errorRate;
+  const observabilityRuntimeFailureRate =
+    observabilityRuntimeSummary?.failureRate;
+  const observabilityFallbackRate =
+    observabilityRuntimeSummary?.fallbackPathUsedRate;
+  const observabilityCorrelationCoverage =
+    observabilityHttpSummary?.correlationCoverageRate;
+  let observabilityInfoMessage =
+    'Use this block to compare API latency/errors with sandbox fallback and release-alert signals in one window.';
+  if (observabilityError) {
+    observabilityInfoMessage = observabilityError;
+  }
+  if (observabilitySnapshot) {
+    observabilityInfoMessage = `Health ${healthLabel(observabilityHealthLevel)}. Top route ${toStringValue(
+      observabilityTopRoute?.routeKey,
+      'n/a',
+    )} in the current ${hours}h window.`;
+  }
+  const observabilityCards = observabilitySnapshot
+    ? [
+        {
+          hint: 'p95 latency across tracked API routes',
+          label: 'API p95',
+          value:
+            observabilityApiP95TimingMs === null
+              ? 'n/a'
+              : toDurationText(observabilityApiP95TimingMs),
+        },
+        {
+          hint: 'failed tracked requests in current window',
+          label: 'API errors',
+          value: toPercentText(observabilityApiErrorRate),
+        },
+        {
+          hint: 'failed sandbox/runtime executions in current window',
+          label: 'Runtime failures',
+          value: toPercentText(observabilityRuntimeFailureRate),
+        },
+        {
+          hint: 'share of runtime telemetry using fallback path',
+          label: 'Fallback path',
+          value: toPercentText(observabilityFallbackRate),
+        },
+        {
+          hint: 'request telemetry linked to correlation ids',
+          label: 'Correlation coverage',
+          value: toPercentText(observabilityCorrelationCoverage),
+        },
+      ]
+    : [];
   const debugPayloadText = buildDebugPayloadText({
     activePanel,
     aiRuntimeDryRunResult,
@@ -101,6 +188,7 @@ export const buildGatewayRuntimeAndDebugPanelsProps = ({
     gatewaySourceFilter,
     gatewayStatusFilter,
     gatewayTelemetry,
+    observabilitySnapshot,
     releaseHealthAlertCount: sectionData.releaseHealthAlertCount,
     releaseHealthAlertFirstAppearanceCount:
       sectionData.releaseHealthAlertFirstAppearanceCount,
@@ -113,6 +201,13 @@ export const buildGatewayRuntimeAndDebugPanelsProps = ({
     gatewaySessionsSource: toStringValue(gatewaySessionsSource, 'n/a'),
     gatewayStatusLabel: gatewayDebugStatusLabel,
     hours,
+    observabilityApiErrorRate: toPercentText(observabilityApiErrorRate),
+    observabilityApiP95:
+      observabilityApiP95TimingMs === null
+        ? 'n/a'
+        : toDurationText(observabilityApiP95TimingMs),
+    observabilityFallbackRate: toPercentText(observabilityFallbackRate),
+    observabilityHealthLabel: healthLabel(observabilityHealthLevel),
     releaseRiskLabel: healthLabel(sectionData.releaseHealthAlertRiskLevel),
     runtimeHealthLabel: toStringValue(aiRuntimeSummary.health, 'n/a'),
     selectedSessionId,
@@ -265,6 +360,8 @@ export const buildGatewayRuntimeAndDebugPanelsProps = ({
       debugContextRows,
       debugPayloadText,
       eventsSampleCount: debugEventsSampleCount,
+      observabilityCards,
+      observabilityInfoMessage,
       releaseAlertsCount: `${sectionData.releaseHealthAlertCount}`,
       runtimeProvidersCount: aiRuntimeProviders.length,
     },

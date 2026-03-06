@@ -1,6 +1,7 @@
 import {
   closeAgentGatewaySession,
   compactAgentGatewaySession,
+  fetchAdminObservabilitySnapshot,
   fetchAgentGatewayOverview,
   fetchAgentGatewayRecentEvents,
   fetchAgentGatewaySessions,
@@ -163,6 +164,8 @@ export const loadAdminUxPageData = async ({
       channel: gatewayChannelFilter,
       provider: gatewayProviderFilter,
     });
+  const { data: observabilitySnapshot, error: observabilityError } =
+    await fetchAdminObservabilitySnapshot(hours);
   const {
     generatedAt: aiRuntimeHealthGeneratedAt,
     roleStates: aiRuntimeRoleStatesBase,
@@ -282,6 +285,8 @@ export const loadAdminUxPageData = async ({
     gatewayTelemetry,
     gatewayTelemetryError,
     hours,
+    observabilityError,
+    observabilitySnapshot,
     keepRecentValue,
     sectionData,
     selectedSession,

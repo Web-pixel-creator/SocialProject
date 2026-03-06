@@ -1,6 +1,10 @@
 import request from 'supertest';
 import { env } from '../config/env';
 import { db } from '../db/pool';
+import {
+  OTEL_HTTP_SERVER_REQUEST_EVENT_TYPE,
+  OTEL_HTTP_SERVER_SOURCE,
+} from '../middleware/observability';
 import { redis } from '../redis/client';
 import { createApp, initInfra } from '../server';
 import { aiRuntimeService } from '../services/aiRuntime/aiRuntimeService';
@@ -9,7 +13,11 @@ import {
   getUtcDateKey,
 } from '../services/budget/budgetService';
 import { PostServiceImpl } from '../services/post/postService';
-import { sandboxExecutionService } from '../services/sandboxExecution/sandboxExecutionService';
+import {
+  SANDBOX_EXECUTION_TELEMETRY_EVENT_TYPE,
+  SANDBOX_EXECUTION_TELEMETRY_SOURCE,
+  sandboxExecutionService,
+} from '../services/sandboxExecution/sandboxExecutionService';
 
 env.ADMIN_API_TOKEN = env.ADMIN_API_TOKEN || 'test-admin-token';
 
@@ -360,6 +368,190 @@ describe('Admin API routes', () => {
       .set('x-admin-token', env.ADMIN_API_TOKEN);
     expect(invalidCorrelationId.status).toBe(400);
     expect(invalidCorrelationId.body.error).toBe('ADMIN_INVALID_QUERY');
+  });
+
+  test('observability snapshot aggregates http, runtime, and release telemetry', async () => {
+    await db.query(
+      `INSERT INTO ux_events (event_type, user_type, status, timing_ms, source, metadata)
+       VALUES
+        ($1, 'admin', 'ok', 120, $2, $3::jsonb),
+        ($1, 'admin', 'failed', 420, $2, $4::jsonb),
+        ($1, 'system', 'ok', 45, $2, $5::jsonb)`,
+      [
+        OTEL_HTTP_SERVER_REQUEST_EVENT_TYPE,
+        OTEL_HTTP_SERVER_SOURCE,
+        JSON.stringify({
+          correlationId: 'rel.production-launch-gate.20260306010000.abcd.corr',
+          httpMethod: 'GET',
+          httpStatusCode: 200,
+          releaseRunId: 'rel.production-launch-gate.20260306010000.abcd',
+          routeKey: 'admin.ai_runtime.health',
+          routePath: '/api/admin/ai-runtime/health',
+        }),
+        JSON.stringify({
+          correlationId: 'rel.production-launch-gate.20260306010000.abcd.corr',
+          executionSessionId: 'exec-observe-1',
+          httpMethod: 'GET',
+          httpStatusCode: 503,
+          releaseRunId: 'rel.production-launch-gate.20260306010000.abcd',
+          routeKey: 'ready',
+          routePath: '/ready',
+        }),
+        JSON.stringify({
+          httpMethod: 'GET',
+          httpStatusCode: 200,
+          routeKey: 'health',
+          routePath: '/health',
+        }),
+      ],
+    );
+    await db.query(
+      `INSERT INTO ux_events (event_type, user_type, status, timing_ms, source, metadata)
+       VALUES
+        ($1, 'system', 'ok', 95, $2, $3::jsonb),
+        ($1, 'system', 'failed', 280, $2, $4::jsonb)`,
+      [
+        SANDBOX_EXECUTION_TELEMETRY_EVENT_TYPE,
+        SANDBOX_EXECUTION_TELEMETRY_SOURCE,
+        JSON.stringify({
+          audit: {
+            correlationId:
+              'rel.production-launch-gate.20260306010000.abcd.corr',
+            releaseRunId: 'rel.production-launch-gate.20260306010000.abcd',
+          },
+          egressDecision: 'allow',
+          executionSessionId: 'exec-observe-1',
+          fallbackPathUsed: true,
+          limitsDecision: 'allow',
+          mode: 'fallback_only',
+        }),
+        JSON.stringify({
+          audit: {
+            correlationId:
+              'rel.production-launch-gate.20260306010000.abcd.corr',
+            releaseRunId: 'rel.production-launch-gate.20260306010000.abcd',
+          },
+          egressDecision: 'deny',
+          executionSessionId: 'exec-observe-2',
+          fallbackPathUsed: true,
+          limitsDecision: 'deny',
+          mode: 'fallback_only',
+        }),
+      ],
+    );
+    await db.query(
+      `INSERT INTO ux_events (event_type, user_type, status, source, metadata)
+       VALUES
+        ('release_external_channel_failure_mode_alert', 'system', 'ok', 'release_health_gate_webhook', $1::jsonb)`,
+      [
+        JSON.stringify({
+          firstAppearances: [
+            {
+              channel: 'telegram',
+              failureMode: 'ingest_http_error',
+            },
+            {
+              channel: 'slack',
+              failureMode: 'telemetry_zero_accepted',
+            },
+          ],
+          receivedAtUtc: '2026-03-06T01:05:00.000Z',
+          run: {
+            htmlUrl:
+              'https://github.com/Web-pixel-creator/SocialProject/actions/runs/22548544748',
+            id: 22_548_544_748,
+            number: 52,
+          },
+        }),
+      ],
+    );
+
+    const response = await request(app)
+      .get('/api/admin/observability/otel?hours=24')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(response.status).toBe(200);
+    expect(response.body.windowHours).toBe(24);
+    expect(response.body.filters).toMatchObject({
+      correlationId: null,
+      executionSessionId: null,
+      releaseRunId: null,
+      routeKey: null,
+      requestEventType: OTEL_HTTP_SERVER_REQUEST_EVENT_TYPE,
+      requestSource: OTEL_HTTP_SERVER_SOURCE,
+      runtimeEventType: SANDBOX_EXECUTION_TELEMETRY_EVENT_TYPE,
+      runtimeSource: SANDBOX_EXECUTION_TELEMETRY_SOURCE,
+      releaseEventType: 'release_external_channel_failure_mode_alert',
+      releaseSource: 'release_health_gate_webhook',
+    });
+    expect(response.body.http.summary).toMatchObject({
+      total: 3,
+      successCount: 2,
+      failedCount: 1,
+      correlatedCount: 2,
+      releaseLinkedCount: 2,
+      executionLinkedCount: 1,
+      errorRate: 0.333,
+      correlationCoverageRate: 0.667,
+    });
+    expect(response.body.http.summary.p95TimingMs).toBeGreaterThan(100);
+
+    const readyRoute = response.body.http.routes.find(
+      (row: { routeKey: string }) => row.routeKey === 'ready',
+    );
+    expect(readyRoute).toMatchObject({
+      routeKey: 'ready',
+      failedCount: 1,
+      total: 1,
+    });
+
+    expect(response.body.runtime.summary).toMatchObject({
+      total: 2,
+      successCount: 1,
+      failedCount: 1,
+      failureRate: 0.5,
+      fallbackOnlyCount: 2,
+      fallbackPathUsedCount: 2,
+      fallbackPathUsedRate: 1,
+      egressDenyCount: 1,
+      limitsDenyCount: 1,
+      correlatedCount: 2,
+      correlationCoverageRate: 1,
+    });
+    expect(response.body.runtime.modeBreakdown).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          mode: 'fallback_only',
+          status: 'failed',
+          count: 1,
+        }),
+      ]),
+    );
+
+    expect(response.body.release.summary).toMatchObject({
+      totalAlerts: 1,
+      uniqueRuns: 1,
+      firstAppearanceCount: 2,
+    });
+    expect(response.body.release.latest).toMatchObject({
+      runId: '22548544748',
+      runNumber: '52',
+    });
+    expect(response.body.health).toMatchObject({
+      level: 'critical',
+      httpErrorRateLevel: 'critical',
+      releaseAlertLevel: 'watch',
+      runtimeFailureLevel: 'critical',
+    });
+  });
+
+  test('observability snapshot rejects invalid route key query', async () => {
+    const response = await request(app)
+      .get('/api/admin/observability/otel?routeKey=Bad%20Route')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('ADMIN_INVALID_QUERY');
   });
 
   test('sandbox pilot run-code rejects unsupported language', async () => {

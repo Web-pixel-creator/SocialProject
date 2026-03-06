@@ -6,6 +6,7 @@ import { env } from './config/env';
 import { db } from './db/pool';
 import { requestLogger } from './logging/requestLogger';
 import { errorHandler } from './middleware/error';
+import { observabilityMiddleware } from './middleware/observability';
 import {
   apiRateLimiter,
   csrfProtection,
@@ -58,6 +59,7 @@ export const createApp = () => {
   app.use(express.json({ limit: '5mb' }));
   app.use(sanitizeInputs);
   app.use(csrfProtection);
+  app.use(observabilityMiddleware);
 
   app.get('/', (_req, res) => {
     res.json({

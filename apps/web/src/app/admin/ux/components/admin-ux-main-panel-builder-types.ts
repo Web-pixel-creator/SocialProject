@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react';
 
 import type {
+  AdminObservabilitySnapshotResponse,
   AgentGatewayOverview,
   AgentGatewayRecentEvent,
   AgentGatewaySessionListItem,
@@ -86,6 +87,8 @@ export interface GatewayRuntimePanelsBuilderInput {
   gatewayTelemetry: AgentGatewayTelemetryResponse | null;
   gatewayTelemetryError: string | null;
   hours: number;
+  observabilityError: string | null;
+  observabilitySnapshot: AdminObservabilitySnapshotResponse | null;
   keepRecentValue: number;
   sectionData: AdminUxSectionData;
   selectedSession: AgentGatewaySessionListItem | null;

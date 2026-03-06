@@ -373,6 +373,15 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
     - [ ] `post-release-health-summary-inline`
     - [ ] `post-release-health-schema-summary-inline`
   - [ ] Save/attach `artifacts/release/post-release-health-run-<run_id>.json` to release ticket.
+- [ ] `GET /api/admin/observability/otel?hours=24` returns a non-empty snapshot for the current release/runtime window.
+- [ ] Optional scoped observability drill:
+  - [ ] `GET /api/admin/observability/otel?hours=24&routeKey=admin.ai_runtime.health`
+  - [ ] `GET /api/admin/observability/otel?hours=24&correlationId=<release_correlation_id>`
+- [ ] Open `/admin/ux?panel=debug` and review `Observability snapshot`:
+  - [ ] `API p95` is within expected range for the window.
+  - [ ] `API errors` is consistent with current incident posture.
+  - [ ] `Runtime failures` and `Fallback path` are consistent with `sandbox execution` telemetry.
+  - [ ] `Correlation coverage` is non-zero for traced release/runtime drills.
 - [ ] API error rate within threshold.
 - [ ] API latency p95 within threshold.
 - [ ] DB/Redis health normal.

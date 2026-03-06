@@ -1463,6 +1463,7 @@ export const buildDebugPayloadText = ({
   gatewaySourceFilter,
   gatewayStatusFilter,
   gatewayTelemetry,
+  observabilitySnapshot,
   releaseHealthAlertCount,
   releaseHealthAlertFirstAppearanceCount,
   releaseHealthAlertLatest,
@@ -1479,6 +1480,7 @@ export const buildDebugPayloadText = ({
   gatewaySourceFilter: string | null;
   gatewayStatusFilter: string | null;
   gatewayTelemetry: unknown;
+  observabilitySnapshot: unknown;
   releaseHealthAlertCount: number;
   releaseHealthAlertFirstAppearanceCount: number;
   releaseHealthAlertLatest: unknown;
@@ -1505,6 +1507,7 @@ export const buildDebugPayloadText = ({
       providers: aiRuntimeProviders,
       dryRun: aiRuntimeDryRunResult,
     },
+    observability: observabilitySnapshot,
     release: {
       latest: releaseHealthAlertLatest,
       counts: {
@@ -1523,6 +1526,10 @@ export const buildDebugContextRows = ({
   gatewaySessionsSource,
   gatewayStatusLabel,
   hours,
+  observabilityApiErrorRate,
+  observabilityApiP95,
+  observabilityFallbackRate,
+  observabilityHealthLabel,
   releaseRiskLabel,
   runtimeHealthLabel,
   selectedSessionId,
@@ -1532,6 +1539,10 @@ export const buildDebugContextRows = ({
   gatewaySessionsSource: string;
   gatewayStatusLabel: string;
   hours: number;
+  observabilityApiErrorRate: string;
+  observabilityApiP95: string;
+  observabilityFallbackRate: string;
+  observabilityHealthLabel: string;
   releaseRiskLabel: string;
   runtimeHealthLabel: string;
   selectedSessionId: string | null;
@@ -1551,6 +1562,22 @@ export const buildDebugContextRows = ({
   {
     label: 'Runtime health',
     value: runtimeHealthLabel,
+  },
+  {
+    label: 'Observability health',
+    value: observabilityHealthLabel,
+  },
+  {
+    label: 'API p95',
+    value: observabilityApiP95,
+  },
+  {
+    label: 'API error rate',
+    value: observabilityApiErrorRate,
+  },
+  {
+    label: 'Fallback path',
+    value: observabilityFallbackRate,
   },
   { label: 'Release risk', value: releaseRiskLabel },
 ];

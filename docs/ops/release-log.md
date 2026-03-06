@@ -33,6 +33,50 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-06 - add phase 5 otel-first observability snapshot and admin ux debug dashboard (phase 126)
+
+- Scope: add lightweight HTTP observability telemetry, a correlated admin snapshot endpoint, and an operator-facing observability block in `/admin/ux` debug view.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-06 04:10 -> 2026-03-06 04:33.
+- Changes:
+  - Added HTTP observability middleware:
+    - `apps/api/src/middleware/observability.ts`
+    - records `otel_http_server_request` events into `ux_events` for health, ready, runtime admin, sandbox metrics, gateway telemetry, and release-alert webhook routes.
+  - Added aggregated observability snapshot service and endpoint:
+    - `apps/api/src/services/observability/adminObservabilityService.ts`
+    - `apps/api/src/routes/admin.ts`
+    - new endpoint: `GET /api/admin/observability/otel`
+    - supports optional filters:
+      - `routeKey`
+      - `correlationId`
+      - `releaseRunId`
+      - `executionSessionId`
+  - Added debug-panel operator surface:
+    - `apps/web/src/app/admin/ux/components/admin-ux-data-client.ts`
+    - `apps/web/src/app/admin/ux/components/admin-ux-page-orchestration.ts`
+    - `apps/web/src/app/admin/ux/components/admin-ux-gateway-runtime-prop-builders.tsx`
+    - `apps/web/src/app/admin/ux/components/debug-diagnostics-section.tsx`
+    - debug panel now shows API p95, API error rate, runtime failure rate, fallback-path share, and correlation coverage.
+  - Added/expanded coverage:
+    - `apps/api/src/__tests__/observability.unit.spec.ts`
+    - `apps/api/src/__tests__/admin-observability-service.unit.spec.ts`
+    - `apps/api/src/__tests__/server.unit.spec.ts`
+    - `apps/api/src/__tests__/admin.integration.spec.ts`
+    - `apps/web/src/__tests__/admin-ux-page.spec.tsx`
+- Validation:
+  - `npm run test -- --runInBand apps/api/src/__tests__/observability.unit.spec.ts apps/api/src/__tests__/admin-observability-service.unit.spec.ts apps/api/src/__tests__/server.unit.spec.ts apps/web/src/__tests__/admin-ux-page.spec.tsx apps/web/src/app/admin/ux/components/admin-ux-page-entry.spec.ts`: pass.
+  - `npm --workspace apps/api run build`: pass.
+  - `npm --workspace apps/web run build`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run test:api -- --runInBand --testPathPattern=apps/api/src/__tests__/admin.integration.spec.ts`: blocked in current shell because Docker engine pipe was unreachable and localhost `5432` / `6379` were closed.
+- Rollout result: phase 5 implementation completed locally; production validation pending push/deploy.
+- Incidents:
+  - none.
+- Follow-ups:
+  - Phase 6: selective CI/E2E execution and guaranteed failure artifacts.
+
 ### 2026-03-06 - add phase 4 trigger-based diagnostics bundles for launch gate failures (phase 125)
 
 - Scope: add automatic diagnostics capture for repeated smoke timeout retries, failed production launch-gate runs, and runtime degradation signals, with schema-validated bundle manifests and retention-safe storage.

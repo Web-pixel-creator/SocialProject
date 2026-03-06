@@ -496,6 +496,103 @@ export interface AgentGatewayOverview {
   };
 }
 
+export interface AdminObservabilitySnapshotResponse {
+  generatedAt?: unknown;
+  windowHours?: unknown;
+  filters?: {
+    correlationId?: unknown;
+    executionSessionId?: unknown;
+    releaseRunId?: unknown;
+    routeKey?: unknown;
+    requestEventType?: unknown;
+    requestSource?: unknown;
+    runtimeEventType?: unknown;
+    runtimeSource?: unknown;
+    releaseEventType?: unknown;
+    releaseSource?: unknown;
+  };
+  http?: {
+    summary?: {
+      total?: unknown;
+      successCount?: unknown;
+      failedCount?: unknown;
+      avgTimingMs?: unknown;
+      p95TimingMs?: unknown;
+      errorRate?: unknown;
+      correlatedCount?: unknown;
+      releaseLinkedCount?: unknown;
+      executionLinkedCount?: unknown;
+      correlationCoverageRate?: unknown;
+      lastObservedAt?: unknown;
+    };
+    routes?: Array<{
+      routeKey?: unknown;
+      method?: unknown;
+      total?: unknown;
+      successCount?: unknown;
+      failedCount?: unknown;
+      avgTimingMs?: unknown;
+      p95TimingMs?: unknown;
+      lastObservedAt?: unknown;
+    }>;
+    statusBreakdown?: Array<{
+      httpStatusCode?: unknown;
+      count?: unknown;
+    }>;
+    topFailures?: Array<{
+      routeKey?: unknown;
+      httpStatusCode?: unknown;
+      count?: unknown;
+      lastObservedAt?: unknown;
+    }>;
+  };
+  runtime?: {
+    summary?: {
+      total?: unknown;
+      successCount?: unknown;
+      failedCount?: unknown;
+      avgTimingMs?: unknown;
+      p95TimingMs?: unknown;
+      failureRate?: unknown;
+      fallbackOnlyCount?: unknown;
+      sandboxEnabledCount?: unknown;
+      fallbackPathUsedCount?: unknown;
+      fallbackPathUsedRate?: unknown;
+      egressDenyCount?: unknown;
+      limitsDenyCount?: unknown;
+      correlatedCount?: unknown;
+      correlationCoverageRate?: unknown;
+      lastObservedAt?: unknown;
+    };
+    modeBreakdown?: Array<{
+      mode?: unknown;
+      status?: unknown;
+      count?: unknown;
+    }>;
+  };
+  release?: {
+    summary?: {
+      totalAlerts?: unknown;
+      uniqueRuns?: unknown;
+      firstAppearanceCount?: unknown;
+      lastAlertAt?: unknown;
+    };
+    latest?: {
+      receivedAtUtc?: unknown;
+      runId?: unknown;
+      runNumber?: unknown;
+      runUrl?: unknown;
+    } | null;
+  };
+  health?: {
+    level?: unknown;
+    httpErrorRateLevel?: unknown;
+    httpLatencyLevel?: unknown;
+    runtimeFailureLevel?: unknown;
+    releaseAlertLevel?: unknown;
+  };
+}
+
 export interface AgentGatewayRecentEvent {
   id: string;
   fromRole: string;
@@ -787,6 +884,76 @@ export const fetchAgentGatewayTelemetry = async (
     return {
       data: null,
       error: 'Unable to load agent gateway telemetry from admin API.',
+    };
+  }
+};
+
+export const fetchAdminObservabilitySnapshot = async (
+  hours: number,
+  {
+    correlationId,
+    executionSessionId,
+    releaseRunId,
+    routeKey,
+  }: {
+    correlationId?: string | null;
+    executionSessionId?: string | null;
+    releaseRunId?: string | null;
+    routeKey?: string | null;
+  } = {},
+): Promise<{
+  data: AdminObservabilitySnapshotResponse | null;
+  error: string | null;
+}> => {
+  const token = resolveAdminToken();
+  if (!token) {
+    return {
+      data: null,
+      error: MISSING_ADMIN_TOKEN_ERROR,
+    };
+  }
+
+  try {
+    const queryParams = new URLSearchParams({
+      hours: `${Math.max(1, Math.floor(hours))}`,
+    });
+    if (routeKey) {
+      queryParams.set('routeKey', routeKey);
+    }
+    if (correlationId) {
+      queryParams.set('correlationId', correlationId);
+    }
+    if (releaseRunId) {
+      queryParams.set('releaseRunId', releaseRunId);
+    }
+    if (executionSessionId) {
+      queryParams.set('executionSessionId', executionSessionId);
+    }
+    const response = await fetch(
+      `${resolveAdminApiBaseUrl()}/admin/observability/otel?${queryParams.toString()}`,
+      {
+        cache: 'no-store',
+        headers: {
+          'x-admin-token': token,
+        },
+      },
+    );
+    if (!response.ok) {
+      return {
+        data: null,
+        error: null,
+      };
+    }
+    const payload =
+      (await response.json()) as AdminObservabilitySnapshotResponse;
+    return {
+      data: payload,
+      error: null,
+    };
+  } catch {
+    return {
+      data: null,
+      error: null,
     };
   }
 };

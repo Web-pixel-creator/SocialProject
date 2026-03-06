@@ -203,6 +203,18 @@ Use this map when a release helper fails fast on argument/env validation and you
    - `POST /api/admin/ai-runtime/dry-run` succeeds for at least one critical role probe.
    - `GET /api/admin/sandbox-execution/metrics?hours=24&limit=20` is reachable and telemetry summary is present.
    - Optional scoped check: `GET /api/admin/sandbox-execution/metrics?hours=24&operation=ai_runtime_dry_run&mode=<fallback_only|sandbox_enabled>`.
+   - `GET /api/admin/observability/otel?hours=24` is reachable and returns:
+     - HTTP request summary (`total`, `errorRate`, `p95TimingMs`)
+     - runtime summary (`failureRate`, `fallbackPathUsedRate`)
+     - release summary (`totalAlerts`, `firstAppearanceCount`)
+     - merged `health.level`
+   - Optional scoped observability drills:
+     - `GET /api/admin/observability/otel?hours=24&routeKey=admin.ai_runtime.health`
+     - `GET /api/admin/observability/otel?hours=24&correlationId=<release_correlation_id>`
+   - Open `/admin/ux?panel=debug` and inspect `Observability snapshot`:
+     - compare `API p95` / `API errors` against the current window,
+     - compare `Runtime failures` / `Fallback path` against sandbox execution metrics,
+     - confirm `Correlation coverage` is non-zero for traced drills.
    - Scoped audit envelope coverage should be present for runtime dry-run telemetry:
      - `auditCoverage.totalWithAudit > 0`
      - `auditCoverage.actorTypeCount > 0`
