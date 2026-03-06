@@ -33,6 +33,34 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-06 - deduplicate release run id parsing helpers (phase 131)
+
+- Scope: continue low-risk release-helper deduplication by centralizing shared GitHub Actions `run_id` parsing across release scripts.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-06 16:55 -> 2026-03-06 17:01.
+- Changes:
+  - Added shared run-id helpers in:
+    - `scripts/release/release-runtime-utils.mjs`
+    - `parseRequiredRunId`
+    - `parseOptionalRunId`
+  - Migrated duplicated local run-id parsers in:
+    - `scripts/release/append-post-release-health-log.mjs`
+    - `scripts/release/fetch-smoke-report-artifact.mjs`
+    - `scripts/release/post-release-health-report.mjs`
+    - `scripts/release/validate-inline-post-release-health-artifacts.mjs`
+    - `scripts/release/collect-retry-failure-logs.mjs`
+  - Expanded unit coverage for shared run-id parsing behavior:
+    - `apps/api/src/__tests__/release-runtime-utils.unit.spec.ts`
+- Validation:
+  - `node --check` on touched `scripts/release/*.mjs` files: pass.
+  - `npx jest apps/api/src/__tests__/release-runtime-utils.unit.spec.ts apps/api/src/__tests__/release-inline-health-artifacts-check.unit.spec.ts apps/api/src/__tests__/release-inline-health-artifacts-schema-check.unit.spec.ts apps/api/src/__tests__/release-health-log-render.unit.spec.ts --runInBand --silent=false`: pass.
+  - `npx prettier --check` on touched scripts/tests: pass.
+- Rollout result: phase 131 run-id helper dedup completed; no workflow dispatch executed in this window.
+- Incidents:
+  - none.
+- Follow-ups:
+  - none.
+
 ### 2026-03-06 - deduplicate fallback parsers in release runtime helpers (phase 130)
 
 - Scope: continue low-risk release-helper deduplication by centralizing shared fallback parsers for boolean/positive number/positive integer env handling.

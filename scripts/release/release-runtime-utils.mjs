@@ -4,6 +4,22 @@ export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const toErrorMessage = (error) => (error instanceof Error ? error.message : String(error));
 
+export const parseRequiredRunId = (raw) => {
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`Invalid run id '${raw}'. Use a positive integer.`);
+  }
+  return parsed;
+};
+
+export const parseOptionalRunId = (raw) => {
+  if (!raw) {
+    return null;
+  }
+
+  return parseRequiredRunId(raw);
+};
+
 export const parseBooleanWithFallback = (raw, fallback) => {
   if (!raw) {
     return fallback;

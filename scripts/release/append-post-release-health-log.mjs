@@ -1,6 +1,7 @@
 import { readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseOptionalRunId } from './release-runtime-utils.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,20 +20,8 @@ Options:
   --help     Show help.
 `;
 
-const parseRunId = (raw) => {
-  if (!raw) {
-    return null;
-  }
-  const parsed = Number(raw);
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    throw new Error(`Invalid run id '${raw}'. Use a positive integer.`);
-  }
-  return parsed;
-};
-
 const resolvePath = (relativePath) => path.resolve(projectRoot, relativePath);
-const toRelative = (absolutePath) =>
-  path.relative(projectRoot, absolutePath).replace(/\\/gu, '/');
+const toRelative = (absolutePath) => path.relative(projectRoot, absolutePath).replace(/\\/gu, '/');
 
 const parseArguments = (argv) => {
   const options = {
@@ -55,7 +44,7 @@ const parseArguments = (argv) => {
     if (options.runId !== null) {
       throw new Error(`Unexpected argument: ${arg}\n\n${USAGE}`);
     }
-    options.runId = parseRunId(arg);
+    options.runId = parseOptionalRunId(arg);
   }
 
   return options;
@@ -119,27 +108,18 @@ const toDateOnly = (rawUtc) => {
 const escapeMarkdown = (value) => value.replace(/\r?\n/gu, ' ').trim();
 
 const buildEntry = ({ report, reportPath }) => {
-  const runNumber =
-    typeof report?.run?.runNumber === 'number' ? report.run.runNumber : null;
+  const runNumber = typeof report?.run?.runNumber === 'number' ? report.run.runNumber : null;
   const runId = typeof report?.run?.id === 'number' ? report.run.id : null;
-  const generatedAtUtc =
-    typeof report?.generatedAtUtc === 'string' ? report.generatedAtUtc : null;
+  const generatedAtUtc = typeof report?.generatedAtUtc === 'string' ? report.generatedAtUtc : null;
   const date = toDateOnly(generatedAtUtc);
-  const runUrl =
-    typeof report?.run?.htmlUrl === 'string' ? report.run.htmlUrl : '<unknown>';
+  const runUrl = typeof report?.run?.htmlUrl === 'string' ? report.run.htmlUrl : '<unknown>';
 
   const requiredJobsPassed =
-    typeof report?.summary?.requiredJobsPassed === 'number'
-      ? report.summary.requiredJobsPassed
-      : 0;
+    typeof report?.summary?.requiredJobsPassed === 'number' ? report.summary.requiredJobsPassed : 0;
   const requiredJobsTotal =
-    typeof report?.summary?.requiredJobsTotal === 'number'
-      ? report.summary.requiredJobsTotal
-      : 0;
+    typeof report?.summary?.requiredJobsTotal === 'number' ? report.summary.requiredJobsTotal : 0;
   const failedJobsTotal =
-    typeof report?.summary?.failedJobsTotal === 'number'
-      ? report.summary.failedJobsTotal
-      : 0;
+    typeof report?.summary?.failedJobsTotal === 'number' ? report.summary.failedJobsTotal : 0;
   const requiredArtifactsPresent =
     typeof report?.summary?.requiredArtifactsPresent === 'number'
       ? report.summary.requiredArtifactsPresent
@@ -159,18 +139,15 @@ const buildEntry = ({ report, reportPath }) => {
       ? `pass=${String(smokeSummary.pass)} totalSteps=${String(smokeSummary.totalSteps)} failedSteps=${String(smokeSummary.failedSteps)}`
       : 'unavailable';
   const externalChannelTrend =
-    report?.externalChannelFailureModes &&
-    typeof report.externalChannelFailureModes === 'object'
+    report?.externalChannelFailureModes && typeof report.externalChannelFailureModes === 'object'
       ? report.externalChannelFailureModes
       : null;
   const releaseHealthAlertTelemetry =
-    report?.releaseHealthAlertTelemetry &&
-    typeof report.releaseHealthAlertTelemetry === 'object'
+    report?.releaseHealthAlertTelemetry && typeof report.releaseHealthAlertTelemetry === 'object'
       ? report.releaseHealthAlertTelemetry
       : null;
   const launchGateSandboxChecks =
-    report?.launchGateSandboxChecks &&
-    typeof report.launchGateSandboxChecks === 'object'
+    report?.launchGateSandboxChecks && typeof report.launchGateSandboxChecks === 'object'
       ? report.launchGateSandboxChecks
       : null;
 

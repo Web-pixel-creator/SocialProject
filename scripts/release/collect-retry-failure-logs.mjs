@@ -12,18 +12,10 @@ import {
   RETRY_COLLECT_JSON_SCHEMA_PATH,
   RETRY_COLLECT_JSON_SCHEMA_VERSION,
 } from './retry-json-schema-contracts.mjs';
-import { parseBooleanWithFallback } from './release-runtime-utils.mjs';
+import { parseBooleanWithFallback, parseRequiredRunId } from './release-runtime-utils.mjs';
 
 const GITHUB_API_VERSION = '2022-11-28';
 const COLLECT_USAGE = 'Usage: npm run release:smoke:retry:collect -- <run_id> [--json]';
-
-const parseInteger = (raw) => {
-  const parsed = Number(raw);
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    throw new Error(`Invalid run id '${raw}'. Use a positive integer.`);
-  }
-  return parsed;
-};
 
 const parseCollectArguments = (argv) => {
   const positional = [];
@@ -159,7 +151,7 @@ const main = async () => {
   const outputDir = resolveRetryLogsDir(process.env);
   const retryLogsCleanupConfig = resolveRetryLogsCleanupConfig(process.env);
 
-  const runId = parseInteger(runIdArg);
+  const runId = parseRequiredRunId(runIdArg);
   const token = resolveToken();
   const repoSlug = resolveRepoSlug();
   const baseApiUrl = `https://api.github.com/repos/${repoSlug}`;

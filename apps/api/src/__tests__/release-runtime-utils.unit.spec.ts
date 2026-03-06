@@ -16,9 +16,11 @@ const runHelperScenario = (scriptBody: string) =>
       decodeTextWithEncodingFallback,
       isTransientFileReadError,
       parseBooleanWithFallback,
+      parseOptionalRunId,
       parseJsonWithEncodingFallback,
       parsePositiveIntegerWithFallback,
       parsePositiveNumberWithFallback,
+      parseRequiredRunId,
       retryFileReadOperation,
       sleep,
       toErrorMessage,
@@ -107,6 +109,36 @@ describe('release runtime utils', () => {
       zeroAllowed: 0,
       invalidInteger: 3,
     });
+  });
+
+  test('parses required and optional run ids', () => {
+    const result = runHelperScenario(`
+      const value = {
+        optionalMissing: parseOptionalRunId(''),
+        optionalPresent: parseOptionalRunId('42'),
+        requiredPresent: parseRequiredRunId('77'),
+      };
+      emit({ ok: true, result: value, error: '' });
+    `);
+
+    expect(result.output.status).toBe(0);
+    expect(result.payload.ok).toBe(true);
+    expect(result.payload.result).toEqual({
+      optionalMissing: null,
+      optionalPresent: 42,
+      requiredPresent: 77,
+    });
+  });
+
+  test('throws for invalid run ids', () => {
+    const result = runHelperScenario(`
+      parseRequiredRunId('0');
+      emit({ ok: true, result: null, error: '' });
+    `);
+
+    expect(result.output.status).toBe(1);
+    expect(result.payload.ok).toBe(false);
+    expect(result.payload.error).toBe("Invalid run id '0'. Use a positive integer.");
   });
 
   test('decodes UTF-8 BOM and UTF-16 LE buffers before JSON parsing', () => {

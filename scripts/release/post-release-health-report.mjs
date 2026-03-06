@@ -22,7 +22,11 @@ import {
 } from './github-api-request-with-transient-retry.mjs';
 import { resolveRepoSlug, resolveToken } from './github-token-repo-resolution.mjs';
 import { normalizeReleaseCorrelationContext } from './release-correlation-utils.mjs';
-import { parseBooleanWithFallback, toErrorMessage } from './release-runtime-utils.mjs';
+import {
+  parseBooleanWithFallback,
+  parseOptionalRunId,
+  toErrorMessage,
+} from './release-runtime-utils.mjs';
 
 const GITHUB_API_VERSION = '2022-11-28';
 const DEFAULT_WORKFLOW_FILE = 'ci.yml';
@@ -161,17 +165,6 @@ const resolveGitHubApiTransientRetryConfig = () => {
     maxDelayMs,
   };
   return githubApiRetryConfigCache;
-};
-
-const parseRunId = (raw) => {
-  if (!raw) {
-    return null;
-  }
-  const parsed = Number(raw);
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    throw new Error(`Invalid run id '${raw}'. Use a positive integer.`);
-  }
-  return parsed;
 };
 
 const parsePositiveInteger = ({ raw, fallback, minimum, label }) => {
@@ -625,7 +618,7 @@ const parseCliArgs = (argv) => {
 
   return {
     ...options,
-    runId: parseRunId(positionals[0]),
+    runId: parseOptionalRunId(positionals[0]),
   };
 };
 

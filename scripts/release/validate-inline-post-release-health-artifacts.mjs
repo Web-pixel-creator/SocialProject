@@ -6,6 +6,7 @@ import {
   INLINE_HEALTH_ARTIFACTS_SUMMARY_JSON_SCHEMA_VERSION,
   INLINE_HEALTH_ARTIFACTS_SUMMARY_LABEL,
 } from './inline-health-artifacts-schema-contracts.mjs';
+import { parseRequiredRunId } from './release-runtime-utils.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -33,14 +34,6 @@ Options:
   --help          Show help.
 `;
 
-const parseRunId = (raw) => {
-  const parsed = Number(raw);
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    throw new Error(`Invalid run id '${raw}'. Use a positive integer.`);
-  }
-  return parsed;
-};
-
 const parseArgs = (argv) => {
   const options = {
     runId: null,
@@ -65,7 +58,7 @@ const parseArgs = (argv) => {
     }
     if (arg === '--run-id') {
       const raw = argv[index + 1] ?? '';
-      options.runId = parseRunId(raw);
+      options.runId = parseRequiredRunId(raw);
       index += 1;
       continue;
     }

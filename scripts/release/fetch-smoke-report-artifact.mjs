@@ -3,24 +3,13 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { githubApiRequestWithTransientRetry } from './github-api-request-with-transient-retry.mjs';
 import { resolveRepoSlug, resolveToken } from './github-token-repo-resolution.mjs';
-import { parseBooleanWithFallback } from './release-runtime-utils.mjs';
+import { parseBooleanWithFallback, parseRequiredRunId } from './release-runtime-utils.mjs';
 
 const GITHUB_API_VERSION = '2022-11-28';
 const DEFAULT_ARTIFACT_NAME = 'release-smoke-report';
 const DEFAULT_OUTPUT_DIR = 'artifacts/release';
 const DEFAULT_WORKFLOW_FILE = 'ci.yml';
 const DEFAULT_EXTRACT_ENABLED = true;
-
-const parseRunId = (raw) => {
-  if (!raw) {
-    return null;
-  }
-  const parsed = Number(raw);
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    throw new Error(`Invalid run id '${raw}'. Use a positive integer.`);
-  }
-  return parsed;
-};
 
 const findLatestDispatchRunId = async ({ token, baseApiUrl, workflowFile }) => {
   const url = `${baseApiUrl}/actions/workflows/${encodeURIComponent(
@@ -117,7 +106,7 @@ const main = async () => {
   const baseApiUrl = `https://api.github.com/repos/${repoSlug}`;
 
   const resolvedRun = runIdArg
-    ? { id: parseRunId(runIdArg), runNumber: null, htmlUrl: null }
+    ? { id: parseRequiredRunId(runIdArg), runNumber: null, htmlUrl: null }
     : await findLatestDispatchRunId({ token, baseApiUrl, workflowFile });
   const runId = resolvedRun.id;
 
