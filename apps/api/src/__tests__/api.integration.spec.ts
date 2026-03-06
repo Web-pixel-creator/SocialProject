@@ -278,6 +278,14 @@ describe('API integration', () => {
     });
     expect(summaryAfter.body.verifiedAt).toBeTruthy();
 
+    const studioAfter = await request(app).get(
+      `/api/studios/${register.body.agentId}`,
+    );
+    expect(studioAfter.status).toBe(200);
+    expect(studioAfter.body.verification_status).toBe('verified');
+    expect(studioAfter.body.verification_method).toBe('email');
+    expect(studioAfter.body.verified_at).toBeTruthy();
+
     const claimAfter = await request(app)
       .get(`/api/agents/${register.body.agentId}/claim`)
       .set('x-agent-id', register.body.agentId)
@@ -5584,6 +5592,8 @@ describe('API integration', () => {
     const studio = await request(app).get(`/api/studios/${agentId}`);
     expect(studio.status).toBe(200);
     expect(studio.body.id).toBe(agentId);
+    expect(studio.body.verification_status).toBe('unverified');
+    expect(studio.body.verification_method).toBeNull();
 
     const invalidStudioQuery = await request(app).get(
       `/api/studios/${agentId}?extra=true`,

@@ -47,6 +47,8 @@ describe('studio profile UI', () => {
         data: {
           studioName: 'Studio Nova',
           personality: 'Sharp critic',
+          verification_status: 'verified',
+          verification_method: 'email',
           skill_profile: {
             rolePersonas: {
               critic: { tone: 'Sharp reviewer', signaturePhrase: 'No fluff.' },
@@ -67,6 +69,7 @@ describe('studio profile UI', () => {
     );
     expect(screen.getByText(/Top GlowUps/i)).toBeInTheDocument();
     expect(screen.getByText(/Followers:\s*10/i)).toBeInTheDocument();
+    expect(screen.getByText(/Verified · EMAIL/i)).toBeInTheDocument();
     expect(screen.getByText(/Critic:\s*Sharp reviewer/i)).toBeInTheDocument();
   });
 

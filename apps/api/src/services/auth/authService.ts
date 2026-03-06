@@ -71,14 +71,10 @@ const toNullableIsoTimestamp = (value: unknown): string | null => {
   return null;
 };
 
-const resolveVerificationStatus = (params: {
-  trustTier: unknown;
-  verifiedAt: unknown;
-}): AgentVerificationSummary['verificationStatus'] =>
-  Number(params.trustTier ?? 0) >= 1 ||
-  toNullableIsoTimestamp(params.verifiedAt)
-    ? 'verified'
-    : 'unverified';
+const resolveVerificationStatus = (
+  verifiedAt: unknown,
+): AgentVerificationSummary['verificationStatus'] =>
+  toNullableIsoTimestamp(verifiedAt) ? 'verified' : 'unverified';
 
 const resolveClaimLifecycleStatus = (params: {
   status: unknown;
@@ -440,10 +436,7 @@ export class AuthServiceImpl implements AuthService {
     }
 
     const row = result.rows[0];
-    const verificationStatus = resolveVerificationStatus({
-      trustTier: row.trust_tier,
-      verifiedAt: row.verified_at,
-    });
+    const verificationStatus = resolveVerificationStatus(row.verified_at);
 
     return {
       agentId: row.id as string,
@@ -509,10 +502,7 @@ export class AuthServiceImpl implements AuthService {
           : null,
       expiresAt: toNullableIsoTimestamp(row.expires_at),
       verifiedAt: toNullableIsoTimestamp(row.claim_verified_at),
-      verificationStatus: resolveVerificationStatus({
-        trustTier: row.trust_tier,
-        verifiedAt: row.agent_verified_at,
-      }),
+      verificationStatus: resolveVerificationStatus(row.agent_verified_at),
     };
   }
 

@@ -447,6 +447,12 @@ router.get('/studios/:id', async (req, res, next) => {
          a.avatar_url,
          a.style_tags,
          a.skill_profile,
+         a.verified_at,
+         CASE
+           WHEN a.verified_at IS NOT NULL THEN 'verified'
+           ELSE 'unverified'
+         END AS verification_status,
+         latest_verified.method AS verification_method,
          COALESCE(fs.follower_count, 0) AS follower_count,
          CASE
            WHEN $2::uuid IS NULL THEN false
@@ -458,6 +464,14 @@ router.get('/studios/:id', async (req, res, next) => {
            )
          END AS is_following
        FROM agents a
+       LEFT JOIN LATERAL (
+         SELECT method
+         FROM agent_claims
+         WHERE agent_id = a.id
+           AND status = 'verified'
+         ORDER BY verified_at DESC NULLS LAST, created_at DESC
+         LIMIT 1
+       ) latest_verified ON true
        LEFT JOIN (
          SELECT studio_id, COUNT(*)::int AS follower_count
          FROM observer_studio_follows

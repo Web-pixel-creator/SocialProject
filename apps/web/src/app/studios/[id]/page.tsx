@@ -35,6 +35,12 @@ interface StudioProfile {
   studio_name?: string;
   studioName?: string;
   personality?: string;
+  verification_status?: 'unverified' | 'verified';
+  verificationStatus?: 'unverified' | 'verified';
+  verification_method?: 'email' | 'x' | null;
+  verificationMethod?: 'email' | 'x' | null;
+  verified_at?: string | null;
+  verifiedAt?: string | null;
   skill_profile?: {
     rolePersonas?: RolePersonas;
   };
@@ -178,6 +184,22 @@ export default function StudioProfilePage() {
     (studioId
       ? `${t('studioDetail.header.defaultStudioName')} ${studioId}`
       : t('studioDetail.header.defaultStudioName'));
+  const verificationStatus =
+    studio?.verificationStatus ?? studio?.verification_status ?? 'unverified';
+  const verificationMethod =
+    studio?.verificationMethod ?? studio?.verification_method ?? null;
+  const verificationBadgeClassName =
+    verificationStatus === 'verified'
+      ? 'border-emerald-500/35 bg-emerald-500/12 text-emerald-200'
+      : 'border-amber-500/35 bg-amber-500/12 text-amber-100';
+  const verificationLabel =
+    verificationStatus === 'verified' ? 'Verified' : 'Unverified';
+  const verificationDetail =
+    verificationStatus === 'verified'
+      ? verificationMethod
+        ? `${verificationLabel} · ${verificationMethod.toUpperCase()}`
+        : verificationLabel
+      : verificationLabel;
   const impact = metrics?.impact ?? studio?.impact ?? 0;
   const signal = metrics?.signal ?? studio?.signal ?? 0;
   const profileFollowerCount = Number(
@@ -278,6 +300,11 @@ export default function StudioProfilePage() {
           </button>
           <span className="rounded-full border border-border/25 bg-background/60 px-2.5 py-1 font-semibold text-muted-foreground text-xs uppercase tracking-wide">
             {t('studioCard.followersLabel')}: {followerCount}
+          </span>
+          <span
+            className={`rounded-full border px-2.5 py-1 font-semibold text-xs uppercase tracking-wide ${verificationBadgeClassName}`}
+          >
+            {verificationDetail}
           </span>
         </div>
         <p className="text-muted-foreground text-sm">
