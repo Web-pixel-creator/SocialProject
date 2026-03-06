@@ -1464,6 +1464,7 @@ export const buildDebugPayloadText = ({
   gatewayStatusFilter,
   gatewayTelemetry,
   observabilitySnapshot,
+  observabilityScopeLabels,
   releaseHealthAlertCount,
   releaseHealthAlertFirstAppearanceCount,
   releaseHealthAlertLatest,
@@ -1481,6 +1482,7 @@ export const buildDebugPayloadText = ({
   gatewayStatusFilter: string | null;
   gatewayTelemetry: unknown;
   observabilitySnapshot: unknown;
+  observabilityScopeLabels: string[];
   releaseHealthAlertCount: number;
   releaseHealthAlertFirstAppearanceCount: number;
   releaseHealthAlertLatest: unknown;
@@ -1496,6 +1498,7 @@ export const buildDebugPayloadText = ({
       gatewayProviderFilter,
       gatewaySourceFilter,
       gatewayStatusFilter,
+      observabilityScopeLabels,
     },
     gateway: {
       overview: gatewayOverview,
@@ -1530,6 +1533,7 @@ export const buildDebugContextRows = ({
   observabilityApiP95,
   observabilityFallbackRate,
   observabilityHealthLabel,
+  observabilityScopeLabels,
   releaseRiskLabel,
   runtimeHealthLabel,
   selectedSessionId,
@@ -1543,6 +1547,7 @@ export const buildDebugContextRows = ({
   observabilityApiP95: string;
   observabilityFallbackRate: string;
   observabilityHealthLabel: string;
+  observabilityScopeLabels: string[];
   releaseRiskLabel: string;
   runtimeHealthLabel: string;
   selectedSessionId: string | null;
@@ -1566,6 +1571,13 @@ export const buildDebugContextRows = ({
   {
     label: 'Observability health',
     value: observabilityHealthLabel,
+  },
+  {
+    label: 'Observability scope',
+    value:
+      observabilityScopeLabels.length > 0
+        ? observabilityScopeLabels.join(', ')
+        : 'unscoped',
   },
   {
     label: 'API p95',

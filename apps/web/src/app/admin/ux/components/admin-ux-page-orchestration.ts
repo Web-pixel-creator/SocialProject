@@ -22,6 +22,7 @@ import {
 } from './admin-ux-mappers';
 import type { AdminUxResolvedSearchParams } from './admin-ux-page-contract';
 import {
+  type AdminUxObservabilityScope,
   resolveAdminUxAllMetricsRiskFilter,
   resolveAdminUxAllMetricsRiskTone,
   resolveAdminUxAllMetricsSignalFilter,
@@ -44,6 +45,20 @@ import {
   resolveGatewaySessionMutations,
 } from './gateway-query-state';
 import { resolveGatewaySessionOrchestrationState } from './gateway-session-orchestration';
+
+const parseOptionalBoundedQueryValue = (
+  value: unknown,
+  maxLength: number,
+): string | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (trimmed.length === 0 || trimmed.length > maxLength) {
+    return null;
+  }
+  return trimmed;
+};
 
 export const resolveAdminUxPageQueryState = (
   resolvedSearchParams?: AdminUxResolvedSearchParams,
@@ -74,6 +89,24 @@ export const resolveAdminUxPageQueryState = (
   const expandAllGroups =
     typeof expandValue === 'string' &&
     ['1', 'all', 'expanded', 'true'].includes(expandValue.trim().toLowerCase());
+  const observabilityScope: AdminUxObservabilityScope = {
+    correlationId: parseOptionalBoundedQueryValue(
+      resolvedSearchParams?.correlationId,
+      120,
+    ),
+    executionSessionId: parseOptionalBoundedQueryValue(
+      resolvedSearchParams?.executionSessionId,
+      120,
+    ),
+    releaseRunId: parseOptionalBoundedQueryValue(
+      resolvedSearchParams?.releaseRunId,
+      40,
+    ),
+    routeKey: parseOptionalBoundedQueryValue(
+      resolvedSearchParams?.routeKey,
+      160,
+    ),
+  };
 
   return {
     activePanel,
@@ -83,6 +116,7 @@ export const resolveAdminUxPageQueryState = (
     allMetricsView,
     expandAllGroups,
     hours,
+    ...observabilityScope,
     ...resolveGatewayQueryState(resolvedSearchParams),
     ...resolveAiRuntimeQueryState(resolvedSearchParams),
   };
@@ -131,7 +165,11 @@ export const loadAdminUxPageData = async ({
   gatewaySourceFilter,
   gatewayStatusFilter,
   hours,
+  correlationId,
+  executionSessionId,
   keepRecent,
+  releaseRunId,
+  routeKey,
   sessionIdFromQuery,
 }: ReturnType<
   typeof resolveAdminUxPageQueryState
@@ -165,7 +203,23 @@ export const loadAdminUxPageData = async ({
       provider: gatewayProviderFilter,
     });
   const { data: observabilitySnapshot, error: observabilityError } =
-    await fetchAdminObservabilitySnapshot(hours);
+    await fetchAdminObservabilitySnapshot(hours, {
+      correlationId,
+      executionSessionId,
+      releaseRunId,
+      routeKey,
+    });
+  const latestReleaseRunId =
+    typeof observerData?.releaseHealthAlerts?.latest?.runId === 'number' &&
+    Number.isInteger(observerData.releaseHealthAlerts.latest.runId) &&
+    observerData.releaseHealthAlerts.latest.runId > 0
+      ? String(observerData.releaseHealthAlerts.latest.runId)
+      : null;
+  const { data: latestReleaseObservabilitySnapshot } = latestReleaseRunId
+    ? await fetchAdminObservabilitySnapshot(hours, {
+        releaseRunId: latestReleaseRunId,
+      })
+    : { data: null };
   const {
     generatedAt: aiRuntimeHealthGeneratedAt,
     roleStates: aiRuntimeRoleStatesBase,
@@ -285,9 +339,14 @@ export const loadAdminUxPageData = async ({
     gatewayTelemetry,
     gatewayTelemetryError,
     hours,
+    latestReleaseObservabilitySnapshot,
     observabilityError,
     observabilitySnapshot,
+    correlationId,
+    executionSessionId,
     keepRecentValue,
+    releaseRunId,
+    routeKey,
     sectionData,
     selectedSession,
     selectedSessionClosed,

@@ -1,11 +1,10 @@
-import { readdir, readFile, stat } from 'node:fs/promises';
+import { mkdir, readdir, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Ajv2020 from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
-import {
-  RELEASE_HEALTH_REPORT_JSON_SCHEMA_PATH,
-} from './release-health-schema-contracts.mjs';
+import { RELEASE_HEALTH_REPORT_JSON_SCHEMA_PATH } from './release-health-schema-contracts.mjs';
+import { readJsonFileWithEncodingFallback } from './release-runtime-utils.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,19 +12,15 @@ const projectRoot = path.resolve(__dirname, '..', '..');
 
 const OUTPUT_LABEL = 'release:health:schema:check';
 const DEFAULT_REPORT_DIR = 'artifacts/release';
-const DEFAULT_SAMPLE_PATH =
-  'docs/ops/schemas/samples/release-health-report-output.sample.json';
+const DEFAULT_SAMPLE_PATH = 'docs/ops/schemas/samples/release-health-report-output.sample.json';
 const REPORT_FILE_PATTERN = /^post-release-health-run-\d+\.json$/u;
 const USAGE =
-  'Usage: node scripts/release/validate-release-health-report-schema.mjs [report_path] [--json]\n';
+  'Usage: node scripts/release/validate-release-health-report-schema.mjs [report_path] [--json] [--output <path>]\n';
 
 const resolvePath = (filePath) =>
   path.isAbsolute(filePath) ? filePath : path.resolve(projectRoot, filePath);
 
-const loadJson = async (filePath) => {
-  const raw = await readFile(filePath, 'utf8');
-  return JSON.parse(raw);
-};
+const loadJson = async (filePath) => readJsonFileWithEncodingFallback(filePath);
 
 const formatAjvErrors = (errors = []) =>
   errors
@@ -38,12 +33,27 @@ const formatAjvErrors = (errors = []) =>
 const parseArguments = (argv) => {
   const options = {
     json: false,
+    outputPath: '',
     reportPath: null,
   };
 
-  for (const arg of argv) {
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
     if (arg === '--json') {
       options.json = true;
+      continue;
+    }
+    if (arg === '--output') {
+      const value = (argv[index + 1] ?? '').trim();
+      if (!value) {
+        throw new Error(`Missing value for ${arg}.\n${USAGE}`);
+      }
+      options.outputPath = value;
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith('--output=')) {
+      options.outputPath = arg.slice('--output='.length).trim();
       continue;
     }
     if (arg === '--help' || arg === '-h') {
@@ -101,27 +111,34 @@ const findLatestReportPath = async () => {
 
 const toRelative = (filePath) => path.relative(projectRoot, filePath).replace(/\\/gu, '/');
 
-const writeJsonSummary = ({
+const createJsonSummaryPayload = ({
   status,
   fixturePayloads,
   runtimePayloads,
   validatedPayloads,
   runtimeReportPath,
   failures,
-}) => {
-  const payload = {
-    label: OUTPUT_LABEL,
-    mode: 'health-report',
-    status,
-    totals: {
-      fixturePayloads,
-      runtimePayloads,
-      validatedPayloads,
-    },
-    runtimeReportPath: runtimeReportPath ? toRelative(runtimeReportPath) : null,
-    failures,
-  };
-  process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+}) => ({
+  label: OUTPUT_LABEL,
+  mode: 'health-report',
+  status,
+  totals: {
+    fixturePayloads,
+    runtimePayloads,
+    validatedPayloads,
+  },
+  runtimeReportPath: runtimeReportPath ? toRelative(runtimeReportPath) : null,
+  failures,
+});
+
+const writeJsonSummaryFile = async (outputPath, payload) => {
+  if (!outputPath) {
+    return;
+  }
+
+  const absoluteOutputPath = resolvePath(outputPath);
+  await mkdir(path.dirname(absoluteOutputPath), { recursive: true });
+  await writeFile(absoluteOutputPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
 };
 
 const main = async () => {
@@ -180,15 +197,17 @@ const main = async () => {
   }
 
   if (failures.length > 0) {
+    const payload = createJsonSummaryPayload({
+      status: 'fail',
+      fixturePayloads,
+      runtimePayloads,
+      validatedPayloads,
+      runtimeReportPath,
+      failures,
+    });
+    await writeJsonSummaryFile(options.outputPath, payload);
     if (options.json) {
-      writeJsonSummary({
-        status: 'fail',
-        fixturePayloads,
-        runtimePayloads,
-        validatedPayloads,
-        runtimeReportPath,
-        failures,
-      });
+      process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
     } else {
       process.stderr.write('Release health report schema validation failed:\n');
       for (const failure of failures) {
@@ -199,7 +218,7 @@ const main = async () => {
   }
 
   if (options.json) {
-    writeJsonSummary({
+    const payload = createJsonSummaryPayload({
       status: 'pass',
       fixturePayloads,
       runtimePayloads,
@@ -207,8 +226,22 @@ const main = async () => {
       runtimeReportPath,
       failures: [],
     });
+    await writeJsonSummaryFile(options.outputPath, payload);
+    process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
     return;
   }
+
+  await writeJsonSummaryFile(
+    options.outputPath,
+    createJsonSummaryPayload({
+      status: 'pass',
+      fixturePayloads,
+      runtimePayloads,
+      validatedPayloads,
+      runtimeReportPath,
+      failures: [],
+    }),
+  );
 
   process.stdout.write(
     `Release health report schema validation passed (${validatedPayloads} payloads).\n`,

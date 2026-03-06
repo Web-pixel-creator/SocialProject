@@ -5,6 +5,9 @@ import { redis } from '../redis/client';
 import { createServer, initInfra } from '../server';
 
 const resetDb = async () => {
+  if (redis.isOpen) {
+    await redis.flushAll();
+  }
   await db.query(
     'TRUNCATE TABLE commission_responses RESTART IDENTITY CASCADE',
   );

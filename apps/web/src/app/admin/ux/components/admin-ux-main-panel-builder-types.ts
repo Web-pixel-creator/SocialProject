@@ -14,6 +14,7 @@ import type {
   AdminUxAllMetricsRiskTone,
   AdminUxAllMetricsSignalFilter,
   AdminUxAllMetricsView,
+  AdminUxObservabilityScope,
   AdminUxPanel,
 } from './admin-ux-page-utils';
 import type { AdminUxSectionData } from './admin-ux-section-prep';
@@ -87,9 +88,14 @@ export interface GatewayRuntimePanelsBuilderInput {
   gatewayTelemetry: AgentGatewayTelemetryResponse | null;
   gatewayTelemetryError: string | null;
   hours: number;
+  correlationId: AdminUxObservabilityScope['correlationId'];
+  executionSessionId: AdminUxObservabilityScope['executionSessionId'];
+  latestReleaseObservabilitySnapshot: AdminObservabilitySnapshotResponse | null;
   observabilityError: string | null;
   observabilitySnapshot: AdminObservabilitySnapshotResponse | null;
   keepRecentValue: number;
+  releaseRunId: AdminUxObservabilityScope['releaseRunId'];
+  routeKey: AdminUxObservabilityScope['routeKey'];
   sectionData: AdminUxSectionData;
   selectedSession: AgentGatewaySessionListItem | null;
   selectedSessionClosed: boolean;
@@ -97,6 +103,8 @@ export interface GatewayRuntimePanelsBuilderInput {
 }
 
 export interface EngagementPanelsBuilderInput {
+  hours: number;
+  latestReleaseObservabilitySnapshot: AdminObservabilitySnapshotResponse | null;
   sectionData: AdminUxSectionData;
 }
 

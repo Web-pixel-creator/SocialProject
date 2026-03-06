@@ -4,8 +4,31 @@ on:
   pull_request:
     paths:
       - 'apps/web/**'
+      - 'apps/api/src/config/**'
+      - 'apps/api/src/db/**'
+      - 'apps/api/src/logging/**'
+      - 'apps/api/src/middleware/**'
+      - 'apps/api/src/redis/**'
+      - 'apps/api/src/routes/**'
+      - 'apps/api/src/server.ts'
+      - 'apps/api/src/services/**'
+      - 'apps/api/src/storage/**'
+      - 'apps/api/src/types/**'
       - 'package.json'
       - 'package-lock.json'
+      - 'packages/**'
+      - 'scripts/ci/**'
+      - '.github/actions/append-step-summary/**'
+      - '.github/actions/artifact-upload/**'
+      - '.github/actions/node-ci-bootstrap/**'
+      - '.github/actions/playwright-bootstrap/**'
+      - '.github/actions/playwright-change-scope/**'
+      - '.github/actions/playwright-artifacts-upload/**'
+      - '.github/actions/playwright-e2e-summary/**'
+      - '.github/actions/playwright-test-run/**'
+      - '.github/actions/playwright-visual-summary/**'
+      - '.github/actions/visual-policy-gate/**'
+      - '.github/workflows/ci.yml'
       - '.github/workflows/web-pr-gate.yml'
 
 concurrency:
@@ -20,19 +43,29 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      run_visual: ${{ steps.filter.outputs.visual }}
+      run_critical: ${{ steps.scope.outputs.run_critical }}
+      run_visual: ${{ steps.scope.outputs.run_visual }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Detect changed paths
-        id: filter
-        uses: dorny/paths-filter@v3
         with:
-          filters: |
-            visual:
-              - 'apps/web/e2e/**'
-              - '.github/workflows/web-pr-gate.yml'
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Classify Playwright web scope
+        id: scope
+        uses: ./.github/actions/playwright-change-scope
+        with:
+          base_sha: ${{ github.event.pull_request.base.sha }}
+          head_sha: ${{ github.sha }}
+          summary_json_path: artifacts/ci/web-pr-gate-playwright-scope.json
+          summary_md_path: artifacts/ci/web-pr-gate-playwright-scope.md
+          summary_title: Web PR Gate Playwright Scope
+          artifact_name: web-pr-gate-playwright-scope
 
   quality_web:
     name: Web Quality (Ultracite)
@@ -82,7 +115,8 @@ jobs:
     name: Playwright Web Critical
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    needs: build_web
+    needs: [detect_changes, build_web]
+    if: needs.detect_changes.outputs.run_critical == 'true'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -109,8 +143,8 @@ jobs:
           summary_title: Web PR Gate E2E Critical Summary
           artifact_summary_name: web-pr-gate-playwright-summary
           artifact_json_name: web-pr-gate-playwright-json-report
-          top_slow: "10"
-          slow_threshold_ms: "5000"
+          top_slow: '10'
+          slow_threshold_ms: '5000'
 
       - name: Upload Playwright report and results artifacts
         if: always()

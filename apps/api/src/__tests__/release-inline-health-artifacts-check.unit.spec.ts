@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const projectRoot = path.resolve(__dirname, '..', '..', '..', '..');
@@ -8,6 +8,8 @@ const missingRunId = 999_999_022;
 const outputSchemaPath =
   'docs/ops/schemas/release-inline-health-artifacts-summary-output.schema.json';
 const outputSchemaVersion = '1.0.0';
+const generatedSummaryRelativePath = (runId: number) =>
+  `artifacts/release/post-release-health-inline-artifacts-summary-${String(runId)}.json`;
 
 const requiredRelativePaths = (runId: number) => [
   `artifacts/release/post-release-health-run-${String(runId)}.json`,
@@ -32,6 +34,14 @@ const removeReportFixtures = async (runId: number) => {
   }
 };
 
+const removeGeneratedSummary = async (runId: number) => {
+  const absolutePath = path.join(
+    projectRoot,
+    generatedSummaryRelativePath(runId),
+  );
+  await rm(absolutePath, { force: true });
+};
+
 describe('inline post-release health artifacts validator', () => {
   beforeAll(async () => {
     await writeReportFixtures(successRunId, 3);
@@ -41,9 +51,11 @@ describe('inline post-release health artifacts validator', () => {
   afterAll(async () => {
     await removeReportFixtures(successRunId);
     await removeReportFixtures(missingRunId);
+    await removeGeneratedSummary(successRunId);
+    await removeGeneratedSummary(missingRunId);
   });
 
-  test('passes in strict mode when all inline artifacts exist', () => {
+  test('passes in strict mode when all inline artifacts exist', async () => {
     const result = spawnSync(
       process.execPath,
       [
@@ -66,6 +78,15 @@ describe('inline post-release health artifacts validator', () => {
     expect(payload.status).toBe('pass');
     expect(payload.presentTotal).toBe(3);
     expect(payload.missing).toEqual([]);
+
+    const persistedPayload = JSON.parse(
+      await readFile(
+        path.join(projectRoot, generatedSummaryRelativePath(successRunId)),
+        'utf8',
+      ),
+    );
+    expect(persistedPayload.runId).toBe(successRunId);
+    expect(persistedPayload.status).toBe('pass');
   });
 
   test('fails in strict mode when inline artifacts are missing', () => {

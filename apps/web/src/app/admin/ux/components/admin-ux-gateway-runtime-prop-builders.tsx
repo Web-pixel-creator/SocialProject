@@ -9,6 +9,7 @@ import {
   toNumber,
   toStringValue,
 } from './admin-ux-mappers';
+import { buildAdminUxPanelHref } from './admin-ux-page-shell-view-model';
 import { buildEventsCsv } from './admin-ux-page-utils';
 import {
   buildDebugContextRows,
@@ -87,28 +88,36 @@ export const buildGatewayRuntimeAndDebugPanelsProps = ({
   gatewayTelemetry,
   gatewayTelemetryError,
   hours,
+  correlationId,
+  executionSessionId,
   observabilityError,
   observabilitySnapshot,
   keepRecentValue,
+  releaseRunId,
+  routeKey,
   sectionData,
   selectedSession,
   selectedSessionClosed,
   selectedSessionId,
 }: GatewayRuntimePanelsBuilderInput): GatewayRuntimeAndDebugPanelsProps => {
-  const buildPanelHref = (panel: string) =>
-    panel === 'all'
-      ? `/admin/ux?hours=${hours}&panel=${panel}${
-          allMetricsView !== 'overview' ? `&allView=${allMetricsView}` : ''
-        }${
-          allMetricsRiskFilter !== 'all' ? `&risk=${allMetricsRiskFilter}` : ''
-        }${
-          allMetricsSignalFilter !== 'all'
-            ? `&signal=${allMetricsSignalFilter}`
-            : ''
-        }${
-          allMetricsRiskTone !== 'all' ? `&riskTone=${allMetricsRiskTone}` : ''
-        }${expandAllGroups ? '&expand=all' : ''}`
-      : `/admin/ux?hours=${hours}&panel=${panel}`;
+  const buildPanelHref = (panel: Parameters<typeof buildAdminUxPanelHref>[1]) =>
+    buildAdminUxPanelHref(hours, panel, {
+      allMetricsRiskFilter,
+      allMetricsSignalFilter,
+      allMetricsRiskTone,
+      allMetricsView,
+      correlationId,
+      expandAllGroups,
+      executionSessionId,
+      releaseRunId,
+      routeKey,
+    });
+  const observabilityScopeLabels = [
+    correlationId ? `correlationId=${correlationId}` : null,
+    executionSessionId ? `executionSessionId=${executionSessionId}` : null,
+    releaseRunId ? `releaseRunId=${releaseRunId}` : null,
+    routeKey ? `routeKey=${routeKey}` : null,
+  ].filter((value): value is string => Boolean(value));
   const gatewayDebugStatusLabel = toStringValue(
     gatewayOverview?.session.status ?? selectedSession?.status,
     sectionData.appliedGatewaySessionStatusLabel,
@@ -142,7 +151,11 @@ export const buildGatewayRuntimeAndDebugPanelsProps = ({
     observabilityInfoMessage = `Health ${healthLabel(observabilityHealthLevel)}. Top route ${toStringValue(
       observabilityTopRoute?.routeKey,
       'n/a',
-    )} in the current ${hours}h window.`;
+    )} in the current ${hours}h window.${
+      observabilityScopeLabels.length > 0
+        ? ` Scoped to ${observabilityScopeLabels.join(', ')}.`
+        : ''
+    }`;
   }
   const observabilityCards = observabilitySnapshot
     ? [
@@ -189,6 +202,7 @@ export const buildGatewayRuntimeAndDebugPanelsProps = ({
     gatewayStatusFilter,
     gatewayTelemetry,
     observabilitySnapshot,
+    observabilityScopeLabels,
     releaseHealthAlertCount: sectionData.releaseHealthAlertCount,
     releaseHealthAlertFirstAppearanceCount:
       sectionData.releaseHealthAlertFirstAppearanceCount,
@@ -208,6 +222,7 @@ export const buildGatewayRuntimeAndDebugPanelsProps = ({
         : toDurationText(observabilityApiP95TimingMs),
     observabilityFallbackRate: toPercentText(observabilityFallbackRate),
     observabilityHealthLabel: healthLabel(observabilityHealthLevel),
+    observabilityScopeLabels,
     releaseRiskLabel: healthLabel(sectionData.releaseHealthAlertRiskLevel),
     runtimeHealthLabel: toStringValue(aiRuntimeSummary.health, 'n/a'),
     selectedSessionId,
@@ -354,9 +369,7 @@ export const buildGatewayRuntimeAndDebugPanelsProps = ({
       runtimeHealthLabel: healthLabel(aiRuntimeHealthLevel),
     },
     debugDiagnosticsSectionProps: {
-      attentionSessionsCount: `${toNumber(
-        sectionData.gatewayTelemetrySessions.attention,
-      )}`,
+      attentionSessionsCount: `${toNumber(sectionData.gatewayTelemetrySessions.attention)}`,
       debugContextRows,
       debugPayloadText,
       eventsSampleCount: debugEventsSampleCount,

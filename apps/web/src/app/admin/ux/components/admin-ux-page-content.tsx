@@ -13,6 +13,7 @@ import type {
   AdminUxAllMetricsRiskTone,
   AdminUxAllMetricsSignalFilter,
   AdminUxAllMetricsView,
+  AdminUxObservabilityScope,
   AdminUxPanel,
 } from './admin-ux-page-utils';
 import { AdminUxPanelChrome } from './admin-ux-panel-chrome';
@@ -279,10 +280,14 @@ export const AdminUxPageContent = ({
   allMetricsSignalFilter,
   allMetricsRiskTone,
   allMetricsView,
+  correlationId,
   expandAllGroups,
+  executionSessionId,
   hours,
   kpis,
   mainPanelsProps,
+  releaseRunId,
+  routeKey,
   windowHours,
 }: {
   activePanel: AdminUxPanel;
@@ -290,10 +295,14 @@ export const AdminUxPageContent = ({
   allMetricsSignalFilter: AdminUxAllMetricsSignalFilter;
   allMetricsRiskTone: AdminUxAllMetricsRiskTone;
   allMetricsView: AdminUxAllMetricsView;
+  correlationId: AdminUxObservabilityScope['correlationId'];
   expandAllGroups: boolean;
+  executionSessionId: AdminUxObservabilityScope['executionSessionId'];
   hours: number;
   kpis: AdminUxSectionData['kpis'] | null | undefined;
   mainPanelsProps: BuiltMainPanelsProps;
+  releaseRunId: AdminUxObservabilityScope['releaseRunId'];
+  routeKey: AdminUxObservabilityScope['routeKey'];
   windowHours: unknown;
 }) => {
   const allMetricsRiskCounts =
@@ -318,9 +327,13 @@ export const AdminUxPageContent = ({
     allMetricsRiskCounts,
     allMetricsSignalCounts,
     allMetricsView,
+    correlationId,
     expandAllGroups,
+    executionSessionId,
     hours,
     kpis,
+    releaseRunId,
+    routeKey,
   });
 
   return (

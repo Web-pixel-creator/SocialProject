@@ -1,6 +1,7 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readJsonFileWithEncodingFallback } from './release-runtime-utils.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -43,27 +44,18 @@ const parseArgs = (argv) => {
   }
 
   if (!options.summaryPath || !options.schemaCheckPath) {
-    throw new Error(
-      `Both --summary and --schema-check are required.\n\n${USAGE}`,
-    );
+    throw new Error(`Both --summary and --schema-check are required.\n\n${USAGE}`);
   }
 
   return options;
 };
 
-const loadJson = async (filePath) => {
-  const raw = await readFile(filePath, 'utf8');
-  return JSON.parse(raw);
-};
+const loadJson = async (filePath) => readJsonFileWithEncodingFallback(filePath);
 
 const buildInlineSchemaCheckSummary = (schemaCheckPayload) => {
   const status =
-    typeof schemaCheckPayload?.status === 'string'
-      ? schemaCheckPayload.status
-      : 'unknown';
-  const failures = Array.isArray(schemaCheckPayload?.failures)
-    ? schemaCheckPayload.failures
-    : [];
+    typeof schemaCheckPayload?.status === 'string' ? schemaCheckPayload.status : 'unknown';
+  const failures = Array.isArray(schemaCheckPayload?.failures) ? schemaCheckPayload.failures : [];
   const runtimeSummaryPath =
     typeof schemaCheckPayload?.runtimeSummaryPath === 'string'
       ? schemaCheckPayload.runtimeSummaryPath
@@ -93,25 +85,14 @@ const main = async () => {
     throw new Error(`Invalid launch summary JSON in ${summaryPath}`);
   }
 
-  if (
-    !summary.checks ||
-    typeof summary.checks !== 'object' ||
-    Array.isArray(summary.checks)
-  ) {
+  if (!summary.checks || typeof summary.checks !== 'object' || Array.isArray(summary.checks)) {
     summary.checks = {};
   }
 
-  summary.checks.inlineHealthArtifactsSchema =
-    buildInlineSchemaCheckSummary(schemaCheckPayload);
+  summary.checks.inlineHealthArtifactsSchema = buildInlineSchemaCheckSummary(schemaCheckPayload);
 
-  summary.pass = Object.values(summary.checks).every(
-    (entry) =>
-      Boolean(
-        entry &&
-          typeof entry === 'object' &&
-          !Array.isArray(entry) &&
-          entry.pass === true,
-      ),
+  summary.pass = Object.values(summary.checks).every((entry) =>
+    Boolean(entry && typeof entry === 'object' && !Array.isArray(entry) && entry.pass === true),
   );
   summary.status = summary.pass ? 'pass' : 'fail';
   summary.inlineHealthArtifactsSchemaAnnotatedAtUtc = new Date().toISOString();

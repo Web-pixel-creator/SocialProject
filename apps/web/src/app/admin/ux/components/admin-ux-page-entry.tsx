@@ -10,6 +10,7 @@ import type {
   AdminUxAllMetricsRiskTone,
   AdminUxAllMetricsSignalFilter,
   AdminUxAllMetricsView,
+  AdminUxObservabilityScope,
   AdminUxPanel,
 } from './admin-ux-page-utils';
 
@@ -19,9 +20,13 @@ export interface AdminUxPageContext {
   allMetricsSignalFilter: AdminUxAllMetricsSignalFilter;
   allMetricsRiskTone: AdminUxAllMetricsRiskTone;
   allMetricsView: AdminUxAllMetricsView;
+  correlationId: AdminUxObservabilityScope['correlationId'];
   dataLoadResult: AdminUxPageDataLoadResult;
   expandAllGroups: boolean;
+  executionSessionId: AdminUxObservabilityScope['executionSessionId'];
   hours: number;
+  releaseRunId: AdminUxObservabilityScope['releaseRunId'];
+  routeKey: AdminUxObservabilityScope['routeKey'];
 }
 
 export const createAdminUxPageContext = async (
@@ -35,8 +40,12 @@ export const createAdminUxPageContext = async (
     allMetricsSignalFilter,
     allMetricsRiskTone,
     allMetricsView,
+    correlationId,
     expandAllGroups,
+    executionSessionId,
     hours,
+    releaseRunId,
+    routeKey,
   } = queryState;
   const dataLoadResult = await loadAdminUxPageData(queryState);
 
@@ -46,9 +55,13 @@ export const createAdminUxPageContext = async (
     allMetricsSignalFilter,
     allMetricsRiskTone,
     allMetricsView,
+    correlationId,
     dataLoadResult,
     expandAllGroups,
+    executionSessionId,
     hours,
+    releaseRunId,
+    routeKey,
   };
 };
 
@@ -61,9 +74,13 @@ export const renderAdminUxObserverEngagementPage = async (
     allMetricsSignalFilter,
     allMetricsRiskTone,
     allMetricsView,
+    correlationId,
     dataLoadResult,
     expandAllGroups,
+    executionSessionId,
     hours,
+    releaseRunId,
+    routeKey,
   } = await createAdminUxPageContext(searchParams);
 
   return (
@@ -73,9 +90,13 @@ export const renderAdminUxObserverEngagementPage = async (
       allMetricsRiskTone={allMetricsRiskTone}
       allMetricsSignalFilter={allMetricsSignalFilter}
       allMetricsView={allMetricsView}
+      correlationId={correlationId}
       dataLoadResult={dataLoadResult}
+      executionSessionId={executionSessionId}
       expandAllGroups={expandAllGroups}
       hours={hours}
+      releaseRunId={releaseRunId}
+      routeKey={routeKey}
     />
   );
 };

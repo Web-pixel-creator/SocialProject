@@ -3,6 +3,7 @@
 This runbook is the operational path for production release execution.
 
 Canonical references:
+
 - `docs/ops/release-checklist.md`
 - `docs/ops/deploy.md`
 - `docs/ops/rollback-playbook.md`
@@ -12,10 +13,10 @@ Canonical references:
 
 Use this map when a release helper fails fast on argument/env validation and you need to find the enforcing code quickly.
 
-| Helper path | Primary validation modules |
-| --- | --- |
-| `scripts/release/dispatch-production-launch-gate.mjs` | `scripts/release/release-env-parse-utils.mjs`, `scripts/release/dispatch-production-launch-gate-link-options.mjs`, `scripts/release/dispatch-production-launch-gate-external-channels.mjs` |
-| `scripts/release/production-launch-gate.mjs` | `scripts/release/release-env-parse-utils.mjs`, `scripts/release/production-launch-gate-config-resolvers.mjs`, `scripts/release/dispatch-production-launch-gate-external-channels.mjs`, `scripts/release/production-launch-gate-smoke-timeout-retry-utils.mjs` |
+| Helper path                                           | Primary validation modules                                                                                                                                                                                                                                    |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scripts/release/dispatch-production-launch-gate.mjs` | `scripts/release/release-env-parse-utils.mjs`, `scripts/release/dispatch-production-launch-gate-link-options.mjs`, `scripts/release/dispatch-production-launch-gate-external-channels.mjs`                                                                    |
+| `scripts/release/production-launch-gate.mjs`          | `scripts/release/release-env-parse-utils.mjs`, `scripts/release/production-launch-gate-config-resolvers.mjs`, `scripts/release/dispatch-production-launch-gate-external-channels.mjs`, `scripts/release/production-launch-gate-smoke-timeout-retry-utils.mjs` |
 
 ## 1. Preflight (must pass before rollout)
 
@@ -28,6 +29,9 @@ Use this map when a release helper fails fast on argument/env validation and you
 3. Run quality + security + smoke gates from the release checklist.
    - `npm run release:preflight:qa` (ultracite + web build + critical E2E)
    - Optional one-command local preflight: `npm run verify:local`
+     - auto-reuses local Postgres/Redis when `localhost:5432` and `localhost:6379` are already reachable
+     - otherwise falls back to Docker-backed API dependency bootstrap
+     - force the already-running-services path when needed: `npm run verify:local:skip-deps`
    - Run web test suite: `npm run test:web`
    - For API pre-release verification with Postgres/Redis bootstrap: `npm run test:api -- --runInBand`
    - If services are already running manually: `npm run test:api:skip-deps -- --runInBand`
@@ -68,135 +72,142 @@ Use this map when a release helper fails fast on argument/env validation and you
    - Retention/triage checklist reference: `docs/ops/release-checklist.md` (Post-release verification section).
    - Optional CI workflow_dispatch alternative: `Production Launch Gate` (`.github/workflows/production-launch-gate.yml`)
    - CI run now uploads markdown audit artifact `production-launch-gate-step-summary` (`artifacts/release/production-launch-gate-step-summary.md`) in addition to JSON artifacts.
-  - `npm run release:launch:gate:dispatch` now prints resolved UI link for artifact `production-launch-gate-step-summary` after successful run completion.
-  - Optional helper verbosity for extra artifact links: `npm run release:launch:gate:dispatch -- --print-artifact-links` (or env `RELEASE_PRINT_ARTIFACT_LINKS=true`).
-  - Optional artifact link subset override: `npm run release:launch:gate:dispatch -- --artifact-link-names production-launch-gate-summary,post-release-health-inline-artifacts-schema-check` (or env `RELEASE_ARTIFACT_LINK_NAMES=<csv|all>`).
-  - Optional suppression of default step-summary link: `npm run release:launch:gate:dispatch -- --no-step-summary-link` (or env `RELEASE_NO_STEP_SUMMARY_LINK=true`).
-   - CI launch-gate workflow uses `RELEASE_*` context for production probes:
-     - `RELEASE_API_BASE_URL`, `RELEASE_WEB_BASE_URL` (repo variables)
-     - `RELEASE_ADMIN_API_TOKEN`, `RELEASE_CSRF_TOKEN`, `RELEASE_AGENT_GATEWAY_WEBHOOK_SECRET` (repo secrets)
-   - Railway token context remains optional for local/CLI checks.
-     - Optional terminal dispatch helper for the workflow:
-       - `npm run release:launch:gate:dispatch`
-       - Optional explicit token argument: `npm run release:launch:gate:dispatch -- -Token <github_pat>`
-       - Optional explicit workflow inputs via CLI args:
-         - `npm run release:launch:gate:dispatch -- --runtime-draft-id <uuid> --require-skill-markers --require-natural-cron-window`
-        - `npm run release:launch:gate:dispatch -- --required-external-channels telegram,slack`
-        - `npm run release:launch:gate:dispatch -- --require-inline-health-artifacts`
-        - `npm run release:launch:gate:dispatch -- --print-artifact-links`
-        - `npm run release:launch:gate:dispatch -- --artifact-link-names production-launch-gate-summary,post-release-health-inline-artifacts-schema-check`
-        - `npm run release:launch:gate:dispatch -- --artifact-link-names production-launch-gate-summary --no-step-summary-link`
-        - `npm run release:launch:gate:dispatch -- --failure-summary-max-jobs 10`
-        - `npm run release:launch:gate:dispatch -- --github-api-retry-max-attempts 5`
-        - `npm run release:launch:gate:dispatch -- --github-api-retry-delay-ms 2000 --github-api-retry-backoff-factor 2`
-        - `npm run release:launch:gate:dispatch -- --github-api-retry-max-delay-ms 10000 --github-api-retry-jitter-percent 20`
-        - `npm run release:launch:gate:dispatch -- --smoke-timeout-retries 0`
-        - `npm run release:launch:gate:dispatch -- --smoke-timeout-retry-delay-ms 7000`
-         - controlled negative drill: `npm run release:launch:gate:dispatch -- --required-external-channels all --allow-failure-drill --webhook-secret-override <dummy-value>`
-       - Token resolution order: `-Token/--token` -> `GITHUB_TOKEN/GH_TOKEN` -> `gh auth token`
-       - Optional inputs via env: `RELEASE_RUNTIME_DRAFT_ID=<uuid> RELEASE_REQUIRE_SKILL_MARKERS=true RELEASE_REQUIRE_NATURAL_CRON_WINDOW=true`
-       - Optional required external channels via env: `RELEASE_REQUIRED_EXTERNAL_CHANNELS=telegram,slack` (or `all`)
-      - Optional strict inline health artifact requirement via env: `RELEASE_REQUIRE_INLINE_HEALTH_ARTIFACTS=true`
-      - Optional artifact link names via env: `RELEASE_ARTIFACT_LINK_NAMES=production-launch-gate-summary,post-release-health-inline-artifacts-schema-check` (or `all`)
-      - Optional step-summary link suppression via env: `RELEASE_NO_STEP_SUMMARY_LINK=true`
-      - Optional failed-job diagnostics cap via env: `RELEASE_FAILURE_SUMMARY_MAX_JOBS=10`
-      - Optional transient GitHub API retry attempts for release-helper polling (dispatch + health report): `RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_ATTEMPTS=<n>` (default `3`)
-      - Optional transient GitHub API retry delay for release-helper polling (dispatch + health report): `RELEASE_GITHUB_API_TRANSIENT_RETRY_DELAY_MS=<ms>` (default `2000`)
-      - Optional transient retry exponential factor for release-helper polling (dispatch + health report): `RELEASE_GITHUB_API_TRANSIENT_RETRY_BACKOFF_FACTOR=<n>` (default `2`)
-      - Optional transient retry max delay for release-helper polling (dispatch + health report): `RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_DELAY_MS=<ms>` (default `10000`)
-      - Optional transient retry jitter percent for release-helper polling (dispatch + health report): `RELEASE_GITHUB_API_TRANSIENT_RETRY_JITTER_PERCENT=<0..100>` (default `20`)
-      - Optional smoke timeout retry count via env: `RELEASE_SMOKE_TIMEOUT_RETRIES=<n>` (`0` disables timeout-only retry)
-      - Optional smoke timeout retry delay via env: `RELEASE_SMOKE_TIMEOUT_RETRY_DELAY_MS=<ms>`
-       - Optional strict inline health artifact assertion via workflow input:
-         - `require_inline_health_artifacts=true`
-        - Optional smoke timeout retry tuning via workflow input:
-          - `smoke_timeout_retries=<n>` (default `1`, set `0` to disable timeout-only retry)
-          - `smoke_timeout_retry_delay_ms=<ms>` (default `5000`)
-       - Optional drill inputs via env (drill-only): `RELEASE_ALLOW_FAILURE_DRILL=true RELEASE_WEBHOOK_SECRET_OVERRIDE=<value>`
-       - When `RELEASE_REQUIRE_SKILL_MARKERS=true`, `RELEASE_RUNTIME_DRAFT_ID` is required and must point to a draft with skill markers.
-      - Validation implementation references (for quick triage when a helper fails fast on env/arg parsing):
-        - shared strict env parsers: `scripts/release/release-env-parse-utils.mjs`
-        - shared GitHub request + transient retry helper: `scripts/release/github-api-request-with-transient-retry.mjs`
-        - dispatch helper entrypoint + CLI parsing: `scripts/release/dispatch-production-launch-gate.mjs`
-        - dispatch artifact-link option resolver: `scripts/release/dispatch-production-launch-gate-link-options.mjs`
-        - production gate config candidate resolvers: `scripts/release/production-launch-gate-config-resolvers.mjs`
-   - Review summary: `artifacts/release/production-launch-gate-summary.json`
-   - Launch gate now asserts required smoke step set (`api.health`, draft/PR/search API path, `web.home`, `web.feed`, `web.search`, `web.draft.detail`) via `smokeRequiredSteps.pass=true`.
-   - With `require_skill_markers=true`, launch gate asserts multi-step marker coverage (`skillMarkerMultiStep.pass=true`):
-     - `Role persona` + `Skill capsule` markers must be present for every orchestration role step.
-     - `Role skill` marker must be present in at least one orchestration step.
-   - With `require_skill_markers=true`, launch gate also asserts matrix-channel marker coverage (`skillMarkerMatrixChannels.pass=true`) across `web`, `live_session`, and runtime probe channel orchestration paths.
-   - Launch gate now also checks external connector channel fallback probes from configured connector profiles (`telegram` / `slack` / `discord`) via `ingestExternalChannelFallback`.
-   - For each configured external channel probe, launch gate also verifies connector telemetry counters (`ingestConnectors.accepted/total`) via admin telemetry API before passing fallback checks.
-   - Launch gate now exposes per-channel fallback failure-mode diagnostics in summary check `ingestExternalChannelFailureModes` and trace artifact `artifacts/release/production-agent-gateway-external-channel-traces.json` (uploaded as workflow artifact `production-external-channel-traces`).
-   - Optional strict channel requirement can be enabled with `--required-external-channels telegram,slack` (or workflow input/env equivalent); in this mode, launch gate fails if required channels are not configured or fallback probe validation fails.
-  - CI `Production Launch Gate` workflow now runs inline post-release health generation in best-effort mode for same-run parity and uploads:
-    - `post-release-health-report-inline`
-    - `post-release-health-summary-inline`
-    - `post-release-health-schema-summary-inline`
-    - `post-release-health-inline-artifacts-summary` (machine-readable presence check result; `status=fail` does not fail run unless `require_inline_health_artifacts=true`).
-    - `post-release-health-inline-artifacts-schema-check` (JSON Schema validation result for inline artifact summary payload contract).
-  - Launch-gate summary JSON now includes `checks.inlineHealthArtifactsSchema` (derived from inline schema-check artifact) and this check participates in top-level `pass/status` calculation.
-   - Recommended rollout to move from `skipped` to active external-channel verification:
-     - set production `AGENT_GATEWAY_INGEST_CONNECTOR_PROFILES` (see `docs/ops/examples/agent-gateway-ingest-connector-profiles.example.json`),
-     - deploy API with new env,
-     - run strict dispatch:
-       - `npm run release:launch:gate:dispatch -- --required-external-channels all`
-     - confirm in summary:
-       - `ingestExternalChannelFallback.pass=true`
-       - `ingestExternalChannelFallback.requiredChannels=["telegram","slack","discord"]`
-       - `ingestExternalChannelFallback.missingRequiredChannels=[]`.
-       - `ingestExternalChannelFailureModes.pass=true` and `requiredFailedChannels=[]`.
-   - If any channel appears in `ingestExternalChannelFailureModes.failedChannels`, route by failure class using `docs/ops/agent-gateway-ai-runtime-runbook.md` (`External-channel failure-mode routing` section) before re-dispatching.
-   - Rollout stop condition: if `requiredFailedChannels` remains non-empty across two consecutive strict runs, pause rollout and apply rollback decision thresholds.
+
+- `npm run release:launch:gate:dispatch` now prints resolved UI link for artifact `production-launch-gate-step-summary` after successful run completion.
+- Optional helper verbosity for extra artifact links: `npm run release:launch:gate:dispatch -- --print-artifact-links` (or env `RELEASE_PRINT_ARTIFACT_LINKS=true`).
+- Optional artifact link subset override: `npm run release:launch:gate:dispatch -- --artifact-link-names production-launch-gate-summary,post-release-health-inline-artifacts-schema-check` (or env `RELEASE_ARTIFACT_LINK_NAMES=<csv|all>`).
+- Optional suppression of default step-summary link: `npm run release:launch:gate:dispatch -- --no-step-summary-link` (or env `RELEASE_NO_STEP_SUMMARY_LINK=true`).
+- CI launch-gate workflow uses `RELEASE_*` context for production probes:
+  - `RELEASE_API_BASE_URL`, `RELEASE_WEB_BASE_URL` (repo variables)
+  - `RELEASE_ADMIN_API_TOKEN`, `RELEASE_CSRF_TOKEN`, `RELEASE_AGENT_GATEWAY_WEBHOOK_SECRET` (repo secrets)
+- Railway token context remains optional for local/CLI checks.
+  - Optional terminal dispatch helper for the workflow:
+    - `npm run release:launch:gate:dispatch`
+    - Optional explicit token argument: `npm run release:launch:gate:dispatch -- -Token <github_pat>`
+    - Optional explicit workflow inputs via CLI args:
+      - `npm run release:launch:gate:dispatch -- --runtime-draft-id <uuid> --require-skill-markers --require-natural-cron-window`
+    - `npm run release:launch:gate:dispatch -- --required-external-channels telegram,slack`
+    - `npm run release:launch:gate:dispatch -- --require-inline-health-artifacts`
+    - `npm run release:launch:gate:dispatch -- --print-artifact-links`
+    - `npm run release:launch:gate:dispatch -- --artifact-link-names production-launch-gate-summary,post-release-health-inline-artifacts-schema-check`
+    - `npm run release:launch:gate:dispatch -- --artifact-link-names production-launch-gate-summary --no-step-summary-link`
+    - `npm run release:launch:gate:dispatch -- --failure-summary-max-jobs 10`
+    - `npm run release:launch:gate:dispatch -- --github-api-retry-max-attempts 5`
+    - `npm run release:launch:gate:dispatch -- --github-api-retry-delay-ms 2000 --github-api-retry-backoff-factor 2`
+    - `npm run release:launch:gate:dispatch -- --github-api-retry-max-delay-ms 10000 --github-api-retry-jitter-percent 20`
+    - `npm run release:launch:gate:dispatch -- --smoke-timeout-retries 0`
+    - `npm run release:launch:gate:dispatch -- --smoke-timeout-retry-delay-ms 7000`
+    - controlled negative drill: `npm run release:launch:gate:dispatch -- --required-external-channels all --allow-failure-drill --webhook-secret-override <dummy-value>`
+    - Token resolution order: `-Token/--token` -> `GITHUB_TOKEN/GH_TOKEN` -> `gh auth token`
+    - Optional inputs via env: `RELEASE_RUNTIME_DRAFT_ID=<uuid> RELEASE_REQUIRE_SKILL_MARKERS=true RELEASE_REQUIRE_NATURAL_CRON_WINDOW=true`
+    - Optional required external channels via env: `RELEASE_REQUIRED_EXTERNAL_CHANNELS=telegram,slack` (or `all`)
+  - Optional strict inline health artifact requirement via env: `RELEASE_REQUIRE_INLINE_HEALTH_ARTIFACTS=true`
+  - Optional artifact link names via env: `RELEASE_ARTIFACT_LINK_NAMES=production-launch-gate-summary,post-release-health-inline-artifacts-schema-check` (or `all`)
+  - Optional step-summary link suppression via env: `RELEASE_NO_STEP_SUMMARY_LINK=true`
+  - Optional failed-job diagnostics cap via env: `RELEASE_FAILURE_SUMMARY_MAX_JOBS=10`
+  - Optional transient GitHub API retry attempts for release-helper polling (dispatch + health report): `RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_ATTEMPTS=<n>` (default `3`)
+  - Optional transient GitHub API retry delay for release-helper polling (dispatch + health report): `RELEASE_GITHUB_API_TRANSIENT_RETRY_DELAY_MS=<ms>` (default `2000`)
+  - Optional transient retry exponential factor for release-helper polling (dispatch + health report): `RELEASE_GITHUB_API_TRANSIENT_RETRY_BACKOFF_FACTOR=<n>` (default `2`)
+  - Optional transient retry max delay for release-helper polling (dispatch + health report): `RELEASE_GITHUB_API_TRANSIENT_RETRY_MAX_DELAY_MS=<ms>` (default `10000`)
+  - Optional transient retry jitter percent for release-helper polling (dispatch + health report): `RELEASE_GITHUB_API_TRANSIENT_RETRY_JITTER_PERCENT=<0..100>` (default `20`)
+  - Optional smoke timeout retry count via env: `RELEASE_SMOKE_TIMEOUT_RETRIES=<n>` (`0` disables timeout-only retry)
+  - Optional smoke timeout retry delay via env: `RELEASE_SMOKE_TIMEOUT_RETRY_DELAY_MS=<ms>`
+  - Optional strict inline health artifact assertion via workflow input:
+    - `require_inline_health_artifacts=true`
+  - Optional smoke timeout retry tuning via workflow input:
+    - `smoke_timeout_retries=<n>` (default `1`, set `0` to disable timeout-only retry)
+    - `smoke_timeout_retry_delay_ms=<ms>` (default `5000`)
+  - Optional drill inputs via env (drill-only): `RELEASE_ALLOW_FAILURE_DRILL=true RELEASE_WEBHOOK_SECRET_OVERRIDE=<value>`
+  - When `RELEASE_REQUIRE_SKILL_MARKERS=true`, `RELEASE_RUNTIME_DRAFT_ID` is required and must point to a draft with skill markers.
+  - Validation implementation references (for quick triage when a helper fails fast on env/arg parsing):
+    - shared strict env parsers: `scripts/release/release-env-parse-utils.mjs`
+    - shared GitHub request + transient retry helper: `scripts/release/github-api-request-with-transient-retry.mjs`
+    - dispatch helper entrypoint + CLI parsing: `scripts/release/dispatch-production-launch-gate.mjs`
+    - dispatch artifact-link option resolver: `scripts/release/dispatch-production-launch-gate-link-options.mjs`
+    - production gate config candidate resolvers: `scripts/release/production-launch-gate-config-resolvers.mjs`
+- Review summary: `artifacts/release/production-launch-gate-summary.json`
+- Launch gate now asserts required smoke step set (`api.health`, draft/PR/search API path, `web.home`, `web.feed`, `web.search`, `web.draft.detail`) via `smokeRequiredSteps.pass=true`.
+- With `require_skill_markers=true`, launch gate asserts multi-step marker coverage (`skillMarkerMultiStep.pass=true`):
+  - `Role persona` + `Skill capsule` markers must be present for every orchestration role step.
+  - `Role skill` marker must be present in at least one orchestration step.
+- With `require_skill_markers=true`, launch gate also asserts matrix-channel marker coverage (`skillMarkerMatrixChannels.pass=true`) across `web`, `live_session`, and runtime probe channel orchestration paths.
+- Launch gate now also checks external connector channel fallback probes from configured connector profiles (`telegram` / `slack` / `discord`) via `ingestExternalChannelFallback`.
+- For each configured external channel probe, launch gate also verifies connector telemetry counters (`ingestConnectors.accepted/total`) via admin telemetry API before passing fallback checks.
+- Launch gate now exposes per-channel fallback failure-mode diagnostics in summary check `ingestExternalChannelFailureModes` and trace artifact `artifacts/release/production-agent-gateway-external-channel-traces.json` (uploaded as workflow artifact `production-external-channel-traces`).
+- Optional strict channel requirement can be enabled with `--required-external-channels telegram,slack` (or workflow input/env equivalent); in this mode, launch gate fails if required channels are not configured or fallback probe validation fails.
+- CI `Production Launch Gate` workflow now runs inline post-release health generation in best-effort mode for same-run parity and uploads:
+  - `post-release-health-report-inline`
+  - `post-release-health-summary-inline`
+  - `post-release-health-schema-summary-inline`
+  - `post-release-health-inline-artifacts-summary` (machine-readable presence check result; `status=fail` does not fail run unless `require_inline_health_artifacts=true`).
+  - `post-release-health-inline-artifacts-schema-check` (JSON Schema validation result for inline artifact summary payload contract).
+- Launch-gate summary JSON now includes `checks.inlineHealthArtifactsSchema` (derived from inline schema-check artifact) and this check participates in top-level `pass/status` calculation.
+- Recommended rollout to move from `skipped` to active external-channel verification:
+  - set production `AGENT_GATEWAY_INGEST_CONNECTOR_PROFILES` (see `docs/ops/examples/agent-gateway-ingest-connector-profiles.example.json`),
+  - deploy API with new env,
+  - run strict dispatch:
+    - `npm run release:launch:gate:dispatch -- --required-external-channels all`
+  - confirm in summary:
+    - `ingestExternalChannelFallback.pass=true`
+    - `ingestExternalChannelFallback.requiredChannels=["telegram","slack","discord"]`
+    - `ingestExternalChannelFallback.missingRequiredChannels=[]`.
+    - `ingestExternalChannelFailureModes.pass=true` and `requiredFailedChannels=[]`.
+- If any channel appears in `ingestExternalChannelFailureModes.failedChannels`, route by failure class using `docs/ops/agent-gateway-ai-runtime-runbook.md` (`External-channel failure-mode routing` section) before re-dispatching.
+- Rollout stop condition: if `requiredFailedChannels` remains non-empty across two consecutive strict runs, pause rollout and apply rollback decision thresholds.
+
 1. Generate and validate health report:
-  - `npm run release:health:report`
-  - Optional inline summary contract check (local/CI parity): `npm run release:health:inline-artifacts:schema:check`
-  - `Release Health Gate` workflow auto-runs on completed `workflow_dispatch` runs from both `CI` and `Production Launch Gate` workflows (`workflow_run` trigger).
-   - For CI `Production Launch Gate` runs, inline post-release health artifacts from the same run are available immediately; use them for zero-lag triage and keep `Release Health Gate` as corroborating automation.
-   - Triage source selection quick guide:
 
-     | Source | Use When | Artifact names |
-     | --- | --- | --- |
-     | Inline (`Production Launch Gate` run) | Immediate same-run triage right after strict gate completion | `post-release-health-report-inline`, `post-release-health-summary-inline`, `post-release-health-schema-summary-inline` |
-     | `Release Health Gate` (`workflow_run`) | Corroborating asynchronous automation evidence and standard post-run reporting | `post-release-health-report`, `post-release-health-summary`, `post-release-health-schema-summary` |
+- `npm run release:health:report`
+- Optional UTF-8 summary persistence without shell redirection: `npm run release:health:report -- <run_id> --summary-output artifacts/release/post-release-health-summary-<run_id>.json`
+- Optional UTF-8 schema summary persistence without shell redirection: `npm run release:health:schema:check -- artifacts/release/post-release-health-run-<run_id>.json --output artifacts/release/post-release-health-schema-summary-<run_id>.json`
+- `npm run release:health:inline-artifacts:check -- --run-id <production_launch_gate_run_id>` writes `artifacts/release/post-release-health-inline-artifacts-summary-<run_id>.json` for local/CI parity and downstream schema validation.
+- Optional inline summary contract check (local/CI parity): `npm run release:health:inline-artifacts:schema:check`
+- `Release Health Gate` workflow auto-runs on completed `workflow_dispatch` runs from both `CI` and `Production Launch Gate` workflows (`workflow_run` trigger).
+- For CI `Production Launch Gate` runs, inline post-release health artifacts from the same run are available immediately; use them for zero-lag triage and keep `Release Health Gate` as corroborating automation.
+- Triage source selection quick guide:
 
-   - Optional launch-gate workflow profile:
-     - `npm run release:health:report -- --workflow-file production-launch-gate.yml --profile launch-gate`
-     - Shortcut: `npm run release:health:report:launch-gate`
-     - Shortcut JSON: `npm run release:health:report:launch-gate:json`
-   - For launch-gate profile, health report now includes mandatory rolling external-channel trend check from `production-external-channel-traces` artifacts:
-     - `externalChannelFailureModes.pass=true`
-     - `externalChannelFailureModes.nonPassModes=[]`
-     - defaults: `windowSize=3`, `minimumRuns=1` (override via `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_WINDOW` and `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_MIN_RUNS`).
-     - trend baseline uses successful previous runs plus the current analyzed run (so previous controlled-failure drills do not keep healthy runs red).
-    - First non-pass appearance hook:
-      - health report emits `externalChannelFailureModes.firstAppearanceAlert` with triage entries (`channel`, `failureMode`, `runId`),
-      - optional webhook delivery can be enabled via `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_URL` (CI secret) with timeout override `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_TIMEOUT_MS`.
-     - for protected webhook receivers, post-release health supports auth headers from env:
-       - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_ADMIN_TOKEN` -> `x-admin-token`
-       - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_CSRF_TOKEN` -> `x-csrf-token`
-       - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_BEARER_TOKEN` -> `Authorization: Bearer ...`
-      - production default can use internal endpoint:
-        - `https://api-production-7540.up.railway.app/api/admin/release-health/external-channel-alerts`
-      - monitor admin UX telemetry after launch-gate health report:
-        - open `/admin/ux` and verify `Release health alert telemetry` reflects current run state.
-        - for healthy strict windows expect `Alert events=0`, `First appearances=0`, and no channel/failure-mode outliers.
-        - verify `Alert risk` status is `Healthy` (watch when any alert appears, critical when `firstAppearances>=3` or `alertEvents>=3` or `alertedRuns>=2`).
-    - Launch-gate health report now also emits `releaseHealthAlertTelemetry`:
-      - includes `riskLevel`, `counts`, `consecutiveSuccessfulRunStreak`, and `escalationTriggered`.
-      - escalation rule defaults to `2` consecutive successful dispatch runs with non-healthy risk (override via `RELEASE_HEALTH_ALERT_RISK_ESCALATION_STREAK`).
-      - strict failure is optional (`RELEASE_HEALTH_ALERT_RISK_STRICT=true`); default behavior is advisory-only.
-      - optional one-command reassessment helper for post-window strict enablement:
-        - `npm run release:alert-risk:reassess -- --not-before-utc <ISO8601_UTC>`
-        - optional apply mode (sets `RELEASE_HEALTH_ALERT_RISK_STRICT=true` only when ready): `npm run release:alert-risk:reassess -- --not-before-utc <ISO8601_UTC> --apply`
-        - helper writes machine-readable summary to `artifacts/release/alert-risk-strict-reassessment-<run_id>.json`.
-      - optional workflow automation:
-        - `Alert-Risk Strict Reassess` (`.github/workflows/alert-risk-strict-reassess.yml`)
-        - schedule: `17:35 UTC` daily (or run manually via `workflow_dispatch`)
-        - for variable apply/read in workflow context, configure repo secret `RELEASE_GITHUB_PAT` (Actions write + Contents read); default `GITHUB_TOKEN` may not access variables API.
-      - when `escalationTriggered=true`, start incident triage using `docs/ops/agent-gateway-ai-runtime-runbook.md` (`External-channel failure-mode routing`) and attach release-health summary evidence.
-    - `npm run release:health:schema:check`
+  | Source                                 | Use When                                                                       | Artifact names                                                                                                         |
+  | -------------------------------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+  | Inline (`Production Launch Gate` run)  | Immediate same-run triage right after strict gate completion                   | `post-release-health-report-inline`, `post-release-health-summary-inline`, `post-release-health-schema-summary-inline` |
+  | `Release Health Gate` (`workflow_run`) | Corroborating asynchronous automation evidence and standard post-run reporting | `post-release-health-report`, `post-release-health-summary`, `post-release-health-schema-summary`                      |
+
+- Optional launch-gate workflow profile:
+  - `npm run release:health:report -- --workflow-file production-launch-gate.yml --profile launch-gate`
+  - Shortcut: `npm run release:health:report:launch-gate`
+  - Shortcut JSON: `npm run release:health:report:launch-gate:json`
+- For launch-gate profile, health report now includes mandatory rolling external-channel trend check from `production-external-channel-traces` artifacts:
+  - `externalChannelFailureModes.pass=true`
+  - `externalChannelFailureModes.nonPassModes=[]`
+  - defaults: `windowSize=3`, `minimumRuns=1` (override via `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_WINDOW` and `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_MIN_RUNS`).
+  - trend baseline uses successful previous runs plus the current analyzed run (so previous controlled-failure drills do not keep healthy runs red).
+- First non-pass appearance hook:
+  - health report emits `externalChannelFailureModes.firstAppearanceAlert` with triage entries (`channel`, `failureMode`, `runId`),
+  - optional webhook delivery can be enabled via `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_URL` (CI secret) with timeout override `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_TIMEOUT_MS`.
+- for protected webhook receivers, post-release health supports auth headers from env:
+  - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_ADMIN_TOKEN` -> `x-admin-token`
+  - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_CSRF_TOKEN` -> `x-csrf-token`
+  - `RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_BEARER_TOKEN` -> `Authorization: Bearer ...`
+- production default can use internal endpoint:
+  - `https://api-production-7540.up.railway.app/api/admin/release-health/external-channel-alerts`
+- monitor admin UX telemetry after launch-gate health report:
+  - open `/admin/ux` and verify `Release health alert telemetry` reflects current run state.
+  - for healthy strict windows expect `Alert events=0`, `First appearances=0`, and no channel/failure-mode outliers.
+  - verify `Alert risk` status is `Healthy` (watch when any alert appears, critical when `firstAppearances>=3` or `alertEvents>=3` or `alertedRuns>=2`).
+- Launch-gate health report now also emits `releaseHealthAlertTelemetry`:
+  - includes `riskLevel`, `counts`, `consecutiveSuccessfulRunStreak`, and `escalationTriggered`.
+  - escalation rule defaults to `2` consecutive successful dispatch runs with non-healthy risk (override via `RELEASE_HEALTH_ALERT_RISK_ESCALATION_STREAK`).
+  - strict failure is optional (`RELEASE_HEALTH_ALERT_RISK_STRICT=true`); default behavior is advisory-only.
+  - optional one-command reassessment helper for post-window strict enablement:
+    - `npm run release:alert-risk:reassess -- --not-before-utc <ISO8601_UTC>`
+    - optional apply mode (sets `RELEASE_HEALTH_ALERT_RISK_STRICT=true` only when ready): `npm run release:alert-risk:reassess -- --not-before-utc <ISO8601_UTC> --apply`
+    - helper writes machine-readable summary to `artifacts/release/alert-risk-strict-reassessment-<run_id>.json`.
+  - optional workflow automation:
+    - `Alert-Risk Strict Reassess` (`.github/workflows/alert-risk-strict-reassess.yml`)
+    - schedule: `17:35 UTC` daily (or run manually via `workflow_dispatch`)
+    - for variable apply/read in workflow context, configure repo secret `RELEASE_GITHUB_PAT` (Actions write + Contents read); default `GITHUB_TOKEN` may not access variables API.
+  - when `escalationTriggered=true`, start incident triage using `docs/ops/agent-gateway-ai-runtime-runbook.md` (`External-channel failure-mode routing`) and attach release-health summary evidence.
+- `npm run release:health:schema:check`
+
 2. Confirm alerts, latency, and error rates are within thresholds.
 3. Validate runtime/gateway control plane health:
    - `GET /api/admin/ai-runtime/health` reports `summary.health = "ok"` and `rolesBlocked = 0`.
@@ -242,6 +253,7 @@ Use this map when a release helper fails fast on argument/env validation and you
 ## 4. Rollback quick path
 
 If rollback triggers are met, execute:
+
 1. Freeze deployments.
 2. Roll back Web to previous stable artifact.
 3. Roll back API to previous stable artifact.

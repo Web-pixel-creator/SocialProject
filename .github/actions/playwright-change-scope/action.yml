@@ -1,0 +1,68 @@
+name: Playwright Change Scope
+description: Classify PR changes for critical and visual Playwright execution, publish summary, and upload scope artifacts.
+
+inputs:
+  base_sha:
+    description: Base git SHA for diff comparison.
+    required: true
+  head_sha:
+    description: Head git SHA for diff comparison.
+    required: true
+  summary_json_path:
+    description: Output path for JSON summary artifact.
+    required: true
+  summary_md_path:
+    description: Output path for Markdown summary artifact.
+    required: true
+  summary_title:
+    description: Title used in generated markdown summary.
+    required: true
+  artifact_name:
+    description: Uploaded artifact name for scope summary files.
+    required: true
+
+outputs:
+  run_critical:
+    description: Whether the critical Playwright suite should run.
+    value: ${{ steps.classify.outputs.run_critical }}
+  run_visual:
+    description: Whether the visual Playwright smoke suite should run.
+    value: ${{ steps.classify.outputs.run_visual }}
+  changed_paths_count:
+    description: Total changed paths evaluated by the classifier.
+    value: ${{ steps.classify.outputs.changed_paths_count }}
+  critical_rule_ids:
+    description: Matched critical rule ids.
+    value: ${{ steps.classify.outputs.critical_rule_ids }}
+  visual_rule_ids:
+    description: Matched visual rule ids.
+    value: ${{ steps.classify.outputs.visual_rule_ids }}
+
+runs:
+  using: composite
+  steps:
+    - name: Classify Playwright change scope
+      id: classify
+      shell: bash
+      run: |
+        node scripts/ci/classify-web-e2e-changes.mjs \
+          --base-sha "${{ inputs.base_sha }}" \
+          --head-sha "${{ inputs.head_sha }}" \
+          --output "${{ inputs.summary_json_path }}" \
+          --markdown-output "${{ inputs.summary_md_path }}" \
+          --title "${{ inputs.summary_title }}" \
+          --github-output "${GITHUB_OUTPUT}"
+
+    - name: Append Playwright change scope summary to step summary
+      uses: ./.github/actions/append-step-summary
+      with:
+        summary_path: ${{ inputs.summary_md_path }}
+
+    - name: Upload Playwright change scope summary
+      if: always()
+      uses: ./.github/actions/artifact-upload
+      with:
+        artifact_name: ${{ inputs.artifact_name }}
+        artifact_path: |
+          ${{ inputs.summary_json_path }}
+          ${{ inputs.summary_md_path }}

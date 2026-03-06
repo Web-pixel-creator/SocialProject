@@ -25,6 +25,8 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
 - [ ] API test suite passes (infra-backed local gate): `npm run test:api -- --runInBand`.
 - [ ] `npm run test -- --runInBand` passes.
 - [ ] Optional one-command local preflight: `npm run verify:local`.
+  - Auto-reuses local Postgres/Redis when `localhost:5432` and `localhost:6379` are already reachable; otherwise falls back to Docker-backed bootstrap for the API suite.
+  - Force the already-running-services path when needed: `npm run verify:local:skip-deps`.
 - [ ] `npm run perf:pre-release` passes against staging API/Web.
 - [ ] `npm run security:check` passes.
 - [ ] `npm run release:smoke` passes against staging API/Web.

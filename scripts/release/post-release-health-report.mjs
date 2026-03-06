@@ -20,10 +20,7 @@ import {
   DEFAULT_GITHUB_API_TRANSIENT_RETRY_MAX_DELAY_MS,
   githubApiRequestWithTransientRetry,
 } from './github-api-request-with-transient-retry.mjs';
-import {
-  resolveRepoSlug,
-  resolveToken,
-} from './github-token-repo-resolution.mjs';
+import { resolveRepoSlug, resolveToken } from './github-token-repo-resolution.mjs';
 import { normalizeReleaseCorrelationContext } from './release-correlation-utils.mjs';
 import { toErrorMessage } from './release-runtime-utils.mjs';
 
@@ -31,8 +28,7 @@ const GITHUB_API_VERSION = '2022-11-28';
 const DEFAULT_WORKFLOW_FILE = 'ci.yml';
 const DEFAULT_OUTPUT_DIR = 'artifacts/release';
 const EXTERNAL_CHANNEL_TRACE_ARTIFACT_NAME = 'production-external-channel-traces';
-const EXTERNAL_CHANNEL_TRACE_FILE_NAME =
-  'production-agent-gateway-external-channel-traces.json';
+const EXTERNAL_CHANNEL_TRACE_FILE_NAME = 'production-agent-gateway-external-channel-traces.json';
 const LAUNCH_GATE_SUMMARY_ARTIFACT_NAME = 'production-launch-gate-summary';
 const LAUNCH_GATE_SUMMARY_FILE_NAME = 'production-launch-gate-summary.json';
 const EXTERNAL_CHANNEL_FAILURE_MODE_PASS_LABEL = 'pass_null';
@@ -104,6 +100,7 @@ Options:
   --workflow-file <name> Select workflow file for run discovery (defaults to profile default).
   --profile <name>       Health profile: ci | launch-gate.
   --json             Print machine-readable summary JSON to stdout.
+  --summary-output <path> Persist machine-readable summary JSON to UTF-8 file.
   --strict           Exit with non-zero status when overall health is not pass.
   --skip-smoke-fetch Skip automatic local smoke-artifact fetch when missing.
   --help, -h         Show help.
@@ -209,9 +206,7 @@ const parsePositiveInteger = ({ raw, fallback, minimum, label }) => {
   }
   const parsed = Number(raw);
   if (!Number.isInteger(parsed) || parsed < minimum) {
-    throw new Error(
-      `${label} must be an integer greater than or equal to ${minimum}.`,
-    );
+    throw new Error(`${label} must be an integer greater than or equal to ${minimum}.`);
   }
   return parsed;
 };
@@ -235,11 +230,7 @@ const buildObserverEngagementEndpointUrl = ({ apiBaseUrl, windowHours }) => {
   return `${normalizedBase}${pathPrefix}/admin/ux/observer-engagement?hours=${String(windowHours)}`;
 };
 
-const deriveReleaseHealthAlertRiskLevel = ({
-  alertEvents,
-  alertedRuns,
-  firstAppearances,
-}) => {
+const deriveReleaseHealthAlertRiskLevel = ({ alertEvents, alertedRuns, firstAppearances }) => {
   if (
     firstAppearances >= RELEASE_HEALTH_ALERT_RISK_THRESHOLDS.firstAppearances.criticalAbove ||
     alertEvents >= RELEASE_HEALTH_ALERT_RISK_THRESHOLDS.totalAlerts.criticalAbove ||
@@ -257,9 +248,7 @@ const countConsecutiveSuccessfulRunsFromCurrent = ({ currentRunId, runs }) => {
   if (!Array.isArray(runs) || runs.length === 0) {
     return 0;
   }
-  const currentIndex = runs.findIndex(
-    (entry) => Number(entry?.id) === Number(currentRunId),
-  );
+  const currentIndex = runs.findIndex((entry) => Number(entry?.id) === Number(currentRunId));
   if (currentIndex < 0) {
     return 0;
   }
@@ -423,14 +412,8 @@ const fetchReleaseHealthAlertTelemetryCheck = async ({
     alertedRuns,
     firstAppearances,
   });
-  const latestAlertRunId = toNonNegativeInteger(
-    toFiniteNumber(latestAlert.runId, null),
-    0,
-  );
-  const latestAlertRunNumber = toNonNegativeInteger(
-    toFiniteNumber(latestAlert.runNumber, null),
-    0,
-  );
+  const latestAlertRunId = toNonNegativeInteger(toFiniteNumber(latestAlert.runId, null), 0);
+  const latestAlertRunNumber = toNonNegativeInteger(toFiniteNumber(latestAlert.runNumber, null), 0);
   const latestAlertRunUrl =
     typeof latestAlert.runUrl === 'string' && latestAlert.runUrl.length > 0
       ? latestAlert.runUrl
@@ -445,8 +428,7 @@ const fetchReleaseHealthAlertTelemetryCheck = async ({
         url: `${baseApiUrl}/actions/runs/${latestAlertRunId}`,
       });
       latestAlertRunConclusion =
-        typeof latestAlertRun?.conclusion === 'string' &&
-        latestAlertRun.conclusion.length > 0
+        typeof latestAlertRun?.conclusion === 'string' && latestAlertRun.conclusion.length > 0
           ? latestAlertRun.conclusion
           : null;
     } catch (error) {
@@ -566,8 +548,7 @@ const resolveExternalChannelAlertWebhookHeaders = () => {
       '',
   ).trim();
   const bearerToken = String(
-    process.env.RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_BEARER_TOKEN ??
-      '',
+    process.env.RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_WEBHOOK_BEARER_TOKEN ?? '',
   ).trim();
 
   if (adminToken.length > 0) {
@@ -590,6 +571,7 @@ const parseCliArgs = (argv) => {
     help: false,
     json: false,
     profile: '',
+    summaryOutputPath: '',
     strict: false,
     skipSmokeFetch: false,
     runId: null,
@@ -604,6 +586,19 @@ const parseCliArgs = (argv) => {
     }
     if (arg === '--json') {
       options.json = true;
+      continue;
+    }
+    if (arg === '--summary-output') {
+      const value = (args[index + 1] ?? '').trim();
+      if (!value) {
+        throw new Error(`Missing value for ${arg}.\n\n${USAGE}`);
+      }
+      options.summaryOutputPath = value;
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith('--summary-output=')) {
+      options.summaryOutputPath = arg.slice('--summary-output='.length).trim();
       continue;
     }
     if (arg === '--strict') {
@@ -668,9 +663,7 @@ const resolveWorkflowProfile = ({ profileArg, workflowFileArg }) => {
       `Unknown release health profile '${profileFromCliRaw}'. Expected one of: ${knownProfiles}.`,
     );
   }
-  const profileFromEnvRaw = normalizeProfileKey(
-    process.env.RELEASE_HEALTH_REPORT_PROFILE || '',
-  );
+  const profileFromEnvRaw = normalizeProfileKey(process.env.RELEASE_HEALTH_REPORT_PROFILE || '');
   if (profileFromEnvRaw && !(profileFromEnvRaw in WORKFLOW_PROFILES)) {
     const knownProfiles = Object.keys(WORKFLOW_PROFILES).join(', ');
     throw new Error(
@@ -680,11 +673,8 @@ const resolveWorkflowProfile = ({ profileArg, workflowFileArg }) => {
   const profileFromCli = profileFromCliRaw;
   const profileFromEnv = profileFromEnvRaw;
   const normalizedWorkflowFileArg = String(workflowFileArg || '').trim();
-  const normalizedWorkflowFileEnv = String(
-    process.env.RELEASE_WORKFLOW_FILE || '',
-  ).trim();
-  const workflowFileFromInput =
-    normalizedWorkflowFileArg || normalizedWorkflowFileEnv;
+  const normalizedWorkflowFileEnv = String(process.env.RELEASE_WORKFLOW_FILE || '').trim();
+  const workflowFileFromInput = normalizedWorkflowFileArg || normalizedWorkflowFileEnv;
 
   if (
     !profileFromCli &&
@@ -865,12 +855,7 @@ const findLatestDispatchRunId = async ({ token, baseApiUrl, workflowFile }) => {
   };
 };
 
-const listWorkflowDispatchRuns = async ({
-  token,
-  baseApiUrl,
-  workflowFile,
-  limit,
-}) => {
+const listWorkflowDispatchRuns = async ({ token, baseApiUrl, workflowFile, limit }) => {
   const url = `${baseApiUrl}/actions/workflows/${encodeURIComponent(
     workflowFile,
   )}/runs?event=workflow_dispatch&status=completed&per_page=${String(limit)}`;
@@ -894,13 +879,7 @@ const fetchRunArtifacts = async ({ token, baseApiUrl, runId }) => {
 const findActiveArtifactByName = ({ artifacts, name }) =>
   artifacts.find((artifact) => artifact?.name === name && artifact?.expired === false);
 
-const extractArtifactJsonFile = async ({
-  token,
-  artifact,
-  fileName,
-  tempRoot,
-  runId,
-}) => {
+const extractArtifactJsonFile = async ({ token, artifact, fileName, tempRoot, runId }) => {
   const archiveBuffer = await githubRequest({
     token,
     method: 'GET',
@@ -930,15 +909,11 @@ const extractArtifactJsonFile = async ({
   return JSON.parse(await readFile(payloadFilePath, 'utf8'));
 };
 
-const summarizeLaunchGateSandboxChecks = ({
-  launchGateSummary,
-  source = 'artifact',
-}) => {
+const summarizeLaunchGateSandboxChecks = ({ launchGateSummary, source = 'artifact' }) => {
   const checks =
     launchGateSummary?.checks && typeof launchGateSummary.checks === 'object'
       ? launchGateSummary.checks
-      : launchGateSummary?.summary?.checks &&
-          typeof launchGateSummary.summary.checks === 'object'
+      : launchGateSummary?.summary?.checks && typeof launchGateSummary.summary.checks === 'object'
         ? launchGateSummary.summary.checks
         : {};
   const checkNames = [
@@ -957,8 +932,7 @@ const summarizeLaunchGateSandboxChecks = ({
         : checkName in launchGateSummary
           ? launchGateSummary[checkName]
           : null;
-    const rawCheck =
-      rawCheckValue && typeof rawCheckValue === 'object' ? rawCheckValue : null;
+    const rawCheck = rawCheckValue && typeof rawCheckValue === 'object' ? rawCheckValue : null;
     normalizedChecks[checkName] = {
       available: rawCheckValue !== null,
       pass:
@@ -967,8 +941,7 @@ const summarizeLaunchGateSandboxChecks = ({
           : rawCheck && typeof rawCheck.pass === 'boolean'
             ? rawCheck.pass
             : null,
-      skipped:
-        rawCheck && typeof rawCheck.skipped === 'boolean' ? rawCheck.skipped : null,
+      skipped: rawCheck && typeof rawCheck.skipped === 'boolean' ? rawCheck.skipped : null,
       expectedMode:
         checkName === 'sandboxExecutionModeConsistency' &&
         rawCheck &&
@@ -1023,25 +996,15 @@ const summarizeLaunchGateSandboxChecks = ({
     failedChecks,
     fetchError: null,
     missingChecks,
-    pass:
-      checksAvailable === false ||
-      (missingChecks.length === 0 && failedChecks.length === 0),
+    pass: checksAvailable === false || (missingChecks.length === 0 && failedChecks.length === 0),
     source,
-    summaryPass:
-      typeof launchGateSummary?.pass === 'boolean' ? launchGateSummary.pass : null,
-    summaryStatus:
-      typeof launchGateSummary?.status === 'string' ? launchGateSummary.status : null,
+    summaryPass: typeof launchGateSummary?.pass === 'boolean' ? launchGateSummary.pass : null,
+    summaryStatus: typeof launchGateSummary?.status === 'string' ? launchGateSummary.status : null,
   };
 };
 
-const analyzeLaunchGateSandboxChecks = async ({
-  token,
-  currentRun,
-  currentRunArtifacts,
-}) => {
-  const localSummaryPath = path.resolve(
-    'artifacts/release/production-launch-gate-summary.json',
-  );
+const analyzeLaunchGateSandboxChecks = async ({ token, currentRun, currentRunArtifacts }) => {
+  const localSummaryPath = path.resolve('artifacts/release/production-launch-gate-summary.json');
   const tryReadLocalSummary = async () => {
     try {
       const localPayload = JSON.parse(await readFile(localSummaryPath, 'utf8'));
@@ -1117,10 +1080,9 @@ const analyzeLaunchGateSandboxChecks = async ({
       },
       correlation: null,
       failedChecks: [],
-      fetchError:
-        `missing ${LAUNCH_GATE_SUMMARY_ARTIFACT_NAME} for current run ${String(
-          currentRun.id,
-        )}`,
+      fetchError: `missing ${LAUNCH_GATE_SUMMARY_ARTIFACT_NAME} for current run ${String(
+        currentRun.id,
+      )}`,
       missingChecks: [
         'sandboxExecutionMetrics',
         'sandboxExecutionModeConsistency',
@@ -1249,9 +1211,7 @@ const summarizeExternalChannelTracePayload = ({ tracePayload }) => {
   const nonPassChecks = [];
   for (const check of checks) {
     const channel =
-      typeof check?.channel === 'string' && check.channel.length > 0
-        ? check.channel
-        : 'unknown';
+      typeof check?.channel === 'string' && check.channel.length > 0 ? check.channel : 'unknown';
     const failureMode =
       typeof check?.failureMode === 'string' && check.failureMode.length > 0
         ? check.failureMode
@@ -1271,8 +1231,7 @@ const summarizeExternalChannelTracePayload = ({ tracePayload }) => {
   }
 
   return {
-    checkedAtUtc:
-      typeof tracePayload?.checkedAtUtc === 'string' ? tracePayload.checkedAtUtc : null,
+    checkedAtUtc: typeof tracePayload?.checkedAtUtc === 'string' ? tracePayload.checkedAtUtc : null,
     checksTotal: checks.length,
     failedChannelsTotal: failedChannels.length,
     modeDistribution,
@@ -1305,9 +1264,7 @@ const buildExternalChannelFirstAppearanceAlert = ({
     if (Number(analyzedRun.runId) === Number(currentRunId)) {
       continue;
     }
-    const checks = Array.isArray(analyzedRun.nonPassChecks)
-      ? analyzedRun.nonPassChecks
-      : [];
+    const checks = Array.isArray(analyzedRun.nonPassChecks) ? analyzedRun.nonPassChecks : [];
     for (const check of checks) {
       if (
         typeof check?.channel === 'string' &&
@@ -1496,10 +1453,7 @@ const analyzeExternalChannelFailureModeTrend = async ({
       if (trend.analyzedRuns.length >= windowSize) {
         break;
       }
-      if (
-        Number(candidate.id) !== Number(currentRun.id) &&
-        candidate.conclusion !== 'success'
-      ) {
+      if (Number(candidate.id) !== Number(currentRun.id) && candidate.conclusion !== 'success') {
         continue;
       }
       const runArtifacts =
@@ -1635,19 +1589,10 @@ const readLocalSmokeSummary = async ({ runId, smokeFetchMode }) => {
     const raw = await readFile(smokePath, 'utf8');
     const parsed = JSON.parse(raw);
     return {
-      source:
-        smokeFetchMode === 'local-launch-gate'
-          ? 'local-launch-gate'
-          : 'local',
+      source: smokeFetchMode === 'local-launch-gate' ? 'local-launch-gate' : 'local',
       path: smokePath,
-      generatedAtUtc:
-        typeof parsed?.generatedAtUtc === 'string'
-          ? parsed.generatedAtUtc
-          : null,
-      summary:
-        typeof parsed?.summary === 'object' && parsed.summary
-          ? parsed.summary
-          : null,
+      generatedAtUtc: typeof parsed?.generatedAtUtc === 'string' ? parsed.generatedAtUtc : null,
+      summary: typeof parsed?.summary === 'object' && parsed.summary ? parsed.summary : null,
     };
   } catch {
     return {
@@ -1682,12 +1627,8 @@ const buildJobSummary = ({ jobs, requiredJobNames }) => {
     };
   });
 
-  const requiredMissing = required
-    .filter((job) => !job.present)
-    .map((job) => job.name);
-  const requiredFailed = required
-    .filter((job) => job.present && !job.pass)
-    .map((job) => job.name);
+  const requiredMissing = required.filter((job) => !job.present).map((job) => job.name);
+  const requiredFailed = required.filter((job) => job.present && !job.pass).map((job) => job.name);
 
   const failedJobs = normalized
     .filter((job) => job.conclusion === 'failure')
@@ -1737,9 +1678,7 @@ const toJsonSummaryPayload = ({ report, outputPath, strict }) => ({
   status: report.summary.pass ? 'pass' : 'fail',
   strict,
   correlation:
-    report.correlation && typeof report.correlation === 'object'
-      ? report.correlation
-      : null,
+    report.correlation && typeof report.correlation === 'object' ? report.correlation : null,
   workflow: {
     file: report.workflow.file,
     profile: report.workflow.profile,
@@ -1766,9 +1705,7 @@ const toJsonSummaryPayload = ({ report, outputPath, strict }) => ({
     generatedAtUtc: report.smokeReport.generatedAtUtc,
     summary: report.smokeReport.summary,
     fetchError:
-      typeof report.smokeReport.fetchError === 'string'
-        ? report.smokeReport.fetchError
-        : null,
+      typeof report.smokeReport.fetchError === 'string' ? report.smokeReport.fetchError : null,
   },
   externalChannelFailureModes:
     report.externalChannelFailureModes && typeof report.externalChannelFailureModes === 'object'
@@ -1782,52 +1719,43 @@ const toJsonSummaryPayload = ({ report, outputPath, strict }) => ({
           minimumRuns: report.externalChannelFailureModes.minimumRuns,
           analyzedRuns: report.externalChannelFailureModes.analyzedRuns.length,
           nonPassModes: report.externalChannelFailureModes.nonPassModes,
-          runsWithRequiredFailures:
-            report.externalChannelFailureModes.runsWithRequiredFailures,
+          runsWithRequiredFailures: report.externalChannelFailureModes.runsWithRequiredFailures,
           reasons: report.externalChannelFailureModes.reasons,
           firstAppearanceAlert:
             report.externalChannelFailureModes.firstAppearanceAlert &&
-            typeof report.externalChannelFailureModes.firstAppearanceAlert ===
-              'object'
+            typeof report.externalChannelFailureModes.firstAppearanceAlert === 'object'
               ? {
                   triggered:
-                    report.externalChannelFailureModes.firstAppearanceAlert
-                      .triggered === true,
-                  enabled:
-                    report.externalChannelFailureModes.firstAppearanceAlert
-                      .enabled === true,
+                    report.externalChannelFailureModes.firstAppearanceAlert.triggered === true,
+                  enabled: report.externalChannelFailureModes.firstAppearanceAlert.enabled === true,
                   webhookUrlConfigured:
-                    report.externalChannelFailureModes.firstAppearanceAlert
-                      .webhookUrlConfigured === true,
+                    report.externalChannelFailureModes.firstAppearanceAlert.webhookUrlConfigured ===
+                    true,
                   firstAppearances: Array.isArray(
-                    report.externalChannelFailureModes.firstAppearanceAlert
-                      .firstAppearances,
+                    report.externalChannelFailureModes.firstAppearanceAlert.firstAppearances,
                   )
-                    ? report.externalChannelFailureModes.firstAppearanceAlert
-                        .firstAppearances
+                    ? report.externalChannelFailureModes.firstAppearanceAlert.firstAppearances
                     : [],
                   webhookAttempted:
-                    report.externalChannelFailureModes.firstAppearanceAlert
-                      .webhookAttempted === true,
+                    report.externalChannelFailureModes.firstAppearanceAlert.webhookAttempted ===
+                    true,
                   webhookDelivered:
-                    report.externalChannelFailureModes.firstAppearanceAlert
-                      .webhookDelivered === true,
+                    report.externalChannelFailureModes.firstAppearanceAlert.webhookDelivered ===
+                    true,
                   webhookStatusCode:
-                    report.externalChannelFailureModes.firstAppearanceAlert
-                      .webhookStatusCode ?? null,
+                    report.externalChannelFailureModes.firstAppearanceAlert.webhookStatusCode ??
+                    null,
                   webhookError:
-                    typeof report.externalChannelFailureModes.firstAppearanceAlert
-                      .webhookError === 'string'
-                      ? report.externalChannelFailureModes.firstAppearanceAlert
-                          .webhookError
+                    typeof report.externalChannelFailureModes.firstAppearanceAlert.webhookError ===
+                    'string'
+                      ? report.externalChannelFailureModes.firstAppearanceAlert.webhookError
                       : null,
                 }
               : null,
         }
       : null,
   releaseHealthAlertTelemetry:
-    report.releaseHealthAlertTelemetry &&
-    typeof report.releaseHealthAlertTelemetry === 'object'
+    report.releaseHealthAlertTelemetry && typeof report.releaseHealthAlertTelemetry === 'object'
       ? {
           source:
             typeof report.releaseHealthAlertTelemetry.source === 'string'
@@ -1851,12 +1779,9 @@ const toJsonSummaryPayload = ({ report, outputPath, strict }) => ({
               ? report.releaseHealthAlertTelemetry.fetchError
               : null,
           counts: {
-            alertEvents:
-              report.releaseHealthAlertTelemetry.counts?.alertEvents ?? 0,
-            firstAppearances:
-              report.releaseHealthAlertTelemetry.counts?.firstAppearances ?? 0,
-            alertedRuns:
-              report.releaseHealthAlertTelemetry.counts?.alertedRuns ?? 0,
+            alertEvents: report.releaseHealthAlertTelemetry.counts?.alertEvents ?? 0,
+            firstAppearances: report.releaseHealthAlertTelemetry.counts?.firstAppearances ?? 0,
+            alertedRuns: report.releaseHealthAlertTelemetry.counts?.alertedRuns ?? 0,
           },
           riskLevel:
             typeof report.releaseHealthAlertTelemetry.riskLevel === 'string'
@@ -1867,29 +1792,23 @@ const toJsonSummaryPayload = ({ report, outputPath, strict }) => ({
             report.releaseHealthAlertTelemetry.consecutiveSuccessfulRunStreak ?? 0,
           latestAlertRun: {
             id: report.releaseHealthAlertTelemetry.latestAlertRun?.id ?? null,
-            number:
-              report.releaseHealthAlertTelemetry.latestAlertRun?.number ?? null,
+            number: report.releaseHealthAlertTelemetry.latestAlertRun?.number ?? null,
             url: report.releaseHealthAlertTelemetry.latestAlertRun?.url ?? null,
-            conclusion:
-              report.releaseHealthAlertTelemetry.latestAlertRun?.conclusion ?? null,
+            conclusion: report.releaseHealthAlertTelemetry.latestAlertRun?.conclusion ?? null,
           },
-          escalationSuppressed:
-            report.releaseHealthAlertTelemetry.escalationSuppressed === true,
+          escalationSuppressed: report.releaseHealthAlertTelemetry.escalationSuppressed === true,
           escalationSuppressionReason:
-            typeof report.releaseHealthAlertTelemetry.escalationSuppressionReason ===
-            'string'
+            typeof report.releaseHealthAlertTelemetry.escalationSuppressionReason === 'string'
               ? report.releaseHealthAlertTelemetry.escalationSuppressionReason
               : null,
-          escalationTriggered:
-            report.releaseHealthAlertTelemetry.escalationTriggered === true,
+          escalationTriggered: report.releaseHealthAlertTelemetry.escalationTriggered === true,
           reasons: Array.isArray(report.releaseHealthAlertTelemetry.reasons)
             ? report.releaseHealthAlertTelemetry.reasons
             : [],
         }
       : null,
   launchGateSandboxChecks:
-    report.launchGateSandboxChecks &&
-    typeof report.launchGateSandboxChecks === 'object'
+    report.launchGateSandboxChecks && typeof report.launchGateSandboxChecks === 'object'
       ? {
           available: report.launchGateSandboxChecks.available === true,
           artifactName:
@@ -1952,8 +1871,7 @@ const main = async () => {
     workflowFileArg: cli.workflowFile,
   });
   const workflowFile = workflowProfile.workflowFile || DEFAULT_WORKFLOW_FILE;
-  const outputDir =
-    process.env.RELEASE_HEALTH_REPORT_OUTPUT_DIR?.trim() ?? DEFAULT_OUTPUT_DIR;
+  const outputDir = process.env.RELEASE_HEALTH_REPORT_OUTPUT_DIR?.trim() ?? DEFAULT_OUTPUT_DIR;
   const baseApiUrl = `https://api.github.com/repos/${repoSlug}`;
 
   const resolvedRun = cli.runId
@@ -1978,9 +1896,7 @@ const main = async () => {
   });
 
   const jobs = Array.isArray(jobsData?.jobs) ? jobsData.jobs : [];
-  const artifacts = Array.isArray(artifactsData?.artifacts)
-    ? artifactsData.artifacts
-    : [];
+  const artifacts = Array.isArray(artifactsData?.artifacts) ? artifactsData.artifacts : [];
   const jobSummary = buildJobSummary({
     jobs,
     requiredJobNames: workflowProfile.requiredJobNames,
@@ -2016,8 +1932,7 @@ const main = async () => {
     minimum: 1000,
     label: 'RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_TIMEOUT_MS',
   });
-  const externalChannelAlertWebhookHeaders =
-    resolveExternalChannelAlertWebhookHeaders();
+  const externalChannelAlertWebhookHeaders = resolveExternalChannelAlertWebhookHeaders();
   const externalChannelFailureModeTrendBase =
     workflowProfile.profileKey === 'launch_gate'
       ? await analyzeExternalChannelFailureModeTrend({
@@ -2031,17 +1946,13 @@ const main = async () => {
         })
       : null;
   const externalChannelFailureModeTrend =
-    externalChannelFailureModeTrendBase &&
-    typeof externalChannelFailureModeTrendBase === 'object'
+    externalChannelFailureModeTrendBase && typeof externalChannelFailureModeTrendBase === 'object'
       ? {
           ...externalChannelFailureModeTrendBase,
           firstAppearanceAlert: null,
         }
       : null;
-  if (
-    externalChannelFailureModeTrend &&
-    workflowProfile.profileKey === 'launch_gate'
-  ) {
+  if (externalChannelFailureModeTrend && workflowProfile.profileKey === 'launch_gate') {
     const firstAppearanceAlertBase = buildExternalChannelFirstAppearanceAlert({
       trend: externalChannelFailureModeTrend,
       currentRunId: run.id,
@@ -2085,21 +1996,16 @@ const main = async () => {
       : null;
   const correlation =
     launchGateSandboxChecks && typeof launchGateSandboxChecks === 'object'
-      ? launchGateSandboxChecks.correlation ?? null
+      ? (launchGateSandboxChecks.correlation ?? null)
       : null;
   let smokeSummary = await readLocalSmokeSummary({
     runId,
     smokeFetchMode: workflowProfile.smokeFetchMode,
   });
-  const shouldFetchSmokeFromEnv = parseBoolean(
-    process.env.RELEASE_HEALTH_REPORT_FETCH_SMOKE,
-    true,
-  );
-  const shouldFetchSmoke =
-    cli.skipSmokeFetch === true ? false : shouldFetchSmokeFromEnv;
+  const shouldFetchSmokeFromEnv = parseBoolean(process.env.RELEASE_HEALTH_REPORT_FETCH_SMOKE, true);
+  const shouldFetchSmoke = cli.skipSmokeFetch === true ? false : shouldFetchSmokeFromEnv;
   const smokeArtifactPresent = artifacts.some(
-    (artifact) =>
-      artifact?.name === workflowProfile.smokeArtifactName && !artifact?.expired,
+    (artifact) => artifact?.name === workflowProfile.smokeArtifactName && !artifact?.expired,
   );
   if (
     shouldFetchSmoke &&
@@ -2143,24 +2049,15 @@ const main = async () => {
     reasons.push(`run conclusion is '${runConclusion ?? 'unknown'}'`);
   }
   if (jobSummary.requiredMissing.length > 0) {
-    reasons.push(
-      `required jobs missing: ${jobSummary.requiredMissing.join(', ')}`,
-    );
+    reasons.push(`required jobs missing: ${jobSummary.requiredMissing.join(', ')}`);
   }
   if (jobSummary.requiredFailed.length > 0) {
-    reasons.push(
-      `required jobs not successful: ${jobSummary.requiredFailed.join(', ')}`,
-    );
+    reasons.push(`required jobs not successful: ${jobSummary.requiredFailed.join(', ')}`);
   }
   if (artifactSummary.requiredMissing.length > 0) {
-    reasons.push(
-      `required artifacts missing: ${artifactSummary.requiredMissing.join(', ')}`,
-    );
+    reasons.push(`required artifacts missing: ${artifactSummary.requiredMissing.join(', ')}`);
   }
-  if (
-    externalChannelFailureModeTrend &&
-    externalChannelFailureModeTrend.pass !== true
-  ) {
+  if (externalChannelFailureModeTrend && externalChannelFailureModeTrend.pass !== true) {
     reasons.push(
       `external-channel failure-mode trend check failed: ${externalChannelFailureModeTrend.reasons.join(', ')}`,
     );
@@ -2174,8 +2071,7 @@ const main = async () => {
   ) {
     reasons.push(
       `external-channel first-appearance alert webhook failed: ${
-        externalChannelFailureModeTrend.firstAppearanceAlert.webhookError ??
-        'delivery failed'
+        externalChannelFailureModeTrend.firstAppearanceAlert.webhookError ?? 'delivery failed'
       }`,
     );
   }
@@ -2212,9 +2108,8 @@ const main = async () => {
       requiredJobsTotal: jobSummary.required.length,
       requiredJobsPassed: jobSummary.required.filter((job) => job.pass).length,
       requiredArtifactsTotal: artifactSummary.required.length,
-      requiredArtifactsPresent: artifactSummary.required.filter(
-        (artifact) => artifact.present,
-      ).length,
+      requiredArtifactsPresent: artifactSummary.required.filter((artifact) => artifact.present)
+        .length,
       failedJobsTotal: jobSummary.failedJobs.length,
     },
     jobs: {
@@ -2253,29 +2148,32 @@ const main = async () => {
   });
   await writeFile(outputPath, JSON.stringify(report, null, 2));
 
-  const strictMode =
-    cli.strict ||
-    parseBoolean(process.env.RELEASE_HEALTH_REPORT_STRICT, false);
+  const strictMode = cli.strict || parseBoolean(process.env.RELEASE_HEALTH_REPORT_STRICT, false);
+  const jsonSummaryPayload = toJsonSummaryPayload({
+    report,
+    outputPath,
+    strict: strictMode,
+  });
+
+  if (cli.summaryOutputPath) {
+    const summaryOutputPath = resolveWorkspaceSafePath({
+      label: 'release health summary output path',
+      targetPath: cli.summaryOutputPath,
+    });
+    await mkdir(path.dirname(summaryOutputPath), { recursive: true });
+    await writeFile(summaryOutputPath, `${JSON.stringify(jsonSummaryPayload, null, 2)}\n`, 'utf8');
+  }
 
   if (cli.json) {
-    const payload = toJsonSummaryPayload({
-      report,
-      outputPath,
-      strict: strictMode,
-    });
-    process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+    process.stdout.write(`${JSON.stringify(jsonSummaryPayload, null, 2)}\n`);
   } else {
     process.stdout.write(`Repository: ${repoSlug}\n`);
     process.stdout.write(
       `Workflow: ${report.workflow.file} (profile ${report.workflow.profile})\n`,
     );
-    process.stdout.write(
-      `Run: #${report.run.runNumber ?? '<unknown>'} (id ${report.run.id})\n`,
-    );
+    process.stdout.write(`Run: #${report.run.runNumber ?? '<unknown>'} (id ${report.run.id})\n`);
     process.stdout.write(`Run URL: ${report.run.htmlUrl ?? '<unknown>'}\n`);
-    process.stdout.write(
-      `Overall health: ${report.summary.pass ? 'pass' : 'fail'}\n`,
-    );
+    process.stdout.write(`Overall health: ${report.summary.pass ? 'pass' : 'fail'}\n`);
     if (!report.summary.pass) {
       process.stdout.write(`Reasons: ${report.summary.reasons.join('; ')}\n`);
     }
@@ -2326,9 +2224,7 @@ const main = async () => {
           report.releaseHealthAlertTelemetry.source ?? 'unavailable',
         )} evaluated=${String(
           report.releaseHealthAlertTelemetry.evaluated === true,
-        )} escalation=${String(
-          report.releaseHealthAlertTelemetry.escalationTriggered === true,
-        )}\n`,
+        )} escalation=${String(report.releaseHealthAlertTelemetry.escalationTriggered === true)}\n`,
       );
       const latestAlertRun = report.releaseHealthAlertTelemetry.latestAlertRun;
       if (latestAlertRun && typeof latestAlertRun === 'object') {
@@ -2343,8 +2239,7 @@ const main = async () => {
       if (report.releaseHealthAlertTelemetry.escalationSuppressed === true) {
         process.stdout.write(
           `Release-health alert escalation suppression: ${String(
-            report.releaseHealthAlertTelemetry.escalationSuppressionReason ??
-              'suppressed',
+            report.releaseHealthAlertTelemetry.escalationSuppressionReason ?? 'suppressed',
           )}\n`,
         );
       }
