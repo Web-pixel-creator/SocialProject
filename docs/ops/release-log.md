@@ -33,6 +33,59 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-06 - add phase 3 last-known-good config fallback for production launch gate (phase 124)
+
+- Scope: protect strict production launch-gate execution from bad sandbox execution config by validating candidate config first, persisting the latest valid snapshot, and falling back to last-known-good state when needed.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-06 03:32 -> 2026-03-06 03:51.
+- Changes:
+  - Added shared last-known-good config helper:
+    - `scripts/release/release-last-known-good-config.mjs`
+    - persists a validated snapshot,
+    - writes a per-run config resolution artifact,
+    - exposes structured fallback error payloads.
+  - Added extracted critical sandbox config module for production launch-gate:
+    - `scripts/release/production-launch-gate-critical-config.mjs`
+    - resolves raw candidate config with env/source precedence,
+    - validates JSON/boolean config surfaces for:
+      - `SANDBOX_EXECUTION_EGRESS_PROFILES`
+      - `SANDBOX_EXECUTION_EGRESS_ENFORCE`
+      - `SANDBOX_EXECUTION_OPERATION_LIMIT_PROFILES`
+      - `SANDBOX_EXECUTION_LIMITS_ENFORCE`
+      - `SANDBOX_EXECUTION_ENABLED`
+    - derives runtime probe expected mode and profile expectations from the validated snapshot.
+  - Updated production launch-gate:
+    - `scripts/release/production-launch-gate.mjs`
+    - new artifacts:
+      - `artifacts/release/production-launch-gate-config-last-known-good.json`
+      - `artifacts/release/production-launch-gate-config-resolution.json`
+    - launch-gate summary now includes `lastKnownGoodConfig` check details:
+      - active source,
+      - candidate validity,
+      - fallback usage/reason,
+      - snapshot timestamp.
+    - admin health summary now records whether config fallback was used and where the supporting artifacts live.
+  - Extended raw config resolver coverage:
+    - `scripts/release/production-launch-gate-config-resolvers.mjs`
+    - `apps/api/src/__tests__/release-production-config-resolvers.unit.spec.ts`
+  - Added unit coverage:
+    - `apps/api/src/__tests__/release-production-critical-config.unit.spec.ts`
+    - `apps/api/src/__tests__/release-last-known-good-config.unit.spec.ts`
+- Validation:
+  - `node --check scripts/release/production-launch-gate-config-resolvers.mjs`: pass.
+  - `node --check scripts/release/production-launch-gate-critical-config.mjs`: pass.
+  - `node --check scripts/release/release-last-known-good-config.mjs`: pass.
+  - `node --check scripts/release/production-launch-gate.mjs`: pass.
+  - `npm run test -- apps/api/src/__tests__/release-production-config-resolvers.unit.spec.ts apps/api/src/__tests__/release-production-critical-config.unit.spec.ts apps/api/src/__tests__/release-last-known-good-config.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-cli-args.unit.spec.ts apps/api/src/__tests__/release-launch-gate-production-help-snapshot.unit.spec.ts`: pass.
+  - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run lint`: pass.
+  - `npm run ultracite:check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`status: pass`, `generatedAtUtc: 2026-03-06T03:50:43.844Z`).
+- Incidents:
+  - none.
+- Follow-ups:
+  - next: start Phase 4 trigger-based diagnostics and automatic evidence bundles for repeated timeout/failure paths.
+
 ### 2026-03-05 - add phase 2 correlation and audit linkage (phase 123)
 
 - Scope: complete the next hardening step by making release/runtime correlation deterministic across launch-gate probes, sandbox telemetry, metrics drill-down, and post-release health reporting.

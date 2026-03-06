@@ -270,6 +270,8 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
   - [ ] Confirm summary artifact: `artifacts/release/production-launch-gate-summary.json`
   - [ ] Confirm step-summary markdown artifact: `artifacts/release/production-launch-gate-step-summary.md` (workflow artifact: `production-launch-gate-step-summary`)
   - [ ] Confirm health summary artifact: `artifacts/release/production-launch-gate-health-summary.json`
+  - [ ] Confirm last-known-good config snapshot artifact: `artifacts/release/production-launch-gate-config-last-known-good.json`
+  - [ ] Confirm config-resolution artifact: `artifacts/release/production-launch-gate-config-resolution.json`
   - [ ] For CI `Production Launch Gate` runs, confirm inline post-release health artifacts are uploaded:
     - [ ] `post-release-health-report-inline`
     - [ ] `post-release-health-summary-inline`
@@ -278,6 +280,8 @@ Reference: `docs/ops/web-e2e-ci-runbook.md` for Web E2E CI matrix, local smoke/v
     - [ ] `post-release-health-inline-artifacts-schema-check`
   - [ ] Confirm `sandboxExecutionMetrics.pass=true` in launch gate summary.
   - [ ] Confirm `sandboxExecutionModeConsistency.pass=true` in launch gate summary.
+  - [ ] Confirm `lastKnownGoodConfig.pass=true` in launch gate summary.
+  - [ ] If `lastKnownGoodConfig.fallbackUsed=true`, capture the fallback reason and attach both config artifacts before retrying any deploy/config apply.
   - [ ] Confirm `inlineHealthArtifactsSchema.pass=true` in launch gate summary.
   - [ ] Optional artifact drill: inspect `artifacts/release/production-sandbox-execution-metrics.json` for `total > 0` and `successCount > 0`.
   - [ ] Confirm `sandboxExecutionAuditPolicy.pass=true` in launch gate summary.

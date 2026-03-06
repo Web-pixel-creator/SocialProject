@@ -210,6 +210,34 @@ Exit criteria:
   - `node scripts/release/validate-release-health-report-schema.mjs docs/ops/schemas/samples/release-health-report-output.sample.json --json`: pass
   - `release:launch:gate:production:json -- --required-external-channels all`: pass after deploy
 
+### 2026-03-06 - Phase 3 completed
+
+- Added shared last-known-good config helper:
+  - `scripts/release/release-last-known-good-config.mjs`
+- Extracted critical production launch-gate config resolution and validation:
+  - `scripts/release/production-launch-gate-critical-config.mjs`
+  - critical sandbox execution config now resolves as raw candidate snapshot first,
+  - validates before apply,
+  - persists the latest valid snapshot,
+  - falls back to the stored last-known-good snapshot when the candidate is invalid.
+- Updated production launch-gate artifacts and operator summaries:
+  - `scripts/release/production-launch-gate.mjs`
+  - new artifacts:
+    - `artifacts/release/production-launch-gate-config-last-known-good.json`
+    - `artifacts/release/production-launch-gate-config-resolution.json`
+  - launch-gate summary now records `lastKnownGoodConfig` status, fallback usage, and active source.
+- Expanded test coverage:
+  - `apps/api/src/__tests__/release-production-config-resolvers.unit.spec.ts`
+  - `apps/api/src/__tests__/release-production-critical-config.unit.spec.ts`
+  - `apps/api/src/__tests__/release-last-known-good-config.unit.spec.ts`
+- Validation:
+  - `node --check` on changed release scripts: pass
+  - targeted `jest` suites for raw config resolution, critical config validation, and LKG fallback: pass
+  - `ci:workflow:inline-node-check`: pass
+  - `lint`: pass
+  - `ultracite:check`: pass
+  - `release:launch:gate:production:json -- --required-external-channels all`: pass
+
 ## Hard Rule
 
 Do not spend another release cycle on helper-only cleanup unless it directly
