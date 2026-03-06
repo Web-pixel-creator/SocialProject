@@ -1,13 +1,17 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const snapshotPathTemplate =
+  process.platform === 'win32'
+    ? '{testDir}/{testFilePath}-snapshots/{arg}-{projectName}-{platform}{ext}'
+    : '{testDir}/{testFilePath}-snapshots/{arg}-{projectName}{ext}';
+
 export default defineConfig({
     testDir: './e2e',
     fullyParallel: false,
     forbidOnly: !!process.env.CI,
     retries: process.env.CI ? 2 : 0,
     timeout: 90_000,
-    snapshotPathTemplate:
-        '{testDir}/{testFilePath}-snapshots/{arg}-{projectName}{ext}',
+    snapshotPathTemplate,
     workers: 2,
     reporter: 'html',
     use: {
