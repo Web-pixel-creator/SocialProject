@@ -320,6 +320,7 @@ Exit criteria:
   - `ci:workflow:inline-node-check`: pass
   - `lint`: pass
   - `ultracite:check`: pass
+  - `release:launch:gate:production:json -- --required-external-channels all`: pass (`generatedAtUtc=2026-03-06T04:35:11.598Z`)
   - note: full `admin.integration.spec.ts` requires local postgres/redis; in this shell both localhost ports `5432` and `6379` were unavailable and Docker engine pipe was not reachable.
 
 ## Hard Rule

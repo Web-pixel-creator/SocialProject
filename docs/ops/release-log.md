@@ -70,8 +70,9 @@ Copy this block for each release:
   - `npm run lint`: pass.
   - `npm run ultracite:check`: pass.
   - `npm run ci:workflow:inline-node-check`: pass.
+  - `npm run release:launch:gate:production:json -- --required-external-channels all`: pass (`generatedAtUtc=2026-03-06T04:35:11.598Z`).
   - `npm run test:api -- --runInBand --testPathPattern=apps/api/src/__tests__/admin.integration.spec.ts`: blocked in current shell because Docker engine pipe was unreachable and localhost `5432` / `6379` were closed.
-- Rollout result: phase 5 implementation completed locally; production validation pending push/deploy.
+- Rollout result: phase 5 implementation pushed to `main`; strict production launch gate remained green after push.
 - Incidents:
   - none.
 - Follow-ups:
