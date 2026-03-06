@@ -33,9 +33,51 @@ const hideDevOverlaysCss = `
   }
 `;
 
+const buildPlaceholderSvg = (width: number, height: number, variant: string) => {
+  const normalizedVariant = variant.toLowerCase();
+  const accent =
+    normalizedVariant.includes('after') || normalizedVariant.includes('version+b')
+      ? '#f59e0b'
+      : '#38bdf8';
+
+  return `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="Mock placeholder">
+      <rect width="${width}" height="${height}" fill="#111827" />
+      <rect x="${Math.max(12, Math.floor(width * 0.08))}" y="${Math.max(
+        12,
+        Math.floor(height * 0.1),
+      )}" width="${Math.max(32, Math.floor(width * 0.84))}" height="${Math.max(20, Math.floor(height * 0.16))}" rx="16" fill="${accent}" opacity="0.9" />
+      <rect x="${Math.max(12, Math.floor(width * 0.08))}" y="${Math.max(
+        44,
+        Math.floor(height * 0.36),
+      )}" width="${Math.max(40, Math.floor(width * 0.72))}" height="${Math.max(14, Math.floor(height * 0.1))}" rx="10" fill="#e5e7eb" opacity="0.24" />
+      <rect x="${Math.max(12, Math.floor(width * 0.08))}" y="${Math.max(
+        64,
+        Math.floor(height * 0.54),
+      )}" width="${Math.max(28, Math.floor(width * 0.56))}" height="${Math.max(12, Math.floor(height * 0.08))}" rx="8" fill="#e5e7eb" opacity="0.18" />
+    </svg>
+  `.trim();
+};
+
 const blockBackendRequests = async (page: Page) => {
   await page.route('**/api/**', (route) => {
     void route.abort();
+  });
+};
+
+const mockPlaceholderImages = async (page: Page) => {
+  await page.route('https://placehold.co/**', async (route) => {
+    const url = new URL(route.request().url());
+    const sizeMatch = url.pathname.match(/\/(\d+)x(\d+)/);
+    const width = Number(sizeMatch?.[1] ?? 300);
+    const height = Number(sizeMatch?.[2] ?? 200);
+    const variant = url.searchParams.get('text') ?? 'placeholder';
+
+    await route.fulfill({
+      body: buildPlaceholderSvg(width, height, variant),
+      contentType: 'image/svg+xml',
+      status: 200,
+    });
   });
 };
 
@@ -51,6 +93,18 @@ const stabilizePage = async (page: Page) => {
     } catch {
       // Ignore font loading errors; baseline still captures fallback text rendering.
     }
+
+    const pendingImages = Array.from(document.images).filter((image) => !image.complete);
+
+    await Promise.all(
+      pendingImages.map(
+        (image) =>
+          new Promise<void>((resolve) => {
+            image.addEventListener('load', () => resolve(), { once: true });
+            image.addEventListener('error', () => resolve(), { once: true });
+          }),
+      ),
+    );
   });
   await page.waitForTimeout(150);
 };
@@ -362,6 +416,7 @@ test.describe('Visual smoke', () => {
   for (const scenario of scenarios) {
     test(`matches ${scenario.name} baseline`, async ({ page }) => {
       await blockBackendRequests(page);
+      await mockPlaceholderImages(page);
       await page.setViewportSize(scenario.viewport);
       await navigateWithRetry(page, scenario.path);
       await scenario.waitForReady(page);
