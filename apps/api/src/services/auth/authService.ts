@@ -60,6 +60,14 @@ const createToken = (userId: string, email: string) => {
 };
 
 const CLAIM_EXPIRES_HOURS = 24;
+const X_STATUS_HOSTS = new Set([
+  'mobile.twitter.com',
+  'twitter.com',
+  'www.twitter.com',
+  'www.x.com',
+  'x.com',
+]);
+const X_STATUS_ID_PATTERN = /^\d+$/;
 
 const writeClaimTelemetry = async (params: {
   db: DbClient;
@@ -93,6 +101,56 @@ const writeClaimTelemetry = async (params: {
       'claim telemetry insert failed',
     );
   }
+};
+
+const normalizeXClaimUrl = (
+  tweetUrl: string,
+  claimToken: string,
+): string | null => {
+  const trimmed = tweetUrl.trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return null;
+  }
+
+  if (!(parsed.protocol === 'https:' || parsed.protocol === 'http:')) {
+    return null;
+  }
+
+  if (!X_STATUS_HOSTS.has(parsed.hostname.toLowerCase())) {
+    return null;
+  }
+
+  const pathSegments = parsed.pathname
+    .split('/')
+    .map((segment) => segment.trim())
+    .filter((segment) => segment.length > 0);
+  const statusIndex = pathSegments.findIndex(
+    (segment) => segment.toLowerCase() === 'status',
+  );
+  if (statusIndex < 1 || statusIndex >= pathSegments.length - 1) {
+    return null;
+  }
+
+  const statusId = pathSegments[statusIndex + 1];
+  if (!X_STATUS_ID_PATTERN.test(statusId)) {
+    return null;
+  }
+
+  const queryClaimToken =
+    parsed.searchParams.get('claimToken') ??
+    parsed.searchParams.get('claim_token');
+  if (queryClaimToken !== claimToken) {
+    return null;
+  }
+
+  return parsed.toString();
 };
 
 const toNullableIsoTimestamp = (value: unknown): string | null => {
@@ -365,6 +423,7 @@ export class AuthServiceImpl implements AuthService {
         throw new AuthError('CLAIM_EXPIRED', 'Claim token expired.', 400);
       }
 
+      let verificationPayload: string;
       if (input.method === 'email') {
         if (
           !input.emailToken ||
@@ -372,12 +431,20 @@ export class AuthServiceImpl implements AuthService {
         ) {
           throw new AuthError('CLAIM_INVALID', 'Invalid email token.', 400);
         }
-      } else if (!input.tweetUrl?.includes(input.claimToken)) {
-        throw new AuthError(
-          'CLAIM_INVALID',
-          'Tweet URL does not include claim token.',
-          400,
-        );
+        verificationPayload = input.emailToken;
+      } else {
+        const normalizedTweetUrl =
+          typeof input.tweetUrl === 'string'
+            ? normalizeXClaimUrl(input.tweetUrl, input.claimToken)
+            : null;
+        if (!normalizedTweetUrl) {
+          throw new AuthError(
+            'CLAIM_INVALID',
+            'Tweet URL must be an x.com or twitter.com status URL with a matching claimToken query parameter.',
+            400,
+          );
+        }
+        verificationPayload = normalizedTweetUrl;
       }
 
       await db.query(
@@ -387,11 +454,7 @@ export class AuthServiceImpl implements AuthService {
              verification_payload = $2,
              verified_at = NOW()
          WHERE id = $3`,
-        [
-          input.method,
-          input.method === 'email' ? input.emailToken : input.tweetUrl,
-          claim.id,
-        ],
+        [input.method, verificationPayload, claim.id],
       );
 
       const updated = await db.query(

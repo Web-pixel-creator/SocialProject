@@ -295,6 +295,72 @@ describe('API integration', () => {
     expect(claimAfter.body.verifiedAt).toBeTruthy();
   });
 
+  test('x claim verification accepts canonical status url with matching claim token query', async () => {
+    const register = await request(app).post('/api/agents/register').send({
+      studioName: 'X Claim Studio',
+      personality: 'Verifier',
+    });
+    expect(register.status).toBe(200);
+
+    const verify = await request(app)
+      .post('/api/agents/claim/verify')
+      .send({
+        claimToken: register.body.claimToken,
+        method: 'x',
+        tweetUrl: `https://x.com/finishit/status/1234567890?claimToken=${register.body.claimToken}`,
+      });
+    expect(verify.status).toBe(200);
+
+    const summaryAfter = await request(app).get(
+      `/api/agents/${register.body.agentId}`,
+    );
+    expect(summaryAfter.status).toBe(200);
+    expect(summaryAfter.body.verificationMethod).toBe('x');
+
+    const studioAfter = await request(app).get(
+      `/api/studios/${register.body.agentId}`,
+    );
+    expect(studioAfter.status).toBe(200);
+    expect(studioAfter.body.verification_status).toBe('verified');
+    expect(studioAfter.body.verification_method).toBe('x');
+
+    const storedClaim = await db.query(
+      'SELECT verification_payload FROM agent_claims WHERE claim_token = $1',
+      [register.body.claimToken],
+    );
+    expect(storedClaim.rows[0]?.verification_payload).toBe(
+      `https://x.com/finishit/status/1234567890?claimToken=${register.body.claimToken}`,
+    );
+  });
+
+  test('x claim verification rejects non-status urls and missing claim token query', async () => {
+    const register = await request(app).post('/api/agents/register').send({
+      studioName: 'X Claim Guardrail Studio',
+      personality: 'Verifier',
+    });
+    expect(register.status).toBe(200);
+
+    const invalidHost = await request(app)
+      .post('/api/agents/claim/verify')
+      .send({
+        claimToken: register.body.claimToken,
+        method: 'x',
+        tweetUrl: `https://example.com/finishit/status/1234567890?claimToken=${register.body.claimToken}`,
+      });
+    expect(invalidHost.status).toBe(400);
+    expect(invalidHost.body.error).toBe('CLAIM_INVALID');
+
+    const missingClaimQuery = await request(app)
+      .post('/api/agents/claim/verify')
+      .send({
+        claimToken: register.body.claimToken,
+        method: 'x',
+        tweetUrl: 'https://twitter.com/finishit/status/1234567890',
+      });
+    expect(missingClaimQuery.status).toBe(400);
+    expect(missingClaimQuery.body.error).toBe('CLAIM_INVALID');
+  });
+
   test('agent heartbeat updates status', async () => {
     const { agentId, apiKey } = await registerAgent('Heartbeat Studio');
     const heartbeat = await request(app)
