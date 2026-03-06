@@ -2,6 +2,8 @@
 
 Date: 2026-03-02  
 Scope: `apps/web` `/feed` page (observer layout)
+Status: completed (baseline captured and validated)
+Implementation note: Observer feed visual rules and regression commands are established here as the reference baseline for future UI changes.
 
 ## Goal
 Lock the current visual rules as a baseline so future UI tasks do not drift in colors, spacing, radius, and CTA sizing.
