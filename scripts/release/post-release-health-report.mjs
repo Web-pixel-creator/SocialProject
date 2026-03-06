@@ -22,7 +22,7 @@ import {
 } from './github-api-request-with-transient-retry.mjs';
 import { resolveRepoSlug, resolveToken } from './github-token-repo-resolution.mjs';
 import { normalizeReleaseCorrelationContext } from './release-correlation-utils.mjs';
-import { toErrorMessage } from './release-runtime-utils.mjs';
+import { parseBooleanWithFallback, toErrorMessage } from './release-runtime-utils.mjs';
 
 const GITHUB_API_VERSION = '2022-11-28';
 const DEFAULT_WORKFLOW_FILE = 'ci.yml';
@@ -174,20 +174,6 @@ const parseRunId = (raw) => {
   return parsed;
 };
 
-const parseBoolean = (raw, fallback) => {
-  if (!raw) {
-    return fallback;
-  }
-  const normalized = raw.trim().toLowerCase();
-  if (['1', 'true', 'yes', 'y'].includes(normalized)) {
-    return true;
-  }
-  if (['0', 'false', 'no', 'n'].includes(normalized)) {
-    return false;
-  }
-  return fallback;
-};
-
 const parsePositiveInteger = ({ raw, fallback, minimum, label }) => {
   if (!raw) {
     return fallback;
@@ -256,8 +242,8 @@ const fetchReleaseHealthAlertTelemetryCheck = async ({
   workflowFile,
   currentRunId,
 }) => {
-  const enabled = parseBoolean(process.env.RELEASE_HEALTH_ALERT_RISK_ENABLED, true);
-  const strict = parseBoolean(process.env.RELEASE_HEALTH_ALERT_RISK_STRICT, false);
+  const enabled = parseBooleanWithFallback(process.env.RELEASE_HEALTH_ALERT_RISK_ENABLED, true);
+  const strict = parseBooleanWithFallback(process.env.RELEASE_HEALTH_ALERT_RISK_STRICT, false);
   const windowHours = parsePositiveInteger({
     raw: process.env.RELEASE_HEALTH_ALERT_RISK_WINDOW_HOURS,
     fallback: DEFAULT_RELEASE_HEALTH_ALERT_RISK_WINDOW_HOURS,
@@ -1937,7 +1923,7 @@ const main = async () => {
     minimum: 1,
     label: 'RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_MIN_RUNS',
   });
-  const externalChannelAlertEnabled = parseBoolean(
+  const externalChannelAlertEnabled = parseBooleanWithFallback(
     process.env.RELEASE_EXTERNAL_CHANNEL_FAILURE_MODE_ALERT_ENABLED,
     true,
   );
@@ -2022,7 +2008,10 @@ const main = async () => {
     runId,
     smokeFetchMode: workflowProfile.smokeFetchMode,
   });
-  const shouldFetchSmokeFromEnv = parseBoolean(process.env.RELEASE_HEALTH_REPORT_FETCH_SMOKE, true);
+  const shouldFetchSmokeFromEnv = parseBooleanWithFallback(
+    process.env.RELEASE_HEALTH_REPORT_FETCH_SMOKE,
+    true,
+  );
   const shouldFetchSmoke = cli.skipSmokeFetch === true ? false : shouldFetchSmokeFromEnv;
   const smokeArtifactPresent = artifacts.some(
     (artifact) => artifact?.name === workflowProfile.smokeArtifactName && !artifact?.expired,
@@ -2168,7 +2157,8 @@ const main = async () => {
   });
   await writeFile(outputPath, JSON.stringify(report, null, 2));
 
-  const strictMode = cli.strict || parseBoolean(process.env.RELEASE_HEALTH_REPORT_STRICT, false);
+  const strictMode =
+    cli.strict || parseBooleanWithFallback(process.env.RELEASE_HEALTH_REPORT_STRICT, false);
   const jsonSummaryPayload = toJsonSummaryPayload({
     report,
     outputPath,

@@ -1,23 +1,10 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { parseBooleanWithFallback } from './release-runtime-utils.mjs';
 
 const DEFAULT_RESULTS_FILE = 'smoke-results.json';
 const DEFAULT_ARTIFACTS_DIR = 'artifacts/release';
 const DEFAULT_DIFF_OUTPUT_DIR = 'artifacts/release';
-
-const parseBoolean = (raw, fallback) => {
-  if (!raw) {
-    return fallback;
-  }
-  const normalized = raw.trim().toLowerCase();
-  if (['1', 'true', 'yes', 'y'].includes(normalized)) {
-    return true;
-  }
-  if (['0', 'false', 'no', 'n'].includes(normalized)) {
-    return false;
-  }
-  return fallback;
-};
 
 const parseRunOrPath = (raw) => {
   const value = raw.trim();
@@ -41,8 +28,7 @@ const sanitizeForFileName = (value) =>
     .replace(/[^a-zA-Z0-9._-]/gu, '_')
     .slice(-64);
 
-const roundNumber = (value, digits = 2) =>
-  Number.parseFloat(value.toFixed(digits));
+const roundNumber = (value, digits = 2) => Number.parseFloat(value.toFixed(digits));
 
 const readJson = async (filePath) => {
   try {
@@ -131,10 +117,7 @@ const summarizeDeltas = (deltas, limit = 5) => {
 const buildDefaultOutputPath = ({ baselineArg, candidateArg }) => {
   const baselinePart = sanitizeForFileName(baselineArg);
   const candidatePart = sanitizeForFileName(candidateArg);
-  return path.join(
-    DEFAULT_DIFF_OUTPUT_DIR,
-    `smoke-diff-${baselinePart}-vs-${candidatePart}.json`,
-  );
+  return path.join(DEFAULT_DIFF_OUTPUT_DIR, `smoke-diff-${baselinePart}-vs-${candidatePart}.json`);
 };
 
 const writeDiffOutput = async ({ outputPath, payload }) => {
@@ -171,24 +154,15 @@ const printDurationList = (label, list) => {
 };
 
 const main = async () => {
-  const baselineArg = (
-    process.argv[2] ??
-    process.env.RELEASE_SMOKE_BASELINE ??
-    ''
-  ).trim();
-  const candidateArg = (
-    process.argv[3] ??
-    process.env.RELEASE_SMOKE_CANDIDATE ??
-    ''
-  ).trim();
-  const failOnRegression = parseBoolean(
+  const baselineArg = (process.argv[2] ?? process.env.RELEASE_SMOKE_BASELINE ?? '').trim();
+  const candidateArg = (process.argv[3] ?? process.env.RELEASE_SMOKE_CANDIDATE ?? '').trim();
+  const failOnRegression = parseBooleanWithFallback(
     process.env.RELEASE_SMOKE_DIFF_FAIL_ON_REGRESSION,
     false,
   );
-  const writeOutput = parseBoolean(process.env.RELEASE_SMOKE_DIFF_WRITE_OUTPUT, true);
+  const writeOutput = parseBooleanWithFallback(process.env.RELEASE_SMOKE_DIFF_WRITE_OUTPUT, true);
   const outputPathFromEnv = process.env.RELEASE_SMOKE_DIFF_OUTPUT_PATH?.trim() ?? '';
-  const outputPath =
-    outputPathFromEnv || buildDefaultOutputPath({ baselineArg, candidateArg });
+  const outputPath = outputPathFromEnv || buildDefaultOutputPath({ baselineArg, candidateArg });
 
   if (!baselineArg || !candidateArg) {
     throw new Error(
@@ -250,10 +224,7 @@ const main = async () => {
 
   const baselineTotalDuration = calculateTotalDuration(baselineSteps);
   const candidateTotalDuration = calculateTotalDuration(candidateSteps);
-  const totalDurationDelta = buildDurationDelta(
-    baselineTotalDuration,
-    candidateTotalDuration,
-  );
+  const totalDurationDelta = buildDurationDelta(baselineTotalDuration, candidateTotalDuration);
 
   const baselineFailed = calculateFailedSteps(baselineSteps);
   const candidateFailed = calculateFailedSteps(candidateSteps);
@@ -261,7 +232,8 @@ const main = async () => {
   const baselinePass =
     baseline?.summary?.pass === true || (baseline?.summary?.pass !== false && baselineFailed === 0);
   const candidatePass =
-    candidate?.summary?.pass === true || (candidate?.summary?.pass !== false && candidateFailed === 0);
+    candidate?.summary?.pass === true ||
+    (candidate?.summary?.pass !== false && candidateFailed === 0);
 
   const { regressions, improvements } = summarizeDeltas(durationDeltas);
 

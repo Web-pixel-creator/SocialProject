@@ -5,6 +5,10 @@ import {
   RELEASE_DIAGNOSTICS_BUNDLE_JSON_SCHEMA_VERSION,
   RELEASE_DIAGNOSTICS_BUNDLE_LABEL,
 } from './release-diagnostics-schema-contracts.mjs';
+import {
+  parseBooleanWithFallback,
+  parsePositiveIntegerWithFallback,
+} from './release-runtime-utils.mjs';
 
 export const DEFAULT_RELEASE_DIAGNOSTICS_DIR = 'artifacts/release/diagnostics';
 
@@ -16,31 +20,6 @@ const DEFAULT_MAX_FILES = 400;
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 const BUNDLE_DIR_PREFIX = 'bundle-';
 const MANIFEST_FILE_NAME = 'release-diagnostics-bundle.json';
-
-const parseBoolean = (raw, fallback) => {
-  if (!raw) {
-    return fallback;
-  }
-  const normalized = raw.trim().toLowerCase();
-  if (['1', 'true', 'yes', 'y'].includes(normalized)) {
-    return true;
-  }
-  if (['0', 'false', 'no', 'n'].includes(normalized)) {
-    return false;
-  }
-  return fallback;
-};
-
-const parseInteger = (raw, fallback) => {
-  if (!raw) {
-    return fallback;
-  }
-  const parsed = Number(raw);
-  if (!Number.isInteger(parsed) || parsed < 1) {
-    return fallback;
-  }
-  return parsed;
-};
 
 const sanitizePathSegment = (value, fallback) => {
   const normalized = String(value || '')
@@ -123,23 +102,23 @@ export const resolveReleaseDiagnosticsBundlesDir = (env = process.env) => {
 };
 
 export const resolveReleaseDiagnosticsCleanupConfig = (env = process.env) => ({
-  dryRun: parseBoolean(
+  dryRun: parseBooleanWithFallback(
     env.RELEASE_DIAGNOSTICS_BUNDLES_CLEANUP_DRY_RUN,
     DEFAULT_CLEANUP_DRY_RUN,
   ),
-  enabled: parseBoolean(
+  enabled: parseBooleanWithFallback(
     env.RELEASE_DIAGNOSTICS_BUNDLES_CLEANUP_ENABLED,
     DEFAULT_CLEANUP_ENABLED,
   ),
-  maxBundles: parseInteger(
+  maxBundles: parsePositiveIntegerWithFallback(
     env.RELEASE_DIAGNOSTICS_BUNDLES_MAX_RUNS,
     DEFAULT_MAX_BUNDLES,
   ),
-  maxFiles: parseInteger(
+  maxFiles: parsePositiveIntegerWithFallback(
     env.RELEASE_DIAGNOSTICS_BUNDLES_MAX_FILES,
     DEFAULT_MAX_FILES,
   ),
-  ttlDays: parseInteger(
+  ttlDays: parsePositiveIntegerWithFallback(
     env.RELEASE_DIAGNOSTICS_BUNDLES_TTL_DAYS,
     DEFAULT_TTL_DAYS,
   ),
@@ -221,10 +200,7 @@ export const cleanupReleaseDiagnosticsBundles = async ({
 
   summary.scannedBundles = bundles.length;
   summary.matchedBundles = bundles.length;
-  summary.matchedFiles = bundles.reduce(
-    (total, bundle) => total + bundle.totalFiles,
-    0,
-  );
+  summary.matchedFiles = bundles.reduce((total, bundle) => total + bundle.totalFiles, 0);
 
   const bundlesToKeep = [];
   const bundlesToRemove = [];
@@ -268,10 +244,7 @@ export const cleanupReleaseDiagnosticsBundles = async ({
       .sort(sortByOldestFirst);
     const staleBundlePaths = new Set();
     let projectedBundleCount = bundlesToKeep.length;
-    let projectedFileCount = bundlesToKeep.reduce(
-      (total, bundle) => total + bundle.totalFiles,
-      0,
-    );
+    let projectedFileCount = bundlesToKeep.reduce((total, bundle) => total + bundle.totalFiles, 0);
     for (const bundle of sortedBundles) {
       if (
         !shouldRemove({
@@ -300,14 +273,8 @@ export const cleanupReleaseDiagnosticsBundles = async ({
     bundlesToKeep.push(...retained);
   };
 
-  removeOverflowBundles(
-    'max-bundles',
-    ({ bundleCount }) => bundleCount > maxBundles,
-  );
-  removeOverflowBundles(
-    'max-files',
-    ({ fileCount }) => fileCount > maxFiles,
-  );
+  removeOverflowBundles('max-bundles', ({ bundleCount }) => bundleCount > maxBundles);
+  removeOverflowBundles('max-files', ({ fileCount }) => fileCount > maxFiles);
 
   for (const bundle of bundlesToRemove) {
     summary.removedBundles += 1;
@@ -444,15 +411,11 @@ export const captureReleaseDiagnosticsBundle = async ({
           ? trigger.code
           : 'unknown_trigger',
       message:
-        trigger &&
-        typeof trigger === 'object' &&
-        typeof trigger.message === 'string'
+        trigger && typeof trigger === 'object' && typeof trigger.message === 'string'
           ? trigger.message
           : '',
       severity:
-        trigger &&
-        typeof trigger === 'object' &&
-        typeof trigger.severity === 'string'
+        trigger && typeof trigger === 'object' && typeof trigger.severity === 'string'
           ? trigger.severity
           : 'medium',
     })),
@@ -479,5 +442,4 @@ export const captureReleaseDiagnosticsBundle = async ({
   };
 };
 
-export const readReleaseDiagnosticsBundleManifest = async (manifestPath) =>
-  loadJson(manifestPath);
+export const readReleaseDiagnosticsBundleManifest = async (manifestPath) => loadJson(manifestPath);

@@ -1,12 +1,15 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import {
-  resolveWorkspaceSafePath,
-  spawnWithReleasePolicy,
-} from './release-command-policy.mjs';
+import { resolveWorkspaceSafePath, spawnWithReleasePolicy } from './release-command-policy.mjs';
 import { githubApiRequestWithTransientRetry } from './github-api-request-with-transient-retry.mjs';
 import { resolveToken } from './github-token-repo-resolution.mjs';
-import { sleep, toErrorMessage } from './release-runtime-utils.mjs';
+import {
+  parseBooleanWithFallback,
+  parsePositiveIntegerWithFallback,
+  parsePositiveNumberWithFallback,
+  sleep,
+  toErrorMessage,
+} from './release-runtime-utils.mjs';
 import {
   cleanupRetryFailureLogs,
   formatRetryLogsCleanupSummary,
@@ -34,55 +37,17 @@ const DEFAULT_RETRY_PREFLIGHT_TIMEOUT_MS = 20_000;
 const DEFAULT_RETRY_PREFLIGHT_INTERVAL_MS = 1000;
 const DEFAULT_RETRY_PREFLIGHT_SUCCESS_STREAK = 1;
 const DEFAULT_RETRY_SUMMARY_WRITE = true;
-const DEFAULT_RETRY_SUMMARY_PATH =
-  'artifacts/release/tunnel-dispatch-retry-summary.json';
+const DEFAULT_RETRY_SUMMARY_PATH = 'artifacts/release/tunnel-dispatch-retry-summary.json';
 const DEFAULT_PREFLIGHT_ENABLED = true;
 const DEFAULT_PREFLIGHT_TIMEOUT_MS = 45_000;
 const DEFAULT_PREFLIGHT_INTERVAL_MS = 1000;
 const DEFAULT_PREFLIGHT_SUCCESS_STREAK = 2;
 const DEFAULT_PREFLIGHT_SUMMARY_WRITE = true;
-const DEFAULT_PREFLIGHT_SUMMARY_PATH =
-  'artifacts/release/tunnel-preflight-summary.json';
+const DEFAULT_PREFLIGHT_SUMMARY_PATH = 'artifacts/release/tunnel-preflight-summary.json';
 const DEFAULT_CSRF_TOKEN = 'release-smoke-tunnel-csrf-token-123456789';
 const DEFAULT_JWT_SECRET = 'release-smoke-tunnel-jwt-secret-123456789';
 const DEFAULT_ADMIN_TOKEN = 'release-smoke-tunnel-admin-token-123456789';
 const PREFLIGHT_LABEL = 'release:smoke:preflight';
-
-const parseNumber = (raw, fallback) => {
-  if (!raw) {
-    return fallback;
-  }
-  const parsed = Number(raw);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-};
-
-const parseInteger = (raw, fallback, allowZero = false) => {
-  if (!raw) {
-    return fallback;
-  }
-  const parsed = Number(raw);
-  if (!Number.isInteger(parsed)) {
-    return fallback;
-  }
-  if (allowZero && parsed === 0) {
-    return 0;
-  }
-  return parsed > 0 ? parsed : fallback;
-};
-
-const parseBoolean = (raw, fallback) => {
-  if (!raw) {
-    return fallback;
-  }
-  const normalized = raw.trim().toLowerCase();
-  if (['1', 'true', 'yes', 'y'].includes(normalized)) {
-    return true;
-  }
-  if (['0', 'false', 'no', 'n'].includes(normalized)) {
-    return false;
-  }
-  return fallback;
-};
 
 const getNpmInvocation = (args) => {
   const npmExecPath = process.env.npm_execpath;
@@ -114,11 +79,7 @@ const runCommand = ({ command, args, name, env, shell, captureOutput = false }) 
       });
     } catch (error) {
       const message = toErrorMessage(error);
-      reject(
-        new Error(
-          `${name} failed to spawn (${command} ${args.join(' ')}): ${message}`,
-        ),
-      );
+      reject(new Error(`${name} failed to spawn (${command} ${args.join(' ')}): ${message}`));
       return;
     }
 
@@ -136,11 +97,7 @@ const runCommand = ({ command, args, name, env, shell, captureOutput = false }) 
     }
 
     child.on('error', (error) => {
-      reject(
-        new Error(
-          `${name} failed to start (${command} ${args.join(' ')}): ${error.message}`,
-        ),
-      );
+      reject(new Error(`${name} failed to start (${command} ${args.join(' ')}): ${error.message}`));
     });
 
     child.on('close', (code) => {
@@ -152,9 +109,7 @@ const runCommand = ({ command, args, name, env, shell, captureOutput = false }) 
         });
         return;
       }
-      const commandError = new Error(
-        `${name} failed with exit code ${code ?? 'unknown'}`,
-      );
+      const commandError = new Error(`${name} failed with exit code ${code ?? 'unknown'}`);
       Object.assign(commandError, {
         stdout: stdoutText,
         stderr: stderrText,
@@ -184,15 +139,11 @@ const waitForUrl = async (url, timeoutMs, intervalMs) => {
 
 const taskKill = (pid) => {
   return new Promise((resolve) => {
-    const killer = spawnWithReleasePolicy(
-      'taskkill',
-      ['/PID', String(pid), '/T', '/F'],
-      {
-        profileName: 'system_process',
-        stdio: 'ignore',
-        shell: false,
-      },
-    );
+    const killer = spawnWithReleasePolicy('taskkill', ['/PID', String(pid), '/T', '/F'], {
+      profileName: 'system_process',
+      stdio: 'ignore',
+      shell: false,
+    });
     killer.on('close', () => resolve());
     killer.on('error', () => resolve());
   });
@@ -250,9 +201,7 @@ const startService = ({ command, args, name, env, shell }) => {
 
 const getLatestRunContextFromOutput = (output) => {
   const matches = [
-    ...output.matchAll(
-      /https:\/\/github\.com\/([^/\s]+)\/([^/\s]+)\/actions\/runs\/(\d+)/gu,
-    ),
+    ...output.matchAll(/https:\/\/github\.com\/([^/\s]+)\/([^/\s]+)\/actions\/runs\/(\d+)/gu),
   ];
   const latest = matches.at(-1);
   if (!latest) {
@@ -298,7 +247,9 @@ const inspectRetryableFailure = async ({ token, repoSlug, runId }) => {
   }
 
   const isReleaseSmokeJob = (job) =>
-    String(job?.name ?? '').toLowerCase().includes('release smoke dry-run');
+    String(job?.name ?? '')
+      .toLowerCase()
+      .includes('release smoke dry-run');
 
   const failedJobs = jobs.filter((job) => job?.conclusion === 'failure');
   if (failedJobs.length === 0) {
@@ -430,9 +381,7 @@ const captureRetryFailureLogs = async ({
         logCaptured: false,
         error: message,
       });
-      process.stderr.write(
-        `Failed to capture retry diagnostics for job ${jobId}: ${message}\n`,
-      );
+      process.stderr.write(`Failed to capture retry diagnostics for job ${jobId}: ${message}\n`);
     }
   }
 
@@ -750,81 +699,79 @@ const startTunnel = ({ port, name }) => {
 const main = async () => {
   const apiPort = process.env.RELEASE_TUNNEL_API_PORT ?? DEFAULT_API_PORT;
   const webPort = process.env.RELEASE_TUNNEL_WEB_PORT ?? DEFAULT_WEB_PORT;
-  const waitTimeoutMs = parseNumber(
+  const waitTimeoutMs = parsePositiveNumberWithFallback(
     process.env.RELEASE_TUNNEL_WAIT_TIMEOUT_MS,
     DEFAULT_WAIT_TIMEOUT_MS,
   );
-  const waitIntervalMs = parseNumber(
+  const waitIntervalMs = parsePositiveNumberWithFallback(
     process.env.RELEASE_TUNNEL_WAIT_INTERVAL_MS,
     DEFAULT_WAIT_INTERVAL_MS,
   );
-  const retryMax = parseInteger(
+  const retryMax = parsePositiveIntegerWithFallback(
     process.env.RELEASE_TUNNEL_DISPATCH_RETRY_MAX,
     DEFAULT_RETRY_MAX,
-    true,
+    { allowZero: true },
   );
-  const retryDelayMs = parseNumber(
+  const retryDelayMs = parsePositiveNumberWithFallback(
     process.env.RELEASE_TUNNEL_DISPATCH_RETRY_DELAY_MS,
     DEFAULT_RETRY_DELAY_MS,
   );
   const retryBackoffFactor = Math.max(
     1,
-    parseNumber(
+    parsePositiveNumberWithFallback(
       process.env.RELEASE_TUNNEL_DISPATCH_RETRY_BACKOFF_FACTOR,
       DEFAULT_RETRY_BACKOFF_FACTOR,
     ),
   );
-  const retryMaxDelayMs = parseNumber(
+  const retryMaxDelayMs = parsePositiveNumberWithFallback(
     process.env.RELEASE_TUNNEL_DISPATCH_RETRY_MAX_DELAY_MS,
     DEFAULT_RETRY_MAX_DELAY_MS,
   );
-  const retryPreflightEnabled = parseBoolean(
+  const retryPreflightEnabled = parseBooleanWithFallback(
     process.env.RELEASE_TUNNEL_RETRY_PREFLIGHT_ENABLED,
     DEFAULT_RETRY_PREFLIGHT_ENABLED,
   );
-  const retryPreflightTimeoutMs = parseNumber(
+  const retryPreflightTimeoutMs = parsePositiveNumberWithFallback(
     process.env.RELEASE_TUNNEL_RETRY_PREFLIGHT_TIMEOUT_MS,
     DEFAULT_RETRY_PREFLIGHT_TIMEOUT_MS,
   );
-  const retryPreflightIntervalMs = parseNumber(
+  const retryPreflightIntervalMs = parsePositiveNumberWithFallback(
     process.env.RELEASE_TUNNEL_RETRY_PREFLIGHT_INTERVAL_MS,
     DEFAULT_RETRY_PREFLIGHT_INTERVAL_MS,
   );
-  const retryPreflightSuccessStreak = parseInteger(
+  const retryPreflightSuccessStreak = parsePositiveIntegerWithFallback(
     process.env.RELEASE_TUNNEL_RETRY_PREFLIGHT_SUCCESS_STREAK,
     DEFAULT_RETRY_PREFLIGHT_SUCCESS_STREAK,
   );
-  const retrySummaryWrite = parseBoolean(
+  const retrySummaryWrite = parseBooleanWithFallback(
     process.env.RELEASE_TUNNEL_RETRY_SUMMARY_WRITE,
     DEFAULT_RETRY_SUMMARY_WRITE,
   );
   const retrySummaryPath =
-    process.env.RELEASE_TUNNEL_RETRY_SUMMARY_PATH?.trim() ??
-    DEFAULT_RETRY_SUMMARY_PATH;
-  const preflightEnabled = parseBoolean(
+    process.env.RELEASE_TUNNEL_RETRY_SUMMARY_PATH?.trim() ?? DEFAULT_RETRY_SUMMARY_PATH;
+  const preflightEnabled = parseBooleanWithFallback(
     process.env.RELEASE_TUNNEL_PREFLIGHT_ENABLED,
     DEFAULT_PREFLIGHT_ENABLED,
   );
-  const preflightTimeoutMs = parseNumber(
+  const preflightTimeoutMs = parsePositiveNumberWithFallback(
     process.env.RELEASE_TUNNEL_PREFLIGHT_TIMEOUT_MS,
     DEFAULT_PREFLIGHT_TIMEOUT_MS,
   );
-  const preflightIntervalMs = parseNumber(
+  const preflightIntervalMs = parsePositiveNumberWithFallback(
     process.env.RELEASE_TUNNEL_PREFLIGHT_INTERVAL_MS,
     DEFAULT_PREFLIGHT_INTERVAL_MS,
   );
-  const preflightSuccessStreak = parseInteger(
+  const preflightSuccessStreak = parsePositiveIntegerWithFallback(
     process.env.RELEASE_TUNNEL_PREFLIGHT_SUCCESS_STREAK,
     DEFAULT_PREFLIGHT_SUCCESS_STREAK,
   );
-  const preflightSummaryWrite = parseBoolean(
+  const preflightSummaryWrite = parseBooleanWithFallback(
     process.env.RELEASE_TUNNEL_PREFLIGHT_SUMMARY_WRITE,
     DEFAULT_PREFLIGHT_SUMMARY_WRITE,
   );
   const preflightSummaryPath =
-    process.env.RELEASE_TUNNEL_PREFLIGHT_SUMMARY_PATH?.trim() ??
-    DEFAULT_PREFLIGHT_SUMMARY_PATH;
-  const captureRetryLogs = parseBoolean(
+    process.env.RELEASE_TUNNEL_PREFLIGHT_SUMMARY_PATH?.trim() ?? DEFAULT_PREFLIGHT_SUMMARY_PATH;
+  const captureRetryLogs = parseBooleanWithFallback(
     process.env.RELEASE_TUNNEL_CAPTURE_RETRY_LOGS,
     DEFAULT_CAPTURE_RETRY_LOGS,
   );
@@ -841,12 +788,7 @@ const main = async () => {
     shell: false,
   });
 
-  const apiStartInvocation = getNpmInvocation([
-    '--workspace',
-    'apps/api',
-    'run',
-    'start',
-  ]);
+  const apiStartInvocation = getNpmInvocation(['--workspace', 'apps/api', 'run', 'start']);
   const webStartInvocation = getNpmInvocation([
     '--workspace',
     'apps/web',
@@ -875,8 +817,7 @@ const main = async () => {
         NODE_ENV: 'production',
         PORT: apiPort,
         DATABASE_URL:
-          process.env.DATABASE_URL ??
-          'postgres://postgres:postgres@127.0.0.1:5432/finishit',
+          process.env.DATABASE_URL ?? 'postgres://postgres:postgres@127.0.0.1:5432/finishit',
         REDIS_URL: process.env.REDIS_URL ?? 'redis://127.0.0.1:6379',
         FRONTEND_URL: `http://${DEFAULT_WEB_HOST}:${webPort}`,
         JWT_SECRET: process.env.JWT_SECRET ?? DEFAULT_JWT_SECRET,
@@ -899,16 +840,8 @@ const main = async () => {
       shell: webStartInvocation.shell,
     });
 
-    await waitForUrl(
-      `http://${DEFAULT_WEB_HOST}:${apiPort}/health`,
-      waitTimeoutMs,
-      waitIntervalMs,
-    );
-    await waitForUrl(
-      `http://${DEFAULT_WEB_HOST}:${webPort}/`,
-      waitTimeoutMs,
-      waitIntervalMs,
-    );
+    await waitForUrl(`http://${DEFAULT_WEB_HOST}:${apiPort}/health`, waitTimeoutMs, waitIntervalMs);
+    await waitForUrl(`http://${DEFAULT_WEB_HOST}:${webPort}/`, waitTimeoutMs, waitIntervalMs);
 
     apiTunnel = startTunnel({ port: apiPort, name: 'api-tunnel' });
     webTunnel = startTunnel({ port: webPort, name: 'web-tunnel' });
@@ -1024,9 +957,7 @@ const main = async () => {
         }
       }
 
-      process.stdout.write(
-        `Dispatch attempt ${attempt}/${totalAttempts} (URL-input smoke)\n`,
-      );
+      process.stdout.write(`Dispatch attempt ${attempt}/${totalAttempts} (URL-input smoke)\n`);
 
       try {
         const dispatchResult = await runCommand({
@@ -1043,9 +974,7 @@ const main = async () => {
           shell: dispatchInvocation.shell,
           captureOutput: true,
         });
-        const runContext = getLatestRunContextFromOutput(
-          dispatchResult.combinedOutput ?? '',
-        );
+        const runContext = getLatestRunContextFromOutput(dispatchResult.combinedOutput ?? '');
         attemptSummary.status = 'pass';
         attemptSummary.runId = runContext?.runId ?? null;
         attemptSummary.runUrl = runContext?.runUrl ?? null;
@@ -1069,8 +998,7 @@ const main = async () => {
             `Retry skipped: unable to determine failed run id from dispatch output.\n`,
           );
           attemptSummary.retryable = false;
-          attemptSummary.reason =
-            'Unable to determine failed run id from dispatch output.';
+          attemptSummary.reason = 'Unable to determine failed run id from dispatch output.';
           attemptSummary.endpointProbeAfterFailure = await probeTunnelEndpoints({
             apiBaseUrl,
             webBaseUrl,
@@ -1090,9 +1018,7 @@ const main = async () => {
           });
         } catch (inspectionError) {
           const message =
-            inspectionError instanceof Error
-              ? inspectionError.message
-              : String(inspectionError);
+            inspectionError instanceof Error ? inspectionError.message : String(inspectionError);
           process.stderr.write(
             `Retry skipped: unable to inspect run ${runContext.runId}. ${message}\n`,
           );
@@ -1110,8 +1036,7 @@ const main = async () => {
 
         attemptSummary.retryable = inspection.retryable;
         attemptSummary.reason = inspection.reason;
-        attemptSummary.failedReleaseSmokeJobs =
-          inspection.failedReleaseSmokeJobs?.length ?? 0;
+        attemptSummary.failedReleaseSmokeJobs = inspection.failedReleaseSmokeJobs?.length ?? 0;
 
         if (!inspection.retryable) {
           process.stderr.write(`Retry skipped: ${inspection.reason}\n`);
@@ -1140,9 +1065,7 @@ const main = async () => {
             attemptSummary.retryLogsCleanup = cleanupSummary;
           } catch (cleanupError) {
             const message =
-              cleanupError instanceof Error
-                ? cleanupError.message
-                : String(cleanupError);
+              cleanupError instanceof Error ? cleanupError.message : String(cleanupError);
             process.stderr.write(`Retry diagnostics cleanup failed: ${message}\n`);
             attemptSummary.retryLogsCleanupError = message;
           }
@@ -1159,9 +1082,7 @@ const main = async () => {
             attemptSummary.retryLogsCaptured = true;
           } catch (captureError) {
             const message =
-              captureError instanceof Error
-                ? captureError.message
-                : String(captureError);
+              captureError instanceof Error ? captureError.message : String(captureError);
             process.stderr.write(`Retry diagnostics capture failed: ${message}\n`);
             attemptSummary.retryLogsCaptured = false;
             attemptSummary.retryLogsCaptureError = message;

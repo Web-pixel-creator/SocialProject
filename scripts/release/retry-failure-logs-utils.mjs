@@ -1,5 +1,9 @@
 import { readdir, stat, unlink } from 'node:fs/promises';
 import path from 'node:path';
+import {
+  parseBooleanWithFallback,
+  parsePositiveIntegerWithFallback,
+} from './release-runtime-utils.mjs';
 
 export const DEFAULT_RETRY_LOGS_DIR = 'artifacts/release/retry-failures';
 const DEFAULT_RETRY_LOGS_TTL_DAYS = 14;
@@ -12,67 +16,37 @@ const RETRY_LOG_FILE_NAME_PATTERN = /^run-.*(?:\.log|-retry-metadata\.json)$/u;
 const RETRY_LOG_RUN_ID_PATTERN = /runid-(\d+)/u;
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
-const parseBoolean = (raw, fallback) => {
-  if (!raw) {
-    return fallback;
-  }
-  const normalized = raw.trim().toLowerCase();
-  if (['1', 'true', 'yes', 'y'].includes(normalized)) {
-    return true;
-  }
-  if (['0', 'false', 'no', 'n'].includes(normalized)) {
-    return false;
-  }
-  return fallback;
-};
-
-const parseInteger = (raw, fallback, allowZero = false) => {
-  if (!raw) {
-    return fallback;
-  }
-  const parsed = Number(raw);
-  if (!Number.isInteger(parsed)) {
-    return fallback;
-  }
-  if (allowZero && parsed === 0) {
-    return 0;
-  }
-  return parsed > 0 ? parsed : fallback;
-};
-
 export const resolveRetryLogsDir = (env = process.env) => {
   const configuredDir =
-    env.RELEASE_TUNNEL_RETRY_LOGS_DIR ??
-    env.RELEASE_RETRY_LOGS_DIR ??
-    DEFAULT_RETRY_LOGS_DIR;
+    env.RELEASE_TUNNEL_RETRY_LOGS_DIR ?? env.RELEASE_RETRY_LOGS_DIR ?? DEFAULT_RETRY_LOGS_DIR;
   const trimmed = configuredDir.trim();
   return trimmed.length > 0 ? trimmed : DEFAULT_RETRY_LOGS_DIR;
 };
 
 export const resolveRetryLogsCleanupConfig = (env = process.env) => {
   return {
-    enabled: parseBoolean(
+    enabled: parseBooleanWithFallback(
       env.RELEASE_RETRY_LOGS_CLEANUP_ENABLED,
       DEFAULT_RETRY_LOGS_CLEANUP_ENABLED,
     ),
-    dryRun: parseBoolean(
+    dryRun: parseBooleanWithFallback(
       env.RELEASE_RETRY_LOGS_CLEANUP_DRY_RUN,
       DEFAULT_RETRY_LOGS_CLEANUP_DRY_RUN,
     ),
-    ttlDays: parseInteger(
+    ttlDays: parsePositiveIntegerWithFallback(
       env.RELEASE_RETRY_LOGS_TTL_DAYS,
       DEFAULT_RETRY_LOGS_TTL_DAYS,
-      true,
+      { allowZero: true },
     ),
-    maxRuns: parseInteger(
+    maxRuns: parsePositiveIntegerWithFallback(
       env.RELEASE_RETRY_LOGS_MAX_RUNS,
       DEFAULT_RETRY_LOGS_MAX_RUNS,
-      true,
+      { allowZero: true },
     ),
-    maxFiles: parseInteger(
+    maxFiles: parsePositiveIntegerWithFallback(
       env.RELEASE_RETRY_LOGS_MAX_FILES,
       DEFAULT_RETRY_LOGS_MAX_FILES,
-      true,
+      { allowZero: true },
     ),
   };
 };
@@ -173,14 +147,8 @@ export const cleanupRetryFailureLogs = async ({
     if (existingGroup) {
       existingGroup.files.push(candidate);
       existingGroup.totalSize += candidate.size;
-      existingGroup.oldestMtimeMs = Math.min(
-        existingGroup.oldestMtimeMs,
-        candidate.mtimeMs,
-      );
-      existingGroup.newestMtimeMs = Math.max(
-        existingGroup.newestMtimeMs,
-        candidate.mtimeMs,
-      );
+      existingGroup.oldestMtimeMs = Math.min(existingGroup.oldestMtimeMs, candidate.mtimeMs);
+      existingGroup.newestMtimeMs = Math.max(existingGroup.newestMtimeMs, candidate.mtimeMs);
       continue;
     }
 
@@ -233,9 +201,7 @@ export const cleanupRetryFailureLogs = async ({
 
   if (runsToKeep.length > maxRuns) {
     const overflowRunsCount = runsToKeep.length - maxRuns;
-    const staleRuns = [...runsToKeep]
-      .sort(sortRunsByOldestFirst)
-      .slice(0, overflowRunsCount);
+    const staleRuns = [...runsToKeep].sort(sortRunsByOldestFirst).slice(0, overflowRunsCount);
     const staleRunKeys = new Set(staleRuns.map((group) => group.runKey));
     const retainedRuns = [];
     for (const group of runsToKeep) {
@@ -249,10 +215,7 @@ export const cleanupRetryFailureLogs = async ({
     runsToKeep.push(...retainedRuns);
   }
 
-  let keptFilesAfterRunCap = runsToKeep.reduce(
-    (total, group) => total + group.files.length,
-    0,
-  );
+  let keptFilesAfterRunCap = runsToKeep.reduce((total, group) => total + group.files.length, 0);
   if (keptFilesAfterRunCap > maxFiles) {
     const staleRuns = [...runsToKeep].sort(sortRunsByOldestFirst);
     const staleRunKeys = new Set();

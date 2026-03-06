@@ -1,6 +1,10 @@
 import net from 'node:net';
 import { spawnWithReleasePolicy } from './release-command-policy.mjs';
-import { sleep, toErrorMessage } from './release-runtime-utils.mjs';
+import {
+  parsePositiveNumberWithFallback,
+  sleep,
+  toErrorMessage,
+} from './release-runtime-utils.mjs';
 
 const NPM_BIN = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const DEFAULT_API_BASE_URL = 'http://127.0.0.1:4000';
@@ -10,16 +14,7 @@ const DEFAULT_WAIT_INTERVAL_MS = 750;
 const DEFAULT_CSRF_TOKEN = 'release-smoke-csrf-token-123456789';
 const DEFAULT_JWT_SECRET = 'release-smoke-jwt-secret-123456789';
 const DEFAULT_ADMIN_TOKEN = 'release-smoke-admin-token-123456789';
-const DEFAULT_GATEWAY_WEBHOOK_SECRET =
-  'release-smoke-agent-gateway-webhook-secret-123456789';
-
-const parseNumber = (raw, fallback) => {
-  if (!raw) {
-    return fallback;
-  }
-  const parsed = Number(raw);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-};
+const DEFAULT_GATEWAY_WEBHOOK_SECRET = 'release-smoke-agent-gateway-webhook-secret-123456789';
 
 const resolvePortNumber = (raw, fallback) => {
   const resolved = raw || fallback;
@@ -79,20 +74,12 @@ const runCommand = ({ command, args, name, env, shell }) => {
       });
     } catch (error) {
       const message = toErrorMessage(error);
-      reject(
-        new Error(
-          `${name} failed to spawn (${command} ${args.join(' ')}): ${message}`,
-        ),
-      );
+      reject(new Error(`${name} failed to spawn (${command} ${args.join(' ')}): ${message}`));
       return;
     }
 
     child.on('error', (error) => {
-      reject(
-        new Error(
-          `${name} failed to start (${command} ${args.join(' ')}): ${error.message}`,
-        ),
-      );
+      reject(new Error(`${name} failed to start (${command} ${args.join(' ')}): ${error.message}`));
     });
 
     child.on('close', (code) => {
@@ -125,25 +112,13 @@ const checkCommand = ({ command, args, env, shell }) => {
   });
 };
 
-const waitForInfraReady = async ({
-  timeoutMs,
-  intervalMs,
-  checkShell = false,
-}) => {
+const waitForInfraReady = async ({ timeoutMs, intervalMs, checkShell = false }) => {
   const deadline = Date.now() + timeoutMs;
 
   while (Date.now() < deadline) {
     const postgresReady = await checkCommand({
       command: 'docker',
-      args: [
-        'compose',
-        'exec',
-        '-T',
-        'postgres',
-        'pg_isready',
-        '-U',
-        'postgres',
-      ],
+      args: ['compose', 'exec', '-T', 'postgres', 'pg_isready', '-U', 'postgres'],
       shell: checkShell,
     });
     const redisReady = await checkCommand({
@@ -201,15 +176,11 @@ const probeWebHealth = async (baseUrl, timeoutMs) => {
 
 const taskKill = (pid) => {
   return new Promise((resolve) => {
-    const killer = spawnWithReleasePolicy(
-      'taskkill',
-      ['/PID', String(pid), '/T', '/F'],
-      {
-        profileName: 'system_process',
-        stdio: 'ignore',
-        shell: false,
-      },
-    );
+    const killer = spawnWithReleasePolicy('taskkill', ['/PID', String(pid), '/T', '/F'], {
+      profileName: 'system_process',
+      stdio: 'ignore',
+      shell: false,
+    });
     killer.on('close', () => resolve());
     killer.on('error', () => resolve());
   });
@@ -303,11 +274,11 @@ const timedRequest = async ({ url, method, timeoutMs, headers, body }) => {
 const main = async () => {
   const apiBaseUrl = process.env.RELEASE_API_BASE_URL ?? DEFAULT_API_BASE_URL;
   const webBaseUrl = process.env.RELEASE_WEB_BASE_URL ?? DEFAULT_WEB_BASE_URL;
-  const timeoutMs = parseNumber(
+  const timeoutMs = parsePositiveNumberWithFallback(
     process.env.RELEASE_LOCAL_WAIT_TIMEOUT_MS,
     DEFAULT_WAIT_TIMEOUT_MS,
   );
-  const intervalMs = parseNumber(
+  const intervalMs = parsePositiveNumberWithFallback(
     process.env.RELEASE_LOCAL_WAIT_INTERVAL_MS,
     DEFAULT_WAIT_INTERVAL_MS,
   );
@@ -324,11 +295,9 @@ const main = async () => {
   const csrfToken = process.env.RELEASE_CSRF_TOKEN ?? DEFAULT_CSRF_TOKEN;
 
   const shouldPrepareInfra =
-    (process.env.RELEASE_LOCAL_SKIP_PREPARE ?? 'false').toLowerCase() !==
-    'true';
+    (process.env.RELEASE_LOCAL_SKIP_PREPARE ?? 'false').toLowerCase() !== 'true';
   const shouldRunQaCritical =
-    (process.env.RELEASE_LOCAL_SKIP_QA_CRITICAL ?? 'false').toLowerCase() !==
-    'true';
+    (process.env.RELEASE_LOCAL_SKIP_QA_CRITICAL ?? 'false').toLowerCase() !== 'true';
 
   if (shouldPrepareInfra) {
     await runCommand({
@@ -344,12 +313,7 @@ const main = async () => {
       checkShell: false,
     });
 
-    const migrateInvocation = getNpmInvocation([
-      '--workspace',
-      'apps/api',
-      'run',
-      'migrate:up',
-    ]);
+    const migrateInvocation = getNpmInvocation(['--workspace', 'apps/api', 'run', 'migrate:up']);
     await runCommand({
       command: migrateInvocation.command,
       args: migrateInvocation.args,
@@ -357,12 +321,7 @@ const main = async () => {
       shell: migrateInvocation.shell,
     });
 
-    const apiBuildInvocation = getNpmInvocation([
-      '--workspace',
-      'apps/api',
-      'run',
-      'build',
-    ]);
+    const apiBuildInvocation = getNpmInvocation(['--workspace', 'apps/api', 'run', 'build']);
     await runCommand({
       command: apiBuildInvocation.command,
       args: apiBuildInvocation.args,
@@ -370,12 +329,7 @@ const main = async () => {
       shell: apiBuildInvocation.shell,
     });
 
-    const webBuildInvocation = getNpmInvocation([
-      '--workspace',
-      'apps/web',
-      'run',
-      'build',
-    ]);
+    const webBuildInvocation = getNpmInvocation(['--workspace', 'apps/web', 'run', 'build']);
     await runCommand({
       command: webBuildInvocation.command,
       args: webBuildInvocation.args,
@@ -385,10 +339,7 @@ const main = async () => {
   }
 
   if (shouldRunQaCritical) {
-    const qaPreflightInvocation = getNpmInvocation([
-      'run',
-      'release:preflight:qa',
-    ]);
+    const qaPreflightInvocation = getNpmInvocation(['run', 'release:preflight:qa']);
     await runCommand({
       command: qaPreflightInvocation.command,
       args: qaPreflightInvocation.args,
@@ -396,25 +347,21 @@ const main = async () => {
       shell: qaPreflightInvocation.shell,
     });
   } else {
-    process.stdout.write(
-      'Skipping qa:critical gate (RELEASE_LOCAL_SKIP_QA_CRITICAL=true)\n',
-    );
+    process.stdout.write('Skipping qa:critical gate (RELEASE_LOCAL_SKIP_QA_CRITICAL=true)\n');
   }
 
   const apiEnv = {
     NODE_ENV: 'production',
     PORT: apiPort,
     DATABASE_URL:
-      process.env.DATABASE_URL ??
-      'postgres://postgres:postgres@127.0.0.1:5432/finishit',
+      process.env.DATABASE_URL ?? 'postgres://postgres:postgres@127.0.0.1:5432/finishit',
     REDIS_URL: process.env.REDIS_URL ?? 'redis://127.0.0.1:6379',
     FRONTEND_URL: webBaseUrl,
     JWT_SECRET: process.env.JWT_SECRET ?? DEFAULT_JWT_SECRET,
     CSRF_TOKEN: csrfToken,
     ADMIN_API_TOKEN: process.env.ADMIN_API_TOKEN ?? DEFAULT_ADMIN_TOKEN,
     AGENT_GATEWAY_WEBHOOK_SECRET:
-      process.env.AGENT_GATEWAY_WEBHOOK_SECRET ??
-      DEFAULT_GATEWAY_WEBHOOK_SECRET,
+      process.env.AGENT_GATEWAY_WEBHOOK_SECRET ?? DEFAULT_GATEWAY_WEBHOOK_SECRET,
     JOBS_ENABLED: process.env.JOBS_ENABLED ?? 'false',
     EMBEDDING_PROVIDER: process.env.EMBEDDING_PROVIDER ?? 'hash',
     LOG_LEVEL: process.env.LOG_LEVEL ?? 'warn',
@@ -424,12 +371,7 @@ const main = async () => {
     NODE_ENV: 'production',
   };
 
-  const apiStartInvocation = getNpmInvocation([
-    '--workspace',
-    'apps/api',
-    'run',
-    'start',
-  ]);
+  const apiStartInvocation = getNpmInvocation(['--workspace', 'apps/api', 'run', 'start']);
   const webStartInvocation = getNpmInvocation([
     '--workspace',
     'apps/web',

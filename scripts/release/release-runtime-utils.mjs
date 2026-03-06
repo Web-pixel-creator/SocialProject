@@ -4,6 +4,45 @@ export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const toErrorMessage = (error) => (error instanceof Error ? error.message : String(error));
 
+export const parseBooleanWithFallback = (raw, fallback) => {
+  if (!raw) {
+    return fallback;
+  }
+
+  const normalized = raw.trim().toLowerCase();
+  if (['1', 'true', 'yes', 'y'].includes(normalized)) {
+    return true;
+  }
+  if (['0', 'false', 'no', 'n'].includes(normalized)) {
+    return false;
+  }
+  return fallback;
+};
+
+export const parsePositiveNumberWithFallback = (raw, fallback) => {
+  if (!raw) {
+    return fallback;
+  }
+
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+export const parsePositiveIntegerWithFallback = (raw, fallback, { allowZero = false } = {}) => {
+  if (!raw) {
+    return fallback;
+  }
+
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed)) {
+    return fallback;
+  }
+  if (allowZero && parsed === 0) {
+    return 0;
+  }
+  return parsed > 0 ? parsed : fallback;
+};
+
 const TRANSIENT_FILE_READ_ERROR_CODES = new Set(['EBUSY', 'EPERM']);
 
 export const isTransientFileReadError = (error) =>

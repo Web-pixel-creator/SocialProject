@@ -2,30 +2,14 @@ import { execFileSync } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { githubApiRequestWithTransientRetry } from './github-api-request-with-transient-retry.mjs';
-import {
-  resolveRepoSlug,
-  resolveToken,
-} from './github-token-repo-resolution.mjs';
+import { resolveRepoSlug, resolveToken } from './github-token-repo-resolution.mjs';
+import { parseBooleanWithFallback } from './release-runtime-utils.mjs';
 
 const GITHUB_API_VERSION = '2022-11-28';
 const DEFAULT_ARTIFACT_NAME = 'release-smoke-report';
 const DEFAULT_OUTPUT_DIR = 'artifacts/release';
 const DEFAULT_WORKFLOW_FILE = 'ci.yml';
 const DEFAULT_EXTRACT_ENABLED = true;
-
-const parseBoolean = (raw, fallback) => {
-  if (!raw) {
-    return fallback;
-  }
-  const normalized = raw.trim().toLowerCase();
-  if (['1', 'true', 'yes', 'y'].includes(normalized)) {
-    return true;
-  }
-  if (['0', 'false', 'no', 'n'].includes(normalized)) {
-    return false;
-  }
-  return fallback;
-};
 
 const parseRunId = (raw) => {
   if (!raw) {
@@ -121,11 +105,9 @@ const main = async () => {
     process.argv[3]?.trim() ??
     process.env.RELEASE_SMOKE_ARTIFACT_NAME?.trim() ??
     DEFAULT_ARTIFACT_NAME;
-  const outputDir =
-    process.env.RELEASE_SMOKE_ARTIFACT_OUTPUT_DIR?.trim() ?? DEFAULT_OUTPUT_DIR;
-  const workflowFile =
-    process.env.RELEASE_WORKFLOW_FILE?.trim() ?? DEFAULT_WORKFLOW_FILE;
-  const shouldExtract = parseBoolean(
+  const outputDir = process.env.RELEASE_SMOKE_ARTIFACT_OUTPUT_DIR?.trim() ?? DEFAULT_OUTPUT_DIR;
+  const workflowFile = process.env.RELEASE_WORKFLOW_FILE?.trim() ?? DEFAULT_WORKFLOW_FILE;
+  const shouldExtract = parseBooleanWithFallback(
     process.env.RELEASE_SMOKE_ARTIFACT_EXTRACT,
     DEFAULT_EXTRACT_ENABLED,
   );
@@ -156,9 +138,7 @@ const main = async () => {
     retryLabel: `[release:smoke:artifact] GET ${baseApiUrl}/actions/runs/${runId}/artifacts?per_page=100`,
     url: `${baseApiUrl}/actions/runs/${runId}/artifacts?per_page=100`,
   });
-  const artifacts = Array.isArray(artifactsResponse?.artifacts)
-    ? artifactsResponse.artifacts
-    : [];
+  const artifacts = Array.isArray(artifactsResponse?.artifacts) ? artifactsResponse.artifacts : [];
   const artifact = artifacts.find(
     (entry) => entry?.name === artifactName && entry?.expired === false,
   );

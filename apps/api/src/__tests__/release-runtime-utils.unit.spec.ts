@@ -1,7 +1,4 @@
-import {
-  resolveProjectModuleHref,
-  runInlineModuleScript,
-} from './module-runner.util';
+import { resolveProjectModuleHref, runInlineModuleScript } from './module-runner.util';
 
 const helperModuleHref = resolveProjectModuleHref(
   'scripts',
@@ -18,7 +15,10 @@ const runHelperScenario = (scriptBody: string) =>
     import {
       decodeTextWithEncodingFallback,
       isTransientFileReadError,
+      parseBooleanWithFallback,
       parseJsonWithEncodingFallback,
+      parsePositiveIntegerWithFallback,
+      parsePositiveNumberWithFallback,
       retryFileReadOperation,
       sleep,
       toErrorMessage,
@@ -51,11 +51,7 @@ describe('release runtime utils', () => {
 
     expect(result.output.status).toBe(0);
     expect(result.payload.ok).toBe(true);
-    expect(result.payload.result).toEqual([
-      'boom',
-      'plain-message',
-      '[object Object]',
-    ]);
+    expect(result.payload.result).toEqual(['boom', 'plain-message', '[object Object]']);
   });
 
   test('sleep resolves asynchronously', () => {
@@ -68,9 +64,49 @@ describe('release runtime utils', () => {
 
     expect(result.output.status).toBe(0);
     expect(result.payload.ok).toBe(true);
-    expect(
-      (result.payload.result as { elapsedMs: number }).elapsedMs,
-    ).toBeGreaterThanOrEqual(0);
+    expect((result.payload.result as { elapsedMs: number }).elapsedMs).toBeGreaterThanOrEqual(0);
+  });
+
+  test('parses booleans with fallback semantics', () => {
+    const result = runHelperScenario(`
+      const value = {
+        enabled: parseBooleanWithFallback('YES', false),
+        disabled: parseBooleanWithFallback('0', true),
+        fallback: parseBooleanWithFallback('maybe', true),
+      };
+      emit({ ok: true, result: value, error: '' });
+    `);
+
+    expect(result.output.status).toBe(0);
+    expect(result.payload.ok).toBe(true);
+    expect(result.payload.result).toEqual({
+      enabled: true,
+      disabled: false,
+      fallback: true,
+    });
+  });
+
+  test('parses positive numbers and integers with fallback semantics', () => {
+    const result = runHelperScenario(`
+      const value = {
+        positiveNumber: parsePositiveNumberWithFallback('2500', 100),
+        invalidNumber: parsePositiveNumberWithFallback('-10', 100),
+        positiveInteger: parsePositiveIntegerWithFallback('7', 3),
+        zeroAllowed: parsePositiveIntegerWithFallback('0', 3, { allowZero: true }),
+        invalidInteger: parsePositiveIntegerWithFallback('3.5', 3),
+      };
+      emit({ ok: true, result: value, error: '' });
+    `);
+
+    expect(result.output.status).toBe(0);
+    expect(result.payload.ok).toBe(true);
+    expect(result.payload.result).toEqual({
+      positiveNumber: 2500,
+      invalidNumber: 100,
+      positiveInteger: 7,
+      zeroAllowed: 0,
+      invalidInteger: 3,
+    });
   });
 
   test('decodes UTF-8 BOM and UTF-16 LE buffers before JSON parsing', () => {

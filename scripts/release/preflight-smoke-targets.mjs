@@ -4,7 +4,11 @@ import {
   RELEASE_SMOKE_PREFLIGHT_JSON_SCHEMA_PATH,
   RELEASE_SMOKE_PREFLIGHT_JSON_SCHEMA_VERSION,
 } from './retry-json-schema-contracts.mjs';
-import { sleep } from './release-runtime-utils.mjs';
+import {
+  parsePositiveIntegerWithFallback,
+  parsePositiveNumberWithFallback,
+  sleep,
+} from './release-runtime-utils.mjs';
 
 const DEFAULT_TIMEOUT_MS = 45_000;
 const DEFAULT_INTERVAL_MS = 1000;
@@ -13,25 +17,6 @@ const DEFAULT_OUTPUT_PATH = 'artifacts/release/tunnel-preflight-summary.json';
 const DEFAULT_ALLOW_SKIP = false;
 const HOME_MARKER = 'Watch AI studios';
 const PREFLIGHT_LABEL = 'release:smoke:preflight';
-
-const parseNumber = (raw, fallback) => {
-  if (!raw) {
-    return fallback;
-  }
-  const parsed = Number(raw);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-};
-
-const parseInteger = (raw, fallback) => {
-  if (!raw) {
-    return fallback;
-  }
-  const parsed = Number(raw);
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    return fallback;
-  }
-  return parsed;
-};
 
 const parseArguments = (argv) => {
   const options = {
@@ -157,13 +142,7 @@ const createSkippedSummary = ({ apiBaseUrl, webBaseUrl, timeoutMs, intervalMs, s
   };
 };
 
-const runPreflight = async ({
-  apiBaseUrl,
-  webBaseUrl,
-  timeoutMs,
-  intervalMs,
-  successStreak,
-}) => {
+const runPreflight = async ({ apiBaseUrl, webBaseUrl, timeoutMs, intervalMs, successStreak }) => {
   const startedAtMs = Date.now();
   const deadline = Date.now() + timeoutMs;
   let attempts = 0;
@@ -276,20 +255,19 @@ const main = async () => {
   const options = parseArguments(process.argv.slice(2));
   const apiBaseUrl = process.env.RELEASE_PREFLIGHT_API_BASE_URL?.trim() ?? '';
   const webBaseUrl = process.env.RELEASE_PREFLIGHT_WEB_BASE_URL?.trim() ?? '';
-  const timeoutMs = parseNumber(
+  const timeoutMs = parsePositiveNumberWithFallback(
     process.env.RELEASE_PREFLIGHT_TIMEOUT_MS,
     DEFAULT_TIMEOUT_MS,
   );
-  const intervalMs = parseNumber(
+  const intervalMs = parsePositiveNumberWithFallback(
     process.env.RELEASE_PREFLIGHT_INTERVAL_MS,
     DEFAULT_INTERVAL_MS,
   );
-  const successStreak = parseInteger(
+  const successStreak = parsePositiveIntegerWithFallback(
     process.env.RELEASE_PREFLIGHT_SUCCESS_STREAK,
     DEFAULT_SUCCESS_STREAK,
   );
-  const outputPath =
-    process.env.RELEASE_PREFLIGHT_OUTPUT_PATH?.trim() ?? DEFAULT_OUTPUT_PATH;
+  const outputPath = process.env.RELEASE_PREFLIGHT_OUTPUT_PATH?.trim() ?? DEFAULT_OUTPUT_PATH;
 
   if (!apiBaseUrl || !webBaseUrl) {
     if (!options.allowSkip) {

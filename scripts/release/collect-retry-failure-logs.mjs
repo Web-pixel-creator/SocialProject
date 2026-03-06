@@ -1,10 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { githubApiRequestWithTransientRetry } from './github-api-request-with-transient-retry.mjs';
-import {
-  resolveRepoSlug,
-  resolveToken,
-} from './github-token-repo-resolution.mjs';
+import { resolveRepoSlug, resolveToken } from './github-token-repo-resolution.mjs';
 import {
   cleanupRetryFailureLogs,
   formatRetryLogsCleanupSummary,
@@ -15,10 +12,10 @@ import {
   RETRY_COLLECT_JSON_SCHEMA_PATH,
   RETRY_COLLECT_JSON_SCHEMA_VERSION,
 } from './retry-json-schema-contracts.mjs';
+import { parseBooleanWithFallback } from './release-runtime-utils.mjs';
 
 const GITHUB_API_VERSION = '2022-11-28';
-const COLLECT_USAGE =
-  'Usage: npm run release:smoke:retry:collect -- <run_id> [--json]';
+const COLLECT_USAGE = 'Usage: npm run release:smoke:retry:collect -- <run_id> [--json]';
 
 const parseInteger = (raw) => {
   const parsed = Number(raw);
@@ -26,20 +23,6 @@ const parseInteger = (raw) => {
     throw new Error(`Invalid run id '${raw}'. Use a positive integer.`);
   }
   return parsed;
-};
-
-const parseBoolean = (raw, fallback) => {
-  if (!raw) {
-    return fallback;
-  }
-  const normalized = raw.trim().toLowerCase();
-  if (['1', 'true', 'yes', 'y'].includes(normalized)) {
-    return true;
-  }
-  if (['0', 'false', 'no', 'n'].includes(normalized)) {
-    return false;
-  }
-  return fallback;
 };
 
 const parseCollectArguments = (argv) => {
@@ -65,11 +48,7 @@ const parseCollectArguments = (argv) => {
     throw new Error(COLLECT_USAGE);
   }
 
-  const runIdArg = (
-    positional[0] ??
-    process.env.RELEASE_RETRY_LOGS_RUN_ID ??
-    ''
-  ).trim();
+  const runIdArg = (positional[0] ?? process.env.RELEASE_RETRY_LOGS_RUN_ID ?? '').trim();
 
   return {
     json,
@@ -85,7 +64,9 @@ const sanitizeFilePart = (value) => {
 };
 
 const isReleaseSmokeJob = (job) =>
-  String(job?.name ?? '').toLowerCase().includes('release smoke dry-run');
+  String(job?.name ?? '')
+    .toLowerCase()
+    .includes('release smoke dry-run');
 
 const collectLogs = async ({
   token,
@@ -155,10 +136,7 @@ const collectLogs = async ({
     }
   }
 
-  const metadataPath = path.join(
-    outputDir,
-    `run-${runTag}-runid-${runId}-retry-metadata.json`,
-  );
+  const metadataPath = path.join(outputDir, `run-${runTag}-runid-${runId}-retry-metadata.json`);
   await writeFile(metadataPath, JSON.stringify(metadata, null, 2), 'utf8');
   onMetadataWritten(metadataPath);
   return {
@@ -174,7 +152,7 @@ const main = async () => {
     throw new Error(COLLECT_USAGE);
   }
 
-  const includeNonFailed = parseBoolean(
+  const includeNonFailed = parseBooleanWithFallback(
     process.env.RELEASE_RETRY_LOGS_INCLUDE_NON_FAILED,
     false,
   );
@@ -248,8 +226,7 @@ const main = async () => {
   writeText(`Run conclusion: ${run?.conclusion ?? 'unknown'}`);
 
   if (selectedJobs.length === 0) {
-    response.message =
-      'No matching Release Smoke Dry-Run jobs selected for log collection.';
+    response.message = 'No matching Release Smoke Dry-Run jobs selected for log collection.';
     if (options.json) {
       process.stdout.write(`${JSON.stringify(response, null, 2)}\n`);
       return;

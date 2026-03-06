@@ -7,7 +7,11 @@ import {
 } from './dispatch-token-arg-utils.mjs';
 import { resolveRepoSlug } from './github-token-repo-resolution.mjs';
 import { githubApiRequestWithTransientRetry } from './github-api-request-with-transient-retry.mjs';
-import { sleep } from './release-runtime-utils.mjs';
+import {
+  parseBooleanWithFallback,
+  parsePositiveNumberWithFallback,
+  sleep,
+} from './release-runtime-utils.mjs';
 
 const GITHUB_API_VERSION = '2022-11-28';
 const DEFAULT_WORKFLOW_FILE = 'ci.yml';
@@ -22,28 +26,6 @@ Token resolution order:
 2) GITHUB_TOKEN / GH_TOKEN
 3) gh auth token
 `;
-
-const parseNumber = (raw, fallback) => {
-  if (!raw) {
-    return fallback;
-  }
-  const parsed = Number(raw);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-};
-
-const parseBoolean = (raw, fallback) => {
-  if (!raw) {
-    return fallback;
-  }
-  const normalized = raw.trim().toLowerCase();
-  if (['1', 'true', 'yes', 'y'].includes(normalized)) {
-    return true;
-  }
-  if (['0', 'false', 'no', 'n'].includes(normalized)) {
-    return false;
-  }
-  return fallback;
-};
 
 const parseCliArgs = (argv) => {
   let tokenFromArg = '';
@@ -93,9 +75,15 @@ const main = async () => {
   const csrfToken = (process.env.RELEASE_CSRF_TOKEN ?? '').trim();
   const workflowFile = (process.env.RELEASE_WORKFLOW_FILE ?? DEFAULT_WORKFLOW_FILE).trim();
   const workflowRef = (process.env.RELEASE_WORKFLOW_REF ?? DEFAULT_WORKFLOW_REF).trim();
-  const waitForCompletion = parseBoolean(process.env.RELEASE_WAIT_FOR_COMPLETION, true);
-  const waitTimeoutMs = parseNumber(process.env.RELEASE_WAIT_TIMEOUT_MS, DEFAULT_WAIT_TIMEOUT_MS);
-  const waitPollMs = parseNumber(process.env.RELEASE_WAIT_POLL_MS, DEFAULT_WAIT_POLL_MS);
+  const waitForCompletion = parseBooleanWithFallback(process.env.RELEASE_WAIT_FOR_COMPLETION, true);
+  const waitTimeoutMs = parsePositiveNumberWithFallback(
+    process.env.RELEASE_WAIT_TIMEOUT_MS,
+    DEFAULT_WAIT_TIMEOUT_MS,
+  );
+  const waitPollMs = parsePositiveNumberWithFallback(
+    process.env.RELEASE_WAIT_POLL_MS,
+    DEFAULT_WAIT_POLL_MS,
+  );
 
   const repoSlug = resolveRepoSlug();
   const baseApiUrl = `https://api.github.com/repos/${repoSlug}`;

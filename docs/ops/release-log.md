@@ -33,6 +33,41 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-06 - deduplicate fallback parsers in release runtime helpers (phase 130)
+
+- Scope: continue low-risk release-helper deduplication by centralizing shared fallback parsers for boolean/positive number/positive integer env handling.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-06 16:40 -> 2026-03-06 16:54.
+- Changes:
+  - Added shared parser helpers in:
+    - `scripts/release/release-runtime-utils.mjs`
+    - `parseBooleanWithFallback`
+    - `parsePositiveNumberWithFallback`
+    - `parsePositiveIntegerWithFallback`
+  - Migrated matching local parser callsites in:
+    - `scripts/release/dispatch-staging-smoke.mjs`
+    - `scripts/release/dispatch-staging-smoke-tunnel.mjs`
+    - `scripts/release/compare-smoke-results.mjs`
+    - `scripts/release/fetch-smoke-report-artifact.mjs`
+    - `scripts/release/collect-retry-failure-logs.mjs`
+    - `scripts/release/local-dry-run.mjs`
+    - `scripts/release/preflight-smoke-targets.mjs`
+    - `scripts/release/release-diagnostics-bundle-utils.mjs`
+    - `scripts/release/retry-failure-logs-utils.mjs`
+    - `scripts/release/smoke-check.mjs`
+    - `scripts/release/post-release-health-report.mjs`
+  - Expanded unit coverage for shared parser behavior:
+    - `apps/api/src/__tests__/release-runtime-utils.unit.spec.ts`
+- Validation:
+  - `node --check` on all touched `scripts/release/*.mjs` files: pass.
+  - `npx jest apps/api/src/__tests__/release-runtime-utils.unit.spec.ts apps/api/src/__tests__/release-diagnostics-bundle.unit.spec.ts apps/api/src/__tests__/release-diagnostics-bundle-schema-check.unit.spec.ts apps/api/src/__tests__/release-staging-smoke-dispatch-cli-args.unit.spec.ts apps/api/src/__tests__/release-staging-smoke-dispatch-help-snapshot.unit.spec.ts apps/api/src/__tests__/release-inline-health-artifacts-check.unit.spec.ts apps/api/src/__tests__/release-inline-health-artifacts-schema-check.unit.spec.ts apps/api/src/__tests__/release-health-log-render.unit.spec.ts --runInBand --silent=false`: pass.
+  - `npx prettier --check` on touched scripts/tests: pass.
+- Rollout result: phase 130 helper dedup completed; no workflow dispatch executed in this window.
+- Incidents:
+  - none.
+- Follow-ups:
+  - none.
+
 ### 2026-03-06 - add guaranteed release artifact presence manifests (phase 129)
 
 - Scope: close the phase 6 failure-evidence gap for grouped release uploads by generating companion artifact-presence manifests even when primary release payloads are missing.
@@ -2956,7 +2991,7 @@ Copy this block for each release:
   - Downloaded artifact by name:
     - `production-launch-gate-step-summary`
     - local path: `artifacts/release/ci-run-22713475509-step-summary/production-launch-gate-step-summary.md`
-    - confirmed markdown includes line: `- inlineHealthArtifactsSchema: \`PASS\`` under `### Checks`.
+    - confirmed markdown includes line: `- inlineHealthArtifactsSchema: \`PASS\``under`### Checks`.
 - Incidents:
   - none.
 - Follow-ups:
@@ -6159,7 +6194,7 @@ Copy this block for each release:
   - Updated `Release Health Gate` workflow env wiring to pass:
     - `RELEASE_API_BASE_URL` (repo variable)
     - `RELEASE_ADMIN_API_TOKEN` (repo secret)
-    for in-workflow risk evaluation.
+      for in-workflow risk evaluation.
   - Updated schema contract/sample:
     - `docs/ops/schemas/release-health-report-output.schema.json`
     - `docs/ops/schemas/samples/release-health-report-output.sample.json`

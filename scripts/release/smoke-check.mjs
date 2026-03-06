@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
-import { toErrorMessage } from './release-runtime-utils.mjs';
+import { parsePositiveNumberWithFallback, toErrorMessage } from './release-runtime-utils.mjs';
 
 const DEFAULT_API_BASE_URL = 'http://127.0.0.1:4000';
 const DEFAULT_WEB_BASE_URL = 'http://127.0.0.1:3000';
@@ -16,14 +16,6 @@ const SENSITIVE_FIELD_PATTERNS = [
   'password',
   'authorization',
 ];
-
-const parseNumber = (raw, fallback) => {
-  if (!raw) {
-    return fallback;
-  }
-  const parsed = Number(raw);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-};
 
 const round = (value) => Number(value.toFixed(2));
 
@@ -98,16 +90,12 @@ const sanitizeForReport = (value, fieldName = '') => {
 
   if (value && typeof value === 'object') {
     return Object.fromEntries(
-      Object.entries(value).map(([key, child]) => [
-        key,
-        sanitizeForReport(child, key),
-      ]),
+      Object.entries(value).map(([key, child]) => [key, sanitizeForReport(child, key)]),
     );
   }
 
   if (typeof value === 'string') {
-    const jwtPattern =
-      /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/u;
+    const jwtPattern = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/u;
     if (jwtPattern.test(value)) {
       return '[REDACTED]';
     }
@@ -119,7 +107,7 @@ const sanitizeForReport = (value, fieldName = '') => {
 const main = async () => {
   const apiBaseUrl = process.env.RELEASE_API_BASE_URL ?? DEFAULT_API_BASE_URL;
   const webBaseUrl = process.env.RELEASE_WEB_BASE_URL ?? DEFAULT_WEB_BASE_URL;
-  const timeoutMs = parseNumber(
+  const timeoutMs = parsePositiveNumberWithFallback(
     process.env.RELEASE_TIMEOUT_MS,
     DEFAULT_TIMEOUT_MS,
   );
@@ -156,14 +144,7 @@ const main = async () => {
     report.steps.push(step);
   };
 
-  const evaluateStep = async ({
-    name,
-    method,
-    url,
-    headers,
-    bodyObject,
-    validate,
-  }) => {
+  const evaluateStep = async ({ name, method, url, headers, bodyObject, validate }) => {
     const body = bodyObject ? JSON.stringify(bodyObject) : undefined;
     const requestHeaders = { ...(headers ?? {}) };
     if (body) {
@@ -231,8 +212,7 @@ const main = async () => {
       name: 'api.health',
       method: 'GET',
       url: buildUrl(apiBaseUrl, '/health'),
-      validate: (response) =>
-        response.status === 200 && response.json?.status === 'ok',
+      validate: (response) => response.status === 200 && response.json?.status === 'ok',
     });
     void healthRes;
 
@@ -317,8 +297,7 @@ const main = async () => {
         method: 'email',
         emailToken: authorAgent.emailToken,
       },
-      validate: (response) =>
-        response.status === 200 && Number(response.json?.trustTier ?? 0) >= 1,
+      validate: (response) => response.status === 200 && Number(response.json?.trustTier ?? 0) >= 1,
     });
     void verifyAuthorRes;
 
@@ -351,8 +330,7 @@ const main = async () => {
         method: 'email',
         emailToken: makerAgent.emailToken,
       },
-      validate: (response) =>
-        response.status === 200 && Number(response.json?.trustTier ?? 0) >= 1,
+      validate: (response) => response.status === 200 && Number(response.json?.trustTier ?? 0) >= 1,
     });
     void verifyMakerRes;
 
@@ -388,8 +366,7 @@ const main = async () => {
       name: 'api.draft.get',
       method: 'GET',
       url: buildUrl(apiBaseUrl, `/api/drafts/${draftId}`),
-      validate: (response) =>
-        response.status === 200 && response.json?.draft?.id === draftId,
+      validate: (response) => response.status === 200 && response.json?.draft?.id === draftId,
     });
     void getDraftRes;
 
@@ -416,8 +393,7 @@ const main = async () => {
         imageUrl: 'https://example.com/smoke-after.png',
         thumbnailUrl: 'https://example.com/smoke-after-thumb.png',
       },
-      validate: (response) =>
-        response.status === 200 && typeof response.json?.id === 'string',
+      validate: (response) => response.status === 200 && typeof response.json?.id === 'string',
     });
     const pullRequestId = submitPrRes.json.id;
     report.context.pullRequestId = pullRequestId;
@@ -431,8 +407,7 @@ const main = async () => {
         decision: 'reject',
         rejectionReason: 'Smoke dry-run validation',
       },
-      validate: (response) =>
-        response.status === 200 && response.json?.id === pullRequestId,
+      validate: (response) => response.status === 200 && response.json?.id === pullRequestId,
     });
     void decidePrRes;
 
@@ -440,8 +415,7 @@ const main = async () => {
       name: 'api.search',
       method: 'GET',
       url: buildUrl(apiBaseUrl, '/api/search?q=smoke&type=all&sort=recency'),
-      validate: (response) =>
-        response.status === 200 && Array.isArray(response.json),
+      validate: (response) => response.status === 200 && Array.isArray(response.json),
     });
     void searchRes;
 
@@ -449,8 +423,7 @@ const main = async () => {
       name: 'api.feed',
       method: 'GET',
       url: buildUrl(apiBaseUrl, '/api/feed?limit=10&sort=recent'),
-      validate: (response) =>
-        response.status === 200 && Array.isArray(response.json),
+      validate: (response) => response.status === 200 && Array.isArray(response.json),
     });
     void feedRes;
 
@@ -458,8 +431,7 @@ const main = async () => {
       name: 'web.home',
       method: 'GET',
       url: buildUrl(webBaseUrl, '/'),
-      validate: (response) =>
-        response.status === 200 && response.text.includes('Watch AI studios'),
+      validate: (response) => response.status === 200 && response.text.includes('Watch AI studios'),
     });
     void homePageRes;
 
@@ -467,8 +439,7 @@ const main = async () => {
       name: 'web.feed',
       method: 'GET',
       url: buildUrl(webBaseUrl, '/feed'),
-      validate: (response) =>
-        response.status === 200 && response.text.includes('Feeds'),
+      validate: (response) => response.status === 200 && response.text.includes('Feeds'),
     });
     void feedPageRes;
 
@@ -476,8 +447,7 @@ const main = async () => {
       name: 'web.search',
       method: 'GET',
       url: buildUrl(webBaseUrl, '/search'),
-      validate: (response) =>
-        response.status === 200 && response.text.includes('Search'),
+      validate: (response) => response.status === 200 && response.text.includes('Search'),
     });
     void searchPageRes;
 
