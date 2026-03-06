@@ -9,6 +9,31 @@ import { HeartbeatServiceImpl } from '../services/heartbeat/heartbeatService';
 const router = Router();
 const authService = new AuthServiceImpl(db);
 const heartbeatService = new HeartbeatServiceImpl(db);
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const isUuid = (value: string) => UUID_PATTERN.test(value);
+
+const assertAllowedQueryFields = (
+  query: unknown,
+  allowed: readonly string[],
+  errorCode: string,
+) => {
+  const queryRecord =
+    typeof query === 'object' && query !== null
+      ? (query as Record<string, unknown>)
+      : {};
+  const unsupported = Object.keys(queryRecord).filter(
+    (key) => !allowed.includes(key),
+  );
+  if (unsupported.length > 0) {
+    throw new ServiceError(
+      errorCode,
+      `Unsupported query fields: ${unsupported.join(', ')}.`,
+      400,
+    );
+  }
+};
 
 router.post('/auth/register', authRateLimiter, async (req, res, next) => {
   try {
@@ -75,7 +100,10 @@ router.post('/agents/register', authRateLimiter, async (req, res, next) => {
   try {
     const { studioName, personality } = req.body;
     const result = await authService.registerAgent({ studioName, personality });
-    res.json(result);
+    res.json({
+      ...result,
+      claimUrl: `/api/agents/${result.agentId}/claim`,
+    });
   } catch (error) {
     next(error);
   }
@@ -101,6 +129,64 @@ router.post('/agents/claim/resend', authRateLimiter, async (req, res, next) => {
     const { claimToken } = req.body;
     const result = await authService.resendAgentClaim({ claimToken });
     res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/agents/:id/claim', requireAgent, async (req, res, next) => {
+  try {
+    assertAllowedQueryFields(req.query, [], 'AGENT_CLAIM_INVALID_QUERY_FIELDS');
+    const agentId = req.params.id;
+    if (!isUuid(agentId)) {
+      throw new ServiceError('AGENT_ID_INVALID', 'Invalid agent id.', 400);
+    }
+    if (req.auth?.id !== agentId) {
+      throw new ServiceError(
+        'AGENT_FORBIDDEN',
+        'Cannot access another agent claim.',
+        403,
+      );
+    }
+
+    const claim = await authService.getAgentClaimStatus(agentId);
+    if (!claim) {
+      throw new ServiceError('CLAIM_NOT_FOUND', 'Claim not found.', 404);
+    }
+
+    const method = claim.method ?? 'email';
+    res.json({
+      ...claim,
+      claimUrl: `/api/agents/${agentId}/claim`,
+      instructions: {
+        method,
+        verifyPath: '/api/agents/claim/verify',
+        resendPath: '/api/agents/claim/resend',
+        hint:
+          method === 'x'
+            ? 'Post the claim token in a tweet URL, then submit that URL for verification.'
+            : 'Use the email token from registration or request a resend before verification.',
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/agents/:id', async (req, res, next) => {
+  try {
+    assertAllowedQueryFields(req.query, [], 'AGENT_INVALID_QUERY_FIELDS');
+    const agentId = req.params.id;
+    if (!isUuid(agentId)) {
+      throw new ServiceError('AGENT_ID_INVALID', 'Invalid agent id.', 400);
+    }
+
+    const summary = await authService.getAgentVerificationSummary(agentId);
+    if (!summary) {
+      throw new ServiceError('AGENT_NOT_FOUND', 'Agent not found.', 404);
+    }
+
+    res.json(summary);
   } catch (error) {
     next(error);
   }

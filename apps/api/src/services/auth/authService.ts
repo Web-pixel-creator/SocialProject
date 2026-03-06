@@ -6,6 +6,9 @@ import { env } from '../../config/env';
 import { AuthError } from './errors';
 import type {
   AgentAuthResult,
+  AgentClaimStatusResult,
+  AgentVerificationMetrics,
+  AgentVerificationSummary,
   AuthService,
   DbClient,
   HumanAuthResult,
@@ -56,6 +59,40 @@ const createToken = (userId: string, email: string) => {
 };
 
 const CLAIM_EXPIRES_HOURS = 24;
+
+const toNullableIsoTimestamp = (value: unknown): string | null => {
+  if (typeof value === 'string') {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.valueOf()) ? null : parsed.toISOString();
+  }
+  if (value instanceof Date) {
+    return Number.isNaN(value.valueOf()) ? null : value.toISOString();
+  }
+  return null;
+};
+
+const resolveVerificationStatus = (params: {
+  trustTier: unknown;
+  verifiedAt: unknown;
+}): AgentVerificationSummary['verificationStatus'] =>
+  Number(params.trustTier ?? 0) >= 1 ||
+  toNullableIsoTimestamp(params.verifiedAt)
+    ? 'verified'
+    : 'unverified';
+
+const resolveClaimLifecycleStatus = (params: {
+  status: unknown;
+  expiresAt: unknown;
+}): AgentClaimStatusResult['status'] => {
+  if (params.status === 'verified') {
+    return 'verified';
+  }
+  const expiresAt = toNullableIsoTimestamp(params.expiresAt);
+  if (expiresAt && new Date(expiresAt) < new Date()) {
+    return 'expired';
+  }
+  return 'pending';
+};
 
 export class AuthServiceImpl implements AuthService {
   private readonly pool: Pool;
@@ -371,6 +408,219 @@ export class AuthServiceImpl implements AuthService {
       agentId: claim.agent_id,
       emailToken,
       expiresAt: expiresAt.toISOString(),
+    };
+  }
+
+  async getAgentVerificationSummary(
+    agentId: string,
+    client?: DbClient,
+  ): Promise<AgentVerificationSummary | null> {
+    const db = getDb(this.pool, client);
+    const result = await db.query(
+      `SELECT
+         a.id,
+         a.trust_tier,
+         a.verified_at,
+         latest_verified.method AS verification_method
+       FROM agents a
+       LEFT JOIN LATERAL (
+         SELECT method
+         FROM agent_claims
+         WHERE agent_id = a.id
+           AND status = 'verified'
+         ORDER BY verified_at DESC NULLS LAST, created_at DESC
+         LIMIT 1
+       ) latest_verified ON true
+       WHERE a.id = $1`,
+      [agentId],
+    );
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    const row = result.rows[0];
+    const verificationStatus = resolveVerificationStatus({
+      trustTier: row.trust_tier,
+      verifiedAt: row.verified_at,
+    });
+
+    return {
+      agentId: row.id as string,
+      verificationStatus,
+      verificationMethod:
+        row.verification_method === 'x' || row.verification_method === 'email'
+          ? (row.verification_method as AgentVerificationSummary['verificationMethod'])
+          : null,
+      verifiedAt: toNullableIsoTimestamp(row.verified_at),
+      badge: {
+        label: verificationStatus === 'verified' ? 'Verified' : 'Unverified',
+        tone: verificationStatus === 'verified' ? 'success' : 'muted',
+      },
+    };
+  }
+
+  async getAgentClaimStatus(
+    agentId: string,
+    client?: DbClient,
+  ): Promise<AgentClaimStatusResult | null> {
+    const db = getDb(this.pool, client);
+    const result = await db.query(
+      `SELECT
+         a.id,
+         a.trust_tier,
+         a.verified_at AS agent_verified_at,
+         latest_claim.claim_token,
+         latest_claim.method,
+         latest_claim.status,
+         latest_claim.expires_at,
+         latest_claim.verified_at AS claim_verified_at
+       FROM agents a
+       LEFT JOIN LATERAL (
+         SELECT claim_token, method, status, expires_at, verified_at, created_at
+         FROM agent_claims
+         WHERE agent_id = a.id
+         ORDER BY created_at DESC
+         LIMIT 1
+       ) latest_claim ON true
+       WHERE a.id = $1`,
+      [agentId],
+    );
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    const row = result.rows[0];
+    if (typeof row.claim_token !== 'string' || row.claim_token.length === 0) {
+      return null;
+    }
+
+    return {
+      agentId: row.id as string,
+      claimToken: row.claim_token as string,
+      status: resolveClaimLifecycleStatus({
+        status: row.status,
+        expiresAt: row.expires_at,
+      }),
+      method:
+        row.method === 'x' || row.method === 'email'
+          ? (row.method as AgentClaimStatusResult['method'])
+          : null,
+      expiresAt: toNullableIsoTimestamp(row.expires_at),
+      verifiedAt: toNullableIsoTimestamp(row.claim_verified_at),
+      verificationStatus: resolveVerificationStatus({
+        trustTier: row.trust_tier,
+        verifiedAt: row.agent_verified_at,
+      }),
+    };
+  }
+
+  async getVerificationMetrics(
+    client?: DbClient,
+  ): Promise<AgentVerificationMetrics> {
+    const db = getDb(this.pool, client);
+    const latestClaimsResult = await db.query(
+      `SELECT agent_id, method, status, created_at, expires_at, verified_at
+       FROM (
+         SELECT DISTINCT ON (agent_id)
+           agent_id,
+           method,
+           status,
+           created_at,
+           expires_at,
+           verified_at
+         FROM agent_claims
+         ORDER BY agent_id, created_at DESC, claim_token DESC
+       ) latest_claims`,
+    );
+    const totalsResult = await db.query(
+      `SELECT
+         COUNT(*)::int AS total_agents,
+         COUNT(*) FILTER (WHERE verified_at IS NOT NULL)::int AS verified_agents
+       FROM agents`,
+    );
+
+    const totalAgents = Number(totalsResult.rows[0]?.total_agents ?? 0);
+    const verifiedAgents = Number(totalsResult.rows[0]?.verified_agents ?? 0);
+    const byMethod: AgentVerificationMetrics['byMethod'] = {
+      email: {
+        totalClaims: 0,
+        pendingClaims: 0,
+        verifiedClaims: 0,
+        expiredClaims: 0,
+      },
+      x: {
+        totalClaims: 0,
+        pendingClaims: 0,
+        verifiedClaims: 0,
+        expiredClaims: 0,
+      },
+    };
+
+    const verifyDurationsHours: number[] = [];
+    let pendingClaims = 0;
+    let verifiedClaims = 0;
+    let expiredClaims = 0;
+
+    for (const row of latestClaimsResult.rows) {
+      const method = row.method === 'x' ? 'x' : 'email';
+      const status = resolveClaimLifecycleStatus({
+        status: row.status,
+        expiresAt: row.expires_at,
+      });
+      byMethod[method].totalClaims += 1;
+      if (status === 'verified') {
+        verifiedClaims += 1;
+        byMethod[method].verifiedClaims += 1;
+        const createdAt = toNullableIsoTimestamp(row.created_at);
+        const verifiedAt = toNullableIsoTimestamp(row.verified_at);
+        if (createdAt && verifiedAt) {
+          const durationHours =
+            (new Date(verifiedAt).valueOf() - new Date(createdAt).valueOf()) /
+            (60 * 60 * 1000);
+          if (Number.isFinite(durationHours) && durationHours >= 0) {
+            verifyDurationsHours.push(durationHours);
+          }
+        }
+      } else if (status === 'expired') {
+        expiredClaims += 1;
+        byMethod[method].expiredClaims += 1;
+      } else {
+        pendingClaims += 1;
+        byMethod[method].pendingClaims += 1;
+      }
+    }
+
+    const avgHoursToVerify =
+      verifyDurationsHours.length > 0
+        ? Number(
+            (
+              verifyDurationsHours.reduce((sum, value) => sum + value, 0) /
+              verifyDurationsHours.length
+            ).toFixed(2),
+          )
+        : null;
+
+    return {
+      summary: {
+        totalAgents,
+        verifiedAgents,
+        unverifiedAgents: Math.max(totalAgents - verifiedAgents, 0),
+        totalClaims: latestClaimsResult.rows.length,
+        pendingClaims,
+        verifiedClaims,
+        expiredClaims,
+        verificationRate:
+          totalAgents > 0
+            ? Number((verifiedAgents / totalAgents).toFixed(3))
+            : null,
+        avgHoursToVerify,
+      },
+      byMethod,
+      failures: {
+        expiredClaims,
+      },
     };
   }
 }

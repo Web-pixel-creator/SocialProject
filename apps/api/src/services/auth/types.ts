@@ -41,6 +41,57 @@ export interface AgentAuthResult {
   emailToken: string;
 }
 
+export type AgentVerificationMethod = 'x' | 'email';
+export type AgentVerificationStatus = 'unverified' | 'verified';
+export type AgentClaimLifecycleStatus = 'pending' | 'verified' | 'expired';
+
+export interface AgentVerificationSummary {
+  agentId: string;
+  verificationStatus: AgentVerificationStatus;
+  verificationMethod: AgentVerificationMethod | null;
+  verifiedAt: string | null;
+  badge: {
+    label: 'Verified' | 'Unverified';
+    tone: 'success' | 'muted';
+  };
+}
+
+export interface AgentClaimStatusResult {
+  agentId: string;
+  claimToken: string;
+  status: AgentClaimLifecycleStatus;
+  method: AgentVerificationMethod | null;
+  expiresAt: string | null;
+  verifiedAt: string | null;
+  verificationStatus: AgentVerificationStatus;
+}
+
+export interface AgentVerificationMetrics {
+  summary: {
+    totalAgents: number;
+    verifiedAgents: number;
+    unverifiedAgents: number;
+    totalClaims: number;
+    pendingClaims: number;
+    verifiedClaims: number;
+    expiredClaims: number;
+    verificationRate: number | null;
+    avgHoursToVerify: number | null;
+  };
+  byMethod: Record<
+    AgentVerificationMethod,
+    {
+      totalClaims: number;
+      pendingClaims: number;
+      verifiedClaims: number;
+      expiredClaims: number;
+    }
+  >;
+  failures: {
+    expiredClaims: number;
+  };
+}
+
 export interface AuthService {
   registerHuman(
     input: RegisterHumanInput,
@@ -76,6 +127,15 @@ export interface AuthService {
     input: { claimToken: string },
     client?: DbClient,
   ): Promise<{ agentId: string; emailToken: string; expiresAt: string }>;
+  getAgentVerificationSummary(
+    agentId: string,
+    client?: DbClient,
+  ): Promise<AgentVerificationSummary | null>;
+  getAgentClaimStatus(
+    agentId: string,
+    client?: DbClient,
+  ): Promise<AgentClaimStatusResult | null>;
+  getVerificationMetrics(client?: DbClient): Promise<AgentVerificationMetrics>;
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: SQL projection varies by query; callers map/cast rows per use case.

@@ -103,6 +103,81 @@ describe('Admin API routes', () => {
     expect(response.body.error).toBe('ADMIN_INVALID_QUERY');
   });
 
+  test('verification metrics aggregates latest claim lifecycle', async () => {
+    const verified = await request(app).post('/api/agents/register').send({
+      studioName: 'Verified Claim Studio',
+      personality: 'Tester',
+    });
+    await db.query(
+      `UPDATE agent_claims
+       SET created_at = NOW() - INTERVAL '2 hours'
+       WHERE claim_token = $1`,
+      [verified.body.claimToken],
+    );
+    await request(app).post('/api/agents/claim/verify').send({
+      claimToken: verified.body.claimToken,
+      method: 'email',
+      emailToken: verified.body.emailToken,
+    });
+
+    await request(app).post('/api/agents/register').send({
+      studioName: 'Pending Claim Studio',
+      personality: 'Tester',
+    });
+
+    const expired = await request(app).post('/api/agents/register').send({
+      studioName: 'Expired Claim Studio',
+      personality: 'Tester',
+    });
+    await db.query(
+      `UPDATE agent_claims
+       SET expires_at = NOW() - INTERVAL '2 hours'
+       WHERE claim_token = $1`,
+      [expired.body.claimToken],
+    );
+
+    const response = await request(app)
+      .get('/api/admin/verification/metrics')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(response.status).toBe(200);
+    expect(response.body.summary).toMatchObject({
+      totalAgents: 3,
+      verifiedAgents: 1,
+      unverifiedAgents: 2,
+      totalClaims: 3,
+      pendingClaims: 1,
+      verifiedClaims: 1,
+      expiredClaims: 1,
+      verificationRate: 0.333,
+    });
+    expect(response.body.summary.avgHoursToVerify).toBeGreaterThan(1);
+    expect(response.body.byMethod.email).toMatchObject({
+      totalClaims: 3,
+      pendingClaims: 1,
+      verifiedClaims: 1,
+      expiredClaims: 1,
+    });
+    expect(response.body.byMethod.x).toMatchObject({
+      totalClaims: 0,
+      pendingClaims: 0,
+      verifiedClaims: 0,
+      expiredClaims: 0,
+    });
+    expect(response.body.failures).toMatchObject({
+      expiredClaims: 1,
+    });
+  });
+
+  test('verification metrics rejects unsupported query fields', async () => {
+    const response = await request(app)
+      .get('/api/admin/verification/metrics?extra=true')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('ADMIN_INVALID_QUERY');
+  });
+
   test('sandbox execution metrics aggregates telemetry events', async () => {
     await db.query(
       `INSERT INTO ux_events (event_type, user_type, status, timing_ms, source, metadata)

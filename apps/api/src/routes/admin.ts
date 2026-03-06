@@ -13,6 +13,7 @@ import { parseConnectorPolicyMap } from '../services/agentGatewayIngest/connecto
 import { parseConnectorProfileMap } from '../services/agentGatewayIngest/connectorProfile';
 import { aiRuntimeService } from '../services/aiRuntime/aiRuntimeService';
 import type { AIRuntimeRole } from '../services/aiRuntime/types';
+import { AuthServiceImpl } from '../services/auth/authService';
 import {
   ACTION_LIMITS,
   BudgetServiceImpl,
@@ -32,6 +33,7 @@ import {
 import { EmbeddingBackfillServiceImpl } from '../services/search/embeddingBackfillService';
 
 const router = Router();
+const authService = new AuthServiceImpl(db);
 const embeddingBackfillService = new EmbeddingBackfillServiceImpl(db);
 const budgetService = new BudgetServiceImpl();
 const privacyService = new PrivacyServiceImpl(db);
@@ -4707,6 +4709,24 @@ router.get('/admin/system/metrics', requireAdmin, async (req, res, next) => {
     next(error);
   }
 });
+
+router.get(
+  '/admin/verification/metrics',
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      assertAllowedQueryFields(req.query, {
+        allowed: [],
+        endpoint: '/api/admin/verification/metrics',
+      });
+
+      const metrics = await authService.getVerificationMetrics();
+      res.json(metrics);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 router.get(
   '/admin/sandbox-execution/metrics',

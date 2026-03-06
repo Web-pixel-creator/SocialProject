@@ -181,6 +181,112 @@ describe('API integration', () => {
     expect(rotated.body.apiKey).toBeTruthy();
   });
 
+  test('agent verification endpoints expose claim lifecycle', async () => {
+    const register = await request(app).post('/api/agents/register').send({
+      studioName: 'Verification Studio',
+      personality: 'Verifier',
+    });
+
+    expect(register.status).toBe(200);
+    expect(register.body.claimUrl).toBe(
+      `/api/agents/${register.body.agentId}/claim`,
+    );
+
+    const summaryBefore = await request(app).get(
+      `/api/agents/${register.body.agentId}`,
+    );
+    expect(summaryBefore.status).toBe(200);
+    expect(summaryBefore.body).toMatchObject({
+      agentId: register.body.agentId,
+      verificationStatus: 'unverified',
+      verificationMethod: null,
+      badge: {
+        label: 'Unverified',
+        tone: 'muted',
+      },
+    });
+
+    const unauthorizedClaim = await request(app).get(
+      `/api/agents/${register.body.agentId}/claim`,
+    );
+    expect(unauthorizedClaim.status).toBe(401);
+    expect(unauthorizedClaim.body.error).toBe('AGENT_AUTH_REQUIRED');
+
+    const secondAgent = await request(app).post('/api/agents/register').send({
+      studioName: 'Second Verification Studio',
+      personality: 'Verifier',
+    });
+    const foreignClaim = await request(app)
+      .get(`/api/agents/${register.body.agentId}/claim`)
+      .set('x-agent-id', secondAgent.body.agentId)
+      .set('x-api-key', secondAgent.body.apiKey);
+    expect(foreignClaim.status).toBe(403);
+    expect(foreignClaim.body.error).toBe('AGENT_FORBIDDEN');
+
+    const invalidSummaryQuery = await request(app).get(
+      `/api/agents/${register.body.agentId}?extra=true`,
+    );
+    expect(invalidSummaryQuery.status).toBe(400);
+    expect(invalidSummaryQuery.body.error).toBe('AGENT_INVALID_QUERY_FIELDS');
+
+    const invalidClaimQuery = await request(app)
+      .get(`/api/agents/${register.body.agentId}/claim?extra=true`)
+      .set('x-agent-id', register.body.agentId)
+      .set('x-api-key', register.body.apiKey);
+    expect(invalidClaimQuery.status).toBe(400);
+    expect(invalidClaimQuery.body.error).toBe(
+      'AGENT_CLAIM_INVALID_QUERY_FIELDS',
+    );
+
+    const claimBefore = await request(app)
+      .get(`/api/agents/${register.body.agentId}/claim`)
+      .set('x-agent-id', register.body.agentId)
+      .set('x-api-key', register.body.apiKey);
+    expect(claimBefore.status).toBe(200);
+    expect(claimBefore.body).toMatchObject({
+      agentId: register.body.agentId,
+      claimToken: register.body.claimToken,
+      status: 'pending',
+      verificationStatus: 'unverified',
+      claimUrl: `/api/agents/${register.body.agentId}/claim`,
+      instructions: {
+        method: 'email',
+        verifyPath: '/api/agents/claim/verify',
+        resendPath: '/api/agents/claim/resend',
+      },
+    });
+
+    const verify = await request(app).post('/api/agents/claim/verify').send({
+      claimToken: register.body.claimToken,
+      method: 'email',
+      emailToken: register.body.emailToken,
+    });
+    expect(verify.status).toBe(200);
+
+    const summaryAfter = await request(app).get(
+      `/api/agents/${register.body.agentId}`,
+    );
+    expect(summaryAfter.status).toBe(200);
+    expect(summaryAfter.body).toMatchObject({
+      agentId: register.body.agentId,
+      verificationStatus: 'verified',
+      verificationMethod: 'email',
+      badge: {
+        label: 'Verified',
+        tone: 'success',
+      },
+    });
+    expect(summaryAfter.body.verifiedAt).toBeTruthy();
+
+    const claimAfter = await request(app)
+      .get(`/api/agents/${register.body.agentId}/claim`)
+      .set('x-agent-id', register.body.agentId)
+      .set('x-api-key', register.body.apiKey);
+    expect(claimAfter.status).toBe(200);
+    expect(claimAfter.body.status).toBe('verified');
+    expect(claimAfter.body.verifiedAt).toBeTruthy();
+  });
+
   test('agent heartbeat updates status', async () => {
     const { agentId, apiKey } = await registerAgent('Heartbeat Studio');
     const heartbeat = await request(app)
