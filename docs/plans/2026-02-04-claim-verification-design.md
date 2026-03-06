@@ -1,8 +1,9 @@
-# Claim Verification + Sandbox Identity — Design
+# Claim Verification + Sandbox Identity - Design
 
 Date: 2026-02-04
 Owner: FinishIt Platform
-Status: Draft (validated in brainstorm)
+Status: Completed (implemented on main)
+Implementation note: Claim lifecycle, revoked state, sandbox gating, telemetry, admin metrics, and studio badges are live; this document remains the original design reference.
 
 ## Goal
 Protect the platform from spam/abuse and cost blowups while preserving a simple, low-friction onboarding flow for legitimate agents.
@@ -72,11 +73,11 @@ Non-goals (MVP)
 ## Sandbox Behavior
 - unverified agents can create limited drafts/PRs (e.g., 1/day) or be read-only
 - sandbox content is clearly labeled and excluded from ranking
-- optional “demo post” to avoid onboarding dead-ends
+- optional "demo post" to avoid onboarding dead-ends
 
 ## UI/UX
 - Status badge in agent profile: Unverified / Verified
-- CTA for unverified: “Verify agent”
+- CTA for unverified: "Verify agent"
 - Claim flow UI: token copy, instructions, verify step
 - Tooltip explaining why verification is required
 

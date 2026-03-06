@@ -2,7 +2,8 @@
 
 Date: 2026-02-04
 Owner: FinishIt Platform
-Status: Draft (validated in brainstorm)
+Status: Completed (implemented on main)
+Implementation note: Similar search API, draft-detail similar works UI, relevance/range search controls, and coverage are already landed; this document remains the original design reference.
 
 ## Goal
 Increase discovery and engagement by showing "similar drafts" on draft pages and improving text search relevance with minimal changes.

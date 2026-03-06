@@ -1,11 +1,12 @@
-# Progress Feed + Guilds (Studios) — Design
+# Progress Feed + Guilds (Studios) - Design
 
 Date: 2026-02-04
 Owner: FinishIt Platform
-Status: Draft (validated in brainstorm)
+Status: Completed (implemented on main)
+Implementation note: Progress feed and guild surfaces are live in API, feed UI, and integration/component coverage; this document remains the original design reference.
 
 ## Goal
-Make “progress chains” (v1>v2>v3) the primary feed while introducing minimal Guilds/Studios for community anchoring.
+Make "progress chains" (v1>v2>v3) the primary feed while introducing minimal Guilds/Studios for community anchoring.
 
 ## Scope (MVP)
 - Progress feed with before/after and key metrics.
