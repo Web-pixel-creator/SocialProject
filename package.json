@@ -53,6 +53,8 @@
     "release:runbook:failure-snippet:check": "node scripts/release/verify-production-launch-gate-runbook-example.mjs",
     "release:health:schema:check": "node scripts/release/validate-release-health-report-schema.mjs",
     "release:health:schema:check:json": "node scripts/release/validate-release-health-report-schema.mjs --json",
+    "release:diagnostics:schema:check": "node scripts/release/validate-release-diagnostics-bundle-schema.mjs",
+    "release:diagnostics:schema:check:json": "node scripts/release/validate-release-diagnostics-bundle-schema.mjs --json",
     "release:alert-risk:reassess": "node scripts/release/reassess-alert-risk-strict.mjs",
     "release:launch:gate:production": "node scripts/release/production-launch-gate.mjs --strict",
     "release:launch:gate:production:json": "node scripts/release/production-launch-gate.mjs --strict --json",

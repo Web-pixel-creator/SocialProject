@@ -1,0 +1,91 @@
+{
+  "schemaPath": "docs/ops/schemas/release-diagnostics-bundle-output.schema.json",
+  "schemaVersion": "1.0.0",
+  "label": "release:diagnostics:bundle",
+  "bundleId": "bundle-20260306t041200zproduction-launch-gatelaunch_gate_failed",
+  "bundlePath": "artifacts/release/diagnostics/bundle-20260306t041200zproduction-launch-gatelaunch_gate_failed",
+  "generatedAtUtc": "2026-03-06T04:12:00.000Z",
+  "source": "production-launch-gate",
+  "correlation": {
+    "releaseRunId": "rel.production-launch-gate.20260306041200.abcdef1234",
+    "correlationId": "rel.production-launch-gate.20260306041200.abcdef1234.corr",
+    "auditSessionId": "rel.production-launch-gate.20260306041200.abcdef1234.audit"
+  },
+  "summary": {
+    "status": "fail",
+    "pass": false,
+    "failedChecks": [
+      "smoke",
+      "runtimeProbe"
+    ],
+    "smokeRetriesUsed": 1
+  },
+  "triggers": [
+    {
+      "code": "launch_gate_failed",
+      "message": "Production launch gate ended in fail state.",
+      "severity": "high"
+    },
+    {
+      "code": "runtime_degradation",
+      "message": "Runtime probe or sandbox execution metrics failed.",
+      "severity": "high"
+    }
+  ],
+  "artifacts": [
+    {
+      "label": "summary",
+      "sourcePath": "artifacts/release/production-launch-gate-summary.json",
+      "bundlePath": "artifacts/release/diagnostics/bundle-20260306t041200zproduction-launch-gatelaunch_gate_failed/artifacts/01-summary.json",
+      "present": true,
+      "copied": true,
+      "reason": null,
+      "sizeBytes": 4096
+    },
+    {
+      "label": "smoke",
+      "sourcePath": "artifacts/release/smoke-results-production-postdeploy.json",
+      "bundlePath": "artifacts/release/diagnostics/bundle-20260306t041200zproduction-launch-gatelaunch_gate_failed/artifacts/02-smoke.json",
+      "present": true,
+      "copied": true,
+      "reason": null,
+      "sizeBytes": 2048
+    },
+    {
+      "label": "runtime-probe",
+      "sourcePath": "artifacts/release/production-runtime-orchestration-probe.json",
+      "bundlePath": null,
+      "present": false,
+      "copied": false,
+      "reason": "source file missing",
+      "sizeBytes": null
+    }
+  ],
+  "cleanupSummary": {
+    "outputDir": "C:/SocialProject/artifacts/release/diagnostics",
+    "enabled": true,
+    "dryRun": false,
+    "ttlDays": 14,
+    "maxBundles": 50,
+    "maxFiles": 400,
+    "cutoffIso": "2026-02-20T04:12:00.000Z",
+    "scannedBundles": 3,
+    "matchedBundles": 3,
+    "matchedFiles": 12,
+    "eligibleBundles": 1,
+    "eligibleFiles": 4,
+    "ttlEligibleBundles": 0,
+    "ttlEligibleFiles": 0,
+    "maxBundlesEligibleBundles": 1,
+    "maxBundlesEligibleFiles": 4,
+    "maxFilesEligibleBundles": 0,
+    "maxFilesEligibleFiles": 0,
+    "keptBundles": 2,
+    "keptFiles": 8,
+    "removedBundles": 1,
+    "removedFiles": 4,
+    "removedBytes": 8192,
+    "missingDirectory": false,
+    "skippedDisabled": false
+  }
+}

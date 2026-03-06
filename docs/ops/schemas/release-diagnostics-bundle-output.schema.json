@@ -1,0 +1,319 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaPath",
+    "schemaVersion",
+    "label",
+    "bundleId",
+    "bundlePath",
+    "generatedAtUtc",
+    "source",
+    "summary",
+    "triggers",
+    "artifacts",
+    "cleanupSummary"
+  ],
+  "properties": {
+    "schemaPath": {
+      "type": "string",
+      "const": "docs/ops/schemas/release-diagnostics-bundle-output.schema.json"
+    },
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "label": {
+      "type": "string",
+      "const": "release:diagnostics:bundle"
+    },
+    "bundleId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "bundlePath": {
+      "type": "string",
+      "minLength": 1
+    },
+    "generatedAtUtc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1
+    },
+    "correlation": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "releaseRunId",
+        "correlationId",
+        "auditSessionId"
+      ],
+      "properties": {
+        "releaseRunId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "correlationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "auditSessionId": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "pass",
+        "failedChecks",
+        "smokeRetriesUsed"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pass": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "failedChecks": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "smokeRetriesUsed": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "triggers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "message",
+          "severity"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "message": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          }
+        }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "label",
+          "sourcePath",
+          "bundlePath",
+          "present",
+          "copied",
+          "reason",
+          "sizeBytes"
+        ],
+        "properties": {
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sourcePath": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bundlePath": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "present": {
+            "type": "boolean"
+          },
+          "copied": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sizeBytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "cleanupSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "outputDir",
+        "enabled",
+        "dryRun",
+        "ttlDays",
+        "maxBundles",
+        "maxFiles",
+        "cutoffIso",
+        "scannedBundles",
+        "matchedBundles",
+        "matchedFiles",
+        "eligibleBundles",
+        "eligibleFiles",
+        "ttlEligibleBundles",
+        "ttlEligibleFiles",
+        "maxBundlesEligibleBundles",
+        "maxBundlesEligibleFiles",
+        "maxFilesEligibleBundles",
+        "maxFilesEligibleFiles",
+        "keptBundles",
+        "keptFiles",
+        "removedBundles",
+        "removedFiles",
+        "removedBytes",
+        "missingDirectory",
+        "skippedDisabled"
+      ],
+      "properties": {
+        "outputDir": {
+          "type": "string",
+          "minLength": 1
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "dryRun": {
+          "type": "boolean"
+        },
+        "ttlDays": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxBundles": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxFiles": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "cutoffIso": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "scannedBundles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "matchedBundles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "matchedFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eligibleBundles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eligibleFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ttlEligibleBundles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ttlEligibleFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxBundlesEligibleBundles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxBundlesEligibleFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxFilesEligibleBundles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxFilesEligibleFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "keptBundles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "keptFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "removedBundles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "removedFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "removedBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missingDirectory": {
+          "type": "boolean"
+        },
+        "skippedDisabled": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

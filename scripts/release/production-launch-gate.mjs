@@ -15,6 +15,11 @@ import {
   SANDBOX_RUNTIME_PROBE_OPERATION,
   validateProductionLaunchGateCriticalConfigSnapshot,
 } from './production-launch-gate-critical-config.mjs';
+import {
+  captureReleaseDiagnosticsBundle,
+  resolveReleaseDiagnosticsBundlesDir,
+  resolveReleaseDiagnosticsCleanupConfig,
+} from './release-diagnostics-bundle-utils.mjs';
 import { buildProductionLaunchGateFailureLines } from './production-launch-gate-failure-output-format.mjs';
 import { buildSmokeTimeoutRetryDecision } from './production-launch-gate-smoke-timeout-retry-utils.mjs';
 import { createReleaseCorrelationContext } from './release-correlation-utils.mjs';
@@ -77,6 +82,7 @@ const RELEASE_FALLBACK_ENV = {
 const ARTIFACTS = {
   adapters: 'artifacts/release/production-agent-gateway-adapters.json',
   adminHealth: 'artifacts/release/production-admin-health-summary.json',
+  diagnosticsBundlesDir: 'artifacts/release/diagnostics',
   externalChannelTraces:
     'artifacts/release/production-agent-gateway-external-channel-traces.json',
   healthSummary: 'artifacts/release/production-launch-gate-health-summary.json',
@@ -309,6 +315,41 @@ const buildSkillMarkerCoverage = (stepPromptCoverage) => {
     skillMarkerMultiStepPass:
       hasRolePersonaAllSteps && hasSkillCapsuleAllSteps && hasRoleSkillAnyStep,
   };
+};
+const listFailedCheckNames = (checks) =>
+  Object.entries(checks || {})
+    .filter(([, value]) => value && typeof value === 'object' && value.pass === false)
+    .map(([name]) => name)
+    .sort();
+const buildDiagnosticsTriggers = ({ smokeRetriesUsed, summary }) => {
+  const triggers = [];
+  const failedChecks = new Set(listFailedCheckNames(summary?.checks));
+  if (smokeRetriesUsed > 0) {
+    triggers.push({
+      code: 'repeated_smoke_timeout_retry',
+      message: `Smoke timeout retries were used (${smokeRetriesUsed}).`,
+      severity: 'medium',
+    });
+  }
+  if (summary?.pass === false || summary?.status === 'fail') {
+    triggers.push({
+      code: 'launch_gate_failed',
+      message: 'Production launch gate ended in fail state.',
+      severity: 'high',
+    });
+  }
+  if (
+    failedChecks.has('runtimeProbe') ||
+    failedChecks.has('sandboxExecutionMetrics') ||
+    failedChecks.has('sandboxExecutionModeConsistency')
+  ) {
+    triggers.push({
+      code: 'runtime_degradation',
+      message: 'Runtime probe or sandbox execution metrics failed.',
+      severity: 'high',
+    });
+  }
+  return triggers;
 };
 const resolveExternalChannelProbePayload = ({ channel, suffix }) => {
   if (channel === 'telegram') {
@@ -632,6 +673,10 @@ const main = async () => {
   const correlation = createReleaseCorrelationContext({
     scope: 'production-launch-gate',
   });
+  const diagnosticsOutputDir = resolveReleaseDiagnosticsBundlesDir(process.env);
+  const diagnosticsCleanupConfig = resolveReleaseDiagnosticsCleanupConfig(
+    process.env,
+  );
 
   const summary = {
     artifacts: { ...ARTIFACTS, smoke: o.smokeResultsPath },
@@ -642,6 +687,7 @@ const main = async () => {
     pass: false,
     status: 'running',
   };
+  let smokeRetriesUsed = 0;
 
   try {
     let gate = null;
@@ -788,7 +834,6 @@ const main = async () => {
 
     let smoke = null;
     let smokeAttempts = 0;
-    let smokeRetriesUsed = 0;
     const smokeMaxAttempts = 1 + o.smokeTimeoutRetries;
     const smokeResultsPath = path.resolve(o.smokeResultsPath);
 
@@ -2074,7 +2119,85 @@ const main = async () => {
     summary.pass = false;
   }
 
+  const diagnosticsTriggers = buildDiagnosticsTriggers({
+    smokeRetriesUsed,
+    summary,
+  });
+  summary.diagnostics = {
+    bundlePath: null,
+    captureError: null,
+    captured: false,
+    outputDir: diagnosticsOutputDir,
+    triggerCodes: diagnosticsTriggers.map((trigger) => trigger.code),
+  };
   await writeJson(path.resolve(ARTIFACTS.summary), summary);
+  if (diagnosticsTriggers.length > 0) {
+    try {
+      const diagnosticsBundle = await captureReleaseDiagnosticsBundle({
+        artifactFiles: [
+          { label: 'summary', path: path.resolve(ARTIFACTS.summary) },
+          { label: 'admin-health', path: path.resolve(ARTIFACTS.adminHealth) },
+          { label: 'health-summary', path: path.resolve(ARTIFACTS.healthSummary) },
+          { label: 'railway-gate', path: path.resolve(ARTIFACTS.railwayGate) },
+          { label: 'runtime-probe', path: path.resolve(ARTIFACTS.runtimeProbe) },
+          {
+            label: 'sandbox-execution-metrics',
+            path: path.resolve(ARTIFACTS.sandboxExecutionMetrics),
+          },
+          {
+            label: 'sandbox-execution-audit-policy',
+            path: path.resolve(ARTIFACTS.sandboxExecutionAuditPolicy),
+          },
+          {
+            label: 'sandbox-execution-egress-policy',
+            path: path.resolve(ARTIFACTS.sandboxExecutionEgressPolicy),
+          },
+          {
+            label: 'sandbox-execution-limits-policy',
+            path: path.resolve(ARTIFACTS.sandboxExecutionLimitsPolicy),
+          },
+          {
+            label: 'config-last-known-good',
+            path: path.resolve(ARTIFACTS.lastKnownGoodConfig),
+          },
+          {
+            label: 'config-resolution',
+            path: path.resolve(ARTIFACTS.lastKnownGoodConfigResolution),
+          },
+          { label: 'smoke', path: path.resolve(o.smokeResultsPath) },
+        ],
+        cleanupConfig: diagnosticsCleanupConfig,
+        correlation,
+        outputDir: diagnosticsOutputDir,
+        source: 'production-launch-gate',
+        summary: {
+          ...summary,
+          diagnosticsMeta: {
+            smokeRetriesUsed,
+          },
+        },
+        triggers: diagnosticsTriggers,
+        workspaceRoot: process.cwd(),
+      });
+      summary.diagnostics = {
+        bundlePath: diagnosticsBundle.bundlePath,
+        captureError: null,
+        captured: true,
+        manifestPath: diagnosticsBundle.manifestPath,
+        outputDir: diagnosticsOutputDir,
+        triggerCodes: diagnosticsTriggers.map((trigger) => trigger.code),
+      };
+    } catch (error) {
+      summary.diagnostics = {
+        bundlePath: null,
+        captureError: error instanceof Error ? error.message : String(error),
+        captured: false,
+        outputDir: diagnosticsOutputDir,
+        triggerCodes: diagnosticsTriggers.map((trigger) => trigger.code),
+      };
+    }
+    await writeJson(path.resolve(ARTIFACTS.summary), summary);
+  }
   if (o.json) process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
   else {
     process.stdout.write(`Production launch gate: ${summary.status.toUpperCase()}\n`);
@@ -2087,6 +2210,13 @@ const main = async () => {
       for (const line of failureLines) {
         process.stdout.write(`${line}\n`);
       }
+    }
+    if (summary.diagnostics?.captured && summary.diagnostics.bundlePath) {
+      process.stdout.write(`Diagnostics bundle: ${summary.diagnostics.bundlePath}\n`);
+    } else if (summary.diagnostics?.captureError) {
+      process.stdout.write(
+        `Diagnostics bundle capture failed: ${summary.diagnostics.captureError}\n`,
+      );
     }
   }
   if (!summary.pass) process.exit(1);
