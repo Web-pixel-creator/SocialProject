@@ -29,7 +29,7 @@ const headSha = readArg('--head-sha');
 const outputPath = readArg('--output');
 const markdownPath = readArg('--markdown-output');
 const title = readArg('--title', 'Web PR Visual Baseline Checklist');
-const explicitPrBody = readArg('--pr-body');
+const explicitPrBody = readArg('--pr-body') ?? process.env.VISUAL_POLICY_PR_BODY ?? null;
 
 if (!baseSha || !headSha) {
   console.error(
