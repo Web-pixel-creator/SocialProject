@@ -163,18 +163,6 @@ const resolveGitHubApiTransientRetryConfig = () => {
   return githubApiRetryConfigCache;
 };
 
-const githubRequest = async ({ token, method, url, expectBinary = false }) => {
-  return githubApiRequestWithTransientRetry({
-    apiVersion: GITHUB_API_VERSION,
-    expectBinary,
-    method,
-    retryConfig: resolveGitHubApiTransientRetryConfig(),
-    retryLabel: `[release:health:report] ${method} ${url}`,
-    token,
-    url,
-  });
-};
-
 const parseRunId = (raw) => {
   if (!raw) {
     return null;
@@ -422,10 +410,14 @@ const fetchReleaseHealthAlertTelemetryCheck = async ({
   let latestAlertRunConclusionLookupError = null;
   if (latestAlertRunId > 0) {
     try {
-      const latestAlertRun = await githubRequest({
-        token,
+      const latestAlertRunUrl = `${baseApiUrl}/actions/runs/${latestAlertRunId}`;
+      const latestAlertRun = await githubApiRequestWithTransientRetry({
+        apiVersion: GITHUB_API_VERSION,
         method: 'GET',
-        url: `${baseApiUrl}/actions/runs/${latestAlertRunId}`,
+        retryConfig: resolveGitHubApiTransientRetryConfig(),
+        retryLabel: `[release:health:report] GET ${latestAlertRunUrl}`,
+        token,
+        url: latestAlertRunUrl,
       });
       latestAlertRunConclusion =
         typeof latestAlertRun?.conclusion === 'string' && latestAlertRun.conclusion.length > 0
@@ -835,9 +827,12 @@ const findLatestDispatchRunId = async ({ token, baseApiUrl, workflowFile }) => {
   const url = `${baseApiUrl}/actions/workflows/${encodeURIComponent(
     workflowFile,
   )}/runs?event=workflow_dispatch&status=completed&per_page=20`;
-  const data = await githubRequest({
+  const data = await githubApiRequestWithTransientRetry({
+    apiVersion: GITHUB_API_VERSION,
     token,
     method: 'GET',
+    retryConfig: resolveGitHubApiTransientRetryConfig(),
+    retryLabel: `[release:health:report] GET ${url}`,
     url,
   });
   const runs = Array.isArray(data?.workflow_runs) ? data.workflow_runs : [];
@@ -859,19 +854,26 @@ const listWorkflowDispatchRuns = async ({ token, baseApiUrl, workflowFile, limit
   const url = `${baseApiUrl}/actions/workflows/${encodeURIComponent(
     workflowFile,
   )}/runs?event=workflow_dispatch&status=completed&per_page=${String(limit)}`;
-  const data = await githubRequest({
+  const data = await githubApiRequestWithTransientRetry({
+    apiVersion: GITHUB_API_VERSION,
     token,
     method: 'GET',
+    retryConfig: resolveGitHubApiTransientRetryConfig(),
+    retryLabel: `[release:health:report] GET ${url}`,
     url,
   });
   return Array.isArray(data?.workflow_runs) ? data.workflow_runs : [];
 };
 
 const fetchRunArtifacts = async ({ token, baseApiUrl, runId }) => {
-  const artifactsData = await githubRequest({
+  const url = `${baseApiUrl}/actions/runs/${runId}/artifacts?per_page=100`;
+  const artifactsData = await githubApiRequestWithTransientRetry({
+    apiVersion: GITHUB_API_VERSION,
     token,
     method: 'GET',
-    url: `${baseApiUrl}/actions/runs/${runId}/artifacts?per_page=100`,
+    retryConfig: resolveGitHubApiTransientRetryConfig(),
+    retryLabel: `[release:health:report] GET ${url}`,
+    url,
   });
   return Array.isArray(artifactsData?.artifacts) ? artifactsData.artifacts : [];
 };
@@ -880,11 +882,14 @@ const findActiveArtifactByName = ({ artifacts, name }) =>
   artifacts.find((artifact) => artifact?.name === name && artifact?.expired === false);
 
 const extractArtifactJsonFile = async ({ token, artifact, fileName, tempRoot, runId }) => {
-  const archiveBuffer = await githubRequest({
+  const archiveBuffer = await githubApiRequestWithTransientRetry({
+    apiVersion: GITHUB_API_VERSION,
+    expectBinary: true,
     token,
     method: 'GET',
+    retryConfig: resolveGitHubApiTransientRetryConfig(),
+    retryLabel: `[release:health:report] GET ${artifact.archive_download_url}`,
     url: artifact.archive_download_url,
-    expectBinary: true,
   });
   const runDir = path.join(
     tempRoot,
@@ -1474,11 +1479,14 @@ const analyzeExternalChannelFailureModeTrend = async ({
       }
 
       try {
-        const archiveBuffer = await githubRequest({
+        const archiveBuffer = await githubApiRequestWithTransientRetry({
+          apiVersion: GITHUB_API_VERSION,
+          expectBinary: true,
           token,
           method: 'GET',
+          retryConfig: resolveGitHubApiTransientRetryConfig(),
+          retryLabel: `[release:health:report] GET ${traceArtifact.archive_download_url}`,
           url: traceArtifact.archive_download_url,
-          expectBinary: true,
         });
         const runDir = path.join(tempRoot, String(candidate.id));
         const zipPath = path.join(runDir, `${traceArtifact.id}.zip`);
@@ -1879,20 +1887,32 @@ const main = async () => {
     : await findLatestDispatchRunId({ token, baseApiUrl, workflowFile });
 
   const runId = resolvedRun.id;
-  const run = await githubRequest({
+  const runUrl = `${baseApiUrl}/actions/runs/${runId}`;
+  const run = await githubApiRequestWithTransientRetry({
+    apiVersion: GITHUB_API_VERSION,
     token,
     method: 'GET',
-    url: `${baseApiUrl}/actions/runs/${runId}`,
+    retryConfig: resolveGitHubApiTransientRetryConfig(),
+    retryLabel: `[release:health:report] GET ${runUrl}`,
+    url: runUrl,
   });
-  const jobsData = await githubRequest({
+  const jobsUrl = `${baseApiUrl}/actions/runs/${runId}/jobs?per_page=100`;
+  const jobsData = await githubApiRequestWithTransientRetry({
+    apiVersion: GITHUB_API_VERSION,
     token,
     method: 'GET',
-    url: `${baseApiUrl}/actions/runs/${runId}/jobs?per_page=100`,
+    retryConfig: resolveGitHubApiTransientRetryConfig(),
+    retryLabel: `[release:health:report] GET ${jobsUrl}`,
+    url: jobsUrl,
   });
-  const artifactsData = await githubRequest({
+  const artifactsUrl = `${baseApiUrl}/actions/runs/${runId}/artifacts?per_page=100`;
+  const artifactsData = await githubApiRequestWithTransientRetry({
+    apiVersion: GITHUB_API_VERSION,
     token,
     method: 'GET',
-    url: `${baseApiUrl}/actions/runs/${runId}/artifacts?per_page=100`,
+    retryConfig: resolveGitHubApiTransientRetryConfig(),
+    retryLabel: `[release:health:report] GET ${artifactsUrl}`,
+    url: artifactsUrl,
   });
 
   const jobs = Array.isArray(jobsData?.jobs) ? jobsData.jobs : [];

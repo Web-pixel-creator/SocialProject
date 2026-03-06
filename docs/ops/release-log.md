@@ -33,6 +33,28 @@ Copy this block for each release:
 
 ## Entries
 
+### 2026-03-06 - remove final github request wrapper from post-release health report (phase 128)
+
+- Scope: finish the remaining shared-helper migration in release tooling by removing the last local `githubRequest` passthrough from `post-release-health-report.mjs`.
+- Release commander: Codex automation.
+- Window (UTC): 2026-03-06 16:25 -> 2026-03-06 16:28.
+- Changes:
+  - Removed the final local GitHub request wrapper from:
+    - `scripts/release/post-release-health-report.mjs`
+  - Replaced all affected callsites with direct `githubApiRequestWithTransientRetry` usage while preserving:
+    - `GITHUB_API_VERSION`
+    - transient retry config from `resolveGitHubApiTransientRetryConfig()`
+    - existing retry labels
+    - binary artifact download behavior
+- Validation:
+  - `node --check scripts/release/post-release-health-report.mjs`: pass.
+  - `npx jest apps/api/src/__tests__/release-github-api-request-with-transient-retry.unit.spec.ts apps/api/src/__tests__/release-inline-health-artifacts-check.unit.spec.ts apps/api/src/__tests__/release-inline-health-artifacts-schema-check.unit.spec.ts apps/api/src/__tests__/release-health-log-render.unit.spec.ts --runInBand --silent=false`: pass.
+- Rollout result: phase 128 helper cleanup completed; release tooling no longer carries local GitHub request wrappers in `scripts/release`.
+- Incidents:
+  - none.
+- Follow-ups:
+  - none.
+
 ### 2026-03-06 - remove redundant github request wrappers from release helpers (phase 127)
 
 - Scope: finish the low-risk shared-helper migration for staging smoke/retry/artifact scripts by removing local `githubRequest` passthrough wrappers and calling `githubApiRequestWithTransientRetry` directly.
