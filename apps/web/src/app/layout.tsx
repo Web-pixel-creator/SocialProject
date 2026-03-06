@@ -21,7 +21,7 @@ export const metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${openSans.variable} font-sans`}>
+      <body className={`${openSans.className} ${openSans.variable}`}>
         <Providers>
           <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
             <div className="page-shell">
