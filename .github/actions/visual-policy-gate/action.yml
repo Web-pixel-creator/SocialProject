@@ -32,8 +32,24 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Resolve current PR body
+      id: pr_body
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { data } = await github.rest.pulls.get({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: context.issue.number,
+          });
+
+          core.setOutput('body', data.body || '');
+
     - name: Validate visual baseline checklist for snapshot updates
       shell: bash
+      env:
+        VISUAL_POLICY_PR_BODY: ${{ steps.pr_body.outputs.body }}
       run: |
         node scripts/ci/validate-visual-pr-checklist.mjs \
           --base-sha "${{ inputs.base_sha }}" \
