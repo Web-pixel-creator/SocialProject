@@ -37,6 +37,8 @@ import {
 } from '../services/providerRouting/providerRoutingService';
 import type { ProviderLane, ProviderLaneExecutionStatus } from '../services/providerRouting/types';
 import { EmbeddingBackfillServiceImpl } from '../services/search/embeddingBackfillService';
+import { groundedResearchService } from '../services/search/groundedResearchService';
+import { GROUNDED_RESEARCH_RECENCY_VALUES } from '../services/search/groundedResearchTypes';
 import { voiceLaneService } from '../services/voice/voiceLaneService';
 
 const router = Router();
@@ -119,6 +121,17 @@ const AI_RUNTIME_DRY_RUN_ALLOWED_FIELDS = new Set([
 ]);
 const AI_RUNTIME_DRY_RUN_MAX_ARRAY_ITEMS = 10;
 const AI_RUNTIME_DRY_RUN_MAX_ARRAY_ITEM_LENGTH = 64;
+const GROUNDED_RESEARCH_ALLOWED_FIELDS = [
+  'query',
+  'providersOverride',
+  'domainAllowlist',
+  'recency',
+  'country',
+  'maxResults',
+] as const;
+const GROUNDED_RESEARCH_MAX_QUERY_LENGTH = 4000;
+const GROUNDED_RESEARCH_MAX_DOMAIN_ITEMS = 10;
+const GROUNDED_RESEARCH_MAX_DOMAIN_LENGTH = 120;
 const VOICE_RENDER_PREVIEW_ALLOWED_FIELDS = [
   'script',
   'voice',
@@ -1510,6 +1523,100 @@ const parseOptionalStringArrayStrict = (
   return normalized.length > 0 ? Array.from(new Set(normalized)) : undefined;
 };
 
+const parseOptionalGroundedResearchDomainAllowlist = (value: unknown): string[] | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!Array.isArray(value)) {
+    throw new ServiceError(
+      'ADMIN_INVALID_BODY',
+      'domainAllowlist must be an array of domains.',
+      400,
+    );
+  }
+  if (value.length > GROUNDED_RESEARCH_MAX_DOMAIN_ITEMS) {
+    throw new ServiceError(
+      'ADMIN_INVALID_BODY',
+      `domainAllowlist supports up to ${GROUNDED_RESEARCH_MAX_DOMAIN_ITEMS} items.`,
+      400,
+    );
+  }
+  const normalized = value
+    .map((entry) => {
+      if (typeof entry !== 'string') {
+        throw new ServiceError(
+          'ADMIN_INVALID_BODY',
+          'domainAllowlist must contain strings only.',
+          400,
+        );
+      }
+      const trimmed = entry.trim().toLowerCase();
+      if (trimmed.length === 0) {
+        return null;
+      }
+      if (trimmed.length > GROUNDED_RESEARCH_MAX_DOMAIN_LENGTH) {
+        throw new ServiceError(
+          'ADMIN_INVALID_BODY',
+          `domainAllowlist items must be at most ${GROUNDED_RESEARCH_MAX_DOMAIN_LENGTH} characters.`,
+          400,
+        );
+      }
+      if (!/^(?:[a-z0-9-]+\.)+[a-z]{2,63}$/i.test(trimmed)) {
+        throw new ServiceError(
+          'ADMIN_INVALID_BODY',
+          'domainAllowlist items must be valid bare domains.',
+          400,
+        );
+      }
+      return trimmed;
+    })
+    .filter((entry): entry is string => entry !== null);
+  return normalized.length > 0 ? Array.from(new Set(normalized)) : undefined;
+};
+
+const parseOptionalGroundedResearchRecency = (
+  value: unknown,
+): (typeof GROUNDED_RESEARCH_RECENCY_VALUES)[number] | undefined => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+  const parsed = parseOptionalBoundedBodyString(value, {
+    fieldName: 'recency',
+    maxLength: 16,
+  });
+  if (!parsed) {
+    return undefined;
+  }
+  const normalized = parsed.toLowerCase();
+  if (
+    !GROUNDED_RESEARCH_RECENCY_VALUES.includes(
+      normalized as (typeof GROUNDED_RESEARCH_RECENCY_VALUES)[number],
+    )
+  ) {
+    throw new ServiceError(
+      'ADMIN_INVALID_BODY',
+      `recency must be one of ${GROUNDED_RESEARCH_RECENCY_VALUES.join(', ')}.`,
+      400,
+    );
+  }
+  return normalized as (typeof GROUNDED_RESEARCH_RECENCY_VALUES)[number];
+};
+
+const parseOptionalGroundedResearchCountry = (value: unknown): string | undefined => {
+  const parsed = parseOptionalBoundedBodyString(value, {
+    fieldName: 'country',
+    maxLength: 2,
+  });
+  if (!parsed) {
+    return undefined;
+  }
+  const normalized = parsed.toUpperCase();
+  if (!/^[A-Z]{2}$/.test(normalized)) {
+    throw new ServiceError('ADMIN_INVALID_BODY', 'country must be a 2-letter ISO code.', 400);
+  }
+  return normalized;
+};
+
 const parseOptionalRuntimeCorrelationBodyString = (
   value: unknown,
   {
@@ -2851,6 +2958,54 @@ router.get('/admin/provider-lanes/telemetry', requireAdmin, async (req, res, nex
         status,
       }),
     );
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/admin/provider-lanes/grounded-research', requireAdmin, async (req, res, next) => {
+  try {
+    assertAllowedQueryFields(req.query, {
+      allowed: [],
+      endpoint: '/api/admin/provider-lanes/grounded-research',
+    });
+    const body = assertAllowedBodyFields(req.body, {
+      allowed: GROUNDED_RESEARCH_ALLOWED_FIELDS,
+      endpoint: '/api/admin/provider-lanes/grounded-research',
+    });
+    const query = parseRequiredBoundedBodyString(body.query, {
+      fieldName: 'query',
+      maxLength: GROUNDED_RESEARCH_MAX_QUERY_LENGTH,
+    });
+    const providersOverride = parseOptionalStringArrayStrict(body.providersOverride, {
+      fieldName: 'providersOverride',
+    });
+    const domainAllowlist = parseOptionalGroundedResearchDomainAllowlist(body.domainAllowlist);
+    const recency = parseOptionalGroundedResearchRecency(body.recency);
+    const country = parseOptionalGroundedResearchCountry(body.country);
+    const maxResults = parseBoundedOptionalInt(body.maxResults, {
+      fieldName: 'maxResults',
+      invalidCode: 'ADMIN_INVALID_BODY',
+      max: 8,
+      min: 1,
+    });
+
+    const research = await groundedResearchService.runResearch({
+      country,
+      domainAllowlist,
+      maxResults,
+      preferredProviders: providersOverride,
+      query,
+      recency,
+      requestedByType: 'admin',
+    });
+
+    res.json({
+      research: {
+        ...research,
+        createdAt: research.createdAt.toISOString(),
+      },
+    });
   } catch (error) {
     next(error);
   }

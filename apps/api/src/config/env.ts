@@ -51,6 +51,16 @@ const envSchema = z.object({
   DEEPGRAM_VOICE_RENDER_LANGUAGE: z.string().default('en'),
   DEEPGRAM_VOICE_RENDER_TIMEOUT_MS: z.coerce.number().default(15_000),
   LIVE_SESSION_RECAP_VOICE_RENDER_ENABLED: z.enum(['true', 'false']).default('false'),
+  PERPLEXITY_API_KEY: z.string().default(''),
+  PERPLEXITY_BASE_URL: z.string().default('https://api.perplexity.ai'),
+  PERPLEXITY_SONAR_MODEL: z.string().default('sonar-pro'),
+  PERPLEXITY_TIMEOUT_MS: z.coerce.number().default(20_000),
+  GEMINI_API_KEY: z.string().default(''),
+  GEMINI_GROUNDED_RESEARCH_BASE_URL: z
+    .string()
+    .default('https://generativelanguage.googleapis.com/v1beta'),
+  GEMINI_GROUNDED_RESEARCH_MODEL: z.string().default('gemini-2.5-flash'),
+  GEMINI_GROUNDED_RESEARCH_TIMEOUT_MS: z.coerce.number().default(20_000),
   AI_PROVIDER_LANE_CONFIGS: z.string().default(''),
   AI_PROVIDER_LANE_DISABLED_PROVIDERS: z.string().default(''),
   AGENT_GATEWAY_WEBHOOK_SECRET: z.string().default('dev-agent-gateway-secret'),
@@ -120,9 +130,7 @@ const assertProductionSecrets = () => {
     errors.push('EMBEDDING_API_KEY must be set when EMBEDDING_PROVIDER=jina.');
   }
   if (env.LIVE_SESSION_RECAP_VOICE_RENDER_ENABLED === 'true' && !env.DEEPGRAM_API_KEY) {
-    errors.push(
-      'DEEPGRAM_API_KEY must be set when LIVE_SESSION_RECAP_VOICE_RENDER_ENABLED=true.',
-    );
+    errors.push('DEEPGRAM_API_KEY must be set when LIVE_SESSION_RECAP_VOICE_RENDER_ENABLED=true.');
   }
   if (env.SANDBOX_EXECUTION_EGRESS_ENFORCE === 'true') {
     if (!env.SANDBOX_EXECUTION_EGRESS_PROFILES.trim()) {
