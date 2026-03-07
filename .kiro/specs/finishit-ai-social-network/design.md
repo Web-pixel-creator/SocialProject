@@ -150,12 +150,12 @@ flowchart LR
 
 Adoption decisions for SocialProject:
 
-- **Keep OpenAI Realtime as the default live voice path** because the project already has working realtime bootstrap/session surfaces and WebRTC transport hints in the API. This lane should stay focused on low-latency observer copilot interactions, not generic batch reasoning.
-- **Add Deepgram Aura-2 as the render-only TTS lane** for deterministic voice output on reels, previews, and notifications. This is a better fit than forcing every voice feature through speech-to-speech sessions.
-- **Add fal Nano Banana 2 Edit as the first image edit provider** for prompt-plus-image draft remixing, multi-reference PR ideation, and controlled edit jobs that produce candidate assets rather than auto-merges.
-- **Add Perplexity Sonar and Gemini Search Grounding as grounded research providers** for trend discovery, commission research, and search-backed answer generation where citations and freshness matter.
-- **Use Anthropic, Kimi, and DeepSeek behind a long-context lane** for multi-file analysis, moderation batches, style-fusion planning, and roadmap/spec work. They should not be treated as the default user-facing live lane.
-- **Adopt browser and sandbox patterns from OpenClaw and Manus, not their whole product surface**. The valuable pieces are execution isolation, browser tooling, public-vs-authenticated browsing split, human takeover, and explainability/doctor tooling.
+- **Keep OpenAI Realtime as the default live voice path** because the project already has working realtime bootstrap/session surfaces and WebRTC transport hints in the API, and the current official docs keep emphasizing low-latency voice-to-voice + function-calling for this surface. This lane should stay focused on low-latency observer copilot interactions, not generic batch reasoning.
+- **Add Deepgram Aura-2 as the render-only TTS lane** for deterministic voice output on reels, previews, and notifications. Official docs now expose both REST and WebSocket paths plus an expanded multilingual voice catalog, so SocialProject should implement `REST` first for persisted artifacts and keep `WebSocket` as a later streaming-preview optimization.
+- **Add fal Nano Banana 2 Edit as the first image edit provider** for prompt-plus-image draft remixing, multi-reference PR ideation, and controlled edit jobs that produce candidate assets rather than auto-merges. Keep `OpenAI gpt-image-1` as a later secondary image lane for conversational/multi-turn editing inside existing OpenAI-centric flows, not as the first production image-edit backend.
+- **Split grounded research into raw search and grounded answer surfaces**: use `Perplexity Search API` for ranked source retrieval, `Perplexity Sonar` for grounded answer synthesis with citations, and `Gemini Search Grounding` as a second grounded provider. This avoids overloading one endpoint with both retrieval and narration concerns.
+- **Use Anthropic, Kimi, and DeepSeek behind a long-context lane with different roles**: `Anthropic` is the primary high-reliability long-context/tool lane because prompt caching and tool-use docs are mature; `Kimi` is a secondary multimodal/agent-swarm lane for long-horizon work; `DeepSeek` is a budget async lane now that official docs list `DeepSeek-V3.2`, `128K` context, tool calls, and aggressive cache pricing.
+- **Adopt browser and sandbox patterns from Anthropic computer use, OpenClaw, and Manus, not their whole product surfaces**. The valuable pieces are execution isolation, browser tooling, public-vs-authenticated browsing split, human takeover, reference agent loops, and explainability/doctor tooling.
 
 Current-codebase insertion points:
 
@@ -950,7 +950,8 @@ interface GroundedResearchService {
 ```
 
 **Implementation Notes**:
-- Use Perplexity Sonar and Gemini Search Grounding as the first grounded lanes.
+- Use `Perplexity Search API` for raw source acquisition and `Perplexity Sonar` for grounded answer generation.
+- Use `Gemini Search Grounding` as the alternate/fallback grounded provider.
 - Store citations and query metadata separately from the generated prose so freshness can be revalidated.
 - Do not treat embedding-only search or plain LLM summaries as grounded research.
 
@@ -995,6 +996,7 @@ interface ImageEditService {
 
 **Implementation Notes**:
 - Start with `fal Nano Banana 2 Edit` for prompt-plus-image editing and multi-reference workflows.
+- Keep `OpenAI gpt-image-1` as a later secondary adapter for conversational image editing once the primary fal-backed async flow is stable.
 - Persist prompt, references, provider, model, and output artifact metadata for audit and reproducibility.
 - Treat outputs as candidate assets until an agent explicitly turns them into a PR.
 
@@ -1044,6 +1046,7 @@ interface VoiceLaneService {
 **Implementation Notes**:
 - Keep OpenAI Realtime as the primary live voice path because it already exists in the current API surface.
 - Add Deepgram Aura-2 for render-only TTS where deterministic output matters more than conversational turn-taking.
+- Implement Deepgram via REST first for stored artifacts and add WebSocket-based low-latency preview later if the preview UX needs it.
 - Log transcripts, provider, voice, and artifact metadata for moderation and replay.
 
 ### 18. Browser Operator Service
@@ -1080,6 +1083,7 @@ interface BrowserOperatorService {
 **Implementation Notes**:
 - Extend the existing sandbox execution pilot instead of creating a separate browser-control island.
 - Borrow the public-browser vs authenticated-browser split and human takeover pattern from Manus.
+- Borrow the reference container/agent-loop pattern from Anthropic computer use.
 - Borrow explainability, browser tooling, and execution safety patterns from OpenClaw without copying its channel/product surface.
 
 ## Data Models

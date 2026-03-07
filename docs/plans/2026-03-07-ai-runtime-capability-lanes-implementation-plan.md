@@ -26,20 +26,30 @@ Turn the updated AI/runtime specification into a phased implementation plan that
 ## External Findings Rechecked (2026-03-07)
 
 - `OpenAI Realtime` remains the best fit for the existing low-latency live
-  observer/copilot surface.
+  observer/copilot surface and still maps cleanly to WebRTC/function-calling
+  style live sessions.
 - `Deepgram Aura-2` is a strong render-only TTS fit for deterministic speech
-  output and should not be forced into the live speech lane.
+  output and should not be forced into the live speech lane. Official docs
+  support both REST and WebSocket delivery, so SocialProject should use
+  `REST first, WebSocket later`.
 - `fal Nano Banana 2 Edit` is a good first managed image-edit provider for
   prompt-plus-image draft remix and PR candidate generation.
-- `Perplexity Sonar` and `Gemini Search Grounding` are the right fit for
-  source-backed research with citations and freshness controls.
+- `Perplexity Search API` and `Perplexity Sonar` should be treated as separate
+  building blocks: one for source retrieval, one for grounded answer synthesis.
+- `Gemini Search Grounding` is the right alternate grounded-research provider
+  with explicit web-search-backed responses.
 - `Anthropic` is the strongest first choice for tool-heavy or long-context
-  analysis where reliability matters more than lowest cost.
+  analysis where reliability matters more than lowest cost, and its current
+  computer-use reference implementation is directly relevant to our
+  browser-operator lane design.
 - `Kimi` is useful as a long-context and MCP-aware secondary lane, not the
-  first production-critical live lane.
+  first production-critical live lane. The current Moonshot/Kimi docs emphasize
+  stronger agentic and long-horizon use cases than low-latency live UX.
 - `DeepSeek` pricing and cache economics make it attractive for async batch
-  reasoning, but it should start as a budget/offline lane rather than a
-  tool-critical execution path.
+  reasoning, and the current official pricing/docs now expose
+  `DeepSeek-V3.2`, `128K` context, tool calls, and cache-sensitive pricing.
+  It should still start as a budget/offline lane rather than a tool-critical
+  execution path.
 - `OpenClaw` is valuable as a source of gateway, sandbox, browser, failover,
   policy, and observability patterns.
 - `Manus` is useful mainly as a source of browser-operator workflow patterns:
@@ -77,13 +87,16 @@ Turn the updated AI/runtime specification into a phased implementation plan that
   - Rollout: keep current path, do not replace in Phase 1
 - `voice_render`
   - Primary: `Deepgram Aura-2`
-  - Rollout: internal preview first, then reels/notifications
+  - Rollout: internal preview first via REST artifact generation, then
+    reels/notifications, then optional WebSocket preview
 - `grounded_research`
-  - Primary: `Perplexity Sonar`
-  - Secondary: `Gemini Search Grounding`
+  - Primary retrieval: `Perplexity Search API`
+  - Primary grounded answer: `Perplexity Sonar`
+  - Secondary grounded provider: `Gemini Search Grounding`
   - Rollout: admin/internal surfaces first, then user-facing discovery helpers
 - `image_edit`
   - Primary: `fal Nano Banana 2 Edit`
+  - Secondary backlog provider: `OpenAI gpt-image-1`
   - Rollout: async candidate asset generation only, no auto-merge
 - `long_context`
   - Primary: `Anthropic`
@@ -92,7 +105,7 @@ Turn the updated AI/runtime specification into a phased implementation plan that
   - Rollout: async internal jobs first
 - `browser_operator`
   - Runtime base: current sandbox execution path
-  - Pattern sources: `OpenClaw` and `Manus`
+  - Pattern sources: `Anthropic computer use`, `OpenClaw`, and `Manus`
   - Rollout: admin-only until strict execution telemetry and approvals land
 
 ## Implementation Principles
@@ -148,6 +161,7 @@ Deliverables:
 - add `VoiceLaneService` with:
   - live session passthrough to existing OpenAI path
   - render-only Deepgram TTS adapter
+- implement `Deepgram REST` first for persisted audio artifacts
 - add persisted audio artifact metadata:
   - script
   - transcript
@@ -156,6 +170,8 @@ Deliverables:
   - voice
   - duration
 - add internal/admin preview endpoint for render-only audio
+- keep WebSocket-based preview streaming as a later optional follow-up, not a
+  Phase 1 dependency
 - add reel/notification integration path behind feature flag
 
 Primary insertion points:
@@ -177,7 +193,8 @@ Deliverables:
 
 - add `GroundedResearchService`
 - add citation persistence tables and API contract
-- implement `Perplexity Sonar` adapter
+- implement `Perplexity Search API` adapter for raw source retrieval
+- implement `Perplexity Sonar` adapter for grounded answer synthesis
 - implement `Gemini Search Grounding` fallback/alternate adapter
 - add admin-only research endpoint and source-backed summary response
 - extend search/discovery and commission helpers with optional citation-backed
@@ -210,6 +227,8 @@ Deliverables:
   - candidate outputs
   - failure reasons
 - add candidate-asset UI and promote-to-PR flow
+- keep `OpenAI gpt-image-1` as a secondary-provider follow-up after the fal path
+  is stable and measured
 
 Primary insertion points:
 
@@ -232,7 +251,8 @@ Deliverables:
 - add async long-context analysis job runner
 - implement `Anthropic` as the first production-grade adapter
 - implement `Kimi` as a secondary long-context adapter
-- implement `DeepSeek` as a budget batch lane
+- implement `DeepSeek` as a budget batch lane using its current
+  cache-sensitive/128K-capable economics only after telemetry is visible
 - persist cache and token economics:
   - cache hit/miss
   - input/output tokens
@@ -261,6 +281,8 @@ Exit criteria:
 Deliverables:
 
 - extend sandbox execution into browser-operator runs
+- align the run loop with the reference task/tool/container pattern shown in
+  Anthropic computer-use examples
 - add run types:
   - `public_web`
   - `authenticated`
@@ -326,6 +348,9 @@ Exit criteria:
 - `Kimi` should stay policy-gated at first.
   - It is valuable for long context and MCP-aware flows, but it should not be a
     hidden dependency of the primary user journey.
+  - It should ship behind explicit adapter contract tests instead of a blind
+    "OpenAI-compatible" assumption, because Moonshot/Kimi compatibility details
+    and tool-call conventions evolve quickly.
 - `Manus` is a workflow reference, not a drop-in dependency.
   - We should copy the public/authenticated/takeover model, not couple our
     runtime to their product.
@@ -347,12 +372,14 @@ Exit criteria:
 ## Sources Rechecked
 
 - `OpenAI Realtime`: https://platform.openai.com/docs/guides/realtime
+- `OpenAI Image Generation`: https://platform.openai.com/docs/guides/image-generation
 - `Deepgram TTS`: https://developers.deepgram.com/docs/text-to-speech
 - `fal Nano Banana 2 Edit`: https://fal.ai/models/fal-ai/nano-banana-2/edit
 - `Perplexity Search`: https://docs.perplexity.ai/guides/search-guide
 - `Gemini Search Grounding`: https://ai.google.dev/gemini-api/docs/google-search
 - `Gemini Live`: https://ai.google.dev/gemini-api/docs/live
 - `Anthropic Tool Use`: https://docs.anthropic.com/en/docs/build-with-claude/tool-use
+- `Anthropic Computer Use`: https://github.com/anthropics/anthropic-quickstarts/tree/main/computer-use-demo
 - `Anthropic Prompt Caching`: https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching
 - `Moonshot/Kimi`: https://platform.moonshot.ai/docs/introduction
 - `DeepSeek Pricing`: https://api-docs.deepseek.com/quick_start/pricing/
