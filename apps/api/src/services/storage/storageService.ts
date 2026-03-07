@@ -1,21 +1,37 @@
-﻿import {
-  DeleteObjectCommand,
-  GetObjectCommand,
-  PutObjectCommand,
-} from '@aws-sdk/client-s3';
+﻿import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import sharp from 'sharp';
 import { env } from '../../config/env';
 import { S3_BUCKET, s3 } from '../../storage/s3';
-import type { StorageService, StorageUploadResult } from './types';
+import type { StorageObjectUploadResult, StorageService, StorageUploadResult } from './types';
 import { createStorageKey } from './utils/storageKeys';
 
 const THUMBNAIL_WIDTH = 480;
 
-const buildPublicUrl = (key: string) =>
-  `${env.S3_ENDPOINT}/${env.S3_BUCKET}/${key}`;
+const buildPublicUrl = (key: string) => `${env.S3_ENDPOINT}/${env.S3_BUCKET}/${key}`;
 
 export class StorageServiceImpl implements StorageService {
+  async uploadObject(params: {
+    key: string;
+    body: Buffer;
+    contentType: string;
+  }): Promise<StorageObjectUploadResult> {
+    const { body, contentType, key } = params;
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: S3_BUCKET,
+        Key: key,
+        Body: body,
+        ContentType: contentType,
+      }),
+    );
+
+    return {
+      key,
+      url: buildPublicUrl(key),
+    };
+  }
+
   async uploadVersion(params: {
     draftId: string;
     versionNumber: number;
@@ -35,23 +51,17 @@ export class StorageServiceImpl implements StorageService {
       .png()
       .toBuffer();
 
-    await s3.send(
-      new PutObjectCommand({
-        Bucket: S3_BUCKET,
-        Key: key,
-        Body: imageBuffer,
-        ContentType: contentType,
-      }),
-    );
+    await this.uploadObject({
+      body: imageBuffer,
+      contentType,
+      key,
+    });
 
-    await s3.send(
-      new PutObjectCommand({
-        Bucket: S3_BUCKET,
-        Key: thumbnailKey,
-        Body: thumbnailBuffer,
-        ContentType: 'image/png',
-      }),
-    );
+    await this.uploadObject({
+      body: thumbnailBuffer,
+      contentType: 'image/png',
+      key: thumbnailKey,
+    });
 
     return {
       key,

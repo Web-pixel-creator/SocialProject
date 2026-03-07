@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { Request } from 'express';
 import { Router } from 'express';
+import { env } from '../config/env';
 import { db } from '../db/pool';
 import { requireHuman, requireVerifiedAgent } from '../middleware/auth';
 import { observerActionRateLimiter } from '../middleware/security';
@@ -18,48 +19,29 @@ import type {
 } from '../services/liveSession/types';
 import { DraftArcServiceImpl } from '../services/observer/draftArcService';
 import { OpenAIRealtimeSessionServiceImpl } from '../services/openaiRealtime/openaiRealtimeSessionService';
-import type {
-  RealtimeOutputModality,
-  RealtimeVoice,
-} from '../services/openaiRealtime/types';
+import type { RealtimeOutputModality, RealtimeVoice } from '../services/openaiRealtime/types';
 import type { RealtimeService } from '../services/realtime/types';
+import { voiceLaneService } from '../services/voice/voiceLaneService';
 
 const router = Router();
 const liveSessionService = new LiveSessionServiceImpl(db);
 const openAIRealtimeSessionService = new OpenAIRealtimeSessionServiceImpl();
 const draftArcService = new DraftArcServiceImpl(db);
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-const LIVE_STATUSES: LiveStudioSessionStatus[] = [
-  'forming',
-  'live',
-  'completed',
-  'cancelled',
-];
+const LIVE_STATUSES: LiveStudioSessionStatus[] = ['forming', 'live', 'completed', 'cancelled'];
 const LIVE_SESSION_QUERY_FIELDS = ['status', 'limit', 'offset'] as const;
 const LIVE_SESSION_DETAIL_QUERY_FIELDS = [] as const;
 const LIVE_SESSION_CREATE_QUERY_FIELDS = [] as const;
-const LIVE_SESSION_CREATE_BODY_FIELDS = [
-  'draftId',
-  'title',
-  'objective',
-  'isPublic',
-] as const;
+const LIVE_SESSION_CREATE_BODY_FIELDS = ['draftId', 'title', 'objective', 'isPublic'] as const;
 const LIVE_SESSION_START_QUERY_FIELDS = [] as const;
 const LIVE_SESSION_START_BODY_FIELDS = [] as const;
 const LIVE_SESSION_COMPLETE_QUERY_FIELDS = [] as const;
-const LIVE_SESSION_COMPLETE_BODY_FIELDS = [
-  'recapSummary',
-  'recapClipUrl',
-] as const;
+const LIVE_SESSION_COMPLETE_BODY_FIELDS = ['recapSummary', 'recapClipUrl'] as const;
 const LIVE_SESSION_PRESENCE_QUERY_FIELDS = [] as const;
 const LIVE_SESSION_PRESENCE_BODY_FIELDS = ['status'] as const;
 const LIVE_SESSION_OBSERVER_MESSAGE_BODY_FIELDS = ['content'] as const;
-const LIVE_SESSION_AGENT_MESSAGE_BODY_FIELDS = [
-  'content',
-  'authorLabel',
-] as const;
+const LIVE_SESSION_AGENT_MESSAGE_BODY_FIELDS = ['content', 'authorLabel'] as const;
 const LIVE_SESSION_MESSAGES_QUERY_FIELDS = [] as const;
 const LIVE_SESSION_REALTIME_QUERY_FIELDS = [] as const;
 const LIVE_SESSION_REALTIME_BODY_FIELDS = [
@@ -70,18 +52,9 @@ const LIVE_SESSION_REALTIME_BODY_FIELDS = [
   'metadata',
 ] as const;
 const LIVE_SESSION_REALTIME_TOOL_QUERY_FIELDS = [] as const;
-const LIVE_SESSION_REALTIME_TOOL_BODY_FIELDS = [
-  'callId',
-  'name',
-  'toolName',
-  'arguments',
-] as const;
+const LIVE_SESSION_REALTIME_TOOL_BODY_FIELDS = ['callId', 'name', 'toolName', 'arguments'] as const;
 const LIVE_SESSION_REALTIME_SEND_QUERY_FIELDS = [] as const;
-const LIVE_SESSION_REALTIME_SEND_BODY_FIELDS = [
-  'toRole',
-  'type',
-  'payload',
-] as const;
+const LIVE_SESSION_REALTIME_SEND_BODY_FIELDS = ['toRole', 'type', 'payload'] as const;
 const LIVE_SESSION_TITLE_MAX_LENGTH = 160;
 const LIVE_SESSION_OBJECTIVE_MAX_LENGTH = 1000;
 const LIVE_SESSION_RECAP_SUMMARY_MAX_LENGTH = 2000;
@@ -93,17 +66,11 @@ const LIVE_SESSION_REALTIME_METADATA_KEY_MAX_LENGTH = 48;
 const LIVE_SESSION_REALTIME_METADATA_VALUE_MAX_LENGTH = 160;
 const LIVE_SESSION_REALTIME_TOOL_CALL_ID_MAX_LENGTH = 120;
 const LIVE_SESSION_REALTIME_TOOL_ARGUMENTS_MAX_LENGTH = 10_000;
-const LIVE_SESSION_REALTIME_TOOL_CALL_ID_PATTERN =
-  /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,119}$/;
-const LIVE_SESSION_REALTIME_SEND_EVENT_TYPE_PATTERN =
-  /^[a-z0-9][a-z0-9._:-]{0,119}$/;
+const LIVE_SESSION_REALTIME_TOOL_CALL_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,119}$/;
+const LIVE_SESSION_REALTIME_SEND_EVENT_TYPE_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,119}$/;
 const LIVE_SESSION_REALTIME_SEND_PAYLOAD_MAX_KEYS = 20;
 const LIVE_SESSION_REALTIME_SEND_PAYLOAD_MAX_LENGTH = 6000;
-const PRESENCE_STATUSES: LiveSessionPresenceStatus[] = [
-  'watching',
-  'active',
-  'left',
-];
+const PRESENCE_STATUSES: LiveSessionPresenceStatus[] = ['watching', 'active', 'left'];
 const LIVE_SESSIONS_MAX_LIMIT = 100;
 const LIVE_SESSIONS_MAX_OFFSET = 10_000;
 const REALTIME_OUTPUT_MODALITIES = ['text', 'audio'] as const;
@@ -119,16 +86,8 @@ const REALTIME_VOICES = [
   'marin',
   'cedar',
 ] as const;
-const LIVE_SESSION_REALTIME_TOOLS = [
-  'place_prediction',
-  'follow_studio',
-] as const;
-const LIVE_SESSION_REALTIME_SEND_TO_ROLES = [
-  'author',
-  'critic',
-  'maker',
-  'judge',
-] as const;
+const LIVE_SESSION_REALTIME_TOOLS = ['place_prediction', 'follow_studio'] as const;
+const LIVE_SESSION_REALTIME_SEND_TO_ROLES = ['author', 'critic', 'maker', 'judge'] as const;
 const PREDICTION_MIN_STAKE_POINTS = 5;
 const PREDICTION_MAX_STAKE_POINTS = 500;
 const DEFAULT_REALTIME_TOOL_REPEAT_WINDOW_MS = 4000;
@@ -139,21 +98,20 @@ const LIVE_SESSION_REALTIME_TOOL_REPEAT_WINDOW_MS = Math.max(
       DEFAULT_REALTIME_TOOL_REPEAT_WINDOW_MS,
   ) || DEFAULT_REALTIME_TOOL_REPEAT_WINDOW_MS,
 );
+
+const isLiveSessionRecapVoiceRenderEnabled = () =>
+  (process.env.LIVE_SESSION_RECAP_VOICE_RENDER_ENABLED ??
+    env.LIVE_SESSION_RECAP_VOICE_RENDER_ENABLED) === 'true';
 const LIVE_SESSION_REALTIME_TOOL_REPEAT_TRACK_LIMIT = 20_000;
 const realtimeToolRepeatState = new Map<string, number>();
 const isUuid = (value: string) => UUID_PATTERN.test(value);
 
 type LiveSessionRealtimeTool = (typeof LIVE_SESSION_REALTIME_TOOLS)[number];
-type LiveSessionRealtimeSendToRole =
-  (typeof LIVE_SESSION_REALTIME_SEND_TO_ROLES)[number];
+type LiveSessionRealtimeSendToRole = (typeof LIVE_SESSION_REALTIME_SEND_TO_ROLES)[number];
 
 const assertLiveSessionIdParam = (value: string) => {
   if (!isUuid(value)) {
-    throw new ServiceError(
-      'LIVE_SESSION_ID_INVALID',
-      'Invalid live session id.',
-      400,
-    );
+    throw new ServiceError('LIVE_SESSION_ID_INVALID', 'Invalid live session id.', 400);
   }
 };
 
@@ -162,28 +120,15 @@ const assertAllowedQueryFields = (
   allowed: readonly string[],
   errorCode: string,
 ) => {
-  const queryRecord =
-    query && typeof query === 'object'
-      ? (query as Record<string, unknown>)
-      : {};
-  const unknown = Object.keys(queryRecord).filter(
-    (key) => !allowed.includes(key),
-  );
+  const queryRecord = query && typeof query === 'object' ? (query as Record<string, unknown>) : {};
+  const unknown = Object.keys(queryRecord).filter((key) => !allowed.includes(key));
   if (unknown.length > 0) {
-    throw new ServiceError(
-      errorCode,
-      `Unsupported query fields: ${unknown.join(', ')}`,
-      400,
-    );
+    throw new ServiceError(errorCode, `Unsupported query fields: ${unknown.join(', ')}`, 400);
   }
   return queryRecord;
 };
 
-const assertAllowedBodyFields = (
-  body: unknown,
-  allowed: readonly string[],
-  errorCode: string,
-) => {
+const assertAllowedBodyFields = (body: unknown, allowed: readonly string[], errorCode: string) => {
   if (body === undefined) {
     return {};
   }
@@ -191,26 +136,16 @@ const assertAllowedBodyFields = (
     throw new ServiceError(errorCode, 'Request body must be an object.', 400);
   }
   const bodyRecord = body as Record<string, unknown>;
-  const unknown = Object.keys(bodyRecord).filter(
-    (key) => !allowed.includes(key),
-  );
+  const unknown = Object.keys(bodyRecord).filter((key) => !allowed.includes(key));
   if (unknown.length > 0) {
-    throw new ServiceError(
-      errorCode,
-      `Unsupported body fields: ${unknown.join(', ')}`,
-      400,
-    );
+    throw new ServiceError(errorCode, `Unsupported body fields: ${unknown.join(', ')}`, 400);
   }
   return bodyRecord;
 };
 
 const parseRequiredBoundedText = (
   value: unknown,
-  {
-    field,
-    maxLength,
-    errorCode,
-  }: { field: string; maxLength: number; errorCode: string },
+  { field, maxLength, errorCode }: { field: string; maxLength: number; errorCode: string },
 ) => {
   if (typeof value !== 'string') {
     throw new ServiceError(errorCode, `${field} must be a string.`, 400);
@@ -220,22 +155,14 @@ const parseRequiredBoundedText = (
     throw new ServiceError(errorCode, `${field} is required.`, 400);
   }
   if (normalized.length > maxLength) {
-    throw new ServiceError(
-      errorCode,
-      `${field} must be <= ${maxLength} characters.`,
-      400,
-    );
+    throw new ServiceError(errorCode, `${field} must be <= ${maxLength} characters.`, 400);
   }
   return normalized;
 };
 
 const parseOptionalBoundedText = (
   value: unknown,
-  {
-    field,
-    maxLength,
-    errorCode,
-  }: { field: string; maxLength: number; errorCode: string },
+  { field, maxLength, errorCode }: { field: string; maxLength: number; errorCode: string },
 ) => {
   if (value === undefined) {
     return undefined;
@@ -248,11 +175,7 @@ const parseOptionalBoundedText = (
     return undefined;
   }
   if (normalized.length > maxLength) {
-    throw new ServiceError(
-      errorCode,
-      `${field} must be <= ${maxLength} characters.`,
-      400,
-    );
+    throw new ServiceError(errorCode, `${field} must be <= ${maxLength} characters.`, 400);
   }
   return normalized;
 };
@@ -311,9 +234,7 @@ const parseOptionalHttpsUrl = (
   return normalized;
 };
 
-const parseCreateLiveSessionInput = (
-  body: Record<string, unknown>,
-): CreateLiveSessionInput => ({
+const parseCreateLiveSessionInput = (body: Record<string, unknown>): CreateLiveSessionInput => ({
   draftId: parseOptionalUuid(body.draftId, 'draftId'),
   title: parseRequiredBoundedText(body.title, {
     field: 'title',
@@ -353,11 +274,7 @@ const parsePresenceStatus = (
     return defaultStatus;
   }
   if (typeof body.status !== 'string') {
-    throw new ServiceError(
-      'INVALID_PRESENCE_STATUS',
-      'status must be a string.',
-      400,
-    );
+    throw new ServiceError('INVALID_PRESENCE_STATUS', 'status must be a string.', 400);
   }
   const normalized = body.status.trim() as LiveSessionPresenceStatus;
   if (!PRESENCE_STATUSES.includes(normalized)) {
@@ -377,19 +294,14 @@ const parseRequiredMessageContent = (body: Record<string, unknown>) =>
     errorCode: 'LIVE_SESSION_INVALID_MESSAGE',
   });
 
-const parseAgentAuthorLabel = (
-  body: Record<string, unknown>,
-  fallback: string,
-) =>
+const parseAgentAuthorLabel = (body: Record<string, unknown>, fallback: string) =>
   parseOptionalBoundedText(body.authorLabel, {
     field: 'authorLabel',
     maxLength: LIVE_SESSION_AUTHOR_LABEL_MAX_LENGTH,
     errorCode: 'LIVE_SESSION_INVALID_MESSAGE',
   }) ?? fallback;
 
-const parseRealtimeOutputModalities = (
-  value: unknown,
-): RealtimeOutputModality[] => {
+const parseRealtimeOutputModalities = (value: unknown): RealtimeOutputModality[] => {
   if (value === undefined) {
     return ['audio', 'text'];
   }
@@ -433,16 +345,10 @@ const parseRealtimeVoice = (value: unknown): RealtimeVoice => {
     return 'marin';
   }
   if (typeof value !== 'string') {
-    throw new ServiceError(
-      'LIVE_SESSION_REALTIME_INVALID_INPUT',
-      'voice must be a string.',
-      400,
-    );
+    throw new ServiceError('LIVE_SESSION_REALTIME_INVALID_INPUT', 'voice must be a string.', 400);
   }
   const normalized = value.trim() as RealtimeVoice;
-  if (
-    !REALTIME_VOICES.includes(normalized as (typeof REALTIME_VOICES)[number])
-  ) {
+  if (!REALTIME_VOICES.includes(normalized as (typeof REALTIME_VOICES)[number])) {
     throw new ServiceError(
       'LIVE_SESSION_REALTIME_INVALID_INPUT',
       `Unsupported voice: ${value}.`,
@@ -466,9 +372,7 @@ const parseRealtimePushToTalk = (value: unknown): boolean => {
   return value;
 };
 
-const parseRealtimeMetadata = (
-  value: unknown,
-): Record<string, string> | undefined => {
+const parseRealtimeMetadata = (value: unknown): Record<string, string> | undefined => {
   if (value === undefined) {
     return undefined;
   }
@@ -532,9 +436,7 @@ const parseRealtimeMetadata = (
   return normalized;
 };
 
-const parseRealtimeToolName = (
-  body: Record<string, unknown>,
-): LiveSessionRealtimeTool => {
+const parseRealtimeToolName = (body: Record<string, unknown>): LiveSessionRealtimeTool => {
   const name = body.name;
   const toolName = body.toolName;
   if (name !== undefined && typeof name !== 'string') {
@@ -551,11 +453,7 @@ const parseRealtimeToolName = (
       400,
     );
   }
-  if (
-    typeof name === 'string' &&
-    typeof toolName === 'string' &&
-    name.trim() !== toolName.trim()
-  ) {
+  if (typeof name === 'string' && typeof toolName === 'string' && name.trim() !== toolName.trim()) {
     throw new ServiceError(
       'LIVE_SESSION_REALTIME_TOOL_INVALID_INPUT',
       'name and toolName must match when both are provided.',
@@ -564,16 +462,10 @@ const parseRealtimeToolName = (
   }
   const rawName = (typeof name === 'string' ? name : toolName)?.trim() ?? '';
   if (!rawName) {
-    throw new ServiceError(
-      'LIVE_SESSION_REALTIME_TOOL_INVALID_INPUT',
-      'name is required.',
-      400,
-    );
+    throw new ServiceError('LIVE_SESSION_REALTIME_TOOL_INVALID_INPUT', 'name is required.', 400);
   }
   if (
-    !LIVE_SESSION_REALTIME_TOOLS.includes(
-      rawName as (typeof LIVE_SESSION_REALTIME_TOOLS)[number],
-    )
+    !LIVE_SESSION_REALTIME_TOOLS.includes(rawName as (typeof LIVE_SESSION_REALTIME_TOOLS)[number])
   ) {
     throw new ServiceError(
       'LIVE_SESSION_REALTIME_TOOL_INVALID_INPUT',
@@ -584,15 +476,9 @@ const parseRealtimeToolName = (
   return rawName as LiveSessionRealtimeTool;
 };
 
-const parseRealtimeToolArguments = (
-  value: unknown,
-): Record<string, unknown> => {
+const parseRealtimeToolArguments = (value: unknown): Record<string, unknown> => {
   const parseObject = (candidate: unknown) => {
-    if (
-      !candidate ||
-      typeof candidate !== 'object' ||
-      Array.isArray(candidate)
-    ) {
+    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
       throw new ServiceError(
         'LIVE_SESSION_REALTIME_TOOL_INVALID_INPUT',
         'arguments must be an object or JSON object string.',
@@ -626,23 +512,12 @@ const parseRealtimeToolArguments = (
 
 const parsePredictionStakePoints = (value: unknown, field: string): number => {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
-    throw new ServiceError(
-      'PREDICTION_STAKE_INVALID',
-      `${field} must be a finite number.`,
-      400,
-    );
+    throw new ServiceError('PREDICTION_STAKE_INVALID', `${field} must be a finite number.`, 400);
   }
   if (!Number.isInteger(value)) {
-    throw new ServiceError(
-      'PREDICTION_STAKE_INVALID',
-      `${field} must be an integer.`,
-      400,
-    );
+    throw new ServiceError('PREDICTION_STAKE_INVALID', `${field} must be an integer.`, 400);
   }
-  if (
-    value < PREDICTION_MIN_STAKE_POINTS ||
-    value > PREDICTION_MAX_STAKE_POINTS
-  ) {
+  if (value < PREDICTION_MIN_STAKE_POINTS || value > PREDICTION_MAX_STAKE_POINTS) {
     throw new ServiceError(
       'PREDICTION_STAKE_INVALID',
       `${field} must be between ${PREDICTION_MIN_STAKE_POINTS} and ${PREDICTION_MAX_STAKE_POINTS}.`,
@@ -654,13 +529,7 @@ const parsePredictionStakePoints = (value: unknown, field: string): number => {
 
 const parseRealtimeToolPredictionArguments = (argumentsValue: unknown) => {
   const args = parseRealtimeToolArguments(argumentsValue);
-  const allowed = new Set([
-    'draftId',
-    'outcome',
-    'predictedOutcome',
-    'stakePoints',
-    'points',
-  ]);
+  const allowed = new Set(['draftId', 'outcome', 'predictedOutcome', 'stakePoints', 'points']);
   const unknownFields = Object.keys(args).filter((key) => !allowed.has(key));
   if (unknownFields.length > 0) {
     throw new ServiceError(
@@ -671,11 +540,7 @@ const parseRealtimeToolPredictionArguments = (argumentsValue: unknown) => {
   }
 
   if (typeof args.draftId !== 'string' || !isUuid(args.draftId.trim())) {
-    throw new ServiceError(
-      'DRAFT_ID_INVALID',
-      'draftId must be a valid UUID.',
-      400,
-    );
+    throw new ServiceError('DRAFT_ID_INVALID', 'draftId must be a valid UUID.', 400);
   }
   const draftId = args.draftId.trim();
 
@@ -693,18 +558,11 @@ const parseRealtimeToolPredictionArguments = (argumentsValue: unknown) => {
 
   const predictedOutcome = args.predictedOutcome ?? args.outcome;
   if (predictedOutcome !== 'merge' && predictedOutcome !== 'reject') {
-    throw new ServiceError(
-      'PREDICTION_INVALID',
-      'Prediction must be merge or reject.',
-      400,
-    );
+    throw new ServiceError('PREDICTION_INVALID', 'Prediction must be merge or reject.', 400);
   }
 
   if (args.stakePoints !== undefined && args.points !== undefined) {
-    const stakePoints = parsePredictionStakePoints(
-      args.stakePoints,
-      'stakePoints',
-    );
+    const stakePoints = parsePredictionStakePoints(args.stakePoints, 'stakePoints');
     const points = parsePredictionStakePoints(args.points, 'points');
     if (stakePoints !== points) {
       throw new ServiceError(
@@ -742,18 +600,12 @@ const parseRealtimeToolFollowStudioArguments = (argumentsValue: unknown) => {
     );
   }
   if (typeof args.studioId !== 'string' || !isUuid(args.studioId.trim())) {
-    throw new ServiceError(
-      'STUDIO_ID_INVALID',
-      'studioId must be a valid UUID.',
-      400,
-    );
+    throw new ServiceError('STUDIO_ID_INVALID', 'studioId must be a valid UUID.', 400);
   }
   return { studioId: args.studioId.trim() };
 };
 
-const parseRealtimeToolCallId = (
-  body: Record<string, unknown>,
-): string | null =>
+const parseRealtimeToolCallId = (body: Record<string, unknown>): string | null =>
   parseOptionalBoundedText(body.callId, {
     field: 'callId',
     maxLength: LIVE_SESSION_REALTIME_TOOL_CALL_ID_MAX_LENGTH,
@@ -773,15 +625,9 @@ const assertRealtimeToolCallIdFormat = (callId: string | null) => {
   }
 };
 
-const parseRealtimeSendToRole = (
-  body: Record<string, unknown>,
-): LiveSessionRealtimeSendToRole => {
+const parseRealtimeSendToRole = (body: Record<string, unknown>): LiveSessionRealtimeSendToRole => {
   if (typeof body.toRole !== 'string') {
-    throw new ServiceError(
-      'LIVE_SESSION_REALTIME_SEND_INVALID_INPUT',
-      'toRole is required.',
-      400,
-    );
+    throw new ServiceError('LIVE_SESSION_REALTIME_SEND_INVALID_INPUT', 'toRole is required.', 400);
   }
   const normalized = body.toRole.trim() as LiveSessionRealtimeSendToRole;
   if (
@@ -825,11 +671,7 @@ const parseRealtimeSendPayload = (body: Record<string, unknown>) => {
   if (body.payload === undefined) {
     return {};
   }
-  if (
-    !body.payload ||
-    typeof body.payload !== 'object' ||
-    Array.isArray(body.payload)
-  ) {
+  if (!body.payload || typeof body.payload !== 'object' || Array.isArray(body.payload)) {
     throw new ServiceError(
       'LIVE_SESSION_REALTIME_SEND_INVALID_INPUT',
       'payload must be an object.',
@@ -870,9 +712,7 @@ const canonicalizeForHash = (value: unknown): unknown => {
   if (value && typeof value === 'object') {
     const record = value as Record<string, unknown>;
     const normalized: Record<string, unknown> = {};
-    const keys = Object.keys(record).sort((left, right) =>
-      left.localeCompare(right),
-    );
+    const keys = Object.keys(record).sort((left, right) => left.localeCompare(right));
     for (const key of keys) {
       normalized[key] = canonicalizeForHash(record[key]);
     }
@@ -892,12 +732,8 @@ const cleanupRealtimeToolRepeatState = (now: number) => {
       realtimeToolRepeatState.delete(key);
     }
   }
-  if (
-    realtimeToolRepeatState.size > LIVE_SESSION_REALTIME_TOOL_REPEAT_TRACK_LIMIT
-  ) {
-    const overflow =
-      realtimeToolRepeatState.size -
-      LIVE_SESSION_REALTIME_TOOL_REPEAT_TRACK_LIMIT;
+  if (realtimeToolRepeatState.size > LIVE_SESSION_REALTIME_TOOL_REPEAT_TRACK_LIMIT) {
+    const overflow = realtimeToolRepeatState.size - LIVE_SESSION_REALTIME_TOOL_REPEAT_TRACK_LIMIT;
     let removed = 0;
     for (const key of realtimeToolRepeatState.keys()) {
       realtimeToolRepeatState.delete(key);
@@ -914,8 +750,7 @@ const buildRealtimeToolRepeatKey = (params: {
   observerId: string;
   toolName: LiveSessionRealtimeTool;
   argumentsHash: string;
-}) =>
-  `${params.sessionId}:${params.observerId}:${params.toolName}:${params.argumentsHash}`;
+}) => `${params.sessionId}:${params.observerId}:${params.toolName}:${params.argumentsHash}`;
 
 const getRealtimeToolRepeatBlock = (params: {
   sessionId: string;
@@ -927,14 +762,10 @@ const getRealtimeToolRepeatBlock = (params: {
   cleanupRealtimeToolRepeatState(now);
   const key = buildRealtimeToolRepeatKey(params);
   const lastExecutedAt = realtimeToolRepeatState.get(key);
-  if (
-    lastExecutedAt &&
-    now - lastExecutedAt < LIVE_SESSION_REALTIME_TOOL_REPEAT_WINDOW_MS
-  ) {
+  if (lastExecutedAt && now - lastExecutedAt < LIVE_SESSION_REALTIME_TOOL_REPEAT_WINDOW_MS) {
     return {
       key,
-      retryAfterMs:
-        LIVE_SESSION_REALTIME_TOOL_REPEAT_WINDOW_MS - (now - lastExecutedAt),
+      retryAfterMs: LIVE_SESSION_REALTIME_TOOL_REPEAT_WINDOW_MS - (now - lastExecutedAt),
     };
   }
   return null;
@@ -983,14 +814,10 @@ const findCachedRealtimeToolOutput = (params: {
     if (payload.callId !== params.callId) {
       continue;
     }
-    if (
-      typeof payload.observerId !== 'string' ||
-      payload.observerId !== params.observerId
-    ) {
+    if (typeof payload.observerId !== 'string' || payload.observerId !== params.observerId) {
       continue;
     }
-    const cachedToolName =
-      typeof payload.toolName === 'string' ? payload.toolName : null;
+    const cachedToolName = typeof payload.toolName === 'string' ? payload.toolName : null;
     if (cachedToolName !== params.toolName) {
       return { kind: 'conflict' };
     }
@@ -998,9 +825,7 @@ const findCachedRealtimeToolOutput = (params: {
       continue;
     }
     const cachedArgumentsHash =
-      typeof payload.argumentsHash === 'string'
-        ? payload.argumentsHash.trim()
-        : null;
+      typeof payload.argumentsHash === 'string' ? payload.argumentsHash.trim() : null;
     if (
       params.argumentsHash &&
       (!cachedArgumentsHash || cachedArgumentsHash !== params.argumentsHash)
@@ -1038,11 +863,7 @@ const parseBoundedInteger = (
     throw new ServiceError(errorCode, `${field} must be an integer.`, 400);
   }
   if (parsed < min || parsed > max) {
-    throw new ServiceError(
-      errorCode,
-      `${field} must be between ${min} and ${max}.`,
-      400,
-    );
+    throw new ServiceError(errorCode, `${field} must be between ${min} and ${max}.`, 400);
   }
   return parsed;
 };
@@ -1089,9 +910,7 @@ router.get('/live-sessions', async (req, res, next) => {
       'LIVE_SESSION_INVALID_QUERY_FIELDS',
     );
     const status =
-      typeof query.status === 'string'
-        ? (query.status as LiveStudioSessionStatus)
-        : undefined;
+      typeof query.status === 'string' ? (query.status as LiveStudioSessionStatus) : undefined;
     const limit = parseBoundedInteger(query.limit, {
       field: 'limit',
       min: 1,
@@ -1158,20 +977,14 @@ router.post(
       if (!detail) {
         return res.status(404).json({ error: 'LIVE_SESSION_NOT_FOUND' });
       }
-      if (
-        detail.session.status === 'completed' ||
-        detail.session.status === 'cancelled'
-      ) {
+      if (detail.session.status === 'completed' || detail.session.status === 'cancelled') {
         return res.status(409).json({
           error: 'LIVE_SESSION_REALTIME_UNAVAILABLE',
-          message:
-            'Realtime session bootstrap is disabled for closed sessions.',
+          message: 'Realtime session bootstrap is disabled for closed sessions.',
         });
       }
 
-      const outputModalities = parseRealtimeOutputModalities(
-        body.outputModalities,
-      );
+      const outputModalities = parseRealtimeOutputModalities(body.outputModalities);
       const voice = parseRealtimeVoice(body.voice);
       const pushToTalk = parseRealtimePushToTalk(body.pushToTalk);
       const topicHint = parseOptionalBoundedText(body.topicHint, {
@@ -1194,17 +1007,13 @@ router.post(
         metadata,
       });
 
-      getRealtime(req)?.broadcast(
-        `session:${detail.session.id}`,
-        'session_realtime_bootstrap',
-        {
-          sessionId: detail.session.id,
-          observerId: req.auth?.id,
-          outputModalities,
-          voice,
-          pushToTalk,
-        },
-      );
+      getRealtime(req)?.broadcast(`session:${detail.session.id}`, 'session_realtime_bootstrap', {
+        sessionId: detail.session.id,
+        observerId: req.auth?.id,
+        outputModalities,
+        voice,
+        pushToTalk,
+      });
       await recordLiveGatewayEvent({
         sessionId: detail.session.id,
         draftId: detail.session.draftId,
@@ -1247,10 +1056,7 @@ router.post(
       if (!detail) {
         return res.status(404).json({ error: 'LIVE_SESSION_NOT_FOUND' });
       }
-      if (
-        detail.session.status === 'completed' ||
-        detail.session.status === 'cancelled'
-      ) {
+      if (detail.session.status === 'completed' || detail.session.status === 'cancelled') {
         return res.status(409).json({
           error: 'LIVE_SESSION_REALTIME_UNAVAILABLE',
           message: 'Realtime tool execution is disabled for closed sessions.',
@@ -1265,9 +1071,7 @@ router.post(
       let argumentsHash: string | null = null;
       let repeatGuardKey: string | null = null;
       if (toolName === 'place_prediction') {
-        const predictionArgs = parseRealtimeToolPredictionArguments(
-          body.arguments,
-        );
+        const predictionArgs = parseRealtimeToolPredictionArguments(body.arguments);
         argumentsHash = hashRealtimeToolArguments(predictionArgs);
         if (callId) {
           const cachedResult = findCachedRealtimeToolOutput({
@@ -1302,10 +1106,7 @@ router.post(
           argumentsHash,
         });
         if (repeatBlock) {
-          const retryAfterSeconds = Math.max(
-            1,
-            Math.ceil(repeatBlock.retryAfterMs / 1000),
-          );
+          const retryAfterSeconds = Math.max(1, Math.ceil(repeatBlock.retryAfterMs / 1000));
           res.set('Retry-After', `${retryAfterSeconds}`);
           await recordLiveGatewayEvent({
             sessionId: detail.session.id,
@@ -1324,8 +1125,7 @@ router.post(
           });
           return res.status(429).json({
             error: 'LIVE_SESSION_REALTIME_TOOL_COOLDOWN',
-            message:
-              'Repeated realtime tool call is cooling down. Retry shortly.',
+            message: 'Repeated realtime tool call is cooling down. Retry shortly.',
             toolName,
             callId,
             retryAfterMs: repeatBlock.retryAfterMs,
@@ -1354,9 +1154,7 @@ router.post(
            LIMIT 1`,
           [draftId],
         );
-        const pullRequestId = pendingPullRequest.rows[0]?.id as
-          | string
-          | undefined;
+        const pullRequestId = pendingPullRequest.rows[0]?.id as string | undefined;
         if (!pullRequestId) {
           throw new ServiceError(
             'PREDICTION_NO_PENDING_PR',
@@ -1371,10 +1169,7 @@ router.post(
           undefined,
           stakePoints,
         );
-        const summary = await draftArcService.getPredictionSummary(
-          observerId,
-          pullRequestId,
-        );
+        const summary = await draftArcService.getPredictionSummary(observerId, pullRequestId);
         output = {
           draftId,
           pullRequestId,
@@ -1382,9 +1177,7 @@ router.post(
           summary,
         };
       } else {
-        const followStudioArgs = parseRealtimeToolFollowStudioArguments(
-          body.arguments,
-        );
+        const followStudioArgs = parseRealtimeToolFollowStudioArguments(body.arguments);
         argumentsHash = hashRealtimeToolArguments(followStudioArgs);
         if (callId) {
           const cachedResult = findCachedRealtimeToolOutput({
@@ -1419,10 +1212,7 @@ router.post(
           argumentsHash,
         });
         if (repeatBlock) {
-          const retryAfterSeconds = Math.max(
-            1,
-            Math.ceil(repeatBlock.retryAfterMs / 1000),
-          );
+          const retryAfterSeconds = Math.max(1, Math.ceil(repeatBlock.retryAfterMs / 1000));
           res.set('Retry-After', `${retryAfterSeconds}`);
           await recordLiveGatewayEvent({
             sessionId: detail.session.id,
@@ -1441,8 +1231,7 @@ router.post(
           });
           return res.status(429).json({
             error: 'LIVE_SESSION_REALTIME_TOOL_COOLDOWN',
-            message:
-              'Repeated realtime tool call is cooling down. Retry shortly.',
+            message: 'Repeated realtime tool call is cooling down. Retry shortly.',
             toolName,
             callId,
             retryAfterMs: repeatBlock.retryAfterMs,
@@ -1455,10 +1244,9 @@ router.post(
           argumentsHash,
         });
         const { studioId } = followStudioArgs;
-        const studioExists = await db.query(
-          'SELECT studio_name FROM agents WHERE id = $1',
-          [studioId],
-        );
+        const studioExists = await db.query('SELECT studio_name FROM agents WHERE id = $1', [
+          studioId,
+        ]);
         if (studioExists.rows.length === 0) {
           return res.status(404).json({ error: 'STUDIO_NOT_FOUND' });
         }
@@ -1490,9 +1278,7 @@ router.post(
           observerId,
           isFollowing: true,
           alreadyFollowing: insertResult.rows.length === 0,
-          followerCount: Number(
-            followerCountResult.rows[0]?.follower_count ?? 0,
-          ),
+          followerCount: Number(followerCountResult.rows[0]?.follower_count ?? 0),
           followedAt: existingResult.rows[0]?.created_at ?? null,
           studioName: studioExists.rows[0]?.studio_name ?? null,
         };
@@ -1510,17 +1296,13 @@ router.post(
         );
       }
 
-      getRealtime(req)?.broadcast(
-        `session:${detail.session.id}`,
-        'session_realtime_tool_result',
-        {
-          sessionId: detail.session.id,
-          observerId,
-          toolName,
-          callId,
-          success: true,
-        },
-      );
+      getRealtime(req)?.broadcast(`session:${detail.session.id}`, 'session_realtime_tool_result', {
+        sessionId: detail.session.id,
+        observerId,
+        toolName,
+        callId,
+        success: true,
+      });
       await recordLiveGatewayEvent({
         sessionId: detail.session.id,
         draftId: detail.session.draftId,
@@ -1570,10 +1352,7 @@ router.post(
       if (!detail) {
         return res.status(404).json({ error: 'LIVE_SESSION_NOT_FOUND' });
       }
-      if (
-        detail.session.status === 'completed' ||
-        detail.session.status === 'cancelled'
-      ) {
+      if (detail.session.status === 'completed' || detail.session.status === 'cancelled') {
         return res.status(409).json({
           error: 'LIVE_SESSION_REALTIME_UNAVAILABLE',
           message: 'Realtime send is disabled for closed sessions.',
@@ -1607,15 +1386,11 @@ router.post(
       });
       const event = routeResult.event;
 
-      getRealtime(req)?.broadcast(
-        `session:${detail.session.id}`,
-        'session_realtime_send',
-        {
-          sessionId: detail.session.id,
-          observerId,
-          event,
-        },
-      );
+      getRealtime(req)?.broadcast(`session:${detail.session.id}`, 'session_realtime_send', {
+        sessionId: detail.session.id,
+        observerId,
+        event,
+      });
 
       return res.status(201).json({
         sessionId: detail.session.id,
@@ -1641,10 +1416,7 @@ router.post('/live-sessions', requireVerifiedAgent, async (req, res, next) => {
       'LIVE_SESSION_INVALID_FIELDS',
     );
     const payload = parseCreateLiveSessionInput(payloadBody);
-    const detail = await liveSessionService.createSession(
-      req.auth?.id as string,
-      payload,
-    );
+    const detail = await liveSessionService.createSession(req.auth?.id as string, payload);
     getRealtime(req)?.broadcast('feed:live-sessions', 'live_session_created', {
       sessionId: detail.session.id,
       title: detail.session.title,
@@ -1669,352 +1441,319 @@ router.post('/live-sessions', requireVerifiedAgent, async (req, res, next) => {
   }
 });
 
-router.post(
-  '/live-sessions/:id/start',
-  requireVerifiedAgent,
-  async (req, res, next) => {
-    try {
-      assertAllowedQueryFields(
-        req.query,
-        LIVE_SESSION_START_QUERY_FIELDS,
-        'LIVE_SESSION_INVALID_QUERY_FIELDS',
-      );
-      assertAllowedBodyFields(
-        req.body,
-        LIVE_SESSION_START_BODY_FIELDS,
-        'LIVE_SESSION_START_INVALID_FIELDS',
-      );
-      assertLiveSessionIdParam(req.params.id);
-      const detail = await liveSessionService.startSession(
-        req.params.id,
-        req.auth?.id as string,
-      );
-      getRealtime(req)?.broadcast(
-        'feed:live-sessions',
-        'live_session_started',
-        {
-          sessionId: detail.session.id,
-          status: detail.session.status,
-          startedAt: detail.session.startedAt,
-        },
-      );
-      getRealtime(req)?.broadcast(
-        `session:${detail.session.id}`,
-        'session_status',
-        {
-          sessionId: detail.session.id,
-          status: detail.session.status,
-        },
-      );
-      await recordLiveGatewayEvent({
-        sessionId: detail.session.id,
-        draftId: detail.session.draftId,
-        hostAgentId: req.auth?.id as string,
-        eventType: 'live_session_started',
-        fromRole: 'author',
-        payload: {
-          status: detail.session.status,
-          startedAt: detail.session.startedAt,
-        },
-      });
-      res.json(detail);
-    } catch (error) {
-      next(error);
-    }
-  },
-);
+router.post('/live-sessions/:id/start', requireVerifiedAgent, async (req, res, next) => {
+  try {
+    assertAllowedQueryFields(
+      req.query,
+      LIVE_SESSION_START_QUERY_FIELDS,
+      'LIVE_SESSION_INVALID_QUERY_FIELDS',
+    );
+    assertAllowedBodyFields(
+      req.body,
+      LIVE_SESSION_START_BODY_FIELDS,
+      'LIVE_SESSION_START_INVALID_FIELDS',
+    );
+    assertLiveSessionIdParam(req.params.id);
+    const detail = await liveSessionService.startSession(req.params.id, req.auth?.id as string);
+    getRealtime(req)?.broadcast('feed:live-sessions', 'live_session_started', {
+      sessionId: detail.session.id,
+      status: detail.session.status,
+      startedAt: detail.session.startedAt,
+    });
+    getRealtime(req)?.broadcast(`session:${detail.session.id}`, 'session_status', {
+      sessionId: detail.session.id,
+      status: detail.session.status,
+    });
+    await recordLiveGatewayEvent({
+      sessionId: detail.session.id,
+      draftId: detail.session.draftId,
+      hostAgentId: req.auth?.id as string,
+      eventType: 'live_session_started',
+      fromRole: 'author',
+      payload: {
+        status: detail.session.status,
+        startedAt: detail.session.startedAt,
+      },
+    });
+    res.json(detail);
+  } catch (error) {
+    next(error);
+  }
+});
 
-router.post(
-  '/live-sessions/:id/complete',
-  requireVerifiedAgent,
-  async (req, res, next) => {
-    try {
-      assertAllowedQueryFields(
-        req.query,
-        LIVE_SESSION_COMPLETE_QUERY_FIELDS,
-        'LIVE_SESSION_INVALID_QUERY_FIELDS',
-      );
-      const payloadBody = assertAllowedBodyFields(
-        req.body,
-        LIVE_SESSION_COMPLETE_BODY_FIELDS,
-        'LIVE_SESSION_COMPLETE_INVALID_FIELDS',
-      );
-      const payload = parseCompleteLiveSessionInput(payloadBody);
-      assertLiveSessionIdParam(req.params.id);
-      const detail = await liveSessionService.completeSession(
-        req.params.id,
-        req.auth?.id as string,
-        payload,
-      );
-      getRealtime(req)?.broadcast(
-        'feed:live-sessions',
-        'live_session_completed',
-        {
-          sessionId: detail.session.id,
-          status: detail.session.status,
-          endedAt: detail.session.endedAt,
-        },
-      );
-      getRealtime(req)?.broadcast(
-        `session:${detail.session.id}`,
-        'session_status',
-        {
-          sessionId: detail.session.id,
-          status: detail.session.status,
-          recapSummary: detail.session.recapSummary,
-          recapClipUrl: detail.session.recapClipUrl,
-        },
-      );
-      await recordLiveGatewayEvent({
-        sessionId: detail.session.id,
-        draftId: detail.session.draftId,
-        hostAgentId: req.auth?.id as string,
-        eventType: 'live_session_completed',
-        fromRole: 'judge',
-        payload: {
-          status: detail.session.status,
-          endedAt: detail.session.endedAt,
-          recapSummary: detail.session.recapSummary,
-          recapClipUrl: detail.session.recapClipUrl,
-        },
-      });
+router.post('/live-sessions/:id/complete', requireVerifiedAgent, async (req, res, next) => {
+  try {
+    assertAllowedQueryFields(
+      req.query,
+      LIVE_SESSION_COMPLETE_QUERY_FIELDS,
+      'LIVE_SESSION_INVALID_QUERY_FIELDS',
+    );
+    const payloadBody = assertAllowedBodyFields(
+      req.body,
+      LIVE_SESSION_COMPLETE_BODY_FIELDS,
+      'LIVE_SESSION_COMPLETE_INVALID_FIELDS',
+    );
+    const payload = parseCompleteLiveSessionInput(payloadBody);
+    assertLiveSessionIdParam(req.params.id);
+    let detail = await liveSessionService.completeSession(
+      req.params.id,
+      req.auth?.id as string,
+      payload,
+    );
+    if (
+      isLiveSessionRecapVoiceRenderEnabled() &&
+      !payload.recapClipUrl &&
+      detail.session.recapSummary
+    ) {
       try {
-        const gatewaySession = agentGatewayService.ensureExternalSession({
-          channel: 'live_session',
-          externalSessionId: detail.session.id,
+        const artifact = await voiceLaneService.renderArtifact({
+          createdById: req.auth?.id as string,
+          createdByType: 'agent',
           draftId: detail.session.draftId,
+          liveSessionId: detail.session.id,
           metadata: {
-            source: 'live_session',
-            hostAgentId: req.auth?.id as string,
+            sourceRoute: '/api/live-sessions/:id/complete',
           },
+          scope: 'live_session_recap',
+          script: detail.session.recapSummary,
         });
-        agentGatewayService.closeSession(gatewaySession.id);
+        detail = await liveSessionService.updateRecapClipUrl(
+          detail.session.id,
+          req.auth?.id as string,
+          artifact.artifactUrl,
+        );
       } catch (error) {
-        console.error('live session gateway close failed', error);
+        console.error('live session voice render failed', error);
       }
-      res.json(detail);
-    } catch (error) {
-      next(error);
     }
-  },
-);
-
-router.post(
-  '/live-sessions/:id/presence/observer',
-  requireHuman,
-  async (req, res, next) => {
+    getRealtime(req)?.broadcast('feed:live-sessions', 'live_session_completed', {
+      sessionId: detail.session.id,
+      status: detail.session.status,
+      endedAt: detail.session.endedAt,
+    });
+    getRealtime(req)?.broadcast(`session:${detail.session.id}`, 'session_status', {
+      sessionId: detail.session.id,
+      status: detail.session.status,
+      recapSummary: detail.session.recapSummary,
+      recapClipUrl: detail.session.recapClipUrl,
+    });
+    await recordLiveGatewayEvent({
+      sessionId: detail.session.id,
+      draftId: detail.session.draftId,
+      hostAgentId: req.auth?.id as string,
+      eventType: 'live_session_completed',
+      fromRole: 'judge',
+      payload: {
+        status: detail.session.status,
+        endedAt: detail.session.endedAt,
+        recapSummary: detail.session.recapSummary,
+        recapClipUrl: detail.session.recapClipUrl,
+      },
+    });
     try {
-      assertAllowedQueryFields(
-        req.query,
-        LIVE_SESSION_PRESENCE_QUERY_FIELDS,
-        'LIVE_SESSION_INVALID_QUERY_FIELDS',
-      );
-      const body = assertAllowedBodyFields(
-        req.body,
-        LIVE_SESSION_PRESENCE_BODY_FIELDS,
-        'LIVE_SESSION_PRESENCE_INVALID_FIELDS',
-      );
-      assertLiveSessionIdParam(req.params.id);
-      const status = parsePresenceStatus(body, 'watching');
-      const presence = await liveSessionService.upsertPresence(req.params.id, {
-        participantType: 'human',
-        participantId: req.auth?.id as string,
-        status,
-      } as UpsertLivePresenceInput);
-      getRealtime(req)?.broadcast(
-        `session:${req.params.id}`,
-        'session_presence',
-        {
-          sessionId: req.params.id,
-          participantType: presence.participantType,
-          participantId: presence.participantId,
-          status: presence.status,
-          lastSeenAt: presence.lastSeenAt,
-        },
-      );
-      await recordLiveGatewayEvent({
-        sessionId: req.params.id,
-        hostAgentId: req.auth?.id as string,
-        eventType: 'live_presence_updated',
-        fromRole: 'observer',
-        toRole: 'author',
-        payload: {
-          participantType: presence.participantType,
-          participantId: presence.participantId,
-          status: presence.status,
-          lastSeenAt: presence.lastSeenAt,
+      const gatewaySession = agentGatewayService.ensureExternalSession({
+        channel: 'live_session',
+        externalSessionId: detail.session.id,
+        draftId: detail.session.draftId,
+        metadata: {
+          source: 'live_session',
+          hostAgentId: req.auth?.id as string,
         },
       });
-      res.json(presence);
+      agentGatewayService.closeSession(gatewaySession.id);
     } catch (error) {
-      next(error);
+      console.error('live session gateway close failed', error);
     }
-  },
-);
+    res.json(detail);
+  } catch (error) {
+    next(error);
+  }
+});
 
-router.post(
-  '/live-sessions/:id/presence/agent',
-  requireVerifiedAgent,
-  async (req, res, next) => {
-    try {
-      assertAllowedQueryFields(
-        req.query,
-        LIVE_SESSION_PRESENCE_QUERY_FIELDS,
-        'LIVE_SESSION_INVALID_QUERY_FIELDS',
-      );
-      const body = assertAllowedBodyFields(
-        req.body,
-        LIVE_SESSION_PRESENCE_BODY_FIELDS,
-        'LIVE_SESSION_PRESENCE_INVALID_FIELDS',
-      );
-      assertLiveSessionIdParam(req.params.id);
-      const status = parsePresenceStatus(body, 'active');
-      const presence = await liveSessionService.upsertPresence(req.params.id, {
-        participantType: 'agent',
-        participantId: req.auth?.id as string,
-        status,
-      } as UpsertLivePresenceInput);
-      getRealtime(req)?.broadcast(
-        `session:${req.params.id}`,
-        'session_presence',
-        {
-          sessionId: req.params.id,
-          participantType: presence.participantType,
-          participantId: presence.participantId,
-          status: presence.status,
-          lastSeenAt: presence.lastSeenAt,
-        },
-      );
-      await recordLiveGatewayEvent({
-        sessionId: req.params.id,
-        hostAgentId: req.auth?.id as string,
-        eventType: 'live_presence_updated',
-        fromRole: 'maker',
-        toRole: 'author',
-        payload: {
-          participantType: presence.participantType,
-          participantId: presence.participantId,
-          status: presence.status,
-          lastSeenAt: presence.lastSeenAt,
-        },
-      });
-      res.json(presence);
-    } catch (error) {
-      next(error);
-    }
-  },
-);
+router.post('/live-sessions/:id/presence/observer', requireHuman, async (req, res, next) => {
+  try {
+    assertAllowedQueryFields(
+      req.query,
+      LIVE_SESSION_PRESENCE_QUERY_FIELDS,
+      'LIVE_SESSION_INVALID_QUERY_FIELDS',
+    );
+    const body = assertAllowedBodyFields(
+      req.body,
+      LIVE_SESSION_PRESENCE_BODY_FIELDS,
+      'LIVE_SESSION_PRESENCE_INVALID_FIELDS',
+    );
+    assertLiveSessionIdParam(req.params.id);
+    const status = parsePresenceStatus(body, 'watching');
+    const presence = await liveSessionService.upsertPresence(req.params.id, {
+      participantType: 'human',
+      participantId: req.auth?.id as string,
+      status,
+    } as UpsertLivePresenceInput);
+    getRealtime(req)?.broadcast(`session:${req.params.id}`, 'session_presence', {
+      sessionId: req.params.id,
+      participantType: presence.participantType,
+      participantId: presence.participantId,
+      status: presence.status,
+      lastSeenAt: presence.lastSeenAt,
+    });
+    await recordLiveGatewayEvent({
+      sessionId: req.params.id,
+      hostAgentId: req.auth?.id as string,
+      eventType: 'live_presence_updated',
+      fromRole: 'observer',
+      toRole: 'author',
+      payload: {
+        participantType: presence.participantType,
+        participantId: presence.participantId,
+        status: presence.status,
+        lastSeenAt: presence.lastSeenAt,
+      },
+    });
+    res.json(presence);
+  } catch (error) {
+    next(error);
+  }
+});
 
-router.post(
-  '/live-sessions/:id/messages/observer',
-  requireHuman,
-  async (req, res, next) => {
-    try {
-      assertAllowedQueryFields(
-        req.query,
-        LIVE_SESSION_MESSAGES_QUERY_FIELDS,
-        'LIVE_SESSION_INVALID_QUERY_FIELDS',
-      );
-      const body = assertAllowedBodyFields(
-        req.body,
-        LIVE_SESSION_OBSERVER_MESSAGE_BODY_FIELDS,
-        'LIVE_SESSION_MESSAGE_INVALID_FIELDS',
-      );
-      assertLiveSessionIdParam(req.params.id);
-      const content = parseRequiredMessageContent(body);
-      const message = await liveSessionService.addMessage(req.params.id, {
-        authorType: 'human',
-        authorId: req.auth?.id as string,
-        authorLabel: req.auth?.email ?? 'Observer',
-        content,
-      } as AddLiveMessageInput);
-      getRealtime(req)?.broadcast(
-        `session:${req.params.id}`,
-        'session_chat_message',
-        {
-          sessionId: req.params.id,
-          messageId: message.id,
-          authorType: message.authorType,
-          authorLabel: message.authorLabel,
-          content: message.content,
-          createdAt: message.createdAt,
-        },
-      );
-      await recordLiveGatewayEvent({
-        sessionId: req.params.id,
-        hostAgentId: req.auth?.id as string,
-        eventType: 'live_chat_message',
-        fromRole: 'observer',
-        toRole: 'author',
-        payload: {
-          messageId: message.id,
-          authorType: message.authorType,
-          authorLabel: message.authorLabel,
-        },
-      });
-      res.status(201).json(message);
-    } catch (error) {
-      next(error);
-    }
-  },
-);
+router.post('/live-sessions/:id/presence/agent', requireVerifiedAgent, async (req, res, next) => {
+  try {
+    assertAllowedQueryFields(
+      req.query,
+      LIVE_SESSION_PRESENCE_QUERY_FIELDS,
+      'LIVE_SESSION_INVALID_QUERY_FIELDS',
+    );
+    const body = assertAllowedBodyFields(
+      req.body,
+      LIVE_SESSION_PRESENCE_BODY_FIELDS,
+      'LIVE_SESSION_PRESENCE_INVALID_FIELDS',
+    );
+    assertLiveSessionIdParam(req.params.id);
+    const status = parsePresenceStatus(body, 'active');
+    const presence = await liveSessionService.upsertPresence(req.params.id, {
+      participantType: 'agent',
+      participantId: req.auth?.id as string,
+      status,
+    } as UpsertLivePresenceInput);
+    getRealtime(req)?.broadcast(`session:${req.params.id}`, 'session_presence', {
+      sessionId: req.params.id,
+      participantType: presence.participantType,
+      participantId: presence.participantId,
+      status: presence.status,
+      lastSeenAt: presence.lastSeenAt,
+    });
+    await recordLiveGatewayEvent({
+      sessionId: req.params.id,
+      hostAgentId: req.auth?.id as string,
+      eventType: 'live_presence_updated',
+      fromRole: 'maker',
+      toRole: 'author',
+      payload: {
+        participantType: presence.participantType,
+        participantId: presence.participantId,
+        status: presence.status,
+        lastSeenAt: presence.lastSeenAt,
+      },
+    });
+    res.json(presence);
+  } catch (error) {
+    next(error);
+  }
+});
 
-router.post(
-  '/live-sessions/:id/messages/agent',
-  requireVerifiedAgent,
-  async (req, res, next) => {
-    try {
-      assertAllowedQueryFields(
-        req.query,
-        LIVE_SESSION_MESSAGES_QUERY_FIELDS,
-        'LIVE_SESSION_INVALID_QUERY_FIELDS',
-      );
-      const body = assertAllowedBodyFields(
-        req.body,
-        LIVE_SESSION_AGENT_MESSAGE_BODY_FIELDS,
-        'LIVE_SESSION_MESSAGE_INVALID_FIELDS',
-      );
-      assertLiveSessionIdParam(req.params.id);
-      const content = parseRequiredMessageContent(body);
-      const agentLabel = parseAgentAuthorLabel(
-        body,
-        `Agent ${String(req.auth?.id ?? '').slice(0, 8)}`,
-      );
-      const message = await liveSessionService.addMessage(req.params.id, {
-        authorType: 'agent',
-        authorId: req.auth?.id as string,
-        authorLabel: agentLabel,
-        content,
-      } as AddLiveMessageInput);
-      getRealtime(req)?.broadcast(
-        `session:${req.params.id}`,
-        'session_chat_message',
-        {
-          sessionId: req.params.id,
-          messageId: message.id,
-          authorType: message.authorType,
-          authorLabel: message.authorLabel,
-          content: message.content,
-          createdAt: message.createdAt,
-        },
-      );
-      await recordLiveGatewayEvent({
-        sessionId: req.params.id,
-        hostAgentId: req.auth?.id as string,
-        eventType: 'live_chat_message',
-        fromRole: 'maker',
-        toRole: 'author',
-        payload: {
-          messageId: message.id,
-          authorType: message.authorType,
-          authorLabel: message.authorLabel,
-        },
-      });
-      res.status(201).json(message);
-    } catch (error) {
-      next(error);
-    }
-  },
-);
+router.post('/live-sessions/:id/messages/observer', requireHuman, async (req, res, next) => {
+  try {
+    assertAllowedQueryFields(
+      req.query,
+      LIVE_SESSION_MESSAGES_QUERY_FIELDS,
+      'LIVE_SESSION_INVALID_QUERY_FIELDS',
+    );
+    const body = assertAllowedBodyFields(
+      req.body,
+      LIVE_SESSION_OBSERVER_MESSAGE_BODY_FIELDS,
+      'LIVE_SESSION_MESSAGE_INVALID_FIELDS',
+    );
+    assertLiveSessionIdParam(req.params.id);
+    const content = parseRequiredMessageContent(body);
+    const message = await liveSessionService.addMessage(req.params.id, {
+      authorType: 'human',
+      authorId: req.auth?.id as string,
+      authorLabel: req.auth?.email ?? 'Observer',
+      content,
+    } as AddLiveMessageInput);
+    getRealtime(req)?.broadcast(`session:${req.params.id}`, 'session_chat_message', {
+      sessionId: req.params.id,
+      messageId: message.id,
+      authorType: message.authorType,
+      authorLabel: message.authorLabel,
+      content: message.content,
+      createdAt: message.createdAt,
+    });
+    await recordLiveGatewayEvent({
+      sessionId: req.params.id,
+      hostAgentId: req.auth?.id as string,
+      eventType: 'live_chat_message',
+      fromRole: 'observer',
+      toRole: 'author',
+      payload: {
+        messageId: message.id,
+        authorType: message.authorType,
+        authorLabel: message.authorLabel,
+      },
+    });
+    res.status(201).json(message);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/live-sessions/:id/messages/agent', requireVerifiedAgent, async (req, res, next) => {
+  try {
+    assertAllowedQueryFields(
+      req.query,
+      LIVE_SESSION_MESSAGES_QUERY_FIELDS,
+      'LIVE_SESSION_INVALID_QUERY_FIELDS',
+    );
+    const body = assertAllowedBodyFields(
+      req.body,
+      LIVE_SESSION_AGENT_MESSAGE_BODY_FIELDS,
+      'LIVE_SESSION_MESSAGE_INVALID_FIELDS',
+    );
+    assertLiveSessionIdParam(req.params.id);
+    const content = parseRequiredMessageContent(body);
+    const agentLabel = parseAgentAuthorLabel(
+      body,
+      `Agent ${String(req.auth?.id ?? '').slice(0, 8)}`,
+    );
+    const message = await liveSessionService.addMessage(req.params.id, {
+      authorType: 'agent',
+      authorId: req.auth?.id as string,
+      authorLabel: agentLabel,
+      content,
+    } as AddLiveMessageInput);
+    getRealtime(req)?.broadcast(`session:${req.params.id}`, 'session_chat_message', {
+      sessionId: req.params.id,
+      messageId: message.id,
+      authorType: message.authorType,
+      authorLabel: message.authorLabel,
+      content: message.content,
+      createdAt: message.createdAt,
+    });
+    await recordLiveGatewayEvent({
+      sessionId: req.params.id,
+      hostAgentId: req.auth?.id as string,
+      eventType: 'live_chat_message',
+      fromRole: 'maker',
+      toRole: 'author',
+      payload: {
+        messageId: message.id,
+        authorType: message.authorType,
+        authorLabel: message.authorLabel,
+      },
+    });
+    res.status(201).json(message);
+  } catch (error) {
+    next(error);
+  }
+});
 
 export default router;

@@ -28,10 +28,7 @@ describe('live session service', () => {
       }),
     } as any;
 
-    const sessions = await service.listSessions(
-      { status: 'live', limit: 3 },
-      fakeClient,
-    );
+    const sessions = await service.listSessions({ status: 'live', limit: 3 }, fakeClient);
     expect(sessions).toHaveLength(1);
     expect(sessions[0].status).toBe('live');
     expect(sessions[0].participantCount).toBe(12);
@@ -135,12 +132,7 @@ describe('live session service', () => {
       query: jest.fn().mockResolvedValue({ rows: [] }),
     } as any;
 
-    const detail = await localService.completeSession(
-      'live-1',
-      'agent-host',
-      {},
-      fakeClient,
-    );
+    const detail = await localService.completeSession('live-1', 'agent-host', {}, fakeClient);
 
     expect(detail.session.status).toBe('completed');
     expect(fakeClient.query).toHaveBeenCalledWith(
@@ -150,6 +142,63 @@ describe('live session service', () => {
         expect.stringContaining('Auto recap:'),
         expect.stringContaining('https://cdn.finishit.local/live-recaps/'),
       ]),
+    );
+
+    getSessionMock.mockRestore();
+  });
+
+  test('updates recap clip url after session completion', async () => {
+    const localService = new LiveSessionServiceImpl({} as any);
+    const now = new Date('2026-02-18T11:00:00.000Z');
+    const completedDetail = {
+      session: {
+        id: 'live-2',
+        hostAgentId: 'agent-host',
+        draftId: 'draft-2',
+        title: 'Observer stream',
+        objective: 'Run collaborative polish in public',
+        status: 'completed',
+        isPublic: true,
+        recapSummary: 'Auto recap',
+        recapClipUrl: 'https://cdn.finishit.local/live-recaps/draft-2-live-2.mp4',
+        startedAt: now,
+        endedAt: now,
+        createdAt: now,
+        updatedAt: now,
+        participantCount: 2,
+        messageCount: 2,
+        lastActivityAt: now,
+      },
+      presence: [],
+      messages: [],
+    } as any;
+    const updatedDetail = {
+      ...completedDetail,
+      session: {
+        ...completedDetail.session,
+        recapClipUrl: 'https://cdn.example.com/live-2.wav',
+      },
+    } as any;
+
+    const getSessionMock = jest
+      .spyOn(localService, 'getSession')
+      .mockResolvedValueOnce(completedDetail)
+      .mockResolvedValueOnce(updatedDetail);
+    const fakeClient = {
+      query: jest.fn().mockResolvedValue({ rows: [] }),
+    } as any;
+
+    const detail = await localService.updateRecapClipUrl(
+      'live-2',
+      'agent-host',
+      'https://cdn.example.com/live-2.wav',
+      fakeClient,
+    );
+
+    expect(detail.session.recapClipUrl).toBe('https://cdn.example.com/live-2.wav');
+    expect(fakeClient.query).toHaveBeenCalledWith(
+      expect.stringContaining('UPDATE live_studio_sessions'),
+      ['live-2', 'https://cdn.example.com/live-2.wav'],
     );
 
     getSessionMock.mockRestore();

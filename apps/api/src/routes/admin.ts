@@ -37,6 +37,7 @@ import {
 } from '../services/providerRouting/providerRoutingService';
 import type { ProviderLane, ProviderLaneExecutionStatus } from '../services/providerRouting/types';
 import { EmbeddingBackfillServiceImpl } from '../services/search/embeddingBackfillService';
+import { voiceLaneService } from '../services/voice/voiceLaneService';
 
 const router = Router();
 const authService = new AuthServiceImpl(db);
@@ -118,6 +119,14 @@ const AI_RUNTIME_DRY_RUN_ALLOWED_FIELDS = new Set([
 ]);
 const AI_RUNTIME_DRY_RUN_MAX_ARRAY_ITEMS = 10;
 const AI_RUNTIME_DRY_RUN_MAX_ARRAY_ITEM_LENGTH = 64;
+const VOICE_RENDER_PREVIEW_ALLOWED_FIELDS = [
+  'script',
+  'voice',
+  'draftId',
+  'liveSessionId',
+] as const;
+const VOICE_RENDER_PREVIEW_MAX_SCRIPT_LENGTH = 4000;
+const VOICE_RENDER_PREVIEW_MAX_VOICE_LENGTH = 64;
 const AI_RUNTIME_DRY_RUN_MAX_PROMPT_LENGTH = 4000;
 const AI_RUNTIME_DRY_RUN_MAX_TIMEOUT_MS = 120_000;
 const AI_RUNTIME_PROVIDER_IDENTIFIER_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
@@ -2842,6 +2851,51 @@ router.get('/admin/provider-lanes/telemetry', requireAdmin, async (req, res, nex
         status,
       }),
     );
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/admin/provider-lanes/voice-render/preview', requireAdmin, async (req, res, next) => {
+  try {
+    assertAllowedQueryFields(req.query, {
+      allowed: [],
+      endpoint: '/api/admin/provider-lanes/voice-render/preview',
+    });
+    const body = assertAllowedBodyFields(req.body, {
+      allowed: VOICE_RENDER_PREVIEW_ALLOWED_FIELDS,
+      endpoint: '/api/admin/provider-lanes/voice-render/preview',
+    });
+    const script = parseRequiredBoundedBodyString(body.script, {
+      fieldName: 'script',
+      maxLength: VOICE_RENDER_PREVIEW_MAX_SCRIPT_LENGTH,
+    });
+    const voice = parseOptionalBoundedBodyString(body.voice, {
+      fieldName: 'voice',
+      maxLength: VOICE_RENDER_PREVIEW_MAX_VOICE_LENGTH,
+    });
+    const draftId = parseOptionalUuidBodyString(body.draftId, {
+      fieldName: 'draftId',
+    });
+    const liveSessionId = parseOptionalUuidBodyString(body.liveSessionId, {
+      fieldName: 'liveSessionId',
+    });
+
+    const artifact = await voiceLaneService.renderArtifact({
+      createdByType: 'admin',
+      draftId,
+      liveSessionId,
+      metadata: {
+        sourceRoute: '/api/admin/provider-lanes/voice-render/preview',
+      },
+      scope: 'admin_preview',
+      script,
+      voice,
+    });
+
+    res.status(201).json({
+      artifact,
+    });
   } catch (error) {
     next(error);
   }

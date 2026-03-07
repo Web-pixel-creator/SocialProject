@@ -45,6 +45,12 @@ const envSchema = z.object({
     .enum(['alloy', 'ash', 'ballad', 'coral', 'echo', 'sage', 'shimmer', 'verse', 'marin', 'cedar'])
     .default('marin'),
   OPENAI_REALTIME_TIMEOUT_MS: z.coerce.number().default(12_000),
+  DEEPGRAM_API_KEY: z.string().default(''),
+  DEEPGRAM_VOICE_RENDER_BASE_URL: z.string().default('https://api.deepgram.com/v1'),
+  DEEPGRAM_VOICE_RENDER_MODEL: z.string().default('aura-2-thalia-en'),
+  DEEPGRAM_VOICE_RENDER_LANGUAGE: z.string().default('en'),
+  DEEPGRAM_VOICE_RENDER_TIMEOUT_MS: z.coerce.number().default(15_000),
+  LIVE_SESSION_RECAP_VOICE_RENDER_ENABLED: z.enum(['true', 'false']).default('false'),
   AI_PROVIDER_LANE_CONFIGS: z.string().default(''),
   AI_PROVIDER_LANE_DISABLED_PROVIDERS: z.string().default(''),
   AGENT_GATEWAY_WEBHOOK_SECRET: z.string().default('dev-agent-gateway-secret'),
@@ -112,6 +118,11 @@ const assertProductionSecrets = () => {
   }
   if (env.EMBEDDING_PROVIDER === 'jina' && !env.EMBEDDING_API_KEY) {
     errors.push('EMBEDDING_API_KEY must be set when EMBEDDING_PROVIDER=jina.');
+  }
+  if (env.LIVE_SESSION_RECAP_VOICE_RENDER_ENABLED === 'true' && !env.DEEPGRAM_API_KEY) {
+    errors.push(
+      'DEEPGRAM_API_KEY must be set when LIVE_SESSION_RECAP_VOICE_RENDER_ENABLED=true.',
+    );
   }
   if (env.SANDBOX_EXECUTION_EGRESS_ENFORCE === 'true') {
     if (!env.SANDBOX_EXECUTION_EGRESS_PROFILES.trim()) {

@@ -144,10 +144,7 @@ export class LiveSessionServiceImpl implements LiveSessionService {
     return result.rows.map((row) => mapSession(row as LiveSessionRow));
   }
 
-  async getSession(
-    sessionId: string,
-    client?: DbClient,
-  ): Promise<LiveSessionDetail | null> {
+  async getSession(sessionId: string, client?: DbClient): Promise<LiveSessionDetail | null> {
     const db = getDb(this.pool, client);
     const sessionResult = await db.query(
       `SELECT ls.*,
@@ -191,12 +188,8 @@ export class LiveSessionServiceImpl implements LiveSessionService {
 
     return {
       session: mapSession(sessionResult.rows[0] as LiveSessionRow),
-      presence: presenceResult.rows.map((row) =>
-        mapPresence(row as LiveSessionPresenceRow),
-      ),
-      messages: messagesResult.rows.map((row) =>
-        mapMessage(row as LiveSessionMessageRow),
-      ),
+      presence: presenceResult.rows.map((row) => mapPresence(row as LiveSessionPresenceRow)),
+      messages: messagesResult.rows.map((row) => mapMessage(row as LiveSessionMessageRow)),
     };
   }
 
@@ -232,13 +225,7 @@ export class LiveSessionServiceImpl implements LiveSessionService {
        )
        VALUES ($1, $2, $3, $4, 'forming', $5)
        RETURNING id`,
-      [
-        hostAgentId,
-        input.draftId ?? null,
-        title,
-        objective,
-        input.isPublic ?? true,
-      ],
+      [hostAgentId, input.draftId ?? null, title, objective, input.isPublic ?? true],
     );
 
     const detail = await this.getSession(inserted.rows[0].id as string, db);
@@ -321,6 +308,33 @@ export class LiveSessionServiceImpl implements LiveSessionService {
     return this.requireSessionDetail(sessionId, db);
   }
 
+  async updateRecapClipUrl(
+    sessionId: string,
+    hostAgentId: string,
+    recapClipUrl: string,
+    client?: DbClient,
+  ): Promise<LiveSessionDetail> {
+    const db = getDb(this.pool, client);
+    const session = await this.requireHostSession(sessionId, hostAgentId, db);
+    if (session.status !== 'completed') {
+      throw new ServiceError(
+        'LIVE_SESSION_INVALID_STATE',
+        'Recap clip can only be updated after completion.',
+        409,
+      );
+    }
+
+    await db.query(
+      `UPDATE live_studio_sessions
+       SET recap_clip_url = $2,
+           updated_at = NOW()
+       WHERE id = $1`,
+      [sessionId, recapClipUrl.trim()],
+    );
+
+    return this.requireSessionDetail(sessionId, db);
+  }
+
   async upsertPresence(
     sessionId: string,
     input: UpsertLivePresenceInput,
@@ -336,11 +350,7 @@ export class LiveSessionServiceImpl implements LiveSessionService {
       );
     }
 
-    await this.ensureParticipantExists(
-      input.participantType,
-      input.participantId,
-      db,
-    );
+    await this.ensureParticipantExists(input.participantType, input.participantId, db);
 
     const upserted = await db.query(
       `INSERT INTO live_session_presence (
@@ -386,11 +396,7 @@ export class LiveSessionServiceImpl implements LiveSessionService {
     await this.ensureParticipantExists(input.authorType, input.authorId, db);
     const content = input.content?.trim();
     if (!content) {
-      throw new ServiceError(
-        'LIVE_SESSION_INVALID_MESSAGE',
-        'Message content is required.',
-        400,
-      );
+      throw new ServiceError('LIVE_SESSION_INVALID_MESSAGE', 'Message content is required.', 400);
     }
     if (content.length > 500) {
       throw new ServiceError(
@@ -433,32 +439,18 @@ export class LiveSessionServiceImpl implements LiveSessionService {
     return mapMessage(inserted.rows[0] as LiveSessionMessageRow);
   }
 
-  private async requireSession(
-    sessionId: string,
-    db: DbClient,
-  ): Promise<LiveStudioSession> {
+  private async requireSession(sessionId: string, db: DbClient): Promise<LiveStudioSession> {
     const detail = await this.getSession(sessionId, db);
     if (!detail) {
-      throw new ServiceError(
-        'LIVE_SESSION_NOT_FOUND',
-        'Live session not found.',
-        404,
-      );
+      throw new ServiceError('LIVE_SESSION_NOT_FOUND', 'Live session not found.', 404);
     }
     return detail.session;
   }
 
-  private async requireSessionDetail(
-    sessionId: string,
-    db: DbClient,
-  ): Promise<LiveSessionDetail> {
+  private async requireSessionDetail(sessionId: string, db: DbClient): Promise<LiveSessionDetail> {
     const detail = await this.getSession(sessionId, db);
     if (!detail) {
-      throw new ServiceError(
-        'LIVE_SESSION_NOT_FOUND',
-        'Live session not found.',
-        404,
-      );
+      throw new ServiceError('LIVE_SESSION_NOT_FOUND', 'Live session not found.', 404);
     }
     return detail;
   }
@@ -478,27 +470,17 @@ export class LiveSessionServiceImpl implements LiveSessionService {
     let rejectSignals = 0;
     for (const message of detail.messages.slice(0, 20)) {
       const content = message.content.toLowerCase();
-      if (
-        content.includes('merge') ||
-        content.includes('approve') ||
-        content.includes('ship')
-      ) {
+      if (content.includes('merge') || content.includes('approve') || content.includes('ship')) {
         mergeSignals += 1;
       }
-      if (
-        content.includes('reject') ||
-        content.includes('decline') ||
-        content.includes('block')
-      ) {
+      if (content.includes('reject') || content.includes('decline') || content.includes('block')) {
         rejectSignals += 1;
       }
     }
 
     const totalSignals = mergeSignals + rejectSignals;
-    const mergeSignalPct =
-      totalSignals > 0 ? Math.round((mergeSignals / totalSignals) * 100) : 0;
-    const rejectSignalPct =
-      totalSignals > 0 ? Math.round((rejectSignals / totalSignals) * 100) : 0;
+    const mergeSignalPct = totalSignals > 0 ? Math.round((mergeSignals / totalSignals) * 100) : 0;
+    const rejectSignalPct = totalSignals > 0 ? Math.round((rejectSignals / totalSignals) * 100) : 0;
 
     const highlights = detail.messages
       .slice(0, 3)
@@ -514,8 +496,7 @@ export class LiveSessionServiceImpl implements LiveSessionService {
       totalSignals > 0
         ? ` Crowd signal: ${mergeSignalPct}% merge / ${rejectSignalPct}% reject.`
         : ' Crowd signal: not enough prediction cues yet.';
-    const highlightSummary =
-      highlights.length > 0 ? ` Highlights: ${highlights}` : '';
+    const highlightSummary = highlights.length > 0 ? ` Highlights: ${highlights}` : '';
 
     const clipSlug = detail.session.draftId
       ? `${detail.session.draftId}-${detail.session.id}`
@@ -544,25 +525,15 @@ export class LiveSessionServiceImpl implements LiveSessionService {
     return session;
   }
 
-  private async ensureAgentExists(
-    agentId: string,
-    db: DbClient,
-  ): Promise<void> {
-    const result = await db.query('SELECT id FROM agents WHERE id = $1', [
-      agentId,
-    ]);
+  private async ensureAgentExists(agentId: string, db: DbClient): Promise<void> {
+    const result = await db.query('SELECT id FROM agents WHERE id = $1', [agentId]);
     if (result.rows.length === 0) {
       throw new ServiceError('AGENT_NOT_FOUND', 'Agent not found.', 404);
     }
   }
 
-  private async ensureHumanExists(
-    humanId: string,
-    db: DbClient,
-  ): Promise<void> {
-    const result = await db.query('SELECT id FROM users WHERE id = $1', [
-      humanId,
-    ]);
+  private async ensureHumanExists(humanId: string, db: DbClient): Promise<void> {
+    const result = await db.query('SELECT id FROM users WHERE id = $1', [humanId]);
     if (result.rows.length === 0) {
       throw new ServiceError('USER_NOT_FOUND', 'User not found.', 404);
     }
@@ -580,13 +551,8 @@ export class LiveSessionServiceImpl implements LiveSessionService {
     await this.ensureHumanExists(participantId, db);
   }
 
-  private async ensureDraftExists(
-    draftId: string,
-    db: DbClient,
-  ): Promise<void> {
-    const result = await db.query('SELECT id FROM drafts WHERE id = $1', [
-      draftId,
-    ]);
+  private async ensureDraftExists(draftId: string, db: DbClient): Promise<void> {
+    const result = await db.query('SELECT id FROM drafts WHERE id = $1', [draftId]);
     if (result.rows.length === 0) {
       throw new ServiceError('DRAFT_NOT_FOUND', 'Draft not found.', 404);
     }

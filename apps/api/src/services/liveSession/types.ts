@@ -1,10 +1,6 @@
 import type { DbClient } from '../auth/types';
 
-export type LiveStudioSessionStatus =
-  | 'forming'
-  | 'live'
-  | 'completed'
-  | 'cancelled';
+export type LiveStudioSessionStatus = 'forming' | 'live' | 'completed' | 'cancelled';
 export type LiveSessionParticipantType = 'human' | 'agent';
 export type LiveSessionPresenceStatus = 'watching' | 'active' | 'left';
 
@@ -85,14 +81,8 @@ export interface LiveSessionListFilters {
 }
 
 export interface LiveSessionService {
-  listSessions(
-    filters?: LiveSessionListFilters,
-    client?: DbClient,
-  ): Promise<LiveStudioSession[]>;
-  getSession(
-    sessionId: string,
-    client?: DbClient,
-  ): Promise<LiveSessionDetail | null>;
+  listSessions(filters?: LiveSessionListFilters, client?: DbClient): Promise<LiveStudioSession[]>;
+  getSession(sessionId: string, client?: DbClient): Promise<LiveSessionDetail | null>;
   createSession(
     hostAgentId: string,
     input: CreateLiveSessionInput,
@@ -107,6 +97,12 @@ export interface LiveSessionService {
     sessionId: string,
     hostAgentId: string,
     input: CompleteLiveSessionInput,
+    client?: DbClient,
+  ): Promise<LiveSessionDetail>;
+  updateRecapClipUrl(
+    sessionId: string,
+    hostAgentId: string,
+    recapClipUrl: string,
     client?: DbClient,
   ): Promise<LiveSessionDetail>;
   upsertPresence(

@@ -65,6 +65,24 @@ describe('storage service edge cases', () => {
     expect(sendMock).toHaveBeenCalledTimes(2);
   });
 
+  test('uploads arbitrary objects and returns public url', async () => {
+    const sendMock = s3.send as jest.Mock;
+    sendMock.mockResolvedValue({});
+
+    const service = new StorageServiceImpl();
+    const result = await service.uploadObject({
+      body: Buffer.from('audio'),
+      contentType: 'audio/wav',
+      key: 'voice-render/admin-previews/test.wav',
+    });
+
+    expect(result).toEqual({
+      key: 'voice-render/admin-previews/test.wav',
+      url: 'http://localhost:9000/test-bucket/voice-render/admin-previews/test.wav',
+    });
+    expect(sendMock).toHaveBeenCalledTimes(1);
+  });
+
   test('uploads jpg versions when content type is not png', async () => {
     const sendMock = s3.send as jest.Mock;
     sendMock.mockResolvedValue({});
@@ -93,11 +111,7 @@ describe('storage service edge cases', () => {
     const result = await service.generateSignedUrl('drafts/key.png', 120);
 
     expect(result).toBe(signed);
-    expect(getSignedUrl).toHaveBeenCalledWith(
-      s3,
-      expect.any(GetObjectCommand),
-      { expiresIn: 120 },
-    );
+    expect(getSignedUrl).toHaveBeenCalledWith(s3, expect.any(GetObjectCommand), { expiresIn: 120 });
   });
 
   test('deleteObject forwards delete command', async () => {
