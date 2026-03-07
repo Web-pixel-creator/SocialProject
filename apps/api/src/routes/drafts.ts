@@ -1,18 +1,13 @@
 import { type Request, Router } from 'express';
 import { db } from '../db/pool';
 import { logger } from '../logging/logger';
-import {
-  requireAgent,
-  requireHuman,
-  requireVerifiedAgent,
-} from '../middleware/auth';
-import {
-  computeHeavyRateLimiter,
-  observerActionRateLimiter,
-} from '../middleware/security';
+import { requireAgent, requireHuman, requireVerifiedAgent } from '../middleware/auth';
+import { computeHeavyRateLimiter, observerActionRateLimiter } from '../middleware/security';
 import { BudgetServiceImpl } from '../services/budget/budgetService';
 import { ServiceError } from '../services/common/errors';
 import { FixRequestServiceImpl } from '../services/fixRequest/fixRequestService';
+import { imageEditService } from '../services/imageEdit/imageEditService';
+import { IMAGE_EDIT_ASPECT_RATIOS } from '../services/imageEdit/types';
 import { MetricsServiceImpl } from '../services/metrics/metricsService';
 import type { MultimodalGlowUpInput } from '../services/metrics/types';
 import { NotificationServiceImpl } from '../services/notification/notificationService';
@@ -33,30 +28,18 @@ const prService = new PullRequestServiceImpl(db);
 const budgetService = new BudgetServiceImpl();
 const sandboxService = new SandboxServiceImpl();
 const metricsService = new MetricsServiceImpl(db);
-const notificationService = new NotificationServiceImpl(db, async () =>
-  Promise.resolve(),
-);
+const notificationService = new NotificationServiceImpl(db, async () => Promise.resolve());
 const searchService = new SearchServiceImpl(db);
 const embeddingService = new EmbeddingServiceImpl(db);
 const draftArcService = new DraftArcServiceImpl(db);
 const provenanceService = new ProvenanceServiceImpl(db);
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DRAFT_STATUSES: DraftStatus[] = ['draft', 'release'];
-const DRAFT_LIST_ALLOWED_QUERY_FIELDS = new Set([
-  'status',
-  'authorId',
-  'limit',
-  'offset',
-]);
+const DRAFT_LIST_ALLOWED_QUERY_FIELDS = new Set(['status', 'authorId', 'limit', 'offset']);
 const DRAFT_LIST_MAX_LIMIT = 100;
 const DRAFT_LIST_MAX_OFFSET = 10_000;
 const DRAFT_CREATE_QUERY_ALLOWED_FIELDS = new Set<string>();
-const DRAFT_CREATE_ALLOWED_FIELDS = new Set([
-  'imageUrl',
-  'thumbnailUrl',
-  'metadata',
-]);
+const DRAFT_CREATE_ALLOWED_FIELDS = new Set(['imageUrl', 'thumbnailUrl', 'metadata']);
 const DRAFT_DETAIL_QUERY_ALLOWED_FIELDS = new Set<string>();
 const DRAFT_PROVENANCE_QUERY_ALLOWED_FIELDS = new Set<string>();
 const DRAFT_PROVENANCE_EXPORT_QUERY_ALLOWED_FIELDS = new Set<string>();
@@ -65,14 +48,13 @@ const DRAFT_RELEASE_QUERY_ALLOWED_FIELDS = new Set<string>();
 const DRAFT_RELEASE_ALLOWED_FIELDS = new Set<string>();
 const DRAFT_FIX_REQUEST_CREATE_QUERY_ALLOWED_FIELDS = new Set<string>();
 const DRAFT_FIX_REQUEST_LIST_QUERY_ALLOWED_FIELDS = new Set<string>();
+const DRAFT_IMAGE_EDIT_CREATE_QUERY_ALLOWED_FIELDS = new Set<string>();
+const DRAFT_IMAGE_EDIT_LIST_QUERY_ALLOWED_FIELDS = new Set(['refresh']);
+const DRAFT_IMAGE_EDIT_PROMOTE_QUERY_ALLOWED_FIELDS = new Set<string>();
 const DRAFT_PULL_REQUEST_CREATE_QUERY_ALLOWED_FIELDS = new Set<string>();
 const DRAFT_PULL_REQUEST_LIST_QUERY_ALLOWED_FIELDS = new Set<string>();
 const DRAFT_EMBEDDING_QUERY_ALLOWED_FIELDS = new Set<string>();
-const FIX_REQUEST_ALLOWED_FIELDS = new Set([
-  'category',
-  'description',
-  'coordinates',
-]);
+const FIX_REQUEST_ALLOWED_FIELDS = new Set(['category', 'description', 'coordinates']);
 const FIX_REQUEST_CATEGORIES = new Set([
   'Focus',
   'Cohesion',
@@ -89,21 +71,32 @@ const PULL_REQUEST_CREATE_ALLOWED_FIELDS = new Set([
   'imageUrl',
   'thumbnailUrl',
 ]);
+const IMAGE_EDIT_CREATE_ALLOWED_FIELDS = new Set([
+  'prompt',
+  'sourceVersionNumber',
+  'numImages',
+  'aspectRatio',
+  'referenceImageUrls',
+  'providersOverride',
+]);
+const IMAGE_EDIT_CANDIDATE_PROMOTE_ALLOWED_FIELDS = new Set([
+  'description',
+  'severity',
+  'addressedFixRequests',
+]);
 const PULL_REQUEST_SEVERITY_VALUES = new Set(['major', 'minor']);
 const DRAFT_EMBEDDING_ALLOWED_FIELDS = new Set(['embedding', 'source']);
 const PR_REVIEW_QUERY_ALLOWED_FIELDS = new Set<string>();
 const PREDICTION_QUERY_ALLOWED_FIELDS = new Set<string>();
 const PREDICTION_SUMMARY_QUERY_ALLOWED_FIELDS = new Set<string>();
-const PR_DECISION_ALLOWED_FIELDS = new Set([
-  'decision',
-  'feedback',
-  'rejectionReason',
-]);
+const PR_DECISION_ALLOWED_FIELDS = new Set(['decision', 'feedback', 'rejectionReason']);
 const PR_DECISION_QUERY_ALLOWED_FIELDS = new Set<string>();
 const PR_FORK_QUERY_ALLOWED_FIELDS = new Set<string>();
 const MULTIMODAL_WRITE_QUERY_ALLOWED_FIELDS = new Set<string>();
 const MULTIMODAL_SCORE_MIN = 0;
 const MULTIMODAL_SCORE_MAX = 100;
+const IMAGE_EDIT_MAX_REFERENCE_IMAGE_URLS = 4;
+const IMAGE_EDIT_MAX_PROVIDER_OVERRIDES = 4;
 
 const getRealtime = (req: Request): RealtimeService | undefined => {
   return req.app.get('realtime');
@@ -113,10 +106,7 @@ const getRealtime = (req: Request): RealtimeService | undefined => {
 // Keep it permissive so test fixtures and non-v4 UUIDs still pass validation.
 const isUuid = (value: string) => UUID_PATTERN.test(value);
 
-const parseOptionalScore = (
-  value: unknown,
-  fieldName: string,
-): number | undefined => {
+const parseOptionalScore = (value: unknown, fieldName: string): number | undefined => {
   if (value === undefined || value === null || value === '') {
     return undefined;
   }
@@ -146,11 +136,7 @@ const parseDraftListInteger = (
   }
   const parsed = Number(value);
   if (!(Number.isFinite(parsed) && Number.isInteger(parsed))) {
-    throw new ServiceError(
-      'DRAFT_LIST_PAGINATION_INVALID',
-      `${field} must be an integer.`,
-      400,
-    );
+    throw new ServiceError('DRAFT_LIST_PAGINATION_INVALID', `${field} must be an integer.`, 400);
   }
   if (parsed < min || parsed > max) {
     throw new ServiceError(
@@ -168,17 +154,10 @@ const assertAllowedQueryFields = (
   errorCode: string,
   messagePrefix: string,
 ) => {
-  const queryRecord =
-    query && typeof query === 'object'
-      ? (query as Record<string, unknown>)
-      : {};
+  const queryRecord = query && typeof query === 'object' ? (query as Record<string, unknown>) : {};
   const unknown = Object.keys(queryRecord).filter((key) => !allowed.has(key));
   if (unknown.length > 0) {
-    throw new ServiceError(
-      errorCode,
-      `${messagePrefix}: ${unknown.join(', ')}.`,
-      400,
-    );
+    throw new ServiceError(errorCode, `${messagePrefix}: ${unknown.join(', ')}.`, 400);
   }
 };
 
@@ -197,11 +176,7 @@ const parseMultimodalProvider = (value: unknown): string | undefined => {
     return undefined;
   }
   if (typeof value !== 'string') {
-    throw new ServiceError(
-      'MULTIMODAL_GLOWUP_INVALID_INPUT',
-      'provider must be a string.',
-      400,
-    );
+    throw new ServiceError('MULTIMODAL_GLOWUP_INVALID_INPUT', 'provider must be a string.', 400);
   }
   const provider = value.trim().toLowerCase();
   if (provider.length === 0 || !MULTIMODAL_PROVIDER_PATTERN.test(provider)) {
@@ -215,14 +190,9 @@ const parseMultimodalProvider = (value: unknown): string | undefined => {
 };
 
 const parseMultimodalPayload = (value: unknown): MultimodalGlowUpInput => {
-  const payload =
-    value && typeof value === 'object'
-      ? (value as Record<string, unknown>)
-      : {};
+  const payload = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
 
-  const unknownFields = Object.keys(payload).filter(
-    (key) => !MULTIMODAL_ALLOWED_FIELDS.has(key),
-  );
+  const unknownFields = Object.keys(payload).filter((key) => !MULTIMODAL_ALLOWED_FIELDS.has(key));
   if (unknownFields.length > 0) {
     throw new ServiceError(
       'MULTIMODAL_GLOWUP_INVALID_FIELDS',
@@ -232,10 +202,7 @@ const parseMultimodalPayload = (value: unknown): MultimodalGlowUpInput => {
   }
 
   const visualScore = parseOptionalScore(payload.visualScore, 'visualScore');
-  const narrativeScore = parseOptionalScore(
-    payload.narrativeScore,
-    'narrativeScore',
-  );
+  const narrativeScore = parseOptionalScore(payload.narrativeScore, 'narrativeScore');
   const audioScore = parseOptionalScore(payload.audioScore, 'audioScore');
   const videoScore = parseOptionalScore(payload.videoScore, 'videoScore');
 
@@ -263,17 +230,10 @@ const parseMultimodalPayload = (value: unknown): MultimodalGlowUpInput => {
 
 const MULTIMODAL_QUERY_ALLOWED_FIELDS = new Set(['provider']);
 
-const parseMultimodalQuery = (
-  value: unknown,
-): { provider?: string; queryKeys: string[] } => {
-  const query =
-    value && typeof value === 'object'
-      ? (value as Record<string, unknown>)
-      : {};
+const parseMultimodalQuery = (value: unknown): { provider?: string; queryKeys: string[] } => {
+  const query = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
   const queryKeys = Object.keys(query);
-  const unknownFields = queryKeys.filter(
-    (key) => !MULTIMODAL_QUERY_ALLOWED_FIELDS.has(key),
-  );
+  const unknownFields = queryKeys.filter((key) => !MULTIMODAL_QUERY_ALLOWED_FIELDS.has(key));
   if (unknownFields.length > 0) {
     throw new ServiceError(
       'MULTIMODAL_GLOWUP_INVALID_QUERY_FIELDS',
@@ -282,21 +242,14 @@ const parseMultimodalQuery = (
     );
   }
 
-  const providerValue = Array.isArray(query.provider)
-    ? query.provider[0]
-    : query.provider;
+  const providerValue = Array.isArray(query.provider) ? query.provider[0] : query.provider;
   return {
     provider: parseMultimodalProvider(providerValue),
     queryKeys,
   };
 };
 
-const PREDICTION_ALLOWED_FIELDS = new Set([
-  'predictedOutcome',
-  'outcome',
-  'stakePoints',
-  'points',
-]);
+const PREDICTION_ALLOWED_FIELDS = new Set(['predictedOutcome', 'outcome', 'stakePoints', 'points']);
 const PREDICTION_MIN_STAKE_POINTS = 5;
 const PREDICTION_MAX_STAKE_POINTS = 500;
 
@@ -312,16 +265,9 @@ const parsePredictionStakePoints = (
     );
   }
   if (!Number.isInteger(value)) {
-    throw new ServiceError(
-      'PREDICTION_STAKE_INVALID',
-      `${fieldName} must be an integer.`,
-      400,
-    );
+    throw new ServiceError('PREDICTION_STAKE_INVALID', `${fieldName} must be an integer.`, 400);
   }
-  if (
-    value < PREDICTION_MIN_STAKE_POINTS ||
-    value > PREDICTION_MAX_STAKE_POINTS
-  ) {
+  if (value < PREDICTION_MIN_STAKE_POINTS || value > PREDICTION_MAX_STAKE_POINTS) {
     throw new ServiceError(
       'PREDICTION_STAKE_INVALID',
       `${fieldName} must be between ${PREDICTION_MIN_STAKE_POINTS} and ${PREDICTION_MAX_STAKE_POINTS}.`,
@@ -347,9 +293,7 @@ const parsePredictionPayload = (
   }
   const payload = (value ?? {}) as Record<string, unknown>;
 
-  const unknownFields = Object.keys(payload).filter(
-    (key) => !PREDICTION_ALLOWED_FIELDS.has(key),
-  );
+  const unknownFields = Object.keys(payload).filter((key) => !PREDICTION_ALLOWED_FIELDS.has(key));
   if (unknownFields.length > 0) {
     throw new ServiceError(
       'PREDICTION_INVALID_FIELDS',
@@ -372,18 +316,11 @@ const parsePredictionPayload = (
 
   const predictedOutcome = payload.predictedOutcome ?? payload.outcome;
   if (predictedOutcome !== 'merge' && predictedOutcome !== 'reject') {
-    throw new ServiceError(
-      'PREDICTION_INVALID',
-      'Prediction must be merge or reject.',
-      400,
-    );
+    throw new ServiceError('PREDICTION_INVALID', 'Prediction must be merge or reject.', 400);
   }
 
   if (payload.stakePoints !== undefined && payload.points !== undefined) {
-    const stakePoints = parsePredictionStakePoints(
-      payload.stakePoints,
-      'stakePoints',
-    );
+    const stakePoints = parsePredictionStakePoints(payload.stakePoints, 'stakePoints');
     const points = parsePredictionStakePoints(payload.points, 'points');
     if (stakePoints !== points) {
       throw new ServiceError(
@@ -417,11 +354,7 @@ const parseOptionalDecisionText = (
     return undefined;
   }
   if (typeof value !== 'string') {
-    throw new ServiceError(
-      'PR_DECISION_INVALID',
-      `${field} must be a string.`,
-      400,
-    );
+    throw new ServiceError('PR_DECISION_INVALID', `${field} must be a string.`, 400);
   }
   const normalized = value.trim();
   if (normalized.length === 0) {
@@ -439,11 +372,7 @@ const parseOptionalDecisionText = (
 
 const parseRequiredText = (
   value: unknown,
-  {
-    field,
-    maxLength,
-    errorCode,
-  }: { field: string; maxLength: number; errorCode: string },
+  { field, maxLength, errorCode }: { field: string; maxLength: number; errorCode: string },
 ): string => {
   if (typeof value !== 'string') {
     throw new ServiceError(errorCode, `${field} must be a string.`, 400);
@@ -453,42 +382,26 @@ const parseRequiredText = (
     throw new ServiceError(errorCode, `${field} is required.`, 400);
   }
   if (normalized.length > maxLength) {
-    throw new ServiceError(
-      errorCode,
-      `${field} exceeds max length (${maxLength}).`,
-      400,
-    );
+    throw new ServiceError(errorCode, `${field} exceeds max length (${maxLength}).`, 400);
   }
   return normalized;
 };
 
-const parseDraftMetadata = (
-  value: unknown,
-): Record<string, unknown> | undefined => {
+const parseDraftMetadata = (value: unknown): Record<string, unknown> | undefined => {
   if (value === undefined || value === null) {
     return undefined;
   }
   if (typeof value !== 'object' || Array.isArray(value)) {
-    throw new ServiceError(
-      'DRAFT_CREATE_INVALID',
-      'metadata must be an object.',
-      400,
-    );
+    throw new ServiceError('DRAFT_CREATE_INVALID', 'metadata must be an object.', 400);
   }
   const metadata = value as Record<string, unknown>;
   if (Object.keys(metadata).length > 200) {
-    throw new ServiceError(
-      'DRAFT_CREATE_INVALID',
-      'metadata exceeds max key count (200).',
-      400,
-    );
+    throw new ServiceError('DRAFT_CREATE_INVALID', 'metadata exceeds max key count (200).', 400);
   }
   return metadata;
 };
 
-const parseOptionalCoordinates = (
-  value: unknown,
-): Record<string, unknown> | null | undefined => {
+const parseOptionalCoordinates = (value: unknown): Record<string, unknown> | null | undefined => {
   if (value === undefined) {
     return undefined;
   }
@@ -528,14 +441,9 @@ const parseFixRequestPayload = (
   description: string;
   coordinates?: Record<string, unknown> | null;
 } => {
-  const payload =
-    value && typeof value === 'object'
-      ? (value as Record<string, unknown>)
-      : {};
+  const payload = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
 
-  const unknownFields = Object.keys(payload).filter(
-    (key) => !FIX_REQUEST_ALLOWED_FIELDS.has(key),
-  );
+  const unknownFields = Object.keys(payload).filter((key) => !FIX_REQUEST_ALLOWED_FIELDS.has(key));
   if (unknownFields.length > 0) {
     throw new ServiceError(
       'FIX_REQUEST_CREATE_INVALID_FIELDS',
@@ -545,10 +453,7 @@ const parseFixRequestPayload = (
   }
 
   const categoryValue = payload.category;
-  if (
-    typeof categoryValue !== 'string' ||
-    !FIX_REQUEST_CATEGORIES.has(categoryValue)
-  ) {
+  if (typeof categoryValue !== 'string' || !FIX_REQUEST_CATEGORIES.has(categoryValue)) {
     throw new ServiceError(
       'FIX_REQUEST_CREATE_INVALID',
       'category must be a valid diagnosis category.',
@@ -589,18 +494,10 @@ const parseRequiredHttpUrl = (
   try {
     parsed = new URL(normalized);
   } catch {
-    throw new ServiceError(
-      errorCode,
-      `${field} must be a valid http(s) URL.`,
-      400,
-    );
+    throw new ServiceError(errorCode, `${field} must be a valid http(s) URL.`, 400);
   }
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-    throw new ServiceError(
-      errorCode,
-      `${field} must be a valid http(s) URL.`,
-      400,
-    );
+    throw new ServiceError(errorCode, `${field} must be a valid http(s) URL.`, 400);
   }
   return normalized;
 };
@@ -609,10 +506,7 @@ const parseAddressedFixRequests = (value: unknown): string[] | undefined => {
   if (value === undefined) {
     return undefined;
   }
-  if (
-    !Array.isArray(value) ||
-    value.some((entry) => typeof entry !== 'string')
-  ) {
+  if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string')) {
     throw new ServiceError(
       'PULL_REQUEST_CREATE_INVALID',
       'addressedFixRequests must be an array of UUID strings.',
@@ -626,9 +520,7 @@ const parseAddressedFixRequests = (value: unknown): string[] | undefined => {
       400,
     );
   }
-  const normalized = [...new Set(value.map((entry) => entry.trim()))].filter(
-    Boolean,
-  );
+  const normalized = [...new Set(value.map((entry) => entry.trim()))].filter(Boolean);
   if (normalized.some((entry) => !isUuid(entry))) {
     throw new ServiceError(
       'PULL_REQUEST_CREATE_INVALID',
@@ -637,6 +529,190 @@ const parseAddressedFixRequests = (value: unknown): string[] | undefined => {
     );
   }
   return normalized;
+};
+
+const parsePositiveIntegerField = (
+  value: unknown,
+  { errorCode, field, max, min }: { errorCode: string; field: string; max: number; min: number },
+): number | undefined => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+  if (typeof value !== 'number' || !Number.isFinite(value) || !Number.isInteger(value)) {
+    throw new ServiceError(errorCode, `${field} must be an integer.`, 400);
+  }
+  if (value < min || value > max) {
+    throw new ServiceError(errorCode, `${field} must be between ${min} and ${max}.`, 400);
+  }
+  return value;
+};
+
+const parseOptionalProviderOverrides = (value: unknown): string[] | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string')) {
+    throw new ServiceError(
+      'IMAGE_EDIT_CREATE_INVALID',
+      'providersOverride must be an array of provider identifiers.',
+      400,
+    );
+  }
+  if (value.length > IMAGE_EDIT_MAX_PROVIDER_OVERRIDES) {
+    throw new ServiceError(
+      'IMAGE_EDIT_CREATE_INVALID',
+      `providersOverride exceeds max items (${IMAGE_EDIT_MAX_PROVIDER_OVERRIDES}).`,
+      400,
+    );
+  }
+  const normalized = [...new Set(value.map((entry) => entry.trim().toLowerCase()))].filter(Boolean);
+  if (normalized.some((entry) => !/^[a-z0-9][a-z0-9._-]{0,63}$/i.test(entry))) {
+    throw new ServiceError(
+      'IMAGE_EDIT_CREATE_INVALID',
+      'providersOverride must contain valid provider identifiers.',
+      400,
+    );
+  }
+  return normalized;
+};
+
+const parseOptionalReferenceImageUrls = (value: unknown): string[] | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!Array.isArray(value)) {
+    throw new ServiceError(
+      'IMAGE_EDIT_CREATE_INVALID',
+      'referenceImageUrls must be an array of http(s) URLs.',
+      400,
+    );
+  }
+  if (value.length > IMAGE_EDIT_MAX_REFERENCE_IMAGE_URLS) {
+    throw new ServiceError(
+      'IMAGE_EDIT_CREATE_INVALID',
+      `referenceImageUrls exceeds max items (${IMAGE_EDIT_MAX_REFERENCE_IMAGE_URLS}).`,
+      400,
+    );
+  }
+  return value.map((entry, index) =>
+    parseRequiredHttpUrl(entry, {
+      field: `referenceImageUrls[${index}]`,
+      errorCode: 'IMAGE_EDIT_CREATE_INVALID',
+    }),
+  );
+};
+
+const parseImageEditListQuery = (value: unknown): { refreshActive: boolean } => {
+  const query = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+  const refresh = Array.isArray(query.refresh) ? query.refresh[0] : query.refresh;
+  if (refresh === undefined || refresh === null || refresh === '') {
+    return { refreshActive: false };
+  }
+  if (refresh !== 'active') {
+    throw new ServiceError(
+      'IMAGE_EDIT_LIST_INVALID_QUERY',
+      'refresh must be omitted or equal to "active".',
+      400,
+    );
+  }
+  return { refreshActive: true };
+};
+
+const parseImageEditCreatePayload = (
+  value: unknown,
+): {
+  prompt: string;
+  sourceVersionNumber?: number;
+  numImages?: number;
+  aspectRatio?: (typeof IMAGE_EDIT_ASPECT_RATIOS)[number];
+  referenceImageUrls?: string[];
+  providersOverride?: string[];
+} => {
+  const payload = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+  const unknownFields = Object.keys(payload).filter(
+    (key) => !IMAGE_EDIT_CREATE_ALLOWED_FIELDS.has(key),
+  );
+  if (unknownFields.length > 0) {
+    throw new ServiceError(
+      'IMAGE_EDIT_CREATE_INVALID_FIELDS',
+      `Unsupported image-edit fields: ${unknownFields.join(', ')}.`,
+      400,
+    );
+  }
+
+  const aspectRatio = payload.aspectRatio;
+  if (
+    aspectRatio !== undefined &&
+    (typeof aspectRatio !== 'string' ||
+      !(IMAGE_EDIT_ASPECT_RATIOS as readonly string[]).includes(aspectRatio))
+  ) {
+    throw new ServiceError(
+      'IMAGE_EDIT_CREATE_INVALID',
+      `aspectRatio must be one of: ${IMAGE_EDIT_ASPECT_RATIOS.join(', ')}.`,
+      400,
+    );
+  }
+
+  return {
+    aspectRatio: aspectRatio as (typeof IMAGE_EDIT_ASPECT_RATIOS)[number] | undefined,
+    numImages: parsePositiveIntegerField(payload.numImages, {
+      errorCode: 'IMAGE_EDIT_CREATE_INVALID',
+      field: 'numImages',
+      max: 4,
+      min: 1,
+    }),
+    prompt: parseRequiredText(payload.prompt, {
+      field: 'prompt',
+      maxLength: 4000,
+      errorCode: 'IMAGE_EDIT_CREATE_INVALID',
+    }),
+    providersOverride: parseOptionalProviderOverrides(payload.providersOverride),
+    referenceImageUrls: parseOptionalReferenceImageUrls(payload.referenceImageUrls),
+    sourceVersionNumber: parsePositiveIntegerField(payload.sourceVersionNumber, {
+      errorCode: 'IMAGE_EDIT_CREATE_INVALID',
+      field: 'sourceVersionNumber',
+      max: 999,
+      min: 1,
+    }),
+  };
+};
+
+const parseImageEditCandidatePromotePayload = (
+  value: unknown,
+): {
+  description: string;
+  severity: 'major' | 'minor';
+  addressedFixRequests?: string[];
+} => {
+  const payload = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+  const unknownFields = Object.keys(payload).filter(
+    (key) => !IMAGE_EDIT_CANDIDATE_PROMOTE_ALLOWED_FIELDS.has(key),
+  );
+  if (unknownFields.length > 0) {
+    throw new ServiceError(
+      'IMAGE_EDIT_PROMOTE_INVALID_FIELDS',
+      `Unsupported image-edit promote fields: ${unknownFields.join(', ')}.`,
+      400,
+    );
+  }
+  const severity = payload.severity;
+  if (typeof severity !== 'string' || !PULL_REQUEST_SEVERITY_VALUES.has(severity)) {
+    throw new ServiceError(
+      'IMAGE_EDIT_PROMOTE_INVALID',
+      'severity must be one of: major, minor.',
+      400,
+    );
+  }
+
+  return {
+    addressedFixRequests: parseAddressedFixRequests(payload.addressedFixRequests),
+    description: parseRequiredText(payload.description, {
+      field: 'description',
+      maxLength: 4000,
+      errorCode: 'IMAGE_EDIT_PROMOTE_INVALID',
+    }),
+    severity: severity as 'major' | 'minor',
+  };
 };
 
 const parsePullRequestCreatePayload = (
@@ -648,10 +724,7 @@ const parsePullRequestCreatePayload = (
   imageUrl: string;
   thumbnailUrl: string;
 } => {
-  const payload =
-    value && typeof value === 'object'
-      ? (value as Record<string, unknown>)
-      : {};
+  const payload = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
 
   const unknownFields = Object.keys(payload).filter(
     (key) => !PULL_REQUEST_CREATE_ALLOWED_FIELDS.has(key),
@@ -665,10 +738,7 @@ const parsePullRequestCreatePayload = (
   }
 
   const severity = payload.severity;
-  if (
-    typeof severity !== 'string' ||
-    !PULL_REQUEST_SEVERITY_VALUES.has(severity)
-  ) {
+  if (typeof severity !== 'string' || !PULL_REQUEST_SEVERITY_VALUES.has(severity)) {
     throw new ServiceError(
       'PULL_REQUEST_CREATE_INVALID',
       'severity must be one of: major, minor.',
@@ -683,9 +753,7 @@ const parsePullRequestCreatePayload = (
       errorCode: 'PULL_REQUEST_CREATE_INVALID',
     }),
     severity: severity as 'major' | 'minor',
-    addressedFixRequests: parseAddressedFixRequests(
-      payload.addressedFixRequests,
-    ),
+    addressedFixRequests: parseAddressedFixRequests(payload.addressedFixRequests),
     imageUrl: parseRequiredHttpUrl(payload.imageUrl, {
       field: 'imageUrl',
       errorCode: 'PULL_REQUEST_CREATE_INVALID',
@@ -704,14 +772,9 @@ const parseDraftCreatePayload = (
   thumbnailUrl: string;
   metadata?: Record<string, unknown>;
 } => {
-  const payload =
-    value && typeof value === 'object'
-      ? (value as Record<string, unknown>)
-      : {};
+  const payload = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
 
-  const unknownFields = Object.keys(payload).filter(
-    (key) => !DRAFT_CREATE_ALLOWED_FIELDS.has(key),
-  );
+  const unknownFields = Object.keys(payload).filter((key) => !DRAFT_CREATE_ALLOWED_FIELDS.has(key));
   if (unknownFields.length > 0) {
     throw new ServiceError(
       'DRAFT_CREATE_INVALID_FIELDS',
@@ -740,13 +803,8 @@ const parsePullRequestDecisionPayload = (
   feedback?: string;
   rejectionReason?: string;
 } => {
-  const payload =
-    value && typeof value === 'object'
-      ? (value as Record<string, unknown>)
-      : {};
-  const unknownFields = Object.keys(payload).filter(
-    (key) => !PR_DECISION_ALLOWED_FIELDS.has(key),
-  );
+  const payload = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+  const unknownFields = Object.keys(payload).filter((key) => !PR_DECISION_ALLOWED_FIELDS.has(key));
   if (unknownFields.length > 0) {
     throw new ServiceError(
       'PR_DECISION_INVALID_FIELDS',
@@ -755,11 +813,7 @@ const parsePullRequestDecisionPayload = (
     );
   }
   const decision = payload.decision;
-  if (
-    decision !== 'merge' &&
-    decision !== 'reject' &&
-    decision !== 'request_changes'
-  ) {
+  if (decision !== 'merge' && decision !== 'reject' && decision !== 'request_changes') {
     throw new ServiceError(
       'PR_DECISION_INVALID',
       'decision must be one of: merge, reject, request_changes.',
@@ -779,13 +833,8 @@ const parsePullRequestDecisionPayload = (
   };
 };
 
-const parseDraftEmbeddingPayload = (
-  value: unknown,
-): { embedding?: number[]; source?: string } => {
-  const payload =
-    value && typeof value === 'object'
-      ? (value as Record<string, unknown>)
-      : {};
+const parseDraftEmbeddingPayload = (value: unknown): { embedding?: number[]; source?: string } => {
+  const payload = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
   const unknownFields = Object.keys(payload).filter(
     (key) => !DRAFT_EMBEDDING_ALLOWED_FIELDS.has(key),
   );
@@ -801,19 +850,11 @@ const parseDraftEmbeddingPayload = (
   let source: string | undefined;
   if (sourceValue !== undefined) {
     if (typeof sourceValue !== 'string') {
-      throw new ServiceError(
-        'DRAFT_EMBEDDING_INVALID',
-        'source must be a string.',
-        400,
-      );
+      throw new ServiceError('DRAFT_EMBEDDING_INVALID', 'source must be a string.', 400);
     }
     const normalizedSource = sourceValue.trim();
     if (normalizedSource.length > 64) {
-      throw new ServiceError(
-        'DRAFT_EMBEDDING_INVALID',
-        'source exceeds max length (64).',
-        400,
-      );
+      throw new ServiceError('DRAFT_EMBEDDING_INVALID', 'source exceeds max length (64).', 400);
     }
     source = normalizedSource || undefined;
   }
@@ -822,10 +863,7 @@ const parseDraftEmbeddingPayload = (
   if (embeddingValue === undefined) {
     return { source };
   }
-  if (
-    !Array.isArray(embeddingValue) ||
-    embeddingValue.some((entry) => typeof entry !== 'number')
-  ) {
+  if (!Array.isArray(embeddingValue) || embeddingValue.some((entry) => typeof entry !== 'number')) {
     throw new ServiceError(
       'DRAFT_EMBEDDING_INVALID',
       'embedding must be an array of numbers.',
@@ -834,11 +872,7 @@ const parseDraftEmbeddingPayload = (
   }
   const embedding = embeddingValue as number[];
   if (embedding.length > 4096) {
-    throw new ServiceError(
-      'DRAFT_EMBEDDING_INVALID',
-      'embedding exceeds max length (4096).',
-      400,
-    );
+    throw new ServiceError('DRAFT_EMBEDDING_INVALID', 'embedding exceeds max length (4096).', 400);
   }
   if (embedding.some((entry) => !Number.isFinite(entry))) {
     throw new ServiceError(
@@ -922,94 +956,72 @@ const writeMultimodalErrorTelemetry = async (params: {
   }
 };
 
-router.post(
-  '/drafts',
-  requireAgent,
-  computeHeavyRateLimiter,
-  async (req, res, next) => {
+router.post('/drafts', requireAgent, computeHeavyRateLimiter, async (req, res, next) => {
+  try {
+    assertAllowedQueryFields(
+      req.query,
+      DRAFT_CREATE_QUERY_ALLOWED_FIELDS,
+      'DRAFT_CREATE_INVALID_QUERY_FIELDS',
+      'Unsupported draft create query fields',
+    );
+    const { imageUrl, thumbnailUrl, metadata } = parseDraftCreatePayload(req.body);
+    const agentId = req.auth?.id as string;
+    const trustResult = await db.query('SELECT trust_tier FROM agents WHERE id = $1', [agentId]);
+    const trustTier = Number(trustResult.rows[0]?.trust_tier ?? 0);
+    const isSandbox = trustTier < 1;
+
+    if (isSandbox) {
+      await sandboxService.checkDraftLimit(agentId);
+    }
+
+    const result = await postService.createDraft({
+      authorId: agentId,
+      imageUrl,
+      thumbnailUrl,
+      metadata,
+      isSandbox,
+    });
     try {
-      assertAllowedQueryFields(
-        req.query,
-        DRAFT_CREATE_QUERY_ALLOWED_FIELDS,
-        'DRAFT_CREATE_INVALID_QUERY_FIELDS',
-        'Unsupported draft create query fields',
-      );
-      const { imageUrl, thumbnailUrl, metadata } = parseDraftCreatePayload(
-        req.body,
-      );
-      const agentId = req.auth?.id as string;
-      const trustResult = await db.query(
-        'SELECT trust_tier FROM agents WHERE id = $1',
-        [agentId],
-      );
-      const trustTier = Number(trustResult.rows[0]?.trust_tier ?? 0);
-      const isSandbox = trustTier < 1;
-
-      if (isSandbox) {
-        await sandboxService.checkDraftLimit(agentId);
-      }
-
-      const result = await postService.createDraft({
+      await provenanceService.recordDraftCreation({
+        draftId: result.draft.id,
         authorId: agentId,
-        imageUrl,
-        thumbnailUrl,
         metadata,
-        isSandbox,
       });
+    } catch (error) {
+      logger.warn({ err: error, draftId: result.draft.id }, 'Draft provenance bootstrap failed');
+    }
+
+    if (isSandbox) {
+      await sandboxService.incrementDraftLimit(agentId);
+    } else {
       try {
-        await provenanceService.recordDraftCreation({
+        const embedding = await embeddingService.generateEmbedding({
           draftId: result.draft.id,
-          authorId: agentId,
+          source: 'auto',
+          imageUrl,
           metadata,
         });
-      } catch (error) {
-        logger.warn(
-          { err: error, draftId: result.draft.id },
-          'Draft provenance bootstrap failed',
-        );
-      }
-
-      if (isSandbox) {
-        await sandboxService.incrementDraftLimit(agentId);
-      } else {
-        try {
-          const embedding = await embeddingService.generateEmbedding({
-            draftId: result.draft.id,
-            source: 'auto',
-            imageUrl,
-            metadata,
-          });
-          if (embedding && embedding.length > 0) {
-            await searchService.upsertDraftEmbedding(
-              result.draft.id,
-              embedding,
-              'auto',
-            );
-          }
-        } catch (error) {
-          logger.warn(
-            { err: error, draftId: result.draft.id },
-            'Draft embedding upsert failed',
-          );
+        if (embedding && embedding.length > 0) {
+          await searchService.upsertDraftEmbedding(result.draft.id, embedding, 'auto');
         }
-
-        getRealtime(req)?.broadcast('feed:live', 'draft_created', {
-          draftId: result.draft.id,
-        });
+      } catch (error) {
+        logger.warn({ err: error, draftId: result.draft.id }, 'Draft embedding upsert failed');
       }
-      res.json(result);
-    } catch (error) {
-      next(error);
+
+      getRealtime(req)?.broadcast('feed:live', 'draft_created', {
+        draftId: result.draft.id,
+      });
     }
-  },
-);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.get('/drafts', async (req, res, next) => {
   try {
     const query =
-      req.query && typeof req.query === 'object'
-        ? (req.query as Record<string, unknown>)
-        : {};
+      req.query && typeof req.query === 'object' ? (req.query as Record<string, unknown>) : {};
     const unknownFields = Object.keys(query).filter(
       (key) => !DRAFT_LIST_ALLOWED_QUERY_FIELDS.has(key),
     );
@@ -1023,8 +1035,7 @@ router.get('/drafts', async (req, res, next) => {
 
     const { status, authorId, limit, offset } = query;
     const parsedStatus =
-      typeof status === 'string' &&
-      DRAFT_STATUSES.includes(status as DraftStatus)
+      typeof status === 'string' && DRAFT_STATUSES.includes(status as DraftStatus)
         ? (status as DraftStatus)
         : undefined;
     if (status !== undefined && !parsedStatus) {
@@ -1035,9 +1046,7 @@ router.get('/drafts', async (req, res, next) => {
       );
     }
     const parsedAuthorId =
-      typeof authorId === 'string' && authorId.trim().length > 0
-        ? authorId
-        : undefined;
+      typeof authorId === 'string' && authorId.trim().length > 0 ? authorId : undefined;
     if (parsedAuthorId && !isUuid(parsedAuthorId)) {
       throw new ServiceError(
         'DRAFT_LIST_AUTHOR_ID_INVALID',
@@ -1162,10 +1171,7 @@ router.get('/drafts/:id/glowup/multimodal', async (req, res, next) => {
     }
 
     const { provider } = parseMultimodalQuery(req.query);
-    const score = await metricsService.getMultimodalGlowUpScore(
-      req.params.id,
-      provider,
-    );
+    const score = await metricsService.getMultimodalGlowUpScore(req.params.id, provider);
     if (!score) {
       return res.status(404).json({ error: 'MULTIMODAL_GLOWUP_NOT_FOUND' });
     }
@@ -1177,127 +1183,106 @@ router.get('/drafts/:id/glowup/multimodal', async (req, res, next) => {
       (error.code === 'MULTIMODAL_GLOWUP_INVALID_INPUT' ||
         error.code === 'MULTIMODAL_GLOWUP_INVALID_QUERY_FIELDS')
     ) {
-      const provider =
-        typeof req.query.provider === 'string' ? req.query.provider : null;
+      const provider = typeof req.query.provider === 'string' ? req.query.provider : null;
       await writeMultimodalErrorTelemetry({
         draftId: req.params.id,
         reason: 'invalid_query',
         errorCode: error.code,
         provider,
-        queryKeys: Object.keys(
-          req.query && typeof req.query === 'object' ? req.query : {},
-        ),
+        queryKeys: Object.keys(req.query && typeof req.query === 'object' ? req.query : {}),
       });
     }
     next(error);
   }
 });
 
-router.post(
-  '/drafts/:id/glowup/multimodal',
-  requireVerifiedAgent,
-  async (req, res, next) => {
-    try {
-      assertAllowedQueryFields(
-        req.query,
-        MULTIMODAL_WRITE_QUERY_ALLOWED_FIELDS,
-        'MULTIMODAL_GLOWUP_INVALID_QUERY_FIELDS',
-        'Unsupported multimodal query fields',
-      );
-      if (!isUuid(req.params.id)) {
-        throw new ServiceError('DRAFT_ID_INVALID', 'Invalid draft id.', 400);
-      }
-
-      const payload = parseMultimodalPayload(req.body);
-
-      const score = await metricsService.upsertMultimodalGlowUpScore(
-        req.params.id,
-        payload,
-      );
-
-      getRealtime(req)?.broadcast(
-        `post:${req.params.id}`,
-        'glowup_multimodal_update',
-        {
-          draftId: req.params.id,
-          provider: score.provider,
-          score: score.score,
-          confidence: score.confidence,
-        },
-      );
-      getRealtime(req)?.broadcast('feed:live', 'draft_activity', {
-        draftId: req.params.id,
-      });
-
-      res.json(score);
-    } catch (error) {
-      next(error);
+router.post('/drafts/:id/glowup/multimodal', requireVerifiedAgent, async (req, res, next) => {
+  try {
+    assertAllowedQueryFields(
+      req.query,
+      MULTIMODAL_WRITE_QUERY_ALLOWED_FIELDS,
+      'MULTIMODAL_GLOWUP_INVALID_QUERY_FIELDS',
+      'Unsupported multimodal query fields',
+    );
+    if (!isUuid(req.params.id)) {
+      throw new ServiceError('DRAFT_ID_INVALID', 'Invalid draft id.', 400);
     }
-  },
-);
 
-router.post(
-  '/drafts/:id/release',
-  requireVerifiedAgent,
-  async (req, res, next) => {
-    try {
-      assertAllowedQueryFields(
-        req.query,
-        DRAFT_RELEASE_QUERY_ALLOWED_FIELDS,
-        'DRAFT_RELEASE_INVALID_QUERY_FIELDS',
-        'Unsupported draft release query fields',
-      );
-      if (!isUuid(req.params.id)) {
-        throw new ServiceError('DRAFT_ID_INVALID', 'Invalid draft id.', 400);
-      }
-      const body =
-        req.body && typeof req.body === 'object' && !Array.isArray(req.body)
-          ? (req.body as Record<string, unknown>)
-          : {};
-      const unknownBodyFields = Object.keys(body).filter(
-        (key) => !DRAFT_RELEASE_ALLOWED_FIELDS.has(key),
-      );
-      if (unknownBodyFields.length > 0) {
-        throw new ServiceError(
-          'DRAFT_RELEASE_INVALID_FIELDS',
-          `Unsupported draft release fields: ${unknownBodyFields.join(', ')}.`,
-          400,
-        );
-      }
-      const draft = await postService.getDraft(req.params.id);
-      if (draft.authorId !== req.auth?.id) {
-        return res.status(403).json({ error: 'NOT_AUTHOR' });
-      }
-      const result = await postService.releaseDraft(req.params.id);
-      try {
-        await provenanceService.recordDraftRelease({
-          draftId: req.params.id,
-          releaserId: req.auth?.id as string,
-          metadata: result.metadata,
-        });
-      } catch (error) {
-        logger.warn(
-          { err: error, draftId: req.params.id },
-          'Draft provenance release update failed',
-        );
-      }
-      try {
-        await draftArcService.recordDraftEvent(req.params.id, 'draft_released');
-      } catch (error) {
-        logger.warn(
-          { err: error, draftId: req.params.id },
-          'Observer arc update failed after release',
-        );
-      }
-      getRealtime(req)?.broadcast(`post:${req.params.id}`, 'draft_released', {
-        draftId: req.params.id,
-      });
-      res.json(result);
-    } catch (error) {
-      next(error);
+    const payload = parseMultimodalPayload(req.body);
+
+    const score = await metricsService.upsertMultimodalGlowUpScore(req.params.id, payload);
+
+    getRealtime(req)?.broadcast(`post:${req.params.id}`, 'glowup_multimodal_update', {
+      draftId: req.params.id,
+      provider: score.provider,
+      score: score.score,
+      confidence: score.confidence,
+    });
+    getRealtime(req)?.broadcast('feed:live', 'draft_activity', {
+      draftId: req.params.id,
+    });
+
+    res.json(score);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/drafts/:id/release', requireVerifiedAgent, async (req, res, next) => {
+  try {
+    assertAllowedQueryFields(
+      req.query,
+      DRAFT_RELEASE_QUERY_ALLOWED_FIELDS,
+      'DRAFT_RELEASE_INVALID_QUERY_FIELDS',
+      'Unsupported draft release query fields',
+    );
+    if (!isUuid(req.params.id)) {
+      throw new ServiceError('DRAFT_ID_INVALID', 'Invalid draft id.', 400);
     }
-  },
-);
+    const body =
+      req.body && typeof req.body === 'object' && !Array.isArray(req.body)
+        ? (req.body as Record<string, unknown>)
+        : {};
+    const unknownBodyFields = Object.keys(body).filter(
+      (key) => !DRAFT_RELEASE_ALLOWED_FIELDS.has(key),
+    );
+    if (unknownBodyFields.length > 0) {
+      throw new ServiceError(
+        'DRAFT_RELEASE_INVALID_FIELDS',
+        `Unsupported draft release fields: ${unknownBodyFields.join(', ')}.`,
+        400,
+      );
+    }
+    const draft = await postService.getDraft(req.params.id);
+    if (draft.authorId !== req.auth?.id) {
+      return res.status(403).json({ error: 'NOT_AUTHOR' });
+    }
+    const result = await postService.releaseDraft(req.params.id);
+    try {
+      await provenanceService.recordDraftRelease({
+        draftId: req.params.id,
+        releaserId: req.auth?.id as string,
+        metadata: result.metadata,
+      });
+    } catch (error) {
+      logger.warn({ err: error, draftId: req.params.id }, 'Draft provenance release update failed');
+    }
+    try {
+      await draftArcService.recordDraftEvent(req.params.id, 'draft_released');
+    } catch (error) {
+      logger.warn(
+        { err: error, draftId: req.params.id },
+        'Observer arc update failed after release',
+      );
+    }
+    getRealtime(req)?.broadcast(`post:${req.params.id}`, 'draft_released', {
+      draftId: req.params.id,
+    });
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.post(
   '/drafts/:id/fix-requests',
@@ -1336,10 +1321,7 @@ router.post(
       try {
         await draftArcService.recordDraftEvent(draftId, 'fix_request');
       } catch (error) {
-        logger.warn(
-          { err: error, draftId },
-          'Observer arc update failed after fix request',
-        );
+        logger.warn({ err: error, draftId }, 'Observer arc update failed after fix request');
       }
       getRealtime(req)?.broadcast(`post:${draftId}`, 'fix_request', {
         id: fix.id,
@@ -1371,6 +1353,137 @@ router.get('/drafts/:id/fix-requests', async (req, res, next) => {
     next(error);
   }
 });
+
+router.get('/drafts/:id/image-edits', async (req, res, next) => {
+  try {
+    assertAllowedQueryFields(
+      req.query,
+      DRAFT_IMAGE_EDIT_LIST_QUERY_ALLOWED_FIELDS,
+      'IMAGE_EDIT_LIST_INVALID_QUERY_FIELDS',
+      'Unsupported image-edit list query fields',
+    );
+    if (!isUuid(req.params.id)) {
+      throw new ServiceError('DRAFT_ID_INVALID', 'Invalid draft id.', 400);
+    }
+    const { refreshActive } = parseImageEditListQuery(req.query);
+    const jobs = await imageEditService.listJobsByDraft(req.params.id, {
+      refreshActive,
+    });
+    res.json(jobs);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post(
+  '/drafts/:id/image-edits',
+  requireVerifiedAgent,
+  computeHeavyRateLimiter,
+  async (req, res, next) => {
+    try {
+      assertAllowedQueryFields(
+        req.query,
+        DRAFT_IMAGE_EDIT_CREATE_QUERY_ALLOWED_FIELDS,
+        'IMAGE_EDIT_CREATE_INVALID_QUERY_FIELDS',
+        'Unsupported image-edit create query fields',
+      );
+      const draftId = req.params.id;
+      if (!isUuid(draftId)) {
+        throw new ServiceError('DRAFT_ID_INVALID', 'Invalid draft id.', 400);
+      }
+      const agentId = req.auth?.id as string;
+      const payload = parseImageEditCreatePayload(req.body);
+
+      await budgetService.checkEditBudget(draftId, 'pr');
+      await budgetService.checkActionBudget(agentId, 'pr');
+
+      const job = await imageEditService.createJob({
+        aspectRatio: payload.aspectRatio,
+        draftId,
+        numImages: payload.numImages,
+        preferredProviders: payload.providersOverride,
+        prompt: payload.prompt,
+        referenceImageUrls: payload.referenceImageUrls,
+        requestedById: agentId,
+        requestedByType: 'agent',
+        sourceVersionNumber: payload.sourceVersionNumber,
+      });
+
+      await budgetService.incrementEditBudget(draftId, 'pr');
+      await budgetService.incrementActionBudget(agentId, 'pr');
+
+      res.json(job);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+router.post(
+  '/drafts/:id/image-edits/candidates/:candidateId/promote',
+  requireVerifiedAgent,
+  computeHeavyRateLimiter,
+  async (req, res, next) => {
+    try {
+      assertAllowedQueryFields(
+        req.query,
+        DRAFT_IMAGE_EDIT_PROMOTE_QUERY_ALLOWED_FIELDS,
+        'IMAGE_EDIT_PROMOTE_INVALID_QUERY_FIELDS',
+        'Unsupported image-edit promote query fields',
+      );
+      const draftId = req.params.id;
+      const candidateId = req.params.candidateId;
+      if (!isUuid(draftId)) {
+        throw new ServiceError('DRAFT_ID_INVALID', 'Invalid draft id.', 400);
+      }
+      if (!isUuid(candidateId)) {
+        throw new ServiceError(
+          'IMAGE_EDIT_CANDIDATE_ID_INVALID',
+          'Invalid image-edit candidate id.',
+          400,
+        );
+      }
+
+      const agentId = req.auth?.id as string;
+      const payload = parseImageEditCandidatePromotePayload(req.body);
+      const budgetType = payload.severity === 'major' ? 'major_pr' : 'pr';
+
+      await budgetService.checkEditBudget(draftId, budgetType);
+      await budgetService.checkActionBudget(agentId, budgetType);
+
+      const { pullRequest } = await imageEditService.promoteCandidateToPullRequest({
+        addressedFixRequests: payload.addressedFixRequests,
+        candidateId,
+        description: payload.description,
+        draftId,
+        makerId: agentId,
+        severity: payload.severity,
+      });
+
+      await budgetService.incrementEditBudget(draftId, budgetType);
+      await budgetService.incrementActionBudget(agentId, budgetType);
+
+      await notificationService.notifyAuthorOnPullRequest(draftId, pullRequest.id);
+      try {
+        await draftArcService.recordDraftEvent(draftId, 'pull_request');
+      } catch (error) {
+        logger.warn(
+          { err: error, draftId, pullRequestId: pullRequest.id },
+          'Observer arc update failed after image-edit promotion',
+        );
+      }
+      getRealtime(req)?.broadcast(`post:${draftId}`, 'pull_request', {
+        id: pullRequest.id,
+        draftId,
+      });
+      getRealtime(req)?.broadcast('feed:live', 'draft_activity', { draftId });
+
+      res.json(pullRequest);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 router.post(
   '/drafts/:id/pull-requests',
@@ -1413,10 +1526,7 @@ router.post(
       try {
         await draftArcService.recordDraftEvent(draftId, 'pull_request');
       } catch (error) {
-        logger.warn(
-          { err: error, draftId },
-          'Observer arc update failed after pull request',
-        );
+        logger.warn({ err: error, draftId }, 'Observer arc update failed after pull request');
       }
       getRealtime(req)?.broadcast(`post:${draftId}`, 'pull_request', {
         id: pr.id,
@@ -1454,11 +1564,7 @@ router.post(
         return res.status(403).json({ error: 'NOT_AUTHOR' });
       }
 
-      await searchService.upsertDraftEmbedding(
-        draftId,
-        embedding ?? [],
-        source,
-      );
+      await searchService.upsertDraftEmbedding(draftId, embedding ?? [], source);
       res.json({ draftId, status: 'ok' });
     } catch (error) {
       next(error);
@@ -1501,9 +1607,7 @@ router.post(
         throw new ServiceError('DRAFT_ID_INVALID', 'Invalid draft id.', 400);
       }
 
-      const { predictedOutcome, stakePoints } = parsePredictionPayload(
-        req.body,
-      );
+      const { predictedOutcome, stakePoints } = parsePredictionPayload(req.body);
 
       const pendingPullRequest = await db.query(
         `SELECT id
@@ -1515,9 +1619,7 @@ router.post(
         [draftId],
       );
 
-      const pullRequestId = pendingPullRequest.rows[0]?.id as
-        | string
-        | undefined;
+      const pullRequestId = pendingPullRequest.rows[0]?.id as string | undefined;
       if (!pullRequestId) {
         throw new ServiceError(
           'PREDICTION_NO_PENDING_PR',
@@ -1586,15 +1688,9 @@ router.post(
         'Unsupported prediction query fields',
       );
       if (!isUuid(req.params.id)) {
-        throw new ServiceError(
-          'PR_ID_INVALID',
-          'Invalid pull request id.',
-          400,
-        );
+        throw new ServiceError('PR_ID_INVALID', 'Invalid pull request id.', 400);
       }
-      const { predictedOutcome, stakePoints } = parsePredictionPayload(
-        req.body,
-      );
+      const { predictedOutcome, stakePoints } = parsePredictionPayload(req.body);
       const prediction = await draftArcService.submitPrediction(
         req.auth?.id as string,
         req.params.id,
@@ -1632,11 +1728,7 @@ router.get(
         'Unsupported prediction summary query fields',
       );
       if (!isUuid(req.params.id)) {
-        throw new ServiceError(
-          'PR_ID_INVALID',
-          'Invalid pull request id.',
-          400,
-        );
+        throw new ServiceError('PR_ID_INVALID', 'Invalid pull request id.', 400);
       }
       const summary = await draftArcService.getPredictionSummary(
         req.auth?.id as string,
@@ -1659,159 +1751,129 @@ router.get(
   },
 );
 
-router.post(
-  '/pull-requests/:id/decide',
-  requireVerifiedAgent,
-  async (req, res, next) => {
-    try {
-      assertAllowedQueryFields(
-        req.query,
-        PR_DECISION_QUERY_ALLOWED_FIELDS,
-        'PR_DECISION_INVALID_QUERY_FIELDS',
-        'Unsupported pull request decision query fields',
-      );
-      if (!isUuid(req.params.id)) {
-        throw new ServiceError(
-          'PR_ID_INVALID',
-          'Invalid pull request id.',
-          400,
-        );
-      }
-      const payload = parsePullRequestDecisionPayload(req.body);
-      const pr = await prService.decidePullRequest({
-        pullRequestId: req.params.id,
-        authorId: req.auth?.id as string,
-        decision: payload.decision,
-        feedback: payload.feedback,
-        rejectionReason: payload.rejectionReason,
-      });
+router.post('/pull-requests/:id/decide', requireVerifiedAgent, async (req, res, next) => {
+  try {
+    assertAllowedQueryFields(
+      req.query,
+      PR_DECISION_QUERY_ALLOWED_FIELDS,
+      'PR_DECISION_INVALID_QUERY_FIELDS',
+      'Unsupported pull request decision query fields',
+    );
+    if (!isUuid(req.params.id)) {
+      throw new ServiceError('PR_ID_INVALID', 'Invalid pull request id.', 400);
+    }
+    const payload = parsePullRequestDecisionPayload(req.body);
+    const pr = await prService.decidePullRequest({
+      pullRequestId: req.params.id,
+      authorId: req.auth?.id as string,
+      decision: payload.decision,
+      feedback: payload.feedback,
+      rejectionReason: payload.rejectionReason,
+    });
 
-      if (payload.decision === 'merge') {
-        await metricsService.updateImpactOnMerge(pr.makerId, pr.severity);
-        await metricsService.updateSignalOnDecision(pr.makerId, 'merged');
-        const glowUp = await metricsService.recalculateDraftGlowUp(pr.draftId);
-        try {
-          await provenanceService.recordMergedPullRequest({
-            draftId: pr.draftId,
-            pullRequestId: pr.id,
-            makerId: pr.makerId,
-            severity: pr.severity,
-            description: pr.description,
-          });
-        } catch (error) {
-          logger.warn(
-            { err: error, draftId: pr.draftId, pullRequestId: pr.id },
-            'Draft provenance merge update failed',
-          );
-        }
-        getRealtime(req)?.broadcast(`post:${pr.draftId}`, 'glowup_update', {
-          draftId: pr.draftId,
-          glowUp,
-        });
-
-        try {
-          const embeddingResult = await db.query(
-            `SELECT v.image_url, d.metadata
-           FROM versions v
-           JOIN drafts d ON v.draft_id = d.id
-           WHERE v.pull_request_id = $1`,
-            [pr.id],
-          );
-          const row = embeddingResult.rows[0];
-          const embedding = await embeddingService.generateEmbedding({
-            draftId: pr.draftId,
-            source: 'auto',
-            imageUrl: row?.image_url,
-            metadata: row?.metadata,
-          });
-          if (embedding && embedding.length > 0) {
-            await searchService.upsertDraftEmbedding(
-              pr.draftId,
-              embedding,
-              'auto',
-            );
-          }
-        } catch (error) {
-          logger.warn(
-            { err: error, draftId: pr.draftId, pullRequestId: pr.id },
-            'Merge embedding upsert failed',
-          );
-        }
-      }
-
-      if (payload.decision === 'reject') {
-        await metricsService.updateSignalOnDecision(pr.makerId, 'rejected');
-      }
-
-      await notificationService.notifyMakerOnDecision(pr.id, payload.decision);
+    if (payload.decision === 'merge') {
+      await metricsService.updateImpactOnMerge(pr.makerId, pr.severity);
+      await metricsService.updateSignalOnDecision(pr.makerId, 'merged');
+      const glowUp = await metricsService.recalculateDraftGlowUp(pr.draftId);
       try {
-        await draftArcService.recordDraftEvent(
-          pr.draftId,
-          'pull_request_decision',
-        );
+        await provenanceService.recordMergedPullRequest({
+          draftId: pr.draftId,
+          pullRequestId: pr.id,
+          makerId: pr.makerId,
+          severity: pr.severity,
+          description: pr.description,
+        });
       } catch (error) {
         logger.warn(
           { err: error, draftId: pr.draftId, pullRequestId: pr.id },
-          'Observer arc update failed after PR decision',
+          'Draft provenance merge update failed',
         );
       }
-      getRealtime(req)?.broadcast(
-        `post:${pr.draftId}`,
-        'pull_request_decision',
-        {
-          id: pr.id,
+      getRealtime(req)?.broadcast(`post:${pr.draftId}`, 'glowup_update', {
+        draftId: pr.draftId,
+        glowUp,
+      });
+
+      try {
+        const embeddingResult = await db.query(
+          `SELECT v.image_url, d.metadata
+           FROM versions v
+           JOIN drafts d ON v.draft_id = d.id
+           WHERE v.pull_request_id = $1`,
+          [pr.id],
+        );
+        const row = embeddingResult.rows[0];
+        const embedding = await embeddingService.generateEmbedding({
           draftId: pr.draftId,
-          decision: payload.decision,
-        },
-      );
-
-      res.json(pr);
-    } catch (error) {
-      next(error);
+          source: 'auto',
+          imageUrl: row?.image_url,
+          metadata: row?.metadata,
+        });
+        if (embedding && embedding.length > 0) {
+          await searchService.upsertDraftEmbedding(pr.draftId, embedding, 'auto');
+        }
+      } catch (error) {
+        logger.warn(
+          { err: error, draftId: pr.draftId, pullRequestId: pr.id },
+          'Merge embedding upsert failed',
+        );
+      }
     }
-  },
-);
 
-router.post(
-  '/pull-requests/:id/fork',
-  requireVerifiedAgent,
-  async (req, res, next) => {
+    if (payload.decision === 'reject') {
+      await metricsService.updateSignalOnDecision(pr.makerId, 'rejected');
+    }
+
+    await notificationService.notifyMakerOnDecision(pr.id, payload.decision);
     try {
-      assertAllowedQueryFields(
-        req.query,
-        PR_FORK_QUERY_ALLOWED_FIELDS,
-        'PR_FORK_INVALID_QUERY_FIELDS',
-        'Unsupported pull request fork query fields',
-      );
-      if (!isUuid(req.params.id)) {
-        throw new ServiceError(
-          'PR_ID_INVALID',
-          'Invalid pull request id.',
-          400,
-        );
-      }
-      if (
-        req.body !== undefined &&
-        req.body !== null &&
-        (typeof req.body !== 'object' ||
-          Array.isArray(req.body) ||
-          Object.keys(req.body as Record<string, unknown>).length > 0)
-      ) {
-        throw new ServiceError(
-          'PR_FORK_INVALID_FIELDS',
-          'Pull request fork endpoint does not accept request body fields.',
-          400,
-        );
-      }
-      const fork = await prService.createForkFromRejected(
-        req.params.id,
-        req.auth?.id as string,
-      );
-      res.json(fork);
+      await draftArcService.recordDraftEvent(pr.draftId, 'pull_request_decision');
     } catch (error) {
-      next(error);
+      logger.warn(
+        { err: error, draftId: pr.draftId, pullRequestId: pr.id },
+        'Observer arc update failed after PR decision',
+      );
     }
-  },
-);
+    getRealtime(req)?.broadcast(`post:${pr.draftId}`, 'pull_request_decision', {
+      id: pr.id,
+      draftId: pr.draftId,
+      decision: payload.decision,
+    });
+
+    res.json(pr);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/pull-requests/:id/fork', requireVerifiedAgent, async (req, res, next) => {
+  try {
+    assertAllowedQueryFields(
+      req.query,
+      PR_FORK_QUERY_ALLOWED_FIELDS,
+      'PR_FORK_INVALID_QUERY_FIELDS',
+      'Unsupported pull request fork query fields',
+    );
+    if (!isUuid(req.params.id)) {
+      throw new ServiceError('PR_ID_INVALID', 'Invalid pull request id.', 400);
+    }
+    if (
+      req.body !== undefined &&
+      req.body !== null &&
+      (typeof req.body !== 'object' ||
+        Array.isArray(req.body) ||
+        Object.keys(req.body as Record<string, unknown>).length > 0)
+    ) {
+      throw new ServiceError(
+        'PR_FORK_INVALID_FIELDS',
+        'Pull request fork endpoint does not accept request body fields.',
+        400,
+      );
+    }
+    const fork = await prService.createForkFromRejected(req.params.id, req.auth?.id as string);
+    res.json(fork);
+  } catch (error) {
+    next(error);
+  }
+});
 
 export default router;

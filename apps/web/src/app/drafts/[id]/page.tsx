@@ -3,25 +3,12 @@
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import useSWRMutation from 'swr/mutation';
 import { BeforeAfterSlider } from '../../../components/BeforeAfterSlider';
-import {
-  DraftArcCard,
-  type DraftArcSummaryView,
-} from '../../../components/DraftArcCard';
-import {
-  type DraftRecap24hView,
-  DraftRecapPanel,
-} from '../../../components/DraftRecapPanel';
+import { DraftArcCard, type DraftArcSummaryView } from '../../../components/DraftArcCard';
+import { type DraftRecap24hView, DraftRecapPanel } from '../../../components/DraftRecapPanel';
 import { FixRequestList } from '../../../components/FixRequestList';
 import {
   type ObserverDigestEntryView,
@@ -32,19 +19,13 @@ import {
   type PullRequestPredictionSummaryView,
 } from '../../../components/PredictionWidget';
 import { PullRequestList } from '../../../components/PullRequestList';
+import { ImageEditPanel } from '../../../components/ImageEditPanel';
 import { VersionTimeline } from '../../../components/VersionTimeline';
 import { useLanguage } from '../../../contexts/LanguageContext';
-import {
-  type RealtimeEvent,
-  useRealtimeRoom,
-} from '../../../hooks/useRealtimeRoom';
+import { type RealtimeEvent, useRealtimeRoom } from '../../../hooks/useRealtimeRoom';
 import { apiClient } from '../../../lib/api';
 import { SEARCH_DEFAULT_PROFILE } from '../../../lib/config';
-import {
-  getApiErrorCode,
-  getApiErrorMessage,
-  getApiErrorStatus,
-} from '../../../lib/errors';
+import { getApiErrorCode, getApiErrorMessage, getApiErrorStatus } from '../../../lib/errors';
 import {
   resolvePredictionLoadErrorMessage,
   resolvePredictionSubmitErrorMessage,
@@ -52,16 +33,11 @@ import {
 import { useLastSuccessfulValue } from '../../../lib/useLastSuccessfulValue';
 
 const HeatMapOverlay = dynamic(
-  () =>
-    import('../../../components/HeatMapOverlay').then(
-      (mod) => mod.HeatMapOverlay,
-    ),
+  () => import('../../../components/HeatMapOverlay').then((mod) => mod.HeatMapOverlay),
   {
     ssr: false,
     loading: () => (
-      <div className="card p-4 text-muted-foreground text-sm">
-        Loading heat map...
-      </div>
+      <div className="card p-4 text-muted-foreground text-sm">Loading heat map...</div>
     ),
   },
 );
@@ -70,9 +46,7 @@ const LivePanel = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="card p-4 text-muted-foreground text-sm">
-        Loading live panel...
-      </div>
+      <div className="card p-4 text-muted-foreground text-sm">Loading live panel...</div>
     ),
   },
 );
@@ -300,9 +274,7 @@ const fetchObserverFollowing = async (): Promise<FollowingStudioItem[]> => {
         studioName: resolveFollowingStudioName(studio),
         impact: Number(studio.impact ?? 0),
         signal: Number(studio.signal ?? 0),
-        followerCount: Number(
-          studio.followerCount ?? studio.follower_count ?? 0,
-        ),
+        followerCount: Number(studio.followerCount ?? studio.follower_count ?? 0),
       };
     })
     .filter((item): item is FollowingStudioItem => item !== null);
@@ -311,15 +283,9 @@ const fetchObserverFollowing = async (): Promise<FollowingStudioItem[]> => {
 const fetchPredictionSummary = async (
   pullRequestId: string,
 ): Promise<PullRequestPredictionSummaryView | null> => {
-  const response = await apiClient.get(
-    `/pull-requests/${pullRequestId}/predictions`,
-  );
+  const response = await apiClient.get(`/pull-requests/${pullRequestId}/predictions`);
   const payload = response.data;
-  if (
-    payload &&
-    typeof payload === 'object' &&
-    typeof payload.pullRequestId === 'string'
-  ) {
+  if (payload && typeof payload === 'object' && typeof payload.pullRequestId === 'string') {
     return payload as PullRequestPredictionSummaryView;
   }
   return null;
@@ -341,9 +307,7 @@ const fetchMultimodalGlowUpScore = async (
   draftId: string,
 ): Promise<MultimodalGlowUpScoreView | null> => {
   try {
-    const response = await apiClient.get(
-      `/drafts/${draftId}/glowup/multimodal`,
-    );
+    const response = await apiClient.get(`/drafts/${draftId}/glowup/multimodal`);
     const payload = response.data;
     if (!payload || typeof payload !== 'object') {
       return null;
@@ -368,9 +332,7 @@ const fetchMultimodalGlowUpScore = async (
       score,
       confidence,
       visualScore: toNullableNumber(raw.visualScore ?? raw.visual_score),
-      narrativeScore: toNullableNumber(
-        raw.narrativeScore ?? raw.narrative_score,
-      ),
+      narrativeScore: toNullableNumber(raw.narrativeScore ?? raw.narrative_score),
       audioScore: toNullableNumber(raw.audioScore ?? raw.audio_score),
       videoScore: toNullableNumber(raw.videoScore ?? raw.video_score),
       updatedAt: updatedAtRaw,
@@ -385,9 +347,7 @@ const fetchMultimodalGlowUpScore = async (
   }
 };
 
-const generateStyleFusion = async (
-  draftId: string,
-): Promise<StyleFusionResult> => {
+const generateStyleFusion = async (draftId: string): Promise<StyleFusionResult> => {
   const response = await apiClient.post('/search/style-fusion', {
     draftId,
     type: 'draft',
@@ -422,9 +382,7 @@ const toNestedRealtimePayload = (payload: Record<string, unknown>) =>
     ? (payload.data as Record<string, unknown>)
     : payload;
 
-const toOrchestrationAttempts = (
-  value: unknown,
-): OrchestrationAttemptView[] => {
+const toOrchestrationAttempts = (value: unknown): OrchestrationAttemptView[] => {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -439,9 +397,7 @@ const toOrchestrationAttempts = (
           ? body.provider
           : 'unknown';
       const status =
-        typeof body.status === 'string' && body.status.trim().length > 0
-          ? body.status
-          : 'unknown';
+        typeof body.status === 'string' && body.status.trim().length > 0 ? body.status : 'unknown';
       const latency = Number(body.latencyMs);
       const errorCode =
         typeof body.errorCode === 'string' && body.errorCode.trim().length > 0
@@ -472,12 +428,9 @@ const buildOrchestrationTimelineEntries = (
     const payload = toNestedRealtimePayload(event.payload);
     if (event.type === 'agent_gateway_orchestration_step') {
       const role =
-        typeof payload.role === 'string' && payload.role.trim().length > 0
-          ? payload.role
-          : null;
+        typeof payload.role === 'string' && payload.role.trim().length > 0 ? payload.role : null;
       const provider =
-        typeof payload.selectedProvider === 'string' &&
-        payload.selectedProvider.trim().length > 0
+        typeof payload.selectedProvider === 'string' && payload.selectedProvider.trim().length > 0
           ? payload.selectedProvider
           : null;
       timeline.push({
@@ -506,8 +459,7 @@ const buildOrchestrationTimelineEntries = (
         sequence: event.sequence,
         role: null,
         failed: false,
-        completed:
-          typeof payload.completed === 'boolean' ? payload.completed : null,
+        completed: typeof payload.completed === 'boolean' ? payload.completed : null,
         provider: null,
         attempts: [],
         stepCount: Number.isFinite(stepCount) ? stepCount : null,
@@ -540,20 +492,12 @@ const buildOrchestrationTimelineEntries = (
     });
   }
 
-  return timeline
-    .sort((left, right) => right.sequence - left.sequence)
-    .slice(0, 24);
+  return timeline.sort((left, right) => right.sequence - left.sequence).slice(0, 24);
 };
 
-const buildOrchestrationSearchText = (
-  entry: OrchestrationTimelineEntry,
-): string => {
+const buildOrchestrationSearchText = (entry: OrchestrationTimelineEntry): string => {
   const attemptsText = entry.attempts
-    .map((attempt) =>
-      [attempt.provider, attempt.status, attempt.errorCode ?? '']
-        .join(' ')
-        .trim(),
-    )
+    .map((attempt) => [attempt.provider, attempt.status, attempt.errorCode ?? ''].join(' ').trim())
     .join(' ');
   return [
     entry.type,
@@ -598,9 +542,7 @@ const renderOrchestrationTimelineEntry = (
   entry: OrchestrationTimelineEntry,
   t: (key: string) => string,
 ) => {
-  const roleLabel = (
-    entry.role ?? t('draftDetail.orchestration.unknownRole')
-  ).replace(/_/g, ' ');
+  const roleLabel = (entry.role ?? t('draftDetail.orchestration.unknownRole')).replace(/_/g, ' ');
   let title = t('draftDetail.events.orchestrationCompleted');
   if (entry.type === 'step') {
     title = entry.failed
@@ -614,16 +556,11 @@ const renderOrchestrationTimelineEntry = (
   }
 
   return (
-    <div
-      className="rounded-lg border border-border/25 bg-background/60 p-2.5"
-      key={entry.id}
-    >
+    <div className="rounded-lg border border-border/25 bg-background/60 p-2.5" key={entry.id}>
       <div className="flex items-center justify-between gap-2">
         <span
           className={`font-medium ${
-            entry.type === 'step' && entry.failed
-              ? 'text-destructive'
-              : 'text-foreground'
+            entry.type === 'step' && entry.failed ? 'text-destructive' : 'text-foreground'
           }`}
         >
           {title}
@@ -636,14 +573,12 @@ const renderOrchestrationTimelineEntry = (
           {entry.provider ?? t('draftDetail.orchestration.unknownProvider')}
         </p>
       )}
-      {entry.type === 'completed' &&
-        entry.stepCount !== null &&
-        entry.stepCount >= 0 && (
-          <p className="mt-1 text-muted-foreground text-xs">
-            {t('draftDetail.orchestration.steps')}:&nbsp;
-            {entry.stepCount}
-          </p>
-        )}
+      {entry.type === 'completed' && entry.stepCount !== null && entry.stepCount >= 0 && (
+        <p className="mt-1 text-muted-foreground text-xs">
+          {t('draftDetail.orchestration.steps')}:&nbsp;
+          {entry.stepCount}
+        </p>
+      )}
       {entry.type === 'step' && entry.attempts.length > 0 && (
         <>
           <p className="mt-2 text-muted-foreground text-xs">
@@ -700,20 +635,12 @@ const getOrchestrationTimelineContent = ({
   if (filteredTimeline.length === 0) {
     return <span>{t('draftDetail.orchestration.noMatch')}</span>;
   }
-  return filteredTimeline.map((entry) =>
-    renderOrchestrationTimelineEntry(entry, t),
-  );
+  return filteredTimeline.map((entry) => renderOrchestrationTimelineEntry(entry, t));
 };
 
-const getPrimaryDraftError = (
-  draftLoadError: unknown,
-  t: Translate,
-): string | null => {
+const getPrimaryDraftError = (draftLoadError: unknown, t: Translate): string | null => {
   if (draftLoadError) {
-    return getApiErrorMessage(
-      draftLoadError,
-      t('draftDetail.errors.loadDraft'),
-    );
+    return getApiErrorMessage(draftLoadError, t('draftDetail.errors.loadDraft'));
   }
   return null;
 };
@@ -742,10 +669,7 @@ const getSimilarStatus = ({
     if (code === 'DRAFT_NOT_FOUND') {
       return t('draftDetail.errors.draftNotFound');
     }
-    return getApiErrorMessage(
-      similarDraftsError,
-      t('draftDetail.errors.loadSimilar'),
-    );
+    return getApiErrorMessage(similarDraftsError, t('draftDetail.errors.loadSimilar'));
   }
   if (!similarLoading && similarDrafts.length === 0) {
     return t('draftDetail.similar.noResults');
@@ -797,9 +721,7 @@ const getArcError = ({
   arcLoadError: unknown;
   t: Translate;
 }): string | null =>
-  arcLoadError
-    ? getApiErrorMessage(arcLoadError, t('draftDetail.errors.loadArc'))
-    : null;
+  arcLoadError ? getApiErrorMessage(arcLoadError, t('draftDetail.errors.loadArc')) : null;
 
 const getMultimodalError = ({
   multimodalLoadError,
@@ -809,10 +731,7 @@ const getMultimodalError = ({
   t: Translate;
 }): string | null =>
   multimodalLoadError
-    ? getApiErrorMessage(
-        multimodalLoadError,
-        t('draftDetail.errors.loadMultimodal'),
-      )
+    ? getApiErrorMessage(multimodalLoadError, t('draftDetail.errors.loadMultimodal'))
     : null;
 
 const formatOptionalMetric = (value: number | null): string =>
@@ -829,9 +748,7 @@ const formatMultimodalTimestamp = (value: string | null): string => {
   return date.toLocaleString();
 };
 
-const getProvenanceTone = (
-  status: DraftProvenance['authenticityStatus'],
-): string => {
+const getProvenanceTone = (status: DraftProvenance['authenticityStatus']): string => {
   if (status === 'verified') {
     return 'tag-success border';
   }
@@ -854,11 +771,7 @@ const getProvenanceLabel = (
   return t('feed.provenance.unverified');
 };
 
-const getDraftStatusInfo = (
-  hasFixRequests: boolean,
-  hasPendingPull: boolean,
-  t: Translate,
-) => {
+const getDraftStatusInfo = (hasFixRequests: boolean, hasPendingPull: boolean, t: Translate) => {
   if (hasPendingPull) {
     return {
       label: t('draftDetail.status.readyForReview'),
@@ -910,9 +823,7 @@ const MultimodalGlowUpCard = ({
 
   if (loading) {
     content = (
-      <p className="mt-2 text-muted-foreground text-xs">
-        {t('draftDetail.multimodal.loading')}
-      </p>
+      <p className="mt-2 text-muted-foreground text-xs">{t('draftDetail.multimodal.loading')}</p>
     );
   } else if (error) {
     content = <p className="mt-2 text-destructive text-xs">{error}</p>;
@@ -921,17 +832,14 @@ const MultimodalGlowUpCard = ({
       <>
         <p className="mt-2 text-muted-foreground text-xs">
           {t('draftDetail.multimodal.provider')}: {score.provider} |{' '}
-          {t('draftDetail.multimodal.updatedAt')}:{' '}
-          {formatMultimodalTimestamp(score.updatedAt)}
+          {t('draftDetail.multimodal.updatedAt')}: {formatMultimodalTimestamp(score.updatedAt)}
         </p>
         <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
           <div className="rounded-lg border border-border/25 bg-background/60 p-2.5">
             <p className="text-muted-foreground text-xs uppercase">
               {t('draftDetail.multimodal.score')}
             </p>
-            <p className="mt-1 font-semibold text-foreground">
-              {score.score.toFixed(1)}
-            </p>
+            <p className="mt-1 font-semibold text-foreground">{score.score.toFixed(1)}</p>
           </div>
           <div className="rounded-lg border border-border/25 bg-background/60 p-2.5">
             <p className="text-muted-foreground text-xs uppercase">
@@ -978,9 +886,7 @@ const MultimodalGlowUpCard = ({
     );
   } else {
     content = (
-      <p className="mt-2 text-muted-foreground text-xs">
-        {t('draftDetail.multimodal.empty')}
-      </p>
+      <p className="mt-2 text-muted-foreground text-xs">{t('draftDetail.multimodal.empty')}</p>
     );
   }
 
@@ -995,13 +901,7 @@ const MultimodalGlowUpCard = ({
   );
 };
 
-const useMultimodalGlowUpState = ({
-  draftId,
-  t,
-}: {
-  draftId: string;
-  t: Translate;
-}) => {
+const useMultimodalGlowUpState = ({ draftId, t }: { draftId: string; t: Translate }) => {
   const {
     data,
     error: loadError,
@@ -1038,14 +938,10 @@ const FollowingStudiosCard = ({
     <h3 className="mt-3 font-semibold text-foreground text-sm">
       {t('draftDetail.followingStudios.title')}
     </h3>
-    <p className="text-muted-foreground text-xs">
-      {t('draftDetail.followingStudios.description')}
-    </p>
+    <p className="text-muted-foreground text-xs">{t('draftDetail.followingStudios.description')}</p>
     <div className="mt-4 grid gap-2 text-xs">
       {followingStudios.length === 0 ? (
-        <span className="text-muted-foreground">
-          {t('draftDetail.followingStudios.empty')}
-        </span>
+        <span className="text-muted-foreground">{t('draftDetail.followingStudios.empty')}</span>
       ) : (
         followingStudios.map((studio) => (
           <Link
@@ -1054,9 +950,7 @@ const FollowingStudiosCard = ({
             key={studio.id}
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="font-medium text-foreground">
-                {studio.studioName}
-              </span>
+              <span className="font-medium text-foreground">{studio.studioName}</span>
               {studio.id === draftAuthorId && (
                 <span className="rounded-full border border-primary/35 bg-primary/12 px-2 py-0.5 font-semibold text-primary text-xs">
                   {t('draftDetail.followingStudios.currentDraft')}
@@ -1064,9 +958,8 @@ const FollowingStudiosCard = ({
               )}
             </div>
             <p className="mt-1 text-muted-foreground text-xs">
-              Impact {studio.impact.toFixed(0)} В· Signal{' '}
-              {studio.signal.toFixed(0)} В· {t('studioCard.followersLabel')}{' '}
-              {studio.followerCount}
+              Impact {studio.impact.toFixed(0)} В· Signal {studio.signal.toFixed(0)} В·{' '}
+              {t('studioCard.followersLabel')} {studio.followerCount}
             </p>
           </Link>
         ))
@@ -1107,9 +1000,7 @@ const formatDraftEventMessage = (
   }
   if (eventType === 'agent_gateway_orchestration_step') {
     const role =
-      typeof resolvedPayload.role === 'string'
-        ? resolvedPayload.role.replace(/_/g, ' ')
-        : 'agent';
+      typeof resolvedPayload.role === 'string' ? resolvedPayload.role.replace(/_/g, ' ') : 'agent';
     if (resolvedPayload.failed === true) {
       return `${t('draftDetail.events.orchestrationStepFailed')} (${role})`;
     }
@@ -1250,9 +1141,7 @@ const runStyleFusionRequest = async ({
       },
     });
   } catch (error: unknown) {
-    setStyleFusionError(
-      getApiErrorMessage(error, t('draftDetail.errors.generateStyleFusion')),
-    );
+    setStyleFusionError(getApiErrorMessage(error, t('draftDetail.errors.generateStyleFusion')));
   }
 };
 
@@ -1372,9 +1261,7 @@ const StyleFusionPanel = ({
             ? t('draftDetail.similar.generatingStyleFusion')
             : t('draftDetail.similar.generateStyleFusion')}
         </button>
-        {styleFusionError && (
-          <p className="text-destructive text-xs">{styleFusionError}</p>
-        )}
+        {styleFusionError && <p className="text-destructive text-xs">{styleFusionError}</p>}
       </div>
       {styleFusion && (
         <div className="mt-3 rounded-lg border border-border/25 bg-background/58 p-3 text-xs sm:p-3.5">
@@ -1440,12 +1327,9 @@ const StyleFusionPanel = ({
                     className="flex items-center justify-between gap-2 rounded-lg border border-border/20 bg-background/45 px-2.5 py-1.5"
                     key={sample.id}
                   >
-                    <span className="truncate text-foreground">
-                      {sample.title}
-                    </span>
+                    <span className="truncate text-foreground">{sample.title}</span>
                     <span className="text-muted-foreground text-xs">
-                      {t('draftDetail.similar.similarity')}{' '}
-                      {Number(sample.score ?? 0).toFixed(2)}
+                      {t('draftDetail.similar.similarity')} {Number(sample.score ?? 0).toFixed(2)}
                     </span>
                   </li>
                 ))}
@@ -1541,34 +1425,28 @@ export default function DraftDetailPage() {
     data: watchlistEntries = [],
     error: watchlistLoadError,
     mutate: mutateWatchlist,
-  } = useSWR<unknown[]>(
-    draftId ? 'observer:watchlist' : null,
-    fetchObserverWatchlist,
-    {
-      revalidateOnFocus: false,
-      shouldRetryOnError: false,
-    },
-  );
+  } = useSWR<unknown[]>(draftId ? 'observer:watchlist' : null, fetchObserverWatchlist, {
+    revalidateOnFocus: false,
+    shouldRetryOnError: false,
+  });
   const {
     data: digestEntriesData = [],
     error: digestLoadError,
     isLoading: digestIsLoading,
     isValidating: digestIsValidating,
     mutate: mutateDigest,
-  } = useSWR<ObserverDigestEntryView[]>(
-    draftId ? 'observer:digest' : null,
-    fetchObserverDigest,
+  } = useSWR<ObserverDigestEntryView[]>(draftId ? 'observer:digest' : null, fetchObserverDigest, {
+    revalidateOnFocus: false,
+    shouldRetryOnError: false,
+  });
+  const { data: followingStudios = [], error: followingLoadError } = useSWR<FollowingStudioItem[]>(
+    draftId ? 'observer:following:studios' : null,
+    fetchObserverFollowing,
     {
       revalidateOnFocus: false,
       shouldRetryOnError: false,
     },
   );
-  const { data: followingStudios = [], error: followingLoadError } = useSWR<
-    FollowingStudioItem[]
-  >(draftId ? 'observer:following:studios' : null, fetchObserverFollowing, {
-    revalidateOnFocus: false,
-    shouldRetryOnError: false,
-  });
   const {
     data: predictionSummaryData,
     error: predictionLoadError,
@@ -1597,31 +1475,23 @@ export default function DraftDetailPage() {
     },
   );
   const multimodalGlowUpState = useMultimodalGlowUpState({ draftId, t });
-  const [styleFusion, setStyleFusion] = useState<StyleFusionResult | null>(
-    null,
-  );
+  const [styleFusion, setStyleFusion] = useState<StyleFusionResult | null>(null);
   const [styleFusionError, setStyleFusionError] = useState<string | null>(null);
-  const [predictionSubmitError, setPredictionSubmitError] = useState<
-    string | null
-  >(null);
-  const [manualObserverAuthRequired, setManualObserverAuthRequired] =
-    useState(false);
+  const [predictionSubmitError, setPredictionSubmitError] = useState<string | null>(null);
+  const [manualObserverAuthRequired, setManualObserverAuthRequired] = useState(false);
   const [followInFlight, setFollowInFlight] = useState(false);
-  const [pendingDigestEntryIds, setPendingDigestEntryIds] = useState<
-    Set<string>
-  >(() => new Set());
-  const {
-    isMutating: predictionSubmitLoading,
-    trigger: triggerPredictionSubmit,
-  } = useSWRMutation<void, unknown, string, PredictionSubmitPayload>(
-    'pull-request:predict',
-    async (_key, { arg }) => {
-      await apiClient.post(`/pull-requests/${arg.pullRequestId}/predict`, {
-        predictedOutcome: arg.outcome,
-        stakePoints: arg.stakePoints,
-      });
-    },
-  );
+  const [pendingDigestEntryIds, setPendingDigestEntryIds] = useState<Set<string>>(() => new Set());
+  const { isMutating: predictionSubmitLoading, trigger: triggerPredictionSubmit } = useSWRMutation<
+    void,
+    unknown,
+    string,
+    PredictionSubmitPayload
+  >('pull-request:predict', async (_key, { arg }) => {
+    await apiClient.post(`/pull-requests/${arg.pullRequestId}/predict`, {
+      predictedOutcome: arg.outcome,
+      stakePoints: arg.stakePoints,
+    });
+  });
   const { isMutating: demoLoading, trigger: triggerDemoFlow } = useSWRMutation<
     void,
     unknown,
@@ -1630,11 +1500,12 @@ export default function DraftDetailPage() {
   >('draft:demo:flow', async (_key, { arg }) => {
     await apiClient.post('/demo/flow', { draftId: arg.draftId });
   });
-  const { isMutating: styleFusionLoading, trigger: triggerStyleFusion } =
-    useSWRMutation<StyleFusionResult, unknown, string, { draftId: string }>(
-      'draft:style-fusion',
-      async (_key, { arg }) => generateStyleFusion(arg.draftId),
-    );
+  const { isMutating: styleFusionLoading, trigger: triggerStyleFusion } = useSWRMutation<
+    StyleFusionResult,
+    unknown,
+    string,
+    { draftId: string }
+  >('draft:style-fusion', async (_key, { arg }) => generateStyleFusion(arg.draftId));
   const [demoStatus, setDemoStatus] = useState<string | null>(null);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<
@@ -1649,9 +1520,7 @@ export default function DraftDetailPage() {
   const multimodalTelemetryRef = useRef<string | null>(null);
   const arcTelemetryRef = useRef<string | null>(null);
   const lastRealtimeMutationEventIdRef = useRef<string | null>(null);
-  const predictionSummaryCooldownByPullRequestIdRef = useRef<
-    Map<string, number>
-  >(new Map());
+  const predictionSummaryCooldownByPullRequestIdRef = useRef<Map<string, number>>(new Map());
   const copyStatusTimeoutRef = useRef<number | null>(null);
   useTimeoutRefCleanup(copyStatusTimeoutRef);
   const watchlistAuthRequired = isAuthRequiredError(watchlistLoadError);
@@ -1673,8 +1542,7 @@ export default function DraftDetailPage() {
   );
   const isFollowingAuthorStudio = useMemo(
     () =>
-      draftAuthorId.length > 0 &&
-      followingStudios.some((studio) => studio.id === draftAuthorId),
+      draftAuthorId.length > 0 && followingStudios.some((studio) => studio.id === draftAuthorId),
     [draftAuthorId, followingStudios],
   );
   const receivesObserverUpdates = isFollowed || isFollowingAuthorStudio;
@@ -1687,9 +1555,7 @@ export default function DraftDetailPage() {
   });
   const predictionSummary = predictionSummaryData ?? null;
   const predictionLoading =
-    predictionSummaryIsLoading ||
-    predictionSummaryIsValidating ||
-    predictionSubmitLoading;
+    predictionSummaryIsLoading || predictionSummaryIsValidating || predictionSubmitLoading;
   const predictionError = getPredictionError({
     predictionAuthRequired,
     predictionLoadError,
@@ -1710,13 +1576,8 @@ export default function DraftDetailPage() {
   const loading = draftLoading || fixRequestsLoading || pullRequestsLoading;
   const error = getPrimaryDraftError(draftLoadError, t);
 
-  const { events } = useRealtimeRoom(
-    draftId ? `post:${draftId}` : 'post:unknown',
-  );
-  const orchestrationTimeline = useMemo(
-    () => buildOrchestrationTimelineEntries(events),
-    [events],
-  );
+  const { events } = useRealtimeRoom(draftId ? `post:${draftId}` : 'post:unknown');
+  const orchestrationTimeline = useMemo(() => buildOrchestrationTimelineEntries(events), [events]);
   const orchestrationFilteredTimeline = useMemo(() => {
     return filterOrchestrationTimelineEntries({
       timeline: orchestrationTimeline,
@@ -1724,12 +1585,7 @@ export default function DraftDetailPage() {
       query: orchestrationQuery,
       limit: orchestrationLimit,
     });
-  }, [
-    orchestrationLimit,
-    orchestrationQuery,
-    orchestrationTimeline,
-    orchestrationTypeFilter,
-  ]);
+  }, [orchestrationLimit, orchestrationQuery, orchestrationTimeline, orchestrationTypeFilter]);
 
   const runDemoFlow = useCallback(async () => {
     if (!draftId) {
@@ -1752,26 +1608,15 @@ export default function DraftDetailPage() {
         });
       }
     } catch (error: unknown) {
-      setDemoStatus(
-        getApiErrorMessage(error, t('draftDetail.errors.runDemoFlow')),
-      );
+      setDemoStatus(getApiErrorMessage(error, t('draftDetail.errors.runDemoFlow')));
     }
-  }, [
-    draftId,
-    mutateArc,
-    mutateDraft,
-    mutateFixRequests,
-    mutatePullRequests,
-    triggerDemoFlow,
-    t,
-  ]);
+  }, [draftId, mutateArc, mutateDraft, mutateFixRequests, mutatePullRequests, triggerDemoFlow, t]);
 
   const runStyleFusion = useCallback(async () => {
     await runStyleFusionRequest({
       draftId,
       t,
-      generateStyleFusionResult: () =>
-        triggerStyleFusion({ draftId }, { throwOnError: true }),
+      generateStyleFusionResult: () => triggerStyleFusion({ draftId }, { throwOnError: true }),
       setStyleFusion,
       setStyleFusionError,
     });
@@ -1860,16 +1705,12 @@ export default function DraftDetailPage() {
         (current) => {
           const entries = current ?? [];
           if (nextState) {
-            if (
-              entries.some((item) => isWatchlistEntryForDraft(item, draftId))
-            ) {
+            if (entries.some((item) => isWatchlistEntryForDraft(item, draftId))) {
               return entries;
             }
             return [...entries, { draftId }];
           }
-          return entries.filter(
-            (item) => !isWatchlistEntryForDraft(item, draftId),
-          );
+          return entries.filter((item) => !isWatchlistEntryForDraft(item, draftId));
         },
         { revalidate: false },
       );
@@ -1890,10 +1731,7 @@ export default function DraftDetailPage() {
     }
   };
 
-  const submitPrediction = async (
-    outcome: 'merge' | 'reject',
-    stakePoints: number,
-  ) => {
+  const submitPrediction = async (outcome: 'merge' | 'reject', stakePoints: number) => {
     if (!pendingPullId) {
       return;
     }
@@ -1917,9 +1755,7 @@ export default function DraftDetailPage() {
       });
 
       const summaryCooldownUntil =
-        predictionSummaryCooldownByPullRequestIdRef.current.get(
-          pullRequestId,
-        ) ?? 0;
+        predictionSummaryCooldownByPullRequestIdRef.current.get(pullRequestId) ?? 0;
       if (Date.now() < summaryCooldownUntil) {
         setPredictionSubmitError(t('prediction.rateLimited'));
         return;
@@ -1928,9 +1764,7 @@ export default function DraftDetailPage() {
       try {
         const refreshedSummary = await fetchPredictionSummary(pullRequestId);
         await mutatePredictionSummary(refreshedSummary, { revalidate: false });
-        predictionSummaryCooldownByPullRequestIdRef.current.delete(
-          pullRequestId,
-        );
+        predictionSummaryCooldownByPullRequestIdRef.current.delete(pullRequestId);
       } catch (summaryError: unknown) {
         const summaryErrorStatus = getApiErrorStatus(summaryError);
         if (summaryErrorStatus === 429) {
@@ -2093,11 +1927,7 @@ export default function DraftDetailPage() {
       return;
     }
     lastRealtimeMutationEventIdRef.current = last.id;
-    if (
-      ['fix_request', 'pull_request', 'pull_request_decision'].includes(
-        last.type,
-      )
-    ) {
+    if (['fix_request', 'pull_request', 'pull_request_decision'].includes(last.type)) {
       mutateFixRequests();
       mutatePullRequests();
       mutateArc();
@@ -2129,9 +1959,7 @@ export default function DraftDetailPage() {
     if (!receivesObserverUpdates || events.length === 0) {
       return;
     }
-    const fresh = events.filter(
-      (event) => !seenEventsRef.current.has(event.id),
-    );
+    const fresh = events.filter((event) => !seenEventsRef.current.has(event.id));
     if (fresh.length === 0) {
       return;
     }
@@ -2151,10 +1979,8 @@ export default function DraftDetailPage() {
     () => versions.map((version) => version.versionNumber),
     [versions],
   );
-  const beforeLabel =
-    versionNumbers.length > 0 ? `v${versionNumbers[0]}` : 'v1';
-  const afterLabel =
-    versionNumbers.length > 0 ? `v${versionNumbers.at(-1)}` : 'v1';
+  const beforeLabel = versionNumbers.length > 0 ? `v${versionNumbers[0]}` : 'v1';
+  const afterLabel = versionNumbers.length > 0 ? `v${versionNumbers.at(-1)}` : 'v1';
   const beforeImageUrl = versions.length > 0 ? versions[0].imageUrl : undefined;
   const afterImageUrl = versions.at(-1)?.imageUrl;
 
@@ -2181,11 +2007,7 @@ export default function DraftDetailPage() {
   );
 
   const hasFixRequests = fixRequests.length > 0;
-  const statusInfo = getDraftStatusInfo(
-    hasFixRequests,
-    Boolean(pendingPull),
-    t,
-  );
+  const statusInfo = getDraftStatusInfo(hasFixRequests, Boolean(pendingPull), t);
   const nextAction = getNextAction({
     draftId,
     pendingPull,
@@ -2211,9 +2033,7 @@ export default function DraftDetailPage() {
             {draftId ? `${t('common.draft')} ${draftId}` : t('common.draft')}
           </h1>
           {draft && (
-            <span
-              className={`rounded-full px-3 py-1 font-semibold text-xs ${statusInfo.tone}`}
-            >
+            <span className={`rounded-full px-3 py-1 font-semibold text-xs ${statusInfo.tone}`}>
               {statusInfo.label}
             </span>
           )}
@@ -2228,8 +2048,7 @@ export default function DraftDetailPage() {
           )}
         </div>
         <p className="text-muted-foreground text-sm">
-          {t('draftDetail.header.subtitle')}{' '}
-          {draft ? `GlowUp ${draft.glowUpScore.toFixed(1)}` : ''}
+          {t('draftDetail.header.subtitle')} {draft ? `GlowUp ${draft.glowUpScore.toFixed(1)}` : ''}
           {provenance
             ? ` • ${t('feed.provenance.spark')}: ${provenance.humanSparkScore.toFixed(0)}`
             : ''}
@@ -2245,9 +2064,7 @@ export default function DraftDetailPage() {
               ? t('draftDetail.actions.runningDemo')
               : t('draftDetail.actions.runDemoFlow')}
           </button>
-          {demoStatus && (
-            <span className="text-muted-foreground text-xs">{demoStatus}</span>
-          )}
+          {demoStatus && <span className="text-muted-foreground text-xs">{demoStatus}</span>}
         </div>
       </div>
       {error && (
@@ -2265,12 +2082,8 @@ export default function DraftDetailPage() {
             {nextAction && (
               <div className="card p-4 sm:p-5">
                 <p className="pill">{t('draftDetail.nextAction.pill')}</p>
-                <h2 className="mt-3 font-semibold text-foreground text-lg">
-                  {nextAction.title}
-                </h2>
-                <p className="text-muted-foreground text-sm">
-                  {nextAction.description}
-                </p>
+                <h2 className="mt-3 font-semibold text-foreground text-lg">{nextAction.title}</h2>
+                <p className="text-muted-foreground text-sm">{nextAction.description}</p>
                 <div className="mt-3 flex flex-wrap items-center gap-2.5 sm:mt-4 sm:gap-3">
                   {'href' in nextAction ? (
                     <Link
@@ -2290,9 +2103,7 @@ export default function DraftDetailPage() {
                     </button>
                   )}
                   {copyStatus && (
-                    <span className="text-muted-foreground text-xs">
-                      {copyStatus}
-                    </span>
+                    <span className="text-muted-foreground text-xs">{copyStatus}</span>
                   )}
                 </div>
               </div>
@@ -2307,9 +2118,7 @@ export default function DraftDetailPage() {
               loading={arcLoading}
               recap={arcView?.recap24h ?? null}
             />
-            <VersionTimeline
-              versions={versionNumbers.length > 0 ? versionNumbers : [1]}
-            />
+            <VersionTimeline versions={versionNumbers.length > 0 ? versionNumbers : [1]} />
             <BeforeAfterSlider
               afterImageUrl={afterImageUrl}
               afterLabel={afterLabel}
@@ -2322,6 +2131,14 @@ export default function DraftDetailPage() {
             <div id="pull-requests">
               <PullRequestList items={prList} />
             </div>
+            <ImageEditPanel
+              draftId={draftId}
+              onPromoted={async () => {
+                await Promise.all([mutateDraft(), mutatePullRequests()]);
+              }}
+              t={t}
+              versions={versions}
+            />
             <div className="card p-4 sm:p-5">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-foreground text-sm">
@@ -2337,9 +2154,7 @@ export default function DraftDetailPage() {
                 </p>
               )}
               {!similarLoading && similarStatus && (
-                <p className="mt-3 text-muted-foreground text-xs">
-                  {similarStatus}
-                </p>
+                <p className="mt-3 text-muted-foreground text-xs">{similarStatus}</p>
               )}
               {!(similarLoading || similarStatus) && (
                 <ul className="mt-3 grid gap-2">
@@ -2348,14 +2163,11 @@ export default function DraftDetailPage() {
                       className="rounded-lg border border-border/25 bg-background/60 p-2.5 text-xs sm:p-3"
                       key={item.id}
                     >
-                      <p className="text-muted-foreground text-xs uppercase">
-                        {item.type}
-                      </p>
+                      <p className="text-muted-foreground text-xs uppercase">{item.type}</p>
                       <p className="text-foreground text-sm">{item.title}</p>
                       <p className="text-muted-foreground text-xs">
-                        {t('draftDetail.similar.similarity')}{' '}
-                        {Number(item.score ?? 0).toFixed(2)} | GlowUp{' '}
-                        {Number(item.glowUpScore ?? 0).toFixed(1)}
+                        {t('draftDetail.similar.similarity')} {Number(item.score ?? 0).toFixed(2)} |
+                        GlowUp {Number(item.glowUpScore ?? 0).toFixed(1)}
                       </p>
                     </li>
                   ))}
@@ -2416,9 +2228,7 @@ export default function DraftDetailPage() {
               <h3 className="mt-3 font-semibold text-foreground text-sm">
                 {t('draftDetail.follow.title')}
               </h3>
-              <p className="text-muted-foreground text-xs">
-                {t('draftDetail.follow.description')}
-              </p>
+              <p className="text-muted-foreground text-xs">{t('draftDetail.follow.description')}</p>
               {observerAuthRequired && (
                 <p className="mt-2 text-muted-foreground text-xs">
                   {t('draftDetail.follow.authRequired')}
@@ -2436,9 +2246,7 @@ export default function DraftDetailPage() {
                   onClick={toggleFollow}
                   type="button"
                 >
-                  {isFollowed
-                    ? t('draftDetail.follow.following')
-                    : t('draftDetail.follow.follow')}
+                  {isFollowed ? t('draftDetail.follow.following') : t('draftDetail.follow.follow')}
                 </button>
               </div>
             </div>
@@ -2467,18 +2275,12 @@ export default function DraftDetailPage() {
                     className="rounded-lg border border-border/25 bg-background/60 px-2.5 py-2 text-foreground text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     data-testid="orchestration-type-filter"
                     onChange={(event) =>
-                      setOrchestrationTypeFilter(
-                        event.target.value as OrchestrationFilterType,
-                      )
+                      setOrchestrationTypeFilter(event.target.value as OrchestrationFilterType)
                     }
                     value={orchestrationTypeFilter}
                   >
-                    <option value="all">
-                      {t('draftDetail.orchestration.filterTypeAll')}
-                    </option>
-                    <option value="step">
-                      {t('draftDetail.orchestration.filterTypeStep')}
-                    </option>
+                    <option value="all">{t('draftDetail.orchestration.filterTypeAll')}</option>
+                    <option value="step">{t('draftDetail.orchestration.filterTypeStep')}</option>
                     <option value="completed">
                       {t('draftDetail.orchestration.filterTypeCompleted')}
                     </option>
@@ -2492,12 +2294,8 @@ export default function DraftDetailPage() {
                   <input
                     className="rounded-lg border border-border/25 bg-background/60 px-2.5 py-2 text-foreground text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     data-testid="orchestration-query-filter"
-                    onChange={(event) =>
-                      setOrchestrationQuery(event.target.value)
-                    }
-                    placeholder={t(
-                      'draftDetail.orchestration.filterQueryPlaceholder',
-                    )}
+                    onChange={(event) => setOrchestrationQuery(event.target.value)}
+                    placeholder={t('draftDetail.orchestration.filterQueryPlaceholder')}
                     type="text"
                     value={orchestrationQuery}
                   />
@@ -2509,10 +2307,7 @@ export default function DraftDetailPage() {
                     data-testid="orchestration-limit-filter"
                     onChange={(event) => {
                       const nextValue = Number(event.target.value);
-                      if (
-                        Number.isFinite(nextValue) &&
-                        [4, 8, 12].includes(nextValue)
-                      ) {
+                      if (Number.isFinite(nextValue) && [4, 8, 12].includes(nextValue)) {
                         setOrchestrationLimit(nextValue);
                       }
                     }}
@@ -2551,9 +2346,7 @@ export default function DraftDetailPage() {
                     >
                       <div className="flex items-center justify-between">
                         <span className="text-foreground">{note.message}</span>
-                        <span className="text-muted-foreground text-xs">
-                          {note.time}
-                        </span>
+                        <span className="text-muted-foreground text-xs">{note.time}</span>
                       </div>
                     </div>
                   ))

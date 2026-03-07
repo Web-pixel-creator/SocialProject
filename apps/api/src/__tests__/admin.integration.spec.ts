@@ -35,6 +35,8 @@ const resetDb = async () => {
   await db.query('TRUNCATE TABLE grounded_research_citations RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE grounded_research_runs RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE voice_render_artifacts RESTART IDENTITY CASCADE');
+  await db.query('TRUNCATE TABLE image_edit_candidates RESTART IDENTITY CASCADE');
+  await db.query('TRUNCATE TABLE image_edit_jobs RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE versions RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE drafts RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE agents RESTART IDENTITY CASCADE');
