@@ -30,6 +30,12 @@ import {
   SANDBOX_EXECUTION_TELEMETRY_SOURCE,
   sandboxExecutionService,
 } from '../services/sandboxExecution/sandboxExecutionService';
+import {
+  isProviderLaneExecutionStatusValue,
+  isProviderLaneIdentifier,
+  providerRoutingService,
+} from '../services/providerRouting/providerRoutingService';
+import type { ProviderLane, ProviderLaneExecutionStatus } from '../services/providerRouting/types';
 import { EmbeddingBackfillServiceImpl } from '../services/search/embeddingBackfillService';
 
 const router = Router();
@@ -45,9 +51,7 @@ const AGENT_GATEWAY_CONNECTOR_PROFILE_MAP = parseConnectorProfileMap(
 );
 
 const toNumber = (value: string | number | undefined, fallback = 0) =>
-  typeof value === 'number'
-    ? value
-    : Number.parseInt(value ?? `${fallback}`, 10);
+  typeof value === 'number' ? value : Number.parseInt(value ?? `${fallback}`, 10);
 const toRate = (numerator: number, denominator: number) =>
   denominator > 0 ? Number((numerator / denominator).toFixed(3)) : null;
 const toNullableIsoTimestamp = (value: unknown): string | null => {
@@ -117,6 +121,10 @@ const AI_RUNTIME_DRY_RUN_MAX_ARRAY_ITEM_LENGTH = 64;
 const AI_RUNTIME_DRY_RUN_MAX_PROMPT_LENGTH = 4000;
 const AI_RUNTIME_DRY_RUN_MAX_TIMEOUT_MS = 120_000;
 const AI_RUNTIME_PROVIDER_IDENTIFIER_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+const PROVIDER_LANE_TELEMETRY_DEFAULT_HOURS = 24;
+const PROVIDER_LANE_TELEMETRY_MAX_HOURS = 24 * 7;
+const PROVIDER_LANE_TELEMETRY_DEFAULT_LIMIT = 25;
+const PROVIDER_LANE_TELEMETRY_MAX_LIMIT = 100;
 const SANDBOX_PILOT_MAX_CODE_LENGTH = 40_000;
 const SANDBOX_PILOT_MAX_FILES = 8;
 const SANDBOX_PILOT_MAX_FILE_PATH_LENGTH = 240;
@@ -133,12 +141,10 @@ const SANDBOX_EXECUTION_OPERATION_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,79}$/;
 const SANDBOX_EXECUTION_EGRESS_PROFILE_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 const SANDBOX_PILOT_FILE_PATH_PATTERN = /^[a-z0-9][a-z0-9._/-]{0,239}$/i;
 const AGENT_GATEWAY_MAX_KEEP_RECENT = 299;
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const AGENT_GATEWAY_SESSION_ID_PATTERN = /^ags-[a-z0-9][a-z0-9-]{7,95}$/;
 const AGENT_GATEWAY_CHANNEL_PATTERN = /^[a-z0-9][a-z0-9._:-]{1,63}$/;
-const AGENT_GATEWAY_EXTERNAL_SESSION_ID_PATTERN =
-  /^[a-z0-9][a-z0-9._:-]{0,127}$/i;
+const AGENT_GATEWAY_EXTERNAL_SESSION_ID_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,127}$/i;
 const AGENT_GATEWAY_ROLE_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 const AGENT_GATEWAY_EVENT_TYPE_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,119}$/;
 const AGENT_GATEWAY_CONNECTOR_ID_PATTERN = /^[a-z0-9][a-z0-9._:-]{1,63}$/;
@@ -216,13 +222,9 @@ const assertAllowedQueryFields = (
   },
 ): Record<string, unknown> => {
   const queryRecord =
-    typeof query === 'object' && query !== null
-      ? (query as Record<string, unknown>)
-      : {};
+    typeof query === 'object' && query !== null ? (query as Record<string, unknown>) : {};
   const allowedSet = new Set(allowed);
-  const unsupported = Object.keys(queryRecord).filter(
-    (key) => !allowedSet.has(key),
-  );
+  const unsupported = Object.keys(queryRecord).filter((key) => !allowedSet.has(key));
   if (unsupported.length > 0) {
     throw new ServiceError(
       'ADMIN_INVALID_QUERY',
@@ -256,9 +258,7 @@ const assertAllowedBodyFields = (
 
   const bodyRecord = body as Record<string, unknown>;
   const allowedSet = new Set(allowed);
-  const unsupported = Object.keys(bodyRecord).filter(
-    (key) => !allowedSet.has(key),
-  );
+  const unsupported = Object.keys(bodyRecord).filter((key) => !allowedSet.has(key));
   if (unsupported.length > 0) {
     throw new ServiceError(
       'ADMIN_INVALID_BODY',
@@ -314,11 +314,7 @@ const parseBoundedOptionalInt = (
     );
   }
   if (parsed < min || parsed > max) {
-    throw new ServiceError(
-      invalidCode,
-      `${fieldName} must be between ${min} and ${max}.`,
-      400,
-    );
+    throw new ServiceError(invalidCode, `${fieldName} must be between ${min} and ${max}.`, 400);
   }
 
   return parsed;
@@ -341,11 +337,7 @@ const parseOptionalBooleanFlag = (
   let normalized: unknown = value;
   if (Array.isArray(normalized)) {
     if (normalized.length !== 1) {
-      throw new ServiceError(
-        invalidCode,
-        `${fieldName} must be a single boolean value.`,
-        400,
-      );
+      throw new ServiceError(invalidCode, `${fieldName} must be a single boolean value.`, 400);
     }
     [normalized] = normalized;
   }
@@ -354,11 +346,7 @@ const parseOptionalBooleanFlag = (
     return normalized;
   }
   if (typeof normalized !== 'string') {
-    throw new ServiceError(
-      invalidCode,
-      `${fieldName} must be a boolean value.`,
-      400,
-    );
+    throw new ServiceError(invalidCode, `${fieldName} must be a boolean value.`, 400);
   }
 
   const lowered = normalized.trim().toLowerCase();
@@ -369,11 +357,7 @@ const parseOptionalBooleanFlag = (
     return false;
   }
 
-  throw new ServiceError(
-    invalidCode,
-    `${fieldName} must be true or false.`,
-    400,
-  );
+  throw new ServiceError(invalidCode, `${fieldName} must be true or false.`, 400);
 };
 
 const parseAgentGatewaySourceQuery = (value: unknown): 'db' | 'memory' => {
@@ -384,21 +368,13 @@ const parseAgentGatewaySourceQuery = (value: unknown): 'db' | 'memory' => {
   let normalized: unknown = value;
   if (Array.isArray(normalized)) {
     if (normalized.length !== 1) {
-      throw new ServiceError(
-        'ADMIN_INVALID_QUERY',
-        "source must be either 'db' or 'memory'.",
-        400,
-      );
+      throw new ServiceError('ADMIN_INVALID_QUERY', "source must be either 'db' or 'memory'.", 400);
     }
     [normalized] = normalized;
   }
 
   if (typeof normalized !== 'string') {
-    throw new ServiceError(
-      'ADMIN_INVALID_QUERY',
-      "source must be either 'db' or 'memory'.",
-      400,
-    );
+    throw new ServiceError('ADMIN_INVALID_QUERY', "source must be either 'db' or 'memory'.", 400);
   }
 
   const source = normalized.trim().toLowerCase();
@@ -409,11 +385,7 @@ const parseAgentGatewaySourceQuery = (value: unknown): 'db' | 'memory' => {
     return 'memory';
   }
 
-  throw new ServiceError(
-    'ADMIN_INVALID_QUERY',
-    "source must be either 'db' or 'memory'.",
-    400,
-  );
+  throw new ServiceError('ADMIN_INVALID_QUERY', "source must be either 'db' or 'memory'.", 400);
 };
 
 const parseAgentGatewaySessionIdParam = (value: unknown): string => {
@@ -464,11 +436,7 @@ const parseOptionalBoundedQueryString = (
   }
 
   if (typeof normalized !== 'string') {
-    throw new ServiceError(
-      'ADMIN_INVALID_QUERY',
-      `${fieldName} must be a string value.`,
-      400,
-    );
+    throw new ServiceError('ADMIN_INVALID_QUERY', `${fieldName} must be a string value.`, 400);
   }
 
   const trimmed = normalized.trim();
@@ -787,11 +755,7 @@ const parseOptionalSandboxExecutionEgressDecisionQuery = (
     return null;
   }
   const normalized = parsed.toLowerCase();
-  if (
-    normalized === 'allow' ||
-    normalized === 'deny' ||
-    normalized === 'not_enforced'
-  ) {
+  if (normalized === 'allow' || normalized === 'deny' || normalized === 'not_enforced') {
     return normalized;
   }
   throw new ServiceError(
@@ -817,11 +781,7 @@ const parseOptionalSandboxExecutionLimitDecisionQuery = (
     return null;
   }
   const normalized = parsed.toLowerCase();
-  if (
-    normalized === 'allow' ||
-    normalized === 'deny' ||
-    normalized === 'not_enforced'
-  ) {
+  if (normalized === 'allow' || normalized === 'deny' || normalized === 'not_enforced') {
     return normalized;
   }
   throw new ServiceError(
@@ -979,6 +939,106 @@ const parseOptionalGatewayEventQueryString = (
   return parsed.toLowerCase();
 };
 
+const parseOptionalProviderLaneQuery = (
+  value: unknown,
+  {
+    fieldName,
+  }: {
+    fieldName: string;
+  },
+): ProviderLane | null => {
+  const parsed = parseOptionalBoundedQueryString(value, {
+    fieldName,
+    maxLength: 64,
+  });
+  if (!parsed) {
+    return null;
+  }
+  const normalized = parsed.toLowerCase();
+  if (!isProviderLaneIdentifier(normalized)) {
+    throw new ServiceError(
+      'ADMIN_INVALID_QUERY',
+      `${fieldName} must be a supported provider lane identifier.`,
+      400,
+    );
+  }
+  return normalized;
+};
+
+const parseOptionalProviderLaneStatusQuery = (
+  value: unknown,
+  {
+    fieldName,
+  }: {
+    fieldName: string;
+  },
+): ProviderLaneExecutionStatus | null => {
+  const parsed = parseOptionalBoundedQueryString(value, {
+    fieldName,
+    maxLength: 16,
+  });
+  if (!parsed) {
+    return null;
+  }
+  const normalized = parsed.toLowerCase();
+  if (!isProviderLaneExecutionStatusValue(normalized)) {
+    throw new ServiceError(
+      'ADMIN_INVALID_QUERY',
+      `${fieldName} must be one of "ok" or "failed".`,
+      400,
+    );
+  }
+  return normalized;
+};
+
+const parseOptionalProviderLaneProviderQuery = (
+  value: unknown,
+  {
+    fieldName,
+  }: {
+    fieldName: string;
+  },
+): string | null => {
+  const parsed = parseOptionalBoundedQueryString(value, {
+    fieldName,
+    maxLength: 64,
+  });
+  if (!parsed) {
+    return null;
+  }
+  const normalized = parsed.toLowerCase();
+  if (!AI_RUNTIME_PROVIDER_IDENTIFIER_PATTERN.test(normalized)) {
+    throw new ServiceError(
+      'ADMIN_INVALID_QUERY',
+      `${fieldName} must use a valid provider identifier format.`,
+      400,
+    );
+  }
+  return normalized;
+};
+
+const mapAIRuntimeRoleToProviderLane = (role: AIRuntimeRole): ProviderLane =>
+  role === 'maker' ? 'image_edit' : 'long_context';
+
+const toErrorDetails = (error: unknown) => {
+  if (error instanceof ServiceError) {
+    return {
+      errorCode: error.code,
+      errorMessage: error.message,
+    };
+  }
+  if (error instanceof Error) {
+    return {
+      errorCode: 'ADMIN_RUNTIME_EXECUTION_FAILED',
+      errorMessage: error.message,
+    };
+  }
+  return {
+    errorCode: 'ADMIN_RUNTIME_EXECUTION_FAILED',
+    errorMessage: 'Unknown execution failure.',
+  };
+};
+
 const parseOptionalGatewayConnectorIdQueryString = (
   value: unknown,
   {
@@ -1032,11 +1092,7 @@ const parseOptionalBoundedBodyString = (
   }
 
   if (typeof normalized !== 'string') {
-    throw new ServiceError(
-      'ADMIN_INVALID_BODY',
-      `${fieldName} must be a string value.`,
-      400,
-    );
+    throw new ServiceError('ADMIN_INVALID_BODY', `${fieldName} must be a string value.`, 400);
   }
 
   const trimmed = normalized.trim();
@@ -1069,11 +1125,7 @@ const parseRequiredBoundedBodyString = (
     maxLength,
   });
   if (!parsed) {
-    throw new ServiceError(
-      'ADMIN_INVALID_BODY',
-      `${fieldName} is required.`,
-      400,
-    );
+    throw new ServiceError('ADMIN_INVALID_BODY', `${fieldName} is required.`, 400);
   }
   return parsed;
 };
@@ -1209,11 +1261,7 @@ const parseRequiredGatewayRoleBodyString = (
   });
   const normalized = parsed.toLowerCase();
   if (!AGENT_GATEWAY_ROLE_PATTERN.test(normalized)) {
-    throw new ServiceError(
-      'ADMIN_INVALID_BODY',
-      `${fieldName} must use a valid role format.`,
-      400,
-    );
+    throw new ServiceError('ADMIN_INVALID_BODY', `${fieldName} must use a valid role format.`, 400);
   }
   return normalized;
 };
@@ -1235,11 +1283,7 @@ const parseOptionalGatewayRoleBodyString = (
   }
   const normalized = parsed.toLowerCase();
   if (!AGENT_GATEWAY_ROLE_PATTERN.test(normalized)) {
-    throw new ServiceError(
-      'ADMIN_INVALID_BODY',
-      `${fieldName} must use a valid role format.`,
-      400,
-    );
+    throw new ServiceError('ADMIN_INVALID_BODY', `${fieldName} must use a valid role format.`, 400);
   }
   return normalized;
 };
@@ -1283,11 +1327,7 @@ const parseOptionalStringArrayBody = (
     return undefined;
   }
   if (!Array.isArray(value)) {
-    throw new ServiceError(
-      'ADMIN_INVALID_BODY',
-      `${fieldName} must be an array of strings.`,
-      400,
-    );
+    throw new ServiceError('ADMIN_INVALID_BODY', `${fieldName} must be an array of strings.`, 400);
   }
   if (value.length > maxItems) {
     throw new ServiceError(
@@ -1300,11 +1340,7 @@ const parseOptionalStringArrayBody = (
   const normalized: string[] = [];
   for (const item of value) {
     if (typeof item !== 'string') {
-      throw new ServiceError(
-        'ADMIN_INVALID_BODY',
-        `${fieldName} must contain strings only.`,
-        400,
-      );
+      throw new ServiceError('ADMIN_INVALID_BODY', `${fieldName} must contain strings only.`, 400);
     }
     const trimmed = item.trim();
     if (trimmed.length === 0) {
@@ -1376,11 +1412,7 @@ const parseOptionalObjectBody = (
     return undefined;
   }
   if (!(value && typeof value === 'object') || Array.isArray(value)) {
-    throw new ServiceError(
-      'ADMIN_INVALID_BODY',
-      `${fieldName} must be an object.`,
-      400,
-    );
+    throw new ServiceError('ADMIN_INVALID_BODY', `${fieldName} must be an object.`, 400);
   }
 
   const record = value as Record<string, unknown>;
@@ -1397,11 +1429,7 @@ const parseOptionalObjectBody = (
   try {
     serialized = JSON.stringify(record);
   } catch {
-    throw new ServiceError(
-      'ADMIN_INVALID_BODY',
-      `${fieldName} must be JSON-serializable.`,
-      400,
-    );
+    throw new ServiceError('ADMIN_INVALID_BODY', `${fieldName} must be JSON-serializable.`, 400);
   }
 
   if (serialized.length > maxJsonLength) {
@@ -1524,19 +1552,13 @@ const parseOptionalRuntimeTimeout = (value: unknown): number | undefined => {
 
 const parseSandboxPilotLanguage = (value: unknown): string => {
   if (!(typeof value === 'string' && value.trim().length > 0)) {
-    throw new ServiceError(
-      'ADMIN_INVALID_BODY',
-      'language must be a non-empty string.',
-      400,
-    );
+    throw new ServiceError('ADMIN_INVALID_BODY', 'language must be a non-empty string.', 400);
   }
   const normalized = value.trim().toLowerCase();
   if (!SANDBOX_PILOT_ALLOWED_LANGUAGES.has(normalized)) {
     throw new ServiceError(
       'ADMIN_INVALID_BODY',
-      `language must be one of: ${Array.from(SANDBOX_PILOT_ALLOWED_LANGUAGES)
-        .sort()
-        .join(', ')}.`,
+      `language must be one of: ${Array.from(SANDBOX_PILOT_ALLOWED_LANGUAGES).sort().join(', ')}.`,
       400,
     );
   }
@@ -1549,11 +1571,7 @@ const parseSandboxPilotCode = (value: unknown): string => {
   }
   const code = value.trim();
   if (code.length < 1) {
-    throw new ServiceError(
-      'ADMIN_INVALID_BODY',
-      'code must not be empty.',
-      400,
-    );
+    throw new ServiceError('ADMIN_INVALID_BODY', 'code must not be empty.', 400);
   }
   if (code.length > SANDBOX_PILOT_MAX_CODE_LENGTH) {
     throw new ServiceError(
@@ -1565,18 +1583,12 @@ const parseSandboxPilotCode = (value: unknown): string => {
   return value;
 };
 
-const parseSandboxPilotFiles = (
-  value: unknown,
-): Array<{ path: string; contentBase64: string }> => {
+const parseSandboxPilotFiles = (value: unknown): Array<{ path: string; contentBase64: string }> => {
   if (value === undefined || value === null) {
     return [];
   }
   if (!Array.isArray(value)) {
-    throw new ServiceError(
-      'ADMIN_INVALID_BODY',
-      'files must be an array.',
-      400,
-    );
+    throw new ServiceError('ADMIN_INVALID_BODY', 'files must be an array.', 400);
   }
   if (value.length > SANDBOX_PILOT_MAX_FILES) {
     throw new ServiceError(
@@ -1588,11 +1600,7 @@ const parseSandboxPilotFiles = (
   const files: Array<{ path: string; contentBase64: string }> = [];
   for (const file of value) {
     if (!(file && typeof file === 'object')) {
-      throw new ServiceError(
-        'ADMIN_INVALID_BODY',
-        'files entries must be objects.',
-        400,
-      );
+      throw new ServiceError('ADMIN_INVALID_BODY', 'files entries must be objects.', 400);
     }
     const record = file as Record<string, unknown>;
     const filePath = typeof record.path === 'string' ? record.path.trim() : '';
@@ -1608,9 +1616,7 @@ const parseSandboxPilotFiles = (
       );
     }
     const contentBase64 =
-      typeof record.contentBase64 === 'string'
-        ? record.contentBase64.trim()
-        : '';
+      typeof record.contentBase64 === 'string' ? record.contentBase64.trim() : '';
     if (contentBase64.length < 1) {
       throw new ServiceError(
         'ADMIN_INVALID_BODY',
@@ -1623,8 +1629,7 @@ const parseSandboxPilotFiles = (
   return files;
 };
 
-const getRealtime = (req: Request) =>
-  req.app.get('realtime') as RealtimeService | undefined;
+const getRealtime = (req: Request) => req.app.get('realtime') as RealtimeService | undefined;
 
 const toObject = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
@@ -1702,8 +1707,7 @@ const buildAgentGatewaySessionSummary = (detail: AgentGatewaySessionDetail) => {
     }
 
     const selectedProvider =
-      toStringOrNull(payload.selectedProvider) ??
-      toStringOrNull(payload.provider);
+      toStringOrNull(payload.selectedProvider) ?? toStringOrNull(payload.provider);
     if (selectedProvider) {
       bump(providerUsage, selectedProvider);
     }
@@ -1714,9 +1718,7 @@ const buildAgentGatewaySessionSummary = (detail: AgentGatewaySessionDetail) => {
         if (!attempt || typeof attempt !== 'object') {
           continue;
         }
-        const status = toStringOrNull(
-          (attempt as Record<string, unknown>).status,
-        );
+        const status = toStringOrNull((attempt as Record<string, unknown>).status);
         if (status) {
           bump(attemptStatus, status);
         }
@@ -1732,9 +1734,7 @@ const buildAgentGatewaySessionSummary = (detail: AgentGatewaySessionDetail) => {
 
   const lastEvent = detail.events.at(-1) ?? null;
   const startedAtMs = Date.parse(detail.session.createdAt);
-  const endedAtMs = Date.parse(
-    lastEvent?.createdAt ?? detail.session.updatedAt,
-  );
+  const endedAtMs = Date.parse(lastEvent?.createdAt ?? detail.session.updatedAt);
   const durationMs =
     Number.isFinite(startedAtMs) && Number.isFinite(endedAtMs)
       ? Math.max(0, endedAtMs - startedAtMs)
@@ -1916,71 +1916,52 @@ const AGENT_GATEWAY_ADAPTER_ERROR_THRESHOLDS = {
   watchAbove: 0.1,
   criticalAbove: 0.25,
 };
-const AGENT_GATEWAY_ADAPTER_REGISTRY = [
-  'web',
-  'live_session',
-  'external_webhook',
-] as const;
-const AGENT_GATEWAY_ADAPTER_ROUTE_SUCCESS_EVENT =
-  'agent_gateway_adapter_route_success';
-const AGENT_GATEWAY_ADAPTER_ROUTE_FAILED_EVENT =
-  'agent_gateway_adapter_route_failed';
+const AGENT_GATEWAY_ADAPTER_REGISTRY = ['web', 'live_session', 'external_webhook'] as const;
+const AGENT_GATEWAY_ADAPTER_ROUTE_SUCCESS_EVENT = 'agent_gateway_adapter_route_success';
+const AGENT_GATEWAY_ADAPTER_ROUTE_FAILED_EVENT = 'agent_gateway_adapter_route_failed';
 const AGENT_GATEWAY_INGEST_ACCEPT_EVENT = 'agent_gateway_ingest_accept';
 const AGENT_GATEWAY_INGEST_REPLAY_EVENT = 'agent_gateway_ingest_replay';
 const AGENT_GATEWAY_INGEST_REJECT_EVENT = 'agent_gateway_ingest_reject';
-const RELEASE_EXTERNAL_CHANNEL_ALERT_LABEL =
-  'external-channel-failure-mode-first-appearance';
-const RELEASE_EXTERNAL_CHANNEL_ALERT_EVENT =
-  'release_external_channel_failure_mode_alert';
+const RELEASE_EXTERNAL_CHANNEL_ALERT_LABEL = 'external-channel-failure-mode-first-appearance';
+const RELEASE_EXTERNAL_CHANNEL_ALERT_EVENT = 'release_external_channel_failure_mode_alert';
 const RELEASE_EXTERNAL_CHANNEL_ALERT_SOURCE = 'release_health_gate_webhook';
 const AGENT_GATEWAY_INGEST_CONNECTOR_REJECT_THRESHOLDS = {
   watchAbove: 0.1,
   criticalAbove: 0.25,
 };
 
-const createAgentGatewayTelemetryAccumulator =
-  (): AgentGatewayTelemetryAccumulator => ({
-    providerUsage: {},
-    channelUsage: {},
-    compactionHourlyBuckets: new Map<
-      string,
-      AgentGatewayCompactionHourlyBucket
-    >(),
-    activeSessions: 0,
-    closedSessions: 0,
-    attentionSessions: 0,
-    compactedSessions: 0,
-    autoCompactedSessions: 0,
-    totalEvents: 0,
-    draftCycleStepEvents: 0,
-    failedStepEvents: 0,
-    compactionEvents: 0,
-    autoCompactionEvents: 0,
-    manualCompactionEvents: 0,
-    prunedEventCount: 0,
-    attemptSuccess: 0,
-    attemptFailed: 0,
-    attemptSkippedCooldown: 0,
-  });
+const createAgentGatewayTelemetryAccumulator = (): AgentGatewayTelemetryAccumulator => ({
+  providerUsage: {},
+  channelUsage: {},
+  compactionHourlyBuckets: new Map<string, AgentGatewayCompactionHourlyBucket>(),
+  activeSessions: 0,
+  closedSessions: 0,
+  attentionSessions: 0,
+  compactedSessions: 0,
+  autoCompactedSessions: 0,
+  totalEvents: 0,
+  draftCycleStepEvents: 0,
+  failedStepEvents: 0,
+  compactionEvents: 0,
+  autoCompactionEvents: 0,
+  manualCompactionEvents: 0,
+  prunedEventCount: 0,
+  attemptSuccess: 0,
+  attemptFailed: 0,
+  attemptSkippedCooldown: 0,
+});
 
 const isAutoCompactionReason = (reason: string) =>
   reason === 'auto_buffer_limit' || reason.startsWith('auto');
 
-const resolveAutoCompactionRiskLevel = (
-  share: number | null,
-): AgentGatewayRiskLevel => {
+const resolveAutoCompactionRiskLevel = (share: number | null): AgentGatewayRiskLevel => {
   if (typeof share !== 'number' || !Number.isFinite(share)) {
     return 'unknown';
   }
-  if (
-    share >=
-    AGENT_GATEWAY_TELEMETRY_THRESHOLDS.autoCompactionShare.criticalAbove
-  ) {
+  if (share >= AGENT_GATEWAY_TELEMETRY_THRESHOLDS.autoCompactionShare.criticalAbove) {
     return 'critical';
   }
-  if (
-    share >= AGENT_GATEWAY_TELEMETRY_THRESHOLDS.autoCompactionShare.watchAbove
-  ) {
+  if (share >= AGENT_GATEWAY_TELEMETRY_THRESHOLDS.autoCompactionShare.watchAbove) {
     return 'watch';
   }
   return 'healthy';
@@ -2030,9 +2011,7 @@ const resolveBelowRiskLevel = (
   return 'healthy';
 };
 
-const mergeRiskLevels = (
-  levels: AgentGatewayRiskLevel[],
-): AgentGatewayRiskLevel => {
+const mergeRiskLevels = (levels: AgentGatewayRiskLevel[]): AgentGatewayRiskLevel => {
   if (levels.includes('critical')) {
     return 'critical';
   }
@@ -2052,11 +2031,7 @@ const normalizeConnectorConfiguredRiskLevel = (
     return 'unknown';
   }
   const normalized = value.trim().toLowerCase();
-  if (
-    normalized === 'restricted' ||
-    normalized === 'standard' ||
-    normalized === 'trusted'
-  ) {
+  if (normalized === 'restricted' || normalized === 'standard' || normalized === 'trusted') {
     return normalized;
   }
   return 'unknown';
@@ -2113,8 +2088,7 @@ const accumulateAgentGatewayCompactionMetrics = (
   accumulator.compactionEvents += 1;
   flags.hasCompaction = true;
 
-  const compactionReason =
-    toStringOrNull(payload.reason)?.toLowerCase() ?? 'manual';
+  const compactionReason = toStringOrNull(payload.reason)?.toLowerCase() ?? 'manual';
   const isAuto = isAutoCompactionReason(compactionReason);
   if (isAuto) {
     accumulator.autoCompactionEvents += 1;
@@ -2123,10 +2097,7 @@ const accumulateAgentGatewayCompactionMetrics = (
     accumulator.manualCompactionEvents += 1;
   }
 
-  const prunedCount = Math.max(
-    0,
-    Number(payload.prunedCount ?? payload.pruned_count ?? 0),
-  );
+  const prunedCount = Math.max(0, Number(payload.prunedCount ?? payload.pruned_count ?? 0));
   accumulator.prunedEventCount += prunedCount;
 
   const bucketHour = toUtcHourBucket(event.createdAt);
@@ -2156,8 +2127,7 @@ const accumulateAgentGatewayEventMetrics = (
   flags: AgentGatewaySessionFlags,
 ) => {
   const selectedProvider =
-    toStringOrNull(event.payload.selectedProvider) ??
-    toStringOrNull(event.payload.provider);
+    toStringOrNull(event.payload.selectedProvider) ?? toStringOrNull(event.payload.provider);
   if (selectedProvider) {
     bump(accumulator.providerUsage, selectedProvider);
   }
@@ -2243,10 +2213,7 @@ const buildAgentGatewayAdapterMetrics = (
       current.failed += row.count;
       adapterFailedTotal += row.count;
     }
-    current.lastSeenAt = selectLatestTimestamp(
-      current.lastSeenAt,
-      row.lastSeenAt,
-    );
+    current.lastSeenAt = selectLatestTimestamp(current.lastSeenAt, row.lastSeenAt);
     adapterByName.set(adapter, current);
   }
 
@@ -2275,10 +2242,7 @@ const buildAgentGatewayAdapterMetrics = (
         ...item,
         total,
         errorRate,
-        riskLevel: resolveAboveRiskLevel(
-          errorRate,
-          AGENT_GATEWAY_ADAPTER_ERROR_THRESHOLDS,
-        ),
+        riskLevel: resolveAboveRiskLevel(errorRate, AGENT_GATEWAY_ADAPTER_ERROR_THRESHOLDS),
       };
     })
     .sort((left, right) => {
@@ -2289,15 +2253,13 @@ const buildAgentGatewayAdapterMetrics = (
     });
   const adapterTotal = adapterSuccessTotal + adapterFailedTotal;
   const adapterErrorRate = toRate(adapterFailedTotal, adapterTotal);
-  const adapterErrorBudgetConsumed =
-    typeof adapterErrorRate === 'number' ? adapterErrorRate : null;
+  const adapterErrorBudgetConsumed = typeof adapterErrorRate === 'number' ? adapterErrorRate : null;
   const adapterErrorBudgetRemaining =
     typeof adapterErrorBudgetConsumed === 'number'
       ? Number(
           Math.max(
             0,
-            AGENT_GATEWAY_ADAPTER_ERROR_BUDGET_TARGET -
-              adapterErrorBudgetConsumed,
+            AGENT_GATEWAY_ADAPTER_ERROR_BUDGET_TARGET - adapterErrorBudgetConsumed,
           ).toFixed(3),
         )
       : null;
@@ -2323,9 +2285,7 @@ const buildAgentGatewayAdapterMetrics = (
   };
 };
 
-const buildAgentGatewayIngestConnectorMetrics = (
-  ingestRows: AgentGatewayIngestTelemetryRow[],
-) => {
+const buildAgentGatewayIngestConnectorMetrics = (ingestRows: AgentGatewayIngestTelemetryRow[]) => {
   const connectorById = new Map<
     string,
     {
@@ -2353,9 +2313,7 @@ const buildAgentGatewayIngestConnectorMetrics = (
     if (connectorId.length < 1) {
       continue;
     }
-    const configuredRiskLevel = normalizeConnectorConfiguredRiskLevel(
-      row.connectorRiskLevel,
-    );
+    const configuredRiskLevel = normalizeConnectorConfiguredRiskLevel(row.connectorRiskLevel);
     const current = connectorById.get(connectorId) ?? {
       connectorId,
       configuredRiskLevel,
@@ -2370,9 +2328,7 @@ const buildAgentGatewayIngestConnectorMetrics = (
       lastSeenAt: null,
     };
     current.configuredRiskLevel =
-      current.configuredRiskLevel === 'unknown'
-        ? configuredRiskLevel
-        : current.configuredRiskLevel;
+      current.configuredRiskLevel === 'unknown' ? configuredRiskLevel : current.configuredRiskLevel;
 
     if (row.eventType === AGENT_GATEWAY_INGEST_ACCEPT_EVENT) {
       current.accepted += row.count;
@@ -2383,19 +2339,13 @@ const buildAgentGatewayIngestConnectorMetrics = (
     } else if (row.eventType === AGENT_GATEWAY_INGEST_REJECT_EVENT) {
       current.rejected += row.count;
       rejectedTotal += row.count;
-      if (
-        row.errorCode?.trim().toUpperCase() ===
-        'AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMITED'
-      ) {
+      if (row.errorCode?.trim().toUpperCase() === 'AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMITED') {
         current.rateLimited += row.count;
         rateLimitedTotal += row.count;
       }
     }
 
-    current.lastSeenAt = selectLatestTimestamp(
-      current.lastSeenAt,
-      row.lastSeenAt,
-    );
+    current.lastSeenAt = selectLatestTimestamp(current.lastSeenAt, row.lastSeenAt);
     connectorById.set(connectorId, current);
   }
 
@@ -2423,9 +2373,7 @@ const buildAgentGatewayIngestConnectorMetrics = (
       const total = item.accepted + item.replayed + item.rejected;
       const rejectRate = toRate(item.rejected, total);
       const rateLimitedShare = toRate(item.rateLimited, item.rejected);
-      const policyLevel = mapConfiguredConnectorRiskToHealth(
-        item.configuredRiskLevel,
-      );
+      const policyLevel = mapConfiguredConnectorRiskToHealth(item.configuredRiskLevel);
       const activityLevel = resolveAboveRiskLevel(
         rejectRate,
         AGENT_GATEWAY_INGEST_CONNECTOR_REJECT_THRESHOLDS,
@@ -2476,11 +2424,9 @@ const buildAgentGatewayConnectorPolicySnapshot = () => {
     total: policies.length,
     defaults: {
       riskLevel: 'standard',
-      requireConnectorSecret:
-        env.AGENT_GATEWAY_INGEST_REQUIRE_CONNECTOR_SECRET === 'true',
+      requireConnectorSecret: env.AGENT_GATEWAY_INGEST_REQUIRE_CONNECTOR_SECRET === 'true',
       rateLimitMax: env.AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMIT_MAX,
-      rateLimitWindowSec:
-        env.AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMIT_WINDOW_SEC,
+      rateLimitWindowSec: env.AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMIT_WINDOW_SEC,
     },
     policies,
   };
@@ -2506,8 +2452,7 @@ const buildAgentGatewayConnectorProfileSnapshot = () => {
       fromRole: null,
       toRole: null,
       type: null,
-      enforceProfile:
-        env.AGENT_GATEWAY_INGEST_ENFORCE_CONNECTOR_PROFILE === 'true',
+      enforceProfile: env.AGENT_GATEWAY_INGEST_ENFORCE_CONNECTOR_PROFILE === 'true',
     },
     profiles,
   };
@@ -2556,43 +2501,31 @@ const buildAgentGatewayTelemetrySnapshot = (
 
   const totalSessions = sessionRows.length;
   const totalAttempts =
-    accumulator.attemptSuccess +
-    accumulator.attemptFailed +
-    accumulator.attemptSkippedCooldown;
+    accumulator.attemptSuccess + accumulator.attemptFailed + accumulator.attemptSkippedCooldown;
   const providerUsageItems = Object.entries(accumulator.providerUsage)
     .map(([provider, count]) => ({ provider, count }))
     .sort((left, right) => right.count - left.count);
   const channelUsageItems = Object.entries(accumulator.channelUsage)
     .map(([channel, count]) => ({ channel, count }))
     .sort((left, right) => right.count - left.count);
-  const compactionHourlyTrend = [
-    ...accumulator.compactionHourlyBuckets.values(),
-  ]
+  const compactionHourlyTrend = [...accumulator.compactionHourlyBuckets.values()]
     .sort((left, right) => left.hour.localeCompare(right.hour))
     .map((bucket) => {
-      const autoCompactionShare = toRate(
-        bucket.autoCompactions,
-        bucket.compactions,
-      );
+      const autoCompactionShare = toRate(bucket.autoCompactions, bucket.compactions);
       return {
         ...bucket,
         autoCompactionShare,
-        autoCompactionRiskLevel:
-          resolveAutoCompactionRiskLevel(autoCompactionShare),
+        autoCompactionRiskLevel: resolveAutoCompactionRiskLevel(autoCompactionShare),
       };
     });
   const autoCompactionShare = toRate(
     accumulator.autoCompactionEvents,
     accumulator.compactionEvents,
   );
-  const failedStepRate = toRate(
-    accumulator.failedStepEvents,
-    accumulator.draftCycleStepEvents,
-  );
+  const failedStepRate = toRate(accumulator.failedStepEvents, accumulator.draftCycleStepEvents);
   const successRate = toRate(accumulator.attemptSuccess, totalAttempts);
   const skippedRate = toRate(accumulator.attemptSkippedCooldown, totalAttempts);
-  const autoCompactionRiskLevel =
-    resolveAutoCompactionRiskLevel(autoCompactionShare);
+  const autoCompactionRiskLevel = resolveAutoCompactionRiskLevel(autoCompactionShare);
   const failedStepRiskLevel = resolveAboveRiskLevel(
     failedStepRate,
     AGENT_GATEWAY_TELEMETRY_THRESHOLDS.failedStepRate,
@@ -2615,8 +2548,7 @@ const buildAgentGatewayTelemetrySnapshot = (
   const adapterMetrics = buildAgentGatewayAdapterMetrics(adapterRows, {
     includeRegistry: false,
   });
-  const ingestConnectorMetrics =
-    buildAgentGatewayIngestConnectorMetrics(ingestRows);
+  const ingestConnectorMetrics = buildAgentGatewayIngestConnectorMetrics(ingestRows);
 
   return {
     sessions: {
@@ -2628,10 +2560,7 @@ const buildAgentGatewayTelemetrySnapshot = (
       autoCompacted: accumulator.autoCompactedSessions,
       attentionRate: toRate(accumulator.attentionSessions, totalSessions),
       compactionRate: toRate(accumulator.compactedSessions, totalSessions),
-      autoCompactedRate: toRate(
-        accumulator.autoCompactedSessions,
-        totalSessions,
-      ),
+      autoCompactedRate: toRate(accumulator.autoCompactedSessions, totalSessions),
     },
     events: {
       total: accumulator.totalEvents,
@@ -2707,11 +2636,7 @@ const parseDateParam = (value?: string) => {
   }
   const parsed = new Date(`${value}T00:00:00.000Z`);
   if (Number.isNaN(parsed.valueOf())) {
-    throw new ServiceError(
-      'INVALID_DATE',
-      'Invalid date format. Use YYYY-MM-DD.',
-      400,
-    );
+    throw new ServiceError('INVALID_DATE', 'Invalid date format. Use YYYY-MM-DD.', 400);
   }
   return parsed;
 };
@@ -2729,125 +2654,109 @@ const recordCleanupRun = async (
     await db.query(
       `INSERT INTO job_runs (job_name, status, started_at, finished_at, duration_ms, error_message, metadata)
        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [
-        jobName,
-        status,
-        startedAt,
-        finishedAt,
-        durationMs,
-        errorMessage ?? null,
-        metadata ?? {},
-      ],
+      [jobName, status, startedAt, finishedAt, durationMs, errorMessage ?? null, metadata ?? {}],
     );
   } catch (recordError) {
     console.error('Cleanup run record failed', recordError);
   }
 };
 
-router.post(
-  '/admin/embeddings/backfill',
-  requireAdmin,
-  async (req, res, next) => {
-    try {
-      const query = assertAllowedQueryFields(req.query, {
-        allowed: ['batchSize', 'maxBatches'],
-        endpoint: '/api/admin/embeddings/backfill',
-      });
-      const body = assertAllowedBodyFields(req.body, {
-        allowed: ['batchSize', 'maxBatches'],
-        endpoint: '/api/admin/embeddings/backfill',
-      });
+router.post('/admin/embeddings/backfill', requireAdmin, async (req, res, next) => {
+  try {
+    const query = assertAllowedQueryFields(req.query, {
+      allowed: ['batchSize', 'maxBatches'],
+      endpoint: '/api/admin/embeddings/backfill',
+    });
+    const body = assertAllowedBodyFields(req.body, {
+      allowed: ['batchSize', 'maxBatches'],
+      endpoint: '/api/admin/embeddings/backfill',
+    });
 
-      const queryBatchSize = parseBoundedOptionalInt(query.batchSize, {
-        fieldName: 'batchSize',
-        min: 1,
-        max: 1000,
-      });
-      const bodyBatchSize = parseBoundedOptionalInt(body.batchSize, {
-        fieldName: 'batchSize',
-        min: 1,
-        max: 1000,
-        invalidCode: 'ADMIN_INVALID_BODY',
-      });
-      if (
-        queryBatchSize !== undefined &&
-        bodyBatchSize !== undefined &&
-        queryBatchSize !== bodyBatchSize
-      ) {
-        throw new ServiceError(
-          'ADMIN_INPUT_CONFLICT',
-          'batchSize in query and body must match when both are provided.',
-          400,
-        );
-      }
-      const batchSize = bodyBatchSize ?? queryBatchSize ?? 200;
-
-      const queryMaxBatches = parseBoundedOptionalInt(query.maxBatches, {
-        fieldName: 'maxBatches',
-        min: 1,
-        max: 20,
-      });
-      const bodyMaxBatches = parseBoundedOptionalInt(body.maxBatches, {
-        fieldName: 'maxBatches',
-        min: 1,
-        max: 20,
-        invalidCode: 'ADMIN_INVALID_BODY',
-      });
-      if (
-        queryMaxBatches !== undefined &&
-        bodyMaxBatches !== undefined &&
-        queryMaxBatches !== bodyMaxBatches
-      ) {
-        throw new ServiceError(
-          'ADMIN_INPUT_CONFLICT',
-          'maxBatches in query and body must match when both are provided.',
-          400,
-        );
-      }
-      const maxBatches = bodyMaxBatches ?? queryMaxBatches ?? 1;
-
-      let processed = 0;
-      let inserted = 0;
-      let skipped = 0;
-      let batches = 0;
-
-      for (let i = 0; i < maxBatches; i += 1) {
-        const result =
-          await embeddingBackfillService.backfillDraftEmbeddings(batchSize);
-        processed += result.processed;
-        inserted += result.inserted;
-        skipped += result.skipped;
-        batches += 1;
-
-        if (result.processed < batchSize) {
-          break;
-        }
-      }
-
-      res.json({ batches, batchSize, processed, inserted, skipped });
-    } catch (error) {
-      next(error);
+    const queryBatchSize = parseBoundedOptionalInt(query.batchSize, {
+      fieldName: 'batchSize',
+      min: 1,
+      max: 1000,
+    });
+    const bodyBatchSize = parseBoundedOptionalInt(body.batchSize, {
+      fieldName: 'batchSize',
+      min: 1,
+      max: 1000,
+      invalidCode: 'ADMIN_INVALID_BODY',
+    });
+    if (
+      queryBatchSize !== undefined &&
+      bodyBatchSize !== undefined &&
+      queryBatchSize !== bodyBatchSize
+    ) {
+      throw new ServiceError(
+        'ADMIN_INPUT_CONFLICT',
+        'batchSize in query and body must match when both are provided.',
+        400,
+      );
     }
-  },
-);
+    const batchSize = bodyBatchSize ?? queryBatchSize ?? 200;
 
-router.get(
-  '/admin/embeddings/metrics',
-  requireAdmin,
-  async (req, res, next) => {
-    try {
-      const query = assertAllowedQueryFields(req.query, {
-        allowed: ['hours'],
-        endpoint: '/api/admin/embeddings/metrics',
-      });
-      const hours = parseBoundedQueryInt(query.hours, {
-        fieldName: 'hours',
-        defaultValue: 24,
-        min: 1,
-        max: 720,
-      });
-      const summary = await db.query(
-        `SELECT provider,
+    const queryMaxBatches = parseBoundedOptionalInt(query.maxBatches, {
+      fieldName: 'maxBatches',
+      min: 1,
+      max: 20,
+    });
+    const bodyMaxBatches = parseBoundedOptionalInt(body.maxBatches, {
+      fieldName: 'maxBatches',
+      min: 1,
+      max: 20,
+      invalidCode: 'ADMIN_INVALID_BODY',
+    });
+    if (
+      queryMaxBatches !== undefined &&
+      bodyMaxBatches !== undefined &&
+      queryMaxBatches !== bodyMaxBatches
+    ) {
+      throw new ServiceError(
+        'ADMIN_INPUT_CONFLICT',
+        'maxBatches in query and body must match when both are provided.',
+        400,
+      );
+    }
+    const maxBatches = bodyMaxBatches ?? queryMaxBatches ?? 1;
+
+    let processed = 0;
+    let inserted = 0;
+    let skipped = 0;
+    let batches = 0;
+
+    for (let i = 0; i < maxBatches; i += 1) {
+      const result = await embeddingBackfillService.backfillDraftEmbeddings(batchSize);
+      processed += result.processed;
+      inserted += result.inserted;
+      skipped += result.skipped;
+      batches += 1;
+
+      if (result.processed < batchSize) {
+        break;
+      }
+    }
+
+    res.json({ batches, batchSize, processed, inserted, skipped });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/admin/embeddings/metrics', requireAdmin, async (req, res, next) => {
+  try {
+    const query = assertAllowedQueryFields(req.query, {
+      allowed: ['hours'],
+      endpoint: '/api/admin/embeddings/metrics',
+    });
+    const hours = parseBoundedQueryInt(query.hours, {
+      fieldName: 'hours',
+      defaultValue: 24,
+      min: 1,
+      max: 720,
+    });
+    const summary = await db.query(
+      `SELECT provider,
               success,
               fallback_used,
               COUNT(*)::int AS count,
@@ -2857,15 +2766,14 @@ router.get(
        WHERE created_at >= NOW() - ($1 || ' hours')::interval
        GROUP BY provider, success, fallback_used
        ORDER BY count DESC`,
-        [hours],
-      );
+      [hours],
+    );
 
-      res.json({ windowHours: hours, rows: summary.rows });
-    } catch (error) {
-      next(error);
-    }
-  },
-);
+    res.json({ windowHours: hours, rows: summary.rows });
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.get('/admin/ai-runtime/profiles', requireAdmin, (req, res) => {
   assertAllowedQueryFields(req.query, {
@@ -2886,116 +2794,145 @@ router.get('/admin/ai-runtime/health', requireAdmin, (req, res) => {
   res.json(aiRuntimeService.getHealthSnapshot());
 });
 
-router.post(
-  '/admin/ai-runtime/dry-run',
-  requireAdmin,
-  async (req, res, next) => {
+router.get('/admin/provider-lanes/routes', requireAdmin, (req, res) => {
+  assertAllowedQueryFields(req.query, {
+    allowed: [],
+    endpoint: '/api/admin/provider-lanes/routes',
+  });
+  res.json({
+    generatedAt: new Date().toISOString(),
+    lanes: providerRoutingService.getLaneRoutes(),
+  });
+});
+
+router.get('/admin/provider-lanes/telemetry', requireAdmin, async (req, res, next) => {
+  try {
+    const query = assertAllowedQueryFields(req.query, {
+      allowed: ['hours', 'lane', 'limit', 'provider', 'status'],
+      endpoint: '/api/admin/provider-lanes/telemetry',
+    });
+    const hours = parseBoundedQueryInt(query.hours, {
+      fieldName: 'hours',
+      defaultValue: PROVIDER_LANE_TELEMETRY_DEFAULT_HOURS,
+      min: 1,
+      max: PROVIDER_LANE_TELEMETRY_MAX_HOURS,
+    });
+    const lane = parseOptionalProviderLaneQuery(query.lane, {
+      fieldName: 'lane',
+    });
+    const provider = parseOptionalProviderLaneProviderQuery(query.provider, {
+      fieldName: 'provider',
+    });
+    const status = parseOptionalProviderLaneStatusQuery(query.status, {
+      fieldName: 'status',
+    });
+    const limit = parseBoundedQueryInt(query.limit, {
+      fieldName: 'limit',
+      defaultValue: PROVIDER_LANE_TELEMETRY_DEFAULT_LIMIT,
+      min: 1,
+      max: PROVIDER_LANE_TELEMETRY_MAX_LIMIT,
+    });
+
+    res.json(
+      await providerRoutingService.getTelemetrySnapshot({
+        hours,
+        lane,
+        limit,
+        provider,
+        status,
+      }),
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/admin/ai-runtime/dry-run', requireAdmin, async (req, res, next) => {
+  try {
+    assertAllowedQueryFields(req.query, {
+      allowed: [],
+      endpoint: '/api/admin/ai-runtime/dry-run',
+    });
+    if (
+      req.body === undefined ||
+      req.body === null ||
+      typeof req.body !== 'object' ||
+      Array.isArray(req.body)
+    ) {
+      throw new ServiceError('AI_RUNTIME_INVALID_INPUT', 'Body must be a JSON object.', 400);
+    }
+    const body = req.body as Record<string, unknown>;
+    const unknownFields = Object.keys(body).filter(
+      (field) => !AI_RUNTIME_DRY_RUN_ALLOWED_FIELDS.has(field),
+    );
+    if (unknownFields.length > 0) {
+      throw new ServiceError(
+        'AI_RUNTIME_DRY_RUN_INVALID_FIELDS',
+        `Unsupported fields: ${unknownFields.join(', ')}.`,
+        400,
+      );
+    }
+    const roleRaw = body.role;
+    const promptRaw = body.prompt;
+    const providersOverrideRaw = body.providersOverride;
+    const simulateFailuresRaw = body.simulateFailures;
+    const timeoutMsRaw = body.timeoutMs;
+    const correlationIdRaw = body.correlationId;
+    const releaseRunIdRaw = body.releaseRunId;
+    const auditSessionIdRaw = body.auditSessionId;
+
+    if (typeof roleRaw !== 'string' || !RUNTIME_ROLES.includes(roleRaw as AIRuntimeRole)) {
+      throw new ServiceError(
+        'AI_RUNTIME_INVALID_ROLE',
+        'role must be one of author, critic, maker, judge.',
+        400,
+      );
+    }
+    if (typeof promptRaw !== 'string') {
+      throw new ServiceError('AI_RUNTIME_INVALID_PROMPT', 'prompt is required.', 400);
+    }
+    const prompt = promptRaw.trim();
+    if (prompt.length === 0) {
+      throw new ServiceError('AI_RUNTIME_INVALID_PROMPT', 'prompt is required.', 400);
+    }
+    if (prompt.length > AI_RUNTIME_DRY_RUN_MAX_PROMPT_LENGTH) {
+      throw new ServiceError(
+        'AI_RUNTIME_INVALID_PROMPT',
+        `prompt must be at most ${AI_RUNTIME_DRY_RUN_MAX_PROMPT_LENGTH} characters.`,
+        400,
+      );
+    }
+
+    const providersOverride = parseOptionalStringArrayStrict(providersOverrideRaw, {
+      fieldName: 'providersOverride',
+    });
+    const simulateFailures = parseOptionalStringArrayStrict(simulateFailuresRaw, {
+      fieldName: 'simulateFailures',
+    });
+    const timeoutMs = parseOptionalRuntimeTimeout(timeoutMsRaw);
+    const correlationId = parseOptionalRuntimeCorrelationBodyString(correlationIdRaw, {
+      fieldName: 'correlationId',
+    });
+    const releaseRunId = parseOptionalRuntimeCorrelationBodyString(releaseRunIdRaw, {
+      fieldName: 'releaseRunId',
+    });
+    const auditSessionId = parseOptionalRuntimeCorrelationBodyString(auditSessionIdRaw, {
+      fieldName: 'auditSessionId',
+    });
+    const role = roleRaw as AIRuntimeRole;
+    const roleProfile = aiRuntimeService.getProfiles().find((profile) => profile.role === role);
+    const egressPolicyProviders =
+      providersOverride && providersOverride.length > 0
+        ? providersOverride
+        : (roleProfile?.providers ?? []);
+    const lane = mapAIRuntimeRoleToProviderLane(role);
+    const providerRoute = providerRoutingService.resolveRoute({
+      lane,
+      preferredProviders: egressPolicyProviders,
+    });
+    const executionStartedAt = Date.now();
+
     try {
-      assertAllowedQueryFields(req.query, {
-        allowed: [],
-        endpoint: '/api/admin/ai-runtime/dry-run',
-      });
-      if (
-        req.body === undefined ||
-        req.body === null ||
-        typeof req.body !== 'object' ||
-        Array.isArray(req.body)
-      ) {
-        throw new ServiceError(
-          'AI_RUNTIME_INVALID_INPUT',
-          'Body must be a JSON object.',
-          400,
-        );
-      }
-      const body = req.body as Record<string, unknown>;
-      const unknownFields = Object.keys(body).filter(
-        (field) => !AI_RUNTIME_DRY_RUN_ALLOWED_FIELDS.has(field),
-      );
-      if (unknownFields.length > 0) {
-        throw new ServiceError(
-          'AI_RUNTIME_DRY_RUN_INVALID_FIELDS',
-          `Unsupported fields: ${unknownFields.join(', ')}.`,
-          400,
-        );
-      }
-      const roleRaw = body.role;
-      const promptRaw = body.prompt;
-      const providersOverrideRaw = body.providersOverride;
-      const simulateFailuresRaw = body.simulateFailures;
-      const timeoutMsRaw = body.timeoutMs;
-      const correlationIdRaw = body.correlationId;
-      const releaseRunIdRaw = body.releaseRunId;
-      const auditSessionIdRaw = body.auditSessionId;
-
-      if (
-        typeof roleRaw !== 'string' ||
-        !RUNTIME_ROLES.includes(roleRaw as AIRuntimeRole)
-      ) {
-        throw new ServiceError(
-          'AI_RUNTIME_INVALID_ROLE',
-          'role must be one of author, critic, maker, judge.',
-          400,
-        );
-      }
-      if (typeof promptRaw !== 'string') {
-        throw new ServiceError(
-          'AI_RUNTIME_INVALID_PROMPT',
-          'prompt is required.',
-          400,
-        );
-      }
-      const prompt = promptRaw.trim();
-      if (prompt.length === 0) {
-        throw new ServiceError(
-          'AI_RUNTIME_INVALID_PROMPT',
-          'prompt is required.',
-          400,
-        );
-      }
-      if (prompt.length > AI_RUNTIME_DRY_RUN_MAX_PROMPT_LENGTH) {
-        throw new ServiceError(
-          'AI_RUNTIME_INVALID_PROMPT',
-          `prompt must be at most ${AI_RUNTIME_DRY_RUN_MAX_PROMPT_LENGTH} characters.`,
-          400,
-        );
-      }
-
-      const providersOverride = parseOptionalStringArrayStrict(
-        providersOverrideRaw,
-        { fieldName: 'providersOverride' },
-      );
-      const simulateFailures = parseOptionalStringArrayStrict(
-        simulateFailuresRaw,
-        { fieldName: 'simulateFailures' },
-      );
-      const timeoutMs = parseOptionalRuntimeTimeout(timeoutMsRaw);
-      const correlationId = parseOptionalRuntimeCorrelationBodyString(
-        correlationIdRaw,
-        {
-          fieldName: 'correlationId',
-        },
-      );
-      const releaseRunId = parseOptionalRuntimeCorrelationBodyString(
-        releaseRunIdRaw,
-        {
-          fieldName: 'releaseRunId',
-        },
-      );
-      const auditSessionId = parseOptionalRuntimeCorrelationBodyString(
-        auditSessionIdRaw,
-        {
-          fieldName: 'auditSessionId',
-        },
-      );
-      const role = roleRaw as AIRuntimeRole;
-      const roleProfile = aiRuntimeService
-        .getProfiles()
-        .find((profile) => profile.role === role);
-      const egressPolicyProviders =
-        providersOverride && providersOverride.length > 0
-          ? providersOverride
-          : (roleProfile?.providers ?? []);
-
       const result = await sandboxExecutionService.executeWithFallback(
         'ai_runtime_dry_run',
         () =>
@@ -3009,8 +2946,7 @@ router.post(
           }),
         {
           providerIdentifiers: egressPolicyProviders,
-          requestedLimits:
-            typeof timeoutMs === 'number' ? { timeoutMs } : undefined,
+          requestedLimits: typeof timeoutMs === 'number' ? { timeoutMs } : undefined,
           audit: {
             actorType: 'admin',
             correlationId,
@@ -3021,6 +2957,31 @@ router.post(
           },
         },
       );
+      const lastAttemptProvider =
+        [...result.attempts].reverse().find((attempt) => attempt.status !== 'skipped_cooldown')
+          ?.provider ??
+        result.attempts[result.attempts.length - 1]?.provider ??
+        null;
+      await providerRoutingService.recordExecution({
+        durationMs: Date.now() - executionStartedAt,
+        lane,
+        metadata: {
+          attemptCount: result.attempts.length,
+          auditSessionId,
+          correlationId,
+          providersOverride: providersOverride ?? null,
+          releaseRunId,
+          role,
+          selectedAuthProfile: result.selectedAuthProfile,
+          simulateFailures: simulateFailures ?? null,
+        },
+        model: result.selectedProvider ?? lastAttemptProvider,
+        operation: 'ai_runtime_dry_run',
+        provider: result.selectedProvider ?? lastAttemptProvider,
+        route: providerRoute,
+        status: result.failed ? 'failed' : 'ok',
+        userType: 'admin',
+      });
 
       res.json({
         correlation:
@@ -3035,337 +2996,300 @@ router.post(
         providers: aiRuntimeService.getProviderStates(),
       });
     } catch (error) {
-      next(error);
+      const { errorCode, errorMessage } = toErrorDetails(error);
+      await providerRoutingService.recordExecution({
+        durationMs: Date.now() - executionStartedAt,
+        lane,
+        metadata: {
+          auditSessionId,
+          correlationId,
+          errorCode,
+          errorMessage,
+          providersOverride: providersOverride ?? null,
+          releaseRunId,
+          role,
+          simulateFailures: simulateFailures ?? null,
+        },
+        model: providerRoute.resolvedProviders[0]?.model ?? egressPolicyProviders[0] ?? null,
+        operation: 'ai_runtime_dry_run',
+        provider: providerRoute.resolvedProviders[0]?.provider ?? egressPolicyProviders[0] ?? null,
+        route: providerRoute,
+        status: 'failed',
+        userType: 'admin',
+      });
+      throw error;
     }
-  },
-);
+  } catch (error) {
+    next(error);
+  }
+});
 
-router.post(
-  '/admin/sandbox-execution/pilot/run-code',
-  requireAdmin,
-  async (req, res, next) => {
-    let sandboxId: string | null = null;
-    try {
-      assertAllowedQueryFields(req.query, {
-        allowed: [],
-        endpoint: '/api/admin/sandbox-execution/pilot/run-code',
-      });
-      const body = assertAllowedBodyFields(req.body, {
-        allowed: ['language', 'code', 'timeoutMs', 'files'],
-        endpoint: '/api/admin/sandbox-execution/pilot/run-code',
-      });
-      if (!sandboxExecutionService.isEnabled()) {
-        throw new ServiceError(
-          'SANDBOX_EXECUTION_DISABLED',
-          'Sandbox execution is disabled by feature flag.',
-          503,
-        );
-      }
+router.post('/admin/sandbox-execution/pilot/run-code', requireAdmin, async (req, res, next) => {
+  let sandboxId: string | null = null;
+  try {
+    assertAllowedQueryFields(req.query, {
+      allowed: [],
+      endpoint: '/api/admin/sandbox-execution/pilot/run-code',
+    });
+    const body = assertAllowedBodyFields(req.body, {
+      allowed: ['language', 'code', 'timeoutMs', 'files'],
+      endpoint: '/api/admin/sandbox-execution/pilot/run-code',
+    });
+    if (!sandboxExecutionService.isEnabled()) {
+      throw new ServiceError(
+        'SANDBOX_EXECUTION_DISABLED',
+        'Sandbox execution is disabled by feature flag.',
+        503,
+      );
+    }
 
-      const language = parseSandboxPilotLanguage(body.language ?? 'javascript');
-      const code = parseSandboxPilotCode(body.code);
-      const timeoutMs = parseBoundedOptionalInt(body.timeoutMs, {
-        fieldName: 'timeoutMs',
-        invalidCode: 'ADMIN_INVALID_BODY',
-        max: AI_RUNTIME_DRY_RUN_MAX_TIMEOUT_MS,
-        min: 1,
-      });
-      const files = parseSandboxPilotFiles(body.files);
-      const sandbox = await sandboxExecutionService.createSandbox({
-        limits: typeof timeoutMs === 'number' ? { timeoutMs } : undefined,
-      });
-      sandboxId = sandbox.sandboxId;
-      if (files.length > 0) {
-        await sandboxExecutionService.uploadFiles({
-          files,
-          sandboxId,
-        });
-      }
-      const commandResult = await sandboxExecutionService.runCommand({
-        command: 'echo sandbox_smoke_ok',
+    const language = parseSandboxPilotLanguage(body.language ?? 'javascript');
+    const code = parseSandboxPilotCode(body.code);
+    const timeoutMs = parseBoundedOptionalInt(body.timeoutMs, {
+      fieldName: 'timeoutMs',
+      invalidCode: 'ADMIN_INVALID_BODY',
+      max: AI_RUNTIME_DRY_RUN_MAX_TIMEOUT_MS,
+      min: 1,
+    });
+    const files = parseSandboxPilotFiles(body.files);
+    const sandbox = await sandboxExecutionService.createSandbox({
+      limits: typeof timeoutMs === 'number' ? { timeoutMs } : undefined,
+    });
+    sandboxId = sandbox.sandboxId;
+    if (files.length > 0) {
+      await sandboxExecutionService.uploadFiles({
+        files,
         sandboxId,
       });
-      const codeResult = await sandboxExecutionService.runCode({
-        code,
-        language,
-        sandboxId,
-        timeoutMs,
-      });
-      const artifactPaths =
-        files.length > 0
-          ? (
-              await sandboxExecutionService.downloadArtifacts({
-                paths: files.map((file) => file.path),
-                sandboxId,
-              })
-            ).artifacts.map((artifact) => artifact.path)
-          : [];
-
-      res.json({
-        artifactPaths,
-        codeResult,
-        commandResult,
-        sandbox,
-      });
-    } catch (error) {
-      next(error);
-    } finally {
-      if (sandboxId) {
-        await sandboxExecutionService
-          .destroySandbox({ sandboxId })
-          .catch(() => undefined);
-      }
     }
-  },
-);
-
-router.post(
-  '/admin/agent-gateway/orchestrate',
-  requireAdmin,
-  async (req, res, next) => {
-    try {
-      if (env.AGENT_ORCHESTRATION_ENABLED !== 'true') {
-        throw new ServiceError(
-          'AGENT_ORCHESTRATION_DISABLED',
-          'Agent orchestration is disabled by feature flag.',
-          503,
-        );
-      }
-
-      assertAllowedQueryFields(req.query, {
-        allowed: [],
-        endpoint: '/api/admin/agent-gateway/orchestrate',
-      });
-      const body = assertAllowedBodyFields(req.body, {
-        allowed: [
-          'draftId',
-          'channel',
-          'externalSessionId',
-          'promptSeed',
-          'hostAgentId',
-          'metadata',
-        ],
-        endpoint: '/api/admin/agent-gateway/orchestrate',
-      });
-      const draftId = parseRequiredUuidBodyString(body.draftId, {
-        fieldName: 'draftId',
-      });
-      const channel = parseOptionalGatewayChannelBodyString(body.channel, {
-        fieldName: 'channel',
-      });
-      const externalSessionId = parseOptionalGatewayExternalSessionIdBodyString(
-        body.externalSessionId,
-        {
-          fieldName: 'externalSessionId',
-        },
-      );
-      const promptSeed = parseOptionalBoundedBodyString(body.promptSeed, {
-        fieldName: 'promptSeed',
-        maxLength: 4000,
-      });
-      const hostAgentId = parseOptionalUuidBodyString(body.hostAgentId, {
-        fieldName: 'hostAgentId',
-      });
-      const metadata = parseOptionalObjectBody(body.metadata, {
-        fieldName: 'metadata',
-      });
-
-      const realtime = getRealtime(req);
-      const result = await draftOrchestrationService.run({
-        draftId,
-        channel,
-        externalSessionId,
-        promptSeed,
-        hostAgentId,
-        metadata,
-        onStep: realtime
-          ? (signal) => {
-              const payload = {
-                source: 'agent_gateway',
-                data: {
-                  sessionId: signal.sessionId,
-                  draftId: signal.draftId,
-                  role: signal.role,
-                  failed: signal.result.failed,
-                  selectedProvider: signal.result.selectedProvider,
-                  attempts: signal.result.attempts,
-                  output: signal.result.output,
-                },
-              };
-              realtime.broadcast(
-                `session:${signal.sessionId}`,
-                'agent_gateway_orchestration_step',
-                payload,
-              );
-              realtime.broadcast(
-                `post:${signal.draftId}`,
-                'agent_gateway_orchestration_step',
-                payload,
-              );
-              realtime.broadcast(
-                'feed:live',
-                'agent_gateway_orchestration_step',
-                payload,
-              );
-            }
-          : undefined,
-        onCompleted: realtime
-          ? (signal) => {
-              const payload = {
-                source: 'agent_gateway',
-                data: {
-                  sessionId: signal.sessionId,
-                  draftId: signal.draftId,
-                  completed: signal.completed,
-                  stepCount: signal.stepCount,
-                },
-              };
-              realtime.broadcast(
-                `session:${signal.sessionId}`,
-                'agent_gateway_orchestration_completed',
-                payload,
-              );
-              realtime.broadcast(
-                `post:${signal.draftId}`,
-                'agent_gateway_orchestration_completed',
-                payload,
-              );
-              realtime.broadcast(
-                'feed:live',
-                'agent_gateway_orchestration_completed',
-                payload,
-              );
-            }
-          : undefined,
-      });
-
-      res.status(201).json(result);
-    } catch (error) {
-      next(error);
-    }
-  },
-);
-
-router.get(
-  '/admin/agent-gateway/sessions',
-  requireAdmin,
-  async (req, res, next) => {
-    try {
-      const query = assertAllowedQueryFields(req.query, {
-        allowed: [
-          'source',
-          'limit',
-          'channel',
-          'provider',
-          'connector',
-          'status',
-        ],
-        endpoint: '/api/admin/agent-gateway/sessions',
-      });
-      const source = parseAgentGatewaySourceQuery(query.source);
-      const limit = parseBoundedQueryInt(query.limit, {
-        fieldName: 'limit',
-        defaultValue: 50,
-        min: 1,
-        max: 200,
-      });
-      const channelFilter = parseOptionalGatewayChannelQueryString(
-        query.channel,
-        {
-          fieldName: 'channel',
-        },
-      );
-      const providerFilter = parseOptionalProviderIdentifierQueryString(
-        query.provider,
-        {
-          fieldName: 'provider',
-        },
-      );
-      const connectorFilter = parseOptionalGatewayConnectorIdQueryString(
-        query.connector,
-        {
-          fieldName: 'connector',
-        },
-      );
-      const statusFilter = parseOptionalGatewaySessionStatusQuery(
-        query.status,
-        {
-          fieldName: 'status',
-        },
-      );
-      const sessions =
-        source === 'memory'
-          ? agentGatewayService.listSessions(limit, {
-              channel: channelFilter,
-              provider: providerFilter,
-              connector: connectorFilter,
-              status: statusFilter,
+    const commandResult = await sandboxExecutionService.runCommand({
+      command: 'echo sandbox_smoke_ok',
+      sandboxId,
+    });
+    const codeResult = await sandboxExecutionService.runCode({
+      code,
+      language,
+      sandboxId,
+      timeoutMs,
+    });
+    const artifactPaths =
+      files.length > 0
+        ? (
+            await sandboxExecutionService.downloadArtifacts({
+              paths: files.map((file) => file.path),
+              sandboxId,
             })
-          : await agentGatewayService.listPersistedSessions(limit, {
-              channel: channelFilter,
-              provider: providerFilter,
-              connector: connectorFilter,
-              status: statusFilter,
-            });
-      res.json({
-        source,
-        filters: {
-          channel: channelFilter,
-          provider: providerFilter,
-          connector: connectorFilter,
-          status: statusFilter,
-        },
-        sessions,
-      });
-    } catch (error) {
-      next(error);
+          ).artifacts.map((artifact) => artifact.path)
+        : [];
+
+    res.json({
+      artifactPaths,
+      codeResult,
+      commandResult,
+      sandbox,
+    });
+  } catch (error) {
+    next(error);
+  } finally {
+    if (sandboxId) {
+      await sandboxExecutionService.destroySandbox({ sandboxId }).catch(() => undefined);
     }
-  },
-);
+  }
+});
 
-router.get(
-  '/admin/agent-gateway/telemetry',
-  requireAdmin,
-  async (req, res, next) => {
-    try {
-      const query = assertAllowedQueryFields(req.query, {
-        allowed: ['hours', 'limit', 'channel', 'provider', 'connector'],
-        endpoint: '/api/admin/agent-gateway/telemetry',
-      });
+router.post('/admin/agent-gateway/orchestrate', requireAdmin, async (req, res, next) => {
+  try {
+    if (env.AGENT_ORCHESTRATION_ENABLED !== 'true') {
+      throw new ServiceError(
+        'AGENT_ORCHESTRATION_DISABLED',
+        'Agent orchestration is disabled by feature flag.',
+        503,
+      );
+    }
 
-      const hours = parseBoundedQueryInt(query.hours, {
-        fieldName: 'hours',
-        defaultValue: 24,
-        min: 1,
-        max: 720,
-      });
-      const limit = parseBoundedQueryInt(query.limit, {
-        fieldName: 'limit',
-        defaultValue: 200,
-        min: 1,
-        max: 1000,
-      });
-      const channelFilter = parseOptionalGatewayChannelQueryString(
-        query.channel,
-        {
-          fieldName: 'channel',
-        },
-      );
-      const providerFilter = parseOptionalProviderIdentifierQueryString(
-        query.provider,
-        {
-          fieldName: 'provider',
-        },
-      );
-      const connectorFilter = parseOptionalGatewayConnectorIdQueryString(
-        query.connector,
-        {
-          fieldName: 'connector',
-        },
-      );
+    assertAllowedQueryFields(req.query, {
+      allowed: [],
+      endpoint: '/api/admin/agent-gateway/orchestrate',
+    });
+    const body = assertAllowedBodyFields(req.body, {
+      allowed: ['draftId', 'channel', 'externalSessionId', 'promptSeed', 'hostAgentId', 'metadata'],
+      endpoint: '/api/admin/agent-gateway/orchestrate',
+    });
+    const draftId = parseRequiredUuidBodyString(body.draftId, {
+      fieldName: 'draftId',
+    });
+    const channel = parseOptionalGatewayChannelBodyString(body.channel, {
+      fieldName: 'channel',
+    });
+    const externalSessionId = parseOptionalGatewayExternalSessionIdBodyString(
+      body.externalSessionId,
+      {
+        fieldName: 'externalSessionId',
+      },
+    );
+    const promptSeed = parseOptionalBoundedBodyString(body.promptSeed, {
+      fieldName: 'promptSeed',
+      maxLength: 4000,
+    });
+    const hostAgentId = parseOptionalUuidBodyString(body.hostAgentId, {
+      fieldName: 'hostAgentId',
+    });
+    const metadata = parseOptionalObjectBody(body.metadata, {
+      fieldName: 'metadata',
+    });
 
-      const sessionsResult = await db.query(
-        `SELECT
+    const realtime = getRealtime(req);
+    const result = await draftOrchestrationService.run({
+      draftId,
+      channel,
+      externalSessionId,
+      promptSeed,
+      hostAgentId,
+      metadata,
+      onStep: realtime
+        ? (signal) => {
+            const payload = {
+              source: 'agent_gateway',
+              data: {
+                sessionId: signal.sessionId,
+                draftId: signal.draftId,
+                role: signal.role,
+                failed: signal.result.failed,
+                selectedProvider: signal.result.selectedProvider,
+                attempts: signal.result.attempts,
+                output: signal.result.output,
+              },
+            };
+            realtime.broadcast(
+              `session:${signal.sessionId}`,
+              'agent_gateway_orchestration_step',
+              payload,
+            );
+            realtime.broadcast(
+              `post:${signal.draftId}`,
+              'agent_gateway_orchestration_step',
+              payload,
+            );
+            realtime.broadcast('feed:live', 'agent_gateway_orchestration_step', payload);
+          }
+        : undefined,
+      onCompleted: realtime
+        ? (signal) => {
+            const payload = {
+              source: 'agent_gateway',
+              data: {
+                sessionId: signal.sessionId,
+                draftId: signal.draftId,
+                completed: signal.completed,
+                stepCount: signal.stepCount,
+              },
+            };
+            realtime.broadcast(
+              `session:${signal.sessionId}`,
+              'agent_gateway_orchestration_completed',
+              payload,
+            );
+            realtime.broadcast(
+              `post:${signal.draftId}`,
+              'agent_gateway_orchestration_completed',
+              payload,
+            );
+            realtime.broadcast('feed:live', 'agent_gateway_orchestration_completed', payload);
+          }
+        : undefined,
+    });
+
+    res.status(201).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/admin/agent-gateway/sessions', requireAdmin, async (req, res, next) => {
+  try {
+    const query = assertAllowedQueryFields(req.query, {
+      allowed: ['source', 'limit', 'channel', 'provider', 'connector', 'status'],
+      endpoint: '/api/admin/agent-gateway/sessions',
+    });
+    const source = parseAgentGatewaySourceQuery(query.source);
+    const limit = parseBoundedQueryInt(query.limit, {
+      fieldName: 'limit',
+      defaultValue: 50,
+      min: 1,
+      max: 200,
+    });
+    const channelFilter = parseOptionalGatewayChannelQueryString(query.channel, {
+      fieldName: 'channel',
+    });
+    const providerFilter = parseOptionalProviderIdentifierQueryString(query.provider, {
+      fieldName: 'provider',
+    });
+    const connectorFilter = parseOptionalGatewayConnectorIdQueryString(query.connector, {
+      fieldName: 'connector',
+    });
+    const statusFilter = parseOptionalGatewaySessionStatusQuery(query.status, {
+      fieldName: 'status',
+    });
+    const sessions =
+      source === 'memory'
+        ? agentGatewayService.listSessions(limit, {
+            channel: channelFilter,
+            provider: providerFilter,
+            connector: connectorFilter,
+            status: statusFilter,
+          })
+        : await agentGatewayService.listPersistedSessions(limit, {
+            channel: channelFilter,
+            provider: providerFilter,
+            connector: connectorFilter,
+            status: statusFilter,
+          });
+    res.json({
+      source,
+      filters: {
+        channel: channelFilter,
+        provider: providerFilter,
+        connector: connectorFilter,
+        status: statusFilter,
+      },
+      sessions,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/admin/agent-gateway/telemetry', requireAdmin, async (req, res, next) => {
+  try {
+    const query = assertAllowedQueryFields(req.query, {
+      allowed: ['hours', 'limit', 'channel', 'provider', 'connector'],
+      endpoint: '/api/admin/agent-gateway/telemetry',
+    });
+
+    const hours = parseBoundedQueryInt(query.hours, {
+      fieldName: 'hours',
+      defaultValue: 24,
+      min: 1,
+      max: 720,
+    });
+    const limit = parseBoundedQueryInt(query.limit, {
+      fieldName: 'limit',
+      defaultValue: 200,
+      min: 1,
+      max: 1000,
+    });
+    const channelFilter = parseOptionalGatewayChannelQueryString(query.channel, {
+      fieldName: 'channel',
+    });
+    const providerFilter = parseOptionalProviderIdentifierQueryString(query.provider, {
+      fieldName: 'provider',
+    });
+    const connectorFilter = parseOptionalGatewayConnectorIdQueryString(query.connector, {
+      fieldName: 'connector',
+    });
+
+    const sessionsResult = await db.query(
+      `SELECT
            id,
            status,
            channel,
@@ -3389,24 +3313,21 @@ router.get(
            )
          ORDER BY updated_at DESC
          LIMIT $2`,
-        [hours, limit, channelFilter, connectorFilter],
-      );
-      let sessionRows: AgentGatewayTelemetrySessionRow[] =
-        sessionsResult.rows.map((row) => ({
-          id: String(row.id ?? ''),
-          status: String(row.status ?? 'unknown'),
-          channel: String(row.channel ?? 'unknown'),
-          updatedAt: String(row.updated_at ?? ''),
-        }));
-      const sessionIds = sessionRows
-        .map((row) => row.id)
-        .filter((id) => id.length > 0);
+      [hours, limit, channelFilter, connectorFilter],
+    );
+    let sessionRows: AgentGatewayTelemetrySessionRow[] = sessionsResult.rows.map((row) => ({
+      id: String(row.id ?? ''),
+      status: String(row.status ?? 'unknown'),
+      channel: String(row.channel ?? 'unknown'),
+      updatedAt: String(row.updated_at ?? ''),
+    }));
+    const sessionIds = sessionRows.map((row) => row.id).filter((id) => id.length > 0);
 
-      const eventRows: AgentGatewayTelemetryEventRow[] =
-        sessionIds.length > 0
-          ? (
-              await db.query(
-                `SELECT
+    const eventRows: AgentGatewayTelemetryEventRow[] =
+      sessionIds.length > 0
+        ? (
+            await db.query(
+              `SELECT
                    session_id,
                    event_type,
                    payload,
@@ -3428,18 +3349,18 @@ router.get(
                      LOWER(COALESCE(payload->>'connectorId', '')) = $3
                    )
                  ORDER BY created_at DESC`,
-                [sessionIds, providerFilter, connectorFilter],
-              )
-            ).rows.map((row) => ({
-              sessionId: String(row.session_id ?? ''),
-              type: String(row.event_type ?? ''),
-              payload: toGatewayEventPayload(row.payload),
-              createdAt: String(row.created_at ?? ''),
-            }))
-          : [];
-      const adapterRows: AgentGatewayAdapterTelemetryRow[] = (
-        await db.query(
-          `SELECT
+              [sessionIds, providerFilter, connectorFilter],
+            )
+          ).rows.map((row) => ({
+            sessionId: String(row.session_id ?? ''),
+            type: String(row.event_type ?? ''),
+            payload: toGatewayEventPayload(row.payload),
+            createdAt: String(row.created_at ?? ''),
+          }))
+        : [];
+    const adapterRows: AgentGatewayAdapterTelemetryRow[] = (
+      await db.query(
+        `SELECT
              LOWER(COALESCE(metadata->>'adapter', 'unknown')) AS adapter,
              event_type,
              COUNT(*)::int AS count,
@@ -3463,23 +3384,23 @@ router.get(
                ) = $3
              )
            GROUP BY LOWER(COALESCE(metadata->>'adapter', 'unknown')), event_type`,
-          [
-            hours,
-            channelFilter,
-            providerFilter,
-            AGENT_GATEWAY_ADAPTER_ROUTE_SUCCESS_EVENT,
-            AGENT_GATEWAY_ADAPTER_ROUTE_FAILED_EVENT,
-          ],
-        )
-      ).rows.map((row) => ({
-        adapter: String(row.adapter ?? 'unknown'),
-        eventType: String(row.event_type ?? ''),
-        count: toNumber(row.count),
-        lastSeenAt: toNullableIsoTimestamp(row.last_seen_at),
-      }));
-      const ingestRows: AgentGatewayIngestTelemetryRow[] = (
-        await db.query(
-          `SELECT
+        [
+          hours,
+          channelFilter,
+          providerFilter,
+          AGENT_GATEWAY_ADAPTER_ROUTE_SUCCESS_EVENT,
+          AGENT_GATEWAY_ADAPTER_ROUTE_FAILED_EVENT,
+        ],
+      )
+    ).rows.map((row) => ({
+      adapter: String(row.adapter ?? 'unknown'),
+      eventType: String(row.event_type ?? ''),
+      count: toNumber(row.count),
+      lastSeenAt: toNullableIsoTimestamp(row.last_seen_at),
+    }));
+    const ingestRows: AgentGatewayIngestTelemetryRow[] = (
+      await db.query(
+        `SELECT
              LOWER(COALESCE(metadata->>'connectorId', 'unknown')) AS connector_id,
              LOWER(COALESCE(metadata->>'connectorRiskLevel', 'unknown')) AS connector_risk_level,
              event_type,
@@ -3510,109 +3431,88 @@ router.get(
              LOWER(COALESCE(metadata->>'connectorRiskLevel', 'unknown')),
              event_type,
              LOWER(NULLIF(metadata->>'code', ''))`,
-          [
-            hours,
-            channelFilter,
-            providerFilter,
-            connectorFilter,
-            AGENT_GATEWAY_INGEST_ACCEPT_EVENT,
-            AGENT_GATEWAY_INGEST_REPLAY_EVENT,
-            AGENT_GATEWAY_INGEST_REJECT_EVENT,
-          ],
-        )
-      ).rows.map((row) => ({
-        connectorId: String(row.connector_id ?? 'unknown'),
-        connectorRiskLevel:
-          typeof row.connector_risk_level === 'string'
-            ? row.connector_risk_level
-            : null,
-        eventType: String(row.event_type ?? ''),
-        errorCode:
-          typeof row.error_code === 'string' && row.error_code.length > 0
-            ? row.error_code
-            : null,
-        count: toNumber(row.count),
-        lastSeenAt: toNullableIsoTimestamp(row.last_seen_at),
-      }));
-      if (providerFilter || connectorFilter) {
-        const sessionIdsWithFilteredEvents = new Set(
-          eventRows.map((row) => row.sessionId),
-        );
-        sessionRows = sessionRows.filter((row) =>
-          sessionIdsWithFilteredEvents.has(row.id),
-        );
-      }
-      const snapshot = buildAgentGatewayTelemetrySnapshot(
-        sessionRows,
-        eventRows,
-        adapterRows,
-        ingestRows,
-      );
-
-      res.json({
-        windowHours: hours,
-        sampleLimit: limit,
-        generatedAt: new Date().toISOString(),
-        sessions: snapshot.sessions,
-        events: snapshot.events,
-        health: snapshot.health,
-        thresholds: snapshot.thresholds,
-        filters: {
-          channel: channelFilter,
-          provider: providerFilter,
-          connector: connectorFilter,
-        },
-        attempts: snapshot.attempts,
-        providerUsage: snapshot.providerUsage,
-        channelUsage: snapshot.channelUsage,
-        adapters: snapshot.adapters,
-        ingestConnectors: snapshot.ingestConnectors,
-        connectorPolicies: buildAgentGatewayConnectorPolicySnapshot(),
-        connectorProfiles: buildAgentGatewayConnectorProfileSnapshot(),
-      });
-    } catch (error) {
-      next(error);
+        [
+          hours,
+          channelFilter,
+          providerFilter,
+          connectorFilter,
+          AGENT_GATEWAY_INGEST_ACCEPT_EVENT,
+          AGENT_GATEWAY_INGEST_REPLAY_EVENT,
+          AGENT_GATEWAY_INGEST_REJECT_EVENT,
+        ],
+      )
+    ).rows.map((row) => ({
+      connectorId: String(row.connector_id ?? 'unknown'),
+      connectorRiskLevel:
+        typeof row.connector_risk_level === 'string' ? row.connector_risk_level : null,
+      eventType: String(row.event_type ?? ''),
+      errorCode:
+        typeof row.error_code === 'string' && row.error_code.length > 0 ? row.error_code : null,
+      count: toNumber(row.count),
+      lastSeenAt: toNullableIsoTimestamp(row.last_seen_at),
+    }));
+    if (providerFilter || connectorFilter) {
+      const sessionIdsWithFilteredEvents = new Set(eventRows.map((row) => row.sessionId));
+      sessionRows = sessionRows.filter((row) => sessionIdsWithFilteredEvents.has(row.id));
     }
-  },
-);
+    const snapshot = buildAgentGatewayTelemetrySnapshot(
+      sessionRows,
+      eventRows,
+      adapterRows,
+      ingestRows,
+    );
 
-router.get(
-  '/admin/agent-gateway/adapters',
-  requireAdmin,
-  async (req, res, next) => {
-    try {
-      const query = assertAllowedQueryFields(req.query, {
-        allowed: ['hours', 'channel', 'provider', 'connector'],
-        endpoint: '/api/admin/agent-gateway/adapters',
-      });
-      const hours = parseBoundedQueryInt(query.hours, {
-        fieldName: 'hours',
-        defaultValue: 24,
-        min: 1,
-        max: 720,
-      });
-      const channelFilter = parseOptionalGatewayChannelQueryString(
-        query.channel,
-        {
-          fieldName: 'channel',
-        },
-      );
-      const providerFilter = parseOptionalProviderIdentifierQueryString(
-        query.provider,
-        {
-          fieldName: 'provider',
-        },
-      );
-      const connectorFilter = parseOptionalGatewayConnectorIdQueryString(
-        query.connector,
-        {
-          fieldName: 'connector',
-        },
-      );
+    res.json({
+      windowHours: hours,
+      sampleLimit: limit,
+      generatedAt: new Date().toISOString(),
+      sessions: snapshot.sessions,
+      events: snapshot.events,
+      health: snapshot.health,
+      thresholds: snapshot.thresholds,
+      filters: {
+        channel: channelFilter,
+        provider: providerFilter,
+        connector: connectorFilter,
+      },
+      attempts: snapshot.attempts,
+      providerUsage: snapshot.providerUsage,
+      channelUsage: snapshot.channelUsage,
+      adapters: snapshot.adapters,
+      ingestConnectors: snapshot.ingestConnectors,
+      connectorPolicies: buildAgentGatewayConnectorPolicySnapshot(),
+      connectorProfiles: buildAgentGatewayConnectorProfileSnapshot(),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
-      const adapterRows: AgentGatewayAdapterTelemetryRow[] = (
-        await db.query(
-          `SELECT
+router.get('/admin/agent-gateway/adapters', requireAdmin, async (req, res, next) => {
+  try {
+    const query = assertAllowedQueryFields(req.query, {
+      allowed: ['hours', 'channel', 'provider', 'connector'],
+      endpoint: '/api/admin/agent-gateway/adapters',
+    });
+    const hours = parseBoundedQueryInt(query.hours, {
+      fieldName: 'hours',
+      defaultValue: 24,
+      min: 1,
+      max: 720,
+    });
+    const channelFilter = parseOptionalGatewayChannelQueryString(query.channel, {
+      fieldName: 'channel',
+    });
+    const providerFilter = parseOptionalProviderIdentifierQueryString(query.provider, {
+      fieldName: 'provider',
+    });
+    const connectorFilter = parseOptionalGatewayConnectorIdQueryString(query.connector, {
+      fieldName: 'connector',
+    });
+
+    const adapterRows: AgentGatewayAdapterTelemetryRow[] = (
+      await db.query(
+        `SELECT
              LOWER(COALESCE(metadata->>'adapter', 'unknown')) AS adapter,
              event_type,
              COUNT(*)::int AS count,
@@ -3633,23 +3533,23 @@ router.get(
                ) = $3
              )
            GROUP BY LOWER(COALESCE(metadata->>'adapter', 'unknown')), event_type`,
-          [
-            hours,
-            channelFilter,
-            providerFilter,
-            AGENT_GATEWAY_ADAPTER_ROUTE_SUCCESS_EVENT,
-            AGENT_GATEWAY_ADAPTER_ROUTE_FAILED_EVENT,
-          ],
-        )
-      ).rows.map((row) => ({
-        adapter: String(row.adapter ?? 'unknown'),
-        eventType: String(row.event_type ?? ''),
-        count: toNumber(row.count),
-        lastSeenAt: toNullableIsoTimestamp(row.last_seen_at),
-      }));
-      const ingestRows: AgentGatewayIngestTelemetryRow[] = (
-        await db.query(
-          `SELECT
+        [
+          hours,
+          channelFilter,
+          providerFilter,
+          AGENT_GATEWAY_ADAPTER_ROUTE_SUCCESS_EVENT,
+          AGENT_GATEWAY_ADAPTER_ROUTE_FAILED_EVENT,
+        ],
+      )
+    ).rows.map((row) => ({
+      adapter: String(row.adapter ?? 'unknown'),
+      eventType: String(row.event_type ?? ''),
+      count: toNumber(row.count),
+      lastSeenAt: toNullableIsoTimestamp(row.last_seen_at),
+    }));
+    const ingestRows: AgentGatewayIngestTelemetryRow[] = (
+      await db.query(
+        `SELECT
              LOWER(COALESCE(metadata->>'connectorId', 'unknown')) AS connector_id,
              LOWER(COALESCE(metadata->>'connectorRiskLevel', 'unknown')) AS connector_risk_level,
              event_type,
@@ -3680,56 +3580,50 @@ router.get(
              LOWER(COALESCE(metadata->>'connectorRiskLevel', 'unknown')),
              event_type,
              LOWER(NULLIF(metadata->>'code', ''))`,
-          [
-            hours,
-            channelFilter,
-            providerFilter,
-            connectorFilter,
-            AGENT_GATEWAY_INGEST_ACCEPT_EVENT,
-            AGENT_GATEWAY_INGEST_REPLAY_EVENT,
-            AGENT_GATEWAY_INGEST_REJECT_EVENT,
-          ],
-        )
-      ).rows.map((row) => ({
-        connectorId: String(row.connector_id ?? 'unknown'),
-        connectorRiskLevel:
-          typeof row.connector_risk_level === 'string'
-            ? row.connector_risk_level
-            : null,
-        eventType: String(row.event_type ?? ''),
-        errorCode:
-          typeof row.error_code === 'string' && row.error_code.length > 0
-            ? row.error_code
-            : null,
-        count: toNumber(row.count),
-        lastSeenAt: toNullableIsoTimestamp(row.last_seen_at),
-      }));
+        [
+          hours,
+          channelFilter,
+          providerFilter,
+          connectorFilter,
+          AGENT_GATEWAY_INGEST_ACCEPT_EVENT,
+          AGENT_GATEWAY_INGEST_REPLAY_EVENT,
+          AGENT_GATEWAY_INGEST_REJECT_EVENT,
+        ],
+      )
+    ).rows.map((row) => ({
+      connectorId: String(row.connector_id ?? 'unknown'),
+      connectorRiskLevel:
+        typeof row.connector_risk_level === 'string' ? row.connector_risk_level : null,
+      eventType: String(row.event_type ?? ''),
+      errorCode:
+        typeof row.error_code === 'string' && row.error_code.length > 0 ? row.error_code : null,
+      count: toNumber(row.count),
+      lastSeenAt: toNullableIsoTimestamp(row.last_seen_at),
+    }));
 
-      const adapters = buildAgentGatewayAdapterMetrics(adapterRows, {
-        includeRegistry: true,
-      });
-      const ingestConnectors =
-        buildAgentGatewayIngestConnectorMetrics(ingestRows);
-      const connectorPolicies = buildAgentGatewayConnectorPolicySnapshot();
-      const connectorProfiles = buildAgentGatewayConnectorProfileSnapshot();
-      res.json({
-        windowHours: hours,
-        generatedAt: new Date().toISOString(),
-        filters: {
-          channel: channelFilter,
-          provider: providerFilter,
-          connector: connectorFilter,
-        },
-        adapters,
-        ingestConnectors,
-        connectorPolicies,
-        connectorProfiles,
-      });
-    } catch (error) {
-      next(error);
-    }
-  },
-);
+    const adapters = buildAgentGatewayAdapterMetrics(adapterRows, {
+      includeRegistry: true,
+    });
+    const ingestConnectors = buildAgentGatewayIngestConnectorMetrics(ingestRows);
+    const connectorPolicies = buildAgentGatewayConnectorPolicySnapshot();
+    const connectorProfiles = buildAgentGatewayConnectorProfileSnapshot();
+    res.json({
+      windowHours: hours,
+      generatedAt: new Date().toISOString(),
+      filters: {
+        channel: channelFilter,
+        provider: providerFilter,
+        connector: connectorFilter,
+      },
+      adapters,
+      ingestConnectors,
+      connectorPolicies,
+      connectorProfiles,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.post(
   '/admin/release-health/external-channel-alerts',
@@ -3768,13 +3662,10 @@ router.post(
         fieldName: 'repository',
         maxLength: 200,
       });
-      const generatedAtUtc = parseOptionalBoundedBodyString(
-        body.generatedAtUtc,
-        {
-          fieldName: 'generatedAtUtc',
-          maxLength: 64,
-        },
-      );
+      const generatedAtUtc = parseOptionalBoundedBodyString(body.generatedAtUtc, {
+        fieldName: 'generatedAtUtc',
+        maxLength: 64,
+      });
       if (generatedAtUtc && Number.isNaN(Date.parse(generatedAtUtc))) {
         throw new ServiceError(
           'ADMIN_INVALID_BODY',
@@ -3799,11 +3690,7 @@ router.post(
       });
 
       if (!Array.isArray(body.firstAppearances)) {
-        throw new ServiceError(
-          'ADMIN_INVALID_BODY',
-          'firstAppearances must be an array.',
-          400,
-        );
+        throw new ServiceError('ADMIN_INVALID_BODY', 'firstAppearances must be an array.', 400);
       }
       if (body.firstAppearances.length > 20) {
         throw new ServiceError(
@@ -3831,9 +3718,7 @@ router.post(
           'runNumber',
           'runUrl',
         ]);
-        const unsupported = Object.keys(parsed).filter(
-          (key) => !allowedKeys.has(key),
-        );
+        const unsupported = Object.keys(parsed).filter((key) => !allowedKeys.has(key));
         if (unsupported.length > 0) {
           throw new ServiceError(
             'ADMIN_INVALID_BODY',
@@ -3870,10 +3755,7 @@ router.post(
           fieldName: `firstAppearances[${index}].connectorId`,
           maxLength: 64,
         });
-        if (
-          connectorId &&
-          !AGENT_GATEWAY_CONNECTOR_ID_PATTERN.test(connectorId.toLowerCase())
-        ) {
+        if (connectorId && !AGENT_GATEWAY_CONNECTOR_ID_PATTERN.test(connectorId.toLowerCase())) {
           throw new ServiceError(
             'ADMIN_INVALID_BODY',
             `firstAppearances[${index}].connectorId must use a valid connector id format.`,
@@ -3893,10 +3775,7 @@ router.post(
         }
         if (
           parsed.runNumber !== undefined &&
-          !(
-            typeof parsed.runNumber === 'number' &&
-            Number.isInteger(parsed.runNumber)
-          )
+          !(typeof parsed.runNumber === 'number' && Number.isInteger(parsed.runNumber))
         ) {
           throw new ServiceError(
             'ADMIN_INVALID_BODY',
@@ -3905,12 +3784,9 @@ router.post(
           );
         }
         const runId =
-          typeof parsed.runId === 'number' && Number.isInteger(parsed.runId)
-            ? parsed.runId
-            : null;
+          typeof parsed.runId === 'number' && Number.isInteger(parsed.runId) ? parsed.runId : null;
         const runNumber =
-          typeof parsed.runNumber === 'number' &&
-          Number.isInteger(parsed.runNumber)
+          typeof parsed.runNumber === 'number' && Number.isInteger(parsed.runNumber)
             ? parsed.runNumber
             : null;
         const runUrl = parseOptionalBoundedBodyString(parsed.runUrl, {
@@ -3967,92 +3843,75 @@ router.post(
   },
 );
 
-router.post(
-  '/admin/agent-gateway/sessions',
-  requireAdmin,
-  async (req, res, next) => {
-    try {
-      assertAllowedQueryFields(req.query, {
-        allowed: [],
-        endpoint: '/api/admin/agent-gateway/sessions',
-      });
-      const body = assertAllowedBodyFields(req.body, {
-        allowed: [
-          'channel',
-          'draftId',
-          'externalSessionId',
-          'roles',
-          'metadata',
-        ],
-        endpoint: '/api/admin/agent-gateway/sessions',
-      });
+router.post('/admin/agent-gateway/sessions', requireAdmin, async (req, res, next) => {
+  try {
+    assertAllowedQueryFields(req.query, {
+      allowed: [],
+      endpoint: '/api/admin/agent-gateway/sessions',
+    });
+    const body = assertAllowedBodyFields(req.body, {
+      allowed: ['channel', 'draftId', 'externalSessionId', 'roles', 'metadata'],
+      endpoint: '/api/admin/agent-gateway/sessions',
+    });
 
-      const channel = parseRequiredGatewayChannelBodyString(body.channel, {
-        fieldName: 'channel',
-      });
-      const draftId =
-        parseOptionalUuidBodyString(body.draftId, {
-          fieldName: 'draftId',
-        }) ?? null;
-      const externalSessionId =
-        parseOptionalGatewayExternalSessionIdBodyString(
-          body.externalSessionId,
-          {
-            fieldName: 'externalSessionId',
-          },
-        ) ?? null;
-      const roles = parseOptionalGatewayRolesBody(body.roles, {
-        fieldName: 'roles',
-        maxItems: 12,
-        maxItemLength: 64,
-      });
-      const metadata = parseOptionalObjectBody(body.metadata, {
-        fieldName: 'metadata',
-      });
+    const channel = parseRequiredGatewayChannelBodyString(body.channel, {
+      fieldName: 'channel',
+    });
+    const draftId =
+      parseOptionalUuidBodyString(body.draftId, {
+        fieldName: 'draftId',
+      }) ?? null;
+    const externalSessionId =
+      parseOptionalGatewayExternalSessionIdBodyString(body.externalSessionId, {
+        fieldName: 'externalSessionId',
+      }) ?? null;
+    const roles = parseOptionalGatewayRolesBody(body.roles, {
+      fieldName: 'roles',
+      maxItems: 12,
+      maxItemLength: 64,
+    });
+    const metadata = parseOptionalObjectBody(body.metadata, {
+      fieldName: 'metadata',
+    });
 
-      const session = agentGatewayService.createSession({
-        channel,
-        externalSessionId,
-        draftId,
-        roles,
-        metadata,
-      });
-      await agentGatewayService.persistSession(session);
-      res.status(201).json({ session });
-    } catch (error) {
-      next(error);
+    const session = agentGatewayService.createSession({
+      channel,
+      externalSessionId,
+      draftId,
+      roles,
+      metadata,
+    });
+    await agentGatewayService.persistSession(session);
+    res.status(201).json({ session });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/admin/agent-gateway/sessions/:sessionId', requireAdmin, async (req, res, next) => {
+  try {
+    const sessionId = parseAgentGatewaySessionIdParam(req.params.sessionId);
+    const query = assertAllowedQueryFields(req.query, {
+      allowed: ['source'],
+      endpoint: '/api/admin/agent-gateway/sessions/:sessionId',
+    });
+    const source = parseAgentGatewaySourceQuery(query.source);
+    const detail =
+      source === 'memory'
+        ? agentGatewayService.getSession(sessionId)
+        : await agentGatewayService.getPersistedSession(sessionId);
+    if (!detail) {
+      throw new ServiceError(
+        'AGENT_GATEWAY_SESSION_NOT_FOUND',
+        'Agent gateway session not found.',
+        404,
+      );
     }
-  },
-);
-
-router.get(
-  '/admin/agent-gateway/sessions/:sessionId',
-  requireAdmin,
-  async (req, res, next) => {
-    try {
-      const sessionId = parseAgentGatewaySessionIdParam(req.params.sessionId);
-      const query = assertAllowedQueryFields(req.query, {
-        allowed: ['source'],
-        endpoint: '/api/admin/agent-gateway/sessions/:sessionId',
-      });
-      const source = parseAgentGatewaySourceQuery(query.source);
-      const detail =
-        source === 'memory'
-          ? agentGatewayService.getSession(sessionId)
-          : await agentGatewayService.getPersistedSession(sessionId);
-      if (!detail) {
-        throw new ServiceError(
-          'AGENT_GATEWAY_SESSION_NOT_FOUND',
-          'Agent gateway session not found.',
-          404,
-        );
-      }
-      res.json(detail);
-    } catch (error) {
-      next(error);
-    }
-  },
-);
+    res.json(detail);
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.get(
   '/admin/agent-gateway/sessions/:sessionId/events',
@@ -4074,39 +3933,24 @@ router.get(
         endpoint: '/api/admin/agent-gateway/sessions/:sessionId/events',
       });
       const source = parseAgentGatewaySourceQuery(query.source);
-      const eventTypeFilter = parseOptionalGatewayEventTypeQueryString(
-        query.eventType,
-        {
-          fieldName: 'eventType',
-        },
-      );
-      const eventQueryFilter = parseOptionalGatewayEventQueryString(
-        query.eventQuery,
-        {
-          fieldName: 'eventQuery',
-        },
-      );
-      const fromRoleFilter = parseOptionalGatewayRoleQueryString(
-        query.fromRole,
-        {
-          fieldName: 'fromRole',
-        },
-      );
+      const eventTypeFilter = parseOptionalGatewayEventTypeQueryString(query.eventType, {
+        fieldName: 'eventType',
+      });
+      const eventQueryFilter = parseOptionalGatewayEventQueryString(query.eventQuery, {
+        fieldName: 'eventQuery',
+      });
+      const fromRoleFilter = parseOptionalGatewayRoleQueryString(query.fromRole, {
+        fieldName: 'fromRole',
+      });
       const toRoleFilter = parseOptionalGatewayRoleQueryString(query.toRole, {
         fieldName: 'toRole',
       });
-      const providerFilter = parseOptionalProviderIdentifierQueryString(
-        query.provider,
-        {
-          fieldName: 'provider',
-        },
-      );
-      const connectorFilter = parseOptionalGatewayConnectorIdQueryString(
-        query.connector,
-        {
-          fieldName: 'connector',
-        },
-      );
+      const providerFilter = parseOptionalProviderIdentifierQueryString(query.provider, {
+        fieldName: 'provider',
+      });
+      const connectorFilter = parseOptionalGatewayConnectorIdQueryString(query.connector, {
+        fieldName: 'connector',
+      });
       const limit = parseBoundedQueryInt(query.limit, {
         fieldName: 'limit',
         defaultValue: 10,
@@ -4143,9 +3987,7 @@ router.get(
         }
         if (toRoleFilter) {
           eventFilterParams.push(toRoleFilter);
-          eventFilterClauses.push(
-            `COALESCE(to_role, '') = $${eventFilterParams.length}`,
-          );
+          eventFilterClauses.push(`COALESCE(to_role, '') = $${eventFilterParams.length}`);
         }
         if (providerFilter) {
           eventFilterParams.push(providerFilter);
@@ -4200,13 +4042,10 @@ router.get(
           sessionId: String(row.session_id ?? ''),
           fromRole: String(row.from_role ?? ''),
           toRole:
-            typeof row.to_role === 'string' && row.to_role.trim().length > 0
-              ? row.to_role
-              : null,
+            typeof row.to_role === 'string' && row.to_role.trim().length > 0 ? row.to_role : null,
           type: String(row.event_type ?? ''),
           payload: toGatewayEventPayload(row.payload),
-          createdAt:
-            toNullableIsoTimestamp(row.created_at) ?? new Date().toISOString(),
+          createdAt: toNullableIsoTimestamp(row.created_at) ?? new Date().toISOString(),
         }));
         const sessionRow = sessionResult.rows[0] as Record<string, unknown>;
 
@@ -4216,18 +4055,14 @@ router.get(
             id: String(sessionRow.id ?? sessionId),
             channel: String(sessionRow.channel ?? ''),
             draftId:
-              typeof sessionRow.draft_id === 'string' &&
-              sessionRow.draft_id.length > 0
+              typeof sessionRow.draft_id === 'string' && sessionRow.draft_id.length > 0
                 ? sessionRow.draft_id
                 : null,
             status:
-              typeof sessionRow.status === 'string' &&
-              sessionRow.status.toLowerCase() === 'closed'
+              typeof sessionRow.status === 'string' && sessionRow.status.toLowerCase() === 'closed'
                 ? 'closed'
                 : 'active',
-            updatedAt:
-              toNullableIsoTimestamp(sessionRow.updated_at) ??
-              new Date().toISOString(),
+            updatedAt: toNullableIsoTimestamp(sessionRow.updated_at) ?? new Date().toISOString(),
           },
           filters: {
             eventType: eventTypeFilter,
@@ -4268,9 +4103,7 @@ router.get(
         if (connectorFilter) {
           const eventConnectorRaw = event.payload.connectorId;
           const eventConnector =
-            typeof eventConnectorRaw === 'string'
-              ? eventConnectorRaw.trim().toLowerCase()
-              : '';
+            typeof eventConnectorRaw === 'string' ? eventConnectorRaw.trim().toLowerCase() : '';
           if (eventConnector !== connectorFilter) {
             return false;
           }
@@ -4436,14 +4269,10 @@ router.post(
       const detail = agentGatewayService.getSession(sessionId);
       await agentGatewayService.persistSession(detail.session);
 
-      getRealtime(req)?.broadcast(
-        `session:${sessionId}`,
-        'agent_gateway_event',
-        {
-          source: 'agent_gateway',
-          data: event,
-        },
-      );
+      getRealtime(req)?.broadcast(`session:${sessionId}`, 'agent_gateway_event', {
+        source: 'agent_gateway',
+        data: event,
+      });
 
       res.status(201).json({ event });
     } catch (error) {
@@ -4473,20 +4302,13 @@ router.post(
         invalidCode: 'ADMIN_INVALID_BODY',
       });
 
-      const result = await agentGatewayService.compactSession(
-        sessionId,
-        keepRecent,
-      );
+      const result = await agentGatewayService.compactSession(sessionId, keepRecent);
 
       const realtime = getRealtime(req);
-      realtime?.broadcast(
-        `session:${sessionId}`,
-        'agent_gateway_session_compacted',
-        {
-          source: 'agent_gateway',
-          data: result,
-        },
-      );
+      realtime?.broadcast(`session:${sessionId}`, 'agent_gateway_session_compacted', {
+        source: 'agent_gateway',
+        data: result,
+      });
       const draftId = result.session.draftId;
       if (draftId) {
         const compactPayload = {
@@ -4500,16 +4322,8 @@ router.post(
             totalAfter: result.totalAfter,
           },
         };
-        realtime?.broadcast(
-          `post:${draftId}`,
-          'agent_gateway_session_compacted',
-          compactPayload,
-        );
-        realtime?.broadcast(
-          'feed:live',
-          'agent_gateway_session_compacted',
-          compactPayload,
-        );
+        realtime?.broadcast(`post:${draftId}`, 'agent_gateway_session_compacted', compactPayload);
+        realtime?.broadcast('feed:live', 'agent_gateway_session_compacted', compactPayload);
       }
       realtime?.broadcast(`session:${sessionId}`, 'agent_gateway_event', {
         source: 'agent_gateway',
@@ -4540,18 +4354,14 @@ router.post(
       const session = agentGatewayService.closeSession(sessionId);
       await agentGatewayService.persistSession(session);
 
-      getRealtime(req)?.broadcast(
-        `session:${sessionId}`,
-        'agent_gateway_session',
-        {
-          source: 'agent_gateway',
-          data: {
-            sessionId: session.id,
-            status: session.status,
-            updatedAt: session.updatedAt,
-          },
+      getRealtime(req)?.broadcast(`session:${sessionId}`, 'agent_gateway_session', {
+        source: 'agent_gateway',
+        data: {
+          sessionId: session.id,
+          status: session.status,
+          updatedAt: session.updatedAt,
         },
-      );
+      });
 
       res.json({ session });
     } catch (error) {
@@ -4580,11 +4390,7 @@ router.get('/admin/budgets/remaining', requireAdmin, async (req, res, next) => {
     const dateKey = getUtcDateKey(date);
 
     if (!(agentId || draftId)) {
-      throw new ServiceError(
-        'MISSING_TARGET',
-        'agentId or draftId is required.',
-        400,
-      );
+      throw new ServiceError('MISSING_TARGET', 'agentId or draftId is required.', 400);
     }
 
     const response: BudgetRemainingPayload = { date: dateKey };
@@ -4711,240 +4517,185 @@ router.get('/admin/system/metrics', requireAdmin, async (req, res, next) => {
   }
 });
 
-router.get(
-  '/admin/verification/metrics',
-  requireAdmin,
-  async (req, res, next) => {
-    try {
-      assertAllowedQueryFields(req.query, {
-        allowed: [],
-        endpoint: '/api/admin/verification/metrics',
-      });
+router.get('/admin/verification/metrics', requireAdmin, async (req, res, next) => {
+  try {
+    assertAllowedQueryFields(req.query, {
+      allowed: [],
+      endpoint: '/api/admin/verification/metrics',
+    });
 
-      const metrics = await authService.getVerificationMetrics();
-      res.json(metrics);
-    } catch (error) {
-      next(error);
+    const metrics = await authService.getVerificationMetrics();
+    res.json(metrics);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/admin/verification/revoke', requireAdmin, async (req, res, next) => {
+  try {
+    assertAllowedQueryFields(req.query, {
+      allowed: [],
+      endpoint: '/api/admin/verification/revoke',
+    });
+    const body = assertAllowedBodyFields(req.body, {
+      allowed: ['agentId', 'reason'],
+      endpoint: '/api/admin/verification/revoke',
+    });
+
+    const agentId = typeof body.agentId === 'string' ? body.agentId.trim() : '';
+    if (!UUID_PATTERN.test(agentId)) {
+      throw new ServiceError('ADMIN_INVALID_BODY', 'agentId must be a UUID.', 400);
     }
-  },
-);
 
-router.post(
-  '/admin/verification/revoke',
-  requireAdmin,
-  async (req, res, next) => {
-    try {
-      assertAllowedQueryFields(req.query, {
-        allowed: [],
-        endpoint: '/api/admin/verification/revoke',
-      });
-      const body = assertAllowedBodyFields(req.body, {
-        allowed: ['agentId', 'reason'],
-        endpoint: '/api/admin/verification/revoke',
-      });
-
-      const agentId =
-        typeof body.agentId === 'string' ? body.agentId.trim() : '';
-      if (!UUID_PATTERN.test(agentId)) {
+    let reason: string | undefined;
+    if (body.reason !== undefined) {
+      if (typeof body.reason !== 'string') {
+        throw new ServiceError('ADMIN_INVALID_BODY', 'reason must be a string.', 400);
+      }
+      const normalizedReason = body.reason.trim();
+      if (normalizedReason.length > VERIFICATION_REVOKE_REASON_MAX_LENGTH) {
         throw new ServiceError(
           'ADMIN_INVALID_BODY',
-          'agentId must be a UUID.',
+          `reason must be at most ${VERIFICATION_REVOKE_REASON_MAX_LENGTH} characters.`,
           400,
         );
       }
-
-      let reason: string | undefined;
-      if (body.reason !== undefined) {
-        if (typeof body.reason !== 'string') {
-          throw new ServiceError(
-            'ADMIN_INVALID_BODY',
-            'reason must be a string.',
-            400,
-          );
-        }
-        const normalizedReason = body.reason.trim();
-        if (normalizedReason.length > VERIFICATION_REVOKE_REASON_MAX_LENGTH) {
-          throw new ServiceError(
-            'ADMIN_INVALID_BODY',
-            `reason must be at most ${VERIFICATION_REVOKE_REASON_MAX_LENGTH} characters.`,
-            400,
-          );
-        }
-        reason = normalizedReason || undefined;
-      }
-
-      const summary = await authService.revokeAgentVerification({
-        agentId: agentId.toLowerCase(),
-        reason,
-      });
-      res.json(summary);
-    } catch (error) {
-      next(error);
+      reason = normalizedReason || undefined;
     }
-  },
-);
 
-router.get(
-  '/admin/sandbox-execution/metrics',
-  requireAdmin,
-  async (req, res, next) => {
-    try {
-      const query = assertAllowedQueryFields(req.query, {
-        allowed: [
-          'hours',
-          'operation',
-          'mode',
-          'status',
-          'limit',
-          'egressProfile',
-          'egressDecision',
-          'limitsProfile',
-          'limitsDecision',
-          'correlationId',
-          'releaseRunId',
-          'executionSessionId',
-        ],
-        endpoint: '/api/admin/sandbox-execution/metrics',
-      });
-      const hours = parseBoundedQueryInt(query.hours, {
-        fieldName: 'hours',
-        defaultValue: 24,
-        min: 1,
-        max: 720,
-      });
-      const operation = parseOptionalSandboxExecutionOperationQueryString(
-        query.operation,
-        {
-          fieldName: 'operation',
-        },
-      );
-      const mode = parseOptionalSandboxExecutionModeQuery(query.mode, {
-        fieldName: 'mode',
-      });
-      const status = parseOptionalSandboxExecutionStatusQuery(query.status, {
-        fieldName: 'status',
-      });
-      const egressProfile = parseOptionalSandboxExecutionEgressProfileQuery(
-        query.egressProfile,
-        {
-          fieldName: 'egressProfile',
-        },
-      );
-      const egressDecision = parseOptionalSandboxExecutionEgressDecisionQuery(
-        query.egressDecision,
-        {
-          fieldName: 'egressDecision',
-        },
-      );
-      const limitsProfile = parseOptionalSandboxExecutionLimitProfileQuery(
-        query.limitsProfile,
-        {
-          fieldName: 'limitsProfile',
-        },
-      );
-      const limitsDecision = parseOptionalSandboxExecutionLimitDecisionQuery(
-        query.limitsDecision,
-        {
-          fieldName: 'limitsDecision',
-        },
-      );
-      const correlationId = parseOptionalReleaseCorrelationQueryString(
-        query.correlationId,
-        {
-          fieldName: 'correlationId',
-        },
-      );
-      const releaseRunId = parseOptionalReleaseCorrelationQueryString(
-        query.releaseRunId,
-        {
-          fieldName: 'releaseRunId',
-        },
-      );
-      const executionSessionId = parseOptionalReleaseCorrelationQueryString(
-        query.executionSessionId,
-        {
-          fieldName: 'executionSessionId',
-        },
-      );
-      const limit = parseBoundedQueryInt(query.limit, {
-        fieldName: 'limit',
-        defaultValue: 20,
-        min: 1,
-        max: 200,
-      });
+    const summary = await authService.revokeAgentVerification({
+      agentId: agentId.toLowerCase(),
+      reason,
+    });
+    res.json(summary);
+  } catch (error) {
+    next(error);
+  }
+});
 
-      const filters: string[] = [
-        'source = $1',
-        'event_type = $2',
-        "created_at >= NOW() - ($3 || ' hours')::interval",
-      ];
-      const params: unknown[] = [
-        SANDBOX_EXECUTION_TELEMETRY_SOURCE,
-        SANDBOX_EXECUTION_TELEMETRY_EVENT_TYPE,
-        hours,
-      ];
+router.get('/admin/sandbox-execution/metrics', requireAdmin, async (req, res, next) => {
+  try {
+    const query = assertAllowedQueryFields(req.query, {
+      allowed: [
+        'hours',
+        'operation',
+        'mode',
+        'status',
+        'limit',
+        'egressProfile',
+        'egressDecision',
+        'limitsProfile',
+        'limitsDecision',
+        'correlationId',
+        'releaseRunId',
+        'executionSessionId',
+      ],
+      endpoint: '/api/admin/sandbox-execution/metrics',
+    });
+    const hours = parseBoundedQueryInt(query.hours, {
+      fieldName: 'hours',
+      defaultValue: 24,
+      min: 1,
+      max: 720,
+    });
+    const operation = parseOptionalSandboxExecutionOperationQueryString(query.operation, {
+      fieldName: 'operation',
+    });
+    const mode = parseOptionalSandboxExecutionModeQuery(query.mode, {
+      fieldName: 'mode',
+    });
+    const status = parseOptionalSandboxExecutionStatusQuery(query.status, {
+      fieldName: 'status',
+    });
+    const egressProfile = parseOptionalSandboxExecutionEgressProfileQuery(query.egressProfile, {
+      fieldName: 'egressProfile',
+    });
+    const egressDecision = parseOptionalSandboxExecutionEgressDecisionQuery(query.egressDecision, {
+      fieldName: 'egressDecision',
+    });
+    const limitsProfile = parseOptionalSandboxExecutionLimitProfileQuery(query.limitsProfile, {
+      fieldName: 'limitsProfile',
+    });
+    const limitsDecision = parseOptionalSandboxExecutionLimitDecisionQuery(query.limitsDecision, {
+      fieldName: 'limitsDecision',
+    });
+    const correlationId = parseOptionalReleaseCorrelationQueryString(query.correlationId, {
+      fieldName: 'correlationId',
+    });
+    const releaseRunId = parseOptionalReleaseCorrelationQueryString(query.releaseRunId, {
+      fieldName: 'releaseRunId',
+    });
+    const executionSessionId = parseOptionalReleaseCorrelationQueryString(
+      query.executionSessionId,
+      {
+        fieldName: 'executionSessionId',
+      },
+    );
+    const limit = parseBoundedQueryInt(query.limit, {
+      fieldName: 'limit',
+      defaultValue: 20,
+      min: 1,
+      max: 200,
+    });
 
-      if (operation) {
-        params.push(operation);
-        filters.push(
-          `LOWER(COALESCE(metadata->>'operation', '')) = $${params.length}`,
-        );
-      }
-      if (mode) {
-        params.push(mode);
-        filters.push(
-          `LOWER(COALESCE(metadata->>'mode', 'unknown')) = $${params.length}`,
-        );
-      }
-      if (status) {
-        params.push(status);
-        filters.push(`status = $${params.length}`);
-      }
-      if (egressProfile) {
-        params.push(egressProfile);
-        filters.push(
-          `LOWER(COALESCE(metadata->>'egressProfile', '')) = $${params.length}`,
-        );
-      }
-      if (egressDecision) {
-        params.push(egressDecision);
-        filters.push(
-          `LOWER(COALESCE(metadata->>'egressDecision', 'not_enforced')) = $${params.length}`,
-        );
-      }
-      if (limitsProfile) {
-        params.push(limitsProfile);
-        filters.push(
-          `LOWER(COALESCE(metadata->>'limitsProfile', '')) = $${params.length}`,
-        );
-      }
-      if (limitsDecision) {
-        params.push(limitsDecision);
-        filters.push(
-          `LOWER(COALESCE(metadata->>'limitsDecision', 'not_enforced')) = $${params.length}`,
-        );
-      }
-      if (correlationId) {
-        params.push(correlationId);
-        filters.push(
-          `LOWER(COALESCE(metadata #>> '{audit,correlationId}', '')) = $${params.length}`,
-        );
-      }
-      if (releaseRunId) {
-        params.push(releaseRunId);
-        filters.push(
-          `LOWER(COALESCE(metadata #>> '{audit,releaseRunId}', '')) = $${params.length}`,
-        );
-      }
-      if (executionSessionId) {
-        params.push(executionSessionId);
-        filters.push(
-          `LOWER(COALESCE(metadata->>'executionSessionId', '')) = $${params.length}`,
-        );
-      }
+    const filters: string[] = [
+      'source = $1',
+      'event_type = $2',
+      "created_at >= NOW() - ($3 || ' hours')::interval",
+    ];
+    const params: unknown[] = [
+      SANDBOX_EXECUTION_TELEMETRY_SOURCE,
+      SANDBOX_EXECUTION_TELEMETRY_EVENT_TYPE,
+      hours,
+    ];
 
-      const summary = await db.query(
-        `SELECT COUNT(*)::int AS total,
+    if (operation) {
+      params.push(operation);
+      filters.push(`LOWER(COALESCE(metadata->>'operation', '')) = $${params.length}`);
+    }
+    if (mode) {
+      params.push(mode);
+      filters.push(`LOWER(COALESCE(metadata->>'mode', 'unknown')) = $${params.length}`);
+    }
+    if (status) {
+      params.push(status);
+      filters.push(`status = $${params.length}`);
+    }
+    if (egressProfile) {
+      params.push(egressProfile);
+      filters.push(`LOWER(COALESCE(metadata->>'egressProfile', '')) = $${params.length}`);
+    }
+    if (egressDecision) {
+      params.push(egressDecision);
+      filters.push(
+        `LOWER(COALESCE(metadata->>'egressDecision', 'not_enforced')) = $${params.length}`,
+      );
+    }
+    if (limitsProfile) {
+      params.push(limitsProfile);
+      filters.push(`LOWER(COALESCE(metadata->>'limitsProfile', '')) = $${params.length}`);
+    }
+    if (limitsDecision) {
+      params.push(limitsDecision);
+      filters.push(
+        `LOWER(COALESCE(metadata->>'limitsDecision', 'not_enforced')) = $${params.length}`,
+      );
+    }
+    if (correlationId) {
+      params.push(correlationId);
+      filters.push(`LOWER(COALESCE(metadata #>> '{audit,correlationId}', '')) = $${params.length}`);
+    }
+    if (releaseRunId) {
+      params.push(releaseRunId);
+      filters.push(`LOWER(COALESCE(metadata #>> '{audit,releaseRunId}', '')) = $${params.length}`);
+    }
+    if (executionSessionId) {
+      params.push(executionSessionId);
+      filters.push(`LOWER(COALESCE(metadata->>'executionSessionId', '')) = $${params.length}`);
+    }
+
+    const summary = await db.query(
+      `SELECT COUNT(*)::int AS total,
                 COUNT(*) FILTER (WHERE status = 'ok')::int AS success_count,
                 COUNT(*) FILTER (WHERE status = 'failed')::int AS failed_count,
                 AVG(timing_ms)::float AS avg_timing_ms,
@@ -4952,12 +4703,12 @@ router.get(
                 MAX(created_at) AS last_event_at
          FROM ux_events
          WHERE ${filters.join(' AND ')}`,
-        params,
-      );
+      params,
+    );
 
-      const operationParams = [...params, limit];
-      const byOperation = await db.query(
-        `SELECT LOWER(COALESCE(metadata->>'operation', 'unknown')) AS operation,
+    const operationParams = [...params, limit];
+    const byOperation = await db.query(
+      `SELECT LOWER(COALESCE(metadata->>'operation', 'unknown')) AS operation,
                 COUNT(*)::int AS total,
                 COUNT(*) FILTER (WHERE status = 'ok')::int AS success_count,
                 COUNT(*) FILTER (WHERE status = 'failed')::int AS failed_count,
@@ -4969,44 +4720,44 @@ router.get(
          GROUP BY operation
          ORDER BY total DESC, operation
          LIMIT $${operationParams.length}`,
-        operationParams,
-      );
+      operationParams,
+    );
 
-      const modeBreakdown = await db.query(
-        `SELECT LOWER(COALESCE(metadata->>'mode', 'unknown')) AS mode,
+    const modeBreakdown = await db.query(
+      `SELECT LOWER(COALESCE(metadata->>'mode', 'unknown')) AS mode,
                 COALESCE(status, 'unknown') AS status,
                 COUNT(*)::int AS count
          FROM ux_events
          WHERE ${filters.join(' AND ')}
          GROUP BY mode, status
          ORDER BY mode, status`,
-        params,
-      );
+      params,
+    );
 
-      const egressProfileBreakdown = await db.query(
-        `SELECT LOWER(COALESCE(metadata->>'egressProfile', 'none')) AS egress_profile,
+    const egressProfileBreakdown = await db.query(
+      `SELECT LOWER(COALESCE(metadata->>'egressProfile', 'none')) AS egress_profile,
                 COALESCE(status, 'unknown') AS status,
                 COUNT(*)::int AS count
          FROM ux_events
          WHERE ${filters.join(' AND ')}
          GROUP BY egress_profile, status
          ORDER BY egress_profile, status`,
-        params,
-      );
+      params,
+    );
 
-      const limitsProfileBreakdown = await db.query(
-        `SELECT LOWER(COALESCE(metadata->>'limitsProfile', 'none')) AS limits_profile,
+    const limitsProfileBreakdown = await db.query(
+      `SELECT LOWER(COALESCE(metadata->>'limitsProfile', 'none')) AS limits_profile,
                 COALESCE(status, 'unknown') AS status,
                 COUNT(*)::int AS count
          FROM ux_events
          WHERE ${filters.join(' AND ')}
          GROUP BY limits_profile, status
          ORDER BY limits_profile, status`,
-        params,
-      );
+      params,
+    );
 
-      const auditCoverage = await db.query(
-        `SELECT
+    const auditCoverage = await db.query(
+      `SELECT
                 COUNT(*) FILTER (
                   WHERE
                     NULLIF(BTRIM(COALESCE(metadata #>> '{audit,actorId}', '')), '') IS NOT NULL
@@ -5043,178 +4794,147 @@ router.get(
                 )::int AS execution_session_id_count
          FROM ux_events
          WHERE ${filters.join(' AND ')}`,
-        params,
-      );
+      params,
+    );
 
-      const summaryRow = summary.rows[0] ?? {
-        total: 0,
-        success_count: 0,
-        failed_count: 0,
-        avg_timing_ms: null,
-        p95_timing_ms: null,
-        last_event_at: null,
-      };
-      const auditCoverageRow = auditCoverage.rows[0] ?? {
-        total_with_audit: 0,
-        actor_id_count: 0,
-        actor_type_count: 0,
-        correlation_id_count: 0,
-        release_run_id_count: 0,
-        session_id_count: 0,
-        source_route_count: 0,
-        tool_name_count: 0,
-        execution_session_id_count: 0,
-      };
-      const totalEvents = Number(summaryRow.total ?? 0);
-      const totalWithAudit = Number(auditCoverageRow.total_with_audit ?? 0);
+    const summaryRow = summary.rows[0] ?? {
+      total: 0,
+      success_count: 0,
+      failed_count: 0,
+      avg_timing_ms: null,
+      p95_timing_ms: null,
+      last_event_at: null,
+    };
+    const auditCoverageRow = auditCoverage.rows[0] ?? {
+      total_with_audit: 0,
+      actor_id_count: 0,
+      actor_type_count: 0,
+      correlation_id_count: 0,
+      release_run_id_count: 0,
+      session_id_count: 0,
+      source_route_count: 0,
+      tool_name_count: 0,
+      execution_session_id_count: 0,
+    };
+    const totalEvents = Number(summaryRow.total ?? 0);
+    const totalWithAudit = Number(auditCoverageRow.total_with_audit ?? 0);
 
-      res.json({
-        windowHours: hours,
-        filters: {
-          operation,
-          mode,
-          status,
-          egressProfile,
-          egressDecision,
-          limitsProfile,
-          limitsDecision,
-          correlationId,
-          releaseRunId,
-          executionSessionId,
-          limit,
-          source: SANDBOX_EXECUTION_TELEMETRY_SOURCE,
-          eventType: SANDBOX_EXECUTION_TELEMETRY_EVENT_TYPE,
-        },
-        summary: {
-          total: totalEvents,
-          successCount: Number(summaryRow.success_count ?? 0),
-          failedCount: Number(summaryRow.failed_count ?? 0),
-          avgTimingMs:
-            summaryRow.avg_timing_ms === null
-              ? null
-              : Number(Number(summaryRow.avg_timing_ms).toFixed(3)),
-          p95TimingMs:
-            summaryRow.p95_timing_ms === null
-              ? null
-              : Number(Number(summaryRow.p95_timing_ms).toFixed(3)),
-          lastEventAt: toNullableIsoTimestamp(summaryRow.last_event_at),
-        },
-        auditCoverage: {
-          totalWithAudit,
-          actorIdCount: Number(auditCoverageRow.actor_id_count ?? 0),
-          actorTypeCount: Number(auditCoverageRow.actor_type_count ?? 0),
-          correlationIdCount: Number(
-            auditCoverageRow.correlation_id_count ?? 0,
-          ),
-          releaseRunIdCount: Number(auditCoverageRow.release_run_id_count ?? 0),
-          sessionIdCount: Number(auditCoverageRow.session_id_count ?? 0),
-          sourceRouteCount: Number(auditCoverageRow.source_route_count ?? 0),
-          toolNameCount: Number(auditCoverageRow.tool_name_count ?? 0),
-          executionSessionIdCount: Number(
-            auditCoverageRow.execution_session_id_count ?? 0,
-          ),
-          coverageRate:
-            totalEvents > 0
-              ? Number((totalWithAudit / totalEvents).toFixed(3))
-              : null,
-        },
-        byOperation: byOperation.rows.map((row) => ({
-          operation: String(row.operation ?? 'unknown'),
-          total: Number(row.total ?? 0),
-          successCount: Number(row.success_count ?? 0),
-          failedCount: Number(row.failed_count ?? 0),
-          avgTimingMs:
-            row.avg_timing_ms === null
-              ? null
-              : Number(Number(row.avg_timing_ms).toFixed(3)),
-          p95TimingMs:
-            row.p95_timing_ms === null
-              ? null
-              : Number(Number(row.p95_timing_ms).toFixed(3)),
-          lastEventAt: toNullableIsoTimestamp(row.last_event_at),
-        })),
-        modeBreakdown: modeBreakdown.rows.map((row) => ({
-          mode: String(row.mode ?? 'unknown'),
-          status: String(row.status ?? 'unknown'),
-          count: Number(row.count ?? 0),
-        })),
-        egressProfileBreakdown: egressProfileBreakdown.rows.map((row) => ({
-          egressProfile: String(row.egress_profile ?? 'none'),
-          status: String(row.status ?? 'unknown'),
-          count: Number(row.count ?? 0),
-        })),
-        limitsProfileBreakdown: limitsProfileBreakdown.rows.map((row) => ({
-          limitsProfile: String(row.limits_profile ?? 'none'),
-          status: String(row.status ?? 'unknown'),
-          count: Number(row.count ?? 0),
-        })),
-      });
-    } catch (error) {
-      next(error);
-    }
-  },
-);
-
-router.get(
-  '/admin/observability/otel',
-  requireAdmin,
-  async (req, res, next) => {
-    try {
-      const query = assertAllowedQueryFields(req.query, {
-        allowed: [
-          'hours',
-          'routeKey',
-          'correlationId',
-          'releaseRunId',
-          'executionSessionId',
-        ],
-        endpoint: '/api/admin/observability/otel',
-      });
-      const hours = parseBoundedQueryInt(query.hours, {
-        fieldName: 'hours',
-        defaultValue: 24,
-        min: 1,
-        max: 720,
-      });
-      const routeKey = parseOptionalObservabilityRouteKeyQueryString(
-        query.routeKey,
-        {
-          fieldName: 'routeKey',
-        },
-      );
-      const correlationId = parseOptionalReleaseCorrelationQueryString(
-        query.correlationId,
-        {
-          fieldName: 'correlationId',
-        },
-      );
-      const releaseRunId = parseOptionalReleaseCorrelationQueryString(
-        query.releaseRunId,
-        {
-          fieldName: 'releaseRunId',
-        },
-      );
-      const executionSessionId = parseOptionalReleaseCorrelationQueryString(
-        query.executionSessionId,
-        {
-          fieldName: 'executionSessionId',
-        },
-      );
-
-      const snapshot = await adminObservabilityService.getSnapshot({
+    res.json({
+      windowHours: hours,
+      filters: {
+        operation,
+        mode,
+        status,
+        egressProfile,
+        egressDecision,
+        limitsProfile,
+        limitsDecision,
         correlationId,
-        executionSessionId,
-        hours,
         releaseRunId,
-        routeKey,
-      });
+        executionSessionId,
+        limit,
+        source: SANDBOX_EXECUTION_TELEMETRY_SOURCE,
+        eventType: SANDBOX_EXECUTION_TELEMETRY_EVENT_TYPE,
+      },
+      summary: {
+        total: totalEvents,
+        successCount: Number(summaryRow.success_count ?? 0),
+        failedCount: Number(summaryRow.failed_count ?? 0),
+        avgTimingMs:
+          summaryRow.avg_timing_ms === null
+            ? null
+            : Number(Number(summaryRow.avg_timing_ms).toFixed(3)),
+        p95TimingMs:
+          summaryRow.p95_timing_ms === null
+            ? null
+            : Number(Number(summaryRow.p95_timing_ms).toFixed(3)),
+        lastEventAt: toNullableIsoTimestamp(summaryRow.last_event_at),
+      },
+      auditCoverage: {
+        totalWithAudit,
+        actorIdCount: Number(auditCoverageRow.actor_id_count ?? 0),
+        actorTypeCount: Number(auditCoverageRow.actor_type_count ?? 0),
+        correlationIdCount: Number(auditCoverageRow.correlation_id_count ?? 0),
+        releaseRunIdCount: Number(auditCoverageRow.release_run_id_count ?? 0),
+        sessionIdCount: Number(auditCoverageRow.session_id_count ?? 0),
+        sourceRouteCount: Number(auditCoverageRow.source_route_count ?? 0),
+        toolNameCount: Number(auditCoverageRow.tool_name_count ?? 0),
+        executionSessionIdCount: Number(auditCoverageRow.execution_session_id_count ?? 0),
+        coverageRate: totalEvents > 0 ? Number((totalWithAudit / totalEvents).toFixed(3)) : null,
+      },
+      byOperation: byOperation.rows.map((row) => ({
+        operation: String(row.operation ?? 'unknown'),
+        total: Number(row.total ?? 0),
+        successCount: Number(row.success_count ?? 0),
+        failedCount: Number(row.failed_count ?? 0),
+        avgTimingMs:
+          row.avg_timing_ms === null ? null : Number(Number(row.avg_timing_ms).toFixed(3)),
+        p95TimingMs:
+          row.p95_timing_ms === null ? null : Number(Number(row.p95_timing_ms).toFixed(3)),
+        lastEventAt: toNullableIsoTimestamp(row.last_event_at),
+      })),
+      modeBreakdown: modeBreakdown.rows.map((row) => ({
+        mode: String(row.mode ?? 'unknown'),
+        status: String(row.status ?? 'unknown'),
+        count: Number(row.count ?? 0),
+      })),
+      egressProfileBreakdown: egressProfileBreakdown.rows.map((row) => ({
+        egressProfile: String(row.egress_profile ?? 'none'),
+        status: String(row.status ?? 'unknown'),
+        count: Number(row.count ?? 0),
+      })),
+      limitsProfileBreakdown: limitsProfileBreakdown.rows.map((row) => ({
+        limitsProfile: String(row.limits_profile ?? 'none'),
+        status: String(row.status ?? 'unknown'),
+        count: Number(row.count ?? 0),
+      })),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
-      res.json(snapshot);
-    } catch (error) {
-      next(error);
-    }
-  },
-);
+router.get('/admin/observability/otel', requireAdmin, async (req, res, next) => {
+  try {
+    const query = assertAllowedQueryFields(req.query, {
+      allowed: ['hours', 'routeKey', 'correlationId', 'releaseRunId', 'executionSessionId'],
+      endpoint: '/api/admin/observability/otel',
+    });
+    const hours = parseBoundedQueryInt(query.hours, {
+      fieldName: 'hours',
+      defaultValue: 24,
+      min: 1,
+      max: 720,
+    });
+    const routeKey = parseOptionalObservabilityRouteKeyQueryString(query.routeKey, {
+      fieldName: 'routeKey',
+    });
+    const correlationId = parseOptionalReleaseCorrelationQueryString(query.correlationId, {
+      fieldName: 'correlationId',
+    });
+    const releaseRunId = parseOptionalReleaseCorrelationQueryString(query.releaseRunId, {
+      fieldName: 'releaseRunId',
+    });
+    const executionSessionId = parseOptionalReleaseCorrelationQueryString(
+      query.executionSessionId,
+      {
+        fieldName: 'executionSessionId',
+      },
+    );
+
+    const snapshot = await adminObservabilityService.getSnapshot({
+      correlationId,
+      executionSessionId,
+      hours,
+      releaseRunId,
+      routeKey,
+    });
+
+    res.json(snapshot);
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.get('/admin/ux/metrics', requireAdmin, async (req, res, next) => {
   try {
@@ -5231,9 +4951,7 @@ router.get('/admin/ux/metrics', requireAdmin, async (req, res, next) => {
     const eventType = parseOptionalUxEventTypeQueryString(query.eventType, {
       fieldName: 'eventType',
     });
-    const filters: string[] = [
-      "created_at >= NOW() - ($1 || ' hours')::interval",
-    ];
+    const filters: string[] = ["created_at >= NOW() - ($1 || ' hours')::interval"];
     const params: unknown[] = [hours];
 
     if (eventType) {
@@ -5357,16 +5075,10 @@ router.get('/admin/ux/similar-search', requireAdmin, async (req, res, next) => {
     }
 
     for (const stats of Object.values(profileStats)) {
-      stats.ctr =
-        stats.shown > 0
-          ? Number((stats.clicked / stats.shown).toFixed(3))
-          : null;
-      stats.emptyRate =
-        stats.shown > 0 ? Number((stats.empty / stats.shown).toFixed(3)) : null;
+      stats.ctr = stats.shown > 0 ? Number((stats.clicked / stats.shown).toFixed(3)) : null;
+      stats.emptyRate = stats.shown > 0 ? Number((stats.empty / stats.shown).toFixed(3)) : null;
       stats.openRate =
-        stats.performed > 0
-          ? Number((stats.resultOpen / stats.performed).toFixed(3))
-          : null;
+        stats.performed > 0 ? Number((stats.resultOpen / stats.performed).toFixed(3)) : null;
     }
 
     const profiles = Object.values(profileStats).sort((a, b) => {
@@ -5441,16 +5153,13 @@ router.get('/admin/ux/similar-search', requireAdmin, async (req, res, next) => {
       Number.isFinite(avgSampleCountRaw) && avgSampleCountRaw > 0
         ? Number(avgSampleCountRaw.toFixed(2))
         : null;
-    const successRate =
-      totalCount > 0 ? Number((successCount / totalCount).toFixed(3)) : null;
+    const successRate = totalCount > 0 ? Number((successCount / totalCount).toFixed(3)) : null;
     const styleFusionCopyTotals = styleFusionCopyTotalsResult.rows[0] ?? {};
     const copyTotalCount = Number(styleFusionCopyTotals.total_count ?? 0);
     const copySuccessCount = Number(styleFusionCopyTotals.success_count ?? 0);
     const copyErrorCount = Number(styleFusionCopyTotals.error_count ?? 0);
     const copySuccessRate =
-      copyTotalCount > 0
-        ? Number((copySuccessCount / copyTotalCount).toFixed(3))
-        : null;
+      copyTotalCount > 0 ? Number((copySuccessCount / copyTotalCount).toFixed(3)) : null;
 
     res.json({
       windowHours: hours,
@@ -5525,11 +5234,7 @@ router.get(
            AND event_type = $2
            AND source = $3
          ORDER BY created_at DESC`,
-        [
-          hours,
-          RELEASE_EXTERNAL_CHANNEL_ALERT_EVENT,
-          RELEASE_EXTERNAL_CHANNEL_ALERT_SOURCE,
-        ],
+        [hours, RELEASE_EXTERNAL_CHANNEL_ALERT_EVENT, RELEASE_EXTERNAL_CHANNEL_ALERT_SOURCE],
       );
 
       const totalsResult = await db.query(
@@ -5626,10 +5331,7 @@ router.get(
            AND event_type = ANY($2)
          GROUP BY event_type, reason
          ORDER BY event_type, count DESC, reason`,
-        [
-          hours,
-          ['draft_multimodal_glowup_empty', 'draft_multimodal_glowup_error'],
-        ],
+        [hours, ['draft_multimodal_glowup_empty', 'draft_multimodal_glowup_error']],
       );
       const multimodalGuardrailRows = await db.query(
         `SELECT COALESCE(metadata->>'reason', 'unknown') AS reason,
@@ -5667,12 +5369,10 @@ router.get(
         ],
       );
 
-      const multimodalProviderBreakdown = multimodalProviderRows.rows.map(
-        (row) => ({
-          provider: String(row.provider ?? 'unknown'),
-          count: Number(row.count ?? 0),
-        }),
-      );
+      const multimodalProviderBreakdown = multimodalProviderRows.rows.map((row) => ({
+        provider: String(row.provider ?? 'unknown'),
+        count: Number(row.count ?? 0),
+      }));
       const multimodalEmptyReasonBreakdown = multimodalReasonRows.rows
         .filter((row) => row.event_type === 'draft_multimodal_glowup_empty')
         .map((row) => ({
@@ -5687,9 +5387,7 @@ router.get(
         }));
       const multimodalInvalidQueryErrors = multimodalGuardrailRows.rows.reduce(
         (sum, row) =>
-          String(row.reason ?? 'unknown') === 'invalid_query'
-            ? sum + Number(row.count ?? 0)
-            : sum,
+          String(row.reason ?? 'unknown') === 'invalid_query' ? sum + Number(row.count ?? 0) : sum,
         0,
       );
       const multimodalHourlyTrendMap = new Map<
@@ -5722,9 +5420,7 @@ router.get(
         }
         multimodalHourlyTrendMap.set(hour, current);
       }
-      const multimodalHourlyTrend = Array.from(
-        multimodalHourlyTrendMap.values(),
-      )
+      const multimodalHourlyTrend = Array.from(multimodalHourlyTrendMap.values())
         .sort((left, right) => left.hour.localeCompare(right.hour))
         .map((bucket) => {
           const attempts = bucket.views + bucket.emptyStates;
@@ -5749,9 +5445,7 @@ router.get(
          AND user_id IS NOT NULL`,
         [hours],
       );
-      totals.observerUsers = Number(
-        observerUsersResult.rows[0]?.observer_users ?? 0,
-      );
+      totals.observerUsers = Number(observerUsersResult.rows[0]?.observer_users ?? 0);
 
       const sessionsResult = await db.query(
         `WITH observer_events AS (
@@ -5799,9 +5493,7 @@ router.get(
         [hours],
       );
       const sessionCount = Number(sessionsResult.rows[0]?.session_count ?? 0);
-      const avgSessionSecRaw = Number(
-        sessionsResult.rows[0]?.avg_session_sec ?? 0,
-      );
+      const avgSessionSecRaw = Number(sessionsResult.rows[0]?.avg_session_sec ?? 0);
 
       const retentionResult = await db.query(
         `WITH current_users AS (
@@ -5837,15 +5529,9 @@ router.get(
        FROM retention`,
         [hours],
       );
-      const retentionTotalUsers = Number(
-        retentionResult.rows[0]?.total_users ?? 0,
-      );
-      const return24hUsers = Number(
-        retentionResult.rows[0]?.return_24h_users ?? 0,
-      );
-      const return7dUsers = Number(
-        retentionResult.rows[0]?.return_7d_users ?? 0,
-      );
+      const retentionTotalUsers = Number(retentionResult.rows[0]?.total_users ?? 0);
+      const return24hUsers = Number(retentionResult.rows[0]?.return_24h_users ?? 0);
+      const return7dUsers = Number(retentionResult.rows[0]?.return_7d_users ?? 0);
 
       const segmentRows = await db.query(
         `SELECT COALESCE(metadata->>'mode', 'unknown') AS mode,
@@ -5960,8 +5646,7 @@ router.get(
       }
 
       feedPreferenceTotals.hint.totalInteractions =
-        feedPreferenceTotals.hint.dismissCount +
-        feedPreferenceTotals.hint.switchCount;
+        feedPreferenceTotals.hint.dismissCount + feedPreferenceTotals.hint.switchCount;
 
       const viewModeObserverRate = toRate(
         feedPreferenceTotals.viewMode.observer,
@@ -6227,160 +5912,100 @@ router.get(
         [hours],
       );
 
-      const predictionCount = Number(
-        predictionMarketSummary.rows[0]?.prediction_count ?? 0,
-      );
-      const predictorCount = Number(
-        predictionMarketSummary.rows[0]?.predictor_count ?? 0,
-      );
-      const marketCount = Number(
-        predictionMarketSummary.rows[0]?.market_count ?? 0,
-      );
-      const predictionStakePoints = Number(
-        predictionMarketSummary.rows[0]?.stake_points ?? 0,
-      );
-      const predictionPayoutPoints = Number(
-        predictionMarketSummary.rows[0]?.payout_points ?? 0,
-      );
+      const predictionCount = Number(predictionMarketSummary.rows[0]?.prediction_count ?? 0);
+      const predictorCount = Number(predictionMarketSummary.rows[0]?.predictor_count ?? 0);
+      const marketCount = Number(predictionMarketSummary.rows[0]?.market_count ?? 0);
+      const predictionStakePoints = Number(predictionMarketSummary.rows[0]?.stake_points ?? 0);
+      const predictionPayoutPoints = Number(predictionMarketSummary.rows[0]?.payout_points ?? 0);
       const averageStakePoints = Number(
-        Number(predictionMarketSummary.rows[0]?.avg_stake_points ?? 0).toFixed(
-          2,
-        ),
+        Number(predictionMarketSummary.rows[0]?.avg_stake_points ?? 0).toFixed(2),
       );
-      const predictionResolvedCount = Number(
-        predictionMarketSummary.rows[0]?.resolved_count ?? 0,
-      );
-      const predictionCorrectCount = Number(
-        predictionMarketSummary.rows[0]?.correct_count ?? 0,
-      );
-      const predictionParticipationRate = toRate(
-        predictorCount,
-        totals.observerUsers,
-      );
-      const predictionAccuracyRate = toRate(
-        predictionCorrectCount,
-        predictionResolvedCount,
-      );
-      const payoutToStakeRatio = toRate(
-        predictionPayoutPoints,
-        predictionStakePoints,
-      );
+      const predictionResolvedCount = Number(predictionMarketSummary.rows[0]?.resolved_count ?? 0);
+      const predictionCorrectCount = Number(predictionMarketSummary.rows[0]?.correct_count ?? 0);
+      const predictionParticipationRate = toRate(predictorCount, totals.observerUsers);
+      const predictionAccuracyRate = toRate(predictionCorrectCount, predictionResolvedCount);
+      const payoutToStakeRatio = toRate(predictionPayoutPoints, predictionStakePoints);
       const predictionFilterByScopeMap = new Map<string, number>();
       const predictionFilterByFilterMap = new Map<string, number>();
-      const predictionFilterByScopeAndFilter = predictionFilterRows.rows.map(
-        (row) => {
-          const scope = String(row.scope ?? 'unknown');
-          const filter = String(row.filter_value ?? 'unknown');
-          const count = Number(row.count ?? 0);
-          predictionFilterByScopeMap.set(
-            scope,
-            (predictionFilterByScopeMap.get(scope) ?? 0) + count,
-          );
-          predictionFilterByFilterMap.set(
-            filter,
-            (predictionFilterByFilterMap.get(filter) ?? 0) + count,
-          );
-          return {
-            scope,
-            filter,
-            count,
-          };
-        },
-      );
+      const predictionFilterByScopeAndFilter = predictionFilterRows.rows.map((row) => {
+        const scope = String(row.scope ?? 'unknown');
+        const filter = String(row.filter_value ?? 'unknown');
+        const count = Number(row.count ?? 0);
+        predictionFilterByScopeMap.set(scope, (predictionFilterByScopeMap.get(scope) ?? 0) + count);
+        predictionFilterByFilterMap.set(
+          filter,
+          (predictionFilterByFilterMap.get(filter) ?? 0) + count,
+        );
+        return {
+          scope,
+          filter,
+          count,
+        };
+      });
       const predictionFilterTotalSwitches = predictionFilterByScopeAndFilter
         .map((row) => row.count)
         .reduce((sum, count) => sum + count, 0);
-      const predictionFilterByScope = Array.from(
-        predictionFilterByScopeMap.entries(),
-      )
+      const predictionFilterByScope = Array.from(predictionFilterByScopeMap.entries())
         .map(([scope, count]) => ({
           scope,
           count,
           rate: toRate(count, predictionFilterTotalSwitches),
         }))
-        .sort(
-          (left, right) =>
-            right.count - left.count || left.scope.localeCompare(right.scope),
-        );
-      const predictionFilterByFilter = Array.from(
-        predictionFilterByFilterMap.entries(),
-      )
+        .sort((left, right) => right.count - left.count || left.scope.localeCompare(right.scope));
+      const predictionFilterByFilter = Array.from(predictionFilterByFilterMap.entries())
         .map(([filter, count]) => ({
           filter,
           count,
           rate: toRate(count, predictionFilterTotalSwitches),
         }))
-        .sort(
-          (left, right) =>
-            right.count - left.count || left.filter.localeCompare(right.filter),
-        );
+        .sort((left, right) => right.count - left.count || left.filter.localeCompare(right.filter));
       const predictionSortByScopeMap = new Map<string, number>();
       const predictionSortBySortMap = new Map<string, number>();
-      const predictionSortByScopeAndSort = predictionSortRows.rows.map(
-        (row) => {
-          const scope = String(row.scope ?? 'unknown');
-          const sort = String(row.sort_value ?? 'unknown');
-          const count = Number(row.count ?? 0);
-          predictionSortByScopeMap.set(
-            scope,
-            (predictionSortByScopeMap.get(scope) ?? 0) + count,
-          );
-          predictionSortBySortMap.set(
-            sort,
-            (predictionSortBySortMap.get(sort) ?? 0) + count,
-          );
-          return {
-            scope,
-            sort,
-            count,
-          };
-        },
-      );
+      const predictionSortByScopeAndSort = predictionSortRows.rows.map((row) => {
+        const scope = String(row.scope ?? 'unknown');
+        const sort = String(row.sort_value ?? 'unknown');
+        const count = Number(row.count ?? 0);
+        predictionSortByScopeMap.set(scope, (predictionSortByScopeMap.get(scope) ?? 0) + count);
+        predictionSortBySortMap.set(sort, (predictionSortBySortMap.get(sort) ?? 0) + count);
+        return {
+          scope,
+          sort,
+          count,
+        };
+      });
       const predictionSortTotalSwitches = predictionSortByScopeAndSort
         .map((row) => row.count)
         .reduce((sum, count) => sum + count, 0);
-      const predictionSortByScope = Array.from(
-        predictionSortByScopeMap.entries(),
-      )
+      const predictionSortByScope = Array.from(predictionSortByScopeMap.entries())
         .map(([scope, count]) => ({
           scope,
           count,
           rate: toRate(count, predictionSortTotalSwitches),
         }))
-        .sort(
-          (left, right) =>
-            right.count - left.count || left.scope.localeCompare(right.scope),
-        );
+        .sort((left, right) => right.count - left.count || left.scope.localeCompare(right.scope));
       const predictionSortBySort = Array.from(predictionSortBySortMap.entries())
         .map(([sort, count]) => ({
           sort,
           count,
           rate: toRate(count, predictionSortTotalSwitches),
         }))
-        .sort(
-          (left, right) =>
-            right.count - left.count || left.sort.localeCompare(right.sort),
-        );
-      const predictionHistoryStateByScope = predictionHistoryStateRows.rows.map(
-        (row) => {
-          const filterChangedAt = toNullableIsoTimestamp(row.filter_changed_at);
-          const sortChangedAt = toNullableIsoTimestamp(row.sort_changed_at);
-          const lastChangedAt =
-            [filterChangedAt, sortChangedAt]
-              .filter((value): value is string => value !== null)
-              .sort((left, right) => right.localeCompare(left))[0] ?? null;
-          return {
-            scope: String(row.scope ?? 'unknown'),
-            activeFilter:
-              typeof row.active_filter === 'string' ? row.active_filter : null,
-            activeSort:
-              typeof row.active_sort === 'string' ? row.active_sort : null,
-            filterChangedAt,
-            sortChangedAt,
-            lastChangedAt,
-          };
-        },
-      );
+        .sort((left, right) => right.count - left.count || left.sort.localeCompare(right.sort));
+      const predictionHistoryStateByScope = predictionHistoryStateRows.rows.map((row) => {
+        const filterChangedAt = toNullableIsoTimestamp(row.filter_changed_at);
+        const sortChangedAt = toNullableIsoTimestamp(row.sort_changed_at);
+        const lastChangedAt =
+          [filterChangedAt, sortChangedAt]
+            .filter((value): value is string => value !== null)
+            .sort((left, right) => right.localeCompare(left))[0] ?? null;
+        return {
+          scope: String(row.scope ?? 'unknown'),
+          activeFilter: typeof row.active_filter === 'string' ? row.active_filter : null,
+          activeSort: typeof row.active_sort === 'string' ? row.active_sort : null,
+          filterChangedAt,
+          sortChangedAt,
+          lastChangedAt,
+        };
+      });
       const predictionHistoryControlSwitches =
         predictionFilterTotalSwitches + predictionSortTotalSwitches;
       const predictionSortSwitchShare = toRate(
@@ -6409,9 +6034,7 @@ router.get(
           const payoutPoints = Number(row.payout_points ?? 0);
           const resolvedPredictions = Number(row.resolved_count ?? 0);
           const correctPredictions = Number(row.correct_count ?? 0);
-          const avgStakePoints = Number(
-            Number(row.avg_stake_points ?? 0).toFixed(2),
-          );
+          const avgStakePoints = Number(Number(row.avg_stake_points ?? 0).toFixed(2));
           return {
             hour,
             predictions,
@@ -6451,44 +6074,27 @@ router.get(
       const predictionNetPoints30d = Number(
         predictionResolutionWindowsResult.rows[0]?.net_points_30d ?? 0,
       );
-      const predictionWindowAccuracy7d = toRate(
-        predictionCorrect7d,
-        predictionResolved7d,
-      );
-      const predictionWindowAccuracy30d = toRate(
-        predictionCorrect30d,
-        predictionResolved30d,
-      );
+      const predictionWindowAccuracy7d = toRate(predictionCorrect7d, predictionResolved7d);
+      const predictionWindowAccuracy30d = toRate(predictionCorrect30d, predictionResolved30d);
       const predictionWindow7dRiskLevel =
-        predictionResolved7d <
-        PREDICTION_RESOLUTION_WINDOW_THRESHOLDS.minResolvedPredictions
+        predictionResolved7d < PREDICTION_RESOLUTION_WINDOW_THRESHOLDS.minResolvedPredictions
           ? 'unknown'
           : resolveHealthLevel(
               predictionWindowAccuracy7d,
               PREDICTION_RESOLUTION_WINDOW_THRESHOLDS.accuracyRate,
             );
       const predictionWindow30dRiskLevel =
-        predictionResolved30d <
-        PREDICTION_RESOLUTION_WINDOW_THRESHOLDS.minResolvedPredictions
+        predictionResolved30d < PREDICTION_RESOLUTION_WINDOW_THRESHOLDS.minResolvedPredictions
           ? 'unknown'
           : resolveHealthLevel(
               predictionWindowAccuracy30d,
               PREDICTION_RESOLUTION_WINDOW_THRESHOLDS.accuracyRate,
             );
-      const multimodalAttempts =
-        totals.multimodalViews + totals.multimodalEmptyStates;
-      const multimodalTotalEvents =
-        multimodalAttempts + totals.multimodalErrors;
-      const multimodalCoverageRate = toRate(
-        totals.multimodalViews,
-        multimodalAttempts,
-      );
-      const multimodalErrorRate = toRate(
-        totals.multimodalErrors,
-        multimodalTotalEvents,
-      );
-      const multimodalErrorSignalsTotal =
-        totals.multimodalErrors + multimodalInvalidQueryErrors;
+      const multimodalAttempts = totals.multimodalViews + totals.multimodalEmptyStates;
+      const multimodalTotalEvents = multimodalAttempts + totals.multimodalErrors;
+      const multimodalCoverageRate = toRate(totals.multimodalViews, multimodalAttempts);
+      const multimodalErrorRate = toRate(totals.multimodalErrors, multimodalTotalEvents);
+      const multimodalErrorSignalsTotal = totals.multimodalErrors + multimodalInvalidQueryErrors;
       const multimodalInvalidQueryRate = toRate(
         multimodalInvalidQueryErrors,
         multimodalErrorSignalsTotal,
@@ -6514,28 +6120,19 @@ router.get(
 
       for (const row of releaseHealthAlertRows.rows) {
         const metadata =
-          row.metadata &&
-          typeof row.metadata === 'object' &&
-          !Array.isArray(row.metadata)
+          row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata)
             ? (row.metadata as Record<string, unknown>)
             : {};
         const createdAtIso = toNullableIsoTimestamp(row.created_at);
-        const receivedAtIso =
-          toNullableIsoTimestamp(metadata.receivedAtUtc) ?? createdAtIso;
+        const receivedAtIso = toNullableIsoTimestamp(metadata.receivedAtUtc) ?? createdAtIso;
         const run =
-          metadata.run &&
-          typeof metadata.run === 'object' &&
-          !Array.isArray(metadata.run)
+          metadata.run && typeof metadata.run === 'object' && !Array.isArray(metadata.run)
             ? (metadata.run as Record<string, unknown>)
             : {};
         const runIdRaw = Number(run.id);
-        const runId =
-          Number.isInteger(runIdRaw) && runIdRaw > 0 ? runIdRaw : null;
+        const runId = Number.isInteger(runIdRaw) && runIdRaw > 0 ? runIdRaw : null;
         const runNumberRaw = Number(run.number);
-        const runNumber =
-          Number.isInteger(runNumberRaw) && runNumberRaw > 0
-            ? runNumberRaw
-            : null;
+        const runNumber = Number.isInteger(runNumberRaw) && runNumberRaw > 0 ? runNumberRaw : null;
         let runUrl: string | null = null;
         if (typeof run.htmlUrl === 'string' && run.htmlUrl.length > 0) {
           runUrl = run.htmlUrl;
@@ -6570,16 +6167,14 @@ router.get(
             .trim()
             .toLowerCase();
           const normalizedChannel = channel.length > 0 ? channel : 'unknown';
-          const normalizedFailureMode =
-            failureMode.length > 0 ? failureMode : 'unknown';
+          const normalizedFailureMode = failureMode.length > 0 ? failureMode : 'unknown';
           releaseHealthAlertByChannelMap.set(
             normalizedChannel,
             (releaseHealthAlertByChannelMap.get(normalizedChannel) ?? 0) + 1,
           );
           releaseHealthAlertByFailureModeMap.set(
             normalizedFailureMode,
-            (releaseHealthAlertByFailureModeMap.get(normalizedFailureMode) ??
-              0) + 1,
+            (releaseHealthAlertByFailureModeMap.get(normalizedFailureMode) ?? 0) + 1,
           );
         }
 
@@ -6597,18 +6192,14 @@ router.get(
       }
 
       const releaseHealthAlertTotal = releaseHealthAlertRows.rows.length;
-      const releaseHealthAlertByChannel = Array.from(
-        releaseHealthAlertByChannelMap.entries(),
-      )
+      const releaseHealthAlertByChannel = Array.from(releaseHealthAlertByChannelMap.entries())
         .map(([channel, count]) => ({
           channel,
           count,
           rate: toRate(count, releaseHealthAlertFirstAppearanceCount),
         }))
         .sort(
-          (left, right) =>
-            right.count - left.count ||
-            left.channel.localeCompare(right.channel),
+          (left, right) => right.count - left.count || left.channel.localeCompare(right.channel),
         );
       const releaseHealthAlertByFailureMode = Array.from(
         releaseHealthAlertByFailureModeMap.entries(),
@@ -6620,8 +6211,7 @@ router.get(
         }))
         .sort(
           (left, right) =>
-            right.count - left.count ||
-            left.failureMode.localeCompare(right.failureMode),
+            right.count - left.count || left.failureMode.localeCompare(right.failureMode),
         );
       const releaseHealthAlertHourlyTrend = Array.from(
         releaseHealthAlertHourlyTrendMap.values(),
@@ -6646,10 +6236,7 @@ router.get(
           hintDismissRate,
           predictionParticipationRate,
           predictionAccuracyRate,
-          predictionSettlementRate: toRate(
-            totals.predictionSettles,
-            totals.predictionSubmits,
-          ),
+          predictionSettlementRate: toRate(totals.predictionSettles, totals.predictionSubmits),
           predictionFilterSwitchShare,
           predictionSortSwitchShare,
           predictionNonDefaultSortRate,
@@ -6658,8 +6245,7 @@ router.get(
           multimodalCoverageRate,
           multimodalErrorRate,
           releaseHealthAlertCount: releaseHealthAlertTotal,
-          releaseHealthFirstAppearanceCount:
-            releaseHealthAlertFirstAppearanceCount,
+          releaseHealthFirstAppearanceCount: releaseHealthAlertFirstAppearanceCount,
           releaseHealthAlertedRunCount: releaseHealthAlertRunIds.size,
         },
         releaseHealthAlerts: {
@@ -6851,11 +6437,7 @@ router.post('/admin/cleanup/run', requireAdmin, async (req, res, next) => {
       invalidCode: 'ADMIN_INVALID_BODY',
     });
 
-    if (
-      queryConfirm !== undefined &&
-      bodyConfirm !== undefined &&
-      queryConfirm !== bodyConfirm
-    ) {
+    if (queryConfirm !== undefined && bodyConfirm !== undefined && queryConfirm !== bodyConfirm) {
       throw new ServiceError(
         'ADMIN_INPUT_CONFLICT',
         'confirm in query and body must match when both are provided.',
@@ -6865,11 +6447,7 @@ router.post('/admin/cleanup/run', requireAdmin, async (req, res, next) => {
 
     const confirm = bodyConfirm ?? queryConfirm ?? false;
     if (!confirm) {
-      throw new ServiceError(
-        'CONFIRM_REQUIRED',
-        'confirm=true is required to run cleanup.',
-        400,
-      );
+      throw new ServiceError('CONFIRM_REQUIRED', 'confirm=true is required to run cleanup.', 400);
     }
 
     startedAt = new Date();
@@ -6952,9 +6530,7 @@ router.get('/admin/errors/metrics', requireAdmin, async (req, res, next) => {
       maxLength: 240,
     });
 
-    const filters: string[] = [
-      "created_at >= NOW() - ($1 || ' hours')::interval",
-    ];
+    const filters: string[] = ["created_at >= NOW() - ($1 || ' hours')::interval"];
     const params: unknown[] = [hours];
 
     if (errorCode) {

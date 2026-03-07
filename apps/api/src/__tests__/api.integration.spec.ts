@@ -5,22 +5,20 @@ import { db } from '../db/pool';
 import { redis } from '../redis/client';
 import { createApp, initInfra } from '../server';
 import { AuthServiceImpl } from '../services/auth/authService';
-import {
-  BudgetServiceImpl,
-  getUtcDateKey,
-} from '../services/budget/budgetService';
+import { BudgetServiceImpl, getUtcDateKey } from '../services/budget/budgetService';
 import { CommissionServiceImpl } from '../services/commission/commissionService';
 import { FeedServiceImpl } from '../services/feed/feedService';
 import { FixRequestServiceImpl } from '../services/fixRequest/fixRequestService';
-import {
-  IMPACT_MAJOR_INCREMENT,
-  IMPACT_MINOR_INCREMENT,
-} from '../services/metrics/constants';
+import { IMPACT_MAJOR_INCREMENT, IMPACT_MINOR_INCREMENT } from '../services/metrics/constants';
 import { MetricsServiceImpl } from '../services/metrics/metricsService';
 import { DraftArcServiceImpl } from '../services/observer/draftArcService';
 import { PaymentServiceImpl } from '../services/payment/paymentService';
 import { PostServiceImpl } from '../services/post/postService';
 import { PrivacyServiceImpl } from '../services/privacy/privacyService';
+import {
+  PROVIDER_LANE_EXECUTION_EVENT_TYPE,
+  PROVIDER_LANE_TELEMETRY_SOURCE,
+} from '../services/providerRouting/providerRoutingService';
 import { PullRequestServiceImpl } from '../services/pullRequest/pullRequestService';
 import { SearchServiceImpl } from '../services/search/searchService';
 
@@ -32,9 +30,7 @@ const resetDb = async () => {
   if (redis.isOpen) {
     await redis.flushAll();
   }
-  await db.query(
-    'TRUNCATE TABLE commission_responses RESTART IDENTITY CASCADE',
-  );
+  await db.query('TRUNCATE TABLE commission_responses RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE commissions RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE payment_events RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE viewing_history RESTART IDENTITY CASCADE');
@@ -68,9 +64,7 @@ const registerAgent = async (studioName = 'Agent Studio') => {
     studioName,
     personality: 'Tester',
   });
-  await db.query('UPDATE agents SET trust_tier = 1 WHERE id = $1', [
-    registered.agentId,
-  ]);
+  await db.query('UPDATE agents SET trust_tier = 1 WHERE id = $1', [registered.agentId]);
   return { agentId: registered.agentId, apiKey: registered.apiKey };
 };
 
@@ -109,10 +103,7 @@ const sortDeep = (value: unknown): unknown => {
   );
 };
 
-const signGatewayIngestPayload = (
-  payload: Record<string, unknown>,
-  timestampSec: number,
-) =>
+const signGatewayIngestPayload = (payload: Record<string, unknown>, timestampSec: number) =>
   `v1=${crypto
     .createHmac('sha256', env.AGENT_GATEWAY_WEBHOOK_SECRET)
     .update(`${timestampSec}.${JSON.stringify(sortDeep(payload))}`)
@@ -189,13 +180,9 @@ describe('API integration', () => {
     });
 
     expect(register.status).toBe(200);
-    expect(register.body.claimUrl).toBe(
-      `/api/agents/${register.body.agentId}/claim`,
-    );
+    expect(register.body.claimUrl).toBe(`/api/agents/${register.body.agentId}/claim`);
 
-    const summaryBefore = await request(app).get(
-      `/api/agents/${register.body.agentId}`,
-    );
+    const summaryBefore = await request(app).get(`/api/agents/${register.body.agentId}`);
     expect(summaryBefore.status).toBe(200);
     expect(summaryBefore.body).toMatchObject({
       agentId: register.body.agentId,
@@ -207,9 +194,7 @@ describe('API integration', () => {
       },
     });
 
-    const unauthorizedClaim = await request(app).get(
-      `/api/agents/${register.body.agentId}/claim`,
-    );
+    const unauthorizedClaim = await request(app).get(`/api/agents/${register.body.agentId}/claim`);
     expect(unauthorizedClaim.status).toBe(401);
     expect(unauthorizedClaim.body.error).toBe('AGENT_AUTH_REQUIRED');
 
@@ -235,9 +220,7 @@ describe('API integration', () => {
       .set('x-agent-id', register.body.agentId)
       .set('x-api-key', register.body.apiKey);
     expect(invalidClaimQuery.status).toBe(400);
-    expect(invalidClaimQuery.body.error).toBe(
-      'AGENT_CLAIM_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidClaimQuery.body.error).toBe('AGENT_CLAIM_INVALID_QUERY_FIELDS');
 
     const claimBefore = await request(app)
       .get(`/api/agents/${register.body.agentId}/claim`)
@@ -264,9 +247,7 @@ describe('API integration', () => {
     });
     expect(verify.status).toBe(200);
 
-    const summaryAfter = await request(app).get(
-      `/api/agents/${register.body.agentId}`,
-    );
+    const summaryAfter = await request(app).get(`/api/agents/${register.body.agentId}`);
     expect(summaryAfter.status).toBe(200);
     expect(summaryAfter.body).toMatchObject({
       agentId: register.body.agentId,
@@ -279,9 +260,7 @@ describe('API integration', () => {
     });
     expect(summaryAfter.body.verifiedAt).toBeTruthy();
 
-    const studioAfter = await request(app).get(
-      `/api/studios/${register.body.agentId}`,
-    );
+    const studioAfter = await request(app).get(`/api/studios/${register.body.agentId}`);
     expect(studioAfter.status).toBe(200);
     expect(studioAfter.body.verification_status).toBe('verified');
     expect(studioAfter.body.verification_method).toBe('email');
@@ -330,9 +309,7 @@ describe('API integration', () => {
     });
     expect(revoke.body.revokedAt).toBeTruthy();
 
-    const summaryAfterRevoke = await request(app).get(
-      `/api/agents/${register.body.agentId}`,
-    );
+    const summaryAfterRevoke = await request(app).get(`/api/agents/${register.body.agentId}`);
     expect(summaryAfterRevoke.status).toBe(200);
     expect(summaryAfterRevoke.body).toMatchObject({
       verificationStatus: 'revoked',
@@ -345,9 +322,7 @@ describe('API integration', () => {
     });
     expect(summaryAfterRevoke.body.revokedAt).toBeTruthy();
 
-    const studioAfterRevoke = await request(app).get(
-      `/api/studios/${register.body.agentId}`,
-    );
+    const studioAfterRevoke = await request(app).get(`/api/studios/${register.body.agentId}`);
     expect(studioAfterRevoke.status).toBe(200);
     expect(studioAfterRevoke.body.verification_status).toBe('revoked');
     expect(studioAfterRevoke.body.verification_method).toBe('email');
@@ -374,13 +349,11 @@ describe('API integration', () => {
     expect(blockedStudioUpdate.status).toBe(403);
     expect(blockedStudioUpdate.body.error).toBe('AGENT_NOT_VERIFIED');
 
-    const directReverify = await request(app)
-      .post('/api/agents/claim/verify')
-      .send({
-        claimToken: register.body.claimToken,
-        method: 'email',
-        emailToken: register.body.emailToken,
-      });
+    const directReverify = await request(app).post('/api/agents/claim/verify').send({
+      claimToken: register.body.claimToken,
+      method: 'email',
+      emailToken: register.body.emailToken,
+    });
     expect(directReverify.status).toBe(400);
     expect(directReverify.body.error).toBe('CLAIM_REVOKED');
 
@@ -411,9 +384,7 @@ describe('API integration', () => {
     });
     expect(reverify.status).toBe(200);
 
-    const summaryAfterReverify = await request(app).get(
-      `/api/agents/${register.body.agentId}`,
-    );
+    const summaryAfterReverify = await request(app).get(`/api/agents/${register.body.agentId}`);
     expect(summaryAfterReverify.status).toBe(200);
     expect(summaryAfterReverify.body).toMatchObject({
       verificationStatus: 'verified',
@@ -443,15 +414,11 @@ describe('API integration', () => {
       });
     expect(verify.status).toBe(200);
 
-    const summaryAfter = await request(app).get(
-      `/api/agents/${register.body.agentId}`,
-    );
+    const summaryAfter = await request(app).get(`/api/agents/${register.body.agentId}`);
     expect(summaryAfter.status).toBe(200);
     expect(summaryAfter.body.verificationMethod).toBe('x');
 
-    const studioAfter = await request(app).get(
-      `/api/studios/${register.body.agentId}`,
-    );
+    const studioAfter = await request(app).get(`/api/studios/${register.body.agentId}`);
     expect(studioAfter.status).toBe(200);
     expect(studioAfter.body.verification_status).toBe('verified');
     expect(studioAfter.body.verification_method).toBe('x');
@@ -482,13 +449,11 @@ describe('API integration', () => {
     expect(invalidHost.status).toBe(400);
     expect(invalidHost.body.error).toBe('CLAIM_INVALID');
 
-    const missingClaimQuery = await request(app)
-      .post('/api/agents/claim/verify')
-      .send({
-        claimToken: register.body.claimToken,
-        method: 'x',
-        tweetUrl: 'https://twitter.com/finishit/status/1234567890',
-      });
+    const missingClaimQuery = await request(app).post('/api/agents/claim/verify').send({
+      claimToken: register.body.claimToken,
+      method: 'x',
+      tweetUrl: 'https://twitter.com/finishit/status/1234567890',
+    });
     expect(missingClaimQuery.status).toBe(400);
     expect(missingClaimQuery.body.error).toBe('CLAIM_INVALID');
   });
@@ -512,9 +477,7 @@ describe('API integration', () => {
   });
 
   test('unverified agents are sandbox-limited on draft creation', async () => {
-    const { agentId, apiKey } = await registerUnverifiedAgent(
-      'Sandbox Draft Studio',
-    );
+    const { agentId, apiKey } = await registerUnverifiedAgent('Sandbox Draft Studio');
     const sandboxKey = `sandbox:draft:${agentId}:${getUtcDateKey(new Date())}`;
     await redis.del(sandboxKey);
 
@@ -718,21 +681,15 @@ describe('API integration', () => {
     expect(draftRes.status).toBe(200);
     const draftId = draftRes.body.draft.id as string;
 
-    const invalidDetailQuery = await request(app).get(
-      `/api/drafts/${draftId}?extra=true`,
-    );
+    const invalidDetailQuery = await request(app).get(`/api/drafts/${draftId}?extra=true`);
     expect(invalidDetailQuery.status).toBe(400);
-    expect(invalidDetailQuery.body.error).toBe(
-      'DRAFT_DETAIL_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidDetailQuery.body.error).toBe('DRAFT_DETAIL_INVALID_QUERY_FIELDS');
 
     const invalidProvenanceQuery = await request(app).get(
       `/api/drafts/${draftId}/provenance?extra=true`,
     );
     expect(invalidProvenanceQuery.status).toBe(400);
-    expect(invalidProvenanceQuery.body.error).toBe(
-      'DRAFT_PROVENANCE_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidProvenanceQuery.body.error).toBe('DRAFT_PROVENANCE_INVALID_QUERY_FIELDS');
 
     const invalidProvenanceExportQuery = await request(app).get(
       `/api/drafts/${draftId}/provenance/export?extra=true`,
@@ -742,9 +699,7 @@ describe('API integration', () => {
       'DRAFT_PROVENANCE_EXPORT_INVALID_QUERY_FIELDS',
     );
 
-    const invalidArcQuery = await request(app).get(
-      `/api/drafts/${draftId}/arc?extra=true`,
-    );
+    const invalidArcQuery = await request(app).get(`/api/drafts/${draftId}/arc?extra=true`);
     expect(invalidArcQuery.status).toBe(400);
     expect(invalidArcQuery.body.error).toBe('DRAFT_ARC_INVALID_QUERY_FIELDS');
   });
@@ -945,8 +900,7 @@ describe('API integration', () => {
       .set('x-api-key', followedStudio.apiKey)
       .send({
         imageUrl: 'https://example.com/digest-priority-followed-v1.png',
-        thumbnailUrl:
-          'https://example.com/digest-priority-followed-v1-thumb.png',
+        thumbnailUrl: 'https://example.com/digest-priority-followed-v1-thumb.png',
       });
     expect(followedDraftRes.status).toBe(200);
     const followedDraftId = followedDraftRes.body.draft.id as string;
@@ -1149,9 +1103,7 @@ describe('API integration', () => {
     expect(releaseRes.status).toBe(200);
     const releaseId = releaseRes.body.draft.id as string;
 
-    await db.query(`UPDATE drafts SET status = 'release' WHERE id = $1`, [
-      releaseId,
-    ]);
+    await db.query(`UPDATE drafts SET status = 'release' WHERE id = $1`, [releaseId]);
 
     const followRes = await request(app)
       .post(`/api/studios/${agentId}/follow`)
@@ -1308,9 +1260,7 @@ describe('API integration', () => {
           correct: expect.any(Number),
           rate: expect.any(Number),
           netPoints: expect.any(Number),
-          riskLevel: expect.stringMatching(
-            /^(healthy|watch|critical|unknown)$/,
-          ),
+          riskLevel: expect.stringMatching(/^(healthy|watch|critical|unknown)$/),
         }),
         d30: expect.objectContaining({
           days: 30,
@@ -1318,9 +1268,7 @@ describe('API integration', () => {
           correct: expect.any(Number),
           rate: expect.any(Number),
           netPoints: expect.any(Number),
-          riskLevel: expect.stringMatching(
-            /^(healthy|watch|critical|unknown)$/,
-          ),
+          riskLevel: expect.stringMatching(/^(healthy|watch|critical|unknown)$/),
         }),
       }),
     );
@@ -1433,9 +1381,7 @@ describe('API integration', () => {
       .send({ decision: 'merge' });
     expect(decideRes.status).toBe(200);
 
-    const publicProfileRes = await request(app).get(
-      `/api/observers/${human.userId}/profile`,
-    );
+    const publicProfileRes = await request(app).get(`/api/observers/${human.userId}/profile`);
     expect(publicProfileRes.status).toBe(200);
     expect(publicProfileRes.body.observer.id).toBe(human.userId);
     expect(publicProfileRes.body.observer.email).toBeUndefined();
@@ -1473,9 +1419,7 @@ describe('API integration', () => {
           correct: expect.any(Number),
           rate: expect.any(Number),
           netPoints: expect.any(Number),
-          riskLevel: expect.stringMatching(
-            /^(healthy|watch|critical|unknown)$/,
-          ),
+          riskLevel: expect.stringMatching(/^(healthy|watch|critical|unknown)$/),
         }),
         d30: expect.objectContaining({
           days: 30,
@@ -1483,9 +1427,7 @@ describe('API integration', () => {
           correct: expect.any(Number),
           rate: expect.any(Number),
           netPoints: expect.any(Number),
-          riskLevel: expect.stringMatching(
-            /^(healthy|watch|critical|unknown)$/,
-          ),
+          riskLevel: expect.stringMatching(/^(healthy|watch|critical|unknown)$/),
         }),
       }),
     );
@@ -1546,9 +1488,7 @@ describe('API integration', () => {
     const human = await registerHuman('studio-follow-validation@example.com');
     const token = human.tokens.accessToken;
 
-    const missingAuth = await request(app)
-      .post('/api/studios/not-a-uuid/follow')
-      .send();
+    const missingAuth = await request(app).post('/api/studios/not-a-uuid/follow').send();
     expect(missingAuth.status).toBe(401);
     expect(missingAuth.body.error).toBe('AUTH_REQUIRED');
 
@@ -1560,15 +1500,11 @@ describe('API integration', () => {
     expect(invalidFollow.body.error).toBe('STUDIO_ID_INVALID');
 
     const invalidFollowQuery = await request(app)
-      .post(
-        '/api/studios/00000000-0000-0000-0000-000000000001/follow?extra=true',
-      )
+      .post('/api/studios/00000000-0000-0000-0000-000000000001/follow?extra=true')
       .set('Authorization', `Bearer ${token}`)
       .send();
     expect(invalidFollowQuery.status).toBe(400);
-    expect(invalidFollowQuery.body.error).toBe(
-      'STUDIO_FOLLOW_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidFollowQuery.body.error).toBe('STUDIO_FOLLOW_INVALID_QUERY_FIELDS');
 
     const invalidFollowBody = await request(app)
       .post('/api/studios/00000000-0000-0000-0000-000000000001/follow')
@@ -1584,14 +1520,10 @@ describe('API integration', () => {
     expect(invalidUnfollow.body.error).toBe('STUDIO_ID_INVALID');
 
     const invalidUnfollowQuery = await request(app)
-      .delete(
-        '/api/studios/00000000-0000-0000-0000-000000000001/follow?extra=true',
-      )
+      .delete('/api/studios/00000000-0000-0000-0000-000000000001/follow?extra=true')
       .set('Authorization', `Bearer ${token}`);
     expect(invalidUnfollowQuery.status).toBe(400);
-    expect(invalidUnfollowQuery.body.error).toBe(
-      'STUDIO_FOLLOW_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidUnfollowQuery.body.error).toBe('STUDIO_FOLLOW_INVALID_QUERY_FIELDS');
 
     const invalidUnfollowBody = await request(app)
       .delete('/api/studios/00000000-0000-0000-0000-000000000001/follow')
@@ -1647,9 +1579,7 @@ describe('API integration', () => {
     expect(invalidSeen.status).toBe(400);
     expect(invalidSeen.body.error).toBe('DIGEST_ENTRY_INVALID');
 
-    const invalidPublicProfile = await request(app).get(
-      '/api/observers/not-a-uuid/profile',
-    );
+    const invalidPublicProfile = await request(app).get('/api/observers/not-a-uuid/profile');
     expect(invalidPublicProfile.status).toBe(400);
     expect(invalidPublicProfile.body.error).toBe('OBSERVER_ID_INVALID');
 
@@ -1669,113 +1599,85 @@ describe('API integration', () => {
       .get('/api/observers/me/profile?extra=true')
       .set('Authorization', `Bearer ${token}`);
     expect(invalidMeProfileQueryField.status).toBe(400);
-    expect(invalidMeProfileQueryField.body.error).toBe(
-      'OBSERVER_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidMeProfileQueryField.body.error).toBe('OBSERVER_INVALID_QUERY_FIELDS');
 
     const invalidMeProfileLimit = await request(app)
       .get('/api/observers/me/profile?followingLimit=oops')
       .set('Authorization', `Bearer ${token}`);
     expect(invalidMeProfileLimit.status).toBe(400);
-    expect(invalidMeProfileLimit.body.error).toBe(
-      'OBSERVER_PAGINATION_INVALID',
-    );
+    expect(invalidMeProfileLimit.body.error).toBe('OBSERVER_PAGINATION_INVALID');
 
     const invalidMeProfileLimitFloat = await request(app)
       .get('/api/observers/me/profile?followingLimit=1.5')
       .set('Authorization', `Bearer ${token}`);
     expect(invalidMeProfileLimitFloat.status).toBe(400);
-    expect(invalidMeProfileLimitFloat.body.error).toBe(
-      'OBSERVER_PAGINATION_INVALID',
-    );
+    expect(invalidMeProfileLimitFloat.body.error).toBe('OBSERVER_PAGINATION_INVALID');
 
     const invalidMeProfileLimitRange = await request(app)
       .get('/api/observers/me/profile?followingLimit=0')
       .set('Authorization', `Bearer ${token}`);
     expect(invalidMeProfileLimitRange.status).toBe(400);
-    expect(invalidMeProfileLimitRange.body.error).toBe(
-      'OBSERVER_PAGINATION_INVALID',
-    );
+    expect(invalidMeProfileLimitRange.body.error).toBe('OBSERVER_PAGINATION_INVALID');
 
     const invalidMeProfileLimitMulti = await request(app)
       .get('/api/observers/me/profile?followingLimit=1&followingLimit=2')
       .set('Authorization', `Bearer ${token}`);
     expect(invalidMeProfileLimitMulti.status).toBe(400);
-    expect(invalidMeProfileLimitMulti.body.error).toBe(
-      'OBSERVER_PAGINATION_INVALID',
-    );
+    expect(invalidMeProfileLimitMulti.body.error).toBe('OBSERVER_PAGINATION_INVALID');
 
     const invalidPublicProfileQueryField = await request(app).get(
       `/api/observers/${validObserverId}/profile?extra=true`,
     );
     expect(invalidPublicProfileQueryField.status).toBe(400);
-    expect(invalidPublicProfileQueryField.body.error).toBe(
-      'OBSERVER_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidPublicProfileQueryField.body.error).toBe('OBSERVER_INVALID_QUERY_FIELDS');
 
     const invalidFollowingQueryField = await request(app)
       .get('/api/me/following?extra=true')
       .set('Authorization', `Bearer ${token}`);
     expect(invalidFollowingQueryField.status).toBe(400);
-    expect(invalidFollowingQueryField.body.error).toBe(
-      'OBSERVER_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidFollowingQueryField.body.error).toBe('OBSERVER_INVALID_QUERY_FIELDS');
 
     const invalidFollowingLimit = await request(app)
       .get('/api/me/following?limit=oops')
       .set('Authorization', `Bearer ${token}`);
     expect(invalidFollowingLimit.status).toBe(400);
-    expect(invalidFollowingLimit.body.error).toBe(
-      'OBSERVER_PAGINATION_INVALID',
-    );
+    expect(invalidFollowingLimit.body.error).toBe('OBSERVER_PAGINATION_INVALID');
 
     const invalidFollowingOffset = await request(app)
       .get('/api/me/following?offset=-1')
       .set('Authorization', `Bearer ${token}`);
     expect(invalidFollowingOffset.status).toBe(400);
-    expect(invalidFollowingOffset.body.error).toBe(
-      'OBSERVER_PAGINATION_INVALID',
-    );
+    expect(invalidFollowingOffset.body.error).toBe('OBSERVER_PAGINATION_INVALID');
 
     const invalidFollowingLimitMulti = await request(app)
       .get('/api/me/following?limit=1&limit=2')
       .set('Authorization', `Bearer ${token}`);
     expect(invalidFollowingLimitMulti.status).toBe(400);
-    expect(invalidFollowingLimitMulti.body.error).toBe(
-      'OBSERVER_PAGINATION_INVALID',
-    );
+    expect(invalidFollowingLimitMulti.body.error).toBe('OBSERVER_PAGINATION_INVALID');
 
     const invalidPreferencesQueryField = await request(app)
       .get('/api/observers/me/preferences?extra=true')
       .set('Authorization', `Bearer ${token}`);
     expect(invalidPreferencesQueryField.status).toBe(400);
-    expect(invalidPreferencesQueryField.body.error).toBe(
-      'OBSERVER_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidPreferencesQueryField.body.error).toBe('OBSERVER_INVALID_QUERY_FIELDS');
 
     const invalidWatchlistQueryField = await request(app)
       .get('/api/observers/watchlist?extra=true')
       .set('Authorization', `Bearer ${token}`);
     expect(invalidWatchlistQueryField.status).toBe(400);
-    expect(invalidWatchlistQueryField.body.error).toBe(
-      'OBSERVER_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidWatchlistQueryField.body.error).toBe('OBSERVER_INVALID_QUERY_FIELDS');
 
     const invalidEngagementsQueryField = await request(app)
       .get('/api/observers/engagements?extra=true')
       .set('Authorization', `Bearer ${token}`);
     expect(invalidEngagementsQueryField.status).toBe(400);
-    expect(invalidEngagementsQueryField.body.error).toBe(
-      'OBSERVER_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidEngagementsQueryField.body.error).toBe('OBSERVER_INVALID_QUERY_FIELDS');
 
     const invalidDigestQueryField = await request(app)
       .get('/api/observers/digest?extra=true')
       .set('Authorization', `Bearer ${token}`);
     expect(invalidDigestQueryField.status).toBe(400);
-    expect(invalidDigestQueryField.body.error).toBe(
-      'OBSERVER_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidDigestQueryField.body.error).toBe('OBSERVER_INVALID_QUERY_FIELDS');
 
     const invalidDigestLimit = await request(app)
       .get('/api/observers/digest?limit=oops')
@@ -1793,17 +1695,13 @@ describe('API integration', () => {
       .get('/api/observers/digest?limit=1&limit=2')
       .set('Authorization', `Bearer ${token}`);
     expect(invalidDigestLimitMulti.status).toBe(400);
-    expect(invalidDigestLimitMulti.body.error).toBe(
-      'OBSERVER_PAGINATION_INVALID',
-    );
+    expect(invalidDigestLimitMulti.body.error).toBe('OBSERVER_PAGINATION_INVALID');
 
     const invalidDigestBooleanMulti = await request(app)
       .get('/api/observers/digest?unseenOnly=true&unseenOnly=false')
       .set('Authorization', `Bearer ${token}`);
     expect(invalidDigestBooleanMulti.status).toBe(400);
-    expect(invalidDigestBooleanMulti.body.error).toBe(
-      'OBSERVER_PREFERENCES_INVALID',
-    );
+    expect(invalidDigestBooleanMulti.body.error).toBe('OBSERVER_PREFERENCES_INVALID');
   });
 
   test('observer mutation endpoints validate query and body fields', async () => {
@@ -1817,81 +1715,63 @@ describe('API integration', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ digest: { unseenOnly: true } });
     expect(invalidPreferencesQuery.status).toBe(400);
-    expect(invalidPreferencesQuery.body.error).toBe(
-      'OBSERVER_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidPreferencesQuery.body.error).toBe('OBSERVER_INVALID_QUERY_FIELDS');
 
     const invalidPreferencesBody = await request(app)
       .put('/api/observers/me/preferences')
       .set('Authorization', `Bearer ${token}`)
       .send({ unknown: true });
     expect(invalidPreferencesBody.status).toBe(400);
-    expect(invalidPreferencesBody.body.error).toBe(
-      'OBSERVER_PREFERENCES_INVALID',
-    );
+    expect(invalidPreferencesBody.body.error).toBe('OBSERVER_PREFERENCES_INVALID');
 
     const invalidPreferencesDigestBody = await request(app)
       .put('/api/observers/me/preferences')
       .set('Authorization', `Bearer ${token}`)
       .send({ digest: { unknown: true } });
     expect(invalidPreferencesDigestBody.status).toBe(400);
-    expect(invalidPreferencesDigestBody.body.error).toBe(
-      'OBSERVER_PREFERENCES_INVALID',
-    );
+    expect(invalidPreferencesDigestBody.body.error).toBe('OBSERVER_PREFERENCES_INVALID');
 
     const invalidWatchlistMutationQuery = await request(app)
       .post(`/api/observers/watchlist/${validDraftId}?extra=true`)
       .set('Authorization', `Bearer ${token}`)
       .send({});
     expect(invalidWatchlistMutationQuery.status).toBe(400);
-    expect(invalidWatchlistMutationQuery.body.error).toBe(
-      'OBSERVER_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidWatchlistMutationQuery.body.error).toBe('OBSERVER_INVALID_QUERY_FIELDS');
 
     const invalidWatchlistMutationBody = await request(app)
       .post(`/api/observers/watchlist/${validDraftId}`)
       .set('Authorization', `Bearer ${token}`)
       .send({ note: 'unexpected' });
     expect(invalidWatchlistMutationBody.status).toBe(400);
-    expect(invalidWatchlistMutationBody.body.error).toBe(
-      'OBSERVER_INVALID_BODY_FIELDS',
-    );
+    expect(invalidWatchlistMutationBody.body.error).toBe('OBSERVER_INVALID_BODY_FIELDS');
 
     const invalidEngagementMutationQuery = await request(app)
       .post(`/api/observers/engagements/${validDraftId}/save?extra=true`)
       .set('Authorization', `Bearer ${token}`)
       .send({});
     expect(invalidEngagementMutationQuery.status).toBe(400);
-    expect(invalidEngagementMutationQuery.body.error).toBe(
-      'OBSERVER_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidEngagementMutationQuery.body.error).toBe('OBSERVER_INVALID_QUERY_FIELDS');
 
     const invalidEngagementMutationBody = await request(app)
       .post(`/api/observers/engagements/${validDraftId}/save`)
       .set('Authorization', `Bearer ${token}`)
       .send({ note: 'unexpected' });
     expect(invalidEngagementMutationBody.status).toBe(400);
-    expect(invalidEngagementMutationBody.body.error).toBe(
-      'OBSERVER_INVALID_BODY_FIELDS',
-    );
+    expect(invalidEngagementMutationBody.body.error).toBe('OBSERVER_INVALID_BODY_FIELDS');
 
     const invalidDigestSeenQuery = await request(app)
       .post(`/api/observers/digest/${validDigestEntryId}/seen?extra=true`)
       .set('Authorization', `Bearer ${token}`)
       .send({});
     expect(invalidDigestSeenQuery.status).toBe(400);
-    expect(invalidDigestSeenQuery.body.error).toBe(
-      'OBSERVER_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidDigestSeenQuery.body.error).toBe('OBSERVER_INVALID_QUERY_FIELDS');
 
     const invalidDigestSeenBody = await request(app)
       .post(`/api/observers/digest/${validDigestEntryId}/seen`)
       .set('Authorization', `Bearer ${token}`)
       .send({ note: 'unexpected' });
     expect(invalidDigestSeenBody.status).toBe(400);
-    expect(invalidDigestSeenBody.body.error).toBe(
-      'OBSERVER_INVALID_BODY_FIELDS',
-    );
+    expect(invalidDigestSeenBody.body.error).toBe('OBSERVER_INVALID_BODY_FIELDS');
   });
 
   test('observer routes propagate service errors for list endpoints', async () => {
@@ -1929,10 +1809,8 @@ describe('API integration', () => {
   test('observer predict mode lifecycle', async () => {
     const human = await registerHuman('observer-predict@example.com');
     const observerToken = human.tokens.accessToken;
-    const { agentId: authorId, apiKey: authorKey } =
-      await registerAgent('Predict Author');
-    const { agentId: makerId, apiKey: makerKey } =
-      await registerAgent('Predict Maker');
+    const { agentId: authorId, apiKey: authorKey } = await registerAgent('Predict Author');
+    const { agentId: makerId, apiKey: makerKey } = await registerAgent('Predict Maker');
 
     const draftRes = await request(app)
       .post('/api/drafts')
@@ -2017,9 +1895,7 @@ describe('API integration', () => {
       [human.userId],
     );
     expect(predictionTelemetry.rows[0].submit_count).toBeGreaterThanOrEqual(2);
-    expect(
-      predictionTelemetry.rows[0].result_view_count,
-    ).toBeGreaterThanOrEqual(2);
+    expect(predictionTelemetry.rows[0].result_view_count).toBeGreaterThanOrEqual(2);
     expect(predictionTelemetry.rows[0].settle_count).toBeGreaterThanOrEqual(1);
 
     const settlementEvent = await db.query(
@@ -2034,21 +1910,15 @@ describe('API integration', () => {
     );
     expect(settlementEvent.rows).toHaveLength(1);
     expect(settlementEvent.rows[0].status).toBe('reject');
-    expect((settlementEvent.rows[0].metadata as any).predictedOutcome).toBe(
-      'merge',
-    );
-    expect((settlementEvent.rows[0].metadata as any).resolvedOutcome).toBe(
-      'reject',
-    );
+    expect((settlementEvent.rows[0].metadata as any).predictedOutcome).toBe('merge');
+    expect((settlementEvent.rows[0].metadata as any).resolvedOutcome).toBe('reject');
     expect((settlementEvent.rows[0].metadata as any).isCorrect).toBe(false);
   });
 
   test('draft prediction endpoint validates pending pull request state', async () => {
     const human = await registerHuman('observer-draft-predict@example.com');
     const observerToken = human.tokens.accessToken;
-    const { agentId: authorId, apiKey: authorKey } = await registerAgent(
-      'Predict Pending Author',
-    );
+    const { agentId: authorId, apiKey: authorKey } = await registerAgent('Predict Pending Author');
 
     const draftRes = await request(app)
       .post('/api/drafts')
@@ -2072,12 +1942,8 @@ describe('API integration', () => {
   test('prediction endpoints reject unsupported fields and conflicting aliases', async () => {
     const human = await registerHuman('observer-predict-payload@example.com');
     const observerToken = human.tokens.accessToken;
-    const { agentId: authorId, apiKey: authorKey } = await registerAgent(
-      'Predict Payload Author',
-    );
-    const { agentId: makerId, apiKey: makerKey } = await registerAgent(
-      'Predict Payload Maker',
-    );
+    const { agentId: authorId, apiKey: authorKey } = await registerAgent('Predict Payload Author');
+    const { agentId: makerId, apiKey: makerKey } = await registerAgent('Predict Payload Maker');
 
     const draftRes = await request(app)
       .post('/api/drafts')
@@ -2151,9 +2017,7 @@ describe('API integration', () => {
         stakePoints: 25,
       });
     expect(conflictingOutcomeRes.status).toBe(400);
-    expect(conflictingOutcomeRes.body.error).toBe(
-      'PREDICTION_PAYLOAD_CONFLICT',
-    );
+    expect(conflictingOutcomeRes.body.error).toBe('PREDICTION_PAYLOAD_CONFLICT');
 
     const conflictingStakeRes = await request(app)
       .post(`/api/pull-requests/${pullRequestId}/predict`)
@@ -2240,9 +2104,7 @@ describe('API integration', () => {
         unknown: 'noise',
       });
     expect(invalidFieldsRes.status).toBe(400);
-    expect(invalidFieldsRes.body.error).toBe(
-      'MULTIMODAL_GLOWUP_INVALID_FIELDS',
-    );
+    expect(invalidFieldsRes.body.error).toBe('MULTIMODAL_GLOWUP_INVALID_FIELDS');
 
     const invalidProviderRes = await request(app)
       .post(`/api/drafts/${draftId}/glowup/multimodal`)
@@ -2253,9 +2115,7 @@ describe('API integration', () => {
         visualScore: 50,
       });
     expect(invalidProviderRes.status).toBe(400);
-    expect(invalidProviderRes.body.error).toBe(
-      'MULTIMODAL_GLOWUP_INVALID_INPUT',
-    );
+    expect(invalidProviderRes.body.error).toBe('MULTIMODAL_GLOWUP_INVALID_INPUT');
 
     const invalidWriteQueryRes = await request(app)
       .post(`/api/drafts/${draftId}/glowup/multimodal?extra=true`)
@@ -2266,9 +2126,7 @@ describe('API integration', () => {
         visualScore: 50,
       });
     expect(invalidWriteQueryRes.status).toBe(400);
-    expect(invalidWriteQueryRes.body.error).toBe(
-      'MULTIMODAL_GLOWUP_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidWriteQueryRes.body.error).toBe('MULTIMODAL_GLOWUP_INVALID_QUERY_FIELDS');
 
     const invalidScoreTypeRes = await request(app)
       .post(`/api/drafts/${draftId}/glowup/multimodal`)
@@ -2279,9 +2137,7 @@ describe('API integration', () => {
         visualScore: '50',
       });
     expect(invalidScoreTypeRes.status).toBe(400);
-    expect(invalidScoreTypeRes.body.error).toBe(
-      'MULTIMODAL_GLOWUP_INVALID_INPUT',
-    );
+    expect(invalidScoreTypeRes.body.error).toBe('MULTIMODAL_GLOWUP_INVALID_INPUT');
 
     const invalidScoreRangeRes = await request(app)
       .post(`/api/drafts/${draftId}/glowup/multimodal`)
@@ -2292,9 +2148,7 @@ describe('API integration', () => {
         visualScore: 120,
       });
     expect(invalidScoreRangeRes.status).toBe(400);
-    expect(invalidScoreRangeRes.body.error).toBe(
-      'MULTIMODAL_GLOWUP_INVALID_INPUT',
-    );
+    expect(invalidScoreRangeRes.body.error).toBe('MULTIMODAL_GLOWUP_INVALID_INPUT');
 
     const missingModalitiesRes = await request(app)
       .post(`/api/drafts/${draftId}/glowup/multimodal`)
@@ -2304,9 +2158,7 @@ describe('API integration', () => {
         provider: 'gemini-2',
       });
     expect(missingModalitiesRes.status).toBe(400);
-    expect(missingModalitiesRes.body.error).toBe(
-      'MULTIMODAL_GLOWUP_INVALID_INPUT',
-    );
+    expect(missingModalitiesRes.body.error).toBe('MULTIMODAL_GLOWUP_INVALID_INPUT');
 
     const validRes = await request(app)
       .post(`/api/drafts/${draftId}/glowup/multimodal`)
@@ -2350,17 +2202,13 @@ describe('API integration', () => {
       `/api/drafts/${draftId}/glowup/multimodal?provider=bad%20provider`,
     );
     expect(invalidProviderRes.status).toBe(400);
-    expect(invalidProviderRes.body.error).toBe(
-      'MULTIMODAL_GLOWUP_INVALID_INPUT',
-    );
+    expect(invalidProviderRes.body.error).toBe('MULTIMODAL_GLOWUP_INVALID_INPUT');
 
     const invalidQueryFieldRes = await request(app).get(
       `/api/drafts/${draftId}/glowup/multimodal?provider=gpt-4.1&extra=1`,
     );
     expect(invalidQueryFieldRes.status).toBe(400);
-    expect(invalidQueryFieldRes.body.error).toBe(
-      'MULTIMODAL_GLOWUP_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidQueryFieldRes.body.error).toBe('MULTIMODAL_GLOWUP_INVALID_QUERY_FIELDS');
 
     const validReadRes = await request(app).get(
       `/api/drafts/${draftId}/glowup/multimodal?provider=gpt-4.1`,
@@ -2479,10 +2327,9 @@ describe('API integration', () => {
     expect(invalidExportId.status).toBe(400);
     expect(invalidExportId.body.error).toBe('EXPORT_ID_INVALID');
 
-    await db.query(
-      "INSERT INTO deletion_requests (user_id, status) VALUES ($1, 'pending')",
-      [human.userId],
-    );
+    await db.query("INSERT INTO deletion_requests (user_id, status) VALUES ($1, 'pending')", [
+      human.userId,
+    ]);
 
     const pendingDelete = await request(app)
       .post('/api/account/delete')
@@ -2494,8 +2341,7 @@ describe('API integration', () => {
 
   test('draft listing and release authorization', async () => {
     const { agentId, apiKey } = await registerAgent('Release Owner');
-    const { agentId: otherAgentId, apiKey: otherApiKey } =
-      await registerAgent('Release Intruder');
+    const { agentId: otherAgentId, apiKey: otherApiKey } = await registerAgent('Release Intruder');
 
     const draftOne = await request(app)
       .post('/api/drafts')
@@ -2535,9 +2381,7 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send();
     expect(invalidReleaseQuery.status).toBe(400);
-    expect(invalidReleaseQuery.body.error).toBe(
-      'DRAFT_RELEASE_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidReleaseQuery.body.error).toBe('DRAFT_RELEASE_INVALID_QUERY_FIELDS');
 
     const invalidReleaseId = await request(app)
       .post('/api/drafts/not-a-uuid/release')
@@ -2573,9 +2417,7 @@ describe('API integration', () => {
 
     const invalidQueryField = await request(app).get('/api/drafts?extra=true');
     expect(invalidQueryField.status).toBe(400);
-    expect(invalidQueryField.body.error).toBe(
-      'DRAFT_LIST_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidQueryField.body.error).toBe('DRAFT_LIST_INVALID_QUERY_FIELDS');
 
     const invalidStatus = await request(app).get('/api/drafts?status=invalid');
     expect(invalidStatus.status).toBe(400);
@@ -2601,10 +2443,8 @@ describe('API integration', () => {
   });
 
   test('pull request decisions, listings, and fork flow', async () => {
-    const { agentId: authorId, apiKey: authorKey } =
-      await registerAgent('Author Studio');
-    const { agentId: makerId, apiKey: makerKey } =
-      await registerAgent('Maker Studio');
+    const { agentId: authorId, apiKey: authorKey } = await registerAgent('Author Studio');
+    const { agentId: makerId, apiKey: makerKey } = await registerAgent('Maker Studio');
 
     const draftRes = await request(app)
       .post('/api/drafts')
@@ -2647,9 +2487,7 @@ describe('API integration', () => {
         description: 'Fix details',
       });
     expect(invalidFixCreateQuery.status).toBe(400);
-    expect(invalidFixCreateQuery.body.error).toBe(
-      'FIX_REQUEST_CREATE_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidFixCreateQuery.body.error).toBe('FIX_REQUEST_CREATE_INVALID_QUERY_FIELDS');
 
     const invalidFixCreateFields = await request(app)
       .post(`/api/drafts/${draftId}/fix-requests`)
@@ -2661,9 +2499,7 @@ describe('API integration', () => {
         extra: true,
       });
     expect(invalidFixCreateFields.status).toBe(400);
-    expect(invalidFixCreateFields.body.error).toBe(
-      'FIX_REQUEST_CREATE_INVALID_FIELDS',
-    );
+    expect(invalidFixCreateFields.body.error).toBe('FIX_REQUEST_CREATE_INVALID_FIELDS');
 
     const invalidFixCreatePayload = await request(app)
       .post(`/api/drafts/${draftId}/fix-requests`)
@@ -2674,9 +2510,7 @@ describe('API integration', () => {
         description: 123,
       });
     expect(invalidFixCreatePayload.status).toBe(400);
-    expect(invalidFixCreatePayload.body.error).toBe(
-      'FIX_REQUEST_CREATE_INVALID',
-    );
+    expect(invalidFixCreatePayload.body.error).toBe('FIX_REQUEST_CREATE_INVALID');
 
     const invalidFixCoordinates = await request(app)
       .post(`/api/drafts/${draftId}/fix-requests`)
@@ -2690,9 +2524,7 @@ describe('API integration', () => {
     expect(invalidFixCoordinates.status).toBe(400);
     expect(invalidFixCoordinates.body.error).toBe('FIX_REQUEST_CREATE_INVALID');
 
-    const fixList = await request(app).get(
-      `/api/drafts/${draftId}/fix-requests`,
-    );
+    const fixList = await request(app).get(`/api/drafts/${draftId}/fix-requests`);
     expect(fixList.status).toBe(200);
     expect(fixList.body.length).toBe(1);
 
@@ -2700,9 +2532,7 @@ describe('API integration', () => {
       `/api/drafts/${draftId}/fix-requests?extra=true`,
     );
     expect(invalidFixListQuery.status).toBe(400);
-    expect(invalidFixListQuery.body.error).toBe(
-      'FIX_REQUEST_LIST_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidFixListQuery.body.error).toBe('FIX_REQUEST_LIST_INVALID_QUERY_FIELDS');
 
     const prOne = await request(app)
       .post(`/api/drafts/${draftId}/pull-requests`)
@@ -2740,9 +2570,7 @@ describe('API integration', () => {
         thumbnailUrl: 'https://example.com/pr-query-thumb.png',
       });
     expect(invalidPrCreateQuery.status).toBe(400);
-    expect(invalidPrCreateQuery.body.error).toBe(
-      'PULL_REQUEST_CREATE_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidPrCreateQuery.body.error).toBe('PULL_REQUEST_CREATE_INVALID_QUERY_FIELDS');
 
     const invalidPrCreateFields = await request(app)
       .post(`/api/drafts/${draftId}/pull-requests`)
@@ -2756,9 +2584,7 @@ describe('API integration', () => {
         extra: true,
       });
     expect(invalidPrCreateFields.status).toBe(400);
-    expect(invalidPrCreateFields.body.error).toBe(
-      'PULL_REQUEST_CREATE_INVALID_FIELDS',
-    );
+    expect(invalidPrCreateFields.body.error).toBe('PULL_REQUEST_CREATE_INVALID_FIELDS');
 
     const invalidPrCreatePayload = await request(app)
       .post(`/api/drafts/${draftId}/pull-requests`)
@@ -2771,9 +2597,7 @@ describe('API integration', () => {
         thumbnailUrl: 'https://example.com/pr-invalid-thumb.png',
       });
     expect(invalidPrCreatePayload.status).toBe(400);
-    expect(invalidPrCreatePayload.body.error).toBe(
-      'PULL_REQUEST_CREATE_INVALID',
-    );
+    expect(invalidPrCreatePayload.body.error).toBe('PULL_REQUEST_CREATE_INVALID');
 
     const invalidAddressedFixRequests = await request(app)
       .post(`/api/drafts/${draftId}/pull-requests`)
@@ -2787,9 +2611,7 @@ describe('API integration', () => {
         thumbnailUrl: 'https://example.com/pr-addressed-thumb.png',
       });
     expect(invalidAddressedFixRequests.status).toBe(400);
-    expect(invalidAddressedFixRequests.body.error).toBe(
-      'PULL_REQUEST_CREATE_INVALID',
-    );
+    expect(invalidAddressedFixRequests.body.error).toBe('PULL_REQUEST_CREATE_INVALID');
 
     const requestChanges = await request(app)
       .post(`/api/pull-requests/${prOne.body.id}/decide`)
@@ -2837,9 +2659,7 @@ describe('API integration', () => {
     expect(reject.status).toBe(200);
     expect(reject.body.status).toBe('rejected');
 
-    const listPrs = await request(app).get(
-      `/api/drafts/${draftId}/pull-requests`,
-    );
+    const listPrs = await request(app).get(`/api/drafts/${draftId}/pull-requests`);
     expect(listPrs.status).toBe(200);
     expect(listPrs.body.length).toBe(3);
 
@@ -2847,9 +2667,7 @@ describe('API integration', () => {
       `/api/drafts/${draftId}/pull-requests?extra=true`,
     );
     expect(invalidPrListQuery.status).toBe(400);
-    expect(invalidPrListQuery.body.error).toBe(
-      'PULL_REQUEST_LIST_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidPrListQuery.body.error).toBe('PULL_REQUEST_LIST_INVALID_QUERY_FIELDS');
 
     const fork = await request(app)
       .post(`/api/pull-requests/${prTwo.body.id}/fork`)
@@ -2888,10 +2706,10 @@ describe('API integration', () => {
     const draftOneId = draftOne.body.draft.id;
     const draftTwoId = draftTwo.body.draft.id;
 
-    await db.query(
-      'INSERT INTO viewing_history (user_id, draft_id) VALUES ($1, $2)',
-      [human.userId, draftTwoId],
-    );
+    await db.query('INSERT INTO viewing_history (user_id, draft_id) VALUES ($1, $2)', [
+      human.userId,
+      draftTwoId,
+    ]);
 
     await request(app)
       .post(`/api/drafts/${draftOneId}/release`)
@@ -3042,9 +2860,7 @@ describe('API integration', () => {
         thumbnailUrl: 'https://example.com/review-v2-thumb.png',
       });
 
-    const review = await request(app).get(
-      `/api/pull-requests/${prRes.body.id}`,
-    );
+    const review = await request(app).get(`/api/pull-requests/${prRes.body.id}`);
     expect(review.status).toBe(200);
     expect(review.body.pullRequest).toBeTruthy();
     expect(review.body.draft).toBeTruthy();
@@ -3129,9 +2945,7 @@ describe('API integration', () => {
       });
     expect(prRes.status).toBe(200);
 
-    const invalidReviewId = await request(app).get(
-      '/api/pull-requests/not-a-uuid',
-    );
+    const invalidReviewId = await request(app).get('/api/pull-requests/not-a-uuid');
     expect(invalidReviewId.status).toBe(400);
     expect(invalidReviewId.body.error).toBe('PR_ID_INVALID');
 
@@ -3139,27 +2953,21 @@ describe('API integration', () => {
       `/api/pull-requests/${prRes.body.id}?extra=true`,
     );
     expect(invalidReviewQuery.status).toBe(400);
-    expect(invalidReviewQuery.body.error).toBe(
-      'PR_REVIEW_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidReviewQuery.body.error).toBe('PR_REVIEW_INVALID_QUERY_FIELDS');
 
     const invalidDraftPredictQuery = await request(app)
       .post(`/api/drafts/${draftRes.body.draft.id}/predict?extra=true`)
       .set('Authorization', `Bearer ${human.tokens.accessToken}`)
       .send({ predictedOutcome: 'merge', stakePoints: 10 });
     expect(invalidDraftPredictQuery.status).toBe(400);
-    expect(invalidDraftPredictQuery.body.error).toBe(
-      'PREDICTION_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidDraftPredictQuery.body.error).toBe('PREDICTION_INVALID_QUERY_FIELDS');
 
     const invalidPrPredictQuery = await request(app)
       .post(`/api/pull-requests/${prRes.body.id}/predict?extra=true`)
       .set('Authorization', `Bearer ${human.tokens.accessToken}`)
       .send({ predictedOutcome: 'merge', stakePoints: 10 });
     expect(invalidPrPredictQuery.status).toBe(400);
-    expect(invalidPrPredictQuery.body.error).toBe(
-      'PREDICTION_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidPrPredictQuery.body.error).toBe('PREDICTION_INVALID_QUERY_FIELDS');
 
     const invalidPredictionSummaryId = await request(app)
       .get('/api/pull-requests/not-a-uuid/predictions')
@@ -3171,9 +2979,7 @@ describe('API integration', () => {
       .get(`/api/pull-requests/${prRes.body.id}/predictions?extra=true`)
       .set('Authorization', `Bearer ${human.tokens.accessToken}`);
     expect(invalidPredictionSummaryQuery.status).toBe(400);
-    expect(invalidPredictionSummaryQuery.body.error).toBe(
-      'PREDICTION_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidPredictionSummaryQuery.body.error).toBe('PREDICTION_INVALID_QUERY_FIELDS');
 
     const invalidDecideId = await request(app)
       .post('/api/pull-requests/not-a-uuid/decide')
@@ -3189,9 +2995,7 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({ decision: 'merge', extra: true });
     expect(invalidDecideUnknownField.status).toBe(400);
-    expect(invalidDecideUnknownField.body.error).toBe(
-      'PR_DECISION_INVALID_FIELDS',
-    );
+    expect(invalidDecideUnknownField.body.error).toBe('PR_DECISION_INVALID_FIELDS');
 
     const invalidDecideQuery = await request(app)
       .post(`/api/pull-requests/${prRes.body.id}/decide?extra=true`)
@@ -3199,9 +3003,7 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({ decision: 'merge' });
     expect(invalidDecideQuery.status).toBe(400);
-    expect(invalidDecideQuery.body.error).toBe(
-      'PR_DECISION_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidDecideQuery.body.error).toBe('PR_DECISION_INVALID_QUERY_FIELDS');
 
     const invalidDecideDecision = await request(app)
       .post(`/api/pull-requests/${prRes.body.id}/decide`)
@@ -3254,9 +3056,7 @@ describe('API integration', () => {
     });
 
     expect(response.status).toBe(200);
-    const result = await db.query(
-      'SELECT COUNT(*)::int AS count FROM ux_events',
-    );
+    const result = await db.query('SELECT COUNT(*)::int AS count FROM ux_events');
     expect(result.rows[0].count).toBeGreaterThan(0);
   });
 
@@ -3369,10 +3169,7 @@ describe('API integration', () => {
     const guild = await db.query(
       "INSERT INTO guilds (name, description, theme_of_week) VALUES ('Guild Arc', 'Core team', 'Futuristic') RETURNING id",
     );
-    await db.query('UPDATE agents SET guild_id = $1 WHERE id = $2', [
-      guild.rows[0].id,
-      agentId,
-    ]);
+    await db.query('UPDATE agents SET guild_id = $1 WHERE id = $2', [guild.rows[0].id, agentId]);
 
     const list = await request(app).get('/api/guilds?limit=5');
     expect(list.status).toBe(200);
@@ -3400,9 +3197,7 @@ describe('API integration', () => {
     expect(invalidLimitFloat.status).toBe(400);
     expect(invalidLimitFloat.body.error).toBe('GUILD_PAGINATION_INVALID');
 
-    const invalidOffsetNegative = await request(app).get(
-      '/api/guilds?offset=-1',
-    );
+    const invalidOffsetNegative = await request(app).get('/api/guilds?offset=-1');
     expect(invalidOffsetNegative.status).toBe(400);
     expect(invalidOffsetNegative.body.error).toBe('GUILD_PAGINATION_INVALID');
 
@@ -3437,61 +3232,35 @@ describe('API integration', () => {
   });
 
   test('feed endpoints validate query fields and pagination', async () => {
-    const invalidFeedListQueryField = await request(app).get(
-      '/api/feeds/live-drafts?extra=true',
-    );
+    const invalidFeedListQueryField = await request(app).get('/api/feeds/live-drafts?extra=true');
     expect(invalidFeedListQueryField.status).toBe(400);
-    expect(invalidFeedListQueryField.body.error).toBe(
-      'FEED_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidFeedListQueryField.body.error).toBe('FEED_INVALID_QUERY_FIELDS');
 
-    const invalidFeedListPagination = await request(app).get(
-      '/api/feeds/live-drafts?limit=oops',
-    );
+    const invalidFeedListPagination = await request(app).get('/api/feeds/live-drafts?limit=oops');
     expect(invalidFeedListPagination.status).toBe(400);
-    expect(invalidFeedListPagination.body.error).toBe(
-      'FEED_PAGINATION_INVALID',
-    );
+    expect(invalidFeedListPagination.body.error).toBe('FEED_PAGINATION_INVALID');
 
     const invalidFeedListPaginationFloat = await request(app).get(
       '/api/feeds/live-drafts?limit=1.5',
     );
     expect(invalidFeedListPaginationFloat.status).toBe(400);
-    expect(invalidFeedListPaginationFloat.body.error).toBe(
-      'FEED_PAGINATION_INVALID',
-    );
+    expect(invalidFeedListPaginationFloat.body.error).toBe('FEED_PAGINATION_INVALID');
 
-    const invalidUnifiedFeedQueryField = await request(app).get(
-      '/api/feed?extra=true',
-    );
+    const invalidUnifiedFeedQueryField = await request(app).get('/api/feed?extra=true');
     expect(invalidUnifiedFeedQueryField.status).toBe(400);
-    expect(invalidUnifiedFeedQueryField.body.error).toBe(
-      'FEED_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidUnifiedFeedQueryField.body.error).toBe('FEED_INVALID_QUERY_FIELDS');
 
-    const invalidUnifiedFeedPagination = await request(app).get(
-      '/api/feed?offset=oops',
-    );
+    const invalidUnifiedFeedPagination = await request(app).get('/api/feed?offset=oops');
     expect(invalidUnifiedFeedPagination.status).toBe(400);
-    expect(invalidUnifiedFeedPagination.body.error).toBe(
-      'FEED_PAGINATION_INVALID',
-    );
+    expect(invalidUnifiedFeedPagination.body.error).toBe('FEED_PAGINATION_INVALID');
 
-    const invalidUnifiedFeedOffsetNegative = await request(app).get(
-      '/api/feed?offset=-1',
-    );
+    const invalidUnifiedFeedOffsetNegative = await request(app).get('/api/feed?offset=-1');
     expect(invalidUnifiedFeedOffsetNegative.status).toBe(400);
-    expect(invalidUnifiedFeedOffsetNegative.body.error).toBe(
-      'FEED_PAGINATION_INVALID',
-    );
+    expect(invalidUnifiedFeedOffsetNegative.body.error).toBe('FEED_PAGINATION_INVALID');
 
-    const invalidUnifiedFeedLimitRange = await request(app).get(
-      '/api/feed?limit=101',
-    );
+    const invalidUnifiedFeedLimitRange = await request(app).get('/api/feed?limit=101');
     expect(invalidUnifiedFeedLimitRange.status).toBe(400);
-    expect(invalidUnifiedFeedLimitRange.body.error).toBe(
-      'FEED_PAGINATION_INVALID',
-    );
+    expect(invalidUnifiedFeedLimitRange.body.error).toBe('FEED_PAGINATION_INVALID');
   });
 
   test('search endpoint returns drafts and studios', async () => {
@@ -3507,15 +3276,11 @@ describe('API integration', () => {
         metadata: { title: 'Coffee Builder' },
       });
 
-    const all = await request(app).get(
-      '/api/search?q=Coffee&type=all&sort=recency',
-    );
+    const all = await request(app).get('/api/search?q=Coffee&type=all&sort=recency');
     expect(all.status).toBe(200);
     expect(all.body.length).toBeGreaterThan(0);
 
-    const studios = await request(app).get(
-      '/api/search?q=Agent&type=studio&sort=impact',
-    );
+    const studios = await request(app).get('/api/search?q=Agent&type=studio&sort=impact');
     expect(studios.status).toBe(200);
     expect(studios.body.length).toBeGreaterThan(0);
   });
@@ -3594,9 +3359,7 @@ describe('API integration', () => {
         metadata: { title: 'Sandbox Similar' },
       });
 
-    await db.query('UPDATE drafts SET is_sandbox = true WHERE id = $1', [
-      sandbox.body.draft.id,
-    ]);
+    await db.query('UPDATE drafts SET is_sandbox = true WHERE id = $1', [sandbox.body.draft.id]);
 
     await db.query(
       `INSERT INTO draft_embeddings (draft_id, embedding)
@@ -3707,9 +3470,7 @@ describe('API integration', () => {
   });
 
   test('style fusion requires at least two similar drafts', async () => {
-    const { agentId, apiKey } = await registerAgent(
-      'Style Fusion Sparse Studio',
-    );
+    const { agentId, apiKey } = await registerAgent('Style Fusion Sparse Studio');
     const target = await request(app)
       .post('/api/drafts')
       .set('x-agent-id', agentId)
@@ -3751,17 +3512,11 @@ describe('API integration', () => {
   });
 
   test('search endpoints validate pagination, ids, and payload fields', async () => {
-    const invalidSearchQueryField = await request(app).get(
-      '/api/search?q=test&extra=true',
-    );
+    const invalidSearchQueryField = await request(app).get('/api/search?q=test&extra=true');
     expect(invalidSearchQueryField.status).toBe(400);
-    expect(invalidSearchQueryField.body.error).toBe(
-      'SEARCH_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidSearchQueryField.body.error).toBe('SEARCH_INVALID_QUERY_FIELDS');
 
-    const invalidSimilarId = await request(app).get(
-      '/api/search/similar?draftId=not-a-uuid',
-    );
+    const invalidSimilarId = await request(app).get('/api/search/similar?draftId=not-a-uuid');
     expect(invalidSimilarId.status).toBe(400);
     expect(invalidSimilarId.body.error).toBe('DRAFT_ID_INVALID');
 
@@ -3769,9 +3524,7 @@ describe('API integration', () => {
       '/api/search/similar?draftId=00000000-0000-0000-0000-000000000001&extra=true',
     );
     expect(invalidSimilarQueryField.status).toBe(400);
-    expect(invalidSimilarQueryField.body.error).toBe(
-      'SEARCH_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidSimilarQueryField.body.error).toBe('SEARCH_INVALID_QUERY_FIELDS');
 
     const invalidSimilarLimit = await request(app).get(
       '/api/search/similar?draftId=00000000-0000-0000-0000-000000000001&limit=oops',
@@ -3779,15 +3532,11 @@ describe('API integration', () => {
     expect(invalidSimilarLimit.status).toBe(400);
     expect(invalidSimilarLimit.body.error).toBe('SEARCH_PAGINATION_INVALID');
 
-    const invalidSearchLimit = await request(app).get(
-      '/api/search?q=test&limit=abc',
-    );
+    const invalidSearchLimit = await request(app).get('/api/search?q=test&limit=abc');
     expect(invalidSearchLimit.status).toBe(400);
     expect(invalidSearchLimit.body.error).toBe('SEARCH_PAGINATION_INVALID');
 
-    const invalidSearchOffset = await request(app).get(
-      '/api/search?q=test&offset=10001',
-    );
+    const invalidSearchOffset = await request(app).get('/api/search?q=test&offset=10001');
     expect(invalidSearchOffset.status).toBe(400);
     expect(invalidSearchOffset.body.error).toBe('SEARCH_PAGINATION_INVALID');
 
@@ -3797,44 +3546,32 @@ describe('API integration', () => {
     expect(invalidSimilarOffset.status).toBe(400);
     expect(invalidSimilarOffset.body.error).toBe('SEARCH_PAGINATION_INVALID');
 
-    const invalidVisualFields = await request(app)
-      .post('/api/search/visual')
-      .send({
-        draftId: '00000000-0000-0000-0000-000000000001',
-        unknownField: true,
-      });
+    const invalidVisualFields = await request(app).post('/api/search/visual').send({
+      draftId: '00000000-0000-0000-0000-000000000001',
+      unknownField: true,
+    });
     expect(invalidVisualFields.status).toBe(400);
     expect(invalidVisualFields.body.error).toBe('SEARCH_VISUAL_INVALID_FIELDS');
 
-    const invalidVisualQueryField = await request(app)
-      .post('/api/search/visual?extra=true')
-      .send({
-        draftId: '00000000-0000-0000-0000-000000000001',
-      });
+    const invalidVisualQueryField = await request(app).post('/api/search/visual?extra=true').send({
+      draftId: '00000000-0000-0000-0000-000000000001',
+    });
     expect(invalidVisualQueryField.status).toBe(400);
-    expect(invalidVisualQueryField.body.error).toBe(
-      'SEARCH_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidVisualQueryField.body.error).toBe('SEARCH_INVALID_QUERY_FIELDS');
 
-    const invalidVisualOffset = await request(app)
-      .post('/api/search/visual')
-      .send({
-        draftId: '00000000-0000-0000-0000-000000000001',
-        offset: 10_001,
-      });
+    const invalidVisualOffset = await request(app).post('/api/search/visual').send({
+      draftId: '00000000-0000-0000-0000-000000000001',
+      offset: 10_001,
+    });
     expect(invalidVisualOffset.status).toBe(400);
     expect(invalidVisualOffset.body.error).toBe('SEARCH_PAGINATION_INVALID');
 
-    const invalidStyleFusionFields = await request(app)
-      .post('/api/search/style-fusion')
-      .send({
-        draftId: '00000000-0000-0000-0000-000000000001',
-        extra: 'unsupported',
-      });
+    const invalidStyleFusionFields = await request(app).post('/api/search/style-fusion').send({
+      draftId: '00000000-0000-0000-0000-000000000001',
+      extra: 'unsupported',
+    });
     expect(invalidStyleFusionFields.status).toBe(400);
-    expect(invalidStyleFusionFields.body.error).toBe(
-      'STYLE_FUSION_INVALID_FIELDS',
-    );
+    expect(invalidStyleFusionFields.body.error).toBe('STYLE_FUSION_INVALID_FIELDS');
 
     const invalidStyleFusionQueryField = await request(app)
       .post('/api/search/style-fusion?extra=true')
@@ -3842,9 +3579,7 @@ describe('API integration', () => {
         draftId: '00000000-0000-0000-0000-000000000001',
       });
     expect(invalidStyleFusionQueryField.status).toBe(400);
-    expect(invalidStyleFusionQueryField.body.error).toBe(
-      'SEARCH_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidStyleFusionQueryField.body.error).toBe('SEARCH_INVALID_QUERY_FIELDS');
   });
 
   test('collaboration list endpoints reject unsupported query fields', async () => {
@@ -3855,35 +3590,21 @@ describe('API integration', () => {
       '/api/creator-studios?extra=true',
     );
     expect(invalidCreatorStudiosQueryField.status).toBe(400);
-    expect(invalidCreatorStudiosQueryField.body.error).toBe(
-      'CREATOR_STUDIO_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidCreatorStudiosQueryField.body.error).toBe('CREATOR_STUDIO_INVALID_QUERY_FIELDS');
 
-    const invalidSwarmsQueryField = await request(app).get(
-      '/api/swarms?extra=true',
-    );
+    const invalidSwarmsQueryField = await request(app).get('/api/swarms?extra=true');
     expect(invalidSwarmsQueryField.status).toBe(400);
-    expect(invalidSwarmsQueryField.body.error).toBe(
-      'SWARM_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidSwarmsQueryField.body.error).toBe('SWARM_INVALID_QUERY_FIELDS');
 
-    const invalidLiveSessionsQueryField = await request(app).get(
-      '/api/live-sessions?extra=true',
-    );
+    const invalidLiveSessionsQueryField = await request(app).get('/api/live-sessions?extra=true');
     expect(invalidLiveSessionsQueryField.status).toBe(400);
-    expect(invalidLiveSessionsQueryField.body.error).toBe(
-      'LIVE_SESSION_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidLiveSessionsQueryField.body.error).toBe('LIVE_SESSION_INVALID_QUERY_FIELDS');
 
-    const invalidCreatorStudiosLimit = await request(app).get(
-      '/api/creator-studios?limit=1.5',
-    );
+    const invalidCreatorStudiosLimit = await request(app).get('/api/creator-studios?limit=1.5');
     expect(invalidCreatorStudiosLimit.status).toBe(400);
     expect(invalidCreatorStudiosLimit.body.error).toBe('INVALID_LIMIT');
 
-    const invalidCreatorStudiosOffset = await request(app).get(
-      '/api/creator-studios?offset=-1',
-    );
+    const invalidCreatorStudiosOffset = await request(app).get('/api/creator-studios?offset=-1');
     expect(invalidCreatorStudiosOffset.status).toBe(400);
     expect(invalidCreatorStudiosOffset.body.error).toBe('INVALID_OFFSET');
 
@@ -3891,17 +3612,13 @@ describe('API integration', () => {
       .get('/api/creator-studios/funnels/summary?windowDays=0')
       .set('Authorization', `Bearer ${funnelToken}`);
     expect(invalidCreatorStudiosWindowDays.status).toBe(400);
-    expect(invalidCreatorStudiosWindowDays.body.error).toBe(
-      'INVALID_WINDOW_DAYS',
-    );
+    expect(invalidCreatorStudiosWindowDays.body.error).toBe('INVALID_WINDOW_DAYS');
 
     const invalidSwarmsLimit = await request(app).get('/api/swarms?limit=1.5');
     expect(invalidSwarmsLimit.status).toBe(400);
     expect(invalidSwarmsLimit.body.error).toBe('INVALID_LIMIT');
 
-    const invalidLiveSessionsOffset = await request(app).get(
-      '/api/live-sessions?offset=-1',
-    );
+    const invalidLiveSessionsOffset = await request(app).get('/api/live-sessions?offset=-1');
     expect(invalidLiveSessionsOffset.status).toBe(400);
     expect(invalidLiveSessionsOffset.body.error).toBe('INVALID_OFFSET');
   });
@@ -3911,13 +3628,9 @@ describe('API integration', () => {
     const token = human.tokens.accessToken;
     const { agentId, apiKey } = await registerAgent('Collab ID Guard Agent');
 
-    const invalidCreatorStudioDetail = await request(app).get(
-      '/api/creator-studios/not-a-uuid',
-    );
+    const invalidCreatorStudioDetail = await request(app).get('/api/creator-studios/not-a-uuid');
     expect(invalidCreatorStudioDetail.status).toBe(400);
-    expect(invalidCreatorStudioDetail.body.error).toBe(
-      'CREATOR_STUDIO_ID_INVALID',
-    );
+    expect(invalidCreatorStudioDetail.body.error).toBe('CREATOR_STUDIO_ID_INVALID');
 
     const invalidGuildDetail = await request(app).get('/api/guilds/not-a-uuid');
     expect(invalidGuildDetail.status).toBe(400);
@@ -3927,9 +3640,7 @@ describe('API integration', () => {
     expect(invalidSwarmDetail.status).toBe(400);
     expect(invalidSwarmDetail.body.error).toBe('SWARM_ID_INVALID');
 
-    const invalidLiveSessionDetail = await request(app).get(
-      '/api/live-sessions/not-a-uuid',
-    );
+    const invalidLiveSessionDetail = await request(app).get('/api/live-sessions/not-a-uuid');
     expect(invalidLiveSessionDetail.status).toBe(400);
     expect(invalidLiveSessionDetail.body.error).toBe('LIVE_SESSION_ID_INVALID');
 
@@ -3940,9 +3651,7 @@ describe('API integration', () => {
         autoApproveThreshold: 0.8,
       });
     expect(invalidCreatorStudioGovernance.status).toBe(400);
-    expect(invalidCreatorStudioGovernance.body.error).toBe(
-      'CREATOR_STUDIO_ID_INVALID',
-    );
+    expect(invalidCreatorStudioGovernance.body.error).toBe('CREATOR_STUDIO_ID_INVALID');
 
     const invalidSwarmStart = await request(app)
       .post('/api/swarms/not-a-uuid/start')
@@ -3969,9 +3678,7 @@ describe('API integration', () => {
       '/api/creator-studios/00000000-0000-0000-0000-000000000001?extra=true',
     );
     expect(invalidDetailQuery.status).toBe(400);
-    expect(invalidDetailQuery.body.error).toBe(
-      'CREATOR_STUDIO_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidDetailQuery.body.error).toBe('CREATOR_STUDIO_INVALID_QUERY_FIELDS');
 
     const invalidCreateQuery = await request(app)
       .post('/api/creator-studios?extra=true')
@@ -3980,9 +3687,7 @@ describe('API integration', () => {
         studioName: 'Creator Boundary',
       });
     expect(invalidCreateQuery.status).toBe(400);
-    expect(invalidCreateQuery.body.error).toBe(
-      'CREATOR_STUDIO_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidCreateQuery.body.error).toBe('CREATOR_STUDIO_INVALID_QUERY_FIELDS');
 
     const invalidCreateFields = await request(app)
       .post('/api/creator-studios')
@@ -3992,9 +3697,7 @@ describe('API integration', () => {
         extra: true,
       });
     expect(invalidCreateFields.status).toBe(400);
-    expect(invalidCreateFields.body.error).toBe(
-      'CREATOR_STUDIO_INVALID_FIELDS',
-    );
+    expect(invalidCreateFields.body.error).toBe('CREATOR_STUDIO_INVALID_FIELDS');
 
     const createdStudio = await request(app)
       .post('/api/creator-studios')
@@ -4014,9 +3717,7 @@ describe('API integration', () => {
         },
       });
     expect(invalidGovernanceQuery.status).toBe(400);
-    expect(invalidGovernanceQuery.body.error).toBe(
-      'CREATOR_STUDIO_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidGovernanceQuery.body.error).toBe('CREATOR_STUDIO_INVALID_QUERY_FIELDS');
 
     const invalidGovernanceFields = await request(app)
       .patch(`/api/creator-studios/${studioId}/governance`)
@@ -4028,9 +3729,7 @@ describe('API integration', () => {
         extra: true,
       });
     expect(invalidGovernanceFields.status).toBe(400);
-    expect(invalidGovernanceFields.body.error).toBe(
-      'CREATOR_STUDIO_GOVERNANCE_INVALID_FIELDS',
-    );
+    expect(invalidGovernanceFields.body.error).toBe('CREATOR_STUDIO_GOVERNANCE_INVALID_FIELDS');
 
     const invalidBillingQuery = await request(app)
       .post(`/api/creator-studios/${studioId}/billing/connect?extra=true`)
@@ -4039,9 +3738,7 @@ describe('API integration', () => {
         providerAccountId: 'acct_123',
       });
     expect(invalidBillingQuery.status).toBe(400);
-    expect(invalidBillingQuery.body.error).toBe(
-      'CREATOR_STUDIO_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidBillingQuery.body.error).toBe('CREATOR_STUDIO_INVALID_QUERY_FIELDS');
 
     const invalidBillingFields = await request(app)
       .post(`/api/creator-studios/${studioId}/billing/connect`)
@@ -4051,27 +3748,21 @@ describe('API integration', () => {
         extra: true,
       });
     expect(invalidBillingFields.status).toBe(400);
-    expect(invalidBillingFields.body.error).toBe(
-      'CREATOR_STUDIO_BILLING_INVALID_FIELDS',
-    );
+    expect(invalidBillingFields.body.error).toBe('CREATOR_STUDIO_BILLING_INVALID_FIELDS');
 
     const invalidRetentionQuery = await request(app)
       .post(`/api/creator-studios/${studioId}/retention/ping?extra=true`)
       .set('Authorization', `Bearer ${token}`)
       .send();
     expect(invalidRetentionQuery.status).toBe(400);
-    expect(invalidRetentionQuery.body.error).toBe(
-      'CREATOR_STUDIO_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidRetentionQuery.body.error).toBe('CREATOR_STUDIO_INVALID_QUERY_FIELDS');
 
     const invalidRetentionFields = await request(app)
       .post(`/api/creator-studios/${studioId}/retention/ping`)
       .set('Authorization', `Bearer ${token}`)
       .send({ extra: true });
     expect(invalidRetentionFields.status).toBe(400);
-    expect(invalidRetentionFields.body.error).toBe(
-      'CREATOR_STUDIO_RETENTION_INVALID_FIELDS',
-    );
+    expect(invalidRetentionFields.body.error).toBe('CREATOR_STUDIO_RETENTION_INVALID_FIELDS');
   });
 
   test('creator studio mutation endpoints validate payload boundaries', async () => {
@@ -4095,9 +3786,7 @@ describe('API integration', () => {
         stylePreset: 'retro',
       });
     expect(invalidStylePreset.status).toBe(400);
-    expect(invalidStylePreset.body.error).toBe(
-      'CREATOR_STUDIO_INVALID_STYLE_PRESET',
-    );
+    expect(invalidStylePreset.body.error).toBe('CREATOR_STUDIO_INVALID_STYLE_PRESET');
 
     const invalidRevenueShareType = await request(app)
       .post('/api/creator-studios')
@@ -4107,9 +3796,7 @@ describe('API integration', () => {
         revenueSharePercent: '25',
       });
     expect(invalidRevenueShareType.status).toBe(400);
-    expect(invalidRevenueShareType.body.error).toBe(
-      'CREATOR_STUDIO_INVALID_REVENUE_SHARE',
-    );
+    expect(invalidRevenueShareType.body.error).toBe('CREATOR_STUDIO_INVALID_REVENUE_SHARE');
 
     const createdStudio = await request(app)
       .post('/api/creator-studios')
@@ -4129,9 +3816,7 @@ describe('API integration', () => {
         },
       });
     expect(invalidGovernanceThreshold.status).toBe(400);
-    expect(invalidGovernanceThreshold.body.error).toBe(
-      'CREATOR_STUDIO_INVALID_THRESHOLD',
-    );
+    expect(invalidGovernanceThreshold.body.error).toBe('CREATOR_STUDIO_INVALID_THRESHOLD');
 
     const invalidGovernanceFlagType = await request(app)
       .patch(`/api/creator-studios/${studioId}/governance`)
@@ -4142,9 +3827,7 @@ describe('API integration', () => {
         },
       });
     expect(invalidGovernanceFlagType.status).toBe(400);
-    expect(invalidGovernanceFlagType.body.error).toBe(
-      'CREATOR_STUDIO_INVALID_INPUT',
-    );
+    expect(invalidGovernanceFlagType.body.error).toBe('CREATOR_STUDIO_INVALID_INPUT');
 
     const invalidGovernanceMode = await request(app)
       .patch(`/api/creator-studios/${studioId}/governance`)
@@ -4155,9 +3838,7 @@ describe('API integration', () => {
         },
       });
     expect(invalidGovernanceMode.status).toBe(400);
-    expect(invalidGovernanceMode.body.error).toBe(
-      'CREATOR_STUDIO_INVALID_MODERATION_MODE',
-    );
+    expect(invalidGovernanceMode.body.error).toBe('CREATOR_STUDIO_INVALID_MODERATION_MODE');
 
     const invalidGovernanceRevenueShare = await request(app)
       .patch(`/api/creator-studios/${studioId}/governance`)
@@ -4166,9 +3847,7 @@ describe('API integration', () => {
         revenueSharePercent: 101,
       });
     expect(invalidGovernanceRevenueShare.status).toBe(400);
-    expect(invalidGovernanceRevenueShare.body.error).toBe(
-      'CREATOR_STUDIO_INVALID_REVENUE_SHARE',
-    );
+    expect(invalidGovernanceRevenueShare.body.error).toBe('CREATOR_STUDIO_INVALID_REVENUE_SHARE');
 
     const invalidBillingAccountType = await request(app)
       .post(`/api/creator-studios/${studioId}/billing/connect`)
@@ -4177,9 +3856,7 @@ describe('API integration', () => {
         providerAccountId: 123,
       });
     expect(invalidBillingAccountType.status).toBe(400);
-    expect(invalidBillingAccountType.body.error).toBe(
-      'CREATOR_STUDIO_INVALID_INPUT',
-    );
+    expect(invalidBillingAccountType.body.error).toBe('CREATOR_STUDIO_INVALID_INPUT');
   });
 
   test('swarm endpoints enforce query/body allowlists', async () => {
@@ -4233,9 +3910,7 @@ describe('API integration', () => {
     expect(invalidStartBody.body.error).toBe('SWARM_START_INVALID_FIELDS');
 
     const invalidJudgeQuery = await request(app)
-      .post(
-        '/api/swarms/00000000-0000-0000-0000-000000000001/judge-events?extra=true',
-      )
+      .post('/api/swarms/00000000-0000-0000-0000-000000000001/judge-events?extra=true')
       .set('x-agent-id', agentId)
       .set('x-api-key', apiKey)
       .send({
@@ -4255,14 +3930,10 @@ describe('API integration', () => {
         extra: true,
       });
     expect(invalidJudgeFields.status).toBe(400);
-    expect(invalidJudgeFields.body.error).toBe(
-      'SWARM_JUDGE_EVENT_INVALID_FIELDS',
-    );
+    expect(invalidJudgeFields.body.error).toBe('SWARM_JUDGE_EVENT_INVALID_FIELDS');
 
     const invalidCompleteQuery = await request(app)
-      .post(
-        '/api/swarms/00000000-0000-0000-0000-000000000001/complete?extra=true',
-      )
+      .post('/api/swarms/00000000-0000-0000-0000-000000000001/complete?extra=true')
       .set('x-agent-id', agentId)
       .set('x-api-key', apiKey)
       .send({
@@ -4280,9 +3951,7 @@ describe('API integration', () => {
         extra: true,
       });
     expect(invalidCompleteFields.status).toBe(400);
-    expect(invalidCompleteFields.body.error).toBe(
-      'SWARM_COMPLETE_INVALID_FIELDS',
-    );
+    expect(invalidCompleteFields.body.error).toBe('SWARM_COMPLETE_INVALID_FIELDS');
   });
 
   test('swarm endpoints validate payload boundaries', async () => {
@@ -4442,9 +4111,7 @@ describe('API integration', () => {
         objective: 'Validate query fields',
       });
     expect(invalidCreateQuery.status).toBe(400);
-    expect(invalidCreateQuery.body.error).toBe(
-      'LIVE_SESSION_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidCreateQuery.body.error).toBe('LIVE_SESSION_INVALID_QUERY_FIELDS');
 
     const invalidCreateFields = await request(app)
       .post('/api/live-sessions')
@@ -4469,13 +4136,9 @@ describe('API integration', () => {
     expect(created.status).toBe(201);
     const sessionId = created.body.session.id as string;
 
-    const invalidDetailQuery = await request(app).get(
-      `/api/live-sessions/${sessionId}?extra=true`,
-    );
+    const invalidDetailQuery = await request(app).get(`/api/live-sessions/${sessionId}?extra=true`);
     expect(invalidDetailQuery.status).toBe(400);
-    expect(invalidDetailQuery.body.error).toBe(
-      'LIVE_SESSION_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidDetailQuery.body.error).toBe('LIVE_SESSION_INVALID_QUERY_FIELDS');
 
     const invalidStartQuery = await request(app)
       .post(`/api/live-sessions/${sessionId}/start?extra=true`)
@@ -4483,9 +4146,7 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send();
     expect(invalidStartQuery.status).toBe(400);
-    expect(invalidStartQuery.body.error).toBe(
-      'LIVE_SESSION_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidStartQuery.body.error).toBe('LIVE_SESSION_INVALID_QUERY_FIELDS');
 
     const invalidStartBody = await request(app)
       .post(`/api/live-sessions/${sessionId}/start`)
@@ -4493,9 +4154,7 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({ extra: true });
     expect(invalidStartBody.status).toBe(400);
-    expect(invalidStartBody.body.error).toBe(
-      'LIVE_SESSION_START_INVALID_FIELDS',
-    );
+    expect(invalidStartBody.body.error).toBe('LIVE_SESSION_START_INVALID_FIELDS');
 
     const invalidCompleteQuery = await request(app)
       .post(`/api/live-sessions/${sessionId}/complete?extra=true`)
@@ -4503,9 +4162,7 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({ recapSummary: 'done' });
     expect(invalidCompleteQuery.status).toBe(400);
-    expect(invalidCompleteQuery.body.error).toBe(
-      'LIVE_SESSION_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidCompleteQuery.body.error).toBe('LIVE_SESSION_INVALID_QUERY_FIELDS');
 
     const invalidCompleteFields = await request(app)
       .post(`/api/live-sessions/${sessionId}/complete`)
@@ -4513,27 +4170,21 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({ recapSummary: 'done', extra: true });
     expect(invalidCompleteFields.status).toBe(400);
-    expect(invalidCompleteFields.body.error).toBe(
-      'LIVE_SESSION_COMPLETE_INVALID_FIELDS',
-    );
+    expect(invalidCompleteFields.body.error).toBe('LIVE_SESSION_COMPLETE_INVALID_FIELDS');
 
     const invalidPresenceQuery = await request(app)
       .post(`/api/live-sessions/${sessionId}/presence/observer?extra=true`)
       .set('Authorization', `Bearer ${humanToken}`)
       .send({ status: 'watching' });
     expect(invalidPresenceQuery.status).toBe(400);
-    expect(invalidPresenceQuery.body.error).toBe(
-      'LIVE_SESSION_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidPresenceQuery.body.error).toBe('LIVE_SESSION_INVALID_QUERY_FIELDS');
 
     const invalidPresenceFields = await request(app)
       .post(`/api/live-sessions/${sessionId}/presence/observer`)
       .set('Authorization', `Bearer ${humanToken}`)
       .send({ status: 'watching', extra: true });
     expect(invalidPresenceFields.status).toBe(400);
-    expect(invalidPresenceFields.body.error).toBe(
-      'LIVE_SESSION_PRESENCE_INVALID_FIELDS',
-    );
+    expect(invalidPresenceFields.body.error).toBe('LIVE_SESSION_PRESENCE_INVALID_FIELDS');
 
     const invalidPresenceAgentFields = await request(app)
       .post(`/api/live-sessions/${sessionId}/presence/agent`)
@@ -4541,27 +4192,21 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({ status: 'active', extra: true });
     expect(invalidPresenceAgentFields.status).toBe(400);
-    expect(invalidPresenceAgentFields.body.error).toBe(
-      'LIVE_SESSION_PRESENCE_INVALID_FIELDS',
-    );
+    expect(invalidPresenceAgentFields.body.error).toBe('LIVE_SESSION_PRESENCE_INVALID_FIELDS');
 
     const invalidObserverMessageQuery = await request(app)
       .post(`/api/live-sessions/${sessionId}/messages/observer?extra=true`)
       .set('Authorization', `Bearer ${humanToken}`)
       .send({ content: 'hello' });
     expect(invalidObserverMessageQuery.status).toBe(400);
-    expect(invalidObserverMessageQuery.body.error).toBe(
-      'LIVE_SESSION_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidObserverMessageQuery.body.error).toBe('LIVE_SESSION_INVALID_QUERY_FIELDS');
 
     const invalidObserverMessageFields = await request(app)
       .post(`/api/live-sessions/${sessionId}/messages/observer`)
       .set('Authorization', `Bearer ${humanToken}`)
       .send({ content: 'hello', extra: true });
     expect(invalidObserverMessageFields.status).toBe(400);
-    expect(invalidObserverMessageFields.body.error).toBe(
-      'LIVE_SESSION_MESSAGE_INVALID_FIELDS',
-    );
+    expect(invalidObserverMessageFields.body.error).toBe('LIVE_SESSION_MESSAGE_INVALID_FIELDS');
 
     const invalidAgentMessageFields = await request(app)
       .post(`/api/live-sessions/${sessionId}/messages/agent`)
@@ -4569,9 +4214,7 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({ content: 'hello', authorLabel: 'Agent', extra: true });
     expect(invalidAgentMessageFields.status).toBe(400);
-    expect(invalidAgentMessageFields.body.error).toBe(
-      'LIVE_SESSION_MESSAGE_INVALID_FIELDS',
-    );
+    expect(invalidAgentMessageFields.body.error).toBe('LIVE_SESSION_MESSAGE_INVALID_FIELDS');
   });
 
   test('live session endpoints validate payload boundaries', async () => {
@@ -4633,9 +4276,7 @@ describe('API integration', () => {
         recapClipUrl: 'ftp://example.com/clip.mp4',
       });
     expect(invalidCompleteRecapUrl.status).toBe(400);
-    expect(invalidCompleteRecapUrl.body.error).toBe(
-      'LIVE_SESSION_INVALID_INPUT',
-    );
+    expect(invalidCompleteRecapUrl.body.error).toBe('LIVE_SESSION_INVALID_INPUT');
 
     const invalidPresenceType = await request(app)
       .post(`/api/live-sessions/${sessionId}/presence/observer`)
@@ -4662,9 +4303,7 @@ describe('API integration', () => {
         content: 'x'.repeat(501),
       });
     expect(invalidMessageLength.status).toBe(400);
-    expect(invalidMessageLength.body.error).toBe(
-      'LIVE_SESSION_INVALID_MESSAGE',
-    );
+    expect(invalidMessageLength.body.error).toBe('LIVE_SESSION_INVALID_MESSAGE');
 
     const invalidAgentLabelLength = await request(app)
       .post(`/api/live-sessions/${sessionId}/messages/agent`)
@@ -4675,18 +4314,12 @@ describe('API integration', () => {
         authorLabel: 'x'.repeat(81),
       });
     expect(invalidAgentLabelLength.status).toBe(400);
-    expect(invalidAgentLabelLength.body.error).toBe(
-      'LIVE_SESSION_INVALID_MESSAGE',
-    );
+    expect(invalidAgentLabelLength.body.error).toBe('LIVE_SESSION_INVALID_MESSAGE');
   });
 
   test('live session realtime bootstrap endpoint validates payload boundaries', async () => {
-    const { agentId, apiKey } = await registerAgent(
-      'Live Realtime Boundary Agent',
-    );
-    const human = await registerHuman(
-      'live-realtime-boundary-human@example.com',
-    );
+    const { agentId, apiKey } = await registerAgent('Live Realtime Boundary Agent');
+    const human = await registerHuman('live-realtime-boundary-human@example.com');
 
     const created = await request(app)
       .post('/api/live-sessions')
@@ -4716,9 +4349,7 @@ describe('API integration', () => {
         extra: true,
       });
     expect(invalidBodyFields.status).toBe(400);
-    expect(invalidBodyFields.body.error).toBe(
-      'LIVE_SESSION_REALTIME_INVALID_FIELDS',
-    );
+    expect(invalidBodyFields.body.error).toBe('LIVE_SESSION_REALTIME_INVALID_FIELDS');
 
     const invalidVoice = await request(app)
       .post(`/api/live-sessions/${sessionId}/realtime/session`)
@@ -4815,10 +4446,7 @@ describe('API integration', () => {
       );
 
       expect(fetchMock).toHaveBeenCalledTimes(1);
-      const [calledUrl, calledInit] = fetchMock.mock.calls[0] as [
-        string,
-        RequestInit,
-      ];
+      const [calledUrl, calledInit] = fetchMock.mock.calls[0] as [string, RequestInit];
       expect(calledUrl).toBe('https://api.openai.com/v1/realtime/sessions');
       expect(calledInit.method).toBe('POST');
       expect(calledInit.headers).toEqual(
@@ -4833,6 +4461,35 @@ describe('API integration', () => {
       };
       expect(parsedBody.output_modalities).toEqual(['audio']);
       expect(parsedBody.audio?.input?.turn_detection).toBeNull();
+
+      const providerLaneRows = await db.query<{
+        metadata: Record<string, unknown>;
+        status: string;
+        user_id: string | null;
+        user_type: string | null;
+      }>(
+        `SELECT status, user_type, user_id, metadata
+         FROM ux_events
+         WHERE event_type = $1
+           AND source = $2
+         ORDER BY created_at DESC`,
+        [PROVIDER_LANE_EXECUTION_EVENT_TYPE, PROVIDER_LANE_TELEMETRY_SOURCE],
+      );
+      expect(providerLaneRows.rows).toHaveLength(1);
+      expect(providerLaneRows.rows[0]?.status).toBe('ok');
+      expect(providerLaneRows.rows[0]?.user_type).toBe('observer');
+      expect(providerLaneRows.rows[0]?.user_id).toBe(human.userId);
+      expect(providerLaneRows.rows[0]?.metadata).toEqual(
+        expect.objectContaining({
+          lane: 'voice_live',
+          operation: 'live_session_realtime_bootstrap',
+          provider: 'openai',
+        }),
+      );
+      expect(
+        (providerLaneRows.rows[0]?.metadata?.context as Record<string, unknown> | undefined)
+          ?.liveSessionId,
+      ).toBe(sessionId);
     } finally {
       globalThis.fetch = previousFetch;
       if (previousOpenAiKey === undefined) {
@@ -4844,12 +4501,8 @@ describe('API integration', () => {
   });
 
   test('live session realtime tool endpoint validates payload boundaries', async () => {
-    const { agentId, apiKey } = await registerAgent(
-      'Live Realtime Tool Boundary Agent',
-    );
-    const human = await registerHuman(
-      'live-realtime-tool-boundary-human@example.com',
-    );
+    const { agentId, apiKey } = await registerAgent('Live Realtime Tool Boundary Agent');
+    const human = await registerHuman('live-realtime-tool-boundary-human@example.com');
 
     const created = await request(app)
       .post('/api/live-sessions')
@@ -4885,9 +4538,7 @@ describe('API integration', () => {
         extra: true,
       });
     expect(invalidBodyFields.status).toBe(400);
-    expect(invalidBodyFields.body.error).toBe(
-      'LIVE_SESSION_REALTIME_TOOL_INVALID_FIELDS',
-    );
+    expect(invalidBodyFields.body.error).toBe('LIVE_SESSION_REALTIME_TOOL_INVALID_FIELDS');
 
     const invalidToolName = await request(app)
       .post(`/api/live-sessions/${sessionId}/realtime/tool`)
@@ -4897,9 +4548,7 @@ describe('API integration', () => {
         arguments: {},
       });
     expect(invalidToolName.status).toBe(400);
-    expect(invalidToolName.body.error).toBe(
-      'LIVE_SESSION_REALTIME_TOOL_INVALID_INPUT',
-    );
+    expect(invalidToolName.body.error).toBe('LIVE_SESSION_REALTIME_TOOL_INVALID_INPUT');
 
     const invalidToolArgs = await request(app)
       .post(`/api/live-sessions/${sessionId}/realtime/tool`)
@@ -4909,9 +4558,7 @@ describe('API integration', () => {
         arguments: '{"draftId":"invalid"}',
       });
     expect(invalidToolArgs.status).toBe(400);
-    expect(invalidToolArgs.body.error).toBe(
-      'LIVE_SESSION_REALTIME_TOOL_INVALID_INPUT',
-    );
+    expect(invalidToolArgs.body.error).toBe('LIVE_SESSION_REALTIME_TOOL_INVALID_INPUT');
 
     const invalidCallId = await request(app)
       .post(`/api/live-sessions/${sessionId}/realtime/tool`)
@@ -4924,18 +4571,14 @@ describe('API integration', () => {
         },
       });
     expect(invalidCallId.status).toBe(400);
-    expect(invalidCallId.body.error).toBe(
-      'LIVE_SESSION_REALTIME_TOOL_INVALID_INPUT',
-    );
+    expect(invalidCallId.body.error).toBe('LIVE_SESSION_REALTIME_TOOL_INVALID_INPUT');
   });
 
   test('live session realtime tool endpoint executes follow and prediction tools', async () => {
     const { agentId: authorId, apiKey: authorKey } = await registerAgent(
       'Live Realtime Tool Author',
     );
-    const { agentId: makerId, apiKey: makerKey } = await registerAgent(
-      'Live Realtime Tool Maker',
-    );
+    const { agentId: makerId, apiKey: makerKey } = await registerAgent('Live Realtime Tool Maker');
     const human = await registerHuman('live-realtime-tool-human@example.com');
     const observerToken = human.tokens.accessToken;
 
@@ -5004,9 +4647,7 @@ describe('API integration', () => {
         },
       });
     expect(followCooldownResult.status).toBe(429);
-    expect(followCooldownResult.body.error).toBe(
-      'LIVE_SESSION_REALTIME_TOOL_COOLDOWN',
-    );
+    expect(followCooldownResult.body.error).toBe('LIVE_SESSION_REALTIME_TOOL_COOLDOWN');
     expect(followCooldownResult.body.toolName).toBe('follow_studio');
     expect(Number(followCooldownResult.body.retryAfterMs)).toBeGreaterThan(0);
     expect(followCooldownResult.headers['retry-after']).toBeDefined();
@@ -5038,9 +4679,7 @@ describe('API integration', () => {
         },
       });
     expect(followConflictResult.status).toBe(409);
-    expect(followConflictResult.body.error).toBe(
-      'LIVE_SESSION_REALTIME_TOOL_CALL_CONFLICT',
-    );
+    expect(followConflictResult.body.error).toBe('LIVE_SESSION_REALTIME_TOOL_CALL_CONFLICT');
 
     const callIdToolConflictResult = await request(app)
       .post(`/api/live-sessions/${sessionId}/realtime/tool`)
@@ -5055,9 +4694,7 @@ describe('API integration', () => {
         },
       });
     expect(callIdToolConflictResult.status).toBe(409);
-    expect(callIdToolConflictResult.body.error).toBe(
-      'LIVE_SESSION_REALTIME_TOOL_CALL_CONFLICT',
-    );
+    expect(callIdToolConflictResult.body.error).toBe('LIVE_SESSION_REALTIME_TOOL_CALL_CONFLICT');
 
     const predictionResult = await request(app)
       .post(`/api/live-sessions/${sessionId}/realtime/tool`)
@@ -5076,13 +4713,9 @@ describe('API integration', () => {
     expect(predictionResult.body.callId).toBe('call_prediction_1');
     expect(predictionResult.body.output.draftId).toBe(draftId);
     expect(predictionResult.body.output.pullRequestId).toBe(pullRequestId);
-    expect(predictionResult.body.output.prediction.predictedOutcome).toBe(
-      'merge',
-    );
+    expect(predictionResult.body.output.prediction.predictedOutcome).toBe('merge');
     expect(predictionResult.body.output.prediction.stakePoints).toBe(25);
-    expect(predictionResult.body.output.summary.pullRequestId).toBe(
-      pullRequestId,
-    );
+    expect(predictionResult.body.output.summary.pullRequestId).toBe(pullRequestId);
 
     const storedPrediction = await db.query(
       `SELECT predicted_outcome, stake_points
@@ -5106,12 +4739,8 @@ describe('API integration', () => {
   });
 
   test('live session realtime send endpoint validates payload boundaries', async () => {
-    const { agentId, apiKey } = await registerAgent(
-      'Live Realtime Send Boundary Agent',
-    );
-    const human = await registerHuman(
-      'live-realtime-send-boundary-human@example.com',
-    );
+    const { agentId, apiKey } = await registerAgent('Live Realtime Send Boundary Agent');
+    const human = await registerHuman('live-realtime-send-boundary-human@example.com');
 
     const created = await request(app)
       .post('/api/live-sessions')
@@ -5145,9 +4774,7 @@ describe('API integration', () => {
         extra: true,
       });
     expect(invalidBodyFields.status).toBe(400);
-    expect(invalidBodyFields.body.error).toBe(
-      'LIVE_SESSION_REALTIME_SEND_INVALID_FIELDS',
-    );
+    expect(invalidBodyFields.body.error).toBe('LIVE_SESSION_REALTIME_SEND_INVALID_FIELDS');
 
     const invalidToRole = await request(app)
       .post(`/api/live-sessions/${sessionId}/realtime/send`)
@@ -5158,9 +4785,7 @@ describe('API integration', () => {
         payload: {},
       });
     expect(invalidToRole.status).toBe(400);
-    expect(invalidToRole.body.error).toBe(
-      'LIVE_SESSION_REALTIME_SEND_INVALID_INPUT',
-    );
+    expect(invalidToRole.body.error).toBe('LIVE_SESSION_REALTIME_SEND_INVALID_INPUT');
 
     const invalidTypeFormat = await request(app)
       .post(`/api/live-sessions/${sessionId}/realtime/send`)
@@ -5171,9 +4796,7 @@ describe('API integration', () => {
         payload: {},
       });
     expect(invalidTypeFormat.status).toBe(400);
-    expect(invalidTypeFormat.body.error).toBe(
-      'LIVE_SESSION_REALTIME_SEND_INVALID_INPUT',
-    );
+    expect(invalidTypeFormat.body.error).toBe('LIVE_SESSION_REALTIME_SEND_INVALID_INPUT');
 
     const invalidTypePrefix = await request(app)
       .post(`/api/live-sessions/${sessionId}/realtime/send`)
@@ -5184,9 +4807,7 @@ describe('API integration', () => {
         payload: {},
       });
     expect(invalidTypePrefix.status).toBe(400);
-    expect(invalidTypePrefix.body.error).toBe(
-      'LIVE_SESSION_REALTIME_SEND_INVALID_INPUT',
-    );
+    expect(invalidTypePrefix.body.error).toBe('LIVE_SESSION_REALTIME_SEND_INVALID_INPUT');
 
     const invalidPayloadType = await request(app)
       .post(`/api/live-sessions/${sessionId}/realtime/send`)
@@ -5197,9 +4818,7 @@ describe('API integration', () => {
         payload: ['not', 'allowed'],
       });
     expect(invalidPayloadType.status).toBe(400);
-    expect(invalidPayloadType.body.error).toBe(
-      'LIVE_SESSION_REALTIME_SEND_INVALID_INPUT',
-    );
+    expect(invalidPayloadType.body.error).toBe('LIVE_SESSION_REALTIME_SEND_INVALID_INPUT');
 
     const oversizedPayloadKeys = Object.fromEntries(
       Array.from({ length: 21 }, (_, index) => [`k${index}`, index]),
@@ -5213,9 +4832,7 @@ describe('API integration', () => {
         payload: oversizedPayloadKeys,
       });
     expect(invalidPayloadKeys.status).toBe(400);
-    expect(invalidPayloadKeys.body.error).toBe(
-      'LIVE_SESSION_REALTIME_SEND_INVALID_INPUT',
-    );
+    expect(invalidPayloadKeys.body.error).toBe('LIVE_SESSION_REALTIME_SEND_INVALID_INPUT');
 
     const invalidPayloadSize = await request(app)
       .post(`/api/live-sessions/${sessionId}/realtime/send`)
@@ -5228,9 +4845,7 @@ describe('API integration', () => {
         },
       });
     expect(invalidPayloadSize.status).toBe(400);
-    expect(invalidPayloadSize.body.error).toBe(
-      'LIVE_SESSION_REALTIME_SEND_INVALID_INPUT',
-    );
+    expect(invalidPayloadSize.body.error).toBe('LIVE_SESSION_REALTIME_SEND_INVALID_INPUT');
 
     const started = await request(app)
       .post(`/api/live-sessions/${sessionId}/start`)
@@ -5261,12 +4876,8 @@ describe('API integration', () => {
   });
 
   test('live session realtime send endpoint appends observer event into gateway stream', async () => {
-    const { agentId, apiKey } = await registerAgent(
-      'Live Realtime Send Execute Agent',
-    );
-    const human = await registerHuman(
-      'live-realtime-send-execute-human@example.com',
-    );
+    const { agentId, apiKey } = await registerAgent('Live Realtime Send Execute Agent');
+    const human = await registerHuman('live-realtime-send-execute-human@example.com');
     const observerToken = human.tokens.accessToken;
 
     const created = await request(app)
@@ -5352,9 +4963,7 @@ describe('API integration', () => {
       .set('x-gateway-timestamp', String(timestampSec))
       .send(payload);
     expect(invalidQuery.status).toBe(400);
-    expect(invalidQuery.body.error).toBe(
-      'AGENT_GATEWAY_INGEST_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidQuery.body.error).toBe('AGENT_GATEWAY_INGEST_INVALID_QUERY_FIELDS');
 
     const invalidBodyFields = await request(app)
       .post('/api/agent-gateway/adapters/ingest')
@@ -5365,18 +4974,14 @@ describe('API integration', () => {
         extra: true,
       });
     expect(invalidBodyFields.status).toBe(400);
-    expect(invalidBodyFields.body.error).toBe(
-      'AGENT_GATEWAY_INGEST_INVALID_FIELDS',
-    );
+    expect(invalidBodyFields.body.error).toBe('AGENT_GATEWAY_INGEST_INVALID_FIELDS');
 
     const missingSignature = await request(app)
       .post('/api/agent-gateway/adapters/ingest')
       .set('x-gateway-timestamp', String(timestampSec))
       .send(payload);
     expect(missingSignature.status).toBe(401);
-    expect(missingSignature.body.error).toBe(
-      'AGENT_GATEWAY_INGEST_SIGNATURE_INVALID',
-    );
+    expect(missingSignature.body.error).toBe('AGENT_GATEWAY_INGEST_SIGNATURE_INVALID');
 
     const staleTimestamp = timestampSec - 10_000;
     const staleSignature = signGatewayIngestPayload(payload, staleTimestamp);
@@ -5386,9 +4991,7 @@ describe('API integration', () => {
       .set('x-gateway-timestamp', String(staleTimestamp))
       .send(payload);
     expect(expiredSignature.status).toBe(401);
-    expect(expiredSignature.body.error).toBe(
-      'AGENT_GATEWAY_INGEST_SIGNATURE_EXPIRED',
-    );
+    expect(expiredSignature.body.error).toBe('AGENT_GATEWAY_INGEST_SIGNATURE_EXPIRED');
 
     const invalidConnector = await request(app)
       .post('/api/agent-gateway/adapters/ingest')
@@ -5399,9 +5002,7 @@ describe('API integration', () => {
         connectorId: 'bad connector',
       });
     expect(invalidConnector.status).toBe(400);
-    expect(invalidConnector.body.error).toBe(
-      'AGENT_GATEWAY_INGEST_INVALID_INPUT',
-    );
+    expect(invalidConnector.body.error).toBe('AGENT_GATEWAY_INGEST_INVALID_INPUT');
   });
 
   test('agent gateway adapter ingest endpoint derives telegram external session id when omitted', async () => {
@@ -5454,9 +5055,7 @@ describe('API integration', () => {
       [eventId],
     );
     expect(persisted.rows).toHaveLength(1);
-    expect(persisted.rows[0].external_session_id).toBe(
-      'telegram_chat:-100987654',
-    );
+    expect(persisted.rows[0].external_session_id).toBe('telegram_chat:-100987654');
     expect(persisted.rows[0].payload).toEqual(
       expect.objectContaining({
         eventId,
@@ -5471,8 +5070,7 @@ describe('API integration', () => {
 
   test('agent gateway adapter ingest endpoint enforces connector profile conflicts in strict mode', async () => {
     const previousProfiles = env.AGENT_GATEWAY_INGEST_CONNECTOR_PROFILES;
-    const previousEnforceProfile =
-      env.AGENT_GATEWAY_INGEST_ENFORCE_CONNECTOR_PROFILE;
+    const previousEnforceProfile = env.AGENT_GATEWAY_INGEST_ENFORCE_CONNECTOR_PROFILE;
     try {
       env.AGENT_GATEWAY_INGEST_CONNECTOR_PROFILES = JSON.stringify({
         'partner-strict': {
@@ -5509,13 +5107,10 @@ describe('API integration', () => {
         .send(payload);
 
       expect(response.status).toBe(409);
-      expect(response.body.error).toBe(
-        'AGENT_GATEWAY_INGEST_CONNECTOR_PROFILE_CONFLICT',
-      );
+      expect(response.body.error).toBe('AGENT_GATEWAY_INGEST_CONNECTOR_PROFILE_CONFLICT');
     } finally {
       env.AGENT_GATEWAY_INGEST_CONNECTOR_PROFILES = previousProfiles;
-      env.AGENT_GATEWAY_INGEST_ENFORCE_CONNECTOR_PROFILE =
-        previousEnforceProfile;
+      env.AGENT_GATEWAY_INGEST_ENFORCE_CONNECTOR_PROFILE = previousEnforceProfile;
     }
   });
 
@@ -5553,10 +5148,7 @@ describe('API integration', () => {
       externalSessionId: `ext-rate-limit-${uniqueSuffix}-2`,
       eventId: `evt-rate-limit-${uniqueSuffix}-2`,
     };
-    const secondSignature = signGatewayIngestPayload(
-      secondPayload,
-      timestampSec,
-    );
+    const secondSignature = signGatewayIngestPayload(secondPayload, timestampSec);
 
     const second = await request(app)
       .post('/api/agent-gateway/adapters/ingest')
@@ -5565,9 +5157,7 @@ describe('API integration', () => {
       .set('x-gateway-rate-limit-override', '1')
       .send(secondPayload);
     expect(second.status).toBe(429);
-    expect(second.body.error).toBe(
-      'AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMITED',
-    );
+    expect(second.body.error).toBe('AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMITED');
     expect(second.headers['retry-after']).toBeTruthy();
   });
 
@@ -5653,16 +5243,10 @@ describe('API integration', () => {
       draftId: '00000000-0000-0000-0000-000000000001',
     };
 
-    const first = await request(app)
-      .post('/api/search/style-fusion')
-      .set(headers)
-      .send(payload);
+    const first = await request(app).post('/api/search/style-fusion').set(headers).send(payload);
     expect(first.status).toBe(404);
 
-    const second = await request(app)
-      .post('/api/search/style-fusion')
-      .set(headers)
-      .send(payload);
+    const second = await request(app).post('/api/search/style-fusion').set(headers).send(payload);
     expect(second.status).toBe(429);
   });
 
@@ -5707,10 +5291,9 @@ describe('API integration', () => {
       .send({ embedding: [0.25, 0.5, 0.75], source: 'test' });
 
     expect(embedRes.status).toBe(200);
-    const stored = await db.query(
-      'SELECT embedding FROM draft_embeddings WHERE draft_id = $1',
-      [draftRes.body.draft.id],
-    );
+    const stored = await db.query('SELECT embedding FROM draft_embeddings WHERE draft_id = $1', [
+      draftRes.body.draft.id,
+    ]);
     expect(stored.rows.length).toBe(1);
 
     const invalidEmbeddingQuery = await request(app)
@@ -5719,9 +5302,7 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({ embedding: [0.25, 0.5, 0.75], source: 'test' });
     expect(invalidEmbeddingQuery.status).toBe(400);
-    expect(invalidEmbeddingQuery.body.error).toBe(
-      'DRAFT_EMBEDDING_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidEmbeddingQuery.body.error).toBe('DRAFT_EMBEDDING_INVALID_QUERY_FIELDS');
 
     const invalidEmbeddingId = await request(app)
       .post('/api/drafts/not-a-uuid/embedding')
@@ -5741,9 +5322,7 @@ describe('API integration', () => {
         extra: true,
       });
     expect(invalidEmbeddingFields.status).toBe(400);
-    expect(invalidEmbeddingFields.body.error).toBe(
-      'DRAFT_EMBEDDING_INVALID_FIELDS',
-    );
+    expect(invalidEmbeddingFields.body.error).toBe('DRAFT_EMBEDDING_INVALID_FIELDS');
 
     const invalidEmbeddingType = await request(app)
       .post(`/api/drafts/${draftRes.body.draft.id}/embedding`)
@@ -5778,13 +5357,10 @@ describe('API integration', () => {
 
   test('studios endpoints handle not found and updates', async () => {
     const { agentId, apiKey } = await registerAgent('Agent Studio Primary');
-    const { agentId: otherAgentId, apiKey: otherApiKey } = await registerAgent(
-      'Agent Studio Secondary',
-    );
+    const { agentId: otherAgentId, apiKey: otherApiKey } =
+      await registerAgent('Agent Studio Secondary');
 
-    const notFound = await request(app).get(
-      '/api/studios/00000000-0000-0000-0000-000000000000',
-    );
+    const notFound = await request(app).get('/api/studios/00000000-0000-0000-0000-000000000000');
     expect(notFound.status).toBe(404);
 
     const studio = await request(app).get(`/api/studios/${agentId}`);
@@ -5793,9 +5369,7 @@ describe('API integration', () => {
     expect(studio.body.verification_status).toBe('unverified');
     expect(studio.body.verification_method).toBeNull();
 
-    const invalidStudioQuery = await request(app).get(
-      `/api/studios/${agentId}?extra=true`,
-    );
+    const invalidStudioQuery = await request(app).get(`/api/studios/${agentId}?extra=true`);
     expect(invalidStudioQuery.status).toBe(400);
     expect(invalidStudioQuery.body.error).toBe('STUDIO_INVALID_QUERY_FIELDS');
 
@@ -5832,9 +5406,7 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({});
     expect(invalidStudioUpdateQuery.status).toBe(400);
-    expect(invalidStudioUpdateQuery.body.error).toBe(
-      'STUDIO_UPDATE_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidStudioUpdateQuery.body.error).toBe('STUDIO_UPDATE_INVALID_QUERY_FIELDS');
 
     const invalidStudioUpdateFields = await request(app)
       .put(`/api/studios/${agentId}`)
@@ -5842,9 +5414,7 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({ unknownField: true });
     expect(invalidStudioUpdateFields.status).toBe(400);
-    expect(invalidStudioUpdateFields.body.error).toBe(
-      'STUDIO_UPDATE_INVALID_FIELDS',
-    );
+    expect(invalidStudioUpdateFields.body.error).toBe('STUDIO_UPDATE_INVALID_FIELDS');
 
     const invalidSkillProfile = await request(app)
       .put(`/api/studios/${agentId}`)
@@ -5866,9 +5436,7 @@ describe('API integration', () => {
         },
       });
     expect(invalidRolePersonasViaSkillProfile.status).toBe(400);
-    expect(invalidRolePersonasViaSkillProfile.body.error).toBe(
-      'STUDIO_ROLE_PERSONAS_INVALID',
-    );
+    expect(invalidRolePersonasViaSkillProfile.body.error).toBe('STUDIO_ROLE_PERSONAS_INVALID');
 
     const forbiddenPersonasUpdate = await request(app)
       .put(`/api/studios/${agentId}/personas`)
@@ -5909,21 +5477,15 @@ describe('API integration', () => {
       boundaries: ['No personal attacks'],
     });
 
-    const personasFetched = await request(app).get(
-      `/api/studios/${agentId}/personas`,
-    );
+    const personasFetched = await request(app).get(`/api/studios/${agentId}/personas`);
     expect(personasFetched.status).toBe(200);
-    expect(personasFetched.body.rolePersonas.author.tone).toBe(
-      'Narrative-first',
-    );
+    expect(personasFetched.body.rolePersonas.author.tone).toBe('Narrative-first');
 
     const invalidPersonasReadQuery = await request(app).get(
       `/api/studios/${agentId}/personas?extra=true`,
     );
     expect(invalidPersonasReadQuery.status).toBe(400);
-    expect(invalidPersonasReadQuery.body.error).toBe(
-      'STUDIO_ROLE_PERSONAS_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidPersonasReadQuery.body.error).toBe('STUDIO_ROLE_PERSONAS_INVALID_QUERY_FIELDS');
 
     const invalidPersonasUpdateQuery = await request(app)
       .put(`/api/studios/${agentId}/personas?extra=true`)
@@ -5935,9 +5497,7 @@ describe('API integration', () => {
         },
       });
     expect(invalidPersonasUpdateQuery.status).toBe(400);
-    expect(invalidPersonasUpdateQuery.body.error).toBe(
-      'STUDIO_ROLE_PERSONAS_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidPersonasUpdateQuery.body.error).toBe('STUDIO_ROLE_PERSONAS_INVALID_QUERY_FIELDS');
 
     const invalidPersonasUpdateFields = await request(app)
       .put(`/api/studios/${agentId}/personas`)
@@ -5950,9 +5510,7 @@ describe('API integration', () => {
         extra: true,
       });
     expect(invalidPersonasUpdateFields.status).toBe(400);
-    expect(invalidPersonasUpdateFields.body.error).toBe(
-      'STUDIO_ROLE_PERSONAS_INVALID_FIELDS',
-    );
+    expect(invalidPersonasUpdateFields.body.error).toBe('STUDIO_ROLE_PERSONAS_INVALID_FIELDS');
 
     const personasTelemetry = await db.query(
       `SELECT COUNT(*)::int AS count
@@ -5973,9 +5531,7 @@ describe('API integration', () => {
         },
       });
     expect(invalidPersonasPayload.status).toBe(400);
-    expect(invalidPersonasPayload.body.error).toBe(
-      'STUDIO_ROLE_PERSONAS_INVALID',
-    );
+    expect(invalidPersonasPayload.body.error).toBe('STUDIO_ROLE_PERSONAS_INVALID');
 
     const missingPersonasPayload = await request(app)
       .put(`/api/studios/${agentId}/personas`)
@@ -5983,9 +5539,7 @@ describe('API integration', () => {
       .set('x-api-key', apiKey)
       .send({});
     expect(missingPersonasPayload.status).toBe(400);
-    expect(missingPersonasPayload.body.error).toBe(
-      'STUDIO_ROLE_PERSONAS_REQUIRED',
-    );
+    expect(missingPersonasPayload.body.error).toBe('STUDIO_ROLE_PERSONAS_REQUIRED');
 
     const metrics = await request(app).get(`/api/studios/${agentId}/metrics`);
     expect(metrics.status).toBe(200);
@@ -5996,13 +5550,9 @@ describe('API integration', () => {
       `/api/studios/${agentId}/metrics?extra=true`,
     );
     expect(invalidMetricsQuery.status).toBe(400);
-    expect(invalidMetricsQuery.body.error).toBe(
-      'STUDIO_METRICS_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidMetricsQuery.body.error).toBe('STUDIO_METRICS_INVALID_QUERY_FIELDS');
 
-    const invalidMetricsId = await request(app).get(
-      '/api/studios/not-a-uuid/metrics',
-    );
+    const invalidMetricsId = await request(app).get('/api/studios/not-a-uuid/metrics');
     expect(invalidMetricsId.status).toBe(400);
     expect(invalidMetricsId.body.error).toBe('STUDIO_ID_INVALID');
   });
@@ -6043,9 +5593,7 @@ describe('API integration', () => {
       ],
     } as any);
 
-    const ledger = await request(app).get(
-      `/api/studios/${studioId}/ledger?limit=3`,
-    );
+    const ledger = await request(app).get(`/api/studios/${studioId}/ledger?limit=3`);
     expect(ledger.status).toBe(200);
     expect(querySpy).toHaveBeenCalledWith(expect.any(String), [studioId, 3]);
     expect(ledger.body).toEqual([
@@ -6088,47 +5636,27 @@ describe('API integration', () => {
     const querySpy = jest.spyOn(db, 'query') as unknown as jest.Mock;
     querySpy.mockResolvedValue({ rows: [] } as any);
 
-    const capped = await request(app).get(
-      `/api/studios/${studioId}/ledger?limit=999`,
-    );
+    const capped = await request(app).get(`/api/studios/${studioId}/ledger?limit=999`);
     expect(capped.status).toBe(200);
-    expect(querySpy).toHaveBeenLastCalledWith(expect.any(String), [
-      studioId,
-      50,
-    ]);
+    expect(querySpy).toHaveBeenLastCalledWith(expect.any(String), [studioId, 50]);
 
-    const floored = await request(app).get(
-      `/api/studios/${studioId}/ledger?limit=0`,
-    );
+    const floored = await request(app).get(`/api/studios/${studioId}/ledger?limit=0`);
     expect(floored.status).toBe(200);
-    expect(querySpy).toHaveBeenLastCalledWith(expect.any(String), [
-      studioId,
-      1,
-    ]);
+    expect(querySpy).toHaveBeenLastCalledWith(expect.any(String), [studioId, 1]);
 
-    const fallback = await request(app).get(
-      `/api/studios/${studioId}/ledger?limit=abc`,
-    );
+    const fallback = await request(app).get(`/api/studios/${studioId}/ledger?limit=abc`);
     expect(fallback.status).toBe(400);
     expect(fallback.body.error).toBe('STUDIO_LEDGER_LIMIT_INVALID');
 
-    const invalidFloatLimit = await request(app).get(
-      `/api/studios/${studioId}/ledger?limit=1.5`,
-    );
+    const invalidFloatLimit = await request(app).get(`/api/studios/${studioId}/ledger?limit=1.5`);
     expect(invalidFloatLimit.status).toBe(400);
     expect(invalidFloatLimit.body.error).toBe('STUDIO_LEDGER_LIMIT_INVALID');
 
-    const invalidQueryField = await request(app).get(
-      `/api/studios/${studioId}/ledger?extra=true`,
-    );
+    const invalidQueryField = await request(app).get(`/api/studios/${studioId}/ledger?extra=true`);
     expect(invalidQueryField.status).toBe(400);
-    expect(invalidQueryField.body.error).toBe(
-      'STUDIO_LEDGER_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidQueryField.body.error).toBe('STUDIO_LEDGER_INVALID_QUERY_FIELDS');
 
-    const invalidStudioId = await request(app).get(
-      '/api/studios/not-a-uuid/ledger',
-    );
+    const invalidStudioId = await request(app).get('/api/studios/not-a-uuid/ledger');
     expect(invalidStudioId.status).toBe(400);
     expect(invalidStudioId.body.error).toBe('STUDIO_ID_INVALID');
 
@@ -6165,15 +5693,11 @@ describe('API integration', () => {
     expect(listAll.status).toBe(200);
     expect(listAll.body.length).toBeGreaterThan(0);
 
-    const listForAgents = await request(app).get(
-      '/api/commissions?forAgents=true',
-    );
+    const listForAgents = await request(app).get('/api/commissions?forAgents=true');
     expect(listForAgents.status).toBe(200);
     expect(listForAgents.body.length).toBeGreaterThan(0);
 
-    const detail = await request(app).get(
-      `/api/commissions/${commissionOpen.body.commission.id}`,
-    );
+    const detail = await request(app).get(`/api/commissions/${commissionOpen.body.commission.id}`);
     expect(detail.status).toBe(200);
     expect(detail.body.id).toBe(commissionOpen.body.commission.id);
     expect(Array.isArray(detail.body.responses)).toBe(true);
@@ -6201,24 +5725,18 @@ describe('API integration', () => {
     );
     expect(detailWithResponse.status).toBe(200);
     expect(detailWithResponse.body.responses).toHaveLength(1);
-    expect(detailWithResponse.body.responses[0].draftId).toBe(
-      draftRes.body.draft.id,
-    );
+    expect(detailWithResponse.body.responses[0].draftId).toBe(draftRes.body.draft.id);
     expect(detailWithResponse.body.responses[0].studioId).toBe(agentId);
 
     const selectWinner = await request(app)
-      .post(
-        `/api/commissions/${commissionOpen.body.commission.id}/select-winner`,
-      )
+      .post(`/api/commissions/${commissionOpen.body.commission.id}/select-winner`)
       .set('Authorization', `Bearer ${token}`)
       .send({ winnerDraftId: draftRes.body.draft.id });
     expect(selectWinner.status).toBe(200);
     expect(selectWinner.body.status).toBe('completed');
 
     const payIntent = await request(app)
-      .post(
-        `/api/commissions/${commissionPending.body.commission.id}/pay-intent`,
-      )
+      .post(`/api/commissions/${commissionPending.body.commission.id}/pay-intent`)
       .set('Authorization', `Bearer ${token}`)
       .send();
     expect(payIntent.status).toBe(200);
@@ -6302,23 +5820,15 @@ describe('API integration', () => {
     expect(missingDescription.status).toBe(400);
     expect(missingDescription.body.error).toBe('COMMISSION_REQUIRED_FIELDS');
 
-    const invalidQueryField = await request(app).get(
-      '/api/commissions?extra=true',
-    );
+    const invalidQueryField = await request(app).get('/api/commissions?extra=true');
     expect(invalidQueryField.status).toBe(400);
-    expect(invalidQueryField.body.error).toBe(
-      'COMMISSION_INVALID_QUERY_FIELDS',
-    );
+    expect(invalidQueryField.body.error).toBe('COMMISSION_INVALID_QUERY_FIELDS');
 
-    const invalidStatus = await request(app).get(
-      '/api/commissions?status=invalid',
-    );
+    const invalidStatus = await request(app).get('/api/commissions?status=invalid');
     expect(invalidStatus.status).toBe(400);
     expect(invalidStatus.body.error).toBe('INVALID_COMMISSION_STATUS');
 
-    const invalidForAgents = await request(app).get(
-      '/api/commissions?forAgents=maybe',
-    );
+    const invalidForAgents = await request(app).get('/api/commissions?forAgents=maybe');
     expect(invalidForAgents.status).toBe(400);
     expect(invalidForAgents.body.error).toBe('INVALID_FOR_AGENTS_FLAG');
   });
@@ -6359,9 +5869,7 @@ describe('API integration', () => {
       .spyOn(CommissionServiceImpl.prototype, 'selectWinner')
       .mockRejectedValueOnce(new Error('winner fail'));
     const winnerRes = await request(app)
-      .post(
-        '/api/commissions/00000000-0000-0000-0000-000000000003/select-winner',
-      )
+      .post('/api/commissions/00000000-0000-0000-0000-000000000003/select-winner')
       .set('Authorization', `Bearer ${token}`)
       .send({ winnerDraftId: '00000000-0000-0000-0000-000000000004' });
     expect(winnerRes.status).toBe(500);
@@ -6405,9 +5913,7 @@ describe('API integration', () => {
 
     const studioGetSpy = jest.spyOn(db, 'query') as unknown as jest.Mock;
     studioGetSpy.mockRejectedValueOnce(new Error('studio get fail'));
-    const getRes = await request(app).get(
-      '/api/studios/00000000-0000-0000-0000-000000000008',
-    );
+    const getRes = await request(app).get('/api/studios/00000000-0000-0000-0000-000000000008');
     expect(getRes.status).toBe(500);
     studioGetSpy.mockRestore();
 
@@ -6430,9 +5936,7 @@ describe('API integration', () => {
     const metricsSpy = jest
       .spyOn(MetricsServiceImpl.prototype, 'getAgentMetrics')
       .mockRejectedValueOnce(new Error('metrics fail'));
-    const metricsRes = await request(app).get(
-      `/api/studios/${agentId}/metrics`,
-    );
+    const metricsRes = await request(app).get(`/api/studios/${agentId}/metrics`);
     expect(metricsRes.status).toBe(500);
     metricsSpy.mockRestore();
 
@@ -6549,9 +6053,7 @@ describe('API integration', () => {
     const fixListSpy = jest
       .spyOn(FixRequestServiceImpl.prototype, 'listByDraft')
       .mockRejectedValueOnce(new Error('fix list fail'));
-    const fixListRes = await request(app).get(
-      `/api/drafts/${draftId}/fix-requests`,
-    );
+    const fixListRes = await request(app).get(`/api/drafts/${draftId}/fix-requests`);
     expect(fixListRes.status).toBe(500);
     fixListSpy.mockRestore();
 
@@ -6574,9 +6076,7 @@ describe('API integration', () => {
     const prListSpy = jest
       .spyOn(PullRequestServiceImpl.prototype, 'listByDraft')
       .mockRejectedValueOnce(new Error('pr list fail'));
-    const prListRes = await request(app).get(
-      `/api/drafts/${draftId}/pull-requests`,
-    );
+    const prListRes = await request(app).get(`/api/drafts/${draftId}/pull-requests`);
     expect(prListRes.status).toBe(500);
     prListSpy.mockRestore();
 
@@ -6689,14 +6189,10 @@ describe('API integration', () => {
   });
 
   test('cors allows frontend origin', async () => {
-    const response = await request(app)
-      .get('/health')
-      .set('Origin', env.FRONTEND_URL);
+    const response = await request(app).get('/health').set('Origin', env.FRONTEND_URL);
 
     expect(response.status).toBe(200);
-    expect(response.headers['access-control-allow-origin']).toBe(
-      env.FRONTEND_URL,
-    );
+    expect(response.headers['access-control-allow-origin']).toBe(env.FRONTEND_URL);
     expect(response.headers['access-control-allow-credentials']).toBe('true');
   });
 
@@ -6749,9 +6245,7 @@ describe('API integration', () => {
 
   test('observer engagement endpoints enforce rate limiting', async () => {
     const { agentId, apiKey } = await registerAgent('Observer Rate Studio');
-    const humanFollow = await registerHuman(
-      'observer-follow-limit@example.com',
-    );
+    const humanFollow = await registerHuman('observer-follow-limit@example.com');
     const followHeaders = {
       Authorization: `Bearer ${humanFollow.tokens.accessToken}`,
       'x-enforce-rate-limit': 'true',
@@ -6793,9 +6287,7 @@ describe('API integration', () => {
       });
     expect(prRes.status).toBe(200);
 
-    const humanPredict = await registerHuman(
-      'observer-predict-limit@example.com',
-    );
+    const humanPredict = await registerHuman('observer-predict-limit@example.com');
     const predictHeaders = {
       Authorization: `Bearer ${humanPredict.tokens.accessToken}`,
       'x-enforce-rate-limit': 'true',
@@ -6816,9 +6308,7 @@ describe('API integration', () => {
   });
 
   test('prediction, personas, and observer write endpoints enforce observer-action throttling', async () => {
-    const { agentId, apiKey } = await registerAgent(
-      'Observer Action Throttle Studio',
-    );
+    const { agentId, apiKey } = await registerAgent('Observer Action Throttle Studio');
     const draftRes = await request(app)
       .post('/api/drafts')
       .set('x-agent-id', agentId)
@@ -6862,9 +6352,7 @@ describe('API integration', () => {
       .send({ predictedOutcome: 'reject', stakePoints: 10 });
     expect(prPredictSecond.status).toBe(429);
 
-    const summaryHuman = await registerHuman(
-      'observer-prediction-summary-throttle@example.com',
-    );
+    const summaryHuman = await registerHuman('observer-prediction-summary-throttle@example.com');
     const summaryHeaders = {
       Authorization: `Bearer ${summaryHuman.tokens.accessToken}`,
       'x-enforce-rate-limit': 'true',
@@ -6914,9 +6402,7 @@ describe('API integration', () => {
       });
     expect(personasSecond.status).toBe(429);
 
-    const watchlistHuman = await registerHuman(
-      'observer-watchlist-throttle@example.com',
-    );
+    const watchlistHuman = await registerHuman('observer-watchlist-throttle@example.com');
     const watchlistHeaders = {
       Authorization: `Bearer ${watchlistHuman.tokens.accessToken}`,
       'x-enforce-rate-limit': 'true',
@@ -6935,9 +6421,7 @@ describe('API integration', () => {
       .send();
     expect(watchlistSecond.status).toBe(429);
 
-    const preferencesHuman = await registerHuman(
-      'observer-preferences-throttle@example.com',
-    );
+    const preferencesHuman = await registerHuman('observer-preferences-throttle@example.com');
     const preferencesHeaders = {
       Authorization: `Bearer ${preferencesHuman.tokens.accessToken}`,
       'x-enforce-rate-limit': 'true',

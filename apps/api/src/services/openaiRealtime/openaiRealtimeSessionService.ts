@@ -1,5 +1,7 @@
 import { env } from '../../config/env';
 import { ServiceError } from '../common/errors';
+import { providerRoutingService } from '../providerRouting/providerRoutingService';
+import type { ProviderRoutingService } from '../providerRouting/types';
 import type {
   CreateOpenAIRealtimeSessionInput,
   OpenAIRealtimeSessionBootstrap,
@@ -14,12 +16,29 @@ const DEFAULT_TIMEOUT_MS = 12_000;
 const TRAILING_SLASH_PATTERN = /\/$/;
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
-  value && typeof value === 'object'
-    ? (value as Record<string, unknown>)
-    : null;
+  value && typeof value === 'object' ? (value as Record<string, unknown>) : null;
 
 const asString = (value: unknown): string | null =>
   typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+
+const toErrorDetails = (error: unknown) => {
+  if (error instanceof ServiceError) {
+    return {
+      errorCode: error.code,
+      errorMessage: error.message,
+    };
+  }
+  if (error instanceof Error) {
+    return {
+      errorCode: 'OPENAI_REALTIME_SESSION_FAILED',
+      errorMessage: error.message,
+    };
+  }
+  return {
+    errorCode: 'OPENAI_REALTIME_SESSION_FAILED',
+    errorMessage: 'Unknown realtime bootstrap failure.',
+  };
+};
 
 const buildRealtimeInstructions = (input: CreateOpenAIRealtimeSessionInput) => {
   const lines = [
@@ -48,36 +67,31 @@ const parseOpenAIErrorMessage = async (response: Response) => {
     const body = asRecord(parsed);
     const nestedError = asRecord(body?.error);
     const message =
-      asString(nestedError?.message) ??
-      asString(body?.message) ??
-      asString(body?.error) ??
-      raw;
+      asString(nestedError?.message) ?? asString(body?.message) ?? asString(body?.error) ?? raw;
     return message;
   } catch {
     return fallback;
   }
 };
 
-const dedupeOutputModalities = (
-  values: RealtimeOutputModality[],
-): RealtimeOutputModality[] => [...new Set(values)];
+const dedupeOutputModalities = (values: RealtimeOutputModality[]): RealtimeOutputModality[] => [
+  ...new Set(values),
+];
 
-export class OpenAIRealtimeSessionServiceImpl
-  implements OpenAIRealtimeSessionService
-{
+export class OpenAIRealtimeSessionServiceImpl implements OpenAIRealtimeSessionService {
   private readonly baseUrl: string;
   private readonly model: string;
+  private readonly providerRouting: ProviderRoutingService;
   private readonly defaultVoice: RealtimeVoice;
   private readonly timeoutMs: number;
 
-  constructor() {
-    const configuredBaseUrl =
-      process.env.OPENAI_REALTIME_BASE_URL ?? env.OPENAI_REALTIME_BASE_URL;
+  constructor(providerRouting: ProviderRoutingService = providerRoutingService) {
+    this.providerRouting = providerRouting;
+    const configuredBaseUrl = process.env.OPENAI_REALTIME_BASE_URL ?? env.OPENAI_REALTIME_BASE_URL;
     this.baseUrl = configuredBaseUrl.replace(TRAILING_SLASH_PATTERN, '');
     this.model = process.env.OPENAI_REALTIME_MODEL ?? env.OPENAI_REALTIME_MODEL;
     this.defaultVoice =
-      (process.env.OPENAI_REALTIME_VOICE as RealtimeVoice | undefined) ??
-      env.OPENAI_REALTIME_VOICE;
+      (process.env.OPENAI_REALTIME_VOICE as RealtimeVoice | undefined) ?? env.OPENAI_REALTIME_VOICE;
     this.timeoutMs = Number(
       process.env.OPENAI_REALTIME_TIMEOUT_MS ??
         env.OPENAI_REALTIME_TIMEOUT_MS ??
@@ -88,26 +102,27 @@ export class OpenAIRealtimeSessionServiceImpl
   async createSession(
     input: CreateOpenAIRealtimeSessionInput,
   ): Promise<OpenAIRealtimeSessionBootstrap> {
-    const apiKey = (
-      process.env.OPENAI_API_KEY ??
-      env.OPENAI_API_KEY ??
-      ''
-    ).trim();
-    if (!apiKey) {
-      throw new ServiceError(
-        'OPENAI_REALTIME_NOT_CONFIGURED',
-        'OpenAI Realtime API key is not configured.',
-        503,
-      );
-    }
-
-    const outputModalities = dedupeOutputModalities(input.outputModalities);
-    const selectedVoice = input.voice ?? this.defaultVoice ?? DEFAULT_VOICE;
-    const endpoint = `${this.baseUrl}/realtime/sessions`;
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+    const route = this.providerRouting.resolveRoute({
+      lane: 'voice_live',
+    });
+    const startedAt = Date.now();
+    let timeout: ReturnType<typeof setTimeout> | null = null;
 
     try {
+      const apiKey = (process.env.OPENAI_API_KEY ?? env.OPENAI_API_KEY ?? '').trim();
+      if (!apiKey) {
+        throw new ServiceError(
+          'OPENAI_REALTIME_NOT_CONFIGURED',
+          'OpenAI Realtime API key is not configured.',
+          503,
+        );
+      }
+
+      const outputModalities = dedupeOutputModalities(input.outputModalities);
+      const selectedVoice = input.voice ?? this.defaultVoice ?? DEFAULT_VOICE;
+      const endpoint = `${this.baseUrl}/realtime/sessions`;
+      const controller = new AbortController();
+      timeout = setTimeout(() => controller.abort(), this.timeoutMs);
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -167,8 +182,7 @@ export class OpenAIRealtimeSessionServiceImpl
             {
               type: 'function',
               name: 'follow_studio',
-              description:
-                'Follow a studio to prioritize it in observer digest and feed.',
+              description: 'Follow a studio to prioritize it in observer digest and feed.',
               parameters: {
                 type: 'object',
                 additionalProperties: false,
@@ -215,7 +229,7 @@ export class OpenAIRealtimeSessionServiceImpl
         );
       }
 
-      return {
+      const bootstrap: OpenAIRealtimeSessionBootstrap = {
         provider: 'openai',
         sessionId,
         clientSecret,
@@ -230,7 +244,49 @@ export class OpenAIRealtimeSessionServiceImpl
           pushToTalk: input.pushToTalk,
         },
       };
+      await this.providerRouting.recordExecution({
+        draftId: input.draftId ?? null,
+        durationMs: Date.now() - startedAt,
+        lane: 'voice_live',
+        metadata: {
+          liveSessionId: input.liveSessionId,
+          outputModalities,
+          pushToTalk: input.pushToTalk,
+          topicHint: input.topicHint ?? null,
+          voice: selectedVoice,
+        },
+        model: this.model || DEFAULT_MODEL,
+        operation: 'live_session_realtime_bootstrap',
+        provider: 'openai',
+        route,
+        status: 'ok',
+        userId: input.observerId,
+        userType: 'observer',
+      });
+      return bootstrap;
     } catch (error) {
+      const { errorCode, errorMessage } = toErrorDetails(error);
+      await this.providerRouting.recordExecution({
+        draftId: input.draftId ?? null,
+        durationMs: Date.now() - startedAt,
+        lane: 'voice_live',
+        metadata: {
+          errorCode,
+          errorMessage,
+          liveSessionId: input.liveSessionId,
+          outputModalities: dedupeOutputModalities(input.outputModalities),
+          pushToTalk: input.pushToTalk,
+          topicHint: input.topicHint ?? null,
+          voice: input.voice ?? this.defaultVoice ?? DEFAULT_VOICE,
+        },
+        model: this.model || DEFAULT_MODEL,
+        operation: 'live_session_realtime_bootstrap',
+        provider: 'openai',
+        route,
+        status: 'failed',
+        userId: input.observerId,
+        userType: 'observer',
+      });
       if (
         error instanceof Error &&
         error.name === 'AbortError' &&
@@ -244,7 +300,9 @@ export class OpenAIRealtimeSessionServiceImpl
       }
       throw error;
     } finally {
-      clearTimeout(timeout);
+      if (timeout) {
+        clearTimeout(timeout);
+      }
     }
   }
 }

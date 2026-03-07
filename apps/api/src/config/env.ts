@@ -2,18 +2,12 @@ import 'dotenv/config';
 import { z } from 'zod';
 
 const defaultLogLevel =
-  process.env.NODE_ENV === 'test' && process.env.TEST_LOGS_ENABLED !== 'true'
-    ? 'silent'
-    : 'info';
+  process.env.NODE_ENV === 'test' && process.env.TEST_LOGS_ENABLED !== 'true' ? 'silent' : 'info';
 
 const envSchema = z.object({
-  NODE_ENV: z
-    .enum(['development', 'test', 'production'])
-    .default('development'),
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().default(4000),
-  DATABASE_URL: z
-    .string()
-    .default('postgres://postgres:postgres@localhost:5432/finishit'),
+  DATABASE_URL: z.string().default('postgres://postgres:postgres@localhost:5432/finishit'),
   REDIS_URL: z.string().default('redis://localhost:6379'),
   S3_ENDPOINT: z.string().default('http://localhost:9000'),
   S3_REGION: z.string().default('us-east-1'),
@@ -48,20 +42,11 @@ const envSchema = z.object({
   OPENAI_REALTIME_BASE_URL: z.string().default('https://api.openai.com/v1'),
   OPENAI_REALTIME_MODEL: z.string().default('gpt-realtime'),
   OPENAI_REALTIME_VOICE: z
-    .enum([
-      'alloy',
-      'ash',
-      'ballad',
-      'coral',
-      'echo',
-      'sage',
-      'shimmer',
-      'verse',
-      'marin',
-      'cedar',
-    ])
+    .enum(['alloy', 'ash', 'ballad', 'coral', 'echo', 'sage', 'shimmer', 'verse', 'marin', 'cedar'])
     .default('marin'),
   OPENAI_REALTIME_TIMEOUT_MS: z.coerce.number().default(12_000),
+  AI_PROVIDER_LANE_CONFIGS: z.string().default(''),
+  AI_PROVIDER_LANE_DISABLED_PROVIDERS: z.string().default(''),
   AGENT_GATEWAY_WEBHOOK_SECRET: z.string().default('dev-agent-gateway-secret'),
   AGENT_GATEWAY_WEBHOOK_SECRET_PREVIOUS: z.string().default(''),
   AGENT_GATEWAY_INGEST_MAX_TIMESTAMP_SKEW_SEC: z.coerce.number().default(300),
@@ -71,21 +56,13 @@ const envSchema = z.object({
     .int()
     .positive()
     .default(60),
-  AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMIT_MAX: z.coerce
-    .number()
-    .int()
-    .positive()
-    .default(120),
+  AGENT_GATEWAY_INGEST_CONNECTOR_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(120),
   AGENT_GATEWAY_INGEST_ALLOWED_CONNECTORS: z.string().default(''),
   AGENT_GATEWAY_INGEST_CONNECTOR_SECRETS: z.string().default(''),
   AGENT_GATEWAY_INGEST_CONNECTOR_POLICIES: z.string().default(''),
   AGENT_GATEWAY_INGEST_CONNECTOR_PROFILES: z.string().default(''),
-  AGENT_GATEWAY_INGEST_ENFORCE_CONNECTOR_PROFILE: z
-    .enum(['true', 'false'])
-    .default('false'),
-  AGENT_GATEWAY_INGEST_REQUIRE_CONNECTOR_SECRET: z
-    .enum(['true', 'false'])
-    .default('false'),
+  AGENT_GATEWAY_INGEST_ENFORCE_CONNECTOR_PROFILE: z.enum(['true', 'false']).default('false'),
+  AGENT_GATEWAY_INGEST_REQUIRE_CONNECTOR_SECRET: z.enum(['true', 'false']).default('false'),
   HEAVY_RATE_LIMIT_WINDOW_MS: z.coerce.number().default(15 * 60 * 1000),
   HEAVY_RATE_LIMIT_MAX: z.coerce.number().default(30),
   SEARCH_RELEVANCE_WEIGHT_KEYWORD: z.coerce.number().default(0.6),
@@ -109,18 +86,10 @@ const assertProductionSecrets = () => {
   }
 
   const errors: string[] = [];
-  if (
-    !env.JWT_SECRET ||
-    env.JWT_SECRET === 'dev-secret' ||
-    env.JWT_SECRET.length < 16
-  ) {
+  if (!env.JWT_SECRET || env.JWT_SECRET === 'dev-secret' || env.JWT_SECRET.length < 16) {
     errors.push('JWT_SECRET must be set to a strong value in production.');
   }
-  if (
-    !env.CSRF_TOKEN ||
-    env.CSRF_TOKEN === 'dev-csrf' ||
-    env.CSRF_TOKEN.length < 16
-  ) {
+  if (!env.CSRF_TOKEN || env.CSRF_TOKEN === 'dev-csrf' || env.CSRF_TOKEN.length < 16) {
     errors.push('CSRF_TOKEN must be set to a strong value in production.');
   }
   if (!env.ADMIN_API_TOKEN || env.ADMIN_API_TOKEN === 'change-me') {
@@ -131,9 +100,7 @@ const assertProductionSecrets = () => {
     env.AGENT_GATEWAY_WEBHOOK_SECRET === 'dev-agent-gateway-secret' ||
     env.AGENT_GATEWAY_WEBHOOK_SECRET.length < 16
   ) {
-    errors.push(
-      'AGENT_GATEWAY_WEBHOOK_SECRET must be set to a strong value in production.',
-    );
+    errors.push('AGENT_GATEWAY_WEBHOOK_SECRET must be set to a strong value in production.');
   }
   if (
     env.AGENT_GATEWAY_INGEST_REQUIRE_CONNECTOR_SECRET === 'true' &&
@@ -171,9 +138,7 @@ const assertProductionSecrets = () => {
     }
   }
   if (errors.length > 0) {
-    throw new Error(
-      `Invalid production configuration:\n- ${errors.join('\n- ')}`,
-    );
+    throw new Error(`Invalid production configuration:\n- ${errors.join('\n- ')}`);
   }
 };
 

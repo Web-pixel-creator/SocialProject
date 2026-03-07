@@ -8,11 +8,12 @@ import {
 import { redis } from '../redis/client';
 import { createApp, initInfra } from '../server';
 import { aiRuntimeService } from '../services/aiRuntime/aiRuntimeService';
-import {
-  BudgetServiceImpl,
-  getUtcDateKey,
-} from '../services/budget/budgetService';
+import { BudgetServiceImpl, getUtcDateKey } from '../services/budget/budgetService';
 import { PostServiceImpl } from '../services/post/postService';
+import {
+  PROVIDER_LANE_EXECUTION_EVENT_TYPE,
+  PROVIDER_LANE_TELEMETRY_SOURCE,
+} from '../services/providerRouting/providerRoutingService';
 import {
   SANDBOX_EXECUTION_TELEMETRY_EVENT_TYPE,
   SANDBOX_EXECUTION_TELEMETRY_SOURCE,
@@ -24,12 +25,8 @@ env.ADMIN_API_TOKEN = env.ADMIN_API_TOKEN || 'test-admin-token';
 const app = createApp();
 
 const resetDb = async () => {
-  await db.query(
-    'TRUNCATE TABLE agent_gateway_events RESTART IDENTITY CASCADE',
-  );
-  await db.query(
-    'TRUNCATE TABLE agent_gateway_sessions RESTART IDENTITY CASCADE',
-  );
+  await db.query('TRUNCATE TABLE agent_gateway_events RESTART IDENTITY CASCADE');
+  await db.query('TRUNCATE TABLE agent_gateway_sessions RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE draft_embeddings RESTART IDENTITY CASCADE');
   await db.query('DELETE FROM embedding_events');
   await db.query('TRUNCATE TABLE ux_events RESTART IDENTITY CASCADE');
@@ -196,13 +193,11 @@ describe('Admin API routes', () => {
       personality: 'Tester',
     });
 
-    const failedVerify = await request(app)
-      .post('/api/agents/claim/verify')
-      .send({
-        claimToken: unverified.body.claimToken,
-        method: 'email',
-        emailToken: 'wrong-token',
-      });
+    const failedVerify = await request(app).post('/api/agents/claim/verify').send({
+      claimToken: unverified.body.claimToken,
+      method: 'email',
+      emailToken: 'wrong-token',
+    });
     expect(failedVerify.status).toBe(400);
     expect(failedVerify.body.error).toBe('CLAIM_INVALID');
 
@@ -276,10 +271,9 @@ describe('Admin API routes', () => {
     expect(agentRow.rows[0]?.verified_at).toBeNull();
     expect(agentRow.rows[0]?.revoked_at).toBeTruthy();
 
-    const claimRow = await db.query(
-      'SELECT status FROM agent_claims WHERE claim_token = $1',
-      [verified.body.claimToken],
-    );
+    const claimRow = await db.query('SELECT status FROM agent_claims WHERE claim_token = $1', [
+      verified.body.claimToken,
+    ]);
     expect(claimRow.rows[0]?.status).toBe('revoked');
 
     const metrics = await request(app)
@@ -333,8 +327,7 @@ describe('Admin API routes', () => {
           limitsDecision: 'allow',
           audit: {
             actorType: 'admin',
-            correlationId:
-              'rel.production-launch-gate.20260305190000.abcd1234.corr',
+            correlationId: 'rel.production-launch-gate.20260305190000.abcd1234.corr',
             releaseRunId: 'rel.production-launch-gate.20260305190000.abcd1234',
             sourceRoute: '/api/admin/ai-runtime/dry-run',
             toolName: 'aiRuntime.runWithFailover',
@@ -357,8 +350,7 @@ describe('Admin API routes', () => {
           audit: {
             actorId: 'admin-user-1',
             actorType: 'admin',
-            correlationId:
-              'rel.production-launch-gate.20260305190000.abcd1234.corr',
+            correlationId: 'rel.production-launch-gate.20260305190000.abcd1234.corr',
             releaseRunId: 'rel.production-launch-gate.20260305190000.abcd1234',
             sessionId: 'session-123',
             sourceRoute: '/api/admin/ai-runtime/dry-run',
@@ -476,8 +468,7 @@ describe('Admin API routes', () => {
           limitsProfile: 'runtime_default',
           limitsDecision: 'allow',
           audit: {
-            correlationId:
-              'rel.production-launch-gate.20260305190500.efgh5678.corr',
+            correlationId: 'rel.production-launch-gate.20260305190500.efgh5678.corr',
             releaseRunId: 'rel.production-launch-gate.20260305190500.efgh5678',
           },
         }),
@@ -490,8 +481,7 @@ describe('Admin API routes', () => {
           limitsProfile: 'global_default',
           limitsDecision: 'deny',
           audit: {
-            correlationId:
-              'rel.production-launch-gate.20260305190500.ijkl9012.corr',
+            correlationId: 'rel.production-launch-gate.20260305190500.ijkl9012.corr',
             releaseRunId: 'rel.production-launch-gate.20260305190500.ijkl9012',
           },
         }),
@@ -623,8 +613,7 @@ describe('Admin API routes', () => {
         SANDBOX_EXECUTION_TELEMETRY_SOURCE,
         JSON.stringify({
           audit: {
-            correlationId:
-              'rel.production-launch-gate.20260306010000.abcd.corr',
+            correlationId: 'rel.production-launch-gate.20260306010000.abcd.corr',
             releaseRunId: 'rel.production-launch-gate.20260306010000.abcd',
           },
           egressDecision: 'allow',
@@ -635,8 +624,7 @@ describe('Admin API routes', () => {
         }),
         JSON.stringify({
           audit: {
-            correlationId:
-              'rel.production-launch-gate.20260306010000.abcd.corr',
+            correlationId: 'rel.production-launch-gate.20260306010000.abcd.corr',
             releaseRunId: 'rel.production-launch-gate.20260306010000.abcd',
           },
           egressDecision: 'deny',
@@ -665,8 +653,7 @@ describe('Admin API routes', () => {
           ],
           receivedAtUtc: '2026-03-06T01:05:00.000Z',
           run: {
-            htmlUrl:
-              'https://github.com/Web-pixel-creator/SocialProject/actions/runs/22548544748',
+            htmlUrl: 'https://github.com/Web-pixel-creator/SocialProject/actions/runs/22548544748',
             id: 22_548_544_748,
             number: 52,
           },
@@ -763,13 +750,8 @@ describe('Admin API routes', () => {
   });
 
   test('sandbox pilot run-code rejects unsupported language', async () => {
-    const enabledSpy = jest
-      .spyOn(sandboxExecutionService, 'isEnabled')
-      .mockReturnValue(true);
-    const createSandboxSpy = jest.spyOn(
-      sandboxExecutionService,
-      'createSandbox',
-    );
+    const enabledSpy = jest.spyOn(sandboxExecutionService, 'isEnabled').mockReturnValue(true);
+    const createSandboxSpy = jest.spyOn(sandboxExecutionService, 'createSandbox');
     try {
       const response = await request(app)
         .post('/api/admin/sandbox-execution/pilot/run-code')
@@ -789,13 +771,8 @@ describe('Admin API routes', () => {
   });
 
   test('sandbox pilot run-code rejects file path escape payload', async () => {
-    const enabledSpy = jest
-      .spyOn(sandboxExecutionService, 'isEnabled')
-      .mockReturnValue(true);
-    const createSandboxSpy = jest.spyOn(
-      sandboxExecutionService,
-      'createSandbox',
-    );
+    const enabledSpy = jest.spyOn(sandboxExecutionService, 'isEnabled').mockReturnValue(true);
+    const createSandboxSpy = jest.spyOn(sandboxExecutionService, 'createSandbox');
     try {
       const response = await request(app)
         .post('/api/admin/sandbox-execution/pilot/run-code')
@@ -821,9 +798,7 @@ describe('Admin API routes', () => {
   });
 
   test('sandbox pilot run-code returns disabled error when feature flag is off', async () => {
-    const enabledSpy = jest
-      .spyOn(sandboxExecutionService, 'isEnabled')
-      .mockReturnValue(false);
+    const enabledSpy = jest.spyOn(sandboxExecutionService, 'isEnabled').mockReturnValue(false);
     try {
       const response = await request(app)
         .post('/api/admin/sandbox-execution/pilot/run-code')
@@ -914,6 +889,31 @@ describe('Admin API routes', () => {
     expect(invalidHealthQuery.body.error).toBe('ADMIN_INVALID_QUERY');
   });
 
+  test('provider lane routes endpoint returns configured lane matrix', async () => {
+    const response = await request(app)
+      .get('/api/admin/provider-lanes/routes')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(response.status).toBe(200);
+    expect(typeof response.body.generatedAt).toBe('string');
+    expect(Array.isArray(response.body.lanes)).toBe(true);
+    const voiceLiveLane = response.body.lanes.find(
+      (lane: { lane: string }) => lane.lane === 'voice_live',
+    );
+    expect(voiceLiveLane).toBeTruthy();
+    expect(voiceLiveLane).toEqual(
+      expect.objectContaining({
+        lane: 'voice_live',
+        resolvedProviders: [
+          expect.objectContaining({
+            model: 'gpt-realtime',
+            provider: 'openai',
+          }),
+        ],
+      }),
+    );
+  });
+
   test('ai runtime dry-run applies failover chain', async () => {
     const response = await request(app)
       .post('/api/admin/ai-runtime/dry-run')
@@ -921,11 +921,9 @@ describe('Admin API routes', () => {
       .send({
         role: 'critic',
         prompt: 'Review draft coherence and suggest next action',
-        correlationId:
-          'rel.production-launch-gate.20260305191000.testcorr.corr',
+        correlationId: 'rel.production-launch-gate.20260305191000.testcorr.corr',
         releaseRunId: 'rel.production-launch-gate.20260305191000.testcorr',
-        auditSessionId:
-          'rel.production-launch-gate.20260305191000.testcorr.audit',
+        auditSessionId: 'rel.production-launch-gate.20260305191000.testcorr.audit',
         providersOverride: ['claude-4', 'gemini-2'],
         simulateFailures: ['claude-4'],
       });
@@ -944,11 +942,83 @@ describe('Admin API routes', () => {
       errorCode: null,
     });
     expect(response.body.correlation).toEqual({
-      auditSessionId:
-        'rel.production-launch-gate.20260305191000.testcorr.audit',
+      auditSessionId: 'rel.production-launch-gate.20260305191000.testcorr.audit',
       correlationId: 'rel.production-launch-gate.20260305191000.testcorr.corr',
       releaseRunId: 'rel.production-launch-gate.20260305191000.testcorr',
     });
+  });
+
+  test('provider lane telemetry endpoint aggregates ai runtime dry-run events', async () => {
+    const response = await request(app)
+      .post('/api/admin/ai-runtime/dry-run')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        role: 'critic',
+        prompt: 'Route through fallback for telemetry aggregation',
+        correlationId: 'rel.production-launch-gate.20260305191500.telemetry.corr',
+        releaseRunId: 'rel.production-launch-gate.20260305191500.telemetry',
+        auditSessionId: 'rel.production-launch-gate.20260305191500.audit',
+        providersOverride: ['claude-4', 'gemini-2'],
+        simulateFailures: ['claude-4'],
+      });
+
+    expect(response.status).toBe(200);
+
+    const telemetryRows = await db.query<{
+      metadata: Record<string, unknown>;
+      status: string;
+    }>(
+      `SELECT status, metadata
+       FROM ux_events
+       WHERE event_type = $1
+         AND source = $2`,
+      [PROVIDER_LANE_EXECUTION_EVENT_TYPE, PROVIDER_LANE_TELEMETRY_SOURCE],
+    );
+
+    expect(telemetryRows.rows).toHaveLength(1);
+    expect(telemetryRows.rows[0]?.status).toBe('ok');
+    expect(telemetryRows.rows[0]?.metadata).toEqual(
+      expect.objectContaining({
+        lane: 'long_context',
+        operation: 'ai_runtime_dry_run',
+        provider: 'gemini-2',
+      }),
+    );
+
+    const telemetryResponse = await request(app)
+      .get('/api/admin/provider-lanes/telemetry?hours=24&lane=long_context')
+      .set('x-admin-token', env.ADMIN_API_TOKEN);
+
+    expect(telemetryResponse.status).toBe(200);
+    expect(telemetryResponse.body.summary).toEqual(
+      expect.objectContaining({
+        failedCount: 0,
+        okCount: 1,
+        total: 1,
+      }),
+    );
+    expect(telemetryResponse.body.byLane).toContainEqual(
+      expect.objectContaining({
+        lane: 'long_context',
+        okCount: 1,
+        total: 1,
+      }),
+    );
+    expect(telemetryResponse.body.byProvider).toContainEqual(
+      expect.objectContaining({
+        okCount: 1,
+        provider: 'gemini-2',
+        total: 1,
+      }),
+    );
+    expect(telemetryResponse.body.recent[0]).toEqual(
+      expect.objectContaining({
+        lane: 'long_context',
+        operation: 'ai_runtime_dry_run',
+        provider: 'gemini-2',
+        status: 'ok',
+      }),
+    );
   });
 
   test('ai runtime dry-run rejects unsupported fields and invalid payload values', async () => {
@@ -973,9 +1043,7 @@ describe('Admin API routes', () => {
       });
 
     expect(unknownFieldRes.status).toBe(400);
-    expect(unknownFieldRes.body.error).toBe(
-      'AI_RUNTIME_DRY_RUN_INVALID_FIELDS',
-    );
+    expect(unknownFieldRes.body.error).toBe('AI_RUNTIME_DRY_RUN_INVALID_FIELDS');
 
     const promptTooLongRes = await request(app)
       .post('/api/admin/ai-runtime/dry-run')
@@ -1010,9 +1078,7 @@ describe('Admin API routes', () => {
       });
 
     expect(invalidProviderIdentifierRes.status).toBe(400);
-    expect(invalidProviderIdentifierRes.body.error).toBe(
-      'AI_RUNTIME_INVALID_INPUT',
-    );
+    expect(invalidProviderIdentifierRes.body.error).toBe('AI_RUNTIME_INVALID_INPUT');
 
     const invalidSimulateFailureItemLengthRes = await request(app)
       .post('/api/admin/ai-runtime/dry-run')
@@ -1024,9 +1090,7 @@ describe('Admin API routes', () => {
       });
 
     expect(invalidSimulateFailureItemLengthRes.status).toBe(400);
-    expect(invalidSimulateFailureItemLengthRes.body.error).toBe(
-      'AI_RUNTIME_INVALID_INPUT',
-    );
+    expect(invalidSimulateFailureItemLengthRes.body.error).toBe('AI_RUNTIME_INVALID_INPUT');
 
     const invalidTimeoutRes = await request(app)
       .post('/api/admin/ai-runtime/dry-run')
@@ -1098,8 +1162,7 @@ describe('Admin API routes', () => {
           skills: [
             {
               label: 'Narrative spine',
-              instruction:
-                'Preserve clear narrative arc and avoid unrelated visual detours',
+              instruction: 'Preserve clear narrative arc and avoid unrelated visual detours',
             },
           ],
           globalSkills: ['Favor intentional subject hierarchy'],
@@ -1147,9 +1210,11 @@ describe('Admin API routes', () => {
     expect(response.status).toBe(201);
     expect(response.body.completed).toBe(true);
     expect(response.body.steps).toHaveLength(3);
-    expect(
-      response.body.steps.map((step: { role: string }) => step.role),
-    ).toEqual(['critic', 'maker', 'judge']);
+    expect(response.body.steps.map((step: { role: string }) => step.role)).toEqual([
+      'critic',
+      'maker',
+      'judge',
+    ]);
     expect(response.body.studioContext).toMatchObject({
       studioId: agentId,
       studioName: 'Orchestration Persona Studio',
@@ -1212,9 +1277,7 @@ describe('Admin API routes', () => {
     expect(detail.body.session.status).toBe('closed');
     expect(Array.isArray(detail.body.events)).toBe(true);
     expect(
-      detail.body.events.some(
-        (event: { type: string }) => event.type === 'draft_cycle_completed',
-      ),
+      detail.body.events.some((event: { type: string }) => event.type === 'draft_cycle_completed'),
     ).toBe(true);
   });
 
@@ -1260,44 +1323,35 @@ describe('Admin API routes', () => {
     expect(
       broadcastCalls.some(
         (call) =>
-          call[0] === `session:${sessionId}` &&
-          call[1] === 'agent_gateway_orchestration_step',
+          call[0] === `session:${sessionId}` && call[1] === 'agent_gateway_orchestration_step',
       ),
     ).toBe(true);
     expect(
       broadcastCalls.some(
-        (call) =>
-          call[0] === `post:${draftId}` &&
-          call[1] === 'agent_gateway_orchestration_step',
+        (call) => call[0] === `post:${draftId}` && call[1] === 'agent_gateway_orchestration_step',
       ),
     ).toBe(true);
     expect(
       broadcastCalls.some(
-        (call) =>
-          call[0] === 'feed:live' &&
-          call[1] === 'agent_gateway_orchestration_step',
+        (call) => call[0] === 'feed:live' && call[1] === 'agent_gateway_orchestration_step',
       ),
     ).toBe(true);
 
     expect(
       broadcastCalls.some(
         (call) =>
-          call[0] === `session:${sessionId}` &&
-          call[1] === 'agent_gateway_orchestration_completed',
+          call[0] === `session:${sessionId}` && call[1] === 'agent_gateway_orchestration_completed',
       ),
     ).toBe(true);
     expect(
       broadcastCalls.some(
         (call) =>
-          call[0] === `post:${draftId}` &&
-          call[1] === 'agent_gateway_orchestration_completed',
+          call[0] === `post:${draftId}` && call[1] === 'agent_gateway_orchestration_completed',
       ),
     ).toBe(true);
     expect(
       broadcastCalls.some(
-        (call) =>
-          call[0] === 'feed:live' &&
-          call[1] === 'agent_gateway_orchestration_completed',
+        (call) => call[0] === 'feed:live' && call[1] === 'agent_gateway_orchestration_completed',
       ),
     ).toBe(true);
 
@@ -1366,9 +1420,7 @@ describe('Admin API routes', () => {
     expect(latestEventsBeforeCompact.body.source).toBe('db');
     expect(latestEventsBeforeCompact.body.total).toBe(2);
     expect(latestEventsBeforeCompact.body.events).toHaveLength(1);
-    expect(latestEventsBeforeCompact.body.events[0].type).toBe(
-      'pull_request_submitted',
-    );
+    expect(latestEventsBeforeCompact.body.events[0].type).toBe('pull_request_submitted');
 
     const compacted = await request(app)
       .post(`/api/admin/agent-gateway/sessions/${sessionId}/compact`)
@@ -1402,9 +1454,7 @@ describe('Admin API routes', () => {
     expect(latestEventsAfterCompact.status).toBe(200);
     expect(latestEventsAfterCompact.body.total).toBe(2);
     expect(latestEventsAfterCompact.body.events).toHaveLength(2);
-    expect(latestEventsAfterCompact.body.events[0].type).toBe(
-      'session_compacted',
-    );
+    expect(latestEventsAfterCompact.body.events[0].type).toBe('session_compacted');
 
     const summary = await request(app)
       .get(`/api/admin/agent-gateway/sessions/${sessionId}/summary`)
@@ -1429,9 +1479,7 @@ describe('Admin API routes', () => {
     expect(statusBeforeClose.body.source).toBe('db');
     expect(statusBeforeClose.body.status.sessionId).toBe(sessionId);
     expect(statusBeforeClose.body.status.status).toBe('active');
-    expect(statusBeforeClose.body.status.lastEventType).toBe(
-      'session_compacted',
-    );
+    expect(statusBeforeClose.body.status.lastEventType).toBe('session_compacted');
     expect(statusBeforeClose.body.status.eventCount).toBe(2);
     expect(statusBeforeClose.body.status.health).toBe('ok');
     expect(statusBeforeClose.body.status.needsAttention).toBe(false);
@@ -1896,9 +1944,7 @@ describe('Admin API routes', () => {
     expect(secondEvent.status).toBe(201);
 
     const response = await request(app)
-      .get(
-        '/api/admin/agent-gateway/telemetry?hours=24&limit=10&connector=partner-beta',
-      )
+      .get('/api/admin/agent-gateway/telemetry?hours=24&limit=10&connector=partner-beta')
       .set('x-admin-token', env.ADMIN_API_TOKEN);
 
     expect(response.status).toBe(200);
@@ -1944,9 +1990,7 @@ describe('Admin API routes', () => {
     );
 
     const response = await request(app)
-      .get(
-        '/api/admin/agent-gateway/telemetry?hours=24&limit=10&connector=partner-alpha',
-      )
+      .get('/api/admin/agent-gateway/telemetry?hours=24&limit=10&connector=partner-alpha')
       .set('x-admin-token', env.ADMIN_API_TOKEN);
 
     expect(response.status).toBe(200);
@@ -1990,9 +2034,7 @@ describe('Admin API routes', () => {
     ];
 
     for (const url of invalidQueries) {
-      const response = await request(app)
-        .get(url)
-        .set('x-admin-token', env.ADMIN_API_TOKEN);
+      const response = await request(app).get(url).set('x-admin-token', env.ADMIN_API_TOKEN);
 
       expect(response.status).toBe(400);
       expect(response.body.error).toBe('ADMIN_INVALID_QUERY');
@@ -2193,9 +2235,7 @@ describe('Admin API routes', () => {
     ];
 
     for (const url of invalidQueries) {
-      const response = await request(app)
-        .get(url)
-        .set('x-admin-token', env.ADMIN_API_TOKEN);
+      const response = await request(app).get(url).set('x-admin-token', env.ADMIN_API_TOKEN);
       expect(response.status).toBe(400);
       expect(response.body.error).toBe('ADMIN_INVALID_QUERY');
     }
@@ -2221,8 +2261,7 @@ describe('Admin API routes', () => {
         run: {
           id: 22_548_257_961,
           number: 47,
-          htmlUrl:
-            'https://github.com/Web-pixel-creator/SocialProject/actions/runs/22548257961',
+          htmlUrl: 'https://github.com/Web-pixel-creator/SocialProject/actions/runs/22548257961',
         },
         firstAppearances: [
           {
@@ -2231,8 +2270,7 @@ describe('Admin API routes', () => {
             connectorId: 'telegram-prod',
             runId: 22_548_257_961,
             runNumber: 47,
-            runUrl:
-              'https://github.com/Web-pixel-creator/SocialProject/actions/runs/22548257961',
+            runUrl: 'https://github.com/Web-pixel-creator/SocialProject/actions/runs/22548257961',
           },
         ],
       });
@@ -2252,9 +2290,7 @@ describe('Admin API routes', () => {
        LIMIT 1`,
     );
     expect(stored.rows).toHaveLength(1);
-    expect(stored.rows[0].event_type).toBe(
-      'release_external_channel_failure_mode_alert',
-    );
+    expect(stored.rows[0].event_type).toBe('release_external_channel_failure_mode_alert');
     expect(stored.rows[0].source).toBe('release_health_gate_webhook');
     expect(stored.rows[0].metadata).toEqual(
       expect.objectContaining({
@@ -2343,9 +2379,7 @@ describe('Admin API routes', () => {
     ];
 
     for (const url of invalidQueries) {
-      const response = await request(app)
-        .get(url)
-        .set('x-admin-token', env.ADMIN_API_TOKEN);
+      const response = await request(app).get(url).set('x-admin-token', env.ADMIN_API_TOKEN);
 
       expect(response.status).toBe(400);
       expect(response.body.error).toBe('ADMIN_INVALID_QUERY');
@@ -2631,12 +2665,11 @@ describe('Admin API routes', () => {
     expect(response.body.total).toBe(3);
     expect(response.body.limit).toBe(2);
     expect(response.body.events).toHaveLength(2);
-    expect(
-      response.body.events.map((event: { id: string }) => event.id),
-    ).toEqual([eventThreeId, eventTwoId]);
-    expect(
-      response.body.events.map((event: { id: string }) => event.id),
-    ).not.toContain(eventOneId);
+    expect(response.body.events.map((event: { id: string }) => event.id)).toEqual([
+      eventThreeId,
+      eventTwoId,
+    ]);
+    expect(response.body.events.map((event: { id: string }) => event.id)).not.toContain(eventOneId);
   });
 
   test('agent gateway session endpoints validate sessionId route params', async () => {
@@ -2649,9 +2682,7 @@ describe('Admin API routes', () => {
     ];
 
     for (const url of readUrls) {
-      const response = await request(app)
-        .get(url)
-        .set('x-admin-token', env.ADMIN_API_TOKEN);
+      const response = await request(app).get(url).set('x-admin-token', env.ADMIN_API_TOKEN);
 
       expect(response.status).toBe(400);
       expect(response.body.error).toBe('ADMIN_INVALID_SESSION_ID');
@@ -2853,9 +2884,7 @@ describe('Admin API routes', () => {
     expect(backfill.body).toHaveProperty('processed');
     expect(backfill.body.processed).toBeGreaterThan(0);
 
-    const embeddingRows = await db.query(
-      'SELECT COUNT(*)::int AS count FROM draft_embeddings',
-    );
+    const embeddingRows = await db.query('SELECT COUNT(*)::int AS count FROM draft_embeddings');
     expect(embeddingRows.rows[0].count).toBeGreaterThan(0);
 
     const metrics = await request(app)
@@ -2967,16 +2996,13 @@ describe('Admin API routes', () => {
     expect(Array.isArray(response.body.rows)).toBe(true);
     expect(Array.isArray(response.body.profiles)).toBe(true);
     const balancedSimilar = response.body.profiles.find(
-      (profile: any) =>
-        profile.profile === 'balanced' && profile.mode === 'unknown',
+      (profile: any) => profile.profile === 'balanced' && profile.mode === 'unknown',
     );
     const qualitySimilar = response.body.profiles.find(
-      (profile: any) =>
-        profile.profile === 'quality' && profile.mode === 'unknown',
+      (profile: any) => profile.profile === 'quality' && profile.mode === 'unknown',
     );
     const qualityText = response.body.profiles.find(
-      (profile: any) =>
-        profile.profile === 'quality' && profile.mode === 'text',
+      (profile: any) => profile.profile === 'quality' && profile.mode === 'text',
     );
 
     expect(balancedSimilar).toBeTruthy();
@@ -3046,9 +3072,7 @@ describe('Admin API routes', () => {
     ];
 
     for (const url of invalidQueries) {
-      const response = await request(app)
-        .get(url)
-        .set('x-admin-token', env.ADMIN_API_TOKEN);
+      const response = await request(app).get(url).set('x-admin-token', env.ADMIN_API_TOKEN);
 
       expect(response.status).toBe(400);
       expect(response.body.error).toBe('ADMIN_INVALID_QUERY');
@@ -3152,19 +3176,13 @@ describe('Admin API routes', () => {
     expect(response.body.multimodal.coverageRate).toBe(0.5);
     expect(response.body.multimodal.errorRate).toBe(0.333);
     expect(response.body.multimodal.providerBreakdown).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ provider: 'gpt-4.1', count: 1 }),
-      ]),
+      expect.arrayContaining([expect.objectContaining({ provider: 'gpt-4.1', count: 1 })]),
     );
     expect(response.body.multimodal.emptyReasonBreakdown).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ reason: 'not_available', count: 1 }),
-      ]),
+      expect.arrayContaining([expect.objectContaining({ reason: 'not_available', count: 1 })]),
     );
     expect(response.body.multimodal.errorReasonBreakdown).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ reason: 'network', count: 1 }),
-      ]),
+      expect.arrayContaining([expect.objectContaining({ reason: 'network', count: 1 })]),
     );
     expect(response.body.multimodal.guardrails).toEqual(
       expect.objectContaining({
@@ -3180,8 +3198,7 @@ describe('Admin API routes', () => {
         latest: expect.objectContaining({
           runId: 22_548_544_748,
           runNumber: 49,
-          runUrl:
-            'https://github.com/Web-pixel-creator/SocialProject/actions/runs/22548544748',
+          runUrl: 'https://github.com/Web-pixel-creator/SocialProject/actions/runs/22548544748',
         }),
       }),
     );
@@ -3222,8 +3239,7 @@ describe('Admin API routes', () => {
     const releaseHealthAlertHourlyTotals = releaseHealthAlertHourlyTrend.reduce(
       (acc: { alerts: number; firstAppearances: number }, bucket: any) => ({
         alerts: acc.alerts + Number(bucket?.alerts ?? 0),
-        firstAppearances:
-          acc.firstAppearances + Number(bucket?.firstAppearances ?? 0),
+        firstAppearances: acc.firstAppearances + Number(bucket?.firstAppearances ?? 0),
       }),
       {
         alerts: 0,
@@ -3237,9 +3253,7 @@ describe('Admin API routes', () => {
     for (const bucket of releaseHealthAlertHourlyTrend) {
       expect(typeof bucket.hour).toBe('string');
     }
-    const multimodalHourlyTrend = Array.isArray(
-      response.body.multimodal.hourlyTrend,
-    )
+    const multimodalHourlyTrend = Array.isArray(response.body.multimodal.hourlyTrend)
       ? response.body.multimodal.hourlyTrend
       : [];
     expect(multimodalHourlyTrend.length).toBeGreaterThan(0);
@@ -3273,9 +3287,7 @@ describe('Admin API routes', () => {
     expect(Array.isArray(response.body.variants)).toBe(true);
     expect(response.body.predictionMarket.totals.predictions).toBe(0);
     expect(Array.isArray(response.body.predictionMarket.outcomes)).toBe(true);
-    expect(Array.isArray(response.body.predictionMarket.hourlyTrend)).toBe(
-      true,
-    );
+    expect(Array.isArray(response.body.predictionMarket.hourlyTrend)).toBe(true);
     expect(response.body.predictionMarket.hourlyTrend).toHaveLength(0);
     expect(response.body.predictionMarket.cohorts).toEqual(
       expect.objectContaining({
@@ -3421,14 +3433,11 @@ describe('Admin API routes', () => {
         }),
       ]),
     );
-    const predictionStateSelf =
-      response.body.predictionHistoryStateTelemetry.byScope.find(
-        (entry: any) => entry.scope === 'self',
-      );
-    expect(predictionStateSelf).toBeTruthy();
-    expect(predictionStateSelf.lastChangedAt).toBe(
-      predictionStateSelf.sortChangedAt,
+    const predictionStateSelf = response.body.predictionHistoryStateTelemetry.byScope.find(
+      (entry: any) => entry.scope === 'self',
     );
+    expect(predictionStateSelf).toBeTruthy();
+    expect(predictionStateSelf.lastChangedAt).toBe(predictionStateSelf.sortChangedAt);
     expect(response.body.totals.predictionSettles).toBe(1);
     expect(response.body.feedPreferences.viewMode.observer).toBe(1);
     expect(response.body.feedPreferences.viewMode.focus).toBe(2);
@@ -3451,12 +3460,10 @@ describe('Admin API routes', () => {
     expect(hotNowSegment.count).toBe(2);
 
     const variantA = response.body.variants.find(
-      (entry: any) =>
-        entry.variant === 'A' && entry.eventType === 'draft_arc_view',
+      (entry: any) => entry.variant === 'A' && entry.eventType === 'draft_arc_view',
     );
     const variantB = response.body.variants.find(
-      (entry: any) =>
-        entry.variant === 'B' && entry.eventType === 'draft_arc_view',
+      (entry: any) => entry.variant === 'B' && entry.eventType === 'draft_arc_view',
     );
     expect(variantA).toBeTruthy();
     expect(variantB).toBeTruthy();
@@ -3472,9 +3479,7 @@ describe('Admin API routes', () => {
     ];
 
     for (const url of invalidQueries) {
-      const response = await request(app)
-        .get(url)
-        .set('x-admin-token', env.ADMIN_API_TOKEN);
+      const response = await request(app).get(url).set('x-admin-token', env.ADMIN_API_TOKEN);
 
       expect(response.status).toBe(400);
       expect(response.body.error).toBe('ADMIN_INVALID_QUERY');
@@ -3482,9 +3487,7 @@ describe('Admin API routes', () => {
   });
 
   test('observer engagement metrics endpoint includes prediction hourly trend', async () => {
-    const { agentId, apiKey } = await registerAgent(
-      'Prediction Hourly Trend Studio',
-    );
+    const { agentId, apiKey } = await registerAgent('Prediction Hourly Trend Studio');
 
     const draftRes = await request(app)
       .post('/api/drafts')
@@ -3617,9 +3620,7 @@ describe('Admin API routes', () => {
       }),
     );
 
-    const hourlyTrend = Array.isArray(
-      response.body.predictionMarket.hourlyTrend,
-    )
+    const hourlyTrend = Array.isArray(response.body.predictionMarket.hourlyTrend)
       ? response.body.predictionMarket.hourlyTrend
       : [];
     expect(hourlyTrend.length).toBeGreaterThan(0);
@@ -3637,10 +3638,8 @@ describe('Admin API routes', () => {
         predictions: acc.predictions + Number(bucket?.predictions ?? 0),
         stakePoints: acc.stakePoints + Number(bucket?.stakePoints ?? 0),
         payoutPoints: acc.payoutPoints + Number(bucket?.payoutPoints ?? 0),
-        resolvedPredictions:
-          acc.resolvedPredictions + Number(bucket?.resolvedPredictions ?? 0),
-        correctPredictions:
-          acc.correctPredictions + Number(bucket?.correctPredictions ?? 0),
+        resolvedPredictions: acc.resolvedPredictions + Number(bucket?.resolvedPredictions ?? 0),
+        correctPredictions: acc.correctPredictions + Number(bucket?.correctPredictions ?? 0),
       }),
       {
         predictions: 0,
@@ -3755,9 +3754,7 @@ describe('Admin API routes', () => {
 
     expect(response.status).toBe(200);
     expect(Array.isArray(response.body.rows)).toBe(true);
-    const budgets = response.body.rows.find(
-      (row: any) => row.job_name === 'budgets_reset',
-    );
+    const budgets = response.body.rows.find((row: any) => row.job_name === 'budgets_reset');
     expect(budgets).toBeTruthy();
     expect(budgets.total_runs).toBe(2);
     expect(budgets.failure_count).toBe(1);
@@ -3773,10 +3770,9 @@ describe('Admin API routes', () => {
       thumbnailUrl: 'https://example.com/cleanup-v1-thumb.png',
     });
 
-    const userRow = await db.query(
-      'INSERT INTO users (email) VALUES ($1) RETURNING id',
-      ['cleanup@example.com'],
-    );
+    const userRow = await db.query('INSERT INTO users (email) VALUES ($1) RETURNING id', [
+      'cleanup@example.com',
+    ]);
     const userId = userRow.rows[0].id;
 
     await db.query(
@@ -3935,9 +3931,7 @@ describe('Admin API routes', () => {
     ];
 
     for (const url of invalidQueries) {
-      const response = await request(app)
-        .get(url)
-        .set('x-admin-token', env.ADMIN_API_TOKEN);
+      const response = await request(app).get(url).set('x-admin-token', env.ADMIN_API_TOKEN);
 
       expect(response.status).toBe(400);
       expect(response.body.error).toBe('ADMIN_INVALID_QUERY');
@@ -3959,9 +3953,7 @@ describe('Admin API routes', () => {
     await budgetService.incrementEditBudget(created.draft.id, 'pr');
 
     const remaining = await request(app)
-      .get(
-        `/api/admin/budgets/remaining?agentId=${agentId}&draftId=${created.draft.id}`,
-      )
+      .get(`/api/admin/budgets/remaining?agentId=${agentId}&draftId=${created.draft.id}`)
       .set('x-admin-token', env.ADMIN_API_TOKEN);
 
     expect(remaining.status).toBe(200);
@@ -3993,9 +3985,7 @@ describe('Admin API routes', () => {
     ];
 
     for (const url of invalidQueryCases) {
-      const response = await request(app)
-        .get(url)
-        .set('x-admin-token', env.ADMIN_API_TOKEN);
+      const response = await request(app).get(url).set('x-admin-token', env.ADMIN_API_TOKEN);
 
       expect(response.status).toBe(400);
       expect(response.body.error).toBe('ADMIN_INVALID_QUERY');

@@ -1,5 +1,6 @@
 import type { ServiceError } from '../services/common/errors';
 import { OpenAIRealtimeSessionServiceImpl } from '../services/openaiRealtime/openaiRealtimeSessionService';
+import type { ProviderRoutingService } from '../services/providerRouting/types';
 
 describe('OpenAIRealtimeSessionServiceImpl', () => {
   const previousFetch = globalThis.fetch;
@@ -13,7 +14,34 @@ describe('OpenAIRealtimeSessionServiceImpl', () => {
 
   test('throws not configured error when api key is missing', async () => {
     process.env.OPENAI_API_KEY = '';
-    const service = new OpenAIRealtimeSessionServiceImpl();
+    const recordExecution = jest.fn().mockResolvedValue(undefined);
+    const service = new OpenAIRealtimeSessionServiceImpl({
+      recordExecution,
+      resolveRoute: jest.fn().mockReturnValue({
+        budgetCapUsd: null,
+        cacheEligible: false,
+        disabledProviders: [],
+        grounded: false,
+        lane: 'voice_live',
+        providers: [
+          {
+            enabled: true,
+            model: 'gpt-realtime',
+            provider: 'openai',
+            role: 'primary',
+          },
+        ],
+        requestedProviders: [],
+        resolvedProviders: [
+          {
+            model: 'gpt-realtime',
+            provider: 'openai',
+            role: 'primary',
+          },
+        ],
+        stage: 'ga',
+      }),
+    } as unknown as ProviderRoutingService);
 
     await expect(
       service.createSession({
@@ -30,10 +58,21 @@ describe('OpenAIRealtimeSessionServiceImpl', () => {
       code: 'OPENAI_REALTIME_NOT_CONFIGURED',
       status: 503,
     });
+    expect(recordExecution).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lane: 'voice_live',
+        operation: 'live_session_realtime_bootstrap',
+        provider: 'openai',
+        status: 'failed',
+        userId: 'observer-1',
+        userType: 'observer',
+      }),
+    );
   });
 
   test('creates realtime session and returns normalized bootstrap payload', async () => {
     process.env.OPENAI_API_KEY = 'test-openai-key';
+    const recordExecution = jest.fn().mockResolvedValue(undefined);
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -48,7 +87,33 @@ describe('OpenAIRealtimeSessionServiceImpl', () => {
       text: async () => '',
     } as Response);
     globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
-    const service = new OpenAIRealtimeSessionServiceImpl();
+    const service = new OpenAIRealtimeSessionServiceImpl({
+      recordExecution,
+      resolveRoute: jest.fn().mockReturnValue({
+        budgetCapUsd: null,
+        cacheEligible: false,
+        disabledProviders: [],
+        grounded: false,
+        lane: 'voice_live',
+        providers: [
+          {
+            enabled: true,
+            model: 'gpt-realtime',
+            provider: 'openai',
+            role: 'primary',
+          },
+        ],
+        requestedProviders: [],
+        resolvedProviders: [
+          {
+            model: 'gpt-realtime',
+            provider: 'openai',
+            role: 'primary',
+          },
+        ],
+        stage: 'ga',
+      }),
+    } as unknown as ProviderRoutingService);
 
     const result = await service.createSession({
       liveSessionId: 'session-1',
@@ -100,6 +165,17 @@ describe('OpenAIRealtimeSessionServiceImpl', () => {
       expect.objectContaining({
         source: 'unit-test',
         live_session_id: 'session-1',
+      }),
+    );
+    expect(recordExecution).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lane: 'voice_live',
+        model: 'gpt-realtime',
+        operation: 'live_session_realtime_bootstrap',
+        provider: 'openai',
+        status: 'ok',
+        userId: 'observer-1',
+        userType: 'observer',
       }),
     );
   });
