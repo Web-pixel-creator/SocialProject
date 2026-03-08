@@ -7,6 +7,7 @@ import {
 } from '../middleware/observability';
 import { redis } from '../redis/client';
 import { createApp, initInfra } from '../server';
+import { longContextService } from '../services/analysis/longContextService';
 import { aiRuntimeService } from '../services/aiRuntime/aiRuntimeService';
 import { BudgetServiceImpl, getUtcDateKey } from '../services/budget/budgetService';
 import { PostServiceImpl } from '../services/post/postService';
@@ -35,6 +36,7 @@ const resetDb = async () => {
   await db.query('TRUNCATE TABLE grounded_research_citations RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE grounded_research_runs RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE voice_render_artifacts RESTART IDENTITY CASCADE');
+  await db.query('TRUNCATE TABLE long_context_analysis_jobs RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE image_edit_candidates RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE image_edit_jobs RESTART IDENTITY CASCADE');
   await db.query('TRUNCATE TABLE versions RESTART IDENTITY CASCADE');
@@ -1022,6 +1024,123 @@ describe('Admin API routes', () => {
         operation: 'ai_runtime_dry_run',
         provider: 'gemini-2',
         status: 'ok',
+      }),
+    );
+  });
+
+  test('long-context admin endpoint returns completed Anthropic job payload', async () => {
+    const runAnalysisSpy = jest.spyOn(longContextService, 'runAnalysis').mockResolvedValue({
+      cacheCreationInputTokens: 1200,
+      cacheReadInputTokens: 0,
+      cacheTtl: '5m',
+      completedAt: new Date('2026-03-08T12:01:00.000Z'),
+      createdAt: new Date('2026-03-08T12:00:00.000Z'),
+      draftId: null,
+      estimatedCostUsd: 0.02235,
+      failureCode: null,
+      failureMessage: null,
+      id: '11111111-1111-1111-1111-111111111111',
+      inputTokens: 1800,
+      lane: 'long_context',
+      maxOutputTokens: 2048,
+      metadata: {
+        route: {
+          budgetCapUsd: null,
+          cacheEligible: true,
+          disabledProviders: [],
+          grounded: false,
+          lane: 'long_context',
+          providers: [
+            {
+              enabled: true,
+              model: 'claude-sonnet-4-20250514',
+              provider: 'claude-4',
+              role: 'primary',
+            },
+          ],
+          requestedProviders: [],
+          resolvedProviders: [
+            {
+              model: 'claude-sonnet-4-20250514',
+              provider: 'claude-4',
+              role: 'primary',
+            },
+          ],
+          stage: 'pilot',
+        },
+        sourceRoute: '/api/admin/provider-lanes/long-context',
+        stopReason: 'end_turn',
+      },
+      model: 'claude-sonnet-4-20250514',
+      outputTokens: 450,
+      prompt: 'Review the roadmap and identify the main execution gaps.',
+      provider: 'claude-4',
+      requestedById: null,
+      requestedByType: 'admin',
+      resultText: '## Summary\n- Gap one\n- Gap two',
+      route: {
+        budgetCapUsd: null,
+        cacheEligible: true,
+        disabledProviders: [],
+        grounded: false,
+        lane: 'long_context',
+        providers: [
+          {
+            enabled: true,
+            model: 'claude-sonnet-4-20250514',
+            provider: 'claude-4',
+            role: 'primary',
+          },
+        ],
+        requestedProviders: [],
+        resolvedProviders: [
+          {
+            model: 'claude-sonnet-4-20250514',
+            provider: 'claude-4',
+            role: 'primary',
+          },
+        ],
+        stage: 'pilot',
+      },
+      serviceTier: 'auto',
+      status: 'completed',
+      systemPrompt: 'Focus on execution gaps and order.',
+      updatedAt: new Date('2026-03-08T12:01:00.000Z'),
+      useCase: 'roadmap_spec_analysis',
+    });
+
+    const response = await request(app)
+      .post('/api/admin/provider-lanes/long-context')
+      .set('x-admin-token', env.ADMIN_API_TOKEN)
+      .send({
+        prompt: 'Review the roadmap and identify the main execution gaps.',
+        serviceTier: 'auto',
+        systemPrompt: 'Focus on execution gaps and order.',
+        useCase: 'roadmap_spec_analysis',
+      });
+
+    expect(response.status).toBe(201);
+    expect(runAnalysisSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          sourceRoute: '/api/admin/provider-lanes/long-context',
+        }),
+        prompt: 'Review the roadmap and identify the main execution gaps.',
+        requestedByType: 'admin',
+        serviceTier: 'auto',
+        systemPrompt: 'Focus on execution gaps and order.',
+        useCase: 'roadmap_spec_analysis',
+      }),
+    );
+    expect(response.body.job).toEqual(
+      expect.objectContaining({
+        cacheCreationInputTokens: 1200,
+        estimatedCostUsd: 0.02235,
+        lane: 'long_context',
+        provider: 'claude-4',
+        serviceTier: 'auto',
+        status: 'completed',
+        useCase: 'roadmap_spec_analysis',
       }),
     );
   });

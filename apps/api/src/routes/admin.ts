@@ -11,6 +11,12 @@ import type {
 } from '../services/agentGateway/types';
 import { parseConnectorPolicyMap } from '../services/agentGatewayIngest/connectorPolicy';
 import { parseConnectorProfileMap } from '../services/agentGatewayIngest/connectorProfile';
+import { longContextService } from '../services/analysis/longContextService';
+import {
+  LONG_CONTEXT_ANALYSIS_USE_CASES,
+  LONG_CONTEXT_CACHE_TTLS,
+  LONG_CONTEXT_SERVICE_TIERS,
+} from '../services/analysis/types';
 import { aiRuntimeService } from '../services/aiRuntime/aiRuntimeService';
 import type { AIRuntimeRole } from '../services/aiRuntime/types';
 import { AuthServiceImpl } from '../services/auth/authService';
@@ -138,8 +144,22 @@ const VOICE_RENDER_PREVIEW_ALLOWED_FIELDS = [
   'draftId',
   'liveSessionId',
 ] as const;
+const LONG_CONTEXT_ALLOWED_FIELDS = [
+  'useCase',
+  'prompt',
+  'systemPrompt',
+  'draftId',
+  'providersOverride',
+  'metadata',
+  'maxOutputTokens',
+  'cacheTtl',
+  'serviceTier',
+] as const;
 const VOICE_RENDER_PREVIEW_MAX_SCRIPT_LENGTH = 4000;
 const VOICE_RENDER_PREVIEW_MAX_VOICE_LENGTH = 64;
+const LONG_CONTEXT_MAX_PROMPT_LENGTH = 40_000;
+const LONG_CONTEXT_MAX_SYSTEM_PROMPT_LENGTH = 8_000;
+const LONG_CONTEXT_MAX_OUTPUT_TOKENS = 64_000;
 const AI_RUNTIME_DRY_RUN_MAX_PROMPT_LENGTH = 4000;
 const AI_RUNTIME_DRY_RUN_MAX_TIMEOUT_MS = 120_000;
 const AI_RUNTIME_PROVIDER_IDENTIFIER_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
@@ -1617,6 +1637,72 @@ const parseOptionalGroundedResearchCountry = (value: unknown): string | undefine
   return normalized;
 };
 
+const parseRequiredLongContextUseCase = (
+  value: unknown,
+): (typeof LONG_CONTEXT_ANALYSIS_USE_CASES)[number] => {
+  const parsed = parseRequiredBoundedBodyString(value, {
+    fieldName: 'useCase',
+    maxLength: 48,
+  });
+  const normalized = parsed.toLowerCase();
+  if (
+    !LONG_CONTEXT_ANALYSIS_USE_CASES.includes(
+      normalized as (typeof LONG_CONTEXT_ANALYSIS_USE_CASES)[number],
+    )
+  ) {
+    throw new ServiceError(
+      'ADMIN_INVALID_BODY',
+      `useCase must be one of ${LONG_CONTEXT_ANALYSIS_USE_CASES.join(', ')}.`,
+      400,
+    );
+  }
+  return normalized as (typeof LONG_CONTEXT_ANALYSIS_USE_CASES)[number];
+};
+
+const parseOptionalLongContextCacheTtl = (
+  value: unknown,
+): (typeof LONG_CONTEXT_CACHE_TTLS)[number] | undefined => {
+  const parsed = parseOptionalBoundedBodyString(value, {
+    fieldName: 'cacheTtl',
+    maxLength: 8,
+  });
+  if (!parsed) {
+    return undefined;
+  }
+  const normalized = parsed.toLowerCase();
+  if (!LONG_CONTEXT_CACHE_TTLS.includes(normalized as (typeof LONG_CONTEXT_CACHE_TTLS)[number])) {
+    throw new ServiceError(
+      'ADMIN_INVALID_BODY',
+      `cacheTtl must be one of ${LONG_CONTEXT_CACHE_TTLS.join(', ')}.`,
+      400,
+    );
+  }
+  return normalized as (typeof LONG_CONTEXT_CACHE_TTLS)[number];
+};
+
+const parseOptionalLongContextServiceTier = (
+  value: unknown,
+): (typeof LONG_CONTEXT_SERVICE_TIERS)[number] | undefined => {
+  const parsed = parseOptionalBoundedBodyString(value, {
+    fieldName: 'serviceTier',
+    maxLength: 32,
+  });
+  if (!parsed) {
+    return undefined;
+  }
+  const normalized = parsed.toLowerCase();
+  if (
+    !LONG_CONTEXT_SERVICE_TIERS.includes(normalized as (typeof LONG_CONTEXT_SERVICE_TIERS)[number])
+  ) {
+    throw new ServiceError(
+      'ADMIN_INVALID_BODY',
+      `serviceTier must be one of ${LONG_CONTEXT_SERVICE_TIERS.join(', ')}.`,
+      400,
+    );
+  }
+  return normalized as (typeof LONG_CONTEXT_SERVICE_TIERS)[number];
+};
+
 const parseOptionalRuntimeCorrelationBodyString = (
   value: unknown,
   {
@@ -3050,6 +3136,106 @@ router.post('/admin/provider-lanes/voice-render/preview', requireAdmin, async (r
 
     res.status(201).json({
       artifact,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/admin/provider-lanes/long-context/:jobId', requireAdmin, async (req, res, next) => {
+  try {
+    assertAllowedQueryFields(req.query, {
+      allowed: [],
+      endpoint: '/api/admin/provider-lanes/long-context/:jobId',
+    });
+    const jobId = `${req.params.jobId ?? ''}`.trim().toLowerCase();
+    if (!UUID_PATTERN.test(jobId)) {
+      throw new ServiceError('ADMIN_INVALID_PATH', 'jobId must be a UUID.', 400);
+    }
+    const job = await longContextService.getJob(jobId);
+    if (!job) {
+      throw new ServiceError('ADMIN_NOT_FOUND', 'Long-context analysis job was not found.', 404);
+    }
+    res.json({ job });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/admin/provider-lanes/long-context', requireAdmin, async (req, res, next) => {
+  try {
+    assertAllowedQueryFields(req.query, {
+      allowed: [],
+      endpoint: '/api/admin/provider-lanes/long-context',
+    });
+    const body = assertAllowedBodyFields(req.body, {
+      allowed: LONG_CONTEXT_ALLOWED_FIELDS,
+      endpoint: '/api/admin/provider-lanes/long-context',
+    });
+    const useCase = parseRequiredLongContextUseCase(body.useCase);
+    const prompt = parseRequiredBoundedBodyString(body.prompt, {
+      fieldName: 'prompt',
+      maxLength: LONG_CONTEXT_MAX_PROMPT_LENGTH,
+    });
+    const systemPrompt = parseOptionalBoundedBodyString(body.systemPrompt, {
+      fieldName: 'systemPrompt',
+      maxLength: LONG_CONTEXT_MAX_SYSTEM_PROMPT_LENGTH,
+    });
+    const draftId = parseOptionalUuidBodyString(body.draftId, {
+      fieldName: 'draftId',
+    });
+    const providersOverride = parseOptionalStringArrayStrict(body.providersOverride, {
+      fieldName: 'providersOverride',
+    });
+    const metadata = parseOptionalObjectBody(body.metadata, {
+      fieldName: 'metadata',
+    });
+    const maxOutputTokens = parseBoundedOptionalInt(body.maxOutputTokens, {
+      fieldName: 'maxOutputTokens',
+      invalidCode: 'ADMIN_INVALID_BODY',
+      max: LONG_CONTEXT_MAX_OUTPUT_TOKENS,
+      min: 1,
+    });
+    const cacheTtl = parseOptionalLongContextCacheTtl(body.cacheTtl);
+    const serviceTier = parseOptionalLongContextServiceTier(body.serviceTier);
+
+    const job = await longContextService.runAnalysis({
+      cacheTtl,
+      draftId,
+      maxOutputTokens,
+      metadata: metadata
+        ? {
+            ...metadata,
+            sourceRoute: '/api/admin/provider-lanes/long-context',
+          }
+        : {
+            sourceRoute: '/api/admin/provider-lanes/long-context',
+          },
+      preferredProviders: providersOverride,
+      prompt,
+      requestedByType: 'admin',
+      serviceTier,
+      systemPrompt,
+      useCase,
+    });
+
+    if (job.status === 'failed') {
+      const failureStatus =
+        typeof job.metadata.failureStatus === 'number' &&
+        Number.isInteger(job.metadata.failureStatus) &&
+        job.metadata.failureStatus >= 400 &&
+        job.metadata.failureStatus <= 599
+          ? job.metadata.failureStatus
+          : 502;
+      res.status(failureStatus).json({
+        error: job.failureCode ?? 'LONG_CONTEXT_REQUEST_FAILED',
+        job,
+      });
+      return;
+    }
+
+    res.status(201).json({
+      job,
     });
   } catch (error) {
     next(error);

@@ -154,7 +154,7 @@ const DEFAULT_PROVIDER_LANE_CONFIGS: Record<ProviderLane, ProviderLaneConfig> = 
     providers: [
       {
         provider: 'claude-4',
-        model: 'claude-4',
+        model: 'claude-sonnet-4-20250514',
         role: 'primary',
       },
       {
