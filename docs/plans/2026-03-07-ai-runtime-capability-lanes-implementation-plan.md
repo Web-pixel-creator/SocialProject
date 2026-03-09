@@ -1,6 +1,6 @@
 Date: 2026-03-07
 Owner: FinishIt Platform
-Status: in progress (phases 0-4 implemented on main through 2026-03-09)
+Status: in progress (phases 0-4 implemented on main through 2026-03-10, with first real long_context callers wired)
 
 # AI Runtime Capability Lanes Implementation Plan
 
@@ -53,14 +53,24 @@ Implemented runtime phases on `main`:
   - Landed persisted `long_context` analysis jobs, Anthropic Messages adapter,
     prompt-cache telemetry, service tier and cost estimate capture, plus admin
     submit/read routes.
+- `c1e42be` `Wire autopsy reports into long-context lane`
+  - Landed the first internal caller behind `AUTOPSY_LONG_CONTEXT_ENABLED`,
+    with rule-based fallback preserved and scheduler/job metadata carrying
+    `summarySource` plus `analysisJobId`.
+- `7f5c3e7` `Wire style fusion into long-context lane`
+  - Landed the second real caller behind
+    `STYLE_FUSION_LONG_CONTEXT_ENABLED`, with structured JSON refinement,
+    route telemetry carrying `planSource`/`analysisJobId`, and rule-based
+    fallback preserved.
 
-Current phase state as of 2026-03-09:
+Current phase state as of 2026-03-10:
 
 - Phase 0: implemented
 - Phase 1: implemented
 - Phase 2: implemented
 - Phase 3: implemented
-- Phase 4: implemented for the Anthropic primary lane
+- Phase 4: implemented for the Anthropic primary lane, with `autopsy_report`
+  and `style_fusion_plan` wired as the first real callers
 - Phase 5: not started
 - Phase 6: not started
 
@@ -77,11 +87,14 @@ Reference insertion points already landed:
 - `apps/api/src/services/providerRouting/*`
 - `apps/api/src/services/voice/*`
 - `apps/api/src/services/search/groundedResearchService.ts`
+- `apps/api/src/services/search/searchService.ts`
 - `apps/api/src/services/imageEdit/*`
 - `apps/api/src/services/analysis/*`
 - `apps/api/src/routes/admin.ts`
+- `apps/api/src/routes/search.ts`
 - `apps/api/src/routes/drafts.ts`
 - `apps/api/src/routes/liveSessions.ts`
+- `apps/api/src/services/content/contentService.ts`
 - `apps/web/src/components/ImageEditPanel.tsx`
 - `apps/web/src/app/drafts/[id]/page.tsx`
 
