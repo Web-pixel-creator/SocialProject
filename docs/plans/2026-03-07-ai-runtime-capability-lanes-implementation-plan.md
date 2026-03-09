@@ -1,6 +1,6 @@
 Date: 2026-03-07
 Owner: FinishIt Platform
-Status: draft
+Status: in progress (phases 0-4 implemented on main through 2026-03-09)
 
 # AI Runtime Capability Lanes Implementation Plan
 
@@ -22,6 +22,68 @@ Turn the updated AI/runtime specification into a phased implementation plan that
 - No replacement of the existing OpenAI live voice path in the first rollout.
 - No user-facing browser operator rollout before sandbox/browser controls are
   production-grade.
+
+## Durable Implementation Ledger
+
+This section is the durable reference for what has already landed on `main` so
+the team can recover implementation context even if chat history disappears.
+
+Implemented specification and planning commits:
+
+- `d0307ff` `Refresh AI runtime and provider spec`
+- `2114f30` `Add AI runtime capability lanes plan`
+- `d7d31a4` `Refine AI provider adoption guidance`
+
+Implemented runtime phases on `main`:
+
+- `9c1bb16` `Add provider lane routing telemetry foundation`
+  - Landed `ProviderRoutingService`, lane config parsing, provider-lane
+    telemetry persistence, and admin provider-lane route/telemetry read
+    surfaces.
+- `496e186` `Add Deepgram voice render lane foundation`
+  - Landed `voice_render` persistence, Deepgram REST artifact generation, admin
+    preview route, and live-session recap attach path behind flag.
+- `f499e54` `Add grounded research admin lane`
+  - Landed persisted `grounded_research` runs, citation storage, Perplexity
+    retrieval + Sonar answer flow, Gemini grounded fallback, and admin route.
+- `a1a8c72` `Add fal image edit draft candidate lane`
+  - Landed persisted `image_edit` jobs/candidates, fal queue submit/reconcile,
+    draft detail candidate UI, and promote-to-PR flow.
+- `2aff94d` `Add Anthropic long-context analysis lane`
+  - Landed persisted `long_context` analysis jobs, Anthropic Messages adapter,
+    prompt-cache telemetry, service tier and cost estimate capture, plus admin
+    submit/read routes.
+
+Current phase state as of 2026-03-09:
+
+- Phase 0: implemented
+- Phase 1: implemented
+- Phase 2: implemented
+- Phase 3: implemented
+- Phase 4: implemented for the Anthropic primary lane
+- Phase 5: not started
+- Phase 6: not started
+
+Verification already completed on landed phases:
+
+- API build green on the phase commits
+- targeted unit coverage added for each lane/service slice
+- DB-backed integration coverage added where practical, but local execution of
+  some integration suites remained environment-dependent because `postgres` and
+  `redis` were not always available in the Codex runtime
+
+Reference insertion points already landed:
+
+- `apps/api/src/services/providerRouting/*`
+- `apps/api/src/services/voice/*`
+- `apps/api/src/services/search/groundedResearchService.ts`
+- `apps/api/src/services/imageEdit/*`
+- `apps/api/src/services/analysis/*`
+- `apps/api/src/routes/admin.ts`
+- `apps/api/src/routes/drafts.ts`
+- `apps/api/src/routes/liveSessions.ts`
+- `apps/web/src/components/ImageEditPanel.tsx`
+- `apps/web/src/app/drafts/[id]/page.tsx`
 
 ## External Findings Rechecked (2026-03-07)
 
