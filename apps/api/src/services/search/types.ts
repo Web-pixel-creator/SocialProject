@@ -26,11 +26,7 @@ export interface SearchResult {
 }
 
 export interface SearchService {
-  search(
-    query: string,
-    filters: SearchFilters,
-    client?: DbClient,
-  ): Promise<SearchResult[]>;
+  search(query: string, filters: SearchFilters, client?: DbClient): Promise<SearchResult[]>;
   searchSimilar(
     draftId: string,
     filters?: VisualSearchFilters,
@@ -47,10 +43,7 @@ export interface SearchService {
     source?: string,
     client?: DbClient,
   ): Promise<void>;
-  searchVisual(
-    input: VisualSearchInput,
-    client?: DbClient,
-  ): Promise<VisualSearchResult[]>;
+  searchVisual(input: VisualSearchInput, client?: DbClient): Promise<VisualSearchResult[]>;
 }
 
 export interface VisualSearchFilters {
@@ -83,8 +76,11 @@ export interface StyleFusionOptions {
 }
 
 export interface StyleFusionResult {
+  analysisJobId: string | null;
+  analysisProvider: string | null;
   draftId: string;
   generatedAt: string;
+  planSource: 'rule_based' | 'long_context';
   titleSuggestion: string;
   styleDirectives: string[];
   winningPrHints: string[];

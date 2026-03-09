@@ -1,5 +1,7 @@
 import type { Pool } from 'pg';
 import { env } from '../../config/env';
+import { longContextService } from '../analysis/longContextService';
+import type { LongContextService } from '../analysis/types';
 import type { DbClient } from '../auth/types';
 import { ServiceError } from '../common/errors';
 import type {
@@ -48,6 +50,11 @@ interface PullRequestHintRow {
   description: string | null;
 }
 
+interface SearchServiceOptions {
+  longContextService?: LongContextService;
+  styleFusionLongContextEnabled?: boolean;
+}
+
 const getMetadataTitle = (metadata: Record<string, unknown> | null): string => {
   const title = metadata?.title;
   if (typeof title === 'string' && title.trim().length > 0) {
@@ -56,18 +63,151 @@ const getMetadataTitle = (metadata: Record<string, unknown> | null): string => {
   return 'Untitled';
 };
 
-export class SearchServiceImpl implements SearchService {
-  private readonly pool: Pool;
+const asArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
 
-  constructor(pool: Pool) {
+const asRecord = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+
+const asString = (value: unknown): string | null =>
+  typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+
+const normalizeFusionList = ({
+  maxItems,
+  maxLength,
+  minItems,
+  values,
+}: {
+  maxItems: number;
+  maxLength: number;
+  minItems: number;
+  values: unknown;
+}) => {
+  const normalized = asArray(values)
+    .map((value) => asString(value))
+    .filter((value): value is string => value !== null)
+    .map((value) => (value.length <= maxLength ? value : value.slice(0, maxLength).trimEnd()))
+    .filter((value) => value.length > 0);
+  return normalized.length >= minItems ? Array.from(new Set(normalized)).slice(0, maxItems) : null;
+};
+
+const buildRuleBasedStyleFusionResult = ({
+  draftId,
+  fallbackHints,
+  mergedHints,
+  selected,
+  topGlowUp,
+}: {
+  draftId: string;
+  fallbackHints: string[];
+  mergedHints: string[];
+  selected: VisualSearchResult[];
+  topGlowUp: number;
+}): StyleFusionResult => ({
+  analysisJobId: null,
+  analysisProvider: null,
+  draftId,
+  generatedAt: new Date().toISOString(),
+  planSource: 'rule_based',
+  sample: selected,
+  styleDirectives: [
+    `Preserve composition anchors from "${selected[0].title}".`,
+    `Blend color rhythm and lighting from "${selected[1].title}".`,
+    selected[2]
+      ? `Borrow finishing detail density from "${selected[2].title}".`
+      : 'Emphasize polish and readability in the final pass.',
+    `Aim for GlowUp >= ${(topGlowUp + 0.5).toFixed(1)} while keeping visual coherence.`,
+  ],
+  titleSuggestion: `Fusion: ${selected[0].title} x ${selected[1].title}`,
+  winningPrHints: mergedHints.length > 0 ? mergedHints : fallbackHints,
+});
+
+const buildStyleFusionLongContextPrompt = ({
+  draftId,
+  result,
+  type,
+}: {
+  draftId: string;
+  result: StyleFusionResult;
+  type: NonNullable<StyleFusionOptions['type']>;
+}) =>
+  [
+    'Produce a refined FinishIt style-fusion plan using only the structured data below.',
+    `Target draft: ${draftId}`,
+    `Search type: ${type}`,
+    'Baseline plan:',
+    JSON.stringify(
+      {
+        sample: result.sample.map((item, index) => ({
+          glowUpScore: item.glowUpScore,
+          id: item.id,
+          rank: index + 1,
+          score: Number(item.score.toFixed(4)),
+          title: item.title,
+          type: item.type,
+        })),
+        styleDirectives: result.styleDirectives,
+        titleSuggestion: result.titleSuggestion,
+        winningPrHints: result.winningPrHints,
+      },
+      null,
+      2,
+    ),
+    'Return JSON only in this exact shape:',
+    '{"titleSuggestion":"string","styleDirectives":["string"],"winningPrHints":["string"]}',
+    'Constraints: titleSuggestion must stay concise; styleDirectives must contain 3 or 4 imperative strings; winningPrHints must contain 2 or 3 short practical hints; no markdown; no prose outside JSON.',
+  ].join('\n');
+
+const parseStyleFusionLongContextPayload = (raw: string) => {
+  const cleaned = raw
+    .trim()
+    .replace(/^```json\s*/iu, '')
+    .replace(/^```\s*/iu, '')
+    .replace(/\s*```$/u, '')
+    .trim();
+  try {
+    const parsed = JSON.parse(cleaned) as unknown;
+    const record = asRecord(parsed);
+    const titleSuggestion = asString(record?.titleSuggestion);
+    const styleDirectives = normalizeFusionList({
+      maxItems: 4,
+      maxLength: 180,
+      minItems: 3,
+      values: record?.styleDirectives,
+    });
+    const winningPrHints = normalizeFusionList({
+      maxItems: 3,
+      maxLength: 180,
+      minItems: 2,
+      values: record?.winningPrHints,
+    });
+    if (!(titleSuggestion && styleDirectives && winningPrHints)) {
+      return null;
+    }
+    return {
+      styleDirectives,
+      titleSuggestion,
+      winningPrHints,
+    };
+  } catch {
+    return null;
+  }
+};
+
+export class SearchServiceImpl implements SearchService {
+  private readonly longContextService: LongContextService;
+  private readonly pool: Pool;
+  private readonly styleFusionLongContextEnabled: boolean;
+
+  constructor(pool: Pool, options: SearchServiceOptions = {}) {
+    this.longContextService = options.longContextService ?? longContextService;
     this.pool = pool;
+    this.styleFusionLongContextEnabled =
+      options.styleFusionLongContextEnabled ?? env.STYLE_FUSION_LONG_CONTEXT_ENABLED === 'true';
   }
 
-  async search(
-    query: string,
-    filters: SearchFilters,
-    client?: DbClient,
-  ): Promise<SearchResult[]> {
+  async search(query: string, filters: SearchFilters, client?: DbClient): Promise<SearchResult[]> {
     const db = getDb(this.pool, client);
     const {
       type = 'all',
@@ -124,14 +264,12 @@ export class SearchServiceImpl implements SearchService {
         [q, limit, offset],
       );
 
-      const draftResults: Array<SearchResult & { relevanceScore?: number }> =
-        drafts.rows.map((row) => {
+      const draftResults: Array<SearchResult & { relevanceScore?: number }> = drafts.rows.map(
+        (row) => {
           const typedRow = row as DraftSearchRow;
           const title = getMetadataTitle(typedRow.metadata);
           const score = Number(typedRow.glow_up_score ?? 0);
-          const updatedAt = typedRow.updated_at
-            ? new Date(typedRow.updated_at)
-            : null;
+          const updatedAt = typedRow.updated_at ? new Date(typedRow.updated_at) : null;
           const metadata = typedRow.metadata ?? {};
           const relevanceScore =
             sort === 'relevance'
@@ -152,19 +290,14 @@ export class SearchServiceImpl implements SearchService {
             afterImageUrl: typedRow.after_image_url ?? undefined,
             relevanceScore,
           };
-        });
+        },
+      );
 
       if (sort === 'relevance') {
-        draftResults.sort(
-          (a, b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0),
-        );
+        draftResults.sort((a, b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0));
       }
 
-      results.push(
-        ...draftResults.map(
-          ({ relevanceScore: _relevanceScore, ...rest }) => rest,
-        ),
-      );
+      results.push(...draftResults.map(({ relevanceScore: _relevanceScore, ...rest }) => rest));
     }
 
     if (type === 'all' || type === 'studio') {
@@ -178,8 +311,8 @@ export class SearchServiceImpl implements SearchService {
         [q, limit, offset],
       );
 
-      const studioResults: Array<SearchResult & { relevanceScore?: number }> =
-        studios.rows.map((row) => {
+      const studioResults: Array<SearchResult & { relevanceScore?: number }> = studios.rows.map(
+        (row) => {
           const typedRow = row as StudioSearchRow;
           const score = Number(typedRow.impact ?? 0);
           const relevanceScore =
@@ -198,19 +331,14 @@ export class SearchServiceImpl implements SearchService {
             score,
             relevanceScore,
           };
-        });
+        },
+      );
 
       if (sort === 'relevance') {
-        studioResults.sort(
-          (a, b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0),
-        );
+        studioResults.sort((a, b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0));
       }
 
-      results.push(
-        ...studioResults.map(
-          ({ relevanceScore: _relevanceScore, ...rest }) => rest,
-        ),
-      );
+      results.push(...studioResults.map(({ relevanceScore: _relevanceScore, ...rest }) => rest));
     }
 
     return results;
@@ -222,20 +350,14 @@ export class SearchServiceImpl implements SearchService {
     client?: DbClient,
   ): Promise<VisualSearchResult[]> {
     const db = getDb(this.pool, client);
-    const draft = await db.query('SELECT id FROM drafts WHERE id = $1', [
-      draftId,
-    ]);
+    const draft = await db.query('SELECT id FROM drafts WHERE id = $1', [draftId]);
     if (draft.rows.length === 0) {
       throw new ServiceError('DRAFT_NOT_FOUND', 'Draft not found.', 404);
     }
 
     const embedding = await this.getEmbeddingByDraftId(draftId, db);
     if (!embedding || embedding.length === 0) {
-      throw new ServiceError(
-        'EMBEDDING_NOT_FOUND',
-        'Draft embedding not found.',
-        404,
-      );
+      throw new ServiceError('EMBEDDING_NOT_FOUND', 'Draft embedding not found.', 404);
     }
 
     const effectiveFilters: VisualSearchFilters = {
@@ -259,9 +381,7 @@ export class SearchServiceImpl implements SearchService {
   ): Promise<StyleFusionResult> {
     const db = getDb(this.pool, client);
     const rawLimit = Number(options?.limit ?? 3);
-    const limit = Number.isFinite(rawLimit)
-      ? Math.max(2, Math.min(Math.floor(rawLimit), 5))
-      : 3;
+    const limit = Number.isFinite(rawLimit) ? Math.max(2, Math.min(Math.floor(rawLimit), 5)) : 3;
     const type = options?.type ?? 'all';
 
     const sample = await this.searchSimilar(
@@ -282,9 +402,7 @@ export class SearchServiceImpl implements SearchService {
     }
 
     const selected = sample.slice(0, limit);
-    const topGlowUp = Math.max(
-      ...selected.map((item) => Number(item.glowUpScore ?? 0)),
-    );
+    const topGlowUp = Math.max(...selected.map((item) => Number(item.glowUpScore ?? 0)));
 
     const hintResult = await db.query(
       `SELECT description
@@ -304,24 +422,67 @@ export class SearchServiceImpl implements SearchService {
     const fallbackHints = selected
       .slice(0, 2)
       .map((item) => `Reuse high-impact choices from "${item.title}".`);
-
-    const styleDirectives = [
-      `Preserve composition anchors from "${selected[0].title}".`,
-      `Blend color rhythm and lighting from "${selected[1].title}".`,
-      selected[2]
-        ? `Borrow finishing detail density from "${selected[2].title}".`
-        : 'Emphasize polish and readability in the final pass.',
-      `Aim for GlowUp >= ${(topGlowUp + 0.5).toFixed(1)} while keeping visual coherence.`,
-    ];
-
-    return {
+    const baselineResult = buildRuleBasedStyleFusionResult({
       draftId,
-      generatedAt: new Date().toISOString(),
-      titleSuggestion: `Fusion: ${selected[0].title} x ${selected[1].title}`,
-      styleDirectives,
-      winningPrHints: mergedHints.length > 0 ? mergedHints : fallbackHints,
-      sample: selected,
-    };
+      fallbackHints,
+      mergedHints,
+      selected,
+      topGlowUp,
+    });
+
+    if (!(this.styleFusionLongContextEnabled && !client)) {
+      return baselineResult;
+    }
+
+    try {
+      const analysisJob = await this.longContextService.runAnalysis({
+        cacheTtl: '5m',
+        maxOutputTokens: 512,
+        metadata: {
+          draftId,
+          limit,
+          sampleIds: selected.map((item) => item.id),
+          searchType: type,
+        },
+        prompt: buildStyleFusionLongContextPrompt({
+          draftId,
+          result: baselineResult,
+          type,
+        }),
+        requestedByType: 'system',
+        systemPrompt:
+          'You are refining a style-fusion plan for the public API. Return valid JSON only, with no markdown fences and no extra prose.',
+        useCase: 'style_fusion_plan',
+      });
+      if (analysisJob.status !== 'completed') {
+        return {
+          ...baselineResult,
+          analysisJobId: analysisJob.id,
+          analysisProvider: analysisJob.provider,
+        };
+      }
+
+      const refined = parseStyleFusionLongContextPayload(analysisJob.resultText ?? '');
+      if (!refined) {
+        return {
+          ...baselineResult,
+          analysisJobId: analysisJob.id,
+          analysisProvider: analysisJob.provider,
+        };
+      }
+
+      return {
+        ...baselineResult,
+        analysisJobId: analysisJob.id,
+        analysisProvider: analysisJob.provider,
+        planSource: 'long_context',
+        styleDirectives: refined.styleDirectives,
+        titleSuggestion: refined.titleSuggestion,
+        winningPrHints: refined.winningPrHints,
+      };
+    } catch {
+      return baselineResult;
+    }
   }
 
   async upsertDraftEmbedding(
@@ -349,10 +510,7 @@ export class SearchServiceImpl implements SearchService {
     );
   }
 
-  async searchVisual(
-    input: VisualSearchInput,
-    client?: DbClient,
-  ): Promise<VisualSearchResult[]> {
+  async searchVisual(input: VisualSearchInput, client?: DbClient): Promise<VisualSearchResult[]> {
     const db = getDb(this.pool, client);
     const { embedding, draftId, filters } = input;
     const vector = embedding
@@ -361,26 +519,12 @@ export class SearchServiceImpl implements SearchService {
 
     if (!vector || vector.length === 0) {
       if (draftId) {
-        throw new ServiceError(
-          'EMBEDDING_NOT_FOUND',
-          'Draft embedding not found.',
-          404,
-        );
+        throw new ServiceError('EMBEDDING_NOT_FOUND', 'Draft embedding not found.', 404);
       }
-      throw new ServiceError(
-        'EMBEDDING_REQUIRED',
-        'Provide a draftId or embedding array.',
-        400,
-      );
+      throw new ServiceError('EMBEDDING_REQUIRED', 'Provide a draftId or embedding array.', 400);
     }
 
-    const {
-      type = 'all',
-      tags = [],
-      limit = 20,
-      offset = 0,
-      excludeDraftId,
-    } = filters ?? {};
+    const { type = 'all', tags = [], limit = 20, offset = 0, excludeDraftId } = filters ?? {};
     const candidateLimit = Math.max(100, (offset + limit) * 5);
 
     let statusFilter = '1=1';
@@ -394,9 +538,7 @@ export class SearchServiceImpl implements SearchService {
     let paramIndex = 2;
 
     if (tags.length > 0) {
-      clauses.push(
-        `COALESCE(d.metadata->'tags', '[]'::jsonb) ?| $${paramIndex}`,
-      );
+      clauses.push(`COALESCE(d.metadata->'tags', '[]'::jsonb) ?| $${paramIndex}`);
       params.push(tags);
       paramIndex += 1;
     }
@@ -455,10 +597,9 @@ export class SearchServiceImpl implements SearchService {
     if (!draftId) {
       return null;
     }
-    const result = await db.query(
-      'SELECT embedding FROM draft_embeddings WHERE draft_id = $1',
-      [draftId],
-    );
+    const result = await db.query('SELECT embedding FROM draft_embeddings WHERE draft_id = $1', [
+      draftId,
+    ]);
     if (result.rows.length === 0) {
       return null;
     }
@@ -470,9 +611,7 @@ const sanitizeEmbedding = (embedding: number[]): number[] => {
   if (!Array.isArray(embedding)) {
     return [];
   }
-  return embedding
-    .map((value) => Number(value))
-    .filter((value) => Number.isFinite(value));
+  return embedding.map((value) => Number(value)).filter((value) => Number.isFinite(value));
 };
 
 const normalizeTerms = (query: string): string[] =>
@@ -521,8 +660,7 @@ const scoreRecency = (updatedAt: Date | null): number => {
   return Math.max(0, 1 - days / 30);
 };
 
-const normalizeMetric = (value: number): number =>
-  Math.max(0, Math.min(value / 100, 1));
+const normalizeMetric = (value: number): number => Math.max(0, Math.min(value / 100, 1));
 
 const scoreRelevance = (
   text: string,
@@ -535,9 +673,7 @@ const scoreRelevance = (
   const glowScore = normalizeMetric(glowUpScore);
   const recencyScore = scoreRecency(updatedAt);
   return (
-    keywordScore * weights.keyword +
-    glowScore * weights.glowup +
-    recencyScore * weights.recency
+    keywordScore * weights.keyword + glowScore * weights.glowup + recencyScore * weights.recency
   );
 };
 
