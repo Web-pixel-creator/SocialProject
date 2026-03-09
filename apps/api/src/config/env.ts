@@ -21,6 +21,7 @@ const envSchema = z.object({
   PRIVACY_VERSION: z.string().default('v1'),
   LOG_LEVEL: z.string().default(defaultLogLevel),
   JOBS_ENABLED: z.string().default('true'),
+  AUTOPSY_LONG_CONTEXT_ENABLED: z.enum(['true', 'false']).default('false'),
   CSRF_TOKEN: z.string().default('dev-csrf'),
   EMBEDDING_PROVIDER: z.enum(['hash', 'jina']).default('hash'),
   EMBEDDING_API_URL: z.string().default('https://api.jina.ai/v1/embeddings'),

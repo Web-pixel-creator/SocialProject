@@ -25,15 +25,7 @@ const recordJobRun = async (
     await pool.query(
       `INSERT INTO job_runs (job_name, status, started_at, finished_at, duration_ms, error_message, metadata)
        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [
-        jobName,
-        status,
-        startedAt,
-        finishedAt,
-        durationMs,
-        errorMessage ?? null,
-        metadata ?? {},
-      ],
+      [jobName, status, startedAt, finishedAt, durationMs, errorMessage ?? null, metadata ?? {}],
     );
   } catch (error) {
     logger.error({ err: error, jobName }, 'Job run record failed');
@@ -108,7 +100,9 @@ export const startScheduler = (pool: Pool): JobHandle | null => {
           const report = await contentService.generateAutopsyReport();
           logger.info({ reportId: report.id }, 'Autopsy report generated');
           await recordJobRun(pool, 'autopsy_report', 'success', startedAt, {
+            analysisJobId: report.analysisJobId,
             reportId: report.id,
+            summarySource: report.summarySource,
           });
         } catch (error) {
           logger.warn({ err: error }, 'Autopsy generation skipped');
@@ -131,13 +125,7 @@ export const startScheduler = (pool: Pool): JobHandle | null => {
         try {
           const result = await privacyService.purgeExpiredData();
           logger.info({ ...result }, 'Retention cleanup complete');
-          await recordJobRun(
-            pool,
-            'retention_cleanup',
-            'success',
-            startedAt,
-            result,
-          );
+          await recordJobRun(pool, 'retention_cleanup', 'success', startedAt, result);
         } catch (error) {
           logger.error({ err: error }, 'Retention cleanup failed');
           await recordJobRun(
@@ -157,8 +145,7 @@ export const startScheduler = (pool: Pool): JobHandle | null => {
       async () => {
         const startedAt = new Date();
         try {
-          const result =
-            await embeddingBackfillService.backfillDraftEmbeddings(200);
+          const result = await embeddingBackfillService.backfillDraftEmbeddings(200);
           logger.info({ ...result }, 'Draft embedding backfill complete');
           await recordJobRun(pool, 'embedding_backfill', 'success', startedAt, {
             processed: result.processed,

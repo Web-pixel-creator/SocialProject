@@ -1,4 +1,7 @@
 import type { Pool } from 'pg';
+import { env } from '../../config/env';
+import { longContextService } from '../analysis/longContextService';
+import type { LongContextService } from '../analysis/types';
 import type { DbClient } from '../auth/types';
 import { ServiceError } from '../common/errors';
 import type {
@@ -14,8 +17,7 @@ const getDb = (pool: Pool, client?: DbClient): DbClient => client ?? pool;
 const buildShareSlug = (prefix: string) =>
   `${prefix}-${new Date().toISOString().replace(/[:.]/g, '-')}-${Math.random().toString(36).slice(2, 8)}`;
 
-const buildReelUrl = (shareSlug: string) =>
-  `https://cdn.finishit.local/reels/${shareSlug}.mp4`;
+const buildReelUrl = (shareSlug: string) => `https://cdn.finishit.local/reels/${shareSlug}.mp4`;
 
 const toIso = (value: unknown): string => new Date(String(value)).toISOString();
 
@@ -24,10 +26,92 @@ interface MakerRow {
   studio_name: string;
 }
 
+interface ContentGenerationServiceOptions {
+  autopsyLongContextEnabled?: boolean;
+  longContextService?: LongContextService;
+}
+
+const buildRuleBasedAutopsySummary = ({
+  budgetExhaustedCount,
+  highRejectCount,
+  noFixCount,
+}: {
+  budgetExhaustedCount: number;
+  highRejectCount: number;
+  noFixCount: number;
+}) => {
+  const summaryParts: string[] = [];
+  if (noFixCount > 0) {
+    summaryParts.push('low fix-request activity');
+  }
+  if (highRejectCount > 0) {
+    summaryParts.push('high rejection ratios');
+  }
+  if (budgetExhaustedCount > 0) {
+    summaryParts.push('budget exhaustion patterns');
+  }
+  return summaryParts.length > 0
+    ? `Common issues: ${summaryParts.join(', ')}.`
+    : "No dominant pattern detected in today's autopsy batch.";
+};
+
+const buildAutopsyLongContextPrompt = ({
+  budgetExhaustedCount,
+  fallbackSummary,
+  highRejectCount,
+  noFixCount,
+  patterns,
+}: {
+  budgetExhaustedCount: number;
+  fallbackSummary: string;
+  highRejectCount: number;
+  noFixCount: number;
+  patterns: AutopsyPattern[];
+}) => {
+  const patternLines = patterns.map(
+    (pattern, index) =>
+      `${index + 1}. draft=${pattern.draftId}; glowUp=${pattern.glowUpScore.toFixed(2)}; fixRequests=${pattern.fixRequestCount}; rejectedPr=${pattern.rejectedPrCount}; budgetExhausted=${pattern.budgetExhausted ? 'yes' : 'no'}`,
+  );
+  return [
+    'Summarize this FinishIt autopsy batch using only the structured data below.',
+    `Fallback summary: ${fallbackSummary}`,
+    `Counts: noFix=${noFixCount}, highReject=${highRejectCount}, budgetExhausted=${budgetExhaustedCount}`,
+    'Draft patterns:',
+    ...patternLines,
+    'Return exactly one plain-text sentence under 220 characters. No markdown, no bullets, no labels.',
+  ].join('\n');
+};
+
+const normalizeAutopsyLongContextSummary = (
+  value: string | null | undefined,
+  fallbackSummary: string,
+) => {
+  const firstMeaningfulLine = (value ?? '')
+    .split(/\r?\n/)
+    .map((line) =>
+      line
+        .replace(/^#+\s*/u, '')
+        .replace(/^[-*]\s+/u, '')
+        .trim(),
+    )
+    .find((line) => line.length > 0 && !/^summary:?$/iu.test(line));
+  if (!firstMeaningfulLine) {
+    return fallbackSummary;
+  }
+  return firstMeaningfulLine.length <= 220
+    ? firstMeaningfulLine
+    : `${firstMeaningfulLine.slice(0, 217).trimEnd()}...`;
+};
+
 export class ContentGenerationServiceImpl implements ContentGenerationService {
+  private readonly autopsyLongContextEnabled: boolean;
+  private readonly longContextService: LongContextService;
   private readonly pool: Pool;
 
-  constructor(pool: Pool) {
+  constructor(pool: Pool, options: ContentGenerationServiceOptions = {}) {
+    this.autopsyLongContextEnabled =
+      options.autopsyLongContextEnabled ?? env.AUTOPSY_LONG_CONTEXT_ENABLED === 'true';
+    this.longContextService = options.longContextService ?? longContextService;
     this.pool = pool;
   }
 
@@ -44,10 +128,7 @@ export class ContentGenerationServiceImpl implements ContentGenerationService {
     );
 
     if (drafts.rows.length === 0) {
-      throw new ServiceError(
-        'REEL_EMPTY',
-        'No qualifying drafts for GlowUp reel.',
-      );
+      throw new ServiceError('REEL_EMPTY', 'No qualifying drafts for GlowUp reel.');
     }
 
     const items: GlowUpReelItem[] = [];
@@ -69,10 +150,9 @@ export class ContentGenerationServiceImpl implements ContentGenerationService {
         continue;
       }
 
-      const author = await db.query(
-        'SELECT id, studio_name FROM agents WHERE id = $1',
-        [row.author_id],
-      );
+      const author = await db.query('SELECT id, studio_name FROM agents WHERE id = $1', [
+        row.author_id,
+      ]);
       const makers = await db.query(
         `SELECT a.id, a.studio_name, COUNT(*) as merged_count
          FROM pull_requests pr
@@ -109,10 +189,7 @@ export class ContentGenerationServiceImpl implements ContentGenerationService {
     }
 
     if (items.length === 0) {
-      throw new ServiceError(
-        'REEL_EMPTY',
-        'No qualifying drafts for GlowUp reel.',
-      );
+      throw new ServiceError('REEL_EMPTY', 'No qualifying drafts for GlowUp reel.');
     }
 
     const shareSlug = buildShareSlug('reel');
@@ -130,17 +207,12 @@ export class ContentGenerationServiceImpl implements ContentGenerationService {
       shareSlug,
       reelUrl,
       createdAt: toIso(saved.rows[0].created_at),
-      publishedAt: saved.rows[0].published_at
-        ? toIso(saved.rows[0].published_at)
-        : null,
+      publishedAt: saved.rows[0].published_at ? toIso(saved.rows[0].published_at) : null,
       items,
     };
   }
 
-  async generateAutopsyReport(
-    limit = 5,
-    client?: DbClient,
-  ): Promise<AutopsyReport> {
+  async generateAutopsyReport(limit = 5, client?: DbClient): Promise<AutopsyReport> {
     const db = getDb(this.pool, client);
 
     const drafts = await db.query(
@@ -153,10 +225,7 @@ export class ContentGenerationServiceImpl implements ContentGenerationService {
     );
 
     if (drafts.rows.length === 0) {
-      throw new ServiceError(
-        'AUTOPSY_EMPTY',
-        'No qualifying drafts for autopsy.',
-      );
+      throw new ServiceError('AUTOPSY_EMPTY', 'No qualifying drafts for autopsy.');
     }
 
     const patterns: AutopsyPattern[] = [];
@@ -166,18 +235,16 @@ export class ContentGenerationServiceImpl implements ContentGenerationService {
 
     for (const row of drafts.rows) {
       const draftId = row.id as string;
-      const fixCount = await db.query(
-        'SELECT COUNT(*) FROM fix_requests WHERE draft_id = $1',
-        [draftId],
-      );
+      const fixCount = await db.query('SELECT COUNT(*) FROM fix_requests WHERE draft_id = $1', [
+        draftId,
+      ]);
       const rejectCount = await db.query(
         "SELECT COUNT(*) FROM pull_requests WHERE draft_id = $1 AND status = 'rejected'",
         [draftId],
       );
-      const prCount = await db.query(
-        'SELECT COUNT(*) FROM pull_requests WHERE draft_id = $1',
-        [draftId],
-      );
+      const prCount = await db.query('SELECT COUNT(*) FROM pull_requests WHERE draft_id = $1', [
+        draftId,
+      ]);
 
       const fixTotal = Number(fixCount.rows[0].count ?? 0);
       const rejected = Number(rejectCount.rows[0].count ?? 0);
@@ -203,37 +270,75 @@ export class ContentGenerationServiceImpl implements ContentGenerationService {
       });
     }
 
-    const summaryParts: string[] = [];
-    if (noFixCount > 0) {
-      summaryParts.push('low fix-request activity');
+    const fallbackSummary = buildRuleBasedAutopsySummary({
+      budgetExhaustedCount,
+      highRejectCount,
+      noFixCount,
+    });
+    let summary = fallbackSummary;
+    let summarySource: AutopsyReport['summarySource'] = 'rule_based';
+    let analysisJobId: string | null = null;
+    let analysisProvider: string | null = null;
+
+    if (this.autopsyLongContextEnabled && !client) {
+      const analysisJob = await this.longContextService.runAnalysis({
+        cacheTtl: '5m',
+        maxOutputTokens: 256,
+        metadata: {
+          budgetExhaustedCount,
+          draftIds: patterns.map((pattern) => pattern.draftId),
+          fallbackSummary,
+          highRejectCount,
+          noFixCount,
+        },
+        prompt: buildAutopsyLongContextPrompt({
+          budgetExhaustedCount,
+          fallbackSummary,
+          highRejectCount,
+          noFixCount,
+          patterns,
+        }),
+        requestedByType: 'system',
+        systemPrompt:
+          'This caller writes the autopsy feed summary. Return one direct sentence only, using plain text with no markdown or bullets.',
+        useCase: 'autopsy_report',
+      });
+      analysisJobId = analysisJob.id;
+      analysisProvider = analysisJob.provider;
+      if (analysisJob.status === 'completed') {
+        summary = normalizeAutopsyLongContextSummary(analysisJob.resultText, fallbackSummary);
+        summarySource = 'long_context';
+      }
     }
-    if (highRejectCount > 0) {
-      summaryParts.push('high rejection ratios');
-    }
-    if (budgetExhaustedCount > 0) {
-      summaryParts.push('budget exhaustion patterns');
-    }
-    const summary =
-      summaryParts.length > 0
-        ? `Common issues: ${summaryParts.join(', ')}.`
-        : "No dominant pattern detected in today's autopsy batch.";
 
     const shareSlug = buildShareSlug('autopsy');
     const saved = await db.query(
       `INSERT INTO autopsy_reports (share_slug, summary, data, published_at)
        VALUES ($1, $2, $3, NOW())
        RETURNING id, created_at, published_at`,
-      [shareSlug, summary, JSON.stringify({ patterns })],
+      [
+        shareSlug,
+        summary,
+        JSON.stringify({
+          analysis: {
+            jobId: analysisJobId,
+            provider: analysisProvider,
+            summarySource,
+          },
+          patterns,
+        }),
+      ],
     );
 
     return {
+      analysisJobId,
+      analysisProvider,
       id: saved.rows[0].id,
       shareSlug,
       summary,
+      summarySource,
       createdAt: toIso(saved.rows[0].created_at),
-      publishedAt: saved.rows[0].published_at
-        ? toIso(saved.rows[0].published_at)
-        : null,
+      publishedAt: saved.rows[0].published_at ? toIso(saved.rows[0].published_at) : null,
       patterns,
     };
   }

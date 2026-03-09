@@ -35,9 +35,12 @@ export interface AutopsyPattern {
 }
 
 export interface AutopsyReport {
+  analysisJobId: string | null;
+  analysisProvider: string | null;
   id: string;
   shareSlug: string;
   summary: string;
+  summarySource: 'rule_based' | 'long_context';
   createdAt: string;
   publishedAt: string | null;
   patterns: AutopsyPattern[];
@@ -45,8 +48,5 @@ export interface AutopsyReport {
 
 export interface ContentGenerationService {
   generateGlowUpReel(limit?: number, client?: DbClient): Promise<GlowUpReel>;
-  generateAutopsyReport(
-    limit?: number,
-    client?: DbClient,
-  ): Promise<AutopsyReport>;
+  generateAutopsyReport(limit?: number, client?: DbClient): Promise<AutopsyReport>;
 }

@@ -3,8 +3,7 @@ import { ContentGenerationServiceImpl } from '../services/content/contentService
 
 const pool = new Pool({
   connectionString:
-    process.env.DATABASE_URL ||
-    'postgres://postgres:postgres@localhost:5432/finishit',
+    process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/finishit',
 });
 
 const contentService = new ContentGenerationServiceImpl(pool);
@@ -14,21 +13,13 @@ describe('content generation edge cases', () => {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      await client.query(
-        'TRUNCATE TABLE pull_requests RESTART IDENTITY CASCADE',
-      );
-      await client.query(
-        'TRUNCATE TABLE fix_requests RESTART IDENTITY CASCADE',
-      );
+      await client.query('TRUNCATE TABLE pull_requests RESTART IDENTITY CASCADE');
+      await client.query('TRUNCATE TABLE fix_requests RESTART IDENTITY CASCADE');
       await client.query('TRUNCATE TABLE versions RESTART IDENTITY CASCADE');
       await client.query('TRUNCATE TABLE drafts RESTART IDENTITY CASCADE');
       await client.query('TRUNCATE TABLE agents RESTART IDENTITY CASCADE');
-      await client.query(
-        'TRUNCATE TABLE glowup_reels RESTART IDENTITY CASCADE',
-      );
-      await client.query(
-        'TRUNCATE TABLE autopsy_reports RESTART IDENTITY CASCADE',
-      );
+      await client.query('TRUNCATE TABLE glowup_reels RESTART IDENTITY CASCADE');
+      await client.query('TRUNCATE TABLE autopsy_reports RESTART IDENTITY CASCADE');
       await client.query('COMMIT');
     } catch (error) {
       await client.query('ROLLBACK');
@@ -49,9 +40,9 @@ describe('content generation edge cases', () => {
       await client.query('DELETE FROM versions');
       await client.query('DELETE FROM drafts');
 
-      await expect(
-        contentService.generateGlowUpReel(3, client),
-      ).rejects.toThrow('No qualifying drafts');
+      await expect(contentService.generateGlowUpReel(3, client)).rejects.toThrow(
+        'No qualifying drafts',
+      );
 
       await client.query('ROLLBACK');
     } catch (error) {
@@ -68,9 +59,9 @@ describe('content generation edge cases', () => {
       await client.query('BEGIN');
       await client.query('DELETE FROM drafts');
 
-      await expect(
-        contentService.generateAutopsyReport(3, client),
-      ).rejects.toThrow('No qualifying drafts');
+      await expect(contentService.generateAutopsyReport(3, client)).rejects.toThrow(
+        'No qualifying drafts',
+      );
 
       await client.query('ROLLBACK');
     } catch (error) {
@@ -94,9 +85,9 @@ describe('content generation edge cases', () => {
         [agent.rows[0].id],
       );
 
-      await expect(
-        contentService.generateGlowUpReel(3, client),
-      ).rejects.toThrow('No qualifying drafts');
+      await expect(contentService.generateGlowUpReel(3, client)).rejects.toThrow(
+        'No qualifying drafts',
+      );
 
       await client.query('ROLLBACK');
     } catch (error) {
